@@ -55,6 +55,8 @@ func _physics_process(delta: float) -> void:
 		_process_rout(delta)
 		return
 
+	_separate()
+
 	_attack_cd = max(0.0, _attack_cd - delta)
 	_moved_last_frame = false
 
@@ -129,6 +131,27 @@ func _move_to(point: Vector2, delta: float) -> void:
 	position += dir * move_speed * delta
 	state = State.MOVING
 	_moved_last_frame = true
+
+
+## Soft collision: push out of any live unit we overlap so regiments press
+## together but never stack. Each unit corrects half the overlap; its neighbor
+## corrects the other half on its own pass, so the resolution is mutual.
+func _separate() -> void:
+	var min_dist: float = RADIUS * 2.0
+	var push: Vector2 = Vector2.ZERO
+	for u in get_tree().get_nodes_in_group("units"):
+		var other: Unit = u as Unit
+		if other == null or other == self:
+			continue
+		var offset: Vector2 = position - other.position
+		var d: float = offset.length()
+		if d > 0.01 and d < min_dist:
+			push += offset.normalized() * (min_dist - d)
+		elif d <= 0.01:
+			# Exactly co-located: nudge apart in a random direction.
+			push += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
+	if push != Vector2.ZERO:
+		position += push * 0.5
 
 
 func _face(point: Vector2) -> void:
