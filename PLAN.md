@@ -1,7 +1,7 @@
 # Sparta — Project Plan & Handoff
 
 > Self-contained record so any new session (cloud or local) can continue without prior chat context.
-> Last updated: 2026-06-14.
+> Last updated: 2026-06-15.
 
 ## Vision
 A game fusing **Crusader Kings 3** grand-strategy campaign mechanics with **Total War**-style
@@ -15,6 +15,26 @@ then grow outward.
 - **Art:** **CC0 only** — Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
   - ⚠️ **Not** Total War mod assets — they are copyrighted, not public domain.
 - **First milestone:** one self-contained tactical battle. No campaign map yet.
+
+## Design pillars
+1. **Collision is core — treat it as a first-class system, not polish.** In a Total War-style
+   battle, where bodies are on the field *is* the game: units must physically occupy space,
+   press against each other, hold formation, and be blocked by friend and foe. Flanking, screening
+   spearmen, cavalry charges, and chokepoints are only meaningful if units cannot pass through or
+   stack on one another. Every movement/combat feature is designed around this constraint, and
+   collision correctness/perf takes priority over new feature breadth.
+   - **Current state:** soft separation in `Unit.gd` → `_separate()` — each frame a unit pushes
+     out of any overlapping live unit by half the overlap (neighbor corrects the rest). Spacing is
+     `SEPARATION_RADIUS` (see Pointers). It is intentionally *soft* so regiments still press into
+     melee contact (attack reach > separation floor) instead of bouncing apart.
+   - **Roadmap (in priority order):**
+     1. ✅ No-stack soft separation between live units.
+     2. Per-type footprint (cavalry wider than infantry) so charges and screens read correctly.
+     3. Formation cohesion: a regiment holds a block/line shape while moving, not a blob.
+     4. Hard blocking interactions: spearmen screen and physically stop cavalry passage; lines
+        form chokepoints. This is where collision and the rock-paper-scissors design meet.
+     5. Scale: replace the O(n²) neighbor scan with a spatial grid (and/or move to Godot
+        `CharacterBody2D`/`move_and_slide`) before unit counts grow past a few dozen.
 
 ## Current status — Milestone 1: SCAFFOLDED, not yet run in Godot
 All code written and committed to the repo. Runs with **zero downloaded art** (units are
@@ -76,5 +96,8 @@ hand-authored GDScript that hasn't been engine-checked.
 
 ## Pointers
 - Tune unit stats in `Battle.gd` → `_spawn_line()` `loadout` array.
+- Tune collision spacing in `Unit.gd` → `SEPARATION_RADIUS` (center-to-center floor = sum of both
+  units' radii); soft-resolve logic in `_separate()`. Tune spawn gaps via `spacing` in `_spawn_line()`.
+- Tune movement pace in `Battle.gd` → `speed_scale` in `_spawn_line()` (lower = slower).
 - Combat math in `Unit.gd` → `_strike()` / `take_casualties()` / `_flank_multiplier()`.
 - Enemy AI in `Battle.gd` → `_run_enemy_ai()` (currently: advance on nearest player unit).
