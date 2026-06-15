@@ -27,6 +27,8 @@ func _ready() -> void:
 	edge_toggle.position = Vector2(-260, 6)
 	edge_toggle.button_pressed = Settings.edge_scroll
 	edge_toggle.toggled.connect(func(on: bool) -> void: Settings.edge_scroll = on)
+	# Keep the checkbox in sync if the setting changes elsewhere.
+	Settings.changed.connect(func() -> void: edge_toggle.button_pressed = Settings.edge_scroll)
 	add_child(edge_toggle)
 
 	# Selected-unit panel.
