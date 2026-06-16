@@ -46,6 +46,10 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       startsWith(github.head_ref, 'claude/')
     runs-on: ubuntu-latest
+    # Backstop for the whole job; the record step has a tighter guard of its own.
+    # Godot under headless OpenGL/Xvfb can deadlock and would otherwise hold a
+    # runner for GitHub's 6 h default.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -97,6 +101,10 @@ jobs:
       - name: Record demo
         if: steps.manifest.outputs.present == 'true'
         id: record
+        # Tighter guard than the job backstop: headless Godot/Xvfb can deadlock on
+        # driver init before --quit-after ever takes effect. Recording is seconds;
+        # 10 min is generous.
+        timeout-minutes: 10
         run: |
           set -euo pipefail
           REPLAY=$(jq -r '.replay // empty' demos/demo.json)
@@ -139,35 +147,42 @@ jobs:
           CAPTION=$(jq -r '.caption // "Gameplay demo for this PR."' demos/demo.json)
           REPLAY=$(jq -r '.replay // empty' demos/demo.json)
 
-          # Publish onto the long-lived media branch via a fresh, isolated clone so
-          # the PR checkout is never touched.
+          # Publish onto the long-lived media branch. An isolated clone keeps the PR
+          # checkout untouched. Different PRs share this branch, so a concurrent push
+          # can reject ours as non-fast-forward — retry the whole clone→commit→push so
+          # each attempt rebuilds on the latest tip. This covers both first-time
+          # branch creation and the cross-PR move race with no data loss; a blind
+          # --force would instead drop another PR's just-pushed GIF.
           REPO_URL="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          if git clone --depth 1 --branch "$MEDIA_BRANCH" "$REPO_URL" /tmp/media 2>/dev/null; then
-            :
-          else
-            echo "Media branch '$MEDIA_BRANCH' not found; creating it."
-            git clone --depth 1 "$REPO_URL" /tmp/media
-            git -C /tmp/media checkout --orphan "$MEDIA_BRANCH"
-            git -C /tmp/media rm -rf . >/dev/null 2>&1 || true
-            printf '# Demo media\n\nAuto-generated gameplay GIFs posted to PRs by `.github/workflows/demo-video.yml`.\n' \
-              > /tmp/media/README.md
-          fi
-
-          cd /tmp/media   # so the prune glob below expands in the media checkout
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Keep only the latest GIF per PR; the comment is always repointed to the
-          # newest URL. nullglob so "no existing GIFs" yields an empty list, not a
-          # literal pattern.
-          shopt -s nullglob
-          for f in pr-${PR}-*.gif; do git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"; done
-          shopt -u nullglob
-          cp /tmp/demo.gif "$DEST"
-          git add "$DEST" README.md 2>/dev/null || git add "$DEST"
-          # On a manual re-run of the same commit the content is unchanged; tolerate it.
-          git commit -m "demo: PR #${PR} @ ${SHA}" || echo "nothing new to commit"
-          git push origin "HEAD:$MEDIA_BRANCH"
-          cd - >/dev/null
+          publish_once() {
+            rm -rf /tmp/media
+            if ! git clone -q --depth 1 --branch "$MEDIA_BRANCH" "$REPO_URL" /tmp/media 2>/dev/null; then
+              echo "Media branch '$MEDIA_BRANCH' not found; creating it."
+              git clone -q --depth 1 "$REPO_URL" /tmp/media
+              git -C /tmp/media checkout -q --orphan "$MEDIA_BRANCH"
+              git -C /tmp/media rm -rf . >/dev/null 2>&1 || true
+              printf '# Demo media\n\nAuto-generated gameplay GIFs posted to PRs by `.github/workflows/demo-video.yml`.\n' \
+                > /tmp/media/README.md
+            fi
+            git -C /tmp/media config user.name "github-actions[bot]"
+            git -C /tmp/media config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            # Keep only the latest GIF per PR; the comment is always repointed to the
+            # newest URL. Subshell + nullglob so the glob expands inside the checkout
+            # and an empty match is a no-op, not a literal pattern.
+            ( cd /tmp/media && shopt -s nullglob && for f in pr-${PR}-*.gif; do git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"; done )
+            cp /tmp/demo.gif "/tmp/media/$DEST"
+            git -C /tmp/media add "$DEST" README.md 2>/dev/null || git -C /tmp/media add "$DEST"
+            # A manual re-run of the same commit changes nothing; tolerate it.
+            git -C /tmp/media commit -q -m "demo: PR #${PR} @ ${SHA}" || echo "nothing new to commit"
+            git -C /tmp/media push origin "HEAD:$MEDIA_BRANCH"
+          }
+          published=
+          for attempt in 1 2 3 4 5; do
+            if publish_once; then published=1; break; fi
+            echo "publish attempt $attempt failed (likely a concurrent push to $MEDIA_BRANCH); retrying with a fresh clone…"
+            sleep $((attempt * 2))
+          done
+          [ -n "$published" ] || { echo "::error::could not publish demo to $MEDIA_BRANCH after 5 attempts"; exit 1; }
 
           RAW_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST}"
           MARKER="<!-- sparta-demo -->"

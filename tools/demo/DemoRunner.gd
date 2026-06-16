@@ -25,7 +25,7 @@ func _ready() -> void:
 		print("[demo] SPARTA_DEMO_REPLAY unset; recording a fresh battle.")
 	# Defer the swap so this bootstrap scene finishes _ready before it's replaced.
 	# Movie Maker keeps recording across the scene change.
-	call_deferred("_enter_battle")
+	_enter_battle.call_deferred()
 
 
 func _enter_battle() -> void:
