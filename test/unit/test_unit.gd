@@ -112,3 +112,31 @@ func test_cavalry_pair_overlap_at_40px_pushed_apart() -> void:
 	b.position = Vector2(40.0, 0.0)
 	a._separate()
 	assert_lt(a.position.x, 0.0, "cavalry at 40px overlap by footprint and push apart")
+
+
+func _spearman_unit() -> Unit:
+	var u: Unit = Unit.new()
+	u.anti_cavalry = true   # set before _ready() so the footprint is spearmen
+	add_child_autofree(u)
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+	return u
+
+
+func test_spearmen_footprint_between_infantry_and_cavalry() -> void:
+	var spear := _spearman_unit()
+	assert_gt(spear.separation_radius, _make_unit().separation_radius,
+		"spearmen footprint exceeds infantry")
+	assert_lt(spear.separation_radius, _cavalry().separation_radius,
+		"spearmen footprint is below cavalry")
+
+
+func test_spearmen_pair_overlap_at_38px_pushed_apart() -> void:
+	# 38px is inside the spearmen floor (20+20=40) but outside the infantry
+	# floor (18+18=36), so only spearmen push at this gap.
+	var a := _spearman_unit()
+	var b := _spearman_unit()
+	a.position = Vector2.ZERO
+	b.position = Vector2(38.0, 0.0)
+	a._separate()
+	assert_lt(a.position.x, 0.0, "spearmen at 38px overlap by footprint and push apart")
