@@ -154,7 +154,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				ps.append(cu.position)
 		centroid = formation_centroid(ps)
 	var relieved: bool = false
-	var relief_foe = null
+	var relief_foe: Unit = null
 	for uid in cmd["units"]:
 		var u = _unit_by_uid(int(uid))
 		if u == null:

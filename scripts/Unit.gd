@@ -352,6 +352,8 @@ func fatigue_attack_factor() -> float:
 ## exempt from separation (see _separation_exempt) so they pass through each
 ## other during the swap; the exemption clears once they're apart (_update_relief).
 func begin_relief(tired: Unit) -> void:
+	if tired == self:
+		return   # a unit can't relieve itself (a self-link would never clear)
 	# If either unit was already mid-relief with someone else, close those old
 	# back-links first so a previous partner doesn't keep a dangling exemption.
 	var old_self: Unit = _relief_partner
