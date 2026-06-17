@@ -137,7 +137,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	var target_uid: int = int(cmd["target"])
 	# The target uid may be an enemy (attack) or a friendly (line relief, #4); a
 	# plain move has no target. Resolve it and dispatch per ordered unit by team.
-	var target_unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
+	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
 	var is_move: bool = target_unit == null
 	var dest := Vector2(float(cmd["x"]), float(cmd["y"]))
 	# Formation cohesion: a move order translates the regiment as a block. Each
@@ -149,14 +149,14 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	if is_move:
 		var ps: Array[Vector2] = []
 		for uid in cmd["units"]:
-			var cu = _unit_by_uid(int(uid))
+			var cu: Unit = _unit_by_uid(int(uid))
 			if cu != null:
 				ps.append(cu.position)
 		centroid = formation_centroid(ps)
 	var relieved: bool = false
 	var relief_foe: Unit = null
 	for uid in cmd["units"]:
-		var u = _unit_by_uid(int(uid))
+		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
 			continue
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
