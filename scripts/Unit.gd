@@ -184,9 +184,8 @@ func _think(delta: float) -> void:
 	elif enemy != null and order_mode != ORDER_HOLD:
 		_move_to(enemy.position, delta)
 	else:
-		# No move order, and either no enemy or a HOLD stance (#84): stand fast.
-		# A held unit still fights/fires what reaches it (handled above), it just
-		# won't break position to chase a detected enemy.
+		# Idle: no enemy, or a HOLD stance (#84) that won't chase — the paths above
+		# still fight/fire whatever reaches a held unit.
 		state = State.IDLE
 
 
