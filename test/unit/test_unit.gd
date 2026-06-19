@@ -81,6 +81,73 @@ func test_hold_ranged_unit_still_fires_within_range() -> void:
 	assert_eq(u.state, Unit.State.FIGHTING, "a held ranged unit still looses volleys in range")
 
 
+# --- skirmish kiting (#85) -------------------------------------------------
+
+func test_skirmish_ranged_unit_retreats_from_a_close_enemy() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_SKIRMISH
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(Unit.SKIRMISH_KITE_DISTANCE - 40.0, 0)   # inside the kite distance
+	u._think(0.1)
+	assert_lt(u.position.x, 0.0, "a skirmisher backs away from an enemy inside the kite distance")
+
+
+func test_skirmish_ranged_unit_fires_at_standoff_range() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_SKIRMISH
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	# Beyond the kite distance but within RANGED_RANGE -> fire, don't retreat.
+	enemy.position = Vector2(Unit.SKIRMISH_KITE_DISTANCE + 40.0, 0)
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "a skirmisher fires at a standoff-range enemy")
+	assert_eq(u.position, Vector2.ZERO, "and holds its ground while firing")
+
+
+func test_skirmish_cornered_unit_fires_instead_of_freezing() -> void:
+	# A skirmisher pinned against the field edge can't retreat (the clamp snaps the
+	# target onto its position). It must fall through and fire, not stand idle.
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_SKIRMISH
+	u.field_bounds = Rect2(0, 0, 1000, 1000)
+	u.position = Vector2(0, 500)                 # against the left edge
+	var enemy := _make_unit()
+	enemy.team = 1
+	# Right of it, inside the kite distance but beyond melee contact (a standoff foe).
+	enemy.position = Vector2(Unit.SKIRMISH_KITE_DISTANCE - 20.0, 500)
+	u._think(0.1)
+	assert_eq(u.position.x, 0.0, "a cornered kiter stays clamped on the field edge")
+	assert_eq(u.state, Unit.State.FIGHTING, "and fires rather than freezing")
+
+
+func test_skirmish_ranged_unit_does_not_kite_on_a_plain_move_order() -> void:
+	# A plain move order (move target, no explicit attack target) disengages: the
+	# skirmisher marches to the destination instead of kiting. Geometry is chosen so
+	# kiting (-x, away from the enemy) and marching (+x, toward the destination) pull
+	# opposite ways, so the assertion actually distinguishes them.
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_SKIRMISH
+	u.position = Vector2(500, 500)
+	u.move_target = Vector2(600, 500)   # destination is to the +x side
+	u.has_move_target = true
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = u.position + Vector2(Unit.SKIRMISH_KITE_DISTANCE - 20.0, 0.0)  # +x, inside kite range
+	u._think(0.1)
+	assert_gt(u.position.x, 500.0, "a skirmisher under a move order marches to its destination, not away")
+
+
 # --- attack flank / rear approach (#82) ------------------------------------
 
 func test_attack_rear_approach_point_is_behind_the_target() -> void:
