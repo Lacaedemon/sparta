@@ -50,7 +50,7 @@ forbids the routine adapting we do (trim, resample, recolour, loop).
 | [OpenGameArt](https://opengameart.org/) (CC0 filter) | CC0 (per-submission — **verify each**) | ✅ | everything | Our current set (see below). Search advanced → licence = CC0. OGA also hosts CC-BY/GPL, so check each submission's licence line. |
 | [Kenney](https://kenney.nl/assets?q=audio) | CC0 | ✅ | UI clicks, impacts, jingles | The prior shipped set. Consistent, clean, slightly generic. |
 | [Freesound](https://freesound.org/search/) | mixed (CC0 · CC-BY · CC-BY-NC) | ✅ / 🅰 | foley, ambience, combat, crowds | Huge. **CC0 and CC-BY are both bundlable** (credit the CC-BY ones); **avoid CC-BY-NC**. Always check the per-sound licence before downloading. |
-| [Pixabay](https://pixabay.com/sound-effects/) | Pixabay Content Licence (**not CC0 since 2019-01-09**) | ⛔ (post-2019) | reference; battle/foley | Free for commercial **use**, no attribution, but **no standalone redistribution** — committing the raw file is the prohibited part. Only items dated **before 2019-01-09 are CC0** (and thus bundle-safe). |
+| [Pixabay](https://pixabay.com/sound-effects/) | Pixabay Content Licence (**not CC0**) | ⛔ | reference; battle/foley | Free for commercial **use**, no attribution, but **no standalone redistribution** — committing the raw file is the prohibited part. (Content uploaded before 2019-01-09 was technically CC0, but upload dates aren't reliably verifiable and items get re-uploaded — treat *all* of Pixabay as reference-only rather than chase the exception.) |
 | [BBC Sound Effects (RemArc)](https://sound-effects.bbcrewind.co.uk/) | RemArc Licence | ⛔ | reference; authentic battle ambience | **Personal / educational / research only — non-commercial**, and no redistribution. Excellent authentic material (e.g. the [`Battle ground`](https://sound-effects.bbcrewind.co.uk/search?q=Battle%20ground) results), but cannot be committed. Commercial licensing is separate (Pro Sound Effects). |
 | [Mixkit](https://mixkit.co/free-sound-effects/battle/) | Mixkit Free Licence | ⛔ | reference; battle SFX | Free for commercial & personal **use**, no attribution, but you may **not redistribute the files standalone / unmodified** — so they can't be committed here. |
 
@@ -91,7 +91,7 @@ See [`ASSETS.md`](../ASSETS.md) for the standing CC0 art shortlist and the
 | [Kenney](https://kenney.nl/assets) | CC0 | ✅ | UI panels/buttons, tiles, fonts, icons |
 | [OpenGameArt (CC0 filter)](https://opengameart.org/art-search-advanced?keys=&field_art_licenses_tid%5B%5D=4) | CC0 (verify each) | ✅ | terrain, tiles, props, sprites |
 | [game-icons.net](https://game-icons.net/) | CC-BY 3.0 | 🅰 | ability / unit / status icons (4000+) — keep attribution |
-| Liberated Pixel Cup (LPC) sets on OGA | CC-BY-SA 3.0 / GPL | 🅰 | characters, terrain — attribution **and** share-alike (derivatives stay `-SA`) |
+| Liberated Pixel Cup (LPC) sets on OGA | CC-BY-SA 3.0 **or** GPL 3.0 | 🅰 | characters, terrain. **Use under CC-BY-SA** (attribution + share-alike on adapted art); **avoid the GPL option** — GPL could force the *entire game* (code included) to be GPL-licensed. Prefer CC-BY-SA-only LPC forks. |
 | itch.io "free" packs | per-pack (**varies**) | 🅰 / ⛔ | read each pack's licence — many are "free to use, no redistribution" (⛔) |
 | Pixabay / Freepik / stock | custom (not CC0) | ⛔ | reference / mood only |
 
