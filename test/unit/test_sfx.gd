@@ -24,6 +24,9 @@ func test_synth_produces_nonempty_wav() -> void:
 	# Each placeholder synthesises a non-empty 16-bit PCM WAV (asset-independent).
 	for name in Sfx.NAMES:
 		var w: AudioStreamWAV = Sfx._synth(name)
+		assert_not_null(w, "%s synth returned null — add a _synth arm for it" % name)
+		if w == null:
+			continue
 		assert_eq(w.format, AudioStreamWAV.FORMAT_16_BITS, "%s synth is 16-bit PCM" % name)
 		assert_gt(w.data.size(), 0, "%s synth has samples" % name)
 
