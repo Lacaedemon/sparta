@@ -88,7 +88,8 @@ func _ready() -> void:
 	again.set_anchors_preset(Control.PRESET_CENTER)
 	again.position = Vector2(-150, 10)
 	again.custom_minimum_size = Vector2(140, 36)
-	again.pressed.connect(func(): _overlay.visible = false; restart_pressed.emit())
+	# reset_for_new_campaign() (via restart_pressed -> CampaignMap) hides the overlay.
+	again.pressed.connect(func(): restart_pressed.emit())
 	_overlay.add_child(again)
 
 	var menu := Button.new()
