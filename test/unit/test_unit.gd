@@ -1141,6 +1141,17 @@ func test_rout_shatters_when_gutted_even_if_clear() -> void:
 	assert_eq(u.state, Unit.State.DEAD, "a gutted rout shatters even with no enemy near")
 
 
+func test_can_rally_at_exactly_the_strength_floor() -> void:
+	# Boundary: soldiers == floor(max * SHATTER_STRENGTH_FRAC) still rallies (the gate is
+	# "< floor" → shatter, ">= floor" → can rally). Pins the >= semantics in the doc.
+	var u := _make_unit(100)
+	u._rout()
+	u.soldiers = int(round(100 * Unit.SHATTER_STRENGTH_FRAC))   # exactly the floor (15)
+	assert_true(u._can_rally(), "a unit exactly at the strength floor can still rally")
+	u.soldiers -= 1
+	assert_false(u._can_rally(), "one man below the floor shatters")
+
+
 func test_can_rally_requires_broken_contact_and_strength() -> void:
 	var u := _make_unit(100)
 	u._rout()
