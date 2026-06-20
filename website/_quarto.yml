@@ -98,7 +98,6 @@ format:
     code-overflow: wrap
     link-external-icon: true
     link-external-newwindow: true
-    lightbox: true
     smooth-scroll: true
 
 date: last-modified
