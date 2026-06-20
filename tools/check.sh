@@ -133,9 +133,20 @@ ensure_gut() {
     rm -rf "$gut_tmp"
     return 1
   fi
+  # Install atomically: copy into a staging dir on the same filesystem, then
+  # rename it into place. A crash mid-copy then leaves only the staging dir, not a
+  # half-populated addons/gut that the early-return check above would treat as a
+  # valid install on the next run.
   mkdir -p "$PROJECT_ROOT/addons"
-  cp -r "$gut_tmp/addons/gut" "$PROJECT_ROOT/addons/gut"
+  local staging="$PROJECT_ROOT/addons/.gut-staging.$$"
+  rm -rf "$staging"
+  if ! cp -r "$gut_tmp/addons/gut" "$staging"; then
+    err "Failed to install GUT into addons/gut."
+    rm -rf "$gut_tmp" "$staging"
+    return 1
+  fi
   rm -rf "$gut_tmp"
+  mv "$staging" "$PROJECT_ROOT/addons/gut"
 }
 
 # --- checks ----------------------------------------------------------------
