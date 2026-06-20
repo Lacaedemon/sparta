@@ -17,16 +17,25 @@
 # Requires the `gh` CLI authenticated via GH_TOKEN in the environment.
 set -euo pipefail
 
+if [ "$#" -lt 4 ]; then
+  echo "Usage: $(basename "$0") <repo> <pr-number> <marker> <body> [label]" >&2
+  exit 1
+fi
+
 REPO="$1"
 PR="$2"
 MARKER="$3"
 BODY="$4"
 LABEL="${5:-comment}"
 
-# Find our existing comment by its marker. `|| true` so "no match" (and the
-# resulting non-zero from the pipeline) doesn't trip `set -e`.
+# Find our existing comment by its marker. The marker is passed to jq via --arg
+# (not interpolated into the filter) so a marker containing quotes can't break the
+# filter. `|| true` so "no match" (and the resulting non-zero from the pipeline)
+# doesn't trip `set -e`.
 CID=$(gh api "repos/${REPO}/issues/${PR}/comments" --paginate \
-  --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1 || true)
+  | jq --raw-output --arg marker "$MARKER" \
+      '.[] | select(.body | contains($marker)) | .id' \
+  | head -n1 || true)
 
 if [ -n "$CID" ]; then
   gh api -X PATCH "repos/${REPO}/issues/comments/${CID}" -f body="$BODY" >/dev/null
