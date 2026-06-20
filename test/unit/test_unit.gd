@@ -1150,16 +1150,18 @@ func test_formation_slots_one_per_soldier() -> void:
 	assert_eq(u._formation_slots(0).size(), 0, "no soldiers -> no slots (an empty block)")
 
 
-func test_formation_block_is_centered() -> void:
-	# A full block (50 = 10 files x 5 ranks) is centred on the unit origin.
+func test_formation_block_is_horizontally_centered() -> void:
+	# Each rank is centred on its own count, so the block's horizontal centroid stays on
+	# the unit even when the last rank is partial (non-perfect n) — not just for a perfect
+	# grid. (#32 review: a left-aligned partial rank used to drift small/depleted blocks.)
 	var u := _make_unit()
-	var slots := u._formation_slots(50)
-	var sum := Vector2.ZERO
-	for s in slots:
-		sum += s
-	var mean: Vector2 = sum / float(slots.size())
-	assert_almost_eq(mean.x, 0.0, 0.001, "block is centred horizontally on the unit")
-	assert_almost_eq(mean.y, 0.0, 0.001, "and vertically")
+	for n in [50, 51, 53, 87, 7]:
+		var slots := u._formation_slots(n)
+		var sum_x := 0.0
+		for s in slots:
+			sum_x += s.x
+		var mean_x: float = sum_x / float(slots.size())
+		assert_almost_eq(mean_x, 0.0, 0.001, "x-centroid stays on the unit for n=%d" % n)
 
 
 func test_formation_is_wider_than_deep() -> void:
