@@ -79,7 +79,7 @@ const ROUT_SHOCK_RADIUS: float = 140.0
 # still fields enough men (>= SHATTER_STRENGTH_FRAC of its max). Otherwise it SHATTERS:
 # run down or gutted past reforming, it leaves play for good. A rallied unit comes back
 # at RALLY_MORALE, kept low so it stays fragile and can break again.
-const RALLY_CONTACT_RADIUS: float = 160.0
+const RALLY_CONTACT_RADIUS: float = 160.0   # = RANGED_RANGE: in archer reach = not broken contact
 const RALLY_MORALE: float = 30.0
 const SHATTER_STRENGTH_FRAC: float = 0.15
 
@@ -169,7 +169,7 @@ func _physics_process(delta: float) -> void:
 
 	if state == State.ROUTING:
 		_process_rout(delta)
-		if state != State.DEAD:   # the timer may have expired and freed us
+		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
 			_separate()   # routers still shoulder past anyone in their path
 		return
 
@@ -850,6 +850,9 @@ func _rally() -> void:
 	state = State.IDLE
 	morale = RALLY_MORALE
 	_rout_timer = 0.0
+	# has_move_target was cleared on rout, so a stale waypoint queue is never consulted;
+	# clear it anyway so a unit that was mid-march before routing reforms with no orders.
+	waypoints.clear()
 	remove_from_group("routers")
 	add_to_group("units")
 	queue_redraw()
