@@ -33,6 +33,8 @@ tools/check.sh && git push
 
 ### Requirements
 
+- **Bash 3.2+** — works with the system Bash that ships on macOS (no Homebrew
+  Bash needed); uses only POSIX/BSD-compatible tool flags.
 - **Godot 4.6 (Standard build)** on `PATH`, or point `GODOT_BIN` at it
   (e.g. `/Applications/Godot.app/Contents/MacOS/Godot` on macOS). See the README's
   "Running Godot headlessly" snippet for a Linux download.
