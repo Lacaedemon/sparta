@@ -43,6 +43,12 @@ command -v ffmpeg >/dev/null 2>&1 || { echo "error: ffmpeg not found on PATH" >&
 cd "$PROJECT_ROOT"
 mkdir -p "$OUT_DIR"
 
+# Scratch dir for the intermediate AVIs, removed on exit. mktemp -d is portable
+# (BSD + GNU); naming the AVI inside it avoids the leak of `$(mktemp).avi`, where
+# the suffix-less placeholder mktemp creates is never the file we later remove.
+WORK_DIR="$(mktemp -d -t sparta-demo-XXXXXX)"
+trap 'rm -rf "$WORK_DIR"' EXIT
+
 # Import once so scripts/scenes resolve. Movie Maker would import on first run
 # anyway, but a clean import surfaces script errors up front.
 "$GODOT_BIN" --headless --import || true
@@ -51,7 +57,7 @@ for spec in "${DEMOS[@]}"; do
   IFS='|' read -r NAME REPLAY FIXED_FPS MAX_FRAMES WIDTH <<<"$spec"
   echo "== Recording '$NAME' from res://$REPLAY ($MAX_FRAMES frames @ ${FIXED_FPS}fps, ${WIDTH}px) =="
 
-  AVI="$(mktemp -t sparta-demo-XXXXXX).avi"
+  AVI="$WORK_DIR/$NAME.avi"
   SPARTA_DEMO_REPLAY="res://$REPLAY" "${GODOT_RUN[@]}" \
     --rendering-driver opengl3 \
     --write-movie "$AVI" --fixed-fps "$FIXED_FPS" \

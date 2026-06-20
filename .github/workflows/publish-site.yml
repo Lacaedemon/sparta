@@ -35,6 +35,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  # Pinned versions — keep in sync with .github/workflows/godot-ci.yml.
   GODOT_VERSION: 4.6.0
   GUT_VERSION: v9.6.0
 

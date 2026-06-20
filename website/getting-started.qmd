@@ -47,10 +47,10 @@ godot --headless --path . --quit
 To actually *play*, though, you need the desktop editor with a display --- a headless
 environment has no window to render the battle into.
 
-### Installing Godot in a cloud/Linux environment
+### Installing Godot in a headless Linux environment
 
-Claude Code's cloud environment (and most Linux CI) can run Godot headlessly once
-it's installed. Add this to a setup script (matches the project's Godot version):
+Most Linux CI (and remote/cloud editors) can run Godot headlessly once it's
+installed. Add this to a setup script (matches the project's Godot version):
 
 ```bash
 wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip
