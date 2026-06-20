@@ -889,12 +889,15 @@ func _formation_slots(n: int) -> PackedVector2Array:
 		return slots
 	var files: int = maxi(1, int(ceil(sqrt(float(n) * FORMATION_ASPECT))))
 	var ranks: int = int(ceil(float(n) / float(files)))
-	var x0: float = -(files - 1) * 0.5 * FORMATION_SPACING
 	var y0: float = -(ranks - 1) * 0.5 * FORMATION_SPACING
 	for i in range(n):
 		var file: int = i % files
 		var rank: int = i / files
-		slots.push_back(Vector2(x0 + file * FORMATION_SPACING, y0 + rank * FORMATION_SPACING))
+		# Centre each rank on its own count, so a partial last rank doesn't pull the
+		# block's centroid off the unit (most visible on small / heavily-depleted units).
+		var rank_count: int = mini(files, n - rank * files)
+		var rx0: float = -(rank_count - 1) * 0.5 * FORMATION_SPACING
+		slots.push_back(Vector2(rx0 + file * FORMATION_SPACING, y0 + rank * FORMATION_SPACING))
 	return slots
 
 
@@ -923,9 +926,10 @@ func _draw() -> void:
 		extent = maxf(extent, s.length())
 	extent += mark_r + 2.0
 
-	# Drop shadow (squished ellipse anchors the block to the ground).
-	draw_set_transform(Vector2(0, RADIUS * 0.60), 0.0, Vector2(1.15, 0.38))
-	draw_circle(Vector2.ZERO, RADIUS, Color(0, 0, 0, 0.28))
+	# Drop shadow (squished ellipse) sized to the block, so it anchors the whole
+	# formation to the ground instead of just the old single-token footprint.
+	draw_set_transform(Vector2(0, extent * 0.45), 0.0, Vector2(1.1, 0.36))
+	draw_circle(Vector2.ZERO, extent * 0.95, Color(0, 0, 0, 0.22))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	# State ring behind the block: red = engaged, orange = routing.
