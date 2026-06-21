@@ -90,7 +90,11 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 		var adj: Array[int] = []
 		for n in p["adj"]:
 			adj.append(int(n))
-		var label: Vector2 = _to_vector2(p["label"]) if p.has("label") else _centroid(poly)
+		var label: Vector2 = _centroid(poly)
+		if p.has("label"):
+			var lbl = _parse_point(p["label"])
+			if lbl != null:
+				label = lbl
 		provinces.append({
 			"id": id, "name": str(p["name"]), "owner": owner, "army": int(p["army"]),
 			"adj": adj, "polygon": poly, "label": label,
@@ -117,14 +121,20 @@ static func _to_polygon(points: Variant) -> PackedVector2Array:
 	if typeof(points) != TYPE_ARRAY:
 		return out
 	for pt in points:
-		out.append(_to_vector2(pt))
+		var v = _parse_point(pt)
+		if v == null:
+			# A malformed vertex invalidates the whole polygon, so the caller's
+			# ">= 3 points" check rejects the province (no spurious origin vertex).
+			return PackedVector2Array()
+		out.append(v)
 	return out
 
 
-static func _to_vector2(pt: Variant) -> Vector2:
+## Parse an [x, y] point, or null if malformed (caller rejects or falls back).
+static func _parse_point(pt: Variant) -> Variant:
 	if typeof(pt) == TYPE_ARRAY and pt.size() >= 2:
 		return Vector2(float(pt[0]), float(pt[1]))
-	return Vector2.ZERO
+	return null
 
 
 static func _centroid(poly: PackedVector2Array) -> Vector2:

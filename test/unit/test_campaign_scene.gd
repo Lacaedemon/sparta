@@ -68,6 +68,15 @@ func test_click_selects_then_orders() -> void:
 			"the order resolved to a valid outcome")
 
 
+func test_falls_back_to_default_when_selected_missing() -> void:
+	# An unreadable selected campaign must fall back to the default, not crash.
+	Campaigns.selected_path = "res://data/campaigns/__does_not_exist__.json"
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	assert_eq(map._state.provinces.size(), 7, "fell back to the default Gallic War map")
+	Campaigns.selected_path = Campaigns.DEFAULT_PATH   # restore for other tests
+
+
 func test_restart_re_enables_end_turn() -> void:
 	# Regression: show_victory disables End Turn; restarting must re-enable it and
 	# clear the end overlay, or "New Campaign" leaves an unplayable board.

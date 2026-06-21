@@ -6,8 +6,9 @@ extends RefCounted
 ## and read by CampaignMap when it builds its state. It defaults to the Gallic War so
 ## the campaign scene also runs standalone (e.g. opened directly in the editor).
 
-# Each entry: {id, name, path}. `name` is a fallback label; the live display name and
-# blurb come from the loaded map file itself.
+# Each entry: {id, name, path}. `name` is the button label shown in the main menu.
+# The map file also carries its own name/blurb (loaded by CampaignLoader); those are
+# reserved for a future campaign-picker screen (#126) and aren't displayed yet.
 const LIST := [
 	{
 		"id": "gallic_war",
