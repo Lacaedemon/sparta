@@ -5,7 +5,8 @@ extends GutTest
 ## isolation) by exercising the Node/scene layer.
 
 const CampaignScene = preload("res://scenes/Campaign.tscn")
-const GallicWar = preload("res://scripts/campaign/GallicWar.gd")
+const CampaignLoader = preload("res://scripts/campaign/CampaignLoader.gd")
+const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
 
 
 # A point guaranteed inside the polygon: the centroid of one triangle from its
@@ -24,7 +25,7 @@ func _interior_point(poly: PackedVector2Array) -> Vector2:
 # province id -> a point guaranteed inside its polygon.
 func _centroids() -> Dictionary:
 	var out := {}
-	for p in GallicWar.new_map()["provinces"]:
+	for p in CampaignLoader.load_map(Campaigns.DEFAULT_PATH)["provinces"]:
 		out[int(p["id"])] = _interior_point(p["polygon"])
 	return out
 

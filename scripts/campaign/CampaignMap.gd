@@ -8,7 +8,8 @@ extends Node2D
 ## hookup is M3).
 
 const CampaignStateRef = preload("res://scripts/campaign/CampaignState.gd")
-const GallicWar = preload("res://scripts/campaign/GallicWar.gd")
+const CampaignLoader = preload("res://scripts/campaign/CampaignLoader.gd")
+const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
 
 const PLAYER_FACTION := 0
 
@@ -42,7 +43,12 @@ func _start_campaign() -> void:
 
 
 func _build_state() -> void:
-	_map = GallicWar.new_map()
+	# Load the campaign the menu selected; fall back to the default if it failed to
+	# load so the scene is never left without a map.
+	_map = CampaignLoader.load_map(Campaigns.selected_path)
+	if _map.is_empty():
+		push_error("Campaign: could not load '%s'; using the default." % Campaigns.selected_path)
+		_map = CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
 	_state = CampaignStateRef.new(_map)
 	_selected = -1
 
