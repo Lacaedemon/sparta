@@ -1603,3 +1603,48 @@ func test_interceptor_skips_unit_past_target() -> void:
 
 	assert_null(archer._friendly_interceptor(enemy),
 		"friendly unit past the target is not counted as an interceptor")
+
+
+# --- morale recovery -----------------------------------------------
+
+func test_morale_recovers_while_idle() -> void:
+	var u := _make_unit()
+	u.morale = 50.0
+	u.state = Unit.State.IDLE
+	u.tick_morale(1.0)
+	assert_almost_eq(u.morale, 52.0, 0.001, "an idle unit recovers morale at MORALE_RECOVER_PER_SEC")
+
+
+func test_morale_does_not_recover_while_fighting() -> void:
+	var u := _make_unit()
+	u.morale = 50.0
+	u.state = Unit.State.FIGHTING
+	u.tick_morale(1.0)
+	assert_almost_eq(u.morale, 50.0, 0.001, "a fighting unit does not recover morale")
+
+
+func test_morale_recovers_while_moving() -> void:
+	var u := _make_unit()
+	u.morale = 80.0
+	u.state = Unit.State.MOVING
+	u.tick_morale(1.0)
+	assert_almost_eq(u.morale, 82.0, 0.001, "a moving unit also recovers morale")
+
+
+func test_morale_caps_at_100_during_recovery() -> void:
+	var u := _make_unit()
+	u.morale = 99.5
+	u.state = Unit.State.IDLE
+	u.tick_morale(1.0)
+	assert_almost_eq(u.morale, 100.0, 0.001, "morale recovery does not exceed 100")
+
+
+func test_morale_does_not_recover_while_routing_via_physics_process() -> void:
+	# Routing units return early from _physics_process before tick_morale is
+	# called; this test pins that the early-return path is in effect.
+	var u := _make_unit()
+	u.morale = 50.0
+	u.state = Unit.State.ROUTING
+	u._rout_timer = 10.0   # keep timer alive so _process_rout returns early
+	u._physics_process(0.01)
+	assert_almost_eq(u.morale, 50.0, 0.001, "a routing unit does not recover morale")
