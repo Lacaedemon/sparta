@@ -228,6 +228,8 @@ func test_battle_terrain_route_avoids_patches() -> void:
 	var above := Vector2(cx, forest["rect"].position.y - 100)
 	var below := Vector2(cx, forest["rect"].end.y + 100)
 	var route := pf.find_path(above, below)
+	assert_true(route.size() > 0,
+			"A* finds a route around the terrain patch (field is wide enough to detour)")
 	for p in route:
 		assert_false(pf.is_blocked(p),
 				"no A* waypoint sits inside the blocked terrain patch")

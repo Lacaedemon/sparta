@@ -9,12 +9,7 @@ const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
-# Static terrain patches for this battle. Each entry has:
-#   rect  — world-space Rect2 defining the patch
-#   type  — string key into TERRAIN_COLOR
-# Registered as PathField obstacles in _ready() so units route around them.
-# Positioned in the mid-field (y 380–580) between the spawn rows (300 and 700),
-# flanking the center — creates tactical chokepoints without blocking deployment.
+# Terrain patches: {rect, type} pairs; type keys into TERRAIN_COLOR.
 const TERRAIN: Array = [
 	{"rect": Rect2(200,  380, 250, 200), "type": "forest"},
 	{"rect": Rect2(1150, 380, 250, 200), "type": "hill"},
@@ -149,7 +144,7 @@ func _draw() -> void:
 		Color(1, 1, 1, 0.08), 2.0)
 	# Terrain patches — drawn over the field, under units (Battle is the parent).
 	for patch in TERRAIN:
-		var col: Color = TERRAIN_COLOR[patch["type"]]
+		var col: Color = TERRAIN_COLOR.get(patch["type"], Color(0.4, 0.4, 0.4))
 		draw_rect(patch["rect"], col)
 		draw_rect(patch["rect"], col.darkened(0.35), false, 2.0)
 
