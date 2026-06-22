@@ -209,7 +209,7 @@ func _registered_pathfield() -> PathField:
 	var pf := PathField.new(BattleScript.FIELD)
 	for patch in BattleScript.TERRAIN:
 		if patch.get("kind", "block") == "slow":
-			assert_true(patch.has("speed"), "slow terrain patch missing required 'speed' key")
+			assert(patch.has("speed"), "slow terrain patch missing required 'speed' key")
 			pf.set_speed_rect(patch["rect"], float(patch["speed"]))
 		else:
 			pf.block_rect(patch["rect"])
