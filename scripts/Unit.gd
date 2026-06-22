@@ -859,7 +859,7 @@ func tick_cohesion(delta: float) -> void:
 		cohesion = minf(1.0, cohesion + COHESION_RECOVER_PER_SEC * delta)
 
 
-## Morale recovers while the unit is not fighting; builds back toward 100 at rest.
+## Morale recovers when the unit is not engaged in combat (any state other than FIGHTING).
 func tick_morale(delta: float) -> void:
 	if state != State.FIGHTING and morale < 100.0:
 		morale = minf(100.0, morale + MORALE_RECOVER_PER_SEC * delta)

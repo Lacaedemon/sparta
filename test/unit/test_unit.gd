@@ -1637,3 +1637,14 @@ func test_morale_caps_at_100_during_recovery() -> void:
 	u.state = Unit.State.IDLE
 	u.tick_morale(1.0)
 	assert_almost_eq(u.morale, 100.0, 0.001, "morale recovery does not exceed 100")
+
+
+func test_morale_does_not_recover_while_routing_via_physics_process() -> void:
+	# Routing units return early from _physics_process before tick_morale is
+	# called; this test pins that the early-return path is in effect.
+	var u := _make_unit()
+	u.morale = 50.0
+	u.state = Unit.State.ROUTING
+	u._rout_timer = 10.0   # keep timer alive so _process_rout returns early
+	u._physics_process(0.01)
+	assert_almost_eq(u.morale, 50.0, 0.001, "a routing unit does not recover morale")
