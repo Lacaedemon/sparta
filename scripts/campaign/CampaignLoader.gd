@@ -108,9 +108,28 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 				push_warning("Campaign map: province %d lists unknown neighbour %d" % [prov["id"], n])
 				return {}
 
-	# Optional initial diplomacy (#123): pairs of faction indices that start at peace.
+	# Adjacency must be mutual (#128): movement is two-way, so if A lists B as a
+	# neighbour, B must list A back. A one-sided edge is almost always a hand-edit typo
+	# (it would let an army move A->B but not B->A) and would be a hard-to-debug gameplay
+	# bug, so reject it with a clear message. One-way edges aren't a feature today; if one
+	# were ever wanted it'd be opt-in via an explicit flag rather than an asymmetric list.
+	var adj_of := {}
+	for prov in provinces:
+		adj_of[int(prov["id"])] = prov["adj"]
+	for prov in provinces:
+		var pid := int(prov["id"])
+		for n in prov["adj"]:
+			var nb := int(n)
+			if not (pid in adj_of[nb]):
+				push_warning("Campaign map: adjacency %d -> %d is not mutual (province %d must list %d back)"
+						% [pid, nb, nb, pid])
+				return {}
+
+	# Optional initial diplomacy (#123): pairs of faction indices that start at peace,
+	# with an optional third element giving an initial truce length in turns (#138).
 	# Validated here so a typo is caught at load time rather than silently ignored.
 	var peace: Array = []
+	var seen_pairs := {}
 	for pair in raw.get("peace", []):
 		if typeof(pair) != TYPE_ARRAY or pair.size() < 2:
 			push_warning("Campaign map: each 'peace' entry must be a [factionA, factionB] pair")
@@ -127,13 +146,25 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 			return {}
 		var lo := mini(a, b)
 		var hi := maxi(a, b)
-		if [lo, hi] in peace:
+		var key := "%d-%d" % [lo, hi]
+		if seen_pairs.has(key):
 			# Duplicate pair (possibly reversed, e.g. [0, 2] and [2, 0]); make_peace is
 			# idempotent so it's harmless, but a redundant entry is a hand-edit slip —
 			# reject it at load time to stay consistent with the checks above.
 			push_warning("Campaign map: duplicate 'peace' pair [%d, %d]" % [a, b])
 			return {}
-		peace.append([lo, hi])
+		seen_pairs[key] = true
+		var entry := [lo, hi]
+		if pair.size() >= 3:
+			var truce_turns := int(pair[2])
+			if truce_turns < 0:
+				push_warning("Campaign map: 'peace' pair [%d, %d] has a negative truce length %d"
+						% [a, b, truce_turns])
+				return {}
+			# Carry a positive truce through; 0 means "peace, no truce", same as a bare pair.
+			if truce_turns > 0:
+				entry.append(truce_turns)
+		peace.append(entry)
 
 	return {
 		"name": str(raw.get("name", "Campaign")),

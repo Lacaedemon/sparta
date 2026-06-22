@@ -102,6 +102,16 @@ func test_diplomacy_toggle_declares_and_makes_peace() -> void:
 	assert_false(map._state.at_war(0, 2), "toggling again sues for peace")
 
 
+func test_truce_blocks_player_declare_war_toggle() -> void:
+	# #138: with an active truce, the HUD toggle can't re-declare war until it expires.
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	# Germanic tribes (faction 2) start at peace with Rome; seed a truce on the pair.
+	map._state.make_peace(0, 2, 3)
+	map._on_diplomacy_toggled(2)
+	assert_false(map._state.at_war(0, 2), "the truce blocks declaring war via the toggle")
+
+
 func test_end_turn_runs_enemy_and_returns_to_player() -> void:
 	var s = await _scene()
 	var map := s.get_node("CampaignMap")

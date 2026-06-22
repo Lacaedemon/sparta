@@ -124,12 +124,24 @@ func _on_end_turn() -> void:
 	# that rotation, so control is guaranteed back to the player within n-1 steps —
 	# the loop always terminates (no infinite-loop risk).
 	while _state.current_faction != PLAYER_FACTION:
+		_run_ai_diplomacy()
 		_run_enemy_ai()
 		if _check_winner():
 			return
 		_state.end_turn()
 	_refresh_hud()
 	queue_redraw()
+
+
+## Before its military moves, the current AI faction reconsiders war/peace (#139) and
+## the resulting declarations/peaces are flashed so the player sees the world shift.
+## CampaignState.run_ai_diplomacy holds the (deterministic) decision logic.
+func _run_ai_diplomacy() -> void:
+	var messages: Array = _state.run_ai_diplomacy(_state.current_faction)
+	if _hud == null:
+		return
+	for msg in messages:
+		_hud.flash(msg)
 
 
 ## Greedy AI: each ready army takes the weakest adjacent province belonging to a
@@ -239,6 +251,7 @@ func _diplomacy_entries() -> Array:
 			"name": _state.faction_names[f],
 			"color": colors[f] if f < colors.size() else Color.WHITE,
 			"at_war": _state.at_war(PLAYER_FACTION, f),
+			"truce": _state.truce_remaining(PLAYER_FACTION, f),
 		})
 	return entries
 
@@ -256,10 +269,13 @@ func _on_diplomacy_toggled(fid: int) -> void:
 		_state.make_peace(PLAYER_FACTION, fid)
 		if _hud != null:
 			_hud.flash("Made peace with %s." % fname)
-	else:
-		_state.declare_war(PLAYER_FACTION, fid)
+	elif _state.declare_war(PLAYER_FACTION, fid):
 		if _hud != null:
 			_hud.flash("Declared war on %s!" % fname)
+	else:
+		# A truce blocks re-declaring war until it expires (#138).
+		if _hud != null:
+			_hud.flash("Truce with %s — %d turn(s) left." % [fname, _state.truce_remaining(PLAYER_FACTION, fid)])
 	# A stance change can invalidate the current selection's targets; keep it simple.
 	_refresh_hud()
 	queue_redraw()

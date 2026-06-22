@@ -189,3 +189,153 @@ func test_result_reports_defender_owner() -> void:
 	var r: Dictionary = s.move_or_attack(0, 1)
 	assert_true(r["ok"])
 	assert_eq(int(r["defender_owner"]), GAULS, "the result records who held the target before the move")
+
+
+# --- truce timers (#138) ---------------------------------------------------
+
+func test_truce_blocks_declare_war_until_it_expires() -> void:
+	var s := _state()
+	s.make_peace(ROME, GAULS, 2)
+	assert_eq(s.truce_remaining(ROME, GAULS), 2, "make_peace records the truce length")
+	assert_false(s.declare_war(ROME, GAULS), "declaring war is blocked while a truce holds")
+	assert_false(s.at_war(ROME, GAULS), "...and the stance stays at peace")
+	# One full round (Rome -> Gauls -> Rome) ticks the truce down by one.
+	s.end_turn()
+	s.end_turn()
+	assert_eq(s.truce_remaining(ROME, GAULS), 1, "a full round ticks the truce down by one")
+	assert_false(s.declare_war(ROME, GAULS), "still truce-bound at 1 turn left")
+	s.end_turn()
+	s.end_turn()
+	assert_eq(s.truce_remaining(ROME, GAULS), 0, "the truce expires")
+	assert_true(s.declare_war(ROME, GAULS), "war can be declared again once it expires")
+	assert_true(s.at_war(ROME, GAULS))
+
+
+func test_truce_does_not_tick_mid_round() -> void:
+	var s := _state()
+	s.make_peace(ROME, GAULS, 3)
+	s.end_turn()   # Rome -> Gauls; not a full round yet
+	assert_eq(s.truce_remaining(ROME, GAULS), 3, "the truce only ticks when the round wraps to faction 0")
+
+
+func test_make_peace_zero_truce_leaves_war_declarable() -> void:
+	var s := _state()
+	s.make_peace(ROME, GAULS)   # no truce
+	assert_eq(s.truce_remaining(ROME, GAULS), 0)
+	assert_true(s.declare_war(ROME, GAULS), "peace without a truce can be broken immediately")
+
+
+func test_make_peace_extends_but_never_shortens_a_truce() -> void:
+	var s := _state()
+	s.make_peace(ROME, GAULS, 2)
+	s.make_peace(ROME, GAULS, 5)
+	assert_eq(s.truce_remaining(ROME, GAULS), 5, "a longer truce extends the existing one")
+	s.make_peace(ROME, GAULS, 1)
+	assert_eq(s.truce_remaining(ROME, GAULS), 5, "a shorter request never shortens it")
+
+
+func test_initial_truce_from_map() -> void:
+	var m := _map()
+	m["peace"] = [[ROME, GAULS, 3]]
+	var s := CampaignState.new(m, 1)
+	assert_false(s.at_war(ROME, GAULS), "a map-seeded pair starts at peace")
+	assert_eq(s.truce_remaining(ROME, GAULS), 3, "...with the seeded truce length")
+
+
+# --- AI-initiated diplomacy (#139) -----------------------------------------
+
+func _map4() -> Dictionary:
+	# Four factions in a row, each owning one province; geometry omitted (rules only).
+	# Adjacency: 0-1-2-3 chain, so every faction borders its neighbour(s).
+	return {
+		"faction_names": ["F0", "F1", "F2", "F3"],
+		"provinces": [
+			{"id": 0, "name": "P0", "owner": 0, "army": 2, "adj": [1]},
+			{"id": 1, "name": "P1", "owner": 1, "army": 10, "adj": [0, 2]},
+			{"id": 2, "name": "P2", "owner": 2, "army": 2, "adj": [1, 3]},
+			{"id": 3, "name": "P3", "owner": 3, "army": 2, "adj": [2]},
+		],
+	}
+
+
+func test_faction_strength_and_borders() -> void:
+	var s := CampaignState.new(_map4(), 1)
+	assert_eq(s.faction_strength(1), 10, "strength sums a faction's armies")
+	assert_eq(s.surviving_factions(), [0, 1, 2, 3] as Array[int], "all four own a province")
+	assert_true(s.factions_border(0, 1), "P0 is adjacent to P1")
+	assert_false(s.factions_border(0, 2), "P0 doesn't touch P2")
+
+
+func test_ai_declares_war_on_weak_bordering_neutral() -> void:
+	var s := CampaignState.new(_map4(), 1)
+	# F1 (strength 10) is at peace with its weak neighbours, then opportunistically pounces.
+	s.make_peace(1, 0)
+	s.make_peace(1, 2)
+	var msgs: Array = s.run_ai_diplomacy(1)
+	assert_true(s.at_war(1, 0) or s.at_war(1, 2), "the strong faction declares war on a weak neighbour")
+	assert_gt(msgs.size(), 0, "the decision is reported for the UI/log")
+
+
+func test_ai_does_not_declare_war_on_a_strong_neighbour() -> void:
+	var s := CampaignState.new(_map4(), 1)
+	# F0 (strength 2) borders only F1 (strength 10); it must not pick that fight.
+	s.make_peace(0, 1)
+	s.run_ai_diplomacy(0)
+	assert_false(s.at_war(0, 1), "a weak faction doesn't declare war on a stronger neighbour")
+
+
+func test_ai_sues_for_peace_when_overextended_and_outmatched() -> void:
+	# F0 is weak (army 1) and at war with two strong bordering enemies (F1, F2).
+	var m := _map4()
+	m["provinces"][0]["army"] = 1
+	m["provinces"][0]["adj"] = [1, 2]   # F0 now borders both strong factions
+	m["provinces"][1]["adj"] = [0, 2]
+	m["provinces"][2]["owner"] = 2
+	m["provinces"][2]["army"] = 9
+	m["provinces"][2]["adj"] = [0, 1, 3]
+	var s := CampaignState.new(m, 1)
+	var msgs: Array = s.run_ai_diplomacy(0)
+	# It sues for peace with its strongest enemy to shed a front.
+	assert_false(s.at_war(0, 1) and s.at_war(0, 2),
+			"an overextended, outmatched faction sues for peace with at least one enemy")
+	assert_gt(msgs.size(), 0, "the peace is reported")
+
+
+func test_ai_respects_an_active_truce() -> void:
+	var s := CampaignState.new(_map4(), 1)
+	# F1 would love to attack F0, but a truce binds it.
+	s.make_peace(1, 0, 5)
+	s.make_peace(1, 2)
+	s.run_ai_diplomacy(1)
+	assert_false(s.at_war(1, 0), "the AI can't declare war on a truce-bound neighbour")
+
+
+# --- multi-faction (4+) campaigns (#140) -----------------------------------
+
+func test_four_factions_start_at_war_multi_front() -> void:
+	var s := CampaignState.new(_map4(), 1)
+	assert_eq(s.faction_names.size(), 4)
+	assert_true(s.at_war(0, 1), "neighbours start at war")
+	assert_true(s.at_war(1, 2))
+	assert_true(s.at_war(2, 3))
+
+
+func test_end_turn_cycles_all_four_factions() -> void:
+	var s := CampaignState.new(_map4(), 1)
+	for expected in [1, 2, 3, 0]:
+		s.end_turn()
+		assert_eq(s.current_faction, expected, "play cycles through every faction")
+	assert_eq(s.turn, 2, "one full four-faction round advances the turn once")
+
+
+func test_winner_undecided_with_several_survivors() -> void:
+	var s := CampaignState.new(_map4(), 1)
+	assert_eq(s.winner(), CampaignState.NO_WINNER, "four survivors -> no winner yet")
+	# Eliminate F3: hand its province to F2. Three factions remain; still undecided.
+	s.provinces[3]["owner"] = 2
+	assert_eq(s.surviving_factions(), [0, 1, 2] as Array[int], "the eliminated faction drops out")
+	assert_eq(s.winner(), CampaignState.NO_WINNER, "still several survivors")
+	# Now collapse everyone into F1: it owns the board and wins.
+	for id in s.provinces:
+		s.provinces[id]["owner"] = 1
+	assert_eq(s.winner(), 1, "owning every province wins, even in a multi-faction war")
