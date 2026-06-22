@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Non-visual refactor — converting a const to an @export var adds no observable battle behaviour."
+  "reason": "Mouse-wheel zoom cursor anchor — live mouse input the recorded-battle pipeline cannot capture."
 }
