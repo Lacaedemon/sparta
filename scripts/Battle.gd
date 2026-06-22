@@ -164,6 +164,8 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		u.attack = d["atk"]
 		u.defense = d["def"]
 		u.move_speed = d["spd"] * SPEED_SCALE
+		# Cavalry respond faster — more mobile and battle-conditioned.
+		u.order_response_delay = 0.3 if d["cav"] else 0.5
 		u.facing = facing
 		u.position = Vector2(start_x + i * spacing, y)
 		u.field_bounds = FIELD   # so a skirmisher kites without backing off the map
@@ -332,6 +334,8 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			else:
 				u.move_target = point
 				u.has_move_target = true
+		if not append:
+			u.start_order_response()
 
 
 func _uids_contain(uids: Array, target: int) -> bool:
