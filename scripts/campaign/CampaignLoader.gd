@@ -93,8 +93,17 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 			push_warning("Campaign map: province %d needs a polygon of >= 3 points" % id)
 			return {}
 		var adj: Array[int] = []
+		var adj_seen := {}
 		for n in p["adj"]:
-			adj.append(int(n))
+			var neighbor := int(n)
+			if neighbor == id:
+				push_warning("Campaign map: province %d lists itself in 'adj'" % id)
+				return {}
+			if adj_seen.has(neighbor):
+				push_warning("Campaign map: province %d has duplicate neighbour %d in 'adj'" % [id, neighbor])
+				return {}
+			adj_seen[neighbor] = true
+			adj.append(neighbor)
 		var label: Vector2 = _centroid(poly)
 		if p.has("label"):
 			var lbl = _parse_point(p["label"])
