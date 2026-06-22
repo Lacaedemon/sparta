@@ -20,6 +20,7 @@ const ORDER_SUPPORT_COLOR: Color = Color(0.4, 0.95, 0.7, 0.9)
 
 var _cursor_canvas: CanvasLayer
 var _cursor_sprite: Sprite2D
+var _cursor_textures: Dictionary = {}   # mode int -> ImageTexture; cached to avoid redundant image allocs
 
 var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
@@ -50,7 +51,7 @@ func _ready() -> void:
 	# queue orders while the simulation is frozen (orders apply on resume).
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_cursor_canvas = CanvasLayer.new()
-	_cursor_canvas.layer = 128
+	_cursor_canvas.layer = 127
 	add_child(_cursor_canvas)
 	_cursor_sprite = Sprite2D.new()
 	_cursor_sprite.centered = true
@@ -367,7 +368,9 @@ func _update_order_cursor() -> void:
 		_cursor_sprite.visible = false
 		DisplayServer.mouse_set_mode(DisplayServer.MOUSE_MODE_VISIBLE)
 		return
-	_cursor_sprite.texture = _order_cursor_texture(_order_mode_color(_armed_mode))
+	if not _cursor_textures.has(_armed_mode):
+		_cursor_textures[_armed_mode] = _order_cursor_texture(_order_mode_color(_armed_mode))
+	_cursor_sprite.texture = _cursor_textures[_armed_mode]
 	_cursor_sprite.visible = true
 	DisplayServer.mouse_set_mode(DisplayServer.MOUSE_MODE_HIDDEN)
 
