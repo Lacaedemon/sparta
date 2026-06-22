@@ -175,7 +175,7 @@ func test_real_gallic_war_adjacency_is_mutual() -> void:
 
 
 func test_parses_peace_pair_with_truce() -> void:
-	# #138: an optional third element seeds an initial truce length, carried through.
+	# An optional third element seeds an initial truce length, carried through.
 	var raw := _valid_raw()
 	raw["peace"] = [[0, 1, 4]]
 	var m := CampaignLoader.parse_map(raw)
@@ -198,13 +198,13 @@ func test_rejects_negative_truce() -> void:
 
 
 func test_loads_four_kingdoms_file() -> void:
-	# #140: the shipped four-faction map loads and is well-formed.
+	# The shipped four-faction map loads and is well-formed.
 	var m := CampaignLoader.load_map("res://data/campaigns/four_kingdoms.json")
 	assert_false(m.is_empty(), "the four-faction map loads")
 	assert_eq(m["faction_names"].size(), 4, "four factions")
 	assert_eq(m["provinces"].size(), 8, "eight provinces")
-	# The shipped map is fully mutual. The loader rejects asymmetric adjacency (#128), so a
-	# successful load already implies symmetry — this asserts the invariant explicitly.
+	# The shipped map is fully mutual; this asserts that invariant explicitly. (The loader
+	# only warns on asymmetry now, so a successful load no longer implies symmetry on its own.)
 	var adj := {}
 	for p in m["provinces"]:
 		adj[int(p["id"])] = p["adj"]
