@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Order-response delay is a timing behaviour: units pause ~0.5 s before stepping off. A passive showcase replay has no player orders, so the hesitation is never triggered. A dedicated recording with move orders would be needed to show it."
+  "reason": "Test-only fix: explicit type annotations in GUT helpers. No game behaviour changes; a recorded battle would show nothing new."
 }
