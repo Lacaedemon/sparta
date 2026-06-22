@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Campaign-layer diplomacy follow-ups: truce timers (#138), AI-initiated war/peace (#139), 4+-faction wars with a new map (#140), and a loader adjacency-symmetry check (#128). These are campaign-map rules + HUD changes; the demo recorder captures tactical-battle replays only, so a recorded battle can't show them."
+  "reason": "Campaign-layer diplomacy follow-ups: truce timers (#138), AI-initiated war/peace (#139), and 4+-faction wars with a new map (#140). These are campaign-map rules + HUD changes; the demo recorder captures tactical-battle replays only, so a recorded battle can't show them."
 }

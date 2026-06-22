@@ -42,8 +42,9 @@ func test_adjacency() -> void:
 	assert_false(s.are_adjacent(0, 99), "unknown province is not adjacent")
 
 
-func test_one_way_adjacency_is_directed() -> void:
-	# #128: adjacency is directed, so a one-way edge A->B permits moving A->B but not B->A.
+func test_are_adjacent_is_directed() -> void:
+	# are_adjacent checks only the source province's list, so it reflects the data as-is
+	# (the loader rejects asymmetric maps, #128, but the rules layer itself is directed).
 	var m := {
 		"faction_names": ["A", "B"],
 		"provinces": [

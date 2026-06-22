@@ -10,8 +10,7 @@ extends RefCounted
 ##     "blurb": "...",                        # one-line description (optional)
 ##     "factions": [{"name","color"}, ...],   # color is an HTML hex string
 ##     "provinces": [
-##       {"id","name","owner","army","adj":[ids], "polygon":[[x,y],...], "label":[x,y],
-##        "one_way": false}      # optional; opts out of the adjacency-symmetry lint (#128)
+##       {"id","name","owner","army","adj":[ids], "polygon":[[x,y],...], "label":[x,y]}
 ##     ],
 ##     "peace": [[factionA, factionB], ...]    # optional; pairs that start at peace (#123).
 ##                                              # A 3rd element sets an initial truce in
@@ -102,10 +101,6 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 		provinces.append({
 			"id": id, "name": str(p["name"]), "owner": owner, "army": int(p["army"]),
 			"adj": adj, "polygon": poly, "label": label,
-			# Opt-out of the adjacency-symmetry lint (#128): declares this province's
-			# one-way exits intentional. Movement already uses directed adjacency, so the
-			# flag affects validation only, not the runtime.
-			"one_way": bool(p.get("one_way", false)),
 		})
 
 	# Adjacency must reference provinces that exist.
@@ -115,26 +110,17 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 				push_warning("Campaign map: province %d lists unknown neighbour %d" % [prov["id"], n])
 				return {}
 
-	# Adjacency may be one-way (#128): movement uses directed adjacency, so an edge A->B
-	# without B->A is a legal one-way pass (e.g. a mountain pass or river crossing). The
-	# far more common cause of asymmetry, though, is a hand-edit typo, so warn on any
-	# un-flagged one-way edge — unless the source province opts in with "one_way": true,
-	# declaring its asymmetric exits intentional. Either way the map still loads; this is
-	# a lint, not a hard error (the unknown-neighbour check above already rejects edges to
-	# ids that don't exist).
-	var adj_of := {}
+	# Adjacency must be symmetric (#128): if A lists B, B must list A. A one-sided edge is
+	# almost always a hand-edit typo, so reject it at load time (the caller falls back).
+	var adj_index: Dictionary = {}
 	for prov in provinces:
-		adj_of[int(prov["id"])] = prov["adj"]
+		adj_index[prov["id"]] = prov["adj"]
 	for prov in provinces:
-		if bool(prov.get("one_way", false)):
-			continue
-		var pid := int(prov["id"])
 		for n in prov["adj"]:
-			var nb := int(n)
-			if not (pid in adj_of[nb]):
-				push_warning(("Campaign map: adjacency %d -> %d is one-way (province %d doesn't list %d back). "
-						+ "Set \"one_way\": true on province %d if that's intentional; otherwise it's likely a typo.")
-						% [pid, nb, nb, pid, pid])
+			if not (prov["id"] in adj_index[n]):
+				push_warning("Campaign map: adjacency between province %d and %d is not symmetric"
+						% [prov["id"], n])
+				return {}
 
 	# Optional initial diplomacy (#123): pairs of faction indices that start at peace,
 	# with an optional third element giving an initial truce length in turns (#138).
