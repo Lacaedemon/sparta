@@ -170,6 +170,11 @@ var _relief_partner: Unit = null   # unit we're swapping with mid-relief
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
+# The merge-aware "base" footprint at Normal formation — updated on spawn and
+# whenever absorb() widens separation_radius. set_formation(NORMAL) restores to
+# this rather than to the raw type constant, so a merged unit doesn't silently
+# lose its widened body on a formation cycle.
+var _base_separation_radius: float = SEPARATION_RADIUS_INFANTRY
 
 # --- Cosmetic soldier flocking state (Stage B) -------------------------
 # Per-mark render positions/velocities in the unit's (unrotated) local frame. Cosmetic
@@ -197,6 +202,7 @@ func _ready() -> void:
 	soldiers = max_soldiers
 	team_color = Color("4a7fd6") if team == 0 else Color("d65a4a")
 	separation_radius = _type_separation_radius()
+	_base_separation_radius = separation_radius
 	add_to_group("units")
 	# Layer budget: field=0, then this unit's cosmetic stack sits 1..3 — shadow (eff 1),
 	# marks (eff 2), chrome (this _draw, eff 3) — all below the z=4 rout shockwave / z=5
@@ -467,13 +473,13 @@ func _type_separation_radius() -> float:
 
 
 ## Change the regiment's formation and recalculate its separation footprint.
+## Uses _base_separation_radius (which absorb() keeps updated) so a formation
+## cycle on a merged unit doesn't discard the merge-widened body.
 func set_formation(mode: int) -> void:
 	formation_mode = mode
-	var base := _type_separation_radius()
+	var base := _base_separation_radius
 	if mode == FORMATION_TIGHT:
-		# Floor at half the base so even a small unit doesn't collapse to zero,
-		# but still tangibly tighter than the default.
-		separation_radius = maxf(base * 0.5, base * TIGHT_SEPARATION_SCALE)
+		separation_radius = base * TIGHT_SEPARATION_SCALE
 	elif mode == FORMATION_LOOSE:
 		separation_radius = minf(SEPARATION_RADIUS_MAX, base * LOOSE_SEPARATION_SCALE)
 	else:
@@ -803,6 +809,7 @@ func absorb(other: Unit) -> void:
 	cohesion = MERGE_COHESION_FLOOR
 	separation_radius = minf(maxf(separation_radius, other.separation_radius) + 2.0,
 		SEPARATION_RADIUS_MAX)
+	_base_separation_radius = separation_radius
 	other._merged_away()
 	queue_redraw()
 
