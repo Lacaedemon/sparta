@@ -73,8 +73,14 @@ func test_rejects_unknown_neighbour() -> void:
 
 func test_rejects_self_adjacency() -> void:
 	var raw := _valid_raw()
-	raw["provinces"][0]["adj"] = [0]  # province 0 lists itself
+	raw["provinces"][0]["adj"] = [0]  # province 0 lists itself in first slot
 	assert_true(CampaignLoader.parse_map(raw).is_empty(), "self-adjacency in adj -> rejected")
+
+
+func test_rejects_self_adjacency_non_first_slot() -> void:
+	var raw := _valid_raw()
+	raw["provinces"][0]["adj"] = [1, 0]  # province 0 lists itself after a valid neighbour
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "self-adjacency in non-first slot -> rejected")
 
 
 func test_rejects_duplicate_adj_entry() -> void:
