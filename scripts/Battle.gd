@@ -165,7 +165,8 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		u.defense = d["def"]
 		u.move_speed = d["spd"] * SPEED_SCALE
 		# Cavalry respond faster — more mobile and battle-conditioned.
-		u.order_response_delay = 0.3 if d["cav"] else 0.5
+		if d["cav"]:
+			u.order_response_delay = 0.3
 		u.facing = facing
 		u.position = Vector2(start_x + i * spacing, y)
 		u.field_bounds = FIELD   # so a skirmisher kites without backing off the map

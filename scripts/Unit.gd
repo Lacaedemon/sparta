@@ -272,10 +272,12 @@ func _physics_process(delta: float) -> void:
 
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
-	# Order-response delay: tick down regardless of state, but only gate movement
-	# while not fighting — a unit already in melee stays engaged through the delay.
-	# When the timer reaches exactly 0 this tick, fall through so motion starts
-	# in the same frame rather than waiting one extra frame.
+	# Order-response delay: tick down on every frame. Non-fighting units are frozen
+	# until the timer expires; fighting units are not gated — they keep executing
+	# _think() normally, so a disengage or retarget order issued mid-combat takes
+	# effect on the same frame, not after the delay. When the timer hits 0 this
+	# tick, fall through so motion starts immediately rather than waiting an
+	# extra frame.
 	if _order_response_timer > 0.0:
 		_order_response_timer = maxf(0.0, _order_response_timer - delta)
 		if _order_response_timer > 0.0 and state != State.FIGHTING:
