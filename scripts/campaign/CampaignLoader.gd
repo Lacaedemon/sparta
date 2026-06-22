@@ -100,12 +100,20 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 			var lbl = _parse_point(p["label"])
 			if lbl != null:
 				label = lbl
+		# Optional "one_way" flag: declares this province's exits intentionally one-way, so
+		# the asymmetry check below skips it. Validation-only — movement is already directed.
+		# Require a real boolean: bool("false") is true and bool(0) is false in GDScript, so
+		# coercing a stray string/number would silently flip intent. Reject instead.
+		var one_way := false
+		if p.has("one_way"):
+			if typeof(p["one_way"]) != TYPE_BOOL:
+				push_warning("Campaign map: province %d 'one_way' must be a boolean (true/false)" % id)
+				return {}
+			one_way = p["one_way"]
 		provinces.append({
 			"id": id, "name": str(p["name"]), "owner": owner, "army": int(p["army"]),
 			"adj": adj, "polygon": poly, "label": label,
-			# Declares this province's one-way exits intentional, so the asymmetry check
-			# below skips it. Validation-only — movement is already directed.
-			"one_way": bool(p.get("one_way", false)),
+			"one_way": one_way,
 		})
 
 	# Adjacency must reference provinces that exist.

@@ -100,6 +100,14 @@ func test_one_way_flag_marks_intentional_asymmetry() -> void:
 	assert_false(flags[1], "unflagged provinces default to false")
 
 
+func test_rejects_non_bool_one_way() -> void:
+	# "one_way" must be a real boolean — a stray string/number would coerce surprisingly
+	# (bool("false") is true), so the loader rejects it rather than guessing intent.
+	var raw := _valid_raw()
+	raw["provinces"][0]["one_way"] = "false"
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a non-boolean one_way -> rejected")
+
+
 func test_rejects_degenerate_polygon() -> void:
 	var raw := _valid_raw()
 	raw["provinces"][0]["polygon"] = [[0, 0], [1, 1]]
@@ -161,8 +169,9 @@ func test_loads_real_gallic_war_file() -> void:
 
 
 func test_real_gallic_war_adjacency_is_mutual() -> void:
-	# Movement is two-way, so every listed neighbour must list us back. Guards against
-	# hand-edit typos in the shipped map (the loader warns on asymmetry).
+	# The shipped Gallic War map is fully mutual (every listed neighbour lists us back).
+	# One-way edges are allowed in general now, but this map uses none — so this asserts a
+	# content invariant, guarding against hand-edit typos rather than a movement rule.
 	var m := CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
 	assert_false(m.is_empty(), "gallic war must load for this test to be meaningful")
 	var adj := {}
