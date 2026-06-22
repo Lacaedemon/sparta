@@ -42,6 +42,20 @@ func test_adjacency() -> void:
 	assert_false(s.are_adjacent(0, 99), "unknown province is not adjacent")
 
 
+func test_one_way_adjacency_is_directed() -> void:
+	# #128: adjacency is directed, so a one-way edge A->B permits moving A->B but not B->A.
+	var m := {
+		"faction_names": ["A", "B"],
+		"provinces": [
+			{"id": 0, "name": "P0", "owner": 0, "army": 3, "adj": [1]},
+			{"id": 1, "name": "P1", "owner": 1, "army": 1, "adj": []},   # no edge back to 0
+		],
+	}
+	var s := CampaignState.new(m, 1)
+	assert_true(s.are_adjacent(0, 1), "the A->B edge exists")
+	assert_false(s.are_adjacent(1, 0), "but there's no B->A edge (one-way)")
+
+
 func test_can_move_rules() -> void:
 	var s := _state()
 	assert_true(s.can_move(0, 1), "own, manned, adjacent army can move")
