@@ -10,9 +10,12 @@ const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 const FIELD := Rect2(0, 0, 1600, 1000)
 
 # Terrain patches: {rect, type} pairs; type keys into TERRAIN_COLOR.
+# "block" types are registered as PathField obstacles (units route around).
+# "slow" types are registered as PathField speed zones (units can enter but
+# move slower; the scale is the fraction of normal speed).
 const TERRAIN: Array = [
-	{"rect": Rect2(200,  380, 250, 200), "type": "forest"},
-	{"rect": Rect2(1150, 380, 250, 200), "type": "hill"},
+	{"rect": Rect2(200,  380, 250, 200), "type": "forest", "kind": "slow", "speed": 0.6},
+	{"rect": Rect2(1150, 380, 250, 200), "type": "hill",   "kind": "block"},
 ]
 const TERRAIN_COLOR := {
 	"forest": Color(0.12, 0.28, 0.10),
@@ -107,13 +110,17 @@ func _ready() -> void:
 	_camera.bounds = FIELD
 	_camera.position = FIELD.position + FIELD.size * 0.5
 
-	# Publish the pathfinding layer and register terrain patches as impassable
-	# obstacles. Units route around them via A*; with no patches the path is a
-	# straight line (unchanged from before). Deterministic (grid A*) so replays
-	# stay reproducible. Cleared in _exit_tree() so it doesn't outlive this battle.
+	# Publish the pathfinding layer and register terrain patches as obstacles
+	# or speed zones. Units route around blocked patches via A*; slow patches
+	# are passable but reduce movement speed. Deterministic (grid A*) so
+	# replays stay reproducible. Cleared in _exit_tree().
 	PathField.active = PathField.new(FIELD)
 	for patch in TERRAIN:
-		PathField.active.block_rect(patch["rect"])
+		if patch.get("kind", "block") == "slow":
+			assert(patch.has("speed"), "slow terrain patch missing required 'speed' key")
+			PathField.active.set_speed_rect(patch["rect"], float(patch["speed"]))
+		else:
+			PathField.active.block_rect(patch["rect"])
 
 	# Army sizes: a campaign-launched clash deploys units scaled to the two
 	# clashing armies' strengths; a standalone battle uses the default 5-unit line.
