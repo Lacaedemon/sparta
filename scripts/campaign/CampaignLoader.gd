@@ -11,7 +11,8 @@ extends RefCounted
 ##     "factions": [{"name","color"}, ...],   # color is an HTML hex string
 ##     "provinces": [
 ##       {"id","name","owner","army","adj":[ids], "polygon":[[x,y],...], "label":[x,y]}
-##     ]
+##     ],
+##     "peace": [[factionA, factionB], ...]    # optional; pairs that start at peace (#123)
 ##   }
 ##
 ## parse_map() is pure (takes already-parsed JSON) so it's unit-tested without files;
@@ -107,12 +108,27 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 				push_warning("Campaign map: province %d lists unknown neighbour %d" % [prov["id"], n])
 				return {}
 
+	# Optional initial diplomacy (#123): pairs of faction indices that start at peace.
+	# Validated here so a typo is caught at load time rather than silently ignored.
+	var peace: Array = []
+	for pair in raw.get("peace", []):
+		if typeof(pair) != TYPE_ARRAY or pair.size() < 2:
+			push_warning("Campaign map: each 'peace' entry must be a [factionA, factionB] pair")
+			return {}
+		var a := int(pair[0])
+		var b := int(pair[1])
+		if a < 0 or a >= faction_names.size() or b < 0 or b >= faction_names.size():
+			push_warning("Campaign map: 'peace' pair [%d, %d] references an unknown faction" % [a, b])
+			return {}
+		peace.append([a, b])
+
 	return {
 		"name": str(raw.get("name", "Campaign")),
 		"blurb": str(raw.get("blurb", "")),
 		"faction_names": faction_names,
 		"faction_colors": faction_colors,
 		"provinces": provinces,
+		"peace": peace,
 	}
 
 
