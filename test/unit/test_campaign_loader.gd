@@ -1,5 +1,5 @@
 extends GutTest
-## CampaignLoader (#125): parse_map() validation/conversion in isolation, plus a
+## CampaignLoader: parse_map() validation/conversion in isolation, plus a
 ## load of the real Gallic War data file. An invalid map returns {} (empty) so the
 ## caller can fall back.
 
@@ -71,11 +71,41 @@ func test_rejects_unknown_neighbour() -> void:
 	assert_true(CampaignLoader.parse_map(raw).is_empty(), "adjacency to a missing id -> rejected")
 
 
-func test_rejects_asymmetric_adjacency() -> void:
+func test_asymmetric_adjacency_warns_but_loads() -> void:
+	# One-way edges are legal (movement is directed), so an asymmetric edge is a lint, not
+	# a hard error — the map still loads (a push_warning flags the likely typo). We assert
+	# only the load here: GUT 9.6 can't cleanly intercept push_warning on a static
+	# function, so the warning call itself isn't asserted.
 	var raw := _valid_raw()
 	# P0 lists P1 as a neighbour but P1 does not list P0 -> one-way edge.
 	raw["provinces"][1]["adj"] = []
-	assert_true(CampaignLoader.parse_map(raw).is_empty(), "asymmetric adjacency -> rejected")
+	var m := CampaignLoader.parse_map(raw)
+	assert_false(m.is_empty(), "an asymmetric edge still loads")
+
+
+func test_one_way_flag_marks_intentional_asymmetry() -> void:
+	# A province flagged one_way declares its asymmetric exits intentional; the flag is
+	# carried through so the asymmetry lint can skip it.
+	var raw := _valid_raw()
+	raw["provinces"][0]["one_way"] = true
+	raw["provinces"][1]["adj"] = []   # P0 -> P1 one-way, intentionally
+	var m := CampaignLoader.parse_map(raw)
+	assert_false(m.is_empty(), "a one_way-flagged map loads")
+	# Look up by id rather than positional index so the assertions don't depend on the
+	# loader preserving input order.
+	var flags := {}
+	for p in m["provinces"]:
+		flags[int(p["id"])] = bool(p["one_way"])
+	assert_true(flags[0], "the one_way flag is carried through")
+	assert_false(flags[1], "unflagged provinces default to false")
+
+
+func test_rejects_non_bool_one_way() -> void:
+	# "one_way" must be a real boolean — a stray string/number would coerce surprisingly
+	# (bool("false") is true), so the loader rejects it rather than guessing intent.
+	var raw := _valid_raw()
+	raw["provinces"][0]["one_way"] = "false"
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a non-boolean one_way -> rejected")
 
 
 func test_rejects_degenerate_polygon() -> void:
@@ -139,8 +169,9 @@ func test_loads_real_gallic_war_file() -> void:
 
 
 func test_real_gallic_war_adjacency_is_mutual() -> void:
-	# Movement is two-way, so every listed neighbour must list us back. Guards against
-	# hand-edit typos in the shipped map (linted by the loader as of #128).
+	# The shipped Gallic War map is fully mutual (every listed neighbour lists us back).
+	# One-way edges are allowed in general now, but this map uses none — so this asserts a
+	# content invariant, guarding against hand-edit typos rather than a movement rule.
 	var m := CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
 	assert_false(m.is_empty(), "gallic war must load for this test to be meaningful")
 	var adj := {}
@@ -153,7 +184,7 @@ func test_real_gallic_war_adjacency_is_mutual() -> void:
 
 
 func test_parses_peace_pair_with_truce() -> void:
-	# #138: an optional third element seeds an initial truce length, carried through.
+	# An optional third element seeds an initial truce length, carried through.
 	var raw := _valid_raw()
 	raw["peace"] = [[0, 1, 4]]
 	var m := CampaignLoader.parse_map(raw)
@@ -176,13 +207,13 @@ func test_rejects_negative_truce() -> void:
 
 
 func test_loads_four_kingdoms_file() -> void:
-	# #140: the shipped four-faction map loads and is well-formed.
+	# The shipped four-faction map loads and is well-formed.
 	var m := CampaignLoader.load_map("res://data/campaigns/four_kingdoms.json")
 	assert_false(m.is_empty(), "the four-faction map loads")
 	assert_eq(m["faction_names"].size(), 4, "four factions")
 	assert_eq(m["provinces"].size(), 8, "eight provinces")
-	# The shipped map is fully mutual. The loader rejects asymmetric adjacency (#128), so a
-	# successful load already implies symmetry — this asserts the invariant explicitly.
+	# The shipped map is fully mutual; this asserts that invariant explicitly. (The loader
+	# only warns on asymmetry now, so a successful load no longer implies symmetry on its own.)
 	var adj := {}
 	for p in m["provinces"]:
 		adj[int(p["id"])] = p["adj"]
