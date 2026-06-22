@@ -67,6 +67,11 @@ const TIGHT_CHARGE_ABSORPTION: float = 0.55
 # Separation-radius scale factors per formation mode.
 const TIGHT_SEPARATION_SCALE: float = 0.75
 const LOOSE_SEPARATION_SCALE: float = 1.35
+# Melee intermixing: how fast enemy separation dissolves when two non-hold units are
+# locked in mutual combat. Rate is fraction per second; max is the dissolution ceiling
+# (so a floor of 1-MAX of normal separation always remains — spears still feel solid).
+const MELEE_INTERMIX_RATE: float = 0.07
+const MELEE_INTERMIX_MAX: float = 0.85
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
@@ -175,6 +180,9 @@ var separation_radius: float = SEPARATION_RADIUS_INFANTRY
 # this rather than to the raw type constant, so a merged unit doesn't silently
 # lose its widened body on a formation cycle.
 var _base_separation_radius: float = SEPARATION_RADIUS_INFANTRY
+# Rises while this unit is locked in mutual melee (both FIGHTING, neither HOLD).
+# Scales down the separation push vs. matched enemies so units gradually intermix.
+var _combat_intermixing: float = 0.0
 
 # --- Cosmetic soldier flocking state (Stage B) -------------------------
 # Per-mark render positions/velocities in the unit's (unrotated) local frame. Cosmetic
@@ -227,6 +235,7 @@ func _physics_process(delta: float) -> void:
 	_moved_last_frame = false
 
 	_think(delta)
+	_tick_intermixing(delta)
 
 	# Units are solid: resolve any overlap so an advancing regiment can't
 	# walk straight through (or over) the one in front of it.
@@ -510,6 +519,9 @@ func _separate() -> void:
 		if _separation_exempt(other):
 			continue
 		var min_dist: float = separation_radius + other.separation_radius
+		if _is_melee_intermixing_with(other):
+			var dissolve := minf(_combat_intermixing, other._combat_intermixing)
+			min_dist *= (1.0 - dissolve)
 		var offset: Vector2 = position - other.position
 		var d: float = offset.length()
 		if d >= min_dist:
@@ -545,6 +557,28 @@ func _separate() -> void:
 				dir = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
 			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * share)
 		position += push
+
+
+## Advance or decay this unit's intermixing meter. Rises while actively fighting
+## without a hold order; resets to zero otherwise so a disengaged unit re-solidifies.
+func _tick_intermixing(delta: float) -> void:
+	if state == State.FIGHTING and order_mode != ORDER_HOLD:
+		_combat_intermixing = minf(MELEE_INTERMIX_MAX,
+				_combat_intermixing + MELEE_INTERMIX_RATE * delta)
+	else:
+		_combat_intermixing = maxf(0.0,
+				_combat_intermixing - MELEE_INTERMIX_RATE * delta)
+
+
+## True when mutual melee intermixing should soften the separation push between
+## this unit and `other`. Both must be actively fighting without a hold order.
+func _is_melee_intermixing_with(other: Unit) -> bool:
+	if other.team == team:
+		return false
+	return state == State.FIGHTING \
+			and other.state == State.FIGHTING \
+			and order_mode != ORDER_HOLD \
+			and other.order_mode != ORDER_HOLD
 
 
 # --- Order summary (for the HUD / selection overlay) -----------------------
