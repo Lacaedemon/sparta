@@ -1,8 +1,8 @@
 extends RefCounted
-## Loads a campaign map from a JSON data file (#125) into the in-memory dictionary
+## Loads a campaign map from a JSON data file into the in-memory dictionary
 ## that CampaignState (rules) and CampaignMap (rendering) consume. Externalizing maps
 ## to data lets several campaigns ship without code changes (see Campaigns.gd) and
-## paves the way for the saga layer (#126).
+## paves the way for the saga layer.
 ##
 ## File schema (see data/campaigns/gallic_war.json):
 ##   {
@@ -12,11 +12,11 @@ extends RefCounted
 ##     "provinces": [
 ##       {"id","name","owner","army","adj":[ids], "polygon":[[x,y],...], "label":[x,y],
 ##        "one_way": false}      # optional; declares this province's one-way exits
-##                               # intentional, suppressing the asymmetry warning (#148)
+##                               # intentional, suppressing the asymmetry warning
 ##     ],
-##     "peace": [[factionA, factionB], ...]    # optional; pairs that start at peace (#123).
+##     "peace": [[factionA, factionB], ...]    # optional; pairs that start at peace.
 ##                                              # A 3rd element sets an initial truce in
-##                                              # turns: [factionA, factionB, truceTurns] (#138).
+##                                              # turns: [factionA, factionB, truceTurns].
 ##   }
 ##
 ## parse_map() is pure (takes already-parsed JSON) so it's unit-tested without files;
@@ -104,7 +104,7 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 			"id": id, "name": str(p["name"]), "owner": owner, "army": int(p["army"]),
 			"adj": adj, "polygon": poly, "label": label,
 			# Declares this province's one-way exits intentional, so the asymmetry check
-			# below skips it (#148). Validation-only — movement is already directed.
+			# below skips it. Validation-only — movement is already directed.
 			"one_way": bool(p.get("one_way", false)),
 		})
 
@@ -115,7 +115,7 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 				push_warning("Campaign map: province %d lists unknown neighbour %d" % [prov["id"], n])
 				return {}
 
-	# Adjacency may be one-way (#148): movement uses directed adjacency, so an edge A->B
+	# Adjacency may be one-way: movement uses directed adjacency, so an edge A->B
 	# without B->A is a legal one-way pass (e.g. a mountain pass or river crossing). The
 	# far more common cause of asymmetry, though, is a hand-edit typo, so warn on any
 	# un-flagged one-way edge — unless the source province opts in with "one_way": true,
@@ -136,8 +136,8 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 						+ "Set \"one_way\": true on province %d if that's intentional; otherwise it's likely a typo.")
 						% [prov["id"], n, n, prov["id"], prov["id"]])
 
-	# Optional initial diplomacy (#123): pairs of faction indices that start at peace,
-	# with an optional third element giving an initial truce length in turns (#138).
+	# Optional initial diplomacy: pairs of faction indices that start at peace,
+	# with an optional third element giving an initial truce length in turns.
 	# Validated here so a typo is caught at load time rather than silently ignored.
 	var peace: Array = []
 	var seen_pairs := {}
