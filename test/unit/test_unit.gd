@@ -674,7 +674,7 @@ func test_co_located_pair_fans_apart_by_uid() -> void:
 
 
 func test_co_located_push_matches_uid_formula() -> void:
-	# The fan-out angle and sign are keyed off the stable uid: keyed
+	# The fan-out angle and sign are keyed off the stable uid, not
 	# off get_instance_id() — which is assigned per launch — a live run and its
 	# replay would push co-located units different ways and desync. Pin the exact
 	# vector the uid formula produces so a regression to instance ids is caught.
