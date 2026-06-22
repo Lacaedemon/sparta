@@ -1,6 +1,6 @@
 ---
 title: "Tactics That Matter"
-description: "Flanking, morale and routing, the unit triangle, and disengaging."
+description: "Flanking, morale and routing, the unit triangle, terrain, and disengaging."
 ---
 
 Numbers aren't everything. Sparta's battles are decided by **where** units are and
@@ -61,6 +61,42 @@ to **screen** your line against enemy horse.
 **The loop:** cavalry beats exposed flanks → spearmen beat cavalry → infantry pin so
 your cavalry can get *around* to those flanks. Read the enemy's screen before you
 commit your horse.
+
+## Terrain
+
+Two types of terrain patch appear on the battle field:
+
+| Patch | Colour | Effect |
+| --- | --- | --- |
+| **Forest** | Dark green | Passable - units can enter, but movement is slowed to **60%** of normal speed |
+| **Hill** | Tan | **Impassable** - units route around it via A\* pathfinding |
+
+Units automatically path around impassable terrain when ordered to move. The forest
+is a different trade-off: routing *around* it costs distance; routing *through* it
+costs time. Generally it is faster to push cavalry or fast-moving infantry through
+rather than around a narrow forest.
+
+::: {.callout-tip}
+## Forests slow cavalry charges
+
+A cavalry unit that contacts the enemy while still inside a forest hits with a reduced
+charge bonus --- it can't build full speed in the trees. Stage your charges from open
+ground whenever possible.
+:::
+
+## Order-response delay
+
+Units don't react instantly to orders. There is a brief **reaction delay** before they
+execute --- about **0.5 s** for infantry and spearmen, **0.3 s** for cavalry. A unit
+already in melee is not slowed by the delay.
+
+This models the time for orders to travel down the chain of command. In practice:
+
+- **Commit cavalry early.** If you wait until the last moment to redirect horse, they
+  may not reach the flank in time.
+- **Feints are risky.** A unit you pull away from melee takes rear hits during the
+  disengage *and* takes a moment to start moving --- don't disengage into a second
+  threat without enough margin.
 
 ## Disengaging --- a risky lever
 
