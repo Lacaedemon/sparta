@@ -206,7 +206,7 @@ var _mmi_outline: MultiMeshInstance2D = null
 var _shadow: Polygon2D = null
 # Disc meshes are shared across all units by radius (foot/cav marks come in two sizes
 # each — a body disc and a slightly larger outline disc), built once on demand.
-static var _disc_mesh_cache: Dictionary = {}
+static var _mesh_cache: Dictionary = {}
 
 
 func _ready() -> void:
@@ -1123,8 +1123,8 @@ func _hash01(i: int) -> float:
 ## A unit-local circle of radius 1, shared by all units; scaled per use. Cached.
 static func _disc_mesh(radius: float) -> ArrayMesh:
 	var key: float = snappedf(radius, 0.01)
-	if _disc_mesh_cache.has(key):
-		return _disc_mesh_cache[key]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
 	var segments: int = 10
 	var verts := PackedVector2Array()
 	verts.push_back(Vector2.ZERO)   # fan centre
@@ -1142,14 +1142,14 @@ static func _disc_mesh(radius: float) -> ArrayMesh:
 	arrays[Mesh.ARRAY_INDEX] = idx
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	_disc_mesh_cache[key] = mesh
+	_mesh_cache[key] = mesh
 	return mesh
 
 
 static func _rect_mesh(w: float, h: float) -> ArrayMesh:
 	var key: String = "r%.2f_%.2f" % [w, h]
-	if _disc_mesh_cache.has(key):
-		return _disc_mesh_cache[key]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
 	var hw := w * 0.5
 	var hh := h * 0.5
 	var verts := PackedVector2Array([
@@ -1162,14 +1162,14 @@ static func _rect_mesh(w: float, h: float) -> ArrayMesh:
 	arrays[Mesh.ARRAY_INDEX] = idx
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	_disc_mesh_cache[key] = mesh
+	_mesh_cache[key] = mesh
 	return mesh
 
 
 static func _diamond_mesh(radius: float) -> ArrayMesh:
 	var key: String = "d%.2f" % [radius]
-	if _disc_mesh_cache.has(key):
-		return _disc_mesh_cache[key]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
 	var verts := PackedVector2Array([
 		Vector2(0.0, -radius), Vector2(radius, 0.0),
 		Vector2(0.0, radius),  Vector2(-radius, 0.0),
@@ -1181,7 +1181,7 @@ static func _diamond_mesh(radius: float) -> ArrayMesh:
 	arrays[Mesh.ARRAY_INDEX] = idx
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	_disc_mesh_cache[key] = mesh
+	_mesh_cache[key] = mesh
 	return mesh
 
 
@@ -1198,7 +1198,7 @@ func _setup_flock_renderer() -> void:
 	var outline_mesh: ArrayMesh
 	if anti_cavalry:
 		body_mesh    = _rect_mesh(mark_r * 0.65, mark_r * 1.7)
-		outline_mesh = _rect_mesh(mark_r * 0.65 + 0.6, mark_r * 1.7 + 0.6)
+		outline_mesh = _rect_mesh(mark_r * 0.65 + 1.2, mark_r * 1.7 + 1.2)
 	elif is_ranged:
 		body_mesh    = _diamond_mesh(mark_r * 1.15)
 		outline_mesh = _diamond_mesh(mark_r * 1.15 + 0.6)
