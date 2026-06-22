@@ -1554,7 +1554,9 @@ func test_no_friendly_fire_when_path_clear() -> void:
 
 	var bystander: Unit = _make_unit()
 	bystander.team = 0
-	bystander.position = Vector2(0, 80)   # perpendicular — not in path
+	# At (80, 30): proj = 0.5 (in range), but lateral distance = 30 px >
+	# separation_radius (18 px) — filtered by the radial distance check.
+	bystander.position = Vector2(80, 30)
 
 	var enemy: Unit = _make_unit()
 	enemy.team = 1
@@ -1568,7 +1570,7 @@ func test_no_friendly_fire_when_path_clear() -> void:
 	assert_lt(enemy.soldiers, enemy_before,
 		"enemy takes damage when the path is clear")
 	assert_eq(bystander.soldiers, bystander_before,
-		"perpendicular friendly is not hit")
+		"friendly outside the intercept radius is not hit")
 
 
 func test_interceptor_returns_null_when_only_enemy_in_path() -> void:

@@ -28,6 +28,9 @@ static func spawn(parent: Node, from: Vector2, to: Vector2, color: Color) -> voi
 	trail._delta = to - from
 	trail._color = color.lerp(Color.WHITE, 0.5)
 	trail.z_index = 5   # above unit bodies, below the HUD / selection overlay
+	# orthogonal() rotates 90° counterclockwise, so all streaks arc to the left
+	# relative to their flight direction. Two opposing volleys arc in opposite
+	# on-screen directions, which looks natural and is consistent per-shot.
 	if trail._delta.length() > 0.001:
 		trail._lift_dir = trail._delta.orthogonal().normalized()
 
