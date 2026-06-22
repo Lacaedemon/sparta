@@ -204,8 +204,8 @@ var _mm_outline: MultiMesh = null
 var _mmi_body: MultiMeshInstance2D = null
 var _mmi_outline: MultiMeshInstance2D = null
 var _shadow: Polygon2D = null
-# Disc meshes are shared across all units by radius (foot/cav marks come in two sizes
-# each — a body disc and a slightly larger outline disc), built once on demand.
+# Meshes are shared across all units (foot/cav marks come in two sizes each —
+# a body mesh and a slightly larger outline mesh), built once on demand.
 static var _mesh_cache: Dictionary = {}
 
 
