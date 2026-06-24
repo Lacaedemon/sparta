@@ -1420,6 +1420,11 @@ func _update_flock(delta: float) -> void:
 	# marks slide toward the rear and rear-rank marks advance to the front. Active only
 	# for trained melee units (ranged units fire from static lines). Render-only.
 	var cycling: bool = fighting and not is_ranged and training > 0.0 and n > 1
+	# Drain the widen animation unconditionally so it always finishes even when
+	# the unit breaks contact mid-animation (cycling would be false, but the anim
+	# should not freeze or re-fire incorrectly on re-engagement).
+	if _rank_cycle_anim < 1.0:
+		_rank_cycle_anim = minf(1.0, _rank_cycle_anim + dt / RANK_CYCLE_ANIM_DURATION)
 	if cycling:
 		_rank_cycle_timer -= dt
 		if _rank_cycle_timer <= 0.0:
@@ -1429,8 +1434,6 @@ func _update_flock(delta: float) -> void:
 			_rank_cycle_anim = 0.0
 			if is_inside_tree():
 				Sfx.play(&"whistle")
-		if _rank_cycle_anim < 1.0:
-			_rank_cycle_anim = minf(1.0, _rank_cycle_anim + dt / RANK_CYCLE_ANIM_DURATION)
 
 	var still: bool = true
 	for i in range(n):
@@ -1463,8 +1466,11 @@ func _update_flock(delta: float) -> void:
 	# A fighting block keeps churning, so it never sleeps even if a frame reads as "still".
 	if still and not fighting:
 		# Snap exactly onto formation and sleep until the unit next moves or loses men.
+		# Use the same slot-rotation condition as the main loop (minus fighting, which
+		# is already false here) so the settled mark positions stay consistent.
+		var settled_cycling: bool = not is_ranged and training > 0.0 and n > 1
 		for i in range(n):
-			var slot_i: int = (i + _rank_cycle_slot_offset) % n if n > 1 else i
+			var slot_i: int = (i + _rank_cycle_slot_offset) % n if settled_cycling else i
 			_soldier_pos[i] = _slot_target(slots, slot_i, ang, i)
 			_soldier_vel[i] = Vector2.ZERO
 		_flock_settled = true
