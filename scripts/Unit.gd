@@ -1395,7 +1395,12 @@ func _update_flock(delta: float) -> void:
 	var relief_perp: Vector2 = Vector2.ZERO
 	var relief_spread: float = 0.0
 	if _relief_partner != null and is_instance_valid(_relief_partner):
-		var approach: Vector2 = (_relief_partner.position - position).normalized()
+		var approach_raw: Vector2 = _relief_partner.position - position
+		# Guard against exact co-location: normalized() returns zero on a zero-length
+		# vector. Fall back to a stable axis so the spread is maximum (as intended)
+		# rather than absent precisely when overlap is highest.
+		var approach: Vector2 = approach_raw.normalized() if approach_raw.length() > 0.5 \
+				else Vector2.RIGHT
 		relief_perp = approach.rotated(PI * 0.5)
 		var dist: float = position.distance_to(_relief_partner.position)
 		var max_dist: float = separation_radius + _relief_partner.separation_radius + 30.0
@@ -1490,7 +1495,10 @@ func _update_flock(delta: float) -> void:
 			still = false
 
 	# A fighting block keeps churning, so it never sleeps even if a frame reads as "still".
-	if still and not fighting:
+	# A block in a relief spread likewise stays active: settling onto plain slot positions
+	# would immediately snap marks back out (the spread-modified targets fire again next
+	# frame), producing a repeating snap-then-spring flicker.
+	if still and not fighting and relief_spread <= 0.0:
 		# Snap exactly onto formation and sleep until the unit next moves or loses men.
 		# Use the same slot-rotation condition as the main loop (minus fighting, which
 		# is already false here) so the settled mark positions stay consistent.

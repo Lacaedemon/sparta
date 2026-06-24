@@ -1,4 +1,5 @@
 {
-  "skip": true,
-  "reason": "The relief corridor effect (Stage E) is only visible during a line-relief interaction. The bundled showcase replay does not include one, so a generic battle clip would not show this change."
+  "replay": "demos/scenarios/line-relief.json",
+  "caption": "Stage E relief corridor: watch the spearmen (top-left unit) spread their marks sideways as the cavalry rides through to take over the fight at 6 s.",
+  "max_frames": 480
 }
