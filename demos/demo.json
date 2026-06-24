@@ -1,5 +1,4 @@
 {
-  "replay": "demos/scenarios/line-relief.json",
-  "caption": "Stage E relief corridor: spearmen (left) advance into combat, then cavalry sweeps in from the right at 7 s — watch the spearmen's marks fan outward as the cavalry passes through and takes over the fight.",
-  "max_frames": 600
+  "skip": true,
+  "reason": "Hard per-soldier separation is a sub-pixel cosmetic correction inside the flock renderer; the effect (marks never overlap) is not distinguishable from the existing spring-separation in a recorded GIF at normal zoom."
 }
