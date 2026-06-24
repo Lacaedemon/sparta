@@ -6,12 +6,8 @@
   "result": "",
   "duration_ticks": 0,
   "orders": [
-    {
-      "tick": 360,
-      "units": [3],
-      "x": 500,
-      "y": 470,
-      "target": 0
-    }
+    {"tick": 0,   "units": [0], "x": 500, "y": 700, "target": -1},
+    {"tick": 60,  "units": [3], "x": 500, "y": 400, "target": -1},
+    {"tick": 420, "units": [3], "x": 500, "y": 480, "target": 0}
   ]
 }
