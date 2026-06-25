@@ -1,4 +1,5 @@
 {
-  "skip": true,
-  "reason": "Individual-collision phase 2: the engaged-tier classification (with hysteresis) and the deterministic soldier-level separation primitive, still behind the off-by-default INDIVIDUAL_COLLISION flag. Nothing in the simulation reads the layer yet, so no gameplay or visual change — a recorded battle would look identical."
+  "replay": "demos/clash.json",
+  "caption": "Two armies auto-battle. The hard per-soldier separation pass keeps individual marks from overlapping as formations press into melee and marks trail off their slots — watch the front ranks of each regiment as they engage.",
+  "max_frames": 480
 }
