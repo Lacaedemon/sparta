@@ -23,7 +23,7 @@ Each soldier carries **persistent state** that combat reads and writes every tic
 | $h \in [0, h_{\max}]$ | health | current health; the soldier dies at $h \le 0$ |
 | $\sigma \in [0, \sigma_{\max}]$ | stamina | drained by acting; low stamina degrades everything |
 | $\hat{n}$ | facing | unit vector the soldier faces (set by orders/movement) |
-| prone | footing | knocked down: no active defence, must spend time and stamina to rise |
+| posture | stance | one of *at ease*, *at attention*, *advancing / walking / jogging / sprinting*, *braced*, *prone* (see below); sets bracing, defence stability, the charge it deals, and stamina flow |
 
 and **fixed attributes** from its regiment type:
 
@@ -60,6 +60,36 @@ the floors $\underline{q}, \underline{g}$. There is **no discrete "injured"
 state** — wounds accumulate in $h$ and degrade the soldier continuously through
 $q(h)$.
 
+## Posture (stance)
+
+A soldier's **posture** is the single state that ties motion, bracing, defence,
+and stamina together. It is set by orders and by what the soldier is doing, and it
+is the dial behind both "a charge hits hard" and "a braced line stops it." The
+postures, and what each one sets:
+
+| posture | brace $b_{\mathrm{post}}$ | active defence | self-motion (charge it deals) | stamina | role |
+|---|---|---|---|---|---|
+| at ease | $\approx 0$ | poor | none | regen fast | out of contact, marching/resting |
+| at attention | mid | full | none (planted, can pivot) | regen slow | default ready stance in contact |
+| advancing / walking | low | reduced | small $c$ | neutral | pressing forward under control |
+| jogging | lower | low | moderate $c$ | slow drain | closing the gap |
+| sprinting (charge) | $\approx 0$ | minimal | **max $c$** | fast drain | the charge: deadly impact, but defenceless and unbraced |
+| braced | **max** | full + stable | none | slow drain to hold | set to receive: best vs. knockback, prone, and a charge |
+| prone | $0$ | none (armour only) | none | drain to rise | knocked down (below) |
+
+Two consequences fall straight out of this table and matter everywhere below:
+
+- **Motion *is* the charge.** The closing term $c$ (next section) is just the
+  attacker's gait — a sprinting soldier deals a big $c$; a planted one deals none.
+  A "charge" is not a special attack, it is the *sprinting* posture meeting a
+  target. The faster the gait, the deadlier the blow **and** the weaker the
+  sprinter's own defence and bracing — speed is bought with vulnerability.
+- **Posture changes take time.** A transition costs $T_{\mathrm{post}}$ ticks (and
+  going from a fast gait to *braced* costs the most). You cannot brace the instant
+  a charge lands — you must be **set before** it arrives. This is the whole tactical
+  game of receiving a charge: a line ordered to brace in time holds; one caught
+  *at ease* or still shuffling into position is ridden down before it can plant.
+
 ## One strike: attacker $A$ on defender $D$
 
 A strike happens when $A$'s soldier has $D$'s within reach $r_A$ on $A$'s attack
@@ -76,10 +106,12 @@ $$v_c = \big((\vec{v}_A - \vec{v}_D)\cdot \hat{u}_{A\to D}\big)_+,
 c = v_c / v_{\mathrm{ref}},$$
 
 the relative velocity *aimed at the target*, normalised to a reference gallop and
-clamped non-negative. A standing fighter has $c = 0$; a cavalryman at full charge
-into a stationary line has $c$ large. The single quantity $c$ feeds the hit
+clamped non-negative. This is exactly the attacker's **posture** in motion: a
+planted (*braced* / *at attention*) fighter has $c = 0$, an *advancing* one a small
+$c$, a *sprinting* cavalryman a large $c$. The single quantity $c$ feeds the hit
 contest, the damage, **and** the knockback below — closing fast makes you harder to
-evade, hit harder, and shove further, all at once.
+evade, hit harder, and shove further, all at once (and, per the posture table,
+leaves the sprinter's own defence and bracing near zero while it does).
 
 ### 1. The land contest (opposed roll, facing-gated)
 
@@ -131,7 +163,7 @@ Every action spends stamina; rest restores it. In one tick:
 $$\sigma_A \mathrel{-}= \kappa_a \qquad\text{(each strike thrown)},$$
 $$\sigma_D \mathrel{-}= \kappa_d\,\phi_D\,(1 + c) \qquad\text{(meeting a blow you can see; a charge costs more)},$$
 $$\sigma \mathrel{-}= \kappa_p \qquad\text{(the tick a soldier rises from prone)},$$
-$$\sigma \mathrel{+}= \rho_\sigma\,\Delta t \qquad\text{(regen when not acting, capped at } \sigma_{\max}).$$
+$$\sigma \mathrel{+}= \rho_\sigma(\text{posture})\,\Delta t \qquad\text{(posture baseline: fast } at\ ease,\ \text{slow } at\ attention,\ \text{negative while } sprinting/\text{rising; capped at } \sigma_{\max}).$$
 
 Defending is not free: a soldier under sustained assault spends $\kappa_d$ on
 **every** incoming blow it meets, so its stamina falls, $g(\sigma)$ falls, and its
@@ -155,44 +187,55 @@ reels it back over the following ticks. A blocked blow draws no blood but still
 shoves — which is how a spear wall pushes a stalled enemy back even when it can't
 wound it.
 
-## Footing: going prone and getting up
+## Going prone and getting up
 
-A large enough impulse knocks the defender off its feet. Bracing and mass raise the
-threshold; the fall is probabilistic:
+*Prone* is the involuntary posture: a large enough impulse knocks the defender off
+its feet. Bracing (itself posture-driven) and mass raise the threshold; the fall is
+probabilistic:
 
 $$p_{\mathrm{prone}} = \operatorname{clip}\!\Big(\frac{J - J_{\mathrm{fall}}\,(1 + \mathrm{br}_D)\,m_D}{J_{\mathrm{scale}}},\; 0,\; p_{\mathrm{prone}}^{\max}\Big).$$
 
 A **prone** soldier has $\phi_D \to 0$ in every contest (no active defence — only
-armour saves it), cannot strike, and must spend $T_{\mathrm{up}}$ ticks and
-$\kappa_p$ stamina to rise. So a charge that bowls men over does not just push
-them — it lays them down defenceless and tires them out as they scramble up, which
-is when the follow-up rank kills them. A **braced**, heavy, set line clears the
-prone threshold far less often and stays on its feet.
+armour saves it), $b_{\mathrm{post}} = 0$, cannot strike, and must spend
+$T_{\mathrm{up}}$ ticks and $\kappa_p$ stamina to return to *at attention*. So a
+charge that bowls men over does not just push them — it lays them down defenceless
+and tires them out as they scramble up, which is when the follow-up rank kills them.
+A **braced**, heavy, set line clears the prone threshold far less often and stays on
+its feet.
 
 ## Bracing and the knockback chain (domino)
 
-A knocked-back soldier collides with whoever is behind it. The impulse propagates
-rearward through the file, attenuating at each contact and being absorbed by braced
-men. Writing $J_i$ for the impulse reaching the $i$-th soldier in the chain:
+A knocked-back soldier collides with whoever is behind it. Bracing is a **finite**
+resistance, not an infinite wall: a braced man soaks up to a capacity
+$J_{\mathrm{cap}}\,\mathrm{br}_i$, and only the *surplus* passes on, attenuated.
+Writing $J_i$ for the impulse reaching the $i$-th soldier in the chain:
 
-$$J_{i+1} = \tau\,\big(1 - \mathrm{br}_i\big)\,J_i,
+$$J_{i+1} = \tau\,\big(J_i - J_{\mathrm{cap}}\,\mathrm{br}_i\big)_+,
 \qquad 0 < \tau < 1,$$
 
-so the impulse passed back $n$ ranks is at most $\tau^{\,n} J_0$ — and a single
-braced man ($\mathrm{br}\to 1$) snaps the chain. Each soldier the impulse reaches
-also rolls $p_{\mathrm{prone}}$ against its *own* footing, so a hard enough hit
-topples a row of unbraced men like dominoes. The bracing term is itself emergent:
+where $(\cdot)_+$ is the positive part. A blow **below** a braced man's capacity
+dies at him — the chain snaps. But a blow that **exceeds** his bracing capacity
+overwhelms it: he is shoved anyway (and rolls $p_{\mathrm{prone}}$ on his own
+footing — a hard enough $J$ beats even the braced threshold, so he can be toppled
+despite bracing), and the surplus dominoes rearward to the next man. So a strong
+enough charge punches *through* a braced line, just paying $J_{\mathrm{cap}}\,
+\mathrm{br}$ of impulse at each rank until it is finally spent; a weak hit dies at
+the first set man. Each soldier the impulse reaches rolls $p_{\mathrm{prone}}$
+against its own footing, so a hard enough hit topples a whole row like dominoes. The
+bracing term is itself emergent:
 
 $$\mathrm{br} = \operatorname{clip}\!\big(\mathrm{br}_0
-  + w_s\,[\text{stance} = \textsf{HOLD}]
+  + b_{\mathrm{post}}
   + w_f\,[\text{formation} = \textsf{TIGHT}]
   + w_d\,(\hat{n}\cdot\hat{u}_{\text{incoming}})_+ ,\; 0,\; 1\big),$$
 
-i.e. a soldier is more braced when it is holding, in tight formation, and **facing
-into** the blow (the last term is the facing $\hat{n}$ dotted with the incoming
-direction, clamped non-negative — the *same* facing that gates active defence). A
-loose, flanked, or routing file has $\mathrm{br}\to 0$, dominoes, and goes down; a
-set, front-facing shield wall has $\mathrm{br}\to 1$ and holds.
+i.e. a soldier is more braced in a **set posture** ($b_{\mathrm{post}}$ from the
+posture table — max when *braced*, near zero when *sprinting*, *at ease*, or
+*prone*), in **tight formation**, and **facing into** the blow (the last term is the
+facing $\hat{n}$ dotted with the incoming direction, clamped non-negative — the
+*same* facing that gates active defence). A loose, flanked, sprinting, or routing
+file has $\mathrm{br}\to 0$, dominoes, and goes down; a *braced*, tight,
+front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 
 ## Receiving a charge
 
@@ -202,13 +245,16 @@ harder to evade ($\mu c$ in $\mathcal{A}$), (ii) deadlier ($1+c$ in $\Delta h$),
 and (iii) a heavier shove ($1+c$ in $J$) that is more likely to knock men prone.
 Against an **unbraced** line ($\mathrm{br}\to 0$) the impulse ripples several ranks
 deep and lays them out — the line is bowled over and butchered on the ground.
-Against a **braced** line — a set spear hedge, shields locked, facing the charge
-($\mathrm{br}\to 1$, high effective $m$) — the impulse is absorbed at the front
-rank, few men fall, and little passes back: the line holds. And because the spear's
-reach $r$ exceeds the horseman's, the spearman strikes *first*, and the impaling
-closing speed makes $c$ work **against** the rider. None of this is special-cased —
-it is the reach, the opposed rolls, the prone threshold, and the bracing chain
-acting together.
+Against a **braced** line — one ordered into the *braced* posture **in time**, a set
+spear hedge with shields locked, facing the charge ($\mathrm{br}\to 1$, high
+effective $m$) — the impulse is absorbed at the front rank, few men fall, and little
+passes back: the line holds. The timing is the crux: because a posture change costs
+$T_{\mathrm{post}}$, a line still *at ease* or shuffling into place when the horse
+arrives cannot plant in time and is ridden down, while the same line set a moment
+earlier holds. And because the spear's reach $r$ exceeds the horseman's, the
+spearman strikes *first*, and the impaling closing speed makes $c$ work **against**
+the rider. None of this is special-cased — it is the posture timing, the reach, the
+opposed rolls, the prone threshold, and the bracing chain acting together.
 
 ## Why the tactics emerge
 
@@ -244,6 +290,7 @@ every run. Same seed + same orders reproduce the same battle, blow for blow, on 
 same build. The constants
 ($v_{\mathrm{ref}}, \mu, \lambda, \beta, p_{\min}, p_{\max}, \underline{q}, \underline{g},
 D_0, J_0, \eta_{\mathrm{def}}, J_{\mathrm{fall}}, J_{\mathrm{scale}}, p_{\mathrm{prone}}^{\max},
-T_{\mathrm{up}}, \kappa_a, \kappa_d, \kappa_p, \rho_\sigma, \tau, \mathrm{br}_0, w_s, w_f, w_d$)
-are balance knobs, tuned against playtests; this note fixes the *form* of the
-model, not the final values.
+T_{\mathrm{up}}, T_{\mathrm{post}}, \kappa_a, \kappa_d, \kappa_p, \tau, J_{\mathrm{cap}},
+\mathrm{br}_0, w_f, w_d$), together with the per-posture tables
+$b_{\mathrm{post}}(\cdot)$ and $\rho_\sigma(\cdot)$, are balance knobs tuned against
+playtests; this note fixes the *form* of the model, not the final values.

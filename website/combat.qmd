@@ -17,7 +17,10 @@ Every soldier has live state that combat reads and changes moment to moment:
 - **Health** --- wounds add up here; at zero, the soldier falls.
 - **Stamina** --- spent by every action; when it runs low, everything gets worse.
 - **Facing** --- the direction they are turned. You can only defend what you face.
-- **Footing** --- standing or knocked **prone**; a downed soldier is nearly helpless.
+- **Stance** --- from *at ease*, through *advancing* and *sprinting*, to *braced*
+  (set to receive a hit), or knocked **prone**. Stance sets how hard you hit on the
+  move, how well you hold your ground, and how fast you tire --- and changing it
+  takes time, so you must be set *before* the blow arrives.
 
 and fixed traits from their regiment:
 
@@ -85,15 +88,19 @@ A hard enough shove **knocks a soldier prone**. Bracing and mass make you harder
 topple; once down, you defend nothing, can't strike, and must spend time *and*
 stamina scrambling up --- which is exactly when the next blow kills you.
 
-A shoved soldier also collides with whoever is behind them. A **braced** man soaks
-it and the shove stops; otherwise it passes back, fading, toppling a row of unbraced
-men like dominoes:
+A shoved soldier also collides with whoever is behind them. Bracing soaks only so
+much: a braced man stops a shove **up to his footing**, and the chain dies at him
+--- but a hit **stronger** than he can absorb bowls him over too, and the surplus
+dominoes on to the next man, fading as it goes:
 
-$$J_{i+1} = \tau\,(1 - \mathrm{brace}_i)\,J_i, \qquad 0 < \tau < 1.$$
+$$J_{i+1} = \tau\,\big(J_i - \mathrm{capacity}_i\big)_+, \qquad 0 < \tau < 1.$$
 
-You are more braced when **holding position**, in **tight formation**, and **facing
-into** the blow --- the same facing that lets you defend. A loose, flanked file
-dominoes and goes down; a set, front-facing shield wall holds at the first man.
+So a light shove dies at the first set man; a heavy charge punches *through* a
+braced line, toppling rank after rank until it is finally spent. You are more braced
+when **set** (the braced stance), in **tight formation**, and **facing into** the
+blow --- the same facing that lets you defend. A loose, flanked, or sprinting file
+dominoes and goes down; a set, front-facing shield wall holds the lighter hits at
+the first man.
 
 ## Why your tactics work
 
@@ -110,11 +117,14 @@ Everything tactical comes out of the rolls above:
 - **Spears screen.** A spear's reach holds shorter weapons out past their own reach:
   the spearmen jab and shove while the swordsmen can't answer. Put a spear line in
   front of what you want to protect.
-- **Brace for the charge.** A charge lights up everything at once --- harder to
-  dodge, deadlier, and a shove that bowls men over and lays them out. Into a loose
-  line it's a massacre. But a **braced** spear line, set and facing, soaks it at the
-  front rank, stays on its feet, and out-reaches the horse: the charge breaks on the
-  hedge. Never take a charge loose or in the flank; never send horse into set spears.
+- **Brace for the charge --- in time.** A charge lights up everything at once ---
+  harder to dodge, deadlier, and a shove that bowls men over and lays them out. Into
+  a loose line it's a massacre. A **braced** spear line, set and facing, soaks it at
+  the front rank, stays on its feet, and out-reaches the horse: the charge breaks on
+  the hedge. But setting the brace takes time, so order it *before* contact --- a
+  line caught still at ease is ridden down --- and a heavy enough charge can still
+  punch through and topple men even when braced. Never take a charge loose or in the
+  flank; never send horse into set spears.
 - **Armour and shields buy time.** Heavy, shielded troops turn wounds into blocked
   shoves and glancing hits --- they grind slowly and endure. Light troops caught in
   the press evaporate.
