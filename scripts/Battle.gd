@@ -299,7 +299,7 @@ func _on_soldier_tick() -> void:
 	if _ended or get_tree().paused:
 		return
 	var units: Array = get_tree().get_nodes_in_group("units")
-	UnitRef.seed_all_sim_soldiers(units)
+	UnitRef.step_all_sim_soldiers(units)
 	UnitRef.separate_engaged_global(units, Engine.get_physics_frames())
 
 

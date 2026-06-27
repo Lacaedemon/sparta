@@ -726,12 +726,33 @@ func soldier_block_extent() -> float:
 	return _compute_extent(_formation_slots(soldiers))
 
 
-## Seed the parallel soldier-body layer from the current formation. Deterministic
-## and side-effect-free beyond `_sim_soldier_pos`. Read by the global separation
-## pass and the flock render (phase 3), but NOT by gameplay (the regiment circle
-## stays authoritative), so it changes no combat/movement/morale outcome.
+## How fast a soldier body springs back toward its formation slot each tick. < 1
+## so collision displacement LINGERS and recovers over several ticks (the body
+## jostles and settles) rather than snapping back instantly — the difference
+## between a snapshot and persistent bodies. Deterministic (a fixed lerp factor).
+const SIM_SPRING: float = 0.25
+
+
+## Hard-seed the soldier layer onto the current formation (no persistence). Used
+## for the first tick and after a soldier-count change (casualties/merge) when the
+## index layout shifts. Deterministic and side-effect-free beyond `_sim_soldier_pos`.
 func seed_sim_soldiers() -> void:
 	_sim_soldier_pos = soldier_world_slots(soldiers)
+
+
+## Advance the persistent soldier bodies one tick: spring each toward its formation
+## slot by SIM_SPRING, so a body displaced by collision recovers gradually instead
+## of resetting. Re-seeds hard when the array is missing or the count changed (the
+## slot layout shifts). Read by the global separation pass and the flock render,
+## NOT by gameplay — the regiment circle stays authoritative, so no combat/movement/
+## morale outcome changes. Deterministic (lerp toward a deterministic slot target).
+func step_sim_soldiers() -> void:
+	var slots: PackedVector2Array = soldier_world_slots(soldiers)
+	if _sim_soldier_pos.size() != slots.size():
+		_sim_soldier_pos = slots
+		return
+	for i in range(slots.size()):
+		_sim_soldier_pos[i] = _sim_soldier_pos[i].lerp(slots[i], SIM_SPRING)
 
 
 # --- Individual-soldier simulation, phase 2: engaged tier + separation -----
@@ -836,15 +857,16 @@ static func separate_soldier_bodies(positions: PackedVector2Array, ids: PackedIn
 	return out
 
 
-## Re-seed every regiment's `_sim_soldier_pos` from its current formation slots.
-## The cheap per-tick formation update for ALL soldiers (engaged or not); the
-## expensive separation below then runs only over the engaged subset. Called by
-## Battle once per tick, after the units have settled.
-static func seed_all_sim_soldiers(units: Array) -> void:
+## Advance every regiment's persistent soldier bodies one tick (spring toward
+## formation). The cheap per-tick update for ALL soldiers (engaged or not); the
+## expensive separation below then runs only over the engaged subset, and the
+## spring lets those displacements linger and recover. Called by Battle once per
+## tick, after the units have settled.
+static func step_all_sim_soldiers(units: Array) -> void:
 	for o in units:
 		var u: Unit = o as Unit
 		if u != null and u.state != State.DEAD:
-			u.seed_sim_soldiers()
+			u.step_sim_soldiers()
 
 
 ## The global engaged-soldier separation pass, across ALL regiments, so enemy
