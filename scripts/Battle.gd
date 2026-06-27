@@ -207,6 +207,14 @@ func _physics_process(_delta: float) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		for cmd in Replay.orders_for_tick(_tick):
 			_apply_order_cmd(cmd)
+		# Drive the camera from the recorded presentation track so the replay is framed
+		# (zoom/pan) as it was played — only when asked (the demo recorder), so in-app
+		# Watch Replay keeps free pan/zoom. No track -> static camera, as before.
+		if Replay.drive_camera:
+			var cam: Dictionary = Replay.camera_for_tick(_tick)
+			if not cam.is_empty():
+				_camera.position = Vector2(cam["x"], cam["y"])
+				_camera.zoom = Vector2(cam["zoom"], cam["zoom"])
 	else:
 		for o in _pending_orders:
 			Replay.record_order(_tick, o["units"], Vector2(o["x"], o["y"]), o["target"],
@@ -214,6 +222,8 @@ func _physics_process(_delta: float) -> void:
 					int(o.get("formation", UnitRef.FORMATION_NORMAL)))
 			_apply_order_cmd(o)
 		_pending_orders.clear()
+		# Capture the camera each tick so a live recording reproduces what the player saw.
+		Replay.record_camera(_tick, _camera.position, _camera.zoom.x)
 
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
 	# the same cadence during playback so it reaches the same decisions.
