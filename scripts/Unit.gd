@@ -234,10 +234,12 @@ var _base_separation_radius: float = SEPARATION_RADIUS_INFANTRY
 # Scales down the separation push vs. matched enemies so units gradually intermix.
 var _combat_intermixing: float = 0.0
 
-# --- Cosmetic soldier flocking state (Stage B) -------------------------
-# Per-mark render positions/velocities in the unit's (unrotated) local frame. Cosmetic
-# only — never read by the sim. _soldier_pos[i] is where mark i is drawn; it chases its
-# rotated, jittered formation slot via _flock_step().
+# --- Soldier flocking render state (Stage B) ---------------------------
+# Per-mark render positions/velocities in the unit's (unrotated) local frame. Render
+# only — never read by the sim. _soldier_pos[i] is where mark i is drawn; it chases
+# its rotated, jittered formation slot via _flock_step(), plus — while the soldier
+# layer is on (phase 3) — that slot's simulated collision push (see _update_flock),
+# so the rendered soldier reflects the per-soldier separation.
 var _soldier_pos: PackedVector2Array = PackedVector2Array()
 var _soldier_vel: PackedVector2Array = PackedVector2Array()
 var _flock_settled: bool = false        # true once every mark is on its slot and at rest
@@ -665,29 +667,23 @@ func _is_melee_intermixing_with(other: Unit) -> bool:
 			and other.order_mode != ORDER_HOLD
 
 
-# --- Individual-soldier simulation (phases 1-2: parallel, non-authoritative) ---
-# Promotes soldiers from the cosmetic flock (render-only, local-space
-# `_soldier_pos`) toward deterministic, world-space SIMULATED bodies, seeded from
-# the regiment's formation slots. The layer runs in PARALLEL with the
-# authoritative regiment circle: each tick Battle re-seeds every regiment's
-# `_sim_soldier_pos` from its formation, then runs one global engaged-soldier
-# separation pass across all regiments (SoldierSpatialHash + a deterministic
-# Jacobi pass), and Unit._draw shows the result as a debug overlay. It is
-# non-authoritative — combat, movement, morale, and `_separate()` still read the
-# regiment circle, NOT `_sim_soldier_pos` — so gameplay is unchanged. Later
-# phases make the soldiers the rendered reality, then authoritative. The full
-# migration plan is in docs/individual-collision-design.md.
+# --- Individual-soldier simulation (phases 1-3: simulated bodies, rendered) ---
+# The soldiers you SEE are the simulated bodies. Each tick Battle re-seeds every
+# regiment's world-space `_sim_soldier_pos` from its formation slots, then runs one
+# global engaged-soldier separation pass across all regiments (SoldierSpatialHash +
+# a deterministic Jacobi pass) so enemy front ranks press into each other; the flock
+# render (`_update_flock`) then follows those positions (phase 3), so the
+# cross-regiment per-soldier collision is visible. The layer is still
+# non-authoritative for the SIMULATION — combat, movement, morale, and `_separate()`
+# read the regiment circle, NOT `_sim_soldier_pos` — so gameplay OUTCOMES are
+# unchanged; only the rendered soldier positions reflect the collision. Next:
+# phase 4 (combat per-soldier), phase 5 (retire the circle). Full migration plan in
+# docs/individual-collision-design.md.
 
-# Master switch for the soldier layer. ON: the parallel seed + global separation
-# run each tick and the debug overlay draws. It stays non-authoritative for
-# gameplay until a later phase retires the regiment circle.
+# Master switch for the soldier layer. ON: the parallel seed + global separation run
+# each tick and the soldier render follows them. Non-authoritative for gameplay until
+# a later phase retires the regiment circle.
 const INDIVIDUAL_COLLISION: bool = true
-# Dev toggle for the simulated-soldier debug overlay in Unit._draw. Off, so
-# normal in-app play is visually unchanged (the layer is non-authoritative); the
-# overlay still draws in demo recordings (see _show_sim_debug), and a developer
-# can flip this to inspect it live. A later phase that makes soldiers the rendered
-# reality retires this overlay entirely.
-const SHOW_SIM_SOLDIERS: bool = false
 
 # A soldier's global id is `uid * SOLDIER_ID_STRIDE + index`: a unique,
 # replay-stable key per soldier for ordering and tie-breaks, stable even as a
@@ -732,8 +728,8 @@ func soldier_block_extent() -> float:
 
 ## Seed the parallel soldier-body layer from the current formation. Deterministic
 ## and side-effect-free beyond `_sim_soldier_pos`. Read by the global separation
-## pass and the debug overlay, but NOT by gameplay (the regiment circle stays
-## authoritative), so it changes no combat/movement/morale outcome.
+## pass and the flock render (phase 3), but NOT by gameplay (the regiment circle
+## stays authoritative), so it changes no combat/movement/morale outcome.
 func seed_sim_soldiers() -> void:
 	_sim_soldier_pos = soldier_world_slots(soldiers)
 
@@ -2074,10 +2070,20 @@ func _update_flock(delta: float) -> void:
 			if is_inside_tree():
 				Sfx.play(&"whistle")
 
+	# Render-as-reality (phase 3): when the soldier layer is live, shift each mark by
+	# its simulated body's collision push so the on-screen soldier reflects the
+	# per-soldier, cross-regiment separation. The sim is seeded from these same slots,
+	# so the delta is ~0 for the unengaged bulk and the real push for engaged front
+	# ranks; the cosmetic offsets below (lunge, rank-cycle widen, relief) still layer
+	# on top. Guarded on a size match so a 1-frame casualty/merge gap falls back to
+	# the plain formation slot. to_local == p - position (the node never rotates).
+	var use_sim: bool = INDIVIDUAL_COLLISION and _sim_soldier_pos.size() == n
 	var still: bool = true
 	for i in range(n):
 		var slot_i: int = (i + _rank_cycle_slot_offset) % n if cycling else i
 		var target: Vector2 = _slot_target(slots, slot_i, ang, i)
+		if use_sim:
+			target += (_sim_soldier_pos[slot_i] - position) - slots[slot_i].rotated(ang)
 		if fighting:
 			# Front-rank marks press into and recoil from the contact line; rotate the
 			# (forward = -Y) lunge onto the unit's facing alongside the slot it modifies.
@@ -2313,13 +2319,6 @@ func _update_shadow() -> void:
 	_shadow.scale = Vector2(r, r)
 
 
-## Whether the simulated-soldier debug overlay should draw: in a demo recording
-## (DemoRunner arms Replay.show_demo_orders) or under the SHOW_SIM_SOLDIERS dev
-## toggle. Off in normal play, so the non-authoritative layer stays invisible there.
-func _show_sim_debug() -> bool:
-	return SHOW_SIM_SOLDIERS or (Replay.mode == Replay.Mode.PLAYBACK and Replay.show_demo_orders)
-
-
 func _draw() -> void:
 	var alpha: float = 0.45 if state == State.ROUTING else 1.0
 	var body_c := Color(team_color.r, team_color.g, team_color.b, alpha)
@@ -2389,21 +2388,6 @@ func _draw() -> void:
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
 
 	_draw_unit_flag(body_c, alpha, extent)
-
-	# Debug overlay: the parallel simulated soldier bodies (`_sim_soldier_pos`,
-	# world-space, produced by Battle's global separation pass). Flat bright dots,
-	# deliberately unlike the shaded cosmetic flock, so the layer is visible while
-	# it is non-authoritative. Engaged front ranks (which run the full per-soldier
-	# pass) are magenta; the formation-following bulk is cyan. Shown only in demo
-	# recordings or under the dev toggle, so normal play is unchanged. Render-only —
-	# a later phase makes these the actual soldier render and retires this overlay.
-	if INDIVIDUAL_COLLISION and _show_sim_debug() and not _sim_soldier_pos.is_empty():
-		var engaged_set := {}
-		for ei in engaged_soldier_indices(_sim_soldier_pos.size()):
-			engaged_set[ei] = true
-		for i in range(_sim_soldier_pos.size()):
-			var c: Color = Color(1.0, 0.2, 0.9, 0.9) if engaged_set.has(i) else Color(0.3, 0.9, 1.0, 0.65)
-			draw_circle(to_local(_sim_soldier_pos[i]), 1.2, c)
 
 
 ## Infantry: kite (heater) shield with a cross motif and sword pommel.

@@ -1,13 +1,15 @@
 # Design note: individual-level collision
 
-Status: **phases 1-2 implemented and active** (behind `Unit.INDIVIDUAL_COLLISION`,
+Status: **phases 1-3 implemented and active** (behind `Unit.INDIVIDUAL_COLLISION`,
 now ON). Soldiers are seeded as world-space bodies from their formation slots, the
 engaged front ranks are separated per-soldier **across regiments** on a soldier-sized
-`SoldierSpatialHash`, and the result is drawn as a debug overlay. The layer is still
-**non-authoritative** — combat, movement, and morale read the regiment circle, not
-`_sim_soldier_pos` — so gameplay is unchanged. Next: phase 3 (make the soldiers the
-rendered reality), phase 4 (combat per-soldier), phase 5 (retire the regiment circle).
-The design decisions are settled (see "Decisions" below).
+`SoldierSpatialHash`, and — phase 3 — the **flock render follows those positions**, so
+the on-screen soldiers reflect the collision (the debug overlay is retired). The layer
+is still **non-authoritative for the simulation** — combat, movement, and morale read
+the regiment circle, not `_sim_soldier_pos` — so gameplay OUTCOMES are unchanged; only
+the rendered positions reflect the collision. Next: phase 4 (combat per-soldier, the
+first gameplay change), phase 5 (retire the regiment circle). The design decisions are
+settled (see "Decisions" below).
 
 Tracks [#164](https://github.com/Lacaedemon/sparta/issues/164) (collision at the
 individual level, not the unit level) and
@@ -90,14 +92,24 @@ verified before the next phase builds on it.
    regiments in soldier-id order, buckets them in the soldier-sized
    `SoldierSpatialHash`, and applies a Jacobi accumulate-then-apply step — so enemy
    front ranks press into each other. Determinism + order-independence + hard-block +
-   a perf smoke test are in `test_soldier_separation.gd`. A debug overlay
-   (`Unit._draw`, engaged = magenta, bulk = cyan) makes the layer visible.
-3. **Formation as soldier slots.** The regiment assigns slots (block/line, tight
-   vs. loose); soldiers arrive at slots while separating. Cohesion becomes an
-   emergent result of slot assignment + separation rather than a single circle.
-4. **Combat at the individual level.** Melee and missiles resolve against soldiers,
-   so flanking and screening fall out of geometry. This is where the
-   rock-paper-scissors design meets per-soldier collision.
+   a perf smoke test are in `test_soldier_separation.gd`. (A debug overlay made the
+   layer visible at this stage; phase 3 replaced it with the real soldier render.)
+3. **[DONE] Render-as-reality.** The flock render (`_update_flock`) now follows
+   `_sim_soldier_pos`: each mark's target gains the simulated body's collision push
+   (~0 for the unengaged bulk, the real per-soldier separation for engaged front
+   ranks), so the on-screen soldiers reflect the collision while keeping all the
+   flock polish (formation, combat lunge, rank-cycling, relief corridor, colour). The
+   debug overlay is retired. The visual is subtle until the soldiers gain persistent
+   body dynamics / per-soldier combat (the next phase) — today the sim re-seeds from
+   formation each tick, so the soldiers hold formation and deform at contact rather
+   than wandering as free bodies.
+4. **Persistent bodies + combat at the individual level.** Give soldiers persistent
+   dynamics — they arrive at their slots while separating (a spring toward the slot
+   instead of the current per-tick re-seed), so cohesion is emergent and soldiers can
+   be displaced and hold the displacement. Then melee and missiles resolve against
+   soldiers, so flanking and screening fall out of geometry. This is the first
+   gameplay change (it **unblocks #240**, the sustained spear-vs-sword standoff) and
+   where the rock-paper-scissors design meets per-soldier collision.
 5. **Retire the regiment circle.** Once soldiers are authoritative, `RADIUS`-based
    `_separate()` becomes derived/diagnostic. `#201`'s physics (mass, momentum,
    knock-back) then layers on the soldier bodies.
@@ -149,6 +161,7 @@ states already in the sim, not wall-clock or frame-rate), so replays stay exact.
 The promotion/demotion boundary uses linger hysteresis (`ENGAGED_LINGER`) so soldiers
 don't flap between tiers at the threshold — shipped in phase 2.
 
-Phases 1-2 are live (flagged on, non-authoritative). The next PR is phase 3: drive
-the on-screen soldiers from `_sim_soldier_pos` so the simulated bodies become the
-rendered reality, retiring the debug overlay and the cosmetic flock.
+Phases 1-3 are live (flagged on, non-authoritative): the soldiers are simulated,
+separated across regiments, and rendered at their simulated positions. The next PR is
+phase 4 — give the soldiers persistent body dynamics and resolve combat per-soldier,
+the first gameplay change (it unblocks #240).

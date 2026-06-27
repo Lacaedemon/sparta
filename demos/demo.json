@@ -1,8 +1,8 @@
 {
-  "replay": "demos/scenarios/weapon-reach.json",
-  "caption": "Individual-soldier collision (foundation). Each regiment now runs a parallel layer of simulated soldier BODIES, overlaid here as debug dots: the engaged front ranks that run the full per-soldier pass are magenta, the formation-following bulk is cyan. As the lines clash, the magenta front-rank soldiers of the two enemy regiments press into each other and separate per-soldier across the contact face — the new cross-regiment soldier collision. The layer is non-authoritative for now (movement and combat still use the regiment circle), so nothing about how the battle plays has changed yet.",
+  "replay": "demos/scenarios/soldier-collision.json",
+  "caption": "Individual-soldier collision, phase 3 (render-as-reality). The soldiers you see are now driven by the simulated bodies: each mark follows its `_sim_soldier_pos`, so the front-rank soldiers reflect the per-soldier, cross-regiment separation as two infantry lines clash head-on — they hold soldier-spacing across the contact instead of mushing through each other. All the flock polish (formation, combat lunge, rank-cycling, relief corridor, colour) is preserved on top. It stays non-authoritative — combat and movement still use the regiment circle, so outcomes are unchanged; only the rendered positions reflect the collision. (The effect is subtle at this stage; per-soldier combat in phase 4 is where it changes how battles play.)",
   "fixed_fps": 60,
-  "max_frames": 500,
+  "max_frames": 700,
   "fps": 30,
   "width": 720
 }
