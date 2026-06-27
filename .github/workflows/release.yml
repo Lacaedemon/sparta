@@ -42,12 +42,20 @@ jobs:
       - name: Install export templates
         # setup-godot installs the editor but not the export templates; fetch the
         # matching .tpz and drop the platform templates where Godot looks for them.
+        # Derive the version from the editor itself rather than GODOT_VERSION: Godot's
+        # first stable of a minor reports "4.6.stable" (no ".0") and is tagged
+        # "4.6-stable", while a patch is "4.6.3.stable" / "4.6.3-stable". Parsing
+        # `godot --version` keeps the template tag and install dir matched to whatever
+        # setup-godot resolved, instead of a hard-coded (and 404-prone) "4.6.0-stable".
         run: |
           set -euo pipefail
-          TPZ="Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          VER="$(godot --version | sed 's/\.official.*//')"   # e.g. 4.6.stable or 4.6.3.stable
+          TAG="${VER%.stable}-stable"                          # e.g. 4.6-stable or 4.6.3-stable
+          TPZ="Godot_v${TAG}_export_templates.tpz"
+          echo "Installing export templates for $VER (tag $TAG)"
           curl -fsSL -o "$TPZ" \
-            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/${TPZ}"
-          DEST="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+            "https://github.com/godotengine/godot-builds/releases/download/${TAG}/${TPZ}"
+          DEST="$HOME/.local/share/godot/export_templates/${VER}"
           mkdir -p "$DEST"
           unzip -q "$TPZ" -d tpl
           mv tpl/templates/* "$DEST/"
