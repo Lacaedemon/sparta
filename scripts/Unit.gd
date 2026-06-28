@@ -348,13 +348,13 @@ func _think(delta: float) -> void:
 	# the ward is gone (dead, routed, or cleared) the order is spent, so drop it and
 	# fall through to NORMAL auto-behaviour.
 	if order_mode == ORDER_SUPPORT:
-		if _support_valid():
+		if UnitTargeting.support_valid(self):
 			_support_tick(delta)
 			return
 		support_target = null
 		order_mode = 0   # ward gone: revert to NORMAL
 
-	var enemy: Unit = _current_target()
+	var enemy: Unit = UnitTargeting.current_target(self)
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
@@ -368,7 +368,7 @@ func _think(delta: float) -> void:
 			var away: Vector2 = position - enemy.position
 			if away.length() < 0.001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
-			_move_to(_clamp_to_field(position + away.normalized() * SKIRMISH_KITE_DISTANCE), delta)
+			_move_to(UnitTargeting.clamp_to_field(self, position + away.normalized() * SKIRMISH_KITE_DISTANCE), delta)
 			# Only commit to the retreat if it actually moved. If the unit is cornered
 			# against the field edge (clamp snapped the target onto its position),
 			# fall through to the fire/melee branches so it still shoots instead of
@@ -411,7 +411,7 @@ func _think(delta: float) -> void:
 			# head-on, so the strike on arrival lands with the flank/rear bonus.
 			var goal: Vector2 = enemy.position
 			if order_mode == ORDER_ATTACK_FLANK or order_mode == ORDER_ATTACK_REAR:
-				goal = _attack_approach_point(enemy)
+				goal = UnitTargeting.attack_approach_point(self, enemy)
 			_move_to(goal, delta)
 			return
 
@@ -432,47 +432,10 @@ func _think(delta: float) -> void:
 		state = State.IDLE
 
 
-# --- Targeting -------------------------------------------------------------
-
-func _current_target() -> Unit:
-	if target_enemy != null and is_instance_valid(target_enemy) and target_enemy.state != State.DEAD and target_enemy.state != State.ROUTING:
-		return target_enemy
-	target_enemy = null
-	return _nearest_enemy()
-
-
-func _nearest_enemy() -> Unit:
-	return _nearest_enemy_to(position, DETECTION_RANGE)
-
-
-## Nearest living, non-routing enemy within `radius` of `center`. Backs both normal
-## auto-acquisition (centred on this unit, DETECTION_RANGE) and the support stance,
-## which scans around the WARD's position so a supporter meets threats
-## closing on its charge rather than only ones near itself.
-func _nearest_enemy_to(center: Vector2, radius: float) -> Unit:
-	var best: Unit = null
-	var best_d: float = radius
-	for u in get_tree().get_nodes_in_group("units"):
-		var other: Unit = u as Unit
-		if other == null or other.team == team:
-			continue
-		if other.state == State.DEAD or other.state == State.ROUTING:
-			continue
-		var d: float = center.distance_to(other.position)
-		if d < best_d:
-			best_d = d
-			best = other
-	return best
-
-
-## Whether this unit's SUPPORT order still has a valid ward to guard: a
-## living, non-routing friendly that isn't this unit itself.
-func _support_valid() -> bool:
-	return support_target != null and is_instance_valid(support_target) \
-		and support_target != self \
-		and support_target.state != State.DEAD \
-		and support_target.state != State.ROUTING
-
+# --- Targeting & support order ----------------------------------------------
+# The target-acquisition QUERIES (current target, nearest threat, ward validity, approach
+# point, field clamp) live in UnitTargeting; the order EXECUTION that consumes them stays
+# here (the AI brain in _think, and _support_tick below).
 
 ## Support stance: guard the ward. If an enemy has closed within
 ## SUPPORT_GUARD_RADIUS of the ward, peel off and engage it (firing at standoff if
@@ -483,7 +446,7 @@ func _support_valid() -> bool:
 ## normal fire/melee cadence so live and replayed battles stay in lockstep.
 func _support_tick(delta: float) -> void:
 	var ward: Unit = support_target
-	var threat: Unit = _nearest_enemy_to(ward.position, SUPPORT_GUARD_RADIUS)
+	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS)
 	if threat != null:
 		var dist: float = position.distance_to(threat.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + threat.RADIUS
@@ -508,31 +471,6 @@ func _support_tick(delta: float) -> void:
 		_move_to(ward.position, delta)
 	else:
 		state = State.IDLE
-
-
-## Approach point for a flank/rear attack: a spot at melee-contact distance
-## on the enemy's flank or rear, relative to its facing, so closing on it brings
-## this unit alongside/behind the target and its strike lands with the flank/rear
-## bonus. Recomputed each tick from sim state, so it tracks a turning or moving
-## target and stays deterministic (no RNG / wall-clock). Flank picks whichever
-## side this unit is already nearer, so it doesn't wrap around unnecessarily.
-func _attack_approach_point(enemy: Unit) -> Vector2:
-	var contact: float = attack_range + RADIUS + enemy.RADIUS
-	if order_mode == ORDER_ATTACK_REAR:
-		return enemy.position - enemy.facing * contact
-	var perp := Vector2(-enemy.facing.y, enemy.facing.x)
-	# Tie-break: an attacker exactly on the enemy's fore/aft axis (dot == 0) goes to
-	# the enemy's perp side (its left), deterministically rather than NaN/oscillating.
-	var side: float = 1.0 if (position - enemy.position).dot(perp) >= 0.0 else -1.0
-	return enemy.position + perp * (side * contact)
-
-
-## Keep a point inside the playable field (used when a skirmisher kites), so
-## a retreating unit doesn't back off the map edge.
-func _clamp_to_field(p: Vector2) -> Vector2:
-	return Vector2(
-		clampf(p.x, field_bounds.position.x, field_bounds.end.x),
-		clampf(p.y, field_bounds.position.y, field_bounds.end.y))
 
 
 # --- Movement --------------------------------------------------------------
@@ -1015,7 +953,7 @@ func order_summary() -> String:
 		return "Routing!"
 	# A SUPPORT order is reported by its ward, ahead of the target/move lookups
 	# below — a supporter holds no target_enemy/move_target of its own.
-	if order_mode == ORDER_SUPPORT and _support_valid():
+	if order_mode == ORDER_SUPPORT and UnitTargeting.support_valid(self):
 		return "Supporting %s" % support_target.unit_name
 	# A just-killed unit lingers one frame before queue_free() prunes it, and may
 	# still hold a stale target_enemy. Skip the order lookups for it (and for an
@@ -1389,7 +1327,7 @@ func begin_relief(tired: Unit) -> void:
 	# its nearest enemy rather than just walking onto an empty slot.
 	var foe: Unit = tired.target_enemy
 	if foe == null:
-		foe = tired._nearest_enemy()
+		foe = UnitTargeting.nearest_enemy(tired)
 	target_enemy = foe
 	if foe != null:
 		has_move_target = false
@@ -1493,7 +1431,7 @@ func _process_rout(delta: float) -> void:
 func _can_rally() -> bool:
 	if soldiers < int(round(max_soldiers * SHATTER_STRENGTH_FRAC)):
 		return false
-	return _nearest_enemy_to(position, RALLY_CONTACT_RADIUS) == null
+	return UnitTargeting.nearest_enemy_to(self, position, RALLY_CONTACT_RADIUS) == null
 
 
 ## Recover from a rout: the unit reforms under the player's control at low,

@@ -474,7 +474,7 @@ func _draw_orders() -> void:
 
 ## The friendly a SUPPORT unit is guarding, if it's still a valid overlay
 ## target; else null. Extracted so the overlay branch reads cleanly and the guard is
-## unit-testable. Fully mirrors the ward checks in Unit._support_valid — alive, not
+## unit-testable. Fully mirrors the ward checks in UnitTargeting.support_valid — alive, not
 ## routing, and not the unit itself (the order_mode == SUPPORT test stays at the call site).
 func _support_ward_of(u: UnitRef) -> UnitRef:
 	var ward = u.support_target
