@@ -18,6 +18,13 @@ const ORDER_MOVE_COLOR: Color = Color(0.45, 0.95, 0.55, 0.9)
 const ORDER_ATTACK_COLOR: Color = Color(0.96, 0.40, 0.32, 0.95)
 const ORDER_SUPPORT_COLOR: Color = Color(0.4, 0.95, 0.7, 0.9)
 
+# Demo-pointer overlay (#247): a replay reproduces what the player did with the mouse.
+const DEMO_CURSOR_COLOR: Color = Color(1.0, 1.0, 1.0, 0.95)
+const DEMO_SELECT_COLOR: Color = Color(0.95, 0.95, 0.3, 0.9)   # match the live selection ring
+const DEMO_PULSE_WINDOW: int = 30        # ticks an order's click-pulse lingers (~0.5 s at 60 Hz)
+const DEMO_PULSE_BASE_R: float = 6.0     # pulse ring's starting radius (px)
+const DEMO_PULSE_GROWTH: float = 0.9     # px the pulse ring expands per tick of age
+
 var _cursor_canvas: CanvasLayer
 var _cursor_sprite: Sprite2D
 var _cursor_textures: Dictionary = {}   # mode int -> ImageTexture; cached to avoid redundant image allocs
@@ -403,11 +410,77 @@ func _order_cursor_texture(color: Color) -> ImageTexture:
 
 func _draw() -> void:
 	_draw_orders()
+	# During a demo replay with a recorded pointer track, redraw the player's mouse:
+	# selection halos, the drag-box, click pulses and the cursor with its armed stance.
+	if _demo_orders_active() and Replay.has_pointer_track():
+		_draw_demo_pointer()
 	if not _dragging:
 		return
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 	draw_rect(rect, Color(0.4, 0.9, 0.4, 0.15))
 	draw_rect(rect, Color(0.5, 1.0, 0.5, 0.9), false, 1.5)
+
+
+## The player's live pointer state, sampled by Battle each tick during a live recording
+## (#247): the cursor world position, whether a multi-select drag-box is open and its start
+## corner, the selected unit uids, and the armed order stance. Render-only — never read by
+## the simulation.
+func pointer_state() -> Dictionary:
+	var sel: Array = []
+	for u in _selected:
+		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
+			sel.append(u.uid)
+	return {
+		"cursor": get_global_mouse_position(),
+		"dragging": _dragging,
+		"drag_start": _drag_start,
+		"selection": sel,
+		"mode": _armed_mode,
+	}
+
+
+## Replay-only: draw the recorded pointer for the current tick — selection halos on the
+## still-living selected units, the multi-select drag-box, an expanding pulse at each
+## recently-issued order, and the cursor reticle tinted by the armed stance (with a stance
+## label). Reads the pointer track via Replay; touches no simulation state.
+func _draw_demo_pointer() -> void:
+	var tick: int = _battle.current_tick()
+	var p: Dictionary = Replay.pointer_for_tick(tick)
+	if p.is_empty():
+		return
+
+	# Selection halos: a yellow ring around each still-living selected unit, matching the
+	# live selection ring (units aren't flagged `selected` during playback, so draw it here).
+	for uid in p["sel"]:
+		var u: UnitRef = _battle.unit_by_uid(int(uid))
+		if u != null and u.state != UnitRef.State.DEAD:
+			draw_arc(u.global_position, u._block_extent + 4.0, 0.0, TAU, 36, DEMO_SELECT_COLOR, 2.0)
+
+	# Drag-box: the marquee from its recorded start corner to the cursor.
+	var cursor := Vector2(p["x"], p["y"])
+	if bool(p["drag"]):
+		var rect := Rect2(Vector2(p["sx"], p["sy"]), cursor - Vector2(p["sx"], p["sy"])).abs()
+		draw_rect(rect, Color(0.4, 0.9, 0.4, 0.15))
+		draw_rect(rect, Color(0.5, 1.0, 0.5, 0.9), false, 1.5)
+
+	# Click pulses: an expanding, fading ring where each recent order was issued.
+	for pulse in Replay.pulses_for_tick(tick, DEMO_PULSE_WINDOW):
+		var age: int = int(pulse["age"])
+		var t: float = float(age) / float(DEMO_PULSE_WINDOW)
+		var r: float = DEMO_PULSE_BASE_R + float(age) * DEMO_PULSE_GROWTH
+		draw_arc(Vector2(pulse["x"], pulse["y"]), r, 0.0, TAU, 24,
+				Color(DEMO_CURSOR_COLOR, (1.0 - t) * 0.8), 2.0)
+
+	# Cursor reticle, tinted by the armed stance (NORMAL = white), with a stance label.
+	var mode: int = int(p["mode"])
+	var cursor_color: Color = DEMO_CURSOR_COLOR if mode == BattleRef.OrderMode.NORMAL \
+			else Color(_order_mode_color(mode), 0.95)
+	draw_arc(cursor, 5.0, 0.0, TAU, 16, cursor_color, 2.0)
+	draw_circle(cursor, 1.5, cursor_color)
+	if mode != BattleRef.OrderMode.NORMAL:
+		var label: String = str(BattleRef.ORDER_MODE_NAMES.get(mode, ""))
+		draw_string(ThemeDB.fallback_font, cursor + Vector2(9.0, -6.0), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, cursor_color)
 
 
 ## Draw units' current orders on the field (RTS style): a dashed line to

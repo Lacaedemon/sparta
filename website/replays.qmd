@@ -28,8 +28,12 @@ The simulation is deterministic by construction:
   variable-framerate / wall-clock timer. Enemy AI re-evaluates on a fixed tick
   cadence for the same reason.
 - **Orders, not selections.** Only right-click orders change the outcome; selection,
-  camera, and zoom are pure presentation and aren't recorded. Each order references
-  units by a stable per-battle `uid` so it survives a scene reload.
+  cursor, camera, and zoom are pure presentation and never feed the simulation. They
+  *are* captured separately into optional **presentation tracks** (camera, and the
+  pointer: cursor / selection / drag-box / stance) so a demo clip can reproduce what
+  the player saw and did with the mouse --- but those tracks are cosmetic and a replay
+  without them just plays the bare sim. Each order references units by a stable
+  per-battle `uid` so it survives a scene reload.
 - **Next-tick application.** Orders are queued and applied on the *next* physics
   tick, so live play and playback take the exact same code path.
 
