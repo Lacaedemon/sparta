@@ -1183,6 +1183,72 @@ func test_formation_slots_one_per_soldier() -> void:
 	assert_eq(UnitFormation.slots(u, 0).size(), 0, "no soldiers -> no slots (an empty block)")
 
 
+# --- frontage (resizable line width) ----------------------------
+
+func test_frontage_defaults_to_auto_from_max_soldiers() -> void:
+	var u := _make_unit(120)
+	assert_eq(u.frontage_override, 0, "no override by default")
+	assert_eq(UnitFormation.frontage(u), UnitFormation._files(120),
+			"with no override, frontage is the auto wider-than-deep width")
+
+
+func test_frontage_override_wins_over_auto() -> void:
+	var u := _make_unit(120)
+	u.frontage_override = 8
+	assert_eq(UnitFormation.frontage(u), 8, "a positive override sets the file count")
+
+
+func test_frontage_override_clamps_to_range() -> void:
+	var u := _make_unit(60)
+	u.frontage_override = 9999
+	assert_eq(UnitFormation.frontage(u), 60, "frontage can't exceed max_soldiers (single rank)")
+	u.frontage_override = 1
+	assert_eq(UnitFormation.frontage(u), 1, "a one-file override is honoured")
+	u.frontage_override = -3
+	assert_eq(UnitFormation.frontage(u), UnitFormation._files(60),
+			"a non-positive override means auto (the floor-at-one lives in set_frontage)")
+
+
+func test_set_frontage_stores_a_clamped_override() -> void:
+	var u := _make_unit(60)
+	u.set_frontage(20)
+	assert_eq(u.frontage_override, 20, "set_frontage records the chosen width")
+	u.set_frontage(1000)
+	assert_eq(u.frontage_override, 60, "set_frontage clamps above max_soldiers")
+	u.set_frontage(0)
+	assert_eq(u.frontage_override, 1, "set_frontage floors at one file")
+
+
+func test_narrow_frontage_caps_front_depth_so_melee_still_closes() -> void:
+	# A very narrow (deep) frontage must not let the engaged-enemy separation floor
+	# (_front_depth + foe's) exceed melee contact range, or fighting lines stutter
+	# apart instead of locking. The depth used for that floor is capped at half the
+	# unit's reach.
+	var u := _make_unit(120)
+	u.set_frontage(1)   # one file: maximally deep
+	assert_almost_eq(u._front_depth(), u.attack_range * 0.5, 0.001,
+			"a maximally deep column's separation depth is capped at half the reach")
+	# An auto/normal formation is far shallower than the cap, so it's untouched.
+	u.frontage_override = 0
+	assert_lt(u._front_depth(), u.attack_range * 0.5,
+			"a normal formation's depth is below the cap (unaffected)")
+
+
+func test_files_for_halfwidth_maps_and_clamps() -> void:
+	# A grid of f files spans (f-1) gaps of FORMATION_SPACING, so half-width is
+	# (f-1)/2 * SPACING; the helper inverts that and rounds.
+	assert_eq(UnitFormation.files_for_halfwidth(0.0, 120), 1, "zero half-width is one file")
+	assert_eq(UnitFormation.files_for_halfwidth(Unit.FORMATION_SPACING, 120), 3,
+			"one full spacing of half-width is three files")
+	assert_eq(UnitFormation.files_for_halfwidth(99999.0, 50), 50,
+			"a huge drag clamps to max_soldiers")
+
+
+func test_files_label_pluralizes() -> void:
+	assert_eq(UnitFormation.files_label(1), "1 file", "singular for one file")
+	assert_eq(UnitFormation.files_label(12), "12 files", "plural for many files")
+
+
 func test_formation_block_is_horizontally_centered() -> void:
 	# Each rank is centred on its own count, so the block's horizontal centroid stays on
 	# the unit even when the last rank is partial (non-perfect n) — not just for a perfect

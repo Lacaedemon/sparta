@@ -107,6 +107,13 @@ battle is recorded -- same as the orders and camera -- so playing and saving a r
 records your real mouse for free (`demos/scenarios/pointer-demo.json` is one such
 recording). Replays without a pointer track simply show no cursor overlay.
 
+The clip also flashes the **keyboard hotkeys** you pressed, captured into the replay's
+`keys` track: each gameplay hotkey (stances, `T` formation, `[`/`]` line width, merge,
+control groups) pops up as a labelled chip by the cursor and fades over ~0.7 s, so a
+keyboard-driven change reads on screen rather than happening invisibly
+(`demos/scenarios/resizable-widths.json` is one such recording). Like the pointer track
+it's captured live and back-compatible -- replays without a keys track show no chips.
+
 ## Hand-authoring a scenario
 
 You can also write a replay JSON by hand — a **scenario** — to stage a specific

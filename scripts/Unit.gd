@@ -62,6 +62,12 @@ var selected: bool = false
 # The smart-order behaviours read this; NORMAL is current behaviour.
 var order_mode: int = 0
 var formation_mode: int = FORMATION_NORMAL
+# Player-set frontage (number of files / columns); 0 means "auto", deriving the
+# stable wider-than-deep grid from max_soldiers (UnitFormation.frontage). The
+# player can widen or narrow the line via SelectionManager (keyboard + drag); the
+# change rides the replay command stream so playback reproduces it. Honoured and
+# clamped to [1, max_soldiers] in UnitFormation.frontage.
+var frontage_override: int = 0
 # Stance values from Battle.OrderMode that Unit's own behaviour reacts to, mirrored
 # as plain ints to avoid a Unit<->Battle preload cycle (kept in sync with the enum;
 # Battle._ready asserts they match). NORMAL is 0 (Unit's default order_mode).
@@ -546,7 +552,16 @@ func _type_separation_radius() -> float:
 func _front_depth() -> float:
 	var files: int = UnitFormation.frontage(self)
 	var ranks: int = int(ceil(float(soldiers) / float(files)))
-	return float(ranks - 1) * 0.5 * FORMATION_SPACING
+	var depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING
+	# Cap the depth used as the engaged-enemy separation floor. A very narrow,
+	# deep player-set frontage would otherwise make the summed floor exceed melee
+	# contact range, pushing fighting lines apart faster than they close and
+	# stuttering the melee. Half the unit's own reach keeps the summed floor
+	# (this + the foe's) safely inside contact distance for every unit type. Heavy
+	# melee units at normal widths sit below their cap, so it only bites on
+	# narrowed columns; short-reach archers can clip it even at auto width, but
+	# that only allows fractionally more overlap and they kite rather than grind.
+	return minf(depth, attack_range * 0.5)
 
 
 ## Change the regiment's formation and recalculate its separation footprint.
@@ -561,6 +576,13 @@ func set_formation(mode: int) -> void:
 		separation_radius = minf(SEPARATION_RADIUS_MAX, base * LOOSE_SEPARATION_SCALE)
 	else:
 		separation_radius = base
+
+
+## Set the regiment's frontage (file count). Clamped to [1, max_soldiers]; the
+## formation grid (UnitFormation.slots) picks it up on the next tick and the
+## soldier bodies ease toward the reshaped slots at velocity (no teleport).
+func set_frontage(files: int) -> void:
+	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 
 
 ## Multiplier applied to incoming ranged damage. Tight formation: shields raised,

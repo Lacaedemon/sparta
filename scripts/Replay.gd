@@ -44,9 +44,10 @@ var seed_value: int = 0
 
 # Orders for the battle being recorded or played back.
 # Each entry: { "tick": int, "units": Array[int] (uids), "x": float, "y": float,
-#               "target": int (enemy uid, -1 move, -3 formation-only),
+#               "target": int (enemy uid, -1 move, -3 formation-only, -4 frontage-only),
 #               "mode": int (Battle.OrderMode; 0 = NORMAL),
-#               "formation"?: int (Unit.FORMATION_*; omitted when 0 = NORMAL) }.
+#               "formation"?: int (Unit.FORMATION_*; omitted when 0 = NORMAL),
+#               "frontage"?: int (absolute file count for a -4 resize; omitted when 0) }.
 var _orders: Array = []
 var _play_index: int = 0
 
@@ -73,6 +74,15 @@ var _camera_index: int = 0
 # track play with no cursor overlay, exactly as before (no version bump).
 var _pointer_track: Array = []
 var _pointer_index: int = 0
+
+# Keystroke track (cosmetic): the gameplay hotkeys the player pressed each tick, so a demo
+# replay can flash the keys on screen (the keyboard counterpart to the pointer overlay).
+# Each entry: { "tick": int, "labels": Array[String] (e.g. ["]"], ["T"]) }. Recorded only
+# on ticks where a recognised hotkey fired. Never feeds the sim. Additive and
+# back-compatible: replays without a keys track simply show no key chips (no version bump,
+# like the camera/pointer tracks).
+var _key_track: Array = []
+
 # Cursor moves smaller than this (world px) don't add a keyframe — drops sub-pixel jitter
 # while keeping deliberate motion. Larger than the camera track's exact dedup because the
 # cursor is a continuous signal, not the camera's occasional pan.
@@ -110,6 +120,7 @@ func start_recording() -> void:
 	_camera_index = 0
 	_pointer_track.clear()
 	_pointer_index = 0
+	_key_track.clear()
 	drive_camera = false
 	show_demo_orders = false
 	_play_index = 0
@@ -156,6 +167,8 @@ func start_playback(path: String) -> bool:
 		}
 		if o.has("formation"):
 			entry["formation"] = int(o["formation"])
+		if o.has("frontage"):
+			entry["frontage"] = int(o["frontage"])
 		_orders.append(entry)
 	_play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
@@ -189,6 +202,14 @@ func start_playback(path: String) -> bool:
 			entry["sx"] = float(p.get("sx", entry["x"]))
 			entry["sy"] = float(p.get("sy", entry["y"]))
 		_pointer_track.append(entry)
+	# Load the optional keystroke track. Absent in replays recorded before it existed,
+	# which then play with no key chips.
+	_key_track.clear()
+	for k in data.get("keys", []):
+		var labels: Array = []
+		for s in k.get("labels", []):
+			labels.append(str(s))
+		_key_track.append({"tick": int(k.get("tick", 0)), "labels": labels})
 	loaded_path = path
 	mode = Mode.PLAYBACK
 	return true
@@ -210,7 +231,7 @@ func replays_dir() -> String:
 
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
-		order_mode: int = 0, formation: int = 0) -> void:
+		order_mode: int = 0, formation: int = 0, frontage: int = 0) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
@@ -223,6 +244,8 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	}
 	if formation != 0:
 		entry["formation"] = formation
+	if frontage != 0:
+		entry["frontage"] = frontage
 	_orders.append(entry)
 
 
@@ -379,6 +402,31 @@ func pulses_for_tick(tick: int, window: int) -> Array:
 	return out
 
 
+## RECORD: capture the gameplay-hotkey labels pressed at `tick`. No-op otherwise or when
+## nothing was pressed. Cosmetic — never read by the simulation.
+func record_keys(tick: int, labels: Array) -> void:
+	if mode != Mode.RECORD or labels.is_empty():
+		return
+	_key_track.append({"tick": tick, "labels": labels.duplicate()})
+
+
+## PLAYBACK: hotkey labels pressed within `window` ticks before `tick`, each with its age in
+## ticks, so the overlay can flash a chip for each recent keypress. Read-only; returns []
+## outside playback. The track is tick-sorted, so the scan stops at the first future entry.
+func keys_for_tick(tick: int, window: int) -> Array:
+	if mode != Mode.PLAYBACK:
+		return []
+	var out: Array = []
+	for k in _key_track:
+		var kt: int = int(k["tick"])
+		if kt > tick:
+			break
+		if tick - kt <= window:
+			for label in k["labels"]:
+				out.append({"label": str(label), "age": tick - kt})
+	return out
+
+
 ## Persist the recorded battle. Returns the file path, or "" if nothing/failed.
 func save(result: String, duration_ticks: int) -> String:
 	if mode != Mode.RECORD:
@@ -408,6 +456,9 @@ func save(result: String, duration_ticks: int) -> String:
 	# mouse activity (and pre-pointer-track tooling) stay simple.
 	if not _pointer_track.is_empty():
 		payload["pointer"] = _pointer_track
+	# Likewise emit the keystroke track only when keys were pressed.
+	if not _key_track.is_empty():
+		payload["keys"] = _key_track
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		push_warning("Could not write replay to %s" % path)
