@@ -1,8 +1,8 @@
 {
-  "replay": "demos/scenarios/order-overlay.json",
-  "caption": "Demo overlay now replays the player's live mouse: the cursor glides in and drag-boxes three regiments (yellow selection halos), click-pulses ring out where each order is issued, and the cursor tints + labels itself when a stance (Skirmish) is armed -- on top of the existing order markers (move paths, waypoint dots, attack crosshair). Captured into the replay's presentation track alongside the camera.",
+  "replay": "demos/scenarios/pointer-demo.json",
+  "caption": "Demo overlay now replays the player's mouse, captured live during the recording: the cursor glides in and drag-boxes three regiments (yellow selection halos), click-pulses ring out where each order is issued, and the cursor tints + labels itself when the Skirmish stance is armed -- on top of the existing order markers (move paths + destination rings). Captured into the replay's presentation track alongside the camera.",
   "fixed_fps": 60,
-  "max_frames": 360,
+  "max_frames": 200,
   "fps": 30,
   "width": 720
 }

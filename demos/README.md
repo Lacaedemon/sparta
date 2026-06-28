@@ -102,10 +102,10 @@ automatically — no manifest field to set. The overlay is recording-only: in-ap
 The clip also replays the player's **mouse**, captured into the replay's `pointer`
 track (see `REPLAY.md`): the cursor reticle, yellow selection halos on the selected
 regiments, the multi-select drag-box, a pulse ringing out where each order is issued,
-and a label + tint on the cursor when a stance is armed. A live recording captures
-this automatically; a hand-authored scenario can add a `pointer` array to script it
-(see `demos/scenarios/order-overlay.json`). Replays without a pointer track simply
-show no cursor overlay.
+and a label + tint on the cursor when a stance is armed. It's captured live while a
+battle is recorded -- same as the orders and camera -- so playing and saving a replay
+records your real mouse for free (`demos/scenarios/pointer-demo.json` is one such
+recording). Replays without a pointer track simply show no cursor overlay.
 
 ## Hand-authoring a scenario
 

@@ -48,6 +48,13 @@ var _groups: Dictionary = {}
 # cursor + a HUD indicator. Stays armed (sticky) until changed or cleared (Esc).
 var _armed_mode: int = BattleRef.OrderMode.NORMAL
 
+# Deterministic cursor injection. Normally null (the cursor follows the live OS mouse). A
+# demo-recording tool or a test sets a world position here so the selection/order logic and
+# the recorded pointer track use that exact cursor instead of the hardware mouse -- which
+# can't be driven headlessly (warp_mouse is ignored) without hijacking the shared system
+# cursor. Cleared back to null to return to the real mouse. See _cursor_world().
+var _cursor_override = null   # Variant: Vector2 when injected, else null
+
 @onready var _hud = get_node_or_null("../HUD")
 @onready var _battle = get_parent()
 
@@ -71,7 +78,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				_dragging = true
-				_drag_start = get_global_mouse_position()
+				_drag_start = _cursor_world()
 				_drag_cur = _drag_start
 			else:
 				_dragging = false
@@ -80,9 +87,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 			# Shift+right-click appends a waypoint to the route instead of replacing
 			# it, so a march can be plotted as a multi-leg path.
-			_issue_order(get_global_mouse_position(), event.shift_pressed)
+			_issue_order(_cursor_world(), event.shift_pressed)
 	elif event is InputEventMouseMotion and _dragging:
-		_drag_cur = get_global_mouse_position()
+		_drag_cur = _cursor_world()
 		queue_redraw()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		var mode: int = _order_mode_for_keycode(event.physical_keycode)
@@ -421,6 +428,19 @@ func _draw() -> void:
 	draw_rect(rect, Color(0.5, 1.0, 0.5, 0.9), false, 1.5)
 
 
+## The cursor's world position: the injected position when one is set (deterministic
+## recording / tests), otherwise the live OS mouse. All selection, order and pointer-capture
+## logic reads the cursor through here so an injected cursor behaves exactly like the mouse.
+func _cursor_world() -> Vector2:
+	return _cursor_override if _cursor_override != null else get_global_mouse_position()
+
+
+## Inject a cursor world position (deterministic input), or pass null to resume the live
+## mouse. Used by the demo recorder and tests; never called in normal play.
+func set_cursor_override(world_pos) -> void:
+	_cursor_override = world_pos
+
+
 ## The player's live pointer state, sampled by Battle each tick during a live recording
 ## (#247): the cursor world position, whether a multi-select drag-box is open and its start
 ## corner, the selected unit uids, and the armed order stance. Render-only — never read by
@@ -431,7 +451,7 @@ func pointer_state() -> Dictionary:
 		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
 			sel.append(u.uid)
 	return {
-		"cursor": get_global_mouse_position(),
+		"cursor": _cursor_world(),
 		"dragging": _dragging,
 		"drag_start": _drag_start,
 		"selection": sel,

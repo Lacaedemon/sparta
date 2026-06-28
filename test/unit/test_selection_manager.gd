@@ -134,7 +134,9 @@ func test_pointer_state_reports_live_selection_drag_and_stance() -> void:
 	sm._drag_start = Vector2(12, 34)
 	sm._armed_mode = BattleScript.OrderMode.SKIRMISH
 
+	sm.set_cursor_override(Vector2(640, 480))
 	var ps: Dictionary = sm.pointer_state()
+	assert_eq(ps["cursor"], Vector2(640, 480), "an injected cursor is reported as the cursor")
 	assert_eq(ps["selection"], [7], "only living selected units' uids are reported")
 	assert_true(ps["dragging"], "the open drag-box is reported")
 	assert_eq(ps["drag_start"], Vector2(12, 34), "the drag start corner is reported")
