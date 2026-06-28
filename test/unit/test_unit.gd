@@ -1219,6 +1219,21 @@ func test_set_frontage_stores_a_clamped_override() -> void:
 	assert_eq(u.frontage_override, 1, "set_frontage floors at one file")
 
 
+func test_narrow_frontage_caps_front_depth_so_melee_still_closes() -> void:
+	# A very narrow (deep) frontage must not let the engaged-enemy separation floor
+	# (_front_depth + foe's) exceed melee contact range, or fighting lines stutter
+	# apart instead of locking. The depth used for that floor is capped at half the
+	# unit's reach.
+	var u := _make_unit(120)
+	u.set_frontage(1)   # one file: maximally deep
+	assert_almost_eq(u._front_depth(), u.attack_range * 0.5, 0.001,
+			"a maximally deep column's separation depth is capped at half the reach")
+	# An auto/normal formation is far shallower than the cap, so it's untouched.
+	u.frontage_override = 0
+	assert_lt(u._front_depth(), u.attack_range * 0.5,
+			"a normal formation's depth is below the cap (unaffected)")
+
+
 func test_files_for_halfwidth_maps_and_clamps() -> void:
 	# A grid of f files spans (f-1) gaps of FORMATION_SPACING, so half-width is
 	# (f-1)/2 * SPACING; the helper inverts that and rounds.

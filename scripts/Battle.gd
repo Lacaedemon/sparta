@@ -290,6 +290,9 @@ func _physics_process(_delta: float) -> void:
 			var ps: Dictionary = _selection.pointer_state()
 			Replay.record_pointer(_tick, ps["cursor"], ps["dragging"], ps["drag_start"],
 					ps["selection"], ps["mode"])
+			# Capture any gameplay hotkeys pressed since the last tick, so a demo replay
+			# can flash the keys on screen alongside the cursor.
+			Replay.record_keys(_tick, _selection.take_keys_this_tick())
 
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
 	# the same cadence during playback so it reaches the same decisions.

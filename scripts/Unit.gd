@@ -552,7 +552,14 @@ func _type_separation_radius() -> float:
 func _front_depth() -> float:
 	var files: int = UnitFormation.frontage(self)
 	var ranks: int = int(ceil(float(soldiers) / float(files)))
-	return float(ranks - 1) * 0.5 * FORMATION_SPACING
+	var depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING
+	# Cap the depth used as the engaged-enemy separation floor. A very narrow,
+	# deep player-set frontage would otherwise make the summed floor exceed melee
+	# contact range, pushing fighting lines apart faster than they close and
+	# stuttering the melee. Half the unit's own reach keeps the summed floor
+	# (this + the foe's) safely inside contact distance, while every normal/auto
+	# formation is far shallower than this cap and so is untouched.
+	return minf(depth, attack_range * 0.5)
 
 
 ## Change the regiment's formation and recalculate its separation footprint.

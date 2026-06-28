@@ -168,3 +168,57 @@ func test_replay_without_pointer_has_no_track() -> void:
 	assert_true(loaded.start_playback(path), "it loads")
 	assert_false(loaded.has_pointer_track(), "no pointer keyframes -> no track")
 	assert_eq(loaded.pointer_for_tick(0), {}, "playback shows no cursor overlay")
+
+
+# --- keystroke track (#266 demo overlay) -----------------------
+
+func test_record_keys_appends_only_when_pressed() -> void:
+	var r := _fresh()
+	r.start_recording()
+	r.record_keys(0, ["]"])
+	r.record_keys(1, [])          # nothing pressed -> dropped
+	r.record_keys(2, ["[", "T"])
+	assert_eq(r._key_track.size(), 2, "only ticks with a keypress are recorded")
+	assert_eq(r._key_track[1]["labels"], ["[", "T"], "all labels for a tick are kept")
+
+
+func test_record_keys_is_noop_outside_record() -> void:
+	var r := _fresh()   # IDLE
+	r.record_keys(0, ["]"])
+	assert_eq(r._key_track.size(), 0, "no keys captured outside RECORD")
+
+
+func test_keys_for_tick_returns_recent_presses_with_age() -> void:
+	var r := _fresh()
+	r.start_recording()
+	r.record_keys(10, ["]"])
+	r.record_keys(50, ["["])
+	var path: String = r.save("Test", 60)
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	# At tick 55 with a 42-tick window, only the tick-50 press is recent (age 5).
+	var recent: Array = loaded.keys_for_tick(55, 42)
+	assert_eq(recent.size(), 1, "the old keypress has aged out of the window")
+	assert_eq(recent[0]["label"], "[", "the recent label is returned")
+	assert_eq(recent[0]["age"], 5, "with its age in ticks")
+
+
+func test_save_load_round_trips_the_keys_track() -> void:
+	var r := _fresh()
+	r.start_recording()
+	r.record_keys(3, ["]"])
+	var path: String = r.save("Test", 3)
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	assert_eq(loaded._key_track.size(), 1, "the keys track survives save/load")
+	assert_eq(loaded._key_track[0]["labels"], ["]"], "labels round-trip")
+
+
+func test_replay_without_keys_has_empty_track() -> void:
+	var r := _fresh()
+	r.start_recording()
+	var path: String = r.save("Test", 0)
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "it loads")
+	assert_eq(loaded._key_track.size(), 0, "no keypresses -> no keys track")
+	assert_eq(loaded.keys_for_tick(0, 42), [], "playback shows no key chips")

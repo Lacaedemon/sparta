@@ -210,3 +210,47 @@ func test_resize_frontage_routes_an_absolute_command_to_battle() -> void:
 	assert_eq(UnitFormation.frontage(u), start + 1, "the keyboard widen steps the line out one file")
 	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_FRONTAGE_ONLY,
 			"routed as a recorded frontage command")
+
+
+# --- keystroke overlay capture (#266) --------------------------
+
+func _key_event(keycode: int, ctrl: bool = false) -> InputEventKey:
+	var ev := InputEventKey.new()
+	ev.keycode = keycode
+	ev.physical_keycode = keycode
+	ev.pressed = true
+	ev.ctrl_pressed = ctrl
+	return ev
+
+
+func test_key_label_uses_glyphs_for_brackets_and_escape() -> void:
+	var sm := _sm()
+	assert_eq(sm._key_label(_key_event(KEY_BRACKETLEFT)), "[", "left bracket shows as [")
+	assert_eq(sm._key_label(_key_event(KEY_BRACKETRIGHT)), "]", "right bracket shows as ]")
+	assert_eq(sm._key_label(_key_event(KEY_ESCAPE)), "Esc", "escape shows as Esc")
+	assert_eq(sm._key_label(_key_event(KEY_T)), "T", "a letter shows as itself")
+	assert_eq(sm._key_label(_key_event(KEY_1, true)), "Ctrl+1", "a chorded digit shows the modifier")
+
+
+func test_take_keys_this_tick_drains_the_buffer() -> void:
+	var sm := _sm()
+	sm._note_key("]")
+	sm._note_key("[")
+	assert_eq(sm.take_keys_this_tick(), ["]", "["], "buffered keys are returned in order")
+	assert_eq(sm.take_keys_this_tick(), [], "the buffer is cleared after draining")
+
+
+func test_dispatch_key_routes_resize_and_reports_handled() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 9
+	u.max_soldiers = 80
+	b._by_uid[9] = u
+	var start: int = UnitFormation.frontage(u)
+	sm._select(u)
+	assert_true(sm._dispatch_key(_key_event(KEY_BRACKETRIGHT)), "] is a handled hotkey")
+	assert_eq(UnitFormation.frontage(u), start + 1, "and widens the selected unit")
+	assert_false(sm._dispatch_key(_key_event(KEY_P)), "an unbound key is not handled")

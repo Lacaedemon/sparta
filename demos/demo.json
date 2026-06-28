@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Resizable unit widths is a live-input control (the [ / ] keys and a flank-grip drag). The resize rides the replay command stream, but none of the bundled replays exercise it, and recording one needs an interactive session. The static affordances -- the flank resize grips, the HUD 'Width: N files' readout, and a wide-vs-narrow formation contrast -- are shown by demos/shots/resizable-widths.png in the PR description instead."
+  "replay": "demos/scenarios/resizable-widths.json",
+  "caption": "Resizable unit widths: a selected regiment is widened with ] then narrowed with [ -- the same soldiers reflowing from a wide, shallow line into a deeper column. The pressed keys flash on screen next to the cursor (a new keystroke overlay for demos), and the HUD reads out the live file count.",
+  "fixed_fps": 60,
+  "max_frames": 240,
+  "fps": 30,
+  "width": 720
 }

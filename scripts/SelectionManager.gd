@@ -33,6 +33,8 @@ const DEMO_SELECT_COLOR: Color = Color(0.95, 0.95, 0.3, 0.9)   # match the live 
 const DEMO_PULSE_WINDOW: int = 30        # ticks an order's click-pulse lingers (~0.5 s at 60 Hz)
 const DEMO_PULSE_BASE_R: float = 6.0     # pulse ring's starting radius (px)
 const DEMO_PULSE_GROWTH: float = 0.9     # px the pulse ring expands per tick of age
+const DEMO_KEY_WINDOW: int = 42          # ticks a pressed-key chip lingers (~0.7 s at 60 Hz)
+const DEMO_KEY_COLOR: Color = Color(1.0, 1.0, 1.0, 0.95)   # key-chip text/border
 
 var _cursor_canvas: CanvasLayer
 var _cursor_sprite: Sprite2D
@@ -46,6 +48,9 @@ var _drag_cur: Vector2 = Vector2.ZERO
 var _resizing: bool = false
 var _resize_unit = null
 var _resize_files: int = 0
+# Gameplay-hotkey labels pressed since the last sim tick; Battle drains this each tick
+# (take_keys_this_tick) into the replay's keystroke track for the demo overlay.
+var _keys_this_tick: Array = []
 var _selected: Array = []
 # Tracks whether the order overlay was visible last frame (Space held to survey
 # all orders), so it's redrawn one final time after Space is released — wiping
@@ -119,19 +124,31 @@ func _unhandled_input(event: InputEvent) -> void:
 			_drag_cur = _cursor_world()
 			queue_redraw()
 	elif event is InputEventKey and event.pressed and not event.echo:
-		var mode: int = _order_mode_for_keycode(event.physical_keycode)
-		if mode >= 0:
-			_set_armed_mode(mode)   # arm a smart-order stance
-		elif event.keycode == KEY_M:
-			_issue_merge()   # merge the selected friendly regiments into one
-		elif event.keycode == KEY_T:
-			_cycle_formation()   # cycle tight → normal → loose for selected units
-		elif event.keycode == KEY_BRACKETRIGHT:
-			_resize_frontage(1)    # ] widens the line by one file
-		elif event.keycode == KEY_BRACKETLEFT:
-			_resize_frontage(-1)   # [ narrows the line by one file
-		else:
-			_handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
+		# Dispatch the hotkey; if it did something, note its label for the demo overlay.
+		if _dispatch_key(event):
+			_note_key(_key_label(event))
+
+
+## Route a gameplay hotkey to its action. Returns true if a known action fired (so the
+## caller records the keystroke for the demo overlay), false for an unhandled key.
+func _dispatch_key(event: InputEventKey) -> bool:
+	var mode: int = _order_mode_for_keycode(event.physical_keycode)
+	if mode >= 0:
+		_set_armed_mode(mode)   # arm a smart-order stance
+		return true
+	elif event.keycode == KEY_M:
+		_issue_merge()   # merge the selected friendly regiments into one
+		return true
+	elif event.keycode == KEY_T:
+		_cycle_formation()   # cycle tight → normal → loose for selected units
+		return true
+	elif event.keycode == KEY_BRACKETRIGHT:
+		_resize_frontage(1)    # ] widens the line by one file
+		return true
+	elif event.keycode == KEY_BRACKETLEFT:
+		_resize_frontage(-1)   # [ narrows the line by one file
+		return true
+	return _handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
 
 
 func _finish_selection() -> void:
@@ -428,14 +445,16 @@ func _process(_delta: float) -> void:
 # --- control groups --------------------------------------------------------
 
 ## Ctrl+<0-9> binds the current selection to that group; <0-9> alone recalls it.
-func _handle_group_key(event: InputEventKey) -> void:
+## Returns true if the key was a control-group digit (handled), false otherwise.
+func _handle_group_key(event: InputEventKey) -> bool:
 	var n: int = _digit_for_keycode(event.keycode)
 	if n < 0:
-		return
+		return false
 	if event.ctrl_pressed:
 		_bind_group(n)
 	else:
 		_recall_group(n)
+	return true
 
 
 ## Map the number-row keycodes KEY_0..KEY_9 to 0..9; -1 for anything else.
@@ -568,7 +587,7 @@ func _draw_resize_handles() -> void:
 		draw_rect(box, RESIZE_HANDLE_COLOR)
 		draw_rect(box, Color.BLACK, false, 1.0)   # rim for contrast on any background
 	if _resizing and is_instance_valid(_resize_unit):
-		_draw_resize_preview(u)
+		_draw_resize_preview(_resize_unit)
 
 
 ## Preview the dragged frontage: a line spanning the target width and the file count
@@ -612,6 +631,35 @@ func pointer_state() -> Dictionary:
 		"selection": sel,
 		"mode": _armed_mode,
 	}
+
+
+## Drain and return the gameplay-hotkey labels pressed since the previous tick. Battle
+## calls this once per tick during a live recording, feeding the replay's keystroke track.
+func take_keys_this_tick() -> Array:
+	var k: Array = _keys_this_tick
+	_keys_this_tick = []
+	return k
+
+
+## Buffer a pressed-key label for this tick's keystroke recording.
+func _note_key(label: String) -> void:
+	if label != "":
+		_keys_this_tick.append(label)
+
+
+## Short on-screen label for a pressed hotkey: a glyph for the brackets, "Esc" for escape,
+## the bare letter/digit otherwise (prefixed "Ctrl+" when chorded).
+func _key_label(event: InputEventKey) -> String:
+	if event.keycode == KEY_BRACKETLEFT:
+		return "["
+	if event.keycode == KEY_BRACKETRIGHT:
+		return "]"
+	if event.keycode == KEY_ESCAPE:
+		return "Esc"
+	var s: String = OS.get_keycode_string(event.keycode)
+	if s.length() == 1 and event.ctrl_pressed:
+		return "Ctrl+" + s
+	return s
 
 
 ## Replay-only: draw the recorded pointer for the current tick — selection halos on the
@@ -658,6 +706,34 @@ func _draw_demo_pointer() -> void:
 		var label: String = str(BattleRef.ORDER_MODE_NAMES.get(mode, ""))
 		draw_string(ThemeDB.fallback_font, cursor + Vector2(9.0, -6.0), label,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, cursor_color)
+
+	# Pressed-key chips, stacked by the cursor so the clip shows which keys drove the action.
+	_draw_demo_keys(tick, cursor)
+
+
+## Replay-only: draw labelled chips for the recently pressed hotkeys, stacked below the
+## cursor and fading with age, so a demo clip shows the keystrokes (the keyboard
+## counterpart to the cursor/click overlay). Newest sits nearest the cursor; capped to a
+## few so a flurry of presses can't tower.
+func _draw_demo_keys(tick: int, anchor: Vector2) -> void:
+	var keys: Array = Replay.keys_for_tick(tick, DEMO_KEY_WINDOW)
+	if keys.is_empty():
+		return
+	var font := ThemeDB.fallback_font
+	var fsize := 15
+	var pad := 5.0
+	var shown: int = mini(keys.size(), 4)
+	for i in range(shown):
+		var k: Dictionary = keys[keys.size() - 1 - i]   # newest first
+		var fade: float = 1.0 - float(int(k["age"])) / float(DEMO_KEY_WINDOW)
+		var label: String = str(k["label"])
+		var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x
+		var box := Rect2(anchor + Vector2(12.0, 10.0 + float(i) * (float(fsize) + pad + 4.0)),
+				Vector2(tw + pad * 2.0, float(fsize) + pad))
+		draw_rect(box, Color(0.0, 0.0, 0.0, 0.55 * fade))
+		draw_rect(box, Color(DEMO_KEY_COLOR, 0.9 * fade), false, 1.5)
+		draw_string(font, box.position + Vector2(pad, float(fsize)), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, Color(DEMO_KEY_COLOR, fade))
 
 
 ## Draw units' current orders on the field (RTS style): a dashed line to

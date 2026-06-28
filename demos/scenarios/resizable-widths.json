@@ -1,0 +1,334 @@
+{
+  "camera": [
+    {
+      "tick": 0,
+      "x": 800.0,
+      "y": 500.0,
+      "zoom": 1.0
+    },
+    {
+      "tick": 2,
+      "x": 500.0,
+      "y": 300.0,
+      "zoom": 2.0
+    }
+  ],
+  "created": 1782666858.29478,
+  "duration_ticks": 242,
+  "keys": [
+    {
+      "labels": [
+        "]"
+      ],
+      "tick": 22
+    },
+    {
+      "labels": [
+        "]"
+      ],
+      "tick": 35
+    },
+    {
+      "labels": [
+        "]"
+      ],
+      "tick": 48
+    },
+    {
+      "labels": [
+        "]"
+      ],
+      "tick": 61
+    },
+    {
+      "labels": [
+        "]"
+      ],
+      "tick": 74
+    },
+    {
+      "labels": [
+        "]"
+      ],
+      "tick": 87
+    },
+    {
+      "labels": [
+        "["
+      ],
+      "tick": 112
+    },
+    {
+      "labels": [
+        "["
+      ],
+      "tick": 124
+    },
+    {
+      "labels": [
+        "["
+      ],
+      "tick": 136
+    },
+    {
+      "labels": [
+        "["
+      ],
+      "tick": 148
+    },
+    {
+      "labels": [
+        "["
+      ],
+      "tick": 160
+    },
+    {
+      "labels": [
+        "["
+      ],
+      "tick": 172
+    },
+    {
+      "labels": [
+        "["
+      ],
+      "tick": 184
+    },
+    {
+      "labels": [
+        "["
+      ],
+      "tick": 196
+    }
+  ],
+  "orders": [
+    {
+      "mode": 1,
+      "target": -1,
+      "tick": 2,
+      "units": [
+        0
+      ],
+      "x": 500.0,
+      "y": 300.0
+    },
+    {
+      "mode": 1,
+      "target": -1,
+      "tick": 2,
+      "units": [
+        1
+      ],
+      "x": 650.0,
+      "y": 300.0
+    },
+    {
+      "mode": 1,
+      "target": -1,
+      "tick": 2,
+      "units": [
+        2
+      ],
+      "x": 800.0,
+      "y": 300.0
+    },
+    {
+      "mode": 1,
+      "target": -1,
+      "tick": 2,
+      "units": [
+        3
+      ],
+      "x": 950.0,
+      "y": 300.0
+    },
+    {
+      "mode": 1,
+      "target": -1,
+      "tick": 2,
+      "units": [
+        4
+      ],
+      "x": 1100.0,
+      "y": 300.0
+    },
+    {
+      "frontage": 17,
+      "mode": 0,
+      "target": -4,
+      "tick": 22,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 18,
+      "mode": 0,
+      "target": -4,
+      "tick": 35,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 19,
+      "mode": 0,
+      "target": -4,
+      "tick": 48,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 20,
+      "mode": 0,
+      "target": -4,
+      "tick": 61,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 21,
+      "mode": 0,
+      "target": -4,
+      "tick": 74,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 22,
+      "mode": 0,
+      "target": -4,
+      "tick": 87,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 21,
+      "mode": 0,
+      "target": -4,
+      "tick": 112,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 20,
+      "mode": 0,
+      "target": -4,
+      "tick": 124,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 19,
+      "mode": 0,
+      "target": -4,
+      "tick": 136,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 18,
+      "mode": 0,
+      "target": -4,
+      "tick": 148,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 17,
+      "mode": 0,
+      "target": -4,
+      "tick": 160,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 16,
+      "mode": 0,
+      "target": -4,
+      "tick": 172,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 15,
+      "mode": 0,
+      "target": -4,
+      "tick": 184,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "frontage": 14,
+      "mode": 0,
+      "target": -4,
+      "tick": 196,
+      "units": [
+        0
+      ],
+      "x": 0.0,
+      "y": 0.0
+    }
+  ],
+  "physics_tps": 60,
+  "pointer": [
+    {
+      "drag": false,
+      "mode": 0,
+      "sel": [],
+      "tick": 0,
+      "x": -2096.0,
+      "y": -846.0
+    },
+    {
+      "drag": false,
+      "mode": 0,
+      "sel": [
+        0
+      ],
+      "tick": 2,
+      "x": 558.599975585938,
+      "y": 290.0
+    }
+  ],
+  "result": "demo",
+  "seed": "-7596351874088868033",
+  "version": 1
+}
