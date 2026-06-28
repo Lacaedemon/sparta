@@ -68,7 +68,7 @@ func test_support_ward_skips_a_routing_ward() -> void:
 
 
 func test_support_ward_skips_self() -> void:
-	# Parity with Unit._support_valid's self-guard check. Battle never issues a
+	# Parity with UnitTargeting.support_valid's self-guard check. Battle never issues a
 	# self-guard order, but the helper rejects it so the two stay in lockstep.
 	var sm := _sm()
 	var u := _unit()
