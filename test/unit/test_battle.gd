@@ -266,6 +266,66 @@ func test_forest_is_not_blocked() -> void:
 	assert_false(pf.is_blocked(center), "the forest patch is passable (slow, not blocked)")
 
 
+# --- reform-before-move ------------------------------------------------
+
+func test_reform_cmd_starts_reform_timer_not_move_target() -> void:
+	# "reform": true → destination stored in _reform_target, timer started, has_move_target stays false.
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1, "reform": true})
+	assert_false(u.has_move_target,
+		"a reform order doesn't set has_move_target until the timer expires")
+	assert_gt(u._reform_timer, 0.0, "the reform timer starts counting")
+	assert_eq(u._reform_target, Vector2(50, 0), "the destination is stored for later commit")
+
+
+func test_no_reform_cmd_sets_move_target_directly() -> void:
+	# "reform": false (or absent) → old behaviour: has_move_target set immediately.
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1, "reform": false})
+	assert_true(u.has_move_target, "reform:false sets has_move_target immediately")
+	assert_eq(u.move_target, Vector2(50, 0))
+	assert_eq(u._reform_timer, 0.0, "no reform timer is started")
+
+
+func test_reform_cmd_absent_sets_move_target_directly() -> void:
+	# Old replay logs without the "reform" key default to false (no reform).
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1})
+	assert_true(u.has_move_target, "missing reform key behaves as reform:false")
+	assert_eq(u._reform_timer, 0.0)
+
+
+func test_fresh_order_cancels_in_progress_reform() -> void:
+	# A second plain order clears the pending reform from the first.
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1, "reform": true})
+	assert_gt(u._reform_timer, 0.0, "first reform order starts the timer")
+	b._apply_order_cmd({"units": [1], "x": 200.0, "y": 0.0, "target": -1, "reform": false})
+	assert_eq(u._reform_timer, 0.0, "a fresh order cancels the pending reform")
+	assert_true(u.has_move_target, "and the new destination is committed immediately")
+	assert_eq(u.move_target, Vector2(200, 0))
+
+
+func test_enqueue_order_embeds_reform_setting() -> void:
+	# enqueue_order stamps the live Settings.reform_before_move into the command.
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	var orig: bool = Settings.reform_before_move
+	Settings.reform_before_move = true
+	b.enqueue_order([1], Vector2(50, 0), -1)
+	assert_true(bool(b._pending_orders[-1].get("reform", false)),
+		"with reform_before_move on, the command carries reform:true")
+	Settings.reform_before_move = false
+	b.enqueue_order([1], Vector2(50, 0), -1)
+	assert_false(bool(b._pending_orders[-1].get("reform", false)),
+		"with reform_before_move off, the command carries reform:false")
+	Settings.reform_before_move = orig
+
+
 func test_forest_slows_movement() -> void:
 	var pf := _registered_pathfield()
 	var forest: Dictionary = _patch_by_type("forest")
