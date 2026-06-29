@@ -89,7 +89,7 @@ jobs:
       - name: Install NSIS
         # NSIS 3.x (currently 3.08 on ubuntu-latest). No exact pin needed — the
         # script uses only stable NSIS 3 features; a future 3.x bump is safe.
-        run: sudo apt-get install -y nsis
+        run: sudo apt-get update && sudo apt-get install -y nsis
 
       - name: Build Windows installer
         run: |
