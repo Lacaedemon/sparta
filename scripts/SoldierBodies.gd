@@ -76,16 +76,15 @@ static func step(unit: Unit, delta: float) -> void:
 	# A felled body rises on its own: decay its prone timer toward 0 each tick. Stamina
 	# regens during the same pass; rising from prone costs KAPPA_P on the tick it happens.
 	# The body still springs to its slot below (it's down, not removed).
+	var maxs: float = unit.combat_profile()["max_stamina"]
 	for p in range(n):
 		var was_prone: bool = unit._sim_prone[p] > 0.0
 		unit._sim_prone[p] = maxf(0.0, unit._sim_prone[p] - delta)
 		var just_rose: bool = was_prone and unit._sim_prone[p] == 0.0
-		if p < unit._sim_soldier_stamina.size():
-			var maxs: float = unit.combat_profile()["max_stamina"]
-			unit._sim_soldier_stamina[p] = clampf(
-				unit._sim_soldier_stamina[p] + SoldierCombat.RHO_STAMINA * delta
-					- (SoldierCombat.KAPPA_P if just_rose else 0.0),
-				0.0, maxs)
+		unit._sim_soldier_stamina[p] = clampf(
+			unit._sim_soldier_stamina[p] + SoldierCombat.RHO_STAMINA * delta
+				- (SoldierCombat.KAPPA_P if just_rose else 0.0),
+			0.0, maxs)
 	var engaged := {}
 	for idx in unit.engaged_soldier_indices(n):
 		engaged[idx] = true
