@@ -1346,7 +1346,7 @@ func _setup_flock_renderer() -> void:
 
 	_mm_outline = MultiMesh.new()
 	_mm_outline.transform_format = MultiMesh.TRANSFORM_2D
-	_mm_outline.use_colors = true   # per-instance tint for prone soldiers
+	_mm_outline.use_colors = true   # required for set_instance_color; outline always stays WHITE (body carries the prone tint)
 	_mm_outline.mesh = _mark_outline_mesh
 	_mmi_outline = MultiMeshInstance2D.new()
 	_mmi_outline.multimesh = _mm_outline
@@ -1481,14 +1481,7 @@ func _refresh_flock_render() -> void:
 		_mm_outline.instance_count = n
 	var sim_prone_n: int = _sim_prone.size()
 	for i in range(n):
-		# A prone soldier (knocked down, timer > 0) is drawn flat: the mark is squashed
-		# horizontally to suggest a body on the ground, and tinted dark so it reads as
-		# "down" even at small zoom. At the figure LOD the silhouette is rotated 90° to
-		# show the figure lying on its side. Standing soldiers get the normal transform
-		# and WHITE (which multiplies with _mmi_body.modulate = team color, no change).
-		# The outline stays WHITE even when prone so it stays visible — PRONE_COLOR is
-		# already dark (0.22) and _mmi_outline.modulate is 0.35 of team color; their
-		# product (≈ 0.08) would make the silhouette edge invisible.
+		# Prone: squash/rotate the mark and tint the body dark; outline stays WHITE (PRONE_COLOR × 0.35 modulate ≈ 0.08 — invisible).
 		var prone: bool = i < sim_prone_n and _sim_prone[i] > 0.0
 		var t: Transform2D
 		if prone:
