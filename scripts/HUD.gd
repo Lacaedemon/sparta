@@ -8,6 +8,7 @@ extends CanvasLayer
 const BattleRef = preload("res://scripts/Battle.gd")
 const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
 const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
+const UnitRef = preload("res://scripts/Unit.gd")
 
 # Stable ids for the Menu popup's items (independent of index / separators). The two
 # MENU_FORMUP_* ids set the default multi-unit form-up distribution (radio-checked).
@@ -28,6 +29,12 @@ var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
 var _keybindings_dialog: AcceptDialog
+var _ctrl_bar: PanelContainer
+var _ctrl_formation_btns: Dictionary = {}
+var _ctrl_stance_btns: Dictionary = {}
+var _ctrl_reform_btn: Button
+var _ctrl_group_attack_btn: Button
+var _sel_mgr = null
 
 
 func _ready() -> void:
@@ -187,6 +194,9 @@ func _ready() -> void:
 	_info.text = "No unit selected"
 	margin.add_child(_info)
 
+	_sel_mgr = get_node_or_null("../SelectionManager")
+	_build_ctrl_bar()
+
 	# End-of-battle overlay.
 	_overlay = ColorRect.new()
 	_overlay.color = Color(0, 0, 0, 0.6)
@@ -265,6 +275,7 @@ func _sync_setting_toggles() -> void:
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
 	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
 			Settings.reform_before_move)
+	_ctrl_bar_sync_settings()
 
 
 ## Rebuild the controls hint, rendering the order-mode keys from the live Settings
@@ -356,19 +367,27 @@ func show_unit(u, group_count: int) -> void:
 		cohesion_text, training_text, u.formation_summary(), UnitFormation.files_label(UnitFormation.frontage(u)),
 		u.order_summary()
 	]
+	if _ctrl_bar != null:
+		_ctrl_bar.visible = true
+		_ctrl_bar_update_formation(u)
+		_ctrl_bar_update_stance(_sel_mgr._armed_mode if _sel_mgr != null else 0)
+		update_group_attack_mode(_sel_mgr._group_attack_mode if _sel_mgr != null else 0)
 
 
 func clear_unit() -> void:
 	_info.text = "No unit selected"
+	if _ctrl_bar != null:
+		_ctrl_bar.visible = false
 
 
 ## Show the armed order mode. Empty text hides the indicator (default stance).
-func set_order_mode(text: String) -> void:
+func set_order_mode(text: String, mode: int = BattleRef.OrderMode.NORMAL) -> void:
 	if text == "":
 		_order_mode_label.visible = false
 	else:
 		_order_mode_label.text = "Order: %s" % text
 		_order_mode_label.visible = true
+	_ctrl_bar_update_stance(mode)
 
 
 ## Briefly show a one-line toast, then auto-hide it. Used for transient feedback like the
@@ -388,6 +407,160 @@ func flash_message(text: String) -> void:
 func _hide_flash(text: String) -> void:
 	if is_instance_valid(_flash_label) and _flash_label.text == text:
 		_flash_label.visible = false
+
+
+## Reflect the current group-attack distribution mode on the ctrl bar button.
+func update_group_attack_mode(mode: int) -> void:
+	if _ctrl_group_attack_btn == null:
+		return
+	var labels := {
+		BattleRef.GroupAttackMode.FOCUSED: "Focused atk",
+		BattleRef.GroupAttackMode.DISTRIBUTED: "Spread atk",
+	}
+	_ctrl_group_attack_btn.text = labels.get(mode, "Atk mode")
+
+
+func _ctrl_bar_sync_settings() -> void:
+	if _ctrl_reform_btn == null:
+		return
+	_ctrl_reform_btn.button_pressed = Settings.reform_before_move
+
+
+func _ctrl_bar_update_formation(unit) -> void:
+	if _ctrl_formation_btns.is_empty() or unit == null or not is_instance_valid(unit):
+		return
+	var mode: int = unit.formation_mode
+	if _ctrl_formation_btns.has(mode):
+		_ctrl_formation_btns[mode].button_pressed = true
+
+
+func _ctrl_bar_update_stance(mode: int) -> void:
+	if _ctrl_stance_btns.has(mode):
+		_ctrl_stance_btns[mode].button_pressed = true
+
+
+## Build the bottom control bar: formation, stance, and per-order options.
+func _build_ctrl_bar() -> void:
+	_ctrl_bar = PanelContainer.new()
+	_ctrl_bar.set_anchors_preset(Control.PRESET_BOTTOM_CENTER)
+	_ctrl_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_ctrl_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_ctrl_bar.position = Vector2(0, -10)
+	_ctrl_bar.visible = false
+	add_child(_ctrl_bar)
+
+	var outer := MarginContainer.new()
+	outer.add_theme_constant_override("margin_left", 8)
+	outer.add_theme_constant_override("margin_right", 8)
+	outer.add_theme_constant_override("margin_top", 6)
+	outer.add_theme_constant_override("margin_bottom", 6)
+	_ctrl_bar.add_child(outer)
+
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 16)
+	outer.add_child(hbox)
+
+	hbox.add_child(_build_ctrl_section("Formation", _build_ctrl_formation_buttons()))
+	hbox.add_child(VSeparator.new())
+	hbox.add_child(_build_ctrl_section("Stance", _build_ctrl_stance_buttons()))
+	hbox.add_child(VSeparator.new())
+	hbox.add_child(_build_ctrl_section("Options", _build_ctrl_option_buttons()))
+
+	_ctrl_bar_sync_settings()
+	update_group_attack_mode(BattleRef.GroupAttackMode.FOCUSED)
+
+
+func _build_ctrl_section(label_text: String, content: Control) -> Control:
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+	vbox.add_child(lbl)
+	vbox.add_child(content)
+	return vbox
+
+
+func _build_ctrl_formation_buttons() -> Control:
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 4)
+	var group := ButtonGroup.new()
+	var entries := [
+		{"mode": UnitRef.FORMATION_NORMAL, "label": "Normal"},
+		{"mode": UnitRef.FORMATION_TIGHT, "label": "Tight"},
+		{"mode": UnitRef.FORMATION_LOOSE, "label": "Loose"},
+	]
+	for entry in entries:
+		var btn := Button.new()
+		btn.text = entry["label"]
+		btn.toggle_mode = true
+		btn.button_group = group
+		btn.custom_minimum_size = Vector2(58, 28)
+		btn.add_theme_font_size_override("font_size", 13)
+		var mode: int = entry["mode"]
+		btn.pressed.connect(func():
+			if _sel_mgr != null:
+				_sel_mgr.set_formation_to(mode))
+		hbox.add_child(btn)
+		_ctrl_formation_btns[mode] = btn
+	if _ctrl_formation_btns.has(UnitRef.FORMATION_NORMAL):
+		_ctrl_formation_btns[UnitRef.FORMATION_NORMAL].button_pressed = true
+	return hbox
+
+
+func _build_ctrl_stance_buttons() -> Control:
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 4)
+	var group := ButtonGroup.new()
+	var entries := [
+		{"mode": BattleRef.OrderMode.NORMAL, "label": "Normal"},
+		{"mode": BattleRef.OrderMode.HOLD, "label": "Hold"},
+		{"mode": BattleRef.OrderMode.ATTACK_FLANK, "label": "Flank"},
+		{"mode": BattleRef.OrderMode.ATTACK_REAR, "label": "Rear"},
+		{"mode": BattleRef.OrderMode.SKIRMISH, "label": "Skirmish"},
+		{"mode": BattleRef.OrderMode.SUPPORT, "label": "Support"},
+	]
+	for entry in entries:
+		var btn := Button.new()
+		btn.text = entry["label"]
+		btn.toggle_mode = true
+		btn.button_group = group
+		btn.custom_minimum_size = Vector2(68, 28)
+		btn.add_theme_font_size_override("font_size", 13)
+		var mode: int = entry["mode"]
+		btn.pressed.connect(func():
+			if _sel_mgr != null:
+				_sel_mgr.arm_order_mode(mode))
+		hbox.add_child(btn)
+		_ctrl_stance_btns[mode] = btn
+	if _ctrl_stance_btns.has(BattleRef.OrderMode.NORMAL):
+		_ctrl_stance_btns[BattleRef.OrderMode.NORMAL].button_pressed = true
+	return hbox
+
+
+func _build_ctrl_option_buttons() -> Control:
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 6)
+
+	_ctrl_reform_btn = Button.new()
+	_ctrl_reform_btn.text = "Reform"
+	_ctrl_reform_btn.toggle_mode = true
+	_ctrl_reform_btn.custom_minimum_size = Vector2(68, 28)
+	_ctrl_reform_btn.add_theme_font_size_override("font_size", 13)
+	_ctrl_reform_btn.pressed.connect(func():
+		Settings.reform_before_move = not Settings.reform_before_move)
+	hbox.add_child(_ctrl_reform_btn)
+
+	_ctrl_group_attack_btn = Button.new()
+	_ctrl_group_attack_btn.custom_minimum_size = Vector2(100, 28)
+	_ctrl_group_attack_btn.add_theme_font_size_override("font_size", 13)
+	_ctrl_group_attack_btn.pressed.connect(func():
+		if _sel_mgr != null:
+			_sel_mgr.toggle_group_attack_mode())
+	hbox.add_child(_ctrl_group_attack_btn)
+
+	return hbox
 
 
 func show_end(text: String) -> void:
