@@ -309,9 +309,10 @@ The inline preview is a GIF (it plays once and freezes on the final frame), and
 workflow also encodes an **MP4 with sound** (Godot's Movie Maker captures the game's
 audio into the recording; the GIF step just drops it) and links it under the GIF as
 *"watch with sound"*. Click it to play the clip with audio, pause, and scrub. SFX
-are off by default in-game, so the recorder turns them on for the recording (see
-[`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd)) — that's how the MP4
-ends up with the battle's sound.
+are off by default in-game, so whichever recorder runs turns them on for the recording
+([`../tools/demo/DemoInputRecorder.gd`](../tools/demo/DemoInputRecorder.gd) for scripted
+input, [`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd) for a replay) — that's
+how the MP4 ends up with the battle's sound.
 
 Why a GIF plus a link, and not an inline player: GitHub renders an inline, playable
 `<video>` **only** for files uploaded through its browser-only attachment CDN

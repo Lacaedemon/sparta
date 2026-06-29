@@ -50,7 +50,8 @@ func _start_battle() -> void:
 
 ## Each physics frame, hold the camera framing and fire any input events due this tick.
 func _on_physics_frame() -> void:
-	if _sel == null or not is_instance_valid(_sel):
+	if _sel == null or not is_instance_valid(_sel) \
+			or _battle == null or not is_instance_valid(_battle):
 		return
 	_apply_camera()
 	var tick: int = _battle.current_tick()

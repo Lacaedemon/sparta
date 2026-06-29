@@ -120,6 +120,7 @@ func start_recording() -> void:
 	if forced_seed >= 0:
 		# Deterministic seed for a scripted demo recording (see `forced_seed`).
 		seed_value = forced_seed
+		forced_seed = -1   # consumed; a later start_recording() randomises normally
 	else:
 		var picker := RandomNumberGenerator.new()
 		picker.randomize()

@@ -59,3 +59,13 @@ func test_key_step_maps_to_a_keycode() -> void:
 	r._schedule([{"tick": 10, "key": "Y"}])
 	assert_eq(r._by_tick[10][0]["kind"], "key", "a key step is a key event")
 	assert_eq(r._by_tick[10][0]["keycode"], KEY_Y, "the key string resolves to its keycode")
+
+
+func test_box_expands_to_a_left_drag() -> void:
+	var r = _rec()
+	r._schedule([{"tick": 5, "box": {"from": [100, 200], "to": [400, 500]}}])
+	assert_eq(r._by_tick[5][0]["button"], MOUSE_BUTTON_LEFT, "box-select uses the left button")
+	assert_true(r._by_tick[5][0]["pressed"], "press at the start tick")
+	var rel: Array = r._by_tick[5 + RecorderScript.DRAG_TICKS]
+	assert_false(rel[0]["pressed"], "release after DRAG_TICKS")
+	assert_eq(rel[0]["pos"], Vector2(400, 500), "release lands at the box's end corner")
