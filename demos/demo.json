@@ -1,5 +1,4 @@
 {
-  "input": "demos/inputs/orderly-frontage.json",
-  "caption": "Spearmen widen their frontage six times. Each reshape moves soldiers to their new slots at a jog (REFORM_JOG_SPEED cap) rather than snapping or sprinting — orderly reshaping from issue #288.",
-  "max_frames": 300
+  "skip": true,
+  "reason": "This fix suppresses a floating weapon blade on prone soldiers — the bug only appears when a soldier is knocked down during melee, which is not reliably triggerable in a scripted demo clip."
 }
