@@ -1,8 +1,8 @@
 {
-  "replay": "demos/charge_demo.json",
-  "caption": "Pace modes: units now walk by default, jog when under missile fire, and sprint to full charge speed within 200px of the target. Toggle Walk advance (no jog/sprint) in the Menu for formed stances.",
+  "input": "demos/inputs/pace-modes.json",
+  "caption": "Pace modes: player regiments advance at walk pace, jog when enemy archers open fire, and sprint to full charge speed within 200 px of the target — all three AUTO phases in one clip. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout, required for formed stances.",
   "fixed_fps": 30,
-  "max_frames": 400,
+  "max_frames": 420,
   "fps": 12,
   "width": 640
 }

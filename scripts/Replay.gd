@@ -53,7 +53,8 @@ var forced_seed: int = -1
 #               "mode": int (Battle.OrderMode; 0 = NORMAL),
 #               "formation"?: int (Unit.FORMATION_*; omitted when 0 = NORMAL),
 #               "frontage"?: int (absolute file count for a -4 resize or a form-up move),
-#               "face"?: float (deploy facing in radians for a drag-to-form-up move) }.
+#               "face"?: float (deploy facing in radians for a drag-to-form-up move),
+#               "walk_advance"?: bool (omitted when false) }.
 var _orders: Array = []
 var _play_index: int = 0
 
@@ -182,6 +183,8 @@ func start_playback(path: String) -> bool:
 			entry["frontage"] = int(o["frontage"])
 		if o.has("face"):
 			entry["face"] = float(o["face"])
+		if o.has("walk_advance"):
+			entry["walk_advance"] = bool(o["walk_advance"])
 		_orders.append(entry)
 	_play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
@@ -244,7 +247,8 @@ func replays_dir() -> String:
 
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
-		order_mode: int = 0, formation: int = 0, frontage: int = 0, face: float = INF) -> void:
+		order_mode: int = 0, formation: int = 0, frontage: int = 0, face: float = INF,
+		walk_advance: bool = false) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
@@ -263,6 +267,8 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# (a plain move), so any real angle -- including 0 -- is recorded.
 	if not is_inf(face):
 		entry["face"] = face
+	if walk_advance:
+		entry["walk_advance"] = true
 	_orders.append(entry)
 
 

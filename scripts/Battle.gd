@@ -281,7 +281,8 @@ func _physics_process(_delta: float) -> void:
 					int(o.get("mode", OrderMode.NORMAL)),
 					int(o.get("formation", UnitRef.FORMATION_NORMAL)),
 					int(o.get("frontage", 0)),
-					float(o.get("face", INF)))
+					float(o.get("face", INF)),
+					bool(o.get("walk_advance", false)))
 			_apply_order_cmd(o)
 		_pending_orders.clear()
 		# Capture the camera each tick so a live recording reproduces what the player saw.
