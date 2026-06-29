@@ -31,6 +31,7 @@ DEMOS=(
   "clash|demos/clash.json|30|240|640"
   "charge|demos/charge_demo.json|30|240|640"
   "support|demos/support_demo.json|30|240|640"
+  "group_attack|demos/group_attack_demo.json|30|300|800"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a
