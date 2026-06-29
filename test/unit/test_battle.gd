@@ -419,8 +419,8 @@ func test_enqueue_form_up_sets_destination_facing_and_width() -> void:
 	u.max_soldiers = 120
 	var b := _battle([u])
 	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20)   # face 0 = facing right
-	assert_eq(u.move_target, Vector2(500, 500), "the unit marches to the flank-line midpoint")
-	assert_true(u.has_move_target, "and is set moving")
+	assert_eq(u._reform_target, Vector2(500, 500), "the form-up target is queued pending the reform hold")
+	assert_false(u.has_move_target, "unit waits in reform hold before stepping off")
 	assert_almost_eq(u.deploy_facing.angle(), 0.0, 0.001, "the deploy facing is parked from the order")
 	assert_eq(UnitFormation.frontage(u), 20, "the dragged width becomes the frontage")
 	assert_true(b._pending_orders[-1].has("face"), "the order records its deploy facing")
