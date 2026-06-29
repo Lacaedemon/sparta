@@ -126,6 +126,10 @@ static func accumulate(units: Array, frame: int) -> void:
 ## living regiment's `soldier_block_extent()` precomputed once for the tick, so the scan reads
 ## both endpoints' reach from the cache instead of recomputing (and reallocating) per pair.
 static func _overlaps_friendly(u: Unit, sorted_units: Array, extents: Dictionary) -> bool:
+	# `extents` is populated for every living unit in the same pass that calls this, so the
+	# lookups here and at extents[v] below always hit. Assert the invariant rather than let a
+	# future partial-dict caller fall through to a cryptic null-as-float mismatch downstream.
+	assert(extents.has(u), "extents must be populated for all living units before _overlaps_friendly")
 	var reach_u: float = extents[u]
 	for o in sorted_units:
 		var v: Unit = o as Unit
