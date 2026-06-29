@@ -1118,6 +1118,7 @@ func _draw_orders() -> void:
 			var route := _move_route_for(u)
 			if not route.is_empty():
 				_draw_move_path(origin, route[0], route.slice(1))
+				_draw_formation_preview(route.back(), u)
 
 
 ## The friendly a SUPPORT unit is guarding, if it's still a valid overlay
@@ -1167,6 +1168,17 @@ func _draw_move_path(origin: Vector2, first: Vector2, waypoints: Array[Vector2])
 func _draw_move_marker(p: Vector2, color: Color) -> void:
 	draw_arc(p, 8.0, 0.0, TAU, 18, color, 2.0)
 	draw_circle(p, 2.5, color)
+
+
+## Ghost formation at the move destination: one small dot per soldier slot, at 35 %
+## opacity so it reads as "future" without obscuring the live units. Uses the unit's
+## current facing (form-up orders update facing immediately, so the preview is correct).
+func _draw_formation_preview(p: Vector2, u: UnitRef) -> void:
+	var slots := UnitFormation.slots(u, u.soldiers)
+	var ang: float = u.facing.angle() + PI * 0.5
+	var col := Color(ORDER_MOVE_COLOR.r, ORDER_MOVE_COLOR.g, ORDER_MOVE_COLOR.b, 0.35)
+	for slot in slots:
+		draw_circle(p + slot.rotated(ang), 2.0, col)
 
 
 ## Support marker: a double "shielding" ring over the guarded ward, distinct from the
