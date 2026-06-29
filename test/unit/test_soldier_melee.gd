@@ -439,16 +439,6 @@ func test_kappa_p_charged_on_rise() -> void:
 		"rising from prone costs KAPPA_P on the tick the timer hits zero")
 
 
-func test_stamina_array_compacted_with_hp() -> void:
-	var a := _unit(1, 0, 12, Vector2(0, 0), Vector2.DOWN, false)
-	var b := _unit(2, 1, 12, Vector2(0, 10), Vector2.UP, false)
-	for _k in range(120):
-		a.resolve_soldier_melee(b)
-	assert_lt(b.soldiers, 12, "some defenders died")
-	assert_eq(b._sim_soldier_stamina.size(), b.soldiers,
-		"stamina pool tracks the live soldier count after deaths")
-
-
 func test_death_compacts_stamina_alongside_other_arrays() -> void:
 	# Extend the existing compaction test: after deaths, all five per-soldier arrays
 	# (pos, vel, hp, prone, stamina) must be index-aligned with the live count.
