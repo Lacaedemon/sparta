@@ -66,17 +66,16 @@ static func step(unit: Unit, delta: float) -> void:
 			unit._sim_soldier_hp[j] = maxhp
 	if unit._sim_prone.size() != n:
 		unit._sim_prone.resize(n)   # index-aligned; a fresh tail body stands (0)
+	var maxs: float = unit.combat_profile()["max_stamina"]
 	if unit._sim_soldier_stamina.size() != n:
 		# Keep the stamina pool index-aligned; any newly-added body arrives at full stamina.
 		var stam_old: int = unit._sim_soldier_stamina.size()
-		var maxs: float = unit.combat_profile()["max_stamina"]
 		unit._sim_soldier_stamina.resize(n)
 		for j in range(stam_old, n):
 			unit._sim_soldier_stamina[j] = maxs
 	# A felled body rises on its own: decay its prone timer toward 0 each tick. Stamina
 	# regens during the same pass; rising from prone costs KAPPA_P on the tick it happens.
 	# The body still springs to its slot below (it's down, not removed).
-	var maxs: float = unit.combat_profile()["max_stamina"]
 	for p in range(n):
 		var was_prone: bool = unit._sim_prone[p] > 0.0
 		unit._sim_prone[p] = maxf(0.0, unit._sim_prone[p] - delta)
