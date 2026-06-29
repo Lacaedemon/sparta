@@ -95,6 +95,14 @@ func _fire(ev: Dictionary) -> void:
 			k.physical_keycode = int(ev["keycode"])
 			k.pressed = true
 			_sel._unhandled_input(k)
+		"hold_space":
+			# Update hardware key state so Input.is_key_pressed(KEY_SPACE) returns true
+			# for the rest of the recording — enabling the orders overlay draw path.
+			var k := InputEventKey.new()
+			k.keycode = KEY_SPACE
+			k.physical_keycode = KEY_SPACE
+			k.pressed = true
+			Input.parse_input_event(k)
 
 
 # --- script -> per-tick event schedule -------------------------------------
@@ -115,6 +123,11 @@ func _schedule(steps: Array) -> void:
 			_drag(tick, _vec(step["rmb_drag"]["from"]), _vec(step["rmb_drag"]["to"]), MOUSE_BUTTON_RIGHT, shift)
 		elif step.has("key"):
 			_at(tick, {"kind": "key", "keycode": OS.find_keycode_from_string(str(step["key"]))})
+		elif step.has("hold_space"):
+			# Hold Space for the rest of the recording so the orders overlay is visible.
+			# Uses Input.parse_input_event (not _unhandled_input) so Input.is_key_pressed()
+			# reflects the held state — that's what _draw_orders() checks.
+			_at(tick, {"kind": "hold_space"})
 
 
 ## A click = button press then release at one point, on the same tick.
