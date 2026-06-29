@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "seed": "12345",
+  "physics_tps": 60,
+  "created": 0,
+  "result": "",
+  "duration_ticks": 0,
+  "camera": [
+    {"tick": 0, "x": 560.0, "y": 400.0, "zoom": 1.7}
+  ],
+  "orders": [
+    {"tick": 12, "units": [0], "x": 382.899993896484, "y": 470.0, "target": -1, "mode": 0, "face": 1.57079641421768, "frontage": 70},
+    {"tick": 12, "units": [1], "x": 612.5, "y": 470.0, "target": -1, "mode": 0, "face": 1.57079641421768, "frontage": 60},
+    {"tick": 12, "units": [2], "x": 799.599975585938, "y": 470.0, "target": -1, "mode": 0, "face": 1.57079641421768, "frontage": 45}
+  ]
+}

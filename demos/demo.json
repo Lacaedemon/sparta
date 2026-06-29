@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Multi-unit drag-to-form-up is a player drag gesture (right-drag a flank line across several selected units, splitting it into per-unit slices by equal depth / equal width). The bundled auto-battle replays carry no player orders, so they can't show it, and a tailored clip needs a hand-recorded replay of the gesture. The distribution math, ordering, the on-the-fly cycle hotkey, and the settings default are all pinned by the SelectionManager unit tests instead; a recorded scenario clip is a good demo-recording follow-up."
+  "replay": "demos/scenarios/multi-unit-form-up.json",
+  "caption": "Multi-unit drag-to-form-up: three regiments (Spearmen 140, Infantry 120, Archers 90) deploy along one dragged line. The line is split to equal depth — every regiment ends up two ranks deep, so the bigger units simply take a wider slice and the whole front is one uniform line.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 720
 }
