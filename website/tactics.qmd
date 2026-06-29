@@ -166,6 +166,18 @@ sprint range will accelerate through any missile fire it still faces --- gaining
 maximum speed at contact rather than jogging through the kill zone. Use that to
 your advantage when committing cavalry or an assault infantry charge.
 
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/pace_modes.jpg">
+    <source src="media/pace_modes.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.</figcaption>
+</figure>
+```
+
 ## Order stances
 
 Each order can carry a *stance*, armed with a hotkey before you click (a coloured
