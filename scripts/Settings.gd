@@ -30,6 +30,21 @@ var sfx_enabled: bool = false:
 			_save()
 			changed.emit()
 
+# Multi-unit drag-to-form-up: how the dragged flank line is split among the selected
+# units. Stored as an int (mirrors SelectionManager.FormUpDist: 0 = equal depth / uniform
+# ranks, the default; 1 = equal width / uniform frontage) so Settings stays free of a
+# dependency on that script. This is the DEFAULT a battle starts with; an on-the-fly hotkey
+# cycles the live mode without rewriting this.
+const FORM_UP_DIST_EQUAL_DEPTH := 0
+var form_up_dist_default: int = FORM_UP_DIST_EQUAL_DEPTH:
+	set(value):
+		if value == form_up_dist_default:
+			return
+		form_up_dist_default = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Order-mode selector hotkeys: stable slug -> physical keycode. Slugs (and the
 # menu order) are owned by Battle.ORDER_MODE_HOTKEYS; these are the factory defaults.
 # Physical keycodes keep the bindings layout-independent (like the camera/pause keys).
@@ -106,6 +121,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	_loading = true
 	edge_scroll = cfg.get_value("camera", "edge_scroll", edge_scroll)
 	sfx_enabled = cfg.get_value("audio", "sfx_enabled", sfx_enabled)
+	form_up_dist_default = int(cfg.get_value("gameplay", "form_up_dist_default", form_up_dist_default))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
 	_loading = false
@@ -117,6 +133,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.load(path)
 	cfg.set_value("camera", "edge_scroll", edge_scroll)
 	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
+	cfg.set_value("gameplay", "form_up_dist_default", form_up_dist_default)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
 	cfg.save(path)

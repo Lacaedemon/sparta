@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Input-affordance change: a unit's raised flag is now a click target for selection/attack, just like its block. The flag already renders the same, and a passive recorded battle can't show the player clicking it, so a clip would look identical to before. Covered by the SelectionManager flag-hit unit tests instead."
+  "reason": "Multi-unit drag-to-form-up is a player drag gesture (right-drag a flank line across several selected units, splitting it into per-unit slices by equal depth / equal width). The bundled auto-battle replays carry no player orders, so they can't show it, and a tailored clip needs a hand-recorded replay of the gesture. The distribution math, ordering, the on-the-fly cycle hotkey, and the settings default are all pinned by the SelectionManager unit tests instead; a recorded scenario clip is a good demo-recording follow-up."
 }
