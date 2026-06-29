@@ -28,7 +28,7 @@ left fighting --- every remaining unit is dead or routing.
 | Move | **Right-click** the ground |
 | Form up | **Right-click and drag** open ground (left flank → right flank); with several units selected, the line is split among them |
 | Form up in selection order | **Shift + right-click and drag** (instead of the default left-to-right field order) |
-| Form-up split mode | <kbd>Y</kbd> cycles equal-depth ↔ equal-width (set the default in ☰ Menu) |
+| Form-up split mode | <kbd>Y</kbd> cycles through enabled modes (equal-depth / equal-width); configure which modes cycle and which is the battle default in **☰ Menu** |
 | Reform before move | **☰ Menu → Reform before move** toggles whether units pause to settle their ranks before marching (on by default) |
 | Attack | **Right-click** an enemy unit |
 | Group attack mode | <kbd>X</kbd> cycles focused ↔ distributed (distributed spreads multiple selected units across nearby enemies) |

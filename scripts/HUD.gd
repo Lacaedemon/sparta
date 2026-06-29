@@ -13,6 +13,7 @@ const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
 # MENU_FORMUP_* ids set the default multi-unit form-up distribution (radio-checked).
 enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH,
+		MENU_FORMUP_CYCLE_DEPTH, MENU_FORMUP_CYCLE_WIDTH,
 		MENU_REFORM_BEFORE_MOVE, MENU_KEYBINDINGS }
 
 var _hint: Label
@@ -126,6 +127,10 @@ func _ready() -> void:
 	popup.add_separator("Form-up: split a line by…")
 	popup.add_radio_check_item("Equal depth (ranks)", MENU_FORMUP_EQUAL_DEPTH)
 	popup.add_radio_check_item("Equal width (frontage)", MENU_FORMUP_EQUAL_WIDTH)
+	# Which modes the Y-key cycles through (check to include, uncheck to skip).
+	popup.add_separator("Form-up: Y-key cycles through…")
+	popup.add_check_item("Equal depth (ranks)", MENU_FORMUP_CYCLE_DEPTH)
+	popup.add_check_item("Equal width (frontage)", MENU_FORMUP_CYCLE_WIDTH)
 	popup.add_separator()
 	popup.add_check_item("Reform before move", MENU_REFORM_BEFORE_MOVE)
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
@@ -263,6 +268,10 @@ func _sync_setting_toggles() -> void:
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH)
 	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_WIDTH),
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
+	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_DEPTH),
+			Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_DEPTH))
+	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
+			Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_WIDTH))
 	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
 			Settings.reform_before_move)
 
@@ -299,10 +308,23 @@ func _on_menu_id(id: int) -> void:
 			Settings.form_up_dist_default = SelectionManagerRef.FormUpDist.EQUAL_DEPTH
 		MENU_FORMUP_EQUAL_WIDTH:
 			Settings.form_up_dist_default = SelectionManagerRef.FormUpDist.EQUAL_WIDTH
+		MENU_FORMUP_CYCLE_DEPTH:
+			_toggle_form_up_cycle(Settings.FORM_UP_DIST_EQUAL_DEPTH)
+		MENU_FORMUP_CYCLE_WIDTH:
+			_toggle_form_up_cycle(Settings.FORM_UP_DIST_EQUAL_WIDTH)
 		MENU_REFORM_BEFORE_MOVE:
 			Settings.reform_before_move = not Settings.reform_before_move
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
+
+
+func _toggle_form_up_cycle(mode: int) -> void:
+	var cycle: Array = Settings.form_up_dist_cycle.duplicate()
+	if cycle.has(mode):
+		cycle.erase(mode)
+	else:
+		cycle.append(mode)
+	Settings.form_up_dist_cycle = cycle
 
 
 func _unhandled_input(event: InputEvent) -> void:

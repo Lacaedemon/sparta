@@ -1,4 +1,4 @@
 {
-  "input": "demos/inputs/group-attack-distributed.json",
-  "caption": "Group attack distribution (X to cycle): three player regiments switch to distributed mode then attack --- each unit targets a different nearby enemy instead of all piling onto one. Closes #305."
+  "skip": true,
+  "reason": "Issue #307 adds menu checkboxes for configuring which modes Y cycles through. Menu interactions cannot be captured by the scripted-input recorder, and the underlying form-up behaviour is already shown in existing demos."
 }
