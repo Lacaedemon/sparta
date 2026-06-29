@@ -33,6 +33,15 @@ const CHARGE_REFERENCE_SPEED: float = 170.0
 # fraction of full effectiveness. q scales both offence and active defence.
 const COND_HEALTH_FLOOR: float = 0.5
 
+# Stamina pool constants (docs/combat-model.md "Stamina"): g(σ) is the fatigue factor
+# in [COND_STAMINA_FLOOR, 1] that multiplies into cond_a and cond_d alongside q(h).
+# κ_a/κ_d/κ_p are the per-action drains; ρ_σ is the regen rate while resting.
+const COND_STAMINA_FLOOR: float = 0.4      # g_floor: a spent soldier still fights, at this fraction
+const STAMINA_COST_STRIKE: float = 3.0     # κ_a: stamina drained per strike thrown
+const STAMINA_COST_DEFEND: float = 4.0     # κ_d: base drain per blow met (scaled by φ·(1+c))
+const STAMINA_COST_RISE: float = 15.0      # κ_p: stamina drained when rising from prone
+const STAMINA_REGEN_RATE: float = 8.0      # ρ_σ: stamina/sec recovered while set (not engaged)
+
 # Knockback impulse (docs/combat-model.md "Knockback impulse"):
 #   J = KNOCKBACK_IMPULSE_SCALE * lethality_A * (1 + c) * eta / m_D
 # the velocity (world units/sec) added to the struck body along the strike axis. Scaled by
@@ -164,3 +173,12 @@ static func condition(hp: float, maxhp: float) -> float:
 	if maxhp <= 0.0:
 		return 1.0
 	return COND_HEALTH_FLOOR + (1.0 - COND_HEALTH_FLOOR) * clampf(hp / maxhp, 0.0, 1.0)
+
+
+## The stamina condition factor g(σ) in [COND_STAMINA_FLOOR, 1]: a fatigued soldier
+## fights worse, symmetrically with the health factor. Callers multiply q * g to get the
+## combined condition passed to land_chance/wound. See docs/combat-model.md "Stamina".
+static func stamina_factor(stamina: float, max_stamina: float) -> float:
+	if max_stamina <= 0.0:
+		return 1.0
+	return COND_STAMINA_FLOOR + (1.0 - COND_STAMINA_FLOOR) * clampf(stamina / max_stamina, 0.0, 1.0)

@@ -19,6 +19,8 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 	var en_prof: Dictionary = defender.combat_profile()
 	var my_maxhp: float = my_prof["max_health"]
 	var en_maxhp: float = en_prof["max_health"]
+	var my_max_stamina: float = my_prof["max_stamina"]
+	var en_max_stamina: float = en_prof["max_stamina"]
 	var reach: float = attacker.soldier_reach()
 
 	for ai in attackers:
@@ -49,9 +51,20 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# A prone defender has no active defence (phi -> 0): only its armour saves it.
 		var prone_d: bool = target < defender._sim_prone.size() and defender._sim_prone[target] > 0.0
 		var phi: float = 0.0 if prone_d else SoldierCombat.facing_gate(defender.facing, apos - dpos)
-		var cond_a: float = SoldierCombat.condition(attacker._sim_soldier_hp[ai], my_maxhp)
-		var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp)
+		var st_a: float = attacker._sim_soldier_stamina[ai] if ai < attacker._sim_soldier_stamina.size() else my_max_stamina
+		var st_d: float = defender._sim_soldier_stamina[target] if target < defender._sim_soldier_stamina.size() else en_max_stamina
+		var cond_a: float = SoldierCombat.condition(attacker._sim_soldier_hp[ai], my_maxhp) \
+				* SoldierCombat.stamina_factor(st_a, my_max_stamina)
+		var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp) \
+				* SoldierCombat.stamina_factor(st_d, en_max_stamina)
 		var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], en_prof["shield"], phi, c, cond_a, cond_d)
+		# Drain attacker stamina per in-reach strike (win or lose) and defender stamina per blow met.
+		if ai < attacker._sim_soldier_stamina.size():
+			attacker._sim_soldier_stamina[ai] = maxf(0.0,
+				attacker._sim_soldier_stamina[ai] - SoldierCombat.STAMINA_COST_STRIKE)
+		if target < defender._sim_soldier_stamina.size():
+			defender._sim_soldier_stamina[target] = maxf(0.0,
+				defender._sim_soldier_stamina[target] - SoldierCombat.STAMINA_COST_DEFEND * phi * (1.0 + c))
 		# One seeded draw per striking attacker, in id order, after the target is fixed.
 		var landed: bool = Replay.rng.randf() < p_land
 		# Knockback is the enemy collision response (no separation pass): every in-reach strike
@@ -117,6 +130,8 @@ static func reap(unit: Unit, killer: Unit) -> void:
 				unit._sim_steer.remove_at(i)   # keep the steering array index-aligned
 			if i < unit._sim_prone.size():
 				unit._sim_prone.remove_at(i)   # and the prone timer
+			if i < unit._sim_soldier_stamina.size():
+				unit._sim_soldier_stamina.remove_at(i)   # and the stamina pool
 			dead += 1
 	if dead == 0:
 		return

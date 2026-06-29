@@ -338,3 +338,73 @@ func test_flank_blow_gets_no_bracing() -> void:
 
 	assert_gt(flank_kb, front_kb,
 		"a flank blow (phi=0) gets no bracing: full impulse vs. a front blow absorbed by brace capacity")
+
+
+# --- stamina drain (slice D, #310) -------------------------------------------
+
+func test_attacker_stamina_drains_per_strike() -> void:
+	# An attacker with a target in reach drains κ_a per resolve() call.
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	b._sim_soldier_hp[0] = 9999.0           # immortal target so we track stamina, not deaths
+	Replay.rng.seed = SEED
+	var st_before: float = a._sim_soldier_stamina[0]
+	SoldierMelee.resolve(a, b)
+	var st_after: float = a._sim_soldier_stamina[0]
+	assert_lt(st_after, st_before, "the attacker's stamina drains when a strike is thrown")
+	assert_almost_eq(st_before - st_after, SoldierCombat.STAMINA_COST_STRIKE, 1e-4,
+		"drain equals κ_a per in-reach strike")
+
+
+func test_defender_stamina_drains_per_blow_met() -> void:
+	# A front-facing defender (phi = 1, front blow) drains κ_d · phi · (1 + c) per blow met.
+	# No charge (approach_velocity = 0), phi ≈ 1 from the front, so drain ≈ κ_d.
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	b._sim_soldier_hp[0] = 9999.0
+	Replay.rng.seed = SEED
+	var st_before: float = b._sim_soldier_stamina[0]
+	SoldierMelee.resolve(a, b)
+	var st_after: float = b._sim_soldier_stamina[0]
+	assert_lt(st_after, st_before,
+		"the defender's stamina drains when a front blow is met")
+
+
+func test_stamina_does_not_go_negative() -> void:
+	# Drive a soldier to exhaustion: stamina should floor at 0, never go negative.
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	b._sim_soldier_hp[0] = 9999.0
+	Replay.rng.seed = SEED
+	for _k in range(200):
+		SoldierMelee.resolve(a, b)
+	assert_ge(a._sim_soldier_stamina[0], 0.0, "attacker stamina never goes below 0")
+	assert_ge(b._sim_soldier_stamina[0], 0.0, "defender stamina never goes below 0")
+
+
+func test_spent_attacker_lands_fewer_blows() -> void:
+	# A spent attacker (stamina 0) should land statistically fewer hits than a fresh one.
+	var count_fresh: int = 0
+	var count_spent: int = 0
+	for trial in range(200):
+		Replay.rng.seed = SEED + trial
+		var a_fresh := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+		var b_fresh := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+		b_fresh._sim_soldier_hp[0] = 9999.0
+		var hp_before_fresh: float = b_fresh._sim_soldier_hp[0]
+		SoldierMelee.resolve(a_fresh, b_fresh)
+		if b_fresh._sim_soldier_hp[0] < hp_before_fresh:
+			count_fresh += 1
+
+		Replay.rng.seed = SEED + trial
+		var a_spent := _unit(3, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+		a_spent._sim_soldier_stamina[0] = 0.0   # exhausted
+		var b_spent := _unit(4, 1, 1, Vector2(0, 6), Vector2.UP, false)
+		b_spent._sim_soldier_hp[0] = 9999.0
+		var hp_before_spent: float = b_spent._sim_soldier_hp[0]
+		SoldierMelee.resolve(a_spent, b_spent)
+		if b_spent._sim_soldier_hp[0] < hp_before_spent:
+			count_spent += 1
+
+	assert_lt(count_spent, count_fresh,
+		"a spent attacker (stamina=0) lands fewer blows than a fresh one over many trials")

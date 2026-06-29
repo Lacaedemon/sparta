@@ -29,6 +29,9 @@ static func seed(unit: Unit) -> void:
 	unit._sim_soldier_hp.fill(unit.combat_profile()["max_health"])   # everyone starts at full health
 	unit._sim_prone = PackedFloat32Array()
 	unit._sim_prone.resize(unit._sim_soldier_pos.size())             # 0 = standing
+	unit._sim_soldier_stamina = PackedFloat32Array()
+	unit._sim_soldier_stamina.resize(unit._sim_soldier_pos.size())
+	unit._sim_soldier_stamina.fill(unit.combat_profile()["max_stamina"])   # everyone starts at full stamina
 
 
 ## Advance a unit's persistent bodies one fixed step. Every body springs toward its slot
@@ -63,14 +66,30 @@ static func step(unit: Unit, delta: float) -> void:
 			unit._sim_soldier_hp[j] = maxhp
 	if unit._sim_prone.size() != n:
 		unit._sim_prone.resize(n)   # index-aligned; a fresh tail body stands (0)
-	# A felled body rises on its own: decay its prone timer toward 0 each tick. It still
-	# springs to its slot below (it's down, not removed).
-	for p in range(n):
-		if unit._sim_prone[p] > 0.0:
-			unit._sim_prone[p] = maxf(0.0, unit._sim_prone[p] - delta)
+	if unit._sim_soldier_stamina.size() != n:
+		var st_old: int = unit._sim_soldier_stamina.size()
+		var max_st: float = unit.combat_profile()["max_stamina"]
+		unit._sim_soldier_stamina.resize(n)
+		for j in range(st_old, n):
+			unit._sim_soldier_stamina[j] = max_st
 	var engaged := {}
 	for idx in unit.engaged_soldier_indices(n):
 		engaged[idx] = true
+	# A felled body rises on its own: decay its prone timer toward 0 each tick.
+	# Drains κ_p stamina the tick the timer crosses 0 (the effort of standing up).
+	# It still springs to its slot below (it's down, not removed).
+	for p in range(n):
+		if unit._sim_prone[p] > 0.0:
+			unit._sim_prone[p] = maxf(0.0, unit._sim_prone[p] - delta)
+			if unit._sim_prone[p] == 0.0 and p < unit._sim_soldier_stamina.size():
+				unit._sim_soldier_stamina[p] = maxf(0.0,
+					unit._sim_soldier_stamina[p] - SoldierCombat.STAMINA_COST_RISE)
+	# Regen stamina for all standing, non-engaged soldiers.
+	var max_stamina: float = unit.combat_profile()["max_stamina"]
+	for p in range(mini(n, unit._sim_soldier_stamina.size())):
+		if not engaged.has(p) and unit._sim_prone[p] == 0.0:
+			unit._sim_soldier_stamina[p] = minf(max_stamina,
+				unit._sim_soldier_stamina[p] + SoldierCombat.STAMINA_REGEN_RATE * delta)
 	# No body ever teleports: every body accelerates toward its slot and integrates its
 	# own velocity (semi-implicit Euler, fixed delta), so position only ever changes by
 	# velocity * delta.

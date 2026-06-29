@@ -186,6 +186,14 @@ facing-gated contest.
 
 ### 3. Stamina: attacking, defending, and rising all cost
 
+> **Implemented (#310 slice D):** `SoldierCombat.stamina_factor` (g(σ) in
+> [COND_STAMINA_FLOOR, 1]) and per-soldier `_sim_soldier_stamina` arrays in `Unit`.
+> `SoldierBodies.seed` seeds stamina at `max_stamina`; `SoldierBodies.step` regens it
+> at `STAMINA_REGEN_RATE`/sec for non-engaged standing soldiers and drains `κ_p` the
+> tick a prone soldier rises. `SoldierMelee.resolve` multiplies `q(h) * g(σ)` into
+> `cond_a` / `cond_d`, drains `κ_a` per strike thrown, and drains `κ_d·φ·(1+c)` per
+> blow met. Posture-dependent regen rates deferred to the posture slice.
+
 Every action spends stamina; rest restores it. In one tick:
 
 $$\sigma_A \mathrel{-}= \kappa_a \qquad\text{(each strike thrown)},$$

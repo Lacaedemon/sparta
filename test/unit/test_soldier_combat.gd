@@ -308,3 +308,52 @@ func test_brace_capacity_deep_file_exceeds_lone() -> void:
 	var three: PackedFloat32Array = PackedFloat32Array([1.0, 1.0, 1.0])
 	assert_gt(SoldierCombat.brace_capacity(three), SoldierCombat.brace_capacity(lone),
 		"a 3-deep file absorbs more than a lone man")
+
+
+# --- Stamina factor g(σ) (docs/combat-model.md "Stamina") ---------------------
+
+func test_stamina_factor_full_is_one() -> void:
+	assert_almost_eq(SoldierCombat.stamina_factor(100.0, 100.0), 1.0, TOL,
+		"a fully rested soldier has g = 1")
+
+
+func test_stamina_factor_zero_stamina_is_floor() -> void:
+	assert_almost_eq(SoldierCombat.stamina_factor(0.0, 100.0), SoldierCombat.COND_STAMINA_FLOOR, TOL,
+		"a spent soldier has g = COND_STAMINA_FLOOR")
+
+
+func test_stamina_factor_is_monotone() -> void:
+	var low: float = SoldierCombat.stamina_factor(20.0, 100.0)
+	var high: float = SoldierCombat.stamina_factor(80.0, 100.0)
+	assert_gt(high, low, "more stamina gives a higher fatigue factor")
+
+
+func test_stamina_factor_clamps_above_max() -> void:
+	assert_almost_eq(SoldierCombat.stamina_factor(150.0, 100.0), 1.0, TOL,
+		"stamina above max clamps to 1")
+
+
+func test_stamina_factor_clamps_below_zero() -> void:
+	assert_almost_eq(SoldierCombat.stamina_factor(-10.0, 100.0), SoldierCombat.COND_STAMINA_FLOOR, TOL,
+		"negative stamina clamps to floor")
+
+
+func test_stamina_factor_zero_max_returns_one() -> void:
+	assert_almost_eq(SoldierCombat.stamina_factor(0.0, 0.0), 1.0, TOL,
+		"degenerate max_stamina defaults to 1 (no penalty)")
+
+
+func test_stamina_factor_degrades_land_chance() -> void:
+	var fresh_def: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 0.0, 1.0, 1.0)
+	var winded_def: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 0.0, 1.0,
+			SoldierCombat.COND_STAMINA_FLOOR)
+	assert_gt(winded_def, fresh_def,
+		"a spent defender (g = floor) is easier to land on than a rested one")
+
+
+func test_spent_attacker_hits_less_often() -> void:
+	var fresh_att: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 0.0, 1.0, 1.0)
+	var winded_att: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 0.0,
+			SoldierCombat.COND_STAMINA_FLOOR, 1.0)
+	assert_lt(winded_att, fresh_att,
+		"a spent attacker (g = floor) lands fewer blows than a rested one")

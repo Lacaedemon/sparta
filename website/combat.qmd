@@ -19,10 +19,10 @@ against a heavy soldier like cavalry), **knockdown** (a hard enough hit can knoc
 flat: while down it has no active defence and can't strike until it scrambles up), and
 **bracing** (an engaged, set file buttresses the front man with the whole column's footing --
 a deep phalanx absorbs a shove that would throw a lone man back, and is far harder to fell).
-**Coming:** stamina and exhaustion, the posture/stance system (graded brace from sprinting to
-set), and the rearward domino cascade (a blow that punches through the front rank
-topples men rearward until the impulse is spent). The sections below describe the whole model;
-where a piece isn't live yet, it soon will be.
+**Coming:** the posture/stance system (graded brace from sprinting to set), and the
+rearward domino cascade (a blow that punches through the front rank topples men rearward
+until the impulse is spent). The sections below describe the whole model; where a piece
+isn't live yet, it soon will be.
 :::
 
 ## What each soldier carries
