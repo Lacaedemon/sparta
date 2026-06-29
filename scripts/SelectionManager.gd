@@ -1172,7 +1172,9 @@ func _draw_move_marker(p: Vector2, color: Color) -> void:
 
 ## Ghost formation at the move destination: one small dot per soldier slot, at 35 %
 ## opacity so it reads as "future" without obscuring the live units. Uses the unit's
-## current facing (form-up orders update facing immediately, so the preview is correct).
+## current facing — exact for form-up orders (which update facing immediately on issue)
+## and single-destination moves; on multi-waypoint routes the ghost may not match the
+## final arrival orientation if the last leg turns significantly from the current one.
 func _draw_formation_preview(p: Vector2, u: UnitRef) -> void:
 	var slots := UnitFormation.slots(u, u.soldiers)
 	var ang: float = u.facing.angle() + PI * 0.5

@@ -1,8 +1,8 @@
 {
-  "replay": "demos/showcase.json",
-  "caption": "Formation preview in the orders overlay (hold Space): the green dots at each move-line endpoint show exactly where each soldier will stand when the regiment finishes marching. New in this PR — the existing ring-and-line overlay gains a ghost formation at the destination.",
+  "input": "demos/inputs/formation-preview.json",
+  "caption": "Formation preview in the orders overlay: select a regiment, right-click to march it south — the ghost dots (faint green) at the endpoint show exactly where each soldier will stand when the regiment arrives. Hold Space in a real battle to see this overlay live.",
   "fixed_fps": 30,
-  "max_frames": 180,
+  "max_frames": 150,
   "fps": 12,
-  "width": 640
+  "width": 720
 }
