@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/reform-before-move.json",
-  "caption": "Reform before move: select the Spearmen and drag a new deployment line. The regiment holds its position for ~0.8 s (ranks settling) before marching south — visible as a brief pause after the order is issued. Toggle this behaviour in ☰ Menu → Reform before move.",
-  "fixed_fps": 30,
-  "max_frames": 200,
-  "fps": 12,
-  "width": 720
+  "skip": true,
+  "reason": "Orderly frontage changes cap individual soldier speed to a jog when the unit is idle, so soldiers trot to their new slots rather than sprinting. The visual difference from the baseline (no snapping) is subtle and requires a before/after comparison to read on a short clip."
 }
