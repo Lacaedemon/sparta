@@ -178,6 +178,16 @@ comments or docstrings.
   `demos/shots/` are still committed and tracked; don't add new `.import` files
   without intent.
 
+- **GUT's `assert_almost_eq` does not support `Vector2` operands — it silently
+  passes regardless of the actual difference.** The `diff > margin` check reduces
+  to `Vector2 > float`, which GDScript always evaluates as `false`. For an *exact*
+  Vector2 comparison use `assert_eq`; for approximate component checks, split into
+  `assert_almost_eq(v.x, …)` and `assert_almost_eq(v.y, …)`.
+
+- **When testing a normalized Vector2, always assert both `x` and `y`.** Checking
+  only one component misses bugs where the vector is `(1.0, epsilon)` instead of
+  `(1.0, 0.0)`. Always pair the two asserts.
+
 - **Movie Maker mode: drop `--headless`, use `xvfb-run` alone.** Running
   `godot --headless --write-movie` crashes with a null-texture error (dummy
   renderer). Use `xvfb-run -a godot --rendering-driver opengl3 --write-movie`
