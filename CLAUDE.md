@@ -155,6 +155,33 @@ belong in commit messages, PR descriptions, and `TODO`/`FIXME` comments (where a
 `TODO(#123):` link to outstanding work is useful) — not in ordinary explanatory
 comments or docstrings.
 
+### GDScript / Godot 4 quirks
+
+- **`about_to_popup` fires before the layout pass.** `popup.size` is `(0, 0)` on
+  the first call. Wrap any position assignment in `call_deferred()` so it runs
+  after Godot has sized the popup.
+
+- **`PopupMenu.set_item_metadata` takes an *index*, not an id.** Convert with
+  `popup.get_item_index(id)`. Using the raw id silently sets the wrong item's
+  metadata when ids and indexes differ.
+
+- **Disconnect `Settings.changed` in `_exit_tree()`.** Connections made in
+  `_ready()` persist after `reload_current_scene()` and create dangling callbacks.
+  Use a named method (not a lambda) so `Signal.disconnect(callable)` can find it.
+
+- **GDScript can't infer type from an untyped array access.** `var x := arr[i]`
+  fails with a parse error when `arr` has no type annotation. Use an explicit type:
+  `var x: MyType = arr[i]`.
+
+- **Godot generates `.import` sidecar files — gitignore them.** Add `*.import`
+  to `.gitignore` so Godot's per-resource import manifests never get tracked.
+
+- **Movie Maker mode: drop `--headless`, use `xvfb-run` alone.** Running
+  `godot --headless --write-movie` crashes with `ERROR: Parameter "t" is null`
+  (dummy texture renderer). Use `xvfb-run -a godot --write-movie` instead.
+  Pass the input script path via the `SPARTA_DEMO_INPUT` env var — CLI `--`
+  args are not forwarded to `DemoInputRecorder`.
+
 ## Code review handling policy
 When addressing review feedback (human or automated) on a PR, triage each finding:
 
