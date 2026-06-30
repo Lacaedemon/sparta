@@ -66,13 +66,13 @@ var formation_mode: int = FORMATION_NORMAL
 # change rides the replay command stream so playback reproduces it. Honoured and
 # clamped to [1, max_soldiers] in UnitFormation.frontage.
 var frontage_override: int = 0
-# Facing to wheel to once a move order's destination is reached, set by a
+# Facing to pivot to once a move order's destination is reached, set by a
 # drag-to-form-up order so the unit deploys facing the dragged line rather than its
 # march direction. Vector2.ZERO means "keep the march facing" (no deploy turn).
 var deploy_facing: Vector2 = Vector2.ZERO
 # A commanded heading held throughout a move order so the unit translates toward
 # its target WITHOUT turning to face travel -- the side-step maneuver (a small
-# lateral shift shuffles sideways instead of wheeling). The unit also moves at a
+# lateral shift shuffles sideways instead of pivoting). The unit also moves at a
 # measured walk while this is set, to keep its ranks orderly. Vector2.ZERO means
 # "face the travel direction" (the default turn-and-march), set per order in
 # Battle._apply_order_cmd via UnitManeuver.
@@ -120,16 +120,17 @@ const MELEE_INTERMIX_MAX: float = 0.85
 const WALK_SPEED_FRACTION: float = 0.5
 const JOG_SPEED_FRACTION: float = 0.75
 const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed charge
-# Orderly move orders wheel toward their travel direction at this angular rate
-# (rad/s) rather than snapping, so the ranks turn in good order. A half-circle
-# about-face takes ~PI / TURN_RATE seconds. Combat chases still snap (they pass
-# orderly = false to _move_to).
+# Orderly move orders pivot the block about its centre toward their travel direction at
+# this angular rate (rad/s) rather than snapping, so the ranks turn in good order. A
+# half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Combat chases still snap
+# (they pass orderly = false to _move_to).
 const TURN_RATE: float = PI
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
 # rotates toward the opposite heading at this rate (rad/s), taking ~0.5 s for a full 180°.
-# The grid does not pivot (that is wheeling/circumductio, a separate maneuver). The spring
-# restoring force in SoldierBodies.step is zeroed while the turn runs, so soldiers stay at
-# their grid positions despite the facing change — they rotate without drifting.
+# This is NOT a pivot of the block — neither a centre pivot (move orders) nor a flank wheel
+# (circumductio); each man simply turns where they stand. The spring restoring force in
+# SoldierBodies.step is zeroed while the turn runs, so soldiers stay at their grid positions
+# despite the facing change — they rotate without drifting.
 const CONVERSIO_TURN_RATE: float = PI * 2.0
 
 const MELEE_PRESS_FRACTION: float = 0.6
@@ -420,11 +421,11 @@ func _think(delta: float) -> void:
 			_reform_timer = maxf(0.0, _reform_timer - delta)
 			if _reform_timer > 0.0:
 				state = State.IDLE
-				# Use the hold to wheel in place toward the pending destination, so the
-				# ranks are already coming onto their heading before the first step. A
-				# side-step holds its facing (ordered_facing set), so it doesn't wheel.
+				# Use the hold to centre-pivot in place toward the pending destination, so
+				# the ranks are already coming onto their heading before the first step. A
+				# side-step holds its facing (ordered_facing set), so it doesn't pivot.
 				if ordered_facing == Vector2.ZERO:
-					_wheel_toward(_reform_target - position, delta)
+					_rotate_facing_toward(_reform_target - position, delta)
 				return
 			_commit_pending_reform()
 
@@ -437,7 +438,7 @@ func _think(delta: float) -> void:
 			# facing, which the sim should preserve (shield side, threat awareness, etc.).
 			_conversio_target = Vector2.ZERO
 		else:
-			_wheel_toward(_conversio_target, delta, CONVERSIO_TURN_RATE)
+			_rotate_facing_toward(_conversio_target, delta, CONVERSIO_TURN_RATE)
 			if facing.dot(_conversio_target) > 1.0 - 0.0001:
 				facing = _conversio_target
 				_conversio_target = Vector2.ZERO
@@ -530,8 +531,8 @@ func _think(delta: float) -> void:
 			return
 
 	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
-	# A player move order marches orderly -- it wheels gradually toward its heading
-	# and pivots before advancing; combat chases above stay snappy (orderly = false).
+	# A player move order marches orderly -- it centre-pivots gradually toward its heading
+	# before advancing; combat chases above stay snappy (orderly = false).
 	if has_move_target:
 		if position.distance_to(move_target) > 5.0:
 			_move_to(move_target, delta, true)
@@ -546,7 +547,7 @@ func _think(delta: float) -> void:
 			# The side-step maneuver is spent on arrival; the held facing stays (it is
 			# already the unit's facing), so just drop the maneuver flag.
 			ordered_facing = Vector2.ZERO
-			# A drag-to-form-up order parks a deploy facing here; wheel to it on
+			# A drag-to-form-up order parks a deploy facing here; pivot to it on
 			# arrival (the soldier bodies then ease into the rotated formation).
 			if deploy_facing != Vector2.ZERO:
 				facing = deploy_facing
@@ -615,13 +616,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		return
 	var dir: Vector2 = to.normalized()
 	# Facing. A side-step holds its commanded heading and shuffles sideways. An
-	# orderly move order wheels gradually toward its travel direction (the ranks turn
-	# in good order). A combat chase faces travel instantly (it must stay responsive).
+	# orderly move order centre-pivots gradually toward its travel direction (the ranks
+	# turn in good order). A combat chase faces travel instantly (it must stay responsive).
 	var maneuvering: bool = ordered_facing != Vector2.ZERO
 	if maneuvering:
 		_face_dir(ordered_facing)
 	elif orderly:
-		_wheel_toward(dir, delta)
+		_rotate_facing_toward(dir, delta)
 	else:
 		_face_dir(dir)
 	# Pace: a maneuver or walk-advance holds walk speed throughout. AUTO otherwise
@@ -637,8 +638,8 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	else:
 		pace_frac = WALK_SPEED_FRACTION
 	var effective_speed: float = move_speed * terrain_speed * pace_frac
-	# Turn-before-march: while wheeling an orderly move, scale the advance by how far
-	# the unit has come onto its heading. A sharp turn (e.g. an about-face to a rear
+	# Turn-before-march: while centre-pivoting an orderly move, scale the advance by how
+	# far the unit has come onto its heading. A sharp turn (e.g. a 180° pivot to a rear
 	# destination) nearly halts and pivots, then accelerates as it aligns -- so it
 	# never slides backwards/sideways at speed. Full speed once within ~60 deg of the
 	# heading; side-steps are exempt (they march at a fixed walk perpendicular).
@@ -673,10 +674,11 @@ func _face_dir(dir: Vector2) -> void:
 		facing = dir.normalized()
 
 
-## Rotate `facing` toward `target_dir` by at most `rate` * delta this frame —
-## the gradual wheel an orderly move order uses instead of snapping. Takes the
-## shortest arc, so an about-face turns through the nearer side.
-func _wheel_toward(target_dir: Vector2, delta: float, rate: float = TURN_RATE) -> void:
+## Rotate `facing` toward `target_dir` by at most `rate` * delta this frame — the
+## gradual turn primitive shared by the orderly move order's centre pivot and the
+## conversio about-face, instead of snapping. Takes the shortest arc, so a 180°
+## reversal turns through the nearer side.
+func _rotate_facing_toward(target_dir: Vector2, delta: float, rate: float = TURN_RATE) -> void:
 	if target_dir.length() < 0.01:
 		return
 	var cur: float = facing.angle()
@@ -976,7 +978,8 @@ func release_soldier_facing() -> void:
 
 ## Conversio (about-face, Vegetius III): every soldier turns in place to reverse 180° at
 ## CONVERSIO_TURN_RATE rad/s (~0.5 s for a full reversal). The grid keeps its footprint —
-## it does not pivot on a flank (that is wheeling / circumductio, a separate maneuver).
+## the block does not pivot, neither about its centre (a move order) nor on a flank
+## (a wheel / circumductio); each man just turns where they stand.
 ## unit.facing tracks the turn each tick so the sim always knows the soldiers' current
 ## facing (shield side, etc.). SoldierBodies.step zeroes the spring restoring force while
 ## it turns, so bodies stay at their grid positions instead of drifting to intermediate
