@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/conversio.json",
-  "caption": "Conversio (V key) rendered through the unified path: marks now draw directly from the simulated body positions (the cosmetic spring layer is gone), so the per-soldier about-face renders cleanly with no separate render-side state to keep in sync.",
-  "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
-  "width": 640
+  "skip": true,
+  "reason": "Pure refactor + new pure helper functions (formation grid-ops). slots() output is byte-identical and the new transpose/widen/narrow helpers have no caller yet, so there is no visual change to show. The maneuvers that consume these (quarter-turn #371, widen, move-order wiring) will carry their own demos."
 }
