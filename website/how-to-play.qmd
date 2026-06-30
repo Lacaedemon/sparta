@@ -133,10 +133,11 @@ without marching first, or to quickly reorient a reserve before it moves up.
 
 **Quarter-turn in place (<kbd>Q</kbd> / <kbd>E</kbd>).** Press <kbd>Q</kbd> to turn the
 selected unit a quarter-turn left, or <kbd>E</kbd> to turn it right: every soldier pivots
-90° where they stand, so the block's **frontage and depth swap** --- a wide, shallow line
-becomes a narrow, deep column facing the new direction (and back again on the opposite
-turn). Like the conversio, no one marches; it is a standing facing change. Use it to throw
-a fresh face toward a flank, or as the first step of marching off to the side in good order.
+90° where they stand. No one marches and the grid of men does not reorganize --- they
+simply face the new way, so the block now presents its **short edge** as its frontage
+(its frontage and depth swap relative to the facing, without anyone moving). Like the
+conversio, it is a standing facing change. Use it to throw a fresh face toward a flank, or
+as the first step of marching off to the side in good order.
 
 **Zoom in to see the soldiers.** From the usual overview each regiment is a block of
 small marks. Zoom in far enough and those marks become individual figures, and each
