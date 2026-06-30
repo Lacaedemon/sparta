@@ -40,11 +40,13 @@ func test_block_slots_spacing_scales_the_grid() -> void:
 	assert_almost_eq(slots[0].distance_to(slots[1]), 5.0, 0.001, "files are one spacing apart")
 
 
-func test_block_slots_partial_last_rank_stays_centred() -> void:
-	# 10 soldiers, 4 files -> ranks of 4, 4, 2. The short last rank is centred on its own
-	# count, so the whole block's centroid stays on the origin (no lean).
+func test_block_slots_partial_last_rank_stays_laterally_centred() -> void:
+	# 10 soldiers, 4 files -> ranks of 4, 4, 2. Each rank is centred on its own count, so the
+	# short last rank doesn't pull the block sideways: the X-centroid stays on the origin.
+	# (The Y-centroid sits slightly forward of centre because the rear rank is short -- that's
+	# a depth effect, not a lateral lean, so only X is asserted here.)
 	var c := _centroid(UnitFormation.block_slots(10, 4, 3.4))
-	assert_almost_eq(c.x, 0.0, 0.02, "a partial last rank doesn't pull the centroid off centre")
+	assert_almost_eq(c.x, 0.0, 0.02, "a partial last rank doesn't pull the block off centre laterally")
 
 
 func test_block_slots_empty_for_nonpositive_inputs() -> void:
