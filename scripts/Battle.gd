@@ -109,6 +109,12 @@ const CAMERA_SMOOTHING := 0.15
 var _tick: int = 0
 var _ended: bool = false
 
+# Drill / solo mode: deploy only the player army (team 0) and never auto-end on "no enemies",
+# so a unit can rehearse a maneuver with no combat. Set BEFORE the node enters the tree (the
+# demo recorder sets it from the input script's "drill" field) so _ready reads it. Off = the
+# normal two-army battle.
+var drill_mode: bool = false
+
 # Units deployed per side when this is a campaign-launched battle; used to
 # scale survivors back to campaign army strength when the battle ends.
 var _camp_atk_spawned: int = 0
@@ -168,8 +174,10 @@ func _ready() -> void:
 		_camp_dfn_spawned = dfn_count
 	# Player army (team 0) deploys along the top, facing down.
 	_spawn_line(0, Vector2.DOWN, 300, atk_count)
-	# Enemy army (team 1) deploys along the bottom, facing up.
-	_spawn_line(1, Vector2.UP, 700, dfn_count)
+	# Enemy army (team 1) deploys along the bottom, facing up — skipped in drill mode, where the
+	# player army rehearses alone.
+	if not drill_mode:
+		_spawn_line(1, Vector2.UP, 700, dfn_count)
 
 	# Drive the parallel individual-soldier layer once per tick. physics_frame
 	# fires AFTER every unit's _physics_process, so the seed reads settled
@@ -718,6 +726,9 @@ func _team_units(team: int) -> Array:
 
 
 func _check_victory() -> void:
+	# Drill mode has no opponent, so "no enemies" is never a win — the rehearsal runs on.
+	if drill_mode:
+		return
 	var p: int = _team_units(0).size()
 	var e: int = _team_units(1).size()
 	if p == 0 and e == 0:

@@ -20,6 +20,7 @@ var _battle: Node = null
 var _cam: Camera2D = null
 var _camera_kf: Dictionary = {}        # static framing {x,y,zoom}, or empty for the default camera
 var _by_tick: Dictionary = {}          # tick -> Array of expanded input events
+var _drill: bool = false               # solo/no-opponent rehearsal (input script "drill" field)
 
 
 func _ready() -> void:
@@ -32,7 +33,9 @@ func _ready() -> void:
 	if not cams.is_empty():
 		_camera_kf = cams[0]
 	_schedule(script.get("steps", []))
-	print("[demo-input] %d scripted input events over %d ticks" % [_count_events(), _max_tick()])
+	_drill = bool(script.get("drill", false))
+	print("[demo-input] %d scripted input events over %d ticks%s" % [
+		_count_events(), _max_tick(), " (drill mode)" if _drill else ""])
 	# Defer so this bootstrap finishes _ready before the battle is added; Movie Maker keeps
 	# recording across the change. The recorder stays the scene root (Battle is a child) so
 	# it persists to inject events every tick.
@@ -41,6 +44,7 @@ func _ready() -> void:
 
 func _start_battle() -> void:
 	_battle = load(BATTLE_SCENE).instantiate()
+	_battle.drill_mode = _drill   # set before add_child so Battle._ready reads it (no team-1 spawn)
 	add_child(_battle)
 	_sel = _battle.get_node("SelectionManager")
 	_cam = _battle.get_node("Camera2D")
