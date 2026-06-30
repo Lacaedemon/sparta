@@ -305,6 +305,15 @@ var _combat_intermixing: float = 0.0
 
 var _flock_color: Color = Color(0, 0, 0, 0)     # last body modulate applied to the marks
 var _block_extent: float = RADIUS       # block half-size; sizes the ring/halo/bars/shadow
+# Render fast-path bookkeeping. _render_dirty is raised by SoldierBodies.step whenever a
+# body actually moves (and by seed / about-face relabel); _process consumes it so the
+# MultiMeshes are only rewritten when something visible changed, not every idle frame.
+# The extent inputs (soldier count, frontage) are cached so the shadow/chrome recompute —
+# and its PackedVector2Array alloc — only runs when the formation footprint changes.
+var _render_dirty: bool = true
+var _render_last_facing: Vector2 = Vector2.DOWN
+var _render_extent_n: int = -1
+var _render_extent_frontage: int = -1
 var _mm_body: MultiMesh = null
 var _mm_outline: MultiMesh = null
 var _mmi_body: MultiMeshInstance2D = null
@@ -993,6 +1002,7 @@ func _reverse_soldier_bodies() -> void:
 	_sim_soldier_facing.reverse()
 	if _sim_steer.size() == _sim_soldier_pos.size():
 		_sim_steer.reverse()
+	_render_dirty = true   # positions were relabelled — redraw next frame
 
 
 ## The facing of body `index`; the unit heading for an out-of-range index (so
@@ -1539,12 +1549,32 @@ func _ellipse_polygon(segments: int = 18) -> PackedVector2Array:
 
 func _process(_delta: float) -> void:
 	_update_lod()
-	var new_extent: float = SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
-	if not is_equal_approx(new_extent, _block_extent):
-		_block_extent = new_extent
-		_update_shadow()
-		queue_redraw()
-	_refresh_flock_render()
+	if state == State.DEAD:
+		if _mm_body.instance_count != 0:
+			_mm_body.instance_count = 0
+			_mm_outline.instance_count = 0
+		return
+	# Block extent depends only on the soldier count and frontage, not body positions, so
+	# recompute (and reshape the shadow/chrome) only when one of those changes — not the
+	# fresh PackedVector2Array the old path allocated every frame.
+	var fr: int = UnitFormation.frontage(self)
+	if soldiers != _render_extent_n or fr != _render_extent_frontage:
+		_render_extent_n = soldiers
+		_render_extent_frontage = fr
+		var new_extent: float = SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
+		if not is_equal_approx(new_extent, _block_extent):
+			_block_extent = new_extent
+			_update_shadow()
+			queue_redraw()
+	# Marks mirror the simulated bodies. Refresh only when something visible changed: a body
+	# moved (SoldierBodies.step raised _render_dirty), the facing turned (mark rotation,
+	# figure mirror and conversio squash all key off it), the unit is fighting (front-rank
+	# churn / prone flips), or the instance count drifted from the body count.
+	if _render_dirty or facing != _render_last_facing or state == State.FIGHTING \
+			or _mm_body.instance_count != _sim_soldier_pos.size():
+		_render_dirty = false
+		_render_last_facing = facing
+		_refresh_flock_render()
 
 
 ## Swap the soldier meshes between the flat marks and the detailed figures based on

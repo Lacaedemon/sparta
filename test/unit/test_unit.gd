@@ -1920,6 +1920,42 @@ func test_cavalry_and_foot_get_distinct_figure_meshes() -> void:
 			"foot and cavalry figures are distinct meshes")
 
 
+# --- mark rendering from the sim bodies --------------------------------------
+
+func test_marks_track_the_simulated_body_count() -> void:
+	# The render reads _sim_soldier_pos directly: one mark instance per simulated body.
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u._refresh_flock_render()
+	assert_eq(u._mm_body.instance_count, u._sim_soldier_pos.size(),
+			"one body instance per simulated soldier")
+	assert_eq(u._mm_outline.instance_count, u._sim_soldier_pos.size(),
+			"one outline instance per simulated soldier")
+
+
+func test_dead_unit_clears_its_marks() -> void:
+	# A DEAD unit drops all its instances on the next process tick instead of drawing
+	# the last frame's marks (the _process DEAD guard).
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u._refresh_flock_render()
+	assert_gt(u._mm_body.instance_count, 0, "a living unit draws its marks")
+	u.state = Unit.State.DEAD
+	u._process(0.0)
+	assert_eq(u._mm_body.instance_count, 0, "a dead unit clears its body marks")
+	assert_eq(u._mm_outline.instance_count, 0, "a dead unit clears its outline marks")
+
+
+func test_render_dirty_clears_after_a_refreshing_process_tick() -> void:
+	# The at-rest fast-path: seeding raises _render_dirty so the first process tick draws,
+	# then clears it so an idle, unmoved, unturned block skips the MultiMesh rewrite.
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()           # SoldierBodies.seed raises _render_dirty
+	assert_true(u._render_dirty, "a fresh seed marks the render dirty")
+	u._process(0.0)
+	assert_false(u._render_dirty, "a process tick consumes the dirty flag")
+
+
 func _archer_unit() -> Unit:
 	var u: Unit = Unit.new()
 	u.is_ranged = true   # set before _ready() so the figure is built as an archer
