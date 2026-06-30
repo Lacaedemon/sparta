@@ -59,7 +59,8 @@ func test_clamps_before_first_and_after_last() -> void:
 
 
 func test_is_sorted_accepts_a_non_decreasing_track() -> void:
-	var track: Array = [_kf(0, 0.0, 0.0, 1.0), _kf(30, 0.0, 0.0, 1.0), _kf(90, 0.0, 0.0, 1.0)]
+	# Includes a tie (30, 30) so the "non-decreasing, not strictly increasing" case is covered.
+	var track: Array = [_kf(0, 0.0, 0.0, 1.0), _kf(30, 0.0, 0.0, 1.0), _kf(30, 0.0, 0.0, 1.0), _kf(90, 0.0, 0.0, 1.0)]
 	assert_true(CameraKeyframes.is_sorted(track), "non-decreasing ticks (including a tie) are sorted")
 
 
