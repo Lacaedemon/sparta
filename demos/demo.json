@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Internal foundation: adds a per-soldier facing layer (_sim_soldier_facing) to the soldier-body sim, index-aligned with the bodies and synced to the unit heading by default. Nothing reads it for rendering or gameplay yet -- it's the data layer the per-soldier drill maneuvers (about-face, quarter-turn) will consume -- so a recorded battle looks identical. Covered by test_soldier_facing.gd."
+  "input": "demos/inputs/conversio.json",
+  "caption": "Conversio (V key): pointer marks (zoomed out) rotate 180° in place showing each soldier's facing; zoomed in, the figure silhouettes squash edge-on mid-turn — the true per-soldier about-face.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
 }

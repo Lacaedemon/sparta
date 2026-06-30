@@ -119,3 +119,49 @@ func test_accessor_and_setters_guard_bad_input() -> void:
 	assert_false(u._per_soldier_facing, "a zero direction is a no-op (no ownership taken)")
 	u.set_soldier_facing(0, Vector2.ZERO)
 	assert_false(u._per_soldier_facing, "a zero per-body direction is a no-op too")
+
+
+# --- Conversio (about-face, #370) -------------------------------------------
+
+func test_conversio_sets_target_and_starts_wheeling() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.conversio()
+	# The target is set; the wheel starts on the first _think() tick, not immediately.
+	assert_true(u._conversio_target.is_equal_approx(Vector2.UP),
+		"conversio target is the reversed heading")
+	assert_true(u.facing.is_equal_approx(Vector2.DOWN),
+		"unit.facing has not moved yet (wheel starts on the first tick)")
+	# Per-soldier ownership is not used — all soldiers rotate together via unit.facing,
+	# which SoldierBodies.step auto-syncs each tick when _per_soldier_facing is false.
+	assert_false(u._per_soldier_facing,
+		"conversio does not take per-soldier ownership (uniform rotation tracks unit.facing)")
+
+
+func test_conversio_blocked_while_fighting() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.conversio()
+	assert_true(u._conversio_target.is_zero_approx(),
+		"no conversio target set when blocked by combat")
+
+
+func test_conversio_blocked_before_bodies_are_seeded() -> void:
+	var u := _make_unit()
+	# no seed_sim_soldiers() call
+	u.conversio()
+	assert_true(u._conversio_target.is_zero_approx(),
+		"no conversio target when no bodies exist")
+
+
+func test_conversio_reverses_any_starting_heading() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.facing = Vector2.RIGHT
+	u.step_sim_soldiers(0.1)   # sync bodies to the new heading
+	u.conversio()
+	assert_true(u._conversio_target.is_equal_approx(Vector2.LEFT),
+		"conversio target is LEFT when starting from RIGHT")
+	assert_true(u.facing.is_equal_approx(Vector2.RIGHT),
+		"unit.facing is unchanged at call time; the wheel starts on the next tick")

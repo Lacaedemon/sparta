@@ -127,6 +127,11 @@ const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed 
 # about-face takes ~PI / TURN_RATE seconds. Combat chases still snap (they pass
 # orderly = false to _move_to).
 const TURN_RATE: float = PI
+# Conversio (drill about-face): unit.facing wheels toward the reversed heading at this rate
+# (rad/s), taking ~0.5 s for a full 180°. The spring restoring force in SoldierBodies.step
+# is zeroed during the wheel, so soldiers stay at their grid positions despite the facing
+# change — they rotate without drifting.
+const CONVERSIO_TURN_RATE: float = PI * 2.0
 
 const MELEE_PRESS_FRACTION: float = 0.6
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
@@ -435,6 +440,22 @@ func _think(delta: float) -> void:
 				return
 			_commit_pending_reform()
 
+	# Conversio (in-place about-face): pivot soldiers 180° without advancing.
+	# Cancelled by engaging in combat or receiving a move order; completes when
+	# unit.facing arrives at the reversed heading.
+	if _conversio_target != Vector2.ZERO:
+		if state == State.FIGHTING or has_move_target:
+			# Interrupt: unit.facing stays wherever it got to — that is the soldiers' current
+			# facing, which the sim should preserve (shield side, threat awareness, etc.).
+			_conversio_target = Vector2.ZERO
+		else:
+			_wheel_toward(_conversio_target, delta, CONVERSIO_TURN_RATE)
+			if facing.dot(_conversio_target) > 1.0 - 0.0001:
+				facing = _conversio_target
+				_conversio_target = Vector2.ZERO
+			state = State.IDLE
+			return
+
 	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit is
 	# within RANGED_RANGE of this unit (i.e. could be shooting at us this frame).
 	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
@@ -663,15 +684,15 @@ func _face_dir(dir: Vector2) -> void:
 		facing = dir.normalized()
 
 
-## Rotate `facing` toward `target_dir` by at most TURN_RATE * delta this frame --
+## Rotate `facing` toward `target_dir` by at most `rate` * delta this frame —
 ## the gradual wheel an orderly move order uses instead of snapping. Takes the
 ## shortest arc, so an about-face turns through the nearer side.
-func _wheel_toward(target_dir: Vector2, delta: float) -> void:
+func _wheel_toward(target_dir: Vector2, delta: float, rate: float = TURN_RATE) -> void:
 	if target_dir.length() < 0.01:
 		return
 	var cur: float = facing.angle()
 	var diff: float = angle_difference(cur, target_dir.angle())
-	var step: float = clampf(diff, -TURN_RATE * delta, TURN_RATE * delta)
+	var step: float = clampf(diff, -rate * delta, rate * delta)
 	facing = Vector2.from_angle(cur + step)
 
 
@@ -901,6 +922,11 @@ var _sim_soldier_facing: PackedVector2Array = PackedVector2Array()
 # While true, _sim_soldier_facing is owned by a maneuver and NOT re-synced to the
 # unit heading each tick. False = bodies track unit.facing (the default).
 var _per_soldier_facing: bool = false
+# Non-zero while a conversio wheel is in progress: the target (reversed) facing direction.
+# unit.facing rotates toward this each tick; SoldierBodies.step zeroes the spring restoring
+# force during the wheel so bodies don't drift to intermediate slot positions. Cleared on
+# arrival or when interrupted by combat, a move order, or routing.
+var _conversio_target: Vector2 = Vector2.ZERO
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -957,6 +983,19 @@ func release_soldier_facing() -> void:
 	_per_soldier_facing = false
 	if _sim_soldier_facing.size() > 0:
 		_sim_soldier_facing.fill(facing)
+
+
+## Conversio (about-face, Vegetius III): the unit wheels 180° in place at
+## CONVERSIO_TURN_RATE rad/s (~0.5 s for a full reversal). unit.facing tracks the wheel
+## each tick so the sim always knows the soldiers' current facing (shield side, etc.).
+## SoldierBodies.step zeroes the spring restoring force while the wheel runs, so bodies
+## stay at their grid positions instead of drifting to intermediate slot targets.
+## If interrupted by combat or a move order, unit.facing stays at its current angle —
+## the partial rotation is preserved. Blocked while already fighting.
+func conversio() -> void:
+	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
+		return
+	_conversio_target = Vector2(-facing.x, -facing.y)
 
 
 ## The facing of body `index`; the unit heading for an out-of-range index (so
@@ -1301,6 +1340,7 @@ func _rout() -> void:
 	target_enemy = null
 	has_move_target = false
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
+	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
@@ -1525,7 +1565,10 @@ func _setup_flock_renderer() -> void:
 
 ## Flat geometric mark meshes (zoomed-out LOD). Per-type shapes so soldiers read
 ## differently at a glance: spearmen = tall thin rectangle (shaft), archers =
-## diamond (arrow), cavalry/infantry = disc. The outline is a slightly larger copy.
+## diamond (arrow), cavalry/infantry = directional pointer (semicircle + triangle tip).
+## The outline is a slightly larger copy. All mark-LOD instances are rotated per-instance
+## in _refresh_flock_render() by each soldier's facing angle — directional shapes read as
+## facing arrows; symmetric shapes (rect, diamond) also benefit from rotation alignment.
 func _build_mark_meshes(mark_r: float) -> void:
 	if anti_cavalry:
 		_mark_body_mesh    = UnitMeshes.rect_mesh(mark_r * 0.65, mark_r * 1.7)
@@ -1534,8 +1577,8 @@ func _build_mark_meshes(mark_r: float) -> void:
 		_mark_body_mesh    = UnitMeshes.diamond_mesh(mark_r * 1.15)
 		_mark_outline_mesh = UnitMeshes.diamond_mesh(mark_r * 1.15 + 0.6)
 	else:
-		_mark_body_mesh    = UnitMeshes.disc_mesh(mark_r)
-		_mark_outline_mesh = UnitMeshes.disc_mesh(mark_r + 0.6)
+		_mark_body_mesh    = UnitMeshes.pointer_mesh(mark_r)
+		_mark_outline_mesh = UnitMeshes.pointer_mesh(mark_r + 0.6)
 
 
 ## Detailed figure-silhouette meshes (zoomed-in LOD): a standing soldier for foot,
@@ -1636,7 +1679,19 @@ func _refresh_flock_render() -> void:
 			else:
 				# Mark LOD: squash to a horizontal sliver (wide x, flat y).
 				t = Transform2D(Vector2(1.3, 0.0), Vector2(0.0, 0.3), _soldier_pos[i])
+		elif _detailed_lod and _conversio_target != Vector2.ZERO:
+			# Figure LOD during conversio: squash the silhouette horizontally as
+			# it rotates (full→edge-on→full), giving a visible spin animation.
+			var progress: float = (facing.dot(-_conversio_target) + 1.0) * 0.5
+			var squash: float = abs(cos(progress * PI))
+			t = Transform2D(Vector2(squash, 0.0), Vector2(0.0, 1.0), _soldier_pos[i])
+		elif not _detailed_lod:
+			# Mark LOD: rotate every mark shape by the soldier's facing angle so all
+			# mark types (pointer, rect, diamond) read as directional indicators.
+			var sf: Vector2 = _sim_soldier_facing[i] if i < _sim_soldier_facing.size() else facing
+			t = Transform2D(sf.angle(), _soldier_pos[i])
 		else:
+			# Figure LOD, normal: mesh swap handles left/right; no per-instance rotation.
 			t = Transform2D(0.0, _soldier_pos[i])
 		_mm_body.set_instance_transform_2d(i, t)
 		_mm_outline.set_instance_transform_2d(i, t)
