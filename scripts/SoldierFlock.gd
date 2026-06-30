@@ -296,6 +296,12 @@ static func update(unit: Unit, delta: float) -> void:
 		# already sits from that axis, so the center clears and the flanks fan out.
 		if relief_spread > 0.0:
 			target += relief_spread_offset(unit._soldier_pos[i], relief_perp, relief_spread)
+		# During a conversio the slot targets rotate with unit.facing, which drags
+		# marks toward intermediate positions and back. Zero the restoring force by
+		# pointing the target at the mark's current position; damping still kills
+		# any existing velocity, so marks settle in place.
+		if unit._conversio_target != Vector2.ZERO:
+			target = unit._soldier_pos[i]
 		var neighbors := neighbors_of(unit, grid, i, sep_dist)
 		var res := step(unit._soldier_pos[i], unit._soldier_vel[i], target, neighbors, sep_dist, dt)
 		unit._soldier_pos[i] = res[0]
@@ -319,7 +325,7 @@ static func update(unit: Unit, delta: float) -> void:
 	# block in a relief spread likewise stays active: settling onto plain slot positions would
 	# immediately snap marks back out (the spread-modified targets fire again next frame),
 	# producing a repeating snap-then-spring flicker.
-	if still and not fighting and relief_spread <= 0.0:
+	if still and not fighting and relief_spread <= 0.0 and unit._conversio_target == Vector2.ZERO:
 		# Snap exactly onto formation and sleep until the unit next moves or loses men. Use the
 		# same slot-rotation condition as the main loop (minus fighting, already false here) so
 		# the settled mark positions stay consistent.
