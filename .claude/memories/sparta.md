@@ -125,3 +125,24 @@ optional `camera` track) and verifying it locally:
 Verify timing on paper first (unit speeds in `demos/README.md`), then confirm by
 recording + extracting a few frames — don't trust a CI run to catch a mistimed
 scenario.
+
+## Release workflow — NSIS `OutFile` resolves to the script's dir, not cwd
+
+The `Release builds` workflow (`.github/workflows/release.yml`) only runs on a
+version tag (`v*`), so its tag-only steps aren't exercised by ordinary CI — a bug
+there can ship and only surface when you cut a release.
+
+- **A relative `OutFile` in `tools/installer/sparta.nsi` lands in the script's
+  directory (`tools/installer/`), not the workflow's working dir.** That stranded
+  the installer and broke a `mv … build/` on the first tag to run the installer
+  step (it was added after v0.1.0). Fix pattern: make the path an overridable
+  define (`!ifndef OUTFILE` / `!define OUTFILE …` / `!endif`) and pass an absolute
+  `-DOUTFILE="$(pwd)/build/…"` from the workflow, matching how `EXE_PATH` is
+  already absolute — then makensis writes straight into `build/`.
+- **The release workflow runs from the *tagged* tree.** Fixing `main` is not
+  enough: re-point the tag at the fixed commit (`git tag -f -a v0.2.0 <sha>` +
+  `git push origin v0.2.0 --force`) to re-trigger. Reusing a tag is fine when no
+  release ever published under it.
+- **A backgrounded `gh run watch … ; echo EXIT $?` exits 0 even when the run
+  failed** — the wrapper's exit code is the `echo`'s, not the run's. Read the run
+  `conclusion` explicitly afterward; don't trust the task's exit code.
