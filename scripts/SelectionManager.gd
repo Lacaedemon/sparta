@@ -539,11 +539,11 @@ func _form_up_facing(a: Vector2, b: Vector2) -> float:
 	return (b - a).angle() - PI * 0.5
 
 
-## Merge the selected friendly regiments into the first-selected one. Encoded
-## as an order whose target is the primary uid — which IS in `units`, so Battle
-## tells it apart from a relief (whose target is a friendly outside the selection).
 ## Conversio (about-face): each soldier on every selected friendly unit reverses 180°
 ## in place. Blocked during replay playback and while units are engaged in combat.
+## Does not enter the replay stream — conversio affects visual/drill state only (the
+## per-soldier facing layer has no effect on combat, movement, or morale outcomes),
+## so battles reproduce correctly without recording it.
 func _issue_conversio() -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
@@ -556,6 +556,9 @@ func _issue_conversio() -> void:
 		Sfx.play(&"order")
 
 
+## Merge the selected friendly regiments into the first-selected one. Encoded
+## as an order whose target is the primary uid — which IS in `units`, so Battle
+## tells it apart from a relief (whose target is a friendly outside the selection).
 func _issue_merge() -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return

@@ -1336,6 +1336,9 @@ func _rout() -> void:
 	target_enemy = null
 	has_move_target = false
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
+	if _conversio_target != Vector2.ZERO:
+		_conversio_target = Vector2.ZERO
+		release_soldier_facing()
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
