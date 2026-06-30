@@ -22,9 +22,10 @@ const SIDESTEP_LATERAL_RATIO := 2.0
 ## side-step (hold facing, translate) rather than a turn-and-march. `facing` is
 ## the unit's current heading; `move_vec` is destination minus current position.
 static func is_sidestep(facing: Vector2, move_vec: Vector2) -> bool:
-	if facing.length() < 0.01 or move_vec.length() < 0.01:
+	var dist := move_vec.length()
+	if facing.length() < 0.01 or dist < 0.01:
 		return false
-	if move_vec.length() > SIDESTEP_MAX_DISTANCE:
+	if dist > SIDESTEP_MAX_DISTANCE:
 		return false
 	var fwd := facing.normalized()
 	var perp := Vector2(-fwd.y, fwd.x)

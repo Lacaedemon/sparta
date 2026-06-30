@@ -794,6 +794,21 @@ func test_unit_advances_to_next_waypoint_on_arrival() -> void:
 	assert_true(u.has_move_target, "the unit keeps marching toward the new leg")
 
 
+func test_advancing_to_next_waypoint_clears_a_sidestep_hold() -> void:
+	# A side-step hold is scoped to its own leg: once the unit reaches that leg and
+	# pops the next waypoint, the hold drops so the following leg marches normally
+	# (turns to face travel) instead of side-stepping the whole way.
+	var u := _make_unit()
+	u.position = Vector2(100, 100)
+	u.move_target = Vector2(100, 100)   # arrived at the side-step leg
+	u.has_move_target = true
+	u.ordered_facing = Vector2.RIGHT    # leg 1 was a side-step
+	u.waypoints.append(Vector2(300, 100))
+	u._think(0.016)
+	assert_eq(u.move_target, Vector2(300, 100), "arriving pops the next leg")
+	assert_eq(u.ordered_facing, Vector2.ZERO, "...and drops the side-step hold for that leg")
+
+
 func test_unit_goes_idle_after_draining_waypoints() -> void:
 	var u := _make_unit()
 	u.position = Vector2(100, 100)

@@ -514,6 +514,9 @@ func _think(delta: float) -> void:
 		if position.distance_to(move_target) > 5.0:
 			_move_to(move_target, delta)
 		elif not waypoints.is_empty():
+			# Each queued leg marches on its own terms: drop any side-step hold from
+			# the leg just finished so the next leg turns to face its own travel.
+			ordered_facing = Vector2.ZERO
 			move_target = waypoints.pop_front()   # advance along the queued route
 		else:
 			has_move_target = false
