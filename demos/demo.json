@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/quarter-turn.json",
-  "caption": "Quarter-turn (drill mode): the infantry block pivots 90° right (E) — every soldier turns where they stand, nobody marches, the grid does not reorganize — holds the new orientation, then pivots back (Q). Shown solo with no enemy via the new drill mode.",
-  "fixed_fps": 30,
-  "max_frames": 150,
-  "fps": 12,
-  "width": 640
+  "skip": true,
+  "reason": "Menu checkbox disable-state change (HUD.gd _sync_setting_toggles) — a recorded battle clip can't usefully show a disabled ☰ Menu checkbox. See the PR description for a screenshot."
 }
