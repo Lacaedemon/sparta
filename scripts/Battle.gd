@@ -163,6 +163,11 @@ func _ready() -> void:
 		else:
 			PathField.active.block_rect(patch["rect"])
 
+	# Drill mode is a no-opponent rehearsal; a campaign clash always has a defender. They are
+	# mutually exclusive — assert it so a future path that ends a drill battle can't silently
+	# report campaign survivors against defenders that were never spawned.
+	assert(not (drill_mode and CampaignBattle.active),
+			"drill mode is incompatible with a campaign battle")
 	# Army sizes: a campaign-launched clash deploys units scaled to the two
 	# clashing armies' strengths; a standalone battle uses the default 5-unit line.
 	var atk_count := 5
