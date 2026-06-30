@@ -97,9 +97,9 @@ order issuing. 5. Melee combat with **flanking** (×1.5 side / ×2 rear). 6. **M
 
 ## Verification (do this FIRST in the new session)
 Godot was **not installed** in the authoring environment, so only static checks passed
-(consistent tab indentation, references resolve, Godot 4.6 API reviewed). Live run still needed.
+(consistent tab indentation, references resolve, Godot 4.7 API reviewed). Live run still needed.
 
-1. Install Godot 4.6.x Standard: <https://godotengine.org/download/windows/>
+1. Install Godot 4.7.x Standard: <https://godotengine.org/download/windows/>
    (or headless check: `godot --headless --path . --quit` to catch parse/load errors).
 2. Open the folder in Godot → **F5**. Expect two armies (blue top, red bottom) on a green field.
 3. Left-click a unit → info panel fills. Drag a box → multi-select friendlies.

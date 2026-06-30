@@ -72,12 +72,8 @@ func test_bindings_round_trip_through_disk() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
-# A spy subclass of Settings that counts _save() calls instead of writing to disk.
-# Used in place of GUT's partial_double(): GUT's generated double of SettingsScript
-# fails to parse under Godot 4.7 (its void-method wrappers emit a `return` statement,
-# which 4.7's stricter return-type checking now rejects -- see
-# https://github.com/bitwes/Gut/issues/816). A plain GDScript subclass sidesteps the
-# doubler entirely; _save() is still called virtually through the base class's setters.
+# Spy that counts _save() calls; partial_double() generates an invalid double of
+# SettingsScript under Godot 4.7 (GUT's stub codegen breaks on void-returning methods).
 class _SaveCountingSettings:
 	extends SettingsScript
 	var save_calls := 0
