@@ -15,7 +15,7 @@ const UnitRef = preload("res://scripts/Unit.gd")
 enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH,
 		MENU_FORMUP_CYCLE_DEPTH, MENU_FORMUP_CYCLE_WIDTH,
-		MENU_REFORM_BEFORE_MOVE, MENU_KEYBINDINGS }
+		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_KEYBINDINGS }
 
 var _hint: Label
 var _info: Label
@@ -144,6 +144,7 @@ func _ready() -> void:
 	popup.add_check_item("Equal width (frontage)", MENU_FORMUP_CYCLE_WIDTH)
 	popup.add_separator()
 	popup.add_check_item("Reform before move", MENU_REFORM_BEFORE_MOVE)
+	popup.add_check_item("Walk advance (no jog/sprint)", MENU_WALK_ADVANCE)
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	_sync_setting_toggles()
 	popup.id_pressed.connect(_on_menu_id)
@@ -290,6 +291,8 @@ func _sync_setting_toggles() -> void:
 			Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_WIDTH))
 	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
 			Settings.reform_before_move)
+	popup.set_item_checked(popup.get_item_index(MENU_WALK_ADVANCE),
+			Settings.walk_advance)
 	_ctrl_bar_sync_settings()
 
 
@@ -331,6 +334,8 @@ func _on_menu_id(id: int) -> void:
 			_toggle_form_up_cycle(Settings.FORM_UP_DIST_EQUAL_WIDTH)
 		MENU_REFORM_BEFORE_MOVE:
 			Settings.reform_before_move = not Settings.reform_before_move
+		MENU_WALK_ADVANCE:
+			Settings.walk_advance = not Settings.walk_advance
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 

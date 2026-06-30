@@ -181,6 +181,13 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	# physics_frame lives on the SceneTree, which outlives this node across a
+	# reload_current_scene(). Without disconnecting, this freed-but-not-yet-gone
+	# Battle gets one more _on_soldier_tick after it leaves the tree, where
+	# get_tree() is null — "Invalid access to property 'paused' on a null instance".
+	if get_tree().physics_frame.is_connected(_on_soldier_tick):
+		get_tree().physics_frame.disconnect(_on_soldier_tick)
+
 	# Don't let this battle's pathfinding grid outlive it (e.g. across a scene
 	# reload or a future return-to-map flow). The next Battle._ready() republishes.
 	PathField.active = null
@@ -293,7 +300,8 @@ func _physics_process(_delta: float) -> void:
 					int(o.get("formation", UnitRef.FORMATION_NORMAL)),
 					int(o.get("frontage", 0)),
 					float(o.get("face", INF)),
-					int(o.get("group_attack", GroupAttackMode.FOCUSED)))
+					int(o.get("group_attack", GroupAttackMode.FOCUSED)),
+					bool(o.get("walk_advance", false)))
 			_apply_order_cmd(o)
 		_pending_orders.clear()
 		# Capture the camera each tick so a live recording reproduces what the player saw.
@@ -362,6 +370,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"target": target_uid,
 		"mode": order_mode,
 		"reform": Settings.reform_before_move,
+		"walk_advance": Settings.walk_advance,
 		"group_attack": group_attack,
 	}
 	_pending_orders.append(cmd)
@@ -433,6 +442,7 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"frontage": frontage,
 		"face": face,
 		"reform": Settings.reform_before_move,
+		"walk_advance": Settings.walk_advance,
 	}
 	_pending_orders.append(cmd)
 	_apply_order_cmd(cmd)
@@ -518,6 +528,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 		if not append:
 			u.waypoints.clear()
 			u.order_mode = mode
+			u.walk_advance = bool(cmd.get("walk_advance", false))
 			u.support_target = null
 			# Any fresh order drops a deploy facing a prior form-up parked; the form-up
 			# move branch below re-sets it. So attack / support / relief / plain move all
