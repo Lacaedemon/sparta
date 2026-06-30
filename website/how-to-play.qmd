@@ -118,7 +118,7 @@ the last fraction of a second.)
     Your browser can't play this clip --- see the
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
-  <figcaption>About-face: ordered to a point behind it, the regiment pivots in good order to face the destination, then marches off.</figcaption>
+  <figcaption>Centre pivot (180&deg;): ordered to a point behind it, the regiment pivots in good order to face the destination, then marches off.</figcaption>
 </figure>
 ```
 
