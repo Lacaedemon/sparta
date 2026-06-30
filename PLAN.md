@@ -10,7 +10,7 @@ tactical battles**. Built solo by a developer **new to gamedev**, so the strateg
 then grow outward.
 
 ## Locked decisions
-- **Engine:** Godot **4.6.x Standard build** (GDScript, *not* the C#/.NET build).
+- **Engine:** Godot **4.7.x Standard build** (GDScript, *not* the C#/.NET build).
 - **Battles:** 2D top-down sprite tokens (not 3D).
 - **Art:** **CC0 only** — Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
   - ⚠️ **Not** commercial-game mod assets — they are copyrighted, not public domain.
@@ -97,9 +97,9 @@ order issuing. 5. Melee combat with **flanking** (×1.5 side / ×2 rear). 6. **M
 
 ## Verification (do this FIRST in the new session)
 Godot was **not installed** in the authoring environment, so only static checks passed
-(consistent tab indentation, references resolve, Godot 4.6 API reviewed). Live run still needed.
+(consistent tab indentation, references resolve, Godot 4.7 API reviewed). Live run still needed.
 
-1. Install Godot 4.6.x Standard: <https://godotengine.org/download/windows/>
+1. Install Godot 4.7.x Standard: <https://godotengine.org/download/windows/>
    (or headless check: `godot --headless --path . --quit` to catch parse/load errors).
 2. Open the folder in Godot → **F5**. Expect two armies (blue top, red bottom) on a green field.
 3. Left-click a unit → info panel fills. Drag a box → multi-select friendlies.
