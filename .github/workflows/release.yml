@@ -99,11 +99,14 @@ jobs:
           # directory error. Version tags (v0.1.0) contain no slashes, so this
           # is a no-op for real releases.
           V="${GITHUB_REF_NAME//\//-}"
+          # Pass an ABSOLUTE OUTFILE so NSIS writes the installer straight into build/ — a
+          # relative OutFile resolves against the .nsi's own dir (tools/installer/), not here,
+          # which is why the old `mv` from repo root couldn't find it (#404).
           makensis \
             -DVERSION="${V}" \
             -DEXE_PATH="$(pwd)/build/windows/sparta.exe" \
+            -DOUTFILE="$(pwd)/build/sparta-${V}-windows-setup.exe" \
             tools/installer/sparta.nsi
-          mv "sparta-${V}-windows-setup.exe" build/
 
       - name: Package
         run: |

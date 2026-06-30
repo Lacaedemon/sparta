@@ -3,7 +3,7 @@
 ;
 ; Build with:
 ;   makensis -DVERSION=0.1.0 -DEXE_PATH=sparta.exe sparta.nsi
-; or let the release workflow set VERSION and EXE_PATH.
+; or let the release workflow set VERSION, EXE_PATH and OUTFILE.
 
 !define APPNAME    "Sparta"
 !define PUBLISHER  "Lacaedemon"
@@ -11,8 +11,15 @@
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 
 ; --- Metadata ---
+; OUTFILE is overridable so the workflow can pass an ABSOLUTE path. makensis resolves a
+; relative OutFile against the SCRIPT's directory (tools/installer/), not the caller's cwd,
+; so a relative default would land the installer there and break the workflow's repo-root
+; pickup. Default keeps a standalone `makensis sparta.nsi` writing next to the script.
+!ifndef OUTFILE
+  !define OUTFILE "sparta-${VERSION}-windows-setup.exe"
+!endif
 Name              "${APPNAME} ${VERSION}"
-OutFile           "sparta-${VERSION}-windows-setup.exe"
+OutFile           "${OUTFILE}"
 InstallDir        "$PROGRAMFILES64\${APPNAME}"
 InstallDirRegKey  HKLM "${REGKEY}" "InstallDir"
 RequestExecutionLevel admin
