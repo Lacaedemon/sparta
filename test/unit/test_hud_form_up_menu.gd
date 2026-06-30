@@ -95,7 +95,7 @@ func test_reform_menu_toggle_flips_setting() -> void:
 			"toggling again turns it back on")
 
 
-# --- form-up cycle checkboxes: the default mode can't be excluded (#345) -----
+# --- form-up cycle checkboxes: the default mode can't be excluded -----------
 # A player could uncheck the cycle entry for the battle DEFAULT, leaving it unreachable by
 # the Y-key cycle with no feedback. Disable that one checkbox instead of allowing the
 # inconsistency and warning after the fact.

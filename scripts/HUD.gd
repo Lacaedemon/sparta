@@ -306,8 +306,8 @@ func _sync_setting_toggles() -> void:
 			Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_WIDTH))
 	# Disable the cycle checkbox for whichever mode is the current battle default: unchecking
 	# it would leave the default unreachable by the Y-key cycle, with no feedback that it
-	# happened (#345). Disabling it (rather than warning after the fact) makes the
-	# inconsistency impossible instead of just visible.
+	# happened. Disabling it (rather than warning after the fact) makes the inconsistency
+	# impossible instead of just visible.
 	popup.set_item_disabled(popup.get_item_index(MENU_FORMUP_CYCLE_DEPTH),
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH)
 	popup.set_item_disabled(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
