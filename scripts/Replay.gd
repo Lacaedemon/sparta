@@ -251,7 +251,7 @@ func replays_dir() -> String:
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		order_mode: int = 0, formation: int = 0, frontage: int = 0, face: float = INF,
-		walk_advance: bool = false, group_attack: int = 0) -> void:
+		group_attack: int = 0, walk_advance: bool = false) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
