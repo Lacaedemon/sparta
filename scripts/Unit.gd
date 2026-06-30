@@ -1566,8 +1566,9 @@ func _setup_flock_renderer() -> void:
 ## Flat geometric mark meshes (zoomed-out LOD). Per-type shapes so soldiers read
 ## differently at a glance: spearmen = tall thin rectangle (shaft), archers =
 ## diamond (arrow), cavalry/infantry = directional pointer (semicircle + triangle tip).
-## The outline is a slightly larger copy. Pointer marks are rotated per-instance in
-## _refresh_flock_render() to show each soldier's current facing direction.
+## The outline is a slightly larger copy. All mark-LOD instances are rotated per-instance
+## in _refresh_flock_render() by each soldier's facing angle — directional shapes read as
+## facing arrows; symmetric shapes (rect, diamond) also benefit from rotation alignment.
 func _build_mark_meshes(mark_r: float) -> void:
 	if anti_cavalry:
 		_mark_body_mesh    = UnitMeshes.rect_mesh(mark_r * 0.65, mark_r * 1.7)
@@ -1685,7 +1686,8 @@ func _refresh_flock_render() -> void:
 			var squash: float = abs(cos(progress * PI))
 			t = Transform2D(Vector2(squash, 0.0), Vector2(0.0, 1.0), _soldier_pos[i])
 		elif not _detailed_lod:
-			# Mark LOD: rotate the pointer mesh to show each soldier's current facing.
+			# Mark LOD: rotate every mark shape by the soldier's facing angle so all
+			# mark types (pointer, rect, diamond) read as directional indicators.
 			var sf: Vector2 = _sim_soldier_facing[i] if i < _sim_soldier_facing.size() else facing
 			t = Transform2D(sf.angle(), _soldier_pos[i])
 		else:
