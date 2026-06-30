@@ -513,3 +513,50 @@ func test_form_up_pre_faces_march_direction() -> void:
 	assert_almost_eq(u.facing.x, 1.0, 0.01,
 		"form-up pre-faces toward the march destination")
 	assert_almost_eq(u.facing.y, 0.0, 0.01, "facing is normalized")
+
+
+# --- Side-step maneuver (the small-lateral-shift classification) --------------
+
+func test_small_lateral_move_holds_facing_as_a_sidestep() -> void:
+	# A unit facing +x ordered a short shift along +/-y should side-step: it keeps
+	# its facing and the move branch records the held heading in ordered_facing.
+	Settings.reform_before_move = false
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.RIGHT
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 20.0, "target": -1})
+	assert_eq(u.ordered_facing, Vector2.RIGHT, "a small lateral move holds the current facing")
+	assert_true(u.has_move_target, "and still marches toward the destination")
+
+
+func test_forward_move_does_not_set_a_sidestep_facing() -> void:
+	Settings.reform_before_move = false
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.RIGHT
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1})
+	assert_eq(u.ordered_facing, Vector2.ZERO,
+		"marching straight ahead turns to face travel (no held facing)")
+
+
+func test_a_fresh_order_clears_a_prior_sidestep_hold() -> void:
+	Settings.reform_before_move = false
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.RIGHT
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 20.0, "target": -1})   # side-step
+	assert_eq(u.ordered_facing, Vector2.RIGHT, "side-step holds facing")
+	b._apply_order_cmd({"units": [1], "x": 500.0, "y": 0.0, "target": -1})  # long forward march
+	assert_eq(u.ordered_facing, Vector2.ZERO, "the next non-lateral order drops the hold")
+
+
+func test_form_up_order_never_side_steps() -> void:
+	# A form-up commands its own deploy facing, so even a short shift must not be
+	# reinterpreted as a side-step.
+	Settings.reform_before_move = false
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.RIGHT
+	var b := _battle([u])
+	b.enqueue_form_up([1], Vector2(0, 20), 1.0, 20)   # short lateral form-up
+	assert_eq(u.ordered_facing, Vector2.ZERO, "form-up uses deploy_facing, not a side-step hold")
+	assert_ne(u.deploy_facing, Vector2.ZERO, "...and parks its commanded facing instead")
