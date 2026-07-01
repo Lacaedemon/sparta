@@ -367,6 +367,14 @@ var _mm_body: MultiMesh = null
 var _mm_outline: MultiMesh = null
 var _mmi_body: MultiMeshInstance2D = null
 var _mmi_outline: MultiMeshInstance2D = null
+# Per-soldier facing pip (figure LOD only): the figure silhouette only mirrors
+# left/right (a full body rotation would look broken on a side-view figure), so a
+# facing change that isn't left/right is otherwise invisible zoomed in. This
+# small directional mark rotates freely to the soldier's actual facing, on top of
+# (not instead of) the figure. Hidden at mark LOD -- the mark itself already rotates.
+var _mm_facing_pip: MultiMesh = null
+var _mmi_facing_pip: MultiMeshInstance2D = null
+var _facing_pip_mesh: ArrayMesh = null
 var _shadow: Polygon2D = null
 # Both level-of-detail variants of the body/outline meshes, built once in
 # _setup_flock_renderer and swapped on the MultiMeshes as the camera zooms.
@@ -1587,6 +1595,9 @@ const FLAG_POLE_BASE_GAP: float = 34.0  # px above the block extent where the po
 const FLAG_POLE_HEIGHT: float = 18.0    # pole from above-bar to flag attachment point
 const FLAG_WIDTH: float = 12.0          # horizontal extent of the flag rectangle
 const FLAG_HEIGHT: float = 8.0          # vertical extent of the flag rectangle
+# Facing pip size, as a fraction of the mark radius -- small enough to read as
+# a facing cue on the figure, not a second body.
+const FACING_PIP_RADIUS_FRACTION: float = 0.35
 
 
 const PRONE_COLOR: Color = Color(0.22, 0.22, 0.22, 0.80)   # dark grey, 80% alpha — felled soldiers are slightly translucent; stacks with rout modulate (0.45) to 0.36 for "prone AND routing"
@@ -1633,6 +1644,20 @@ func _setup_flock_renderer() -> void:
 	_mmi_body.multimesh = _mm_body
 	_mmi_body.z_index = -1   # eff 2, added after the outline -> drawn in front of it
 	add_child(_mmi_body)
+
+	# Facing pip: a small directional mark layered on the figure at figure LOD only
+	# (instance_count 0 -- and so invisible -- at mark LOD, where the mark itself rotates).
+	# White so it reads against any team colour; sized well below the figure/mark radius so
+	# it's a facing cue, not a second body.
+	_facing_pip_mesh = UnitMeshes.pointer_mesh(mark_r * FACING_PIP_RADIUS_FRACTION)
+	_mm_facing_pip = MultiMesh.new()
+	_mm_facing_pip.transform_format = MultiMesh.TRANSFORM_2D
+	_mm_facing_pip.mesh = _facing_pip_mesh
+	_mmi_facing_pip = MultiMeshInstance2D.new()
+	_mmi_facing_pip.multimesh = _mm_facing_pip
+	_mmi_facing_pip.modulate = Color(1, 1, 1, 0.9)
+	_mmi_facing_pip.z_index = -1   # eff 2, drawn in front of the body (added last)
+	add_child(_mmi_facing_pip)
 
 	# The render reads _sim_soldier_pos directly; those bodies are seeded on the first
 	# physics tick (Battle._on_soldier_tick -> SoldierBodies.step), so the marks appear
@@ -1700,6 +1725,7 @@ func _process(_delta: float) -> void:
 		if _mm_body.instance_count != 0:
 			_mm_body.instance_count = 0
 			_mm_outline.instance_count = 0
+			_mm_facing_pip.instance_count = 0   # else pips linger a frame after a figure-LOD death
 		return
 	# Block extent depends only on the soldier count and frontage, not body positions, so
 	# recompute (and reshape the shadow/chrome) only when one of those changes — not the
@@ -1752,6 +1778,10 @@ func _update_lod() -> void:
 
 ## Assign the mesh pair the MultiMeshes draw for the current LOD and, at the figure LOD,
 ## facing side. The flat marks are symmetric, so only the figures pick a left/right mirror.
+## The facing pip only shows at figure LOD -- the flat mark already rotates to show
+## facing, so a second indicator there would be redundant. _refresh_flock_render() runs
+## right after so the pip's transforms are populated the same frame it appears, not a
+## frame late.
 func _apply_lod_meshes() -> void:
 	if not _detailed_lod:
 		_mm_body.mesh = _mark_body_mesh
@@ -1762,21 +1792,28 @@ func _apply_lod_meshes() -> void:
 	else:
 		_mm_body.mesh = _figure_body_mesh
 		_mm_outline.mesh = _figure_outline_mesh
+	_mm_facing_pip.instance_count = _sim_soldier_pos.size() if _detailed_lod else 0
+	_refresh_flock_render()
 
 
 ## Push the current mark positions/colours into the two MultiMeshes (1 instance per mark).
 ## The figures' facing is handled by a mesh swap (see _apply_lod_meshes), not a per-instance
-## transform — MultiMesh 2D can't store a reflected (mirrored) instance transform.
+## transform — MultiMesh 2D can't store a reflected (mirrored) instance transform. At figure
+## LOD the facing pip carries the exact per-soldier facing instead, since the figure
+## itself only mirrors left/right.
 func _refresh_flock_render() -> void:
 	var n: int = _sim_soldier_pos.size()
 	if _mm_body.instance_count != n:
 		_mm_body.instance_count = n
 		_mm_outline.instance_count = n
+	if _detailed_lod and _mm_facing_pip.instance_count != n:
+		_mm_facing_pip.instance_count = n
 	var sim_prone_n: int = _sim_prone.size()
 	for i in range(n):
 		# Prone: squash/rotate the mark and tint the body dark; outline stays WHITE.
 		var prone: bool = i < sim_prone_n and _sim_prone[i] > 0.0
 		var pos: Vector2 = _sim_soldier_pos[i] - position
+		var sf: Vector2 = _sim_soldier_facing[i] if i < _sim_soldier_facing.size() else facing
 		var t: Transform2D
 		if prone:
 			if _detailed_lod:
@@ -1788,7 +1825,6 @@ func _refresh_flock_render() -> void:
 			var squash: float = abs(cos(progress * PI))
 			t = Transform2D(Vector2(squash, 0.0), Vector2(0.0, 1.0), pos)
 		elif not _detailed_lod:
-			var sf: Vector2 = _sim_soldier_facing[i] if i < _sim_soldier_facing.size() else facing
 			t = Transform2D(sf.angle(), pos)
 		else:
 			t = Transform2D(0.0, pos)
@@ -1796,7 +1832,21 @@ func _refresh_flock_render() -> void:
 		_mm_outline.set_instance_transform_2d(i, t)
 		_mm_body.set_instance_color(i, PRONE_COLOR if prone else Color.WHITE)
 		_mm_outline.set_instance_color(i, Color.WHITE)
+		if _detailed_lod:
+			_mm_facing_pip.set_instance_transform_2d(i, _facing_pip_transform(prone, sf, pos))
 	_apply_flock_color()
+
+
+## The facing pip's instance transform for one soldier: points along its exact
+## facing at figure LOD (the figure mesh itself only mirrors left/right). A prone soldier
+## has no meaningful facing to point along, so its pip collapses to zero scale instead of
+## drawing an arrow off a body that's on the ground. Pure -- unit-testable independent of
+## the live MultiMesh (whose instance data isn't synchronously readable back in headless
+## tests).
+static func _facing_pip_transform(prone: bool, sf: Vector2, pos: Vector2) -> Transform2D:
+	if prone:
+		return Transform2D(Vector2.ZERO, Vector2.ZERO, pos)
+	return Transform2D(sf.angle(), pos)
 
 
 
@@ -1811,6 +1861,10 @@ func _apply_flock_color() -> void:
 	_flock_color = body_c
 	_mmi_body.modulate = body_c
 	_mmi_outline.modulate = Color(body_c.r * 0.35, body_c.g * 0.35, body_c.b * 0.35, alpha)
+	# The facing pip fades with the block while routing, at its own base 0.9 opacity, so it
+	# doesn't stay sharp over a fading figure. (The guard above keys off alpha, so this
+	# tracks the routing state.)
+	_mmi_facing_pip.modulate = Color(1.0, 1.0, 1.0, alpha * 0.9)
 
 
 ## Size/position the ground shadow ellipse to the current block extent.
