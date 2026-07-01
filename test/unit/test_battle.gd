@@ -85,6 +85,26 @@ func test_rear_move_falls_back_to_a_plain_march_when_bodies_unseeded() -> void:
 	assert_eq(u.move_target, Vector2(0, -200), "toward the ordered destination")
 
 
+func test_rear_move_during_an_in_progress_about_face_does_not_park_a_march() -> void:
+	# A standing V-key about-face is already turning when a rear-move order arrives.
+	# conversio() no-ops (a turn is in progress), so the order must NOT park a pending
+	# march on top of the running turn -- it falls back to a plain march instead.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	u.conversio()                                   # the standing about-face is now turning
+	var turn_target: Vector2 = u._conversio_target
+	assert_ne(turn_target, Vector2.ZERO, "the standing about-face is in progress")
+	var b := _battle([u])
+	Settings.reform_before_move = false
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # rear move
+	assert_eq(u._conversio_target, turn_target,
+		"the order leaves the in-progress turn untouched (conversio no-ops)")
+	assert_false(u._has_pending_march, "and does not park a march on top of it")
+	assert_true(u.has_move_target, "it commits a plain march instead")
+	assert_eq(u.move_target, Vector2(0, -200), "toward the ordered destination")
+
+
 func test_append_queues_a_waypoint_behind_the_current_target() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])

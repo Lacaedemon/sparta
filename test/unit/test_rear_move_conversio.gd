@@ -33,11 +33,11 @@ func test_rear_boundary_is_135_degrees() -> void:
 	# 140° behind facing -> rear; 130° behind -> not. Build the vectors by rotating
 	# the reversed facing a little toward the flank.
 	var just_rear := FACING_RIGHT.rotated(deg_to_rad(140.0)) * 100.0
-	var just_forward := FACING_RIGHT.rotated(deg_to_rad(130.0)) * 100.0
+	var just_outside_rear := FACING_RIGHT.rotated(deg_to_rad(130.0)) * 100.0
 	assert_true(Maneuver.is_rear_move(FACING_RIGHT, just_rear),
 		"140° off facing is inside the rear sector")
-	assert_false(Maneuver.is_rear_move(FACING_RIGHT, just_forward),
-		"130° off facing is not")
+	assert_false(Maneuver.is_rear_move(FACING_RIGHT, just_outside_rear),
+		"130° off facing is just outside the rear sector (oblique-rear, not rear enough)")
 
 
 func test_rear_move_is_symmetric_across_facing() -> void:

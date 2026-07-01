@@ -497,6 +497,7 @@ func _think(delta: float) -> void:
 		if state == State.FIGHTING or has_move_target:
 			_conversio_target = Vector2.ZERO
 			_has_pending_march = false   # a new order / combat pre-empts the parked rear march
+			_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
 		else:
 			if _advance_turn(_conversio_target, delta):
 				_conversio_target = Vector2.ZERO
@@ -1023,10 +1024,11 @@ var _quarter_target: Vector2 = Vector2.ZERO
 var _quarter_start_facing: Vector2 = Vector2.ZERO
 
 # Destination a rear-sector move order parked while an about-face (conversio) turns the
-# block around. Non-zero means "march here once the conversio completes"; _think reads it
-# on conversio arrival, commits it as the move target, and clears it. Held separately from
-# move_target so has_move_target stays false during the turn (otherwise _think would cancel
-# the conversio). A HAS_PENDING_MARCH sentinel isn't needed -- ZERO means "nothing pending".
+# block around. _think reads it on conversio arrival, commits it as the move target, and
+# clears it. Held separately from move_target so has_move_target stays false during the
+# turn (otherwise _think would cancel the conversio). _has_pending_march is the
+# authoritative gate rather than checking != Vector2.ZERO, because the world origin is a
+# valid move destination -- ZERO can't reliably mean "nothing pending".
 var _pending_march_target: Vector2 = Vector2.ZERO
 var _has_pending_march: bool = false
 
@@ -1511,6 +1513,7 @@ func _rout() -> void:
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
 	_has_pending_march = false         # drop any rear-move march parked behind the conversio
+	_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
 	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_rout_timer = ROUT_TIME

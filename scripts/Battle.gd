@@ -657,10 +657,13 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				if rear_move:
 					# Park the destination and about-face; _think starts the march once the
 					# conversio completes. has_move_target stays false so the turn isn't cancelled.
+					# Snapshot before the call: conversio() no-ops before the bodies seed OR while
+					# another in-place turn is already running (a standing V-key about-face), leaving
+					# _conversio_target unchanged and non-zero. Only enter the about-face path when this
+					# call armed a fresh turn; otherwise fall back to a plain march.
+					var conversio_was_idle: bool = u._conversio_target == Vector2.ZERO
 					u.conversio()
-					# conversio() no-ops before the bodies seed or if another turn is running; only
-					# take the about-face path when it actually started, else fall back to a march.
-					if u._conversio_target != Vector2.ZERO:
+					if conversio_was_idle and u._conversio_target != Vector2.ZERO:
 						u.has_move_target = false
 						u._pending_march_target = point
 						u._has_pending_march = true
