@@ -119,19 +119,40 @@ const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
 
-# Formation modes: how tightly the regiment is packed.
+# Formation modes: how tightly the regiment is packed, plus the two shielded
+# close-order stances built on TIGHT's locked-shield density.
 # TIGHT: soldiers close ranks — better missile defense (shields raised) and
 #        better charge resistance, at the cost of a smaller footprint.
 # NORMAL: default spacing.
 # LOOSE: soldiers spread out — wider area coverage.
+# SHIELD_WALL: shields locked edge-to-edge in a static line. Strong FRONTAL missile
+#        and melee defense, but slow and immobile — a holding stance.
+# TESTUDO: shields locked front, sides, and overhead. Very strong missile defense
+#        from ALL directions, but very slow and weak in melee — a turtle vs arrows.
 const FORMATION_NORMAL := 0
 const FORMATION_TIGHT := 1
 const FORMATION_LOOSE := 2
+const FORMATION_SHIELD_WALL := 3
+const FORMATION_TESTUDO := 4
 # In tight formation, shields reduce incoming missile damage by this fraction.
 const TIGHT_MISSILE_DEFENSE: float = 0.25
 # In tight formation, this fraction of a cavalry charge bonus is absorbed
 # (braced soldiers brace against the impact — not a full reversal like anti-cav).
 const TIGHT_CHARGE_ABSORPTION: float = 0.55
+# Shield wall: shields locked edge-to-edge cut incoming FRONTAL missile damage by this
+# fraction (a flank/rear shot bypasses the wall and lands full). A braced wall also
+# blunts frontal melee, cutting frontal melee damage taken by SHIELD_WALL_MELEE_DEFENSE.
+const SHIELD_WALL_MISSILE_DEFENSE: float = 0.55
+const SHIELD_WALL_MELEE_DEFENSE: float = 0.35
+# Testudo: shields lock overhead too, so missile fire is blunted from EVERY direction
+# by this fraction. But the men are packed head-down under cover and can barely fight,
+# so their melee output is cut by TESTUDO_MELEE_PENALTY.
+const TESTUDO_MISSILE_DEFENSE: float = 0.7
+const TESTUDO_MELEE_PENALTY: float = 0.5
+# The two shielded stances plant and barely move; their top pace is capped to this
+# fraction of normal (shield wall creeps, testudo shuffles). NORMAL/TIGHT/LOOSE = 1.0.
+const SHIELD_WALL_SPEED_SCALE: float = 0.4
+const TESTUDO_SPEED_SCALE: float = 0.3
 # Separation-radius scale factors per formation mode.
 const TIGHT_SEPARATION_SCALE: float = 0.75
 const LOOSE_SEPARATION_SCALE: float = 1.35
@@ -711,6 +732,9 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		pace_speed = jog_speed
 	else:
 		pace_speed = walk_speed
+	# A planted shielded stance (shield wall / testudo) caps its top pace: the men hold
+	# a locked wall and only creep, so the target pace is scaled down before the ramp.
+	pace_speed *= formation_speed_factor()
 	# Ramp toward the selected pace instead of snapping there -- a unit takes real time
 	# to build up to a pace (accel) and slows down rather than instantly stopping/downshifting
 	# (decel), per-type rates set from the loadout's panoply-weight-scaled accel_mps2/decel_mps2.
@@ -815,7 +839,9 @@ func _front_depth() -> float:
 func set_formation(mode: int) -> void:
 	formation_mode = mode
 	var base := _base_separation_radius
-	if mode == FORMATION_TIGHT:
+	# SHIELD_WALL and TESTUDO are shielded stances built on TIGHT's locked-shield
+	# density: same close-order footprint and grid, extra defensive effects on top.
+	if mode == FORMATION_TIGHT or mode == FORMATION_SHIELD_WALL or mode == FORMATION_TESTUDO:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
 		spacing_scale = 1.0   # already at the historical close-order/locked-shield floor
 	elif mode == FORMATION_LOOSE:
@@ -833,10 +859,65 @@ func set_frontage(files: int) -> void:
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 
 
-## Multiplier applied to incoming ranged damage. Tight formation: shields raised,
-## reducing missile casualties. Normal/loose: no modifier.
-func missile_defense_factor() -> float:
-	return 1.0 - TIGHT_MISSILE_DEFENSE if formation_mode == FORMATION_TIGHT else 1.0
+## Multiplier applied to incoming ranged damage. Shielded stances raise shields to
+## cut missile casualties:
+##   TIGHT       — shields raised, all directions.
+##   TESTUDO     — shields locked overhead too, stronger, all directions.
+##   SHIELD_WALL — a locked wall, strongest of all, but only to the FRONT; a shot
+##                 into the flank or rear bypasses the wall and lands full.
+## When `attacker` is given, SHIELD_WALL checks the incoming direction against the
+## unit's facing; with no attacker (a plain query) it grants its frontal value.
+## Normal/loose: no modifier.
+func missile_defense_factor(attacker: Unit = null) -> float:
+	match formation_mode:
+		FORMATION_TIGHT:
+			return 1.0 - TIGHT_MISSILE_DEFENSE
+		FORMATION_TESTUDO:
+			return 1.0 - TESTUDO_MISSILE_DEFENSE
+		FORMATION_SHIELD_WALL:
+			if _is_frontal_attack(attacker):
+				return 1.0 - SHIELD_WALL_MISSILE_DEFENSE
+			return 1.0
+		_:
+			return 1.0
+
+
+## Multiplier applied to incoming MELEE damage. A locked SHIELD_WALL blunts a frontal
+## melee assault (flank/rear blows slip past the wall and land full). Other stances: none.
+func melee_defense_factor(attacker: Unit = null) -> float:
+	if formation_mode == FORMATION_SHIELD_WALL and _is_frontal_attack(attacker):
+		return 1.0 - SHIELD_WALL_MELEE_DEFENSE
+	return 1.0
+
+
+## Multiplier applied to this unit's OWN melee output. TESTUDO men are packed head-down
+## under overhead cover and can barely swing, so they hit softer. Other stances: full.
+func formation_melee_attack_factor() -> float:
+	return 1.0 - TESTUDO_MELEE_PENALTY if formation_mode == FORMATION_TESTUDO else 1.0
+
+
+## Cap on this unit's top pace, as a fraction of normal. The planted shielded stances
+## barely move; other formations march at full speed.
+func formation_speed_factor() -> float:
+	match formation_mode:
+		FORMATION_SHIELD_WALL:
+			return SHIELD_WALL_SPEED_SCALE
+		FORMATION_TESTUDO:
+			return TESTUDO_SPEED_SCALE
+		_:
+			return 1.0
+
+
+## Whether an attack from `attacker` lands on this unit's frontal arc (in the forward
+## hemisphere -- strictly ahead of the line abreast, so a pure side/rear blow is not
+## frontal). A null attacker counts as frontal (a plain defensive query, no direction).
+func _is_frontal_attack(attacker: Unit) -> bool:
+	if attacker == null or not is_instance_valid(attacker):
+		return true
+	var to_attacker: Vector2 = attacker.position - position
+	if to_attacker.length() < 0.001:
+		return true
+	return facing.dot(to_attacker.normalized()) > 0.0
 
 
 ## Push out of any overlapping unit so regiments form a solid line instead of
@@ -1346,6 +1427,10 @@ func formation_summary() -> String:
 			return "Tight"
 		FORMATION_LOOSE:
 			return "Loose"
+		FORMATION_SHIELD_WALL:
+			return "Shield Wall"
+		FORMATION_TESTUDO:
+			return "Testudo"
 		_:
 			return "Normal"
 

@@ -600,14 +600,18 @@ func _issue_merge() -> void:
 	Sfx.play(&"order")
 
 
-## Cycle the formation of all selected friendly units: Normal → Tight → Loose → Normal.
+## Cycle the base spacing formation of all selected friendly units:
+## Normal → Tight → Loose → Normal. The shielded close-order stances (Shield Wall,
+## Testudo) are set from the formation control-bar menu, not this quick cycle, so the
+## T key stays a simple three-way density toggle. A unit currently in a shielded
+## stance re-enters the base cycle at Normal.
 func _cycle_formation() -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	if _selected.is_empty() or not is_instance_valid(_selected[0]):
 		return
 	var current: int = _selected[0].formation_mode
-	var next: int = (current + 1) % 3
+	var next: int = (current + 1) % 3 if current < 3 else UnitRef.FORMATION_NORMAL
 	var uids: Array = []
 	for unit in _selected:
 		if is_instance_valid(unit):

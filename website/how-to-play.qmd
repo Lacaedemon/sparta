@@ -35,7 +35,7 @@ left fighting --- every remaining unit is dead or routing.
 | Group attack mode | <kbd>X</kbd> cycles focused ↔ distributed · or **control bar** |
 | Add waypoint | **Shift + Right-click** (chain several move points) |
 | Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear |
-| Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) · or **control bar** |
+| Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) · Shield Wall & Testudo from the **control bar** |
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
 | Merge selected units | <kbd>M</kbd> |
@@ -56,7 +56,9 @@ under pressure.
 the screen with clickable buttons for the most-used unit toggles.
 Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.
 
-- **Formation** --- click Normal, Tight, or Loose directly (same as <kbd>T</kbd>).
+- **Formation** --- click Normal, Tight, or Loose directly (same as <kbd>T</kbd>), or
+  pick one of the two shielded close-order stances, **Shield Wall** or **Testudo**
+  (menu only --- <kbd>T</kbd> still cycles just the three base densities).
 - **Stance** --- click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).
 - **Reform** --- toggle Reform before move (same as ☰ Menu → Reform before move).
 - **Focused atk / Spread atk** --- cycle the group-attack mode (same as <kbd>X</kbd>).
@@ -192,6 +194,19 @@ for better missile and charge defence, *Loose* spreads out. Every unit can cycle
 through all three; each type just starts at a different one --- spearmen deploy
 Tight (locked shields against a charge), archers deploy Loose (room to fire),
 and sword-armed infantry and cavalry deploy at the plain Normal combat order.
+
+**Shielded close-order stances.** Two heavier stances build on Tight's locked-shield
+density, chosen from the control-bar Formation menu:
+
+- **Shield Wall** --- shields locked edge-to-edge in a static line. It sharply cuts
+  *frontal* missile and melee damage, but only to the front: a shot or blow into the
+  flank or rear bypasses the wall entirely. The wall barely moves, so it is a holding
+  stance --- plant it to anchor a line, not to advance.
+- **Testudo** --- shields locked front, sides, *and* overhead. It blunts missile fire
+  from **every** direction, the strongest arrow cover in the game, but the men are
+  packed head-down under their shields and fight weakly, and it is the slowest stance
+  of all. Use it to walk a unit across open ground under heavy archery, then drop back
+  to a fighting formation before you close.
 
 **Resize the line.** A regiment normally forms up at a sensible width, but you can
 reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more men

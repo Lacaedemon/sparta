@@ -37,9 +37,12 @@ static func charge_multiplier(u: Unit, enemy: Unit) -> float:
 		# A braced spear line reverses the charge into a penalty that grows with the
 		# closing speed, floored so it never drops below the old flat x0.6.
 		return maxf(Unit.ANTI_CAV_CHARGE_FLOOR, 1.0 - charge * Unit.ANTI_CAV_CHARGE_BACKFIRE)
-	# Tight formation: soldiers brace for impact, absorbing a fraction of the charge
-	# bonus (but not reversing it -- that's the spearmen's specialty).
-	if enemy.formation_mode == Unit.FORMATION_TIGHT:
+	# Close-order shielded stances brace for impact, absorbing a fraction of the charge
+	# bonus (but not reversing it -- that's the spearmen's specialty). SHIELD_WALL and
+	# TESTUDO are built on TIGHT's locked-shield density, so they brace the same way.
+	if enemy.formation_mode == Unit.FORMATION_TIGHT \
+			or enemy.formation_mode == Unit.FORMATION_SHIELD_WALL \
+			or enemy.formation_mode == Unit.FORMATION_TESTUDO:
 		return 1.0 + charge * (1.0 - Unit.TIGHT_CHARGE_ABSORPTION)
 	return 1.0 + charge
 
@@ -57,13 +60,17 @@ static func strike(u: Unit, enemy: Unit) -> void:
 		Sfx.play(&"hit")
 		return
 
-	# Tired troops hit softer; a freshly-merged unit hits softer still until it gels.
-	# Both scale effective attack before defence.
-	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion
+	# Tired troops hit softer; a freshly-merged unit hits softer still until it gels; a
+	# TESTUDO fights head-down under cover and hits softest. All scale effective attack.
+	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) \
+			* u.cohesion * u.formation_melee_attack_factor()
 	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
 	# Draw from the seeded replay RNG (one stream, stable order) so battles are
 	# reproducible. This is the simulation's only source of randomness.
 	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
+
+	# A braced SHIELD_WALL blunts a frontal melee assault (flank/rear blows land full).
+	dmg *= enemy.melee_defense_factor(u)
 
 	# Cavalry charge: a momentum-scaled bonus (or a backfire onto braced spears), computed
 	# from the rider's impact velocity at this contact. Spend it so the charge lands only
@@ -88,7 +95,9 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	var target: Unit = enemy if interceptor == null else interceptor
 	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion
 	var base: float = maxf(1.0, eff_attack - float(target.defense))
-	var dmg: float = base * Unit.RANGED_DAMAGE_FACTOR * rng_roll * target.missile_defense_factor()
+	# Pass the shooter so SHIELD_WALL's shields only stop a frontal volley; a flank/rear
+	# shot bypasses the wall. TIGHT/TESTUDO ignore direction (all-around cover).
+	var dmg: float = base * Unit.RANGED_DAMAGE_FACTOR * rng_roll * target.missile_defense_factor(u)
 	Sfx.play(&"shoot")
 	# Cosmetic volley trail: arrows streak toward whoever was actually hit, so the player
 	# can see why a friendly is taking damage. Spawned on the (deterministic) sim tick but
