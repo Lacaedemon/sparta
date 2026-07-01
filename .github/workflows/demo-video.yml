@@ -502,7 +502,22 @@ jobs:
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
           RECORDED_SHA="${{ github.event.pull_request.head.sha }}"
-          CURRENT_SHA=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq .head.sha)
+
+          # Retry the API read (same backoff shape as the media-branch publish
+          # step above) so a transient GitHub API hiccup fails with its own
+          # error, distinct from a genuine "HEAD moved" verdict below — a flaky
+          # read must never be misreported as stale demo evidence.
+          CURRENT_SHA=""
+          for attempt in 1 2 3 4 5; do
+            if CURRENT_SHA=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq .head.sha); then
+              break
+            fi
+            echo "PR HEAD lookup attempt $attempt failed (transient API error?); retrying…"
+            CURRENT_SHA=""
+            sleep $((attempt * 2))
+          done
+          [ -n "$CURRENT_SHA" ] || { echo "::error::could not read the PR's current head SHA after 5 attempts (transient API failure, not a staleness verdict)"; exit 1; }
+
           if [ "$RECORDED_SHA" != "$CURRENT_SHA" ]; then
             echo "::error::Demo/transcript comment was recorded for $RECORDED_SHA, but PR HEAD has since moved to $CURRENT_SHA — a newer push landed mid-run. Failing so this check cannot show green for stale demo evidence; the newer push already triggered its own run to catch up."
             exit 1
