@@ -124,3 +124,63 @@ func test_wheel_is_blocked_before_seeding() -> void:
 	var u := _make_unit()
 	u.wheel(1)   # no bodies seeded yet
 	assert_eq(u._wheel_target, Vector2.ZERO, "a wheel is refused before the bodies are seeded")
+
+
+## Run an in-place turn (conversio or quarter-turn) to completion on a bare unit, driving _think +
+## the body layer each tick until it settles. Leaves _formation_angle at whatever the turn absorbed.
+func _settle_quarter_turn(u: Unit, dir: int, max_ticks: int = 200) -> void:
+	u.quarter_turn(dir)
+	var delta := 1.0 / 60.0
+	var ticks := 0
+	while u._quarter_target != Vector2.ZERO and ticks < max_ticks:
+		u._physics_process(delta)
+		u.step_sim_soldiers(delta)
+		ticks += 1
+
+
+## Regression: chaining a wheel straight after a quarter-turn (no move order between) must hinge
+## about the ACTUAL standing flank. A completed quarter-turn leaves _formation_angle non-zero (it
+## absorbs the heading change to keep the slots put), so the pivot geometry has to fold that angle
+## into its axes — otherwise it hinges about the wrong point and the "standing" flank sweeps.
+func test_wheel_after_quarter_turn_still_hinges_on_the_standing_flank() -> void:
+	var u := _make_unit(1, 40)
+	u.seed_sim_soldiers()
+	_settle_quarter_turn(u, 1)   # DOWN -> LEFT, _formation_angle now non-zero
+	assert_almost_eq(u._formation_angle, -PI * 0.5, 0.01,
+		"a right quarter-turn leaves _formation_angle at -PI/2 (precondition)")
+	# The pivot must coincide with an actual body (the standing flank's front man), NOT the stale
+	# axis a formation_angle-blind computation would produce.
+	var pivot: Vector2 = u._wheel_pivot_point(1)
+	var nearest_body_dist := INF
+	var near := 0
+	for i in range(u._sim_soldier_pos.size()):
+		var d: float = u._sim_soldier_pos[i].distance_to(pivot)
+		if d < nearest_body_dist:
+			nearest_body_dist = d; near = i
+	assert_lt(nearest_body_dist, 1.0,
+		"the post-quarter-turn hinge lands on a real body (a formation_angle-blind pivot would not)")
+	# And that hinge body barely moves through the wheel, while the far end sweeps.
+	var far := 0
+	var df := -INF
+	for i in range(u._sim_soldier_pos.size()):
+		var d: float = u._sim_soldier_pos[i].distance_to(pivot)
+		if d > df:
+			df = d; far = i
+	var hinge_start: Vector2 = u._sim_soldier_pos[near]
+	var far_start: Vector2 = u._sim_soldier_pos[far]
+	# Wheel using the same path as _run_wheel but WITHOUT re-seeding (bodies already placed).
+	u.wheel(1)
+	var delta := 1.0 / 60.0
+	var ticks := 0
+	while u._wheel_target != Vector2.ZERO and ticks < 200:
+		u._physics_process(delta)
+		u.step_sim_soldiers(delta)
+		ticks += 1
+	for _i in range(40):
+		u.step_sim_soldiers(delta)
+	var hinge_travel: float = u._sim_soldier_pos[near].distance_to(hinge_start)
+	var far_travel: float = u._sim_soldier_pos[far].distance_to(far_start)
+	assert_lt(hinge_travel, far_travel * 0.25,
+		"after a quarter-turn, the standing flank still holds (hinge %.1f vs far %.1f)"
+			% [hinge_travel, far_travel])
+	assert_gt(far_travel, 20.0, "the far end swings a real arc")
