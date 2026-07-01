@@ -1535,13 +1535,17 @@ func _process_rout(delta: float) -> void:
 	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
 	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 
-	# The regiment's nerve steadies as it flees: morale ticks up toward the baseline at a
-	# rate proportional to the remaining gap, so it recovers quickly at first and levels off.
+	# The regiment's nerve steadies as it flees: while below the baseline, morale ticks up
+	# toward it at a rate proportional to the remaining gap, so it recovers quickly at first
+	# and levels off. A unit already above the baseline has nothing to recover toward.
 	if morale < ROUT_RALLY_BASELINE:
 		morale += (ROUT_RALLY_BASELINE - morale) * ROUT_MORALE_RECOVER_RATE * delta
 
 	# Rally the moment morale recovers past the threshold, provided contact is broken and
 	# enough men remain — the unit needn't run out the full timer or reach the edge.
+	# Note: a unit that enters routing with morale already >= RALLY_MORALE_THRESHOLD rallies
+	# on the first call here (a one-tick rout). In practice routing is triggered by depleted
+	# morale so this is dormant; keep it in mind if non-morale rout triggers are ever added.
 	if morale >= RALLY_MORALE_THRESHOLD and _can_rally():
 		_rally()
 		return

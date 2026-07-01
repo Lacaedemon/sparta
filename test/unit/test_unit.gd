@@ -1870,24 +1870,30 @@ func test_routing_morale_recovers_asymptotically() -> void:
 
 func test_routing_unit_stays_within_field_bounds() -> void:
 	# A router flees toward its back edge but is clamped to the field so it stays visible.
+	# An enemy in contact keeps _can_rally() false, so no threshold rally can fire mid-loop
+	# (which would leave us calling _process_rout on an already-IDLE unit).
 	var u := _make_unit()
+	var enemy := _make_unit()
+	enemy.team = 1
 	u.field_bounds = Rect2(0, 0, 400, 400)
 	u.position = Vector2(200, 5)   # team 0 flees UP (toward y=0)
+	enemy.position = Vector2(220, 5)   # in contact, so the router can't rally away
 	u.morale = 0.0
 	u._rout()
 	u.morale = 0.0
 	u._rout_timer = 10.0
 	for i in range(120):   # ~2 s of fleeing at 60 fps
 		u._process_rout(0.016)
+	assert_eq(u.state, Unit.State.ROUTING, "still routing (in contact, can't rally)")
 	assert_true(u.position.y >= u.field_bounds.position.y,
 		"a routing unit never runs off the top of the field")
 	assert_true(u.field_bounds.has_point(u.position) or is_equal_approx(u.position.y, 0.0),
 		"the router stays on the visible map")
 
 
-func test_routing_unit_rallies_when_morale_crosses_threshold() -> void:
-	# Broke contact, timer still alive: as morale recovers past the rally threshold the unit
-	# rallies on the spot — no need to run the full timer or reach the map edge.
+func test_routing_unit_rallies_when_already_above_threshold() -> void:
+	# Broke contact with morale already over the threshold: the unit rallies on the first tick
+	# — no need to run the full timer or reach the map edge.
 	var u := _make_unit()
 	u.morale = Unit.RALLY_MORALE_THRESHOLD + 1.0   # already above threshold, no enemy near
 	u._rout()
@@ -1898,6 +1904,29 @@ func test_routing_unit_rallies_when_morale_crosses_threshold() -> void:
 	assert_true(u.is_in_group("units"), "a threshold-rallied unit rejoins the fightable units")
 	assert_true(u.morale >= Unit.RALLY_MORALE_THRESHOLD,
 		"it keeps the nerve it steadied to, not reset to the fragile floor")
+
+
+func test_routing_recovery_drives_morale_across_threshold_to_rally() -> void:
+	# The composition the other two tests don't cover: a unit starts BELOW the rally threshold
+	# and stays routing until asymptotic recovery alone lifts it over the threshold, at which
+	# point it rallies. Start just below and step until it crosses, asserting it routed first.
+	var u := _make_unit()
+	u.morale = Unit.RALLY_MORALE_THRESHOLD - 5.0   # below threshold, no enemy near
+	u._rout()
+	u.morale = Unit.RALLY_MORALE_THRESHOLD - 5.0
+	u._rout_timer = 1000.0   # keep the timer irrelevant; only recovery can end the rout
+	# First tick: still below threshold, so it keeps routing (recovery hasn't crossed yet).
+	u._process_rout(0.016)
+	assert_eq(u.state, Unit.State.ROUTING, "one tick isn't enough recovery to cross the threshold")
+	assert_true(u.morale < Unit.RALLY_MORALE_THRESHOLD, "morale rose but is still below threshold")
+	# Step until recovery carries morale over the threshold and the unit rallies.
+	for i in range(600):
+		if u.state != Unit.State.ROUTING:
+			break
+		u._process_rout(0.05)
+	assert_eq(u.state, Unit.State.IDLE, "recovery alone eventually rallies the unit")
+	assert_true(u.is_in_group("units"), "the rallied unit rejoins the fightable units")
+	assert_true(u.morale >= Unit.RALLY_MORALE_THRESHOLD, "it rallied only once morale crossed")
 
 
 # --- order response delay -----------------------------------------------
