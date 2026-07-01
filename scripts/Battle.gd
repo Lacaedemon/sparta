@@ -909,8 +909,19 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					# _conversio_target unchanged and non-zero. Only enter the about-face path when this
 					# call armed a fresh turn; otherwise fall back to a plain march.
 					var conversio_was_idle: bool = u._conversio_target == Vector2.ZERO
+					# Idempotency: every order is applied twice (immediate feedback + tick-drain),
+					# so this same rear move reaches here a second time while the first apply's
+					# conversio is still turning. On that second apply conversio() no-ops and
+					# conversio_was_idle is false -- but the about-face for this exact destination
+					# is already armed (pending march parked behind a live conversio to this point).
+					# Recognize that and re-enter the parked-march path so about_faced stays true,
+					# skipping both the reform-hold and the has_move_target fallthrough that would
+					# otherwise cancel the conversio mid-turn and centre-pivot the block.
+					var already_armed: bool = not conversio_was_idle \
+							and u._has_pending_march and u._pending_march_target == point
 					u.conversio()
-					if conversio_was_idle and u._conversio_target != Vector2.ZERO:
+					if (conversio_was_idle and u._conversio_target != Vector2.ZERO) \
+							or already_armed:
 						u.has_move_target = false
 						u._pending_march_target = point
 						u._has_pending_march = true

@@ -59,6 +59,84 @@ func test_rear_move_arms_the_about_face_and_parks_the_march() -> void:
 	assert_eq(u._pending_march_target, Vector2(0, -200), "and it is the ordered rear destination")
 
 
+## Axis-aligned bounding box of a unit's live soldier bodies, as [width, height].
+## The conversio signature: this box stays fixed (positions frozen) through the whole
+## turn -- only facings reverse -- so a rotating box means the block centre-pivoted.
+func _soldier_bbox(u: Unit) -> Vector2:
+	var min_p := Vector2(INF, INF)
+	var max_p := Vector2(-INF, -INF)
+	for p in u._sim_soldier_pos:
+		min_p.x = minf(min_p.x, p.x)
+		min_p.y = minf(min_p.y, p.y)
+		max_p.x = maxf(max_p.x, p.x)
+		max_p.y = maxf(max_p.y, p.y)
+	return max_p - min_p
+
+
+func test_rear_move_applied_twice_still_about_faces() -> void:
+	# Every order is applied twice (immediate feedback + tick-drain). The about-face
+	# branch must be idempotent: the second apply, landing while the first apply's
+	# conversio is still turning, must NOT fall back to a plain march -- that cancels
+	# the conversio mid-turn and centre-pivots the block. Both applies must leave the
+	# same armed-about-face state as a single apply.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	var b := _battle([u])
+	Settings.reform_before_move = false
+	var cmd := {"units": [1], "x": 0.0, "y": -200.0, "target": -1}
+	b._apply_order_cmd(cmd)   # immediate apply
+	b._apply_order_cmd(cmd)   # tick-drain re-apply of the same command
+	assert_ne(u._conversio_target, Vector2.ZERO,
+		"the about-face is still armed after the second apply (idempotent)")
+	assert_false(u.has_move_target,
+		"the second apply did not start a march that would cancel the turn")
+	assert_true(u._has_pending_march, "the march is still parked for after the about-face")
+	assert_eq(u._pending_march_target, Vector2(0, -200), "and it is the ordered rear destination")
+	assert_eq(u._reform_timer, 0.0, "no reform-hold coexists with the armed about-face")
+
+
+func test_double_applied_rear_move_holds_footprint_while_facings_reverse() -> void:
+	# End to end: apply the rear move twice (as the sim does), then step _think through
+	# the whole turn. The conversio must hold every soldier's position -- the bounding box
+	# stays pinned -- while facings flip, then the block marches. A centre pivot instead
+	# rotates the box through its diagonal (the confirmed bug).
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	var b := _battle([u])
+	Settings.reform_before_move = false
+	var start_bbox := _soldier_bbox(u)
+	var start_facing := u._sim_soldier_facing[0]
+	var cmd := {"units": [1], "x": 0.0, "y": -200.0, "target": -1}
+	b._apply_order_cmd(cmd)
+	b._apply_order_cmd(cmd)   # the double-apply that used to abort the conversio
+
+	# Step through the turn. Until the march commits the box must stay pinned and the unit
+	# must not translate -- the men turn where they stand.
+	var march_started := false
+	for _i in range(240):
+		u._think(0.016)
+		if u.has_move_target:
+			march_started = true
+			break
+		var bbox := _soldier_bbox(u)
+		assert_almost_eq(bbox.x, start_bbox.x, 1.0,
+			"soldier-block width stays pinned through the about-face (no centre pivot)")
+		assert_almost_eq(bbox.y, start_bbox.y, 1.0,
+			"soldier-block height stays pinned through the about-face (no centre pivot)")
+		assert_eq(u.position, Vector2.ZERO, "the block does not translate during the turn")
+	assert_true(march_started, "the parked march commits once the about-face completes")
+
+	# The facing reversed (the men turned around), and the footprint is unchanged.
+	var end_facing := u.facing
+	assert_almost_eq(end_facing.x, -start_facing.x, 0.01, "unit facing reversed in x")
+	assert_almost_eq(end_facing.y, -start_facing.y, 0.01, "unit facing reversed in y")
+	var end_bbox := _soldier_bbox(u)
+	assert_almost_eq(end_bbox.x, start_bbox.x, 1.0, "final footprint width matches the start")
+	assert_almost_eq(end_bbox.y, start_bbox.y, 1.0, "final footprint height matches the start")
+
+
 func test_forward_move_does_not_arm_an_about_face() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.DOWN
