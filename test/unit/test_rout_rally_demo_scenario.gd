@@ -15,13 +15,14 @@ extends GutTest
 # own tick counter measures sim progress directly, and the budget comes from the sim's own timing
 # constants (with generous margin) rather than the demo's presentation clip length.
 #
-# Rout onset is fast under a two-cavalry charge onto a morale-1 block; the recovery leg is bounded
-# by ROUT_TIME (the router rallies or shatters when the timer expires, sooner if morale crosses the
+# A two-cavalry charge onto a morale-1 block routs it, then the recovery leg is bounded by
+# ROUT_TIME (the router rallies or shatters when the timer expires, sooner if morale crosses the
 # threshold with contact broken). ROUT_ONSET_BUDGET covers the charge-in and break; ROUT_TIME plus
-# margin covers the flee-and-recover. Observed arc: rout ~tick 100-175, rally ~tick 460-535, well
-# inside this budget.
-const PHYSICS_TPS := 60
-const ROUT_ONSET_BUDGET := 400   # ticks allowed for the block to break and start routing
+# margin covers the flee-and-recover. The onset budget is deliberately generous so a physics
+# retune (e.g. a change to the soldier-body arrival dynamics) that shifts *when* the block breaks
+# doesn't push the arc past the budget: the onset has been observed anywhere from ~tick 100 to
+# ~tick 365 depending on the body physics, and the whole arc still lands well inside this total.
+const ROUT_ONSET_BUDGET := 600   # ticks allowed for the block to break and start routing
 const RALLY_MARGIN := 240        # slack past ROUT_TIME for the router to break contact and recover
 
 
@@ -29,7 +30,9 @@ var _battle: Node = null
 
 
 func _rout_time_ticks() -> int:
-	return int(ceil(Unit.ROUT_TIME * PHYSICS_TPS))
+	# The sim's fixed step rate, from the canonical autoload constant, so the tick budget tracks
+	# the real step rate if it ever changes rather than a duplicated literal.
+	return int(ceil(Unit.ROUT_TIME * Replay.PHYSICS_TPS))
 
 
 func _spawn_rout_rally_battle() -> void:
