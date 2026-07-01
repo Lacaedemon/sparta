@@ -89,6 +89,64 @@ func test_equal_reach_both_take_losses() -> void:
 	assert_lt(b.soldiers, b.max_soldiers, "equal reach: defender takes losses")
 
 
+# --- formation melee factors flow through the per-soldier path ----------------
+# These drive the DOMINANT engaged-melee path (resolve_soldier_melee), not just the
+# factor methods in isolation, so the shielded-stance melee effects can't be dead code.
+
+## Total wounds dealt to a single defender over `rounds` cadences, WITHOUT killing it:
+## the drop in its lone soldier's health pool. A single pair never compacts (no death),
+## so the health delta is a clean, saturation-free measure of melee output. Returns the
+## health lost. Asserts the defender survived so the comparison stays meaningful.
+func _wounds_over(attacker: Unit, defender: Unit, rounds: int) -> float:
+	var full: float = defender._sim_soldier_hp[0]
+	for _k in range(rounds):
+		attacker.resolve_soldier_melee(defender)
+	assert_eq(defender.soldiers, 1, "the lone defender must survive for a clean wound measure")
+	return full - defender._sim_soldier_hp[0]
+
+
+func test_testudo_attacker_inflicts_fewer_wounds_via_soldier_path() -> void:
+	# Same seed, same geometry: a TESTUDO attacker (head-down, weak melee) wounds a lone
+	# defender LESS over the per-soldier cadence than a normal-formation attacker does.
+	Replay.rng.seed = SEED
+	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+
+	Replay.rng.seed = SEED
+	var a_test := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a_test.set_formation(Unit.FORMATION_TESTUDO)
+	var d_test := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var testudo_wounds: float = _wounds_over(a_test, d_test, 10)
+
+	assert_gt(normal_wounds, 0.0, "the normal attacker lands wounds (sanity)")
+	assert_lt(testudo_wounds, normal_wounds,
+		"a testudo attacker wounds less over the per-soldier melee path (weak melee)")
+	assert_almost_eq(testudo_wounds, normal_wounds * (1.0 - Unit.TESTUDO_MELEE_PENALTY),
+		0.001, "by exactly the testudo melee penalty")
+
+
+func test_shield_wall_defender_takes_fewer_frontal_wounds_via_soldier_path() -> void:
+	# A SHIELD_WALL defender, struck head-on, takes FEWER wounds over the per-soldier
+	# cadence than a normal-formation defender under identical seed and geometry.
+	Replay.rng.seed = SEED
+	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)   # faces UP -> toward the attacker
+	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+
+	Replay.rng.seed = SEED
+	var a_wall := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d_wall := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	d_wall.set_formation(Unit.FORMATION_SHIELD_WALL)
+	var wall_wounds: float = _wounds_over(a_wall, d_wall, 10)
+
+	assert_gt(normal_wounds, 0.0, "the normal defender takes wounds (sanity)")
+	assert_lt(wall_wounds, normal_wounds,
+		"a frontal shield wall takes fewer wounds over the per-soldier melee path")
+	assert_almost_eq(wall_wounds, normal_wounds * (1.0 - Unit.SHIELD_WALL_MELEE_DEFENSE),
+		0.001, "by exactly the shield wall's frontal melee defense")
+
+
 # --- deaths compact the arrays ------------------------------------------------
 
 func test_death_compacts_the_body_arrays() -> void:
@@ -452,3 +510,34 @@ func test_death_compacts_stamina_alongside_other_arrays() -> void:
 	assert_eq(b._sim_body_vel.size(), b.soldiers, "velocities track it too")
 	assert_eq(b._sim_prone.size(), b.soldiers, "prone timers track it too")
 	assert_eq(b._sim_soldier_stamina.size(), b.soldiers, "stamina pool tracks it too")
+
+
+# --- reform after casualties (file-closing) -----------------------------------
+
+func test_reformed_block_holds_frontage_and_closes_up_after_casualties() -> void:
+	# A unit takes casualties and reforms. The held frontage does not change as depth thins
+	# (the line keeps its width and loses ranks), the front rank stays full-width, and the
+	# short rear rank closes toward the centre rather than fanning past the block's edges.
+	var u := _unit(1, 0, 12, Vector2(0, 0), Vector2.DOWN, false)   # 12 men
+	var files: int = UnitFormation.frontage(u)
+	var full := UnitFormation.slots(u, 12)
+	var front_edge: float = 0.0
+	for i in range(files):
+		front_edge = maxf(front_edge, absf(full[i].x))            # the front rank's outer |x|
+	# Fell three men (front-rank indices) and reap, so the rear rank goes partial.
+	u._sim_soldier_hp[0] = 0.0
+	u._sim_soldier_hp[1] = 0.0
+	u._sim_soldier_hp[2] = 0.0
+	SoldierMelee.reap(u, u)
+	assert_eq(u.soldiers, 9, "three men fell")
+	assert_eq(UnitFormation.frontage(u), files, "frontage holds as the block thins")
+	var slots := UnitFormation.slots(u, u.soldiers)  # target layout for survivors, not current world positions
+	# Front rank still spans the full frontage (the width the line holds).
+	var reformed_front: float = 0.0
+	for i in range(files):
+		reformed_front = maxf(reformed_front, absf(slots[i].x))
+	assert_almost_eq(reformed_front, front_edge, 0.001, "the front rank keeps its full width")
+	# No reformed body sits outside that width -- the block closes UP, never bulges out.
+	for i in range(slots.size()):
+		assert_true(absf(slots[i].x) <= front_edge + 0.001,
+			"reformed slot %d stays within the block's frontage" % i)

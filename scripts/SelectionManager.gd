@@ -239,6 +239,12 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_E:
 		_issue_quarter_turn(1)    # quarter-turn right: every soldier pivots 90° CW
 		return true
+	elif event.keycode == KEY_Z:
+		_issue_wheel(-1)   # wheel left: swing 90° about the left flank file
+		return true
+	elif event.keycode == KEY_C:
+		_issue_wheel(1)    # wheel right: swing 90° about the right flank file
+		return true
 	elif event.keycode == KEY_M:
 		_issue_merge()   # merge the selected friendly regiments into one
 		return true
@@ -252,13 +258,35 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		_issue_nudge(BattleRef.NudgeDir.BACK)    # back-step (holds facing)
 		return true
 	elif event.keycode == KEY_T:
-		_cycle_formation()   # cycle tight → normal → loose for selected units
+		_cycle_formation()   # cycle normal → tight → loose → square for selected units
+		return true
+	elif event.keycode == KEY_O:
+		# Jump straight to the anti-cavalry square (O for orbis) -- a fast reaction to
+		# a charge, without cycling through Tight/Loose first. Toggles back to Normal
+		# so the same key drops the square once the horse is beaten off.
+		_toggle_square()
+		return true
+	elif event.keycode == KEY_L:
+		# Lock the shield wall (L for locked shields) -- a frontal holding stance.
+		# Toggles back to Normal so the same key stands the unit down.
+		_toggle_shield_wall()
+		return true
+	elif event.keycode == KEY_U:
+		# Form testudo (U for testUdo) -- all-around overhead arrow cover. Toggles
+		# back to Normal so the same key drops the roof once out of the beaten zone.
+		_toggle_testudo()
 		return true
 	elif event.keycode == KEY_BRACKETRIGHT:
 		_resize_frontage(1)    # ] widens the line by one file
 		return true
 	elif event.keycode == KEY_BRACKETLEFT:
 		_resize_frontage(-1)   # [ narrows the line by one file
+		return true
+	elif event.keycode == KEY_B:
+		_issue_file_double(1)    # explicatio: files split, doubling frontage / halving depth
+		return true
+	elif event.keycode == KEY_N:
+		_issue_file_double(-1)   # duplicatio: files tuck in, halving frontage / doubling depth
 		return true
 	elif event.keycode == FORM_UP_DIST_CYCLE_KEY:
 		_cycle_form_up_dist()   # switch how a multi-unit form-up splits the line
@@ -593,6 +621,24 @@ func _issue_quarter_turn(dir: int) -> void:
 		Sfx.play(&"order")
 
 
+## Wheel (circumductio): each selected friendly unit swings 90° about a fixed flank file (`dir`
+## = -1 left / +1 right). UNLIKE the conversio and quarter-turn — which touch only per-soldier
+## facing and stay out of the replay stream — a wheel moves the regiment (position + facing),
+## which the sim reads, so it goes through the recorded order path (Battle.enqueue_wheel).
+## Blocked during replay playback; combat-engaged units ignore it in Unit.wheel().
+func _issue_wheel(dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and unit.team == 0:
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_wheel(uids, dir)
+	Sfx.play(&"order")
+
+
 ## Merge the selected friendly regiments into the first-selected one. Encoded
 ## as an order whose target is the primary uid — which IS in `units`, so Battle
 ## tells it apart from a relief (whose target is a friendly outside the selection).
@@ -632,14 +678,63 @@ func has_selection() -> bool:
 	return false
 
 
-## Cycle the formation of all selected friendly units: Normal → Tight → Loose → Normal.
+## The order the T-key steps through. Kept as an explicit list (not `(mode + 1) % N`)
+## so new stances can be slotted in without a magic modulus, and so an unknown current
+## mode falls back cleanly to the front of the cycle. The shielded holding stances
+## (Shield Wall, Testudo) are deliberately NOT in this cycle -- they're set from the
+## control-bar menu or their own direct hotkeys, so T stays a short density-plus-square
+## toggle rather than a six-way slog. A unit in a shielded stance re-enters at Normal.
+const FORMATION_CYCLE: Array[int] = [
+	Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT, Unit.FORMATION_LOOSE, Unit.FORMATION_SQUARE,
+]
+
+
+## The formation mode one step past `current` in FORMATION_CYCLE (wrapping at the
+## end). An unknown current mode (find returns -1) steps to the front of the cycle.
+## Static + pure so the T-cycle order is directly testable.
+static func next_formation(current: int) -> int:
+	var idx: int = FORMATION_CYCLE.find(current)
+	return FORMATION_CYCLE[(idx + 1) % FORMATION_CYCLE.size()]
+
+
+## Directly set (or unset) the anti-cavalry square on all selected friendly units,
+## bypassing the T-cycle so a player can react to a charge with one key. If the lead
+## unit is already squared, drop back to Normal -- a toggle -- otherwise form square.
+## Routed through set_formation_to, which records/replays the change and re-checks the
+## PLAYBACK / empty-selection guards; the empty guard here is only to read the lead unit.
+func _toggle_square() -> void:
+	_toggle_formation(Unit.FORMATION_SQUARE)
+
+
+## Directly toggle the shield wall on the selected units (a frontal holding stance).
+func _toggle_shield_wall() -> void:
+	_toggle_formation(Unit.FORMATION_SHIELD_WALL)
+
+
+## Directly toggle the testudo on the selected units (all-around arrow cover).
+func _toggle_testudo() -> void:
+	_toggle_formation(Unit.FORMATION_TESTUDO)
+
+
+## Shared direct-select toggle: set every selected unit to `mode`, or drop back to
+## Normal if the lead unit is already in it. One key to don a stance and one to doff it,
+## bypassing the T-cycle for the menu-only stances. set_formation_to records/replays and
+## re-checks the guards; the empty guard here is only to read the lead unit's mode.
+func _toggle_formation(mode: int) -> void:
+	if _selected.is_empty() or not is_instance_valid(_selected[0]):
+		return
+	var target: int = Unit.FORMATION_NORMAL if _selected[0].formation_mode == mode else mode
+	set_formation_to(target)
+
+
+## Cycle the formation of all selected friendly units through FORMATION_CYCLE
+## (Normal → Tight → Loose → Square → Normal).
 func _cycle_formation() -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	if _selected.is_empty() or not is_instance_valid(_selected[0]):
 		return
-	var current: int = _selected[0].formation_mode
-	var next: int = (current + 1) % 3
+	var next: int = next_formation(_selected[0].formation_mode)
 	var uids: Array = []
 	for unit in _selected:
 		if is_instance_valid(unit):
@@ -661,6 +756,23 @@ func _resize_frontage(delta: int) -> void:
 	if uids.is_empty():
 		return
 	_battle.enqueue_frontage(uids, delta)
+	_refresh_hud()
+	Sfx.play(&"order")
+
+
+## File-doubling maneuver on every selected friendly unit: `direction` > 0 is EXPLICATIO
+## (files split, doubling the frontage / halving the depth), `direction` < 0 is DUPLICATIO
+## (alternate files tuck in behind, halving the frontage / doubling the depth). Routed
+## through Battle so it reshapes each unit from its own current width, is recorded, and
+## replays exactly -- the same path as the [ / ] single-file resize, one whole factor
+## instead of one file. Blocked during playback.
+func _issue_file_double(direction: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	_battle.enqueue_file_double(uids, direction)
 	_refresh_hud()
 	Sfx.play(&"order")
 
@@ -977,6 +1089,7 @@ func _order_mode_color(mode: int) -> Color:
 		BattleRef.OrderMode.ATTACK_REAR: return Color(1.0, 0.3, 0.25)
 		BattleRef.OrderMode.SKIRMISH: return Color(1.0, 0.9, 0.3)
 		BattleRef.OrderMode.SUPPORT: return Color(0.4, 0.95, 0.7)
+		BattleRef.OrderMode.CYCLE_CHARGE: return Color(0.85, 0.4, 1.0)
 		_: return Color.WHITE
 
 
@@ -1259,6 +1372,7 @@ func _draw_orders() -> void:
 		if u.team != 0 and not show_enemy:
 			continue
 		var origin: Vector2 = u.global_position
+		_draw_unit_speed(u, origin)
 		# Only a player-issued attack (stored in target_enemy) draws a red line. A
 		# unit auto-fighting its nearest foe has no stored target, so it draws no
 		# line — matching order_summary() reporting "Engaged" with no destination.
@@ -1401,3 +1515,29 @@ func _draw_order_distance(a: Vector2, b: Vector2, world_dist: float, color: Colo
 		perp = -perp
 	draw_string(font, mid + perp * 12.0 + Vector2(-tw * 0.5, 0.0), text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, color)
+
+
+## The speed label a unit should show in the overlay, or "" when the toggle is off.
+## The unit's `current_speed` is world units/second; it's converted back to the m/s the
+## loadout declared via Battle.WORLD_UNITS_PER_METER and Battle.SPEED_SCALE so it reads in
+## the same metric units as the distance labels. Opt-in via Settings.show_unit_speed
+## (default off). A halted unit reads "0.0 m/s". Pure (no drawing) so it's unit-testable;
+## _draw_unit_speed just positions and renders whatever this returns.
+func _unit_speed_label(u: UnitRef) -> String:
+	if not Settings.show_unit_speed:
+		return ""
+	var mps: float = DistanceLegend.mps_for_world_speed(
+			u.current_speed, BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
+	return DistanceLegend.speed_label_text(mps)
+
+
+## Draw a unit's current-speed label just above its `origin`, when the toggle is on.
+func _draw_unit_speed(u: UnitRef, origin: Vector2) -> void:
+	var text: String = _unit_speed_label(u)
+	if text == "":
+		return
+	var font := ThemeDB.fallback_font
+	var tw: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	# Sit above the unit marker, clear of the order lines fanning out from origin.
+	draw_string(font, origin + Vector2(-tw * 0.5, -16.0), text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.85, 0.95, 1.0))
