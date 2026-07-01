@@ -122,6 +122,7 @@ jobs:
           VERDICT="info"
           BASELINE_LINE="No baseline committed yet at \`tools/benchmark/baseline.json\` -- nothing to compare against. See that file's header for how to establish one."
           if [ -f tools/benchmark/baseline.json ]; then
+            VERDICT="ok"   # a baseline exists and was compared; overwritten to "regression" below if it crossed the threshold
             BASE_MEAN=$(jq -r '.stats.mean_ms' tools/benchmark/baseline.json)
             BASE_P95=$(jq -r '.stats.p95_ms' tools/benchmark/baseline.json)
             # Percent change vs baseline, computed in awk (portable, no bc dependency).
