@@ -596,6 +596,7 @@ func _think(delta: float) -> void:
 				if _has_pending_march:
 					_has_pending_march = false
 					move_target = _pending_march_target
+					_pending_march_target = Vector2.ZERO   # consumed -- clear it alongside its gate, as the interrupt path and _rout() do
 					has_move_target = true
 			state = State.IDLE
 			return
