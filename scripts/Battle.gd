@@ -237,10 +237,16 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# the spear out-reaches it, the cavalry sword a touch longer than the foot sword,
 	# and the archers' sidearm is short (they fight at range, not in the press).
 	#
-	# `speed_mps` is the unit's movement speed in metres/second, converted to world
-	# units below. The foot types move at a brisk advance-to-contact pace (heavy
-	# spearmen slowest, light archers quickest); cavalry charge at a real gallop,
-	# noticeably faster than any foot. See website/tactics.qmd for the full table.
+	# `walk_mps`/`jog_mps`/`sprint_mps` are the unit's three gait speeds in metres/second,
+	# converted to world units below. Independent per type -- not a fixed fraction of each
+	# other -- and scaled to each type's panoply weight: heavier kit costs proportionally
+	# more at a run than at a walk (walking pace is fairly load-insensitive; sprint pace
+	# collapses faster under weight), so spearmen's walk sits close to the lighter types'
+	# but their sprint lags well behind. Cavalry's three paces map onto the horse's own
+	# real gaits (walk / trot / gallop) rather than a rider-weight-scaled fraction, since a
+	# rider's kit is a small fraction of what the horse itself carries (tack, barding, and
+	# rider together are still well inside a war-horse's load capacity at these speeds).
+	# See website/tactics.qmd for the full table.
 	#
 	# `formation` is the type's default density (still just a starting point --
 	# every unit can cycle Tight/Normal/Loose live with the T hotkey). Anti-cavalry
@@ -248,11 +254,11 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# skirmishers start loose (room to fire, less to lose from spreading out);
 	# sword-armed foot and cavalry start at the plain combat-order default.
 	var loadout := [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "speed_mps": 2.2, "reach_m": 2.4, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "speed_mps": 2.6, "reach_m": 1.3, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "speed_mps": 3.0, "reach_m": 0.6, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "speed_mps": 8.5, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "speed_mps": 8.5, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "reach_m": 2.4, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "reach_m": 1.3, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "reach_m": 0.6, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
 	]
 	# Tighten spacing as the line grows so even a max stack stays on the field.
 	var spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
@@ -273,7 +279,9 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		u.attack = d["atk"]
 		u.defense = d["def"]
 		# Real-world m/s -> world units, times the global movement multiplier.
-		u.move_speed = d["speed_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+		u.walk_speed = d["walk_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+		u.jog_speed = d["jog_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+		u.move_speed = d["sprint_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 		# Weapon reach (metres) -> world units. Falls back to the unit default if a
 		# loadout entry omits it.
 		if d.has("reach_m"):
