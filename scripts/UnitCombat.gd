@@ -8,6 +8,15 @@ class_name UnitCombat
 ## in a fixed order, so battles stay replay-deterministic.
 
 
+## Extra morale debuff for a flank/rear attack, ON TOP OF the extra casualties it already
+## deals. A rear hit already kills more men (the flank multiplier scales the casualty count,
+## and rear blows bypass shield/active defence), and morale erosion tracks the casualty
+## count -- so the extra damage already costs extra morale. This knob adds a FURTHER morale
+## penalty scaled by how far past frontal the attack is; 0 keeps morale driven by casualties
+## alone (the default). Raise it later if flanking should shake morale beyond its body count.
+const REAR_MORALE_EXTRA: float = 0.0
+
+
 ## Physics-based cavalry charge multiplier: the bonus is the rider's IMPACT MOMENTUM, not
 ## a one-shot token. It scales with the component of the unit's approach velocity aimed
 ## straight at the target -- so a fast, head-on gallop lands the full bonus, a
@@ -86,7 +95,21 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	# animated/faded on render time -- no effect on replays.
 	if u.is_inside_tree():
 		VolleyTrail.spawn(u.get_parent(), u.global_position, target.global_position, u.team_color)
-	take_casualties(target, int(round(dmg)), u)
+	# Per-soldier casualties when the target has a soldier layer: the volley kills specific
+	# near-side men in the health pool (so which men fall is geometric and the bodies compact),
+	# instead of the regiment blindly dropping arbitrary rear soldiers. The casualty COUNT is
+	# identical to the formula path -- both round dmg to `raw` first, then apply the same flank
+	# (take_casualties does `round(raw * flank)`; the per-soldier path matches it exactly) --
+	# so lethality and morale are unchanged. No new RNG is drawn (the one volley roll above
+	# stays first), so replays hold.
+	var raw: int = int(round(dmg))
+	if Unit.INDIVIDUAL_COLLISION and not target._sim_soldier_hp.is_empty() \
+			and target.state != Unit.State.DEAD and target.state != Unit.State.ROUTING:
+		var flank: float = flank_multiplier(target, u)
+		var casualties: int = max(1, int(round(float(raw) * flank)))
+		SoldierMelee.apply_ranged_casualties(target, u, casualties, flank)
+	else:
+		take_casualties(target, raw, u)
 
 
 ## Return the nearest living friendly unit that lies in the straight-line flight path from
@@ -122,19 +145,22 @@ static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
 	var flank: float = flank_multiplier(u, attacker)
 	var total: int = max(1, int(round(amount * flank)))
 	u.soldiers -= total
-	# The flank multiplier scales the morale hit too (a rout from being taken in the rear).
-	# The per-soldier melee path passes flank 1.0 -- it models facing in the strike contest
-	# instead, so the directional penalty isn't applied twice.
+	# `flank` wires through so REAR_MORALE_EXTRA can add an optional extra rear/flank morale
+	# debuff later; at the default (0.0) morale tracks the casualty count alone (which already
+	# rose with the flank). The per-soldier melee path passes 1.0 -- facing is in the strike rolls.
 	register_casualties(u, total, attacker, flank)
 
 
 ## Apply the consequences of `total` casualties ALREADY subtracted from `u.soldiers`:
-## morale erosion (scaled by `morale_flank`), the thin-regiment crumble, death/rout
-## thresholds, and the cosmetic fallen markers. Shared by the regiment-formula path
-## (take_casualties) and the per-soldier melee path (which compacts the dead bodies and
-## decrements `soldiers` itself, then calls this with morale_flank 1.0).
+## morale erosion, the thin-regiment crumble, death/rout thresholds, and the cosmetic fallen
+## markers. Shared by the regiment-formula path (take_casualties) and the per-soldier melee
+## path (which compacts the dead bodies and decrements `soldiers` itself). Morale erosion is
+## driven by the casualty COUNT; `morale_flank` adds only the OPTIONAL extra rear/flank debuff
+## gated by REAR_MORALE_EXTRA (0 by default), so a rear attack shakes morale through its higher
+## body count, not a double-counted multiplier. Callers pass their flank (1.0 = frontal/melee).
 static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flank: float) -> void:
-	u.morale -= float(total) * 0.12 * morale_flank
+	var morale_scale: float = 1.0 + REAR_MORALE_EXTRA * (morale_flank - 1.0)
+	u.morale -= float(total) * 0.12 * morale_scale
 	var ratio: float = float(u.soldiers) / float(u.max_soldiers)
 	if ratio < 0.4:
 		u.morale -= (0.4 - ratio) * 6.0   # crumble as a regiment thins out
