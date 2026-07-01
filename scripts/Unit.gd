@@ -527,10 +527,11 @@ func _think(delta: float) -> void:
 			return
 
 	# Wheel (circumductio): the block swings about a fixed flank file. facing rotates and the
-	# regiment centre slides along an arc so the hinge holds; the men march to their swung slots
-	# through the ordinary spring (no freeze). An interrupt by combat or a move order just drops
-	# the wheel where it is — the partial swing is already a valid formation state (position and
-	# facing are consistent), so no settle step is needed.
+	# regiment centre slides along an arc so the hinge holds; _advance_wheel rigidly rotates the
+	# centre and every body about the hinge, with the spring frozen (as for the conversio/
+	# quarter-turn) so it doesn't fight the rotation. An interrupt by combat or a move order just
+	# drops the wheel where it is — the partial swing is already a valid formation state (position
+	# and facing are consistent), so no settle step is needed.
 	if _wheel_target != Vector2.ZERO:
 		if state == State.FIGHTING or has_move_target:
 			_wheel_target = Vector2.ZERO
@@ -1041,8 +1042,9 @@ var _quarter_start_facing: Vector2 = Vector2.ZERO
 # swung slots. _advance_wheel rigidly rotates the centre AND every body about the hinge by the
 # same step each tick, so the same spring-freeze as the conversio/quarter-turn applies (the
 # restoring force is zeroed while _wheel_target is set) — that keeps the spring from fighting the
-# rigid rotation, and bodies stay exactly on their swinging slots (no teleport). _formation_angle
-# stays 0 through the swing. `_wheel_pivot` is the fixed hinge point in parent-local space (like
+# rigid rotation, and bodies stay exactly on their swinging slots (no teleport). The wheel does not
+# modify _formation_angle (it's 0 normally, but non-zero after a quarter-turn — the pivot geometry
+# folds that in). `_wheel_pivot` is the fixed hinge point in parent-local space (like
 # `_sim_soldier_pos`), captured when the wheel is armed so the arc reproduces exactly on replay.
 # Cleared on arrival or when interrupted by combat, a move order, or routing (the partial swing is
 # preserved).
@@ -1177,8 +1179,8 @@ func _advance_turn(target: Vector2, delta: float) -> bool:
 func _wheel_pivot_point(dir: int) -> Vector2:
 	var files: int = UnitFormation.frontage(self)
 	var half_width: float = float(files - 1) * 0.5 * FORMATION_SPACING * spacing_scale
-	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # local +X in world space
-	var front_axis: Vector2 = facing.rotated(_formation_angle)             # local -Y (toward front)
+	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
+	var front_axis: Vector2 = facing.rotated(_formation_angle)             # slot-grid local -Y (toward front)
 	var flank: Vector2 = position + file_axis * (half_width * signf(dir))
 	# The front rank sits ahead of the centre along the front axis by the block's front depth, so
 	# the hinge is the leading man of the standing file (a door hinges at its edge post, not its mid).
