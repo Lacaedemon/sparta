@@ -673,8 +673,9 @@ func _think(delta: float) -> void:
 		if is_ranged and not in_contact and dist <= RANGED_RANGE \
 				and (target_enemy != null or not has_move_target):
 			state = State.FIGHTING
-			_face(enemy.position)
-			if _attack_cd <= 0.0:
+			# Turn to bring the line to bear before loosing; a large swing turns in place
+			# gradually, a small correction snaps. Fire is withheld until faced.
+			if _face_for_action(enemy.position, delta) and _attack_cd <= 0.0:
 				_attack_cd = RANGED_INTERVAL
 				UnitCombat.shoot(self, enemy)
 			return
@@ -684,22 +685,33 @@ func _think(delta: float) -> void:
 		# it strikes for the ×2 flank bonus, which is the cost of disengaging.)
 		if in_contact and (target_enemy != null or not has_move_target):
 			state = State.FIGHTING
-			_face(enemy.position)
-			if _attack_cd <= 0.0:
+			# Re-face for action: a large swing off the current fronting turns the men in
+			# place gradually (they hold their ground) before the line strikes; a small
+			# correction snaps and fights now. _face_for_action reports when the front is
+			# brought to bear — the strike is withheld until then.
+			var faced: bool = _face_for_action(enemy.position, delta)
+			if faced and _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
 				UnitCombat.strike(self, enemy)
 			# Press into contact: a committed melee unit keeps advancing onto the enemy
 			# while it fights, so the lines close to body contact (separation provides the
 			# counterforce, settling them at the engaged-enemy front-rank floor) instead
 			# of trading blows at arm's length. A HOLD stance holds its ground and doesn't
-			# press; ranged units don't melee-press at all.
-			if not is_ranged and order_mode != ORDER_HOLD:
+			# press; ranged units don't melee-press at all. While still turning in place to
+			# bring the front to bear, hold position — the men turn where they stand, so the
+			# press waits until the turn fully finishes.
+			if _engage_turn_target == Vector2.ZERO and not is_ranged and order_mode != ORDER_HOLD:
 				_press_into(enemy.position, delta)
 			return
 		elif target_enemy != null:
 			# Explicit attack order, not yet in contact: chase past any move target.
 			# A flank/rear stance closes on the enemy's side or back instead of
 			# head-on, so the strike on arrival lands with the flank/rear bonus.
+			# If the enemy broke contact mid-turn, settle the re-face first — the unit is
+			# marching after it now, so the frozen spring must release (the turn resumes on
+			# the next contact when _face_for_action runs again).
+			if _engage_turn_target != Vector2.ZERO:
+				_settle_engage_turn()
 			var goal: Vector2 = enemy.position
 			if order_mode == ORDER_ATTACK_FLANK or order_mode == ORDER_ATTACK_REAR:
 				goal = UnitTargeting.attack_approach_point(self, enemy)
@@ -729,10 +741,21 @@ func _think(delta: float) -> void:
 				facing = deploy_facing
 				deploy_facing = Vector2.ZERO
 	elif enemy != null and order_mode != ORDER_HOLD:
+		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
+		# range/contact). If a re-face turn was in progress, settle it first: the unit is
+		# marching now, so the frozen spring must release (folding the partial rotation into
+		# _formation_angle) or the bodies would stay pinned and never keep up with the march.
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
 		_move_to(enemy.position, delta)
 	else:
 		# Idle: no enemy, or a HOLD stance that won't chase — the paths above
-		# still fight/fire whatever reaches a held unit.
+		# still fight/fire whatever reaches a held unit. If the engaged enemy vanished
+		# (died/routed/left range) while a re-face turn was still running, settle it here so
+		# the soldier-body spring doesn't stay frozen indefinitely (folding the partial
+		# rotation into _formation_angle so the bodies don't surge when the spring re-enables).
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
 		state = State.IDLE
 
 
@@ -803,21 +826,27 @@ func _support_tick(delta: float) -> void:
 		var in_contact: bool = dist <= attack_range + RADIUS + threat.RADIUS
 		if is_ranged and not in_contact and dist <= RANGED_RANGE:
 			state = State.FIGHTING
-			_face(threat.position)
-			if _attack_cd <= 0.0:
+			if _face_for_action(threat.position, delta) and _attack_cd <= 0.0:
 				_attack_cd = RANGED_INTERVAL
 				UnitCombat.shoot(self, threat)
 		elif in_contact:
 			state = State.FIGHTING
-			_face(threat.position)
-			if _attack_cd <= 0.0:
+			if _face_for_action(threat.position, delta) and _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
 				UnitCombat.strike(self, threat)
 		else:
+			# Threat out of range: chase it. Settle a dangling re-face first so the frozen
+			# body spring releases before the march (the turn re-arms on the next contact).
+			if _engage_turn_target != Vector2.ZERO:
+				_settle_engage_turn()
 			_move_to(threat.position, delta)
 		return
 	# No threat near the ward: shadow it, holding station a short distance off so
-	# the supporter doesn't crowd the unit it's guarding.
+	# the supporter doesn't crowd the unit it's guarding. If a re-face turn was still
+	# running when the threat left (died/routed/cleared the guard radius), settle it here
+	# so the body spring isn't left frozen indefinitely.
+	if _engage_turn_target != Vector2.ZERO:
+		_settle_engage_turn()
 	if position.distance_to(ward.position) > SUPPORT_FOLLOW_DISTANCE:
 		_move_to(ward.position, delta)
 	else:
@@ -904,6 +933,47 @@ func _press_into(point: Vector2, delta: float) -> void:
 
 func _face(point: Vector2) -> void:
 	_face_dir(point - position)
+
+
+## Face `point` for an engage/attack action. A small heading correction snaps (stays
+## responsive at close quarters); a large swing (>ENGAGE_TURN_THRESHOLD, ~a quarter-turn or
+## more) turns the men in place gradually instead — the line pivots to bring its front to bear
+## without the grid collapsing and re-expanding. Returns whether the unit is faced enough to
+## fight this tick (true when snapping, or once a turn has closed to within
+## ENGAGE_TURN_FIGHT_TOLERANCE); the caller withholds the strike while still turning. Reuses
+## the drill turns' spring-freeze + _formation_angle-absorb, so the bodies hold their ground.
+func _face_for_action(point: Vector2, delta: float) -> bool:
+	var dir: Vector2 = point - position
+	if dir.length() < 0.01:
+		return true
+	var offset: float = absf(angle_difference(facing.angle(), dir.angle()))
+	# Already turning: keep rotating toward the (possibly moved) target and settle on arrival.
+	if _engage_turn_target != Vector2.ZERO:
+		_engage_turn_target = dir.normalized()
+		if _advance_turn(_engage_turn_target, delta):
+			_settle_engage_turn()
+		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
+	# Small offset: snap and fight now, as before.
+	if offset <= ENGAGE_TURN_THRESHOLD:
+		_face_dir(dir)
+		return true
+	# Large offset: begin a turn-in-place. Men hold their positions (spring frozen) while
+	# facing rotates; the strike is withheld until the front comes to bear.
+	_engage_turn_start_facing = facing
+	_engage_turn_target = dir.normalized()
+	if _advance_turn(_engage_turn_target, delta):
+		_settle_engage_turn()
+	return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
+
+
+## Finish an engage turn-in-place: fold the rotation into _formation_angle (so the men keep
+## their world positions and the block presents its new front without surging) and clear the
+## turn state. Shares the settle math with the quarter-turn.
+func _settle_engage_turn() -> void:
+	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
+	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
+	_engage_turn_target = Vector2.ZERO
+	_render_dirty = true
 
 
 func _face_dir(dir: Vector2) -> void:
@@ -1270,6 +1340,25 @@ var _quarter_start_facing: Vector2 = Vector2.ZERO
 # preserved).
 var _wheel_target: Vector2 = Vector2.ZERO
 var _wheel_pivot: Vector2 = Vector2.ZERO
+# Non-zero while a unit is turning in place to bring its front to bear on an enemy it is
+# engaging (an attack order or auto-engage that arrives ~>75° off the current fronting). The
+# target facing (toward the enemy); unit.facing rotates toward it each tick with the spring
+# frozen, exactly like the drill turns, so the men hold their ground and the block does not
+# collapse-and-re-expand. The start heading is kept so _formation_angle absorbs however far it
+# turned when the turn finishes (or is interrupted), leaving the men where they stood — the
+# unit then fights with the fronting it now presents. Unlike the drill turns this runs WHILE
+# FIGHTING (a re-face for action, not an idle maneuver); a fresh combat re-face is throttled so
+# it does not re-arm every tick.
+var _engage_turn_target: Vector2 = Vector2.ZERO
+var _engage_turn_start_facing: Vector2 = Vector2.ZERO
+# Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
+# instead of snapping. Below it a small correction snaps, keeping close-quarters combat
+# responsive; only a large swing (roughly a quarter-turn or more) turns the men in place.
+const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
+# The unit strikes once its front is within this offset of the enemy — a turn-in-place brings
+# the line to bear before it fights, but it need not be dead-on. Slightly under a flank
+# boundary so a re-faced unit lands frontal blows.
+const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -1752,8 +1841,10 @@ func start_order_response() -> void:
 	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
 	# marches as a proper line rather than crabbing sideways. The bodies ease onto the
 	# reformed slots via the spring (a future turn-and-widen move maneuver will make this a
-	# deliberate reshape; until then a clean reform is the safe default).
+	# deliberate reshape; until then a clean reform is the safe default). Also drop any
+	# in-flight engage re-face turn: the order supersedes it and the reform squares the block.
 	_formation_angle = 0.0
+	_engage_turn_target = Vector2.ZERO
 
 
 ## Commit a pending reform-before-move: hand off the stored destination to the
@@ -1826,6 +1917,7 @@ func _rout() -> void:
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
 	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
 	_wheel_target = Vector2.ZERO       # and any in-progress wheel (partial swing left as-is)
+	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0
