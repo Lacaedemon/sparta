@@ -249,7 +249,7 @@ Each `state_<tick>.json` holds the battle tick and a record per unit:
 | `position`, `facing` | World-space `[x, y]` pairs (rounded). |
 | `morale` | Current morale (100 = fresh; a rout triggers at 0). |
 | `state` | Readable `State` name — `IDLE` / `MOVING` / `FIGHTING` / `ROUTING` / `DEAD`. |
-| `formation` | Readable formation — `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE`. |
+| `formation` | Readable formation — `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE` / `SHIELD_WALL` / `TESTUDO`. |
 | `soldiers` | Living soldier count (drops as the unit takes casualties). |
 | `current_speed` | Current movement speed (world units/s). |
 | `order_mode` | Readable order stance (`Normal`, `Hold`, `Attack flank`, …). |

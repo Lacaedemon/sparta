@@ -26,10 +26,12 @@ func test_formation_name_maps_each_member() -> void:
 	assert_eq(DemoState.formation_name(1), "TIGHT")
 	assert_eq(DemoState.formation_name(2), "LOOSE")
 	assert_eq(DemoState.formation_name(3), "SQUARE")
+	assert_eq(DemoState.formation_name(4), "SHIELD_WALL")
+	assert_eq(DemoState.formation_name(5), "TESTUDO")
 
 
 func test_formation_name_unknown_int_is_visible_token() -> void:
-	assert_eq(DemoState.formation_name(7), "FORMATION(7)")
+	assert_eq(DemoState.formation_name(9), "FORMATION(9)")
 
 
 func test_order_mode_name_uses_supplied_table() -> void:

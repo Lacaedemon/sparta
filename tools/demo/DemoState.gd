@@ -23,12 +23,14 @@ const STATE_NAMES := {
 }
 
 ## Unit.formation_mode int -> readable name. Mirrors the FORMATION_* consts on Unit.gd
-## (NORMAL 0, TIGHT 1, LOOSE 2, SQUARE 3).
+## (NORMAL 0, TIGHT 1, LOOSE 2, SQUARE 3, SHIELD_WALL 4, TESTUDO 5).
 const FORMATION_NAMES := {
 	0: "NORMAL",
 	1: "TIGHT",
 	2: "LOOSE",
 	3: "SQUARE",
+	4: "SHIELD_WALL",
+	5: "TESTUDO",
 }
 
 
