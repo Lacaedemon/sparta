@@ -792,10 +792,18 @@ func _support_tick(delta: float) -> void:
 				_attack_cd = ATTACK_INTERVAL
 				UnitCombat.strike(self, threat)
 		else:
+			# Threat out of range: chase it. Settle a dangling re-face first so the frozen
+			# body spring releases before the march (the turn re-arms on the next contact).
+			if _engage_turn_target != Vector2.ZERO:
+				_settle_engage_turn()
 			_move_to(threat.position, delta)
 		return
 	# No threat near the ward: shadow it, holding station a short distance off so
-	# the supporter doesn't crowd the unit it's guarding.
+	# the supporter doesn't crowd the unit it's guarding. If a re-face turn was still
+	# running when the threat left (died/routed/cleared the guard radius), settle it here
+	# so the body spring isn't left frozen indefinitely.
+	if _engage_turn_target != Vector2.ZERO:
+		_settle_engage_turn()
 	if position.distance_to(ward.position) > SUPPORT_FOLLOW_DISTANCE:
 		_move_to(ward.position, delta)
 	else:

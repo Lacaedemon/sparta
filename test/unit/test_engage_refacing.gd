@@ -209,3 +209,25 @@ func test_enemy_leaves_range_mid_turn_settles_the_turn() -> void:
 
 	assert_eq(a._engage_turn_target, Vector2.ZERO,
 		"the engage turn is settled when the enemy breaks contact and the unit chases")
+
+
+# --- the same dangling-turn cleanup applies in the support stance -------------
+
+func test_support_threat_killed_mid_turn_clears_the_turn() -> void:
+	# A supporting unit engages a threat near its ward with a large-offset re-face, then the
+	# threat vanishes mid-turn. The support tick has its own combat exits (chase / shadow /
+	# idle) that must settle the dangling turn too, or the body spring stays frozen forever.
+	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
+	var ward := _unit(3, 0, Vector2(60, 0), Vector2.RIGHT)   # friendly ward this unit guards
+	var threat := _unit(2, 1, Vector2(0, 40), Vector2.UP)    # in contact, a quarter-turn off
+	a.order_mode = Unit.ORDER_SUPPORT
+	a.support_target = ward
+
+	a._think(0.05)   # support tick engages the threat and begins the re-face turn
+	assert_true(a._engage_turn_target != Vector2.ZERO, "the support re-face turn is in progress")
+
+	threat._remove_from_play()   # the guarded threat dies while the unit is still turning
+	a._think(0.05)               # no threat: the supporter shadows/idles and must settle
+
+	assert_eq(a._engage_turn_target, Vector2.ZERO,
+		"the engage turn is cleared in the support stance once the threat is gone")
