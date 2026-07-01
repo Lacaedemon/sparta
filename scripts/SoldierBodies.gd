@@ -152,12 +152,16 @@ static func step(unit: Unit, delta: float) -> void:
 		# march for the uncrowded bulk.
 		var feed_forward: Vector2 = unit._sim_steer[i] if engaged.has(i) \
 				else unit._approach_velocity + unit._sim_steer[i]
-		# During an in-place turn (conversio or quarter-turn) the slot targets rotate with
-		# unit.facing, which would drag bodies to intermediate positions and back. Drop the
-		# arrival term so bodies aim only at the feed-forward (~zero for a turn in place); they
-		# decelerate to rest where they stand instead of chasing the swinging slots.
-		var turning: bool = unit._conversio_target != Vector2.ZERO or unit._quarter_target != Vector2.ZERO \
-				or unit._wheel_target != Vector2.ZERO
+		# During an in-place turn the slot targets rotate with unit.facing, which would drag
+		# bodies to intermediate positions and back. Drop the arrival term so bodies aim only at
+		# the feed-forward (~zero for a turn in place); they decelerate to rest where they stand
+		# instead of chasing the swinging slots. This covers the idle drill turns (conversio,
+		# quarter-turn, wheel) AND the engage re-face (a fighting unit turning its front onto a
+		# new enemy).
+		var turning: bool = unit._conversio_target != Vector2.ZERO \
+				or unit._quarter_target != Vector2.ZERO \
+				or unit._wheel_target != Vector2.ZERO \
+				or unit._engage_turn_target != Vector2.ZERO
 		var to_slot: Vector2 = Vector2.ZERO if turning \
 				else slots[i] - unit._sim_soldier_pos[i]
 		# Arrival: approach the slot at a speed that decelerates to 0 by the time the body

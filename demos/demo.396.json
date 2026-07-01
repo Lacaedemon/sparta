@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/arrow-nudge.json",
+  "caption": "Arrow-key nudge maneuvers (#396): with a unit selected, the arrow keys order a small fixed step without the mouse. Watch the Spearmen side-step Left, then Right twice, then back-step on Down -- each shuffle holds its south-facing line rather than turning to face the step. The three nudge arrows replace camera panning only while a unit is selected.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}
