@@ -448,9 +448,12 @@ func test_duplicatio_halves_the_frontage() -> void:
 
 
 func test_file_double_round_trips() -> void:
-	# Explicatio then duplicatio returns an even-frontage unit to its start width.
+	# Explicatio then duplicatio returns a unit to its start width.
 	var u := _unit(1, Vector2.ZERO)
-	u.max_soldiers = 128   # _files(128) is even, so halve(double(f)) == f exactly
+	# 128 men leaves plenty of soldiers for the widened rank (frontage 15 -> 30 files,
+	# well under 128), so explicatio isn't capped by the count and halve(double(f)) == f
+	# exactly. (A small count where widened_files hits its single-rank cap wouldn't round-trip.)
+	u.max_soldiers = 128
 	var b := _battle([u])
 	var start: int = UnitFormation.frontage(u)
 	b.enqueue_file_double([1], 1)
