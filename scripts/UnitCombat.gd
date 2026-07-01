@@ -89,15 +89,18 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	# Per-soldier casualties when the target has a soldier layer: the volley kills specific
 	# near-side men in the health pool (so which men fall is geometric and the bodies compact),
 	# instead of the regiment blindly dropping arbitrary rear soldiers. The casualty COUNT is
-	# identical to the formula path (flank folded in the same way), so lethality and morale are
-	# unchanged. No new RNG is drawn (the one volley roll above stays first), so replays hold.
+	# identical to the formula path -- both round dmg to `raw` first, then apply the same flank
+	# (take_casualties does `round(raw * flank)`; the per-soldier path matches it exactly) --
+	# so lethality and morale are unchanged. No new RNG is drawn (the one volley roll above
+	# stays first), so replays hold.
+	var raw: int = int(round(dmg))
 	if Unit.INDIVIDUAL_COLLISION and not target._sim_soldier_hp.is_empty() \
 			and target.state != Unit.State.DEAD and target.state != Unit.State.ROUTING:
 		var flank: float = flank_multiplier(target, u)
-		var casualties: int = max(1, int(round(dmg * flank)))
+		var casualties: int = max(1, int(round(float(raw) * flank)))
 		SoldierMelee.apply_ranged_casualties(target, u, casualties, flank)
 	else:
-		take_casualties(target, int(round(dmg)), u)
+		take_casualties(target, raw, u)
 
 
 ## Return the nearest living friendly unit that lies in the straight-line flight path from

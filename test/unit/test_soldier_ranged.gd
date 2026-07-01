@@ -65,7 +65,7 @@ func test_volley_kills_the_near_side_first() -> void:
 	# dead -- no survivor is closer to the shooter than the closest original was.
 	var target := _target(2, 20, Vector2(0, 0), Vector2.DOWN)
 	var shooter := _shooter(1, Vector2(600, 400))
-	var origin: Vector2 = shooter.global_position
+	var origin: Vector2 = shooter.position
 	var before: Array[float] = _dists_to(target, origin)
 	before.sort()
 	SoldierMelee.apply_ranged_casualties(target, shooter, 5, 1.0)
@@ -87,7 +87,7 @@ func test_selection_is_deterministic() -> void:
 	var a := _target(2, 20, Vector2(0, 0), Vector2.DOWN)
 	var b := _target(3, 20, Vector2(0, 0), Vector2.DOWN)
 	var shooter := _shooter(1, Vector2(600, 400))
-	var origin: Vector2 = shooter.global_position
+	var origin: Vector2 = shooter.position
 	SoldierMelee.apply_ranged_casualties(a, shooter, 6, 1.0)
 	SoldierMelee.apply_ranged_casualties(b, shooter, 6, 1.0)
 	var da: Array[float] = _dists_to(a, origin)
@@ -95,6 +95,19 @@ func test_selection_is_deterministic() -> void:
 	da.sort()
 	db.sort()
 	assert_eq(da, db, "two identical volleys leave the identical set of survivors")
+
+
+func test_rear_volley_erodes_morale_more_than_a_frontal_one() -> void:
+	# The morale_flank param must reach register_casualties: the same casualty count fired
+	# with a higher flank (a rear/flank volley) drops morale further than a frontal one.
+	var front := _target(2, 20, Vector2(0, 0), Vector2.DOWN)
+	var rear := _target(3, 20, Vector2(0, 0), Vector2.DOWN)
+	var shooter := _shooter(1, Vector2(600, 400))
+	SoldierMelee.apply_ranged_casualties(front, shooter, 5, 1.0)
+	SoldierMelee.apply_ranged_casualties(rear, shooter, 5, 2.0)
+	assert_eq(front.soldiers, rear.soldiers, "same casualty count either way")
+	assert_lt(rear.morale, front.morale,
+		"the higher flank multiplier erodes morale more for the same number of dead")
 
 
 func test_zero_casualties_is_a_no_op() -> void:

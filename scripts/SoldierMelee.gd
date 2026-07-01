@@ -155,7 +155,9 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 static func apply_ranged_casualties(target: Unit, shooter: Unit, casualties: int, morale_flank: float) -> void:
 	if casualties <= 0 or target._sim_soldier_hp.is_empty():
 		return
-	var origin: Vector2 = shooter.global_position
+	# `_sim_soldier_pos` is parent-local (built from unit.position), so compare against the
+	# shooter's local position -- the same frame flank_multiplier uses -- not global_position.
+	var origin: Vector2 = shooter.position
 	var living: Array[int] = []
 	for i in range(target._sim_soldier_hp.size()):
 		if target._sim_soldier_hp[i] > 0.0:
