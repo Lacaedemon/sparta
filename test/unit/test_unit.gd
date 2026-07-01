@@ -2250,3 +2250,74 @@ func test_reform_timer_decrements_during_response_delay() -> void:
 	u._think(0.1)
 	assert_lt(u._reform_timer, before_reform,
 		"the reform timer counts down even while the order-response delay is still running")
+
+
+# --- cycle charge (caracole) -----------------------------------------
+
+func test_cycle_charge_strikes_on_contact_then_flips_to_recharging() -> void:
+	# A cycle-charging unit lands its impact strike when it reaches melee contact, then
+	# switches into the recharging (pull-back) phase instead of pressing into a grind.
+	var u := _make_unit()
+	u.team = 0
+	u.is_cavalry = true
+	u.order_mode = Unit.ORDER_CYCLE_CHARGE
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(u.attack_range + Unit.RADIUS + enemy.RADIUS - 2.0, 0)  # in contact
+	u.target_enemy = enemy
+	var before: int = enemy.soldiers
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "a cycle-charger fights the enemy it reaches")
+	assert_lt(enemy.soldiers, before, "and lands a strike on contact")
+	assert_true(u._cycle_recharging, "then flips to the recharging phase to pull back")
+
+
+func test_cycle_charge_pulls_back_after_a_charge() -> void:
+	# Once recharging, the unit peels back AWAY from the enemy toward its standoff.
+	var u := _make_unit()
+	u.team = 0
+	u.is_cavalry = true
+	u.order_mode = Unit.ORDER_CYCLE_CHARGE
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(50, 0)   # enemy to the +x, inside the standoff
+	u.target_enemy = enemy
+	u._cycle_recharging = true
+	u._think(0.1)
+	assert_lt(u.position.x, 0.0, "a recharging cycle-charger backs away from the enemy")
+
+
+func test_cycle_charge_re_charges_once_it_has_opened_the_standoff() -> void:
+	# Recharging ends when the unit has opened at least CYCLE_CHARGE_STANDOFF; it then
+	# clears the recharge flag and drives back in on the enemy.
+	var u := _make_unit()
+	u.team = 0
+	u.is_cavalry = true
+	u.order_mode = Unit.ORDER_CYCLE_CHARGE
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(Unit.CYCLE_CHARGE_STANDOFF + 20.0, 0)  # already beyond the standoff
+	u.target_enemy = enemy
+	u._cycle_recharging = true
+	u._think(0.1)
+	assert_false(u._cycle_recharging, "opening past the standoff ends the pull-back")
+	assert_gt(u.position.x, 0.0, "and the unit drives back in on the enemy")
+
+
+func test_cycle_charge_ranged_unit_falls_through_to_normal_ranged_fire() -> void:
+	# The stance is melee-only: a ranged unit ignores it and fires normally.
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_CYCLE_CHARGE
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(Unit.RANGED_RANGE - 20.0, 0)   # in ranged range, out of melee
+	u.target_enemy = enemy
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "a ranged cycle-charger just fires at range")
+	assert_false(u._cycle_recharging, "and never enters the melee pull-back loop")

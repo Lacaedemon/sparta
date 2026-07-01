@@ -36,6 +36,7 @@ DEMOS=(
   "sidestep|demos/inputs/sidestep.json|30|150|640|input"
   "about_face|demos/inputs/about-face.json|30|180|640|input"
   "order_distance|demos/inputs/order-distance.json|30|120|640|input"
+  "cycle_charge|demos/inputs/cycle-charge.json|30|600|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a
