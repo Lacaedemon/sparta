@@ -45,10 +45,12 @@ static func files_label(n: int) -> String:
 
 
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep grid (front
-## rank toward -Y, the rotated "forward"). Pure and deterministic -- a function of `n` and
-## the unit's frontage -- so it's unit-testable; the render adds stable jitter on top.
+## rank toward -Y, the rotated "forward"). Pure and deterministic -- a function of `n`,
+## the unit's frontage, and its density (TIGHT/NORMAL/LOOSE scales spacing without
+## changing the file/rank count) -- so it's unit-testable; the render adds stable jitter
+## on top.
 static func slots(u: Unit, n: int) -> PackedVector2Array:
-	return block_slots(n, frontage(u), Unit.FORMATION_SPACING)
+	return block_slots(n, frontage(u), Unit.FORMATION_SPACING * u.spacing_scale)
 
 
 # --- Grid operations (#367) --------------------------------------------------
