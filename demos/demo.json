@@ -1,6 +1,6 @@
 {
-  "input": "demos/inputs/wheel.json",
-  "caption": "Wheeling (circumductio): a new orderable maneuver. Press C (wheel right) or Z (wheel left) with a unit selected and one flank file plants and holds while the rest of the block swings around it like a door on a hinge — the line ends up facing a new bearing and lying along a new line, every man still in his rank and file. Distinct from the quarter-turn (facing changes in place, block stays put) and the centre pivot (both flanks sweep about the middle). Watch the near flank hold while the far flank marches a wide arc.",
+  "input": "demos/inputs/arrival-knockback.json",
+  "caption": "Real, non-springy soldier motion. Soldier bodies no longer ease toward their formation slots on a damped spring; they now ARRIVE under bounded force -- each body accelerates toward its slot at the unit's own acceleration and decelerates to land there with ~zero velocity (classic arrive steering). Watch the contact line: a cavalry charge slams the infantry front rank, the melee knockback shoves those bodies back, and each one decelerates and returns to its slot under real force -- a knockback-and-recover with no spring rebound, no wobble, no oscillation. Determinism is preserved (pure function of positions/velocities/mass/delta, no RNG), but outcomes differ from pre-change replays -- expected for a physics change.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,

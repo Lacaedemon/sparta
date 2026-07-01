@@ -175,8 +175,8 @@ const TURN_RATE_TAPER_FLOOR: float = 0.4
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
 # rotates toward the opposite heading at this rate (rad/s), taking ~0.5 s for a full 180°.
 # This is NOT a pivot of the block — neither a centre pivot (move orders) nor a flank wheel
-# (circumductio); each man simply turns where they stand. The spring restoring force in
-# SoldierBodies.step is zeroed while the turn runs, so soldiers stay at their grid positions
+# (circumductio); each man simply turns where they stand. The arrival term in
+# SoldierBodies.step is dropped while the turn runs, so soldiers stay at their grid positions
 # despite the facing change — they rotate without drifting.
 const CONVERSIO_TURN_RATE: float = PI * 2.0
 # Wheel (circumductio) swing rate: a stately quarter-circle over ~1 s. Deliberately slower than
@@ -525,7 +525,7 @@ func _think(delta: float) -> void:
 	# In-place drill turns: every soldier turns where they stand, the block does not advance
 	# or pivot as a body. Cancelled by engaging in combat or receiving a move order (the
 	# partial rotation is preserved). On arrival each path runs its own completion step so the
-	# re-engaged spring sees ~zero error: the conversio reverses body ordering; the quarter-turn
+	# re-engaged arrival sees ~zero error: the conversio reverses body ordering; the quarter-turn
 	# absorbs the rotation into _formation_angle.
 	#
 	# Conversio (about-face, 180°): the grid keeps its shape; bodies just reverse.
@@ -540,7 +540,7 @@ func _think(delta: float) -> void:
 			return
 
 	# Quarter-turn (90°): every soldier turns in place; the grid does NOT reorganize (the
-	# men keep their exact positions). unit.facing rotates 90° while the spring is frozen, and
+	# men keep their exact positions). unit.facing rotates 90° while the arrival is frozen, and
 	# when it stops _formation_angle absorbs however far it turned so soldier_world_slots holds
 	# the slots still — no surge, for any grid shape including a depleted partial one. Frontage
 	# and depth swap relative to the field, but no man takes a step. An interrupt leaves the
@@ -558,7 +558,7 @@ func _think(delta: float) -> void:
 
 	# Wheel (circumductio): the block swings about a fixed flank file. facing rotates and the
 	# regiment centre slides along an arc so the hinge holds; _advance_wheel rigidly rotates the
-	# centre and every body about the hinge, with the spring frozen (as for the conversio/
+	# centre and every body about the hinge, with the arrival frozen (as for the conversio/
 	# quarter-turn) so it doesn't fight the rotation. An interrupt by combat or a move order just
 	# drops the wheel where it is — the partial swing is already a valid formation state (position
 	# and facing are consistent), so no settle step is needed.
@@ -1038,8 +1038,9 @@ func _is_melee_intermixing_with(other: Unit) -> bool:
 # --- Individual-soldier simulation (simulated bodies, rendered + authoritative melee) ---
 # The soldiers you SEE are the simulated bodies. Each tick Battle advances every
 # regiment's persistent parent-local `_sim_soldier_pos` at velocity (SoldierBodies): a
-# body springs toward its formation slot, feeds the friendly-avoidance steering velocity
-# forward (SoldierSteering), and holds any knockback the melee dealt it (SoldierMelee) —
+# body arrives at its formation slot under bounded force, feeds the friendly-avoidance
+# steering velocity forward (SoldierSteering), and holds any knockback the melee dealt it
+# (SoldierMelee) —
 # no body teleports, and there is no position-correction separation pass. The render
 # loop reads `_sim_soldier_pos` directly, so the cross-regiment per-soldier
 # spacing is visible. The engaged positions are AUTHORITATIVE for per-soldier melee (who
@@ -1067,10 +1068,10 @@ var _sim_soldier_pos: PackedVector2Array = PackedVector2Array()
 # Persistent per-body velocity (parent-local, same frame as _sim_soldier_pos),
 # index-aligned with _sim_soldier_pos.
 # Phase 4 gives the bodies persistent dynamics: instead of re-seeding their positions
-# from the formation every tick (phase 3), each engaged body springs toward its slot
-# and integrates this velocity, so a soldier displaced by separation HOLDS the
-# displacement and eases back rather than snapping to formation. The spring itself
-# lives in SoldierBodies; this is the state it advances. Still non-authoritative.
+# from the formation every tick (phase 3), each engaged body arrives at its slot under
+# bounded force and integrates this velocity, so a soldier displaced by separation HOLDS
+# the displacement and eases back rather than snapping to formation. The arrival dynamics
+# themselves live in SoldierBodies; this is the state it advances. Still non-authoritative.
 var _sim_body_vel: PackedVector2Array = PackedVector2Array()
 
 # Per-soldier friendly-avoidance steering velocity (parent-local, same frame as
@@ -1110,12 +1111,12 @@ var _sim_soldier_facing: PackedVector2Array = PackedVector2Array()
 # unit heading each tick. False = bodies track unit.facing (the default).
 var _per_soldier_facing: bool = false
 # Non-zero while a conversio (in-place about-face) is in progress: the target (reversed)
-# facing direction. unit.facing rotates toward this each tick; SoldierBodies.step zeroes the
-# spring restoring force while it turns so bodies don't drift to intermediate slot positions.
+# facing direction. unit.facing rotates toward this each tick; SoldierBodies.step drops the
+# arrival term while it turns so bodies don't drift to intermediate slot positions.
 # Cleared on arrival or when interrupted by combat, a move order, or routing.
 var _conversio_target: Vector2 = Vector2.ZERO
 # Non-zero while a quarter-turn (90° in-place turn) is in progress: the target facing, 90°
-# to the left or right of the start. Same spring-freeze as the conversio; the heading the
+# to the left or right of the start. Same arrival-freeze as the conversio; the heading the
 # turn started from is kept so _formation_angle can absorb exactly how far it turned when it
 # stops (full turn or an interrupt), leaving the slots — and the men — exactly where they were.
 var _quarter_target: Vector2 = Vector2.ZERO
@@ -1125,8 +1126,8 @@ var _quarter_start_facing: Vector2 = Vector2.ZERO
 # in-place turn — one flank file stays fixed while the whole block swings about it like a door
 # on a hinge, so `position` slides along an arc as `facing` rotates and the men march to their
 # swung slots. _advance_wheel rigidly rotates the centre AND every body about the hinge by the
-# same step each tick, so the same spring-freeze as the conversio/quarter-turn applies (the
-# restoring force is zeroed while _wheel_target is set) — that keeps the spring from fighting the
+# same step each tick, so the same arrival-freeze as the conversio/quarter-turn applies (the
+# arrival term is dropped while _wheel_target is set) — that keeps it from fighting the
 # rigid rotation, and bodies stay exactly on their swinging slots (no teleport). The wheel does not
 # modify _formation_angle (it's 0 normally, but non-zero after a quarter-turn — the pivot geometry
 # folds that in). `_wheel_pivot` is the fixed hinge point in parent-local space (like
@@ -1200,7 +1201,7 @@ func release_soldier_facing() -> void:
 ## the block does not pivot, neither about its centre (a move order) nor on a flank
 ## (a wheel / circumductio); each man just turns where they stand.
 ## unit.facing tracks the turn each tick so the sim always knows the soldiers' current
-## facing (shield side, etc.). SoldierBodies.step zeroes the spring restoring force while
+## facing (shield side, etc.). SoldierBodies.step drops the arrival term while
 ## it turns, so bodies stay at their grid positions instead of drifting to intermediate
 ## slot targets. If interrupted by combat or a move order, unit.facing stays at its current
 ## angle — the partial rotation is preserved. Blocked while fighting, before seeding, or
@@ -1215,7 +1216,7 @@ func conversio() -> void:
 ## Quarter-turn (90° in-place turn, Aelian/Asclepiodotus): every soldier pivots a quarter
 ## turn to the left (`dir` = -1) or right (`dir` = +1); the unit's frontage and depth swap
 ## relative to the field, but the men do not march and the internal grid is NOT reorganized —
-## each man just turns where they stand. facing rotates toward the target with the spring frozen so
+## each man just turns where they stand. facing rotates toward the target with the arrival frozen so
 ## the bodies hold their ground; on arrival _formation_angle absorbs the rotation so
 ## soldier_world_slots reproduces the men's positions (no transpose, no relabel). Blocked while
 ## fighting, before seeding, or while another in-place turn (conversio or quarter-turn) runs —
@@ -1230,7 +1231,7 @@ func quarter_turn(dir: int) -> void:
 
 ## Fold the rotation the quarter-turn just applied (start heading -> current heading) into
 ## _formation_angle, so soldier_world_slots reproduces the men's pre-turn slot positions and
-## the arrival spring sees ~zero error. Works for a full 90° turn or an interrupted partial.
+## the arrival sees ~zero error. Works for a full 90° turn or an interrupted partial.
 func _settle_formation_angle() -> void:
 	var turned: float = angle_difference(_quarter_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
@@ -1279,8 +1280,8 @@ func _wheel_pivot_point(dir: int) -> Vector2:
 ## while preserving internal order. UNLIKE the quarter-turn — which turns every man in place and
 ## does not move the block — the standing flank file holds its ground and every other file marches
 ## an arc around it, so `position` slides along that arc as `facing` rotates. _advance_wheel
-## rigidly rotates the centre and every soldier body about the hinge in lockstep, with the spring
-## restoring force frozen (the same freeze the conversio/quarter-turn use) so it doesn't fight the
+## rigidly rotates the centre and every soldier body about the hinge in lockstep, with the arrival
+## term frozen (the same freeze the conversio/quarter-turn use) so it doesn't fight the
 ## rigid rotation — the men swing to their new slots at velocity, no body teleports. Blocked while
 ## fighting, before seeding, or while another maneuver (conversio / quarter-turn / wheel) runs.
 func wheel(dir: int) -> void:
@@ -1319,9 +1320,9 @@ func _advance_wheel(delta: float) -> bool:
 ## Relabel the bodies for a completed about-face. The men keep their world positions, but
 ## facing has flipped 180°, so every formation slot rotates to its point-reflected spot —
 ## front rank and rear rank swap sides. Reversing the index-aligned body arrays maps each
-## body onto the slot it now physically occupies, so SoldierBodies.step's arrival spring
+## body onto the slot it now physically occupies, so SoldierBodies.step's arrival
 ## sees ~zero error and the block doesn't surge across itself. A centrosymmetric grid
-## cancels exactly; a partial rear rank leaves a small residual the spring eases. Pure
+## cancels exactly; a partial rear rank leaves a small residual the arrival eases. Pure
 ## index permutation — no positions change — so it's replay-deterministic.
 func _reverse_soldier_bodies() -> void:
 	_sim_soldier_pos.reverse()
@@ -1367,8 +1368,8 @@ func seed_sim_soldiers() -> void:
 
 
 ## Advance this regiment's persistent soldier bodies one fixed step. The dynamics
-## live in SoldierBodies.step (the engaged front ranks spring toward their slots and
-## hold displacement; the unengaged bulk snaps to formation).
+## live in SoldierBodies.step (the engaged front ranks arrive at their slots under
+## bounded force and hold displacement; the unengaged bulk tracks its moving slots).
 func step_sim_soldiers(delta: float) -> void:
 	SoldierBodies.step(self, delta)
 
@@ -1610,7 +1611,7 @@ func start_order_response() -> void:
 	_order_response_timer = order_response_delay
 	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
 	# marches as a proper line rather than crabbing sideways. The bodies ease onto the
-	# reformed slots via the spring (a future turn-and-widen move maneuver will make this a
+	# reformed slots via the arrival dynamics (a future turn-and-widen move maneuver will make this a
 	# deliberate reshape; until then a clean reform is the safe default).
 	_formation_angle = 0.0
 
