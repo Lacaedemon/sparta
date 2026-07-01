@@ -16,12 +16,12 @@ extends RefCounted
 ## candidates in a reproducible order — the property replays rely on.
 
 # Cell size must exceed the widest soldier separation floor (two cavalry bodies,
-# 2 * CAV_MARK_RADIUS = 5.2) so the 3x3 block around a soldier is a guaranteed
+# 2 * CAV_MARK_RADIUS = 20.0) so the 3x3 block around a soldier is a guaranteed
 # superset of every soldier within separation distance. The grid is rebuilt from
 # the exact positions the pass then separates (no movement between rebuild and
-# query), so that one bound is all that's required; 8.0 clears 5.2 while keeping
+# query), so that one bound is all that's required; 24.0 clears 20.0 while keeping
 # per-cell candidate counts low.
-const CELL_SIZE := 8.0
+const CELL_SIZE := 24.0
 
 static var _frame: int = -1
 static var _cells: Dictionary = {}
