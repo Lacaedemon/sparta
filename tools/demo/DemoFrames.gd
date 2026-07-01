@@ -25,16 +25,32 @@ static func parse_ticks(spec: String) -> Array:
 
 ## Merge the env-var tick list (SPARTA_DEMO_FRAMES) with a `frames` array from the input
 ## script into one sorted, de-duplicated tick set. Either source may be empty; the env var
-## lets a reviewer capture frames from a demo whose script names none. Script `frames` entries
-## are cast through int(); negatives are dropped, matching parse_ticks.
+## lets a reviewer capture frames from a demo whose script names none. Non-integer and negative
+## script entries are dropped, matching parse_ticks — int("abc") is 0 in GDScript, so a stray
+## non-integer would otherwise silently add a tick-0 capture.
 static func merge_ticks(spec: String, script_frames: Array) -> Array:
 	var ticks: Array = parse_ticks(spec)
 	for f in script_frames:
-		var tick: int = int(f)
+		var tick: int = _as_tick(f)
 		if tick >= 0 and not ticks.has(tick):
 			ticks.append(tick)
 	ticks.sort()
 	return ticks
+
+
+## A `frames` entry -> a non-negative tick, or -1 if it isn't a valid non-negative integer.
+## Handles the JSON forms an entry can take: a real int, a float (JSON has no int type), or a
+## numeric string. Anything else (a non-numeric string, a bool, null) is rejected as -1.
+static func _as_tick(f) -> int:
+	match typeof(f):
+		TYPE_INT:
+			return f
+		TYPE_FLOAT:
+			return int(f) if f >= 0.0 else -1
+		TYPE_STRING:
+			return f.to_int() if f.is_valid_int() else -1
+		_:
+			return -1
 
 
 ## The PNG path for a capture at `tick` inside `dir`. Zero-pads the tick to 5 digits so a

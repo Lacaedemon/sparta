@@ -37,7 +37,13 @@ func test_merge_ticks_env_only() -> void:
 
 func test_merge_ticks_script_only() -> void:
 	assert_eq(DemoFrames.merge_ticks("", [90, 20]), [20, 90],
-		"a script 'frames' array alone arms capture with no env var")
+		"an empty env value falls back to the script 'frames' array")
+
+
+func test_merge_ticks_drops_invalid_script_entries() -> void:
+	# int("abc") is 0 in GDScript, so a stray non-integer must be rejected, not coerced to tick 0.
+	assert_eq(DemoFrames.merge_ticks("", ["abc", -5, 60, 20.0]), [20, 60],
+		"non-integer and negative script entries dropped; a float tick kept")
 
 
 func test_merge_ticks_both_empty_is_empty() -> void:

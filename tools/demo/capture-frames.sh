@@ -23,7 +23,7 @@
 #   GODOT_BIN="C:\Users\you\apps\Godot_v4.7-stable_win64_console.exe" \
 #     tools/demo/capture-frames.sh demos/inputs/rout-rally.json 20,90,160 /tmp/frames
 #   # then Read /tmp/frames/frame_00020.png … and confirm the units/behaviour are on-screen.
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
@@ -50,7 +50,9 @@ esac
 
 export SPARTA_DEMO_INPUT="$INPUT_RES"
 export SPARTA_DEMO_FRAMES="$TICKS"
-[ -n "$OUT_DIR" ] && export SPARTA_DEMO_FRAME_DIR="$OUT_DIR"
+if [ -n "$OUT_DIR" ]; then
+  export SPARTA_DEMO_FRAME_DIR="$OUT_DIR"
+fi
 
 echo "Rendering $INPUT_RES frames at ticks $TICKS…"
 # Real renderer (opengl3), NOT --headless — capture needs a drawn frame. The recorder quits
@@ -60,4 +62,9 @@ echo "Rendering $INPUT_RES frames at ticks $TICKS…"
 "$GODOT_BIN" --rendering-driver opengl3 --path "$PROJECT_ROOT" \
   res://tools/demo/DemoInputRecorder.tscn
 
-echo "Done. Frames in: ${OUT_DIR:-<temp dir printed above>}"
+if [ -n "$OUT_DIR" ]; then
+  echo "Done. Frames in: $OUT_DIR"
+else
+  echo "Done. Frames written to the temp dir the recorder printed above" \
+       "(the '-> …' path on the 'frame capture armed' line); pass a third arg to choose the dir."
+fi
