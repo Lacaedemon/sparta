@@ -226,6 +226,30 @@ func test_sideways_body_keeps_full_jog_cap() -> void:
 			"purely sideways motion keeps the full jog cap (no backward penalty)")
 
 
+func test_diagonal_backward_body_stays_within_jog_cap() -> void:
+	# facing = DOWN. A body whose slot lies behind-and-to-the-side must back up AND sidestep
+	# at once, so the spring produces a velocity with both a backward and a sideways
+	# component. Capping the two axes independently could let the combined speed exceed jog;
+	# the final limit_length keeps total speed within the jog ceiling, while the backward
+	# axis is still slowed so the body isn't simply running at full jog.
+	var u := _make_unit()
+	u.state = Unit.State.IDLE
+	# Displace bodies DOWN-and-RIGHT so their slots sit behind-and-left -> back up + sidestep.
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] += Vector2(200.0, 200.0)
+	SoldierBodies.step(u, DELTA)
+	var facing := Vector2.DOWN
+	for i in range(u._sim_body_vel.size()):
+		var v: Vector2 = u._sim_body_vel[i]
+		assert_lte(v.length(), u.jog_speed + 1e-3,
+				"a diagonal backward-and-sideways body stays within the jog ceiling")
+		# The backward (against-facing) axis is capped to the slower pace, so the body's
+		# reverse speed can't reach the full jog even though it's also sliding sideways.
+		var back_speed: float = -v.dot(facing)   # positive = backing up
+		assert_lte(back_speed, u.jog_speed * u.back_speed_fraction + 1e-3,
+				"and its backward-axis speed is still capped to the slower backward pace")
+
+
 func test_backward_cap_is_deterministic() -> void:
 	var a := _make_unit()
 	a.state = Unit.State.IDLE
