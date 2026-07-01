@@ -24,6 +24,10 @@ const BODY_ACCEL_FLOOR: float = 30.0
 # is visually on its mark; it just stops steering so discrete-step rounding can't drive a
 # sub-pixel oscillation around the exact point.
 const ARRIVE_EPS: float = 0.05
+# Guard for the `to_slot / dist` direction normalisation: below this distance the body is
+# on the slot for all purposes and dividing would be numerically meaningless. Shared by the
+# inside-band arrival aim and the post-step inbound clamp so they gate on the same threshold.
+const MIN_DIST: float = 1e-6
 # Below this body speed (px/s) the render treats a body as at rest and the unit's marks
 # can skip their per-frame MultiMesh rewrite — far under what the eye resolves at 60 fps.
 const REST_SPEED: float = 0.5
@@ -174,7 +178,7 @@ static func step(unit: Unit, delta: float) -> void:
 			if delta > 0.0:
 				arrive_speed = minf(arrive_speed, dist / delta)
 			desired_vel += (to_slot / dist) * arrive_speed
-		elif dist > 1e-9 and delta > 0.0:
+		elif dist > MIN_DIST and delta > 0.0:
 			# Inside the on-slot band, aim to land exactly this tick (dist/delta is tiny here),
 			# so a body coasting in with residual speed is brought to the slot instead of
 			# drifting through it and having to turn around -- the last guard against a
@@ -188,7 +192,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# (velocity relative to the feed-forward) so it advances at most the remaining distance
 		# this tick, for any positive distance -- the body lands exactly on the slot instead of
 		# coasting through it. No overshoot, no oscillation.
-		if not turning and delta > 0.0 and dist > 1e-6:
+		if not turning and delta > 0.0 and dist > MIN_DIST:
 			var dir: Vector2 = to_slot / dist
 			var arrival_vel: Vector2 = new_vel - feed_forward
 			var inbound: float = arrival_vel.dot(dir)
