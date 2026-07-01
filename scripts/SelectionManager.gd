@@ -496,12 +496,15 @@ func _files_for_mode(units: Array, usable: float, mode: int) -> Array:
 	# A lone unit just fills the drag in BOTH modes (equal depth is vacuous with one unit),
 	# matching the original single-unit deploy's frontage exactly.
 	if units.size() == 1:
-		return [UnitFormation.files_for_halfwidth(usable * 0.5, units[0].max_soldiers)]
+		var u0: Unit = units[0]
+		return [UnitFormation.files_for_halfwidth(usable * 0.5, u0.max_soldiers,
+				UnitRef.FORMATION_SPACING * u0.spacing_scale)]
 	var out: Array = []
 	if mode == FormUpDist.EQUAL_WIDTH:
 		var w: float = usable / float(units.size())
 		for u in units:
-			out.append(UnitFormation.files_for_halfwidth(w * 0.5, u.max_soldiers))
+			out.append(UnitFormation.files_for_halfwidth(w * 0.5, u.max_soldiers,
+					UnitRef.FORMATION_SPACING * u.spacing_scale))
 		return out
 	# EQUAL_DEPTH: target a total frontage that fills the span (a grid of f files spans
 	# (f-1) gaps of FORMATION_SPACING, so the units together want ~usable/SPACING + N files),
