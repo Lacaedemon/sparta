@@ -185,12 +185,12 @@ comments or docstrings.
   `demos/shots/` are still committed and tracked; don't add new `.import` files
   without intent.
 
-- **`.gd.uid` sidecars ARE tracked — commit one with every new script.** Unlike
+- **`.gd.uid` sidecars are tracked — commit one with every new script.** Unlike
   `.import`, `.gd.uid` files are checked in (see the `test/unit/*.gd.uid` next to
   each test). When you add a new `.gd`, `git add` its generated `.gd.uid` too;
   leaving it out makes the file show as perpetually-untracked (Godot regenerates
-  it on every import) and churns the UID. Run `--headless --import` first to
-  generate it.
+  it on every import) and churns the UID. Run `godot --headless --import` first
+  to generate it.
 
 - **A new `class_name` isn't visible to other scripts until the project
   re-imports.** Add a `class_name Foo` script and a test that references `Foo`
