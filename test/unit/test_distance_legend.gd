@@ -60,7 +60,9 @@ func test_mps_for_world_speed_divides_out_speed_scale() -> void:
 
 func test_mps_for_world_speed_guards_nonpositive_scale() -> void:
 	assert_eq(DistanceLegend.mps_for_world_speed(52.0, 0.0), 0.0, "zero scale guarded")
+	assert_eq(DistanceLegend.mps_for_world_speed(52.0, -1.0), 0.0, "negative scale guarded")
 	assert_eq(DistanceLegend.mps_for_world_speed(52.0, WUPM, 0.0), 0.0, "zero speed_scale guarded")
+	assert_eq(DistanceLegend.mps_for_world_speed(52.0, WUPM, -1.0), 0.0, "negative speed_scale guarded")
 
 
 func test_speed_label_text_one_decimal() -> void:
