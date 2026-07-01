@@ -175,6 +175,18 @@ Square is a defensive commitment, not a free upgrade. While it holds, the unit
   charge *and* keeps your line mobile and hitting hard; square is what you reach for
   when a unit is caught in the open with cavalry on a bad angle.
 
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/square.jpg">
+    <source src="media/square.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind &mdash; the unit holds where a rear-charged line would break.</figcaption>
+</figure>
+```
+
 ## Weapon reach
 
 Each weapon has an **effective reach** --- how close two units must get before they
