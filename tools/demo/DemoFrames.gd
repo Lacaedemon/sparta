@@ -38,9 +38,11 @@ static func merge_ticks(spec: String, script_frames: Array) -> Array:
 	return ticks
 
 
-## A `frames` entry -> a non-negative tick, or -1 if it isn't a valid non-negative integer.
-## Handles the JSON forms an entry can take: a real int, a float (JSON has no int type), or a
-## numeric string. Anything else (a non-numeric string, a bool, null) is rejected as -1.
+## A `frames` entry -> its integer tick, or -1 when it isn't a valid tick. Handles the JSON
+## forms an entry can take: a real int, a float (JSON has no int type), or a numeric string. A
+## non-numeric string, a bool, or null is rejected as -1. An integer is returned as-is (a
+## negative int is passed through, not mapped to -1); either way the caller's `tick >= 0` guard
+## drops every negative result, so the sentinel and a raw negative are equivalent there.
 static func _as_tick(f) -> int:
 	match typeof(f):
 		TYPE_INT:
