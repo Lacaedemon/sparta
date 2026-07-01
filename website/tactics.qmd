@@ -264,6 +264,11 @@ into different tools:
   intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable
   horse, or a guard onto your archers.
 
+A volley is not instant: the arrows fly a real arc and **land where they were aimed
+a moment later**, so a fast unit can partly outrun a shot loosed at long range, and
+casualties arrive on the beat the arrows come down rather than the instant they leave
+the bow.
+
 ## Group attack distribution
 
 When you have several units selected and right-click an enemy, press <kbd>X</kbd> to
