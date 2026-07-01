@@ -340,6 +340,11 @@ var _approach_velocity: Vector2 = Vector2.ZERO
 # _approach_velocity below (a stationary unit carries no momentum, so the next march
 # always ramps up from zero, never resumes at a stale carried-over speed).
 var _current_speed: float = 0.0
+# Read-only public view of the ramping speed above, for consumers outside this script
+# (the order overlay's speed label). Keeps _current_speed private while giving readers a
+# clean public name, matching the other cross-script unit reads (global_position, team, …).
+var current_speed: float:
+	get: return _current_speed
 # Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
 # the soldier->regiment coupling slides the center toward where its bodies actually are,
 # so friendly collision (and later all collision) emerges from the soldier layer. Stored
@@ -1228,6 +1233,13 @@ func _advance_wheel(delta: float) -> bool:
 	var before: float = facing.angle()
 	_rotate_facing_toward(_wheel_target, delta, WHEEL_TURN_RATE)
 	var step: float = angle_difference(before, facing.angle())
+	# Arc speed of the regiment centre: angular step / delta * arm length.  Without
+	# this, _move_to is never called so _moved_last_frame stays false and the
+	# stationary-unit guard zeroes _current_speed every tick — making the speed label
+	# read "0.0 m/s" while the block visibly swings.
+	if delta > 0.0:
+		_current_speed = abs(step) / delta * (position - _wheel_pivot).length()
+	_moved_last_frame = true
 	position = _wheel_pivot + (position - _wheel_pivot).rotated(step)
 	for i in range(_sim_soldier_pos.size()):
 		_sim_soldier_pos[i] = _wheel_pivot + (_sim_soldier_pos[i] - _wheel_pivot).rotated(step)

@@ -126,6 +126,30 @@ func test_wheel_is_blocked_before_seeding() -> void:
 	assert_eq(u._wheel_target, Vector2.ZERO, "a wheel is refused before the bodies are seeded")
 
 
+func test_wheel_arc_speed_is_nonzero_during_swing() -> void:
+	# The speed label must read the arc speed of the regiment centre, not 0.0 m/s.
+	# Arm length * angular rate (WHEEL_TURN_RATE) gives the expected translational speed.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.wheel(1)
+	var arm: float = (u.position - u._wheel_pivot).length()
+	var expected: float = Unit.WHEEL_TURN_RATE * arm
+	u._physics_process(1.0 / 60.0)
+	# Allow a small tolerance: the final tick snaps facing and may step less than a full rate.
+	assert_gt(u._current_speed, 0.0, "arc speed is positive while the block is swinging")
+	assert_almost_eq(u._current_speed, expected, expected * 0.01,
+		"arc speed matches WHEEL_TURN_RATE * arm length to within 1%%")
+
+
+func test_wheel_speed_resets_to_zero_after_swing_completes() -> void:
+	var u := _make_unit()
+	_run_wheel(u, 1)
+	# After _run_wheel the wheel target is cleared; the next tick has no movement,
+	# so the stationary-unit guard resets _current_speed to 0.
+	u._physics_process(1.0 / 60.0)
+	assert_eq(u._current_speed, 0.0, "speed resets to 0 once the wheel finishes")
+
+
 ## Run an in-place turn (conversio or quarter-turn) to completion on a bare unit, driving _think +
 ## the body layer each tick until it settles. Leaves _formation_angle at whatever the turn absorbed.
 func _settle_quarter_turn(u: Unit, dir: int, max_ticks: int = 200) -> void:
