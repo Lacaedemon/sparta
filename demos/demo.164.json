@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Ranged casualties now kill specific near-side soldiers in the per-soldier health pool instead of the regiment dropping arbitrary rear bodies. The casualty COUNT, morale, and rout timing are identical to before, so a recorded battle looks the same at a glance; the only difference is which bodies thin (the shooter-facing rank), which is too subtle to read in a short auto-recorded clip. Covered by test/unit/test_soldier_ranged.gd."
+}

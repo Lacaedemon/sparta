@@ -120,10 +120,12 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 ## per-soldier arrays (so the formation re-packs around the survivors), drop the
 ## regiment count to match, and route the deaths through the unit's shared casualty
 ## handler for morale, rout/death, and the cosmetic fallen markers. `killer` is the
-## attacking regiment (morale/fallen direction). Facing is already in the strike
-## rolls, so the morale flank is 1.0 here. Deterministic — no RNG; walks high-to-low
-## so a removal never shifts an index still to be checked.
-static func reap(unit: Unit, killer: Unit) -> void:
+## attacking regiment (morale/fallen direction). `morale_flank` scales the morale hit:
+## the melee path leaves it 1.0 (facing is already in the strike rolls), while a ranged
+## volley passes its regiment-level flank so a shot into the rear routs harder — matching
+## the regiment-formula path. Deterministic — no RNG; walks high-to-low so a removal
+## never shifts an index still to be checked.
+static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 	var dead: int = 0
 	for i in range(unit._sim_soldier_hp.size() - 1, -1, -1):
 		if unit._sim_soldier_hp[i] <= 0.0:
@@ -140,4 +142,36 @@ static func reap(unit: Unit, killer: Unit) -> void:
 	if dead == 0:
 		return
 	unit.soldiers = maxi(0, unit.soldiers - dead)
-	UnitCombat.register_casualties(unit, dead, killer, 1.0)
+	UnitCombat.register_casualties(unit, dead, killer, morale_flank)
+
+
+## Apply a ranged volley's `casualties` to `target` at the individual level: the men
+## nearest the `shooter` (the exposed rank the arrows reach first) fall, tie-broken by
+## soldier index for a stable order, then `reap` compacts them and drives morale/rout.
+## `casualties` is the same count the regiment formula would remove (flank already folded
+## in by the caller), so the volley's lethality and morale hit are unchanged — only *which*
+## soldiers die (geometric, near-side) and the body compaction differ from the old blind
+## rear-trim. Deterministic: selection reads only positions and index order, no RNG.
+static func apply_ranged_casualties(target: Unit, shooter: Unit, casualties: int, morale_flank: float) -> void:
+	if casualties <= 0 or target._sim_soldier_hp.is_empty():
+		return
+	var origin: Vector2 = shooter.global_position
+	var living: Array[int] = []
+	for i in range(target._sim_soldier_hp.size()):
+		if target._sim_soldier_hp[i] > 0.0:
+			living.append(i)
+	living.sort_custom(SoldierMelee._nearest_to.bind(origin, target))
+	var kills: int = mini(casualties, living.size())
+	for k in range(kills):
+		target._sim_soldier_hp[living[k]] = 0.0
+	reap(target, shooter, morale_flank)
+
+
+## Strict-weak ordering for apply_ranged_casualties: nearer the origin first, ties broken
+## by soldier index so the sort is total (Godot's sort_custom isn't stable) and deterministic.
+static func _nearest_to(a: int, b: int, origin: Vector2, unit: Unit) -> bool:
+	var da: float = origin.distance_squared_to(unit._sim_soldier_pos[a])
+	var db: float = origin.distance_squared_to(unit._sim_soldier_pos[b])
+	if da == db:
+		return a < b
+	return da < db

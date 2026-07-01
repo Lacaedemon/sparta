@@ -86,7 +86,18 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	# animated/faded on render time -- no effect on replays.
 	if u.is_inside_tree():
 		VolleyTrail.spawn(u.get_parent(), u.global_position, target.global_position, u.team_color)
-	take_casualties(target, int(round(dmg)), u)
+	# Per-soldier casualties when the target has a soldier layer: the volley kills specific
+	# near-side men in the health pool (so which men fall is geometric and the bodies compact),
+	# instead of the regiment blindly dropping arbitrary rear soldiers. The casualty COUNT is
+	# identical to the formula path (flank folded in the same way), so lethality and morale are
+	# unchanged. No new RNG is drawn (the one volley roll above stays first), so replays hold.
+	if Unit.INDIVIDUAL_COLLISION and not target._sim_soldier_hp.is_empty() \
+			and target.state != Unit.State.DEAD and target.state != Unit.State.ROUTING:
+		var flank: float = flank_multiplier(target, u)
+		var casualties: int = max(1, int(round(dmg * flank)))
+		SoldierMelee.apply_ranged_casualties(target, u, casualties, flank)
+	else:
+		take_casualties(target, int(round(dmg)), u)
 
 
 ## Return the nearest living friendly unit that lies in the straight-line flight path from
