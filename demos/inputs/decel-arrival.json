@@ -1,0 +1,16 @@
+{
+  "_comment": "Decel-ramp arrival demo (#520): a lone drilled Infantry unit sprints toward a move-order destination and must decelerate smoothly to a stop under decel, landing at (or very near) the ordered point instead of snapping current_speed to 0 and coasting past it. Scenario stages the unit alone (drill, no opponent) so the march runs uninterrupted. State ticks span the arrival window (see tools/demo/dump-state.sh) so current_speed and position can be asserted on exactly rather than eyeballed.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 300}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 430.0, "zoom": 1.3}
+  ],
+  "steps": [
+    {"tick": 8, "click": [800, 300]},
+    {"tick": 24, "rmb_click": [800, 560]}
+  ],
+  "state": [330, 360, 390, 400, 410, 440, 480, 500]
+}
