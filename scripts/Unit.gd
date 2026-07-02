@@ -53,6 +53,14 @@ var uid: int = -1
 # longer-reach weapon (a spear) reaches contact — and strikes — sooner than a
 # shorter one (a sword) as the lines close.
 @export var attack_range: float = 26.0
+# Interned loadout type ids (see LoadoutRegistry): which weapon and shield TYPE
+# this regiment's soldiers carry. Battle._spawn_unit sets them per type from the
+# loadout table, and the per-soldier arrays (_sim_soldier_weapon_id /
+# _sim_soldier_shield_id below) are seeded from them. Defaults are the infantry
+# baseline (gladius + scutum), matching the attack_range default above, so a
+# bare test unit spawned without a loadout still resolves to real types.
+var weapon_type_id: int = LoadoutRegistry.WEAPON_GLADIUS
+var shield_type_id: int = LoadoutRegistry.SHIELD_SCUTUM
 @export var is_cavalry: bool = false
 @export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
 @export var is_ranged: bool = false   # archers: loose volleys from a distance
@@ -1476,6 +1484,17 @@ var _sim_steer: PackedVector2Array = PackedVector2Array()
 # reaches 0. Seeded to the per-type max health (see SoldierBodies.seed). A near-dead
 # soldier also fights worse, via SoldierCombat.condition, so wounds compound.
 var _sim_soldier_hp: PackedFloat32Array = PackedFloat32Array()
+
+# Per-soldier weapon/shield TYPE ids, index-aligned with _sim_soldier_pos: each
+# entry is an interned LoadoutRegistry id — a reference to one shared type object,
+# never a per-soldier allocation. Every soldier currently carries its unit's
+# weapon_type_id / shield_type_id (seeded by SoldierBodies.seed, kept aligned
+# through resize and casualty compaction); the arrays exist so a later phase can
+# vary the loadout per soldier (weapon switching) without reshaping the sim.
+# Representational only — combat still reads the unit scalars (attack_range,
+# combat_profile()), so no gameplay outcome changes.
+var _sim_soldier_weapon_id: PackedInt32Array = PackedInt32Array()
+var _sim_soldier_shield_id: PackedInt32Array = PackedInt32Array()
 
 # Per-soldier prone timer (phase 4b), index-aligned with _sim_soldier_pos: seconds-to-rise
 # remaining (0 = standing). A knockback impulse can fell a soldier (SoldierCombat.prone_chance);
