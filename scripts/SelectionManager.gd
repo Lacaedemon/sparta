@@ -1423,17 +1423,17 @@ func _support_ward_of(u: UnitRef) -> UnitRef:
 	return null
 
 
-## A unit's full move route for the overlay: its committed destination and queued
-## waypoints, plus any waypoint appends still pending in Battle. While the
-## sim is paused the physics tick that drains those appends into u.waypoints isn't
-## running, so without this the overlay wouldn't preview a just-queued leg until
-## the player unpaused. Returns [] when the unit has no move order and nothing
+## A unit's full move route for the overlay: its committed destination and the queued
+## MOVE legs on its orders queue, plus any waypoint appends still pending in Battle.
+## While the sim is paused the physics tick that drains those appends onto the unit's
+## queue isn't running, so without this the overlay wouldn't preview a just-queued leg
+## until the player unpaused. Returns [] when the unit has no move order and nothing
 ## pending. The pending points are read-only — no authoritative state is mutated.
 func _move_route_for(u: UnitRef) -> Array[Vector2]:
 	var route: Array[Vector2] = []
 	if u.has_move_target:
 		route.append(u.move_target)
-		route.append_array(u.waypoints)
+		route.append_array(u.queued_move_points())
 	route.append_array(_battle.pending_append_points_for(u))
 	return route
 

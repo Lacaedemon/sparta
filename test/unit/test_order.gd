@@ -1,5 +1,5 @@
 extends GutTest
-## Order value type (docs/orders-queue-design.md phases 1-2): pure, node-free tests
+## Order value type (docs/orders-queue-design.md phases 1-3): pure, node-free tests
 ## for the enum-name tables, the readable describe() string, and the constructor helpers used
 ## to build each order kind.
 
@@ -15,6 +15,7 @@ func test_type_name_maps_every_known_type() -> void:
 	assert_eq(Order.type_name(Order.Type.FRONTAGE), "FRONTAGE")
 	assert_eq(Order.type_name(Order.Type.ABOUT_FACE), "ABOUT_FACE")
 	assert_eq(Order.type_name(Order.Type.QUARTER_TURN), "QUARTER_TURN")
+	assert_eq(Order.type_name(Order.Type.STANCE), "STANCE")
 
 
 func test_phase_name_maps_every_known_phase() -> void:
@@ -86,3 +87,16 @@ func test_new_wheel_and_new_nudge_carry_direction() -> void:
 func test_new_formation_and_new_frontage_carry_their_value() -> void:
 	assert_eq(Order.new_formation(3).formation, 3)
 	assert_eq(Order.new_frontage(6).frontage, 6)
+
+
+func test_new_stance_carries_stance_and_rank_relief_toggle() -> void:
+	var o := Order.new_stance(1, 2)
+	assert_eq(o.type, Order.Type.STANCE)
+	assert_eq(o.stance, 1)
+	assert_eq(o.rank_relief, 2)
+
+
+func test_new_relief_starts_with_no_pass_through_link() -> void:
+	# The swap link (relief_partner) is armed by UnitRelief.begin at the apply site,
+	# never by the constructor.
+	assert_null(Order.new_relief(3).relief_partner)

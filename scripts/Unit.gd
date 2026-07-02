@@ -84,10 +84,6 @@ var state: int = State.IDLE
 var facing: Vector2 = Vector2.DOWN
 var move_target: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
-# Queued destinations after move_target: the unit marches the route in order,
-# popping the next point each time it reaches the current one. Filled by
-# Shift+right-click; a plain move order clears it.
-var waypoints: Array[Vector2] = []
 var target_enemy: Unit = null
 var selected: bool = false
 # The unified orders queue (docs/orders-queue-design.md). `current_order` (orders[0],
@@ -98,9 +94,14 @@ var selected: bool = false
 # about-face/quarter-turn drills) and the wheel keep their execution state on the Order
 # itself (turn_target / turn_start_facing / pivot), _think advances it off current_order,
 # and replacing or clearing the queue interrupts the maneuver in flight
-# (_interrupt_current_order). The march plumbing (move_target / waypoints) and the
-# targeting fields (target_enemy / support_target) stay legacy until phase 3;
-# _update_current_order still retires MOVE/ATTACK/RELIEF/SUPPORT orders by reading them.
+# (_interrupt_current_order). As of phase 3 the queue is also authoritative for the ROUTE:
+# a queued waypoint leg IS a queued MOVE order (there is no parallel waypoint list), with
+# move_target/has_move_target kept as the in-flight leg's execution state, and a line
+# relief's swap state lives on the RELIEF order (Order.relief_partner). The in-flight
+# targeting references (target_enemy / support_target) stay unit fields: the reactive
+# layer (enemy AI, auto-engage) writes target_enemy directly with no order behind it, so
+# they are execution state the queue reads -- _update_current_order retires
+# ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
@@ -108,6 +109,14 @@ var current_order: Order = null
 # The smart-order behaviours read this; NORMAL is current behaviour.
 var order_mode: int = 0
 var formation_mode: int = FORMATION_NORMAL
+# Intra-unit rank-relief: whether rear ranks rotate forward to relieve their own unit's
+# fighting line. A durable mode (the design doc's verbs-vs-modes split), written by a
+# STANCE order, NOT a queue entry -- the rotation is standing behavior inside one unit,
+# unlike the inter-unit RELIEF order where a fresh unit swaps with a tired ally. On by
+# default (the historical behavior); UnitMorale gates the training-driven rank-cycle
+# fatigue reduction and in-fight morale recovery on it, so turning it off makes a
+# disciplined unit tire and waver like an untrained one.
+var rank_relief: bool = true
 # Simulation tier (FormationTier.CLOSE / FAR) — the multi-resolution design's per-formation
 # fidelity marker (docs/large-scale-simulation-design.md). CLOSE runs the full per-soldier
 # path; FAR carries no per-soldier state at all — the soldier-layer steps skip it (see
@@ -496,7 +505,6 @@ var current_speed: float:
 # for diagnostics/tests; the move itself happens in SoldierBodies.couple, bounded so it
 # never teleports.
 var _body_follow_vel: Vector2 = Vector2.ZERO
-var _relief_partner: Unit = null   # unit we're swapping with mid-relief
 # Cycle-charge phase: true while the unit is peeling back to its standoff after a
 # charge, false while it's driving in for the next charge. Flipped by
 # _cycle_charge_tick — set on the contact strike, cleared once the unit has opened
@@ -656,11 +664,45 @@ func append_order(order: Order) -> void:
 
 
 ## Drop the queue head (it finished, or was interrupted) and promote the next queued order, if
-## any, to current.
+## any, to current. A promoted MOVE leg that hasn't started (a queued waypoint, or a route
+## continuation behind a finished attack/relief) commits its march here, so the queue alone
+## carries the route -- there is no parallel waypoint list to pop.
 func retire_current_order() -> void:
 	if not orders.is_empty():
 		orders.pop_front()
 	current_order = orders[0] if not orders.is_empty() else null
+	_start_promoted_move()
+
+
+## Commit the march of a MOVE order just promoted to current, when no march is already in
+## flight. Phase stays NONE -- a queued leg is a plain march, exactly like a Battle-committed
+## plain move; the phased (rear-move) composite is only ever built on a fresh order at the
+## apply site. No-op for every other order kind, an already-marching unit, or a phased order.
+func _start_promoted_move() -> void:
+	if current_order == null or current_order.type != Order.Type.MOVE:
+		return
+	if has_move_target or current_order.phase != Order.Phase.NONE:
+		return
+	move_target = current_order.target_pos
+	has_move_target = true
+
+
+## Destinations of the queued (not-yet-current) MOVE legs, in queue order -- the route the
+## unit will march after the current order. What the overlay draws as waypoint dots and the
+## order summary counts; replaces reads of the old parallel waypoint list.
+func queued_move_points() -> Array[Vector2]:
+	var points: Array[Vector2] = []
+	for i in range(1, orders.size()):
+		if orders[i].type == Order.Type.MOVE:
+			points.append(orders[i].target_pos)
+	return points
+
+
+## True when a queued MOVE leg is waiting behind the current order -- the marching unit is
+## on an intermediate leg of its route, not the last one. Appended legs queue in order, so
+## checking the immediate next entry covers the route case.
+func _has_queued_move_leg() -> bool:
+	return orders.size() > 1 and orders[1].type == Order.Type.MOVE
 
 
 ## Clear the queue and current order outright (death, a merge, or a rout dropping every
@@ -734,12 +776,12 @@ func _update_current_order() -> void:
 		return
 	match current_order.type:
 		Order.Type.MOVE, Order.Type.NUDGE:
-			# Retire on arrival (has_move_target cleared, no queued waypoint leg), unless the
+			# Retire on arrival (has_move_target cleared, no queued route leg), unless the
 			# order still has work in flight that keeps has_move_target false without meaning
 			# "arrived": an in-place about-face still turning (turn_target set), or a
 			# reform-before-move hold (_reform_timer > 0 -- see _think()'s reform block and
 			# Battle._apply_order_cmd's reform branch), both of which park the march.
-			if not has_move_target and waypoints.is_empty() \
+			if not has_move_target and not _has_queued_move_leg() \
 					and current_order.turn_target == Vector2.ZERO \
 					and _reform_timer <= 0.0:
 				retire_current_order()
@@ -758,14 +800,18 @@ func _update_current_order() -> void:
 			# enemy died at that instant); when that happens it instead advances the reliever
 			# onto the tired unit's slot (has_move_target = true), so target_enemy == null alone
 			# doesn't mean the relief is done -- it can also mean "no foe to fight, still walking
-			# into position." Only retire once neither is true: no target to fight AND no move
-			# still in flight.
-			if target_enemy == null and not has_move_target:
+			# into position." A live pass-through link (relief_partner still set) keeps the order
+			# too: the swap itself is the order's work, and the exemption dies with the order, so
+			# retiring mid-pass would shove the interpenetrating pair apart. Only retire once no
+			# target remains to fight, no move is in flight, AND the swap has resolved
+			# (UnitRelief.update clears the link once the pair is apart or the partner is gone).
+			if target_enemy == null and not has_move_target \
+					and current_order.relief_partner == null:
 				retire_current_order()
 		Order.Type.SUPPORT:
 			if support_target == null:
 				retire_current_order()
-		Order.Type.FORMATION, Order.Type.FRONTAGE:
+		Order.Type.FORMATION, Order.Type.FRONTAGE, Order.Type.STANCE:
 			# Instantaneous: applied and complete in the same tick Battle issues them, so they
 			# never accumulate here -- retire defensively in case one is ever observed live.
 			retire_current_order()
@@ -817,10 +863,12 @@ func _think(delta: float) -> void:
 	# In-place order turns (a rear MOVE's about-face phase, the standalone about-face /
 	# quarter-turn drills): every soldier turns where they stand, the block does not advance
 	# or pivot as a body. The turn state lives on current_order. Cancelled by engaging in
-	# combat or by a legacy march starting under the order (a waypoint append pre-empts the
-	# turn -- the partial rotation is preserved by the settle fold). On arrival (or an
-	# interrupt) the settle folds the turned angle into _formation_angle so the re-engaged
-	# arrival sees ~zero error and every man holds his OWN slot.
+	# combat or by a march starting under the order (defensive: a waypoint append now
+	# queues BEHIND the turning order rather than pre-empting it, so has_move_target
+	# stays false through the turn -- if a stray march does start, the partial rotation is
+	# preserved by the settle fold). On arrival (or an interrupt) the settle folds the
+	# turned angle into _formation_angle so the re-engaged arrival sees ~zero error and
+	# every man holds his OWN slot.
 	if is_order_turning():
 		if state == State.FIGHTING or has_move_target:
 			# Fold the partial turn so the bodies don't surge, and retire the maneuver --
@@ -966,7 +1014,7 @@ func _think(delta: float) -> void:
 		# of finalizing early and hard-snapping via the "no momentum while stationary" reset
 		# elsewhere in this tick. Intermediate waypoints pop on position alone, so a queued
 		# route rolls through each corner at pace instead of halting leg by leg.
-		var on_last_leg: bool = waypoints.is_empty()
+		var on_last_leg: bool = not _has_queued_move_leg()
 		var arrived: bool = position.distance_to(move_target) <= 5.0
 		# Wait for the stop only when the unit can actually brake: a degenerate loadout
 		# with no positive brake rate (decel <= 0) can never bleed speed, so it finalizes
@@ -979,10 +1027,14 @@ func _think(delta: float) -> void:
 			# Each queued leg marches on its own terms: drop any side-step hold from
 			# the leg just finished so the next leg turns to face its own travel.
 			ordered_facing = Vector2.ZERO
-			move_target = waypoints.pop_front()   # advance along the queued route
-			# Waypoint legs and queued MOVE orders are appended 1:1 (see
-			# Battle._apply_order_cmd's append branch), so retire the finished leg's
-			# order in lockstep -- the queue then reports the leg actually marching.
+			# A queued waypoint leg IS a queued MOVE order (phase 3): end the finished
+			# leg here, and retire its MOVE order -- the promoted next leg commits its
+			# own march (retire_current_order -> _start_promoted_move), so the queue
+			# reports the leg actually marching. A non-MOVE order that marched here (a
+			# relief advancing onto the tired unit's slot with a route leg appended
+			# behind it) is NOT retired by the route: it finishes by its own condition
+			# (_update_current_order), and the promoted leg commits the march then.
+			has_move_target = false
 			if current_order != null and current_order.type == Order.Type.MOVE:
 				retire_current_order()
 		else:
@@ -1178,7 +1230,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	var braking_to_stop: bool = false
 	var dist_to_stop: float = 0.0
 	var brake: float = arrival_brake_rate()
-	if orderly and waypoints.is_empty() and brake > 0.0 and delta > 0.0:
+	if orderly and not _has_queued_move_leg() and brake > 0.0 and delta > 0.0:
 		dist_to_stop = position.distance_to(point)
 		var envelope: float = minf(
 			sqrt(2.0 * brake * ARRIVAL_ENVELOPE_MARGIN * dist_to_stop),
@@ -2276,6 +2328,13 @@ func order_summary() -> String:
 	# still hold a stale target_enemy. Skip the order lookups for it (and for an
 	# idle unit) and fall through to the neutral "holding" text below.
 	if state != State.DEAD:
+		# A live relief reads off its order's swap link (phase 3), ahead of the target
+		# lookup -- the reliever holds the tired unit's foe as target_enemy, which would
+		# otherwise report a plain "Attacking".
+		if current_order != null and current_order.type == Order.Type.RELIEF \
+				and current_order.relief_partner != null \
+				and is_instance_valid(current_order.relief_partner):
+			return "Relieving %s" % current_order.relief_partner.unit_name
 		var has_target: bool = target_enemy != null and is_instance_valid(target_enemy) \
 				and target_enemy.state != State.DEAD and target_enemy.state != State.ROUTING
 		if has_target:
@@ -2296,8 +2355,9 @@ func order_summary() -> String:
 			return "Re-forming"
 		if has_move_target:
 			var dest: String = "Moving to (%d, %d)" % [int(round(move_target.x)), int(round(move_target.y))]
-			if not waypoints.is_empty():
-				dest += " (+%d waypoint%s)" % [waypoints.size(), "" if waypoints.size() == 1 else "s"]
+			var legs: int = queued_move_points().size()
+			if legs > 0:
+				dest += " (+%d waypoint%s)" % [legs, "" if legs == 1 else "s"]
 			return dest
 		if state == State.FIGHTING:
 			return "Engaged"
@@ -2330,7 +2390,7 @@ func formation_summary() -> String:
 ## routers (a separate state/group) are never exempt and still get shouldered.
 ## Line relief and merging build on this same exemption.
 func _separation_exempt(other: Unit) -> bool:
-	if other == _relief_partner:
+	if _relief_paired_with(other):
 		return true   # the swapping pair interpenetrates during a relief
 	if other.team != team:
 		return false
@@ -2338,6 +2398,20 @@ func _separation_exempt(other: Unit) -> bool:
 	# only a moving unit and a stationary idle friendly pass through each other.
 	return (state == State.MOVING and other.state == State.IDLE) \
 		or (state == State.IDLE and other.state == State.MOVING)
+
+
+## True when this unit and `other` are the two sides of a live relief swap. The swap's
+## execution state lives on the reliever's RELIEF order (Order.relief_partner -- phase 3),
+## so the pair link is checked from either side: my live relief names the other, or the
+## other's live relief names me. The tired unit carries no state of its own.
+func _relief_paired_with(other: Unit) -> bool:
+	return _relief_names(self, other) or _relief_names(other, self)
+
+
+## Whether `a`'s current order is a relief whose live pass-through link names `b`.
+static func _relief_names(a: Unit, b: Unit) -> bool:
+	var o: Order = a.current_order
+	return o != null and o.type == Order.Type.RELIEF and o.relief_partner == b
 
 
 ## This unit's share of a separation correction. Normally a pair splits it 50/50
@@ -2450,9 +2524,10 @@ func absorb(other: Unit) -> void:
 	queue_redraw()
 
 
-## Remove a unit that has been absorbed by a merge (not a battle death).
+## Remove a unit that has been absorbed by a merge (not a battle death). Any relief this
+## unit was running dies with its orders queue (_remove_from_play -> clear_orders); a
+## partner's relief pointing AT this unit resolves via UnitRelief.update's gone check.
 func _merged_away() -> void:
-	_relief_partner = null
 	_remove_from_play()
 
 
@@ -2564,9 +2639,8 @@ func _rally() -> void:
 	# floor — a unit that rallies the instant its timer expires still reforms shaken.
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
-	# has_move_target was cleared on rout, so a stale waypoint queue is never consulted;
-	# clear it anyway so a unit that was mid-march before routing reforms with no orders.
-	waypoints.clear()
+	# The orders queue (route legs included) was already dropped by _rout()'s
+	# clear_orders(), so a rallied unit reforms with no orders.
 	remove_from_group("routers")
 	add_to_group("units")
 	queue_redraw()
