@@ -1290,6 +1290,25 @@ func test_order_summary_singular_waypoint() -> void:
 	)
 
 
+func test_order_summary_reports_a_live_relief_by_its_ward() -> void:
+	# The reliever holds the tired unit's foe as target_enemy, so without the queue
+	# read the panel would say "Attacking"; the RELIEF order's swap link names the
+	# ally actually being relieved.
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	var foe := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	tired.unit_name = "Infantry 7"
+	foe.team = 1
+	tired.target_enemy = foe
+	var order := Order.new_relief(tired.uid)
+	fresh.set_current_order(order)
+	UnitRelief.begin(fresh, tired, order)
+	assert_eq(fresh.order_summary(), "Relieving Infantry 7",
+		"a live relief reads off its order's swap link, not the inherited target")
+
+
 # --- ranged units ----------------------------------------------
 
 func _archer() -> Unit:

@@ -458,6 +458,43 @@ func test_stance_order_toggles_rank_relief() -> void:
 	assert_true(u.rank_relief, "and written back on")
 
 
+func test_stance_order_to_cycle_charge_restarts_in_the_charging_phase() -> void:
+	# Matches a fresh move/attack order: entering cycle-charge drives in rather than
+	# resuming a stale pull-back.
+	var u := _unit(1, Vector2.ZERO)
+	u._cycle_recharging = true   # stale pull-back phase from an earlier stint
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": BattleScript.OrderMode.CYCLE_CHARGE})
+	assert_eq(u.order_mode, BattleScript.OrderMode.CYCLE_CHARGE)
+	assert_false(u._cycle_recharging, "the loop restarts in its charging phase")
+
+
+func test_stance_order_away_from_support_drops_the_ward() -> void:
+	# A ward is meaningless without the SUPPORT stance, so switching stance in place
+	# drops the guard duty like a fresh plain order would.
+	var supporter := _unit(1, Vector2.ZERO)
+	var ward := _unit(2, Vector2(100, 0))
+	supporter.support_target = ward
+	supporter.order_mode = BattleScript.OrderMode.SUPPORT
+	var b := _battle([supporter, ward])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": BattleScript.OrderMode.HOLD})
+	assert_null(supporter.support_target, "the stance switch drops the ward")
+	assert_eq(supporter.order_mode, BattleScript.OrderMode.HOLD)
+
+
+func test_stance_order_skips_a_dead_unit() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.state = UnitScript.State.DEAD
+	u.rank_relief = true
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": -1,
+		"frontage": BattleScript.RankRelief.OFF})
+	assert_true(u.rank_relief, "a dead unit's modes are left alone")
+
+
 func test_stance_order_with_negative_mode_leaves_the_stance() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	u.order_mode = BattleScript.OrderMode.SKIRMISH
