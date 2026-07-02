@@ -59,6 +59,154 @@ func test_rear_move_arms_the_about_face_and_parks_the_march() -> void:
 	assert_eq(u._pending_march_target, Vector2(0, -200), "and it is the ordered rear destination")
 
 
+## Axis-aligned bounding box of a unit's live soldier bodies, as [width, height].
+## The conversio signature: this box stays fixed (positions frozen) through the whole
+## turn -- only facings reverse -- so a rotating box means the block centre-pivoted.
+func _soldier_bbox(u: Unit) -> Vector2:
+	var min_p := Vector2(INF, INF)
+	var max_p := Vector2(-INF, -INF)
+	for p in u._sim_soldier_pos:
+		min_p.x = minf(min_p.x, p.x)
+		min_p.y = minf(min_p.y, p.y)
+		max_p.x = maxf(max_p.x, p.x)
+		max_p.y = maxf(max_p.y, p.y)
+	return max_p - min_p
+
+
+## Mimic Battle._physics_process's live-order drain: for each pending order, apply it
+## only if it wasn't already applied live (tagged by _apply_order_live). This is the
+## exactly-once contract; the test drives it directly since the harness doesn't run
+## the physics tick. Clears the queue like the real drain.
+##
+## Keep the "applied_live" key and the skip condition in lockstep with Battle.gd's drain
+## (the `if not o.get("applied_live", false): _apply_order_cmd(o)` branch) and its
+## _apply_order_live tag. If the key or gate changes there, change it here too, or these
+## tests silently stop exercising the real path.
+func _drain_pending(b) -> void:
+	for o in b._pending_orders:
+		if not o.get("applied_live", false):
+			b._apply_order_cmd(o)
+	b._pending_orders.clear()
+
+
+func test_enqueue_order_applies_exactly_once_across_the_tick_drain() -> void:
+	# enqueue_order applies live AND queues for the tick drain. The drain must NOT
+	# re-apply an order already applied live, or a non-idempotent order (a rear-move
+	# about-face, an arrow nudge) is corrupted on the second apply. The end state after
+	# enqueue + drain must equal the state after a single apply.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	var b := _battle([u])
+	Settings.reform_before_move = false
+	b.enqueue_order([1], Vector2(0, -200), -1)   # rear move: applies live, tags the cmd
+	assert_ne(u._conversio_target, Vector2.ZERO, "the about-face armed on the live apply")
+	assert_true(u._has_pending_march, "and parked the march")
+	var conversio_after_live := u._conversio_target
+	_drain_pending(b)   # the tick drain must be a no-op for this already-applied order
+	assert_eq(u._conversio_target, conversio_after_live,
+		"the drain did not re-apply the order and cancel the conversio")
+	assert_false(u.has_move_target, "no march was started by a phantom second apply")
+	assert_true(u._has_pending_march, "the parked rear march survives the drain")
+	assert_eq(u._pending_march_target, Vector2(0, -200), "toward the ordered rear destination")
+
+
+func test_order_once_vs_twice_yields_identical_unit_state() -> void:
+	# The order-idempotency acceptance property: an order's observable effect is identical
+	# whether or not the live immediate-apply fires. Confirm a single apply (the replay
+	# path) and an enqueue + exactly-once drain (the live path) reach the same unit state,
+	# so the two paths never diverge.
+	var single := _unit(1, Vector2.ZERO)
+	single.facing = Vector2.DOWN
+	single.seed_sim_soldiers()
+	var b1 := _battle([single])
+	Settings.reform_before_move = false
+	b1._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})
+
+	var live := _unit(2, Vector2.ZERO)
+	live.facing = Vector2.DOWN
+	live.seed_sim_soldiers()
+	var b2 := _battle([live])
+	b2.enqueue_order([2], Vector2(0, -200), -1)
+	_drain_pending(b2)
+
+	assert_eq(live._conversio_target, single._conversio_target,
+		"enqueue+drain arms the same about-face as a single apply")
+	assert_eq(live.has_move_target, single.has_move_target, "same march-started flag")
+	assert_eq(live._has_pending_march, single._has_pending_march, "same parked-march flag")
+	assert_eq(live._pending_march_target, single._pending_march_target, "same parked destination")
+
+
+func test_rear_move_holds_footprint_while_facings_reverse() -> void:
+	# End to end: issue the rear move through the real live+drain path, then step _think
+	# through the whole turn. The conversio must hold every soldier's position -- the
+	# bounding box stays pinned -- while facings flip, then the block marches. A centre
+	# pivot (the double-apply bug) instead rotates the box through its diagonal.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	var b := _battle([u])
+	Settings.reform_before_move = false
+	var start_bbox := _soldier_bbox(u)
+	var start_facing := u._sim_soldier_facing[0]
+	b.enqueue_order([1], Vector2(0, -200), -1)
+	_drain_pending(b)   # exactly-once: the drain does not abort the conversio
+
+	# Step through the turn. Until the march commits the box must stay pinned and the unit
+	# must not translate -- the men turn where they stand.
+	var march_started := false
+	for _i in range(240):
+		u._think(0.016)
+		if u.has_move_target:
+			march_started = true
+			break
+		var bbox := _soldier_bbox(u)
+		assert_almost_eq(bbox.x, start_bbox.x, 1.0,
+			"soldier-block width stays pinned through the about-face (no centre pivot)")
+		assert_almost_eq(bbox.y, start_bbox.y, 1.0,
+			"soldier-block height stays pinned through the about-face (no centre pivot)")
+		assert_eq(u.position, Vector2.ZERO, "the block does not translate during the turn")
+	assert_true(march_started, "the parked march commits once the about-face completes")
+
+	# The facing reversed (the men turned around), and the footprint is unchanged.
+	var end_facing := u.facing
+	assert_almost_eq(end_facing.x, -start_facing.x, 0.01, "unit facing reversed in x")
+	assert_almost_eq(end_facing.y, -start_facing.y, 0.01, "unit facing reversed in y")
+	var end_bbox := _soldier_bbox(u)
+	assert_almost_eq(end_bbox.x, start_bbox.x, 1.0, "final footprint width matches the start")
+	assert_almost_eq(end_bbox.y, start_bbox.y, 1.0, "final footprint height matches the start")
+
+
+func test_nudge_applied_once_targets_its_full_distance() -> void:
+	# A nudge sets move_target = position + offset, a relative target. Exactly-once
+	# application must leave that target a full NUDGE_DISTANCE from the start (guarding
+	# the relative-target path against any future re-application that would recompute
+	# it from a moved position and shrink the step).
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN   # so LEFT nudge steps in world +x (perp to facing)
+	var b := _battle([u])
+	Settings.reform_before_move = false
+	b.enqueue_nudge([1], BattleScript.NudgeDir.LEFT)
+	_drain_pending(b)
+	assert_true(u.has_move_target, "the nudge sets a move target")
+	var travel: float = u.position.distance_to(u.move_target)
+	assert_almost_eq(travel, BattleScript.NUDGE_DISTANCE, 0.01,
+		"the nudge target is a full NUDGE_DISTANCE from the start")
+
+
+func test_enqueue_formation_applies_once_through_the_drain() -> void:
+	# A formation change is idempotent, but it still routes through the same live-apply
+	# + tagged-drain path; exercise it so a formation order sets the mode and the drain
+	# doesn't need to touch it again.
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_formation([1], UnitScript.FORMATION_LOOSE)
+	assert_eq(u.formation_mode, UnitScript.FORMATION_LOOSE, "the live apply set the formation")
+	_drain_pending(b)   # tagged -> the drain is a no-op for it
+	assert_eq(u.formation_mode, UnitScript.FORMATION_LOOSE, "and it stays set after the drain")
+	assert_true(b._pending_orders.is_empty(), "the drain cleared the queue")
+
+
 func test_forward_move_does_not_arm_an_about_face() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.DOWN
@@ -151,17 +299,16 @@ func test_append_to_idle_unit_starts_it_marching() -> void:
 
 
 func test_append_via_enqueue_is_not_double_applied() -> void:
-	# enqueue_order applies non-append orders immediately AND _physics_process
-	# re-applies every pending cmd on the next tick. An append must run only on the
-	# tick or the queue would grow a duplicate leg. Simulate a live append on a unit
-	# already marching, then drain _pending_orders exactly as the next tick does.
+	# An append is the one order enqueue_order does NOT apply live: it leaves the cmd
+	# untagged so the tick drain applies it once (applying it live too would queue the
+	# leg twice). Simulate a live append on a unit already marching, then drain exactly
+	# as the tick does -- the untagged append applies, and only once.
 	var u := _unit(1, Vector2.ZERO)
 	u.move_target = Vector2(200, 0)
 	u.has_move_target = true   # already en route
 	var b := _battle([u])
 	b.enqueue_order([1], Vector2(400, 0), BattleScript.ORDER_APPEND_WAYPOINT)
-	for o in b._pending_orders:
-		b._apply_order_cmd(o)
+	_drain_pending(b)
 	assert_eq(u.waypoints.size(), 1, "an appended waypoint is queued exactly once, not doubled")
 	assert_eq(u.waypoints[0], Vector2(400, 0), "and holds the appended point")
 
@@ -463,18 +610,20 @@ func test_enqueue_frontage_sets_an_absolute_target_from_the_current_width() -> v
 		"tagged as a frontage-only command")
 
 
-func test_frontage_apply_is_idempotent_under_tick_reapplication() -> void:
-	# enqueue applies immediately; the physics tick re-applies every pending order.
-	# An absolute target makes that second application a no-op (a delta would double).
+func test_frontage_apply_is_idempotent_under_reapplication() -> void:
+	# Orders apply exactly once now, but a frontage command carries an ABSOLUTE target
+	# so it stays safe to apply more than once (a delta would double). Apply the same
+	# command a second time directly and confirm the width is unchanged -- the property
+	# that lets the absolute encoding survive any accidental re-application.
 	var u := _unit(1, Vector2.ZERO)
 	u.max_soldiers = 80
 	var start: int = UnitFormation.frontage(u)
 	var b := _battle([u])
-	b.enqueue_frontage([1], 4)
+	b.enqueue_frontage([1], 4)   # applies live (once)
 	for o in b._pending_orders:
-		b._apply_order_cmd(o)   # the tick drains and re-applies
+		b._apply_order_cmd(o)     # apply the identical command again: must be a no-op
 	assert_eq(UnitFormation.frontage(u), start + 4,
-		"re-applying the recorded order leaves the width unchanged (idempotent)")
+		"re-applying the absolute-frontage command leaves the width unchanged (idempotent)")
 
 
 func test_enqueue_frontage_clamps_at_the_extremes() -> void:
@@ -562,18 +711,19 @@ func test_duplicatio_floors_at_one_file() -> void:
 	assert_eq(UnitFormation.frontage(u), 1, "narrowing can't go below a single column")
 
 
-func test_file_double_apply_is_idempotent_under_tick_reapplication() -> void:
-	# The physics tick re-applies every pending order; an absolute target makes the
-	# second application a no-op (a delta would double again).
+func test_file_double_apply_is_idempotent_under_reapplication() -> void:
+	# Like the frontage command, a file-double carries an ABSOLUTE reshaped width, so it
+	# stays safe to apply more than once even though orders now apply exactly once. Apply
+	# the same command a second time directly and confirm the width holds.
 	var u := _unit(1, Vector2.ZERO)
 	u.max_soldiers = 120
 	var b := _battle([u])
 	var start: int = UnitFormation.frontage(u)
-	b.enqueue_file_double([1], 1)
+	b.enqueue_file_double([1], 1)   # applies live (once)
 	for o in b._pending_orders:
-		b._apply_order_cmd(o)   # the tick drains and re-applies
+		b._apply_order_cmd(o)        # apply the identical command again: must be a no-op
 	assert_eq(UnitFormation.frontage(u), start * 2,
-		"re-applying the recorded order leaves the width unchanged (idempotent)")
+		"re-applying the absolute file-double command leaves the width unchanged (idempotent)")
 
 
 # --- drag-to-form-up ------------------------------------

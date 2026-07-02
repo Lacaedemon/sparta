@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/about-face.json",
+  "caption": "Move-to-rear now about-faces (conversio) instead of centre-pivoting. A lone Spearmen regiment faces south and is ordered directly to its rear (north). Watch the block's footprint: every soldier holds his ground while the whole regiment reverses facing in place -- front rank becomes rear rank, the 72x36 footprint stays pinned and axis-aligned through the entire turn -- and only then does the block march north facing its destination. Previously (the bug this fixes) the conversio aborted ~48 percent in and the block rigidly rotated ~180 degrees about its centre while marching. The state transcript confirms it: the bounding box stays 72x36 through the facing flip (0,+1)->(0,-1), rather than rotating through its diagonal.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}
