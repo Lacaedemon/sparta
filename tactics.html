@@ -501,6 +501,12 @@ ul.task-list li input[type="checkbox"] {
 <section id="flanking" class="level2">
 <h2 class="anchored" data-anchor-id="flanking">Flanking</h2>
 <p>Hitting a unit from the side or rear deals far more damage <em>and</em> morale loss than a frontal clash:</p>
+<div id="tbl-flank-multipliers" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-flank-multipliers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: Damage and morale multipliers by attack angle.
+</figcaption>
+<div aria-describedby="tbl-flank-multipliers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -523,6 +529,9 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
+</div>
+</figure>
+</div>
 <p><strong>Maneuver behind the enemy line.</strong> A regiment pinned frontally by a screen while your cavalry hits its rear will melt — and start a rout that spreads.</p>
 </section>
 <section id="morale-routing" class="level2">
@@ -535,22 +544,34 @@ ul.task-list li input[type="checkbox"] {
 <li>A unit still in contact, or gutted past reforming, <strong>shatters</strong> instead — it leaves play for good.</li>
 <li><strong>The battle isn’t over while a side is only routing.</strong> A team is beaten only once its last unit is truly gone (dead or shattered), not while its final unit is merely routing. Even a lone survivor that breaks can flee, rally, and fight on — so press a rout home rather than assuming a broken last unit is a win.</li>
 </ul>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/rout_rally.jpg">
-    <source src="media/rout_rally.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Rout and rally: a low-morale infantry block is charged by cavalry and breaks — it flees faded toward its own edge, staying on the field rather than running off. The cavalry lose the router and stop; its morale recovers as it flees, and it reforms under control, back in the fight.</figcaption>
+<div id="fig-rout-rally" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-rout-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/rout_rally.jpg">
+  <source src="media/rout_rally.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-rout-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Rout and rally: a low-morale infantry block is charged by cavalry and breaks — it flees faded toward its own edge, staying on the field rather than running off. The cavalry lose the router and stop; its morale recovers as it flees, and it reforms under control, back in the fight.
+</figcaption>
 </figure>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/last_unit_rally.jpg">
-    <source src="media/last_unit_rally.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>A team's last unit routs, then rallies. A lone player infantry is broken and flees (faded); with no fightable unit left the enemy AI halts, so the fugitive breaks contact and reforms back under control at low morale — the battle stays live instead of ending the instant the last unit broke.</figcaption>
+</div>
+<div id="fig-last-unit-rally" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-last-unit-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/last_unit_rally.jpg">
+  <source src="media/last_unit_rally.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-last-unit-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: A team’s last unit routs, then rallies. A lone player infantry is broken and flees (faded); with no fightable unit left the enemy AI halts, so the fugitive breaks contact and reforms back under control at low morale — the battle stays live instead of ending the instant the last unit broke.
+</figcaption>
 </figure>
+</div>
 </section>
 <section id="rank-cycling-trained-units" class="level2">
 <h2 class="anchored" data-anchor-id="rank-cycling-trained-units">Rank cycling (trained units)</h2>
@@ -614,14 +635,20 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Testudo</strong> (<kbd>U</kbd>) — shields locked front, sides, and overhead: the strongest missile cover in the game, and it works <strong>from every direction</strong>. The cost is that the men fight weakly (packed head-down under their shields) and move slowest of all. It is an <strong>arrow-crossing</strong> stance, not a fighting one: walk a unit through a beaten zone of archery in testudo, then drop to Tight or Normal before it reaches melee.</li>
 </ul>
 <p>Both shielded stances still <strong>brace against a cavalry charge</strong> the way Tight does, so neither is helpless if horse reaches them — but only spearmen actually turn a charge back. Because both are slow, commit them deliberately: a testudo caught in the open by melee, or a shield wall taken in the flank, is in trouble.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/testudo_under_fire.jpg">
-    <source src="media/testudo_under_fire.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.</figcaption>
+<div id="fig-testudo-under-fire" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-testudo-under-fire-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/testudo_under_fire.jpg">
+  <source src="media/testudo_under_fire.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-testudo-under-fire-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.
+</figcaption>
 </figure>
+</div>
 </section>
 <section id="form-square-against-cavalry" class="level2">
 <h2 class="anchored" data-anchor-id="form-square-against-cavalry">Form square against cavalry</h2>
@@ -632,14 +659,20 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Drop back to Normal</strong> the moment the horse is beaten off or pulls away, or the offence and mobility penalties will cost you against enemy foot.</li>
 <li><strong>It’s a fallback, not a replacement for spearmen.</strong> A spear screen still blunts the charge <em>and</em> keeps your line mobile and hitting hard; square is what you reach for when a unit is caught in the open with cavalry on a bad angle.</li>
 </ul>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/square.jpg">
-    <source src="media/square.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.</figcaption>
+<div id="fig-square" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/square.jpg">
+  <source src="media/square.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.
+</figcaption>
 </figure>
+</div>
 </section>
 <section id="weapon-reach" class="level2">
 <h2 class="anchored" data-anchor-id="weapon-reach">Weapon reach</h2>
@@ -654,6 +687,12 @@ ul.task-list li input[type="checkbox"] {
 <section id="movement-speed" class="level2">
 <h2 class="anchored" data-anchor-id="movement-speed">Movement speed</h2>
 <p>Units move at <strong>realistic real-world speeds</strong>, measured in metres per second, with <strong>three independent paces</strong> per type — walk, jog, and sprint (see <a href="#pace-modes">Pace modes</a> below) — scaled to how much each type’s panoply weighs:</p>
+<div id="tbl-unit-speeds" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-unit-speeds-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: Movement paces by unit type, in metres per second.
+</figcaption>
+<div aria-describedby="tbl-unit-speeds-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -690,6 +729,9 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
+</div>
+</figure>
+</div>
 <p>Heavier armor and weapons cost proportionally more at a run than at a walk — walking pace barely changes under load, but running form degrades fast, so spearmen’s walk sits close to the lighter types’ while their sprint lags well behind. Cavalry’s three paces map onto the horse’s own real gaits (walk / trot / gallop) rather than a rider-weight-scaled fraction, since a rider’s kit is a small fraction of what the horse itself carries.</p>
 <p>That sprint gap is a lever: cavalry cross the field and reach an exposed flank far sooner than infantry can re-form to face them, so commit horse decisively and time your foot to be where the charge lands. (The faster the gallop at the moment of contact, the bigger the charge bonus — so a clean run-up hits harder than a standing start.)</p>
 </section>
@@ -698,14 +740,20 @@ ul.task-list li input[type="checkbox"] {
 <p>By default, foot units advance on <strong>AUTO</strong> pace: they walk on the approach, jog when a ranged enemy is firing at them (to spend less time under missiles), and sprint at full speed once within about 200 px of the target — so a charge arrives at full momentum without wearing out the troops on the march.</p>
 <p><strong>Toggle Walk advance (☰ Menu → Walk advance)</strong> to lock units to walk pace throughout. This is required for formed stances like shield wall or pike phalanx: those formations hold their shape only at a walk, and an auto-sprint will break them. Keep Walk advance on whenever you are using a tight formation that would crumble if the unit broke into a run.</p>
 <p>The AUTO sprint-override also matters for charge timing: a unit that enters sprint range will accelerate through any missile fire it still faces — gaining maximum speed at contact rather than jogging through the kill zone. Use that to your advantage when committing cavalry or an assault infantry charge.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/pace_modes.jpg">
-    <source src="media/pace_modes.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.</figcaption>
+<div id="fig-pace-modes" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-pace-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/pace_modes.jpg">
+  <source src="media/pace_modes.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pace-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
+</figcaption>
 </figure>
+</div>
 </section>
 <section id="side-stepping-the-line" class="level2">
 <h2 class="anchored" data-anchor-id="side-stepping-the-line">Side-stepping the line</h2>
@@ -726,14 +774,20 @@ ul.task-list li input[type="checkbox"] {
 <p>The pivot itself also <strong>slows as the unit picks up speed</strong> — a unit turns fastest from a stand and tightens its turn rate the faster it’s already moving (down to 40% of the stationary rate at a full sprint), reflecting the real lateral force a moving body or formation can exert without losing footing or cohesion. So a turn ordered from a standstill snaps around quickest; one ordered mid-charge takes noticeably longer to come about.</p>
 <p>Speed itself isn’t instant either: a unit <strong>ramps up</strong> to its target pace (walk, jog, or sprint) and <strong>ramps down</strong> when slowing or stopping, rather than snapping to a new speed. Heavier-kitted troops (spearmen) build up speed slower than lighter ones (archers), and every foot type slows down faster than it speeds up — stopping takes no effort, building momentum does. Cavalry is symmetric: a galloping horse can’t be reined in any faster than it can build up speed in the first place.</p>
 <p>Arrival works the same way: a unit closing on its ordered point <strong>brakes over the final stretch</strong> and comes to rest on the marker, instead of charging to the wire and lurching to a halt past it. Only the final stop brakes — a queued waypoint route flows through its corners at pace, and a <strong>charge never slows</strong>: a unit closing on an enemy carries full speed into contact, so braking costs you nothing on the attack.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/decel_arrival.jpg">
-    <source src="media/decel_arrival.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.</figcaption>
+<div id="fig-decel-arrival" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/decel_arrival.jpg">
+  <source src="media/decel_arrival.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+</figcaption>
 </figure>
+</div>
 </section>
 <section id="wheeling-on-a-flank" class="level2">
 <h2 class="anchored" data-anchor-id="wheeling-on-a-flank">Wheeling on a flank</h2>
@@ -766,18 +820,30 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Distributed</strong> — each unit picks a different nearby enemy, sorted by proximity to the clicked target. Extra units cycle through the list if you have more units than enemies. Use it to hold an entire line rather than piling onto one regiment and leaving the rest unengaged.</li>
 </ul>
 <p>The flash message in the top-centre of the screen confirms the active mode. The mode is sticky — it stays set until you press <kbd>X</kbd> again.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/group_attack.jpg">
-    <source src="media/group_attack.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.</figcaption>
+<div id="fig-group-attack" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/group_attack.jpg">
+  <source src="media/group_attack.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+</figcaption>
 </figure>
+</div>
 </section>
 <section id="terrain" class="level2">
 <h2 class="anchored" data-anchor-id="terrain">Terrain</h2>
 <p>Two types of terrain patch appear on the battle field:</p>
+<div id="tbl-terrain" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-terrain-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3: Terrain patches and their movement effects.
+</figcaption>
+<div aria-describedby="tbl-terrain-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -804,6 +870,9 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
+</div>
+</figure>
+</div>
 <p>Units automatically path around impassable terrain when ordered to move. The forest is a different trade-off: routing <em>around</em> it costs distance; routing <em>through</em> it costs time. Generally it is faster to push cavalry or fast-moving infantry through rather than around a narrow forest.</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
