@@ -48,6 +48,13 @@ A starting table (tunable; maps onto the existing loadout types):
 | Archers  | 0.30 | 0.10 | 0.05 | 0.50 | short (0.6 m) | 0.9 |  80 |  90 |
 | Cavalry  | 0.60 | 0.40 | 0.25 | 1.10 | medium (1.5 m) | 2.5 | 140 | 120 |
 
+As implemented, $b$ and $\ell$ resolve at strike time through the soldier's
+loadout ids (see `docs/soldier-loadout-design.md`): $\ell$ is the equipped
+weapon type's `lethality`, and $b$ composes as the equipped shield type's
+`block_value` (scutum 0.60, round 0.25, none 0) plus a per-type stance
+residual (`shield_residual`: Spearmen 0.05 braced footing, Archers 0.05
+unshielded deflection, otherwise 0), summing bit-for-bit to the table's $b$.
+
 ### Two condition factors
 
 Health and stamina feed back into performance through two increasing factors in

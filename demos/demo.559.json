@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Tooling/verification change with no player-visible behaviour: adds the simulation-tier field to the state transcript (a JSON artifact, not gameplay), benchmark instrumentation for the promoted soldier count, and benchmark-derived tuning evidence for the tier thresholds (values unchanged). Also repairs the tier-demotion guard broken by merge skew, restoring the behaviour PR #589's merged clip already shows -- the tier boundary itself is deliberately invisible to the player (same regiment-level movement, morale, and orders on both sides of it), so a recorded battle would look identical to the existing tier-transition demo."
+}

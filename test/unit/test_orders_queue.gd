@@ -1,8 +1,9 @@
 extends GutTest
-## Unit's general orders queue (docs/orders-queue-design.md phases 1-2): the
+## Unit's general orders queue (docs/orders-queue-design.md phases 1-3): the
 ## append/replace/retire/clear queue operations, the maneuver execution state that lives on
-## the Order (turn_target / phase / parked rear march), the interrupt semantics of replacing
-## the queue, and _update_current_order's retirement bookkeeping for each order kind. These
+## the Order (turn_target / phase / parked rear march / relief pass-through link), the route
+## as queued MOVE legs, the interrupt semantics of replacing the queue, and
+## _update_current_order's retirement bookkeeping for each order kind. These
 ## are bare-Unit, node-only tests -- no Battle scene needed; see test_wheel_battle.gd /
 ## test_file_doubling_battle.gd / test_nudge_maneuver.gd / test_reform_battle.gd for the
 ## full-scene tick-by-tick sim behaviour.
@@ -69,8 +70,9 @@ func test_append_order_queues_behind_an_existing_current_order() -> void:
 
 
 func test_waypoint_legs_retire_their_move_orders_in_lockstep() -> void:
-	# Waypoint legs and queued MOVE orders are appended 1:1, so finishing a leg retires its
-	# order and promotes the next -- the queue reports the leg actually marching.
+	# A queued waypoint leg IS a queued MOVE order, so finishing a leg retires its
+	# order, promotes the next, and the promotion commits the next march -- the queue
+	# reports the leg actually marching.
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	var first := Order.new_move(Vector2(10, 0))
@@ -79,7 +81,6 @@ func test_waypoint_legs_retire_their_move_orders_in_lockstep() -> void:
 	u.move_target = Vector2(10, 0)
 	u.has_move_target = true
 	u.append_order(second)
-	u.waypoints.append(Vector2(20, 0))
 	u.position = Vector2(10, 0)   # arrived at the first leg
 	u._think(1.0 / 60.0)
 	assert_eq(u.current_order, second, "the finished leg's order retired; the next leg is current")
@@ -377,6 +378,61 @@ func test_frontage_order_retires_immediately() -> void:
 	u.set_current_order(Order.new_frontage(4))
 	u._update_current_order()
 	assert_null(u.current_order)
+
+
+func test_stance_order_retires_immediately() -> void:
+	# Like FORMATION/FRONTAGE: an instantaneous mode write, complete on the tick it was
+	# issued -- the idle-only queue entry is transcript visibility, not pending work.
+	var u := _make_unit()
+	u.set_current_order(Order.new_stance(1))
+	u._update_current_order()
+	assert_null(u.current_order)
+
+
+# --- queued route (waypoints as queued MOVE legs) ----------------------------
+
+func test_queued_move_points_lists_the_route_after_the_current_order() -> void:
+	var u := _make_unit()
+	u.set_current_order(Order.new_move(Vector2(10, 0)))
+	u.append_order(Order.new_move(Vector2(20, 0)))
+	u.append_order(Order.new_move(Vector2(30, 0)))
+	var points := u.queued_move_points()
+	assert_eq(points.size(), 2, "the queued legs, excluding the current one")
+	assert_eq(points[0], Vector2(20, 0), "in queue order")
+	assert_eq(points[1], Vector2(30, 0))
+
+
+func test_queued_move_points_is_empty_with_only_a_current_order() -> void:
+	var u := _make_unit()
+	u.set_current_order(Order.new_move(Vector2(10, 0)))
+	assert_true(u.queued_move_points().is_empty())
+
+
+func test_promoting_a_queued_move_leg_commits_its_march() -> void:
+	# retire_current_order promotes the next queued order; a promoted MOVE leg that
+	# hasn't started commits its march (move_target/has_move_target) right there, so a
+	# route continues without a separate waypoint pop.
+	var u := _make_unit()
+	u.set_current_order(Order.new_attack(9))
+	u.append_order(Order.new_move(Vector2(40, 0)))
+	u.has_move_target = false
+	u.retire_current_order()   # the fight resolved
+	assert_eq(u.current_order.type, Order.Type.MOVE, "the queued leg is promoted")
+	assert_true(u.has_move_target, "and its march commits on promotion")
+	assert_eq(u.move_target, Vector2(40, 0))
+
+
+func test_promotion_does_not_clobber_a_march_already_in_flight() -> void:
+	# Defensive: if a march is somehow live when a MOVE is promoted, the promoted leg
+	# must not yank move_target out from under it -- the arrival logic advances the
+	# route at the corner instead.
+	var u := _make_unit()
+	u.set_current_order(Order.new_wheel(1))
+	u.append_order(Order.new_move(Vector2(40, 0)))
+	u.move_target = Vector2(99, 0)
+	u.has_move_target = true
+	u.retire_current_order()
+	assert_eq(u.move_target, Vector2(99, 0), "the in-flight march target is untouched")
 
 
 # --- Teardown: death and rout drop every in-progress order -------------------

@@ -89,3 +89,28 @@ func test_total_soldiers_sums_across_specs() -> void:
 func test_total_soldiers_ignores_specs_without_count() -> void:
 	var specs: Array = [{"count": 100}, {"team": 0}]
 	assert_eq(BenchmarkStats.total_soldiers(specs), 100)
+
+
+func test_summarize_counts_empty_input_is_all_zero() -> void:
+	var s: Dictionary = BenchmarkStats.summarize_counts([])
+	assert_eq(s["count"], 0)
+	assert_eq(s["mean"], 0.0)
+	assert_eq(s["min"], 0)
+	assert_eq(s["max"], 0)
+
+
+func test_summarize_counts_reports_mean_min_max() -> void:
+	# A promoted-count series: the bubble grows as a formation promotes mid-window.
+	var s: Dictionary = BenchmarkStats.summarize_counts([600, 600, 1200, 1200])
+	assert_eq(s["count"], 4)
+	assert_almost_eq(s["mean"], 900.0, 0.001)
+	assert_eq(s["min"], 600)
+	assert_eq(s["max"], 1200)
+
+
+func test_summarize_counts_single_sample() -> void:
+	var s: Dictionary = BenchmarkStats.summarize_counts([1380])
+	assert_eq(s["count"], 1)
+	assert_almost_eq(s["mean"], 1380.0, 0.001)
+	assert_eq(s["min"], 1380)
+	assert_eq(s["max"], 1380)
