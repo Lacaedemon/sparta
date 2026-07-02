@@ -520,6 +520,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Sparta records every battle so it can be <strong>re-watched</strong> and — more importantly — <strong>re-run for debugging</strong>. This is the same technique <strong>many strategy games</strong> use, and the reason such replay files stay tiny.</p>
 <section id="two-ways-to-build-replays" class="level2">
 <h2 class="anchored" data-anchor-id="two-ways-to-build-replays">Two ways to build replays</h2>
+<div id="tbl-replay-approaches" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-replay-approaches-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: The two ways to build a replay system, and the trade-off each makes.
+</figcaption>
+<div aria-describedby="tbl-replay-approaches-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -546,6 +552,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
+</div>
+</figure>
+</div>
 <p>Godot has no built-in system for either — both are something you build. Sparta uses the deterministic approach because it gives small logs <em>and</em> reproduces bugs in the live simulation, which is exactly what makes it useful.</p>
 </section>
 <section id="why-its-reproducible" class="level2">
@@ -609,6 +618,12 @@ Note
 </section>
 <section id="where-it-lives" class="level2">
 <h2 class="anchored" data-anchor-id="where-it-lives">Where it lives</h2>
+<div id="tbl-replay-files" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-replay-files-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: The files that make up the replay system.
+</figcaption>
+<div aria-describedby="tbl-replay-files-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -639,6 +654,9 @@ Note
 </tr>
 </tbody>
 </table>
+</div>
+</figure>
+</div>
 </section>
 <section id="keeping-it-deterministic-as-the-game-grows" class="level2">
 <h2 class="anchored" data-anchor-id="keeping-it-deterministic-as-the-game-grows">Keeping it deterministic as the game grows</h2>

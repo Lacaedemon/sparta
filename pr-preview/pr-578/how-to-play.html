@@ -481,16 +481,28 @@ ul.task-list li input[type="checkbox"] {
 
 
 <p>You command the <span class="army-blue"><strong>blue army</strong></span> (top of the field). Your objective: defeat the <span class="army-red"><strong>red army</strong></span> (bottom). A side loses when it has no units left on the field — every one dead or shattered. A unit that is merely <strong>routing</strong> still counts: it is off fighting for now, but it may break contact and rally back into the line, so the battle stays live while it might recover.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/clash.jpg">
-    <source src="media/clash.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Selecting units and issuing move/attack orders during a battle.</figcaption>
+<div id="fig-clash" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-clash-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/clash.jpg">
+  <source src="media/clash.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-clash-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Selecting units and issuing move/attack orders during a battle.
+</figcaption>
 </figure>
+</div>
 <section id="controls" class="level2">
 <h2 class="anchored" data-anchor-id="controls">Controls</h2>
+<div id="tbl-controls" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-controls-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, and camera.
+</figcaption>
+<div aria-describedby="tbl-controls-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <colgroup>
 <col style="width: 50%">
@@ -625,6 +637,9 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
+</div>
+</figure>
+</div>
 <p>A right-click on empty ground is a <strong>move</strong> order; a right-click on an enemy is an <strong>attack</strong> order. Selection and camera stay live even while paused, so you can plan under pressure.</p>
 <p><strong>Control bar.</strong> When you have units selected, a control bar appears at the bottom of the screen with clickable buttons for the most-used unit toggles. Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.</p>
 <ul>
@@ -638,46 +653,70 @@ ul.task-list li input[type="checkbox"] {
 <p><strong>Move order sequence.</strong> When you right-click a destination, the regiment turns to face it and marches there in good order: it <strong>pivots about its centre</strong> onto the new heading — turning in place before it advances on a sharp turn — marches, and settles back into formation on arrival. The next two sections cover the special cases: a small sideways shift (<strong>side-step</strong>) and a larger turn (<strong>centre pivot</strong>).</p>
 <p><strong>Reform before move (default on).</strong> By default, a fresh move order makes a unit hold its position briefly (~0.8 s) while its ranks settle into formation before it steps off. The unit spends this hold <strong>pivoting in place</strong> toward the destination, so its ranks are already coming onto the new heading before the first step. To make units move immediately without the pause, uncheck <strong>☰ Menu → Reform before move</strong> or click <strong>Reform</strong> in the control bar. The setting is baked into each recorded order, so replays reproduce whichever mode was active when you issued them.</p>
 <p><strong>Side-step (small lateral moves).</strong> A move order that only shifts a unit a short way to the side — less than about its own width — is carried out as a <strong>side-step</strong>: the unit shuffles sideways at a walk while holding its current facing, instead of pivoting the whole line round to face the move and then pivoting back. So a small dressing of the line keeps every soldier looking the same way and keeps the ranks in order. A longer move, or one that heads forward, still turns to face the destination and marches normally.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/sidestep.jpg">
-    <source src="media/sidestep.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than pivoting.</figcaption>
+<div id="fig-sidestep" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-sidestep-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/sidestep.jpg">
+  <source src="media/sidestep.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sidestep-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than pivoting.
+</figcaption>
 </figure>
+</div>
 <p><strong>Arrow-key nudges.</strong> With a unit selected, the arrow keys order a small fixed step without touching the mouse: <kbd>←</kbd> and <kbd>→</kbd> side-step the unit a few metres to that side, and <kbd>↓</kbd> back-steps it a few metres straight to the rear. All three hold the unit’s facing — a nudge shuffles it into place, it never turns to face the step. Use them to dress a line, open a gap, or edge a regiment off a bad spot. While a unit is selected these three arrows nudge instead of panning the camera; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (and <kbd>↑</kbd>) still pan, so you never lose camera control.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/arrow_nudge.jpg">
-    <source src="media/arrow_nudge.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Arrow-key nudges: the selected regiment side-steps left, then right, then back-steps --- each a small step that holds its facing.</figcaption>
+<div id="fig-arrow-nudge" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-arrow-nudge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/arrow_nudge.jpg">
+  <source src="media/arrow_nudge.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-arrow-nudge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Arrow-key nudges: the selected regiment side-steps left, then right, then back-steps — each a small step that holds its facing.
+</figcaption>
 </figure>
+</div>
 <p><strong>Centre pivot (larger turns).</strong> A move order that turns a unit toward a new heading makes it <strong>pivot about its centre</strong> there gradually rather than snapping — it turns toward its travel direction in good order as it sets off. When the heading change is sharp, the unit <strong>pivots before it advances</strong>: it nearly halts, comes onto its new facing, then marches. So a unit always marches facing its destination, and never reverses into it. (A chasing or charging unit still turns instantly — the gradual pivot is for your own move orders, where order matters more than the last fraction of a second.)</p>
 <p><strong>Move to the rear (about-face, reform, then march).</strong> A move order to a destination roughly <strong>behind</strong> the unit (more than 135° off its facing) is not a centre pivot at all: the regiment first performs the standing <strong>about-face</strong> (<em>conversio</em>, below) — every soldier reverses 180° where they stand, the front rank becoming the rear rank man-for-man — and then marches to the destination facing it. The block keeps its footprint the whole time rather than swinging the whole line round about its centre, so a unit sent to the rear turns about cleanly and steps off, never sliding backwards.</p>
 <p>Because the flip makes the old rear rank the new front, a unit that has taken losses would otherwise lead with its <strong>thinnest rank</strong> — the short, under-strength rank that had been tucked safely at the back. So after the turn the regiment <strong>reforms</strong>: the men counter-march through the block onto ranks squared to the new heading, putting a full rank back in front and returning the short rank to the rear. With <strong>Reform before move</strong> on (the default) this happens before the unit steps off; with it off, the unit marches at once — short rank leading — and reforms on arrival instead.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/about_face.jpg">
-    <source src="media/about_face.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Move to the rear: ordered to a point behind it, the regiment about-faces in place (each soldier reversing 180°), reforms so a full rank fronts the new heading --- the under-strength rank counter-marching back to the rear --- and then marches off facing the destination.</figcaption>
+<div id="fig-about-face" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-about-face-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/about_face.jpg">
+  <source src="media/about_face.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-about-face-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Move to the rear: ordered to a point behind it, the regiment about-faces in place (each soldier reversing 180°), reforms so a full rank fronts the new heading — the under-strength rank counter-marching back to the rear — and then marches off facing the destination.
+</figcaption>
 </figure>
+</div>
 <p><strong>About-face in place (conversio, <kbd>V</kbd>).</strong> Press <kbd>V</kbd> with a unit selected to issue the <em>conversio</em>: every soldier reverses 180° where they stand — the file/rank grid stays put, the front rank becomes the rear rank man-for-man, and the unit is now facing the other way. Unlike the gradual <strong>centre pivot</strong> that accompanies a move order (which rotates the whole block around its centre as it marches), the conversio is a standing drill command: no one takes a step. Use it to face a threat behind the line without marching first, or to quickly reorient a reserve before it moves up.</p>
 <p><strong>Quarter-turn in place (<kbd>Q</kbd> / <kbd>E</kbd>).</strong> Press <kbd>Q</kbd> to turn the selected unit a quarter-turn left, or <kbd>E</kbd> to turn it right: every soldier pivots 90° where they stand. No one marches and the grid of men does not reorganize — they simply face the new way, so the block now presents its <strong>short edge</strong> as its frontage (its frontage and depth swap relative to the facing, without anyone moving). Like the conversio, it is a standing facing change. Use it to throw a fresh face toward a flank, or as the first step of marching off to the side in good order.</p>
 <p><strong>Wheel on a flank (circumductio, <kbd>Z</kbd> / <kbd>C</kbd>).</strong> Press <kbd>Z</kbd> to wheel the selected unit left, or <kbd>C</kbd> to wheel it right. One end of the line — the standing flank file — holds its ground while the rest of the block swings around it like a door on a hinge, reorienting the whole line 90° while every man keeps his place in the ranks. Unlike the quarter-turn, this is not a standing facing change: the far flank actually marches an arc, so the line ends up facing a new direction <em>and</em> lying along a new line. Use it to refuse a flank, to swing a wing forward and take an enemy line in the side, or to change the front an entire wing presents without breaking its order.</p>
 <p>All three drills fire from a standstill only: a unit that is marching, fighting, or already mid-maneuver ignores the key press. While one runs, the info panel reports it (“About-facing”, “Quarter-turning”, “Wheeling”), and any fresh order cancels the drill where it stands.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/wheel.jpg">
-    <source src="media/wheel.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Wheel (circumductio): the line swings 90° about its standing flank file --- the near flank holds while the far flank marches a wide arc --- reorienting the whole block without breaking its ranks. Wheeled right (C), then back left (Z).</figcaption>
+<div id="fig-wheel" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-wheel-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/wheel.jpg">
+  <source src="media/wheel.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-wheel-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Wheel (circumductio): the line swings 90° about its standing flank file — the near flank holds while the far flank marches a wide arc — reorienting the whole block without breaking its ranks. Wheeled right (C), then back left (Z).
+</figcaption>
 </figure>
+</div>
 <p><strong>Zoom in to see the soldiers.</strong> From the usual overview each regiment is a block of small marks. Zoom in far enough and those marks become individual figures, and each type carries its own gear — spearmen shoulder a spear, archers carry a bow, other foot raise a shield, and cavalry ride a mount that faces the regiment’s march. So you can watch the ranks as people, not dots, and still read who is who. A small white facing pip on each figure shows its exact facing — the figure itself only mirrors left/right, so the pip is what lets a maneuver’s precise turn (a quarter-turn, say) read correctly even at this zoom, not just a coarse left/right flip. Zoom back out and they collapse to the legible marks again — each mark points the way its soldier faces, so you can read a regiment’s facing at a glance even from the overview. The mark shape tells you the type, too: a dart for spearmen, a kite for archers, and an arrow-pointer for other foot and cavalry. All three are compact directional glyphs, so a rank reads as arrows whichever way it faces rather than smearing into bars.</p>
 <p><strong>Reading distances.</strong> A small semi-translucent scale bar sits in the bottom-right corner, labelled with the real metre distance it spans (e.g.&nbsp;“50 m”) — it rescales as you zoom, so you can always judge range and reach at a glance. Toggle it off in <strong>☰ Menu → Distance legend</strong> if you’d rather not see it.</p>
 <p><strong>Order stances.</strong> Beyond plain move/attack you can arm a <em>stance</em> with a hotkey before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> clears it.</p>
@@ -688,22 +727,34 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Support</strong> (<kbd>G</kbd>) — right-click a friendly to guard it: the unit shadows that ally and engages anything that threatens it.</li>
 <li><strong>Cycle charge</strong> (<kbd>J</kbd>) — cavalry charge the target, pull back to a standoff, and charge again, so each run lands a fresh momentum hit instead of grinding once the charge is spent (see <a href="./tactics.html#order-stances">Tactics</a>).</li>
 </ul>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/support.jpg">
-    <source src="media/support.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Support stance: a unit guards an ally, shadowing it and engaging any threat.</figcaption>
+<div id="fig-support" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-support-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/support.jpg">
+  <source src="media/support.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-support-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Support stance: a unit guards an ally, shadowing it and engaging any threat.
+</figcaption>
 </figure>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/cycle_charge.jpg">
-    <source src="media/cycle_charge.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Cycle charge stance: cavalry charge, land the impact hit, peel back to a standoff, then charge again.</figcaption>
+</div>
+<div id="fig-cycle-charge" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-cycle-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/cycle_charge.jpg">
+  <source src="media/cycle_charge.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cycle-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: Cycle charge stance: cavalry charge, land the impact hit, peel back to a standoff, then charge again.
+</figcaption>
 </figure>
+</div>
 <p>Press <kbd>T</kbd> to cycle a selected unit’s <strong>formation</strong> — <em>Tight</em> closes ranks for better missile and charge defence, <em>Loose</em> spreads out, and <em>Square</em> forms the anti-cavalry ring described below. Every unit can cycle through all four; each type just starts at a different one — spearmen deploy Tight (locked shields against a charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry deploy at the plain Normal combat order.</p>
 <p><strong>Square (anti-cavalry ring).</strong> <em>Square</em> forms a hollow square / orbis / schiltron: the soldiers face spears and shields outward on every side, so the unit has <strong>no weak flank or rear</strong> — an attack from any direction lands as if it were frontal, and a cavalry charge into the ring is braced (and backfires) no matter which side it hits. The price is mobility (the ring crawls) and offence (it hits softer while hunkered), so square up <em>before</em> the horse arrives and drop back to Normal once the threat is gone. Because it’s a reaction you want to trigger fast, <kbd>O</kbd> (for <em>orbis</em>) jumps a unit straight to Square without cycling through Tight and Loose — press it again to drop back to Normal — and the control bar’s <strong>Square</strong> button does the same with one click.</p>
 <p><strong>Shielded close-order stances.</strong> Two heavier stances build on Tight’s locked-shield density, chosen from the control-bar Formation menu:</p>
@@ -712,48 +763,72 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Testudo</strong> — shields locked front, sides, <em>and</em> overhead. It blunts missile fire from <strong>every</strong> direction, the strongest arrow cover in the game, but the men are packed head-down under their shields and fight weakly, and it is the slowest stance of all. Use it to walk a unit across open ground under heavy archery, then drop back to a fighting formation before you close.</li>
 </ul>
 <p>Both stances show their shields on the map, so you can read a unit’s stance at a glance: a shield wall draws a locked shield line along its front face, and a testudo draws an overhead shield roof over the whole block (the turtle). The shields are tinted to the unit’s side and turn with its facing.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/shielded_stances.jpg">
-    <source src="media/shielded_stances.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Shielded-stance visuals: a shield wall (left) draws a locked shield line along its front face, and a testudo (right) draws an overhead shield roof over the whole block --- so each stance reads at a glance.</figcaption>
+<div id="fig-shielded-stances" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-shielded-stances-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/shielded_stances.jpg">
+  <source src="media/shielded_stances.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-shielded-stances-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8: Shielded-stance visuals: a shield wall (left) draws a locked shield line along its front face, and a testudo (right) draws an overhead shield roof over the whole block — so each stance reads at a glance.
+</figcaption>
 </figure>
+</div>
 <p><strong>Resize the line.</strong> A regiment normally forms up at a sensible width, but you can reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more men fighting at the front) or <kbd>[</kbd> to narrow it (deeper, fewer up front but more staying power). With a single unit selected, two small grips appear on its flanks — <strong>drag</strong> a grip in or out to set the width directly, with a live preview of the new file count. The width holds as the unit takes casualties, and shows in the info panel.</p>
 <p><strong>File-doubling (explicatio and duplicatio).</strong> Where <kbd>[</kbd> / <kbd>]</kbd> nudge the width one file at a time, these two drill maneuvers reshape it by a whole factor at once. Press <kbd>B</kbd> for <strong>explicatio</strong>: each file splits and the rear half steps out to the side, so the frontage doubles and the depth halves — a column unfolds into a broad line that brings more men to the front, good for overlapping a flank. Press <kbd>N</kbd> for <strong>duplicatio</strong>: alternate files tuck in behind their neighbours, so the frontage halves and the depth doubles — a wide line folds into a deep, narrow column, good for punching through or squeezing down a lane. Nobody teleports: the soldiers walk to their new slots, so the reshape takes a moment to settle. Explicatio can’t widen past a single rank, and duplicatio bottoms out at one file.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/file_doubling.jpg">
-    <source src="media/file_doubling.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.</figcaption>
+<div id="fig-file-doubling" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-file-doubling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/file_doubling.jpg">
+  <source src="media/file_doubling.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;9: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
+</figcaption>
 </figure>
+</div>
 <p><strong>Deploy with a drag (form up).</strong> With a single unit selected, <strong>right-click and drag across open ground</strong> to lay out where it should stand: the start of the drag is the unit’s <strong>left flank</strong>, the end is its <strong>right flank</strong>. The unit marches over and pivots to face the line — the drag sets its position, width, and facing in one gesture, with a live preview of the front line and a forward arrow. A short right-click (no drag) is still a plain move.</p>
 <p><strong>Deploy several units at once.</strong> Select multiple units first, then drag the same flank line: it’s split into one contiguous slice per unit, with a small gap between them. By default the line splits to <strong>equal depth</strong> — every regiment forms up the same number of ranks, so a bigger unit simply takes a wider slice and the whole front is a uniform wall. Press <kbd>Y</kbd> to switch to <strong>equal width</strong> (every unit the same frontage, so a small unit just stacks deeper) and back; the choice you make in <strong>☰ Menu → Form-up</strong> is the default each battle starts with. By default the units fill the line <strong>left-to-right by where they already stand</strong>, so each marches to the nearest slice without crossing a neighbour; hold <strong>Shift</strong> while you drag to place them in <strong>selection order</strong> instead (the first unit you picked takes the left flank). The preview shows every unit’s slice, file count, and the active split mode before you release.</p>
 <p><strong>Survey all orders (hold Space).</strong> Holding <kbd>Space</kbd> overlays every unit’s current order on the battlefield: a dashed green line to each move destination, a red line to each attack target, and a teal link for support duties. At the end of each move line, a <strong>ghost formation</strong> (faint green dots) shows exactly where each individual soldier will stand when the regiment finishes its march — so you can check whether units will fit, overlap, or leave a gap before they arrive.</p>
 <p>Each order line also carries a <strong>distance label</strong> at its midpoint, in the same metres the scale bar uses — the remaining march for a move (the full route, summed over any waypoints), or the range to the target for an attack or support link. The number counts down as the unit closes. Toggle the labels off in <strong>☰ Menu → Order distance labels</strong> (on by default).</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/order_distance.jpg">
-    <source src="media/order_distance.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.</figcaption>
+<div id="fig-order-distance" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-order-distance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/order_distance.jpg">
+  <source src="media/order_distance.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-order-distance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
+</figcaption>
 </figure>
+</div>
 </section>
 <section id="the-battle-loop" class="level2">
 <h2 class="anchored" data-anchor-id="the-battle-loop">The battle loop</h2>
 <p>Here is the cycle in practice, shown with a cavalry charge:</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/charge.jpg">
-    <source src="media/charge.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.</figcaption>
+<div id="fig-charge" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/charge.jpg">
+  <source src="media/charge.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
+</figcaption>
 </figure>
+</div>
 <ol type="1">
 <li><strong>Select</strong> — left-click a unit, or drag a box to grab several at once. The info panel fills with the selected unit’s stats.</li>
 <li><strong>Order</strong> — right-click to send them. Move them onto an enemy’s flank, or right-click the enemy directly to attack. There is a brief <strong>reaction delay</strong> (~0.5 s, faster for cavalry) before units execute — orders aren’t instant.</li>
@@ -774,6 +849,12 @@ ul.task-list li input[type="checkbox"] {
 </ol>
 <p><strong>Diplomacy:</strong> the right-hand panel lists every surviving rival. Click <strong>Declare War</strong> or <strong>Sue for Peace</strong> to change your stance. Suing for peace sets a truce that prevents re-declaring war for a few turns.</p>
 <p><strong>Rulers and AI personality:</strong> each faction is led by a named ruler whose <em>trait</em> shapes its diplomacy. The turn banner at top-left names the current faction’s ruler in parentheses (for example, Rome’s banner reads “Rome (Julius Caesar)”).</p>
+<div id="tbl-ruler-traits" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-ruler-traits-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: Ruler traits and the strength ratios at which each declares war or sues for peace.
+</figcaption>
+<div aria-describedby="tbl-ruler-traits-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -805,6 +886,9 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
+</div>
+</figure>
+</div>
 <p><strong>Province counts</strong> appear in the standings line below the banner. Own every province to win the campaign.</p>
 </section>
 <section id="recording-replays" class="level2">
