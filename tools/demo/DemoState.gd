@@ -33,6 +33,14 @@ const FORMATION_NAMES := {
 	5: "TESTUDO",
 }
 
+## The node groups that together hold every combat unit still on the field. A unit lives in
+## exactly one at a time: "units" while fightable, "routers" while ROUTING (Unit._rout()
+## moves it over; _rally() moves it back). A snapshot must walk BOTH — walking "units" alone
+## makes a unit vanish from the transcript mid-rout, hiding exactly the arc (state ROUTING,
+## morale recovering, position fleeing) the dump exists to expose. Same union
+## Battle._team_in_play() scans when deciding whether a team is still in play.
+const COMBAT_GROUPS := ["units", "routers"]
+
 
 ## Map an int to a name via a table, falling back to "UNKNOWN(<n>)" for an unmapped value so a
 ## new enum member surfaces as a visible, greppable token instead of a missing field.
@@ -52,6 +60,20 @@ static func formation_name(value: int) -> String:
 ## stays node-free and testable). Falls back to "MODE(<n>)" for an unmapped value.
 static func order_mode_name(order_mode_names: Dictionary, value: int) -> String:
 	return name_from(order_mode_names, value, "MODE")
+
+
+## Order two unit records by uid, for sort_custom.
+static func _uid_less(a: Dictionary, b: Dictionary) -> bool:
+	return a["uid"] < b["uid"]
+
+
+## Sort unit records by uid, in place, returning the array. Group enumeration order shifts
+## when a unit changes groups — a router leaves "units" for "routers", and a rallied unit
+## re-enters "units" at the END of the group — so raw group order reshuffles the transcript
+## between ticks. A fixed uid order keeps tick-to-tick records aligned for diffing.
+static func sort_records_by_uid(records: Array) -> Array:
+	records.sort_custom(_uid_less)
+	return records
 
 
 ## Round a float to `places` decimals for compact, readable JSON — raw sim floats carry a long
