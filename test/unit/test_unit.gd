@@ -717,6 +717,22 @@ func test_think_pops_a_waypoint_without_requiring_a_stop() -> void:
 		"speed carries through the corner -- no forced stop at a waypoint")
 
 
+func test_arrival_finalizes_on_position_alone_when_the_unit_cannot_brake() -> void:
+	# A degenerate loadout with decel <= 0 has no positive brake rate, so it can never
+	# bleed speed down to the arrival epsilon. The finalize gate must not wait for a
+	# stop that can't come -- such a unit falls back to the position-only arrival
+	# contract instead of hanging in MOVING forever at its destination.
+	var u := _make_unit()
+	u.decel = 0.0
+	u.position = Vector2.ZERO
+	u.move_target = Vector2(0, 3)     # within the 5px arrival radius
+	u.has_move_target = true
+	u._current_speed = u.move_speed   # still carrying full speed
+	u._think(0.1)
+	assert_false(u.has_move_target, "the order finalizes on position alone")
+	assert_eq(u.state, Unit.State.IDLE, "and the unit stands down")
+
+
 func test_move_to_bleeds_residual_speed_when_standing_on_the_point() -> void:
 	# Within the sub-pixel early-return band, an orderly march still ramps its residual
 	# speed down at the brake rate (and counts as having moved, so the stationary

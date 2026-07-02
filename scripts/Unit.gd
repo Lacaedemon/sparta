@@ -917,7 +917,12 @@ func _think(delta: float) -> void:
 		# route rolls through each corner at pace instead of halting leg by leg.
 		var on_last_leg: bool = waypoints.is_empty()
 		var arrived: bool = position.distance_to(move_target) <= 5.0
-		if not arrived or (on_last_leg and _current_speed > ARRIVE_SPEED_EPSILON):
+		# Wait for the stop only when the unit can actually brake: a degenerate loadout
+		# with no positive brake rate (decel <= 0) can never bleed speed, so it finalizes
+		# on position alone -- the pre-braking contract -- instead of hanging on the
+		# speed guard forever.
+		var must_stop: bool = on_last_leg and arrival_brake_rate() > 0.0
+		if not arrived or (must_stop and _current_speed > ARRIVE_SPEED_EPSILON):
 			_move_to(move_target, delta, true)
 		elif not on_last_leg:
 			# Each queued leg marches on its own terms: drop any side-step hold from
