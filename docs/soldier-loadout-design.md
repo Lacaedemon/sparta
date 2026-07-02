@@ -9,9 +9,10 @@ The combat model (`docs/combat-model.md`) already gives each soldier type fixed
 attributes — skill, armour, shield, lethality, reach, mass — but they live as
 magic numbers and dictionary keys: `_default_loadout()` in `scripts/Battle.gd`
 is an `Array` of untyped `Dictionary` literals (`"reach_m": 2.4`, `"atk": 11`),
-and `Unit.gd` reads them into scalar fields (`attack`, `defense`, `attack_range`)
-at spawn time. There is no `Weapon` or `Shield` object anywhere — "spear" is a
-string name plus a handful of loose numbers, not a thing.
+and `Battle._spawn_unit` reads them into scalar fields defined on `Unit`
+(`attack`, `defense`, `attack_range`) at spawn time. There is no `Weapon` or
+`Shield` object anywhere — "spear" is a string name plus a handful of loose
+numbers, not a thing.
 
 The owner's directive: model weapons and shields as **concrete classed
 objects** — real fields and methods, not an enum or a dictionary of magic
@@ -19,14 +20,18 @@ numbers — because "we want to keep making our object taxonomy more and more
 concrete."
 
 The catch: **soldiers themselves are not objects.** Per-soldier state lives in
-parallel `Packed*Array`s on `Unit` — `_sim_soldier_pos`, `_sim_soldier_facing`,
-`_sim_soldier_hp`, `_sim_soldier_stamina`, `_sim_prone` — deliberately, for
-performance. CLAUDE.md documents the layout as roughly 44 bytes/soldier,
-feeding `MultiMesh` rendering, sized for hundreds of soldiers per unit across
-many units per battle. A literal "one `Weapon` object + one `Shield` object per
-soldier" instantiates two extra heap `RefCounted`s per soldier — real
-allocation and cache-locality cost the array-of-structs design exists to
-avoid. Concreteness and the SoA hot loop pull in opposite directions, so this
+parallel `Packed*Array`s on `Unit` — `_sim_soldier_pos`, `_sim_body_vel`,
+`_sim_steer`, `_sim_soldier_facing` (four `PackedVector2Array`s, 8 bytes each)
+and `_sim_soldier_hp`, `_sim_prone`, `_sim_soldier_stamina` (three
+`PackedFloat32Array`s, 4 bytes each) — deliberately, for performance: roughly
+`4*8 + 3*4 = 44` bytes/soldier by this author's count of `Unit.gd`'s current
+`_sim_*` arrays (not a cited figure from CLAUDE.md — CLAUDE.md documents the
+SoA pattern and its rationale, but not this byte count), feeding `MultiMesh`
+rendering, sized for hundreds of soldiers per unit across many units per
+battle. A literal "one `Weapon` object + one `Shield` object per soldier"
+instantiates two extra heap `RefCounted`s per soldier — real allocation and
+cache-locality cost the array-of-structs design exists to avoid. Concreteness
+and the SoA hot loop pull in opposite directions, so this
 doc resolves the tension before any code changes.
 
 ## The model: shared TYPE objects, per-soldier INSTANCE arrays
@@ -77,9 +82,16 @@ extends Resource
 @export var lethality: float        # wounding power, feeds SoldierMelee
 @export var default_hold_angle: float  # rest pose, radians relative to facing
 
-func effective_reach(terrain: Terrain) -> float:
-    return reach_m * terrain.reach_multiplier()
+func effective_reach(terrain_speed_multiplier: float) -> float:
+    return reach_m * terrain_speed_multiplier
 ```
+
+(Sparta has no `Terrain` class — terrain is a plain `Array` of `Dictionary`
+patches, `Battle.TERRAIN`, and a speed multiplier at a position is looked up
+via `PathField.active.speed_at(position) -> float`, as `Unit.gd:884` already
+does for movement. `effective_reach` would take that same multiplier as a
+plain `float`, not an object, consistent with how the rest of the sim reads
+terrain.)
 
 ### Sketch: `Shield`
 
@@ -98,25 +110,42 @@ func covers(attack_angle: float, hold_angle: float) -> bool:
 ```
 
 `SHIELD_NONE` is a real interned instance too (`block_value = 0.0`,
-`arc_deg = 0.0`), not a null check scattered through combat — archers and
-Cavalry carry it today, so callers already need a "no shield" case; giving it
-an object keeps `covers()` uniform instead of an `if shield_id == -1` special
-case at every call site.
+`arc_deg = 0.0`), not a null check scattered through combat — Archers carry
+it today (see the registry sketch below: Cavalry get the lighter
+`SHIELD_ROUND`, not `SHIELD_NONE`), so callers already need a "no shield"
+case; giving it an object keeps `covers()` uniform instead of an
+`if shield_id == -1` special case at every call site.
 
 ## Type registry sketch
 
 `scripts/Battle.gd`'s `_default_loadout()` currently fields four unit types —
 Spearmen, Infantry, Archers, Cavalry (see lines 326-333) — each with one
-melee weapon and an implicit shield/no-shield choice baked into their `def`
-stat. Phase 1 does not invent new unit types or new weapons; it names what
-already exists concretely:
+melee weapon (`reach_m`) and an implicit shield weight already hardcoded per
+type in `SoldierCombat.profile_for()` (`scripts/SoldierCombat.gd:63-71`): a
+`"shield"` value of 0.65 for Spearmen (anti-cavalry), 0.60 for Infantry, 0.05
+for Archers (ranged), 0.25 for Cavalry. That gradient is exactly what
+motivates the table below — Spearmen/Infantry already carry a large shield's
+worth of block value, Archers next to none, Cavalry something in between.
+Phase 1 does not invent new unit types or new weapons; it names what already
+exists concretely:
 
 | id | type | reach_m (from `_default_loadout`) | carried by |
 |---|---|---|---|
 | `WEAPON_SPEAR` | spear | 2.4 | Spearmen |
 | `WEAPON_GLADIUS` | short sword | 1.3 | Infantry |
-| `WEAPON_BOW` | bow (ranged; melee sidearm below) | 0.6 | Archers |
+| `WEAPON_SIDEARM` | archer's melee backup (dagger/knife) | 0.6 | Archers |
 | `WEAPON_SPATHA` | cavalry longsword | 1.5 | Cavalry |
+
+Archers' bow itself is not a `reach_m`-bearing melee weapon today — ranged
+attacks use a fixed `RANGED_RANGE` constant (160 world units,
+`scripts/Unit.gd:310`), not `attack_range`/`reach_m`. The 0.6 m `reach_m`
+entry in `_default_loadout()` is the archer's melee sidearm reach, used only
+when an enemy closes to melee contact (per `Battle.gd`'s own comment on
+`_default_loadout`: "archers' sidearm is short — they fight at range"). A
+`WEAPON_BOW` type is a plausible future addition once ranged range is folded
+into the same registry, but that is a separate, larger change (`RANGED_RANGE`
+is currently a single shared constant, not per-type) and out of scope for
+phase 1.
 
 | id | type | carried by |
 |---|---|---|
@@ -131,10 +160,10 @@ natural phase-4 addition once #516's `SwitchWeaponOrder` exists to model the
 javelin→sword transition.)
 
 The registry itself is a small `Dictionary[int, Weapon]` / `Dictionary[int,
-Shield]` populated once (e.g. `Combat.gd` autoload or a dedicated
-`LoadoutRegistry.gd`, resolved during `_ready()`), keyed by the same `int`
-constants the per-soldier arrays store. Lookup is `registry[id]` — O(1), no
-allocation.
+Shield]` populated once (a new dedicated autoload, e.g.
+`scripts/LoadoutRegistry.gd` — there is no existing `Combat.gd` or similar
+autoload to extend today), keyed by the same `int` constants the per-soldier
+arrays store. Lookup is `registry[id]` — O(1), no allocation.
 
 ## Determinism
 
@@ -151,15 +180,23 @@ allocation.
 
 ## Consumers
 
-- **Combat math** (`scripts/SoldierMelee.gd` and friends) reads reach,
-  lethality, and block value from the type the soldier's `weapon_id` /
-  `shield_id` resolve to, instead of the scalar `u.attack_range` copied at
-  spawn. `Shield.covers(attack_angle, hold_angle)` replaces whatever ad hoc
-  block-chance logic exists today.
+- **Combat math** (`scripts/SoldierMelee.gd`, `scripts/SoldierCombat.gd`)
+  reads reach, lethality, and block weight from the type the soldier's
+  `weapon_id` / `shield_id` resolve to, instead of the scalar `u.attack_range`
+  copied at spawn and the per-type `"shield"` literal hardcoded in
+  `SoldierCombat.profile_for()`. Today's defence math
+  (`SoldierCombat.facing_gate()` + `land_chance()`) is a continuous
+  dot-product facing gate weighted by the type's shield value, not a discrete
+  arc check — the `Shield.covers(attack_angle, hold_angle)` sketch above is a
+  simplification for illustration. Phase 1 needs to decide whether combat
+  keeps that continuous formula (reading `Shield.block_value` in place of the
+  current hardcoded `"shield"` literal) or moves to a discrete arc-coverage
+  check; either way `Shield.block_value` is the phase-1 data source, and the
+  wound formula (`land_chance`, `facing_gate`) is unchanged behaviorally.
 - **Rendering** — the soldier's `MultiMesh` draw pose reads `weapon_id` /
   `shield_id` (which mesh/sprite) plus `shield_hold_angle` (where to draw it
   relative to the body) once phase 3 wires visuals.
-- **#530's formation geometry** (PR #534, in draft as of this writing) wants
+- **#530's formation geometry** (PR #534, open as of this writing) wants
   exactly the "shield relative to body" data this issue's per-soldier hold
   angle provides — a shield-wall or testudo restructure reads
   `_sim_soldier_shield_hold_angle` to lock shields into an overlapping wall or
@@ -180,7 +217,7 @@ Each phase: scope, dependencies, done-check, behavior-change label.
 ### Phase 1 — type classes + registry + array wiring (no behavior change)
 - **Scope:** Define `Weapon`/`Shield` classes (`scripts/Weapon.gd`,
   `scripts/Shield.gd`) and a small interned registry covering today's roster
-  (`WEAPON_SPEAR`, `WEAPON_GLADIUS`, `WEAPON_BOW`, `WEAPON_SPATHA`,
+  (`WEAPON_SPEAR`, `WEAPON_GLADIUS`, `WEAPON_SIDEARM`, `WEAPON_SPATHA`,
   `SHIELD_SCUTUM`, `SHIELD_ROUND`, `SHIELD_NONE`). Add
   `_sim_soldier_weapon_id` / `_sim_soldier_shield_id` to `Unit.gd`, wired into
   `Battle._spawn_unit`'s loadout. Re-express existing combat math
