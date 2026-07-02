@@ -838,12 +838,14 @@ func test_current_speed_still_ramps_from_zero_for_a_fresh_order_from_idle() -> v
 	# timer expires, _think() falls through to the first step of the march itself.
 	while u._order_response_timer > 0.0:
 		u._physics_process(0.016)
-		assert_le(u._current_speed, u.accel * 0.016 + 0.001,
+		assert_lte(u._current_speed, u.accel * 0.016 + 0.001,
 			"no speed accrues beyond a single ramp step while draining the freeze")
 	assert_gt(u._current_speed, 0.0, "the march has started by the time the freeze drains")
 	# Continue ticking and confirm a normal, unbroken ramp up to the walk pace -- proof
-	# the fix didn't disturb the ordinary from-a-standstill accel ramp.
-	for _i in range(30):
+	# the fix didn't disturb the ordinary from-a-standstill accel ramp. The budget comes
+	# from the rates themselves: the full ramp takes walk_speed / accel seconds.
+	var full_ramp_ticks: int = int(ceil(u.walk_speed / u.accel / 0.016)) + 2
+	for _i in range(full_ramp_ticks):
 		u._physics_process(0.016)
 	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
 		"converges cleanly onto the walk pace, same as an ordinary fresh order")
