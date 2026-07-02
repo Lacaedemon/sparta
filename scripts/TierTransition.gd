@@ -42,6 +42,15 @@ const SCATTER_FRACTION: float = 0.25
 # no reconstructed soldier spawns near death.
 const WOUND_SPREAD: float = 0.5
 
+# Order types whose execution holds in-flight per-soldier context — half-finished body
+# turns, a wheel's pivot geometry, a drill step, a relief interleave — that the aggregate
+# far-tier record cannot carry. A unit running one of these never demotes mid-maneuver;
+# the hysteresis trigger simply re-fires once the order completes.
+const MANEUVER_ORDER_TYPES: Array = [
+	Order.Type.ABOUT_FACE, Order.Type.QUARTER_TURN, Order.Type.WHEEL,
+	Order.Type.NUDGE, Order.Type.RELIEF,
+]
+
 
 ## Whether `u` is in a state the lossy demotion reduction can collapse safely: close-tier,
 ## idle or marching, and with no per-soldier state currently owned by a drill, maneuver,
@@ -57,10 +66,20 @@ static func can_demote(u: Unit) -> bool:
 		return false
 	if u.is_engaged():
 		return false
-	if u._conversio_target != Vector2.ZERO or u._quarter_target != Vector2.ZERO \
-			or u._wheel_target != Vector2.ZERO or u._engage_turn_target != Vector2.ZERO:
+	# The orders queue carries maneuver execution state (docs/orders-queue-design.md): an
+	# in-place turn drill, a wheel, a nudge step, or a relief interleave holds per-soldier
+	# context on the current order, and a phased rear move parks its march destination
+	# there until the turn/reform completes. A plain march (a MOVE in its MARCH phase, or
+	# one not yet phased) is fine — a far-tier formation keeps marching at regiment level.
+	var order: Order = u.current_order
+	if order != null and order.type in MANEUVER_ORDER_TYPES:
 		return false
-	if u._per_soldier_facing or u._reform_timer > 0.0 or u._has_pending_march:
+	if order != null and order.type == Order.Type.MOVE \
+			and (order.phase == Order.Phase.TURN or order.phase == Order.Phase.REFORM):
+		return false
+	if u._engage_turn_target != Vector2.ZERO:
+		return false
+	if u._per_soldier_facing or u._reform_timer > 0.0:
 		return false
 	if u._relief_partner != null:
 		return false

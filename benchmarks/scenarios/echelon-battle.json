@@ -1,0 +1,25 @@
+{
+  "_comment": "Multi-formation threshold-tuning scenario for tools/benchmark (docs/large-scale-simulation-design.md, phase 4; see tools/benchmark/README.md, 'Tuning the tier thresholds'). Two 6-unit front lines (~690 soldiers/side) deployed nose-to-nose so melee starts on tick 0, plus a 5-unit second echelon (~610 soldiers) 850 world units behind the player front -- beyond DEMOTE_RANGE (600), so the reserves demote to the far tier on the first tier pass and the promoted bubble stays at the two engaged fronts (~1,380 soldiers) for the whole measure window. Total spawned (1,990) deliberately exceeds the measured close-tier ceiling; the run stays within the 60fps budget only because the reserves are aggregate. The reserves sit on team 0 (the stationary side): the enemy AI advances every team-1 unit unconditionally, so team-1 reserves would march in and promote mid-window, smearing the measured promoted count. The layout is horizontal (fronts are vertical columns, explicit facing) so the echelon depth fits inside the 1600x1000 field. Compare against echelon-battle-shallow.json, which parks the same reserves inside the hysteresis band so they never demote.",
+  "seed": "559001",
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 1090, "y": 125, "count": 140, "facing": [1, 0]},
+    {"team": 0, "type": "Spearmen", "x": 1090, "y": 275, "count": 140, "facing": [1, 0]},
+    {"team": 0, "type": "Infantry", "x": 1090, "y": 425, "count": 120, "facing": [1, 0]},
+    {"team": 0, "type": "Infantry", "x": 1090, "y": 575, "count": 120, "facing": [1, 0]},
+    {"team": 0, "type": "Archers",  "x": 1090, "y": 725, "count": 90,  "facing": [1, 0]},
+    {"team": 0, "type": "Cavalry",  "x": 1090, "y": 875, "count": 80,  "facing": [1, 0]},
+
+    {"team": 1, "type": "Spearmen", "x": 1110, "y": 125, "count": 140, "facing": [-1, 0]},
+    {"team": 1, "type": "Spearmen", "x": 1110, "y": 275, "count": 140, "facing": [-1, 0]},
+    {"team": 1, "type": "Infantry", "x": 1110, "y": 425, "count": 120, "facing": [-1, 0]},
+    {"team": 1, "type": "Infantry", "x": 1110, "y": 575, "count": 120, "facing": [-1, 0]},
+    {"team": 1, "type": "Archers",  "x": 1110, "y": 725, "count": 90,  "facing": [-1, 0]},
+    {"team": 1, "type": "Cavalry",  "x": 1110, "y": 875, "count": 80,  "facing": [-1, 0]},
+
+    {"team": 0, "type": "Spearmen", "x": 240, "y": 200, "count": 140, "facing": [1, 0]},
+    {"team": 0, "type": "Spearmen", "x": 240, "y": 350, "count": 140, "facing": [1, 0]},
+    {"team": 0, "type": "Infantry", "x": 240, "y": 500, "count": 120, "facing": [1, 0]},
+    {"team": 0, "type": "Infantry", "x": 240, "y": 650, "count": 120, "facing": [1, 0]},
+    {"team": 0, "type": "Archers",  "x": 240, "y": 800, "count": 90,  "facing": [1, 0]}
+  ]
+}

@@ -53,6 +53,7 @@ var _soldier_count: int = 0
 var _frame_count: int = 0
 var _last_time_usec: int = -1
 var _samples_usec: Array = []
+var _close_tier_samples: Array = []
 var _last_battle_tick: int = -1
 var _stall_count: int = 0
 var _finished: bool = false
@@ -105,6 +106,12 @@ func _on_physics_frame() -> void:
 	var now: int = Time.get_ticks_usec()
 	if _last_time_usec >= 0 and _frame_count >= _warmup_ticks:
 		_samples_usec.append(now - _last_time_usec)
+		# Sample the promoted-bubble size alongside each timing sample: the close-tier
+		# soldier count is the number the tier thresholds must hold under the measured
+		# ceiling (docs/large-scale-simulation-design.md, phase 4), so the report carries
+		# it as a measurement rather than leaving it to be hand-derived from the scenario.
+		# O(units) per tick -- noise next to the O(soldiers) sim step being timed.
+		_close_tier_samples.append(_close_tier_soldier_count())
 	_last_time_usec = now
 	_frame_count += 1
 
@@ -133,6 +140,7 @@ func _finish(early_stop: bool) -> void:
 		get_tree().physics_frame.disconnect(_on_physics_frame)
 
 	var stats: Dictionary = BenchmarkStats.summarize(_samples_usec)
+	var close_tier: Dictionary = BenchmarkStats.summarize_counts(_close_tier_samples)
 	var report: Dictionary = {
 		"scenario": _scenario_path,
 		"seed": _seed_str,
@@ -143,17 +151,34 @@ func _finish(early_stop: bool) -> void:
 		"samples_collected": stats["count"],
 		"early_stop": early_stop,
 		"stats": stats,
+		"close_tier_soldiers": close_tier,
 	}
 	_write_report(report)
 
 	print("[benchmark] done: %d/%d ticks sampled (%s), %d soldiers -- mean %.3fms p95 %.3fms max %.3fms (implied %.1f fps)"
 		% [stats["count"], _measure_ticks, "early stop" if early_stop else "complete",
 			_soldier_count, stats["mean_ms"], stats["p95_ms"], stats["max_ms"], stats["implied_fps"]])
+	print("[benchmark] close-tier (promoted) soldiers over the measure window: mean %.0f, peak %d of %d total"
+		% [close_tier["mean"], close_tier["max"], _soldier_count])
 	# push_error()/exit code does not reliably propagate from a headless Godot run (see
 	# CLAUDE.md), so the wrapper script verifies the OUTPUT FILE, not this exit code, as the
 	# authoritative success signal. Still return a best-effort nonzero code on an incomplete
 	# run for anything that DOES check it (e.g. a human running the tool directly).
 	get_tree().quit(1 if (early_stop or stats["count"] == 0) else 0)
+
+
+## Sum of living soldiers across the formations currently at the close (per-soldier) tier --
+## the size of the "promoted bubble" the tier thresholds bound. Walks the same units+routers
+## union the state transcript does (DemoState.COMBAT_GROUPS): a ROUTING unit has left "units"
+## but its bodies are still simulated per-soldier, so it still costs close-tier time.
+func _close_tier_soldier_count() -> int:
+	var total: int = 0
+	for group in DemoState.COMBAT_GROUPS:
+		for node in get_tree().get_nodes_in_group(group):
+			var u = node as Unit
+			if u != null and u.state != Unit.State.DEAD and u.tier == FormationTier.CLOSE:
+				total += u.soldiers
+	return total
 
 
 func _write_report(report: Dictionary) -> void:

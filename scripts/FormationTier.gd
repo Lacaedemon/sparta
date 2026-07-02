@@ -18,14 +18,22 @@ const TIER_NAMES := {
 	FAR: "FAR",
 }
 
-# Placeholder promotion/demotion thresholds, in world units. PROVISIONAL values, not yet
-# tuned: the real numbers come from sweeping the tools/benchmark/ scale runs against the
-# measured close-tier soldier-count ceiling in a later phase of the design doc.
-# PROMOTE_RANGE sits well outside auto-acquisition (Unit.DETECTION_RANGE, 190) plus the
-# charge runway (Unit.SPRINT_START_DISTANCE, 200), so a formation is back at individual
-# fidelity before it can detect, shoot at, or charge anything. DEMOTE_RANGE is 1.5x
-# further out — a hysteresis gap, so a formation drifting near one boundary doesn't
-# thrash between tiers tick to tick.
+# Promotion/demotion thresholds, in world units — TUNED against the tools/benchmark/
+# measurements (the recorded numbers live in docs/large-scale-simulation-design.md,
+# "Validating tier thresholds"). Two constraints pin PROMOTE_RANGE from both sides:
+# - Floor (correctness): it must exceed auto-acquisition (Unit.DETECTION_RANGE, 190)
+#   plus the charge runway (Unit.SPRINT_START_DISTANCE, 200), so a formation is back at
+#   individual fidelity before it can detect, shoot at, or charge anything.
+# - Ceiling (budget): the benchmark puts the reference engaged front (~1,700 soldiers,
+#   all close-tier) right at the 16.67ms/tick budget on the dev PC, and doubling it
+#   2.2x over — so the promoted bubble has no headroom for a second echelon, and the
+#   right threshold is the smallest one that still satisfies the combat floor.
+# DEMOTE_RANGE is 1.5x further out — a hysteresis gap, so a formation drifting near one
+# boundary doesn't thrash between tiers tick to tick. It is also the depth at which a
+# deployed reserve actually demotes: the echelon-battle benchmark pair measures reserves
+# beyond it demoting on spawn (promoted bubble = the fronts) while reserves parked inside
+# the band keep their close spawn tier for good. Re-tune when per-soldier realism grows —
+# rerun the sweep plus the echelon pair and update the design doc's recorded numbers.
 const PROMOTE_RANGE: float = 400.0
 const DEMOTE_RANGE: float = 600.0
 

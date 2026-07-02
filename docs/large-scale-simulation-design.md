@@ -1,10 +1,10 @@
 # Design note: multi-resolution (LOD) simulation for large-scale battles
 
-Status: **design — not yet implemented.** This note consolidates #550 (and its
-benchmark evidence from #551) into one spec, following the same
-design-doc-first pattern as #516 (`docs/orders-queue-design.md`) and #547. It
-lays out the model and the phased plan tracked by the phase issues linked
-below.
+Status: **phases 1–4 implemented** (PRs #568, #577, #589, and the phase-4 PR;
+phase 5 remains). This note consolidates #550 (and its benchmark evidence from
+#551) into one spec, following the same design-doc-first pattern as #516
+(`docs/orders-queue-design.md`) and #547. It lays out the model and the phased
+plan tracked by the phase issues linked below.
 
 ## Motivation
 
@@ -194,7 +194,10 @@ to derive them from. The transcript needs an explicit **`tier` field**
 verify-via-state-dump tooling) can tell *why* `soldier_summary` is absent —
 "not requested this dump" (today's `SPARTA_DEMO_STATE_FULL` opt-in) vs. "this
 formation has no individual soldiers to summarize" (a far-tier formation) are
-different facts and must not look the same in the dump.
+different facts and must not look the same in the dump. (As implemented, the
+field serializes the names uppercase — `"CLOSE"` / `"FAR"`, via
+`FormationTier.TIER_NAMES` — matching the transcript's other enum-name fields
+like `state` and `formation`.)
 
 For a `tier: "far"` unit, the existing scalar fields (`position`, `facing`,
 `morale`, `soldiers`) already carry the aggregate state as-is — no new fields
@@ -253,6 +256,61 @@ depends on, not just background evidence for the motivation section:
   The right threshold is the largest one that keeps the *promoted* soldier
   count under the measured ceiling for the target scenario size — again, a
   benchmark-driven number, not an authored constant.
+
+### Measured record (phase 4, 2026-07-02, dev PC)
+
+The phase-4 tuning runs, all on the developer's usual PC (one of the two
+reference machines; Godot 4.7 headless, default 120-tick warmup + 600-tick
+measure window). The benchmark now also reports `close_tier_soldiers` — the
+per-tick promoted-bubble size — next to the timings.
+
+| Run | Spawned | Close-tier (mean / peak) | Mean tick | p95 tick |
+|---|---|---|---|---|
+| `large-battle` 1x | 1,720 | 1,189 / 1,546 | 16.65 ms | 21.13 ms |
+| `large-battle` 2x | 3,440 | 2,841 / 3,236 | 37.14 ms | 44.13 ms |
+| `large-battle` 4x | 6,880 | 6,508 / 6,701 | 135.83 ms | 146.95 ms |
+| `echelon-battle` (reserves beyond `DEMOTE_RANGE`) | 1,990 | 1,029 / 1,270 | 16.67 ms | 21.39 ms |
+| `echelon-battle-shallow` (reserves inside the band) | 1,990 | 1,639 / 1,880 | 16.77 ms | 20.91 ms |
+
+(One caveat baked into the numbers: physics can't run *faster* than 60 ticks/s
+without `--fixed-fps`, so an under-budget run's mean pins at the ~16.67 ms
+pacing floor — the mean shows *whether* the budget holds, and only an
+over-budget run shows by how much it fails. The p95 above the floor is the
+share of ticks that individually exceeded it.)
+
+**The measured ceiling.** The reference engaged battle (1x, every soldier
+close-tier and fighting) sits exactly at the 60fps budget, and doubling it is
+2.2x over — so the close-tier ceiling on this hardware is, in practice, *the
+reference front itself*: ~1,700 spawned / ~1,200–1,550 alive through a
+sustained melee window. There is no headroom to promote a second echelon that
+then joins the fight.
+
+**The tuned thresholds.** `PROMOTE_RANGE = 400` / `DEMOTE_RANGE = 600`
+(unchanged from the provisional values, now evidence-backed):
+
+- The correctness floor pins the promote threshold from below:
+  `PROMOTE_RANGE` must exceed `DETECTION_RANGE + SPRINT_START_DISTANCE`
+  (190 + 200 = 390), so a formation regains individual fidelity before it can
+  detect, shoot at, or charge anything.
+- The measured ceiling pins it from above: the promoted bubble already spends
+  the whole budget on the engaged fronts, so the largest threshold that keeps
+  the promoted count under the ceiling is the smallest one the combat floor
+  allows — promote only what is about to fight. 400 is that value with a
+  small margin.
+- The `echelon-battle` pair validates `DEMOTE_RANGE` as the deployment-depth
+  discriminator: reserves deployed beyond it (850 behind the front) demote on
+  spawn and the promoted bubble stays at the two fronts (peak 1,270 of 1,990;
+  60fps holds), while the same reserves parked inside the hysteresis band
+  (500 behind) keep their close spawn tier for good (peak 1,880 of 1,990).
+  The shallow run's *tick cost* barely moves at this army size — idle
+  close-tier soldiers are far cheaper than engaged ones — but its bubble now
+  exceeds the ceiling, and the scale sweep shows what that costs the moment
+  those extra soldiers fight (2x: 2.2x over budget). At Cannae-scale reserve
+  counts the far tier is carrying the difference either way.
+
+Re-run the sweep and the echelon pair (and update this table) whenever
+per-soldier realism grows or the reference hardware changes; the thresholds
+are only as current as these numbers.
 
 ## Phase plan
 
