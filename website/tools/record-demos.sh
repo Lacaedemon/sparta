@@ -89,13 +89,20 @@ for spec in "${DEMOS[@]}"; do
   echo "== Recording '$NAME' ($TYPE: res://$SOURCE, $MAX_FRAMES frames @ ${FIXED_FPS}fps, ${WIDTH}px) =="
 
   AVI="$WORK_DIR/$NAME.avi"
-  # Bounded so a hung recording is killed rather than left orphaned; `set -e`
-  # aborts the script on the timeout's non-zero exit.
+  # Bounded so a hung recording is killed rather than left orphaned.
+  rc=0
   run_bounded "$RECORD_TIMEOUT" \
     env "${ENV_KEY}=res://${SOURCE}" "${GODOT_RUN[@]}" \
     --rendering-driver opengl3 \
     --write-movie "$AVI" --fixed-fps "$FIXED_FPS" \
-    --quit-after "$MAX_FRAMES" "$SCENE"
+    --quit-after "$MAX_FRAMES" "$SCENE" || rc=$?
+  if run_bounded_timed_out "$rc"; then
+    echo "ERROR: recording '$NAME' timed out after ${RECORD_TIMEOUT}s and was killed (no orphan left behind)." >&2
+    exit 1
+  fi
+  if [ "$rc" -ne 0 ]; then
+    exit "$rc"
+  fi
   [ -s "$AVI" ] || { echo "::error::Movie Maker produced no output for '$NAME'"; exit 1; }
 
   # MP4 with sound: H.264 + AAC in yuv420p with +faststart is the most widely
