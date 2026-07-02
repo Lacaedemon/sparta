@@ -24,6 +24,12 @@ func test_defaults_match_a_fresh_full_strength_formation() -> void:
 	assert_eq(rec.formation_mode, Unit.FORMATION_NORMAL)
 	assert_eq(rec.spacing_scale, 1.0)
 	assert_eq(rec.order_mode, 0)
+	assert_eq(rec.max_soldiers, 0)
+	assert_eq(rec.attack, 0)
+	assert_eq(rec.defense, 0)
+	assert_eq(rec.attack_range, 26.0)   # Unit.attack_range default (gladius baseline)
+	assert_eq(rec.march_speed, 45.0)    # Unit.walk_speed default
+	assert_eq(rec.casualty_carry, 0.0)
 
 
 func test_fields_round_trip() -> void:
@@ -67,6 +73,21 @@ func test_from_unit_copies_every_aggregate_field() -> void:
 	assert_eq(rec.formation_mode, Unit.FORMATION_SQUARE)
 	assert_eq(rec.spacing_scale, 0.9)
 	assert_eq(rec.order_mode, Unit.ORDER_HOLD)
+
+
+func test_from_unit_copies_the_durable_regiment_stats() -> void:
+	var u := _make_unit()
+	u.attack = 15
+	u.defense = 8
+	u.attack_range = 48.0   # spear reach
+	u.walk_speed = 40.0
+	var rec := FarTierFormation.from_unit(u)
+	assert_eq(rec.max_soldiers, 10)
+	assert_eq(rec.attack, 15)
+	assert_eq(rec.defense, 8)
+	assert_eq(rec.attack_range, 48.0)
+	assert_eq(rec.march_speed, 40.0)   # the sustained AUTO pace is the walk
+	assert_eq(rec.casualty_carry, 0.0)
 
 
 func test_from_unit_derives_casualties_from_losses_so_far() -> void:
