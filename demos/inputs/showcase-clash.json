@@ -1,0 +1,8 @@
+{
+  "_comment": "The landing-page showcase auto-battle (seed 12345, default 5v5 line spawn, no player input): the enemy line advances into the stationary player line and the two press into melee. Used to verify collision/knockback dynamics at line contact by exact state values (tools/demo/dump-state.sh) -- per-soldier positions around the clash must move by shove-scale steps, never launch across the field.",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 500.0, "zoom": 1.0}
+  ],
+  "steps": []
+}
