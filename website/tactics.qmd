@@ -113,8 +113,8 @@ regiment falls back toward its own rear --- where fatigue drains away and morale
 recovers (see [How to play](how-to-play.qmd) for the controls).
 
 - **The swap is a pass-through.** For its duration the two friendly regiments may
-  interpenetrate --- the one exception to the no-stacking rule --- so the line never
-  opens a gap for the enemy to pour into.
+  interpenetrate, so the line never opens a gap for the enemy to pour into while
+  the fresh unit works its way forward.
 - **The retreat is an order like any other.** The relieved unit falls back under a
   normal move order (hold <kbd>Space</kbd> to see it), and you can redirect it ---
   to a safer rest spot, or straight to another fight if you must.
