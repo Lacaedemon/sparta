@@ -115,6 +115,11 @@ Here $J$ is the shove (an impulse) and $J_0$ its base strength. A blocked blow d
 no blood but still pushes --- which is how a spear wall drives a stalled enemy
 backward.
 
+Shoves from several attackers in the same moment add up, but the summed speed is
+capped: a pile-on in a crowded press hurls a man back a few body-lengths at most,
+never across the field. The uncapped force still decides whether he is knocked
+down, so a heavy hit fells as hard as ever.
+
 ## Knocked down --- and the domino
 
 A hard enough shove **knocks a soldier prone**. Bracing and mass make you harder to

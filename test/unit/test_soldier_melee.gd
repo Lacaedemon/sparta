@@ -377,10 +377,14 @@ func test_flank_blow_gets_no_bracing() -> void:
 	# phi = 0 for a lateral blow: the file column is never gathered, so a set lone defender
 	# takes the full impulse from a flank blow (cap = 0), while the same defender hit from the
 	# front absorbs part of it (phi > 0, brace capacity applied). A flank_kb > front_kb shows
-	# that bracing only fires for front blows and not for flanks.
+	# that bracing only fires for front blows and not for flanks. The charge is kept moderate
+	# so even the unbraced flank impulse (J0 * (1 + c) at infantry lethality/mass 1) stays
+	# under KNOCKBACK_SPEED_MAX — at a hard charge both results would saturate at the
+	# velocity ceiling and the comparison would measure the clamp, not the bracing.
+	var charge_speed: float = SoldierCombat.CHARGE_REFERENCE_SPEED * 0.4
 	Replay.rng.seed = SEED
 	var atk_front := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
-	atk_front._approach_velocity = Vector2(0.0, 500.0)   # charge — same magnitude as the flank
+	atk_front._approach_velocity = Vector2(0.0, charge_speed)   # same magnitude as the flank
 	var def_front := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)   # faces the attacker: phi > 0
 	def_front._sim_soldier_hp[0] = 9999.0
 	SoldierMelee.resolve(atk_front, def_front)
@@ -388,7 +392,7 @@ func test_flank_blow_gets_no_bracing() -> void:
 
 	Replay.rng.seed = SEED
 	var atk_flank := _unit(3, 0, 1, Vector2(-6, 0), Vector2.RIGHT, false)
-	atk_flank._approach_velocity = Vector2(500.0, 0.0)   # same charge magnitude, lateral
+	atk_flank._approach_velocity = Vector2(charge_speed, 0.0)   # same charge magnitude, lateral
 	var def_flank := _unit(4, 1, 1, Vector2(0, 0), Vector2.DOWN, false)   # faces down: phi = 0
 	def_flank._sim_soldier_hp[0] = 9999.0
 	SoldierMelee.resolve(atk_flank, def_flank)
