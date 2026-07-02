@@ -120,7 +120,11 @@ func test_about_face_holds_every_soldier_at_its_own_position_through_think() -> 
 	# same method the issue's state-dump proof used. A true conversio holds every soldier's
 	# own world position fixed for the entire turn; only facing changes.
 	var u := _make_seeded_unit()
-	u.frontage_override = 8   # 8 x 5 full grid: the shape the original state dump exercised
+	# _make_seeded_unit sets max_soldiers = 60, so frontage_override = 8 gives an 8-file grid
+	# with a partial last rank (60 = 7 full ranks of 8 + a 4-man rank) -- not a full grid, but
+	# the position-holding assertion below doesn't depend on the grid being full (the full-grid
+	# and partial-grid cases are covered explicitly in test_soldier_facing.gd).
+	u.frontage_override = 8
 	u.seed_sim_soldiers()
 	var start_facing: Vector2 = u.facing
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
