@@ -421,6 +421,38 @@ func test_order_summary_attack_takes_priority_over_move() -> void:
 		"an explicit attack target is reported ahead of a move target")
 
 
+func test_order_summary_reports_a_running_maneuver_off_the_queue() -> void:
+	# Phase 2: the drills and the wheel are queue entries, and the summary reads them
+	# straight off current_order (they used to fall through to "Holding position").
+	var u := _make_unit()
+	var af := Order.new_about_face()
+	af.turn_start_facing = u.facing
+	af.turn_target = -u.facing
+	u.set_current_order(af)
+	assert_eq(u.order_summary(), "About-facing", "a running about-face drill is reported")
+	var q := Order.new_quarter_turn(1)
+	q.turn_start_facing = u.facing
+	q.turn_target = u.facing.rotated(PI * 0.5)
+	u.set_current_order(q)
+	assert_eq(u.order_summary(), "Quarter-turning", "a running quarter-turn is reported")
+	var w := Order.new_wheel(1)
+	w.turn_start_facing = u.facing
+	w.turn_target = u.facing.rotated(PI * 0.5)
+	u.set_current_order(w)
+	assert_eq(u.order_summary(), "Wheeling", "a mid-swing wheel is reported")
+
+
+func test_order_summary_reports_a_rear_move_turn_phase_as_about_facing() -> void:
+	var u := _make_unit()
+	var o := Order.new_move(Vector2(0, -200))
+	o.phase = Order.Phase.TURN
+	o.turn_start_facing = u.facing
+	o.turn_target = -u.facing
+	u.set_current_order(o)
+	assert_eq(u.order_summary(), "About-facing",
+		"a rear move's turn phase reads as the about-face it is running")
+
+
 func test_order_summary_routing_overrides_any_queued_order() -> void:
 	var u := _make_unit()
 	u.state = Unit.State.ROUTING
