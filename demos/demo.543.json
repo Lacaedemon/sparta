@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/about-face.json",
+  "caption": "About-face is now a TRUE conversio (#541): every soldier turns in place and holds its OWN world position for the whole turn -- only facing flips. A prior fix (#519) stopped the block from pivoting 180 deg about its centre, but a state dump proved it still relabelled bodies on completion, so soldiers silently traded places with their formation-mirror counterpart (front rank <-> rear rank) even though the aggregate footprint looked unchanged. That relabel is gone: the turn now folds its rotation into the same formation-angle offset the quarter-turn uses, so soldier_world_slots reproduces each body's own pre-turn slot under the new facing. Verified with a per-soldier-index state dump (not just aggregate bbox/centroid) at tick 0 and after the turn completes: 40/40 soldiers now hold their own position, 0/40 swap.",
+  "fixed_fps": 30,
+  "max_frames": 200,
+  "fps": 12,
+  "width": 640
+}
