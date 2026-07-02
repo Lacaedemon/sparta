@@ -97,6 +97,11 @@ var current_order: Order = null
 # The smart-order behaviours read this; NORMAL is current behaviour.
 var order_mode: int = 0
 var formation_mode: int = FORMATION_NORMAL
+# Simulation tier (FormationTier.CLOSE / FAR) — the multi-resolution design's per-formation
+# fidelity marker (docs/large-scale-simulation-design.md, phase 1). Representational only:
+# nothing in the sim reads this yet, so every unit still runs the full per-soldier close-tier
+# path regardless of its value. Wiring behavior to the tier distinction is a later phase.
+var tier: int = FormationTier.CLOSE
 # Player-set frontage (number of files / columns); 0 means "auto", deriving the
 # stable wider-than-deep grid from max_soldiers (UnitFormation.frontage). The
 # player can widen or narrow the line via SelectionManager (keyboard + drag); the
