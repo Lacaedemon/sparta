@@ -198,6 +198,14 @@ const SQUARE_ATTACK_FACTOR: float = 0.7
 # LOOSE widens the grid, to ~0.9 m per man -- matching the researched "room to wield
 # a weapon" open-order figure.
 const LOOSE_SPACING_SCALE: float = 2.0
+# SHIELD_WALL and TESTUDO lock their shields edge-to-edge, so unlike TIGHT/SQUARE
+# (which pack to the historical close-order floor and stop there) they squeeze the
+# grid spacing BELOW that floor -- a real, measurable tightening of the block on top
+# of their combat-multiplier bonuses above, not just a flag. TESTUDO packs tighter
+# than SHIELD_WALL (an overhead-locked roof needs the men closer than a single-rank
+# wall does).
+const SHIELD_WALL_SPACING_SCALE: float = 0.75
+const TESTUDO_SPACING_SCALE: float = 0.6
 # Melee intermixing: a legacy softening of enemy separation for fighting non-hold
 # units. Largely superseded by the engaged-enemy front-rank close-up in _separate
 # (which lets lines meet at contact and the per-soldier collision set the spacing);
@@ -462,6 +470,7 @@ var _render_dirty: bool = true
 var _render_last_facing: Vector2 = Vector2.DOWN
 var _render_extent_n: int = -1
 var _render_extent_frontage: int = -1
+var _render_extent_mode: int = -1
 var _mm_body: MultiMesh = null
 var _mm_outline: MultiMesh = null
 var _mmi_body: MultiMeshInstance2D = null
@@ -1147,7 +1156,10 @@ func _type_separation_radius() -> float:
 ## apart, summed, meet front-to-front — so engaged enemies use it as their separation
 ## floor, closing the lines to contact instead of holding a fixed gap.
 func _front_depth() -> float:
-	var files: int = UnitFormation.frontage(self)
+	# Use the CURRENT formation's own file count (formation_files), not the wide-line
+	# frontage() -- a SQUARE unit's grid is the square layout, so its front depth must be
+	# measured against that same grid, not the line frontage its soldiers aren't standing on.
+	var files: int = formation_files(soldiers)
 	var ranks: int = int(ceil(float(soldiers) / float(files)))
 	var depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING * spacing_scale
 	# Cap the depth used as the engaged-enemy separation floor. A very narrow,
@@ -1167,13 +1179,20 @@ func _front_depth() -> float:
 func set_formation(mode: int) -> void:
 	formation_mode = mode
 	var base := _base_separation_radius
-	# The close-order stances all build on TIGHT's locked-shield density -- same
-	# footprint and grid, with their own extra effects on top. SQUARE is the anti-cav
-	# ring; SHIELD_WALL and TESTUDO are the shielded holding/arrow-cover stances.
-	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE \
-			or mode == FORMATION_SHIELD_WALL or mode == FORMATION_TESTUDO:
+	# The close-order stances all build on TIGHT's locked-shield collision footprint.
+	# SQUARE also packs to that floor but relays out its GRID as a real square
+	# (soldier_world_slots / UnitFormation.square_slots), not the wide line. SHIELD_WALL
+	# and TESTUDO go further and squeeze the grid spacing itself below the floor -- a
+	# real, measurably tighter block -- on top of sharing the tight collision footprint.
+	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
 		spacing_scale = 1.0   # already at the historical close-order/locked-shield floor
+	elif mode == FORMATION_SHIELD_WALL:
+		separation_radius = base * TIGHT_SEPARATION_SCALE
+		spacing_scale = SHIELD_WALL_SPACING_SCALE
+	elif mode == FORMATION_TESTUDO:
+		separation_radius = base * TIGHT_SEPARATION_SCALE
+		spacing_scale = TESTUDO_SPACING_SCALE
 	elif mode == FORMATION_LOOSE:
 		separation_radius = minf(SEPARATION_RADIUS_MAX, base * LOOSE_SEPARATION_SCALE)
 		spacing_scale = LOOSE_SPACING_SCALE
@@ -1528,12 +1547,65 @@ func soldier_id(index: int) -> int:
 ## cosmetic jitter, so the sim layer stays exactly reproducible.
 func soldier_world_slots(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
-	var slots := UnitFormation.slots(self, count)
+	var slots := formation_slots(count)
 	# _formation_angle lets a quarter-turn rotate every soldier's facing without moving the
 	# grid: it cancels the heading rotation here, so the slots (and the men) stay put.
 	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
 	for i in range(slots.size()):
 		out.push_back(position + slots[i].rotated(ang))
+	return out
+
+
+## The file count (frontage) UNDER THE CURRENT formation_mode, for `count` soldiers.
+## SQUARE lays out its own square grid (UnitFormation.square_files, files ~= ranks),
+## not the wide-line frontage every other formation uses (UnitFormation.frontage). This is
+## the SINGLE source of truth for "how many files is the live grid" -- formation_slots,
+## soldier_world_facings, AND the combat geometry that reasons about ranks (_front_depth,
+## engaged_soldier_indices) all key off this, so a SQUARE unit's front-rank/engaged-soldier
+## math always agrees with the grid its soldiers are actually standing on, instead of the
+## render reading one file count and combat reading another. Pure -- a function of (count,
+## formation_mode, the unit's frontage inputs).
+func formation_files(count: int) -> int:
+	if formation_mode == FORMATION_SQUARE:
+		return UnitFormation.square_files(count)
+	return UnitFormation.frontage(self)
+
+
+## Local-space slot layout for `count` soldiers under the CURRENT formation_mode.
+## SQUARE lays out a real square grid (UnitFormation.square_slots -- files ~= ranks, bbox
+## aspect ~1) instead of the wide line frontage, so the block's actual footprint -- and
+## everything sized off it (soldier_world_slots, the render extent/shadow) -- reads as a
+## square, not just a combat-multiplier flag. Every other mode keeps the wide-line grid
+## (UnitFormation.slots), with SHIELD_WALL/TESTUDO already packed tighter via spacing_scale
+## (set in set_formation). Pure -- a function of (count, formation_mode, spacing_scale, the
+## unit's frontage inputs) -- so it stays deterministic and replay-safe like the callers below.
+func formation_slots(count: int) -> PackedVector2Array:
+	if formation_mode == FORMATION_SQUARE:
+		return UnitFormation.block_slots(count, formation_files(count), FORMATION_SPACING * spacing_scale)
+	return UnitFormation.slots(self, count)
+
+
+## World-space per-soldier facing directions for `count` soldiers, index-aligned with
+## soldier_world_slots. SQUARE points every soldier on the block's outer ring
+## radially OUTWARD from the block centre -- the anti-cav ring actually presents
+## shields/spears on every side, not one uniform facing -- while the interior fill keeps
+## the unit's own heading. Every other formation is uniform at the unit's heading (the
+## prior behaviour). Pure -- deterministic in (count, position, facing, formation_mode,
+## spacing_scale) -- so it reproduces exactly on replay like soldier_world_slots.
+func soldier_world_facings(count: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	out.resize(count)
+	if formation_mode != FORMATION_SQUARE:
+		out.fill(facing)
+		return out
+	var files: int = formation_files(count)
+	var slots := UnitFormation.block_slots(count, files, FORMATION_SPACING * spacing_scale)
+	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
+	for i in range(slots.size()):
+		if UnitFormation.square_is_perimeter(i, count, files) and slots[i].length_squared() > 0.0001:
+			out[i] = slots[i].rotated(ang).normalized()
+		else:
+			out[i] = facing   # interior fill / degenerate centre slot keeps the unit heading
 	return out
 
 
@@ -1658,7 +1730,9 @@ func _advance_turn(target: Vector2, delta: float) -> bool:
 ## bodies. Pure of the turn's progress — a function of the CURRENT position/facing/shape — so the
 ## caller captures it once when the wheel is armed.
 func _wheel_pivot_point(dir: int) -> Vector2:
-	var files: int = UnitFormation.frontage(self)
+	# The same current-grid file count as _front_depth/engaged_soldier_indices, so a
+	# wheel hinges against the grid the regiment is actually laid out on.
+	var files: int = formation_files(soldiers)
 	var half_width: float = float(files - 1) * 0.5 * FORMATION_SPACING * spacing_scale
 	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
 	var front_axis: Vector2 = facing.rotated(_formation_angle)             # slot-grid local -Y (toward front)
@@ -1724,7 +1798,7 @@ func soldier_facing(index: int) -> Vector2:
 ## containment radius the parallel layer must stay within while the regiment
 ## circle is authoritative. Reuses the render's block-extent math.
 func soldier_block_extent() -> float:
-	return SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
+	return SoldierFlock.compute_extent(self, formation_slots(soldiers))
 
 
 ## The render block's current half-size: the cached extent _process maintains as
@@ -1803,14 +1877,16 @@ func soldier_brace() -> float:
 
 
 ## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks of an engaged
-## regiment, or none when it isn't engaged. `UnitFormation.slots` is rank-major
+## regiment, or none when it isn't engaged. The formation grid is rank-major
 ## (rank = index / files, rank 0 = front), so the front ranks are exactly the
-## first files*ENGAGED_RANKS indices. Pure and deterministic.
+## first files*ENGAGED_RANKS indices -- using `files` FROM THE SAME GRID the
+## regiment is actually laid out on (formation_files), not the wide-line
+## frontage() a SQUARE unit no longer uses. Pure and deterministic.
 func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
 		return out
-	var cutoff: int = mini(count, UnitFormation.frontage(self) * ENGAGED_RANKS)
+	var cutoff: int = mini(count, formation_files(count) * ENGAGED_RANKS)
 	for i in range(cutoff):
 		out.push_back(i)
 	return out
@@ -2263,7 +2339,7 @@ func _setup_flock_renderer() -> void:
 	# The render reads _sim_soldier_pos directly; those bodies are seeded on the first
 	# physics tick (Battle._on_soldier_tick -> SoldierBodies.step), so the marks appear
 	# from frame 1. Size the shadow/chrome from the formation extent up front.
-	_block_extent = SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
+	_block_extent = SoldierFlock.compute_extent(self, formation_slots(soldiers))
 	_update_shadow()
 
 
@@ -2328,14 +2404,17 @@ func _process(_delta: float) -> void:
 			_mm_outline.instance_count = 0
 			_mm_facing_pip.instance_count = 0   # else pips linger a frame after a figure-LOD death
 		return
-	# Block extent depends only on the soldier count and frontage, not body positions, so
-	# recompute (and reshape the shadow/chrome) only when one of those changes — not the
-	# fresh PackedVector2Array the old path allocated every frame.
+	# Block extent depends only on the soldier count, frontage, and formation mode
+	# (SQUARE/SHIELD_WALL/TESTUDO reshape the grid itself, not just frontage), not body
+	# positions, so recompute (and reshape the shadow/chrome) only when one of those
+	# changes — not the fresh PackedVector2Array the old path allocated every frame.
 	var fr: int = UnitFormation.frontage(self)
-	if soldiers != _render_extent_n or fr != _render_extent_frontage:
+	if soldiers != _render_extent_n or fr != _render_extent_frontage \
+			or formation_mode != _render_extent_mode:
 		_render_extent_n = soldiers
 		_render_extent_frontage = fr
-		var new_extent: float = SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
+		_render_extent_mode = formation_mode
+		var new_extent: float = SoldierFlock.compute_extent(self, formation_slots(soldiers))
 		if not is_equal_approx(new_extent, _block_extent):
 			_block_extent = new_extent
 			_update_shadow()

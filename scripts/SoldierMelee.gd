@@ -87,7 +87,10 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# sum also raises the prone threshold so a set phalanx is harder to fell.
 		var file_braces: PackedFloat32Array
 		if phi > 0.0:
-			var frontage: int = UnitFormation.frontage(defender)
+			# The defender's CURRENT grid file count (formation_files), not the wide-line
+			# frontage() -- a SQUARE defender's file-stride must match the square grid its
+			# soldiers are actually laid out on, or this walks the wrong rank_idx sequence.
+			var frontage: int = defender.formation_files(defender._sim_soldier_pos.size())
 			var n_def: int = defender._sim_soldier_pos.size()
 			var br: float = defender.soldier_brace()
 			var rank_idx: int = target

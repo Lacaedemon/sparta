@@ -1648,6 +1648,66 @@ func test_loose_formation_widens_the_engaged_front_depth() -> void:
 		"LOOSE order's rank depth scales by the same density factor as the grid spacing")
 
 
+# --- combat geometry agrees with the rendered grid --------------------------------
+# formation_files() is the single source of truth for "how many files is the live grid"
+# for the CURRENT formation_mode -- SQUARE uses its own square grid (UnitFormation.
+# square_files), everything else uses the wide-line frontage. _front_depth,
+# engaged_soldier_indices, and _wheel_pivot_point must all key off it, or a SQUARE
+# unit's combat/engagement math reasons about a different grid than the one its
+# soldiers are actually rendered on (soldier_world_slots / formation_slots).
+
+func test_formation_files_matches_square_files_only_in_square() -> void:
+	var u := _make_unit(120)
+	assert_eq(u.formation_files(120), UnitFormation.frontage(u),
+		"NORMAL uses the wide-line frontage")
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_eq(u.formation_files(120), UnitFormation.square_files(120),
+		"SQUARE uses its own square file count")
+	assert_ne(UnitFormation.square_files(120), UnitFormation.frontage(u),
+		"sanity: the square and line file counts actually differ for this count")
+
+
+func test_front_depth_uses_the_square_file_count_when_squared() -> void:
+	# Regression guard: _front_depth must not read UnitFormation.frontage() (the wide-line
+	# file count) while SQUARE, or it measures the wrong grid's depth.
+	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var files: int = UnitFormation.square_files(120)
+	var ranks: int = int(ceil(120.0 / float(files)))
+	var expected: float = minf(float(ranks - 1) * 0.5 * Unit.FORMATION_SPACING * u.spacing_scale,
+		u.attack_range * 0.5)
+	assert_almost_eq(u._front_depth(), expected, 0.01,
+		"a squared unit's front depth is measured against the SQUARE grid, not the line frontage")
+
+
+func test_engaged_soldier_indices_uses_the_square_file_count_when_squared() -> void:
+	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch
+	var n: int = u._sim_soldier_pos.size()
+	var indices := u.engaged_soldier_indices(n)
+	var files: int = UnitFormation.square_files(n)
+	var expected_cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	assert_eq(indices.size(), expected_cutoff,
+		"the engaged cutoff is measured against the SQUARE grid's own file count")
+
+
+func test_wheel_pivot_uses_the_square_file_count_when_squared() -> void:
+	var u := _make_unit(120)
+	u.facing = Vector2.DOWN
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var files: int = UnitFormation.square_files(120)
+	var expected_half_width: float = float(files - 1) * 0.5 * Unit.FORMATION_SPACING * u.spacing_scale
+	var pivot: Vector2 = u._wheel_pivot_point(1)
+	# The pivot's lateral (X) offset from the unit centre is exactly the square grid's
+	# half-width, not the wide-line frontage's (sign depends on wheel direction/facing
+	# convention -- only the magnitude is asserted here).
+	assert_almost_eq(absf(pivot.x), expected_half_width, 0.01,
+		"the wheel hinge sits on the SQUARE grid's standing flank, not the line frontage's")
+
+
 func test_tight_formation_reduces_cavalry_charge_bonus() -> void:
 	var cav := _cavalry()
 	cav.position = Vector2.ZERO
@@ -1794,6 +1854,73 @@ func test_shielded_stances_use_tight_close_order_density() -> void:
 	u.set_formation(Unit.FORMATION_TESTUDO)
 	assert_almost_eq(u.separation_radius, base * Unit.TIGHT_SEPARATION_SCALE, 0.001,
 		"testudo packs to the tight close-order footprint")
+
+
+## Mean nearest-neighbor spacing across a regiment's soldier slots, in world units --
+## the same measure a verification sweep used to show every close-order formation sat
+## at the identical 9.0 wu floor before the per-formation geometry fix. A direct O(n^2)
+## nearest-neighbor scan is fine at test-sized soldier counts.
+func _mean_nn_spacing(positions: PackedVector2Array) -> float:
+	var total: float = 0.0
+	var n: int = positions.size()
+	for i in range(n):
+		var nearest: float = INF
+		for j in range(n):
+			if i == j:
+				continue
+			nearest = minf(nearest, positions[i].distance_to(positions[j]))
+		total += nearest
+	return total / float(n)
+
+
+func test_shield_wall_and_testudo_pack_tighter_than_normal() -> void:
+	# Shield wall / testudo must genuinely tighten the soldier GRID (not just their combat
+	# multipliers), so their measured spacing drops below the 9.0 wu TIGHT/NORMAL
+	# historical close-order floor.
+	var normal := _make_unit()
+	var normal_spacing := _mean_nn_spacing(normal.soldier_world_slots(normal.soldiers))
+	assert_almost_eq(normal_spacing, Unit.FORMATION_SPACING, 0.1,
+		"sanity: normal spacing sits at the documented 9.0 wu floor")
+
+	for mode: int in [Unit.FORMATION_SHIELD_WALL, Unit.FORMATION_TESTUDO]:
+		var u := _make_unit()
+		u.set_formation(mode)
+		var tight_spacing := _mean_nn_spacing(u.soldier_world_slots(u.soldiers))
+		assert_lt(tight_spacing, normal_spacing,
+			"formation %d spacing (%.2f) is measurably tighter than normal (%.2f)" \
+				% [mode, tight_spacing, normal_spacing])
+
+
+func test_testudo_packs_tighter_than_shield_wall() -> void:
+	# The overhead-locked roof needs the men closer than a single-rank wall.
+	var wall := _make_unit()
+	wall.set_formation(Unit.FORMATION_SHIELD_WALL)
+	var wall_spacing := _mean_nn_spacing(wall.soldier_world_slots(wall.soldiers))
+
+	var turtle := _make_unit()
+	turtle.set_formation(Unit.FORMATION_TESTUDO)
+	var turtle_spacing := _mean_nn_spacing(turtle.soldier_world_slots(turtle.soldiers))
+
+	assert_lt(turtle_spacing, wall_spacing,
+		"testudo packs tighter than shield wall")
+
+
+func test_tight_and_normal_spacing_is_unchanged_from_the_historical_floor() -> void:
+	# Regression guard: TIGHT/NORMAL keep the historical close-order floor --
+	# only SHIELD_WALL/TESTUDO squeeze the grid below it.
+	for mode: int in [Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT]:
+		var u := _make_unit()
+		u.set_formation(mode)
+		assert_almost_eq(u.spacing_scale, 1.0, 0.001,
+			"formation %d keeps the close-order floor" % mode)
+
+
+func test_loose_spacing_still_widens_the_grid() -> void:
+	# Regression guard: LOOSE must keep working exactly as before (2x spacing).
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_LOOSE)
+	assert_almost_eq(u.spacing_scale, Unit.LOOSE_SPACING_SCALE, 0.001,
+		"loose still doubles the grid spacing")
 
 
 func test_shielded_stances_absorb_cavalry_charge() -> void:
