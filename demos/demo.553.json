@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "docs-only PLAN.md change (replaces the hand-maintained Last-updated line with a git-history pointer)"
+}
