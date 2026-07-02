@@ -8,9 +8,12 @@ class_name UnitMorale
 
 ## Fatigue builds while fighting and recovers while resting. Well-trained melee units
 ## cycle their ranks, reducing effective buildup by up to RANK_CYCLE_FATIGUE_REDUCTION.
+## The rotation is the intra-unit rank-relief mode (Unit.rank_relief, on by default,
+## written by a stance order): with it off, even a veteran unit tires at the full rate.
 static func tick_fatigue(u: Unit, delta: float) -> void:
 	if u.state == Unit.State.FIGHTING:
-		var cycle_reduction := 0.0 if u.is_ranged else u.training * Unit.RANK_CYCLE_FATIGUE_REDUCTION
+		var cycles: bool = not u.is_ranged and u.rank_relief
+		var cycle_reduction := u.training * Unit.RANK_CYCLE_FATIGUE_REDUCTION if cycles else 0.0
 		u.fatigue = minf(100.0, u.fatigue + Unit.FATIGUE_PER_SEC * (1.0 - cycle_reduction) * delta)
 	else:
 		u.fatigue = maxf(0.0, u.fatigue - Unit.FATIGUE_RECOVER_PER_SEC * delta)
@@ -28,7 +31,9 @@ static func tick_cohesion(u: Unit, delta: float) -> void:
 
 
 ## Morale recovers when resting; well-trained melee units also sustain it while fighting
-## via visible rank rotation keeping the formation steady. In-fight recovery is scaled by
+## via visible rank rotation keeping the formation steady -- the same intra-unit
+## rank-relief mode as the fatigue reduction above (Unit.rank_relief; recovery cuts off
+## entirely with the mode off). In-fight recovery is scaled by
 ## the regiment's remaining STRENGTH RATIO (soldiers / max_soldiers), not just training: a
 ## thinned-out regiment has fewer fresh files left to rotate to the front, so its capacity
 ## to sustain morale through rank-cycling shrinks as it bleeds, and cuts off entirely once
@@ -44,7 +49,7 @@ static func tick_cohesion(u: Unit, delta: float) -> void:
 static func tick_morale(u: Unit, delta: float) -> void:
 	if u.state != Unit.State.FIGHTING and u.morale < 100.0:
 		u.morale = minf(100.0, u.morale + Unit.MORALE_RECOVER_PER_SEC * delta)
-	elif u.state == Unit.State.FIGHTING and not u.is_ranged \
+	elif u.state == Unit.State.FIGHTING and not u.is_ranged and u.rank_relief \
 			and u.training >= Unit.RANK_CYCLE_MORALE_THRESHOLD and u.morale < 100.0:
 		var strength_ratio: float = float(u.soldiers) / float(u.max_soldiers) if u.max_soldiers > 0 else 0.0
 		if strength_ratio >= Unit.MORALE_CRUMBLE_RATIO_THRESHOLD:

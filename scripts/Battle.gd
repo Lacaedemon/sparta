@@ -44,6 +44,15 @@ const ORDER_WHEEL := -5
 # facing, so a mixed-facing selection nudges correctly per unit.
 const ORDER_NUDGE := -6
 enum NudgeDir { LEFT = 1, RIGHT = 2, BACK = 3 }
+# Sentinel for a standalone stance-change order (no movement, no target): writes the
+# durable order_mode and/or the intra-unit rank-relief mode on each unit, leaving all
+# movement state untouched. The stance rides the existing "mode" field (-1 = leave the
+# stance unchanged) and the rank-relief toggle rides the "frontage" field (RankRelief),
+# so the replay format is unchanged. Handled like the formation-only order.
+const ORDER_STANCE_ONLY := -7
+# Rank-relief toggle values for a stance order's "frontage" field: LEAVE keeps each
+# unit's current setting; ON/OFF write the durable Unit.rank_relief mode.
+enum RankRelief { LEAVE = 0, ON = 1, OFF = 2 }
 # How far a single arrow-key nudge shifts the unit (world units). 30 wu is ~1.5 m
 # (WORLD_UNITS_PER_METER = 20) — a few soldier-widths, and under the side-step
 # distance ceiling (UnitManeuver.SIDESTEP_MAX_DISTANCE) so a lateral nudge always
@@ -601,6 +610,27 @@ func enqueue_formation(uids: Array, formation: int) -> void:
 	_apply_order_live(cmd)
 
 
+## Change the durable stance of a set of units in place -- no movement, no target: the
+## order_mode (`stance` >= 0; -1 leaves it unchanged) and/or the intra-unit rank-relief
+## mode (`rank_relief`, a RankRelief value; LEAVE keeps each unit's setting). Recorded so
+## replays stay exact. No gesture drives this yet -- the stance hotkeys still arm a mode
+## for the NEXT move/attack order -- but the order path exists so the mode layer is
+## reachable from the same recorded, exactly-once dispatch as every other command.
+func enqueue_stance(uids: Array, stance: int = -1, rank_relief: int = RankRelief.LEAVE) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_STANCE_ONLY,
+		"mode": stance,
+		"frontage": rank_relief,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
 ## Widen (delta > 0) or narrow (delta < 0) the frontage of a set of units by
 ## `delta` files each. Each unit steps from its OWN current frontage to an absolute
 ## target (so a mixed selection keeps its relative widths), emitting one command per
@@ -773,6 +803,35 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					if u.current_order == null:
 						u.set_current_order(Order.new_frontage(files))
 		return
+	# Stance-change-only: write the durable order_mode and/or rank-relief mode on each
+	# unit, leaving all movement and formation state untouched. Both are instantaneous
+	# mode writes (the write IS the completion), so like the formation branch the queue
+	# is only occupied when the unit is idle -- a live order keeps running and the mode
+	# change is already transcript-visible via the order_mode / rank_relief fields.
+	if target_uid == ORDER_STANCE_ONLY:
+		var stance: int = int(cmd.get("mode", -1))
+		var rank_toggle: int = int(cmd.get("frontage", RankRelief.LEAVE))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u == null or u.state == UnitRef.State.DEAD:
+				continue
+			if stance >= 0:
+				u.order_mode = stance
+				# A stance carrying no ward is not a guard duty: SUPPORT only arms via a
+				# targeted support order, so a bare stance write can't strand the unit in
+				# the support tick with no ward (it would revert next think anyway).
+				if stance != OrderMode.SUPPORT:
+					u.support_target = null
+				# Entering cycle-charge drives in first, matching a fresh move/attack order.
+				if stance == OrderMode.CYCLE_CHARGE:
+					u._cycle_recharging = false
+			if rank_toggle == RankRelief.ON:
+				u.rank_relief = true
+			elif rank_toggle == RankRelief.OFF:
+				u.rank_relief = false
+			if u.current_order == null:
+				u.set_current_order(Order.new_stance(stance, rank_toggle))
+		return
 	# Arrow-key nudge: each unit steps a small fixed distance to its own side/rear,
 	# holding facing (ordered_facing set), leaving stance and formation untouched. A
 	# fresh move order, so it clears any queued route. The direction rides "frontage".
@@ -789,10 +848,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			if offset == Vector2.ZERO:
 				continue
 			# Install the order first: set_current_order interrupts any maneuver the old
-			# order had in flight (folding a partial in-place turn), and a rear march
-			# parked on that order dies with it.
+			# order had in flight (folding a partial in-place turn), and a rear march --
+			# or a queued route -- parked on that order's queue dies with it.
 			u.set_current_order(Order.new_nudge(dir))
-			u.waypoints.clear()
 			u.target_enemy = null
 			u.support_target = null
 			u.deploy_facing = Vector2.ZERO
@@ -864,12 +922,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
 			continue
-		# A fresh order (anything but a waypoint append) discards the queued route
+		# A fresh order (anything but a waypoint append) discards the queued route --
+		# each branch below replaces the orders queue, and the route lives there now --
 		# and sets the unit's stance; an append continues the current march/stance.
 		# Clearing any prior support ward means a plain order drops the guard
 		# duty; a SUPPORT order re-sets it in the friendly-target branch below.
 		if not append:
-			u.waypoints.clear()
 			u.order_mode = mode
 			u.walk_advance = bool(cmd.get("walk_advance", false))
 			u.support_target = null
@@ -910,12 +968,16 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			elif not relieved:
 				# Relief: the first reliever swaps with the tired unit; any others
 				# just advance on the same fight so they don't shove the retreating unit.
-				UnitRelief.begin(u, target_unit)
+				# Install the RELIEF order first (interrupting whatever ran before), then
+				# arm the swap on it -- the order owns the pass-through link and the
+				# tired unit's retreat becomes a queue-visible MOVE order of its own.
+				var relief_order := Order.new_relief(target_unit.uid)
+				u.set_current_order(relief_order)
+				UnitRelief.begin(u, target_unit, relief_order)
 				# Capture the foe UnitRelief.begin() resolved (it clears the tired
 				# unit's target_enemy, so later relievers can't read it from there).
 				relief_foe = u.target_enemy
 				relieved = true
-				u.set_current_order(Order.new_relief(target_unit.uid))
 				# Skip the order-response delay for the primary reliever — it needs
 				# to advance immediately or the tired unit retreats into an uncovered gap.
 				continue
@@ -928,11 +990,14 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			var point: Vector2 = dest + (u.position - centroid)   # formation move
 			u.target_enemy = null
 			if append:
-				# Queue the point; start marching it now if the unit was idle.
-				u.waypoints.append(point)
-				u.append_order(Order.new_move(point, mode))
-				if not u.has_move_target:
-					u.move_target = u.waypoints.pop_front()
+				# Queue the leg -- the queued MOVE order IS the waypoint (phase 3). An
+				# idle unit starts marching it now (append_order made it current); a
+				# busy one continues its current order and the leg commits when it is
+				# promoted (retire_current_order -> _start_promoted_move).
+				var leg := Order.new_move(point, mode)
+				u.append_order(leg)
+				if u.current_order == leg and not u.has_move_target:
+					u.move_target = point
 					u.has_move_target = true
 			else:
 				# Choose the drill maneuver for a plain move (a form-up commands its own
@@ -1040,7 +1105,7 @@ func _centroid_of_uids(uids: Array) -> Vector2:
 
 ## Points for a unit's not-yet-applied waypoint appends, in queue order.
 ## While the sim is paused _physics_process doesn't drain _pending_orders, so an
-## appended leg isn't written to u.waypoints until the player unpauses; the order
+## appended leg isn't queued on the unit's orders until the player unpauses; the order
 ## overlay calls this to preview those queued legs without mutating state. Each
 ## point is derived exactly as _apply_order_cmd will (same formation centroid),
 ## and positions are frozen while paused, so the preview matches the eventual leg.

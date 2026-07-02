@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/line-relief-queue.json",
+  "caption": "Orders-queue phase 3 (#524): relief, transitions, and waypoints now live on the Order queue. The clip stages a line relief driven through the real controls: a player infantry line (bottom) is locked in melee while a fresh unit waits behind; the player box-selects the fresh unit and right-clicks the engaged friendly. The RELIEF order owns the swap -- the reliever advances THROUGH its tired ally (the pass-through exemption is the order's execution state, not unit flags) and takes over the fight, while the tired unit receives a queue-visible MOVE order and peels back to the rear, bleeding as it disengages (the cost of pulling out) but escaping the line alive. Verified by exact state dumps: post-click the reliever's current_order reads RELIEF and the tired unit's reads MOVE; by the end the enemy has re-targeted the reliever and the tired unit stands clear. Same PR: waypoints are queued MOVE orders (the parallel list is gone), intra-unit rank-relief is a durable mode toggled by a new STANCE order, and the support-ward decision is recorded in docs/orders-queue-design.md.",
+  "fixed_fps": 60,
+  "max_frames": 510,
+  "fps": 15,
+  "width": 720
+}

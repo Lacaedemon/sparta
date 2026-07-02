@@ -105,36 +105,44 @@ func test_reach_matches_pre_registry_loadout_values() -> void:
 	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPATHA).reach_m, 1.5, 0.0001)
 
 
-func test_lethality_matches_combat_profile_table() -> void:
-	# Each unit type's lethality in SoldierCombat.profile_for() maps one-to-one
-	# onto the weapon that type carries; the registry must agree with the table
-	# combat actually reads, or the representation lies about the sim.
+func test_lethality_matches_the_pre_registry_combat_table() -> void:
+	# The exact per-type lethality values SoldierCombat.profile_for() carried as
+	# literals before the strike-time reads moved to the registry, mapping
+	# one-to-one onto the weapon each type carries. Exact equality: strike-time
+	# combat reads these through the per-soldier weapon ids, so any drift
+	# changes combat outcomes. (test_loadout_combat_equivalence.gd pins the
+	# whole composed strike-input table.)
+	assert_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPEAR).lethality,
+		0.85, "spear lethality matches the pre-registry spearman literal")
+	assert_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_GLADIUS).lethality,
+		1.00, "gladius lethality matches the pre-registry infantry literal")
+	assert_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SIDEARM).lethality,
+		0.50, "sidearm lethality matches the pre-registry archer literal")
+	assert_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPATHA).lethality,
+		1.10, "spatha lethality matches the pre-registry cavalry literal")
+
+
+func test_shield_block_values_compose_with_the_stance_residuals() -> void:
+	# The shield's own block value plus the carrying type's stance residual
+	# (profile_for's "shield_residual") must compose to the pre-split per-type
+	# shield weight, exactly. Exact equality: the land contest reads the
+	# composed value, so any drift changes combat outcomes.
 	var spear_profile: Dictionary = SoldierCombat.profile_for(false, true, false, 0.5)
 	var sword_profile: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5)
 	var ranged_profile: Dictionary = SoldierCombat.profile_for(false, false, true, 0.5)
 	var cavalry_profile: Dictionary = SoldierCombat.profile_for(true, false, false, 0.5)
-	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPEAR).lethality,
-		float(spear_profile["lethality"]), 0.0001, "spear lethality matches the spearman profile")
-	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_GLADIUS).lethality,
-		float(sword_profile["lethality"]), 0.0001, "gladius lethality matches the infantry profile")
-	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SIDEARM).lethality,
-		float(ranged_profile["lethality"]), 0.0001, "sidearm lethality matches the archer profile")
-	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPATHA).lethality,
-		float(cavalry_profile["lethality"]), 0.0001, "spatha lethality matches the cavalry profile")
-
-
-func test_shield_block_values_match_their_profile_sources() -> void:
-	# The scutum carries the plain infantry shield weight; the spearmen's higher
-	# 0.65 in profile_for folds anti-cavalry bracing on top of the same shield
-	# and stays there. The round shield matches the cavalry weight exactly.
-	var sword_profile: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5)
-	var cavalry_profile: Dictionary = SoldierCombat.profile_for(true, false, false, 0.5)
-	assert_almost_eq(LoadoutRegistry.shield(LoadoutRegistry.SHIELD_SCUTUM).block_value,
-		float(sword_profile["shield"]), 0.0001, "scutum block matches the infantry shield weight")
-	assert_almost_eq(LoadoutRegistry.shield(LoadoutRegistry.SHIELD_ROUND).block_value,
-		float(cavalry_profile["shield"]), 0.0001, "round shield block matches the cavalry weight")
-	assert_almost_eq(LoadoutRegistry.shield(LoadoutRegistry.SHIELD_NONE).block_value,
-		0.0, 0.0001, "no shield blocks nothing")
+	var scutum: float = LoadoutRegistry.shield(LoadoutRegistry.SHIELD_SCUTUM).block_value
+	var round_shield: float = LoadoutRegistry.shield(LoadoutRegistry.SHIELD_ROUND).block_value
+	var none: float = LoadoutRegistry.shield(LoadoutRegistry.SHIELD_NONE).block_value
+	assert_eq(float(spear_profile["shield_residual"]) + scutum, 0.65,
+		"spearman residual + scutum composes to the pre-split 0.65")
+	assert_eq(float(sword_profile["shield_residual"]) + scutum, 0.60,
+		"infantry residual + scutum composes to the pre-split 0.60")
+	assert_eq(float(ranged_profile["shield_residual"]) + none, 0.05,
+		"archer residual + no shield composes to the pre-split 0.05")
+	assert_eq(float(cavalry_profile["shield_residual"]) + round_shield, 0.25,
+		"cavalry residual + round shield composes to the pre-split 0.25")
+	assert_eq(none, 0.0, "no shield blocks nothing")
 
 
 # --- the type methods: pure and edge-safe --------------------------------------

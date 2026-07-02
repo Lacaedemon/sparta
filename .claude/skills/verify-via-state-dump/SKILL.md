@@ -115,8 +115,19 @@ not just the start/end aggregate.
    Per-unit fields always present: `uid`, `name`, `team`, `position`,
    `facing`, `morale`, `state` (`IDLE`/`MOVING`/`FIGHTING`/`ROUTING`/`DEAD`),
    `formation` (`NORMAL`/`TIGHT`/`LOOSE`/`SQUARE`/`SHIELD_WALL`/`TESTUDO`),
-   `soldiers` (living count), `current_speed`, `order_mode`,
-   `target_enemy_uid`, `engaged`.
+   `soldiers` (living count), `current_speed`, `order_mode`, `rank_relief`
+   (intra-unit rank-rotation mode), `target_enemy_uid`, `engaged`, `tier`
+   (`CLOSE`/`FAR`), `current_order`, `order_phase`.
+
+   **A `tier: "FAR"` unit carries no per-soldier payload at all** — no
+   `soldier_summary` and no `soldiers_full`, even with the full flag set: a
+   far-tier formation is an aggregate record with no individual bodies
+   (docs/large-scale-simulation-design.md). Check `tier` before concluding a
+   missing `soldier_summary` means a malformed dump; the aggregate scalars
+   (`position`, `facing`, `morale`, `soldiers`) are still present and are the
+   right fields to assert on. A per-soldier claim about a far-tier unit is
+   unverifiable by construction — the scenario must keep the unit close-tier
+   (inside DEMOTE_RANGE of an enemy) for the ticks under test.
 
 4. **Compute the right metric for the claim** — don't default to the
    aggregate:

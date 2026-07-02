@@ -282,18 +282,32 @@ func _unit_record(u: Node) -> Dictionary:
 		"soldiers": u.soldiers,
 		"current_speed": DemoState.round_to(u._current_speed, 1),
 		"order_mode": DemoState.order_mode_name(_battle.ORDER_MODE_NAMES, u.order_mode),
+		# Intra-unit rank-relief mode (phase 3): whether rear ranks rotate forward to
+		# relieve their own fighting line. A durable mode like formation, so a stance
+		# order's write is verifiable straight off the transcript.
+		"rank_relief": u.rank_relief,
 		"target_enemy_uid": target_uid,
 		"engaged": u.is_engaged(),
+		# The formation's simulation tier (docs/large-scale-simulation-design.md): CLOSE runs
+		# the full per-soldier arrays, FAR is the aggregate record with no individual bodies.
+		# Serialized as the readable name via FormationTier's own stable table.
+		"tier": FormationTier.tier_name(u.tier),
 		# Phase 1 of the unified orders-queue design (#516): the head of the orders queue -- the
 		# single, transcript-visible source of truth for "what is this unit doing right now,"
 		# including its active phase for a phased order (e.g. a move-to-rear about-face vs its
 		# march). null when the unit is idle (no current order).
 		"current_order": Order.type_name(u.current_order.type) if u.current_order != null else null,
 		"order_phase": Order.phase_name(u.current_order.phase) if u.current_order != null else null,
-		"soldier_summary": DemoState.soldier_summary(u._sim_soldier_pos, u._sim_prone),
 	}
-	if _state_full:
-		rec["soldiers_full"] = _soldier_arrays(u)
+	# A far-tier formation has no individual bodies, so its record carries NO per-soldier
+	# payload at all -- not even a zeroed summary. The explicit `tier` field above is what
+	# lets a reader tell "no soldiers to summarize" (FAR) apart from "per-soldier detail not
+	# requested" (a close-tier dump without SPARTA_DEMO_STATE_FULL, which still gets the
+	# compact soldier_summary but no soldiers_full arrays).
+	if u.tier != FormationTier.FAR:
+		rec["soldier_summary"] = DemoState.soldier_summary(u._sim_soldier_pos, u._sim_prone)
+		if _state_full:
+			rec["soldiers_full"] = _soldier_arrays(u)
 	return rec
 
 

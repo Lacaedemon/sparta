@@ -47,6 +47,25 @@ static func _p95_index(n: int) -> int:
 	return clampi(rank - 1, 0, n - 1)
 
 
+## Summarize a series of per-tick integer counts -- e.g. the close-tier (promoted) soldier
+## count the runner samples each measured tick -- into {count, mean, min, max}. The promoted
+## count is what the tier thresholds (FormationTier.PROMOTE_RANGE / DEMOTE_RANGE) must keep
+## under the measured soldier-count ceiling, so the report carries it as a first-class
+## measurement. Empty input returns all-zero stats with count 0, same contract as summarize().
+static func summarize_counts(samples: Array) -> Dictionary:
+	var n: int = samples.size()
+	if n == 0:
+		return {"count": 0, "mean": 0.0, "min": 0, "max": 0}
+	var total: float = 0.0
+	var min_v: int = int(samples[0])
+	var max_v: int = int(samples[0])
+	for s in samples:
+		total += float(s)
+		min_v = mini(min_v, int(s))
+		max_v = maxi(max_v, int(s))
+	return {"count": n, "mean": total / n, "min": min_v, "max": max_v}
+
+
 ## Scale a demos/README.md-style "scenario" unit-spec list's soldier counts by `scale`
 ## (e.g. 2.0 doubles every unit's headcount), for the local scaling sweep described in
 ## tools/benchmark/README.md ("Finding the soldier-count ceiling"). Returns a NEW array of
