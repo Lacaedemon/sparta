@@ -50,14 +50,19 @@ func _ready() -> void:
 	var script: Dictionary = _load_script(OS.get_environment("SPARTA_DEMO_INPUT"))
 	# Deterministic seed so the recorded battle is reproducible run to run.
 	Replay.forced_seed = int(str(script.get("seed", "12345")))
-	_camera_track = script.get("camera", [])
+	# camera/frames/state go through script_array so a non-array typo degrades that one
+	# feature (with a warning) instead of crashing on a typed assignment/argument: a default
+	# camera, an unarmed capture, and default transcript ticks all still show the same battle.
+	# steps and scenario stay strict — degrading those changes WHAT the demo simulates (no
+	# inputs / the wrong matchup), and a plausible-looking wrong clip is worse than a red job.
+	_camera_track = DemoFrames.script_array(script, "camera")
 	if not CameraKeyframes.is_sorted(_camera_track):
 		push_warning("[demo-input] camera keyframes are not sorted by tick; interpolation will be wrong.")
 	_schedule(script.get("steps", []))
 	_drill = bool(script.get("drill", false))
 	_scenario = script.get("scenario", [])
-	_arm_frame_capture(script.get("frames", []))
-	_arm_state_dump(script.get("state", []))
+	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
+	_arm_state_dump(DemoFrames.script_array(script, "state"))
 	print("[demo-input] %d scripted input events over %d ticks%s%s" % [
 		_count_events(), _max_tick(), " (drill mode)" if _drill else "",
 		" (scenario: %d units)" % _scenario.size() if not _scenario.is_empty() else ""])
