@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/malformed-tick-fields-512-test.json",
-  "caption": "TEMPORARY degrade-not-fail live test (#512): this input script's camera/frames/state fields are all deliberately malformed (non-array). A green job with degrade warnings — and this clip existing at all — is the evidence. Replaced by skip:true before merge.",
-  "fixed_fps": 30,
-  "max_frames": 150,
-  "fps": 15,
-  "width": 720
+  "skip": true,
+  "reason": "CI-hardening only: the demo-video workflow's tick parsers and the recorder now degrade (warn + default) instead of failing on a malformed state/frames/camera field. Nothing player-visible to film; the degrade path was live-tested on this PR's own demo run against a deliberately malformed input script (see the PR description for the green run + warnings)."
 }
