@@ -161,15 +161,27 @@ jobs:
             # fixed literal — the author's script enters only as jq's input file,
             # never as code.
             STATE_TICKS=$(jq -r '
-                def ticks: if type == "array" then map(select(type == "number"))
+                # An empty result (no number elements survive the filter) yields
+                # `empty`, not `[]` -- `[]` is truthy under `//` and would wrongly
+                # short-circuit the fallback to `.frames`.
+                def ticks: if type == "array" then (map(select(type == "number")) | if length > 0 then . else empty end)
                            elif type == "number" then [.]
                            else empty end;
                 ((.state | ticks) // (.frames | ticks) // []) | map(tostring) | join(",")
               ' "$SOURCE" 2>/dev/null) || STATE_TICKS=""
             if [ -z "$STATE_TICKS" ]; then
-              # Warn when the default is masking an author mistake: a state/frames
-              # field exists (or the script is not valid JSON) yet gave no usable tick.
-              PROBE=$(jq -r 'has("state") or has("frames")' "$SOURCE" 2>/dev/null) || PROBE="error"
+              # Warn only on a genuine mistake: invalid JSON, a state/frames field
+              # that's neither an array nor a number, or a non-empty array with no
+              # number elements (looks like a typo). An explicit empty array is NOT
+              # a mistake -- it's this repo's own idiom for "intentionally none"
+              # (matches how `steps: []` is used elsewhere), so it stays silent.
+              PROBE=$(jq -r '
+                  def bad_type: (. != null) and (type != "array") and (type != "number");
+                  def typo_array: (type == "array") and (length > 0)
+                    and ((map(select(type == "number")) | length) == 0);
+                  (has("state") and ((.state | bad_type) or (.state | typo_array)))
+                    or (has("frames") and ((.frames | bad_type) or (.frames | typo_array)))
+                ' "$SOURCE" 2>/dev/null) || PROBE="error"
               if [ "$PROBE" != "false" ]; then
                 echo "::warning::No usable ticks in $SOURCE state/frames (malformed field or invalid JSON); the state transcript uses the default ticks."
               fi
