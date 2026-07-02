@@ -2,7 +2,8 @@
 
 Status: **in implementation — phases 1–3 landed** (the `Order` type + queue +
 apply-once, the movement-maneuver migration, and the transition/relief/waypoint
-absorption); phases 4–5 remain design. This
+absorption); phases 4–5 (the guard vocabulary and the transcript's remaining
+gaps) are implemented and in review (#525, #526). This
 note consolidates the design from #516 (and its refinement comments) into one
 spec, and lays out the phased implementation plan tracked by the phase issues
 linked below.
@@ -483,6 +484,32 @@ non-deterministic ordering when dumping the queue.
 **Done-check.** A single transcript read distinguishes conversio from centre-pivot
 (the #517 verification), shows a held-until condition, and shows every durable
 mode — no motion-inference needed.
+
+**As implemented (#526).** Phases 1–4 already delivered `current_order`,
+`order_phase`, and `order_guard` on the state-dump snapshot
+(`DemoInputRecorder._unit_record`); phase 5's own gaps were two fields plus
+the verification itself:
+
+- **`frontage`** — the file count a `FRONTAGE` order last wrote (or the
+  type-derived default when none has), read via the same
+  `UnitFormation.frontage` lookup the sim itself uses. The taxonomy table's
+  other durable modes were already covered: `formation` (`formation_mode`),
+  `order_mode` + `rank_relief` (stance). `active_weapon` has no field to dump
+  — `SwitchWeaponOrder` is still future work (phase 3's own scoping note: no
+  weapon-switch mechanic exists yet), so there is nothing there to surface
+  until that mechanic lands.
+- **`queue_tail`** — the not-yet-current queued orders' type names, in queue
+  order. Optional per the design doc, and cheap once `current_order` /
+  `order_phase` / `order_guard` already existed: a plain slice of `Unit.orders`
+  past the head. Empty (`[]`), not `null`, when nothing is queued, so a reader
+  distinguishes "no current order" (`current_order: null`) from "current
+  order, nothing behind it."
+- **The #517 verification itself, now a permanent regression test**
+  (`test_orders_transcript.gd`): stages a plain forward march and a rear-move
+  about-face on the same unit through the SAME snapshot code CI's demo
+  state-dump path runs (not a hand-rolled read of `Unit` fields), and asserts
+  `order_phase` alone reads `NONE` vs `TURN` — the one-field read the whole
+  design exists to make possible.
 
 ## Relationship to existing issues
 
