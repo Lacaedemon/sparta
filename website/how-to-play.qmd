@@ -9,19 +9,23 @@ left on the field --- every one dead or shattered. A unit that is merely
 **routing** still counts: it is off fighting for now, but it may break contact
 and rally back into the line, so the battle stays live while it might recover.
 
+::: {#fig-clash .demo}
+
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/clash.jpg">
-    <source src="media/clash.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Selecting units and issuing move/attack orders during a battle.</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/clash.jpg">
+  <source src="media/clash.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
 
+Selecting units and issuing move/attack orders during a battle.
+:::
+
 ## Controls
+
+::: {#tbl-controls}
 
 | Action | Control |
 | --- | --- |
@@ -55,6 +59,9 @@ and rally back into the line, so the battle stays live while it might recover.
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
 | Active pause | <kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>) |
 | All shortcuts (this list, in-game) | <kbd>?</kbd> (Shift + <kbd>/</kbd>) or **☰ Menu → Shortcuts** |
+
+Battle controls: selection, orders, formations, drill maneuvers, and camera.
+:::
 
 A right-click on empty ground is a **move** order; a right-click on an enemy is an
 **attack** order. Selection and camera stay live even while paused, so you can plan
@@ -103,17 +110,20 @@ the whole line round to face the move and then pivoting back. So a small dressin
 line keeps every soldier looking the same way and keeps the ranks in order. A longer move,
 or one that heads forward, still turns to face the destination and marches normally.
 
+::: {#fig-sidestep .demo}
+
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/sidestep.jpg">
-    <source src="media/sidestep.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than pivoting.</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/sidestep.jpg">
+  <source src="media/sidestep.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
+
+Side-step: a short lateral move shuffles the regiment sideways
+while it holds its facing, rather than pivoting.
+:::
 
 **Arrow-key nudges.** With a unit selected, the arrow keys order a small fixed step
 without touching the mouse: <kbd>←</kbd> and <kbd>→</kbd> side-step the unit a few metres
@@ -123,17 +133,20 @@ Use them to dress a line, open a gap, or edge a regiment off a bad spot. While a
 selected these three arrows nudge instead of panning the camera; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
 (and <kbd>↑</kbd>) still pan, so you never lose camera control.
 
+::: {#fig-arrow-nudge .demo}
+
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/arrow_nudge.jpg">
-    <source src="media/arrow_nudge.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Arrow-key nudges: the selected regiment side-steps left, then right, then back-steps --- each a small step that holds its facing.</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/arrow_nudge.jpg">
+  <source src="media/arrow_nudge.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
+
+Arrow-key nudges: the selected regiment side-steps left, then right, then
+back-steps --- each a small step that holds its facing.
+:::
 
 **Centre pivot (larger turns).** A move order that turns a unit toward a new heading makes
 it **pivot about its centre** there gradually rather than snapping --- it turns toward its
@@ -151,17 +164,20 @@ then marches to the destination facing it. The block keeps its footprint the who
 rather than swinging the whole line round about its centre, so a unit sent to the rear
 turns about cleanly and steps off, never sliding backwards.
 
+::: {#fig-about-face .demo}
+
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/about_face.jpg">
-    <source src="media/about_face.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Move to the rear: ordered to a point behind it, the regiment about-faces in place (each soldier reversing 180&deg;) and then marches off facing the destination.</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/about_face.jpg">
+  <source src="media/about_face.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
+
+Move to the rear: ordered to a point behind it, the regiment about-faces in place
+(each soldier reversing 180&deg;) and then marches off facing the destination.
+:::
 
 **About-face in place (conversio, <kbd>V</kbd>).** Press <kbd>V</kbd> with a unit
 selected to issue the *conversio*: every soldier reverses 180° where they stand --- the
@@ -188,17 +204,21 @@ actually marches an arc, so the line ends up facing a new direction *and* lying 
 new line. Use it to refuse a flank, to swing a wing forward and take an enemy line in the
 side, or to change the front an entire wing presents without breaking its order.
 
+::: {#fig-wheel .demo}
+
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/wheel.jpg">
-    <source src="media/wheel.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Wheel (circumductio): the line swings 90&deg; about its standing flank file --- the near flank holds while the far flank marches a wide arc --- reorienting the whole block without breaking its ranks. Wheeled right (C), then back left (Z).</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/wheel.jpg">
+  <source src="media/wheel.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
+
+Wheel (circumductio): the line swings 90&deg; about its standing flank file ---
+the near flank holds while the far flank marches a wide arc --- reorienting the
+whole block without breaking its ranks. Wheeled right (C), then back left (Z).
+:::
 
 **Zoom in to see the soldiers.** From the usual overview each regiment is a block of
 small marks. Zoom in far enough and those marks become individual figures, and each
@@ -234,29 +254,34 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
   standoff, and charge again, so each run lands a fresh momentum hit instead of
   grinding once the charge is spent (see [Tactics](tactics.qmd#order-stances)).
 
-```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/support.jpg">
-    <source src="media/support.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Support stance: a unit guards an ally, shadowing it and engaging any threat.</figcaption>
-</figure>
-```
+::: {#fig-support .demo}
 
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/cycle_charge.jpg">
-    <source src="media/cycle_charge.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Cycle charge stance: cavalry charge, land the impact hit, peel back to a standoff, then charge again.</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/support.jpg">
+  <source src="media/support.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
+
+Support stance: a unit guards an ally, shadowing it and engaging any threat.
+:::
+
+::: {#fig-cycle-charge .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/cycle_charge.jpg">
+  <source src="media/cycle_charge.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Cycle charge stance: cavalry charge, land the impact hit,
+peel back to a standoff, then charge again.
+:::
 
 Press <kbd>T</kbd> to cycle a selected unit's **formation** --- *Tight* closes ranks
 for better missile and charge defence, *Loose* spreads out, and *Square* forms the
@@ -294,17 +319,21 @@ glance: a shield wall draws a locked shield line along its front face, and a tes
 draws an overhead shield roof over the whole block (the turtle). The shields are
 tinted to the unit's side and turn with its facing.
 
+::: {#fig-shielded-stances .demo}
+
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/shielded_stances.jpg">
-    <source src="media/shielded_stances.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Shielded-stance visuals: a shield wall (left) draws a locked shield line along its front face, and a testudo (right) draws an overhead shield roof over the whole block --- so each stance reads at a glance.</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/shielded_stances.jpg">
+  <source src="media/shielded_stances.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
+
+Shielded-stance visuals: a shield wall (left) draws a locked shield line along
+its front face, and a testudo (right) draws an overhead shield roof over the
+whole block --- so each stance reads at a glance.
+:::
 
 **Resize the line.** A regiment normally forms up at a sensible width, but you can
 reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more men
@@ -324,17 +353,20 @@ or squeezing down a lane. Nobody teleports: the soldiers walk to their new slots
 reshape takes a moment to settle. Explicatio can't widen past a single rank, and duplicatio
 bottoms out at one file.
 
+::: {#fig-file-doubling .demo}
+
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/file_doubling.jpg">
-    <source src="media/file_doubling.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/file_doubling.jpg">
+  <source src="media/file_doubling.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
+
+File-doubling: duplicatio (N) folds the line into a deep column;
+explicatio (B) unfolds it back into a broad line.
+:::
 
 **Deploy with a drag (form up).** With a single unit selected, **right-click and drag
 across open ground** to lay out where it should stand: the start of the drag is the
@@ -368,33 +400,39 @@ waypoints), or the range to the target for an attack or support link. The number
 down as the unit closes. Toggle the labels off in **☰ Menu → Order distance labels**
 (on by default).
 
+::: {#fig-order-distance .demo}
+
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/order_distance.jpg">
-    <source src="media/order_distance.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/order_distance.jpg">
+  <source src="media/order_distance.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
+
+Order distance labels: the green move line shows the remaining march in metres,
+counting down as the regiment closes on its target.
+:::
 
 ## The battle loop
 
 Here is the cycle in practice, shown with a cavalry charge:
 
+::: {#fig-charge .demo}
+
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/charge.jpg">
-    <source src="media/charge.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/charge.jpg">
+  <source src="media/charge.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
+
+Cavalry charge: two horse units receive an attack order
+and accelerate to full speed on contact.
+:::
 
 1. **Select** --- left-click a unit, or drag a box to grab several at once. The info
    panel fills with the selected unit's stats.
@@ -436,11 +474,16 @@ re-declaring war for a few turns.
 its diplomacy. The turn banner at top-left names the current faction's ruler in
 parentheses (for example, Rome's banner reads "Rome (Julius Caesar)").
 
+::: {#tbl-ruler-traits}
+
 | Trait | War threshold | Peace threshold |
 | --- | --- | --- |
 | Normal | Attacks at 1.5× strength advantage | Sues for peace below 0.6× |
 | Aggressive | Attacks at 1.25× advantage | Fights longer (sues below 0.33×) |
 | Defensive | Needs a 2× advantage to attack | Sues for peace sooner (below 0.8×) |
+
+Ruler traits and the strength ratios at which each declares war or sues for peace.
+:::
 
 **Province counts** appear in the standings line below the banner. Own every province
 to win the campaign.
