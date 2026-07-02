@@ -19,6 +19,7 @@ func test_phase_name_maps_every_known_phase() -> void:
 	assert_eq(Order.phase_name(Order.Phase.NONE), "NONE")
 	assert_eq(Order.phase_name(Order.Phase.TURN), "TURN")
 	assert_eq(Order.phase_name(Order.Phase.MARCH), "MARCH")
+	assert_eq(Order.phase_name(Order.Phase.REFORM), "REFORM")
 
 
 func test_type_name_falls_back_for_an_unmapped_value() -> void:

@@ -158,6 +158,10 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_prone.remove_at(i)   # and the prone timer
 			if i < unit._sim_soldier_stamina.size():
 				unit._sim_soldier_stamina.remove_at(i)   # and the stamina pool
+			if i < unit._sim_soldier_weapon_id.size():
+				unit._sim_soldier_weapon_id.remove_at(i)   # and the loadout type ids
+			if i < unit._sim_soldier_shield_id.size():
+				unit._sim_soldier_shield_id.remove_at(i)
 			dead += 1
 	if dead == 0:
 		return
