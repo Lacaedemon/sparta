@@ -5,6 +5,10 @@ class_name SoldierMelee
 ## wounds the enemy soldier's health pool, and a soldier whose health reaches 0 dies
 ## and is removed, re-packing the formation. Flanking (facing), the spear-vs-sword reach
 ## standoff, the charge, and compounding wounds all emerge here, not from modifiers.
+## The strike's loadout stats resolve through the per-soldier id arrays: the attacker's
+## weapon id sets the blow's lethality, and the struck soldier's shield id adds its
+## block value to the type's stance residual (see LoadoutRegistry / soldier-loadout
+## design doc), so a per-soldier loadout change alters combat immediately.
 ## Replay-deterministic: attackers in soldier-id order, a fixed TWO Replay.rng draws per
 ## in-reach strike (the land roll, then the fall roll), and no RNG in the death-reaping.
 
@@ -21,6 +25,11 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 	var en_maxhp: float = en_prof["max_health"]
 	var my_maxstam: float = my_prof["max_stamina"]
 	var en_maxstam: float = en_prof["max_stamina"]
+	# The non-shield part of the defender's shield weight b: stance/training
+	# deflection, per type, constant across the cadence. The shield's own block
+	# value is read per strike through the struck soldier's shield id, so
+	# b = residual + block_value — bit-for-bit the pre-split per-type weight.
+	var en_shield_residual: float = en_prof["shield_residual"]
 	var reach: float = attacker.soldier_reach()
 	# Formation melee scaling, applied to the wound this cadence lands: a hunkered SQUARE
 	# or a head-down TESTUDO attacker hits softer (their offence penalties), and a braced
@@ -68,7 +77,12 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 				* SoldierCombat.stamina_factor(stam_a, my_maxstam)
 		var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp) \
 				* SoldierCombat.stamina_factor(stam_d, en_maxstam)
-		var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], en_prof["shield"], phi, c, cond_a, cond_d)
+		# Strike-time loadout reads, through the per-soldier id arrays: the
+		# attacker's weapon sets the blow's lethality, the struck soldier's
+		# shield adds its block value to the defender's stance residual.
+		var lethality_a: float = attacker.soldier_lethality(ai)
+		var shield_d: float = en_shield_residual + defender.soldier_shield_block(target)
+		var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], shield_d, phi, c, cond_a, cond_d)
 		# One seeded draw per striking attacker, in id order, after the target is fixed.
 		var landed: bool = Replay.rng.randf() < p_land
 		# Knockback is the enemy collision response (no separation pass): every in-reach strike
@@ -79,7 +93,7 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# the push, then decelerates and returns to its slot under bounded arrival force.
 		# Velocity only -- never a position snap.
 		var eta: float = 1.0 if landed else SoldierCombat.ETA_DEFENDED
-		var impulse_mag: float = SoldierCombat.knockback_impulse(my_prof["lethality"], c, en_prof["mass"], eta)
+		var impulse_mag: float = SoldierCombat.knockback_impulse(lethality_a, c, en_prof["mass"], eta)
 		# Bracing: a front-facing, set, deep file resists a shove with the whole column's
 		# footing (docs/combat-model.md "Bracing"). Walk the target's file rearward (phi > 0 only:
 		# a flank/rear blow gets no buttress), stopping at the first dead/missing rank. A
@@ -111,7 +125,7 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 					defender._sim_body_vel[target], push_dir * received)
 		if landed:
 			defender._sim_soldier_hp[target] -= \
-					SoldierCombat.wound(my_prof["lethality"], c, en_prof["armour"], cond_a) * wound_scale
+					SoldierCombat.wound(lethality_a, c, en_prof["armour"], cond_a) * wound_scale
 		# Going prone: a big enough impulse fells the defender. The fall roll is a second seeded
 		# draw per striking attacker, ALWAYS drawn (after the land roll, in id order) so the draw
 		# count per in-reach strike is fixed -- the size guard gates only the assignment, never
