@@ -13,6 +13,9 @@
 #   GODOT_BIN     Godot 4.7 binary (default: godot). On macOS, e.g.
 #                 /Applications/Godot.app/Contents/MacOS/Godot
 #   PROJECT_ROOT  Repo root (default: inferred from this script's location)
+#   SPARTA_RECORD_DEMO_TIMEOUT
+#                 Hard per-clip timeout in seconds (default 900), so a hung Movie
+#                 Maker run is killed instead of surviving as an orphan.
 #
 # Requirements: a Godot 4.7 binary, ffmpeg, and (on a headless Linux host) xvfb —
 # the script auto-wraps Godot in `xvfb-run` when no DISPLAY is set and it's available.
@@ -22,6 +25,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 OUT_DIR="${1:-$PROJECT_ROOT/website/media}"
 GODOT_BIN="${GODOT_BIN:-godot}"
+RECORD_TIMEOUT="${SPARTA_RECORD_DEMO_TIMEOUT:-900}"
+
+# shellcheck source=../../tools/lib/run-bounded.sh
+. "$PROJECT_ROOT/tools/lib/run-bounded.sh"
 
 # Each demo: name | source (res://-relative) | fixed_fps | max_frames | width(px) | type.
 # type is "replay" (default, DemoRunner.tscn) or "input" (DemoInputRecorder.tscn).
@@ -67,7 +74,7 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 # Import once so scripts/scenes resolve. Movie Maker would import on first run
 # anyway, but a clean import surfaces script errors up front.
-"$GODOT_BIN" --headless --import || true
+run_bounded "$RECORD_TIMEOUT" "$GODOT_BIN" --headless --import || true
 
 for spec in "${DEMOS[@]}"; do
   IFS='|' read -r NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE <<<"$spec"
@@ -82,7 +89,10 @@ for spec in "${DEMOS[@]}"; do
   echo "== Recording '$NAME' ($TYPE: res://$SOURCE, $MAX_FRAMES frames @ ${FIXED_FPS}fps, ${WIDTH}px) =="
 
   AVI="$WORK_DIR/$NAME.avi"
-  env "${ENV_KEY}=res://${SOURCE}" "${GODOT_RUN[@]}" \
+  # Bounded so a hung recording is killed rather than left orphaned; `set -e`
+  # aborts the script on the timeout's non-zero exit.
+  run_bounded "$RECORD_TIMEOUT" \
+    env "${ENV_KEY}=res://${SOURCE}" "${GODOT_RUN[@]}" \
     --rendering-driver opengl3 \
     --write-movie "$AVI" --fixed-fps "$FIXED_FPS" \
     --quit-after "$MAX_FRAMES" "$SCENE"

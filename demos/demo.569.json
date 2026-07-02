@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Tooling-only change: hard timeouts around headless Godot runs, an in-engine wall-clock watchdog for the demo recorders, an orphan-process sweep script, and a check.sh pre-flight warning. Nothing in how the game looks or plays changed, so a recorded battle would show nothing new."
+}

@@ -18,6 +18,9 @@
 # Environment:
 #   GODOT_BIN   Godot 4.7 binary (default: godot). On Windows, e.g.
 #               C:\Users\you\apps\Godot_v4.7-stable_win64_console.exe
+#   SPARTA_CAPTURE_FRAMES_TIMEOUT
+#               Hard timeout in seconds for the capture run (default 300), so a hung
+#               Godot is killed instead of surviving as an orphan.
 #
 # Example (Windows, from the repo root):
 #   GODOT_BIN="C:\Users\you\apps\Godot_v4.7-stable_win64_console.exe" \
@@ -28,9 +31,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 GODOT_BIN="${GODOT_BIN:-godot}"
+CAPTURE_TIMEOUT="${SPARTA_CAPTURE_FRAMES_TIMEOUT:-300}"
+
+# shellcheck source=../lib/run-bounded.sh
+. "$SCRIPT_DIR/../lib/run-bounded.sh"
 
 if [ "$#" -lt 2 ]; then
-  sed -n '2,30p' "$0"   # print the usage header
+  # Print the usage header: every comment line from line 2 down to `set -euo`.
+  sed -n '2,/^set /{/^set /d;s/^# \{0,1\}//;p}' "$0"
   exit 2
 fi
 
@@ -46,7 +54,7 @@ case "$INPUT" in
 esac
 
 # Import once so autoloads / class_name globals (DemoFrames) are registered.
-"$GODOT_BIN" --headless --import --path "$PROJECT_ROOT" >/dev/null 2>&1 || true
+run_bounded "$CAPTURE_TIMEOUT" "$GODOT_BIN" --headless --import --path "$PROJECT_ROOT" >/dev/null 2>&1 || true
 
 export SPARTA_DEMO_INPUT="$INPUT_RES"
 export SPARTA_DEMO_FRAMES="$TICKS"
@@ -58,9 +66,18 @@ echo "Rendering $INPUT_RES frames at ticks $TICKS…"
 # Real renderer (opengl3), NOT --headless — capture needs a drawn frame. The recorder quits
 # itself once the last armed frame is saved, so no --quit-after frame count is needed (and a
 # frame count is unreliable: an unfocused window throttles rendering, quitting before the run
-# reaches the later ticks).
-"$GODOT_BIN" --rendering-driver opengl3 --path "$PROJECT_ROOT" \
-  res://tools/demo/DemoInputRecorder.tscn
+# reaches the later ticks). The outer timeout is a backstop over the recorder's own in-engine
+# safety nets, so a hung run is killed rather than left orphaned.
+rc=0
+run_bounded "$CAPTURE_TIMEOUT" "$GODOT_BIN" --rendering-driver opengl3 --path "$PROJECT_ROOT" \
+  res://tools/demo/DemoInputRecorder.tscn || rc=$?
+if run_bounded_timed_out "$rc"; then
+  echo "ERROR: frame capture timed out after ${CAPTURE_TIMEOUT}s and was killed (no orphan left behind)." >&2
+  exit 1
+fi
+if [ "$rc" -ne 0 ]; then
+  exit "$rc"
+fi
 
 if [ -n "$OUT_DIR" ]; then
   echo "Done. Frames in: $OUT_DIR"

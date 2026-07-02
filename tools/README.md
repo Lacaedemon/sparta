@@ -49,6 +49,71 @@ tools/check.sh && git push
 | `GODOT_BIN` | `godot` | Godot 4.7 binary to invoke. |
 | `GUT_VERSION` | `v9.7.0` | GUT release to vendor when `addons/gut/` is missing. Keep in sync with `godot-ci.yml` and `test/README.md`. |
 | `NO_COLOR` | _(unset)_ | Set to disable coloured output. |
+| `SPARTA_CHECK_VALIDATE_TIMEOUT` | `900` | Hard timeout (s) for the `validate` Godot run. |
+| `SPARTA_CHECK_TEST_TIMEOUT` | `1800` | Hard timeout (s) for the `test` Godot run. |
+| `SPARTA_CHECK_COVERAGE_TIMEOUT` | `2700` | Hard timeout (s) for the `coverage` Godot run. |
+| `SPARTA_GODOT_PREFLIGHT_LIMIT` | `5` | Warn when more Godot processes than this are already running before the checks start. |
+
+## Orphaned Godot processes: prevention and cleanup
+
+Headless Godot runs survive their calling shell on Windows (no process-tree
+kill), so a hung run whose shell died — a harness command timeout, a session
+end — lives forever as an orphan and starves every later run on the machine.
+Three layers keep that from piling up:
+
+1. **Hard timeouts at the source.** Every Godot invocation in the repo's shell
+   scripts (`check.sh`, `demo/dump-state.sh`, `demo/capture-frames.sh`,
+   `benchmark/run-benchmark.sh`, `../website/tools/record-demos.sh`) runs under
+   coreutils `timeout` via the shared `lib/run-bounded.sh` helper, so a hung
+   Godot is killed — not just the calling shell. Budgets are generous
+   hang-detectors, overridable per script (see each script's header). On stock
+   macOS (no coreutils), the scripts run unbounded with a one-time warning;
+   `brew install coreutils` restores the net.
+2. **In-engine safety nets.** Each runner scene quits itself once a wall-clock
+   budget expires, even when the invoker forgot `--quit-after`:
+   `demo/RunWatchdog.gd` (attached by `DemoRunner` and `DemoInputRecorder`;
+   default 900 s, override via `SPARTA_RUN_TIMEOUT_SEC`) and
+   `benchmark/BenchmarkRunner.gd`'s own timeout + stall guard.
+3. **Pre-flight warning.** `check.sh` warns when more than a handful of Godot
+   processes are already running — the early signal of a leak building up (and
+   the likely explanation for slow or flaky local runs).
+
+### `kill-orphan-godot.ps1` / `kill-orphan-godot.sh` — sweep script
+
+Lists Godot processes whose command line matches a **non-interactive run
+signature** (headless import, GUT suite, demo/benchmark recording — an
+interactive editor session never matches, so it is never touched) and
+classifies each:
+
+- **Orphaned** — the parent process is gone, so nothing is consuming the
+  output. Safe to kill by construction: killing Godot cannot lose git state.
+- **Overdue** — older than the age ceiling (default 2 h; no legitimate repo
+  run takes that long).
+- **Child** — a matched process whose parent is itself being killed by this
+  sweep (the Windows console build is a launcher exe that spawns the real
+  Godot as a child; killing only the launcher would leave the real process
+  behind).
+- **Live** — everything else; never touched.
+
+**Dry-run by default** — it only prints what it would kill:
+
+```sh
+tools/kill-orphan-godot.sh                    # dry run (any platform)
+tools/kill-orphan-godot.sh --force            # actually kill
+tools/kill-orphan-godot.sh --max-age-hours 4  # relax the age ceiling
+tools/kill-orphan-godot.sh --pid 1234,5678    # restrict to specific PIDs
+```
+
+On Windows the `.sh` delegates to the PowerShell twin (the MSYS `ps` cannot
+see native processes), which can also be run directly:
+
+```powershell
+powershell -NoProfile -File tools/kill-orphan-godot.ps1          # dry run
+powershell -NoProfile -File tools/kill-orphan-godot.ps1 -Force   # kill
+```
+
+Optionally (user-machine config, not repo policy), register the sweep as a
+scheduled task every 30–60 min so a leak never builds up unattended.
 
 ## `demo/`
 
