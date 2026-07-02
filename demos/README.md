@@ -264,8 +264,6 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `target_enemy_uid` | The uid this unit is attacking, or `null`. |
 | `engaged` | Whether the regiment is in the engaged tier (front ranks in/just-out of melee). |
 | `tier` | The formation's **simulation tier** — `CLOSE` (full per-soldier arrays) or `FAR` (aggregate record, no individual bodies). See `docs/large-scale-simulation-design.md`. |
-| `current_order` | Readable type of the orders-queue head (`MOVE` / `ATTACK` / `WHEEL` / …), or `null` when idle. |
-| `order_phase` | The current order's phase (`NONE` / `TURN` / `REFORM` / `MARCH`), or `null` when idle. |
 | `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count}` — a compact digest, **not** the full per-soldier arrays. **Close-tier units only.** |
 
 A `tier: "FAR"` record carries **no per-soldier payload at all** — no `soldier_summary`, no

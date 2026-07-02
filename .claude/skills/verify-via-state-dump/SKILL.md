@@ -115,9 +115,9 @@ not just the start/end aggregate.
    Per-unit fields always present: `uid`, `name`, `team`, `position`,
    `facing`, `morale`, `state` (`IDLE`/`MOVING`/`FIGHTING`/`ROUTING`/`DEAD`),
    `formation` (`NORMAL`/`TIGHT`/`LOOSE`/`SQUARE`/`SHIELD_WALL`/`TESTUDO`),
-   `soldiers` (living count), `current_speed`, `order_mode`,
-   `target_enemy_uid`, `engaged`, `tier` (`CLOSE`/`FAR`), `current_order`,
-   `order_phase`.
+   `soldiers` (living count), `current_speed`, `order_mode`, `rank_relief`
+   (intra-unit rank-rotation mode), `target_enemy_uid`, `engaged`, `tier`
+   (`CLOSE`/`FAR`), `current_order`, `order_phase`.
 
    **A `tier: "FAR"` unit carries no per-soldier payload at all** — no
    `soldier_summary` and no `soldiers_full`, even with the full flag set: a
