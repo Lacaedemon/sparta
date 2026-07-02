@@ -78,6 +78,8 @@ jobs:
     if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
+      contents: read   # actions/checkout needs this; an explicit permissions:
+                       # block replaces the default token scope, not adds to it
       issues: write
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +97,7 @@ jobs:
             "$MARKER" "$SHA" "$RUN_URL")
           UPDATE_BODY=$(printf 'Still red at %s (%s).' "${SHA:0:7}" "$RUN_URL")
           tools/ci/upsert-issue.sh \
-            "${{ github.repository }}" "$MARKER" "$TITLE" "$BODY" "ci-failure,P0" "$UPDATE_BODY"
+            "${{ github.repository }}" "$MARKER" "ci-failure" "$TITLE" "$BODY" "ci-failure,P0" "$UPDATE_BODY"
 
   resolve-main-failure:
     name: Close tracking issue on green
@@ -103,6 +105,8 @@ jobs:
     if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
+      contents: read   # actions/checkout needs this; an explicit permissions:
+                       # block replaces the default token scope, not adds to it
       issues: write
     steps:
       - uses: actions/checkout@v4
@@ -116,4 +120,4 @@ jobs:
           set -euo pipefail
           MARKER="<!-- sparta-ci-main-failure -->"
           COMMENT=$(printf 'Resolved: Validate & test passed on push to main at %s (%s).' "${SHA:0:7}" "$RUN_URL")
-          tools/ci/resolve-issue.sh "${{ github.repository }}" "$MARKER" "$COMMENT"
+          tools/ci/resolve-issue.sh "${{ github.repository }}" "$MARKER" "ci-failure" "$COMMENT"
