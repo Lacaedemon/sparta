@@ -800,6 +800,55 @@ func test_full_march_decelerates_smoothly_with_no_overshoot() -> void:
 	assert_almost_eq(u.position.y, dest.y, 5.0, "the unit settles at the destination")
 
 
+# --- speed preserved across a re-order while actively moving -----------------
+
+func test_current_speed_survives_a_reorder_while_cruising() -> void:
+	# A unit that's already cruising and gets re-ordered is frozen by
+	# start_order_response() for order_response_delay seconds -- _move_to() doesn't run
+	# during the freeze, so _moved_last_frame reads false even though the unit had
+	# momentum a moment ago. The end-of-frame idle-clear must not mistake that freeze
+	# for genuine idleness and hard-reset speed to zero (that forced every rapid
+	# re-order, e.g. arrow-key nudges, to restart the accel ramp from a standstill).
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.walk_speed   # as if it was already cruising
+	u.has_move_target = true
+	u.move_target = Vector2(0, 100000)   # far target, doesn't matter -- frozen this frame
+	u.start_order_response()             # simulates a fresh re-order arriving
+	assert_gt(u._order_response_timer, 0.0, "the re-order starts the response-delay freeze")
+	u._physics_process(0.016)
+	assert_false(u._moved_last_frame, "frozen by the response delay -- _move_to did not run")
+	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
+		"speed carries over through the freeze instead of hard-resetting to zero")
+
+
+func test_current_speed_still_ramps_from_zero_for_a_fresh_order_from_idle() -> void:
+	# Regression guard (#454): a genuinely idle unit (never moving, speed already zero)
+	# given a brand-new order must still ramp up from zero, not snap or inherit some
+	# stale nonzero speed -- the fix above only skips the reset while frozen, it must
+	# not grant free speed during the freeze itself.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	assert_eq(u._current_speed, 0.0, "starts genuinely idle")
+	u.start_order_response()
+	u.has_move_target = true
+	u.move_target = Vector2(0, 100000)
+	# Drain the response-delay freeze. On every tick but the last, _think() returns
+	# early (still frozen) so _current_speed cannot have grown at all; on the tick the
+	# timer expires, _think() falls through to the first step of the march itself.
+	while u._order_response_timer > 0.0:
+		u._physics_process(0.016)
+		assert_le(u._current_speed, u.accel * 0.016 + 0.001,
+			"no speed accrues beyond a single ramp step while draining the freeze")
+	assert_gt(u._current_speed, 0.0, "the march has started by the time the freeze drains")
+	# Continue ticking and confirm a normal, unbroken ramp up to the walk pace -- proof
+	# the fix didn't disturb the ordinary from-a-standstill accel ramp.
+	for _i in range(30):
+		u._physics_process(0.016)
+	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
+		"converges cleanly onto the walk pace, same as an ordinary fresh order")
+
+
 # --- turning rate tapers with speed -------------------------------------------
 
 func test_orderly_pivot_is_slower_at_speed_than_at_a_stand() -> void:
@@ -1769,6 +1818,66 @@ func test_loose_formation_widens_the_engaged_front_depth() -> void:
 		"LOOSE order's rank depth scales by the same density factor as the grid spacing")
 
 
+# --- combat geometry agrees with the rendered grid --------------------------------
+# formation_files() is the single source of truth for "how many files is the live grid"
+# for the CURRENT formation_mode -- SQUARE uses its own square grid (UnitFormation.
+# square_files), everything else uses the wide-line frontage. _front_depth,
+# engaged_soldier_indices, and _wheel_pivot_point must all key off it, or a SQUARE
+# unit's combat/engagement math reasons about a different grid than the one its
+# soldiers are actually rendered on (soldier_world_slots / formation_slots).
+
+func test_formation_files_matches_square_files_only_in_square() -> void:
+	var u := _make_unit(120)
+	assert_eq(u.formation_files(120), UnitFormation.frontage(u),
+		"NORMAL uses the wide-line frontage")
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_eq(u.formation_files(120), UnitFormation.square_files(120),
+		"SQUARE uses its own square file count")
+	assert_ne(UnitFormation.square_files(120), UnitFormation.frontage(u),
+		"sanity: the square and line file counts actually differ for this count")
+
+
+func test_front_depth_uses_the_square_file_count_when_squared() -> void:
+	# Regression guard: _front_depth must not read UnitFormation.frontage() (the wide-line
+	# file count) while SQUARE, or it measures the wrong grid's depth.
+	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var files: int = UnitFormation.square_files(120)
+	var ranks: int = int(ceil(120.0 / float(files)))
+	var expected: float = minf(float(ranks - 1) * 0.5 * Unit.FORMATION_SPACING * u.spacing_scale,
+		u.attack_range * 0.5)
+	assert_almost_eq(u._front_depth(), expected, 0.01,
+		"a squared unit's front depth is measured against the SQUARE grid, not the line frontage")
+
+
+func test_engaged_soldier_indices_uses_the_square_file_count_when_squared() -> void:
+	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch
+	var n: int = u._sim_soldier_pos.size()
+	var indices := u.engaged_soldier_indices(n)
+	var files: int = UnitFormation.square_files(n)
+	var expected_cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	assert_eq(indices.size(), expected_cutoff,
+		"the engaged cutoff is measured against the SQUARE grid's own file count")
+
+
+func test_wheel_pivot_uses_the_square_file_count_when_squared() -> void:
+	var u := _make_unit(120)
+	u.facing = Vector2.DOWN
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var files: int = UnitFormation.square_files(120)
+	var expected_half_width: float = float(files - 1) * 0.5 * Unit.FORMATION_SPACING * u.spacing_scale
+	var pivot: Vector2 = u._wheel_pivot_point(1)
+	# The pivot's lateral (X) offset from the unit centre is exactly the square grid's
+	# half-width, not the wide-line frontage's (sign depends on wheel direction/facing
+	# convention -- only the magnitude is asserted here).
+	assert_almost_eq(absf(pivot.x), expected_half_width, 0.01,
+		"the wheel hinge sits on the SQUARE grid's standing flank, not the line frontage's")
+
+
 func test_tight_formation_reduces_cavalry_charge_bonus() -> void:
 	var cav := _cavalry()
 	cav.position = Vector2.ZERO
@@ -1915,6 +2024,73 @@ func test_shielded_stances_use_tight_close_order_density() -> void:
 	u.set_formation(Unit.FORMATION_TESTUDO)
 	assert_almost_eq(u.separation_radius, base * Unit.TIGHT_SEPARATION_SCALE, 0.001,
 		"testudo packs to the tight close-order footprint")
+
+
+## Mean nearest-neighbor spacing across a regiment's soldier slots, in world units --
+## the same measure a verification sweep used to show every close-order formation sat
+## at the identical 9.0 wu floor before the per-formation geometry fix. A direct O(n^2)
+## nearest-neighbor scan is fine at test-sized soldier counts.
+func _mean_nn_spacing(positions: PackedVector2Array) -> float:
+	var total: float = 0.0
+	var n: int = positions.size()
+	for i in range(n):
+		var nearest: float = INF
+		for j in range(n):
+			if i == j:
+				continue
+			nearest = minf(nearest, positions[i].distance_to(positions[j]))
+		total += nearest
+	return total / float(n)
+
+
+func test_shield_wall_and_testudo_pack_tighter_than_normal() -> void:
+	# Shield wall / testudo must genuinely tighten the soldier GRID (not just their combat
+	# multipliers), so their measured spacing drops below the 9.0 wu TIGHT/NORMAL
+	# historical close-order floor.
+	var normal := _make_unit()
+	var normal_spacing := _mean_nn_spacing(normal.soldier_world_slots(normal.soldiers))
+	assert_almost_eq(normal_spacing, Unit.FORMATION_SPACING, 0.1,
+		"sanity: normal spacing sits at the documented 9.0 wu floor")
+
+	for mode: int in [Unit.FORMATION_SHIELD_WALL, Unit.FORMATION_TESTUDO]:
+		var u := _make_unit()
+		u.set_formation(mode)
+		var tight_spacing := _mean_nn_spacing(u.soldier_world_slots(u.soldiers))
+		assert_lt(tight_spacing, normal_spacing,
+			"formation %d spacing (%.2f) is measurably tighter than normal (%.2f)" \
+				% [mode, tight_spacing, normal_spacing])
+
+
+func test_testudo_packs_tighter_than_shield_wall() -> void:
+	# The overhead-locked roof needs the men closer than a single-rank wall.
+	var wall := _make_unit()
+	wall.set_formation(Unit.FORMATION_SHIELD_WALL)
+	var wall_spacing := _mean_nn_spacing(wall.soldier_world_slots(wall.soldiers))
+
+	var turtle := _make_unit()
+	turtle.set_formation(Unit.FORMATION_TESTUDO)
+	var turtle_spacing := _mean_nn_spacing(turtle.soldier_world_slots(turtle.soldiers))
+
+	assert_lt(turtle_spacing, wall_spacing,
+		"testudo packs tighter than shield wall")
+
+
+func test_tight_and_normal_spacing_is_unchanged_from_the_historical_floor() -> void:
+	# Regression guard: TIGHT/NORMAL keep the historical close-order floor --
+	# only SHIELD_WALL/TESTUDO squeeze the grid below it.
+	for mode: int in [Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT]:
+		var u := _make_unit()
+		u.set_formation(mode)
+		assert_almost_eq(u.spacing_scale, 1.0, 0.001,
+			"formation %d keeps the close-order floor" % mode)
+
+
+func test_loose_spacing_still_widens_the_grid() -> void:
+	# Regression guard: LOOSE must keep working exactly as before (2x spacing).
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_LOOSE)
+	assert_almost_eq(u.spacing_scale, Unit.LOOSE_SPACING_SCALE, 0.001,
+		"loose still doubles the grid spacing")
 
 
 func test_shielded_stances_absorb_cavalry_charge() -> void:
@@ -2376,6 +2552,71 @@ func test_ranged_unit_does_not_recover_morale_while_fighting() -> void:
 	UnitMorale.tick_morale(u, 1.0)
 	assert_eq(u.morale, before,
 			"ranged units don't cycle ranks; no morale recovery while fighting")
+
+
+## Drives `u` through repeated 1-tick (casualties, then recovery) cycles under a fixed
+## casualty pressure until it routs or dies. Returns the tick count to ROUTING, or -1 if it
+## dies/survives without routing within the tick budget -- covers #529: sustained casualties
+## must eventually cross the rout threshold, not settle at a permanent in-fight equilibrium.
+func _ticks_to_rout(u: Unit, attacker: Unit, casualties_per_tick: int, max_ticks: int = 2000) -> int:
+	for tick in range(max_ticks):
+		if u.state == Unit.State.DEAD:
+			return -1
+		UnitCombat.take_casualties(u, casualties_per_tick, attacker)
+		if u.state == Unit.State.ROUTING:
+			return tick + 1
+		UnitMorale.tick_morale(u, 1.0)
+	return -1
+
+
+func test_sustained_casualties_eventually_rout_a_maxed_training_unit() -> void:
+	# Owner decision on #529: discipline should slow a rout, not grant near-immunity. Even
+	# a maxed-training (1.0) melee unit must have a reachable rout threshold under sustained
+	# casualty pressure -- it must not settle into a permanent in-fight morale equilibrium.
+	var u := _make_unit(300)
+	u.training = 1.0
+	u.state = Unit.State.FIGHTING
+	var attacker := _attacker_at(FRONT)
+	var ticks := _ticks_to_rout(u, attacker, 2)
+	assert_true(ticks > 0, "a maxed-training unit still routs eventually under sustained casualties")
+
+
+func test_discipline_slows_but_does_not_prevent_rout() -> void:
+	# Same sustained casualty pressure on two units differing only in training: the
+	# higher-discipline unit should take longer (more ticks) to rout, never fail to rout.
+	var low := _make_unit(300)
+	low.training = Unit.RANK_CYCLE_MORALE_THRESHOLD   # at threshold: no in-fight recovery at all
+	low.state = Unit.State.FIGHTING
+	var high := _make_unit(300)
+	high.training = 1.0
+	high.state = Unit.State.FIGHTING
+	var low_attacker := _attacker_at(FRONT)
+	var high_attacker := _attacker_at(FRONT)
+	var low_ticks := _ticks_to_rout(low, low_attacker, 2)
+	var high_ticks := _ticks_to_rout(high, high_attacker, 2)
+	assert_true(low_ticks > 0, "low-discipline unit routs under sustained casualties")
+	assert_true(high_ticks > 0, "high-discipline unit also routs eventually -- not immune")
+	assert_gt(high_ticks, low_ticks,
+			"higher discipline takes longer (more losses) to rout under the same pressure")
+
+
+func test_discipline_scales_time_to_rout_across_training_tiers_at_a_realistic_roster_size() -> void:
+	# Regression guard against the #529 near-immunity bug at realistic roster sizes/casualty
+	# batching (not just the wide-margin 300-soldier case above): every training tier from the
+	# in-fight-recovery threshold up to fully veteran must still reach the rout threshold, and
+	# strictly later than the tier below it, under the same sustained casualty pressure.
+	var trainings: Array[float] = [0.5, 0.6, 0.75, 1.0]
+	var prev_ticks := 0
+	for training_val in trainings:
+		var u := _make_unit(120)
+		u.training = training_val
+		u.state = Unit.State.FIGHTING
+		var attacker := _attacker_at(FRONT)
+		var ticks := _ticks_to_rout(u, attacker, 2)
+		assert_true(ticks > 0, "training=%s routs under sustained casualties" % training_val)
+		assert_gt(ticks, prev_ticks,
+				"training=%s takes longer to rout than the tier below it" % training_val)
+		prev_ticks = ticks
 
 
 # --- zoom level-of-detail (figure silhouettes) ------------------

@@ -82,6 +82,16 @@ var has_move_target: bool = false
 var waypoints: Array[Vector2] = []
 var target_enemy: Unit = null
 var selected: bool = false
+# Phase 1 of the unified orders-queue design (docs/orders-queue-design.md, #516): the general
+# orders queue. `current_order` (orders[0], or null when idle) is the single, transcript-visible
+# source of truth for "what is this unit doing right now" -- including its active phase, for a
+# phased order like the move-to-rear about-face. Phase 1 is additive: Battle._apply_order_cmd (the
+# exactly-once apply site fixed by #519) constructs and pushes the Order alongside its existing
+# legacy mutation (move_target/waypoints/target_enemy/_wheel_target/...), and
+# _update_current_order retires it by reading that same legacy state -- nothing in the sim reads
+# these fields back, so they cannot affect gameplay or replay determinism this phase.
+var orders: Array[Order] = []
+var current_order: Order = null
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
@@ -188,6 +198,14 @@ const SQUARE_ATTACK_FACTOR: float = 0.7
 # LOOSE widens the grid, to ~0.9 m per man -- matching the researched "room to wield
 # a weapon" open-order figure.
 const LOOSE_SPACING_SCALE: float = 2.0
+# SHIELD_WALL and TESTUDO lock their shields edge-to-edge, so unlike TIGHT/SQUARE
+# (which pack to the historical close-order floor and stop there) they squeeze the
+# grid spacing BELOW that floor -- a real, measurable tightening of the block on top
+# of their combat-multiplier bonuses above, not just a flag. TESTUDO packs tighter
+# than SHIELD_WALL (an overhead-locked roof needs the men closer than a single-rank
+# wall does).
+const SHIELD_WALL_SPACING_SCALE: float = 0.75
+const TESTUDO_SPACING_SCALE: float = 0.6
 # Melee intermixing: a legacy softening of enemy separation for fighting non-hold
 # units. Largely superseded by the engaged-enemy front-rank close-up in _separate
 # (which lets lines meet at contact and the per-soldier collision set the spacing);
@@ -338,9 +356,38 @@ const FATIGUE_MAX_ATTACK_PENALTY: float = 0.4
 const RANK_CYCLE_FATIGUE_REDUCTION: float = 0.5
 # A well-trained unit also sustains its morale while fighting — the visible discipline
 # of rotation keeps the formation steady. Threshold is the minimum training for any
-# morale recovery to kick in; at threshold it's minimal, scaling up to full at 1.0.
+# morale recovery to kick in; at threshold it's minimal, scaling up to full at 1.0. This
+# is a RATE lever, not immunity: UnitMorale.tick_morale additionally scales the recovery
+# by the regiment's remaining strength ratio, so it shrinks toward 0 as the unit bleeds —
+# a disciplined unit holds out longer under sustained casualties, but every unit still has
+# a reachable rout threshold; higher training just costs the attacker more losses/time.
 const RANK_CYCLE_MORALE_THRESHOLD: float = 0.5
 const RANK_CYCLE_MORALE_PER_SEC: float = 1.2
+# Once a regiment has thinned past this remaining-strength ratio it is CRUMBLING
+# (UnitCombat.register_casualties adds an extra morale penalty below it): too few files
+# left to rotate fresh men to the front, so rank-cycling can no longer sustain morale
+# either -- tick_morale gates its in-fight recovery off at the same ratio. Shared so the
+# two effects switch on/off together instead of drifting out of sync.
+const MORALE_CRUMBLE_RATIO_THRESHOLD: float = 0.4
+# Base per-casualty morale erosion (UnitCombat.register_casualties) is FRACTION-of-force
+# scaled, not a flat per-head amount: losing `total` soldiers costs
+# `(total / max_soldiers) * MORALE_LOSS_PER_FULL_LOSS` morale, so a percentage loss costs
+# the same morale regardless of the regiment's roster size. A flat per-head cost (the old
+# design) let a big-roster elite unit rack up hundreds of casualties for a trivial total
+# morale hit -- mathematically incapable of reaching 0 morale before the regiment was wiped
+# out. Set below 100 so erosion alone, even at total wipeout, doesn't quite force a
+# rout on its own -- the thin-regiment crumble (below) and the in-fight recovery cutoff at
+# the same ratio finish the job before the last man falls.
+const MORALE_LOSS_PER_FULL_LOSS: float = 90.0
+# The crumble penalty is ALSO fraction-of-force + casualty-count scaled (not a flat
+# per-event amount): once ratio < MORALE_CRUMBLE_RATIO_THRESHOLD, each casualty's base
+# erosion (above) is multiplied by up to (1 + MORALE_CRUMBLE_BOOST) as the regiment
+# bottoms out, ramping linearly from x1 at the threshold to the full boost at ratio 0. A
+# flat per-event crumble bonus (the old design) rewarded FREQUENT SMALL casualty batches
+# with more total crumble erosion than a few large ones for the same total losses --
+# fraction-scaling it ties the crumble effect to how much of the regiment is actually gone,
+# independent of how casualties happen to be batched per tick.
+const MORALE_CRUMBLE_BOOST: float = 4.0
 
 # Morale recovers slowly when a unit is not engaged in combat, rewarding
 # players who pull battered regiments back from the line to rest.
@@ -463,6 +510,7 @@ var _render_dirty: bool = true
 var _render_last_facing: Vector2 = Vector2.DOWN
 var _render_extent_n: int = -1
 var _render_extent_frontage: int = -1
+var _render_extent_mode: int = -1
 var _mm_body: MultiMesh = null
 var _mm_outline: MultiMesh = null
 var _mmi_body: MultiMeshInstance2D = null
@@ -536,7 +584,22 @@ func _physics_process(delta: float) -> void:
 	# keep it — a strike held back by attack cooldown on the contact frame still charges
 	# on the next — and _strike spends it, so grinding strikes after the first don't.
 	# _current_speed resets alongside it so the next march always ramps up from zero.
-	if not _moved_last_frame and state != State.FIGHTING:
+	#
+	# Guard on both freeze timers too: a unit that was actively cruising and gets
+	# re-ordered is frozen by start_order_response() for order_response_delay seconds,
+	# and (for a normal move order with the default Settings.reform_before_move) then
+	# held again by the reform-before-move hold for REFORM_DURATION (see _think below)
+	# — _move_to() doesn't run during either freeze, so _moved_last_frame reads false
+	# even though the unit had momentum a moment ago. The two holds run one after the
+	# other (order-response first, then reform), so both must have drained before this
+	# reset is safe to apply. Without this guard, every re-order (a rapid tap sequence,
+	# or any fast order dispatch) would hard-reset speed to zero and force the next
+	# march to ramp up from a standstill each time instead of carrying momentum
+	# through. A genuinely idle unit already has _current_speed == 0, so skipping the
+	# reset while frozen is a no-op for it — this only changes behavior for a unit
+	# that was moving.
+	if not _moved_last_frame and state != State.FIGHTING \
+			and _order_response_timer <= 0.0 and _reform_timer <= 0.0:
 		_approach_velocity = Vector2.ZERO
 		_current_speed = 0.0
 
@@ -548,8 +611,99 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 
+## Replace the orders queue with a single fresh order (a plain, non-append order): clears any
+## queued continuation and makes `order` current immediately. Mirrors the legacy "a fresh order
+## discards the queued route" rule (see Battle._apply_order_cmd) for the new queue in parallel.
+func set_current_order(order: Order) -> void:
+	var q: Array[Order] = []
+	if order != null:
+		q.append(order)
+	orders = q
+	current_order = order
+
+
+## Append `order` to the queue tail (a shift-click waypoint leg). If the unit is currently idle
+## (no current order), the appended order becomes current right away -- mirrors the legacy
+## "start marching now if idle" waypoint-append behaviour.
+func append_order(order: Order) -> void:
+	orders.append(order)
+	if current_order == null:
+		current_order = orders[0]
+
+
+## Drop the queue head (it finished, or was interrupted) and promote the next queued order, if
+## any, to current.
+func retire_current_order() -> void:
+	if not orders.is_empty():
+		orders.pop_front()
+	current_order = orders[0] if not orders.is_empty() else null
+
+
+## Clear the queue and current order outright (death, a merge, or a rout dropping every
+## in-progress maneuver -- see _rout()).
+func clear_orders() -> void:
+	orders.clear()
+	current_order = null
+
+
+## Advance current_order's bookkeeping for this tick: transition its phase, or retire it, by
+## reading the SAME legacy state (has_move_target, waypoints, target_enemy, _wheel_target, ...)
+## the rest of _think() already reads and mutates. Purely additive read-of-existing-state: it
+## writes only Order/queue fields, which nothing else in the sim consumes this phase, so it
+## cannot change movement/combat/replay behaviour -- only current_order's transcript value.
+func _update_current_order() -> void:
+	if current_order == null:
+		return
+	match current_order.type:
+		Order.Type.MOVE, Order.Type.NUDGE:
+			# Move-to-rear phasing: the conversio (about-face) runs first; once it hands off to
+			# the parked march (has_move_target flips true, no conversio and no march left
+			# parked), the order enters its march phase. Every non-rear move stays NONE (never
+			# entered TURN in the first place -- see Battle._apply_order_cmd's about_faced flag).
+			if current_order.phase == Order.Phase.TURN \
+					and _conversio_target == Vector2.ZERO and not _has_pending_march \
+					and has_move_target:
+				current_order.phase = Order.Phase.MARCH
+			# Retire on arrival (has_move_target cleared, no queued waypoint leg) once any
+			# in-place turn phase has resolved one way or the other (completed into a march, or
+			# was interrupted before ever starting one), AND the unit isn't parked in a
+			# reform-before-move hold (_reform_timer > 0 -- see _think()'s reform block and
+			# Battle._apply_order_cmd's reform branch). A reform hold also drops has_move_target
+			# to false for its duration, which otherwise reads identically to "arrived" and
+			# retires the order one tick after most ordinary moves are issued -- before the
+			# march this order describes has even started.
+			if not has_move_target and waypoints.is_empty() \
+					and _conversio_target == Vector2.ZERO and not _has_pending_march \
+					and _reform_timer <= 0.0:
+				retire_current_order()
+		Order.Type.ATTACK:
+			if target_enemy == null:
+				retire_current_order()
+		Order.Type.RELIEF:
+			# UnitRelief.begin can resolve the primary reliever's foe to null (the tired unit had
+			# no target_enemy, and UnitTargeting.nearest_enemy found none either -- e.g. the last
+			# enemy died at that instant); when that happens it instead advances the reliever
+			# onto the tired unit's slot (has_move_target = true), so target_enemy == null alone
+			# doesn't mean the relief is done -- it can also mean "no foe to fight, still walking
+			# into position." Only retire once neither is true: no target to fight AND no move
+			# still in flight.
+			if target_enemy == null and not has_move_target:
+				retire_current_order()
+		Order.Type.SUPPORT:
+			if support_target == null:
+				retire_current_order()
+		Order.Type.WHEEL:
+			if _wheel_target == Vector2.ZERO:
+				retire_current_order()
+		Order.Type.FORMATION, Order.Type.FRONTAGE:
+			# Instantaneous: applied and complete in the same tick Battle issues them, so they
+			# never accumulate here -- retire defensively in case one is ever observed live.
+			retire_current_order()
+
+
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
+	_update_current_order()
 	# Order-response delay: tick down on every frame. Non-fighting units are frozen
 	# until the timer expires; fighting units are not gated — they keep executing
 	# _think() normally, so a disengage or retarget order issued mid-combat takes
@@ -588,20 +742,22 @@ func _think(delta: float) -> void:
 
 	# In-place drill turns: every soldier turns where they stand, the block does not advance
 	# or pivot as a body. Cancelled by engaging in combat or receiving a move order (the
-	# partial rotation is preserved). On arrival each path runs its own completion step so the
-	# re-engaged arrival sees ~zero error: the conversio reverses body ordering; the quarter-turn
-	# absorbs the rotation into _formation_angle.
+	# partial rotation is preserved). On arrival (or an interrupt) each path folds the turned
+	# angle into _formation_angle so the re-engaged arrival sees ~zero error and every man
+	# holds his OWN slot -- the conversio and the quarter-turn share this settle mechanism.
 	#
-	# Conversio (about-face, 180°): the grid keeps its shape; bodies just reverse.
+	# Conversio (about-face, 180°): the grid keeps its shape and every soldier holds their
+	# own world position; only facing flips.
 	if _conversio_target != Vector2.ZERO:
 		if state == State.FIGHTING or has_move_target:
+			_settle_conversio()   # fold the partial turn so the bodies don't surge
 			_conversio_target = Vector2.ZERO
 			_has_pending_march = false   # a new order / combat pre-empts the parked rear march
 			_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
 		else:
 			if _advance_turn(_conversio_target, delta):
+				_settle_conversio()
 				_conversio_target = Vector2.ZERO
-				_reverse_soldier_bodies()
 				# Rear-sector move: the about-face is done, so start marching to the parked
 				# destination. The block now faces travel, so it advances forward, not backward.
 				if _has_pending_march:
@@ -1103,7 +1259,10 @@ func _type_separation_radius() -> float:
 ## apart, summed, meet front-to-front — so engaged enemies use it as their separation
 ## floor, closing the lines to contact instead of holding a fixed gap.
 func _front_depth() -> float:
-	var files: int = UnitFormation.frontage(self)
+	# Use the CURRENT formation's own file count (formation_files), not the wide-line
+	# frontage() -- a SQUARE unit's grid is the square layout, so its front depth must be
+	# measured against that same grid, not the line frontage its soldiers aren't standing on.
+	var files: int = formation_files(soldiers)
 	var ranks: int = int(ceil(float(soldiers) / float(files)))
 	var depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING * spacing_scale
 	# Cap the depth used as the engaged-enemy separation floor. A very narrow,
@@ -1123,13 +1282,20 @@ func _front_depth() -> float:
 func set_formation(mode: int) -> void:
 	formation_mode = mode
 	var base := _base_separation_radius
-	# The close-order stances all build on TIGHT's locked-shield density -- same
-	# footprint and grid, with their own extra effects on top. SQUARE is the anti-cav
-	# ring; SHIELD_WALL and TESTUDO are the shielded holding/arrow-cover stances.
-	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE \
-			or mode == FORMATION_SHIELD_WALL or mode == FORMATION_TESTUDO:
+	# The close-order stances all build on TIGHT's locked-shield collision footprint.
+	# SQUARE also packs to that floor but relays out its GRID as a real square
+	# (soldier_world_slots / UnitFormation.square_slots), not the wide line. SHIELD_WALL
+	# and TESTUDO go further and squeeze the grid spacing itself below the floor -- a
+	# real, measurably tighter block -- on top of sharing the tight collision footprint.
+	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
 		spacing_scale = 1.0   # already at the historical close-order/locked-shield floor
+	elif mode == FORMATION_SHIELD_WALL:
+		separation_radius = base * TIGHT_SEPARATION_SCALE
+		spacing_scale = SHIELD_WALL_SPACING_SCALE
+	elif mode == FORMATION_TESTUDO:
+		separation_radius = base * TIGHT_SEPARATION_SCALE
+		spacing_scale = TESTUDO_SPACING_SCALE
 	elif mode == FORMATION_LOOSE:
 		separation_radius = minf(SEPARATION_RADIUS_MAX, base * LOOSE_SEPARATION_SCALE)
 		spacing_scale = LOOSE_SPACING_SCALE
@@ -1410,9 +1576,14 @@ var _sim_soldier_facing: PackedVector2Array = PackedVector2Array()
 var _per_soldier_facing: bool = false
 # Non-zero while a conversio (in-place about-face) is in progress: the target (reversed)
 # facing direction. unit.facing rotates toward this each tick; SoldierBodies.step drops the
-# arrival term while it turns so bodies don't drift to intermediate slot positions.
+# arrival term while it turns so bodies don't drift to intermediate slot positions. The
+# heading the turn started from is kept so _formation_angle can absorb exactly how far it
+# turned when it stops (full turn or an interrupt) -- same mechanism as the quarter-turn --
+# so every soldier holds its OWN world position and facing is the only thing that changes
+# (a true conversio, not an index-swap relabel).
 # Cleared on arrival or when interrupted by combat, a move order, or routing.
 var _conversio_target: Vector2 = Vector2.ZERO
+var _conversio_start_facing: Vector2 = Vector2.ZERO
 # Non-zero while a quarter-turn (90° in-place turn) is in progress: the target facing, 90°
 # to the left or right of the start. Same arrival-freeze as the conversio; the heading the
 # turn started from is kept so _formation_angle can absorb exactly how far it turned when it
@@ -1479,12 +1650,65 @@ func soldier_id(index: int) -> int:
 ## cosmetic jitter, so the sim layer stays exactly reproducible.
 func soldier_world_slots(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
-	var slots := UnitFormation.slots(self, count)
+	var slots := formation_slots(count)
 	# _formation_angle lets a quarter-turn rotate every soldier's facing without moving the
 	# grid: it cancels the heading rotation here, so the slots (and the men) stay put.
 	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
 	for i in range(slots.size()):
 		out.push_back(position + slots[i].rotated(ang))
+	return out
+
+
+## The file count (frontage) UNDER THE CURRENT formation_mode, for `count` soldiers.
+## SQUARE lays out its own square grid (UnitFormation.square_files, files ~= ranks),
+## not the wide-line frontage every other formation uses (UnitFormation.frontage). This is
+## the SINGLE source of truth for "how many files is the live grid" -- formation_slots,
+## soldier_world_facings, AND the combat geometry that reasons about ranks (_front_depth,
+## engaged_soldier_indices) all key off this, so a SQUARE unit's front-rank/engaged-soldier
+## math always agrees with the grid its soldiers are actually standing on, instead of the
+## render reading one file count and combat reading another. Pure -- a function of (count,
+## formation_mode, the unit's frontage inputs).
+func formation_files(count: int) -> int:
+	if formation_mode == FORMATION_SQUARE:
+		return UnitFormation.square_files(count)
+	return UnitFormation.frontage(self)
+
+
+## Local-space slot layout for `count` soldiers under the CURRENT formation_mode.
+## SQUARE lays out a real square grid (UnitFormation.square_slots -- files ~= ranks, bbox
+## aspect ~1) instead of the wide line frontage, so the block's actual footprint -- and
+## everything sized off it (soldier_world_slots, the render extent/shadow) -- reads as a
+## square, not just a combat-multiplier flag. Every other mode keeps the wide-line grid
+## (UnitFormation.slots), with SHIELD_WALL/TESTUDO already packed tighter via spacing_scale
+## (set in set_formation). Pure -- a function of (count, formation_mode, spacing_scale, the
+## unit's frontage inputs) -- so it stays deterministic and replay-safe like the callers below.
+func formation_slots(count: int) -> PackedVector2Array:
+	if formation_mode == FORMATION_SQUARE:
+		return UnitFormation.block_slots(count, formation_files(count), FORMATION_SPACING * spacing_scale)
+	return UnitFormation.slots(self, count)
+
+
+## World-space per-soldier facing directions for `count` soldiers, index-aligned with
+## soldier_world_slots. SQUARE points every soldier on the block's outer ring
+## radially OUTWARD from the block centre -- the anti-cav ring actually presents
+## shields/spears on every side, not one uniform facing -- while the interior fill keeps
+## the unit's own heading. Every other formation is uniform at the unit's heading (the
+## prior behaviour). Pure -- deterministic in (count, position, facing, formation_mode,
+## spacing_scale) -- so it reproduces exactly on replay like soldier_world_slots.
+func soldier_world_facings(count: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	out.resize(count)
+	if formation_mode != FORMATION_SQUARE:
+		out.fill(facing)
+		return out
+	var files: int = formation_files(count)
+	var slots := UnitFormation.block_slots(count, files, FORMATION_SPACING * spacing_scale)
+	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
+	for i in range(slots.size()):
+		if UnitFormation.square_is_perimeter(i, count, files) and slots[i].length_squared() > 0.0001:
+			out[i] = slots[i].rotated(ang).normalized()
+		else:
+			out[i] = facing   # interior fill / degenerate centre slot keeps the unit heading
 	return out
 
 
@@ -1525,18 +1749,24 @@ func release_soldier_facing() -> void:
 ## Conversio (about-face, Vegetius III): every soldier turns in place to reverse 180° at
 ## CONVERSIO_TURN_RATE rad/s (~0.5 s for a full reversal). The grid keeps its footprint —
 ## the block does not pivot, neither about its centre (a move order) nor on a flank
-## (a wheel / circumductio); each man just turns where they stand.
+## (a wheel / circumductio); each man just turns where they stand, holding their OWN
+## world position for the whole turn -- zero displacement per soldier, only facing changes.
 ## unit.facing tracks the turn each tick so the sim always knows the soldiers' current
 ## facing (shield side, etc.). SoldierBodies.step drops the arrival term while
 ## it turns, so bodies stay at their grid positions instead of drifting to intermediate
-## slot targets. If interrupted by combat or a move order, unit.facing stays at its current
-## angle — the partial rotation is preserved. Blocked while fighting, before seeding, or
-## while another in-place turn (conversio or quarter-turn) is already running.
+## slot targets. On arrival (or an interrupt) _settle_conversio folds the rotation into
+## _formation_angle -- the same mechanism the quarter-turn and engage-turn use -- so
+## soldier_world_slots reproduces each body's own pre-turn slot under the new facing,
+## instead of the front/rear ranks trading slots. If interrupted by combat or a move
+## order, unit.facing stays at its current angle — the partial rotation is preserved.
+## Blocked while fighting, before seeding, or while another in-place turn (conversio or
+## quarter-turn) is already running.
 func conversio() -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty() \
 			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO \
 			or _wheel_target != Vector2.ZERO:
 		return
+	_conversio_start_facing = facing
 	_conversio_target = Vector2(-facing.x, -facing.y)
 
 
@@ -1566,6 +1796,18 @@ func _settle_formation_angle() -> void:
 	_render_dirty = true
 
 
+## Fold the rotation a conversio just applied (start heading -> current heading) into
+## _formation_angle -- same math as _settle_formation_angle, for the about-face's own start
+## heading. A completed conversio turns exactly 180°, but this also settles an interrupted
+## partial turn correctly (whatever angle actually turned), so soldier_world_slots always
+## reproduces each body's own pre-turn slot and the arrival sees ~zero error either way —
+## no man ever surges to a different soldier's slot.
+func _settle_conversio() -> void:
+	var turned: float = angle_difference(_conversio_start_facing.angle(), facing.angle())
+	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
+	_render_dirty = true
+
+
 ## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
 ## report whether it arrived this tick (snapping exactly onto the target so the completion step
 ## runs on an exact heading — the conversio's body reverse, the quarter-turn's offset settle).
@@ -1591,7 +1833,9 @@ func _advance_turn(target: Vector2, delta: float) -> bool:
 ## bodies. Pure of the turn's progress — a function of the CURRENT position/facing/shape — so the
 ## caller captures it once when the wheel is armed.
 func _wheel_pivot_point(dir: int) -> Vector2:
-	var files: int = UnitFormation.frontage(self)
+	# The same current-grid file count as _front_depth/engaged_soldier_indices, so a
+	# wheel hinges against the grid the regiment is actually laid out on.
+	var files: int = formation_files(soldiers)
 	var half_width: float = float(files - 1) * 0.5 * FORMATION_SPACING * spacing_scale
 	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
 	var front_axis: Vector2 = facing.rotated(_formation_angle)             # slot-grid local -Y (toward front)
@@ -1645,25 +1889,6 @@ func _advance_wheel(delta: float) -> bool:
 	return false
 
 
-## Relabel the bodies for a completed about-face. The men keep their world positions, but
-## facing has flipped 180°, so every formation slot rotates to its point-reflected spot —
-## front rank and rear rank swap sides. Reversing the index-aligned body arrays maps each
-## body onto the slot it now physically occupies, so SoldierBodies.step's arrival
-## sees ~zero error and the block doesn't surge across itself. A centrosymmetric grid
-## cancels exactly; a partial rear rank leaves a small residual the arrival eases. Pure
-## index permutation — no positions change — so it's replay-deterministic.
-func _reverse_soldier_bodies() -> void:
-	_sim_soldier_pos.reverse()
-	_sim_body_vel.reverse()
-	_sim_soldier_hp.reverse()
-	_sim_prone.reverse()
-	_sim_soldier_stamina.reverse()
-	_sim_soldier_facing.reverse()
-	if _sim_steer.size() == _sim_soldier_pos.size():
-		_sim_steer.reverse()
-	_render_dirty = true   # positions were relabelled — redraw next frame
-
-
 ## The facing of body `index`; the unit heading for an out-of-range index (so
 ## callers never index past a mid-resize array).
 func soldier_facing(index: int) -> Vector2:
@@ -1676,7 +1901,7 @@ func soldier_facing(index: int) -> Vector2:
 ## containment radius the parallel layer must stay within while the regiment
 ## circle is authoritative. Reuses the render's block-extent math.
 func soldier_block_extent() -> float:
-	return SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
+	return SoldierFlock.compute_extent(self, formation_slots(soldiers))
 
 
 ## The render block's current half-size: the cached extent _process maintains as
@@ -1755,14 +1980,16 @@ func soldier_brace() -> float:
 
 
 ## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks of an engaged
-## regiment, or none when it isn't engaged. `UnitFormation.slots` is rank-major
+## regiment, or none when it isn't engaged. The formation grid is rank-major
 ## (rank = index / files, rank 0 = front), so the front ranks are exactly the
-## first files*ENGAGED_RANKS indices. Pure and deterministic.
+## first files*ENGAGED_RANKS indices -- using `files` FROM THE SAME GRID the
+## regiment is actually laid out on (formation_files), not the wide-line
+## frontage() a SQUARE unit no longer uses. Pure and deterministic.
 func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
 		return out
-	var cutoff: int = mini(count, UnitFormation.frontage(self) * ENGAGED_RANKS)
+	var cutoff: int = mini(count, formation_files(count) * ENGAGED_RANKS)
 	for i in range(cutoff):
 		out.push_back(i)
 	return out
@@ -2006,6 +2233,7 @@ func _die() -> void:
 func _remove_from_play() -> void:
 	state = State.DEAD
 	selected = false
+	clear_orders()
 	remove_from_group("units")
 	remove_from_group("routers")   # no-op unless removing a routing unit
 	queue_free()
@@ -2018,6 +2246,7 @@ func _rout() -> void:
 	selected = false
 	target_enemy = null
 	has_move_target = false
+	clear_orders()   # a rout drops every in-progress maneuver -- the queue mirrors that
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
 	_has_pending_march = false         # drop any rear-move march parked behind the conversio
@@ -2213,7 +2442,7 @@ func _setup_flock_renderer() -> void:
 	# The render reads _sim_soldier_pos directly; those bodies are seeded on the first
 	# physics tick (Battle._on_soldier_tick -> SoldierBodies.step), so the marks appear
 	# from frame 1. Size the shadow/chrome from the formation extent up front.
-	_block_extent = SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
+	_block_extent = SoldierFlock.compute_extent(self, formation_slots(soldiers))
 	_update_shadow()
 
 
@@ -2278,14 +2507,17 @@ func _process(_delta: float) -> void:
 			_mm_outline.instance_count = 0
 			_mm_facing_pip.instance_count = 0   # else pips linger a frame after a figure-LOD death
 		return
-	# Block extent depends only on the soldier count and frontage, not body positions, so
-	# recompute (and reshape the shadow/chrome) only when one of those changes — not the
-	# fresh PackedVector2Array the old path allocated every frame.
+	# Block extent depends only on the soldier count, frontage, and formation mode
+	# (SQUARE/SHIELD_WALL/TESTUDO reshape the grid itself, not just frontage), not body
+	# positions, so recompute (and reshape the shadow/chrome) only when one of those
+	# changes — not the fresh PackedVector2Array the old path allocated every frame.
 	var fr: int = UnitFormation.frontage(self)
-	if soldiers != _render_extent_n or fr != _render_extent_frontage:
+	if soldiers != _render_extent_n or fr != _render_extent_frontage \
+			or formation_mode != _render_extent_mode:
 		_render_extent_n = soldiers
 		_render_extent_frontage = fr
-		var new_extent: float = SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
+		_render_extent_mode = formation_mode
+		var new_extent: float = SoldierFlock.compute_extent(self, formation_slots(soldiers))
 		if not is_equal_approx(new_extent, _block_extent):
 			_block_extent = new_extent
 			_update_shadow()
