@@ -2282,6 +2282,12 @@ func order_summary() -> String:
 			if current_order.type == Order.Type.QUARTER_TURN:
 				return "Quarter-turning"
 			return "About-facing"   # the V-key drill, or a rear move's turn phase
+		if current_order != null and current_order.phase == Order.Phase.REFORM:
+			# The rear-move composite's middle phase: the ranks counter-march square to
+			# the new heading before the march steps off. Without this the panel would
+			# say "Holding position" between "About-facing" and the march, reading as
+			# if the order had been dropped mid-composite.
+			return "Re-forming"
 		if has_move_target:
 			var dest: String = "Moving to (%d, %d)" % [int(round(move_target.x)), int(round(move_target.y))]
 			if not waypoints.is_empty():

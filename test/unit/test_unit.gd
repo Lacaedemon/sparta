@@ -453,6 +453,18 @@ func test_order_summary_reports_a_rear_move_turn_phase_as_about_facing() -> void
 		"a rear move's turn phase reads as the about-face it is running")
 
 
+func test_order_summary_reports_a_rear_move_reform_phase_as_reforming() -> void:
+	# The composite's middle phase: without its own summary the panel would say
+	# "Holding position" between "About-facing" and the march, as if the order
+	# had been dropped mid-composite.
+	var u := _make_unit()
+	var o := Order.new_move(Vector2(0, -200))
+	o.phase = Order.Phase.REFORM
+	u.set_current_order(o)
+	assert_eq(u.order_summary(), "Re-forming",
+		"a rear move's reform phase reads as the counter-march it is running")
+
+
 func test_order_summary_routing_overrides_any_queued_order() -> void:
 	var u := _make_unit()
 	u.state = Unit.State.ROUTING
