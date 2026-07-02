@@ -43,6 +43,23 @@ func test_order_mode_name_unknown_int_is_visible_token() -> void:
 	assert_eq(DemoState.order_mode_name({0: "Normal"}, 5), "MODE(5)")
 
 
+# --- combat groups / record ordering ----------------------------------------
+
+func test_combat_groups_union_units_and_routers() -> void:
+	assert_eq(DemoState.COMBAT_GROUPS, ["units", "routers"],
+		"the snapshot walks the same union Battle._team_in_play scans; dropping 'routers' "
+		+ "makes a ROUTING unit vanish from the transcript mid-rout")
+
+
+func test_sort_records_by_uid_orders_and_returns_the_array() -> void:
+	var records: Array = [{"uid": 3}, {"uid": 0}, {"uid": 2}]
+	var out: Array = DemoState.sort_records_by_uid(records)
+	assert_eq(out[0]["uid"], 0)
+	assert_eq(out[1]["uid"], 2)
+	assert_eq(out[2]["uid"], 3)
+	assert_same(out, records, "sorts in place and returns the same array")
+
+
 # --- rounding / vector formatting ------------------------------------------
 
 func test_round_to_default_two_places() -> void:
