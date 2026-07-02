@@ -387,6 +387,28 @@ func test_toggle_rank_relief_does_nothing_with_no_selection() -> void:
 	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
 
 
+func test_ctrl_stance_key_and_rank_relief_toggle_are_disabled_during_playback() -> void:
+	# Both gestures are live-play-only, like every other order-issuing hotkey: a replay's
+	# recorded commands drive playback, so a synthesized keypress during Watch Replay must
+	# not queue a second, unrecorded command.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 6
+	b._by_uid[6] = u
+	sm._select(u)
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm._issue_stance(BattleScript.OrderMode.HOLD)
+	sm._toggle_rank_relief()
+	Replay.mode = prev_mode
+	assert_eq(u.order_mode, BattleScript.OrderMode.NORMAL, "no stance written during playback")
+	assert_true(u.rank_relief, "no rank-relief toggle during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
 # --- drag-to-form-up ------------------------------------
 
 func test_form_up_facing_is_perpendicular_to_the_flank_line() -> void:
