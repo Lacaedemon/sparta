@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/tier-transition.json",
+  "caption": "LOD phase 3 (#558): live promotion/demotion across the simulation-tier boundary. Both cavalry blocks spawn beyond DEMOTE_RANGE and immediately demote to the aggregate far tier -- no per-soldier state at all; their marks are drawn on the formation grid. The player orders the left block in while the enemy AI advances, and the moment the gap closes inside PROMOTE_RANGE both formations promote: per-soldier bodies reconstruct deterministically from a seeded hash (watch the light scatter ruffle ease back onto the slots), then the charge resolves as ordinary close-tier melee. Same seed, same reconstruction, every run -- the point of the clip is that the tier boundary is seamless.",
+  "fixed_fps": 30,
+  "max_frames": 170,
+  "fps": 15,
+  "width": 720
+}

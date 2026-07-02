@@ -4,8 +4,10 @@ extends RefCounted
 ## (docs/large-scale-simulation-design.md). A far-tier formation carries no per-soldier state
 ## at all — just this small fixed-size record, evolved by the coarse statistical rules in
 ## FarTierRules instead of per-soldier physics. Still isolated from play: the record and its
-## rules are unit-tested on their own, but nothing in the sim constructs or ticks one during
-## a battle (the tier transition is a later phase).
+## rules are unit-tested on their own, but no live battle constructs or ticks one yet — the
+## in-battle tier transition (TierTransition) keeps the unit's own scalar fields as the
+## aggregate source of truth, so this record stays the vehicle for the isolated far-tier
+## rules and the later far-vs-far battle orchestration.
 
 ## Living soldiers — the aggregate stand-in for the per-soldier array length.
 var count: int = 0
