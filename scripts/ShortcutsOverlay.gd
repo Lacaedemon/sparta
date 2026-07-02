@@ -26,6 +26,8 @@ const _ROWS: Array = [
 	["Merge selected units", "M"],
 	["— Stances (Esc clears) —", ""],
 	["STANCES", ""],
+	["Set stance in place (no move needed)", "Ctrl + stance key"],
+	["Toggle rank relief (discipline)", "I"],
 	["Group attack mode (focused/distributed)", "X"],
 	["— Formation & drill —", ""],
 	["Formation (Normal/Tight/Loose/Square)", "T"],
