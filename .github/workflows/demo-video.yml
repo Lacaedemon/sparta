@@ -72,8 +72,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Full history so "Resolve demo source" can diff against the PR's base commit
-          # to find a per-PR demo manifest (demos/demo.<slug>.json) added in this PR.
+          # Full history so "Resolve demo source" can diff against the PR's actual
+          # merge base (recomputed live, not the PR-creation-time base SHA) to find a
+          # per-PR demo manifest (demos/demo.<slug>.json) added in this PR.
           fetch-depth: 0
 
       - name: Resolve demo source
@@ -85,11 +86,28 @@ jobs:
         #   3. The default showcase battle (generic, honestly labelled).
         # Records as long as some replay file resolves; only skips if even the
         # fallback is missing.
+        env:
+          # From the event payload, but only as an input to `git merge-base` below --
+          # never diffed against directly. Via env (not ${{ }} interpolation in the
+          # script body) for consistency with the author-controlled values elsewhere
+          # in this workflow.
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
           M=""
+          # "Added in this PR" has to mean "added relative to where this PR's branch
+          # actually forked from the base branch," not the base SHA captured in the
+          # event payload at PR-creation time. That payload snapshot never advances as
+          # the base branch moves, so every manifest merged to the base after this PR
+          # opened would misreport as "added in this PR" (#564). Recompute the merge
+          # base live against the base branch's current tip, and diff to the PR's own
+          # head commit (not the merge-ref HEAD actions/checkout lands on) so a commit
+          # that landed on the base branch after this merge-base can't leak in either.
+          git fetch -q origin "$BASE_REF"
+          MERGE_BASE=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
           ADDED=$(git diff --name-only --diff-filter=A \
-              "${{ github.event.pull_request.base.sha }}"...HEAD -- 'demos/demo.*.json' \
+              "$MERGE_BASE"..."$HEAD_SHA" -- 'demos/demo.*.json' \
               2>/dev/null | sort || true)
           if [ -n "$ADDED" ]; then
             M=$(echo "$ADDED" | head -n1)
