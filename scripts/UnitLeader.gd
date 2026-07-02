@@ -120,11 +120,11 @@ static func _should_form_square(u: Unit, all_units: Array) -> bool:
 	return false
 
 
-## Nearest fresh (non-fighting, non-routing, healthy-morale) ally within RELIEF_CALL_RANGE
-## that can answer `tired`'s relief call -- the same fitness a player would look for
-## before ordering a relief swap (UnitRelief.begin does the actual swap once the order
-## applies). Null when no ally qualifies, so a wavering unit with no one to call on just
-## keeps fighting.
+## Nearest fresh (non-fighting, non-routing, healthy-morale, not already committed to
+## someone else's relief or support) ally within RELIEF_CALL_RANGE that can answer
+## `tired`'s relief call -- the same fitness a player would look for before ordering a
+## relief swap (UnitRelief.begin does the actual swap once the order applies). Null when
+## no ally qualifies, so a wavering unit with no one to call on just keeps fighting.
 static func _relief_candidate(tired: Unit, all_units: Array) -> Unit:
 	var best: Unit = null
 	var best_d: float = RELIEF_CALL_RANGE
@@ -132,7 +132,9 @@ static func _relief_candidate(tired: Unit, all_units: Array) -> Unit:
 		var a := node as Unit
 		if a == null or a == tired or a.team != tired.team \
 				or a.state == Unit.State.DEAD or a.state == Unit.State.ROUTING \
-				or a.state == Unit.State.FIGHTING or a.morale < RELIEF_MORALE_THRESHOLD:
+				or a.state == Unit.State.FIGHTING or a.morale < RELIEF_MORALE_THRESHOLD \
+				or a.support_target != null \
+				or (a.current_order != null and a.current_order.type == Order.Type.RELIEF):
 			continue
 		var d: float = tired.position.distance_to(a.position)
 		if d < best_d:

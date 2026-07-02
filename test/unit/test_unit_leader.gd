@@ -190,6 +190,37 @@ func test_healthy_morale_unit_in_contact_does_not_call_for_relief() -> void:
 	assert_true(cmd.is_empty(), "morale is fine: no relief call")
 
 
+func test_wavering_unit_ignores_an_ally_already_relieving_someone_else() -> void:
+	var tired := _unit(1, Vector2(0, 0), 1)
+	tired.state = Unit.State.FIGHTING
+	tired.morale = 10.0
+	var busy := _unit(2, Vector2(50, 0), 1)
+	busy.morale = 100.0
+	busy.set_current_order(Order.new_relief(99))   # already mid-swap for another ally
+	var foe := _unit(3, Vector2(0, 40), 0)
+	tired.target_enemy = foe
+	tired.facing = Vector2.DOWN
+	var cmd: Dictionary = UnitLeaderScript.decide(tired, _all())
+	assert_true(cmd.is_empty(), "an ally already relieving someone else isn't called again")
+
+
+func test_wavering_unit_ignores_an_ally_already_supporting_a_ward() -> void:
+	var tired := _unit(1, Vector2(0, 0), 1)
+	tired.state = Unit.State.FIGHTING
+	tired.morale = 10.0
+	var busy := _unit(2, Vector2(50, 0), 1)
+	busy.morale = 100.0
+	# The ward doesn't need to be "real" for this check -- support_target just needs to
+	# be non-null so busy reads as already committed. Using tired itself avoids adding a
+	# second idle ally that would otherwise qualify as its own relief candidate.
+	busy.support_target = tired
+	var foe := _unit(3, Vector2(0, 40), 0)
+	tired.target_enemy = foe
+	tired.facing = Vector2.DOWN
+	var cmd: Dictionary = UnitLeaderScript.decide(tired, _all())
+	assert_true(cmd.is_empty(), "an ally already guarding a ward isn't called away to relieve")
+
+
 func test_wavering_unit_ignores_a_fresh_ally_that_is_itself_fighting() -> void:
 	var tired := _unit(1, Vector2(0, 0), 1)
 	tired.state = Unit.State.FIGHTING
