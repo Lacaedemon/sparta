@@ -278,7 +278,7 @@ func test_t_key_dispatches_to_the_formation_cycle() -> void:
 		"pressing T cycles Normal -> Tight")
 
 
-# --- real block geometry (#530): the square is an actual square footprint, with its
+# --- real block geometry: the square is an actual square footprint, with its
 # --- perimeter facing outward -- not just a combat-multiplier flag on the same 2:1
 # --- line-frontage rectangle every other formation uses.
 
@@ -301,7 +301,7 @@ func test_square_slot_bbox_is_roughly_square_not_two_to_one() -> void:
 	squared.set_formation(Unit.FORMATION_SQUARE)
 	var square_bbox := _bbox(squared.soldier_world_slots(squared.soldiers))
 
-	# #530's verification sweep measured the line frontage at a 2.00 bbox aspect (126x63)
+	# A prior verification sweep measured the line frontage at a 2.00 bbox aspect (126x63)
 	# for a 120-man regiment; check the same shape here, not the raw FORMATION_ASPECT
 	# tunable (which drives file COUNT, not the realized bbox ratio after rank rounding).
 	assert_almost_eq(normal_bbox.x / normal_bbox.y, 2.0, 0.05,

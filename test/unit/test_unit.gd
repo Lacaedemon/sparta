@@ -1599,7 +1599,7 @@ func test_loose_formation_widens_the_engaged_front_depth() -> void:
 		"LOOSE order's rank depth scales by the same density factor as the grid spacing")
 
 
-# --- combat geometry agrees with the rendered grid (#534) -------------------------
+# --- combat geometry agrees with the rendered grid --------------------------------
 # formation_files() is the single source of truth for "how many files is the live grid"
 # for the CURRENT formation_mode -- SQUARE uses its own square grid (UnitFormation.
 # square_files), everything else uses the wide-line frontage. _front_depth,
@@ -1619,8 +1619,8 @@ func test_formation_files_matches_square_files_only_in_square() -> void:
 
 
 func test_front_depth_uses_the_square_file_count_when_squared() -> void:
-	# Before #534's fix, _front_depth always read UnitFormation.frontage() (the wide-line
-	# file count) even in SQUARE, so it measured the wrong grid's depth.
+	# Regression guard: _front_depth must not read UnitFormation.frontage() (the wide-line
+	# file count) while SQUARE, or it measures the wrong grid's depth.
 	var u := _make_unit(120)
 	u.set_formation(Unit.FORMATION_SQUARE)
 	var files: int = UnitFormation.square_files(120)
@@ -1808,9 +1808,9 @@ func test_shielded_stances_use_tight_close_order_density() -> void:
 
 
 ## Mean nearest-neighbor spacing across a regiment's soldier slots, in world units --
-## the same measure the #530 verification sweep used to show every close-order
-## formation sat at the identical 9.0 wu floor. A direct O(n^2) nearest-neighbor scan
-## is fine at test-sized soldier counts.
+## the same measure a verification sweep used to show every close-order formation sat
+## at the identical 9.0 wu floor before the per-formation geometry fix. A direct O(n^2)
+## nearest-neighbor scan is fine at test-sized soldier counts.
 func _mean_nn_spacing(positions: PackedVector2Array) -> float:
 	var total: float = 0.0
 	var n: int = positions.size()
@@ -1825,9 +1825,9 @@ func _mean_nn_spacing(positions: PackedVector2Array) -> float:
 
 
 func test_shield_wall_and_testudo_pack_tighter_than_normal() -> void:
-	# The #530 fix: shield wall / testudo must genuinely tighten the soldier GRID (not
-	# just their combat multipliers), so their measured spacing drops below the 9.0 wu
-	# TIGHT/NORMAL close-order floor documented in #452.
+	# Shield wall / testudo must genuinely tighten the soldier GRID (not just their combat
+	# multipliers), so their measured spacing drops below the 9.0 wu TIGHT/NORMAL
+	# historical close-order floor.
 	var normal := _make_unit()
 	var normal_spacing := _mean_nn_spacing(normal.soldier_world_slots(normal.soldiers))
 	assert_almost_eq(normal_spacing, Unit.FORMATION_SPACING, 0.1,
@@ -1857,7 +1857,7 @@ func test_testudo_packs_tighter_than_shield_wall() -> void:
 
 
 func test_tight_and_normal_spacing_is_unchanged_from_the_historical_floor() -> void:
-	# Regression guard (#452): TIGHT/NORMAL keep the historical close-order floor --
+	# Regression guard: TIGHT/NORMAL keep the historical close-order floor --
 	# only SHIELD_WALL/TESTUDO squeeze the grid below it.
 	for mode: int in [Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT]:
 		var u := _make_unit()

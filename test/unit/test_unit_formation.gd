@@ -154,7 +154,7 @@ func test_widened_files_tracks_the_live_count() -> void:
 	assert_eq(UnitFormation.widened_files(12, 8), 12, "depleted: capped at the live count")
 
 
-# --- square grid (#530: a real square footprint, not the wide-line frontage) -------
+# --- square grid (a real square footprint, not the wide-line frontage) -------------
 
 func test_square_files_is_roughly_sqrt_n() -> void:
 	assert_eq(UnitFormation.square_files(120), 11, "ceil(sqrt(120)) = 11")
@@ -173,7 +173,7 @@ func test_square_files_is_narrower_than_the_wide_line_frontage() -> void:
 
 
 func test_square_slots_bbox_aspect_is_about_one() -> void:
-	# The defining geometric property (#530): a real square footprint, not the 2:1
+	# The defining geometric property: a real square footprint, not the 2:1
 	# rectangle the wide-line frontage produces for the same count.
 	var n := 120
 	var files := UnitFormation.square_files(n)
