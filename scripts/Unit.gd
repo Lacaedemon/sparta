@@ -162,7 +162,7 @@ var ordered_facing: Vector2 = Vector2.ZERO
 # RANGED_RANGE unconditionally (see the is_ranged branch below _think's ORDER_SUPPORT
 # early return), i.e. fire-at-will is the default rather than a mode of its own.
 # CYCLE_CHARGE is the caracole/repeated-charge ROE; SKIRMISH is the ranged kite-at-range
-# ROE; ATTACK_FLANK/ATTACK_REAR bias the approach angle. Phase 4 (#525) is the promotion
+# ROE; ATTACK_FLANK/ATTACK_REAR bias the approach angle. Phase 4 is the promotion
 # referenced above: these were a "crude version" per the design doc before the guard
 # vocabulary (Order.Guard / OrderGuards.gd) gave the queue a first-class way to gate an
 # order's own early completion on one of them.
