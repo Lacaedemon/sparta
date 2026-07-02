@@ -1,0 +1,17 @@
+{
+  "_comment": "Line relief via the orders queue (phase 3): a tired, thinned player infantry line holds an engaged enemy while a fresh unit waits behind it. The player box-selects the fresh unit and right-clicks the engaged friendly -- a RELIEF order: the fresh unit advances THROUGH its tired ally (the swap's pass-through exemption lives on the order) and takes over the fight, while the tired unit gets a queue-visible MOVE order and peels back to the rear. Record the movie at fixed_fps 60 so the step ticks line up with the 60/s headless state dump. State dumps verify the orders by exact value: pre-click the tired unit is FIGHTING with no order; post-click the reliever's current_order is RELIEF and the tired unit's is MOVE; late, the fresh unit fights in the line's place and the tired one stands clear behind it.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 470},
+    {"team": 0, "type": "Infantry", "x": 800, "y": 320},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 570, "count": 70}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 440.0, "zoom": 1.2}
+  ],
+  "steps": [
+    {"tick": 30, "box": {"from": [700, 280], "to": [900, 360]}},
+    {"tick": 100, "rmb_click": [800, 495]}
+  ],
+  "state": [90, 120, 300, 420]
+}

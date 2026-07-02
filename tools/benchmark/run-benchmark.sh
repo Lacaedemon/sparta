@@ -105,6 +105,10 @@ s = r["stats"]
 budget_ms = 1000.0 / 60.0
 print(f"  scenario:          {r['scenario']}")
 print(f"  soldiers simulated: {r['soldier_count']} (scale {r['scale']}x)")
+ct = r.get("close_tier_soldiers")  # absent in reports from before the tier instrumentation
+if ct and ct.get("count"):
+    print(f"  close-tier soldiers: mean {ct['mean']:.0f}, peak {ct['max']}"
+          f"  (promoted bubble, of {r['soldier_count']} spawned)")
 print(f"  ticks sampled:      {s['count']} / {r['requested_measure_ticks']}"
       f"{'  (EARLY STOP -- see warnings above)' if r['early_stop'] else ''}")
 print(f"  mean tick time:     {s['mean_ms']:.3f} ms  (implied {s['implied_fps']:.1f} fps)")

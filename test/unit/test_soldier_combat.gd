@@ -21,38 +21,40 @@ func test_profile_skill_is_training() -> void:
 
 
 func test_profile_spearmen_values() -> void:
+	# shield_residual 0.05 is the braced anti-cavalry footing the pre-split 0.65
+	# shield weight carried beyond the scutum's own 0.60 block value.
 	var p: Dictionary = SoldierCombat.profile_for(false, true, false, 0.75)
 	assert_almost_eq(p["armour"], 0.35, TOL)
-	assert_almost_eq(p["shield"], 0.65, TOL)
-	assert_almost_eq(p["lethality"], 0.85, TOL)
+	assert_almost_eq(p["shield_residual"], 0.05, TOL)
 	assert_almost_eq(p["max_health"], 100.0, TOL)
 	assert_almost_eq(p["max_stamina"], 100.0, TOL)
 
 
 func test_profile_cavalry_values() -> void:
 	# Cavalry flag wins even if other flags are set (it is checked first).
+	# No stance residual: their round shield's block value is the whole weight.
 	var p: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6)
 	assert_almost_eq(p["armour"], 0.40, TOL)
-	assert_almost_eq(p["shield"], 0.25, TOL)
-	assert_almost_eq(p["lethality"], 1.10, TOL)
+	assert_almost_eq(p["shield_residual"], 0.0, TOL)
 	assert_almost_eq(p["max_health"], 140.0, TOL)
 	assert_almost_eq(p["max_stamina"], 120.0, TOL)
 
 
 func test_profile_archer_values() -> void:
+	# shield_residual 0.05 is unshielded deflection — archers carry SHIELD_NONE
+	# (block 0), so their whole pre-split 0.05 weight is stance, not shield.
 	var p: Dictionary = SoldierCombat.profile_for(false, false, true, 0.3)
 	assert_almost_eq(p["armour"], 0.10, TOL)
-	assert_almost_eq(p["shield"], 0.05, TOL)
-	assert_almost_eq(p["lethality"], 0.50, TOL)
+	assert_almost_eq(p["shield_residual"], 0.05, TOL)
 	assert_almost_eq(p["max_health"], 80.0, TOL)
 	assert_almost_eq(p["max_stamina"], 90.0, TOL)
 
 
 func test_profile_infantry_is_the_default() -> void:
+	# No stance residual: the scutum's block value is the whole 0.60 weight.
 	var p: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5)
 	assert_almost_eq(p["armour"], 0.45, TOL)
-	assert_almost_eq(p["shield"], 0.60, TOL)
-	assert_almost_eq(p["lethality"], 1.00, TOL)
+	assert_almost_eq(p["shield_residual"], 0.0, TOL)
 	assert_almost_eq(p["max_health"], 110.0, TOL)
 	assert_almost_eq(p["max_stamina"], 100.0, TOL)
 
@@ -64,7 +66,7 @@ func test_instance_profile_reads_own_flags() -> void:
 	u.training = 0.75
 	var p: Dictionary = u.combat_profile()
 	assert_almost_eq(p["skill"], 0.75, TOL)
-	assert_almost_eq(p["lethality"], 0.85, TOL, "anti-cavalry reads the spearman profile")
+	assert_almost_eq(p["shield_residual"], 0.05, TOL, "anti-cavalry reads the spearman profile")
 
 
 # --- Charge factor c (docs/combat-model.md "Closing velocity") ----------------
