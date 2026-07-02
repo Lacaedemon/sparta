@@ -53,6 +53,14 @@ var uid: int = -1
 # longer-reach weapon (a spear) reaches contact — and strikes — sooner than a
 # shorter one (a sword) as the lines close.
 @export var attack_range: float = 26.0
+# Interned loadout type ids (see LoadoutRegistry): which weapon and shield TYPE
+# this regiment's soldiers carry. Battle._spawn_unit sets them per type from the
+# loadout table, and the per-soldier arrays (_sim_soldier_weapon_id /
+# _sim_soldier_shield_id below) are seeded from them. Defaults are the infantry
+# baseline (gladius + scutum), matching the attack_range default above, so a
+# bare test unit spawned without a loadout still resolves to real types.
+var weapon_type_id: int = LoadoutRegistry.WEAPON_GLADIUS
+var shield_type_id: int = LoadoutRegistry.SHIELD_SCUTUM
 @export var is_cavalry: bool = false
 @export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
 @export var is_ranged: bool = false   # archers: loose volleys from a distance
@@ -227,6 +235,17 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
 # mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
 const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed charge
+# Below this current speed a unit counts as stopped for arrival purposes -- small enough
+# not to read as motion (every pace/gait is well above it), but nonzero so a unit that has
+# braked all the way down its arrival envelope finalizes its order instead of forever
+# creeping the last fraction of a wu/s.
+const ARRIVE_SPEED_EPSILON: float = 1.0
+# The arrival envelope is derated below the brake authority by this factor. Tracking
+# sqrt(2 * a * d) while only able to shed speed at exactly `a` is neutrally stable: any
+# excess speed shrinks d faster, which drops the envelope faster than the unit can shed,
+# and the gap grows all the way to the destination. Demanding a decay the shed rate beats
+# by a margin makes the ramp lock onto the envelope from above and hold it exactly.
+const ARRIVAL_ENVELOPE_MARGIN: float = 0.8
 # Orderly move orders pivot the block about its centre toward their travel direction at
 # this angular rate (rad/s) rather than snapping, so the ranks turn in good order. A
 # half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Combat chases still snap
@@ -303,6 +322,10 @@ const ROUT_TIME: float = 6.0
 # (both count from zero); the effective delay before the march is max(order_response_delay,
 # REFORM_DURATION). Deterministic (a plain counter, no RNG), so replays stay exact.
 const REFORM_DURATION: float = 0.8
+# A body within this distance of its slot counts as formed up, for the post-about-face
+# reform's "ranks have re-formed" check. Loose enough that couple()'s tiny centre drift
+# can't stall the check, far tighter than a rank gap (FORMATION_SPACING is 9).
+const REFORM_SETTLE_EPS: float = 1.0
 # Radius over which a rout shakes friendly morale. Shared by the morale-spread
 # loop and the cosmetic shockwave so the visual matches the actual area of effect.
 const ROUT_SHOCK_RADIUS: float = 140.0
@@ -650,11 +673,18 @@ func _update_current_order() -> void:
 		return
 	match current_order.type:
 		Order.Type.MOVE, Order.Type.NUDGE:
-			# Move-to-rear phasing: the conversio (about-face) runs first; once it hands off to
-			# the parked march (has_move_target flips true, no conversio and no march left
-			# parked), the order enters its march phase. Every non-rear move stays NONE (never
-			# entered TURN in the first place -- see Battle._apply_order_cmd's about_faced flag).
+			# Move-to-rear phasing: the conversio (about-face) runs first. With the reform
+			# drill on it hands off to a reform hold (_reform_timer armed, march still
+			# parked in _reform_target), then the march; the hasty variant hands straight
+			# off to the march (has_move_target flips true). Every non-rear move stays NONE
+			# (never entered TURN in the first place -- see Battle._apply_order_cmd's
+			# about_faced flag).
 			if current_order.phase == Order.Phase.TURN \
+					and _conversio_target == Vector2.ZERO and not _has_pending_march \
+					and _reform_timer > 0.0:
+				current_order.phase = Order.Phase.REFORM
+			if (current_order.phase == Order.Phase.TURN
+					or current_order.phase == Order.Phase.REFORM) \
 					and _conversio_target == Vector2.ZERO and not _has_pending_march \
 					and has_move_target:
 				current_order.phase = Order.Phase.MARCH
@@ -719,11 +749,15 @@ func _think(delta: float) -> void:
 	# Reform phase: unit holds position after the order-response delay expires until
 	# reform timer runs out, then commits the pending move. A fighting unit skips the
 	# hold and commits immediately so combat orders are never gated by a reform pause.
+	# A post-about-face reform (_reform_until_settled) instead commits as soon as every
+	# body stands on its re-squared slot -- its timer is only the safety timeout.
 	if _reform_timer > 0.0:
 		if state == State.FIGHTING:
 			_commit_pending_reform()
 		else:
 			_reform_timer = maxf(0.0, _reform_timer - delta)
+			if _reform_until_settled and _reform_bodies_settled():
+				_reform_timer = 0.0   # ranks formed: no need to run out the timeout
 			if _reform_timer > 0.0:
 				state = State.IDLE
 				# Use the hold to centre-pivot in place toward the pending destination, so
@@ -748,17 +782,30 @@ func _think(delta: float) -> void:
 			_conversio_target = Vector2.ZERO
 			_has_pending_march = false   # a new order / combat pre-empts the parked rear march
 			_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
+			_pending_march_reform = false          # the abandoned composite takes its reform with it
 		else:
 			if _advance_turn(_conversio_target, delta):
 				_settle_conversio()
 				_conversio_target = Vector2.ZERO
-				# Rear-sector move: the about-face is done, so start marching to the parked
-				# destination. The block now faces travel, so it advances forward, not backward.
+				# Rear-sector move: the about-face is done. With the reform drill on, re-form
+				# the ranks square to the new heading FIRST -- the countermarch brings a full
+				# rank to the new front instead of the old partial rear rank -- holding the
+				# march until the bodies have settled (the timer is only a safety timeout).
+				# Without it (the hasty variant), step off at once with the flipped grid and
+				# reform on arrival instead. Either way the block faces travel, so it
+				# advances forward, not backward.
 				if _has_pending_march:
 					_has_pending_march = false
-					move_target = _pending_march_target
+					if _pending_march_reform and reform_ranks():
+						_reform_target = _pending_march_target
+						_reform_timer = _reform_timeout()
+						_reform_until_settled = true
+					else:
+						_reform_on_arrival = not _pending_march_reform
+						move_target = _pending_march_target
+						has_move_target = true
+					_pending_march_reform = false
 					_pending_march_target = Vector2.ZERO   # consumed -- clear it alongside its gate, as the interrupt path and _rout() do
-					has_move_target = true
 			state = State.IDLE
 			return
 
@@ -902,9 +949,23 @@ func _think(delta: float) -> void:
 	# A player move order marches orderly -- it centre-pivots gradually toward its heading
 	# before advancing; combat chases above stay snappy (orderly = false).
 	if has_move_target:
-		if position.distance_to(move_target) > 5.0:
+		# Arrival at the FINAL destination requires both a close position AND a near-zero
+		# speed -- not position alone. _move_to's braking ramps _current_speed down along
+		# the arrival envelope on the route's last leg, so by the time the unit is within
+		# 5px it should nearly be stopped; the speed guard keeps a moving unit decelerating instead
+		# of finalizing early and hard-snapping via the "no momentum while stationary" reset
+		# elsewhere in this tick. Intermediate waypoints pop on position alone, so a queued
+		# route rolls through each corner at pace instead of halting leg by leg.
+		var on_last_leg: bool = waypoints.is_empty()
+		var arrived: bool = position.distance_to(move_target) <= 5.0
+		# Wait for the stop only when the unit can actually brake: a degenerate loadout
+		# with no positive brake rate (decel <= 0) can never bleed speed, so it finalizes
+		# on position alone -- the pre-braking contract -- instead of hanging on the
+		# speed guard forever.
+		var must_stop: bool = on_last_leg and arrival_brake_rate() > 0.0
+		if not arrived or (must_stop and _current_speed > ARRIVE_SPEED_EPSILON):
 			_move_to(move_target, delta, true)
-		elif not waypoints.is_empty():
+		elif not on_last_leg:
 			# Each queued leg marches on its own terms: drop any side-step hold from
 			# the leg just finished so the next leg turns to face its own travel.
 			ordered_facing = Vector2.ZERO
@@ -920,6 +981,12 @@ func _think(delta: float) -> void:
 			if deploy_facing != Vector2.ZERO:
 				facing = deploy_facing
 				deploy_facing = Vector2.ZERO
+			# A hasty rear move deferred its reform until the march was done: the unit
+			# stands at its destination now, so re-form the ranks square to the heading
+			# (the bodies ease onto the re-squared slots while it stands idle).
+			if _reform_on_arrival:
+				_reform_on_arrival = false
+				reform_ranks()
 	elif enemy != null and order_mode != ORDER_HOLD:
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
 		# range/contact). If a re-face turn was in progress, settle it first: the unit is
@@ -1035,6 +1102,17 @@ func _support_tick(delta: float) -> void:
 
 # --- Movement --------------------------------------------------------------
 
+## The rate an orderly march sheds speed with when braking onto its destination. Capped
+## at what the soldier bodies can actually track: the bodies chase the marker's velocity
+## (their feed-forward) under bounded acceleration -- maxf(accel, BODY_ACCEL_FLOOR), see
+## SoldierBodies -- so a marker shedding speed faster than that leaves its bodies coasting
+## past their slots, and the body->marker coupling then drags the whole regiment past its
+## destination and back. Plain decel still governs every non-arrival slowdown (a mid-march
+## downshift keeps the marker moving, so a transient body lag self-corrects there).
+func arrival_brake_rate() -> float:
+	return minf(decel, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR))
+
+
 func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
@@ -1045,6 +1123,14 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length() < 1.0:
+		# Standing on the point already. An orderly march bleeds any residual speed at the
+		# brake rate here -- and flags itself as still moving so the "no momentum while
+		# stationary" reset can't hard-snap the tail of the ramp to 0 -- so the whole
+		# stop reads as one continuous deceleration. Combat movers keep the old contract:
+		# their callers gate follow-up behaviour on _moved_last_frame staying false.
+		if orderly and _current_speed > 0.0:
+			_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
+			_moved_last_frame = true
 		return
 	var dir: Vector2 = to.normalized()
 	var maneuvering: bool = ordered_facing != Vector2.ZERO
@@ -1065,10 +1151,34 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# its top pace: the men hold a locked ring/wall and only creep, so the target pace
 	# is scaled down before the ramp.
 	pace_speed *= formation_speed_factor()
+	# Final approach: brake to a stop on the destination instead of holding pace to the
+	# wire and letting the outer arrival check hard-reset _current_speed to 0 in a single
+	# tick. The pace is capped at the (margin-derated) arrival envelope sqrt(2 * a * d) --
+	# the speed from which the unit can still stop exactly at the point -- with a d/delta
+	# ceiling so the target never asks to cross the point in one tick (the same arrive
+	# profile the soldier bodies use for their slots). Only an orderly march on its
+	# route's LAST leg brakes: combat chases and kiting must charge through at full pace
+	# (the strike spends _approach_velocity, so braking would bleed the charge impact),
+	# and intermediate waypoints roll through their corners at pace.
+	var braking_to_stop: bool = false
+	var dist_to_stop: float = 0.0
+	var brake: float = arrival_brake_rate()
+	if orderly and waypoints.is_empty() and brake > 0.0 and delta > 0.0:
+		dist_to_stop = position.distance_to(point)
+		var envelope: float = minf(
+			sqrt(2.0 * brake * ARRIVAL_ENVELOPE_MARGIN * dist_to_stop),
+			dist_to_stop / delta)
+		if envelope < pace_speed:
+			pace_speed = envelope
+			braking_to_stop = true
 	# Ramp toward the selected pace instead of snapping there -- a unit takes real time
 	# to build up to a pace (accel) and slows down rather than instantly stopping/downshifting
 	# (decel), per-type rates set from the loadout's panoply-weight-scaled accel_mps2/decel_mps2.
+	# Braking onto the destination uses the body-trackable brake rate instead of raw decel --
+	# see arrival_brake_rate.
 	var rate: float = accel if pace_speed > _current_speed else decel
+	if braking_to_stop and pace_speed < _current_speed:
+		rate = brake
 	_current_speed = move_toward(_current_speed, pace_speed, rate * delta)
 	# Facing. A side-step holds its commanded heading and shuffles sideways. An orderly
 	# move order centre-pivots gradually toward its travel direction (the ranks turn in
@@ -1091,7 +1201,18 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# heading; side-steps are exempt (they march at a fixed walk perpendicular).
 	if orderly and not maneuvering:
 		effective_speed *= clampf(facing.dot(dir) * 2.0, 0.0, 1.0)
-	position += dir * effective_speed * delta
+	# Inbound clamp: never step PAST the immediate goal point in a single tick -- the
+	# same post-step guard the soldier-body arrival uses. Without it a fast unit whose
+	# per-tick step exceeds the remaining distance crosses the point, the direction
+	# flips, and it oscillates around the destination instead of settling on it. A
+	# braking march additionally caps the step at the remaining distance to the FINAL
+	# destination: near the target the pathfinding node can sit past the exact ordered
+	# point, and stepping to the node would cross it. The recorded charge velocity below
+	# stays the unclamped speed -- landing ON a target must not bleed the impact.
+	var advance: float = minf(effective_speed * delta, to.length())
+	if braking_to_stop:
+		advance = minf(advance, dist_to_stop)
+	position += dir * advance
 	state = State.MOVING
 	_moved_last_frame = true
 	# Charge velocity; terrain-scaled so forest reduces the charge bonus (intentional — can't sprint in trees).
@@ -1482,6 +1603,17 @@ var _sim_steer: PackedVector2Array = PackedVector2Array()
 # soldier also fights worse, via SoldierCombat.condition, so wounds compound.
 var _sim_soldier_hp: PackedFloat32Array = PackedFloat32Array()
 
+# Per-soldier weapon/shield TYPE ids, index-aligned with _sim_soldier_pos: each
+# entry is an interned LoadoutRegistry id — a reference to one shared type object,
+# never a per-soldier allocation. Every soldier currently carries its unit's
+# weapon_type_id / shield_type_id (seeded by SoldierBodies.seed, kept aligned
+# through resize and casualty compaction); the arrays exist so a later phase can
+# vary the loadout per soldier (weapon switching) without reshaping the sim.
+# Representational only — combat still reads the unit scalars (attack_range,
+# combat_profile()), so no gameplay outcome changes.
+var _sim_soldier_weapon_id: PackedInt32Array = PackedInt32Array()
+var _sim_soldier_shield_id: PackedInt32Array = PackedInt32Array()
+
 # Per-soldier prone timer (phase 4b), index-aligned with _sim_soldier_pos: seconds-to-rise
 # remaining (0 = standing). A knockback impulse can fell a soldier (SoldierCombat.prone_chance);
 # a prone soldier loses active defence and can't strike until the timer decays to 0
@@ -1564,6 +1696,17 @@ const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
 # valid move destination -- ZERO can't reliably mean "nothing pending".
 var _pending_march_target: Vector2 = Vector2.ZERO
 var _has_pending_march: bool = false
+# Reform timing for the rear-move composite (about-face, reform, march). Stamped from the
+# order's "reform" field when the about-face is armed: true = reform the ranks square to the
+# new heading BEFORE stepping off (the drilled default), false = march at once and reform on
+# arrival instead (the hasty variant). _reform_on_arrival carries the deferred case through
+# the march; both are cleared by a fresh order, an interrupt, or a rout.
+var _pending_march_reform: bool = false
+var _reform_on_arrival: bool = false
+# While true, the reform hold (_reform_timer) ends EARLY once every body stands on its slot
+# (_reform_bodies_settled) -- the timer is only the safety timeout. The plain reform-before-move
+# hold keeps its fixed REFORM_DURATION countdown (this stays false for it).
+var _reform_until_settled: bool = false
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -1737,6 +1880,70 @@ func _settle_conversio() -> void:
 	var turned: float = angle_difference(_conversio_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
 	_render_dirty = true
+
+
+## Reform the ranks (a standalone, composable drill phase -- NOT part of the conversio
+## primitive, which stays a pure in-place facing reversal): re-square the slot grid to the
+## CURRENT heading by dropping the folded maneuver rotation, so soldier_world_slots lays the
+## front rank -- always a full one, by block_slots' construction -- toward `facing` again.
+## The bodies then march themselves onto the re-squared slots under the normal arrival
+## dynamics, a countermarch: after an about-face this brings the original front-rank men back
+## to the front and returns the short/partial rank to the rear, instead of leaving whatever
+## the flip put in front (the depleted rear rank) to lead. No body teleports and no
+## index-aligned array is relabelled, so per-soldier identity/state is untouched.
+##
+## No-ops (returns false) when there is nothing to bring forward: the grid is already square
+## to the heading (its front rank is full by construction), or it is flipped a half-turn but
+## has NO partial rank -- a full grid is centre-symmetric, so the flip already fronts a full
+## rank and a reform would only churn every man through the block for zero shape change.
+## Returns true when a reform actually starts.
+func reform_ranks() -> bool:
+	var angle: float = wrapf(_formation_angle, -PI, PI)
+	if absf(angle) < 0.01:
+		return false
+	var files: int = maxi(1, formation_files(soldiers))
+	# A single rank has no rear to tuck a gap into (its one rank IS the fullest), and a
+	# half-turn of it is just a lateral mirror of the same centred row.
+	if UnitFormation.ranks_for(soldiers, files) <= 1:
+		return false
+	if absf(absf(angle) - PI) < 0.01 and soldiers % files == 0:
+		return false
+	_formation_angle = 0.0
+	_render_dirty = true
+	return true
+
+
+## True when every soldier body stands within REFORM_SETTLE_EPS of its formation slot --
+## the ranks have re-formed. Trivially true before the bodies seed. Deterministic (pure
+## positions, no RNG), so live play and replay agree tick for tick.
+func _reform_bodies_settled() -> bool:
+	var slots: PackedVector2Array = soldier_world_slots(soldiers)
+	var n: int = mini(slots.size(), _sim_soldier_pos.size())
+	for i in range(n):
+		if _sim_soldier_pos[i].distance_squared_to(slots[i]) > REFORM_SETTLE_EPS * REFORM_SETTLE_EPS:
+			return false
+	return true
+
+
+## Safety timeout (seconds) for the post-about-face reform hold. Re-squaring a half-turned
+## grid moves every slot to its point-reflection through the block centre, so the longest
+## march any body makes in the countermarch is the block's full DIAGONAL (a corner man
+## crosses both the width and the depth), and the slowest mover is a body stepping backward
+## at the back-pace fraction of jog. Double that worst leg (the arrival ramps up from rest
+## under bounded acceleration and decelerates to land, so the average pace runs well under
+## the cap) and add a fixed buffer. The hold normally ends before this via
+## _reform_bodies_settled -- the timeout only bounds a pathological hold (e.g. bodies
+## jostled off their slots by a crowding friendly regiment). Derived from the unit's own
+## shape and pace stats, no tuned magic number.
+func _reform_timeout() -> float:
+	var files: int = maxi(1, formation_files(soldiers))
+	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	var span: float = FORMATION_SPACING * spacing_scale
+	var width: float = float(maxi(0, files - 1)) * span
+	var depth: float = float(maxi(0, ranks - 1)) * span
+	var crossing: float = Vector2(width, depth).length()
+	var slowest: float = maxf(1.0, jog_speed * back_speed_fraction)
+	return crossing / slowest * 2.0 + 1.0
 
 
 ## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
@@ -2117,6 +2324,7 @@ func _commit_pending_reform() -> void:
 	move_target = _reform_target
 	has_move_target = true
 	_reform_timer = 0.0
+	_reform_until_settled = false
 
 
 ## Fold another friendly regiment into this one: pool soldiers, blend the
@@ -2179,9 +2387,12 @@ func _rout() -> void:
 	has_move_target = false
 	clear_orders()   # a rout drops every in-progress maneuver -- the queue mirrors that
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
+	_reform_until_settled = false
+	_reform_on_arrival = false
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
 	_has_pending_march = false         # drop any rear-move march parked behind the conversio
 	_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
+	_pending_march_reform = false      # and the reform phase that rode with it
 	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
 	_wheel_target = Vector2.ZERO       # and any in-progress wheel (partial swing left as-is)
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn

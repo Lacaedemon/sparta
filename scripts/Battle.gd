@@ -262,12 +262,13 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# `count` units deploy, cycling this composition so a larger army (a bigger
 	# campaign stack) fields more of the same mix.
 	#
-	# `reach_m` is the weapon's effective melee reach in metres, converted to the
-	# unit's attack_range below. Longer-reach weapons strike while a shorter-weapon
-	# enemy is still closing the gap, so a spearman lands the first blows of a clash.
-	# Infantry's sword sits at the 1.3 m baseline (= the old flat 26-unit reach);
-	# the spear out-reaches it, the cavalry sword a touch longer than the foot sword,
-	# and the archers' sidearm is short (they fight at range, not in the press).
+	# `weapon`/`shield` are interned LoadoutRegistry type ids. The weapon type's
+	# reach_m (metres) becomes the unit's attack_range below. Longer-reach weapons
+	# strike while a shorter-weapon enemy is still closing the gap, so a spearman
+	# lands the first blows of a clash. Infantry's gladius sits at the 1.3 m
+	# baseline (= the old flat 26-unit reach); the spear out-reaches it, the
+	# cavalry spatha a touch longer than the foot sword, and the archers' sidearm
+	# is short (they fight at range, not in the press).
 	#
 	# `walk_mps`/`jog_mps`/`sprint_mps` are the unit's three gait speeds in metres/second,
 	# converted to world units below. Independent per type -- not a fixed fraction of each
@@ -305,11 +306,13 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 ## cycles this composition, so a larger army fields more of the same mix. Extracted so
 ## both the line spawn and the scenario spawn (custom demo matchups) share one stat table.
 ##
-## `reach_m` is the weapon's effective melee reach in metres, converted to the unit's
-## attack_range in _spawn_unit. Longer-reach weapons strike while a shorter-weapon enemy
-## is still closing the gap, so a spearman lands the first blows of a clash. Infantry's
-## sword sits at the 1.3 m baseline; the spear out-reaches it, the cavalry sword a touch
-## longer than the foot sword, and the archers' sidearm is short (they fight at range).
+## `weapon`/`shield` are interned LoadoutRegistry type ids — the concrete Weapon/Shield
+## type every soldier of the unit carries. The weapon type's reach_m (metres) is converted
+## to the unit's attack_range in _spawn_unit, so the registry is the single source of truth
+## for reach. Longer-reach weapons strike while a shorter-weapon enemy is still closing the
+## gap, so a spearman lands the first blows of a clash. Infantry's gladius sits at the
+## 1.3 m baseline; the spear out-reaches it, the cavalry spatha a touch longer than the
+## foot sword, and the archers' sidearm is short (they fight at range).
 ##
 ## `walk_mps`/`jog_mps`/`sprint_mps` are the unit's three gait speeds in metres/second,
 ## converted to world units in _spawn_unit. Independent per type -- not a fixed fraction of
@@ -325,11 +328,11 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 ## loose, sword-armed foot and cavalry at the plain combat-order default.
 func _default_loadout() -> Array:
 	return [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "reach_m": 2.4, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "reach_m": 1.3, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "reach_m": 0.6, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "shield": LoadoutRegistry.SHIELD_SCUTUM, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
 	]
 
 
@@ -357,9 +360,18 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.move_speed = d["sprint_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 	u.accel = d["accel_mps2"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 	u.decel = d["decel_mps2"] * WORLD_UNITS_PER_METER * SPEED_SCALE
-	# Weapon reach (metres) -> world units. Falls back to the unit default if omitted.
-	if d.has("reach_m"):
-		u.attack_range = d["reach_m"] * WORLD_UNITS_PER_METER
+	# Loadout types: interned LoadoutRegistry ids. The weapon type is the single
+	# source of truth for melee reach — its reach_m (metres) -> world units becomes
+	# the unit's attack_range, the same scalar combat read before the registry
+	# existed, so outcomes are unchanged. A dict without loadout keys (a bare test
+	# unit) keeps the Unit defaults (gladius + scutum, the 26-unit baseline reach).
+	if d.has("weapon"):
+		u.weapon_type_id = d["weapon"]
+		var weapon_type: Weapon = LoadoutRegistry.weapon(u.weapon_type_id)
+		if weapon_type != null:
+			u.attack_range = weapon_type.reach_m * WORLD_UNITS_PER_METER
+	if d.has("shield"):
+		u.shield_type_id = d["shield"]
 	u.training = d.get("training", 0.0)
 	# Cavalry respond faster — more mobile and battle-conditioned.
 	if d["cav"]:
@@ -769,6 +781,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.support_target = null
 			u.deploy_facing = Vector2.ZERO
 			u._reform_timer = 0.0
+			u._reform_until_settled = false
+			u._reform_on_arrival = false   # a drill step's arrival shouldn't fire a stale reform
+			u._pending_march_reform = false
 			u.ordered_facing = u.facing   # hold facing: side-step / back-step, no pivot
 			u.move_target = u.position + offset
 			u.has_move_target = true
@@ -853,8 +868,13 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# Drop any side-step hold from a prior order; the plain-move branch below
 			# re-sets it when this order is itself a small lateral shift.
 			u.ordered_facing = Vector2.ZERO
-			# A new order always cancels any in-progress reform from the previous one.
+			# A new order always cancels any in-progress reform from the previous one --
+			# the hold, its settle-early mode, and any reform still parked behind a
+			# rear-move march (start_order_response squares the grid itself).
 			u._reform_timer = 0.0
+			u._reform_until_settled = false
+			u._reform_on_arrival = false
+			u._pending_march_reform = false
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			if attack_targets.is_empty():
 				u.target_enemy = target_unit
@@ -942,6 +962,11 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 						u.has_move_target = false
 						u._pending_march_target = point
 						u._has_pending_march = true
+						# Reform timing rides the same recorded "reform" field the plain
+						# reform-before-move hold uses: true = re-form the ranks square to
+						# the new heading before stepping off, false = march at once and
+						# re-form on arrival (see Unit._think's conversio handoff).
+						u._pending_march_reform = bool(cmd.get("reform", false))
 						about_faced = true
 				# A rear move that armed the about-face parks its march for _think to commit
 				# on completion; every other move commits here (reform-hold or immediate).

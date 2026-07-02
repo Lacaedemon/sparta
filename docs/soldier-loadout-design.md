@@ -1,18 +1,21 @@
 # Design note: soldier weapon/shield loadout
 
-Status: **design only — no implementation yet** (tracks #535). Phase issues are
-filed and linked below; each phase lands as its own PR once this doc is settled.
+Status: **phase 1 implemented** (#536): the `Weapon`/`Shield` type classes,
+the interned `LoadoutRegistry`, and the per-soldier id arrays are in the code,
+with the weapon type as the single source of truth for spawn-time reach; the
+strike-time combat-read re-express split out to #571 (see phase 1 below for
+why). Phases 2-4 (#537-#539) are design-only so far.
 
 ## Motivation
 
 The combat model (`docs/combat-model.md`) already gives each soldier type fixed
-attributes — skill, armour, shield, lethality, reach, mass — but they live as
-magic numbers and dictionary keys: `_default_loadout()` in `scripts/Battle.gd`
-is an `Array` of untyped `Dictionary` literals (`"reach_m": 2.4`, `"atk": 11`),
-and `Battle._spawn_unit` reads them into scalar fields defined on `Unit`
-(`attack`, `defense`, `attack_range`) at spawn time. There is no `Weapon` or
-`Shield` object anywhere — "spear" is a string name plus a handful of loose
-numbers, not a thing.
+attributes — skill, armour, shield, lethality, reach, mass — but before phase 1
+they lived as magic numbers and dictionary keys: `_default_loadout()` in
+`scripts/Battle.gd` was an `Array` of untyped `Dictionary` literals
+(`"reach_m": 2.4`, `"atk": 11`), and `Battle._spawn_unit` read them into scalar
+fields defined on `Unit` (`attack`, `defense`, `attack_range`) at spawn time.
+There was no `Weapon` or `Shield` object anywhere — "spear" was a string name
+plus a handful of loose numbers, not a thing.
 
 The owner's directive: model weapons and shields as **concrete classed
 objects** — real fields and methods, not an enum or a dictionary of magic
@@ -118,9 +121,9 @@ case; giving it an object keeps `covers()` uniform instead of an
 
 ## Type registry sketch
 
-`scripts/Battle.gd`'s `_default_loadout()` currently fields four unit types —
-Spearmen, Infantry, Archers, Cavalry (see lines 326-333) — each with one
-melee weapon (`reach_m`) and an implicit shield weight already hardcoded per
+`scripts/Battle.gd`'s `_default_loadout()` fields four unit types —
+Spearmen, Infantry, Archers, Cavalry — each with one
+melee weapon (a `reach_m`) and an implicit shield weight already hardcoded per
 type in `SoldierCombat.profile_for()` (`scripts/SoldierCombat.gd:63-71`): a
 `"shield"` value of 0.65 for Spearmen (anti-cavalry), 0.60 for Infantry, 0.05
 for Archers (ranged), 0.25 for Cavalry. That gradient is exactly what
@@ -129,7 +132,7 @@ worth of block value, Archers next to none, Cavalry something in between.
 Phase 1 does not invent new unit types or new weapons; it names what already
 exists concretely:
 
-| id | type | reach_m (from `_default_loadout`) | carried by |
+| id | type | reach_m (was `_default_loadout`'s literal, now `LoadoutRegistry`) | carried by |
 |---|---|---|---|
 | `WEAPON_SPEAR` | spear | 2.4 | Spearmen |
 | `WEAPON_GLADIUS` | short sword | 1.3 | Infantry |
@@ -138,10 +141,10 @@ exists concretely:
 
 Archers' bow itself is not a `reach_m`-bearing melee weapon today — ranged
 attacks use a fixed `RANGED_RANGE` constant (160 world units,
-`scripts/Unit.gd:310`), not `attack_range`/`reach_m`. The 0.6 m `reach_m`
-entry in `_default_loadout()` is the archer's melee sidearm reach, used only
-when an enemy closes to melee contact (per `Battle.gd`'s own comment on
-`_default_loadout`: "archers' sidearm is short — they fight at range"). A
+`scripts/Unit.gd:310`), not `attack_range`/`reach_m`. The 0.6 m reach (now
+`WEAPON_SIDEARM`'s `reach_m`) is the archer's melee sidearm reach, used only
+when an enemy closes to melee contact (per `Battle.gd`'s own loadout comment:
+"the archers' sidearm is short (they fight at range)"). A
 `WEAPON_BOW` type is a plausible future addition once ranged range is folded
 into the same registry, but that is a separate, larger change (`RANGED_RANGE`
 is currently a single shared constant, not per-type) and out of scope for
@@ -160,10 +163,13 @@ natural phase-4 addition once #516's `SwitchWeaponOrder` exists to model the
 javelin→sword transition.)
 
 The registry itself is a small `Dictionary[int, Weapon]` / `Dictionary[int,
-Shield]` populated once (a new dedicated autoload, e.g.
-`scripts/LoadoutRegistry.gd` — there is no existing `Combat.gd` or similar
-autoload to extend today), keyed by the same `int` constants the per-soldier
-arrays store. Lookup is `registry[id]` — O(1), no allocation.
+Shield]` populated once, keyed by the same `int` constants the per-soldier
+arrays store. Lookup is `registry[id]` — O(1), no allocation. As implemented
+it is a `class_name LoadoutRegistry` (`scripts/LoadoutRegistry.gd`) whose
+dictionaries are `static var`s built at class load: pure immutable data needs
+no scene-tree presence, so a static class does the interning without an
+autoload registration (the design sketch's "dedicated autoload" suggestion
+turned out to be more machinery than the data needs).
 
 ## Determinism
 
@@ -188,11 +194,14 @@ arrays store. Lookup is `registry[id]` — O(1), no allocation.
   (`SoldierCombat.facing_gate()` + `land_chance()`) is a continuous
   dot-product facing gate weighted by the type's shield value, not a discrete
   arc check — the `Shield.covers(attack_angle, hold_angle)` sketch above is a
-  simplification for illustration. Phase 1 needs to decide whether combat
-  keeps that continuous formula (reading `Shield.block_value` in place of the
-  current hardcoded `"shield"` literal) or moves to a discrete arc-coverage
-  check; either way `Shield.block_value` is the phase-1 data source, and the
-  wound formula (`land_chance`, `facing_gate`) is unchanged behaviorally.
+  simplification for illustration. Phase 1 kept combat on that continuous
+  formula reading `profile_for()`'s literals; re-expressing those reads
+  through the id arrays (and the continuous-vs-arc decision) is #571, which
+  must first split the per-type shield weight into the shield's own
+  `block_value` and a non-shield residual — Spearmen (0.65) and Infantry
+  (0.60) carry the same scutum, so a single per-shield value is not a
+  behavior-preserving drop-in. The wound formula (`land_chance`,
+  `facing_gate`) stays unchanged behaviorally throughout.
 - **Rendering** — the soldier's `MultiMesh` draw pose reads `weapon_id` /
   `shield_id` (which mesh/sprite) plus `shield_hold_angle` (where to draw it
   relative to the body) once phase 3 wires visuals.
@@ -220,9 +229,14 @@ Each phase: scope, dependencies, done-check, behavior-change label.
   (`WEAPON_SPEAR`, `WEAPON_GLADIUS`, `WEAPON_SIDEARM`, `WEAPON_SPATHA`,
   `SHIELD_SCUTUM`, `SHIELD_ROUND`, `SHIELD_NONE`). Add
   `_sim_soldier_weapon_id` / `_sim_soldier_shield_id` to `Unit.gd`, wired into
-  `Battle._spawn_unit`'s loadout. Re-express existing combat math
-  (`attack_range`, block/defense reads) to pull from the registry via the new
-  arrays instead of the scalar copies.
+  `Battle._spawn_unit`'s loadout. The weapon type's `reach_m` becomes the
+  single source of truth for `attack_range` at spawn (the `"reach_m"`
+  dictionary literals are gone). *As implemented*, the strike-time re-express
+  — combat reading lethality/block through the id arrays instead of
+  `profile_for()`'s per-type literals — split out to a follow-up (#571):
+  the per-type shield weights fold stance factors beyond the shield itself
+  (Spearmen 0.65 vs Infantry 0.60 for the same scutum), so that drop-in is
+  not behavior-preserving until the shield-vs-stance split is decided.
 - **Dependencies:** none — builds on current `main`.
 - **Done-check:** existing GUT suite (`tools/check.sh`) passes unchanged, plus
   a targeted equivalence test asserting combat outcomes are bit-for-bit
