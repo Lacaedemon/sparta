@@ -322,6 +322,10 @@ const ROUT_TIME: float = 6.0
 # (both count from zero); the effective delay before the march is max(order_response_delay,
 # REFORM_DURATION). Deterministic (a plain counter, no RNG), so replays stay exact.
 const REFORM_DURATION: float = 0.8
+# A body within this distance of its slot counts as formed up, for the post-about-face
+# reform's "ranks have re-formed" check. Loose enough that couple()'s tiny centre drift
+# can't stall the check, far tighter than a rank gap (FORMATION_SPACING is 9).
+const REFORM_SETTLE_EPS: float = 1.0
 # Radius over which a rout shakes friendly morale. Shared by the morale-spread
 # loop and the cosmetic shockwave so the visual matches the actual area of effect.
 const ROUT_SHOCK_RADIUS: float = 140.0
@@ -669,11 +673,18 @@ func _update_current_order() -> void:
 		return
 	match current_order.type:
 		Order.Type.MOVE, Order.Type.NUDGE:
-			# Move-to-rear phasing: the conversio (about-face) runs first; once it hands off to
-			# the parked march (has_move_target flips true, no conversio and no march left
-			# parked), the order enters its march phase. Every non-rear move stays NONE (never
-			# entered TURN in the first place -- see Battle._apply_order_cmd's about_faced flag).
+			# Move-to-rear phasing: the conversio (about-face) runs first. With the reform
+			# drill on it hands off to a reform hold (_reform_timer armed, march still
+			# parked in _reform_target), then the march; the hasty variant hands straight
+			# off to the march (has_move_target flips true). Every non-rear move stays NONE
+			# (never entered TURN in the first place -- see Battle._apply_order_cmd's
+			# about_faced flag).
 			if current_order.phase == Order.Phase.TURN \
+					and _conversio_target == Vector2.ZERO and not _has_pending_march \
+					and _reform_timer > 0.0:
+				current_order.phase = Order.Phase.REFORM
+			if (current_order.phase == Order.Phase.TURN
+					or current_order.phase == Order.Phase.REFORM) \
 					and _conversio_target == Vector2.ZERO and not _has_pending_march \
 					and has_move_target:
 				current_order.phase = Order.Phase.MARCH
@@ -738,11 +749,15 @@ func _think(delta: float) -> void:
 	# Reform phase: unit holds position after the order-response delay expires until
 	# reform timer runs out, then commits the pending move. A fighting unit skips the
 	# hold and commits immediately so combat orders are never gated by a reform pause.
+	# A post-about-face reform (_reform_until_settled) instead commits as soon as every
+	# body stands on its re-squared slot -- its timer is only the safety timeout.
 	if _reform_timer > 0.0:
 		if state == State.FIGHTING:
 			_commit_pending_reform()
 		else:
 			_reform_timer = maxf(0.0, _reform_timer - delta)
+			if _reform_until_settled and _reform_bodies_settled():
+				_reform_timer = 0.0   # ranks formed: no need to run out the timeout
 			if _reform_timer > 0.0:
 				state = State.IDLE
 				# Use the hold to centre-pivot in place toward the pending destination, so
@@ -767,17 +782,30 @@ func _think(delta: float) -> void:
 			_conversio_target = Vector2.ZERO
 			_has_pending_march = false   # a new order / combat pre-empts the parked rear march
 			_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
+			_pending_march_reform = false          # the abandoned composite takes its reform with it
 		else:
 			if _advance_turn(_conversio_target, delta):
 				_settle_conversio()
 				_conversio_target = Vector2.ZERO
-				# Rear-sector move: the about-face is done, so start marching to the parked
-				# destination. The block now faces travel, so it advances forward, not backward.
+				# Rear-sector move: the about-face is done. With the reform drill on, re-form
+				# the ranks square to the new heading FIRST -- the countermarch brings a full
+				# rank to the new front instead of the old partial rear rank -- holding the
+				# march until the bodies have settled (the timer is only a safety timeout).
+				# Without it (the hasty variant), step off at once with the flipped grid and
+				# reform on arrival instead. Either way the block faces travel, so it
+				# advances forward, not backward.
 				if _has_pending_march:
 					_has_pending_march = false
-					move_target = _pending_march_target
+					if _pending_march_reform and reform_ranks():
+						_reform_target = _pending_march_target
+						_reform_timer = _reform_timeout()
+						_reform_until_settled = true
+					else:
+						_reform_on_arrival = not _pending_march_reform
+						move_target = _pending_march_target
+						has_move_target = true
+					_pending_march_reform = false
 					_pending_march_target = Vector2.ZERO   # consumed -- clear it alongside its gate, as the interrupt path and _rout() do
-					has_move_target = true
 			state = State.IDLE
 			return
 
@@ -953,6 +981,12 @@ func _think(delta: float) -> void:
 			if deploy_facing != Vector2.ZERO:
 				facing = deploy_facing
 				deploy_facing = Vector2.ZERO
+			# A hasty rear move deferred its reform until the march was done: the unit
+			# stands at its destination now, so re-form the ranks square to the heading
+			# (the bodies ease onto the re-squared slots while it stands idle).
+			if _reform_on_arrival:
+				_reform_on_arrival = false
+				reform_ranks()
 	elif enemy != null and order_mode != ORDER_HOLD:
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
 		# range/contact). If a re-face turn was in progress, settle it first: the unit is
@@ -1705,6 +1739,17 @@ const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
 # valid move destination -- ZERO can't reliably mean "nothing pending".
 var _pending_march_target: Vector2 = Vector2.ZERO
 var _has_pending_march: bool = false
+# Reform timing for the rear-move composite (about-face, reform, march). Stamped from the
+# order's "reform" field when the about-face is armed: true = reform the ranks square to the
+# new heading BEFORE stepping off (the drilled default), false = march at once and reform on
+# arrival instead (the hasty variant). _reform_on_arrival carries the deferred case through
+# the march; both are cleared by a fresh order, an interrupt, or a rout.
+var _pending_march_reform: bool = false
+var _reform_on_arrival: bool = false
+# While true, the reform hold (_reform_timer) ends EARLY once every body stands on its slot
+# (_reform_bodies_settled) -- the timer is only the safety timeout. The plain reform-before-move
+# hold keeps its fixed REFORM_DURATION countdown (this stays false for it).
+var _reform_until_settled: bool = false
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -1878,6 +1923,70 @@ func _settle_conversio() -> void:
 	var turned: float = angle_difference(_conversio_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
 	_render_dirty = true
+
+
+## Reform the ranks (a standalone, composable drill phase -- NOT part of the conversio
+## primitive, which stays a pure in-place facing reversal): re-square the slot grid to the
+## CURRENT heading by dropping the folded maneuver rotation, so soldier_world_slots lays the
+## front rank -- always a full one, by block_slots' construction -- toward `facing` again.
+## The bodies then march themselves onto the re-squared slots under the normal arrival
+## dynamics, a countermarch: after an about-face this brings the original front-rank men back
+## to the front and returns the short/partial rank to the rear, instead of leaving whatever
+## the flip put in front (the depleted rear rank) to lead. No body teleports and no
+## index-aligned array is relabelled, so per-soldier identity/state is untouched.
+##
+## No-ops (returns false) when there is nothing to bring forward: the grid is already square
+## to the heading (its front rank is full by construction), or it is flipped a half-turn but
+## has NO partial rank -- a full grid is centre-symmetric, so the flip already fronts a full
+## rank and a reform would only churn every man through the block for zero shape change.
+## Returns true when a reform actually starts.
+func reform_ranks() -> bool:
+	var angle: float = wrapf(_formation_angle, -PI, PI)
+	if absf(angle) < 0.01:
+		return false
+	var files: int = maxi(1, formation_files(soldiers))
+	# A single rank has no rear to tuck a gap into (its one rank IS the fullest), and a
+	# half-turn of it is just a lateral mirror of the same centred row.
+	if UnitFormation.ranks_for(soldiers, files) <= 1:
+		return false
+	if absf(absf(angle) - PI) < 0.01 and soldiers % files == 0:
+		return false
+	_formation_angle = 0.0
+	_render_dirty = true
+	return true
+
+
+## True when every soldier body stands within REFORM_SETTLE_EPS of its formation slot --
+## the ranks have re-formed. Trivially true before the bodies seed. Deterministic (pure
+## positions, no RNG), so live play and replay agree tick for tick.
+func _reform_bodies_settled() -> bool:
+	var slots: PackedVector2Array = soldier_world_slots(soldiers)
+	var n: int = mini(slots.size(), _sim_soldier_pos.size())
+	for i in range(n):
+		if _sim_soldier_pos[i].distance_squared_to(slots[i]) > REFORM_SETTLE_EPS * REFORM_SETTLE_EPS:
+			return false
+	return true
+
+
+## Safety timeout (seconds) for the post-about-face reform hold. Re-squaring a half-turned
+## grid moves every slot to its point-reflection through the block centre, so the longest
+## march any body makes in the countermarch is the block's full DIAGONAL (a corner man
+## crosses both the width and the depth), and the slowest mover is a body stepping backward
+## at the back-pace fraction of jog. Double that worst leg (the arrival ramps up from rest
+## under bounded acceleration and decelerates to land, so the average pace runs well under
+## the cap) and add a fixed buffer. The hold normally ends before this via
+## _reform_bodies_settled -- the timeout only bounds a pathological hold (e.g. bodies
+## jostled off their slots by a crowding friendly regiment). Derived from the unit's own
+## shape and pace stats, no tuned magic number.
+func _reform_timeout() -> float:
+	var files: int = maxi(1, formation_files(soldiers))
+	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	var span: float = FORMATION_SPACING * spacing_scale
+	var width: float = float(maxi(0, files - 1)) * span
+	var depth: float = float(maxi(0, ranks - 1)) * span
+	var crossing: float = Vector2(width, depth).length()
+	var slowest: float = maxf(1.0, jog_speed * back_speed_fraction)
+	return crossing / slowest * 2.0 + 1.0
 
 
 ## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
@@ -2258,6 +2367,7 @@ func _commit_pending_reform() -> void:
 	move_target = _reform_target
 	has_move_target = true
 	_reform_timer = 0.0
+	_reform_until_settled = false
 
 
 ## Fold another friendly regiment into this one: pool soldiers, blend the
@@ -2320,9 +2430,12 @@ func _rout() -> void:
 	has_move_target = false
 	clear_orders()   # a rout drops every in-progress maneuver -- the queue mirrors that
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
+	_reform_until_settled = false
+	_reform_on_arrival = false
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
 	_has_pending_march = false         # drop any rear-move march parked behind the conversio
 	_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
+	_pending_march_reform = false      # and the reform phase that rode with it
 	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
 	_wheel_target = Vector2.ZERO       # and any in-progress wheel (partial swing left as-is)
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn

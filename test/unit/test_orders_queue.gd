@@ -174,6 +174,36 @@ func test_phased_move_order_stays_in_turn_phase_while_the_about_face_is_still_ru
 	assert_not_null(u.current_order)   # not retired mid-turn
 
 
+func test_phased_move_order_enters_reform_when_the_about_face_hands_off_to_the_hold() -> void:
+	var u := _make_unit()
+	u.set_current_order(Order.new_move(Vector2(10, 10), 0, true))
+	# The conversio has completed and armed the reform hold instead of the march (mirrors
+	# _think()'s reform-before-march handoff: timer armed, march parked in _reform_target).
+	u._conversio_target = Vector2.ZERO
+	u._has_pending_march = false
+	u._reform_target = Vector2(10, 10)
+	u._reform_timer = 2.0
+	u._update_current_order()
+	assert_eq(u.current_order.phase, Order.Phase.REFORM)
+	assert_not_null(u.current_order)   # not retired mid-reform
+
+
+func test_phased_move_order_transitions_reform_to_march_once_the_hold_commits() -> void:
+	var u := _make_unit()
+	u.set_current_order(Order.new_move(Vector2(10, 10), 0, true))
+	u._conversio_target = Vector2.ZERO
+	u._has_pending_march = false
+	u._reform_timer = 2.0
+	u._update_current_order()
+	assert_eq(u.current_order.phase, Order.Phase.REFORM)
+	# The hold committed the parked march (mirrors _commit_pending_reform()).
+	u._reform_timer = 0.0
+	u.has_move_target = true
+	u._update_current_order()
+	assert_eq(u.current_order.phase, Order.Phase.MARCH)
+	assert_not_null(u.current_order)   # marching, not retired
+
+
 func test_attack_order_retires_once_the_target_enemy_is_cleared() -> void:
 	var u := _make_unit()
 	u.set_current_order(Order.new_attack(2))
