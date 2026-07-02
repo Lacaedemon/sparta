@@ -1038,7 +1038,10 @@ func _type_separation_radius() -> float:
 ## apart, summed, meet front-to-front — so engaged enemies use it as their separation
 ## floor, closing the lines to contact instead of holding a fixed gap.
 func _front_depth() -> float:
-	var files: int = UnitFormation.frontage(self)
+	# #534: use the CURRENT formation's own file count (formation_files), not the wide-line
+	# frontage() -- a SQUARE unit's grid is the square layout, so its front depth must be
+	# measured against that same grid, not the line frontage its soldiers aren't standing on.
+	var files: int = formation_files(soldiers)
 	var ranks: int = int(ceil(float(soldiers) / float(files)))
 	var depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING * spacing_scale
 	# Cap the depth used as the engaged-enemy separation floor. A very narrow,
@@ -1430,6 +1433,21 @@ func soldier_world_slots(count: int) -> PackedVector2Array:
 	return out
 
 
+## The file count (frontage) UNDER THE CURRENT formation_mode, for `count` soldiers (#530,
+## #534). SQUARE lays out its own square grid (UnitFormation.square_files, files ~= ranks),
+## not the wide-line frontage every other formation uses (UnitFormation.frontage). This is
+## the SINGLE source of truth for "how many files is the live grid" -- formation_slots,
+## soldier_world_facings, AND the combat geometry that reasons about ranks (_front_depth,
+## engaged_soldier_indices) all key off this, so a SQUARE unit's front-rank/engaged-soldier
+## math always agrees with the grid its soldiers are actually standing on, instead of the
+## render reading one file count and combat reading another. Pure -- a function of (count,
+## formation_mode, the unit's frontage inputs).
+func formation_files(count: int) -> int:
+	if formation_mode == FORMATION_SQUARE:
+		return UnitFormation.square_files(count)
+	return UnitFormation.frontage(self)
+
+
 ## Local-space slot layout for `count` soldiers under the CURRENT formation_mode (#530).
 ## SQUARE lays out a real square grid (UnitFormation.square_slots -- files ~= ranks, bbox
 ## aspect ~1) instead of the wide line frontage, so the block's actual footprint -- and
@@ -1440,7 +1458,7 @@ func soldier_world_slots(count: int) -> PackedVector2Array:
 ## unit's frontage inputs) -- so it stays deterministic and replay-safe like the callers below.
 func formation_slots(count: int) -> PackedVector2Array:
 	if formation_mode == FORMATION_SQUARE:
-		return UnitFormation.square_slots(count, FORMATION_SPACING * spacing_scale)
+		return UnitFormation.block_slots(count, formation_files(count), FORMATION_SPACING * spacing_scale)
 	return UnitFormation.slots(self, count)
 
 
@@ -1457,8 +1475,8 @@ func soldier_world_facings(count: int) -> PackedVector2Array:
 	if formation_mode != FORMATION_SQUARE:
 		out.fill(facing)
 		return out
-	var slots := UnitFormation.square_slots(count, FORMATION_SPACING * spacing_scale)
-	var files: int = UnitFormation.square_files(count)
+	var files: int = formation_files(count)
+	var slots := UnitFormation.block_slots(count, files, FORMATION_SPACING * spacing_scale)
 	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
 	for i in range(slots.size()):
 		if UnitFormation.square_is_perimeter(i, count, files) and slots[i].length_squared() > 0.0001:
@@ -1571,7 +1589,9 @@ func _advance_turn(target: Vector2, delta: float) -> bool:
 ## bodies. Pure of the turn's progress — a function of the CURRENT position/facing/shape — so the
 ## caller captures it once when the wheel is armed.
 func _wheel_pivot_point(dir: int) -> Vector2:
-	var files: int = UnitFormation.frontage(self)
+	# #534: the same current-grid file count as _front_depth/engaged_soldier_indices, so a
+	# wheel hinges against the grid the regiment is actually laid out on.
+	var files: int = formation_files(soldiers)
 	var half_width: float = float(files - 1) * 0.5 * FORMATION_SPACING * spacing_scale
 	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
 	var front_axis: Vector2 = facing.rotated(_formation_angle)             # slot-grid local -Y (toward front)
@@ -1735,14 +1755,16 @@ func soldier_brace() -> float:
 
 
 ## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks of an engaged
-## regiment, or none when it isn't engaged. `UnitFormation.slots` is rank-major
+## regiment, or none when it isn't engaged. The formation grid is rank-major
 ## (rank = index / files, rank 0 = front), so the front ranks are exactly the
-## first files*ENGAGED_RANKS indices. Pure and deterministic.
+## first files*ENGAGED_RANKS indices -- using `files` FROM THE SAME GRID the
+## regiment is actually laid out on (formation_files, #534), not the wide-line
+## frontage() a SQUARE unit no longer uses. Pure and deterministic.
 func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
 		return out
-	var cutoff: int = mini(count, UnitFormation.frontage(self) * ENGAGED_RANKS)
+	var cutoff: int = mini(count, formation_files(count) * ENGAGED_RANKS)
 	for i in range(cutoff):
 		out.push_back(i)
 	return out

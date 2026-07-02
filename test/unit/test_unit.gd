@@ -1599,6 +1599,66 @@ func test_loose_formation_widens_the_engaged_front_depth() -> void:
 		"LOOSE order's rank depth scales by the same density factor as the grid spacing")
 
 
+# --- combat geometry agrees with the rendered grid (#534) -------------------------
+# formation_files() is the single source of truth for "how many files is the live grid"
+# for the CURRENT formation_mode -- SQUARE uses its own square grid (UnitFormation.
+# square_files), everything else uses the wide-line frontage. _front_depth,
+# engaged_soldier_indices, and _wheel_pivot_point must all key off it, or a SQUARE
+# unit's combat/engagement math reasons about a different grid than the one its
+# soldiers are actually rendered on (soldier_world_slots / formation_slots).
+
+func test_formation_files_matches_square_files_only_in_square() -> void:
+	var u := _make_unit(120)
+	assert_eq(u.formation_files(120), UnitFormation.frontage(u),
+		"NORMAL uses the wide-line frontage")
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_eq(u.formation_files(120), UnitFormation.square_files(120),
+		"SQUARE uses its own square file count")
+	assert_ne(UnitFormation.square_files(120), UnitFormation.frontage(u),
+		"sanity: the square and line file counts actually differ for this count")
+
+
+func test_front_depth_uses_the_square_file_count_when_squared() -> void:
+	# Before #534's fix, _front_depth always read UnitFormation.frontage() (the wide-line
+	# file count) even in SQUARE, so it measured the wrong grid's depth.
+	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var files: int = UnitFormation.square_files(120)
+	var ranks: int = int(ceil(120.0 / float(files)))
+	var expected: float = minf(float(ranks - 1) * 0.5 * Unit.FORMATION_SPACING * u.spacing_scale,
+		u.attack_range * 0.5)
+	assert_almost_eq(u._front_depth(), expected, 0.01,
+		"a squared unit's front depth is measured against the SQUARE grid, not the line frontage")
+
+
+func test_engaged_soldier_indices_uses_the_square_file_count_when_squared() -> void:
+	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch
+	var n: int = u._sim_soldier_pos.size()
+	var indices := u.engaged_soldier_indices(n)
+	var files: int = UnitFormation.square_files(n)
+	var expected_cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	assert_eq(indices.size(), expected_cutoff,
+		"the engaged cutoff is measured against the SQUARE grid's own file count")
+
+
+func test_wheel_pivot_uses_the_square_file_count_when_squared() -> void:
+	var u := _make_unit(120)
+	u.facing = Vector2.DOWN
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var files: int = UnitFormation.square_files(120)
+	var expected_half_width: float = float(files - 1) * 0.5 * Unit.FORMATION_SPACING * u.spacing_scale
+	var pivot: Vector2 = u._wheel_pivot_point(1)
+	# The pivot's lateral (X) offset from the unit centre is exactly the square grid's
+	# half-width, not the wide-line frontage's (sign depends on wheel direction/facing
+	# convention -- only the magnitude is asserted here).
+	assert_almost_eq(absf(pivot.x), expected_half_width, 0.01,
+		"the wheel hinge sits on the SQUARE grid's standing flank, not the line frontage's")
+
+
 func test_tight_formation_reduces_cavalry_charge_bonus() -> void:
 	var cav := _cavalry()
 	cav.position = Vector2.ZERO
