@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Website-docs-only change: every figure and table on the docs site gains a Quarto cross-reference label and caption. No gameplay or in-game visual changes, so a recorded battle can't show it."
+}

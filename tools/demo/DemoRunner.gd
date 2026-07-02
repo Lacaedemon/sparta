@@ -23,6 +23,16 @@ func _ready() -> void:
 	# audio that gets captured.
 	Settings.set_sfx_enabled_session(true)
 
+	# Unconditional wall-clock safety net: a recording that never reaches Movie
+	# Maker's --quit-after (forgotten flag, stalled run) quits itself instead of
+	# lingering as an orphaned headless process. On the tree root -- deferred,
+	# since the root is busy adding children during _ready -- so it survives the
+	# scene swap below. Only when this scene is the run's root (a real tool run):
+	# a GUT test that instantiates the runner as a child must not install a
+	# process-wide kill timer in the test run.
+	if get_parent() == get_tree().root:
+		get_tree().root.add_child.call_deferred(RunWatchdog.create("replay recording"))
+
 	var replay_path := OS.get_environment("SPARTA_DEMO_REPLAY")
 	if replay_path != "":
 		if Replay.start_playback(replay_path):

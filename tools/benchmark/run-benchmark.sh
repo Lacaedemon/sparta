@@ -25,6 +25,9 @@
 #   SPARTA_BENCHMARK_WARMUP_TICKS  Physics ticks to run before measuring (default 120 = 2s).
 #   SPARTA_BENCHMARK_TICKS         Physics ticks to measure (default 600 = 10s).
 #   SPARTA_BENCHMARK_OUT           Output JSON path (default: a temp file; printed below).
+#   SPARTA_BENCHMARK_TIMEOUT       Hard timeout in seconds for the benchmark run (default 600 --
+#                                  2x the runner's own in-engine 300s net), so a hung Godot is
+#                                  killed instead of surviving as an orphan.
 #
 # Example (Windows, from the repo root):
 #   GODOT_BIN="C:\Users\you\Documents\apps\Godot_v4.7-stable_win64_console.exe" \
@@ -39,9 +42,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 GODOT_BIN="${GODOT_BIN:-godot}"
+BENCH_TIMEOUT="${SPARTA_BENCHMARK_TIMEOUT:-600}"
+
+# shellcheck source=../lib/run-bounded.sh
+. "$SCRIPT_DIR/../lib/run-bounded.sh"
 
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
-  sed -n '2,33p' "$0"   # print the usage header
+  # Print the usage header: every comment line from line 2 down to `set -euo`.
+  sed -n '2,/^set /{/^set /d;s/^# \{0,1\}//;p}' "$0"
   exit 0
 fi
 
@@ -59,7 +67,7 @@ esac
 OUT_PATH="${SPARTA_BENCHMARK_OUT:-$(mktemp -t sparta_benchmark_XXXXXX.json 2>/dev/null || echo "${TMPDIR:-/tmp}/sparta_benchmark_result.json")}"
 
 # Import once so autoloads / class_name globals (BenchmarkStats) are registered.
-"$GODOT_BIN" --headless --import --path "$PROJECT_ROOT" >/dev/null 2>&1 || true
+run_bounded "$BENCH_TIMEOUT" "$GODOT_BIN" --headless --import --path "$PROJECT_ROOT" >/dev/null 2>&1 || true
 
 export SPARTA_BENCHMARK_SCENARIO="$SCENARIO_RES"
 export SPARTA_BENCHMARK_SCALE="$SCALE"
@@ -68,12 +76,19 @@ export SPARTA_BENCHMARK_OUT="$OUT_PATH"
 echo "Benchmarking $SCENARIO_RES at scale ${SCALE}x..."
 # Plain --headless, no --write-movie / --fixed-fps: the runner free-runs physics as fast as
 # the CPU allows (Engine.max_fps = 0) and self-quits once its measurement window completes
-# (or its own timeout/stall guard fires), so no --quit-after tick count is needed here.
-"$GODOT_BIN" --headless --path "$PROJECT_ROOT" \
-  res://tools/benchmark/BenchmarkRunner.tscn || true
-# `|| true`: a headless Godot run's exit code is not a reliable success signal (push_error()
-# does not set a nonzero exit -- see CLAUDE.md), so the OUTPUT FILE below is the authoritative
-# check, not this command's exit status.
+# (or its own timeout/stall guard fires), so no --quit-after tick count is needed here. The
+# outer timeout is a backstop over those in-engine nets, so a hung run is killed rather than
+# left orphaned.
+rc=0
+run_bounded "$BENCH_TIMEOUT" "$GODOT_BIN" --headless --path "$PROJECT_ROOT" \
+  res://tools/benchmark/BenchmarkRunner.tscn || rc=$?
+# Non-timeout exit codes are ignored: a headless Godot run's exit code is not a reliable
+# success signal (push_error() does not set a nonzero exit -- see CLAUDE.md), so the OUTPUT
+# FILE below is the authoritative check. A timeout kill, though, IS meaningful -- report it.
+if run_bounded_timed_out "$rc"; then
+  echo "ERROR: benchmark timed out after ${BENCH_TIMEOUT}s and was killed (no orphan left behind)." >&2
+  exit 1
+fi
 
 if [ ! -s "$OUT_PATH" ]; then
   echo "ERROR: no benchmark report was written to $OUT_PATH (run may have crashed or hung)." >&2

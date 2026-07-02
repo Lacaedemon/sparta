@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Far-tier statistical simulation rules (LOD phase 2) are representational: the rules class is unit-tested in isolation and nothing in Battle constructs or ticks a far-tier formation during play yet, so no recorded battle can show the change. The tier transition that makes it visible is phase 3."
+}

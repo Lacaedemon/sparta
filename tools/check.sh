@@ -31,6 +31,16 @@
 #   GUT_VERSION  GUT release vendored into addons/gut when it's missing
 #                (default: v9.7.0). Keep in sync with godot-ci.yml and
 #                test/README.md.
+#   SPARTA_CHECK_VALIDATE_TIMEOUT / SPARTA_CHECK_TEST_TIMEOUT /
+#   SPARTA_CHECK_COVERAGE_TIMEOUT
+#                Per-check hard timeouts in seconds for the Godot runs (defaults
+#                900 / 1800 / 2700). Generous hang-detectors, not perf gates: a
+#                run that hits one was never going to finish, and killing it
+#                stops an orphaned Godot process from piling up on the machine.
+#   SPARTA_GODOT_PREFLIGHT_LIMIT
+#                Warn when more than this many Godot processes are already
+#                running before the checks start (default 5) — the early signal
+#                of an orphan leak building up.
 #
 # Exit status is non-zero if any selected check fails, so it drops straight into
 # a pre-push hook or a `&&` chain.
@@ -41,6 +51,16 @@ PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 GODOT_BIN="${GODOT_BIN:-godot}"
 # Keep in sync with .github/workflows/godot-ci.yml and test/README.md.
 GUT_VERSION="${GUT_VERSION:-v9.7.0}"
+
+# Hard per-check budgets (seconds) for the Godot invocations, so a hung run is
+# killed instead of surviving as an orphaned process. See the header for the
+# rationale; override via the SPARTA_CHECK_*_TIMEOUT variables above.
+VALIDATE_TIMEOUT="${SPARTA_CHECK_VALIDATE_TIMEOUT:-900}"
+TEST_TIMEOUT="${SPARTA_CHECK_TEST_TIMEOUT:-1800}"
+COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-2700}"
+
+# shellcheck source=lib/run-bounded.sh
+. "$SCRIPT_DIR/lib/run-bounded.sh"
 
 DEFAULT_CHECKS=(validate test chars)
 ALL_CHECKS=(validate test chars coverage links)
@@ -165,6 +185,33 @@ ensure_gut() {
   fi
 }
 
+# Pre-flight: warn when Godot processes have already piled up — the early
+# signal of an orphan leak building up (hung headless runs whose calling shell
+# died), and the likely explanation for slow or flaky local runs. Warn-only:
+# concurrent sessions legitimately run a few Godot processes, so this never
+# fails the checks. Sweep with tools/kill-orphan-godot.ps1 / .sh (see there).
+preflight_godot_count() {
+  local limit="${SPARTA_GODOT_PREFLIGHT_LIMIT:-5}" count=""
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+      # MSYS ps can't see native Windows processes; tasklist can. The bracketed
+      # pattern keeps grep from matching its own command line.
+      count="$(tasklist 2>/dev/null | grep -ci '[g]odot')"
+      ;;
+    *)
+      count="$(ps -eo args= 2>/dev/null | grep -ci '[g]odot')"
+      ;;
+  esac
+  # Unparseable count (no ps/tasklist, unexpected output): skip silently — the
+  # pre-flight is best-effort and must never block the checks themselves.
+  case "$count" in ''|*[!0-9]*) return 0 ;; esac
+  if [ "$count" -gt "$limit" ]; then
+    warn "Pre-flight: $count Godot processes are already running (warn limit: $limit)."
+    warn "That's the early sign of an orphan leak (hung runs whose shell died) and can starve this run."
+    warn "Sweep with tools/kill-orphan-godot.ps1 (Windows) or tools/kill-orphan-godot.sh — dry-run by default."
+  fi
+}
+
 # --- checks ----------------------------------------------------------------
 # Each returns 0 on pass, non-zero on fail.
 
@@ -174,8 +221,17 @@ check_validate() {
   local log; log="$(mktemp)"
   # `--import` loads the project in full and reports compile/import errors, but
   # Godot doesn't reliably exit non-zero on script errors — so, like CI, we fail
-  # on any error marker in the log.
-  ( cd "$PROJECT_ROOT" && "$GODOT_BIN" --headless --import --verbose ) >"$log" 2>&1 || true
+  # on any error marker in the log. A timeout is the one exit status that IS
+  # meaningful here: a killed run leaves a truncated log with no error markers,
+  # which the grep below would wrongly read as a pass.
+  local rc=0
+  ( cd "$PROJECT_ROOT" && run_bounded "$VALIDATE_TIMEOUT" \
+      "$GODOT_BIN" --headless --import --verbose ) >"$log" 2>&1 || rc=$?
+  if run_bounded_timed_out "$rc"; then
+    err "Godot import timed out after ${VALIDATE_TIMEOUT}s and was killed (no orphan left behind)."
+    rm -f "$log"
+    return 1
+  fi
   # Send the matched error lines to stderr so all of this check's error output
   # (these plus the err() message below) stays on one stream.
   if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" "$log" >&2; then
@@ -192,8 +248,15 @@ check_test() {
   ensure_gut || return 1
   # gut_cmdln runs the suite without enabling the editor plugin; -gexit makes it
   # exit non-zero if any test fails or errors.
-  ( cd "$PROJECT_ROOT" && "$GODOT_BIN" --headless -s addons/gut/gut_cmdln.gd \
-      -gdir=res://test -ginclude_subdirs -gexit )
+  local rc=0
+  ( cd "$PROJECT_ROOT" && run_bounded "$TEST_TIMEOUT" \
+      "$GODOT_BIN" --headless -s addons/gut/gut_cmdln.gd \
+      -gdir=res://test -ginclude_subdirs -gexit ) || rc=$?
+  if run_bounded_timed_out "$rc"; then
+    err "GUT suite timed out after ${TEST_TIMEOUT}s and was killed (no orphan left behind)."
+    return 1
+  fi
+  return "$rc"
 }
 
 check_coverage() {
@@ -203,11 +266,18 @@ check_coverage() {
   # and write an lcov report. Mirrors .github/workflows/test-coverage.yml. Not in
   # the default set — instrumentation is slower and coverage never gates. The
   # report lands at coverage/lcov.info (git-ignored); see test/README.md.
+  local rc=0
   ( cd "$PROJECT_ROOT" && COVERAGE_LCOV_FILE=res://coverage/lcov.info \
+      run_bounded "$COVERAGE_TIMEOUT" \
       "$GODOT_BIN" --headless -s addons/gut/gut_cmdln.gd \
       -gdir=res://test -ginclude_subdirs -gexit \
       -gpre_run_script=res://test/pre_run_hook.gd \
-      -gpost_run_script=res://test/post_run_hook.gd ) || return 1
+      -gpost_run_script=res://test/post_run_hook.gd ) || rc=$?
+  if run_bounded_timed_out "$rc"; then
+    err "Coverage run timed out after ${COVERAGE_TIMEOUT}s and was killed (no orphan left behind)."
+    return 1
+  fi
+  [ "$rc" -eq 0 ] || return 1
   # The post-run hook reports a failed lcov write with push_error(), which does
   # not make Godot exit non-zero, so a clean exit above doesn't prove the report
   # was written. Confirm the file exists before claiming success.
@@ -327,6 +397,8 @@ main() {
     [ -z "$seen" ] && deduped+=("$c")
   done
   checks=("${deduped[@]}")
+
+  preflight_godot_count
 
   for name in "${checks[@]}"; do
     run_check "$name" || true

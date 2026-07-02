@@ -57,6 +57,12 @@ static func seed(unit: Unit) -> void:
 	unit._sim_soldier_shield_id = PackedInt32Array()
 	unit._sim_soldier_shield_id.resize(unit._sim_soldier_pos.size())
 	unit._sim_soldier_shield_id.fill(unit.shield_type_id)
+	# Hold-angle state (phase 2): every soldier starts at its shield type's rest
+	# pose (unit.shield_rest_angle, the shared lookup with the tail resize below
+	# and Unit's formation-change reset).
+	unit._sim_soldier_shield_hold_angle = PackedFloat32Array()
+	unit._sim_soldier_shield_hold_angle.resize(unit._sim_soldier_pos.size())
+	unit._sim_soldier_shield_hold_angle.fill(unit.shield_rest_angle())
 	# Per-soldier facing starts from the formation's own layout (SQUARE's perimeter
 	# ring faces outward; every other formation is uniform at the unit heading, the prior
 	# behaviour), with no maneuver active.
@@ -116,6 +122,14 @@ static func step(unit: Unit, delta: float) -> void:
 		unit._sim_soldier_shield_id.resize(n)
 		for j in range(shield_old, n):
 			unit._sim_soldier_shield_id[j] = unit.shield_type_id
+	if unit._sim_soldier_shield_hold_angle.size() != n:
+		# Keep the hold-angle array index-aligned; a fresh tail body starts at its
+		# shield type's rest pose, the same lookup the initial seed uses.
+		var hold_old: int = unit._sim_soldier_shield_hold_angle.size()
+		var tail_rest: float = unit.shield_rest_angle()
+		unit._sim_soldier_shield_hold_angle.resize(n)
+		for j in range(hold_old, n):
+			unit._sim_soldier_shield_hold_angle[j] = tail_rest
 	if unit._sim_soldier_facing.size() != n:
 		var face_old: int = unit._sim_soldier_facing.size()
 		unit._sim_soldier_facing.resize(n)

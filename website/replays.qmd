@@ -9,10 +9,15 @@ and the reason such replay files stay tiny.
 
 ## Two ways to build replays
 
+::: {#tbl-replay-approaches}
+
 | Approach | How | Trade-off |
 | --- | --- | --- |
 | **State-snapshot** | Save every unit's position/health each frame, play it back like a video. | Simple, but logs are large and it's "dumb" playback --- you can't re-run the logic to investigate a bug. |
 | **Deterministic sim + input log** *(Sparta)* | Record only the RNG **seed** and the player's **orders** (each stamped with its physics tick). Replaying re-seeds the RNG and re-injects the orders on the same ticks, so the **real simulation** re-runs identically. | Tiny logs *and* reproduces bugs in the live sim. |
+
+The two ways to build a replay system, and the trade-off each makes.
+:::
 
 Godot has no built-in system for either --- both are something you build. Sparta uses
 the deterministic approach because it gives small logs *and* reproduces bugs in the
@@ -87,6 +92,8 @@ absent from older replays. See [`REPLAY.md`](https://github.com/Lacaedemon/spart
 
 ## Where it lives
 
+::: {#tbl-replay-files}
+
 | File | Role |
 | --- | --- |
 | [`scripts/Replay.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Replay.gd) | Autoload singleton: seeded RNG, record/playback, save/load |
@@ -94,6 +101,9 @@ absent from older replays. See [`REPLAY.md`](https://github.com/Lacaedemon/spart
 | [`scripts/Unit.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Unit.gd) | Draws combat randomness from `Replay.rng`; carries a `uid` |
 | [`scripts/SelectionManager.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/SelectionManager.gd) | Routes right-click orders to `Battle.enqueue_order` |
 | [`scripts/HUD.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/HUD.gd) | `● REC` / `▶ REPLAY` indicator and the Watch Replay button |
+
+The files that make up the replay system.
+:::
 
 ## Keeping it deterministic as the game grows
 
