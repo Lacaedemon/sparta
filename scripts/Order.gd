@@ -1,20 +1,25 @@
 class_name Order
 extends RefCounted
-## Phases 1-2 of the unified orders-queue design (docs/orders-queue-design.md): the
+## Phases 1-3 of the unified orders-queue design (docs/orders-queue-design.md): the
 ## `Order` value type. A queue entry describing one thing a `Unit` is doing or will do -- a
 ## verb, in the design doc's terms. Durable "mode" state (formation_mode, order_mode,
-## stance, ...) stays on `Unit` itself; an Order is what writes it, not where it lives.
+## rank_relief, ...) stays on `Unit` itself; an Order is what writes it, not where it lives.
 ##
-## Phase 2 makes the queue authoritative for the movement maneuvers: an in-place turn (the
+## Phase 2 made the queue authoritative for the movement maneuvers: an in-place turn (the
 ## rear-move about-face phase, the standalone about-face/quarter-turn drills) and the wheel
 ## carry their own execution state here (turn_target / turn_start_facing / pivot), and a
 ## phased rear move carries its recorded reform choice and parks its march destination in
 ## target_pos until the turn completes. `Unit._think` reads and advances that state off
-## `current_order`; the old parallel Unit fields (_conversio_target, _quarter_target,
-## _wheel_target, _pending_march_*) are gone. The march plumbing itself (move_target /
-## waypoints) and the targeting fields stay legacy until phase 3.
+## `current_order`.
+##
+## Phase 3 finishes absorbing the route and the relief swap: a queued waypoint leg IS a
+## queued MOVE order (the parallel Unit.waypoints list is gone), and a line relief's
+## pass-through execution state lives here (relief_partner) instead of on both units.
+## The in-flight targeting references (Unit.target_enemy / support_target) stay on the
+## unit: the reactive layer (enemy AI, auto-engage) writes target_enemy directly with no
+## order behind it, so they are execution state the queue reads, not queue state.
 
-## The order kinds phases 1-2 cover. Most arrive via Battle's recorded/replayed
+## The order kinds phases 1-3 cover. Most arrive via Battle's recorded/replayed
 ## order-dispatch path; the two standalone drills (ABOUT_FACE / QUARTER_TURN, the V/Q/E
 ## keys) are queue entries created by Unit itself and deliberately NOT recorded -- see
 ## SelectionManager.gd for why the drill gestures stay out of the replay stream. The queue
@@ -38,6 +43,10 @@ enum Type {
 	              ## so recorded transcripts keep their type values stable.
 	QUARTER_TURN, ## Standalone quarter-turn drill (Q/E keys): every soldier pivots 90° in place.
 	              ## Created by Unit.quarter_turn(), not recorded.
+	STANCE,       ## Standalone stance change (no movement): writes the durable order_mode
+	              ## and/or the intra-unit rank-relief mode on the unit. Instantaneous, like
+	              ## FORMATION/FRONTAGE. Appended after the phase-2 types so recorded
+	              ## transcripts keep their type values stable.
 }
 
 ## An order's internal choreography, for the phased case that already exists: a move into a
@@ -67,6 +76,7 @@ const TYPE_NAMES := {
 	Type.FRONTAGE: "FRONTAGE",
 	Type.ABOUT_FACE: "ABOUT_FACE",
 	Type.QUARTER_TURN: "QUARTER_TURN",
+	Type.STANCE: "STANCE",
 }
 
 const PHASE_NAMES := {
@@ -91,6 +101,12 @@ var frontage: int = -1
 var dir: int = 0
 ## The order_mode (Battle.OrderMode) the issuing command carried, for MOVE/ATTACK/SUPPORT.
 var order_mode: int = 0
+## STANCE target order_mode (Battle.OrderMode) to write on the unit; -1 = leave unchanged.
+var stance: int = -1
+## STANCE rank-relief mode toggle (Battle.RankRelief): LEAVE keeps the unit's current
+## setting, ON/OFF write it. Rides the recorded command's "frontage" field, like the
+## nudge direction, so the replay format is unchanged.
+var rank_relief: int = 0
 
 # --- Maneuver execution state (phase 2) --------------------------------------
 # Owned by the order: Unit._think reads and advances these off current_order instead of off
@@ -113,6 +129,14 @@ var pivot: Vector2 = Vector2.ZERO
 ## "reform" field). For a rear move: true = re-form the ranks square to the new heading
 ## between the about-face and the march; false = step off at once and re-form on arrival.
 var reform: bool = false
+## RELIEF only: the tired ally this order is swapping with, while the pass-through
+## exemption is live -- Unit._separation_exempt lets the pair interpenetrate as long as
+## either side's current RELIEF order names the other. UnitRelief.update clears it (the
+## swap has resolved) once the pair is apart or the partner has left the line, and the
+## whole link dies with the order on an interrupt -- the swap's execution state lives
+## here, not on the two units. null when idle or resolved. (target_uid still carries the
+## ally's uid for the transcript; this is the resolved node the exemption compares.)
+var relief_partner: Unit = null
 
 
 static func type_name(value: int) -> String:
@@ -184,6 +208,14 @@ static func new_nudge(nudge_dir: int) -> Order:
 	var o := Order.new()
 	o.type = Type.NUDGE
 	o.dir = nudge_dir
+	return o
+
+
+static func new_stance(stance_mode: int, rank_relief_toggle: int = 0) -> Order:
+	var o := Order.new()
+	o.type = Type.STANCE
+	o.stance = stance_mode
+	o.rank_relief = rank_relief_toggle
 	return o
 
 

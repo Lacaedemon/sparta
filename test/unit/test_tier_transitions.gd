@@ -53,17 +53,22 @@ func test_cannot_demote_while_the_engaged_linger_runs() -> void:
 func test_cannot_demote_mid_maneuver_or_reform() -> void:
 	# Each in-flight per-soldier context blocks demotion on its own: the aggregate record
 	# cannot carry a half-finished turn, an owned facing set, a reform hold, a parked rear
-	# march, or a relief interleave.
+	# march, or a relief interleave. The maneuver and relief context lives on the current
+	# Order (turn_target / phase / the RELIEF type), so each case stages a live order.
 	var u := _make_seeded_unit()
-	u._conversio_target = Vector2.RIGHT
+	var about_face := Order.new_about_face()
+	about_face.turn_target = Vector2.RIGHT
+	u.current_order = about_face
 	assert_false(TierTransition.can_demote(u), "an in-flight about-face blocks demotion")
-	u._conversio_target = Vector2.ZERO
-	u._quarter_target = Vector2.RIGHT
+	var quarter := Order.new_quarter_turn(1)
+	quarter.turn_target = Vector2.RIGHT
+	u.current_order = quarter
 	assert_false(TierTransition.can_demote(u), "an in-flight quarter-turn blocks demotion")
-	u._quarter_target = Vector2.ZERO
-	u._wheel_target = Vector2.RIGHT
+	var wheel := Order.new_wheel(1)
+	wheel.turn_target = Vector2.RIGHT
+	u.current_order = wheel
 	assert_false(TierTransition.can_demote(u), "an in-flight wheel blocks demotion")
-	u._wheel_target = Vector2.ZERO
+	u.current_order = null
 	u._engage_turn_target = Vector2.RIGHT
 	assert_false(TierTransition.can_demote(u), "an in-flight engage re-face blocks demotion")
 	u._engage_turn_target = Vector2.ZERO
@@ -73,13 +78,14 @@ func test_cannot_demote_mid_maneuver_or_reform() -> void:
 	u._reform_timer = 0.5
 	assert_false(TierTransition.can_demote(u), "a reform hold blocks demotion")
 	u._reform_timer = 0.0
-	u._has_pending_march = true
+	var rear_move := Order.new_move(Vector2(0.0, 400.0))
+	rear_move.phase = Order.Phase.REFORM
+	u.current_order = rear_move
 	assert_false(TierTransition.can_demote(u), "a parked rear-move march blocks demotion")
-	u._has_pending_march = false
-	var partner := _make_seeded_unit(8)
-	u._relief_partner = partner
+	var relief := Order.new_relief(8)
+	u.current_order = relief
 	assert_false(TierTransition.can_demote(u), "a mid-relief swap blocks demotion")
-	u._relief_partner = null
+	u.current_order = null
 	assert_true(TierTransition.can_demote(u), "with every blocker cleared it can demote again")
 
 
