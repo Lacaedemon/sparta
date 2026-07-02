@@ -17,9 +17,11 @@ extends GutTest
 ## BODY_ACCEL_FLOOR, so each unit is only asserted once it has been engaged continuously
 ## long enough for that carry-in to have decayed below the bound.
 
-# Run through the infantry press of the seed-12345 showcase: both observed launches
-# (ticks ~614 and ~876 before the fix) fall inside this window, and the second sits well
-# past every foot unit's settle time, so a regression trips the assert deterministically.
+# Run through the infantry press of the seed-12345 showcase: the launches observed
+# before the fix (bodies at 210+ wu/s in the mid-press, around ticks ~600-880 — the
+# exact tick drifts as unrelated sim features land, most recently ~853 at 216 wu/s)
+# fall inside this window, well past every foot unit's settle time, so a regression
+# trips the assert deterministically.
 const CLASH_END_TICK: int = 900
 
 
