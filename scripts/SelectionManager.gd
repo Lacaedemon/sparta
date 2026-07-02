@@ -266,6 +266,13 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		# so the same key drops the square once the horse is beaten off.
 		_toggle_square()
 		return true
+	elif event.keycode == KEY_I:
+		# Jump straight to the schiltron (I sits next to O for orbis, so the two
+		# hollow-square variants share a key row). The harder anti-cavalry brace, at
+		# a deeper offence cost than orbis. Toggles back to Normal like the other
+		# direct-select stances.
+		_toggle_schiltron()
+		return true
 	elif event.keycode == KEY_L:
 		# Lock the shield wall (L for locked shields) -- a frontal holding stance.
 		# Toggles back to Normal so the same key stands the unit down.
@@ -685,9 +692,10 @@ func has_selection() -> bool:
 ## The order the T-key steps through. Kept as an explicit list (not `(mode + 1) % N`)
 ## so new stances can be slotted in without a magic modulus, and so an unknown current
 ## mode falls back cleanly to the front of the cycle. The shielded holding stances
-## (Shield Wall, Testudo) are deliberately NOT in this cycle -- they're set from the
-## control-bar menu or their own direct hotkeys, so T stays a short density-plus-square
-## toggle rather than a six-way slog. A unit in a shielded stance re-enters at Normal.
+## (Shield Wall, Testudo) and the cavalry-specialist square variant (Schiltron) are
+## deliberately NOT in this cycle -- they're set from the control-bar menu or their own
+## direct hotkeys, so T stays a short density-plus-square toggle rather than a seven-way
+## slog. A unit in one of those stances re-enters at Normal.
 const FORMATION_CYCLE: Array[int] = [
 	Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT, Unit.FORMATION_LOOSE, Unit.FORMATION_SQUARE,
 ]
@@ -708,6 +716,13 @@ static func next_formation(current: int) -> int:
 ## PLAYBACK / empty-selection guards; the empty guard here is only to read the lead unit.
 func _toggle_square() -> void:
 	_toggle_formation(Unit.FORMATION_SQUARE)
+
+
+## Directly set (or unset) the schiltron on all selected friendly units -- the cavalry
+## specialist among the two hollow-square variants (#488): a harder charge brace than
+## orbis at a deeper offence cost. Same toggle semantics as _toggle_square.
+func _toggle_schiltron() -> void:
+	_toggle_formation(Unit.FORMATION_SCHILTRON)
 
 
 ## Directly toggle the shield wall on the selected units (a frontal holding stance).

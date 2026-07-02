@@ -1,0 +1,16 @@
+{
+  "_comment": "Schiltron demo (#488): the cavalry-specialist hollow-square variant, distinct from orbis. A lone player Infantry unit (facing down) is charged in the REAR by two cavalry that spawn behind it (above; team 1 advances downward onto it). Early on the player selects the infantry and presses I to jump straight to Schiltron (next to O for orbis on the keyboard). Like orbis, the ring presents spears/shields on every side so the rear charge finds no weak facing -- but schiltron's denser hedge braces the charge harder than orbis does, at a deeper offence cost. Camera frames the clash. Deterministic (scenario + seed + scripted input).",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 500, "count": 120},
+    {"team": 1, "type": "Cavalry", "x": 740, "y": 250},
+    {"team": 1, "type": "Cavalry", "x": 860, "y": 250}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 380.0, "zoom": 1.25}
+  ],
+  "steps": [
+    {"tick": 10, "click": [800, 500]},
+    {"tick": 30, "key": "I"}
+  ]
+}

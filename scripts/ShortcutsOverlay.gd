@@ -29,7 +29,7 @@ const _ROWS: Array = [
 	["Group attack mode (focused/distributed)", "X"],
 	["— Formation & drill —", ""],
 	["Formation (Normal/Tight/Loose/Square)", "T"],
-	["Anti-cavalry square (toggle direct)", "O"],
+	["Anti-cavalry square: orbis / schiltron (toggle direct)", "O / I"],
 	["Shield wall / Testudo (toggle direct)", "L / U"],
 	["Line width (narrower/wider)", "[ / ]"],
 	["File-doubling (explicatio wider / duplicatio deeper)", "B / N"],

@@ -61,15 +61,17 @@ const _FORMATION_NAMES := {
 	UnitRef.FORMATION_NORMAL: "Normal",
 	UnitRef.FORMATION_TIGHT: "Tight",
 	UnitRef.FORMATION_LOOSE: "Loose",
-	UnitRef.FORMATION_SQUARE: "Square",
+	UnitRef.FORMATION_SQUARE: "Square (Orbis)",
 	UnitRef.FORMATION_SHIELD_WALL: "Shield Wall",
 	UnitRef.FORMATION_TESTUDO: "Testudo",
+	UnitRef.FORMATION_SCHILTRON: "Schiltron",
 }
 const _FORMATION_MENU_ORDER := [
 	UnitRef.FORMATION_NORMAL,
 	UnitRef.FORMATION_TIGHT,
 	UnitRef.FORMATION_LOOSE,
 	UnitRef.FORMATION_SQUARE,
+	UnitRef.FORMATION_SCHILTRON,
 	UnitRef.FORMATION_SHIELD_WALL,
 	UnitRef.FORMATION_TESTUDO,
 ]
@@ -385,7 +387,7 @@ func _refresh_hint() -> void:
 		if keys != "":
 			keys += "/"
 		keys += OS.get_keycode_string(Settings.order_binding(entry["slug"]))
-	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Square/Normal)   •   O square   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
+	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Square/Normal)   •   O orbis / I schiltron   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
 
 
 ## Dispatch a Menu popup selection by its stable item id.
