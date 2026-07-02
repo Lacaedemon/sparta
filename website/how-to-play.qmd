@@ -335,9 +335,11 @@ deploy at the plain Normal combat order.
 the soldiers face spears and shields outward on every side, so the unit has **no weak
 flank or rear** --- an attack from any direction lands as if it were frontal, and a
 cavalry charge into the ring is braced (and backfires) no matter which side it hits.
-The price is mobility (the ring crawls) and offence (it hits softer while hunkered),
-so square up *before* the horse arrives and drop back to Normal once the threat is
-gone. There are two variants of the ring, trading off differently:
+The ring is visible at a glance: the individual soldiers face outward, and a ring of
+spear ticks traces the block's perimeter on top, so it reads clearly at any zoom. The
+price is mobility (the ring crawls) and offence (it hits softer while hunkered), so
+square up *before* the horse arrives and drop back to Normal once the threat is gone.
+There are two variants of the ring, trading off differently:
 
 - **Orbis** --- the last-stand ring. Its offence and charge-bracing sit at the square's
   baseline, and it holds its nerve better than any other stance: casualties erode its

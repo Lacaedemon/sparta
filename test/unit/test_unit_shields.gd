@@ -86,6 +86,77 @@ func test_shield_counts_clamp_to_at_least_one() -> void:
 		"zero cols/rows still yields one tile")
 
 
+# --- hollow-square spear ring (#489) ---------------------------------------------
+
+func test_square_perimeter_points_matches_square_is_perimeter() -> void:
+	var n: int = 24
+	var files: int = UnitFormation.square_files(n)
+	var spacing: float = 9.0
+	var slots := UnitFormation.block_slots(n, files, spacing)
+	var perimeter := UnitShields.square_perimeter_points(n, files, spacing)
+	var expected: int = 0
+	for i in range(n):
+		if UnitFormation.square_is_perimeter(i, n, files):
+			expected += 1
+	assert_eq(perimeter.size(), expected,
+		"one perimeter point per soldier UnitFormation.square_is_perimeter flags")
+	# Every perimeter point must be one of the actual slot positions (same grid).
+	for p in perimeter:
+		var found := false
+		for s in slots:
+			if p.is_equal_approx(s):
+				found = true
+				break
+		assert_true(found, "perimeter point %s is a real slot in the square grid" % p)
+
+
+func test_square_perimeter_points_empty_for_nonpositive_inputs() -> void:
+	assert_eq(UnitShields.square_perimeter_points(0, 4, 9.0).size(), 0, "zero soldiers: no ring")
+	assert_eq(UnitShields.square_perimeter_points(10, 0, 9.0).size(), 0, "zero files: no ring")
+
+
+func test_square_ring_ticks_point_outward_from_each_perimeter_point() -> void:
+	var perimeter := PackedVector2Array([Vector2(10, 0), Vector2(0, -10), Vector2(-10, 0)])
+	var ticks: Array = UnitShields.square_ring_ticks(perimeter, 5.0)
+	assert_eq(ticks.size(), perimeter.size(), "one tick per perimeter point")
+	for i in range(ticks.size()):
+		var pair: PackedVector2Array = ticks[i]
+		assert_eq(pair.size(), 2, "each tick is a [base, tip] pair")
+		var p: Vector2 = perimeter[i]
+		var out_dir: Vector2 = p.normalized()
+		# The tip sits further from the origin (outward) than the base.
+		assert_gt(pair[1].length(), pair[0].length(), "tip %d is further out than its base" % i)
+		# Both ends lie along the same outward ray from the perimeter point's direction.
+		assert_gt((pair[1] - pair[0]).normalized().dot(out_dir), 0.99,
+			"tick %d points along the outward direction" % i)
+
+
+func test_square_ring_ticks_skip_a_degenerate_centre_point() -> void:
+	# A perimeter point exactly at the block centre (e.g. a 1-soldier square) has no
+	# outward direction -- it must be skipped, not produce a zero-length/NaN tick.
+	var perimeter := PackedVector2Array([Vector2.ZERO, Vector2(10, 0)])
+	var ticks: Array = UnitShields.square_ring_ticks(perimeter, 5.0)
+	assert_eq(ticks.size(), 1, "the degenerate centre point is skipped")
+
+
+# --- render smoke: the ring draws for both square variants ----------------------
+
+func test_orbis_stance_draws_the_ring_without_error() -> void:
+	var u := _live_unit(Unit.FORMATION_SQUARE)   # -> _draw -> UnitShields._draw_square_ring
+	u.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_eq(u.formation_mode, Unit.FORMATION_SQUARE, "still in orbis after draw")
+
+
+func test_schiltron_stance_draws_the_ring_without_error() -> void:
+	var u := _live_unit(Unit.FORMATION_SCHILTRON)
+	u.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_eq(u.formation_mode, Unit.FORMATION_SCHILTRON, "still in schiltron after draw")
+
+
 # --- render smoke: the draw path runs for each stance without erroring ---------
 # UnitShields.draw() dispatches on formation_mode and issues draw_* calls, which
 # are only valid inside a CanvasItem's _draw(). Drive it the way the engine does:
