@@ -141,6 +141,11 @@ script under `demos/inputs/`:
   The `SPARTA_DEMO_STATE` env var adds to this list, so a reviewer can dump state from any demo
   without editing its script. Ignored during a normal movie recording.
 
+A malformed `camera`, `frames`, or `state` field (a non-array value, e.g. `"state": "8,60"`)
+**degrades instead of failing**: the recorder warns and ignores the field, and CI's transcript
+tick parser falls back to its default spread. `steps` and `scenario` stay strict — a typo there
+would change what the demo simulates, so the recording fails loudly instead.
+
 The standard 5v5 (`seed "12345"`) unit positions are in [Hand-authoring a scenario](#hand-authoring-a-scenario)
 below — clicks target those world coordinates.
 

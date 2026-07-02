@@ -154,8 +154,25 @@ jobs:
           STATE_TICKS=""
           if [ "$SCENE" = "DemoInputRecorder.tscn" ] && [ -f "$SOURCE" ]; then
             # Prefer the script's `state` ticks, then its `frames` ticks, then a default.
-            STATE_TICKS=$(jq -r '(.state // .frames // []) | map(tostring) | join(",")' "$SOURCE")
+            # Degrade, never fail: an author typo (a non-array state/frames, junk
+            # elements, or an unparseable script) falls back to the default spread
+            # instead of failing the job under `set -e`. A lone number counts as a
+            # one-tick list; non-number elements are dropped. The jq program is a
+            # fixed literal — the author's script enters only as jq's input file,
+            # never as code.
+            STATE_TICKS=$(jq -r '
+                def ticks: if type == "array" then map(select(type == "number"))
+                           elif type == "number" then [.]
+                           else empty end;
+                ((.state | ticks) // (.frames | ticks) // []) | map(tostring) | join(",")
+              ' "$SOURCE" 2>/dev/null) || STATE_TICKS=""
             if [ -z "$STATE_TICKS" ]; then
+              # Warn when the default is masking an author mistake: a state/frames
+              # field exists (or the script is not valid JSON) yet gave no usable tick.
+              PROBE=$(jq -r 'has("state") or has("frames")' "$SOURCE" 2>/dev/null) || PROBE="error"
+              if [ "$PROBE" != "false" ]; then
+                echo "::warning::No usable ticks in $SOURCE state/frames (malformed field or invalid JSON); the state transcript uses the default ticks."
+              fi
               STATE_TICKS="8,60,140"
             fi
             DUMP_STATE=true

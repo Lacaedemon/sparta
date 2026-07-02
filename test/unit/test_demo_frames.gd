@@ -51,6 +51,27 @@ func test_merge_ticks_both_empty_is_empty() -> void:
 		"nothing armed -> capture stays off")
 
 
+func test_script_array_passes_a_real_array_through() -> void:
+	assert_eq(DemoFrames.script_array({"frames": [8, 60]}, "frames"), [8, 60],
+		"a well-formed array field is returned unchanged")
+
+
+func test_script_array_missing_key_is_empty() -> void:
+	assert_eq(DemoFrames.script_array({}, "camera"), [],
+		"an absent field means the feature is simply off")
+
+
+func test_script_array_non_array_degrades_to_empty() -> void:
+	# The exact typo class from the field: a scalar or a comma string instead of an array.
+	# It must degrade (warn + ignore), not crash the recorder on a typed assignment.
+	assert_eq(DemoFrames.script_array({"state": "8,60"}, "state"), [],
+		"a comma-string state field is ignored, not crashed on")
+	assert_eq(DemoFrames.script_array({"frames": 60}, "frames"), [],
+		"a lone-number frames field is ignored, not crashed on")
+	assert_eq(DemoFrames.script_array({"camera": {"tick": 0}}, "camera"), [],
+		"a bare-object camera field is ignored, not crashed on")
+
+
 func test_frame_path_zero_pads_for_sortable_listing() -> void:
 	assert_eq(DemoFrames.frame_path("/out", 20), "/out/frame_00020.png",
 		"tick zero-padded to 5 digits so a listing sorts by tick")

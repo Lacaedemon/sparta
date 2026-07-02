@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/malformed-tick-fields-512-test.json",
+  "caption": "TEMPORARY degrade-not-fail live test (#512): this input script's camera/frames/state fields are all deliberately malformed (non-array). A green job with degrade warnings — and this clip existing at all — is the evidence. Replaced by skip:true before merge.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 720
+}

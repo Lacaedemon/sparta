@@ -55,6 +55,20 @@ static func _as_tick(f) -> int:
 			return -1
 
 
+## An input-script field that must be an array (`camera`, `frames`, `state`) -> its value,
+## or [] when the field is missing or the author wrote a non-array value (e.g.
+## `"frames": "8,60"` instead of `"frames": [8, 60]`). A typo must degrade that one
+## feature — with a warning naming the field — not crash the recorder with a typed-argument
+## error before the battle even starts.
+static func script_array(script: Dictionary, key: String) -> Array:
+	var value: Variant = script.get(key, [])
+	if value is Array:
+		return value
+	push_warning("[demo-input] input-script field '%s' should be an array, got %s; ignoring it." % [
+		key, type_string(typeof(value))])
+	return []
+
+
 ## The PNG path for a capture at `tick` inside `dir`. Zero-pads the tick to 5 digits so a
 ## directory listing sorts frames in tick order (frame_00010.png before frame_00120.png).
 static func frame_path(dir: String, tick: int) -> String:
