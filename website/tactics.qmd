@@ -443,6 +443,25 @@ it speeds up --- stopping takes no effort, building momentum does. Cavalry is
 symmetric: a galloping horse can't be reined in any faster than it can build
 up speed in the first place.
 
+Arrival works the same way: a unit closing on its ordered point **brakes over
+the final stretch** and comes to rest on the marker, instead of charging to the
+wire and lurching to a halt past it. Only the final stop brakes --- a queued
+waypoint route flows through its corners at pace, and a **charge never slows**:
+a unit closing on an enemy carries full speed into contact, so braking costs
+you nothing on the attack.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/decel_arrival.jpg">
+    <source src="media/decel_arrival.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point &mdash; no lurching stop, no coasting past the marker.</figcaption>
+</figure>
+```
+
 ## Wheeling on a flank
 
 A **wheel** (<kbd>Z</kbd> left / <kbd>C</kbd> right) is the third way to change a line's

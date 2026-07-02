@@ -241,7 +241,12 @@ path — it never arms, so normal recording and the frame-capture path are both 
 Unlike frame capture, the dump reads **sim state, not the drawn frame**, so it runs under
 `--headless` (no real renderer needed) — faster, and no window opens.
 
-Each `state_<tick>.json` holds the battle tick and a record per unit:
+Each `state_<tick>.json` holds the battle tick and a record per unit — **including routing
+units**. The dumper walks the `"units"` and `"routers"` groups together (a ROUTING unit has
+left `"units"` but is still on the field and may rally — the same union the victory check
+scans), so a mid-rout unit stays transcript-visible: its `state` reads `ROUTING` and its
+recovering `morale` and fleeing `position` can be followed tick by tick. Records are sorted
+by `uid`, so a unit keeps its row across the rout/rally group changes:
 
 | Field | Meaning |
 | --- | --- |

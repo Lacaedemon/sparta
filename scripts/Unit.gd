@@ -97,6 +97,11 @@ var current_order: Order = null
 # The smart-order behaviours read this; NORMAL is current behaviour.
 var order_mode: int = 0
 var formation_mode: int = FORMATION_NORMAL
+# Simulation tier (FormationTier.CLOSE / FAR) — the multi-resolution design's per-formation
+# fidelity marker (docs/large-scale-simulation-design.md, phase 1). Representational only:
+# nothing in the sim reads this yet, so every unit still runs the full per-soldier close-tier
+# path regardless of its value. Wiring behavior to the tier distinction is a later phase.
+var tier: int = FormationTier.CLOSE
 # Player-set frontage (number of files / columns); 0 means "auto", deriving the
 # stable wider-than-deep grid from max_soldiers (UnitFormation.frontage). The
 # player can widen or narrow the line via SelectionManager (keyboard + drag); the
@@ -222,6 +227,17 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
 # mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
 const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed charge
+# Below this current speed a unit counts as stopped for arrival purposes -- small enough
+# not to read as motion (every pace/gait is well above it), but nonzero so a unit that has
+# braked all the way down its arrival envelope finalizes its order instead of forever
+# creeping the last fraction of a wu/s.
+const ARRIVE_SPEED_EPSILON: float = 1.0
+# The arrival envelope is derated below the brake authority by this factor. Tracking
+# sqrt(2 * a * d) while only able to shed speed at exactly `a` is neutrally stable: any
+# excess speed shrinks d faster, which drops the envelope faster than the unit can shed,
+# and the gap grows all the way to the destination. Demanding a decay the shed rate beats
+# by a margin makes the ramp lock onto the envelope from above and hold it exactly.
+const ARRIVAL_ENVELOPE_MARGIN: float = 0.8
 # Orderly move orders pivot the block about its centre toward their travel direction at
 # this angular rate (rad/s) rather than snapping, so the ranks turn in good order. A
 # half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Combat chases still snap
@@ -925,9 +941,23 @@ func _think(delta: float) -> void:
 	# A player move order marches orderly -- it centre-pivots gradually toward its heading
 	# before advancing; combat chases above stay snappy (orderly = false).
 	if has_move_target:
-		if position.distance_to(move_target) > 5.0:
+		# Arrival at the FINAL destination requires both a close position AND a near-zero
+		# speed -- not position alone. _move_to's braking ramps _current_speed down along
+		# the arrival envelope on the route's last leg, so by the time the unit is within
+		# 5px it should nearly be stopped; the speed guard keeps a moving unit decelerating instead
+		# of finalizing early and hard-snapping via the "no momentum while stationary" reset
+		# elsewhere in this tick. Intermediate waypoints pop on position alone, so a queued
+		# route rolls through each corner at pace instead of halting leg by leg.
+		var on_last_leg: bool = waypoints.is_empty()
+		var arrived: bool = position.distance_to(move_target) <= 5.0
+		# Wait for the stop only when the unit can actually brake: a degenerate loadout
+		# with no positive brake rate (decel <= 0) can never bleed speed, so it finalizes
+		# on position alone -- the pre-braking contract -- instead of hanging on the
+		# speed guard forever.
+		var must_stop: bool = on_last_leg and arrival_brake_rate() > 0.0
+		if not arrived or (must_stop and _current_speed > ARRIVE_SPEED_EPSILON):
 			_move_to(move_target, delta, true)
-		elif not waypoints.is_empty():
+		elif not on_last_leg:
 			# Each queued leg marches on its own terms: drop any side-step hold from
 			# the leg just finished so the next leg turns to face its own travel.
 			ordered_facing = Vector2.ZERO
@@ -1064,6 +1094,17 @@ func _support_tick(delta: float) -> void:
 
 # --- Movement --------------------------------------------------------------
 
+## The rate an orderly march sheds speed with when braking onto its destination. Capped
+## at what the soldier bodies can actually track: the bodies chase the marker's velocity
+## (their feed-forward) under bounded acceleration -- maxf(accel, BODY_ACCEL_FLOOR), see
+## SoldierBodies -- so a marker shedding speed faster than that leaves its bodies coasting
+## past their slots, and the body->marker coupling then drags the whole regiment past its
+## destination and back. Plain decel still governs every non-arrival slowdown (a mid-march
+## downshift keeps the marker moving, so a transient body lag self-corrects there).
+func arrival_brake_rate() -> float:
+	return minf(decel, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR))
+
+
 func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
@@ -1074,6 +1115,14 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length() < 1.0:
+		# Standing on the point already. An orderly march bleeds any residual speed at the
+		# brake rate here -- and flags itself as still moving so the "no momentum while
+		# stationary" reset can't hard-snap the tail of the ramp to 0 -- so the whole
+		# stop reads as one continuous deceleration. Combat movers keep the old contract:
+		# their callers gate follow-up behaviour on _moved_last_frame staying false.
+		if orderly and _current_speed > 0.0:
+			_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
+			_moved_last_frame = true
 		return
 	var dir: Vector2 = to.normalized()
 	var maneuvering: bool = ordered_facing != Vector2.ZERO
@@ -1094,10 +1143,34 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# its top pace: the men hold a locked ring/wall and only creep, so the target pace
 	# is scaled down before the ramp.
 	pace_speed *= formation_speed_factor()
+	# Final approach: brake to a stop on the destination instead of holding pace to the
+	# wire and letting the outer arrival check hard-reset _current_speed to 0 in a single
+	# tick. The pace is capped at the (margin-derated) arrival envelope sqrt(2 * a * d) --
+	# the speed from which the unit can still stop exactly at the point -- with a d/delta
+	# ceiling so the target never asks to cross the point in one tick (the same arrive
+	# profile the soldier bodies use for their slots). Only an orderly march on its
+	# route's LAST leg brakes: combat chases and kiting must charge through at full pace
+	# (the strike spends _approach_velocity, so braking would bleed the charge impact),
+	# and intermediate waypoints roll through their corners at pace.
+	var braking_to_stop: bool = false
+	var dist_to_stop: float = 0.0
+	var brake: float = arrival_brake_rate()
+	if orderly and waypoints.is_empty() and brake > 0.0 and delta > 0.0:
+		dist_to_stop = position.distance_to(point)
+		var envelope: float = minf(
+			sqrt(2.0 * brake * ARRIVAL_ENVELOPE_MARGIN * dist_to_stop),
+			dist_to_stop / delta)
+		if envelope < pace_speed:
+			pace_speed = envelope
+			braking_to_stop = true
 	# Ramp toward the selected pace instead of snapping there -- a unit takes real time
 	# to build up to a pace (accel) and slows down rather than instantly stopping/downshifting
 	# (decel), per-type rates set from the loadout's panoply-weight-scaled accel_mps2/decel_mps2.
+	# Braking onto the destination uses the body-trackable brake rate instead of raw decel --
+	# see arrival_brake_rate.
 	var rate: float = accel if pace_speed > _current_speed else decel
+	if braking_to_stop and pace_speed < _current_speed:
+		rate = brake
 	_current_speed = move_toward(_current_speed, pace_speed, rate * delta)
 	# Facing. A side-step holds its commanded heading and shuffles sideways. An orderly
 	# move order centre-pivots gradually toward its travel direction (the ranks turn in
@@ -1120,7 +1193,18 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# heading; side-steps are exempt (they march at a fixed walk perpendicular).
 	if orderly and not maneuvering:
 		effective_speed *= clampf(facing.dot(dir) * 2.0, 0.0, 1.0)
-	position += dir * effective_speed * delta
+	# Inbound clamp: never step PAST the immediate goal point in a single tick -- the
+	# same post-step guard the soldier-body arrival uses. Without it a fast unit whose
+	# per-tick step exceeds the remaining distance crosses the point, the direction
+	# flips, and it oscillates around the destination instead of settling on it. A
+	# braking march additionally caps the step at the remaining distance to the FINAL
+	# destination: near the target the pathfinding node can sit past the exact ordered
+	# point, and stepping to the node would cross it. The recorded charge velocity below
+	# stays the unclamped speed -- landing ON a target must not bleed the impact.
+	var advance: float = minf(effective_speed * delta, to.length())
+	if braking_to_stop:
+		advance = minf(advance, dist_to_stop)
+	position += dir * advance
 	state = State.MOVING
 	_moved_last_frame = true
 	# Charge velocity; terrain-scaled so forest reduces the charge bonus (intentional — can't sprint in trees).
