@@ -105,6 +105,32 @@ useful context for how far below Cannae-scale (tens of thousands of combatants) 
 per-soldier-array architecture can individually simulate. This is a rough local sweep, not a
 precise binary search for the exact crossover soldier count.
 
+### Tuning the tier thresholds
+
+The report also carries `close_tier_soldiers` — the per-tick sum of living soldiers across
+formations at the **close** simulation tier (the "promoted bubble" of
+`docs/large-scale-simulation-design.md`), summarized as mean/min/max over the measure window.
+The runner samples it alongside each timing sample, walking the same units+routers union the
+state transcript walks. In a battle with no far-tier formations it just tracks living soldiers;
+its purpose is the multi-formation case, where the tier thresholds
+(`FormationTier.PROMOTE_RANGE` / `DEMOTE_RANGE`) must keep the promoted count under the
+soldier-count ceiling the sweep above measures.
+
+Two committed scenarios turn that tuning check into reproducible numbers (see each file's
+`_comment` for the full geometry, and the design doc's "Validating tier thresholds" section for
+the recorded results):
+
+- `benchmarks/scenarios/echelon-battle.json` — two engaged front lines plus a second echelon
+  deployed **beyond DEMOTE_RANGE** of any enemy. The reserves demote on the first tier pass, the
+  promoted bubble stays at the two fronts, and the run must hold the 60fps budget even though
+  the total spawned exceeds the measured ceiling.
+- `benchmarks/scenarios/echelon-battle-shallow.json` — the same army with the reserves parked
+  **inside the hysteresis band**, so they never demote and everything runs per-soldier: the
+  measured cost of a demote threshold looser than the echelon depth.
+
+Re-run the pair (plus the scale sweep) whenever the thresholds, the per-soldier realism, or the
+reference hardware change, and update the design doc's recorded numbers.
+
 ## What this does and doesn't measure
 
 **Physics-step time only, not full frame/render time.** `BenchmarkRunner` runs plain

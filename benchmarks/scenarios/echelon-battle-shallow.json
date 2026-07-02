@@ -1,0 +1,25 @@
+{
+  "_comment": "The mis-tuned-boundary control for echelon-battle.json (docs/large-scale-simulation-design.md, phase 4; see tools/benchmark/README.md, 'Tuning the tier thresholds'). Identical army to echelon-battle.json, but the team-0 second echelon sits 500 world units behind the front -- inside the (PROMOTE_RANGE, DEMOTE_RANGE) hysteresis band, so the reserves keep their spawn tier (close) and never demote. All ~1,990 soldiers then run per-soldier simulation for the whole window, standing in for what a demote threshold looser than the echelon depth would cost: the run measurably exceeds the 60fps tick budget that echelon-battle.json (same army, reserves aggregate) stays inside. The pair turns 'the thresholds hold the promoted bubble under the measured ceiling' into two reproducible numbers.",
+  "seed": "559001",
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 1090, "y": 125, "count": 140, "facing": [1, 0]},
+    {"team": 0, "type": "Spearmen", "x": 1090, "y": 275, "count": 140, "facing": [1, 0]},
+    {"team": 0, "type": "Infantry", "x": 1090, "y": 425, "count": 120, "facing": [1, 0]},
+    {"team": 0, "type": "Infantry", "x": 1090, "y": 575, "count": 120, "facing": [1, 0]},
+    {"team": 0, "type": "Archers",  "x": 1090, "y": 725, "count": 90,  "facing": [1, 0]},
+    {"team": 0, "type": "Cavalry",  "x": 1090, "y": 875, "count": 80,  "facing": [1, 0]},
+
+    {"team": 1, "type": "Spearmen", "x": 1110, "y": 125, "count": 140, "facing": [-1, 0]},
+    {"team": 1, "type": "Spearmen", "x": 1110, "y": 275, "count": 140, "facing": [-1, 0]},
+    {"team": 1, "type": "Infantry", "x": 1110, "y": 425, "count": 120, "facing": [-1, 0]},
+    {"team": 1, "type": "Infantry", "x": 1110, "y": 575, "count": 120, "facing": [-1, 0]},
+    {"team": 1, "type": "Archers",  "x": 1110, "y": 725, "count": 90,  "facing": [-1, 0]},
+    {"team": 1, "type": "Cavalry",  "x": 1110, "y": 875, "count": 80,  "facing": [-1, 0]},
+
+    {"team": 0, "type": "Spearmen", "x": 590, "y": 200, "count": 140, "facing": [1, 0]},
+    {"team": 0, "type": "Spearmen", "x": 590, "y": 350, "count": 140, "facing": [1, 0]},
+    {"team": 0, "type": "Infantry", "x": 590, "y": 500, "count": 120, "facing": [1, 0]},
+    {"team": 0, "type": "Infantry", "x": 590, "y": 650, "count": 120, "facing": [1, 0]},
+    {"team": 0, "type": "Archers",  "x": 590, "y": 800, "count": 90,  "facing": [1, 0]}
+  ]
+}

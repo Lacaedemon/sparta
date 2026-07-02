@@ -48,17 +48,24 @@ if [ ! -s "$MERGED_OUT" ] || [ "$(jq '.ticks | length' "$MERGED_OUT")" -eq 0 ]; 
 fi
 
 # Build the compact markdown summary: one table per dumped tick, one row per unit,
-# with the key fields a reviewer needs. Centroid is the soldier-body centre [x,y].
+# with the key fields a reviewer needs. Centroid is the soldier-body centre [x,y]; a
+# far-tier unit carries no per-soldier payload (its record omits soldier_summary -- see
+# demos/README.md), so its centroid cell reads "-" instead of indexing a missing object.
+# `.tier // "CLOSE"` keeps transcripts from before the tier field rendering cleanly.
 {
   echo '<details><summary>🔬 <b>Per-tick state transcript</b> — exact unit state for AI/spot verification</summary>'
   echo
   jq -r '
     .ticks[]
     | "\n**tick \(.tick)**\n",
-      "| unit | team | state | formation | order | morale | soldiers | centroid |",
-      "| --- | --- | --- | --- | --- | ---: | ---: | --- |",
+      "| unit | team | state | formation | order | morale | soldiers | tier | centroid |",
+      "| --- | --- | --- | --- | --- | ---: | ---: | --- | --- |",
       ( .units[]
-        | "| \(.name) | \(.team) | \(.state) | \(.formation) | \(.order_mode) | \(.morale) | \(.soldiers) | [\(.soldier_summary.centroid[0]), \(.soldier_summary.centroid[1])] |"
+        | "| \(.name) | \(.team) | \(.state) | \(.formation) | \(.order_mode) | \(.morale) | \(.soldiers) | \(.tier // "CLOSE") | \(
+            if .soldier_summary != null
+            then "[\(.soldier_summary.centroid[0]), \(.soldier_summary.centroid[1])]"
+            else "-"
+            end) |"
       )
   ' "$MERGED_OUT"
   echo

@@ -263,7 +263,13 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `order_phase` | The current order's active phase (`NONE`, or `TURN` / `REFORM` / `MARCH` for a phased rear move), or `null` when idle. |
 | `target_enemy_uid` | The uid this unit is attacking, or `null`. |
 | `engaged` | Whether the regiment is in the engaged tier (front ranks in/just-out of melee). |
-| `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count}` — a compact digest, **not** the full per-soldier arrays. |
+| `tier` | The formation's **simulation tier** — `CLOSE` (full per-soldier arrays) or `FAR` (aggregate record, no individual bodies). See `docs/large-scale-simulation-design.md`. |
+| `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count}` — a compact digest, **not** the full per-soldier arrays. **Close-tier units only.** |
+
+A `tier: "FAR"` record carries **no per-soldier payload at all** — no `soldier_summary`, no
+`soldiers_full` — because a far-tier formation has no individual bodies to derive them from.
+The explicit `tier` field is what tells that apart from "per-soldier detail not requested"
+(a close-tier dump without the full flag, which still gets the summary).
 
 Set `SPARTA_DEMO_STATE_FULL=1` to also dump `soldiers_full` — the raw per-soldier arrays
 (`pos`, `facing`, `hp`, `prone`, `stamina`) — for deep debugging. Off by default (the summary is
