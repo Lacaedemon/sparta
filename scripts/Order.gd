@@ -1,6 +1,6 @@
 class_name Order
 extends RefCounted
-## Phases 1-2 of the unified orders-queue design (docs/orders-queue-design.md, #516): the
+## Phases 1-2 of the unified orders-queue design (docs/orders-queue-design.md): the
 ## `Order` value type. A queue entry describing one thing a `Unit` is doing or will do -- a
 ## verb, in the design doc's terms. Durable "mode" state (formation_mode, order_mode,
 ## stance, ...) stays on `Unit` itself; an Order is what writes it, not where it lives.

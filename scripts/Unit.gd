@@ -90,7 +90,7 @@ var has_move_target: bool = false
 var waypoints: Array[Vector2] = []
 var target_enemy: Unit = null
 var selected: bool = false
-# The unified orders queue (docs/orders-queue-design.md, #516). `current_order` (orders[0],
+# The unified orders queue (docs/orders-queue-design.md). `current_order` (orders[0],
 # or null when idle) is the single, transcript-visible source of truth for "what is this
 # unit doing right now" -- including its active phase, for a phased order like the
 # move-to-rear about-face. As of phase 2 the queue is AUTHORITATIVE for the movement

@@ -1,5 +1,5 @@
 extends GutTest
-## Order value type (docs/orders-queue-design.md phases 1-2, #522/#523): pure, node-free tests
+## Order value type (docs/orders-queue-design.md phases 1-2): pure, node-free tests
 ## for the enum-name tables, the readable describe() string, and the constructor helpers used
 ## to build each order kind.
 

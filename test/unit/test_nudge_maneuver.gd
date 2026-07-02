@@ -95,7 +95,7 @@ func test_left_nudge_shifts_laterally_and_holds_facing() -> void:
 	var lateral: float = moved.dot(perp)    # to the unit's right (negative = left)
 	var forward: float = moved.dot(fwd)
 	assert_lt(lateral, -5.0, "a left nudge shifts the unit to its left")
-	# The #521 under-travel guard, by exact state: the step covers the FULL drill distance
+	# The under-travel regression guard, by exact state: the step covers the FULL drill distance
 	# (the arrival finalizes within its 5 px threshold), not the few-pixel creep the
 	# double-apply produced.
 	assert_almost_eq(absf(lateral), BattleScript.NUDGE_DISTANCE, 6.0,

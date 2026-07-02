@@ -1,5 +1,5 @@
 extends GutTest
-## Unit's general orders queue (docs/orders-queue-design.md phases 1-2, #522/#523): the
+## Unit's general orders queue (docs/orders-queue-design.md phases 1-2): the
 ## append/replace/retire/clear queue operations, the maneuver execution state that lives on
 ## the Order (turn_target / phase / parked rear march), the interrupt semantics of replacing
 ## the queue, and _update_current_order's retirement bookkeeping for each order kind. These
