@@ -59,7 +59,7 @@ func _record_for(uid: int) -> Dictionary:
 	return {}
 
 
-# --- The #517 verification payoff: conversio vs a plain march read apart -----------------
+# --- The verification payoff: conversio vs a plain march read apart ---------------------
 
 func test_transcript_distinguishes_a_rear_move_about_face_from_a_plain_march() -> void:
 	# The design doc's whole motivating example: an about-face (MOVE:TURN, mid-reversal) and

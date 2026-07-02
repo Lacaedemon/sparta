@@ -284,7 +284,7 @@ func _unit_record(u: Node) -> Dictionary:
 		"morale": DemoState.round_to(u.morale, 1),
 		"state": DemoState.state_name(u.state),
 		"formation": DemoState.formation_name(u.formation_mode),
-		# Durable frontage (phase 5, #526): the file count a FRONTAGE order last wrote (or the
+		# Durable frontage (phase 5): the file count a FRONTAGE order last wrote (or the
 		# type-derived default when none has). Like formation/order_mode/rank_relief, this is
 		# mode-layer state a completed order writes and that then persists as queryable Unit
 		# state -- UnitFormation.frontage is the same pure lookup the sim itself uses.
@@ -314,7 +314,7 @@ func _unit_record(u: Node) -> Dictionary:
 		# reader can tell "unconditional order" apart from "guard not yet satisfied."
 		"order_guard": Order.guard_name(u.current_order.guard) \
 				if u.current_order != null and u.current_order.guard != Order.Guard.NONE else null,
-		# Phase 5 (#526): the not-yet-current queued orders behind current_order, for full
+		# Phase 5: the not-yet-current queued orders behind current_order, for full
 		# plan legibility (the design doc's "optionally the queue tail"). Each entry is just
 		# the order's type name -- current_order/order_phase/order_guard already cover the
 		# one that's actually executing, so the tail only needs to answer "and then what."
