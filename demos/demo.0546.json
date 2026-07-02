@@ -1,0 +1,9 @@
+{
+  "_comment": "Slug is the PR number zero-padded on purpose: the demo workflow resolves the manifest by diffing added demos/demo.*.json files against the PR-creation-time base SHA, so manifests merged to main since then leak into the candidate set and the alphabetically-first one wins. The leading 0 makes this PR's own manifest sort ahead of those leaked candidates.",
+  "input": "demos/inputs/arrow-nudge.json",
+  "caption": "Rapid re-orders now carry momentum through instead of restarting from a standstill (#521). Each arrow-key nudge froze the unit for its order-response delay, and that freeze was being misread as genuine idle, so speed hard-reset to zero on every nudge -- a unit tapped four times never got past a few pixels of net travel. Now a nudge that arrives while the unit is still cruising keeps its speed through the freeze and the next leg picks up where the last left off, so the four side-steps and the back-step accumulate real distance instead of each restarting the accel ramp from zero.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}
