@@ -54,6 +54,7 @@ DEMOS=(
   "shielded_stances|demos/inputs/shielded-stance-visuals.json|30|180|640|input"
   "decel_arrival|demos/inputs/decel-arrival.json|30|300|640|input"
   "line_relief|demos/inputs/line-relief-queue.json|30|300|640|input"
+  "stance_order|demos/inputs/stance-order-gesture.json|30|130|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a
