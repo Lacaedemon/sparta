@@ -120,6 +120,15 @@ architecture, and CI changes are exempt.
   own demo clip. When you merge `main` after another PR also changed it, you
   get a conflict. Keep YOUR version (it describes the change being merged).
 
+**Figures and tables get labels + captions, via div syntax.** Every figure and
+table on the site — images, markdown tables, and the raw-HTML `<video>` embeds —
+gets a cross-referenceable label and a caption using Quarto
+[div syntax](https://quarto.org/docs/authoring/figures.html#figure-divs): wrap it
+in a fenced `::: {#fig-slug .demo}` / `::: {#tbl-slug}` div with the caption as
+the last line before the closing `:::`. Keep a video's ` ```{=html} ` fence (just
+the `<video>` element — no `<figure>`/`<figcaption>` HTML) inside the div; don't
+use chunk-option syntax (`#| label:` / `#| fig-cap:`) for the cross-reference id.
+
 **Where to look for site layout:** `website/README.md` describes the page
 structure, build instructions, and how demo clips are recorded. Each `.qmd` page
 links back to its source of truth in the repo root.

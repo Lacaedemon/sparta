@@ -18,18 +18,20 @@ tactical battles** --- built in **Godot 4.7** with GDScript.
 [View on GitHub](https://github.com/Lacaedemon/sparta){.btn .btn-outline-light .btn-lg role="button"}
 :::
 
+::: {#fig-showcase .demo}
+
 ```{=html}
-<figure class="demo">
-  <video class="demo-video" controls muted loop playsinline preload="metadata"
-         poster="media/showcase.jpg">
-    <source src="media/showcase.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>A deterministic auto-battle (seed&nbsp;12345): two armies advance,
-  press into melee, and one side breaks and routs.</figcaption>
-</figure>
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/showcase.jpg">
+  <source src="media/showcase.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
 ```
+
+A deterministic auto-battle (seed&nbsp;12345): two armies advance,
+press into melee, and one side breaks and routs.
+:::
 
 ## What is Sparta?
 
