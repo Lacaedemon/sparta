@@ -1,0 +1,4 @@
+{
+	"skip": true,
+	"reason": "Representational-only data model: a per-soldier shield hold-angle array, defaulted to each shield type's rest pose and kept index-aligned through growth, casualty compaction, and formation changes. Nothing reads it for combat or rendering yet (rendering is phase 3), so a clip would show an unchanged battle."
+}

@@ -99,6 +99,7 @@ func test_demote_drops_every_per_soldier_array() -> void:
 	assert_eq(u._sim_soldier_stamina.size(), 0)
 	assert_eq(u._sim_soldier_weapon_id.size(), 0)
 	assert_eq(u._sim_soldier_shield_id.size(), 0)
+	assert_eq(u._sim_soldier_shield_hold_angle.size(), 0)
 	assert_eq(u._sim_soldier_facing.size(), 0)
 	assert_false(u._per_soldier_facing)
 
@@ -151,6 +152,7 @@ func test_promote_reconstructs_one_body_per_living_soldier_on_the_grid() -> void
 	assert_eq(u._sim_soldier_stamina.size(), 7)
 	assert_eq(u._sim_soldier_weapon_id.size(), 7)
 	assert_eq(u._sim_soldier_shield_id.size(), 7)
+	assert_eq(u._sim_soldier_shield_hold_angle.size(), 7)
 	assert_eq(u._sim_soldier_facing.size(), 7)
 	# Each body lands within the seeded scatter of its own formation slot, at rest and standing.
 	var slots: PackedVector2Array = u.soldier_world_slots(7)
@@ -165,6 +167,8 @@ func test_promote_reconstructs_one_body_per_living_soldier_on_the_grid() -> void
 		assert_eq(u._sim_soldier_stamina[i], max_stamina, "everyone reconstructs rested")
 		assert_eq(u._sim_soldier_weapon_id[i], u.weapon_type_id)
 		assert_eq(u._sim_soldier_shield_id[i], u.shield_type_id)
+		assert_eq(u._sim_soldier_shield_hold_angle[i], u.shield_rest_angle(),
+			"hold angles reconstruct at the shield type's rest pose")
 		# Both components asserted: a facing of (0, epsilon) must not pass as DOWN.
 		assert_eq(u._sim_soldier_facing[i].x, u.facing.x)
 		assert_eq(u._sim_soldier_facing[i].y, u.facing.y)

@@ -83,6 +83,7 @@ static func demote(u: Unit) -> void:
 	u._sim_soldier_stamina = PackedFloat32Array()
 	u._sim_soldier_weapon_id = PackedInt32Array()
 	u._sim_soldier_shield_id = PackedInt32Array()
+	u._sim_soldier_shield_hold_angle = PackedFloat32Array()
 	u._sim_soldier_facing = PackedVector2Array()
 	u._per_soldier_facing = false
 	u._render_dirty = true   # the render swaps to the aggregate (formation-grid) marks
@@ -146,6 +147,11 @@ static func promote(u: Unit, tick: int, battle_seed: int) -> void:
 	u._sim_soldier_shield_id = PackedInt32Array()
 	u._sim_soldier_shield_id.resize(n)
 	u._sim_soldier_shield_id.fill(u.shield_type_id)
+	# Shield hold angles reconstruct at the type's rest pose — the same value the
+	# initial seed uses; any braced/locked posture is below the far tier's resolution.
+	u._sim_soldier_shield_hold_angle = PackedFloat32Array()
+	u._sim_soldier_shield_hold_angle.resize(n)
+	u._sim_soldier_shield_hold_angle.fill(u.shield_rest_angle())
 	u._sim_soldier_facing = u.soldier_world_facings(n)
 	u._per_soldier_facing = false
 	u._render_dirty = true   # fresh bodies need an initial draw

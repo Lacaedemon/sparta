@@ -1356,6 +1356,34 @@ func set_formation(mode: int) -> void:
 	else:
 		separation_radius = base
 		spacing_scale = 1.0
+	_reset_shield_hold_angles()
+
+
+## The rest-pose hold angle for this unit's shield type: the single source every
+## hold-angle default reads (SoldierBodies.seed, its tail resize, and the
+## formation-change reset below). An unknown shield id resolves to 0.0 —
+## defensive; the registry resolves every id the spawn path seeds.
+func shield_rest_angle() -> float:
+	var shield: Shield = LoadoutRegistry.shield(shield_type_id)
+	if shield == null:
+		return 0.0
+	return shield.default_hold_angle
+
+
+## Reset every soldier's shield hold angle (see docs/soldier-loadout-design.md,
+## phase 2) back to its shield type's rest pose. Called on every set_formation()
+## so posture state never carries a stale angle across a formation change. Today
+## every soldier in a regiment carries the same shield type (phase 1's
+## uniform-per-unit loadout), so this is a uniform fill; a real per-formation
+## "locked" angle (shield-wall's edge-to-edge lock, testudo's overhead roof) is
+## the formation-geometry work's concept to define spatially — this phase only
+## keeps the data available and correctly defaulted, it does not yet compute a
+## formation-specific angle. Representational only: nothing reads this array for
+## combat or rendering yet (rendering is phase 3).
+func _reset_shield_hold_angles() -> void:
+	if _sim_soldier_shield_hold_angle.is_empty():
+		return   # bodies not seeded yet; SoldierBodies.seed will fill it from scratch
+	_sim_soldier_shield_hold_angle.fill(shield_rest_angle())
 
 
 ## Set the regiment's frontage (file count). Clamped to [1, max_soldiers]; the
@@ -1615,6 +1643,21 @@ var _sim_soldier_hp: PackedFloat32Array = PackedFloat32Array()
 # combat_profile()), so no gameplay outcome changes.
 var _sim_soldier_weapon_id: PackedInt32Array = PackedInt32Array()
 var _sim_soldier_shield_id: PackedInt32Array = PackedInt32Array()
+
+# Per-soldier shield hold angle (phase 2, docs/soldier-loadout-design.md),
+# index-aligned with _sim_soldier_pos: radians relative to the soldier's own
+# facing, the actual per-soldier hold STATE (resting, braced, locked into a
+# wall/roof) as opposed to the shield TYPE's default_hold_angle rest pose.
+# Lives in its own array (never on the shared Shield instance) precisely
+# because it varies per soldier — two soldiers carrying the same interned
+# scutum must not be able to fight over one shared hold angle. Seeded from
+# LoadoutRegistry.shield(shield_id).default_hold_angle at spawn (see
+# SoldierBodies.seed) and kept aligned through resize/casualty compaction like
+# every other _sim_* array. set_formation() resets every soldier back to the
+# shield's rest pose on a formation change; nothing else writes it yet.
+# Representational only — nothing reads this for combat or rendering (that is
+# phase 3), so no gameplay or visual outcome changes.
+var _sim_soldier_shield_hold_angle: PackedFloat32Array = PackedFloat32Array()
 
 # Per-soldier prone timer (phase 4b), index-aligned with _sim_soldier_pos: seconds-to-rise
 # remaining (0 = standing). A knockback impulse can fell a soldier (SoldierCombat.prone_chance);

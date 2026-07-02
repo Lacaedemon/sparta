@@ -30,6 +30,8 @@ Fewer scene files to corrupt, functionally equivalent.
 
 ## The scripts at a glance
 
+::: {#tbl-scripts}
+
 | Script | Responsibility |
 | --- | --- |
 | [`Battle.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Battle.gd) | Spawns two armies, runs the enemy AI, the fixed-tick clock, applies queued orders, checks win/lose, saves the replay on battle end. |
@@ -38,6 +40,9 @@ Fewer scene files to corrupt, functionally equivalent.
 | [`CameraController.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/CameraController.gd) | WASD / arrow / screen-edge pan, mouse-wheel zoom. |
 | [`HUD.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/HUD.gd) | Hint bar, selected-unit info panel, victory/defeat overlay, active pause, `● REC` indicator. |
 | [`Replay.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Replay.gd) | Autoload: the single seeded RNG and the record/playback system (see [Replays](replays.qmd)). |
+
+Each script and its responsibility.
+:::
 
 ## Design pillar: collision is core
 
@@ -74,6 +79,8 @@ share a code path. This is what powers the replay system and the CI demo clips. 
 
 ## Tuning pointers
 
+::: {#tbl-tuning}
+
 | Want to change… | Look in… |
 | --- | --- |
 | Unit stats / loadout | `Battle.gd` → `_spawn_line()` array |
@@ -82,6 +89,9 @@ share a code path. This is what powers the replay system and the CI demo clips. 
 | Combat math | `Unit.gd` → `_strike()` / `take_casualties()` / `_flank_multiplier()` |
 | Active pause | `HUD.gd` → `_toggle_pause()` (Space) |
 | Enemy AI | `Battle.gd` → `_run_enemy_ai()` |
+
+Common tuning knobs and where each lives.
+:::
 
 ---
 
