@@ -769,6 +769,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.support_target = null
 			u.deploy_facing = Vector2.ZERO
 			u._reform_timer = 0.0
+			u._reform_until_settled = false
+			u._reform_on_arrival = false   # a drill step's arrival shouldn't fire a stale reform
+			u._pending_march_reform = false
 			u.ordered_facing = u.facing   # hold facing: side-step / back-step, no pivot
 			u.move_target = u.position + offset
 			u.has_move_target = true
@@ -853,8 +856,13 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# Drop any side-step hold from a prior order; the plain-move branch below
 			# re-sets it when this order is itself a small lateral shift.
 			u.ordered_facing = Vector2.ZERO
-			# A new order always cancels any in-progress reform from the previous one.
+			# A new order always cancels any in-progress reform from the previous one --
+			# the hold, its settle-early mode, and any reform still parked behind a
+			# rear-move march (start_order_response squares the grid itself).
 			u._reform_timer = 0.0
+			u._reform_until_settled = false
+			u._reform_on_arrival = false
+			u._pending_march_reform = false
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			if attack_targets.is_empty():
 				u.target_enemy = target_unit
@@ -942,6 +950,11 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 						u.has_move_target = false
 						u._pending_march_target = point
 						u._has_pending_march = true
+						# Reform timing rides the same recorded "reform" field the plain
+						# reform-before-move hold uses: true = re-form the ranks square to
+						# the new heading before stepping off, false = march at once and
+						# re-form on arrival (see Unit._think's conversio handoff).
+						u._pending_march_reform = bool(cmd.get("reform", false))
 						about_faced = true
 				# A rear move that armed the about-face parks its march for _think to commit
 				# on completion; every other move commits here (reform-hold or immediate).

@@ -145,7 +145,10 @@ third is out by default.
 
 An `Order` carries its own choreography as internal phases — a small
 deterministic state machine — not as separate queue entries. The canonical case
-is the move-to-rear: **phase 1 conversio (turn in place) → phase 2 march**.
+is the move-to-rear: **phase 1 conversio (turn in place) → phase 2 reform (the
+ranks re-square to the new heading so a full rank fronts it; deferred to
+arrival — or skipped when there is nothing to bring forward — for an order
+issued without the reform-before-move drill) → phase 3 march**.
 
 This is both the clean model and the fix for the #517 / #518 bug class. Today the
 about-face and the march are dispatched as separate state mutations that race

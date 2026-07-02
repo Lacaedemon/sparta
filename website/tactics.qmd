@@ -389,6 +389,17 @@ position for the whole turn --- nobody steps forward or backward at all, only
 facing changes. Their duration depends solely on the drill turn rate, not the
 backward-speed cap.
 
+The **reform after an about-face** is where the penalty comes back. Flipping a
+unit that has taken losses puts its short, under-strength rank --- previously the
+safe rear rank --- at the new front, so a rear move reforms after the turn: the
+men counter-march through the block onto ranks squared to the new heading,
+bringing a full rank forward and sending the short rank back. Some of those men
+are stepping backward relative to their facing, so a deep, depleted block takes a
+couple of seconds to dress. With **Reform before move** on, that time is spent
+before the unit steps off --- order the retreat with a margin. With it off, the
+unit marches at once and reforms on arrival, buying speed at the price of leading
+the whole march with its thinnest rank.
+
 ## The centre pivot
 
 A larger turn is a **centre pivot**: the unit rotates about its own centre onto its
