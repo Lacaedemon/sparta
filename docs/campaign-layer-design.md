@@ -468,7 +468,8 @@ same regiment records, so the choice is about attention, not outcome shape:
 2. **Birds-eye resolve.** The battle runs under the **far-tier statistical
    combat rules the battle layer already ships** — `FarTierRules` evolving
    `FarTierFormation` aggregate records per tick
-   (`docs/large-scale-simulation-design.md`; its phases 1–4 are merged) —
+   (`docs/large-scale-simulation-design.md`; its phases 1–3 — the data
+   model, the far-tier rules, and the tier transitions — are merged) —
    with no per-soldier state, presented as a simply-animated aggregate view:
    blocks maneuvering, engaging, and breaking on the field. Cheap enough to
    watch at campaign speed, deterministic and tick-logged like any battle,
@@ -696,7 +697,7 @@ campaign log.
 
 **Dependencies.** Phase 2 (composition is the payload all modes share); the
 battle layer's merged LOD machinery (`docs/large-scale-simulation-design.md`
-phases 1–4, including `TierTransition`).
+phases 1–3, including `TierTransition`).
 
 **Acceptance criteria.** A birds-eye battle replays deterministically and
 returns the same payload shape as a manual battle over the same armies; a
