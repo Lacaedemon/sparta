@@ -1,11 +1,11 @@
 class_name FormationTier
 extends RefCounted
-## Phase 1 of the multi-resolution simulation design (docs/large-scale-simulation-design.md):
-## the per-formation simulation-tier ids and the placeholder promotion/demotion trigger.
+## The per-formation simulation-tier ids and the distance-hysteresis promotion/demotion
+## triggers of the multi-resolution simulation design (docs/large-scale-simulation-design.md).
 ## Distinct from the RENDER LOD (Unit._update_lod's mark/figure swap), which is a camera-zoom
 ## presentation choice — the simulation tier decides how much sim STATE a formation carries.
-## Representational only for now: `Unit.tier` stores one of these values, but nothing in the
-## sim reads it yet, so every formation still runs the full per-soldier close-tier path.
+## Battle evaluates these predicates each tick and performs the transitions themselves via
+## TierTransition (the seeded reconstruction / lossy reduction across the tier boundary).
 
 ## CLOSE: full individual-soldier fidelity (the _sim_soldier_* arrays) — today's only live path.
 ## FAR: aggregate/statistical record (FarTierFormation), no per-soldier state at all.

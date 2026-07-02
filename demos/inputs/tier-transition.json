@@ -1,0 +1,17 @@
+{
+  "_comment": "LOD phase 3 tier-transition demo: two cavalry blocks spawn 620 apart -- beyond DEMOTE_RANGE (600) -- so Battle's tier pass collapses BOTH to the aggregate far tier on the first tick (no per-soldier state; the marks you see are drawn on the formation grid itself). The player selects the left block and orders it toward the enemy while the enemy AI marches in from the right; when the gap closes inside PROMOTE_RANGE (400, around tick 290 with this seed) both formations PROMOTE the same tick -- per-soldier bodies reconstruct from the deterministic seeded hash (a light scatter ruffle that immediately eases back onto the slots). The 'state' ticks dump machine-readable snapshots for the determinism check: run the dump twice from this same seed and the post-promotion layouts match exactly.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 470, "y": 500, "count": 60},
+    {"team": 1, "type": "Cavalry", "x": 1090, "y": 500, "count": 60}
+  ],
+  "camera": [
+    {"tick": 0, "x": 780.0, "y": 490.0, "zoom": 1.2}
+  ],
+  "steps": [
+    {"tick": 20, "click": [470, 500]},
+    {"tick": 32, "rmb_click": [900, 500]}
+  ],
+  "state": [10, 150, 300],
+  "frames": [10, 150, 300]
+}

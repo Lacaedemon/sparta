@@ -118,9 +118,11 @@ var formation_mode: int = FORMATION_NORMAL
 # disciplined unit tire and waver like an untrained one.
 var rank_relief: bool = true
 # Simulation tier (FormationTier.CLOSE / FAR) — the multi-resolution design's per-formation
-# fidelity marker (docs/large-scale-simulation-design.md, phase 1). Representational only:
-# nothing in the sim reads this yet, so every unit still runs the full per-soldier close-tier
-# path regardless of its value. Wiring behavior to the tier distinction is a later phase.
+# fidelity marker (docs/large-scale-simulation-design.md). CLOSE runs the full per-soldier
+# path; FAR carries no per-soldier state at all — the soldier-layer steps skip it (see
+# step_all_sim_soldiers / couple_all_sim_soldiers) and the flock render draws its marks on
+# the formation grid instead. Battle evaluates the distance triggers each tick and performs
+# the transitions (Battle._tick_tier_transitions -> TierTransition).
 var tier: int = FormationTier.CLOSE
 # Player-set frontage (number of files / columns); 0 means "auto", deriving the
 # stable wider-than-deep grid from max_soldiers (UnitFormation.frontage). The
@@ -2276,22 +2278,26 @@ func soldier_reach() -> float:
 
 ## Step every regiment's persistent soldier bodies one fixed tick. Called by Battle each
 ## tick, after the steering pass has set the bodies' friendly-avoidance velocity bias.
-## Order-free across regiments, so it stays replay-safe.
+## Order-free across regiments, so it stays replay-safe. A far-tier regiment is skipped:
+## it carries no bodies, and running the step would re-seed them from the formation
+## (SoldierBodies.step's resize path), silently undoing the demotion every tick.
 static func step_all_sim_soldiers(units: Array, delta: float) -> void:
 	for o in units:
 		var u: Unit = o as Unit
-		if u != null and u.state != State.DEAD:
+		if u != null and u.state != State.DEAD and u.tier != FormationTier.FAR:
 			u.step_sim_soldiers(delta)
 
 
 ## Slide every regiment's center toward its soldiers' centroid (phase 5), after the bodies
 ## have integrated this tick. Order-free across regiments (each reads only its own bodies
 ## and writes only its own position), so it stays replay-safe. Called by Battle each tick
-## as the last soldier sub-step.
+## as the last soldier sub-step. A far-tier regiment is skipped alongside the body step:
+## with no bodies there is no centroid to couple to (couple() would no-op on n == 0
+## anyway; the guard keeps the two soldier sub-steps gated identically).
 static func couple_all_sim_soldiers(units: Array, delta: float) -> void:
 	for o in units:
 		var u: Unit = o as Unit
-		if u != null and u.state != State.DEAD:
+		if u != null and u.state != State.DEAD and u.tier != FormationTier.FAR:
 			SoldierBodies.couple(u, delta)
 
 
@@ -2820,6 +2826,10 @@ func _process(_delta: float) -> void:
 		_render_extent_n = soldiers
 		_render_extent_frontage = fr
 		_render_extent_mode = formation_mode
+		# A far-tier block draws its marks on the formation grid itself, so a shape change
+		# (count / frontage / density-mode) must relay the grid marks, not just the chrome.
+		# Nothing else raises _render_dirty for a far unit (no bodies step), so raise it here.
+		_render_dirty = true
 		var new_extent: float = SoldierFlock.compute_extent(self, formation_slots(soldiers))
 		if not is_equal_approx(new_extent, _block_extent):
 			_block_extent = new_extent
@@ -2830,7 +2840,7 @@ func _process(_delta: float) -> void:
 	# figure mirror and conversio squash all key off it), the unit is fighting (front-rank
 	# churn / prone flips), or the instance count drifted from the body count.
 	if _render_dirty or facing != _render_last_facing or state == State.FIGHTING \
-			or _mm_body.instance_count != _sim_soldier_pos.size():
+			or _mm_body.instance_count != _render_body_count():
 		_render_dirty = false
 		_render_last_facing = facing
 		_refresh_flock_render()
@@ -2878,8 +2888,15 @@ func _apply_lod_meshes() -> void:
 	else:
 		_mm_body.mesh = _figure_body_mesh
 		_mm_outline.mesh = _figure_outline_mesh
-	_mm_facing_pip.instance_count = _sim_soldier_pos.size() if _detailed_lod else 0
+	_mm_facing_pip.instance_count = _render_body_count() if _detailed_lod else 0
 	_refresh_flock_render()
+
+
+## Number of marks the flock render draws: the simulated bodies at close tier, or the
+## aggregate living count at far tier (whose marks sit on the formation grid — a far-tier
+## unit carries no per-soldier positions to mirror, but it must still be visible).
+func _render_body_count() -> int:
+	return soldiers if tier == FormationTier.FAR else _sim_soldier_pos.size()
 
 
 ## Push the current mark positions/colours into the two MultiMeshes (1 instance per mark).
@@ -2888,7 +2905,21 @@ func _apply_lod_meshes() -> void:
 ## LOD the facing pip carries the exact per-soldier facing instead, since the figure
 ## itself only mirrors left/right.
 func _refresh_flock_render() -> void:
-	var n: int = _sim_soldier_pos.size()
+	# A far-tier unit has no simulated bodies: draw its marks on the formation grid itself —
+	# a pure function of the unit's aggregate fields (count, facing, formation shape), so this
+	# is presentation only and revives no per-soldier sim state. The grid offsets are local to
+	# the unit node (which itself marches), so a translating far block needs no per-frame
+	# rewrite; facing/count/formation changes re-enter here via the _process refresh checks.
+	var far_tier: bool = tier == FormationTier.FAR
+	var far_locals := PackedVector2Array()
+	var far_facings := PackedVector2Array()
+	if far_tier:
+		far_locals = formation_slots(soldiers)
+		var grid_ang: float = facing.angle() + PI * 0.5 + _formation_angle
+		for fi in range(far_locals.size()):
+			far_locals[fi] = far_locals[fi].rotated(grid_ang)
+		far_facings = soldier_world_facings(far_locals.size())
+	var n: int = _render_body_count()
 	if _mm_body.instance_count != n:
 		_mm_body.instance_count = n
 		_mm_outline.instance_count = n
@@ -2897,9 +2928,14 @@ func _refresh_flock_render() -> void:
 	var sim_prone_n: int = _sim_prone.size()
 	for i in range(n):
 		# Prone: squash/rotate the mark and tint the body dark; outline stays WHITE.
+		# (A far-tier unit tracks no prone timers; everyone draws standing.)
 		var prone: bool = i < sim_prone_n and _sim_prone[i] > 0.0
-		var pos: Vector2 = _sim_soldier_pos[i] - position
-		var sf: Vector2 = _sim_soldier_facing[i] if i < _sim_soldier_facing.size() else facing
+		var pos: Vector2 = far_locals[i] if far_tier else _sim_soldier_pos[i] - position
+		var sf: Vector2 = facing
+		if far_tier:
+			sf = far_facings[i]
+		elif i < _sim_soldier_facing.size():
+			sf = _sim_soldier_facing[i]
 		var t: Transform2D
 		if prone:
 			if _detailed_lod:
