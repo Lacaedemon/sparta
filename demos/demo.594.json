@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Wording-only change: docs/combat-model.md knockback-clamp description (per-strike cumulative, not one post-sum clamp) plus matching comment-label alignment in scripts/tests; no gameplay, rendering, or UI change to film."
+}
