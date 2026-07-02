@@ -156,6 +156,8 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_soldier_weapon_id.remove_at(i)   # and the loadout type ids
 			if i < unit._sim_soldier_shield_id.size():
 				unit._sim_soldier_shield_id.remove_at(i)
+			if i < unit._sim_soldier_shield_hold_angle.size():
+				unit._sim_soldier_shield_hold_angle.remove_at(i)   # and the hold-angle state
 			dead += 1
 	if dead == 0:
 		return
