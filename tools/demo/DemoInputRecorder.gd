@@ -35,6 +35,16 @@ var _state_dumped: Dictionary = {}     # tick -> true, so each snapshot is writt
 
 
 func _ready() -> void:
+	# Unconditional wall-clock safety net (same as DemoRunner): whatever mode this
+	# run is in -- movie recording, frame capture, state dump -- it quits itself
+	# once the budget expires instead of lingering as an orphaned headless process.
+	# The tighter CAPTURE_TIMEOUT_SEC net below still fires first in capture/dump
+	# mode; this one also covers a movie recording that misses its --quit-after.
+	# Only when this scene is the run's root (a real tool run): a GUT test that
+	# instantiates the recorder as a child must not install a process-wide kill
+	# timer in the test run.
+	if get_parent() == get_tree().root:
+		get_tree().root.add_child.call_deferred(RunWatchdog.create("scripted-input recording"))
 	# A recording carries the game's sound (SFX default off); session-only, like DemoRunner.
 	Settings.set_sfx_enabled_session(true)
 	var script: Dictionary = _load_script(OS.get_environment("SPARTA_DEMO_INPUT"))

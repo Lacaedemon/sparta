@@ -40,7 +40,10 @@ fi
 echo "[session-start] Importing Godot project..."
 import_log="$(mktemp)"
 trap 'rm -f "$import_log"' EXIT
-godot --headless --import --verbose --path "$CLAUDE_PROJECT_DIR" 2>&1 | tee "$import_log"
+# Bounded (like every Godot launch in the repo scripts) so a hung import is
+# killed rather than surviving as an orphaned process.
+. "$CLAUDE_PROJECT_DIR/tools/lib/run-bounded.sh"
+run_bounded 900 godot --headless --import --verbose --path "$CLAUDE_PROJECT_DIR" 2>&1 | tee "$import_log"
 if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" "$import_log"; then
   echo "[session-start] ERROR: import reported script errors (see above)"
   exit 1
