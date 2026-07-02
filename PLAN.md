@@ -15,6 +15,17 @@ then grow outward.
 - **Art:** **CC0 only** — Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
   - ⚠️ **Not** commercial-game mod assets — they are copyrighted, not public domain.
 - **First milestone:** one self-contained tactical battle. No campaign map yet.
+- **Performance target (#549):** **60fps at a representative large-battle scale** (several
+  hundred soldiers across multiple regiments, actively engaged in melee and ranged combat --
+  the biggest battle the game is expected to support), on named reference hardware: a **2022
+  MacBook Air (Apple M2, 24GB)** and the developer's usual PC. This is the standing budget
+  future per-entity-granularity decisions (per-soldier speed, weapon/shield objects,
+  individual slot orders -- see the bottom-up-emergence direction below) get measured against,
+  not a guess. GitHub Actions CI runners are not this hardware, so CI can only run a
+  *relative* regression check (did a PR measurably slow the sim down on the runner, not "is it
+  fast enough"); the real target is checked by hand on the reference hardware. See
+  `tools/benchmark/README.md` for the reference large-battle scenario, the benchmark runner,
+  and both checks.
 
 ## Design pillars
 1. **Collision is core — treat it as a first-class system, not polish.** In a large-scale tactical
@@ -42,6 +53,78 @@ then grow outward.
         form chokepoints. This is where collision and the rock-paper-scissors design meet.
      5. Scale: replace the O(n²) neighbor scan with a spatial grid (and/or move to Godot
         `CharacterBody2D`/`move_and_slide`) before unit counts grow past a few dozen.
+2. **Bottom-up emergence over top-down heuristics.** As we move away from control-theory/springs/
+   heuristics, we add more realistic behaviors at each organizational level — soldier, file/rank,
+   unit/regiment, army — and let system-level phenomena (formation shape, morale/routing,
+   rank-closing, combat outcomes) *emerge* from the aggregate interaction of those local rules,
+   rather than approximating the desired system-level outcome directly with a top-down formula or
+   magic-number lookup. We're building the game model bottom-up, not top-down.
+   - **Soldier body motion (#448/#497, merged):** replaced a damped spring/control-theory heuristic
+     (stiffness/damping constants steering each body toward a target slot) with bounded-force
+     "arrive" physics per soldier. The block looking solid is now a side effect of every body
+     independently obeying real kinematics, not a shared control law.
+   - **Combat resolution (#535, design, in flight):** replacing abstract combat-multiplier
+     heuristics (`flank_multiplier()`, `charge_multiplier()` as magic-number lookups) with concrete
+     per-soldier `Weapon`/`Shield` objects whose properties (reach, defense) directly drive outcomes.
+   - **Formation shape (#530, in flight as PR #534):** replacing "formation = a combat-multiplier
+     flag" with real soldier-by-soldier geometric restructuring — a square is actually square, a
+     shield wall is actually tighter — so the formation's tactical effect emerges from its real
+     geometry, not an abstracted flag.
+   - **Slot ownership and reshaping (#547, design, just filed):** replacing the block-level
+     "recompute the whole formation and reassign soldiers by array index" heuristic (the source of
+     #541's identity-swap bug) with individual soldiers receiving explicit orders — one-shot
+     reshaping instructions plus bounded standing orders like "advance if your file-mate dies" —
+     from their unit commander. Formation-level behavior (rank-closing, reshaping) emerges from
+     individually-ordered soldiers, not a centralized recompute.
+   - **Rout/discipline (#529, in flight as PR #533):** stays at the current unit-level morale-scalar
+     architecture for now — a candidate for later, not scoped now. Individual soldier morale/fear
+     (nearby casualties, whether neighbors are routing, commander proximity) aggregating into
+     unit-level rout/rally is the natural next step in this direction, but nothing is decided or
+     in progress on it yet.
+   - **Going forward:** when a system-level behavior needs modeling — or an existing one needs
+     revisiting — prefer defining realistic local rules at the right organizational level (soldier /
+     file/rank / unit / army) and letting the system-level outcome emerge, over directly encoding
+     the system-level outcome as a heuristic/formula/multiplier at the top. Weigh this against the
+     standing performance constraint: per-entity realism must stay array-based/SoA at the
+     soldier-count scale this game targets. The #497/#535 resolution is the general pattern —
+     concrete shared `Type` objects plus per-soldier array state, not per-soldier heap-allocated
+     objects — so bottom-up realism doesn't cost bottom-up performance.
+3. **Compositionality — small units that combine, not monoliths.** We build lots of small,
+   focused, single-responsibility units — functions, classes, order primitives, behaviors — and
+   combine them into larger structures, rather than building large monolithic units that directly
+   encode complex behavior wholesale. A big capability should be assembled from small composable
+   pieces, not authored as one big piece.
+   - **Order composability (#516, design merged as `docs/orders-queue-design.md` via PR #527):**
+     the unified orders-queue model is explicitly composable via two disciplined mechanisms —
+     intra-order **phasing** (a single order like move-to-rear carries internal phases: turn-in-place
+     then march) and macro **expansion** (a higher-level command expands into a flat sequence of
+     primitive orders) — and explicitly rejects a deep nested order-tree/behavior-tree in favor of
+     this flat composition, for both legibility and determinism.
+   - **Individual-soldier orders (#547, design, just filed):** replacing block-level monolithic
+     layout recomputation with small, individually-addressed per-soldier orders (one-shot reshaping
+     instructions, bounded standing orders) that compose into unit-level and formation-level
+     emergent behavior — a direct instance of both this pillar and pillar 2 (bottom-up emergence) at
+     once; the two pillars reinforce each other here.
+   - **Reform as a separate composable phase, not baked into conversio (#552, just scoped):** the
+     about-face (`conversio`) primitive stays narrow and single-purpose; a "reform to fill the new
+     front rank" step is a separate phase that composite orders combine alongside `conversio`
+     (before or after a march phase, depending on order intent) rather than logic bolted onto the
+     `conversio` primitive itself — a concrete example of keeping primitives small and composing
+     them, rather than growing one primitive to do more.
+   - **Weapon/Shield as small composable objects (#535, design, in flight):** concrete, focused
+     `Weapon`/`Shield` type objects (each responsible for its own reach/defense/behavior) referenced
+     by soldiers, rather than a single monolithic combat-multiplier lookup table encoding every
+     equipment interaction directly.
+   - **Going forward:** when designing a new system or extending an existing one, prefer decomposing
+     into several small, focused, independently-testable units (a pure function, a narrow class, an
+     order primitive) that compose via a clear, disciplined composition mechanism — phasing,
+     macro-expansion, references/ids — over building one large unit that directly encodes the whole
+     behavior wholesale. Avoid deep inheritance trees and sprawling god-objects/god-functions; those
+     are monoliths by another name. This pillar and pillar 2 (bottom-up emergence) are complementary,
+     not identical: bottom-up emergence is about *where* behavior should live (the right
+     organizational level, letting system behavior emerge from local rules), while compositionality
+     is about *how* units at any level should be structured (small and combinable, not monolithic).
+     #547 is the clearest example of both principles operating together.
 
 ## Prioritized roadmap (synced with GitHub issues)
 Tracked as issues on `Lacaedemon/sparta` with `P0`–`P3` labels (a GitHub Project board groups them).
