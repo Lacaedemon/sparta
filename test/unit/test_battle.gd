@@ -35,13 +35,14 @@ func _battle(units: Array) -> Node:
 
 func test_plain_move_sets_target_and_clears_waypoints() -> void:
 	var u := _unit(1, Vector2.ZERO)
-	u.waypoints.append(Vector2(999, 999))   # a stale queued route
+	u.set_current_order(Order.new_move(Vector2(900, 900)))
+	u.append_order(Order.new_move(Vector2(999, 999)))   # a stale queued route leg
 	u.has_move_target = true
 	var b := _battle([u])
 	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1})
 	assert_eq(u.move_target, Vector2(50, 0), "a plain move sets the destination")
 	assert_true(u.has_move_target, "and marks the unit as moving")
-	assert_true(u.waypoints.is_empty(), "a fresh order discards any queued route")
+	assert_true(u.queued_move_points().is_empty(), "a fresh order discards any queued route")
 
 
 func test_rear_move_arms_the_about_face_and_parks_the_march() -> void:
@@ -288,8 +289,8 @@ func test_append_queues_a_waypoint_behind_the_current_target() -> void:
 		{"units": [1], "x": 400.0, "y": 0.0, "target": BattleScript.ORDER_APPEND_WAYPOINT}
 	)
 	assert_eq(u.move_target, Vector2(200, 0), "append leaves the current destination intact")
-	assert_eq(u.waypoints.size(), 1, "append adds exactly one leg")
-	assert_eq(u.waypoints[0], Vector2(400, 0), "the queued leg is the appended point")
+	assert_eq(u.queued_move_points().size(), 1, "append queues exactly one MOVE leg")
+	assert_eq(u.queued_move_points()[0], Vector2(400, 0), "the queued leg is the appended point")
 
 
 func test_append_to_idle_unit_starts_it_marching() -> void:
@@ -301,7 +302,8 @@ func test_append_to_idle_unit_starts_it_marching() -> void:
 	)
 	assert_true(u.has_move_target, "appending to an idle unit starts it moving")
 	assert_eq(u.move_target, Vector2(150, 0), "the first appended point becomes the target")
-	assert_true(u.waypoints.is_empty(), "nothing is left queued behind it")
+	assert_eq(u.current_order.type, Order.Type.MOVE, "the appended leg became the current order")
+	assert_true(u.queued_move_points().is_empty(), "nothing is left queued behind it")
 
 
 func test_append_via_enqueue_is_not_double_applied() -> void:
@@ -310,13 +312,38 @@ func test_append_via_enqueue_is_not_double_applied() -> void:
 	# leg twice). Simulate a live append on a unit already marching, then drain exactly
 	# as the tick does -- the untagged append applies, and only once.
 	var u := _unit(1, Vector2.ZERO)
+	u.set_current_order(Order.new_move(Vector2(200, 0)))
 	u.move_target = Vector2(200, 0)
 	u.has_move_target = true   # already en route
 	var b := _battle([u])
 	b.enqueue_order([1], Vector2(400, 0), BattleScript.ORDER_APPEND_WAYPOINT)
 	_drain_pending(b)
-	assert_eq(u.waypoints.size(), 1, "an appended waypoint is queued exactly once, not doubled")
-	assert_eq(u.waypoints[0], Vector2(400, 0), "and holds the appended point")
+	assert_eq(u.queued_move_points().size(), 1, "an appended leg is queued exactly once, not doubled")
+	assert_eq(u.queued_move_points()[0], Vector2(400, 0), "and holds the appended point")
+
+
+func test_append_behind_a_busy_order_commits_when_promoted() -> void:
+	# A leg appended while another order runs does NOT clobber the in-flight work: it
+	# queues behind, and its march commits when the finished order retires and the leg
+	# is promoted (retire_current_order -> _start_promoted_move).
+	var u := _unit(1, Vector2.ZERO)
+	var foe := _unit(9, Vector2(300, 0))
+	foe.team = 1
+	u.set_current_order(Order.new_attack(9))
+	u.target_enemy = foe
+	u.has_move_target = false
+	var b := _battle([u, foe])
+	b._apply_order_cmd(
+		{"units": [1], "x": 400.0, "y": 0.0, "target": BattleScript.ORDER_APPEND_WAYPOINT}
+	)
+	assert_false(u.has_move_target, "the append leaves the fight's movement state alone")
+	assert_eq(u.current_order.type, Order.Type.ATTACK, "and the attack stays current")
+	# The fight resolves; the queued leg promotes and commits its march.
+	u.target_enemy = null
+	u._update_current_order()
+	assert_eq(u.current_order.type, Order.Type.MOVE, "the queued leg is promoted")
+	assert_true(u.has_move_target, "and commits its march")
+	assert_eq(u.move_target, Vector2(400, 0), "toward the appended point")
 
 
 # --- pending-append preview while paused -----------------------
@@ -330,7 +357,7 @@ func test_pending_append_is_previewed_without_being_applied() -> void:
 	var b := _battle([u])
 	b.enqueue_order([1], Vector2(300, 0), BattleScript.ORDER_APPEND_WAYPOINT)
 	assert_false(u.has_move_target, "the append is not applied yet (no tick ran)")
-	assert_true(u.waypoints.is_empty(), "and nothing is queued on the unit yet")
+	assert_true(u.queued_move_points().is_empty(), "and nothing is queued on the unit yet")
 	var preview: Array = b.pending_append_points_for(u)
 	assert_eq(preview.size(), 1, "the pending append is previewed")
 	assert_eq(preview[0], Vector2(300, 0), "at the appended point (single unit: no offset)")
@@ -403,6 +430,87 @@ func test_append_preserves_the_existing_stance() -> void:
 		"a waypoint append leaves the unit's stance unchanged")
 
 
+# --- stance-change-only orders (phase 3) ------------------------------
+
+func test_stance_order_writes_the_stance_in_place() -> void:
+	# A standalone stance change writes the durable order_mode without touching movement.
+	var u := _unit(1, Vector2.ZERO)
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": BattleScript.OrderMode.HOLD})
+	assert_eq(u.order_mode, BattleScript.OrderMode.HOLD, "the stance is written")
+	assert_true(u.has_move_target, "movement state is untouched")
+	assert_eq(u.move_target, Vector2(200, 0), "the march continues to the same point")
+
+
+func test_stance_order_toggles_rank_relief() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": -1,
+		"frontage": BattleScript.RankRelief.OFF})
+	assert_false(u.rank_relief, "the rank-relief mode is written off")
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": -1,
+		"frontage": BattleScript.RankRelief.ON})
+	assert_true(u.rank_relief, "and written back on")
+
+
+func test_stance_order_with_negative_mode_leaves_the_stance() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.order_mode = BattleScript.OrderMode.SKIRMISH
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": -1,
+		"frontage": BattleScript.RankRelief.OFF})
+	assert_eq(u.order_mode, BattleScript.OrderMode.SKIRMISH,
+		"a rank-relief-only stance order leaves the stance untouched")
+
+
+func test_stance_order_leave_toggle_keeps_the_rank_relief_setting() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.rank_relief = false   # a prior stance order turned it off
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": BattleScript.OrderMode.HOLD,
+		"frontage": BattleScript.RankRelief.LEAVE})
+	assert_false(u.rank_relief, "a stance-only write leaves the rank-relief mode as it was")
+
+
+func test_stance_order_occupies_the_queue_only_when_idle() -> void:
+	# Same idle-only queue write as the formation branch: an idle unit's transcript shows
+	# the STANCE order; a busy unit keeps its live order running.
+	var idle := _unit(1, Vector2.ZERO)
+	var busy := _unit(2, Vector2(100, 0))
+	busy.set_current_order(Order.new_move(Vector2(300, 0)))
+	busy.move_target = Vector2(300, 0)
+	busy.has_move_target = true
+	var b := _battle([idle, busy])
+	b._apply_order_cmd({"units": [1, 2], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": BattleScript.OrderMode.HOLD})
+	assert_eq(idle.current_order.type, Order.Type.STANCE,
+		"an idle unit's queue reports the stance change")
+	assert_eq(idle.current_order.stance, BattleScript.OrderMode.HOLD, "with its target stance")
+	assert_eq(busy.current_order.type, Order.Type.MOVE,
+		"a busy unit's live order is not replaced")
+	assert_eq(busy.order_mode, BattleScript.OrderMode.HOLD,
+		"but the durable stance is written all the same")
+
+
+func test_enqueue_stance_records_and_applies_once() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_stance([1], BattleScript.OrderMode.CYCLE_CHARGE, BattleScript.RankRelief.OFF)
+	assert_eq(u.order_mode, BattleScript.OrderMode.CYCLE_CHARGE, "applied live")
+	assert_false(u.rank_relief, "both writes land")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_STANCE_ONLY, "queued for recording")
+	assert_true(bool(cmd.get("applied_live", false)),
+		"and tagged so the tick drain records without a second apply")
+
+
 # --- support / defend ------------------------------------------------
 
 func test_support_order_sets_the_ward_not_a_relief() -> void:
@@ -416,7 +524,9 @@ func test_support_order_sets_the_ward_not_a_relief() -> void:
 		"mode": BattleScript.OrderMode.SUPPORT})
 	assert_eq(supporter.support_target, ward, "a SUPPORT order guards the targeted friendly")
 	assert_eq(supporter.order_mode, BattleScript.OrderMode.SUPPORT, "and stamps the SUPPORT stance")
-	assert_null(supporter._relief_partner, "it does not start a line relief on the ward")
+	assert_eq(supporter.current_order.type, Order.Type.SUPPORT,
+		"it does not start a line relief on the ward")
+	assert_false(supporter._separation_exempt(ward), "so no relief pass-through exemption arms")
 
 
 func test_plain_order_clears_a_prior_support_ward() -> void:

@@ -736,27 +736,33 @@ func test_move_to_does_not_brake_before_an_intermediate_waypoint() -> void:
 	var u := _make_unit()
 	u.position = Vector2.ZERO
 	u._current_speed = u.move_speed
-	u.waypoints.push_back(Vector2(0, 500))   # another leg still queued
 	var brake: float = u.arrival_brake_rate()
 	var stopping_distance: float = (u.move_speed * u.move_speed) / (2.0 * brake)
-	u._move_to(Vector2(0, stopping_distance * 0.5), 0.1, true)
+	var corner := Vector2(0, stopping_distance * 0.5)
+	u.set_current_order(Order.new_move(corner))
+	u.append_order(Order.new_move(Vector2(0, 500)))   # another leg still queued
+	u._move_to(corner, 0.1, true)
 	assert_almost_eq(u._current_speed, u.move_speed, 0.001,
 		"an intermediate leg holds pace -- only the final leg brakes to a stop")
 
 
 func test_think_pops_a_waypoint_without_requiring_a_stop() -> void:
-	# Arrival at an intermediate waypoint is position-only: the unit pops the next leg
-	# while still carrying speed, so the route flows corner to corner without halting.
+	# Arrival at an intermediate waypoint is position-only: the unit advances to the next
+	# queued MOVE leg while still carrying speed, so the route flows corner to corner
+	# without halting.
 	var u := _make_unit()
 	u.position = Vector2.ZERO
-	u.move_target = Vector2(0, 3)     # within the 5px arrival radius
-	u.has_move_target = true
+	var first_leg := Vector2(0, 3)    # within the 5px arrival radius
 	var next_leg := Vector2(300, 3)
-	u.waypoints.push_back(next_leg)
+	u.set_current_order(Order.new_move(first_leg))
+	u.move_target = first_leg
+	u.has_move_target = true
+	u.append_order(Order.new_move(next_leg))
 	u._current_speed = u.move_speed   # still at full sprint
 	u._think(0.1)
 	assert_eq(u.move_target, next_leg, "the next leg pops despite the unit still moving")
 	assert_true(u.has_move_target, "the route continues")
+	assert_eq(u.current_order.target_pos, next_leg, "the queue reports the leg now marching")
 	assert_almost_eq(u._current_speed, u.move_speed, 0.001,
 		"speed carries through the corner -- no forced stop at a waypoint")
 
@@ -1216,32 +1222,34 @@ func test_co_located_equal_uid_pair_still_fans_apart() -> void:
 		"equal-uid co-located units fall back to the instance-id sign and fan apart")
 
 
-# --- waypoints -------------------------------------------------
+# --- waypoints (queued MOVE legs on the orders queue) -----------
 
 func test_unit_advances_to_next_waypoint_on_arrival() -> void:
 	var u := _make_unit()
 	u.position = Vector2(100, 100)
+	u.set_current_order(Order.new_move(Vector2(100, 100)))
 	u.move_target = Vector2(100, 100)   # already arrived (within the 5px threshold)
 	u.has_move_target = true
-	u.waypoints.append(Vector2(300, 100))
+	u.append_order(Order.new_move(Vector2(300, 100)))
 	u._think(0.016)
-	assert_eq(u.move_target, Vector2(300, 100), "arriving pops the next waypoint into move_target")
-	assert_true(u.waypoints.is_empty(), "the consumed waypoint leaves the queue")
+	assert_eq(u.move_target, Vector2(300, 100), "arriving commits the next queued leg's march")
+	assert_true(u.queued_move_points().is_empty(), "the consumed leg leaves the queued route")
 	assert_true(u.has_move_target, "the unit keeps marching toward the new leg")
 
 
 func test_advancing_to_next_waypoint_clears_a_sidestep_hold() -> void:
 	# A side-step hold is scoped to its own leg: once the unit reaches that leg and
-	# pops the next waypoint, the hold drops so the following leg marches normally
+	# the next queued leg promotes, the hold drops so the following leg marches normally
 	# (turns to face travel) instead of side-stepping the whole way.
 	var u := _make_unit()
 	u.position = Vector2(100, 100)
+	u.set_current_order(Order.new_move(Vector2(100, 100)))
 	u.move_target = Vector2(100, 100)   # arrived at the side-step leg
 	u.has_move_target = true
 	u.ordered_facing = Vector2.RIGHT    # leg 1 was a side-step
-	u.waypoints.append(Vector2(300, 100))
+	u.append_order(Order.new_move(Vector2(300, 100)))
 	u._think(0.016)
-	assert_eq(u.move_target, Vector2(300, 100), "arriving pops the next leg")
+	assert_eq(u.move_target, Vector2(300, 100), "arriving promotes the next leg")
 	assert_eq(u.ordered_facing, Vector2.ZERO, "...and drops the side-step hold for that leg")
 
 
@@ -1257,10 +1265,11 @@ func test_unit_goes_idle_after_draining_waypoints() -> void:
 
 func test_order_summary_reports_waypoint_count() -> void:
 	var u := _make_unit()
+	u.set_current_order(Order.new_move(Vector2(420, -130)))
 	u.move_target = Vector2(420, -130)
 	u.has_move_target = true
-	u.waypoints.append(Vector2(500, 0))
-	u.waypoints.append(Vector2(600, 0))
+	u.append_order(Order.new_move(Vector2(500, 0)))
+	u.append_order(Order.new_move(Vector2(600, 0)))
 	assert_eq(
 		u.order_summary(),
 		"Moving to (420, -130) (+2 waypoints)",
@@ -1270,9 +1279,10 @@ func test_order_summary_reports_waypoint_count() -> void:
 
 func test_order_summary_singular_waypoint() -> void:
 	var u := _make_unit()
+	u.set_current_order(Order.new_move(Vector2(10, 20)))
 	u.move_target = Vector2(10, 20)
 	u.has_move_target = true
-	u.waypoints.append(Vector2(50, 50))
+	u.append_order(Order.new_move(Vector2(50, 50)))
 	assert_eq(
 		u.order_summary(),
 		"Moving to (10, 20) (+1 waypoint)",
@@ -1464,6 +1474,15 @@ func test_fatigue_reduces_attack_factor() -> void:
 	assert_almost_eq(UnitMorale.fatigue_attack_factor(u), 0.6, 0.001, "spent = 60% attack")
 
 
+## Install a relief the way Battle._apply_order_cmd does: the RELIEF order made current
+## on the reliever first, then the swap armed on it (the order owns the pass-through link).
+func _begin_relief(fresh: Unit, tired: Unit) -> Order:
+	var order := Order.new_relief(tired.uid)
+	fresh.set_current_order(order)
+	UnitRelief.begin(fresh, tired, order)
+	return order
+
+
 func test_relief_swaps_the_fight_and_exempts_the_pair() -> void:
 	var fresh := _make_unit()
 	var tired := _make_unit()
@@ -1472,10 +1491,15 @@ func test_relief_swaps_the_fight_and_exempts_the_pair() -> void:
 	tired.team = 0
 	foe.team = 1
 	tired.target_enemy = foe
-	UnitRelief.begin(fresh, tired)
+	var order := _begin_relief(fresh, tired)
 	assert_eq(fresh.target_enemy, foe, "the reliever takes over the tired unit's fight")
+	assert_eq(order.relief_partner, tired, "the swap link lives on the RELIEF order")
 	assert_null(tired.target_enemy, "the tired unit disengages")
 	assert_true(tired.has_move_target, "the tired unit peels back to the rear")
+	assert_not_null(tired.current_order, "the retreat is a queue-visible order of its own")
+	assert_eq(tired.current_order.type, Order.Type.MOVE, "a plain MOVE toward the rear")
+	assert_eq(tired.current_order.target_pos, tired.move_target,
+		"marching the same rear point the order carries")
 	assert_true(fresh._separation_exempt(tired), "the swapping pair passes through")
 	assert_true(tired._separation_exempt(fresh), "the relief exemption is mutual")
 
@@ -1491,7 +1515,7 @@ func test_relief_inherits_nearest_enemy_when_target_is_unset() -> void:
 	tired.position = Vector2.ZERO
 	foe.position = Vector2(30.0, 0.0)   # within tired's detection range
 	tired.target_enemy = null
-	UnitRelief.begin(fresh, tired)
+	_begin_relief(fresh, tired)
 	assert_eq(fresh.target_enemy, foe,
 		"the reliever inherits the tired unit's nearest enemy even when unset")
 
@@ -1503,7 +1527,7 @@ func test_relief_exemption_clears_when_partner_routs() -> void:
 	tired.team = 0
 	fresh.position = Vector2.ZERO
 	tired.position = Vector2(5.0, 0.0)   # still adjacent, so it's not "apart"
-	UnitRelief.begin(fresh, tired)
+	_begin_relief(fresh, tired)
 	assert_true(fresh._separation_exempt(tired), "exempt during the swap")
 	tired.state = Unit.State.ROUTING
 	UnitRelief.update(fresh)
@@ -1518,13 +1542,51 @@ func test_relief_exemption_clears_once_pair_moves_apart() -> void:
 	tired.team = 0
 	tired.position = Vector2.ZERO
 	fresh.position = Vector2.ZERO
-	UnitRelief.begin(fresh, tired)
+	_begin_relief(fresh, tired)
 	assert_true(fresh._separation_exempt(tired), "exempt while still overlapping")
 	# Move the reliever well clear of the tired unit (past the clear distance).
 	fresh.position = Vector2(fresh.separation_radius + tired.separation_radius + 50.0, 0.0)
 	UnitRelief.update(fresh)
 	assert_false(fresh._separation_exempt(tired),
 		"the exemption ends once the swapping pair has moved apart")
+
+
+func test_relief_exemption_dies_with_a_replaced_order() -> void:
+	# The swap's execution state lives on the RELIEF order, so replacing the reliever's
+	# order (a fresh command mid-swap) takes the pass-through exemption with it -- no
+	# dangling pair link survives on either unit.
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	_begin_relief(fresh, tired)
+	assert_true(fresh._separation_exempt(tired), "exempt during the swap")
+	fresh.set_current_order(Order.new_move(Vector2(500, 0)))
+	assert_false(fresh._separation_exempt(tired),
+		"a replaced relief order drops the exemption")
+	assert_false(tired._separation_exempt(fresh), "on both sides")
+
+
+func test_relief_order_waits_for_the_swap_to_resolve_before_retiring() -> void:
+	# The pass-through swap is part of the RELIEF order's work: with no foe and no move
+	# in flight but the pair link still live, the order must NOT retire -- the exemption
+	# dies with the order, and retiring mid-pass would shove the overlapping pair apart.
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	tired.position = Vector2.ZERO
+	fresh.position = Vector2.ZERO
+	var order := _begin_relief(fresh, tired)
+	fresh.target_enemy = null
+	fresh.has_move_target = false
+	fresh._update_current_order()
+	assert_eq(fresh.current_order, order, "the order holds while the swap is unresolved")
+	# The pair moves apart; the resolve pass clears the link and the order retires.
+	fresh.position = Vector2(fresh.separation_radius + tired.separation_radius + 50.0, 0.0)
+	UnitRelief.update(fresh)
+	fresh._update_current_order()
+	assert_null(fresh.current_order, "the order retires once the swap has resolved")
 
 
 # --- unit merging -----------------------------------------------
@@ -2614,6 +2676,38 @@ func test_ranged_unit_does_not_recover_morale_while_fighting() -> void:
 	UnitMorale.tick_morale(u, 1.0)
 	assert_eq(u.morale, before,
 			"ranged units don't cycle ranks; no morale recovery while fighting")
+
+
+func test_rank_relief_mode_defaults_on() -> void:
+	var u := _make_unit()
+	assert_true(u.rank_relief,
+			"intra-unit rank-relief is on by default -- the historical behavior")
+
+
+func test_rank_relief_off_removes_the_fatigue_reduction() -> void:
+	# The rank-cycle fatigue reduction is the intra-unit rank-relief mode at work: with
+	# the mode written off (a stance order), even a fully trained unit tires at full rate.
+	var u := _make_unit()
+	u.training = 1.0
+	u.rank_relief = false
+	u.state = Unit.State.FIGHTING
+	var before := u.fatigue
+	UnitMorale.tick_fatigue(u, 1.0)
+	var expected := before + Unit.FATIGUE_PER_SEC
+	assert_almost_eq(u.fatigue, expected, 0.001,
+			"with rank-relief off a veteran unit fatigues at the full rate")
+
+
+func test_rank_relief_off_stops_in_fight_morale_recovery() -> void:
+	var u := _make_unit()
+	u.training = 1.0
+	u.rank_relief = false
+	u.state = Unit.State.FIGHTING
+	u.morale = 50.0
+	var before := u.morale
+	UnitMorale.tick_morale(u, 1.0)
+	assert_eq(u.morale, before,
+			"with rank-relief off there is no in-fight morale recovery to rotate in")
 
 
 ## Drives `u` through repeated 1-tick (casualties, then recovery) cycles under a fixed

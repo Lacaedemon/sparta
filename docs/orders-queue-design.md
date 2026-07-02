@@ -1,7 +1,8 @@
 # Design note: unified orders queue
 
-Status: **in implementation — phases 1–2 landed** (the `Order` type + queue +
-apply-once, and the movement-maneuver migration); phases 3–5 remain design. This
+Status: **in implementation — phases 1–3 landed** (the `Order` type + queue +
+apply-once, the movement-maneuver migration, and the transition/relief/waypoint
+absorption); phases 4–5 remain design. This
 note consolidates the design from #516 (and its refinement comments) into one
 spec, and lays out the phased implementation plan tracked by the phase issues
 linked below.
@@ -361,6 +362,54 @@ completion, not mid-transition, or replays diverge.
 in the transcript as an in-flight order until then; inter-unit relief runs as a
 `RelieveUnitOrder` queue entry while intra-unit rank-relief is a queryable mode;
 the support-ward decision is recorded here.
+
+**As implemented (#524).** Five scoping decisions, mirroring phase 2's notes:
+
+- **The route is the queue.** A queued waypoint leg IS a queued `MOVE` order; the
+  parallel `Unit.waypoints` list is deleted. Finishing a leg retires its order,
+  and promoting a not-yet-started `MOVE` commits its march
+  (`retire_current_order` → `_start_promoted_move`), so a route continues behind
+  a finished attack or relief. One behavior fix falls out: an append now queues
+  *behind* an in-flight rear-move about-face instead of pre-empting the turn.
+  `move_target` / `has_move_target` stay as the in-flight leg's execution state.
+- **Relief split, as specced.** The inter-unit swap's execution state lives on
+  the reliever's `RELIEF` order (`Order.relief_partner`): the pass-through
+  separation exemption is checked from either side off that one link, the tired
+  unit's retreat is a queue-visible `MOVE` order of its own, and the link — so
+  the exemption — dies with the order on an interrupt. The order retires only
+  once the swap has resolved (no foe, no advance in flight, link cleared), so
+  retiring can't shove a still-overlapping pair apart. Intra-unit rank-relief is
+  the durable `Unit.rank_relief` mode (default on, so replays and balance are
+  unchanged): it gates the training-driven rank-cycle fatigue reduction and
+  in-fight morale recovery, and a `STANCE` order writes it. `target_enemy` and
+  `support_target` stay unit fields — the reactive layer (enemy AI, auto-engage)
+  writes `target_enemy` with no order behind it, so per the verbs-vs-modes split
+  they are execution state the queue reads.
+- **Transitions complete instantaneously today.** `FORMATION` / `FRONTAGE` / the
+  new `STANCE` order write their mode at the apply tick — the write IS the
+  completion — because the sim has no transition choreography for them yet: the
+  body re-packing that follows is the presentation layer's arrival dynamics.
+  The completion-write contract is therefore held trivially (a deterministic
+  write at the apply tick), and a future PR that gives a formation change a real
+  N-tick duration inherits the queue machinery ready-made. The idle-only queue
+  entry (occupy the queue only when no live order runs) carries the transcript
+  visibility; a busy unit's concurrent mode write is the mode layer's parallel
+  composition. `SpacingOrder` maps onto what the codebase already models —
+  open/close order is `FORMATION` density, line width is `FRONTAGE` — and
+  `SwitchWeaponOrder` stays future work: no weapon-switch mechanic exists yet.
+- **`StanceOrder` has no player gesture yet.** The stance hotkeys still arm a
+  mode for the *next* move/attack order; `Battle.enqueue_stance` exists (and is
+  recorded) so the mode layer is reachable from the same exactly-once dispatch
+  as every other command, with the standalone-gesture UX tracked as follow-up
+  work (#593).
+- **Support-ward decision: a standing `SupportOrder` (queue entry), not a
+  durable assignment mode.** Support already behaves like an order, not a mode:
+  it has a terminal condition (the ward dies or routs → the duty is spent), any
+  fresh order replaces it (assignment modes like `formation_mode` survive
+  re-orders; support does not), and the transcript reports it as
+  `current_order = SUPPORT` with the ward in `target_uid`. The resolved ward
+  reference (`Unit.support_target`) stays on the unit as execution state, since
+  uid→node resolution lives in Battle.
 
 ### Phase 4 — terminal conditions + trigger vocabulary + ROE modes
 
