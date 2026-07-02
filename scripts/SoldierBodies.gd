@@ -49,6 +49,14 @@ static func seed(unit: Unit) -> void:
 	unit._sim_soldier_stamina = PackedFloat32Array()
 	unit._sim_soldier_stamina.resize(unit._sim_soldier_pos.size())
 	unit._sim_soldier_stamina.fill(unit.combat_profile()["max_stamina"])
+	# Loadout type ids: every soldier carries its unit's interned weapon/shield
+	# type (see LoadoutRegistry) — an id into the shared registry, not an object.
+	unit._sim_soldier_weapon_id = PackedInt32Array()
+	unit._sim_soldier_weapon_id.resize(unit._sim_soldier_pos.size())
+	unit._sim_soldier_weapon_id.fill(unit.weapon_type_id)
+	unit._sim_soldier_shield_id = PackedInt32Array()
+	unit._sim_soldier_shield_id.resize(unit._sim_soldier_pos.size())
+	unit._sim_soldier_shield_id.fill(unit.shield_type_id)
 	# Per-soldier facing starts from the formation's own layout (SQUARE's perimeter
 	# ring faces outward; every other formation is uniform at the unit heading, the prior
 	# behaviour), with no maneuver active.
@@ -96,6 +104,18 @@ static func step(unit: Unit, delta: float) -> void:
 		unit._sim_soldier_stamina.resize(n)
 		for j in range(stam_old, n):
 			unit._sim_soldier_stamina[j] = maxs
+	if unit._sim_soldier_weapon_id.size() != n:
+		# Keep the loadout type ids index-aligned; a fresh tail body carries the
+		# unit's own types (phase 1: the loadout is uniform per unit).
+		var weapon_old: int = unit._sim_soldier_weapon_id.size()
+		unit._sim_soldier_weapon_id.resize(n)
+		for j in range(weapon_old, n):
+			unit._sim_soldier_weapon_id[j] = unit.weapon_type_id
+	if unit._sim_soldier_shield_id.size() != n:
+		var shield_old: int = unit._sim_soldier_shield_id.size()
+		unit._sim_soldier_shield_id.resize(n)
+		for j in range(shield_old, n):
+			unit._sim_soldier_shield_id[j] = unit.shield_type_id
 	if unit._sim_soldier_facing.size() != n:
 		var face_old: int = unit._sim_soldier_facing.size()
 		unit._sim_soldier_facing.resize(n)

@@ -1,0 +1,4 @@
+{
+	"skip": true,
+	"reason": "Representational-only refactor: interned Weapon/Shield type classes + per-soldier id arrays. Zero behavior or visual change — combat reads the same stats and every registry value is test-pinned to today's numbers, so a clip would show an unchanged battle."
+}
