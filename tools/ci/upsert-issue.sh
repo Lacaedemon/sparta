@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Upsert a marker-tagged GitHub issue: if an OPEN issue carrying both the
+# search label and the marker exists, add a comment to it (so repeated
+# failures thread onto one issue instead of spawning duplicates); otherwise
+# open a new issue with the given title/body/labels. Mirrors
+# upsert-pr-comment.sh's find-or-create shape, but for issues rather than PR
+# comments -- there is no PR to comment on when a push-to-main job fails
+# outside any pull request.
+#
+# Usage:
+#   tools/ci/upsert-issue.sh <repo> <marker> <search-label> <title> <body> <labels> [update-body]
+#
+#   <repo>          owner/name (e.g. lacaedemon/sparta)
+#   <marker>        HTML-comment marker that identifies our issue (must
+#                    appear in the issue body so re-runs can find it)
+#   <search-label>  single label to scope the search to (see below)
+#   <title>         issue title, used only when creating
+#   <body>          full issue body (may be multiline; must contain <marker>)
+#   <labels>        comma-separated label list passed to `gh issue create
+#                    --label`, used only when creating (should include
+#                    <search-label>, plus any other labels to attach)
+#   [update-body]   comment body to post when an existing open issue is found
+#                    (default: reuse <body>)
+#
+# Why scope the search by label: an unscoped `gh issue list` only fetches a
+# bounded page (default 30; even a generous --limit is still a fixed cap), so
+# on a repo with a large open-issue count it can silently miss an older
+# tracking issue past that cap and create a duplicate instead of commenting on
+# it. Scoping to a dedicated label keeps the candidate set small by
+# construction regardless of how large the tracker's total open count grows.
+#
+# Requires the `gh` CLI authenticated (GH_TOKEN in the environment).
+set -euo pipefail
+
+if [ "$#" -lt 6 ]; then
+  echo "Usage: $(basename "$0") <repo> <marker> <search-label> <title> <body> <labels> [update-body]" >&2
+  exit 1
+fi
+
+REPO="$1"
+MARKER="$2"
+SEARCH_LABEL="$3"
+TITLE="$4"
+BODY="$5"
+LABELS="$6"
+UPDATE_BODY="${7:-$BODY}"
+
+# Search OPEN issues under the search label only (see rationale above). A
+# resolved incident's issue is closed by resolve-issue.sh on the next green
+# run, so a fresh failure after that opens a new issue rather than silently
+# reopening an old closed one. The marker is passed to jq via --arg (not
+# interpolated into the filter), matching upsert-pr-comment.sh, so a marker
+# containing quotes can't break it.
+IID=$(gh issue list --repo "$REPO" --state open --label "$SEARCH_LABEL" --limit 100 --json number,body \
+  | jq --raw-output --arg marker "$MARKER" \
+      '.[] | select(.body // "" | contains($marker)) | .number' \
+  | head -n1 || true)
+
+if [ -n "$IID" ]; then
+  gh issue comment "$IID" --repo "$REPO" --body "$UPDATE_BODY" >/dev/null
+  echo "Commented on existing issue #${IID}"
+else
+  gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY" --label "$LABELS" >/dev/null
+  echo "Opened new issue"
+fi
