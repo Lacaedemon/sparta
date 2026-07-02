@@ -127,6 +127,31 @@ func test_move_order_stays_current_while_still_marching() -> void:
 	assert_eq(u.current_order.type, Order.Type.MOVE)
 
 
+## Regression for a real bug caught in review: a reform-before-move hold (Battle._apply_order_cmd
+## sets _reform_timer and leaves has_move_target false for its duration) reads identically to
+## "arrived" if the retire check only looks at has_move_target/waypoints/conversio/pending-march
+## -- so an ordinary move order (reform_before_move defaults to true) retired current_order one
+## tick after being issued, before the march it describes had even started.
+func test_move_order_survives_a_reform_before_move_hold() -> void:
+	var u := _make_unit()
+	u.set_current_order(Order.new_move(Vector2(10, 10)))
+	u.has_move_target = false   # parked: Battle._apply_order_cmd's reform branch, not arrival
+	u._reform_target = Vector2(10, 10)
+	u._reform_timer = 1.0
+	u._update_current_order()
+	assert_not_null(u.current_order)
+	assert_eq(u.current_order.type, Order.Type.MOVE)
+
+
+func test_move_order_retires_once_the_reform_hold_expires_and_the_unit_has_arrived() -> void:
+	var u := _make_unit()
+	u.set_current_order(Order.new_move(Vector2(10, 10)))
+	u._reform_timer = 0.0   # hold expired and the resulting march has since arrived
+	u.has_move_target = false
+	u._update_current_order()
+	assert_null(u.current_order)
+
+
 func test_phased_move_order_transitions_turn_to_march_once_the_about_face_hands_off() -> void:
 	var u := _make_unit()
 	u.set_current_order(Order.new_move(Vector2(10, 10), 0, true))
@@ -164,6 +189,31 @@ func test_attack_order_stays_current_while_a_target_enemy_is_set() -> void:
 	u.target_enemy = enemy
 	u._update_current_order()
 	assert_not_null(u.current_order)
+
+
+## Regression for a real bug caught in review: UnitRelief.begin can resolve the primary
+## reliever's foe to null (the tired unit had no target_enemy and UnitTargeting.nearest_enemy
+## found none either), in which case it instead advances the reliever onto the tired unit's slot
+## (has_move_target = true) rather than leaving target_enemy set. A retire check keyed on
+## target_enemy alone can't tell that apart from "relief is done" and retired the order
+## immediately, before the unit had even reached the slot.
+func test_relief_order_survives_a_null_foe_while_still_advancing_into_position() -> void:
+	var u := _make_unit()
+	u.set_current_order(Order.new_relief(3))
+	u.target_enemy = null
+	u.has_move_target = true   # UnitRelief.begin's "truly no foe: advance onto its slot" path
+	u._update_current_order()
+	assert_not_null(u.current_order)
+	assert_eq(u.current_order.type, Order.Type.RELIEF)
+
+
+func test_relief_order_retires_once_arrived_with_no_foe_to_fight() -> void:
+	var u := _make_unit()
+	u.set_current_order(Order.new_relief(3))
+	u.target_enemy = null
+	u.has_move_target = false   # arrived at the slot; still nothing to fight
+	u._update_current_order()
+	assert_null(u.current_order)
 
 
 func test_support_order_retires_once_the_ward_is_cleared() -> void:

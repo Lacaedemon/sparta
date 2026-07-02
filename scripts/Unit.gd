@@ -602,12 +602,28 @@ func _update_current_order() -> void:
 				current_order.phase = Order.Phase.MARCH
 			# Retire on arrival (has_move_target cleared, no queued waypoint leg) once any
 			# in-place turn phase has resolved one way or the other (completed into a march, or
-			# was interrupted before ever starting one).
+			# was interrupted before ever starting one), AND the unit isn't parked in a
+			# reform-before-move hold (_reform_timer > 0 -- see _think()'s reform block and
+			# Battle._apply_order_cmd's reform branch). A reform hold also drops has_move_target
+			# to false for its duration, which otherwise reads identically to "arrived" and
+			# retires the order one tick after most ordinary moves are issued -- before the
+			# march this order describes has even started.
 			if not has_move_target and waypoints.is_empty() \
-					and _conversio_target == Vector2.ZERO and not _has_pending_march:
+					and _conversio_target == Vector2.ZERO and not _has_pending_march \
+					and _reform_timer <= 0.0:
 				retire_current_order()
-		Order.Type.ATTACK, Order.Type.RELIEF:
+		Order.Type.ATTACK:
 			if target_enemy == null:
+				retire_current_order()
+		Order.Type.RELIEF:
+			# UnitRelief.begin can resolve the primary reliever's foe to null (the tired unit had
+			# no target_enemy, and UnitTargeting.nearest_enemy found none either -- e.g. the last
+			# enemy died at that instant); when that happens it instead advances the reliever
+			# onto the tired unit's slot (has_move_target = true), so target_enemy == null alone
+			# doesn't mean the relief is done -- it can also mean "no foe to fight, still walking
+			# into position." Only retire once neither is true: no target to fight AND no move
+			# still in flight.
+			if target_enemy == null and not has_move_target:
 				retire_current_order()
 		Order.Type.SUPPORT:
 			if support_target == null:
