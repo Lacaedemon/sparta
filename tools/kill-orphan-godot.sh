@@ -168,11 +168,29 @@ kill "${kill_list[@]}" 2>/dev/null
 # A short grace for a clean TERM shutdown, then KILL any survivor. (A fixed
 # in-script grace, not a wait on an external event.)
 sleep 5
-killed=0
 for pid in "${kill_list[@]}"; do
   if kill -0 "$pid" 2>/dev/null; then
     kill -9 "$pid" 2>/dev/null
   fi
-  killed=$((killed + 1))
 done
-echo "Killed $killed process(es)."
+# SIGKILL is prompt but not synchronous — give the kernel a beat so a
+# just-killed process is not misreported as a survivor.
+sleep 1
+# Count only kills that actually took, mirroring the per-PID success/failure
+# report of the PowerShell twin. `ps` (not `kill -0`) checks survival: it sees
+# the process even without signal permission, so an EPERM survivor (someone
+# else's process on a shared machine) is reported instead of miscounted, and a
+# zombie (state Z: dead, awaiting reap by a hung parent) counts as killed.
+killed=0
+failed=()
+for pid in "${kill_list[@]}"; do
+  state="$(ps -p "$pid" -o stat= 2>/dev/null)"
+  case "$state" in
+    ""|Z*) killed=$((killed + 1)) ;;
+    *) failed+=("$pid") ;;
+  esac
+done
+echo "Killed $killed of ${#kill_list[@]} process(es)."
+if [ ${#failed[@]} -gt 0 ]; then
+  echo "Could not kill (still running): ${failed[*]}" >&2
+fi
