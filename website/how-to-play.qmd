@@ -196,6 +196,11 @@ actually marches an arc, so the line ends up facing a new direction *and* lying 
 new line. Use it to refuse a flank, to swing a wing forward and take an enemy line in the
 side, or to change the front an entire wing presents without breaking its order.
 
+All three drills fire from a standstill only: a unit that is marching, fighting, or
+already mid-maneuver ignores the key press. While one runs, the info panel reports it
+("About-facing", "Quarter-turning", "Wheeling"), and any fresh order cancels the drill
+where it stands.
+
 ```{=html}
 <figure class="demo">
   <video class="demo-video" controls muted loop playsinline preload="metadata"

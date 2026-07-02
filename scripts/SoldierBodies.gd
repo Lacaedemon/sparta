@@ -176,13 +176,10 @@ static func step(unit: Unit, delta: float) -> void:
 		# During an in-place turn the slot targets rotate with unit.facing, which would drag
 		# bodies to intermediate positions and back. Drop the arrival term so bodies aim only at
 		# the feed-forward (~zero for a turn in place); they decelerate to rest where they stand
-		# instead of chasing the swinging slots. This covers the idle drill turns (conversio,
-		# quarter-turn, wheel) AND the engage re-face (a fighting unit turning its front onto a
-		# new enemy).
-		var turning: bool = unit._conversio_target != Vector2.ZERO \
-				or unit._quarter_target != Vector2.ZERO \
-				or unit._wheel_target != Vector2.ZERO \
-				or unit._engage_turn_target != Vector2.ZERO
+		# instead of chasing the swinging slots. This covers the order-driven maneuvers (the
+		# drill turns and the wheel, read off current_order) AND the engage re-face (a fighting
+		# unit turning its front onto a new enemy) -- see Unit.is_maneuver_turning.
+		var turning: bool = unit.is_maneuver_turning()
 		var to_slot: Vector2 = Vector2.ZERO if turning \
 				else slots[i] - unit._sim_soldier_pos[i]
 		# Arrival: approach the slot at a speed that decelerates to 0 by the time the body
@@ -293,7 +290,7 @@ static func couple(unit: Unit, delta: float) -> void:
 	# slot centroid, so coupling would read that lag as off-formation drift and drag the centre
 	# BACKWARD against the arc — pulling the standing flank off its hinge. Skip it; the arrival
 	# alone brings the bodies onto the arc, and coupling resumes once the wheel completes.
-	if unit._wheel_target != Vector2.ZERO:
+	if unit.is_wheeling():
 		unit._body_follow_vel = Vector2.ZERO
 		return
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)

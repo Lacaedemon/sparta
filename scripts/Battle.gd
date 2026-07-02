@@ -747,7 +747,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
 				u.set_formation(fm)
-				u.set_current_order(Order.new_formation(fm))
+				# Instantaneous mode write: only occupy the queue when the unit is idle.
+				# Replacing a live order would interrupt the maneuver/march it drives
+				# (phase 2), and the durable mode change is already transcript-visible
+				# via the formation field itself.
+				if u.current_order == null:
+					u.set_current_order(Order.new_formation(fm))
 		return
 	# Frontage-resize-only: set each unit's file count to the absolute target,
 	# leaving movement and order-mode state untouched. Absolute so re-applying the
@@ -759,7 +764,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				var u: Unit = _unit_by_uid(int(uid))
 				if u != null:
 					u.set_frontage(files)
-					u.set_current_order(Order.new_frontage(files))
+					# Same idle-only queue write as the formation branch above.
+					if u.current_order == null:
+						u.set_current_order(Order.new_frontage(files))
 		return
 	# Arrow-key nudge: each unit steps a small fixed distance to its own side/rear,
 	# holding facing (ordered_facing set), leaving stance and formation untouched. A
@@ -776,6 +783,10 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			var offset: Vector2 = nudge_offset(u.facing, dir)
 			if offset == Vector2.ZERO:
 				continue
+			# Install the order first: set_current_order interrupts any maneuver the old
+			# order had in flight (folding a partial in-place turn), and a rear march
+			# parked on that order dies with it.
+			u.set_current_order(Order.new_nudge(dir))
 			u.waypoints.clear()
 			u.target_enemy = null
 			u.support_target = null
@@ -783,22 +794,21 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u._reform_timer = 0.0
 			u._reform_until_settled = false
 			u._reform_on_arrival = false   # a drill step's arrival shouldn't fire a stale reform
-			u._pending_march_reform = false
 			u.ordered_facing = u.facing   # hold facing: side-step / back-step, no pivot
 			u.move_target = u.position + offset
 			u.has_move_target = true
-			u.set_current_order(Order.new_nudge(dir))
 			u.start_order_response()
 		return
 	# Wheel: swing each unit 90° about a fixed flank file. The direction rides in "x".
-	# Leaves movement orders and stances untouched, like the other drill sentinels.
+	# Unit.wheel() creates and installs its own WHEEL order (with the swing goal and the
+	# captured hinge on it) when the unit stands idle, and no-ops otherwise -- a refused
+	# wheel leaves whatever order is running untouched.
 	if target_uid == ORDER_WHEEL:
 		var wheel_dir: int = int(round(float(cmd["x"])))
 		for uid in cmd["units"]:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
 				u.wheel(wheel_dir)
-				u.set_current_order(Order.new_wheel(wheel_dir))
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
@@ -869,12 +879,13 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# re-sets it when this order is itself a small lateral shift.
 			u.ordered_facing = Vector2.ZERO
 			# A new order always cancels any in-progress reform from the previous one --
-			# the hold, its settle-early mode, and any reform still parked behind a
-			# rear-move march (start_order_response squares the grid itself).
+			# the hold, its settle-early mode, and the deferred on-arrival case
+			# (start_order_response squares the grid itself). A reform still parked
+			# behind a rear-move march lives on the old Order and dies when
+			# set_current_order below replaces it.
 			u._reform_timer = 0.0
 			u._reform_until_settled = false
 			u._reform_on_arrival = false
-			u._pending_march_reform = false
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			if attack_targets.is_empty():
 				u.target_enemy = target_unit
@@ -944,42 +955,34 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# its heading in Unit (turning in place during the reform hold and as it
 				# marches), so the ranks come onto the new bearing in good order rather
 				# than the whole line flipping its facing at order time.
-				# Reform-before-move: store the destination and let the reform timer
-				# (in Unit._think) commit it once the unit's ranks have had time to
-				# settle. Baked into the command so replays reproduce this as recorded.
-				# Fighting units bypass the hold in _think and commit immediately.
+				# Reform timing rides the recorded "reform" field on the Order: for a plain
+				# move it arms the reform-before-move hold below; for a rear move it times
+				# the composite's reform phase (see Unit._finish_order_turn).
+				var order := Order.new_move(point, mode)
+				order.reform = bool(cmd.get("reform", false))
+				# Install the order first: set_current_order interrupts whatever maneuver
+				# the old order had in flight (a standing drill turn folds and settles; a
+				# wheel stops mid-swing), so a fresh move always starts from consistent
+				# ground -- live play and playback take this same path.
+				u.set_current_order(order)
 				var about_faced: bool = false
 				if rear_move:
-					# Park the destination and about-face; _think starts the march once the
-					# conversio completes. has_move_target stays false so the turn isn't cancelled.
-					# Snapshot before the call: conversio() no-ops before the bodies seed OR while
-					# another in-place turn is already running (a standing V-key about-face), leaving
-					# _conversio_target unchanged and non-zero. Only enter the about-face path when this
-					# call armed a fresh turn; otherwise fall back to a plain march.
-					var conversio_was_idle: bool = u._conversio_target == Vector2.ZERO
-					u.conversio()
-					if conversio_was_idle and u._conversio_target != Vector2.ZERO:
-						u.has_move_target = false
-						u._pending_march_target = point
-						u._has_pending_march = true
-						# Reform timing rides the same recorded "reform" field the plain
-						# reform-before-move hold uses: true = re-form the ranks square to
-						# the new heading before stepping off, false = march at once and
-						# re-form on arrival (see Unit._think's conversio handoff).
-						u._pending_march_reform = bool(cmd.get("reform", false))
-						about_faced = true
+					# Park the destination on the order and about-face in place; _think
+					# starts the march when the turn completes. has_move_target stays false
+					# so the turn isn't cancelled. begin_about_face refuses before the
+					# bodies seed (a spawn-tick order) -- fall back to a plain march then.
+					u.has_move_target = false
+					about_faced = u.begin_about_face(order)
 				# A rear move that armed the about-face parks its march for _think to commit
 				# on completion; every other move commits here (reform-hold or immediate).
-				if not about_faced and bool(cmd.get("reform", false)):
+				# Fighting units bypass the hold in _think and commit immediately.
+				if not about_faced and order.reform:
 					u._reform_target = point
 					u._reform_timer = UnitRef.REFORM_DURATION
 					u.has_move_target = false   # stop any prior march while reforming
 				elif not about_faced:
 					u.move_target = point
 					u.has_move_target = true
-				# A rear move parked its Order in the TURN phase (about-face first); every
-				# other move -- reform-hold or immediate -- starts life in phase NONE.
-				u.set_current_order(Order.new_move(point, mode, about_faced))
 		if not append:
 			u.start_order_response()
 

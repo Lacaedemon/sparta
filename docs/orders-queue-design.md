@@ -1,8 +1,10 @@
 # Design note: unified orders queue
 
-Status: **design — green-lit, not yet implemented.** This note consolidates the
-design from #516 (and its refinement comments) into one spec, and lays out the
-phased implementation plan tracked by the phase issues linked below.
+Status: **in implementation — phases 1–2 landed** (the `Order` type + queue +
+apply-once, and the movement-maneuver migration); phases 3–5 remain design. This
+note consolidates the design from #516 (and its refinement comments) into one
+spec, and lays out the phased implementation plan tracked by the phase issues
+linked below.
 
 The goal: model **every player-issued command as one polymorphic `Order`**, held
 in a single **orders queue** on `Unit`. `current_order` (the head of the queue)
@@ -315,6 +317,26 @@ migrated maneuver against its recorded transcript.
 flags are deleted; the #517 conversio holds bodies frozen through the full turn
 and the #521 nudge translates the centroid by the full `NUDGE_DISTANCE`, both
 confirmed in the transcript.
+
+**As implemented (#523).** The in-place turns and the wheel keep their execution
+state on the Order itself (`turn_target` / `turn_start_facing` / `pivot`), and a
+phased rear move carries its recorded reform choice and parks its march in
+`target_pos`; `_wheel_target`, the conversio / quarter-turn in-progress state,
+and `_pending_march_*` are deleted. Replacing or clearing the queue interrupts
+the maneuver in flight (a partial turn folds and settles; a wheel stops where it
+stands), so a parked rear march dies with its order — which also fixes a latent
+stale-march bug the parallel flags had. Two scoping notes:
+
+- The **standalone V/Q/E drills** became `ABOUT_FACE` / `QUARTER_TURN` queue
+  entries created by `Unit` itself, still deliberately unrecorded (the queue is
+  not serialized, so replays are untouched). They now fire only from a
+  standstill, so an unrecorded gesture can never clobber the order a live
+  behaviour runs off.
+- **`_engage_turn_target` stays a Unit field**, not a queue entry. The combat
+  re-face is reactive execution state the sim arms *while fighting* — an idle
+  auto-engaged unit has no order at all — so per this doc's own verbs-vs-modes
+  split it belongs to the reactive layer, not the queue. It shares the in-place
+  turn mechanics (`is_maneuver_turning` covers it for the body-arrival freeze).
 
 ### Phase 3 — migrate transition orders + split relief + absorb waypoints
 

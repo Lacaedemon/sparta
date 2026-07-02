@@ -90,14 +90,17 @@ var has_move_target: bool = false
 var waypoints: Array[Vector2] = []
 var target_enemy: Unit = null
 var selected: bool = false
-# Phase 1 of the unified orders-queue design (docs/orders-queue-design.md, #516): the general
-# orders queue. `current_order` (orders[0], or null when idle) is the single, transcript-visible
-# source of truth for "what is this unit doing right now" -- including its active phase, for a
-# phased order like the move-to-rear about-face. Phase 1 is additive: Battle._apply_order_cmd (the
-# exactly-once apply site fixed by #519) constructs and pushes the Order alongside its existing
-# legacy mutation (move_target/waypoints/target_enemy/_wheel_target/...), and
-# _update_current_order retires it by reading that same legacy state -- nothing in the sim reads
-# these fields back, so they cannot affect gameplay or replay determinism this phase.
+# The unified orders queue (docs/orders-queue-design.md, #516). `current_order` (orders[0],
+# or null when idle) is the single, transcript-visible source of truth for "what is this
+# unit doing right now" -- including its active phase, for a phased order like the
+# move-to-rear about-face. As of phase 2 the queue is AUTHORITATIVE for the movement
+# maneuvers: an in-place turn (a rear move's about-face phase, the standalone
+# about-face/quarter-turn drills) and the wheel keep their execution state on the Order
+# itself (turn_target / turn_start_facing / pivot), _think advances it off current_order,
+# and replacing or clearing the queue interrupts the maneuver in flight
+# (_interrupt_current_order). The march plumbing (move_target / waypoints) and the
+# targeting fields (target_enemy / support_target) stay legacy until phase 3;
+# _update_current_order still retires MOVE/ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
@@ -628,10 +631,12 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 
-## Replace the orders queue with a single fresh order (a plain, non-append order): clears any
-## queued continuation and makes `order` current immediately. Mirrors the legacy "a fresh order
-## discards the queued route" rule (see Battle._apply_order_cmd) for the new queue in parallel.
+## Replace the orders queue with a single fresh order (a plain, non-append order): interrupts
+## whatever maneuver the outgoing order had in flight, clears any queued continuation, and
+## makes `order` current immediately. Mirrors the legacy "a fresh order discards the queued
+## route" rule (see Battle._apply_order_cmd).
 func set_current_order(order: Order) -> void:
+	_interrupt_current_order()
 	var q: Array[Order] = []
 	if order != null:
 		q.append(order)
@@ -657,48 +662,90 @@ func retire_current_order() -> void:
 
 
 ## Clear the queue and current order outright (death, a merge, or a rout dropping every
-## in-progress maneuver -- see _rout()).
+## in-progress maneuver -- see _rout()). Interrupts any maneuver in flight first, so a
+## partial in-place turn is folded rather than leaving the bodies to surge.
 func clear_orders() -> void:
+	_interrupt_current_order()
 	orders.clear()
 	current_order = null
 
 
-## Advance current_order's bookkeeping for this tick: transition its phase, or retire it, by
-## reading the SAME legacy state (has_move_target, waypoints, target_enemy, _wheel_target, ...)
-## the rest of _think() already reads and mutates. Purely additive read-of-existing-state: it
-## writes only Order/queue fields, which nothing else in the sim consumes this phase, so it
-## cannot change movement/combat/replay behaviour -- only current_order's transcript value.
+## Interrupt whatever maneuver the outgoing current order has in flight, before the queue is
+## replaced or cleared. A partial in-place turn is settled -- the rotation folds into
+## _formation_angle so every man keeps his own slot and the bodies don't surge -- and a wheel
+## is dropped where it stands (a partial swing is already a valid formation state: position
+## and facing are consistent, so no settle step is needed). A parked rear-move march and its
+## reform choice live on the dropped order, so they die with it -- an interrupting attack
+## can no longer leave a stale rear destination behind to resurrect after the fight.
+func _interrupt_current_order() -> void:
+	if current_order == null:
+		return
+	if is_order_turning():
+		_settle_order_turn()
+	elif is_wheeling():
+		current_order.turn_target = Vector2.ZERO
+
+
+## True while current_order is running an in-place turn: a rear MOVE's about-face (TURN)
+## phase, or a standalone ABOUT_FACE / QUARTER_TURN drill.
+func is_order_turning() -> bool:
+	if current_order == null or current_order.type == Order.Type.WHEEL:
+		return false
+	return current_order.turn_target != Vector2.ZERO
+
+
+## True while current_order is a WHEEL mid-swing.
+func is_wheeling() -> bool:
+	if current_order == null or current_order.type != Order.Type.WHEEL:
+		return false
+	return current_order.turn_target != Vector2.ZERO
+
+
+## True while ANY maneuver owns the soldier bodies' arrival: an order-driven in-place turn
+## or wheel, or the combat engage re-face (which is reactive execution state, not a queue
+## entry). SoldierBodies.step freezes the slot-approach term while this holds, so the men
+## hold their ground (turns) or ride the rigid rotation (wheel) instead of chasing
+## intermediate slot targets.
+func is_maneuver_turning() -> bool:
+	return is_order_turning() or is_wheeling() or _engage_turn_target != Vector2.ZERO
+
+
+## Goal facing of the in-place 180° reversal current_order is running (a rear move's TURN
+## phase or the standalone ABOUT_FACE drill), or ZERO when none. The figure render squashes
+## the marks through a reversal; a quarter-turn keeps the ordinary facing render.
+func about_face_goal() -> Vector2:
+	if current_order == null:
+		return Vector2.ZERO
+	var reversing: bool = current_order.type == Order.Type.ABOUT_FACE \
+			or (current_order.type == Order.Type.MOVE
+					and current_order.phase == Order.Phase.TURN)
+	return current_order.turn_target if reversing else Vector2.ZERO
+
+
+## Advance current_order's bookkeeping for this tick: retire orders whose work is done. The
+## maneuver phases themselves (TURN -> REFORM -> MARCH, the drill/wheel completions) are
+## advanced at their execution sites in _think, which know exactly when a handoff happens;
+## this pass covers the retirements that still key off legacy state -- arrival
+## (has_move_target / waypoints), a dead attack target, a resolved relief or support.
 func _update_current_order() -> void:
 	if current_order == null:
 		return
 	match current_order.type:
 		Order.Type.MOVE, Order.Type.NUDGE:
-			# Move-to-rear phasing: the conversio (about-face) runs first. With the reform
-			# drill on it hands off to a reform hold (_reform_timer armed, march still
-			# parked in _reform_target), then the march; the hasty variant hands straight
-			# off to the march (has_move_target flips true). Every non-rear move stays NONE
-			# (never entered TURN in the first place -- see Battle._apply_order_cmd's
-			# about_faced flag).
-			if current_order.phase == Order.Phase.TURN \
-					and _conversio_target == Vector2.ZERO and not _has_pending_march \
-					and _reform_timer > 0.0:
-				current_order.phase = Order.Phase.REFORM
-			if (current_order.phase == Order.Phase.TURN
-					or current_order.phase == Order.Phase.REFORM) \
-					and _conversio_target == Vector2.ZERO and not _has_pending_march \
-					and has_move_target:
-				current_order.phase = Order.Phase.MARCH
-			# Retire on arrival (has_move_target cleared, no queued waypoint leg) once any
-			# in-place turn phase has resolved one way or the other (completed into a march, or
-			# was interrupted before ever starting one), AND the unit isn't parked in a
+			# Retire on arrival (has_move_target cleared, no queued waypoint leg), unless the
+			# order still has work in flight that keeps has_move_target false without meaning
+			# "arrived": an in-place about-face still turning (turn_target set), or a
 			# reform-before-move hold (_reform_timer > 0 -- see _think()'s reform block and
-			# Battle._apply_order_cmd's reform branch). A reform hold also drops has_move_target
-			# to false for its duration, which otherwise reads identically to "arrived" and
-			# retires the order one tick after most ordinary moves are issued -- before the
-			# march this order describes has even started.
+			# Battle._apply_order_cmd's reform branch), both of which park the march.
 			if not has_move_target and waypoints.is_empty() \
-					and _conversio_target == Vector2.ZERO and not _has_pending_march \
+					and current_order.turn_target == Vector2.ZERO \
 					and _reform_timer <= 0.0:
+				retire_current_order()
+		Order.Type.ABOUT_FACE, Order.Type.QUARTER_TURN, Order.Type.WHEEL:
+			# The drills and the wheel retire at their execution sites the moment they
+			# complete or are interrupted; this is a defensive sweep in case one is ever
+			# observed with its turn already settled.
+			if current_order.turn_target == Vector2.ZERO:
 				retire_current_order()
 		Order.Type.ATTACK:
 			if target_enemy == null:
@@ -715,9 +762,6 @@ func _update_current_order() -> void:
 				retire_current_order()
 		Order.Type.SUPPORT:
 			if support_target == null:
-				retire_current_order()
-		Order.Type.WHEEL:
-			if _wheel_target == Vector2.ZERO:
 				retire_current_order()
 		Order.Type.FORMATION, Order.Type.FRONTAGE:
 			# Instantaneous: applied and complete in the same tick Battle issues them, so they
@@ -768,76 +812,40 @@ func _think(delta: float) -> void:
 				return
 			_commit_pending_reform()
 
-	# In-place drill turns: every soldier turns where they stand, the block does not advance
-	# or pivot as a body. Cancelled by engaging in combat or receiving a move order (the
-	# partial rotation is preserved). On arrival (or an interrupt) each path folds the turned
-	# angle into _formation_angle so the re-engaged arrival sees ~zero error and every man
-	# holds his OWN slot -- the conversio and the quarter-turn share this settle mechanism.
-	#
-	# Conversio (about-face, 180°): the grid keeps its shape and every soldier holds their
-	# own world position; only facing flips.
-	if _conversio_target != Vector2.ZERO:
+	# In-place order turns (a rear MOVE's about-face phase, the standalone about-face /
+	# quarter-turn drills): every soldier turns where they stand, the block does not advance
+	# or pivot as a body. The turn state lives on current_order. Cancelled by engaging in
+	# combat or by a legacy march starting under the order (a waypoint append pre-empts the
+	# turn -- the partial rotation is preserved by the settle fold). On arrival (or an
+	# interrupt) the settle folds the turned angle into _formation_angle so the re-engaged
+	# arrival sees ~zero error and every man holds his OWN slot.
+	if is_order_turning():
 		if state == State.FIGHTING or has_move_target:
-			_settle_conversio()   # fold the partial turn so the bodies don't surge
-			_conversio_target = Vector2.ZERO
-			_has_pending_march = false   # a new order / combat pre-empts the parked rear march
-			_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
-			_pending_march_reform = false          # the abandoned composite takes its reform with it
+			# Fold the partial turn so the bodies don't surge, and retire the maneuver --
+			# a rear march parked on the order dies with it.
+			_settle_order_turn()
+			retire_current_order()
 		else:
-			if _advance_turn(_conversio_target, delta):
-				_settle_conversio()
-				_conversio_target = Vector2.ZERO
-				# Rear-sector move: the about-face is done. With the reform drill on, re-form
-				# the ranks square to the new heading FIRST -- the countermarch brings a full
-				# rank to the new front instead of the old partial rear rank -- holding the
-				# march until the bodies have settled (the timer is only a safety timeout).
-				# Without it (the hasty variant), step off at once with the flipped grid and
-				# reform on arrival instead. Either way the block faces travel, so it
-				# advances forward, not backward.
-				if _has_pending_march:
-					_has_pending_march = false
-					if _pending_march_reform and reform_ranks():
-						_reform_target = _pending_march_target
-						_reform_timer = _reform_timeout()
-						_reform_until_settled = true
-					else:
-						_reform_on_arrival = not _pending_march_reform
-						move_target = _pending_march_target
-						has_move_target = true
-					_pending_march_reform = false
-					_pending_march_target = Vector2.ZERO   # consumed -- clear it alongside its gate, as the interrupt path and _rout() do
-			state = State.IDLE
-			return
-
-	# Quarter-turn (90°): every soldier turns in place; the grid does NOT reorganize (the
-	# men keep their exact positions). unit.facing rotates 90° while the arrival is frozen, and
-	# when it stops _formation_angle absorbs however far it turned so soldier_world_slots holds
-	# the slots still — no surge, for any grid shape including a depleted partial one. Frontage
-	# and depth swap relative to the field, but no man takes a step. An interrupt leaves the
-	# offset matching the partial turn, so the bodies don't surge there either.
-	if _quarter_target != Vector2.ZERO:
-		if state == State.FIGHTING or has_move_target:
-			_settle_formation_angle()   # cancel the partial turn so the bodies don't surge
-			_quarter_target = Vector2.ZERO
-		else:
-			if _advance_turn(_quarter_target, delta):
-				_settle_formation_angle()
-				_quarter_target = Vector2.ZERO
+			if _advance_turn(current_order.turn_target, delta):
+				_settle_order_turn()
+				_finish_order_turn()
 			state = State.IDLE
 			return
 
 	# Wheel (circumductio): the block swings about a fixed flank file. facing rotates and the
 	# regiment centre slides along an arc so the hinge holds; _advance_wheel rigidly rotates the
-	# centre and every body about the hinge, with the arrival frozen (as for the conversio/
-	# quarter-turn) so it doesn't fight the rotation. An interrupt by combat or a move order just
-	# drops the wheel where it is — the partial swing is already a valid formation state (position
-	# and facing are consistent), so no settle step is needed.
-	if _wheel_target != Vector2.ZERO:
+	# centre and every body about the hinge, with the arrival frozen (as for the in-place
+	# turns) so it doesn't fight the rotation. An interrupt by combat or a move order just
+	# drops the wheel where it is — the partial swing is already a valid formation state
+	# (position and facing are consistent), so no settle step is needed.
+	if is_wheeling():
 		if state == State.FIGHTING or has_move_target:
-			_wheel_target = Vector2.ZERO
+			current_order.turn_target = Vector2.ZERO
+			retire_current_order()
 		else:
 			if _advance_wheel(delta):
-				_wheel_target = Vector2.ZERO
+				current_order.turn_target = Vector2.ZERO
+				retire_current_order()
 			state = State.IDLE
 			return
 
@@ -970,6 +978,11 @@ func _think(delta: float) -> void:
 			# the leg just finished so the next leg turns to face its own travel.
 			ordered_facing = Vector2.ZERO
 			move_target = waypoints.pop_front()   # advance along the queued route
+			# Waypoint legs and queued MOVE orders are appended 1:1 (see
+			# Battle._apply_order_cmd's append branch), so retire the finished leg's
+			# order in lockstep -- the queue then reports the leg actually marching.
+			if current_order != null and current_order.type == Order.Type.MOVE:
+				retire_current_order()
 		else:
 			has_move_target = false
 			state = State.IDLE
@@ -1637,37 +1650,17 @@ var _sim_soldier_facing: PackedVector2Array = PackedVector2Array()
 # While true, _sim_soldier_facing is owned by a maneuver and NOT re-synced to the
 # unit heading each tick. False = bodies track unit.facing (the default).
 var _per_soldier_facing: bool = false
-# Non-zero while a conversio (in-place about-face) is in progress: the target (reversed)
-# facing direction. unit.facing rotates toward this each tick; SoldierBodies.step drops the
-# arrival term while it turns so bodies don't drift to intermediate slot positions. The
-# heading the turn started from is kept so _formation_angle can absorb exactly how far it
-# turned when it stops (full turn or an interrupt) -- same mechanism as the quarter-turn --
+# The in-place drill turns (about-face / quarter-turn, and a rear move's about-face phase)
+# and the wheel keep their in-progress state ON current_order (turn_target /
+# turn_start_facing / pivot -- see Order.gd and is_order_turning / is_wheeling), not in
+# parallel Unit fields. SoldierBodies.step drops the arrival term while a maneuver runs
+# (is_maneuver_turning) so bodies don't drift to intermediate slot positions; on completion
+# or an interrupt _settle_order_turn folds however far the turn got into _formation_angle,
 # so every soldier holds its OWN world position and facing is the only thing that changes
-# (a true conversio, not an index-swap relabel).
-# Cleared on arrival or when interrupted by combat, a move order, or routing.
-var _conversio_target: Vector2 = Vector2.ZERO
-var _conversio_start_facing: Vector2 = Vector2.ZERO
-# Non-zero while a quarter-turn (90° in-place turn) is in progress: the target facing, 90°
-# to the left or right of the start. Same arrival-freeze as the conversio; the heading the
-# turn started from is kept so _formation_angle can absorb exactly how far it turned when it
-# stops (full turn or an interrupt), leaving the slots — and the men — exactly where they were.
-var _quarter_target: Vector2 = Vector2.ZERO
-var _quarter_start_facing: Vector2 = Vector2.ZERO
-# Non-zero while a wheel (circumductio, hinge pivot) is in progress: the target facing, 90°
-# to the left or right of the start. UNLIKE the conversio and quarter-turn, a wheel is NOT an
-# in-place turn — one flank file stays fixed while the whole block swings about it like a door
-# on a hinge, so `position` slides along an arc as `facing` rotates and the men march to their
-# swung slots. _advance_wheel rigidly rotates the centre AND every body about the hinge by the
-# same step each tick, so the same arrival-freeze as the conversio/quarter-turn applies (the
-# arrival term is dropped while _wheel_target is set) — that keeps it from fighting the
-# rigid rotation, and bodies stay exactly on their swinging slots (no teleport). The wheel does not
-# modify _formation_angle (it's 0 normally, but non-zero after a quarter-turn — the pivot geometry
-# folds that in). `_wheel_pivot` is the fixed hinge point in parent-local space (like
-# `_sim_soldier_pos`), captured when the wheel is armed so the arc reproduces exactly on replay.
-# Cleared on arrival or when interrupted by combat, a move order, or routing (the partial swing is
-# preserved).
-var _wheel_target: Vector2 = Vector2.ZERO
-var _wheel_pivot: Vector2 = Vector2.ZERO
+# (a true drill turn, not an index-swap relabel). A wheel is NOT an in-place turn -- one
+# flank file stays fixed while the whole block swings about it like a door on a hinge, so
+# `position` slides along an arc as `facing` rotates and the men ride the rigid rotation;
+# an interrupted wheel just stops where it is (a partial swing is a valid formation state).
 # Non-zero while a unit is turning in place to bring its front to bear on an enemy it is
 # engaging (an attack order or auto-engage that arrives ~>75° off the current fronting). The
 # target facing (toward the enemy); unit.facing rotates toward it each tick with the arrival
@@ -1688,20 +1681,11 @@ const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
 # boundary so a re-faced unit lands frontal blows.
 const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
 
-# Destination a rear-sector move order parked while an about-face (conversio) turns the
-# block around. _think reads it on conversio arrival, commits it as the move target, and
-# clears it. Held separately from move_target so has_move_target stays false during the
-# turn (otherwise _think would cancel the conversio). _has_pending_march is the
-# authoritative gate rather than checking != Vector2.ZERO, because the world origin is a
-# valid move destination -- ZERO can't reliably mean "nothing pending".
-var _pending_march_target: Vector2 = Vector2.ZERO
-var _has_pending_march: bool = false
-# Reform timing for the rear-move composite (about-face, reform, march). Stamped from the
-# order's "reform" field when the about-face is armed: true = reform the ranks square to the
-# new heading BEFORE stepping off (the drilled default), false = march at once and reform on
-# arrival instead (the hasty variant). _reform_on_arrival carries the deferred case through
-# the march; both are cleared by a fresh order, an interrupt, or a rout.
-var _pending_march_reform: bool = false
+# A rear-sector move order parks its march destination and its reform choice on the Order
+# itself (target_pos / reform -- has_move_target stays false during the turn so _think's
+# march path doesn't pre-empt it), and _finish_order_turn commits them when the about-face
+# completes. _reform_on_arrival carries the hasty variant's deferred reform through the
+# march; cleared by a fresh order, an interrupt, or a rout.
 var _reform_on_arrival: bool = false
 # While true, the reform hold (_reform_timer) ends EARLY once every body stands on its slot
 # (_reform_bodies_settled) -- the timer is only the safety timeout. The plain reform-before-move
@@ -1820,6 +1804,19 @@ func release_soldier_facing() -> void:
 		_sim_soldier_facing.fill(facing)
 
 
+## True when the unit can arm a standalone drill (about-face / quarter-turn / wheel) right
+## now: standing idle -- not fighting, bodies seeded, no march or attack/support duty in
+## flight, not parked in a reform hold, and no other maneuver already running. The drills
+## are unrecorded gestures, so refusing them while any live behaviour runs keeps them from
+## clobbering the order that behaviour runs off (and keeps the live queue no further from
+## its replay than the old drill flags did).
+func _can_drill() -> bool:
+	return state != State.FIGHTING and not _sim_soldier_facing.is_empty() \
+			and not has_move_target and target_enemy == null and support_target == null \
+			and _reform_timer <= 0.0 \
+			and not is_order_turning() and not is_wheeling()
+
+
 ## Conversio (about-face, Vegetius III): every soldier turns in place to reverse 180° at
 ## CONVERSIO_TURN_RATE rad/s (~0.5 s for a full reversal). The grid keeps its footprint —
 ## the block does not pivot, neither about its centre (a move order) nor on a flank
@@ -1828,20 +1825,18 @@ func release_soldier_facing() -> void:
 ## unit.facing tracks the turn each tick so the sim always knows the soldiers' current
 ## facing (shield side, etc.). SoldierBodies.step drops the arrival term while
 ## it turns, so bodies stay at their grid positions instead of drifting to intermediate
-## slot targets. On arrival (or an interrupt) _settle_conversio folds the rotation into
+## slot targets. On arrival (or an interrupt) _settle_order_turn folds the rotation into
 ## _formation_angle -- the same mechanism the quarter-turn and engage-turn use -- so
 ## soldier_world_slots reproduces each body's own pre-turn slot under the new facing,
-## instead of the front/rear ranks trading slots. If interrupted by combat or a move
-## order, unit.facing stays at its current angle — the partial rotation is preserved.
-## Blocked while fighting, before seeding, or while another in-place turn (conversio or
-## quarter-turn) is already running.
+## instead of the front/rear ranks trading slots. The standalone drill is a queue entry
+## (an ABOUT_FACE order created here, unrecorded); it no-ops unless the unit stands idle.
 func conversio() -> void:
-	if state == State.FIGHTING or _sim_soldier_facing.is_empty() \
-			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO \
-			or _wheel_target != Vector2.ZERO:
+	if not _can_drill():
 		return
-	_conversio_start_facing = facing
-	_conversio_target = Vector2(-facing.x, -facing.y)
+	var order := Order.new_about_face()
+	order.turn_start_facing = facing
+	order.turn_target = Vector2(-facing.x, -facing.y)
+	set_current_order(order)
 
 
 ## Quarter-turn (90° in-place turn, Aelian/Asclepiodotus): every soldier pivots a quarter
@@ -1849,37 +1844,67 @@ func conversio() -> void:
 ## relative to the field, but the men do not march and the internal grid is NOT reorganized —
 ## each man just turns where they stand. facing rotates toward the target with the arrival frozen so
 ## the bodies hold their ground; on arrival _formation_angle absorbs the rotation so
-## soldier_world_slots reproduces the men's positions (no transpose, no relabel). Blocked while
-## fighting, before seeding, or while another in-place turn (conversio or quarter-turn) runs —
-## re-arming mid-turn would reset the start heading and corrupt the settled offset.
+## soldier_world_slots reproduces the men's positions (no transpose, no relabel). A queue
+## entry like the about-face drill (a QUARTER_TURN order, unrecorded); it no-ops unless the
+## unit stands idle -- re-arming mid-turn would reset the start heading and corrupt the
+## settled offset.
 func quarter_turn(dir: int) -> void:
-	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0 \
-			or _quarter_target != Vector2.ZERO or _conversio_target != Vector2.ZERO \
-			or _wheel_target != Vector2.ZERO:
+	if dir == 0 or not _can_drill():
 		return
-	_quarter_start_facing = facing
-	_quarter_target = facing.rotated(signf(dir) * PI * 0.5)
+	var order := Order.new_quarter_turn(dir)
+	order.turn_start_facing = facing
+	order.turn_target = facing.rotated(signf(dir) * PI * 0.5)
+	set_current_order(order)
 
 
-## Fold the rotation the quarter-turn just applied (start heading -> current heading) into
-## _formation_angle, so soldier_world_slots reproduces the men's pre-turn slot positions and
-## the arrival sees ~zero error. Works for a full 90° turn or an interrupted partial.
-func _settle_formation_angle() -> void:
-	var turned: float = angle_difference(_quarter_start_facing.angle(), facing.angle())
+## Arm the about-face (TURN) phase of a rear-sector MOVE order: an in-place 180° reversal
+## runs first; the march to order.target_pos starts when it completes (see
+## _finish_order_turn for the reform-vs-hasty handoff). `order` must already be current --
+## set_current_order has interrupted whatever ran before, so nothing else is turning.
+## Returns false when the unit can't turn in place right now (fighting, or the soldier
+## bodies aren't seeded yet); the caller falls back to a plain march.
+func begin_about_face(order: Order) -> bool:
+	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
+		return false
+	order.turn_start_facing = facing
+	order.turn_target = Vector2(-facing.x, -facing.y)
+	order.phase = Order.Phase.TURN
+	return true
+
+
+## Fold the rotation the current order's in-place turn applied (start heading -> current
+## heading) into _formation_angle, and clear the turn. A completed about-face turns exactly
+## 180° and a quarter-turn exactly 90°, but this also settles an interrupted partial turn
+## correctly (whatever angle actually turned), so soldier_world_slots always reproduces each
+## body's own pre-turn slot and the arrival sees ~zero error either way — no man ever surges
+## to a different soldier's slot.
+func _settle_order_turn() -> void:
+	var turned: float = angle_difference(current_order.turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
+	current_order.turn_target = Vector2.ZERO
 	_render_dirty = true
 
 
-## Fold the rotation a conversio just applied (start heading -> current heading) into
-## _formation_angle -- same math as _settle_formation_angle, for the about-face's own start
-## heading. A completed conversio turns exactly 180°, but this also settles an interrupted
-## partial turn correctly (whatever angle actually turned), so soldier_world_slots always
-## reproduces each body's own pre-turn slot and the arrival sees ~zero error either way —
-## no man ever surges to a different soldier's slot.
-func _settle_conversio() -> void:
-	var turned: float = angle_difference(_conversio_start_facing.angle(), facing.angle())
-	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
-	_render_dirty = true
+## Complete the current order's in-place turn: hand a rear MOVE off to its next phase --
+## reform the ranks square to the new heading first (the drilled default; the countermarch
+## brings a full rank to the new front instead of the old partial rear rank), or step off at
+## once with the flipped grid and reform on arrival (the hasty variant). Either way the
+## block faces travel, so it advances forward, not backward. A standalone drill
+## (ABOUT_FACE / QUARTER_TURN) is simply done, and retires.
+func _finish_order_turn() -> void:
+	if current_order.type != Order.Type.MOVE:
+		retire_current_order()
+		return
+	if current_order.reform and reform_ranks():
+		_reform_target = current_order.target_pos
+		_reform_timer = _reform_timeout()
+		_reform_until_settled = true
+		current_order.phase = Order.Phase.REFORM
+	else:
+		_reform_on_arrival = not current_order.reform
+		move_target = current_order.target_pos
+		has_move_target = true
+		current_order.phase = Order.Phase.MARCH
 
 
 ## Reform the ranks (a standalone, composable drill phase -- NOT part of the conversio
@@ -1991,38 +2016,43 @@ func _wheel_pivot_point(dir: int) -> Vector2:
 ## does not move the block — the standing flank file holds its ground and every other file marches
 ## an arc around it, so `position` slides along that arc as `facing` rotates. _advance_wheel
 ## rigidly rotates the centre and every soldier body about the hinge in lockstep, with the arrival
-## term frozen (the same freeze the conversio/quarter-turn use) so it doesn't fight the
-## rigid rotation — the men swing to their new slots at velocity, no body teleports. Blocked while
-## fighting, before seeding, or while another maneuver (conversio / quarter-turn / wheel) runs.
+## term frozen (the same freeze the in-place turns use) so it doesn't fight the
+## rigid rotation — the men swing to their new slots at velocity, no body teleports. A queue
+## entry like the other drills (a WHEEL order created here, carrying the swing goal and the
+## captured hinge); it no-ops unless the unit stands idle.
 func wheel(dir: int) -> void:
-	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0 \
-			or _wheel_target != Vector2.ZERO or _quarter_target != Vector2.ZERO \
-			or _conversio_target != Vector2.ZERO:
+	if dir == 0 or not _can_drill():
 		return
-	_wheel_pivot = _wheel_pivot_point(dir)
-	_wheel_target = facing.rotated(signf(dir) * PI * 0.5)
+	var order := Order.new_wheel(dir)
+	order.pivot = _wheel_pivot_point(dir)
+	order.turn_start_facing = facing
+	order.turn_target = facing.rotated(signf(dir) * PI * 0.5)
+	set_current_order(order)
 
 
-## Advance a wheel one tick: rotate `facing` toward the target at the drill rate, then rigidly
-## rotate the WHOLE regiment — the centre `position` and every soldier body — about the fixed
-## hinge by the same increment. Because the slots (soldier_world_slots) are a rigid function of
-## position + facing and the bodies are rotated by the same arc step, body and slot stay locked
-## together through the swing: the standing flank man holds his ground, the far end sweeps, and no
-## body teleports (each tick is a small arc step). SoldierBodies.step freezes the restoring force
-## while _wheel_target is set, so it doesn't fight this rigid rotation. Returns true on arrival
-## (snapping facing exactly onto the target). Velocities are rotated too, so any residual body
-## motion carries through cleanly rather than snapping direction.
+## Advance a wheel one tick: rotate `facing` toward the order's swing goal at the drill rate,
+## then rigidly rotate the WHOLE regiment — the centre `position` and every soldier body — about
+## the order's fixed hinge by the same increment. Because the slots (soldier_world_slots) are a
+## rigid function of position + facing and the bodies are rotated by the same arc step, body and
+## slot stay locked together through the swing: the standing flank man holds his ground, the far
+## end sweeps, and no body teleports (each tick is a small arc step). SoldierBodies.step freezes
+## the restoring force while the wheel swings (is_wheeling), so it doesn't fight this rigid
+## rotation. Returns true on arrival (snapping facing exactly onto the goal). Velocities are
+## rotated too, so any residual body motion carries through cleanly rather than snapping
+## direction.
 func _advance_wheel(delta: float) -> bool:
+	var goal: Vector2 = current_order.turn_target
+	var hinge: Vector2 = current_order.pivot
 	var before: float = facing.angle()
-	_rotate_facing_toward(_wheel_target, delta, WHEEL_TURN_RATE)
+	_rotate_facing_toward(goal, delta, WHEEL_TURN_RATE)
 	var step: float = angle_difference(before, facing.angle())
-	position = _wheel_pivot + (position - _wheel_pivot).rotated(step)
+	position = hinge + (position - hinge).rotated(step)
 	for i in range(_sim_soldier_pos.size()):
-		_sim_soldier_pos[i] = _wheel_pivot + (_sim_soldier_pos[i] - _wheel_pivot).rotated(step)
+		_sim_soldier_pos[i] = hinge + (_sim_soldier_pos[i] - hinge).rotated(step)
 		_sim_body_vel[i] = _sim_body_vel[i].rotated(step)
 	_render_dirty = true
-	if facing.dot(_wheel_target) > 1.0 - 0.0001:
-		facing = _wheel_target
+	if facing.dot(goal) > 1.0 - 0.0001:
+		facing = goal
 		return true
 	return false
 
@@ -2201,6 +2231,14 @@ func order_summary() -> String:
 				and target_enemy.state != State.DEAD and target_enemy.state != State.ROUTING
 		if has_target:
 			return "Attacking %s" % target_enemy.unit_name
+		# A maneuver in flight reads straight off the queue (phase 2): the drills and the
+		# wheel used to fall through to "Holding position" here.
+		if is_wheeling():
+			return "Wheeling"
+		if is_order_turning():
+			if current_order.type == Order.Type.QUARTER_TURN:
+				return "Quarter-turning"
+			return "About-facing"   # the V-key drill, or a rear move's turn phase
 		if has_move_target:
 			var dest: String = "Moving to (%d, %d)" % [int(round(move_target.x)), int(round(move_target.y))]
 			if not waypoints.is_empty():
@@ -2320,11 +2358,14 @@ func start_order_response() -> void:
 ## Commit a pending reform-before-move: hand off the stored destination to the
 ## normal move machinery. Called when the reform timer expires or a fighting unit
 ## receives a move order with reform=true (fights can't be made to hold for reform).
+## A rear-move composite parked in its REFORM phase steps off into MARCH here.
 func _commit_pending_reform() -> void:
 	move_target = _reform_target
 	has_move_target = true
 	_reform_timer = 0.0
 	_reform_until_settled = false
+	if current_order != null and current_order.phase == Order.Phase.REFORM:
+		current_order.phase = Order.Phase.MARCH
 
 
 ## Fold another friendly regiment into this one: pool soldiers, blend the
@@ -2385,16 +2426,13 @@ func _rout() -> void:
 	selected = false
 	target_enemy = null
 	has_move_target = false
-	clear_orders()   # a rout drops every in-progress maneuver -- the queue mirrors that
+	# A rout drops every in-progress maneuver: clear_orders interrupts the current order
+	# (any in-place turn, wheel, or the rear-move march parked on it dies with the queue;
+	# unit.facing stays at its current angle).
+	clear_orders()
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_reform_until_settled = false
 	_reform_on_arrival = false
-	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
-	_has_pending_march = false         # drop any rear-move march parked behind the conversio
-	_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
-	_pending_march_reform = false      # and the reform phase that rode with it
-	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
-	_wheel_target = Vector2.ZERO       # and any in-progress wheel (partial swing left as-is)
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_rout_timer = ROUT_TIME
@@ -2745,8 +2783,8 @@ func _refresh_flock_render() -> void:
 				t = Transform2D(PI * 0.5, pos)
 			else:
 				t = Transform2D(Vector2(1.3, 0.0), Vector2(0.0, 0.3), pos)
-		elif _detailed_lod and _conversio_target != Vector2.ZERO:
-			var progress: float = (facing.dot(-_conversio_target) + 1.0) * 0.5
+		elif _detailed_lod and about_face_goal() != Vector2.ZERO:
+			var progress: float = (facing.dot(-about_face_goal()) + 1.0) * 0.5
 			var squash: float = abs(cos(progress * PI))
 			t = Transform2D(Vector2(squash, 0.0), Vector2(0.0, 1.0), pos)
 		elif not _detailed_lod:

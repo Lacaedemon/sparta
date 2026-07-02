@@ -590,10 +590,13 @@ func _form_up_facing(a: Vector2, b: Vector2) -> float:
 
 
 ## Conversio (about-face): each soldier on every selected friendly unit reverses 180°
-## in place. Blocked during replay playback and while units are engaged in combat.
-## Does not enter the replay stream — conversio affects visual/drill state only (the
-## per-soldier facing layer has no effect on combat, movement, or morale outcomes),
-## so battles reproduce correctly without recording it.
+## in place. Blocked during replay playback; Unit.conversio() also no-ops unless the
+## unit stands idle (not fighting, marching, or mid-maneuver), so the drill can't clobber
+## a live order. Does not enter the replay stream — conversio affects visual/drill state
+## only (the per-soldier facing layer has no effect on combat, movement, or morale
+## outcomes), so battles reproduce correctly without recording it. The drill rides the
+## orders queue as an unrecorded ABOUT_FACE entry; the queue is not serialized, so that
+## changes nothing about what a replay reproduces.
 func _issue_conversio() -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
@@ -608,7 +611,8 @@ func _issue_conversio() -> void:
 
 ## Quarter-turn: each soldier on every selected friendly unit pivots 90° in place (`dir`
 ## = -1 left / +1 right); the unit's frontage and depth swap. Same drill-state-only path as
-## the conversio -- blocked during playback and combat, not recorded in the replay stream.
+## the conversio -- blocked during playback, idle-gated in Unit.quarter_turn(), and not
+## recorded in the replay stream (an unrecorded QUARTER_TURN queue entry).
 func _issue_quarter_turn(dir: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return

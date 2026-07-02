@@ -99,11 +99,11 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 	var worst_hold := 0.0
 	for _i in range(_turn_budget(u)):
 		await get_tree().physics_frame
-		if u._conversio_target == Vector2.ZERO:
+		if not u.is_order_turning():
 			break
 		for i in range(before.size()):
 			worst_hold = maxf(worst_hold, u._sim_soldier_pos[i].distance_to(before[i]))
-	assert_eq(u._conversio_target, Vector2.ZERO, "the about-face completed within its budget")
+	assert_false(u.is_order_turning(), "the about-face completed within its budget")
 	assert_lt(worst_hold, 1.0,
 		"every soldier held its own position through the turn (worst drift %.3f px)" % worst_hold)
 	assert_true(u.facing.is_equal_approx(Vector2.UP), "the unit ended facing its destination")
