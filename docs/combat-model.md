@@ -231,12 +231,13 @@ arrival dynamics then decelerate and return it over the following ticks. A block
 shoves — which is how a spear wall pushes a stalled enemy back even when it can't
 wound it.
 
-Impulses **sum, then clamp**: in an intermixed press several attackers commonly
-shove the same body within one melee cadence, so their impulses accumulate in its
-velocity — but the summed speed is clamped to a ceiling $v_{\max}$
+Impulses **accumulate under a clamp**: in an intermixed press several attackers
+commonly shove the same body within one melee cadence, so their impulses
+accumulate in its velocity — each strike adds its impulse and the speed is
+re-clamped as it lands, to a ceiling $v_{\max}$
 (`KNOCKBACK_SPEED_MAX`, $1.5\,J_0$), or to the speed the body already carried if
-that was higher (a blow never accelerates a galloping body, and repeated blows
-can never ratchet a body past the ceiling). Under the bounded arrival recovery
+that was higher (a blow never accelerates a galloping body, and no sequence of
+blows can ratchet a body past the ceiling). Under the bounded arrival recovery
 ($a$ = `BODY_ACCEL_FLOOR`) a body at the ceiling coasts at most
 $v_{\max}^2 / (2a)$ — a hard shove of body-lengths, never a launch across the
 field. The *uncapped* $J$ still drives the prone roll below, so a heavy hit's
@@ -245,7 +246,8 @@ felling power is unchanged.
 > **Implemented (#201 slice A):** `SoldierCombat.knockback_impulse` and the per-type
 > `mass` in `profile_for`, wired into `SoldierMelee` as one mass-scaled impulse per
 > in-reach strike (η = 1 landed, `ETA_DEFENDED` otherwise), bounded by
-> `SoldierCombat.capped_knockback_velocity` (sum-then-clamp). Velocity-only — the body
+> `SoldierCombat.capped_knockback_velocity` (called once per strike, so the clamp
+> applies cumulatively as impulses accumulate). Velocity-only — the body
 > integrates it, never a position snap. (Prone/knockdown in slice B; depth-buttressed
 > bracing in slice C; the rearward domino cascade is a follow-up.)
 

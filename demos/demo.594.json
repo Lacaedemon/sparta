@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Docs-only wording fix in docs/combat-model.md (knockback clamp described per-strike-cumulative instead of one post-sum clamp); no gameplay, rendering, or UI change to film."
+}
