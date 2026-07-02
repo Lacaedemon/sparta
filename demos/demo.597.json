@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure data-flow refactor: strike-time combat now reads weapon lethality and shield block through the per-soldier loadout registry ids, with byte-identical outcomes (same numbers, same RNG stream). A recorded battle would be indistinguishable from main; the equivalence is verified by exact-value tests and a seeded state-dump comparison in the PR."
+}

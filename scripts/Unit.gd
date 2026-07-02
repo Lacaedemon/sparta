@@ -1702,10 +1702,10 @@ var _sim_soldier_hp: PackedFloat32Array = PackedFloat32Array()
 # entry is an interned LoadoutRegistry id — a reference to one shared type object,
 # never a per-soldier allocation. Every soldier currently carries its unit's
 # weapon_type_id / shield_type_id (seeded by SoldierBodies.seed, kept aligned
-# through resize and casualty compaction); the arrays exist so a later phase can
-# vary the loadout per soldier (weapon switching) without reshaping the sim.
-# Representational only — combat still reads the unit scalars (attack_range,
-# combat_profile()), so no gameplay outcome changes.
+# through resize and casualty compaction), so a per-soldier loadout still
+# resolves to the same numbers as the unit's type. Strike-time combat reads
+# THROUGH these ids (soldier_lethality / soldier_shield_block below), so a
+# later phase's per-soldier write (weapon switching) changes combat immediately.
 var _sim_soldier_weapon_id: PackedInt32Array = PackedInt32Array()
 var _sim_soldier_shield_id: PackedInt32Array = PackedInt32Array()
 
@@ -2310,6 +2310,34 @@ static func couple_all_sim_soldiers(units: Array, delta: float) -> void:
 ## See SoldierCombat.profile_for / docs/combat-model.md "Soldier attributes".
 func combat_profile() -> Dictionary:
 	return SoldierCombat.profile_for(is_cavalry, anti_cavalry, is_ranged, training)
+
+
+## The lethality of the weapon soldier `i` carries: the per-soldier weapon id
+## resolved through the interned registry, so a per-soldier loadout change (a
+## future weapon switch) changes combat immediately. Falls back to the unit's
+## own type id when the array is out of sync (defensive; seed, resize, and
+## casualty compaction keep it aligned), then to the baseline lethality 1 —
+## a blow always has a real wounding power behind it.
+func soldier_lethality(i: int) -> float:
+	var type_id: int = _sim_soldier_weapon_id[i] if i < _sim_soldier_weapon_id.size() else weapon_type_id
+	var w: Weapon = LoadoutRegistry.weapon(type_id)
+	if w == null:
+		w = LoadoutRegistry.weapon(weapon_type_id)
+	return w.lethality if w != null else 1.0
+
+
+## The block value of the shield soldier `i` carries, resolved through the
+## per-soldier shield id — the shield's OWN contribution to active defence.
+## The full defensive shield weight composes as the type's stance residual
+## (combat_profile()'s "shield_residual") plus this block value; SoldierMelee
+## does that addition at strike time. Same fallback chain as soldier_lethality;
+## an unresolvable shield blocks nothing.
+func soldier_shield_block(i: int) -> float:
+	var type_id: int = _sim_soldier_shield_id[i] if i < _sim_soldier_shield_id.size() else shield_type_id
+	var s: Shield = LoadoutRegistry.shield(type_id)
+	if s == null:
+		s = LoadoutRegistry.shield(shield_type_id)
+	return s.block_value if s != null else 0.0
 
 
 # --- Order summary (for the HUD / selection overlay) -----------------------

@@ -1,10 +1,14 @@
 # Design note: soldier weapon/shield loadout
 
-Status: **phase 1 implemented** (#536): the `Weapon`/`Shield` type classes,
-the interned `LoadoutRegistry`, and the per-soldier id arrays are in the code,
-with the weapon type as the single source of truth for spawn-time reach; the
-strike-time combat-read re-express split out to #571 (see phase 1 below for
-why). Phases 2-4 (#537-#539) are design-only so far.
+Status: **phases 1-2 implemented** (#536, #537): the `Weapon`/`Shield` type
+classes, the interned `LoadoutRegistry`, the per-soldier id arrays, and the
+per-soldier shield hold-angle state are in the code, with the weapon type as
+the single source of truth for spawn-time reach. The strike-time combat-read
+re-express (#571, split out of phase 1) is implemented too: melee reads
+lethality through the attacker's weapon id and composes the defensive shield
+weight as the type's stance residual plus the struck soldier's shield
+`block_value` (see phase 1 below). Phases 3-4 (#538-#539) are design-only so
+far.
 
 ## Motivation
 
@@ -190,18 +194,23 @@ turned out to be more machinery than the data needs).
   reads reach, lethality, and block weight from the type the soldier's
   `weapon_id` / `shield_id` resolve to, instead of the scalar `u.attack_range`
   copied at spawn and the per-type `"shield"` literal hardcoded in
-  `SoldierCombat.profile_for()`. Today's defence math
-  (`SoldierCombat.facing_gate()` + `land_chance()`) is a continuous
-  dot-product facing gate weighted by the type's shield value, not a discrete
-  arc check — the `Shield.covers(attack_angle, hold_angle)` sketch above is a
-  simplification for illustration. Phase 1 kept combat on that continuous
-  formula reading `profile_for()`'s literals; re-expressing those reads
-  through the id arrays (and the continuous-vs-arc decision) is #571, which
-  must first split the per-type shield weight into the shield's own
-  `block_value` and a non-shield residual — Spearmen (0.65) and Infantry
-  (0.60) carry the same scutum, so a single per-shield value is not a
-  behavior-preserving drop-in. The wound formula (`land_chance`,
-  `facing_gate`) stays unchanged behaviorally throughout.
+  `SoldierCombat.profile_for()`. *Implemented* (#571, split out of phase 1):
+  `SoldierMelee.resolve` reads the blow's lethality through the attacker's
+  `_sim_soldier_weapon_id` (`Unit.soldier_lethality`) and composes the
+  defender's shield weight as the type's **stance residual**
+  (`profile_for()`'s `shield_residual`) plus the struck soldier's
+  `_sim_soldier_shield_id` -> `Shield.block_value`
+  (`Unit.soldier_shield_block`). The split is what makes the re-express
+  behavior-preserving — Spearmen (0.65) and Infantry (0.60) carry the same
+  scutum, so the scutum carries the shared 0.60 and the spearmen keep a 0.05
+  braced-footing residual (archers: 0.05 unshielded-deflection residual, no
+  shield); every composition equals the pre-split per-type weight bit-for-bit
+  (`test/unit/test_loadout_combat_equivalence.gd`). The defence math stays the
+  continuous dot-product facing gate (`SoldierCombat.facing_gate()` +
+  `land_chance()`), not a discrete arc check — the
+  `Shield.covers(attack_angle, hold_angle)` sketch above remains illustrative
+  shape data nothing reads for gameplay yet; the wound formula is unchanged
+  behaviorally throughout.
 - **Rendering** — the soldier's `MultiMesh` draw pose reads `weapon_id` /
   `shield_id` (which mesh/sprite) plus `shield_hold_angle` (where to draw it
   relative to the body) once phase 3 wires visuals.
@@ -236,7 +245,10 @@ Each phase: scope, dependencies, done-check, behavior-change label.
   `profile_for()`'s per-type literals — split out to a follow-up (#571):
   the per-type shield weights fold stance factors beyond the shield itself
   (Spearmen 0.65 vs Infantry 0.60 for the same scutum), so that drop-in is
-  not behavior-preserving until the shield-vs-stance split is decided.
+  not behavior-preserving until the shield-vs-stance split is decided. The
+  follow-up then landed the split as `shield_residual` (per type, in
+  `profile_for()`) + `block_value` (per shield type), composed at strike time
+  — see the combat-math consumer bullet above.
 - **Dependencies:** none — builds on current `main`.
 - **Done-check:** existing GUT suite (`tools/check.sh`) passes unchanged, plus
   a targeted equivalence test asserting combat outcomes are bit-for-bit

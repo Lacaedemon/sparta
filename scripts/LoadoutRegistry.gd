@@ -26,11 +26,12 @@ const SHIELD_NONE: int = 103
 # reach_m carries the exact per-type values Battle._default_loadout() held as
 # "reach_m" dictionary literals before the registry existed (the spear
 # out-reaches the sword; the archers' melee sidearm is short — their bow is
-# ranged fire, not a melee reach). lethality carries the per-type values from
-# SoldierCombat.profile_for(), which map one-to-one onto the weapon each type
-# carries. Combat keeps reading its stats through the existing paths
-# (Unit.attack_range, combat_profile()); the registry pins the same numbers,
-# so combat inputs — and outcomes — are unchanged.
+# ranged fire, not a melee reach). lethality carries the per-type wounding
+# powers SoldierCombat.profile_for() held before the strike-time reads moved
+# here, mapping one-to-one onto the weapon each type carries. Reach still
+# feeds Unit.attack_range at spawn; lethality is read at strike time through
+# the attacker's per-soldier weapon id (Unit.soldier_lethality). Same numbers
+# as the pre-registry literals, so combat outcomes are unchanged.
 static var _weapons: Dictionary = {
 	WEAPON_SPEAR: Weapon.make(WEAPON_SPEAR, "Spear", 2.4, 0.85),
 	WEAPON_GLADIUS: Weapon.make(WEAPON_GLADIUS, "Gladius", 1.3, 1.0),
@@ -38,17 +39,18 @@ static var _weapons: Dictionary = {
 	WEAPON_SPATHA: Weapon.make(WEAPON_SPATHA, "Spatha", 1.5, 1.1),
 }
 
-# block_value: the scutum takes the plain infantry shield weight from
-# SoldierCombat.profile_for() (0.60) — the spearmen's higher 0.65 there folds
-# braced anti-cavalry footing on top of the same shield, a per-type stance
-# factor that stays in profile_for until a later phase splits shield from
-# stance. The round cavalry shield matches the cavalry weight (0.25).
-# SHIELD_NONE is a real interned type (block 0, arc 0), not a null: archers
-# carry it, and a uniform object keeps call sites free of "no shield" special
-# cases (profile_for's 0.05 for archers is residual unshielded deflection,
-# not a shield). arc_deg is provisional shape data (nothing reads it for
-# gameplay yet): the big body scutum covers a wide front, the round shield
-# less.
+# block_value: the shield's OWN contribution to the defensive shield weight.
+# The land contest composes the full weight at strike time as the defender
+# type's stance residual (profile_for's "shield_residual") plus this block
+# value, through the struck soldier's shield id — so the scutum carries the
+# plain infantry weight (0.60; the spearmen's pre-split 0.65 was the same
+# shield plus 0.05 braced anti-cavalry footing, which stays in profile_for),
+# and the round cavalry shield carries the cavalry weight (0.25). SHIELD_NONE
+# is a real interned type (block 0, arc 0), not a null: archers carry it, and
+# a uniform object keeps call sites free of "no shield" special cases (their
+# 0.05 stance residual is unshielded deflection, not a shield). arc_deg is
+# provisional shape data (nothing reads it for gameplay yet): the big body
+# scutum covers a wide front, the round shield less.
 static var _shields: Dictionary = {
 	SHIELD_SCUTUM: Shield.make(SHIELD_SCUTUM, "Scutum", 0.6, 120.0),
 	SHIELD_ROUND: Shield.make(SHIELD_ROUND, "Round shield", 0.25, 90.0),

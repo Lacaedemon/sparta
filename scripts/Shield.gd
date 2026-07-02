@@ -11,8 +11,10 @@ extends Resource
 
 @export var id: int
 @export var display_name: String
-# How much active defence the shield itself contributes: the per-type weight
-# the land contest multiplies by SHIELD_DEFENSE_WEIGHT (see SoldierCombat).
+# How much active defence the shield ITSELF contributes. The land contest's
+# shield weight composes at strike time as the defender type's stance residual
+# (SoldierCombat.profile_for's "shield_residual") plus this block value, then
+# multiplies by SHIELD_DEFENSE_WEIGHT (see SoldierCombat.land_chance).
 @export var block_value: float
 # Coverage arc in degrees, centred on the hold angle. Shape data for a
 # discrete arc-coverage check; today's combat uses the continuous facing gate

@@ -69,17 +69,23 @@ const PRONE_RISE_TIME: float = 1.2         # T_up (seconds) a felled soldier nee
 
 
 ## Per-type combat profile (docs/combat-model.md "Soldier attributes"): skill is the
-## unit's training; armour, shield, lethality, and the health/stamina pools are per
-## type. Pure and static so it is testable without a live node.
+## unit's training; armour, mass, and the health/stamina pools are per type. Weapon
+## lethality and the shield's own block value live on the interned types
+## (LoadoutRegistry) and are read at strike time through the per-soldier id arrays.
+## shield_residual is the non-shield remainder of the defensive shield weight b —
+## stance and training deflection a soldier keeps with no shield in hand (the
+## spearman's braced anti-cavalry footing, the archer's unshielded dodge) — and the
+## land contest composes b = shield_residual + Shield.block_value, bit-for-bit the
+## pre-split per-type weight. Pure and static so it is testable without a live node.
 static func profile_for(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool, p_training: float) -> Dictionary:
 	var skill: float = clampf(p_training, 0.0, 1.0)
 	if p_is_cavalry:
-		return {"skill": skill, "armour": 0.40, "shield": 0.25, "lethality": 1.10, "max_health": 140.0, "max_stamina": 120.0, "mass": 2.5}
+		return {"skill": skill, "armour": 0.40, "shield_residual": 0.0, "max_health": 140.0, "max_stamina": 120.0, "mass": 2.5}
 	if p_anti_cavalry:
-		return {"skill": skill, "armour": 0.35, "shield": 0.65, "lethality": 0.85, "max_health": 100.0, "max_stamina": 100.0, "mass": 1.0}
+		return {"skill": skill, "armour": 0.35, "shield_residual": 0.05, "max_health": 100.0, "max_stamina": 100.0, "mass": 1.0}
 	if p_is_ranged:
-		return {"skill": skill, "armour": 0.10, "shield": 0.05, "lethality": 0.50, "max_health": 80.0, "max_stamina": 90.0, "mass": 0.9}
-	return {"skill": skill, "armour": 0.45, "shield": 0.60, "lethality": 1.00, "max_health": 110.0, "max_stamina": 100.0, "mass": 1.0}
+		return {"skill": skill, "armour": 0.10, "shield_residual": 0.05, "max_health": 80.0, "max_stamina": 90.0, "mass": 0.9}
+	return {"skill": skill, "armour": 0.45, "shield_residual": 0.0, "max_health": 110.0, "max_stamina": 100.0, "mass": 1.0}
 
 
 ## The charge factor c from a closing speed (world units/sec) along the strike axis:
