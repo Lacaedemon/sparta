@@ -612,8 +612,9 @@ state**, and the state is **transcript-legible**. Concretely:
   a clean seam.
 - **Multiplayer.** Single-player assumptions are load-bearing (the
   time-freeze during battles, one battle at a time). Not designed for.
-- **3D.** The campaign map is 2D top-down, like the battles (locked
-  decision in `PLAN.md`).
+- **3D.** The campaign map is 2D top-down. `PLAN.md` locks that choice
+  for battles ("2D top-down sprite tokens (not 3D)"); this design extends
+  the same choice to the campaign map.
 - **Naval movement and transport.** Water matters to this design only as
   supply capacity (river and coastal landings as line sources). Fleets, sea
   battles, and amphibious operations are a separate future design.
