@@ -102,8 +102,8 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		var brace_d: float = SoldierCombat.brace_depth(file_braces)
 		var cap: float = SoldierCombat.BRACE_CAPACITY * brace_d   # avoids a second walk of file_braces
 		var received: float = maxf(0.0, impulse_mag - cap)
-		# Sum-then-clamp: impulses from every attacker shoving this body this cadence
-		# accumulate in its velocity, and each application clamps the summed result
+		# Accumulate under a clamp: impulses from every attacker shoving this body this
+		# cadence accumulate in its velocity, and each application clamps the summed result
 		# (SoldierCombat.capped_knockback_velocity) -- a pile-on in an intermixed press
 		# knocks a man back body-lengths, never launches him across the field.
 		if received > 0.0:

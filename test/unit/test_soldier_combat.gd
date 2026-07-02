@@ -252,7 +252,7 @@ func test_knockback_impulse_never_negative() -> void:
 	assert_gt(SoldierCombat.knockback_impulse(1.0, 0.0, 0.0, 1.0), 0.0, "zero mass is floored, not a divide-by-zero")
 
 
-# --- capped knockback velocity (sum-then-clamp) ------------------------------------------
+# --- capped knockback velocity (add-then-clamp per strike) --------------------------------
 
 func test_capped_knockback_single_blow_below_ceiling_passes_through() -> void:
 	# One baseline landed blow (J0 = 40) on a body at rest stays under the ceiling untouched.

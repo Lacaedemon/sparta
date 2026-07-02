@@ -132,7 +132,7 @@ static func knockback_impulse(lethality_a: float, c: float, defender_mass: float
 	return force / maxf(0.01, defender_mass)
 
 
-## Apply a knockback impulse to a body's velocity, bounded (sum-then-clamp): the impulse
+## Apply a knockback impulse to a body's velocity, bounded (add-then-clamp): the impulse
 ## adds to the velocity, then the result's SPEED is clamped to KNOCKBACK_SPEED_MAX -- or to
 ## the speed the body already carried, whichever is higher, so a blow never accelerates an
 ## already-faster body (a galloping horse) and repeated blows can never ratchet a body past

@@ -6,7 +6,7 @@ extends GutTest
 ## Regression guard for the flying-soldier bug: unbounded stacking of per-strike knockback
 ## impulses (several attackers shoving the same body in one cadence) drove bodies to
 ## ~200 wu/s, which the bounded 30 wu/s^2 recovery took seconds — and most of the
-## battlefield — to bleed off. With the sum-then-clamp cap, an engaged body's speed can
+## battlefield — to bleed off. With the per-strike cumulative cap, an engaged body's speed can
 ## never exceed the knockback ceiling on top of its own steering + arrival budget.
 ##
 ## The bound, from the dynamics themselves (SoldierBodies.step): an engaged body's desired
