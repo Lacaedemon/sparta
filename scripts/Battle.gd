@@ -498,6 +498,11 @@ func _physics_process(_delta: float) -> void:
 			# can flash the keys on screen alongside the cursor.
 			Replay.record_keys(_tick, _selection.take_keys_this_tick())
 
+	# Simulation-tier transitions are part of the deterministic sim too: evaluate the
+	# distance triggers and promote/demote BEFORE the units act this tick, so both runs
+	# of a replay cross the tier boundary on the same tick from the same positions.
+	_tick_tier_transitions()
+
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
 	# the same cadence during playback so it reaches the same decisions.
 	if _tick % AI_PERIOD == 0:
@@ -1066,6 +1071,42 @@ func current_tick() -> int:
 ## resolves the recorded selection's uids to the units to highlight.
 func unit_by_uid(uid: int) -> UnitRef:
 	return _unit_by_uid(uid)
+
+
+## Evaluate the per-formation simulation-tier triggers and perform any transitions
+## (docs/large-scale-simulation-design.md, phase 3). Each fightable unit's distance to the
+## nearest enemy formation feeds the phase-1 hysteresis predicates: a far-tier unit whose
+## nearest enemy closes inside PROMOTE_RANGE reconstructs its per-soldier state
+## (TierTransition.promote, seeded off uid/tick/battle seed); a close-tier unit whose
+## nearest enemy recedes past DEMOTE_RANGE — and that holds no in-flight per-soldier
+## context (TierTransition.can_demote) — collapses to its aggregate fields. Routers are
+## ignored on both sides of the check: a routing unit is not a fight-relevant contact,
+## and it keeps its own tier until it rallies back into "units". Runs every tick over the
+## live units in tree order — a pure function of already-serialized positions, so both
+## runs of a replay transition the same units on the same ticks.
+func _tick_tier_transitions() -> void:
+	var all_units: Array = get_tree().get_nodes_in_group("units")
+	for node in all_units:
+		var u = node as UnitRef
+		if u == null or u.state == UnitRef.State.DEAD:
+			continue
+		var nearest_pos := Vector2.ZERO
+		var nearest_dist: float = INF
+		for other in all_units:
+			var e = other as UnitRef
+			if e == null or e.team == u.team or e.state == UnitRef.State.DEAD:
+				continue
+			var d: float = u.position.distance_to(e.position)
+			if d < nearest_dist:
+				nearest_dist = d
+				nearest_pos = e.position
+		if nearest_dist == INF:
+			continue   # no enemy in play: hold the current tier (the victory check ends the battle)
+		if u.tier == FormationTier.FAR:
+			if FormationTier.should_promote(u.position, nearest_pos):
+				TierTransition.promote(u, _tick, Replay.seed_value)
+		elif TierTransition.can_demote(u) and FormationTier.should_demote(u.position, nearest_pos):
+			TierTransition.demote(u)
 
 
 func _run_enemy_ai() -> void:
