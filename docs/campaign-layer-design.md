@@ -1,6 +1,9 @@
 # Design note: unified campaign layer
 
-Status: **design — not yet implemented.** This note unifies the
+Status: **accepted design — not yet implemented.** The owner reviewed this
+note and answered its six open questions in
+[the PR #583 review](https://github.com/Lacaedemon/sparta/pull/583#pullrequestreview-4618476256);
+this revision folds those answers in. This note unifies the
 campaign-cluster epics —
 [#146](https://github.com/Lacaedemon/sparta/issues/146) (pausable real-time),
 [#147](https://github.com/Lacaedemon/sparta/issues/147) (hex-grid map),
@@ -17,9 +20,10 @@ into one coherent design, following the same design-doc-first pattern as
 [#582](https://github.com/Lacaedemon/sparta/issues/582), which links the
 cluster issues as sub-issues.
 
-Unlike those two docs, **no phase issues are filed yet**: each phase below
-says "issue to be filed on acceptance," so the owner reviews the design
-before the tracker grows a phase tree around it.
+The design held its phase issues back until the owner had reviewed it.
+That review has happened — acceptance with amendments — so the phase
+issues are now filed and linked from each phase below, as sub-issues of
+#582.
 
 ## Motivation
 
@@ -45,11 +49,12 @@ The open campaign issues each pull on a different part of that slice:
 - #504 shows the campaign↔battle interface is underspecified even for the
   data it already passes.
 
-Implemented independently, these would collide — a hex map built before the
-time model is chosen bakes in per-turn movement costs; supply lines built on
-the current province graph would have to be rebuilt on hexes; a saga layer
-above an integer-army campaign carries nothing worth carrying. This doc
-fixes the positions once so the phases build toward the same game.
+Implemented independently, these would collide — a map substrate built
+before the time model is chosen bakes in per-turn movement costs; supply
+lines built on the current province graph would have to be rebuilt on the
+finer substrate; a saga layer above an integer-army campaign carries
+nothing worth carrying. This doc fixes the positions once so the phases
+build toward the same game.
 
 ## Current state
 
@@ -158,67 +163,95 @@ age, die, or have heirs. The saga layer (#126) is where that grows; see
 
 Positions follow. Each one names its alternatives and why they lose.
 
-### Map representation: a hex substrate under a province overlay
+### Map representation: continuous geographic positions under a province overlay
 
-**Position: two layers.** A **hex grid** is the movement, occupancy, and
-logistics substrate; **provinces** persist as the political overlay — a
-province is a named, contiguous *set of hexes* with an owner, and everything
-political (ownership, victory, diplomacy, recruitment sources) stays
-province-level. This is #147's own framing — "provinces are made up of
-hexes (invisibly)" — adopted as the load-bearing structure, not just a
-rendering trick.
+**Position: continuous coordinates, as granular as stays performant.**
+Armies (and any other campaign entity with a place in the world) carry
+**continuous geographic positions — latitude/longitude** — with granularity
+bounded only by performance, per the owner's review direction. **Provinces**
+persist as the political overlay: a province stays a named polygon with an
+owner, and everything political (ownership, victory, diplomacy, recruitment
+sources) stays province-level — an army's province is a point-in-polygon
+fact derived from its position, not a stored slot. Terrain and logistics
+data live in **geographic data layers**, not per-cell gameplay objects:
 
-Per hex:
+- **raster layers** (relief, land cover, forage stock — see logistics),
+  sampled at a position; each layer's cell size is a data-fidelity knob
+  tuned independently, invisible to the player and decoupled from any
+  gameplay grid;
+- **vector layers** (coastlines, rivers, roads), kept as geometry and
+  sampled or traced directly — a river is a polyline to cross or follow,
+  not a flag on a cell;
+- **structures** (depot, fort — #427/#428) as point features at map
+  positions.
 
-- **terrain type** (plains, forest, hills, mountains, marsh, river edge,
-  coast) — drives movement cost, forage yield, and the battle hand-off
-  (below);
-- **forage stock** (see logistics) and any built structure (depot, fort —
-  #427/#428);
-- **province id** — membership in the political overlay.
+Storing positions in lat-long serves two other decisions directly. Real
+geography (#165) ships in geographic coordinates, so campaign positions
+live in the source data's own coordinate system and the ingestion pipeline
+(its own phase, below) has no substrate conversion to do. And the saga
+layer's **fluid scale** requirement — theater-scale campaigns, interwar
+periods sliding between continental and city scale (saga section) — makes
+scale a camera and data-resolution choice rather than a substrate change; a
+fixed cell size would need re-gridding at every scale shift. Distance and
+area math run through a per-campaign **map projection** (theater-scale
+extents keep a local equidistant projection accurate); storage stays
+lat-long.
 
-Armies live *on* hexes, not *in* provinces: an army occupies a cluster of
-hexes sized by its strength (#147: "armies occupy multiple hexes depending
-on size") and moves hex-to-hex at the pace of its slowest contingent (#147's
-speed ladder — cavalry > camels > elephants > foot > artillery — becomes a
-per-unit-type campaign speed the army mins over). Two armies meet on the
-map, not in a province-attack abstraction — which is what makes
-interception, blocking a pass, and cutting a supply line *positional* facts
-the player can see, instead of graph edges.
+Armies move along continuous paths at the pace of their slowest contingent
+(#147's speed ladder — cavalry > camels > elephants > foot > artillery —
+becomes a per-unit-type campaign speed the army mins over, unchanged in
+continuous form). An army's footprint is a strength-scaled area around its
+position. Two armies meet on the map, not in a province-attack abstraction
+— which is what makes interception, blocking a pass, and cutting a supply
+line *positional* facts the player can see, instead of graph edges. All of
+these are geometry queries against positions, which is where performance
+gets decided:
 
-**How real geography (#165) feeds it.** A campaign map is authored by
-rasterizing a real geographic source (coastlines, rivers, relief, forest
-cover) onto the hex grid at map-authoring time — an offline data pipeline,
-not a runtime dependency. Province boundaries trace hex sets (historical
-regions: Narbonensis, Belgica, ...). The output stays a validated JSON file
-under `data/campaigns/` in the existing `CampaignLoader` pattern (schema
-versioned; the loader's lint-and-reject validation approach carries over).
-Hand-authored maps remain possible — the four-kingdoms fantasy map just
-rasterizes an invented geography.
+**The performance gate, honestly.** Position queries — interception,
+supply-line cut detection, forage-radius overlap, AI sensing — go through a
+**spatial index**; the battle layer's `SoldierSpatialHash` (per-soldier
+neighbor queries at 1,700+ bodies per physics tick) is the in-repo
+precedent pattern. Campaign entity counts sit orders of magnitude below
+that, and campaign ticks fire far less often than physics ticks, so the
+prior is that continuous positions hold comfortably — but that is a prior,
+not a measurement. Phase 1's acceptance therefore includes a measured
+campaign-tick budget at target entity counts at maximum game speed (the
+same benchmark discipline the battle layer already applies to soldier
+counts). **The fallback trigger:** if continuous-position queries cannot
+stay within the campaign tick budget at target army counts, positions
+aggregate to a coarse grid — #147's hexes, demoted from substrate to
+fallback aggregation strategy. The political overlay and the geographic
+data layers are unchanged by that fallback, so it is a contained retreat,
+not a redesign.
 
 **Against the alternatives.**
 
 - *Keep the pure region graph* (today's model): too coarse for everything
   downstream. Supply lines, forage radii, army frontage, interception, and
   "the army is two days from the city" all need positions finer than
-  "in province 3." The region graph also can't express #147 at all.
-- *Continuous 2D positions* (the battle's model): matches the battle layer
-  aesthetically, but gives up the discrete bookkeeping that logistics wants
-  (per-hex forage stocks, supply paths as hex chains), makes deterministic
-  campaign movement harder (float accumulation vs. integer hex steps), and
-  buys nothing the game needs at campaign zoom — armies are day-scale
-  objects, not colliding bodies. It also contradicts the owner's stated
-  direction in #147.
-- *Hexes only, no provinces*: loses the political layer cheaply kept —
-  diplomacy, victory conditions, recruitment, and the existing campaign
-  rules all speak province. The overlay preserves them while the substrate
-  changes underneath.
+  "in province 3."
+- *A hex-grid substrate* (#147's framing, and this doc's own position
+  before the owner's review): what hexes bought — discrete per-cell
+  bookkeeping, integer-step movement determinism — is available without
+  them. Per-cell bookkeeping lives in the raster data layers at whatever
+  resolution each layer wants; determinism with float positions is a solved
+  problem in this codebase (the battle layer replays thousands of float
+  soldier positions tick-for-tick under the fixed-tick sim, and the
+  campaign clock is fixed-tick for the same reason). What hexes cost: a
+  fixed cell size that fights fluid scale, a second spatial vocabulary
+  bolted between the geographic source data and the game, and a granularity
+  ceiling the owner explicitly declined. Demoted to the fallback above.
+- *Continuous positions without the province overlay*: loses the political
+  layer cheaply kept — diplomacy, victory conditions, recruitment, and the
+  existing campaign rules all speak province. The overlay preserves them
+  while the substrate changes underneath.
 
 **Migration note.** `CampaignState`'s political rules (diplomacy, truces,
 rulers, victory) survive; its *movement* rules (`can_move`, `_acted`,
-adjacency) are replaced by hex movement under the new time model. The
-polygon renderer in `CampaignMap._draw` becomes a hex-cluster renderer with
-province borders drawn along hex-set boundaries.
+adjacency) are replaced by continuous-path movement under the new time
+model. The polygon renderer in `CampaignMap._draw` keeps rendering province
+polygons; armies stop being a per-province integer and start being objects
+with map positions (composition section below).
 
 ### Time model: pausable real-time on a fixed campaign tick
 
@@ -248,34 +281,47 @@ replacing turns entirely. Concretely:
   counter retire. Turn-flavored rules re-express in time units: a truce of
   "3 turns" becomes a truce of N days.
 
-**What happens to campaign time during a battle: it freezes.** When a
-tactical battle launches, the campaign clock stops for the whole world and
-resumes when the battle resolves; the battle then charges a **fixed lump of
-campaign time** (e.g. the remainder of the day) to both participating
-armies on return. Rationale:
+**What happens to campaign time during a battle: it freezes, then pays the
+battle's real duration, 1:1.** When a tactical battle launches, the
+campaign clock stops for the whole world and resumes when the battle
+resolves. On return, the campaign clock advances by the battle's **actual
+elapsed in-battle time** — battle ticks over `Replay.PHYSICS_TPS`, charged
+1:1 as campaign game time to the whole world. An average large battle runs
+30–60 minutes, so it costs the campaign 30–60 minutes of game time; a
+five-minute rout costs five. This is the owner's decision (review answer
+2): playthrough time and game time stay honest with each other — no
+arbitrary lump cost. Rationale for the freeze-then-charge shape:
 
-- A tactical battle compresses hours of world time into minutes of play.
-  Letting the campaign clock run during it means the rest of the world
-  moves at a wildly different exchange rate than the battlefield — and in
+- A tactical battle plays out in a different scene at its own pace.
+  Letting the campaign clock run *during* it means the rest of the world
+  moves at an uncontrolled exchange rate against the battlefield — and in
   single-player there is no one else to serve by keeping the world hot.
 - Freezing keeps the battle a **single atomic event** on the campaign
   timeline, which the determinism section needs: the campaign log records
-  "battle at tick T, seed S, result R" with nothing interleaved.
+  "battle at tick T, seed S, duration D, result R" with nothing
+  interleaved. The charged duration is derived from the recorded battle
+  tick count, so replays charge identically.
 - The alternative — world keeps running, battle outcome applied
   retroactively — creates simultaneity paradoxes (a relief army arrives at
   a battle that is still being fought in another scene) for no single-player
   benefit. Revisit only if multiplayer ever becomes a goal (it is a
   non-goal, below).
 
+The other resolution modes (battle-resolution section below) charge the
+same clock the same way: a birds-eye battle runs on sim ticks and charges
+its simulated duration 1:1; an insta-resolve computes in seconds of
+playthrough but charges a **modelled duration** produced by the same
+formula that produces the outcome — the 1:1 rule binds playthrough time
+only for battles actually played out.
+
 AI-vs-AI clashes never open the battle scene (unchanged from today — PLAN.md
 notes AI battles always auto-resolve); under real-time they resolve at the
-tick the armies meet, through the auto-resolve path. Player battles keep the
-"quick resolve" opt-out.
+tick the armies meet, through the insta-resolve path.
 
 ### Armies become composed objects
 
-Everything below — logistics, the battle interface, hex occupancy — needs
-armies to be more than an integer. **Position:** an army is a first-class
+Everything below — logistics, the battle interface, the map footprint —
+needs armies to be more than an integer. **Position:** an army is a first-class
 record: an ordered list of **regiments** (each with a unit type from the
 faction roster, a soldier count, `morale`, and `training` — the same fields
 `Unit` already carries in battle), a commander slot (a ruler or a general;
@@ -288,13 +334,13 @@ and the auto-resolve all touch it. It is sequenced early (phase 2) because
 the battle interface is the first consumer: the hand-off stops inventing
 armies from the default loadout and starts deploying the real one.
 
-Auto-resolve re-expresses over composition: instead of one dice roll over
-two integers, a short deterministic aggregate fight over regiment lists (in
-the spirit of the far-tier statistical rules in
-`docs/large-scale-simulation-design.md` — coarse attrition over aggregate
-records, no per-soldier state). Exact rule is phase-2 implementation detail;
-the design constraint is it consumes and produces the same regiment records
-the tactical battle does, so the two resolution paths stay interchangeable.
+Auto-resolve re-expresses over composition as **insta-resolve**: instead of
+one dice roll over two integers, a fast deterministic formula over the two
+regiment lists (computes in under five seconds). The exact rule is phase-2
+implementation detail; the design constraint is it consumes and produces
+the same regiment records the tactical battle does, so every resolution
+path stays interchangeable — insta-resolve is one of the player-selectable
+resolution modes specified in the battle-resolution section below.
 
 ### Logistics: supply lines (#482) and foraging (#483)
 
@@ -302,7 +348,7 @@ Historical armies were fed or they dissolved; ancient-world provisioning is
 the best-documented constraint on where armies could go and when. The
 design grounds both mechanics in that practice, and — per PLAN.md pillar 2
 (bottom-up emergence) — builds them from **local rules per army and per
-hex**, not a global supply formula.
+patch of ground**, not a global supply formula.
 
 **The local rules:**
 
@@ -312,28 +358,30 @@ hex**, not a global supply formula.
   baggage train; historically single-digit days to a few weeks depending on
   train size — the exact cap is a per-army stat, extended by wagons at the
   cost of the artillery-tier speed penalty from #147's ladder).
-- **Foraging** (#483). Each hex holds a **forage stock** that armies draw
-  down, scaled by terrain type and **season** (rich in farmland at harvest,
-  poor in mountains and winter). Foraging is per-hex and depleting:
-  a large army strips its surroundings in days and must move or starve —
-  which is why big historical armies kept moving, and why sitting a siege
-  needed a supply line. Stocks regenerate seasonally. Dispersing to forage
-  (a wider forage radius = more hexes drawn) is an army stance with a
-  military cost: a foraging army moves slower and fights the first ticks of
-  an interception at a readiness penalty.
-- **Supply lines** (#482). A supply line is a **traced hex path** from an
-  army to a friendly source (a supplied city, a depot, a coastal or river
-  hex — waterways carry far more, matching the ancient cost advantage of
-  water transport). The line delivers a flow of rations (and, per #482,
-  **reinforcements** — replacement soldiers walk the same roads food does).
-  A line is *cut* when an enemy army occupies (or a hostile zone of control
-  covers) a hex on the path — no separate "raiding" mechanic needed at
-  first: raiding **emerges** from parking a cavalry army on the enemy's
-  road, exactly the bottom-up outcome the pillar asks for.
-- **Depots** (#427's encampment/siegeworks structures). A built structure on
-  a hex that stores supply and acts as a line source, extending reach in
-  poor country — the magazine system. Forts (#428's long-term maintained
-  forts) share the structure mechanism.
+- **Foraging** (#483). The land carries a **forage stock layer** — one of
+  the raster data layers from the map section — that armies draw down
+  within their forage radius, scaled by land cover and **season** (rich in
+  farmland at harvest, poor in mountains and winter). Foraging is local and
+  depleting: a large army strips its surroundings in days and must move or
+  starve — which is why big historical armies kept moving, and why sitting
+  a siege needed a supply line. Stocks regenerate seasonally. Dispersing to
+  forage (a wider forage radius = more ground drawn) is an army stance with
+  a military cost: a foraging army moves slower and fights the first ticks
+  of an interception at a readiness penalty.
+- **Supply lines** (#482). A supply line is a **traced route** — a polyline
+  over the road, valley, and waterway geometry — from an army to a friendly
+  source (a supplied city, a depot, a coastal or river landing — waterways
+  carry far more, matching the ancient cost advantage of water transport).
+  The line delivers a flow of rations (and, per #482, **reinforcements** —
+  replacement soldiers walk the same roads food does). A line is *cut* when
+  an enemy army's zone of control covers a point on the route (a spatial
+  query against the index from the map section) — no separate "raiding"
+  mechanic needed at first: raiding **emerges** from parking a cavalry army
+  on the enemy's road, exactly the bottom-up outcome the pillar asks for.
+- **Depots** (#427's encampment/siegeworks structures). A built structure
+  at a map position that stores supply and acts as a line source, extending
+  reach in poor country — the magazine system. Forts (#428's long-term
+  maintained forts) share the structure mechanism.
 - **Attrition.** When consumption exceeds carried + foraged + delivered,
   the army starves: soldiers desert or die at a rate that ramps with the
   shortfall, morale drops (feeding the same `morale` the battle reads —
@@ -365,10 +413,11 @@ versioned.
   morale, training), replacing `units_for`'s integer-to-default-loadout
   invention. The battle spawns what the campaign actually has, including
   understrength and shaken regiments.
-- **Terrain** — generated from the battlefield hex and its neighbors: the
-  hex's terrain type seeds the battle's terrain patches (today's hardcoded
-  `Battle.TERRAIN` array becomes an input), so a fight in a forest hex is a
-  forest fight. Deterministic generation from the campaign seed + hex id.
+- **Terrain** — sampled from the geographic layers around the clash
+  position: the land cover and relief at the battle site seed the battle's
+  terrain patches (today's hardcoded `Battle.TERRAIN` array becomes an
+  input), so a fight in forest country is a forest fight. Deterministic
+  generation from the campaign seed + the battle-site coordinates.
 - **Context** — attacker/defender roles, faction names/colors (already
   passed today), season/weather (phase 3+, once seasons exist), and the
   supply-state morale modifiers already applied on the campaign side.
@@ -379,22 +428,74 @@ versioned.
   entered, its surviving soldier count, end-of-battle `morale`, and
   `training` gain (veterancy accrues from surviving real fights — the
   carryover that makes a saga's veteran colonies (#428) mean something).
-- **Survivors include still-routing units** — the #504 position: a unit in
-  the `"routers"` group at battle end **counts as surviving** for the losing
-  side's escape accounting (fugitives regroup after the battle; historically
-  most of a broken army survived the field unless pursued). Concretely:
-  survivor counting unions `"units"` + `"routers"` exactly like
-  `_team_in_play` already does — the victory check and the result report
-  stop disagreeing. A routed-out regiment returns at reduced strength and
-  rock-bottom morale rather than vanishing.
-- **Casualty split** — dead vs. scattered-but-recovering, so the campaign
-  can return part of the scattered fraction over the following days
-  (stragglers rejoining), which is also where a future pursuit mechanic
-  would bite.
+- **All routers that leave the field return** — the owner's decision
+  (review answer 3), and the #504 position completed: a unit in the
+  `"routers"` group at battle end **counts as surviving**, and every routed
+  soldier who escapes the field **rejoins his army after the battle** — no
+  probabilistic return rate, no stragglers trickling back over days. The
+  losing side's permanent loss is exactly what was **killed or captured on
+  the field**. Concretely: survivor counting unions `"units"` + `"routers"`
+  exactly like `_team_in_play` already does — the victory check and the
+  result report stop disagreeing — and escaped routers come back at full
+  count with rock-bottom morale. This rule turns the battle layer's
+  existing rout/rally and pursuit mechanics into a real campaign decision:
+  a victor who wants to *destroy* an army rather than merely defeat it must
+  spend battle time hunting fugitives down before they escape the field, at
+  the cost of formation order and fatigue; let them run and the enemy
+  re-forms at strength. (Historically most of an ancient battle's
+  casualties fell in the pursuit, so the incentive is period-accurate.)
+- **Casualty split** — dead vs. captured vs. escaped, per regiment. Dead
+  and captured are permanent; escaped returns in full on battle end (the
+  rule above). What capture looks like in-battle, and what captives are
+  worth afterward, is an open question below.
 
 The loop keeps its current shape otherwise: snapshot out, resolve on
 return, one battle at a time, campaign clock frozen throughout (time model
 above).
+
+### Battle resolution: player-selectable modes
+
+When armies clash and the player commands one, the player picks how the
+battle resolves — the owner's decision (review answer 6), replacing the
+single "quick resolve" toggle. Three modes, all consuming and producing the
+same regiment records, so the choice is about attention, not outcome shape:
+
+1. **Insta-resolve.** The fast deterministic formula over the two regiment
+   lists from the composition section — computes in under five seconds of
+   playthrough time, charges a modelled duration of game time. The
+   successor of today's dice auto-resolve, and the only mode AI-vs-AI
+   clashes ever use.
+2. **Birds-eye resolve.** The battle runs under the **far-tier statistical
+   combat rules the battle layer already ships** — `FarTierRules` evolving
+   `FarTierFormation` aggregate records per tick
+   (`docs/large-scale-simulation-design.md`; its phases 1–4 are merged) —
+   with no per-soldier state, presented as a simply-animated aggregate view:
+   blocks maneuvering, engaging, and breaking on the field. Cheap enough to
+   watch at campaign speed, deterministic and tick-logged like any battle,
+   and it produces the same per-regiment outcome payload manual battles do.
+3. **Manual command.** The full tactical battle, as today.
+
+**Mid-battle takeover (birds-eye → manual).** The player watching a
+birds-eye battle can take command partway through. The seam already exists:
+`TierTransition` — merged with the LOD work — promotes a far-tier aggregate
+record to reconstructed per-soldier state as a **pure function of the
+aggregates plus a deterministic seed**, exactly the promotion path
+mixed-tier battles use internally. Taking command promotes every formation
+at the takeover tick and hands the reconstructed state to the tactical
+scene.
+
+The honest boundary: promotion gives per-formation state reconstruction;
+what takeover *additionally* needs — and what its phase must build — is a
+tactical battle that can **start mid-fight**. `Battle` today only starts
+from spawn lines; deployment from arbitrary positions and facings,
+in-progress morale and casualties, already-engaged opposing formations, and
+an already-elapsed battle clock all have to load from the birds-eye state.
+Determinism carries through the seam: the birds-eye segment is tick-logged,
+the takeover tick is recorded in the campaign log, and promotion is
+seed-deterministic, so a replay reproduces both segments and their join.
+The first cut is one-way — birds-eye to manual; handing a manual battle
+back to birds-eye raises UX and pacing questions deferred to the open
+questions below.
 
 ### Saga structure (#126): campaigns, interwar periods, and the dynasty
 
@@ -402,25 +503,33 @@ A **saga** is a sequence of campaigns (each campaign = one war) separated by
 **interwar periods**, carrying persistent state forward so the wars form an
 arc. Position on the split:
 
-- **A campaign** owns: the war's map situation (hex/army state), diplomacy
-  of the belligerents, and its own victory condition (which becomes the
-  saga's transition trigger).
+- **A campaign** owns: the war's map situation (army positions, terrain
+  layers), diplomacy of the belligerents, and its own victory condition
+  (which becomes the saga's transition trigger). Campaign maps are
+  **theater-scale** — the war's theater (Gaul, not the Mediterranean) —
+  per the owner's review answer 4.
 - **The saga** owns everything that outlives a war: the dynasty (below),
   the roster of veteran regiments (with their accrued `training`), founded
   cities and maintained forts, faction relationships that seed the next
   war's starting stances, and the period/faction data pack in play (#427).
-- **An interwar period** is not a full simulation layer — it is a
-  **decision screen sequence over saga state**: muster out veterans (→ found
-  a colony, #428), maintain or abandon forts, invest in cities, succession
-  events, and the inciting setup of the next campaign. Deliberately shallow
-  in this design: the interwar is a menu over durable state, not a second
-  map. If it earns depth later, it can grow into one without breaking the
-  layering (battle → campaign → saga was the intended stack from the start —
-  #126's own framing).
+- **An interwar period** is not a second war simulation — it is a
+  **decision sequence over saga state**: muster out veterans (→ found a
+  colony, #428), maintain or abandon forts, invest in cities, succession
+  events, and the inciting setup of the next campaign. Per the owner's
+  review answer 4, the interwar is **scale-fluid**: it presents on maps at
+  whatever scale the narrative requires — continental for empire-level
+  strokes, local/city scale for founding a colony or a succession crisis in
+  the capital — and moves fluidly between scales within one interwar. The
+  decision verbs anchor to the map at the relevant scale rather than a
+  detached menu sequence. This is a presentation range over the same
+  continuous-coordinate substrate (the map section's lat-long positions and
+  data layers make scale a camera and layer-resolution choice), not a new
+  simulation layer — the layering stack (battle → campaign → saga, #126's
+  own framing) is unchanged.
 
 **Founding cities (#428).** Two mechanisms, both from the historical
 playbook: **veteran colonies** (an interwar action spending mustered-out
-veteran regiments to found a town on a chosen hex — the Roman colonia;
+veteran regiments to found a town on a chosen site — the Roman colonia;
 incentivized migration is a growth modifier on the new town, fed by
 investment) and **forts that take root** (a fort maintained across N
 campaigns upgrades to a town — the *canabae* path). Founded settlements
@@ -465,13 +574,14 @@ state**, and the state is **transcript-legible**. Concretely:
 
 - **A campaign seed.** The campaign RNG is seeded at campaign start (the
   seeded path `CampaignState._init(map, rng_seed)` already exists for tests;
-  it becomes the only path) and every stochastic draw — auto-resolve,
+  it becomes the only path) and every stochastic draw — insta-resolve,
   forage variance if any, event rolls — pulls from it in tick order. The
   unseeded `_rng.randomize()` normal-play path retires.
 - **A campaign log** — seed + the tick-stamped command stream (the campaign
   command queue above), mirroring `REPLAY.md`'s seed-plus-orders format.
 - **Battles nest as recorded results.** The campaign log records, per
-  battle: launch tick, the battle's own seed, and the returned result
+  battle: launch tick, resolution mode, the battle's own seed, its elapsed
+  duration (the time-model section's 1:1 charge), and the returned result
   payload. Campaign replay **applies the recorded result** rather than
   re-fighting; the battle seed is retained so any battle can be replayed
   *independently* with the existing battle replay system. (Re-simulating
@@ -482,9 +592,9 @@ state**, and the state is **transcript-legible**. Concretely:
 - **A campaign state transcript.** The verify-via-state-dump discipline
   (the machine-readable transcript used to verify battle behavior) extends
   to the campaign: dump armies (position, composition, supply, orders),
-  hexes (stock, structures), diplomacy, and clock at requested ticks, so
-  campaign mechanics are verified by exact values, not by reading a
-  rendered map.
+  the data layers (forage stocks, structures), diplomacy, and clock at
+  requested ticks, so campaign mechanics are verified by exact values, not
+  by reading a rendered map.
 
 ## Non-goals
 
@@ -504,8 +614,8 @@ state**, and the state is **transcript-legible**. Concretely:
 - **3D.** The campaign map is 2D top-down, like the battles (locked
   decision in `PLAN.md`).
 - **Naval movement and transport.** Water matters to this design only as
-  supply capacity (river/coast hexes as line sources). Fleets, sea battles,
-  and amphibious operations are a separate future design.
+  supply capacity (river and coastal landings as line sources). Fleets, sea
+  battles, and amphibious operations are a separate future design.
 - **Economy beyond logistics.** No taxation, trade, or construction economy
   is designed here beyond what supply lines, depots, and city founding
   strictly need. #427's building rosters define *what exists to build*;
@@ -514,18 +624,19 @@ state**, and the state is **transcript-legible**. Concretely:
 ## Phased plan
 
 Each phase is independently shippable, keeps the game playable throughout,
-and carries acceptance criteria. **No phase issues are filed yet — each
-will be filed when the owner accepts this design** (deliberately unlike the
-LOD and orders-queue docs, whose phase issues were pre-filed).
+and carries acceptance criteria. The design is accepted, so each phase now
+has a filed tracking issue, linked below as sub-issues of #582.
 
 ### Phase 1 — map and time foundation
 
-**Scope.** The hex substrate with the province overlay; hex-terrain data
-model; the fixed-tick pausable clock with speed controls; the campaign
-command queue (apply-once); hex-path army movement at slowest-contingent
-speed; port the two shipped campaigns (Gallic War, Four Kingdoms) onto
-hand-rasterized hex maps; retire `end_turn`/`_acted`/turn counting;
-campaign seed + command log (replay foundation). Armies stay
+**Scope.** The continuous-coordinate substrate: lat-long army positions
+with a per-campaign projection, provinces as the political polygon overlay,
+the spatial index for position queries (`SoldierSpatialHash` pattern), and
+hand-authored geographic data layers (terrain rasters, river/coast vectors)
+for the two shipped campaigns; the fixed-tick pausable clock with speed
+controls; the campaign command queue (apply-once); continuous-path army
+movement at slowest-contingent speed; retire `end_turn`/`_acted`/turn
+counting; campaign seed + command log (replay foundation). Armies stay
 integer-strength in this phase — composition is phase 2 — so the existing
 auto-resolve and battle hand-off keep working unmodified.
 
@@ -536,77 +647,134 @@ the new substrate (move, fight via the existing hand-off, win); pause/speed
 controls work and orders queue while paused; a recorded campaign session
 replays to an identical final state (verified via a campaign state dump,
 not eyeballing); the diplomacy/truce rules behave as today with truces
-re-expressed in days; `tools/check.sh` fully green.
+re-expressed in days; the campaign tick budget is **measured** at target
+army counts at maximum game speed, arming the map section's hex-fallback
+trigger with data; `tools/check.sh` fully green.
 
-*Tracking issue: to be filed on acceptance.*
+*Tracking issue: [#603](https://github.com/Lacaedemon/sparta/issues/603).*
 
 ### Phase 2 — armies as composition + battle interface hardening
 
 **Scope.** The army record (regiment lists with type/count/morale/training,
-commander slot stub, supply-state stub); loader schema v2; auto-resolve
-over composition; the widened battle contract both ways — real composition
-in, per-regiment outcomes out; survivors counted as `"units"` + `"routers"`
-(closes [#504](https://github.com/Lacaedemon/sparta/issues/504));
-morale/training carryover; terrain hand-off (battle `TERRAIN` generated
-from the battlefield hex). Minimal faction rosters (#427's campaign-relevant
-slice) to give composition a vocabulary.
+commander slot stub, supply-state stub); loader schema v2; insta-resolve
+over composition (the fast formula, with its modelled game-time duration);
+the widened battle contract both ways — real composition in, per-regiment
+outcomes out; survivors counted as `"units"` + `"routers"` and **all
+escaped routers returning in full**, the only permanent losses being field
+deaths and captures (closes
+[#504](https://github.com/Lacaedemon/sparta/issues/504));
+morale/training carryover; the 1:1 battle-time charge; terrain hand-off
+(battle `TERRAIN` sampled from the geographic layers at the clash
+position). Minimal faction rosters (#427's campaign-relevant slice) to give
+composition a vocabulary.
 
-**Dependencies.** Phase 1 (hexes provide the battlefield-terrain source and
-the tick timeline the results land on).
+**Dependencies.** Phase 1 (the terrain layers and the tick timeline the
+results land on).
 
 **Acceptance criteria.** A campaign battle deploys exactly the attacking
 and defending armies' regiments (verified by state dump against the
 campaign army record); a battle ending mid-rout reports the router as a
-survivor and the campaign army reflects it; a regiment that survives a
-fought battle carries increased `training` into the next battle; a forest-
-hex battle spawns forest terrain; auto-resolve and fought-battle outcomes
-have the same payload shape.
+survivor and the campaign army reflects its full escaped count; a regiment
+that survives a fought battle carries increased `training` into the next
+battle; a battle in forest country spawns forest terrain; a fought battle
+advances the campaign clock by its recorded duration; insta-resolve and
+fought-battle outcomes have the same payload shape.
 
-*Tracking issue: to be filed on acceptance.*
+*Tracking issue: [#604](https://github.com/Lacaedemon/sparta/issues/604).*
 
-### Phase 3 — logistics: supply lines, foraging, attrition, seasons
+### Phase 3 — battle resolution modes: birds-eye resolve and takeover
 
-**Scope.** Per-hex forage stocks with terrain/season yields; army
-consumption/carriage ledger; supply-line path tracing with cut detection;
-depots as buildable line sources; starvation attrition into desertion +
-morale; the foraging stance; season clock; supply state visualized on the
-map and passed into battle morale.
+**Scope.** The resolution-mode choice (insta-resolve / birds-eye / manual)
+on player battles; the birds-eye runner — `FarTierRules` over
+`FarTierFormation` records driven by the campaign battle payload — with the
+simply-animated aggregate presentation; mid-battle takeover: promote every
+formation at the takeover tick via `TierTransition` and load the tactical
+scene from mid-fight state (deployment from arbitrary positions and
+facings, in-progress morale and casualties, engaged pairs, elapsed battle
+clock); birds-eye duration charged 1:1; the takeover tick recorded in the
+campaign log.
 
-**Dependencies.** Phases 1 (hexes, clock) and 2 (armies that can carry
-state; reinforcement flows need composition).
+**Dependencies.** Phase 2 (composition is the payload all modes share); the
+battle layer's merged LOD machinery (`docs/large-scale-simulation-design.md`
+phases 1–4, including `TierTransition`).
+
+**Acceptance criteria.** A birds-eye battle replays deterministically and
+returns the same payload shape as a manual battle over the same armies; a
+mid-battle takeover produces a playable tactical battle whose per-regiment
+aggregate totals match the birds-eye state at the takeover tick (verified
+by state dump, not eyeballing); a replay of a taken-over battle reproduces
+both segments and their join; AI-vs-AI clashes still insta-resolve.
+
+*Tracking issue: [#605](https://github.com/Lacaedemon/sparta/issues/605).*
+
+### Phase 4 — real-geography ingestion pipeline
+
+**Scope.** #165's full ambition as its own phase, per the owner's review
+answer 5: an offline pipeline ingesting real geographic sources
+(coastlines, rivers, relief, land cover) and rasterizing/vectorizing them
+into the campaign data layers phase 1 defined; projection handling;
+validation in the `CampaignLoader` lint-and-reject style; the Gallic War
+theater regenerated from real geography as the proving case; the authoring
+workflow documented. Hand-authored maps stay first-class — the
+four-kingdoms fantasy map just ships invented layers in the same formats.
+
+**Dependencies.** Phase 1 (the data-layer formats the pipeline targets).
+
+**Acceptance criteria.** The Gallic War campaign map regenerates from
+geographic source data by a single documented command; the output passes
+loader validation and is playable end-to-end; a hand-authored map and a
+pipeline-produced map are indistinguishable to the game code (same
+formats, same loader path).
+
+*Tracking issue: [#606](https://github.com/Lacaedemon/sparta/issues/606).*
+
+### Phase 5 — logistics: supply lines, foraging, attrition, seasons
+
+**Scope.** The forage-stock raster layer with land-cover/season yields;
+army consumption/carriage ledger; supply-route tracing with
+zone-of-control cut detection; depots as buildable line sources; starvation
+attrition into desertion + morale; the foraging stance; season clock;
+supply state visualized on the map and passed into battle morale.
+
+**Dependencies.** Phases 1 (substrate, clock, spatial index) and 2 (armies
+that can carry state; reinforcement flows need composition). Phase 4
+enriches it — real land cover makes forage yields meaningful — but
+hand-authored layers suffice to ship.
 
 **Acceptance criteria.** An army camped in one place strips its forage
 radius and begins attriting within the historically-plausible window for
-its size (assert on the ledger via state dump); occupying a hex on an
-enemy supply path stops the flow that tick; a winter campaign in poor
-terrain is measurably costlier than a harvest-season one in farmland; a
-starving army enters battle with reduced morale; all supply evolution
-replays deterministically.
+its size (assert on the ledger via state dump); an enemy zone of control
+covering a point on a supply route stops the flow that tick; a winter
+campaign in poor terrain is measurably costlier than a harvest-season one
+in farmland; a starving army enters battle with reduced morale; all supply
+evolution replays deterministically.
 
-*Tracking issue: to be filed on acceptance.*
+*Tracking issue: [#607](https://github.com/Lacaedemon/sparta/issues/607).*
 
-### Phase 4 — sagas and interwar periods
+### Phase 6 — sagas and interwar periods
 
 **Scope.** The saga container (campaign sequencing, transition triggers on
 campaign victory); persistent saga state (veteran regiments, settlements,
-forts, faction relations); the interwar decision screens; veteran-colony
-and fort-to-town founding (#428) with migration incentives as growth
-modifiers; period/faction data packs (#427) referenced by saga and
-campaign.
+forts, faction relations); the scale-fluid interwar — decision sequences
+anchored on maps that move between continental and local/city scale per
+narrative needs (review answer 4); veteran-colony and fort-to-town
+founding (#428) with migration incentives as growth modifiers;
+period/faction data packs (#427) referenced by saga and campaign.
 
-**Dependencies.** Phase 2 (veterancy worth carrying); phase 3 (settlements
+**Dependencies.** Phase 2 (veterancy worth carrying); phase 5 (settlements
 as supply sources — founding is a logistics act as much as a political
 one).
 
 **Acceptance criteria.** A two-campaign saga runs end-to-end with an
-interwar between; a veteran regiment mustered out into a colony appears as
-a town that acts as a supply source in the next campaign; a maintained fort
-upgrades across the interwar; saga state survives the full
-save/load/replay cycle deterministically.
+interwar between; the interwar presents at least two working scales
+(continental and local) over the same saga state; a veteran regiment
+mustered out into a colony appears as a town that acts as a supply source
+in the next campaign; a maintained fort upgrades across the interwar; saga
+state survives the full save/load/replay cycle deterministically.
 
-*Tracking issue: to be filed on acceptance.*
+*Tracking issue: [#608](https://github.com/Lacaedemon/sparta/issues/608).*
 
-### Phase 5 — dynasty
+### Phase 7 — dynasty
 
 **Scope.** Rulers become characters: age, mortality on saga time, a small
 trait set extending today's `ruler_trait` hooks, heirs and succession at
@@ -615,7 +783,7 @@ dynasty as the saga's continuity thread; commander slots on armies filled
 by characters, their traits feeding the same deterministic AI-threshold
 hooks rulers use today.
 
-**Dependencies.** Phase 4 (characters need the saga timeline to live and
+**Dependencies.** Phase 6 (characters need the saga timeline to live and
 die on).
 
 **Acceptance criteria.** A saga long enough for a succession sees the
@@ -625,31 +793,34 @@ appear in the campaign log and replay deterministically; the game remains
 fully playable if the player ignores every dynastic decision (defaults
 resolve).
 
-*Tracking issue: to be filed on acceptance.*
+*Tracking issue: [#609](https://github.com/Lacaedemon/sparta/issues/609).*
 
 ## Open questions for the owner
 
-1. **Hex scale.** Roughly how much ground should one hex represent (which
-   fixes army footprints, forage radii, and days-per-hex movement)? The
-   design assumes "an army crosses several hexes per day" granularity.
-2. **Battle time cost.** Is the freeze-plus-lump-cost model right, and how
-   big should the lump be (rest of day? a fixed hour count by battle
-   length)?
-3. **Fugitive return rate.** For #504's fix: what fraction of
-   routed-but-surviving troops should return, and over how many days?
-   The design says "part of the scattered fraction over following days" —
-   the constant is a gameplay call.
-4. **Interwar depth.** Is the shallow decision-screen interwar acceptable
-   for phase 4, or should interwar periods run on the campaign map (a
-   peacetime clock with movement/building) from the start?
-5. **Real-geography pipeline.** Hand-rasterized hex maps are assumed for
-   phase 1 (Gaul redrawn by hand on hexes). Should the offline
-   geography-to-hex pipeline (#165's full ambition) be its own phase, or
-   stay an authoring technique outside the game code?
-6. **Auto-resolve fidelity.** Should composition auto-resolve (phase 2)
-   reuse the far-tier statistical combat rules from
-   `docs/large-scale-simulation-design.md` directly (one attrition model
-   for both layers), or stay a simpler independent formula?
+The design's original six questions were answered in
+[the owner's PR #583 review](https://github.com/Lacaedemon/sparta/pull/583#pullrequestreview-4618476256)
+and their answers are folded into the sections above. What follows are the
+new questions those answers raise.
+
+1. **Capture mechanics.** The fugitive rule makes "killed or captured on
+   the field" the only permanent loss — what does capture look like in the
+   battle layer (surrender of shattered or cornered units? a pursuit
+   outcome distinct from cutting fugitives down?), and what are captives
+   worth afterward (ransom, enslavement, forced recruitment — saga-economy
+   flavor)?
+2. **Takeover UX and reversibility.** For the birds-eye → manual takeover:
+   what is the affordance (pause-and-confirm at the takeover tick, or an
+   instant hot-switch?), and should the reverse — handing an in-progress
+   manual battle back to birds-eye resolution — be allowed?
+3. **Performance targets for "as granular as can stay performant."** What
+   entity counts should the campaign tick budget be measured against —
+   how many armies (and, later, sub-army detachments) should a
+   theater-scale campaign support at maximum game speed before the hex
+   fallback is on the table?
+4. **Interwar scale authoring.** Scale shifts serve "narrative
+   requirements" — are those scripted per saga (authored beats choosing the
+   scale), systemic (the game picks the scale from the decision at hand),
+   or player-driven (free zoom with scale-appropriate verbs)?
 
 ## Relationship to existing issues
 
@@ -659,24 +830,26 @@ resolve).
   real-time) — the time-model section; retired-turn mechanics land in
   phase 1.
 - [#147](https://github.com/Lacaedemon/sparta/issues/147) (hex grid) — the
-  map section adopts its hexes-under-provinces framing, army hex
-  footprints, and slowest-unit speed ladder; phase 1.
+  owner's review demoted hexes from substrate to the map section's explicit
+  performance fallback; the issue's army footprints and slowest-unit speed
+  ladder survive in continuous form (phase 1).
 - [#165](https://github.com/Lacaedemon/sparta/issues/165) (real geography)
-  — the rasterize-at-authoring-time pipeline; phase 1 technique, full
-  pipeline per open question 5.
+  — its own phase per the owner's review: the ingestion pipeline is
+  phase 4, and lat-long positions make its geographic sources the map's
+  native coordinate system.
 - [#482](https://github.com/Lacaedemon/sparta/issues/482) (supply lines) —
-  logistics section; phase 3 (food + reinforcements; other resources keep a
+  logistics section; phase 5 (food + reinforcements; other resources keep a
   generic ledger slot).
 - [#483](https://github.com/Lacaedemon/sparta/issues/483) (foraging) —
-  logistics section; phase 3.
+  logistics section; phase 5.
 - [#126](https://github.com/Lacaedemon/sparta/issues/126) (saga layer) —
-  saga section; phase 4.
+  saga section; phase 6.
 - [#428](https://github.com/Lacaedemon/sparta/issues/428) (founding
-  cities) — veteran colonies + fort-to-town in phase 4, wired into
+  cities) — veteran colonies + fort-to-town in phase 6, wired into
   logistics as supply sources.
 - [#427](https://github.com/Lacaedemon/sparta/issues/427) (period
   factions) — data packs; campaign-relevant slice in phase 2, full packs in
-  phase 4.
+  phase 6.
 - [#504](https://github.com/Lacaedemon/sparta/issues/504) (survivor count
   excludes routers) — specified in the battle-interface section; closed by
   phase 2.
@@ -688,6 +861,8 @@ resolve).
   `docs/orders-queue-design.md` — the campaign command queue reuses its
   apply-once, order-shaped-verbs discipline at campaign granularity.
 - [#550](https://github.com/Lacaedemon/sparta/issues/550) /
-  `docs/large-scale-simulation-design.md` — the aggregate-record precedent
-  the composition auto-resolve leans on (open question 6), and the
-  determinism invariants both docs share.
+  `docs/large-scale-simulation-design.md` — the birds-eye resolve mode runs
+  its far-tier rules (`FarTierRules`/`FarTierFormation`), and the takeover
+  seam is its promotion machinery (`TierTransition`, merged via
+  [#558](https://github.com/Lacaedemon/sparta/issues/558)); the two docs
+  also share their determinism invariants.
