@@ -547,6 +547,28 @@ func test_fresh_order_cancels_in_progress_reform() -> void:
 	assert_eq(u.move_target, Vector2(200, 0))
 
 
+func test_current_speed_survives_the_reform_hold_while_cruising() -> void:
+	# Companion to the order-response-freeze regression in test_unit.gd: a unit that's
+	# already cruising and gets re-ordered with reform_before_move on is frozen twice in
+	# a row -- first by order_response_delay, then (once that expires) by the
+	# reform-before-move hold itself (_reform_timer, started here via "reform": true).
+	# _move_to() doesn't run during either freeze, so Unit._physics_process's end-of-frame
+	# idle-clear must not mistake the reform hold for genuine idleness and zero the speed
+	# once the order-response timer alone has drained.
+	var u := _unit(1, Vector2.ZERO)
+	u._current_speed = u.walk_speed   # as if it was already cruising
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 500.0, "y": 0.0, "target": -1, "reform": true})
+	assert_gt(u._reform_timer, 0.0, "the reform order starts the reform-hold timer")
+	# Drain only the order-response timer (not the longer reform hold) so the unit is
+	# still frozen by _reform_timer alone on the final tick.
+	while u._order_response_timer > 0.0:
+		u._physics_process(0.016)
+	assert_gt(u._reform_timer, 0.0, "the reform hold is still running (0.8s > 0.5s response delay)")
+	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
+		"speed survives the reform hold too, not just the order-response freeze")
+
+
 func test_enqueue_order_embeds_reform_setting() -> void:
 	# enqueue_order stamps the live Settings.reform_before_move into the command.
 	var u := _unit(1, Vector2.ZERO)
