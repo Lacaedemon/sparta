@@ -389,6 +389,83 @@ func test_stance_order_retires_immediately() -> void:
 	assert_null(u.current_order)
 
 
+# --- Phase 4: guard-driven early retirement ("advance UNTIL contact THEN attack") --------
+
+func test_a_guarded_order_stays_current_while_its_guard_is_unmet() -> void:
+	var u := _make_unit()
+	var o := Order.new_move(Vector2(100, 0)).with_guard(Order.Guard.CONTACT_MADE)
+	u.set_current_order(o)
+	u.has_move_target = true
+	u.move_target = Vector2(100, 0)
+	u._update_current_order()
+	assert_eq(u.current_order, o, "no enemy in the scene -- CONTACT_MADE can't be satisfied")
+	assert_eq(o._guard_ticks, 1, "the elapsed-tick counter still advances every tick")
+
+
+func test_a_guarded_order_retires_early_the_instant_its_guard_is_met() -> void:
+	var u := _make_unit(1)
+	var enemy := _make_unit(2)
+	enemy.team = 1
+	var contact: float = u.attack_range + Unit.RADIUS + enemy.RADIUS
+	enemy.position = u.position + Vector2(contact - 1.0, 0)
+	var o := Order.new_move(Vector2(1000, 0)).with_guard(Order.Guard.CONTACT_MADE)
+	u.set_current_order(o)
+	u.has_move_target = true
+	u.move_target = Vector2(1000, 0)
+	u._update_current_order()
+	assert_null(u.current_order, "the guard fired -- the MOVE retired with nothing queued behind it")
+	assert_false(u.has_move_target, "the stale march target is dropped, not left to resurrect")
+
+
+func test_a_guarded_move_retiring_promotes_and_resolves_a_queued_unresolved_attack() -> void:
+	# The "advance UNTIL contact THEN attack" macro: a guarded MOVE with an appended,
+	# UNRESOLVED (target_uid < 0) ATTACK order behind it. The instant contact is made the
+	# guard retires the MOVE and promotes the ATTACK, which must resolve target_enemy to
+	# the enemy actually in contact on the very same tick -- otherwise the ATTACK order's
+	# own target_enemy == null retirement check would drop it unfought one tick later.
+	var u := _make_unit(1)
+	var enemy := _make_unit(2)
+	enemy.team = 1
+	var contact: float = u.attack_range + Unit.RADIUS + enemy.RADIUS
+	enemy.position = u.position + Vector2(contact - 1.0, 0)
+	var move_order := Order.new_move(Vector2(1000, 0)).with_guard(Order.Guard.CONTACT_MADE)
+	u.set_current_order(move_order)
+	u.has_move_target = true
+	u.move_target = Vector2(1000, 0)
+	u.append_order(Order.new_attack(-1))
+	u._update_current_order()
+	assert_not_null(u.current_order)
+	assert_eq(u.current_order.type, Order.Type.ATTACK)
+	assert_eq(u.target_enemy, enemy, "resolved to the enemy actually in contact")
+
+
+func test_a_resolved_attack_order_is_untouched_by_promotion() -> void:
+	# The ordinary player-issued case (a specific target_uid) must not be re-resolved --
+	# Battle._apply_order_cmd already set target_enemy at issue time.
+	var u := _make_unit(1)
+	var named := _make_unit(3)
+	named.team = 1
+	u.set_current_order(Order.new_wheel(1))
+	u.append_order(Order.new_attack(named.uid))
+	u.target_enemy = null   # not yet set -- promotion must still leave it alone
+	u.retire_current_order()
+	assert_eq(u.current_order.type, Order.Type.ATTACK)
+	assert_null(u.target_enemy, "a resolved ATTACK order's target is Battle's job, not promotion's")
+
+
+func test_ticks_elapsed_guard_fires_after_the_configured_tick_count() -> void:
+	var u := _make_unit()
+	var o := Order.new_move(Vector2(1000, 0)).with_guard(Order.Guard.TICKS_ELAPSED, 3.0)
+	u.set_current_order(o)
+	u.has_move_target = true
+	u.move_target = Vector2(1000, 0)
+	for i in range(2):
+		u._update_current_order()
+		assert_not_null(u.current_order, "tick %d: not yet reached the count" % i)
+	u._update_current_order()
+	assert_null(u.current_order, "the third tick reaches the configured count")
+
+
 # --- queued route (waypoints as queued MOVE legs) ----------------------------
 
 func test_queued_move_points_lists_the_route_after_the_current_order() -> void:

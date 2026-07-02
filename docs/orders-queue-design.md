@@ -429,6 +429,47 @@ No wall-clock, no unseeded RNG. Guard evaluation order must be fixed.
 serialized state; a conditional order's pending condition shows in the transcript;
 a replay with conditions produces identical branch choices on re-run.
 
+**As implemented (#525).** Three scoping decisions:
+
+- **The guard lives on the `Order` itself, evaluated by a new pure module,
+  `OrderGuards.gd`.** `Order.guard` (a `Guard` enum: `ENEMY_IN_RANGE`,
+  `CONTACT_MADE`, `MORALE_BELOW`, `ALLY_EXHAUSTED`, `TICKS_ELAPSED`, `FLANKED`)
+  plus `guard_param` / `guard_uid` cover the closed vocabulary; `_guard_ticks`
+  is the one piece of live execution state a guard needs (advanced once per
+  tick, reset for free because each `Order` is a fresh instance). Attached at
+  construction via a fluent `Order.new_move(dest).with_guard(...)`, mirroring
+  the constructor-helper pattern the taxonomy table already uses. A satisfied
+  guard retires the order early from `Unit._update_current_order`, checked
+  before the per-type match so it pre-empts ANY order kind's own completion
+  condition — the general form of "terminal condition," not a MOVE-specific
+  carve-out.
+- **"Advance UNTIL contact THEN attack" is the guard-plus-append composition
+  the design doc names, not a new order type.** A `MoveOrder` guarded by
+  `CONTACT_MADE` with an appended, unresolved `AttackOrder` (`target_uid < 0`)
+  behind it: the guard firing retires the move and promotes the attack on the
+  same tick, and a new promotion hook (`Unit._start_promoted_attack`) resolves
+  the unresolved attack's target to whatever enemy is actually in contact —
+  the counterpart to the existing `_start_promoted_move` hook that commits a
+  promoted route leg's march. A player-issued attack (a resolved `target_uid`)
+  is untouched; `Battle._apply_order_cmd` already sets `target_enemy` at issue
+  time.
+- **"Hold UNTIL in range THEN fire" needed no new mechanism.** A ranged unit
+  already fires at any live enemy inside `RANGED_RANGE` unconditionally (the
+  `is_ranged` branch in `Unit._think` is not gated on `order_mode`), so
+  fire-at-will is the existing default rather than a mode of its own. The ROE
+  modes the design doc asks to promote (`HOLD` / `SKIRMISH` / `CYCLE_CHARGE` /
+  `SUPPORT` / the flank/rear attack bias) already exist as `Unit.OrderMode` —
+  phase 4 documents them as the mode-layer promotion in place (see the
+  comment block above `Unit.ORDER_HOLD`) rather than renaming or duplicating
+  them; the guard vocabulary is what was actually missing, and gives the
+  queue a first-class way to gate an order's own early completion on one of
+  them instead of the ad-hoc `if order_mode == ORDER_HOLD` checks scattered
+  through `_think`.
+- **No new player gesture yet**, matching phase 3's `StanceOrder` precedent:
+  guarded orders are reachable via the `Order` API (for demos, tests, and a
+  future reactive-AI layer per the design doc's "out of the core" boundary),
+  with the hotkey/UI surface left as follow-up work.
+
 ### Phase 5 — transcript records order + phase + condition (verification payoff)
 
 **Scope.** Finish the transcript surface: `current_order`, active phase, pending

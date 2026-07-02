@@ -303,6 +303,12 @@ func _unit_record(u: Node) -> Dictionary:
 		# march). null when the unit is idle (no current order).
 		"current_order": Order.type_name(u.current_order.type) if u.current_order != null else null,
 		"order_phase": Order.phase_name(u.current_order.phase) if u.current_order != null else null,
+		# Phase 4 (#525): the current order's pending terminal condition, e.g. "Hold: until
+		# enemy_in_range" from the design doc becomes order_guard: "ENEMY_IN_RANGE" here --
+		# null when the order carries no guard (or there is no current order at all), so a
+		# reader can tell "unconditional order" apart from "guard not yet satisfied."
+		"order_guard": Order.guard_name(u.current_order.guard) \
+				if u.current_order != null and u.current_order.guard != Order.Guard.NONE else null,
 	}
 	# A far-tier formation has no individual bodies, so its record carries NO per-soldier
 	# payload at all -- not even a zeroed summary. The explicit `tier` field above is what
