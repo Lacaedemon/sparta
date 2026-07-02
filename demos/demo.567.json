@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Tooling-only change: the state-transcript dumper now includes ROUTING units (it walks the units + routers groups) and sorts records by uid. Nothing in gameplay or rendering changed, so a recorded battle clip would show nothing new."
+}

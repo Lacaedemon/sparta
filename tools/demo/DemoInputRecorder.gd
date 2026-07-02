@@ -235,8 +235,8 @@ func _arm_state_dump(script_state: Array) -> void:
 	get_tree().create_timer(CAPTURE_TIMEOUT_SEC).timeout.connect(_on_capture_timeout)
 
 
-## Write a readable JSON snapshot of the authoritative game state at `tick`. Walks the live units
-## (the "units" group), pulls each unit's fields, and hands the per-soldier arrays to
+## Write a readable JSON snapshot of the authoritative game state at `tick`. Walks every combat
+## unit still on the field, pulls each unit's fields, and hands the per-soldier arrays to
 ## DemoState.soldier_summary for a compact summary. No await / renderer needed — this reads sim
 ## state, not the drawn frame, so it works even under --headless.
 func _dump_state(tick: int) -> void:
@@ -251,13 +251,18 @@ func _dump_state(tick: int) -> void:
 	print("[demo-input] dumped state at tick %d -> %s (%d units)" % [tick, path, snapshot["units"].size()])
 
 
-## Build the snapshot Dictionary for `tick`: battle-level tick plus a per-unit record. Separated
-## from the file write so it's directly inspectable; the recorder is the only caller.
+## Build the snapshot Dictionary for `tick`: battle-level tick plus a per-unit record. Walks the
+## "units" + "routers" union (DemoState.COMBAT_GROUPS) so a ROUTING unit — which has left "units"
+## for "routers" and may yet rally — still appears in every snapshot with its state, morale, and
+## position; its record is distinguished by `state: "ROUTING"`. Records are sorted by uid so the
+## order stays stable while units change groups mid-rout/rally. Separated from the file write so
+## it's directly inspectable; the recorder is the only caller.
 func _build_snapshot(tick: int) -> Dictionary:
 	var units_out: Array = []
-	for u in get_tree().get_nodes_in_group("units"):
-		units_out.append(_unit_record(u))
-	return {"tick": tick, "units": units_out}
+	for group in DemoState.COMBAT_GROUPS:
+		for u in get_tree().get_nodes_in_group(group):
+			units_out.append(_unit_record(u))
+	return {"tick": tick, "units": DemoState.sort_records_by_uid(units_out)}
 
 
 ## One unit's readable record. Reads Unit fields directly and maps the enum ints to names via
