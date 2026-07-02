@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Campaign-result accounting fix: still-routing units now count as survivors when a campaign-launched battle ends. The change lands in the strength number the campaign map receives after the battle scene exits, so a recorded battle clip can't show it; the seeded GUT test (test_campaign_survivors_routing.gd) asserts the exact survivor values instead."
+}
