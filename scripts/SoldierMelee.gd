@@ -102,7 +102,13 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		var brace_d: float = SoldierCombat.brace_depth(file_braces)
 		var cap: float = SoldierCombat.BRACE_CAPACITY * brace_d   # avoids a second walk of file_braces
 		var received: float = maxf(0.0, impulse_mag - cap)
-		defender._sim_body_vel[target] += push_dir * received
+		# Sum-then-clamp: impulses from every attacker shoving this body this cadence
+		# accumulate in its velocity, and each application clamps the summed result
+		# (SoldierCombat.capped_knockback_velocity) -- a pile-on in an intermixed press
+		# knocks a man back body-lengths, never launches him across the field.
+		if received > 0.0:
+			defender._sim_body_vel[target] = SoldierCombat.capped_knockback_velocity(
+					defender._sim_body_vel[target], push_dir * received)
 		if landed:
 			defender._sim_soldier_hp[target] -= \
 					SoldierCombat.wound(my_prof["lethality"], c, en_prof["armour"], cond_a) * wound_scale

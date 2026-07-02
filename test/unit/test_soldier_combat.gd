@@ -252,6 +252,53 @@ func test_knockback_impulse_never_negative() -> void:
 	assert_gt(SoldierCombat.knockback_impulse(1.0, 0.0, 0.0, 1.0), 0.0, "zero mass is floored, not a divide-by-zero")
 
 
+# --- capped knockback velocity (sum-then-clamp) ------------------------------------------
+
+func test_capped_knockback_single_blow_below_ceiling_passes_through() -> void:
+	# One baseline landed blow (J0 = 40) on a body at rest stays under the ceiling untouched.
+	var v: Vector2 = SoldierCombat.capped_knockback_velocity(
+			Vector2.ZERO, Vector2(SoldierCombat.KNOCKBACK_IMPULSE_SCALE, 0.0))
+	assert_almost_eq(v.x, SoldierCombat.KNOCKBACK_IMPULSE_SCALE, 1e-5, "the full impulse is kept")
+	assert_almost_eq(v.y, 0.0, 1e-5, "nothing bleeds into the other axis")
+
+
+func test_capped_knockback_stacked_blows_clamp_to_the_ceiling() -> void:
+	# Five landed baseline blows in one cadence sum to 200 -- the launch case. Applied
+	# strike by strike (as the resolver does), the accumulated speed clamps at the ceiling.
+	var v: Vector2 = Vector2.ZERO
+	for _k in range(5):
+		v = SoldierCombat.capped_knockback_velocity(
+				v, Vector2(0.0, SoldierCombat.KNOCKBACK_IMPULSE_SCALE))
+	assert_almost_eq(v.y, SoldierCombat.KNOCKBACK_SPEED_MAX, 1e-4,
+			"the stack clamps to KNOCKBACK_SPEED_MAX, not 5x J0")
+	assert_almost_eq(v.x, 0.0, 1e-5, "direction is preserved")
+
+
+func test_capped_knockback_never_raises_a_faster_body_further() -> void:
+	# A body already legitimately faster than the ceiling (a galloping horse) is not
+	# accelerated past its own speed by a blow -- the cap is max(own speed, ceiling).
+	var gallop := Vector2(170.0, 0.0)
+	var v: Vector2 = SoldierCombat.capped_knockback_velocity(gallop, Vector2(40.0, 0.0))
+	assert_almost_eq(v.x, 170.0, 1e-4, "the blow cannot ratchet the body past its own speed")
+	assert_almost_eq(v.y, 0.0, 1e-5, "no cross-axis drift")
+
+
+func test_capped_knockback_sideways_blow_on_a_fast_body_turns_it_without_speeding_it() -> void:
+	# A blow across a fast body's path redirects it; the resulting SPEED still never
+	# exceeds what it already carried.
+	var gallop := Vector2(170.0, 0.0)
+	var v: Vector2 = SoldierCombat.capped_knockback_velocity(gallop, Vector2(0.0, 60.0))
+	assert_almost_eq(v.length(), 170.0, 1e-3, "speed is capped at the carried speed")
+	assert_gt(v.y, 0.0, "but the shove still deflects the path")
+
+
+func test_capped_knockback_zero_impulse_is_identity_below_ceiling() -> void:
+	var before := Vector2(10.0, -5.0)
+	var v: Vector2 = SoldierCombat.capped_knockback_velocity(before, Vector2.ZERO)
+	assert_almost_eq(v.x, before.x, 1e-6, "no impulse, no x change")
+	assert_almost_eq(v.y, before.y, 1e-6, "no impulse, no y change")
+
+
 # --- prone / knockdown ------------------------------------------
 
 func test_prone_chance_zero_below_threshold() -> void:

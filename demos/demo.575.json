@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/showcase-clash.json",
+  "caption": "Bounded knockback: the landing-page showcase clash (seed 12345, no orders) no longer launches soldiers across the screen. Before this fix, several attackers shoving the same body within one melee cadence stacked their knockback impulses without bound -- a mid-press body could jump to ~200 wu/s (5x a single landed blow) and coast most of the battlefield before the bounded recovery reeled it back. Impulses now sum then clamp (SoldierCombat.KNOCKBACK_SPEED_MAX, 1.5x the baseline landed blow), so a pile-on shoves a man back body-lengths, never a flight. Watch the infantry press mid-clip: struck bodies lurch and recover in place instead of sailing through their own line. Prone knockdowns and braced-file absorption are unchanged -- the uncapped impulse still drives the felling roll.",
+  "fixed_fps": 30,
+  "max_frames": 520,
+  "fps": 15,
+  "width": 720
+}
