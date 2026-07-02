@@ -630,6 +630,67 @@ func test_move_to_decelerates_when_the_target_pace_drops() -> void:
 		"the drop this tick is exactly decel * delta -- not an instant snap down")
 
 
+func test_move_to_brakes_toward_zero_within_stopping_distance() -> void:
+	# Once the remaining distance is within the stopping distance the current speed needs
+	# under decel (v^2 / (2*decel)), the final approach targets zero pace instead of
+	# holding sprint to the wire and letting the arrival check snap _current_speed to 0 in
+	# a single tick. Regression coverage for issue #520.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.move_speed   # full sprint
+	var stopping_distance: float = (u.move_speed * u.move_speed) / (2.0 * u.decel)
+	u._move_to(Vector2(0, stopping_distance - 5.0), 0.1)   # just inside the braking window
+	assert_almost_eq(u._approach_velocity.length(), u.move_speed - u.decel * 0.1, 0.001,
+		"speed drops by exactly decel * delta this tick -- braking, not a snap")
+
+
+func test_move_to_holds_pace_outside_the_stopping_distance() -> void:
+	# Well outside the braking window, the unit still holds its selected pace (sprint,
+	# here) -- braking only kicks in once the remaining distance can't otherwise be
+	# covered before the unit needs to be stopped.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.move_speed
+	var stopping_distance: float = (u.move_speed * u.move_speed) / (2.0 * u.decel)
+	u._move_to(Vector2(0, stopping_distance + 50.0), 0.1)   # comfortably outside the window
+	assert_almost_eq(u._approach_velocity.length(), u.move_speed, 0.001,
+		"speed holds at the sprint pace -- no braking yet")
+
+
+func test_full_march_decelerates_smoothly_with_no_overshoot() -> void:
+	# End-to-end through _physics_process (not just _think): a unit sprinting toward a
+	# move-order destination ramps current_speed down under decel on final approach -- not
+	# a one-tick snap to 0 within the 5px arrival threshold -- and the marker settles AT the
+	# destination instead of coasting past it. Goes through _physics_process specifically so
+	# the "no momentum while stationary" reset (the tick after _move_to's own <1px early
+	# return) is exercised too, matching the real per-tick simulation loop. Mirrors the
+	# issue's own repro (Infantry sprinting ~260px south). Regression test for issue #520.
+	var u := _make_unit()
+	u.position = Vector2(800, 300)
+	u.move_target = Vector2(800, 560)
+	u.has_move_target = true
+	# Match the real physics tick (60/s), not the coarser 0.1s steps other _think loops in
+	# this file use -- braking is discretized per tick, and a much larger delta amplifies
+	# that discretization into spurious oscillation around the stopping-distance boundary.
+	var dt := 1.0 / 60.0
+	var max_y: float = u.position.y
+	var saw_gradual_decel := false
+	var prev_speed := 0.0
+	for _i in range(600):
+		u._physics_process(dt)
+		max_y = max(max_y, u.position.y)
+		if prev_speed > 10.0 and u._current_speed < prev_speed - 0.01 and u._current_speed > 0.5:
+			saw_gradual_decel = true
+		prev_speed = u._current_speed
+		if not u.has_move_target:
+			break
+	assert_false(u.has_move_target, "the unit reaches and finalizes its move order")
+	assert_true(saw_gradual_decel,
+		"current_speed passed through intermediate values while slowing -- a ramp, not a snap")
+	assert_almost_eq(u.position.y, 560.0, 5.0, "the unit settles at the destination")
+	assert_lt(max_y, 560.0 + 5.0, "the centroid never coasts past the ordered destination")
+
+
 # --- turning rate tapers with speed -------------------------------------------
 
 func test_orderly_pivot_is_slower_at_speed_than_at_a_stand() -> void:

@@ -204,6 +204,11 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
 # mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
 const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed charge
+# Below this current speed a unit counts as stopped for arrival purposes -- small enough
+# not to read as motion (every pace/gait is well above it), but nonzero so a unit that has
+# braked all the way down under decel finalizes its order instead of forever creeping the
+# last fraction of a wu/s.
+const ARRIVE_SPEED_EPSILON: float = 1.0
 # Orderly move orders pivot the block about its centre toward their travel direction at
 # this angular rate (rad/s) rather than snapping, so the ranks turn in good order. A
 # half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Combat chases still snap
@@ -741,7 +746,12 @@ func _think(delta: float) -> void:
 	# A player move order marches orderly -- it centre-pivots gradually toward its heading
 	# before advancing; combat chases above stay snappy (orderly = false).
 	if has_move_target:
-		if position.distance_to(move_target) > 5.0:
+		# Arrival requires both a close position AND a near-zero speed -- not position alone.
+		# _move_to's braking (above) ramps _current_speed down under decel as the unit closes
+		# in, so by the time it's within 5px it should already be stopped; still guard on
+		# speed too so a still-moving unit keeps decelerating instead of finalizing early and
+		# hard-snapping via the "no momentum while stationary" reset elsewhere in this tick.
+		if position.distance_to(move_target) > 5.0 or _current_speed > ARRIVE_SPEED_EPSILON:
 			_move_to(move_target, delta, true)
 		elif not waypoints.is_empty():
 			# Each queued leg marches on its own terms: drop any side-step hold from
@@ -904,6 +914,16 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# its top pace: the men hold a locked ring/wall and only creep, so the target pace
 	# is scaled down before the ramp.
 	pace_speed *= formation_speed_factor()
+	# Final approach: brake to a stop under decel instead of holding pace to the wire and
+	# letting the outer arrival check hard-reset _current_speed to 0 in a single tick. Once
+	# the remaining distance to the destination is within the stopping distance the current
+	# speed needs under decel (v^2 / (2*decel), the same kinematics decel is meant to model),
+	# target zero pace so the ramp below decelerates smoothly onto the destination instead of
+	# a snap-then-coast.
+	if decel > 0.0:
+		var stopping_distance: float = (_current_speed * _current_speed) / (2.0 * decel)
+		if position.distance_to(point) <= stopping_distance:
+			pace_speed = 0.0
 	# Ramp toward the selected pace instead of snapping there -- a unit takes real time
 	# to build up to a pace (accel) and slows down rather than instantly stopping/downshifting
 	# (decel), per-type rates set from the loadout's panoply-weight-scaled accel_mps2/decel_mps2.
