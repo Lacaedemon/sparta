@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Docs-only change: folds the owner's six design-review answers into docs/campaign-layer-design.md and links the newly filed phase issues. No gameplay, scene, or script changes to record."
+}
