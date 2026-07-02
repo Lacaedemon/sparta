@@ -122,14 +122,30 @@ func test_accessor_and_setters_guard_bad_input() -> void:
 
 
 # --- Conversio (about-face, #370) -------------------------------------------
+# The drill's in-progress state lives on the unit's current_order (an unrecorded
+# ABOUT_FACE queue entry) as of the phase-2 queue migration.
+
+## Stage a completed (or interrupted-partial) in-place turn the way _think's order-turn
+## block does: install a drill order, rotate facing by `turned`, and settle. Mirrors the
+## execution path without running the tick loop.
+func _stage_settled_turn(u: Unit, turned: float) -> void:
+	var o := Order.new_about_face()
+	o.turn_start_facing = u.facing
+	o.turn_target = Vector2(-u.facing.x, -u.facing.y)
+	u.set_current_order(o)
+	u.facing = u.facing.rotated(turned)
+	u._settle_order_turn()
+	u.retire_current_order()
+
 
 func test_conversio_sets_target_and_starts_turning() -> void:
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	u.conversio()
-	# The target is set; the turn starts on the first _think() tick, not immediately.
-	assert_true(u._conversio_target.is_equal_approx(Vector2.UP),
-		"conversio target is the reversed heading")
+	# The ABOUT_FACE order is armed; the turn starts on the first _think() tick, not immediately.
+	assert_true(u.about_face_goal().is_equal_approx(Vector2.UP),
+		"the order's turn goal is the reversed heading")
+	assert_eq(u.current_order.type, Order.Type.ABOUT_FACE)
 	assert_true(u.facing.is_equal_approx(Vector2.DOWN),
 		"unit.facing has not moved yet (the turn starts on the first tick)")
 	# Per-soldier ownership is not used — all soldiers rotate together via unit.facing,
@@ -143,16 +159,27 @@ func test_conversio_blocked_while_fighting() -> void:
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING
 	u.conversio()
-	assert_true(u._conversio_target.is_zero_approx(),
-		"no conversio target set when blocked by combat")
+	assert_null(u.current_order, "no about-face order armed when blocked by combat")
 
 
 func test_conversio_blocked_before_bodies_are_seeded() -> void:
 	var u := _make_unit()
 	# no seed_sim_soldiers() call
 	u.conversio()
-	assert_true(u._conversio_target.is_zero_approx(),
-		"no conversio target when no bodies exist")
+	assert_null(u.current_order, "no about-face order when no bodies exist")
+
+
+func test_conversio_blocked_while_marching() -> void:
+	# The drill is an unrecorded gesture: refusing it while a live order runs keeps it
+	# from clobbering the queue entry that order runs off.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	var move := Order.new_move(Vector2(100, 100))
+	u.set_current_order(move)
+	u.has_move_target = true
+	u.move_target = Vector2(100, 100)
+	u.conversio()
+	assert_eq(u.current_order, move, "the drill does not clobber a live move order")
 
 
 func test_conversio_reverses_any_starting_heading() -> void:
@@ -161,8 +188,8 @@ func test_conversio_reverses_any_starting_heading() -> void:
 	u.facing = Vector2.RIGHT
 	u.step_sim_soldiers(0.1)   # sync bodies to the new heading
 	u.conversio()
-	assert_true(u._conversio_target.is_equal_approx(Vector2.LEFT),
-		"conversio target is LEFT when starting from RIGHT")
+	assert_true(u.about_face_goal().is_equal_approx(Vector2.LEFT),
+		"the turn goal is LEFT when starting from RIGHT")
 	assert_true(u.facing.is_equal_approx(Vector2.RIGHT),
 		"unit.facing is unchanged at call time; the turn starts on the next tick")
 
@@ -181,9 +208,7 @@ func test_about_face_settle_holds_every_soldier_at_its_own_position() -> void:
 	u.seed_sim_soldiers()
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
 	var n: int = before.size()
-	u._conversio_start_facing = u.facing
-	u.facing = Vector2(-u.facing.x, -u.facing.y)   # the about-face end state
-	u._settle_conversio()
+	_stage_settled_turn(u, PI)   # the about-face end state
 	assert_eq(u._sim_soldier_pos.size(), n, "body count is unchanged by the settle")
 	for i in range(n):
 		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
@@ -197,9 +222,7 @@ func test_about_face_leaves_bodies_on_their_slots() -> void:
 	var u := _make_unit()
 	u.frontage_override = 8        # 8 files x 5 ranks = 40: a full, centrosymmetric grid
 	u.seed_sim_soldiers()
-	u._conversio_start_facing = u.facing
-	u.facing = Vector2(-u.facing.x, -u.facing.y)   # the about-face end state
-	u._settle_conversio()
+	_stage_settled_turn(u, PI)   # the about-face end state
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	for i in range(u._sim_soldier_pos.size()):
 		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
@@ -212,9 +235,7 @@ func test_about_face_partial_grid_holds_every_soldier_at_its_own_position() -> v
 	var u := _make_unit()   # 40 men, default frontage -> partial last rank
 	u.seed_sim_soldiers()
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
-	u._conversio_start_facing = u.facing
-	u.facing = Vector2(-u.facing.x, -u.facing.y)
-	u._settle_conversio()
+	_stage_settled_turn(u, PI)
 	for i in range(before.size()):
 		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
 			"partial-grid body %d holds its own position, no identity swap" % i)
@@ -227,9 +248,7 @@ func test_about_face_interrupt_settles_partial_rotation_with_no_identity_swap() 
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
-	u._conversio_start_facing = u.facing
-	u.facing = u.facing.rotated(deg_to_rad(70.0))   # partway through the 180° reversal
-	u._settle_conversio()
+	_stage_settled_turn(u, deg_to_rad(70.0))   # partway through the 180° reversal
 	for i in range(before.size()):
 		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
 			"interrupted about-face body %d still holds its own position" % i)
@@ -241,7 +260,8 @@ func test_quarter_turn_sets_perpendicular_target() -> void:
 	var u := _make_unit()                  # facing DOWN
 	u.seed_sim_soldiers()
 	u.quarter_turn(1)                      # right
-	assert_true(u._quarter_target.is_equal_approx(Vector2.DOWN.rotated(PI * 0.5)),
+	assert_eq(u.current_order.type, Order.Type.QUARTER_TURN)
+	assert_true(u.current_order.turn_target.is_equal_approx(Vector2.DOWN.rotated(PI * 0.5)),
 		"the target is 90° to the right of the start heading")
 	assert_true(u.facing.is_equal_approx(Vector2.DOWN),
 		"unit.facing is unchanged at call time; the turn starts next tick")
@@ -252,32 +272,35 @@ func test_quarter_turn_blocked_while_fighting() -> void:
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING
 	u.quarter_turn(1)
-	assert_true(u._quarter_target.is_zero_approx(), "no quarter-turn while fighting")
+	assert_null(u.current_order, "no quarter-turn while fighting")
 
 
 func test_quarter_turn_blocked_before_bodies_are_seeded() -> void:
 	var u := _make_unit()
 	u.quarter_turn(1)
-	assert_true(u._quarter_target.is_zero_approx(), "no quarter-turn before the bodies exist")
+	assert_null(u.current_order, "no quarter-turn before the bodies exist")
 
 
 func test_quarter_turn_zero_dir_is_a_noop() -> void:
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	u.quarter_turn(0)
-	assert_true(u._quarter_target.is_zero_approx(), "a zero direction does nothing")
+	assert_null(u.current_order, "a zero direction does nothing")
 
 
 func test_quarter_turn_ignored_while_already_turning() -> void:
-	# Re-arming mid-turn would reset _quarter_start_facing to the partial heading and corrupt
-	# the settled offset, so a second press while a turn runs is a no-op.
+	# Re-arming mid-turn would reset the order's start heading to the partial heading and
+	# corrupt the settled offset, so a second press while a turn runs is a no-op.
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	u.quarter_turn(1)                       # right
-	var first_target: Vector2 = u._quarter_target
+	var first_order: Order = u.current_order
+	var first_target: Vector2 = first_order.turn_target
 	u.quarter_turn(-1)                      # try to flip mid-turn
-	assert_true(u._quarter_target.is_equal_approx(first_target),
+	assert_eq(u.current_order, first_order,
 		"a second quarter-turn while one is running is ignored")
+	assert_true(u.current_order.turn_target.is_equal_approx(first_target),
+		"and the running turn keeps its goal")
 
 
 func test_quarter_turn_ignored_during_conversio() -> void:
@@ -285,7 +308,7 @@ func test_quarter_turn_ignored_during_conversio() -> void:
 	u.seed_sim_soldiers()
 	u.conversio()
 	u.quarter_turn(1)
-	assert_true(u._quarter_target.is_zero_approx(),
+	assert_eq(u.current_order.type, Order.Type.ABOUT_FACE,
 		"no quarter-turn while a conversio is in progress")
 
 
@@ -294,7 +317,7 @@ func test_conversio_ignored_during_quarter_turn() -> void:
 	u.seed_sim_soldiers()
 	u.quarter_turn(1)
 	u.conversio()
-	assert_true(u._conversio_target.is_zero_approx(),
+	assert_eq(u.current_order.type, Order.Type.QUARTER_TURN,
 		"no conversio while a quarter-turn is in progress")
 
 
@@ -307,9 +330,7 @@ func test_quarter_turn_keeps_every_body_exactly_in_place() -> void:
 	u.seed_sim_soldiers()
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
 	# Simulate the arrival the _think loop performs on completion:
-	u._quarter_start_facing = u.facing
-	u.facing = u.facing.rotated(PI * 0.5)
-	u._settle_formation_angle()
+	_stage_settled_turn(u, PI * 0.5)
 	# No man took a step.
 	for i in range(before.size()):
 		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
@@ -328,9 +349,7 @@ func test_quarter_turn_no_surge_on_a_partial_grid() -> void:
 	var u := _make_unit()                   # 40 men, default frontage -> partial last rank
 	u.seed_sim_soldiers()
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
-	u._quarter_start_facing = u.facing
-	u.facing = u.facing.rotated(-PI * 0.5)  # left turn this time
-	u._settle_formation_angle()
+	_stage_settled_turn(u, -PI * 0.5)       # left turn this time
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	for i in range(before.size()):
 		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
@@ -345,9 +364,7 @@ func test_quarter_turn_interrupt_settles_partial_rotation() -> void:
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
-	u._quarter_start_facing = u.facing
-	u.facing = u.facing.rotated(PI * 0.25)  # only halfway through the 90°
-	u._settle_formation_angle()
+	_stage_settled_turn(u, PI * 0.25)       # only halfway through the 90°
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	for i in range(before.size()):
 		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
@@ -382,7 +399,8 @@ func test_quarter_turn_steps_with_no_per_tick_surge() -> void:
 		prev = u._sim_soldier_pos.duplicate()
 	assert_lt(worst_step, 0.5,
 		"no body jumps more than a hair on any tick (no surge) — worst was %.3f px" % worst_step)
-	assert_true(u._quarter_target.is_zero_approx(), "the turn completed")
+	assert_false(u.is_order_turning(), "the turn completed")
+	assert_null(u.current_order, "and the drill order retired")
 	assert_true(u.facing.is_equal_approx(Vector2.DOWN.rotated(PI * 0.5)),
 		"the unit ended on the perpendicular heading")
 	assert_lt(_max_step(start, u._sim_soldier_pos), 0.01,
@@ -394,9 +412,7 @@ func test_move_order_reforms_a_quarter_turned_unit() -> void:
 	# start_order_response) reforms the grid square to the heading by clearing the offset.
 	var u := _make_unit()
 	u.seed_sim_soldiers()
-	u._quarter_start_facing = u.facing
-	u.facing = u.facing.rotated(PI * 0.5)
-	u._settle_formation_angle()
+	_stage_settled_turn(u, PI * 0.5)
 	assert_false(is_equal_approx(u._formation_angle, 0.0),
 		"the quarter-turn left a formation-angle offset")
 	u.start_order_response()

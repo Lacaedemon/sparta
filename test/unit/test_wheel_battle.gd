@@ -96,6 +96,6 @@ func test_wheel_demo_input_drives_a_wheel() -> void:
 	# The script wheels right (C) then back left (Z); the unit spawns facing south. After both
 	# swings settle it should be back near south — proving both hotkeys drove a wheel, not that
 	# nothing happened. Assert it's not still mid-swing and ended on a cardinal-ish heading.
-	assert_eq(target._wheel_target, Vector2.ZERO, "the demo's wheels have completed, not stalled")
+	assert_false(target.is_wheeling(), "the demo's wheels have completed, not stalled")
 	assert_true(target.facing.is_equal_approx(Vector2.DOWN),
 		"C then Z returns the unit to its start heading (both wheels fired)")

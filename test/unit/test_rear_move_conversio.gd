@@ -68,15 +68,21 @@ func _make_seeded_unit() -> Unit:
 	return u
 
 
+## Arm a rear-move composite exactly as Battle._apply_order_cmd does: a MOVE order (hasty
+## variant, no reform phase) made current, with the about-face TURN phase armed on it.
+func _arm_rear_move(u: Unit, dest: Vector2) -> Order:
+	var o := Order.new_move(dest)
+	u.set_current_order(o)
+	u.has_move_target = false
+	assert_true(u.begin_about_face(o), "the about-face armed (bodies were seeded)")
+	return o
+
+
 func test_rear_move_about_faces_then_marches() -> void:
 	var u := _make_seeded_unit()
 	var start_facing: Vector2 = u.facing   # DOWN
-	# Arm the rear-move exactly as Battle does: conversio + park the destination behind.
 	var dest := Vector2(0, -200)           # straight behind a DOWN-facing unit
-	u.conversio()
-	assert_ne(u._conversio_target, Vector2.ZERO, "the conversio armed (bodies were seeded)")
-	u._pending_march_target = dest
-	u._has_pending_march = true
+	var o := _arm_rear_move(u, dest)
 
 	# While the about-face is turning, the unit must NOT be marching yet.
 	u._think(0.016)
@@ -94,15 +100,12 @@ func test_rear_move_about_faces_then_marches() -> void:
 	assert_true(u.facing.is_equal_approx(-start_facing),
 		"the unit ended facing the reverse of its start heading (about-faced, not pivoted mid-march)")
 	assert_eq(u.move_target, dest, "it marches to the parked rear destination")
-	assert_false(u._has_pending_march, "the pending-march flag is cleared once committed")
+	assert_eq(o.phase, Order.Phase.MARCH, "the composite advanced to its march phase")
 
 
 func test_rear_move_marches_toward_the_destination_not_backward() -> void:
 	var u := _make_seeded_unit()
-	var dest := Vector2(0, -200)
-	u.conversio()
-	u._pending_march_target = dest
-	u._has_pending_march = true
+	_arm_rear_move(u, Vector2(0, -200))
 	# Run well past the turn so the march is underway.
 	for _i in range(200):
 		u._think(0.016)
@@ -129,10 +132,10 @@ func test_about_face_holds_every_soldier_at_its_own_position_through_think() -> 
 	var start_facing: Vector2 = u.facing
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
 	u.conversio()
-	assert_ne(u._conversio_target, Vector2.ZERO, "the conversio armed")
+	assert_true(u.is_order_turning(), "the conversio armed")
 	for _i in range(120):
 		u._think(0.016)
-		if u._conversio_target == Vector2.ZERO:
+		if not u.is_order_turning():
 			break
 	assert_true(u.facing.is_equal_approx(-start_facing),
 		"the about-face completed (facing reversed)")
@@ -142,15 +145,15 @@ func test_about_face_holds_every_soldier_at_its_own_position_through_think() -> 
 
 
 func test_move_order_cancels_a_pending_rear_march() -> void:
-	# A fresh interrupt mid-about-face drops the parked march (Battle re-issues the order,
-	# and _think clears the pending flag when a move target arrives or combat pre-empts).
+	# A legacy march starting under the turning order (a waypoint append) pre-empts the
+	# about-face: the turn settles and the order retires, taking its parked rear march
+	# with it.
 	var u := _make_seeded_unit()
-	u.conversio()
-	u._pending_march_target = Vector2(0, -200)
-	u._has_pending_march = true
-	# Simulate a new plain move order landing: has_move_target set true pre-empts the conversio.
+	var o := _arm_rear_move(u, Vector2(0, -200))
+	# Simulate the append-style pre-empt: has_move_target flips true under the turn.
 	u.has_move_target = true
 	u.move_target = Vector2(300, 0)
 	u._think(0.016)
-	assert_eq(u._conversio_target, Vector2.ZERO, "the interrupting order cancels the about-face")
-	assert_false(u._has_pending_march, "and drops the now-stale parked rear march")
+	assert_eq(o.turn_target, Vector2.ZERO, "the interrupting march cancels the about-face")
+	assert_null(u.current_order, "and the turning order retired, dropping its parked march")
+	assert_eq(u.move_target, Vector2(300, 0), "the pre-empting march is untouched")

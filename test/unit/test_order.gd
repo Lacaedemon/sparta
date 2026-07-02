@@ -1,7 +1,7 @@
 extends GutTest
-## Order value type (docs/orders-queue-design.md phase 1, #522): pure, node-free tests for the
-## enum-name tables, the readable describe() string, and the constructor helpers Battle uses to
-## build each order kind.
+## Order value type (docs/orders-queue-design.md phases 1-2): pure, node-free tests
+## for the enum-name tables, the readable describe() string, and the constructor helpers used
+## to build each order kind.
 
 
 func test_type_name_maps_every_known_type() -> void:
@@ -13,6 +13,8 @@ func test_type_name_maps_every_known_type() -> void:
 	assert_eq(Order.type_name(Order.Type.NUDGE), "NUDGE")
 	assert_eq(Order.type_name(Order.Type.FORMATION), "FORMATION")
 	assert_eq(Order.type_name(Order.Type.FRONTAGE), "FRONTAGE")
+	assert_eq(Order.type_name(Order.Type.ABOUT_FACE), "ABOUT_FACE")
+	assert_eq(Order.type_name(Order.Type.QUARTER_TURN), "QUARTER_TURN")
 
 
 func test_phase_name_maps_every_known_phase() -> void:
@@ -36,7 +38,8 @@ func test_describe_omits_the_phase_when_unphased() -> void:
 
 
 func test_describe_includes_the_phase_when_phased() -> void:
-	var o := Order.new_move(Vector2(1, 2), 0, true)
+	var o := Order.new_move(Vector2(1, 2))
+	o.phase = Order.Phase.TURN
 	assert_eq(o.describe(), "MOVE:TURN")
 
 
@@ -47,9 +50,20 @@ func test_new_move_defaults_to_unphased() -> void:
 	assert_eq(o.target_pos, Vector2(5, 5))
 
 
-func test_new_move_phased_starts_in_the_turn_phase() -> void:
-	var o := Order.new_move(Vector2(5, 5), 0, true)
-	assert_eq(o.phase, Order.Phase.TURN)
+func test_new_move_starts_with_idle_maneuver_state() -> void:
+	# The maneuver execution state (phase 2) is armed by Unit.begin_about_face / the drill
+	# methods, never by the constructor.
+	var o := Order.new_move(Vector2(5, 5))
+	assert_eq(o.turn_target, Vector2.ZERO)
+	assert_eq(o.pivot, Vector2.ZERO)
+	assert_false(o.reform)
+
+
+func test_new_about_face_and_new_quarter_turn_carry_their_kind() -> void:
+	assert_eq(Order.new_about_face().type, Order.Type.ABOUT_FACE)
+	var q := Order.new_quarter_turn(-1)
+	assert_eq(q.type, Order.Type.QUARTER_TURN)
+	assert_eq(q.dir, -1)
 
 
 func test_new_attack_carries_target_uid_and_mode() -> void:

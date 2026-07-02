@@ -53,10 +53,12 @@ func test_rear_move_arms_the_about_face_and_parks_the_march() -> void:
 	var b := _battle([u])
 	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # straight behind
-	assert_ne(u._conversio_target, Vector2.ZERO, "the about-face is armed")
+	assert_true(u.is_order_turning(), "the about-face is armed on the order")
+	assert_eq(u.current_order.type, Order.Type.MOVE)
+	assert_eq(u.current_order.phase, Order.Phase.TURN)
 	assert_false(u.has_move_target, "the march is parked, not started, during the turn")
-	assert_true(u._has_pending_march, "the destination is parked for after the about-face")
-	assert_eq(u._pending_march_target, Vector2(0, -200), "and it is the ordered rear destination")
+	assert_eq(u.current_order.target_pos, Vector2(0, -200),
+		"the ordered rear destination is parked on the order for after the about-face")
 
 
 ## Axis-aligned bounding box of a unit's live soldier bodies, as [width, height].
@@ -100,15 +102,17 @@ func test_enqueue_order_applies_exactly_once_across_the_tick_drain() -> void:
 	var b := _battle([u])
 	Settings.reform_before_move = false
 	b.enqueue_order([1], Vector2(0, -200), -1)   # rear move: applies live, tags the cmd
-	assert_ne(u._conversio_target, Vector2.ZERO, "the about-face armed on the live apply")
-	assert_true(u._has_pending_march, "and parked the march")
-	var conversio_after_live := u._conversio_target
+	assert_true(u.is_order_turning(), "the about-face armed on the live apply")
+	var order_after_live: Order = u.current_order
+	var turn_after_live: Vector2 = order_after_live.turn_target
 	_drain_pending(b)   # the tick drain must be a no-op for this already-applied order
-	assert_eq(u._conversio_target, conversio_after_live,
-		"the drain did not re-apply the order and cancel the conversio")
+	assert_eq(u.current_order, order_after_live,
+		"the drain did not re-apply the order and replace the in-flight composite")
+	assert_eq(u.current_order.turn_target, turn_after_live,
+		"the running about-face keeps its goal (no restart)")
 	assert_false(u.has_move_target, "no march was started by a phantom second apply")
-	assert_true(u._has_pending_march, "the parked rear march survives the drain")
-	assert_eq(u._pending_march_target, Vector2(0, -200), "toward the ordered rear destination")
+	assert_eq(u.current_order.phase, Order.Phase.TURN, "the parked rear march survives the drain")
+	assert_eq(u.current_order.target_pos, Vector2(0, -200), "toward the ordered rear destination")
 
 
 func test_order_once_vs_twice_yields_identical_unit_state() -> void:
@@ -130,11 +134,12 @@ func test_order_once_vs_twice_yields_identical_unit_state() -> void:
 	b2.enqueue_order([2], Vector2(0, -200), -1)
 	_drain_pending(b2)
 
-	assert_eq(live._conversio_target, single._conversio_target,
+	assert_eq(live.current_order.turn_target, single.current_order.turn_target,
 		"enqueue+drain arms the same about-face as a single apply")
 	assert_eq(live.has_move_target, single.has_move_target, "same march-started flag")
-	assert_eq(live._has_pending_march, single._has_pending_march, "same parked-march flag")
-	assert_eq(live._pending_march_target, single._pending_march_target, "same parked destination")
+	assert_eq(live.current_order.phase, single.current_order.phase, "same composite phase")
+	assert_eq(live.current_order.target_pos, single.current_order.target_pos,
+		"same parked destination")
 
 
 func test_rear_move_holds_footprint_while_facings_reverse() -> void:
@@ -214,64 +219,65 @@ func test_forward_move_does_not_arm_an_about_face() -> void:
 	var b := _battle([u])
 	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 200.0, "target": -1})   # straight ahead
-	assert_eq(u._conversio_target, Vector2.ZERO, "a forward move does not about-face")
+	assert_false(u.is_order_turning(), "a forward move does not about-face")
+	assert_eq(u.current_order.phase, Order.Phase.NONE, "the move order is unphased")
 	assert_true(u.has_move_target, "it marches normally")
 	assert_eq(u.move_target, Vector2(0, 200), "toward the ordered destination")
 
 
 func test_rear_move_falls_back_to_a_plain_march_when_bodies_unseeded() -> void:
-	# Before soldier bodies seed, conversio() can't run; a rear move must still march
+	# Before soldier bodies seed, begin_about_face refuses; a rear move must still march
 	# (via the normal path) rather than stalling with a parked destination nobody commits.
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.DOWN
 	var b := _battle([u])
 	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})
-	assert_eq(u._conversio_target, Vector2.ZERO, "no about-face armed without seeded bodies")
-	assert_false(u._has_pending_march, "and nothing is parked")
+	assert_false(u.is_order_turning(), "no about-face armed without seeded bodies")
+	assert_eq(u.current_order.phase, Order.Phase.NONE, "and nothing is parked in a turn phase")
 	assert_true(u.has_move_target, "the unit still marches (fallback to a plain move)")
 	assert_eq(u.move_target, Vector2(0, -200), "toward the ordered destination")
 
 
-func test_rear_move_during_an_in_progress_about_face_does_not_park_a_march() -> void:
-	# A standing V-key about-face is already turning when a rear-move order arrives.
-	# conversio() no-ops (a turn is in progress), so the order must NOT park a pending
-	# march on top of the running turn -- it falls back to a plain march instead.
+func test_rear_move_during_an_in_progress_about_face_preempts_the_drill() -> void:
+	# A standing V-key about-face is already turning when a rear-move order arrives. A
+	# fresh order replaces the queue: the drill's partial turn settles (no body surge) and
+	# the rear move arms its OWN about-face composite -- exactly what a replay of this
+	# recorded order produces, where the unrecorded drill never ran. (Under the old
+	# parallel flags the live apply instead fell back to a plain march, a live-vs-replay
+	# divergence in this corner.)
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.DOWN
 	u.seed_sim_soldiers()
 	u.conversio()                                   # the standing about-face is now turning
-	var turn_target: Vector2 = u._conversio_target
-	assert_ne(turn_target, Vector2.ZERO, "the standing about-face is in progress")
+	assert_true(u.is_order_turning(), "the standing about-face is in progress")
 	var b := _battle([u])
 	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # rear move
-	assert_eq(u._conversio_target, turn_target,
-		"the order leaves the in-progress turn untouched (conversio no-ops)")
-	assert_false(u._has_pending_march, "and does not park a march on top of it")
-	assert_true(u.has_move_target, "it commits a plain march instead")
-	assert_eq(u.move_target, Vector2(0, -200), "toward the ordered destination")
+	assert_eq(u.current_order.type, Order.Type.MOVE, "the fresh order replaced the drill")
+	assert_eq(u.current_order.phase, Order.Phase.TURN, "and runs its own about-face composite")
+	assert_false(u.has_move_target, "with the march parked until the turn completes")
+	assert_eq(u.current_order.target_pos, Vector2(0, -200), "toward the ordered destination")
 
 
-func test_rear_move_during_an_in_progress_wheel_does_not_park_a_march() -> void:
-	# A wheel (circumductio) is already swinging when a rear-move order arrives. conversio()
-	# is blocked while any in-place drill turn runs, so it must no-op -- the order must NOT
-	# arm an about-face on top of the wheel; it falls back to a plain march.
+func test_rear_move_during_an_in_progress_wheel_preempts_the_swing() -> void:
+	# A wheel (circumductio) is already swinging when a rear-move order arrives. The fresh
+	# order replaces the queue, dropping the wheel where it stands (a partial swing is a
+	# valid formation state), and arms its own about-face composite -- matching what a
+	# replay of this order stream produces on both the live and playback paths.
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.DOWN
 	u.seed_sim_soldiers()
 	u.wheel(1)                                      # the wheel is now swinging
-	var wheel_target: Vector2 = u._wheel_target
-	assert_ne(wheel_target, Vector2.ZERO, "the wheel is in progress")
+	assert_true(u.is_wheeling(), "the wheel is in progress")
 	var b := _battle([u])
 	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # rear move
-	assert_eq(u._conversio_target, Vector2.ZERO,
-		"no about-face is armed on top of the running wheel (conversio no-ops)")
-	assert_eq(u._wheel_target, wheel_target, "the wheel is left untouched at dispatch")
-	assert_false(u._has_pending_march, "and no march is parked")
-	assert_true(u.has_move_target, "it commits a plain march instead")
-	assert_eq(u.move_target, Vector2(0, -200), "toward the ordered destination")
+	assert_false(u.is_wheeling(), "the fresh order dropped the wheel where it stood")
+	assert_eq(u.current_order.type, Order.Type.MOVE, "and replaced it on the queue")
+	assert_eq(u.current_order.phase, Order.Phase.TURN, "arming the rear move's own about-face")
+	assert_false(u.has_move_target, "with the march parked until the turn completes")
+	assert_eq(u.current_order.target_pos, Vector2(0, -200), "toward the ordered destination")
 
 
 func test_append_queues_a_waypoint_behind_the_current_target() -> void:

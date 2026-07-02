@@ -24,7 +24,7 @@ func _run_wheel(u: Unit, dir: int, max_ticks: int = 200) -> int:
 	u.wheel(dir)
 	var delta := 1.0 / 60.0
 	var ticks := 0
-	while u._wheel_target != Vector2.ZERO and ticks < max_ticks:
+	while u.is_wheeling() and ticks < max_ticks:
 		u._physics_process(delta)
 		u.step_sim_soldiers(delta)
 		ticks += 1
@@ -117,13 +117,16 @@ func test_wheel_is_blocked_while_another_maneuver_runs() -> void:
 	u.seed_sim_soldiers()
 	u.quarter_turn(1)   # arm a quarter-turn
 	u.wheel(1)          # should be refused
-	assert_eq(u._wheel_target, Vector2.ZERO, "a wheel is refused while a quarter-turn is armed")
+	assert_false(u.is_wheeling(), "a wheel is refused while a quarter-turn is armed")
+	assert_eq(u.current_order.type, Order.Type.QUARTER_TURN,
+		"the running quarter-turn keeps the queue")
 
 
 func test_wheel_is_blocked_before_seeding() -> void:
 	var u := _make_unit()
 	u.wheel(1)   # no bodies seeded yet
-	assert_eq(u._wheel_target, Vector2.ZERO, "a wheel is refused before the bodies are seeded")
+	assert_false(u.is_wheeling(), "a wheel is refused before the bodies are seeded")
+	assert_null(u.current_order, "and no order is queued for it")
 
 
 ## Run an in-place turn (conversio or quarter-turn) to completion on a bare unit, driving _think +
@@ -132,7 +135,7 @@ func _settle_quarter_turn(u: Unit, dir: int, max_ticks: int = 200) -> void:
 	u.quarter_turn(dir)
 	var delta := 1.0 / 60.0
 	var ticks := 0
-	while u._quarter_target != Vector2.ZERO and ticks < max_ticks:
+	while u.is_order_turning() and ticks < max_ticks:
 		u._physics_process(delta)
 		u.step_sim_soldiers(delta)
 		ticks += 1
@@ -172,7 +175,7 @@ func test_wheel_after_quarter_turn_still_hinges_on_the_standing_flank() -> void:
 	u.wheel(1)
 	var delta := 1.0 / 60.0
 	var ticks := 0
-	while u._wheel_target != Vector2.ZERO and ticks < 200:
+	while u.is_wheeling() and ticks < 200:
 		u._physics_process(delta)
 		u.step_sim_soldiers(delta)
 		ticks += 1

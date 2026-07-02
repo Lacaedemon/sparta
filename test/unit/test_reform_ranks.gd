@@ -119,22 +119,29 @@ func test_bodies_settle_check_is_true_right_after_seeding() -> void:
 
 # --- the rear-move composite ------------------------------------------------
 
+## Arm a rear-move composite as Battle._apply_order_cmd does: a MOVE order carrying the
+## reform choice, made current, with the about-face TURN phase armed on it.
+func _arm_rear_move(u: Unit, dest: Vector2, reform: bool) -> Order:
+	var o := Order.new_move(dest)
+	o.reform = reform
+	u.set_current_order(o)
+	u.has_move_target = false
+	assert_true(u.begin_about_face(o), "the about-face armed")
+	return o
+
+
 func test_rear_move_with_reform_holds_the_march_until_the_ranks_re_form() -> void:
 	var u := _make_partial_unit()
 	var dest := Vector2(0, -200)   # straight behind a DOWN-facing unit
-	u.conversio()
-	assert_ne(u._conversio_target, Vector2.ZERO, "the conversio armed")
-	u._pending_march_target = dest
-	u._has_pending_march = true
-	u._pending_march_reform = true   # the drilled variant: reform before stepping off
+	_arm_rear_move(u, dest, true)   # the drilled variant: reform before stepping off
 
 	# Run the turn out; the march must not start, and the reform hold must arm instead.
 	var turn_budget: int = int(ceil(PI / Unit.CONVERSIO_TURN_RATE / TICK)) + 10
 	for _i in range(turn_budget):
 		_tick(u)
-		if u._conversio_target == Vector2.ZERO:
+		if not u.is_order_turning():
 			break
-	assert_eq(u._conversio_target, Vector2.ZERO, "the about-face completed within its budget")
+	assert_false(u.is_order_turning(), "the about-face completed within its budget")
 	assert_false(u.has_move_target, "no march yet: the reform phase holds it")
 	assert_gt(u._reform_timer, 0.0, "the reform hold armed on conversio completion")
 	assert_true(u._reform_until_settled, "the hold ends on settle, not a fixed countdown")
@@ -162,10 +169,7 @@ func test_rear_move_with_reform_holds_the_march_until_the_ranks_re_form() -> voi
 func test_hasty_rear_move_marches_at_once_and_reforms_on_arrival() -> void:
 	var u := _make_partial_unit()
 	var dest := Vector2(0, -60)   # short rear leg so the march fits a tight tick budget
-	u.conversio()
-	u._pending_march_target = dest
-	u._has_pending_march = true
-	u._pending_march_reform = false   # the hasty variant: reform is deferred, not skipped
+	_arm_rear_move(u, dest, false)   # the hasty variant: reform is deferred, not skipped
 
 	var turn_budget: int = int(ceil(PI / Unit.CONVERSIO_TURN_RATE / TICK)) + 10
 	for _i in range(turn_budget):
@@ -200,14 +204,12 @@ func test_hasty_rear_move_marches_at_once_and_reforms_on_arrival() -> void:
 
 func test_interrupted_about_face_drops_the_parked_reform_with_the_march() -> void:
 	var u := _make_partial_unit()
-	u.conversio()
-	u._pending_march_target = Vector2(0, -200)
-	u._has_pending_march = true
-	u._pending_march_reform = true
-	# A fresh plain move lands mid-turn: has_move_target pre-empts the conversio.
+	var o := _arm_rear_move(u, Vector2(0, -200), true)
+	# A legacy march starts under the turn (an append-style pre-empt): the turn settles and
+	# the order retires, taking the parked rear march AND its reform choice with it.
 	u.has_move_target = true
 	u.move_target = Vector2(300, 0)
 	u._think(TICK)
-	assert_eq(u._conversio_target, Vector2.ZERO, "the interrupting order cancels the about-face")
-	assert_false(u._has_pending_march, "and drops the parked rear march")
-	assert_false(u._pending_march_reform, "and the reform phase that rode with it")
+	assert_eq(o.turn_target, Vector2.ZERO, "the interrupting order cancels the about-face")
+	assert_null(u.current_order, "the turning order retired, dropping its parked march")
+	assert_eq(u._reform_timer, 0.0, "and no reform hold survives it")

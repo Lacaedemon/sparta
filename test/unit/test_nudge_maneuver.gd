@@ -78,13 +78,29 @@ func test_left_nudge_shifts_laterally_and_holds_facing() -> void:
 	var perp := Vector2(-fwd.y, fwd.x)   # unit's right-hand side
 
 	battle.enqueue_nudge([u.uid], BattleScript.NudgeDir.LEFT)
-	for _i in range(120):   # the order-response delay (~0.5 s) + the short walk + settle
+	assert_not_null(u.current_order, "the nudge occupies the orders queue")
+	assert_eq(u.current_order.type, Order.Type.NUDGE,
+		"and the queue reports it (transcript-visible)")
+	# Budget from sim constants: the order-response delay, the step at no worse than half
+	# walk pace (a side-step walks), and a settle margin.
+	var budget: int = int(ceil((u.order_response_delay
+			+ BattleScript.NUDGE_DISTANCE / maxf(u.walk_speed * 0.5, 1.0) + 1.0)
+			* Replay.PHYSICS_TPS))
+	for _i in range(budget):
 		await get_tree().physics_frame
+		if u.current_order == null:
+			break
 
 	var moved: Vector2 = u.position - start_pos
 	var lateral: float = moved.dot(perp)    # to the unit's right (negative = left)
 	var forward: float = moved.dot(fwd)
 	assert_lt(lateral, -5.0, "a left nudge shifts the unit to its left")
+	# The under-travel regression guard, by exact state: the step covers the FULL drill distance
+	# (the arrival finalizes within its 5 px threshold), not the few-pixel creep the
+	# double-apply produced.
+	assert_almost_eq(absf(lateral), BattleScript.NUDGE_DISTANCE, 6.0,
+		"the nudge translates the unit by the full NUDGE_DISTANCE")
+	assert_null(u.current_order, "the nudge order retired on arrival")
 	assert_lt(absf(forward), absf(lateral), "the shift is mainly lateral, not forward")
 	assert_true(u.facing.is_equal_approx(start_facing),
 		"a side-step holds facing — the unit does not pivot to face travel")

@@ -1,11 +1,11 @@
 extends GutTest
-## Unit's general orders queue (docs/orders-queue-design.md phase 1, #522): the append/replace/
-## retire/clear queue operations, and _update_current_order's read-of-legacy-state bookkeeping
-## (phase transition + retirement) for each order kind. These are bare-Unit, node-only tests --
-## no Battle scene needed, since phase 1 is additive bookkeeping that mirrors the SAME legacy
-## fields (has_move_target, waypoints, target_enemy, _wheel_target, ...) the rest of Unit already
-## reads and mutates; see test_wheel_battle.gd / test_file_doubling_battle.gd / test_nudge_maneuver.gd
-## for the full-scene tick-by-tick proof that this bookkeeping changes no sim behaviour.
+## Unit's general orders queue (docs/orders-queue-design.md phases 1-2): the
+## append/replace/retire/clear queue operations, the maneuver execution state that lives on
+## the Order (turn_target / phase / parked rear march), the interrupt semantics of replacing
+## the queue, and _update_current_order's retirement bookkeeping for each order kind. These
+## are bare-Unit, node-only tests -- no Battle scene needed; see test_wheel_battle.gd /
+## test_file_doubling_battle.gd / test_nudge_maneuver.gd / test_reform_battle.gd for the
+## full-scene tick-by-tick sim behaviour.
 
 
 func _make_unit(uid: int = 1) -> Unit:
@@ -66,6 +66,24 @@ func test_append_order_queues_behind_an_existing_current_order() -> void:
 	assert_eq(u.current_order, first)   # unchanged -- still marching the first leg
 	assert_eq(u.orders.size(), 2)
 	assert_eq(u.orders[1], second)
+
+
+func test_waypoint_legs_retire_their_move_orders_in_lockstep() -> void:
+	# Waypoint legs and queued MOVE orders are appended 1:1, so finishing a leg retires its
+	# order and promotes the next -- the queue reports the leg actually marching.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	var first := Order.new_move(Vector2(10, 0))
+	var second := Order.new_move(Vector2(20, 0))
+	u.set_current_order(first)
+	u.move_target = Vector2(10, 0)
+	u.has_move_target = true
+	u.append_order(second)
+	u.waypoints.append(Vector2(20, 0))
+	u.position = Vector2(10, 0)   # arrived at the first leg
+	u._think(1.0 / 60.0)
+	assert_eq(u.current_order, second, "the finished leg's order retired; the next leg is current")
+	assert_eq(u.move_target, Vector2(20, 0), "and the march rolls on to the next point")
 
 
 func test_retire_current_order_promotes_the_next_queued_order() -> void:
@@ -152,56 +170,108 @@ func test_move_order_retires_once_the_reform_hold_expires_and_the_unit_has_arriv
 	assert_null(u.current_order)
 
 
+## Install a rear-move composite the way Battle._apply_order_cmd does: a MOVE order with
+## the reform choice, made current, then the about-face TURN phase armed on it. The unit
+## gets a PARTIAL last rank (10 men at 4 files = 2 full ranks + 2), so a completed flip has
+## something to bring forward and the drilled variant's reform_ranks() actually runs -- a
+## full grid is centre-symmetric and would no-op straight to the march.
+func _stage_rear_move(u: Unit, dest: Vector2, reform: bool) -> Order:
+	u.facing = Vector2.DOWN
+	u.frontage_override = 4
+	u.seed_sim_soldiers()
+	var o := Order.new_move(dest)
+	o.reform = reform
+	u.set_current_order(o)
+	u.has_move_target = false
+	assert_true(u.begin_about_face(o), "the about-face arms on a seeded idle unit")
+	return o
+
+
 func test_phased_move_order_transitions_turn_to_march_once_the_about_face_hands_off() -> void:
 	var u := _make_unit()
-	u.set_current_order(Order.new_move(Vector2(10, 10), 0, true))
-	assert_eq(u.current_order.phase, Order.Phase.TURN)
-	# The conversio has completed and committed the parked march (mirrors _think()'s
-	# has_move_target=true / _conversio_target cleared / _has_pending_march consumed).
-	u._conversio_target = Vector2.ZERO
-	u._has_pending_march = false
-	u.has_move_target = true
-	u._update_current_order()
-	assert_eq(u.current_order.phase, Order.Phase.MARCH)
+	var o := _stage_rear_move(u, Vector2(10, 10), false)   # hasty: no reform phase
+	assert_eq(o.phase, Order.Phase.TURN)
+	assert_true(u.is_order_turning())
+	# The turn completes (mirrors _think()'s order-turn block on arrival).
+	u.facing = o.turn_target
+	u._settle_order_turn()
+	u._finish_order_turn()
+	assert_eq(o.phase, Order.Phase.MARCH)
+	assert_true(u.has_move_target, "the parked march committed on the handoff")
+	assert_eq(u.move_target, Vector2(10, 10), "toward the destination parked on the order")
+	assert_true(u._reform_on_arrival, "the hasty variant defers its reform to arrival")
 
 
 func test_phased_move_order_stays_in_turn_phase_while_the_about_face_is_still_running() -> void:
 	var u := _make_unit()
-	u.set_current_order(Order.new_move(Vector2(10, 10), 0, true))
-	u._conversio_target = Vector2(0, 1)   # still turning
+	var o := _stage_rear_move(u, Vector2(10, 10), false)
 	u._update_current_order()
-	assert_eq(u.current_order.phase, Order.Phase.TURN)
+	assert_eq(o.phase, Order.Phase.TURN)
 	assert_not_null(u.current_order)   # not retired mid-turn
 
 
 func test_phased_move_order_enters_reform_when_the_about_face_hands_off_to_the_hold() -> void:
+	# Mirrors _think()'s reform-before-march handoff: timer armed, march parked in
+	# _reform_target while the countermarch brings a full rank forward.
 	var u := _make_unit()
-	u.set_current_order(Order.new_move(Vector2(10, 10), 0, true))
-	# The conversio has completed and armed the reform hold instead of the march (mirrors
-	# _think()'s reform-before-march handoff: timer armed, march parked in _reform_target).
-	u._conversio_target = Vector2.ZERO
-	u._has_pending_march = false
-	u._reform_target = Vector2(10, 10)
-	u._reform_timer = 2.0
+	var o := _stage_rear_move(u, Vector2(10, 10), true)
+	u.facing = o.turn_target
+	u._settle_order_turn()
+	u._finish_order_turn()
+	assert_eq(o.phase, Order.Phase.REFORM)
+	assert_gt(u._reform_timer, 0.0, "the reform hold armed")
+	assert_eq(u._reform_target, Vector2(10, 10), "with the march parked behind it")
+	assert_false(u.has_move_target, "the march holds until the ranks re-form")
 	u._update_current_order()
-	assert_eq(u.current_order.phase, Order.Phase.REFORM)
 	assert_not_null(u.current_order)   # not retired mid-reform
 
 
 func test_phased_move_order_transitions_reform_to_march_once_the_hold_commits() -> void:
 	var u := _make_unit()
-	u.set_current_order(Order.new_move(Vector2(10, 10), 0, true))
-	u._conversio_target = Vector2.ZERO
-	u._has_pending_march = false
-	u._reform_timer = 2.0
-	u._update_current_order()
-	assert_eq(u.current_order.phase, Order.Phase.REFORM)
-	# The hold committed the parked march (mirrors _commit_pending_reform()).
-	u._reform_timer = 0.0
-	u.has_move_target = true
-	u._update_current_order()
-	assert_eq(u.current_order.phase, Order.Phase.MARCH)
+	var o := _stage_rear_move(u, Vector2(10, 10), true)
+	u.facing = o.turn_target
+	u._settle_order_turn()
+	u._finish_order_turn()
+	assert_eq(o.phase, Order.Phase.REFORM)
+	# The hold commits the parked march.
+	u._commit_pending_reform()
+	assert_eq(o.phase, Order.Phase.MARCH)
+	assert_true(u.has_move_target)
 	assert_not_null(u.current_order)   # marching, not retired
+
+
+func test_interrupting_a_turning_move_order_drops_the_parked_rear_march() -> void:
+	# The stale-march regression the migration fixes at the root: under the old parallel
+	# flags, an attack order issued mid-about-face left the parked rear destination behind
+	# (nothing cleared _pending_march_target), so the unit resumed marching to it after the
+	# fight. The march now lives on the replaced order and dies with it.
+	var u := _make_unit()
+	var o := _stage_rear_move(u, Vector2(10, 10), false)
+	u.facing = u.facing.rotated(0.5)   # partway through the reversal
+	u.set_current_order(Order.new_attack(9))
+	u.target_enemy = _make_unit(9)
+	assert_eq(u.current_order.type, Order.Type.ATTACK)
+	assert_eq(o.turn_target, Vector2.ZERO, "the interrupted turn settled")
+	assert_false(u.has_move_target, "no stale rear march survives the replaced order")
+	# The fight resolves; nothing resurrects the old rear destination.
+	u.target_enemy = null
+	u._update_current_order()
+	assert_null(u.current_order)
+	assert_false(u.has_move_target)
+
+
+func test_replacing_a_turning_order_folds_the_partial_rotation() -> void:
+	# An interrupt mid-turn must settle the partial rotation into _formation_angle (the
+	# same fold the in-tick interrupt does), so the bodies never surge to reorganised slots.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.quarter_turn(1)
+	var turned: float = PI * 0.25
+	u.facing = u.facing.rotated(turned)   # partway through the 90°
+	u.set_current_order(Order.new_move(Vector2(50, 50)))
+	assert_almost_eq(u._formation_angle, wrapf(-turned, -PI, PI), 0.0001,
+		"the partial rotation folded into the formation angle")
+	assert_false(u.is_order_turning(), "and nothing is left turning")
 
 
 func test_attack_order_retires_once_the_target_enemy_is_cleared() -> void:
@@ -254,20 +324,45 @@ func test_support_order_retires_once_the_ward_is_cleared() -> void:
 	assert_null(u.current_order)
 
 
-func test_wheel_order_retires_once_the_wheel_target_clears() -> void:
+func test_wheel_arms_its_own_order_with_the_swing_state() -> void:
 	var u := _make_unit()
-	u.set_current_order(Order.new_wheel(1))
-	u._wheel_target = Vector2.ZERO
+	u.seed_sim_soldiers()
+	u.wheel(1)
+	assert_not_null(u.current_order)
+	assert_eq(u.current_order.type, Order.Type.WHEEL)
+	assert_true(u.is_wheeling())
+	assert_true(u.current_order.turn_target.is_equal_approx(u.facing.rotated(PI * 0.5)),
+		"the swing goal is 90° right of the start heading")
+	assert_ne(u.current_order.pivot, Vector2.ZERO, "the hinge is captured on the order")
+
+
+func test_wheel_order_retires_once_the_swing_settles() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.wheel(1)
+	u.current_order.turn_target = Vector2.ZERO   # the swing completed (mirrors _think)
 	u._update_current_order()
 	assert_null(u.current_order)
 
 
 func test_wheel_order_stays_current_while_the_wheel_is_still_swinging() -> void:
 	var u := _make_unit()
-	u.set_current_order(Order.new_wheel(1))
-	u._wheel_target = Vector2(1, 0)
+	u.seed_sim_soldiers()
+	u.wheel(1)
 	u._update_current_order()
 	assert_not_null(u.current_order)
+
+
+func test_wheel_is_refused_while_a_move_order_is_live() -> void:
+	# A refused drill leaves the queue -- and the order the march runs off -- untouched.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	var move := Order.new_move(Vector2(100, 100))
+	u.set_current_order(move)
+	u.has_move_target = true
+	u.move_target = Vector2(100, 100)
+	u.wheel(1)
+	assert_eq(u.current_order, move, "the wheel does not clobber a live move order")
 
 
 func test_formation_order_retires_immediately() -> void:
