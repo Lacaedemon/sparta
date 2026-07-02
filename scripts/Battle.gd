@@ -1152,6 +1152,22 @@ func _team_in_play(team: int) -> bool:
 	return false
 
 
+## How many bodies a team still has on the field: fightable units AND still-routing
+## ones, the counting twin of _team_in_play. A router at battle end is a fugitive,
+## not a casualty — most of a broken army escapes the field unless pursued — so the
+## campaign result counts it as a survivor instead of letting it vanish from the
+## army record. Keeps the survivor report agreeing with the victory check about
+## which units exist.
+func _team_survivors(team: int) -> int:
+	var count := 0
+	for group in ["units", "routers"]:
+		for node in get_tree().get_nodes_in_group(group):
+			var u = node as UnitRef
+			if u != null and u.team == team:
+				count += 1
+	return count
+
+
 func _check_victory() -> void:
 	# Drill mode has no opponent, so "no enemies" is never a win — the rehearsal runs on.
 	if drill_mode:
@@ -1187,8 +1203,10 @@ func _end(text: String) -> void:
 
 
 ## Translate the battle's end state into a campaign result: the winning side's
-## surviving units scale back to campaign army strength. Replay playback doesn't
-## overwrite a result the live battle already reported.
+## surviving units scale back to campaign army strength. Survivors count
+## still-routing units (see _team_survivors) so a battle ending mid-rout doesn't
+## drop the fugitive from the campaign. Replay playback doesn't overwrite a
+## result the live battle already reported.
 func _report_campaign_result(text: String) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
@@ -1197,13 +1215,13 @@ func _report_campaign_result(text: String) -> void:
 		CampaignBattle.result = {
 			"attacker_won": true,
 			"survivors": CampaignBattle.survivors_strength(
-					int(pending.get("attacker_strength", 1)), _camp_atk_spawned, _team_units(0).size()),
+					int(pending.get("attacker_strength", 1)), _camp_atk_spawned, _team_survivors(0)),
 		}
 	elif text == "Defeat":
 		CampaignBattle.result = {
 			"attacker_won": false,
 			"survivors": CampaignBattle.survivors_strength(
-					int(pending.get("defender_strength", 1)), _camp_dfn_spawned, _team_units(1).size()),
+					int(pending.get("defender_strength", 1)), _camp_dfn_spawned, _team_survivors(1)),
 		}
 	else:
 		# Mutual destruction: the assault fails and the province holds with a token
