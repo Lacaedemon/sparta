@@ -258,6 +258,9 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `soldiers` | Living soldier count (drops as the unit takes casualties). |
 | `current_speed` | Current movement speed (world units/s). |
 | `order_mode` | Readable order stance (`Normal`, `Hold`, `Attack flank`, …). |
+| `rank_relief` | Whether the intra-unit rank-relief mode is on (rear ranks rotate forward to relieve their own fighting line; written by a stance order). |
+| `current_order` | The head of the unit's orders queue — readable `Order.Type` name (`MOVE`, `ATTACK`, `RELIEF`, `WHEEL`, …), or `null` when idle. |
+| `order_phase` | The current order's active phase (`NONE`, or `TURN` / `REFORM` / `MARCH` for a phased rear move), or `null` when idle. |
 | `target_enemy_uid` | The uid this unit is attacking, or `null`. |
 | `engaged` | Whether the regiment is in the engaged tier (front ranks in/just-out of melee). |
 | `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count}` — a compact digest, **not** the full per-soldier arrays. |

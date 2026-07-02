@@ -104,6 +104,32 @@ bloodied. So a veteran unit facing the same sustained pressure still routs
 eventually --- it just takes noticeably longer and costs the attacker more losses
 to break it than a green unit under the same attack.
 
+## Line relief
+
+Rank cycling rotates soldiers *within* a regiment; **line relief** rotates whole
+regiments. Right-click an engaged friendly with a fresh unit selected: the fresh
+unit advances through its tired ally and takes over the melee, and the relieved
+regiment falls back toward its own rear --- where fatigue drains away and morale
+recovers (see [How to play](how-to-play.qmd) for the controls).
+
+- **The swap is a pass-through.** For its duration the two friendly regiments may
+  interpenetrate, so the line never opens a gap for the enemy to pour into while
+  the fresh unit works its way forward.
+- **The retreat is an order like any other.** The relieved unit falls back under a
+  normal move order (hold <kbd>Space</kbd> to see it), and you can redirect it ---
+  to a safer rest spot, or straight to another fight if you must.
+- **Interrupting the reliever cancels the swap.** The swap lives on the reliever's
+  relief order, so a fresh order mid-pass ends it where it stands and the pair
+  stops ignoring each other's bodies. Avoid changing your mind while the two
+  regiments still overlap.
+- **Expect to bleed a little on the way out.** The enemy keeps swinging while the
+  retiring ranks are in reach, so pulling out of contact costs a few men --- far
+  fewer than staying until the regiment breaks.
+
+Rotate before the break, not after: a tired regiment fights measurably worse (see
+[Stamina](#stamina)) and routs sooner, and pulling it out while it still holds
+banks a rested unit for the next push.
+
 ## Stamina
 
 Every soldier carries a **stamina pool** that drains through combat and refills at rest.
