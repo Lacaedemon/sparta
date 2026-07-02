@@ -45,6 +45,17 @@ const COND_HEALTH_FLOOR: float = 0.5
 const KNOCKBACK_IMPULSE_SCALE: float = 40.0   # J0
 const ETA_DEFENDED: float = 0.35              # eta for a defended (not landed) blow
 
+# Ceiling on the speed knockback can drive a body to (world units/sec). Impulses within a
+# melee cadence SUM -- in an intermixed press several attackers commonly shove the same
+# body -- and the summed result is clamped, so a pile-on shoves a man hard but can never
+# launch him across the field. 1.5x the baseline landed impulse J0: one clean blow plus
+# some pile-on. Under the bounded arrival recovery (SoldierBodies.BODY_ACCEL_FLOOR,
+# 30 wu/s^2) a body at this ceiling coasts at most v^2 / (2 a) = 60 wu (3 m) before the
+# recovery halts it -- a shove of body-lengths, never a flight. The UNCAPPED impulse still
+# drives the prone roll, so a monster hit's felling power is unchanged; only the velocity
+# the body carries away is bounded.
+const KNOCKBACK_SPEED_MAX: float = 60.0
+
 # Going prone (docs/combat-model.md "Going prone and getting up"): a knockback impulse J
 # large enough to clear a mass- and bracing-raised threshold can fell the defender.
 #   p_prone = clip((J - J_fall * (1 + br_D) * m_D) / J_scale, 0, p_prone_max)
@@ -119,6 +130,17 @@ static func knockback_impulse(lethality_a: float, c: float, defender_mass: float
 	# numerator term, not part of the denominator.
 	var force: float = KNOCKBACK_IMPULSE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) * maxf(0.0, eta)
 	return force / maxf(0.01, defender_mass)
+
+
+## Apply a knockback impulse to a body's velocity, bounded (sum-then-clamp): the impulse
+## adds to the velocity, then the result's SPEED is clamped to KNOCKBACK_SPEED_MAX -- or to
+## the speed the body already carried, whichever is higher, so a blow never accelerates an
+## already-faster body (a galloping horse) and repeated blows can never ratchet a body past
+## the ceiling. The melee resolver calls this once per strike, so simultaneous strikes from
+## several attackers accumulate and clamp cumulatively. Pure; no RNG -- replay-safe.
+static func capped_knockback_velocity(vel: Vector2, impulse: Vector2) -> Vector2:
+	var cap: float = maxf(vel.length(), KNOCKBACK_SPEED_MAX)
+	return (vel + impulse).limit_length(cap)
 
 
 ## Probability that a knockback impulse `impulse_j` fells the defender (docs/combat-model.md
