@@ -63,7 +63,7 @@ func test_key_step_maps_to_a_keycode() -> void:
 
 
 func test_key_step_ctrl_sets_the_ctrl_modifier() -> void:
-	# Ctrl+<stance key> drives the in-place stance gesture (#593).
+	# Ctrl+<stance key> drives the in-place stance gesture.
 	var r = _rec()
 	r._schedule([{"tick": 6, "key": "H", "ctrl": true}])
 	assert_true(r._by_tick[6][0]["ctrl"], "ctrl: true marks the event ctrl-chorded")

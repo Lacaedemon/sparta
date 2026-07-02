@@ -230,7 +230,7 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	if mode >= 0:
 		if event.ctrl_pressed:
 			# Ctrl+<stance key> writes the stance in place immediately -- no move/attack
-			# needed -- instead of arming it for the next order (see enqueue_stance / #593).
+			# needed -- instead of arming it for the next order (see enqueue_stance).
 			_issue_stance(mode)
 		else:
 			_set_armed_mode(mode)   # arm a smart-order stance
@@ -697,7 +697,7 @@ func _issue_stance(mode: int) -> void:
 
 
 ## I: toggle the intra-unit rank-relief (discipline) mode on every selected friendly
-## unit -- the training-driven rank-cycle/morale-recovery knob from #529. A shared
+## unit -- the training-driven rank-cycle/morale-recovery knob. A shared
 ## direct-select toggle like _toggle_formation: flips OFF if the lead unit currently
 ## has it ON, else ON, so a mixed selection follows the lead unit's setting. Routed
 ## through Battle.enqueue_stance (stance -1 = leave the order_mode alone) so the

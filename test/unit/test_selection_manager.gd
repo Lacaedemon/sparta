@@ -321,7 +321,7 @@ func test_dispatch_key_routes_resize_and_reports_handled() -> void:
 	assert_false(sm._dispatch_key(_key_event(KEY_P)), "an unbound key is not handled")
 
 
-# --- standalone stance gesture (#593) ---------------------------------
+# --- standalone stance gesture -----------------------------------------
 
 func test_ctrl_stance_key_writes_the_stance_in_place() -> void:
 	var sm := _sm()
