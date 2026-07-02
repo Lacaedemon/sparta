@@ -489,7 +489,7 @@ state**, and the state is **transcript-legible**. Concretely:
 ## Non-goals
 
 - **Campaign AI.** Not designed here. The chain-of-command architecture in
-  `docs/battle-ai-design.md` (in flight on
+  `docs/battle-ai-design.md` (merged via
   [PR #581](https://github.com/Lacaedemon/sparta/pull/581), for #498) is
   expected to extend upward to campaign commanders — the campaign half of
   [#387](https://github.com/Lacaedemon/sparta/issues/387) — precisely
@@ -682,7 +682,7 @@ resolve).
   phase 2.
 - [#387](https://github.com/Lacaedemon/sparta/issues/387) (battle and
   campaign AI) — campaign half is a non-goal here; see
-  `docs/battle-ai-design.md` (PR #581, in flight) whose chain-of-command
+  `docs/battle-ai-design.md` (merged via PR #581) whose chain-of-command
   architecture is expected to extend to campaign commanders.
 - [#516](https://github.com/Lacaedemon/sparta/issues/516) /
   `docs/orders-queue-design.md` — the campaign command queue reuses its
