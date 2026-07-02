@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/about-face.json",
+  "caption": "A rear-sector move now runs a REFORM phase after its about-face (#552): the facing flip used to leave whatever had been the rear rank leading, so a depleted unit marched off behind its short, gap-toothed rank. The staged regiment is 40 spearmen at 9 files -- 4 full ranks plus a 4-man partial rank -- and the clip shows the full composite: the standing about-face (every soldier holds position, only facing flips, unchanged from the true-conversio fix), then the new reform (the men counter-march through the block onto ranks squared to the new heading, so a FULL 9-man rank fronts the march and the 4-man partial rank returns to the rear), then the march. With Reform before move off, the reform is instead deferred to arrival. Verified by per-soldier state dump: front row at step-off is 9 men, the partial-rank bodies (indices 36-39) all end in the rear row.",
+  "fixed_fps": 30,
+  "max_frames": 260,
+  "fps": 12,
+  "width": 640
+}

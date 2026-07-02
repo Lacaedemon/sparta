@@ -156,13 +156,21 @@ So a unit always marches facing its destination, and never reverses into it. (A 
 charging unit still turns instantly --- the gradual pivot is for your own move orders, where
 order matters more than the last fraction of a second.)
 
-**Move to the rear (about-face, then march).** A move order to a destination roughly
-**behind** the unit (more than 135° off its facing) is not a centre pivot at all: the
-regiment first performs the standing **about-face** (*conversio*, below) --- every soldier
-reverses 180° where they stand, the front rank becoming the rear rank man-for-man --- and
-then marches to the destination facing it. The block keeps its footprint the whole time
-rather than swinging the whole line round about its centre, so a unit sent to the rear
-turns about cleanly and steps off, never sliding backwards.
+**Move to the rear (about-face, reform, then march).** A move order to a destination
+roughly **behind** the unit (more than 135° off its facing) is not a centre pivot at all:
+the regiment first performs the standing **about-face** (*conversio*, below) --- every
+soldier reverses 180° where they stand, the front rank becoming the rear rank
+man-for-man --- and then marches to the destination facing it. The block keeps its
+footprint the whole time rather than swinging the whole line round about its centre, so
+a unit sent to the rear turns about cleanly and steps off, never sliding backwards.
+
+Because the flip makes the old rear rank the new front, a unit that has taken losses
+would otherwise lead with its **thinnest rank** --- the short, under-strength rank that
+had been tucked safely at the back. So after the turn the regiment **reforms**: the men
+counter-march through the block onto ranks squared to the new heading, putting a full
+rank back in front and returning the short rank to the rear. With **Reform before move**
+on (the default) this happens before the unit steps off; with it off, the unit marches
+at once --- short rank leading --- and reforms on arrival instead.
 
 ::: {#fig-about-face .demo}
 
@@ -176,7 +184,9 @@ turns about cleanly and steps off, never sliding backwards.
 ```
 
 Move to the rear: ordered to a point behind it, the regiment about-faces in place
-(each soldier reversing 180&deg;) and then marches off facing the destination.
+(each soldier reversing 180&deg;), reforms so a full rank fronts the new heading ---
+the under-strength rank counter-marching back to the rear --- and then marches off
+facing the destination.
 :::
 
 **About-face in place (conversio, <kbd>V</kbd>).** Press <kbd>V</kbd> with a unit

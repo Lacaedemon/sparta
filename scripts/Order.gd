@@ -35,15 +35,20 @@ enum Type {
 	            ## Instantaneous.
 }
 
-## An order's internal choreography, for the one phase-1 case that already exists: a move into a
-## unit's rear sector runs an about-face (conversio) in place, THEN marches -- two phases of one
-## queue entry, not two queue entries (docs/orders-queue-design.md, "Intra-order phasing"). Every
-## other order type stays NONE; the mechanism exists so a later phase can add more phased orders
-## without a new Order subtype.
+## An order's internal choreography, for the phased case that already exists: a move into a
+## unit's rear sector runs an about-face (conversio) in place, then -- when the order was issued
+## with the reform-before-move drill -- REFORMS the ranks square to the new heading (so the
+## fullest rank fronts it, not the old partial rear rank), and only then marches. Multiple phases
+## of one queue entry, not multiple queue entries (docs/orders-queue-design.md, "Intra-order
+## phasing"). Every other order type stays NONE; the mechanism exists so a later phase can add
+## more phased orders without a new Order subtype.
 enum Phase {
 	NONE,   ## Not phased, or a phased order that hasn't started its first phase yet.
 	TURN,   ## In-place about-face running before the march (move-to-rear only).
 	MARCH,  ## Marching to the destination -- the phase every other MOVE order is in throughout.
+	REFORM, ## Re-forming the ranks square to the new heading between the about-face and the
+	        ## march (move-to-rear issued with reform-before-move on). Appended after MARCH so
+	        ## recorded transcripts keep their phase values stable.
 }
 
 const TYPE_NAMES := {
@@ -61,6 +66,7 @@ const PHASE_NAMES := {
 	Phase.NONE: "NONE",
 	Phase.TURN: "TURN",
 	Phase.MARCH: "MARCH",
+	Phase.REFORM: "REFORM",
 }
 
 var type: int = Type.MOVE
