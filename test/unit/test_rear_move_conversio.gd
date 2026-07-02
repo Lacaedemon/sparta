@@ -112,6 +112,35 @@ func test_rear_move_marches_toward_the_destination_not_backward() -> void:
 		"and it faces the way it marches (upward), having about-faced rather than reversing")
 
 
+func test_about_face_holds_every_soldier_at_its_own_position_through_think() -> void:
+	# #541: a prior bug relabelled (reversed) the index-aligned body arrays on completion,
+	# so every soldier ended at its MIRROR index's starting position instead of its own --
+	# an identity swap invisible to aggregate bbox/centroid checks (the grid is symmetric)
+	# but caught by tracking per-soldier position BY ARRAY INDEX across the whole turn, the
+	# same method the issue's state-dump proof used. A true conversio holds every soldier's
+	# own world position fixed for the entire turn; only facing changes.
+	var u := _make_seeded_unit()
+	# _make_seeded_unit sets max_soldiers = 60, so frontage_override = 8 gives an 8-file grid
+	# with a partial last rank (60 = 7 full ranks of 8 + a 4-man rank) -- not a full grid, but
+	# the position-holding assertion below doesn't depend on the grid being full (the full-grid
+	# and partial-grid cases are covered explicitly in test_soldier_facing.gd).
+	u.frontage_override = 8
+	u.seed_sim_soldiers()
+	var start_facing: Vector2 = u.facing
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	u.conversio()
+	assert_ne(u._conversio_target, Vector2.ZERO, "the conversio armed")
+	for _i in range(120):
+		u._think(0.016)
+		if u._conversio_target == Vector2.ZERO:
+			break
+	assert_true(u.facing.is_equal_approx(-start_facing),
+		"the about-face completed (facing reversed)")
+	for i in range(before.size()):
+		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
+			"soldier %d holds its OWN pre-turn position, not its mirror index's" % i)
+
+
 func test_move_order_cancels_a_pending_rear_march() -> void:
 	# A fresh interrupt mid-about-face drops the parked march (Battle re-issues the order,
 	# and _think clears the pending flag when a move target arrives or combat pre-empts).
