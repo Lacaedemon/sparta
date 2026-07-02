@@ -630,18 +630,32 @@ func test_move_to_decelerates_when_the_target_pace_drops() -> void:
 		"the drop this tick is exactly decel * delta -- not an instant snap down")
 
 
-func test_move_to_brakes_toward_zero_within_stopping_distance() -> void:
-	# Once the remaining distance is within the stopping distance the current speed needs
-	# under decel (v^2 / (2*decel)), the final approach targets zero pace instead of
-	# holding sprint to the wire and letting the arrival check snap _current_speed to 0 in
-	# a single tick. Regression coverage for issue #520.
+func test_arrival_brake_rate_is_body_trackable() -> void:
+	# The marker must never shed speed faster than its soldier bodies can follow: the
+	# bodies chase the marker's velocity under maxf(accel, BODY_ACCEL_FLOOR), so a
+	# harder brake sends them coasting past their slots and the body->marker coupling
+	# drags the whole regiment past its destination. With the default asymmetric rates
+	# (accel 30, decel 60) the brake rate is the body bound, not raw decel.
+	var u := _make_unit()
+	assert_almost_eq(u.arrival_brake_rate(),
+		minf(u.decel, maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR)), 0.001,
+		"the arrival brake is capped at the body-trackable rate")
+	assert_lt(u.arrival_brake_rate(), u.decel,
+		"with the default rates the body bound binds -- braking is gentler than raw decel")
+
+
+func test_move_to_brakes_down_the_arrival_envelope() -> void:
+	# Deep inside the braking window the arrival envelope sqrt(2 * brake * d) sits well
+	# below the current speed, so an orderly march sheds speed at exactly the brake rate
+	# -- a ramp, not the old one-tick snap to 0. Regression coverage for issue #520.
 	var u := _make_unit()
 	u.position = Vector2.ZERO
 	u._current_speed = u.move_speed   # full sprint
-	var stopping_distance: float = (u.move_speed * u.move_speed) / (2.0 * u.decel)
-	u._move_to(Vector2(0, stopping_distance - 5.0), 0.1)   # just inside the braking window
-	assert_almost_eq(u._approach_velocity.length(), u.move_speed - u.decel * 0.1, 0.001,
-		"speed drops by exactly decel * delta this tick -- braking, not a snap")
+	var brake: float = u.arrival_brake_rate()
+	var stopping_distance: float = (u.move_speed * u.move_speed) / (2.0 * brake)
+	u._move_to(Vector2(0, stopping_distance * 0.5), 0.1, true)   # deep in the braking window
+	assert_almost_eq(u._current_speed, u.move_speed - brake * 0.1, 0.001,
+		"speed drops by exactly brake * delta this tick -- braking, not a snap")
 
 
 func test_move_to_holds_pace_outside_the_stopping_distance() -> void:
@@ -651,44 +665,139 @@ func test_move_to_holds_pace_outside_the_stopping_distance() -> void:
 	var u := _make_unit()
 	u.position = Vector2.ZERO
 	u._current_speed = u.move_speed
-	var stopping_distance: float = (u.move_speed * u.move_speed) / (2.0 * u.decel)
-	u._move_to(Vector2(0, stopping_distance + 50.0), 0.1)   # comfortably outside the window
-	assert_almost_eq(u._approach_velocity.length(), u.move_speed, 0.001,
+	var brake: float = u.arrival_brake_rate()
+	var stopping_distance: float = (u.move_speed * u.move_speed) / (2.0 * brake)
+	u._move_to(Vector2(0, stopping_distance + 50.0), 0.1, true)   # comfortably outside the window
+	assert_almost_eq(u._current_speed, u.move_speed, 0.001,
 		"speed holds at the sprint pace -- no braking yet")
+
+
+func test_move_to_does_not_brake_a_combat_chase() -> void:
+	# Only orderly marches brake on approach. A combat chase (orderly = false) charges
+	# through at full pace right up to contact -- the strike spends _approach_velocity,
+	# so braking here would bleed the charge impact out of every attack.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.move_speed
+	var brake: float = u.arrival_brake_rate()
+	var stopping_distance: float = (u.move_speed * u.move_speed) / (2.0 * brake)
+	u._move_to(Vector2(0, stopping_distance * 0.5), 0.1)   # deep in the braking window
+	assert_almost_eq(u._current_speed, u.move_speed, 0.001,
+		"a chase holds full pace inside the braking window -- charges don't brake")
+
+
+func test_move_to_does_not_brake_before_an_intermediate_waypoint() -> void:
+	# A queued route rolls through its corners at pace: braking applies only on the
+	# route's LAST leg, so a unit closing on an intermediate waypoint holds its pace.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.move_speed
+	u.waypoints.push_back(Vector2(0, 500))   # another leg still queued
+	var brake: float = u.arrival_brake_rate()
+	var stopping_distance: float = (u.move_speed * u.move_speed) / (2.0 * brake)
+	u._move_to(Vector2(0, stopping_distance * 0.5), 0.1, true)
+	assert_almost_eq(u._current_speed, u.move_speed, 0.001,
+		"an intermediate leg holds pace -- only the final leg brakes to a stop")
+
+
+func test_think_pops_a_waypoint_without_requiring_a_stop() -> void:
+	# Arrival at an intermediate waypoint is position-only: the unit pops the next leg
+	# while still carrying speed, so the route flows corner to corner without halting.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.move_target = Vector2(0, 3)     # within the 5px arrival radius
+	u.has_move_target = true
+	var next_leg := Vector2(300, 3)
+	u.waypoints.push_back(next_leg)
+	u._current_speed = u.move_speed   # still at full sprint
+	u._think(0.1)
+	assert_eq(u.move_target, next_leg, "the next leg pops despite the unit still moving")
+	assert_true(u.has_move_target, "the route continues")
+	assert_almost_eq(u._current_speed, u.move_speed, 0.001,
+		"speed carries through the corner -- no forced stop at a waypoint")
+
+
+func test_move_to_bleeds_residual_speed_when_standing_on_the_point() -> void:
+	# Within the sub-pixel early-return band, an orderly march still ramps its residual
+	# speed down at the brake rate (and counts as having moved, so the stationary
+	# momentum reset can't hard-snap it) -- the tail of the stop is part of the same ramp.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = 10.0
+	u._move_to(Vector2(0, 0.5), 0.1, true)   # under the 1px early-return threshold
+	assert_almost_eq(u._current_speed, 10.0 - u.arrival_brake_rate() * 0.1, 0.001,
+		"residual speed bleeds at exactly brake * delta -- no snap to 0")
+	assert_almost_eq(u.position.y, 0.0, 0.001, "the unit holds position while bleeding speed")
+	assert_true(u._moved_last_frame,
+		"the braking tick counts as movement so the momentum reset doesn't clobber the ramp")
+
+
+func test_move_to_step_clamps_onto_the_goal_without_bleeding_charge_speed() -> void:
+	# Post-step inbound clamp: a fast unit whose per-tick step exceeds the remaining
+	# distance lands exactly ON the goal point instead of crossing it (no oscillation
+	# around the destination) -- while the recorded charge velocity keeps the full
+	# unclamped speed, so landing on a target doesn't bleed the strike's impact.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.move_speed
+	u._move_to(Vector2(0, 1.5), 0.1)   # step at sprint (8px this tick) would cross 1.5px
+	assert_almost_eq(u.position.y, 1.5, 0.001, "the step lands exactly on the goal point")
+	assert_almost_eq(u._approach_velocity.length(), u.move_speed, 0.001,
+		"the charge velocity stays the full unclamped speed")
 
 
 func test_full_march_decelerates_smoothly_with_no_overshoot() -> void:
 	# End-to-end through _physics_process (not just _think): a unit sprinting toward a
-	# move-order destination ramps current_speed down under decel on final approach -- not
-	# a one-tick snap to 0 within the 5px arrival threshold -- and the marker settles AT the
-	# destination instead of coasting past it. Goes through _physics_process specifically so
-	# the "no momentum while stationary" reset (the tick after _move_to's own <1px early
-	# return) is exercised too, matching the real per-tick simulation loop. Mirrors the
-	# issue's own repro (Infantry sprinting ~260px south). Regression test for issue #520.
+	# move-order destination rides the arrival envelope down on final approach -- never
+	# shedding more speed in any single tick than the rates allow -- and the marker
+	# settles AT the destination with its distance-to-go shrinking monotonically (no
+	# overshoot, no oscillation). Goes through _physics_process specifically so the
+	# "no momentum while stationary" reset runs every tick too, matching the real
+	# per-tick simulation loop. Mirrors the issue's own repro (Infantry sprinting
+	# ~260px south). Regression test for issue #520.
 	var u := _make_unit()
 	u.position = Vector2(800, 300)
-	u.move_target = Vector2(800, 560)
+	var dest := Vector2(800, 560)
+	u.move_target = dest
 	u.has_move_target = true
-	# Match the real physics tick (60/s), not the coarser 0.1s steps other _think loops in
-	# this file use -- braking is discretized per tick, and a much larger delta amplifies
-	# that discretization into spurious oscillation around the stopping-distance boundary.
-	var dt := 1.0 / 60.0
-	var max_y: float = u.position.y
-	var saw_gradual_decel := false
+	# Match the real physics tick, not the coarser 0.1s steps other _think loops in
+	# this file use -- braking is discretized per tick, and a much larger delta
+	# amplifies that discretization around the stopping-distance boundary.
+	var dt: float = 1.0 / float(Replay.PHYSICS_TPS)
+	# The final arrival tick zeroes a residual speed of at most ARRIVE_SPEED_EPSILON;
+	# every other tick may drop at most decel * dt (mid-march downshifts use decel, the
+	# arrival brake is gentler still). Any bigger drop is a snap.
+	var max_tick_drop: float = maxf(u.decel * dt, Unit.ARRIVE_SPEED_EPSILON) + 0.001
 	var prev_speed := 0.0
-	for _i in range(600):
+	var prev_dist: float = u.position.distance_to(dest)
+	var decel_ticks := 0
+	# Tick budget from the sim constants: cruise the 260px at no worse than walk pace,
+	# plus the full accel-up and brake-down ramps, with 2x headroom for the discretized
+	# envelope boundary.
+	var travel_ticks: int = int(ceil(260.0 / u.walk_speed * float(Replay.PHYSICS_TPS)))
+	var ramp_ticks: int = int(ceil((u.move_speed / u.accel \
+		+ u.move_speed / u.arrival_brake_rate()) * float(Replay.PHYSICS_TPS)))
+	for _i in range(2 * (travel_ticks + ramp_ticks)):
 		u._physics_process(dt)
-		max_y = max(max_y, u.position.y)
-		if prev_speed > 10.0 and u._current_speed < prev_speed - 0.01 and u._current_speed > 0.5:
-			saw_gradual_decel = true
+		var dist: float = u.position.distance_to(dest)
+		assert_true(dist <= prev_dist + 0.001,
+			"distance to the destination never increases -- no overshoot, no oscillation")
+		assert_true(u._current_speed >= prev_speed - max_tick_drop,
+			"no single tick sheds more speed than decel allows -- a ramp, not a snap")
+		if u._current_speed < prev_speed - 0.001:
+			decel_ticks += 1
 		prev_speed = u._current_speed
+		prev_dist = dist
 		if not u.has_move_target:
 			break
 	assert_false(u.has_move_target, "the unit reaches and finalizes its move order")
-	assert_true(saw_gradual_decel,
-		"current_speed passed through intermediate values while slowing -- a ramp, not a snap")
-	assert_almost_eq(u.position.y, 560.0, 5.0, "the unit settles at the destination")
-	assert_lt(max_y, 560.0 + 5.0, "the centroid never coasts past the ordered destination")
+	# The unit rides the arrival envelope down from at least walk pace, which takes
+	# walk_speed / brake seconds of ticks; even allowing the arrival threshold to absorb
+	# the tail, well over half of those must register as decelerating ticks.
+	assert_gt(decel_ticks,
+		int(u.walk_speed / u.arrival_brake_rate() * float(Replay.PHYSICS_TPS) * 0.5),
+		"the slow-down is spread across many ticks -- a real decel ramp")
+	assert_almost_eq(u.position.y, dest.y, 5.0, "the unit settles at the destination")
 
 
 # --- turning rate tapers with speed -------------------------------------------
