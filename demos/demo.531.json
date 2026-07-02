@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/decel-arrival.json",
+  "caption": "Arrival now brakes to a stop under decel instead of snapping. A lone drilled Infantry regiment is ordered ~260px south and marches in. Watch the final approach: the block eases off its sprint over the last stretch and settles exactly on the ordered point, coming to rest with no lurch. Previously (the bug this fixes) current_speed held full sprint (80) to within 5px of the destination, snapped to 0 in a single physics tick (~16x the loadout's decel), and the soldier-body centroid coasted ~38px past the ordered point before settling. The input script also carries state ticks spanning the arrival window, so the decel ramp can be verified as exact current_speed values via tools/demo/dump-state.sh rather than eyeballed.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

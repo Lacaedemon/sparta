@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Representational-only data model (LOD phase 1): the far-tier formation record, tier ids, and placeholder promotion/demotion predicates exist and are unit-tested, but nothing in the sim or renderer acts on them yet, so a recorded battle would look identical to main."
+}
