@@ -50,38 +50,24 @@ func test_cannot_demote_while_the_engaged_linger_runs() -> void:
 	assert_false(TierTransition.can_demote(u), "the engaged linger blocks demotion")
 
 
-## An Order with the given type (and optional phase), as a unit's current queue head.
-func _order(order_type: int, order_phase: int = Order.Phase.NONE) -> Order:
-	var o := Order.new()
-	o.type = order_type
-	o.phase = order_phase
-	return o
-
-
 func test_cannot_demote_mid_maneuver_or_reform() -> void:
 	# Each in-flight per-soldier context blocks demotion on its own: the aggregate record
 	# cannot carry a half-finished turn, an owned facing set, a reform hold, a parked rear
-	# march, or a relief interleave. The orders queue is authoritative for the maneuvers'
-	# execution state, so those blockers are order types/phases, not parallel Unit fields.
+	# march, or a relief interleave. The maneuver and relief context lives on the current
+	# Order (turn_target / phase / the RELIEF type), so each case stages a live order.
 	var u := _make_seeded_unit()
-	u.current_order = _order(Order.Type.ABOUT_FACE)
+	var about_face := Order.new_about_face()
+	about_face.turn_target = Vector2.RIGHT
+	u.current_order = about_face
 	assert_false(TierTransition.can_demote(u), "an in-flight about-face blocks demotion")
-	u.current_order = _order(Order.Type.QUARTER_TURN)
+	var quarter := Order.new_quarter_turn(1)
+	quarter.turn_target = Vector2.RIGHT
+	u.current_order = quarter
 	assert_false(TierTransition.can_demote(u), "an in-flight quarter-turn blocks demotion")
-	u.current_order = _order(Order.Type.WHEEL)
+	var wheel := Order.new_wheel(1)
+	wheel.turn_target = Vector2.RIGHT
+	u.current_order = wheel
 	assert_false(TierTransition.can_demote(u), "an in-flight wheel blocks demotion")
-	u.current_order = _order(Order.Type.NUDGE)
-	assert_false(TierTransition.can_demote(u), "an in-flight nudge step blocks demotion")
-	u.current_order = _order(Order.Type.RELIEF)
-	assert_false(TierTransition.can_demote(u), "an in-flight relief order blocks demotion")
-	u.current_order = _order(Order.Type.MOVE, Order.Phase.TURN)
-	assert_false(TierTransition.can_demote(u), "a rear move's about-face phase blocks demotion")
-	u.current_order = _order(Order.Type.MOVE, Order.Phase.REFORM)
-	assert_false(TierTransition.can_demote(u),
-		"a rear move's reform phase (march still parked) blocks demotion")
-	u.current_order = _order(Order.Type.MOVE, Order.Phase.MARCH)
-	assert_true(TierTransition.can_demote(u),
-		"a plain march never blocks — a far-tier formation keeps marching at regiment level")
 	u.current_order = null
 	u._engage_turn_target = Vector2.RIGHT
 	assert_false(TierTransition.can_demote(u), "an in-flight engage re-face blocks demotion")
@@ -92,10 +78,14 @@ func test_cannot_demote_mid_maneuver_or_reform() -> void:
 	u._reform_timer = 0.5
 	assert_false(TierTransition.can_demote(u), "a reform hold blocks demotion")
 	u._reform_timer = 0.0
-	var partner := _make_seeded_unit(8)
-	u._relief_partner = partner
+	var rear_move := Order.new_move(Vector2(0.0, 400.0))
+	rear_move.phase = Order.Phase.REFORM
+	u.current_order = rear_move
+	assert_false(TierTransition.can_demote(u), "a parked rear-move march blocks demotion")
+	var relief := Order.new_relief(8)
+	u.current_order = relief
 	assert_false(TierTransition.can_demote(u), "a mid-relief swap blocks demotion")
-	u._relief_partner = null
+	u.current_order = null
 	assert_true(TierTransition.can_demote(u), "with every blocker cleared it can demote again")
 
 

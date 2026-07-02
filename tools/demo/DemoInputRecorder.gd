@@ -282,6 +282,10 @@ func _unit_record(u: Node) -> Dictionary:
 		"soldiers": u.soldiers,
 		"current_speed": DemoState.round_to(u._current_speed, 1),
 		"order_mode": DemoState.order_mode_name(_battle.ORDER_MODE_NAMES, u.order_mode),
+		# Intra-unit rank-relief mode (phase 3): whether rear ranks rotate forward to
+		# relieve their own fighting line. A durable mode like formation, so a stance
+		# order's write is verifiable straight off the transcript.
+		"rank_relief": u.rank_relief,
 		"target_enemy_uid": target_uid,
 		"engaged": u.is_engaged(),
 		# The formation's simulation tier (docs/large-scale-simulation-design.md): CLOSE runs
