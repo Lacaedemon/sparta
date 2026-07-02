@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Phase 4 adds the guard vocabulary and ROE-mode surfacing as an internal Order/OrderGuards API only -- no order-construction site (player or AI) calls with_guard() yet, so there's no observable gameplay change to record; hotkey/UI wiring is follow-up work per docs/orders-queue-design.md."
+}
