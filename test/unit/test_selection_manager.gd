@@ -321,6 +321,94 @@ func test_dispatch_key_routes_resize_and_reports_handled() -> void:
 	assert_false(sm._dispatch_key(_key_event(KEY_P)), "an unbound key is not handled")
 
 
+# --- standalone stance gesture -----------------------------------------
+
+func test_ctrl_stance_key_writes_the_stance_in_place() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 3
+	b._by_uid[3] = u
+	sm._select(u)
+	# Plain H arms Hold for the NEXT order; it does not touch order_mode yet.
+	assert_true(sm._dispatch_key(_key_event(KEY_H)), "H is a handled hotkey")
+	assert_eq(sm.get_armed_mode(), BattleScript.OrderMode.HOLD, "H arms Hold")
+	assert_eq(u.order_mode, BattleScript.OrderMode.NORMAL,
+			"arming alone doesn't write the unit's stance")
+	# Ctrl+H writes Hold on the unit immediately, no move/attack needed.
+	assert_true(sm._dispatch_key(_key_event(KEY_H, true)), "Ctrl+H is a handled hotkey")
+	assert_eq(u.order_mode, BattleScript.OrderMode.HOLD,
+			"Ctrl+<stance key> writes the stance in place")
+	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_STANCE_ONLY,
+			"routed as a recorded stance-only command")
+	assert_eq(int(b._pending_orders[-1]["frontage"]), BattleScript.RankRelief.LEAVE,
+			"the direct-stance gesture never touches rank relief")
+
+
+func test_ctrl_stance_key_does_nothing_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	assert_true(sm._dispatch_key(_key_event(KEY_H, true)), "still a handled/known hotkey")
+	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
+
+
+func test_toggle_rank_relief_flips_from_the_lead_units_setting() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 4
+	b._by_uid[4] = u
+	sm._select(u)
+	assert_true(u.rank_relief, "rank relief defaults on")
+
+	assert_true(sm._dispatch_key(_key_event(KEY_I)), "I is a handled hotkey")
+	assert_false(u.rank_relief, "I toggles rank relief off from the default")
+	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_STANCE_ONLY,
+			"routed as a recorded stance-only command")
+	assert_eq(int(b._pending_orders[-1]["mode"]), -1,
+			"the rank-relief toggle never touches the order_mode stance")
+
+	sm._dispatch_key(_key_event(KEY_I))
+	assert_true(u.rank_relief, "a second press toggles it back on")
+
+
+func test_toggle_rank_relief_does_nothing_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	assert_true(sm._dispatch_key(_key_event(KEY_I)), "still a handled/known hotkey")
+	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
+
+
+func test_ctrl_stance_key_and_rank_relief_toggle_are_disabled_during_playback() -> void:
+	# Both gestures are live-play-only, like every other order-issuing hotkey: a replay's
+	# recorded commands drive playback, so a synthesized keypress during Watch Replay must
+	# not queue a second, unrecorded command.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 6
+	b._by_uid[6] = u
+	sm._select(u)
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm._issue_stance(BattleScript.OrderMode.HOLD)
+	sm._toggle_rank_relief()
+	Replay.mode = prev_mode
+	assert_eq(u.order_mode, BattleScript.OrderMode.NORMAL, "no stance written during playback")
+	assert_true(u.rank_relief, "no rank-relief toggle during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
 # --- drag-to-form-up ------------------------------------
 
 func test_form_up_facing_is_perpendicular_to_the_flank_line() -> void:

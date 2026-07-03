@@ -1,0 +1,13 @@
+{
+  "_comment": "Stance-order player gesture (#593): select the player Spearmen, hold-Ctrl+H to write the Hold stance on it IN PLACE (no move/attack needed -- the flash toast reads 'Hold'), then press I to toggle its intra-unit rank-relief (discipline) mode off (flash toast reads 'Rank relief: Off'). Both gestures route through Battle.enqueue_stance from PR #592 and are recorded/replayed exactly. drill mode: a solo rehearsal, no enemy needed to show a UI/hotkey feature.",
+  "seed": "12345",
+  "drill": true,
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 300.0, "zoom": 1.6}
+  ],
+  "steps": [
+    {"tick": 10, "click": [500, 300]},
+    {"tick": 40, "key": "H", "ctrl": true},
+    {"tick": 90, "key": "I"}
+  ]
+}
