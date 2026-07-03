@@ -5,3 +5,12 @@
 # Shell scripts must use LF line endings — a CRLF on the shebang line makes
 # the kernel look for "/bin/bash\r" and fail with "bad interpreter".
 *.sh text eol=lf
+
+# The DEMOS array is a per-PR-append-only registry (each feature PR adds one
+# row for its own demo clip), so two PRs adding adjacent rows is an additive
+# conflict, not a genuine either/or -- git's built-in union merge driver takes
+# both sides' lines automatically instead of producing conflict markers. Don't
+# apply this more broadly: most other recurring-conflict files in this repo
+# (demos/demo.json, website/tactics.qmd, FarTierRules.gd docstrings) need
+# understanding-based consolidation, not a naive line union.
+website/tools/record-demos.sh merge=union
