@@ -368,6 +368,7 @@ func _fire(ev: Dictionary) -> void:
 			k.physical_keycode = int(ev["keycode"])
 			k.pressed = true
 			k.ctrl_pressed = bool(ev.get("ctrl", false))
+			k.shift_pressed = bool(ev.get("shift", false))
 			_sel._unhandled_input(k)
 		"hold_space":
 			# Update hardware key state so Input.is_key_pressed(KEY_SPACE) returns true
@@ -397,7 +398,7 @@ func _schedule(steps: Array) -> void:
 			_drag(tick, _vec(step["rmb_drag"]["from"]), _vec(step["rmb_drag"]["to"]), MOUSE_BUTTON_RIGHT, shift)
 		elif step.has("key"):
 			_at(tick, {"kind": "key", "keycode": OS.find_keycode_from_string(str(step["key"])),
-					"ctrl": bool(step.get("ctrl", false))})
+					"ctrl": bool(step.get("ctrl", false)), "shift": bool(step.get("shift", false))})
 		elif step.has("hold_space"):
 			# Hold Space for the rest of the recording so the orders overlay is visible.
 			# Uses Input.parse_input_event (not _unhandled_input) so Input.is_key_pressed()

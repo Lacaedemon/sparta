@@ -268,18 +268,19 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_T:
 		_cycle_formation()   # cycle normal → tight → loose → square for selected units
 		return true
+	elif event.keycode == KEY_O and event.shift_pressed:
+		# Shift+O jumps straight to the schiltron -- the other hollow-square variant,
+		# sharing O's key since every plain letter is already claimed (I went to
+		# rank-relief toggle, #612). The harder anti-cavalry brace, at a deeper offence
+		# cost than orbis. Toggles back to Normal like the other direct-select stances.
+		_toggle_schiltron()
+		return true
 	elif event.keycode == KEY_O:
 		# Jump straight to the anti-cavalry square (O for orbis) -- a fast reaction to
 		# a charge, without cycling through Tight/Loose first. Toggles back to Normal
-		# so the same key drops the square once the horse is beaten off.
+		# so the same key drops the square once the horse is beaten off. (Shift+O
+		# reaches the schiltron variant instead -- see above.)
 		_toggle_square()
-		return true
-	elif event.keycode == KEY_I:
-		# Jump straight to the schiltron (I sits next to O for orbis, so the two
-		# hollow-square variants share a key row). The harder anti-cavalry brace, at
-		# a deeper offence cost than orbis. Toggles back to Normal like the other
-		# direct-select stances.
-		_toggle_schiltron()
 		return true
 	elif event.keycode == KEY_L:
 		# Lock the shield wall (L for locked shields) -- a frontal holding stance.

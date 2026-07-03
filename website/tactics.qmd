@@ -326,11 +326,12 @@ trade-offs, not one generic stance:
   holds its nerve better than any other stance --- casualties erode its morale more
   slowly, so a surrounded unit fighting to the end is less likely to break outright.
   Reach for it when a unit is cut off and simply needs to survive as long as possible.
-- **Schiltron** (<kbd>I</kbd>, or the control bar's **Schiltron** button) is the
-  cavalry specialist. Its denser hedge of levelled spears braces a charge *harder* than
-  the orbis does --- cavalry riding into a schiltron comes off worse than riding into
-  an orbis --- at the cost of hitting even softer in return, and it carries no morale
-  bonus. Reach for it when the priority is breaking the charge itself, not outlasting
+- **Schiltron** (<kbd>Shift</kbd> + <kbd>O</kbd>, or the control bar's **Schiltron**
+  button) is the cavalry specialist. Its denser hedge of levelled spears braces a
+  charge *harder* than the orbis does --- cavalry riding into a schiltron comes off
+  worse than riding into an orbis --- at the cost of hitting even softer in return,
+  and it carries no morale bonus. Reach for it when the priority is breaking the
+  charge itself, not outlasting
   a siege.
 
 Both variants share the same hollow-square footprint and the same mobility penalty;
@@ -365,8 +366,8 @@ the unit holds where a rear-charged line would break.
 ```
 
 Schiltron: the same rear cavalry charge as above, but the unit forms
-Schiltron (I) instead of Orbis. The denser hedge braces the charge harder
-than orbis does, at a deeper offence cost.
+Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge
+harder than orbis does, at a deeper offence cost.
 :::
 
 ## Weapon reach

@@ -223,10 +223,11 @@ func test_register_casualties_erodes_orbis_morale_slower_than_schiltron() -> voi
 
 # --- hotkey / control-bar wiring -------------------------------------------------
 
-func _key_event(keycode: int) -> InputEventKey:
+func _key_event(keycode: int, shift: bool = false) -> InputEventKey:
 	var ev := InputEventKey.new()
 	ev.keycode = keycode
 	ev.pressed = true
+	ev.shift_pressed = shift
 	return ev
 
 
@@ -247,13 +248,26 @@ func _sm_with_unit(u: Unit):
 	return [sm, battle]
 
 
-func test_i_key_dispatches_to_the_schiltron_toggle() -> void:
+func test_shift_o_key_dispatches_to_the_schiltron_toggle() -> void:
+	# Every plain letter is claimed (I went to rank-relief toggle, #612), so schiltron
+	# shares O's key with Shift -- plain O still reaches orbis (see the next test).
 	var u := _make_unit()   # Normal
 	var pair = _sm_with_unit(u)
-	var handled: bool = pair[0]._dispatch_key(_key_event(KEY_I))
-	assert_true(handled, "I is a known hotkey")
+	var handled: bool = pair[0]._dispatch_key(_key_event(KEY_O, true))
+	assert_true(handled, "Shift+O is a known hotkey")
 	assert_eq(pair[1].last_formation, Unit.FORMATION_SCHILTRON,
-		"pressing I forms the schiltron directly")
+		"pressing Shift+O forms the schiltron directly")
+
+
+func test_plain_o_key_still_dispatches_to_orbis_not_schiltron() -> void:
+	# Regression guard: adding Shift+O for schiltron must not disturb plain O's
+	# existing orbis behaviour.
+	var u := _make_unit()   # Normal
+	var pair = _sm_with_unit(u)
+	var handled: bool = pair[0]._dispatch_key(_key_event(KEY_O, false))
+	assert_true(handled, "plain O is still a known hotkey")
+	assert_eq(pair[1].last_formation, Unit.FORMATION_SQUARE,
+		"pressing plain O still forms orbis, not schiltron")
 
 
 func test_toggle_schiltron_jumps_straight_to_schiltron_from_any_mode() -> void:
