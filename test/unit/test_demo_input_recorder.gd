@@ -71,7 +71,7 @@ func test_key_step_ctrl_sets_the_ctrl_modifier() -> void:
 
 
 func test_key_step_shift_sets_the_shift_modifier() -> void:
-	# Shift+O drives the schiltron toggle (#489), sharing O's key with orbis.
+	# Shift+O drives the schiltron toggle, sharing O's key with orbis.
 	var r = _rec()
 	r._schedule([{"tick": 6, "key": "O", "shift": true}])
 	assert_true(r._by_tick[6][0]["shift"], "shift: true marks the event shift-chorded")
