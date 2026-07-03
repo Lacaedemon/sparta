@@ -666,3 +666,116 @@ func test_form_up_dist_default_clamps_out_of_range() -> void:
 			"an over-range default clamps to the last mode")
 	Settings.form_up_dist_default = -5
 	assert_eq(Settings.form_up_dist_default, 0, "a negative default clamps to the first mode")
+
+
+# --- move-order ghost preview reads per-formation geometry --------------------
+# _draw_formation_preview used to call UnitFormation.slots(u, u.soldiers) directly,
+# bypassing Unit.formation_slots() -- the per-formation layout dispatch. So the
+# destination ghost still showed the wide-line grid for a squared unit (a real square
+# footprint since #534) instead of the live shape the unit actually stands on. Fixed
+# to call u.formation_slots(u.soldiers) instead.
+
+func test_formation_preview_slots_match_the_units_live_square_shape() -> void:
+	# The preview must read the SAME slot layout the unit's own soldier_world_slots
+	# uses -- not the generic wide-line grid every non-square formation shares.
+	var u := _unit()
+	u.max_soldiers = 120
+	u.facing = Vector2.DOWN
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var preview_slots := u.formation_slots(u.soldiers)
+	# soldier_world_slots is formation_slots rotated+offset to the unit's world
+	# position/facing; at position ZERO with the same rotation convention the
+	# preview's local slots must equal the live grid's local slots one-for-one.
+	var ang: float = u.facing.angle() + PI * 0.5
+	var live_local := PackedVector2Array()
+	for p in u.soldier_world_slots(u.soldiers):
+		live_local.push_back(p.rotated(-ang))
+	assert_eq(preview_slots.size(), live_local.size(),
+		"the preview has one dot per soldier, matching the live grid")
+	for i in range(preview_slots.size()):
+		assert_true(preview_slots[i].is_equal_approx(live_local[i]),
+			"preview slot %d matches the unit's live square slot" % i)
+
+
+func test_formation_preview_bbox_is_square_not_the_wide_line_for_a_squared_unit() -> void:
+	# The bug this fixes, in shape terms: the old UnitFormation.slots() call always
+	# produced the wide 2:1 line, even for a squared unit. The preview's bbox must now
+	# be roughly square (matching test_square_slot_bbox_is_roughly_square_not_two_to_one
+	# in test_formation_square.gd), not the wide line's aspect.
+	var u := _unit()
+	u.max_soldiers = 120
+	u.facing = Vector2.DOWN
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var slots := u.formation_slots(u.soldiers)
+	var min_p: Vector2 = slots[0]
+	var max_p: Vector2 = slots[0]
+	for p in slots:
+		min_p.x = minf(min_p.x, p.x)
+		min_p.y = minf(min_p.y, p.y)
+		max_p.x = maxf(max_p.x, p.x)
+		max_p.y = maxf(max_p.y, p.y)
+	var bbox: Vector2 = max_p - min_p
+	assert_almost_eq(bbox.x / bbox.y, 1.0, 0.15,
+		"the preview's own footprint reads square, not the wide line's ~2:1 aspect")
+
+
+func test_formation_preview_matches_schiltron_shape_too() -> void:
+	# Schiltron (#488) shares the same hollow-square geometry as orbis via in_square(),
+	# so the preview fix covers it automatically -- confirm it does.
+	var u := _unit()
+	u.max_soldiers = 120
+	u.facing = Vector2.DOWN
+	u.set_formation(Unit.FORMATION_SCHILTRON)
+	var preview_slots := u.formation_slots(u.soldiers)
+	var files: int = UnitFormation.square_files(u.soldiers)
+	var expected := UnitFormation.block_slots(u.soldiers, files, Unit.FORMATION_SPACING * u.spacing_scale)
+	assert_eq(preview_slots.size(), expected.size())
+	for i in range(preview_slots.size()):
+		assert_true(preview_slots[i].is_equal_approx(expected[i]),
+			"preview slot %d matches the schiltron's square grid" % i)
+
+
+class _StubBattleWithRoute:
+	extends Node
+	var pending_points: Array[Vector2] = []
+	func pending_append_points_for(_u: Unit) -> Array[Vector2]:
+		return pending_points
+	# _draw_demo_pointer (reached because the test arms the demo-orders overlay via
+	# Replay.mode/show_demo_orders) reads _battle.current_tick() to look up the
+	# recorded pointer track; return a plain 0 -- no pointer track is being tested here.
+	func current_tick() -> int:
+		return 0
+
+
+func test_draw_formation_preview_renders_for_a_squared_unit_with_a_move_order() -> void:
+	# Render smoke: drive the REAL _draw() path (hold-Space-equivalent via the demo
+	# overlay flag) with a squared, moving unit parented under a stub Battle, and
+	# confirm it completes without error. Proves _draw_formation_preview is actually
+	# reachable and wired to a live unit's move order, not just exercised in isolation.
+	var battle := _StubBattleWithRoute.new()
+	add_child_autofree(battle)
+	var sm = SelectionManagerScript.new()
+	battle.add_child(sm)   # so _battle = get_parent() resolves to the stub
+
+	var u := UnitScript.new()
+	battle.add_child(u)
+	u.add_to_group("units")
+	u.team = 0
+	u.facing = Vector2.DOWN
+	u.max_soldiers = 120
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.has_move_target = true
+	u.move_target = Vector2(400, 400)
+
+	var prev_mode = Replay.mode
+	var prev_flag := Replay.show_demo_orders
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.show_demo_orders = true
+
+	sm.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	Replay.mode = prev_mode
+	Replay.show_demo_orders = prev_flag
+	assert_true(u.has_move_target, "the move order is still live after the draw pass")

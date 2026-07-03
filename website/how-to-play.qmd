@@ -474,7 +474,25 @@ current order on the battlefield: a dashed green line to each move destination, 
 line to each attack target, and a teal link for support duties. At the end of each move
 line, a **ghost formation** (faint green dots) shows exactly where each individual
 soldier will stand when the regiment finishes its march --- so you can check whether
-units will fit, overlap, or leave a gap before they arrive.
+units will fit, overlap, or leave a gap before they arrive. The ghost reads the
+destination stance's actual shape, so a unit marching in Square (or Schiltron)
+previews as the real hollow-square footprint, not the wide line the other formations use.
+
+::: {#fig-formation-preview-square .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/formation_preview_square.jpg">
+  <source src="media/formation_preview_square.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Move-order ghost preview: a unit forms Square, then marches under the
+hold-Space orders overlay. The destination ghost shows the real hollow-square
+footprint, matching the stance it is actually marching into.
+:::
 
 Each order line also carries a **distance label** at its midpoint, in the same metres
 the scale bar uses --- the remaining march for a move (the full route, summed over any
