@@ -3129,8 +3129,8 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	# Shielded-stance overlay: a locked shield line (shield wall), an overhead shield roof
-	# (testudo), or a ring of outward spear ticks (the hollow square, orbis/schiltron,
-	# #489) -- drawn in the facing-rotated block frame so it rotates with the unit and
+	# (testudo), or a ring of outward spear ticks (the hollow square, orbis/schiltron)
+	# -- drawn in the facing-rotated block frame so it rotates with the unit and
 	# scales with the block. Unlike the centre emblem, it stays visible at the zoomed-in
 	# figure LOD -- it represents raised/overhead shields or the outward-facing ring, which
 	# the individual soldier silhouettes alone don't read clearly at every zoom (especially
