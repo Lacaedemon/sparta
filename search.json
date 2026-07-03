@@ -757,7 +757,7 @@
     "href": "roadmap.html#milestones",
     "title": "Roadmap",
     "section": "Milestones",
-    "text": "Milestones\n\n\n\nTable 1: The three milestones and their status.\n\n\n\n\n\n\n\n\n\n\nMilestone\nScope\nStatus\n\n\n\n\nM1\nOne playable, self-contained tactical battle.\n✅ Scaffolded & playable\n\n\nM2\nA dynastic campaign map — clickable provinces, characters/realms, turn-based diplomacy & war. Battles auto-resolved at first.\nNot started\n\n\nM3\nIntegration — an army battle on the campaign map launches into the M1 battle scene and returns a result (winner, casualties). Where the two genres meet.\nNot started\n\n\n\n\n\n\nThe battle scene was kept self-contained specifically to make the M3 hand-off clean.",
+    "text": "Milestones\n\n\n\nTable 1: The three milestones and their status.\n\n\n\n\n\n\n\n\n\n\nMilestone\nScope\nStatus\n\n\n\n\nM1\nOne playable, self-contained tactical battle.\n✅ Scaffolded & playable\n\n\nM2\nA dynastic campaign map — clickable provinces, characters/realms, turn-based diplomacy & war. Battles auto-resolved at first.\n🚧 In progress — the Gallic War map, data-driven campaigns, and diplomacy (with AI agency) have landed; characters/dynasty and the saga layer remain\n\n\nM3\nIntegration — an army battle on the campaign map launches into the M1 battle scene and returns a result (winner, casualties). Where the two genres meet.\n🚧 In progress — the battle hand-off and result-applied-to-map round trip have landed; AI-vs-AI/AI-vs-player battle launches and richer army composition remain\n\n\n\n\n\n\nThe battle scene was kept self-contained specifically to make the M3 hand-off clean.",
     "crumbs": [
       "Home",
       "Roadmap"
