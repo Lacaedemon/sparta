@@ -335,7 +335,7 @@ static func face_toward(rec: FarTierFormation, point: Vector2) -> void:
 
 
 ## One tick of the isolated two-formation engagement the phase verifies: two far-tier
-## formations close on each other, exchange attrition once in reach, and — per #580 — a side
+## formations close on each other, exchange attrition once in reach, and a side
 ## that breaks flees, rallies, or shatters instead of just absorbing (the old phase-2
 ## behavior). All reads happen against the PRE-tick state before any write, so the exchange
 ## is simultaneous — neither side gets a first-mover advantage, and a mirrored matchup stays
