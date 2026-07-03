@@ -104,6 +104,15 @@ bloodied. So a veteran unit facing the same sustained pressure still routs
 eventually --- it just takes noticeably longer and costs the attacker more losses
 to break it than a green unit under the same attack.
 
+**Rank relief (discipline toggle).** Rank cycling is on by default for every unit,
+but you can switch it off with <kbd>I</kbd> (see [How to play](how-to-play.qmd) for
+the control). A unit with rank relief off holds its ranks fixed --- no fatigue
+relief, no in-fight morale recovery from cycling --- which trades away that
+endurance edge for a line that never opens the small gaps a whistled rotation
+briefly creates. Leave it on for a grinding attritional fight; consider switching
+it off only when you'd rather keep the front rank locked in place than let it
+step back mid-melee.
+
 ## Line relief
 
 Rank cycling rotates soldiers *within* a regiment; **line relief** rotates whole
