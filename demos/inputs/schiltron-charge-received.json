@@ -1,0 +1,17 @@
+{
+  "_comment": "Schiltron receiving-the-charge demo (#488, split from schiltron.json per PR #615 review -- see demos/README.md). The player Infantry unit spawns ALREADY in Schiltron (scenario 'formation': 6 -- Unit.FORMATION_SCHILTRON) so the clip skips the Shift+O transition and its settling time entirely, sidestepping the unrelated spawn-facing-flip churn tracked in issue #631. Two cavalry spawn close behind (above) the infantry; both cavalry AND infantry auto-acquire each other on spawn since they're within DETECTION_RANGE, so without a Hold order the infantry would walk OUT to meet them instead of standing its ground -- the tick-0/1 click+Ctrl+H hold order (before the cavalry can close) keeps the ring planted so it reads as 'receiving' the charge, not colliding mid-field (a brief ~20deg facing settle happens in the one tick before Hold lands -- harmless, not the ~167deg churn from #631). The enemy AI auto-advances the cavalry into the rear -- no further player input needed. First contact lands around tick 170-200; by tick 320 the ring has held (still SCHILTRON, still fighting) while both sides show real losses -- the brace/offence-penalty trade-off. Camera holds on the clash. Deterministic (scenario + seed + scripted input). Verified via tools/demo/dump-state.sh: infantry position/bbox stay settled and IDLE/Hold from tick ~5 until contact, formation stays SCHILTRON throughout.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 500, "count": 120, "formation": 6},
+    {"team": 1, "type": "Cavalry", "x": 740, "y": 340},
+    {"team": 1, "type": "Cavalry", "x": 860, "y": 340}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 420.0, "zoom": 1.25}
+  ],
+  "steps": [
+    {"tick": 0, "click": [800, 500]},
+    {"tick": 1, "key": "H", "ctrl": true}
+  ],
+  "state": [8, 60, 140, 200, 260, 320]
+}
