@@ -127,7 +127,7 @@
             0.0,
             1.0
           ],
-          "formation": "FORMATION(6)",
+          "formation": "SCHILTRON",
           "morale": 100.0,
           "name": "Infantry 1",
           "order_mode": "Normal",
@@ -243,7 +243,7 @@
             0.0,
             1.0
           ],
-          "formation": "FORMATION(6)",
+          "formation": "SCHILTRON",
           "morale": 100.0,
           "name": "Infantry 1",
           "order_mode": "Normal",
