@@ -12,14 +12,17 @@
             1.0
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 98.1,
           "name": "Spearmen 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             275.63,
             472.9
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -49,14 +52,17 @@
             1.0
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 97.5,
           "name": "Spearmen 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             425.76,
             472.9
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -86,14 +92,17 @@
             0.99
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 94.0,
           "name": "Infantry 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             576.4,
             486.75
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -123,14 +132,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 93.3,
           "name": "Infantry 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             726.38,
             486.75
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -160,14 +172,17 @@
             0.99
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 96.0,
           "name": "Archers 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             877.0,
             483.69
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -197,14 +212,17 @@
             0.99
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 95.0,
           "name": "Archers 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1027.26,
             483.68
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -234,14 +252,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 92.2,
           "name": "Cavalry 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1175.28,
             483.49
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -271,14 +292,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 89.9,
           "name": "Cavalry 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1325.42,
             484.7
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -308,14 +332,17 @@
             -1.0
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 98.1,
           "name": "Spearmen 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             274.4,
             517.48
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -345,14 +372,17 @@
             -1.0
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 97.5,
           "name": "Spearmen 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             424.27,
             517.47
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -382,14 +412,17 @@
             -0.99
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 94.8,
           "name": "Infantry 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             573.65,
             511.23
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -419,14 +452,17 @@
             -1.0
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 94.8,
           "name": "Infantry 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             723.65,
             511.23
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -456,14 +492,17 @@
             -0.99
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 92.0,
           "name": "Archers 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             872.74,
             513.15
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -493,14 +532,17 @@
             -0.99
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 94.0,
           "name": "Archers 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1022.62,
             513.15
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -530,14 +572,17 @@
             -1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 91.0,
           "name": "Cavalry 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1175.0,
             510.24
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -567,14 +612,17 @@
             -1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 91.0,
           "name": "Cavalry 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1324.98,
             510.87
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -604,14 +652,17 @@
             1.0
           ],
           "formation": "TIGHT",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Spearmen 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             275.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -629,14 +680,17 @@
             1.0
           ],
           "formation": "TIGHT",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Spearmen 6",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             575.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -654,14 +708,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Infantry 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             875.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -679,14 +736,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Infantry 6",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1175.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -704,14 +764,17 @@
             1.0
           ],
           "formation": "LOOSE",
+          "frontage": 101,
           "morale": 100.0,
           "name": "Archers 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             425.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 6000,
           "state": "IDLE",
@@ -729,14 +792,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 83,
           "morale": 100.0,
           "name": "Cavalry 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1025.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 4000,
           "state": "IDLE",
@@ -759,14 +825,17 @@
             1.0
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 98.6,
           "name": "Spearmen 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             276.95,
             474.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -796,14 +865,17 @@
             0.99
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 98.0,
           "name": "Spearmen 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             427.47,
             473.96
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -833,14 +905,17 @@
             0.95
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 94.0,
           "name": "Infantry 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             579.12,
             487.13
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -870,14 +945,17 @@
             0.95
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 93.3,
           "name": "Infantry 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             729.38,
             487.03
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -907,14 +985,17 @@
             0.88
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 91.0,
           "name": "Archers 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             880.14,
             487.86
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -944,14 +1025,17 @@
             0.95
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 88.0,
           "name": "Archers 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1026.26,
             494.95
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -981,14 +1065,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 92.3,
           "name": "Cavalry 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1176.52,
             482.45
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1018,14 +1105,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 90.1,
           "name": "Cavalry 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1325.87,
             484.06
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1055,14 +1145,17 @@
             -1.0
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 98.7,
           "name": "Spearmen 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             273.22,
             519.84
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1092,14 +1185,17 @@
             -0.99
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 98.0,
           "name": "Spearmen 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             422.7,
             519.64
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1129,14 +1225,17 @@
             -0.95
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 94.8,
           "name": "Infantry 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             571.51,
             510.4
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1166,14 +1265,17 @@
             -0.95
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 94.8,
           "name": "Infantry 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             721.62,
             510.23
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1203,14 +1305,17 @@
             -0.88
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 87.0,
           "name": "Archers 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             871.51,
             503.9
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1240,14 +1345,17 @@
             -0.95
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 89.0,
           "name": "Archers 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1020.66,
             511.23
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1277,14 +1385,17 @@
             -1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 91.2,
           "name": "Cavalry 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1175.22,
             510.71
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1314,14 +1425,17 @@
             -1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 91.2,
           "name": "Cavalry 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1324.87,
             512.24
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1351,14 +1465,17 @@
             1.0
           ],
           "formation": "TIGHT",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Spearmen 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             275.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -1376,14 +1493,17 @@
             1.0
           ],
           "formation": "TIGHT",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Spearmen 6",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             575.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -1401,14 +1521,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Infantry 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             875.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -1426,14 +1549,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Infantry 6",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1175.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -1451,14 +1577,17 @@
             1.0
           ],
           "formation": "LOOSE",
+          "frontage": 101,
           "morale": 100.0,
           "name": "Archers 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             425.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 6000,
           "state": "IDLE",
@@ -1476,14 +1605,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 83,
           "morale": 100.0,
           "name": "Cavalry 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1025.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 4000,
           "state": "IDLE",
@@ -1506,14 +1638,17 @@
             0.92
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 99.4,
           "name": "Spearmen 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             284.95,
             472.42
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1543,14 +1678,17 @@
             0.89
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 98.1,
           "name": "Spearmen 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             437.2,
             473.02
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1580,14 +1718,17 @@
             0.04
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 94.0,
           "name": "Infantry 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             588.17,
             495.29
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1617,14 +1758,17 @@
             -0.01
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 93.3,
           "name": "Infantry 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             738.14,
             496.72
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1654,14 +1798,17 @@
             -0.86
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 79.0,
           "name": "Archers 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             880.01,
             505.06
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1691,14 +1838,17 @@
             -0.85
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 74.0,
           "name": "Archers 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1024.99,
             503.4
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1728,14 +1878,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 92.6,
           "name": "Cavalry 1",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1176.67,
             481.73
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1765,14 +1918,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 90.4,
           "name": "Cavalry 2",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1325.88,
             483.94
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1802,14 +1958,17 @@
             -0.92
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 97.5,
           "name": "Spearmen 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             267.31,
             513.45
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1839,14 +1998,17 @@
             -0.89
           ],
           "formation": "TIGHT",
+          "frontage": 16,
           "morale": 97.5,
           "name": "Spearmen 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             415.87,
             512.3
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1876,14 +2038,17 @@
             -0.04
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 94.0,
           "name": "Infantry 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             564.07,
             495.6
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1913,14 +2078,17 @@
             0.01
           ],
           "formation": "NORMAL",
+          "frontage": 15,
           "morale": 94.0,
           "name": "Infantry 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             713.99,
             495.71
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1950,14 +2118,17 @@
             0.86
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 73.0,
           "name": "Archers 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             872.99,
             492.76
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -1987,14 +2158,17 @@
             0.85
           ],
           "formation": "LOOSE",
+          "frontage": 13,
           "morale": 78.0,
           "name": "Archers 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1018.21,
             491.9
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -2024,14 +2198,17 @@
             -1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 91.5,
           "name": "Cavalry 3",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1176.0,
             509.86
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -2061,14 +2238,17 @@
             -1.0
           ],
           "formation": "NORMAL",
+          "frontage": 12,
           "morale": 91.5,
           "name": "Cavalry 4",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1324.87,
             512.22
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
@@ -2098,14 +2278,17 @@
             1.0
           ],
           "formation": "TIGHT",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Spearmen 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             275.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -2123,14 +2306,17 @@
             1.0
           ],
           "formation": "TIGHT",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Spearmen 6",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             575.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -2148,14 +2334,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Infantry 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             875.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -2173,14 +2362,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 117,
           "morale": 100.0,
           "name": "Infantry 6",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1175.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 8000,
           "state": "IDLE",
@@ -2198,14 +2390,17 @@
             1.0
           ],
           "formation": "LOOSE",
+          "frontage": 101,
           "morale": 100.0,
           "name": "Archers 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             425.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 6000,
           "state": "IDLE",
@@ -2223,14 +2418,17 @@
             1.0
           ],
           "formation": "NORMAL",
+          "frontage": 83,
           "morale": 100.0,
           "name": "Cavalry 5",
+          "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             1025.0,
             -320.0
           ],
+          "queue_tail": [],
           "rank_relief": true,
           "soldiers": 4000,
           "state": "IDLE",
