@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "The square's offence penalty already flowed into the per-soldier melee path (fixed as a side effect of PR #485, before this issue was filed) -- this PR only adds explicit regression coverage (test_square_attacker_inflicts_fewer_wounds_via_soldier_path / test_schiltron_attacker_inflicts_fewer_wounds_than_orbis_via_soldier_path in test/unit/test_soldier_melee.gd) proving the wound-scale ratio numerically. There is no new or changed visual behavior a recorded battle would show beyond what #615's schiltron demo and the existing square demo already cover."
+}

@@ -1,0 +1,13 @@
+{
+  "_comment": "Move-order ghost preview per-formation geometry (#563): hold Space so the orders overlay is live, select the Spearmen (seed 12345, ~500,300), form Square (O), then right-click to march them. Before the fix, the ghost preview always drew the wide 2:1 line grid (UnitFormation.slots) even for a squared unit; after the fix it reads formation_slots(), so the ghost matches the real square footprint the unit is actually standing in -- compare the live block's shape to the ghost dots at the destination.",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 430.0, "zoom": 1.5}
+  ],
+  "steps": [
+    {"tick": 2,  "hold_space": true},
+    {"tick": 8,  "click": [500, 300]},
+    {"tick": 16, "key": "O"},
+    {"tick": 30, "rmb_click": [500, 580]}
+  ]
+}

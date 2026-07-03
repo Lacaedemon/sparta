@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/formation-preview-square.json",
+  "caption": "Move-order ghost preview per-formation geometry (#563): a squared unit is given a march order with the orders overlay (hold Space) up. The destination ghost now reads the unit's live formation_slots() -- matching the real square footprint the block stands in -- instead of always drawing the generic wide-line grid regardless of stance.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 640
+}
