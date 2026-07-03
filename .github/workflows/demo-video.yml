@@ -1,8 +1,19 @@
-# Records a short gameplay clip for same-repo PRs that change the game and posts it
-# as an inline GIF (play-once, no loop) in the PR conversation, plus a link to an MP4
-# with sound (the GIF is silent — GIF can't carry audio). The inline GIF is the
-# mobile-safe choice: a poster->MP4 link opens GitHub's blob-view video player, which
-# doesn't play on the mobile site or app, whereas a GIF renders inline everywhere.
+# Records a short gameplay clip for same-repo PRs that change the game and inserts
+# it as an inline GIF (play-once, no loop) into the PR DESCRIPTION (body), plus a
+# link to an MP4 with sound (the GIF is silent — GIF can't carry audio). The inline
+# GIF is the mobile-safe choice: a poster->MP4 link opens GitHub's blob-view video
+# player, which doesn't play on the mobile site or app, whereas a GIF renders inline
+# everywhere.
+#
+# Description, not a comment (#633): a comment scrolls out of reach as a review
+# thread grows across ARDI rounds, so the primary clip (GIF/caption/MP4 link) is
+# upserted into the PR body between `<!-- sparta-demo -->` / `<!-- /sparta-demo -->`
+# markers (tools/ci/upsert-pr-body-section.sh) — replacing only that section in
+# place on each push and leaving the rest of the author's description untouched.
+# The description is always visible at the top of the PR regardless of thread
+# length. The optional per-tick state transcript (below) is large technical detail
+# most reviewers don't need at a glance, so it stays a PR COMMENT (its own sticky
+# marker) rather than growing the description further; the description links to it.
 #
 # What it records: if the PR commits a demo manifest (demos/demo.<slug>.json, or the
 # legacy shared demos/demo.json) it records the replay that names (chosen by the
@@ -10,8 +21,9 @@
 # demos/showcase.json battle, posted with an honest "generic build demo" caption.
 # Either way a demo appears — unless the manifest sets "skip": true (a change a
 # recorded battle can't show, e.g. a paused-overlay interaction): then no clip is
-# recorded and a short note explaining the absence is posted instead of an unrelated
-# generic GIF. See demos/README.md for the author contract.
+# recorded and a short note explaining the absence is upserted into the same
+# description section instead of an unrelated generic GIF. See demos/README.md for
+# the author contract.
 #
 # Why a separate workflow (not claude.yml): claude.yml only *calls* an external
 # reusable workflow (d-morrison/gha), so recording steps can't be added there.
@@ -51,7 +63,7 @@ concurrency:
 
 permissions:
   contents: write        # push the GIF to the media branch
-  pull-requests: write   # post / update the demo comment
+  pull-requests: write   # update the PR description with the demo section, and post/update the state-transcript comment
 
 env:
   GODOT_VERSION: 4.7.0
@@ -385,7 +397,7 @@ jobs:
             echo "::warning::transcript artifacts empty; posting the demo without a transcript."
           fi
 
-      - name: Publish GIF and comment
+      - name: Publish GIF and update PR description
         if: steps.demo.outputs.record == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -457,7 +469,8 @@ jobs:
           [ -n "$published" ] || { echo "::error::could not publish demo to $MEDIA_BRANCH after 5 attempts"; exit 1; }
 
           RAW_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST}"
-          MARKER="<!-- sparta-demo -->"
+          MARKER_OPEN="<!-- sparta-demo -->"
+          MARKER_CLOSE="<!-- /sparta-demo -->"
           # The inline GIF plays once and is silent (GIF can't carry audio). When an
           # MP4 was published, link it so reviewers can watch *with sound* and scrub.
           # GitHub only renders an inline video player for files uploaded via its
@@ -467,44 +480,69 @@ jobs:
           # link to the MP4 is the honest, mobile-safe best CI can do.
           # Assembled in pieces (each $() drops trailing newlines, so the next piece
           # leads with the blank line it wants). The sound link is inserted only when an
-          # MP4 was published; otherwise the body collapses to the original GIF-only
-          # spacing.
-          BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n%s\n\n![demo](%s)' \
-            "$MARKER" "$CAPTION" "$RAW_URL")
+          # MP4 was published; otherwise the section collapses to the original GIF-only
+          # spacing. This is the PRIMARY demo content and goes into the PR DESCRIPTION
+          # (not a comment) — see "Update PR description" below — so it stays visible at
+          # the top of the PR regardless of how long the review thread grows (#633).
+          SECTION=$(printf '### 🎬 Gameplay demo\n\n%s\n\n![demo](%s)' \
+            "$CAPTION" "$RAW_URL")
           if [ -s /tmp/demo.mp4 ]; then
             RAW_MP4_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_MP4}"
-            BODY="$BODY"$(printf '\n\n🔊 The GIF above plays once and is silent — [watch with sound, pause and scrub (MP4)](%s).' "$RAW_MP4_URL")
+            SECTION="$SECTION"$(printf '\n\n🔊 The GIF above plays once and is silent — [watch with sound, pause and scrub (MP4)](%s).' "$RAW_MP4_URL")
           fi
-          # Inline the compact per-tick state transcript directly in the comment, so a
-          # reviewer (human or the @claude review bot, which reads the PR conversation but
-          # NOT the media branch) sees exact unit state instead of eyeballing the GIF. That
-          # is the whole point: the reviewer never reads the media branch, so the numbers
-          # have to be in the comment text. The full JSON is linked for detail. Best-effort:
-          # only when the dump produced usable artifacts (STATE_OK), which excludes
-          # replay/showcase demos.
+          # The full per-tick state transcript is large technical detail that not every
+          # reviewer needs at a glance, so unlike the GIF/caption above it stays a PR
+          # COMMENT (its own sticky marker, updated in place below) rather than growing
+          # the description — a reviewer who wants exact unit state can search the
+          # conversation for it or follow the link, but the description itself stays
+          # short and scannable. No direct anchor to the comment: its id isn't known
+          # until after it's posted/updated below, and a plain PR-conversation link is
+          # enough to point a reader at it (GitHub's own in-page search finds "state
+          # transcript" instantly) without overclaiming a fixed scroll position.
           if [ "${STATE_OK:-false}" = "true" ] && [ -s /tmp/transcript.md ]; then
-            RAW_STATE_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_STATE}"
-            # The leading blank line has to survive so GitHub ends the image paragraph and
-            # renders the <details> block — so pass the summary as a printf arg (internal
-            # \n\n is kept; only trailing newlines get stripped by $()), not via a bare
-            # $(cat) that would butt <details> up against the ![demo] on the same line.
-            BODY="$BODY"$(printf '\n\n%s\n\n🔬 [Full machine-readable state transcript (JSON)](%s) — exact per-tick unit state for AI/spot verification.' \
-              "$(cat /tmp/transcript.md)" "$RAW_STATE_URL")
+            SECTION="$SECTION"$(printf '\n\n🔬 Per-tick state transcript posted as a [PR comment](%s) — search the conversation for "state transcript".' \
+              "https://github.com/${{ github.repository }}/pull/${PR}")
           fi
-          BODY="$BODY"$(printf '\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
+          SECTION="$SECTION"$(printf '\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
             "$SOURCE" "$SHA")
 
-          # Update the existing demo comment in place if present, else create one
-          # (shared upsert helper — see the 'no clip applies' step, which reuses it).
-          tools/ci/upsert-pr-comment.sh \
-            "${{ github.repository }}" "$PR" "$MARKER" "$BODY" "demo comment"
+          # Update the PR DESCRIPTION in place (not a comment): replaces the content
+          # between the sparta-demo markers if they're already there (a prior push),
+          # else appends a new marked section after whatever the author wrote — see
+          # tools/ci/upsert-pr-body-section.sh. This is the #633 fix: the clip used to
+          # be a comment that scrolled out of reach as the review thread grew; the
+          # description is always visible at the top of the PR page.
+          tools/ci/upsert-pr-body-section.sh \
+            "${{ github.repository }}" "$PR" "$MARKER_OPEN" "$MARKER_CLOSE" "$SECTION" "demo section"
+
+          # The compact per-tick state transcript, when one dumped, still goes out as a
+          # COMMENT (its own marker) rather than growing the description further — see
+          # rationale above. Posted/updated here, right after the description update, so
+          # both land together on the same run. /tmp/transcript.md already opens with its
+          # own "<details><summary>🔬 Per-tick state transcript…" wrapper (built by
+          # state-transcript-summary.sh), so no extra heading is added here — that would
+          # just duplicate the summary line the collapsible block already shows.
+          if [ "${STATE_OK:-false}" = "true" ] && [ -s /tmp/transcript.md ]; then
+            RAW_STATE_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_STATE}"
+            TRANSCRIPT_MARKER="<!-- sparta-demo-transcript -->"
+            # A leading blank line after the marker has to survive so GitHub starts a
+            # fresh block instead of butting <details> up against the marker comment --
+            # pass the summary as a printf arg (internal \n\n is kept; only trailing
+            # newlines get stripped by $()), not via a bare $(cat).
+            TRANSCRIPT_BODY=$(printf '%s\n\nPer-tick state transcript for PR #%s — see the [gameplay demo](%s) in the PR description.\n\n%s\n\n[Full machine-readable state transcript (JSON)](%s) — exact per-tick unit state for AI/spot verification.' \
+              "$TRANSCRIPT_MARKER" "$PR" "https://github.com/${{ github.repository }}/pull/${PR}" "$(cat /tmp/transcript.md)" "$RAW_STATE_URL")
+            tools/ci/upsert-pr-comment.sh \
+              "${{ github.repository }}" "$PR" "$TRANSCRIPT_MARKER" "$TRANSCRIPT_BODY" "state transcript comment"
+          fi
 
       - name: Post 'no clip applies' note
         # The author marked this change as not demonstrable by a recorded battle
         # ("skip": true in the resolved manifest — a per-PR demos/demo.<slug>.json or
         # the legacy demos/demo.json). Rather than post an unrelated generic clip —
-        # the #75 anti-pattern — upsert the same demo comment slot with a short note
-        # explaining why there's no GIF, so reviewers get an honest, relevant signal.
+        # the #75 anti-pattern — upsert the same demo section slot (in the PR
+        # DESCRIPTION, same as the clip path above) with a short note explaining why
+        # there's no GIF, so reviewers get an honest, relevant signal without needing
+        # to scroll into the comment thread.
         if: steps.demo.outputs.skip == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -515,24 +553,26 @@ jobs:
         run: |
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
-          MARKER="<!-- sparta-demo -->"
-          # Reuses the demo comment marker, so if a generic clip was posted on an
-          # earlier push it gets replaced in place by this note (no duplicate slot).
-          BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n🚫 **No gameplay clip for this PR** — %s\n\n<sub>The author marked this change as not demonstrable by a recorded battle (`"skip": true` in `%s`); see `demos/README.md`.</sub>' \
-            "$MARKER" "$REASON" "$MANIFEST")
-          tools/ci/upsert-pr-comment.sh \
-            "${{ github.repository }}" "$PR" "$MARKER" "$BODY" "'no clip' note"
+          MARKER_OPEN="<!-- sparta-demo -->"
+          MARKER_CLOSE="<!-- /sparta-demo -->"
+          # Reuses the demo section markers, so if a clip (or an earlier skip note) was
+          # posted on a prior push it's replaced in place by this note (no duplicate
+          # slot, and no stale clip left behind in the description).
+          SECTION=$(printf '### 🎬 Gameplay demo\n\n🚫 **No gameplay clip for this PR** — %s\n\n<sub>The author marked this change as not demonstrable by a recorded battle (`"skip": true` in `%s`); see `demos/README.md`.</sub>' \
+            "$REASON" "$MANIFEST")
+          tools/ci/upsert-pr-body-section.sh \
+            "${{ github.repository }}" "$PR" "$MARKER_OPEN" "$MARKER_CLOSE" "$SECTION" "'no clip' section"
 
       - name: Verify demo freshness against current PR HEAD
         # Belt-and-suspenders freshness gate. `concurrency: cancel-in-progress`
         # above is the primary defense: a newer push cancels this whole run
-        # before it can post a comment for a superseded SHA. But cancellation is
-        # not instantaneous — there's a window where this run's webhook-delivery
-        # lag lets it finish and report "success" just as (or just after) a
-        # newer push landed. That's the exact race this issue is about: other
-        # required checks go green for the NEW head while this job's already-
-        # posted comment still cites the OLD one, so a merge based on "all green"
-        # can happen against stale demo evidence.
+        # before it can update the description/comment for a superseded SHA. But
+        # cancellation is not instantaneous — there's a window where this run's
+        # webhook-delivery lag lets it finish and report "success" just as (or just
+        # after) a newer push landed. That's the exact race this issue is about:
+        # other required checks go green for the NEW head while this job's already-
+        # updated description/comment still cites the OLD one, so a merge based on
+        # "all green" can happen against stale demo evidence.
         #
         # This step re-queries the PR's head SHA from the API at the very end of
         # the job (not the event payload snapshot, which is fixed at trigger
@@ -541,7 +581,8 @@ jobs:
         # "demo" check means the posted artifacts are fresh AS OF THE JOB'S OWN
         # COMPLETION, not just as of when it started. A failure here isn't a bug
         # in the recording — it means a newer push superseded this run, and that
-        # newer push already triggered its own run to supersede this comment.
+        # newer push already triggered its own run to supersede this description
+        # section/comment.
         if: steps.demo.outputs.record == 'true' || steps.demo.outputs.skip == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -566,7 +607,7 @@ jobs:
           [ -n "$CURRENT_SHA" ] || { echo "::error::could not read the PR's current head SHA after 5 attempts (transient API failure, not a staleness verdict)"; exit 1; }
 
           if [ "$RECORDED_SHA" != "$CURRENT_SHA" ]; then
-            echo "::error::Demo/transcript comment was recorded for $RECORDED_SHA, but PR HEAD has since moved to $CURRENT_SHA — a newer push landed mid-run. Failing so this check cannot show green for stale demo evidence; the newer push already triggered its own run to catch up."
+            echo "::error::Demo description section/transcript comment was recorded for $RECORDED_SHA, but PR HEAD has since moved to $CURRENT_SHA — a newer push landed mid-run. Failing so this check cannot show green for stale demo evidence; the newer push already triggered its own run to catch up."
             exit 1
           fi
-          echo "Demo/transcript comment matches current PR HEAD ($CURRENT_SHA) — fresh."
+          echo "Demo description section/transcript comment matches current PR HEAD ($CURRENT_SHA) — fresh."
