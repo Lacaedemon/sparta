@@ -86,7 +86,7 @@ func test_shield_counts_clamp_to_at_least_one() -> void:
 		"zero cols/rows still yields one tile")
 
 
-# --- hollow-square spear ring (#489) ---------------------------------------------
+# --- hollow-square spear ring ---------------------------------------------
 
 func test_square_perimeter_points_matches_square_is_perimeter() -> void:
 	var n: int = 24

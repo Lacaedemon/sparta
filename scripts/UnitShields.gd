@@ -1,6 +1,6 @@
 class_name UnitShields
 ## Cosmetic shield overlay for the shielded close-order stances (shield wall & testudo)
-## and the hollow-square anti-cavalry ring (orbis & schiltron, #489), drawn on a Unit's
+## and the hollow-square anti-cavalry ring (orbis & schiltron), drawn on a Unit's
 ## chrome layer. Purely presentational: it reads the unit's formation block shape and
 ## formation_mode and draws locked shields / a spear ring on top -- nothing writes back
 ## into the simulation. Called from within the unit's _draw(), in the facing-rotated local
@@ -89,7 +89,7 @@ static func testudo_shields(cols: int, rows: int, half_width: float, half_depth:
 	return out
 
 
-## --- Hollow-square spear/shield ring (orbis & schiltron, #489) -------------------
+## --- Hollow-square spear/shield ring (orbis & schiltron) -------------------
 ## The block geometry (soldier_world_slots, the outward per-soldier facings) already
 ## makes the ring real -- this overlay draws a continuous ring of outward-pointing
 ## spear ticks around the block's perimeter ON TOP, so the "hollow square" reads at a
