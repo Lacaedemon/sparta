@@ -475,10 +475,14 @@ jobs:
           # The full per-tick state transcript is large technical detail that not every
           # reviewer needs at a glance, so unlike the GIF/caption above it stays a PR
           # COMMENT (its own sticky marker, updated in place below) rather than growing
-          # the description — a reviewer who wants exact unit state can scroll to it or
-          # follow the link, but the description itself stays short and scannable.
+          # the description — a reviewer who wants exact unit state can search the
+          # conversation for it or follow the link, but the description itself stays
+          # short and scannable. No direct anchor to the comment: its id isn't known
+          # until after it's posted/updated below, and a plain PR-conversation link is
+          # enough to point a reader at it (GitHub's own in-page search finds "state
+          # transcript" instantly) without overclaiming a fixed scroll position.
           if [ "${STATE_OK:-false}" = "true" ] && [ -s /tmp/transcript.md ]; then
-            SECTION="$SECTION"$(printf '\n\n🔬 Per-tick state transcript: see the [state transcript comment](%s) below.' \
+            SECTION="$SECTION"$(printf '\n\n🔬 Per-tick state transcript posted as a [PR comment](%s) — search the conversation for "state transcript".' \
               "https://github.com/${{ github.repository }}/pull/${PR}")
           fi
           SECTION="$SECTION"$(printf '\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
