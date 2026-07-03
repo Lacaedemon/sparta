@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/stance-order-gesture.json",
+  "caption": "Standalone stance-order player gesture (#593), completing the STANCE order plumbing from PR #592. Previously the stance hotkeys (H/F/R/K/G/J) only ARMED a mode for the NEXT move/attack order -- there was no way to change a unit's stance in place. Now Ctrl+<stance key> writes the stance directly onto the selected units with no move/attack needed (the clip presses Ctrl+H to set Hold), and the new I key toggles each unit's intra-unit rank-relief (discipline) mode -- the training-driven rank-cycle/morale-recovery knob from #529. Both route through Battle.enqueue_stance, so they're recorded and replay exactly like every other order. A flash toast confirms each write (\"Hold\", then \"Rank relief: Off\").",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 640
+}
