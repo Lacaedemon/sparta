@@ -238,6 +238,157 @@ func test_striking_range_is_asymmetric_for_a_longer_reach() -> void:
 	assert_false(FarTierRules.in_striking_range(swords, spears))
 
 
+# --- ranged/volley attrition ------------------------------------------------------------------
+
+func test_ranged_striking_range_uses_ranged_range_not_melee_reach() -> void:
+	var archers := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	archers.is_ranged = true
+	var target := _make_rec(Vector2(0.0, Unit.RANGED_RANGE), Vector2.UP)
+	assert_true(FarTierRules.in_striking_range(archers, target), "still in range at RANGED_RANGE")
+	target.position.y += 1.0
+	assert_false(FarTierRules.in_striking_range(archers, target), "just past RANGED_RANGE")
+
+
+func test_ranged_striking_range_is_far_beyond_melee_reach() -> void:
+	# RANGED_RANGE (160) far outreaches melee contact (attack_range 26 + both radii 36 = 62),
+	# so an archer formation opens up long before a melee line could answer.
+	var archers := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	archers.is_ranged = true
+	var melee_contact: float = archers.attack_range + Unit.RADIUS * 2.0
+	var target := _make_rec(Vector2(0.0, melee_contact + 50.0), Vector2.UP)
+	assert_true(FarTierRules.in_striking_range(archers, target),
+		"an archer formation strikes well beyond melee's own contact distance")
+
+
+func test_ranged_strike_expectation_matches_the_close_tier_shoot_formula() -> void:
+	# UnitCombat.shoot's formula path: max(1, attack - defense) * RANGED_DAMAGE_FACTOR * roll,
+	# roll mean 1.0. No formation_melee_attack_factor term (a testudo still looses volleys
+	# head-up; only the offence-scaling formation_attack_factor applies).
+	var pair := _frontal_pair()
+	var archers: FarTierFormation = pair[0]
+	archers.is_ranged = true
+	var expected: float = maxf(1.0, 12.0 - 6.0) * Unit.RANGED_DAMAGE_FACTOR
+	assert_almost_eq(FarTierRules.strike_expectation(archers, pair[1]), expected, 0.0001)
+
+
+func test_ranged_strike_expectation_floors_at_one_before_the_damage_factor() -> void:
+	var pair := _frontal_pair()
+	var archers: FarTierFormation = pair[0]
+	archers.is_ranged = true
+	archers.attack = 3   # below the defender's defense of 6
+	assert_almost_eq(FarTierRules.strike_expectation(archers, pair[1]),
+		1.0 * Unit.RANGED_DAMAGE_FACTOR, 0.0001)
+
+
+func test_ranged_casualty_rate_is_one_expected_volley_per_ranged_interval() -> void:
+	var pair := _frontal_pair()
+	var archers: FarTierFormation = pair[0]
+	archers.is_ranged = true
+	var expected: float = (6.0 * Unit.RANGED_DAMAGE_FACTOR) / Unit.RANGED_INTERVAL
+	assert_almost_eq(FarTierRules.casualty_rate(archers, pair[1]), expected, 0.0001)
+
+
+func test_ranged_casualty_rate_does_not_scale_down_for_a_thinned_formation() -> void:
+	# UnitCombat.shoot draws volley damage from the flat attack stat with no soldier-count
+	# scaling: a 10-man archer regiment volleys exactly as hard as a 140-man one. The
+	# strength_ratio thinning term is melee-only (its own justification is grounded in the
+	# close tier's per-soldier melee path), so a half-strength archer formation must inflict
+	# the SAME casualty rate as a full-strength one, unlike the melee case above.
+	var pair := _frontal_pair()
+	var archers: FarTierFormation = pair[0]
+	archers.is_ranged = true
+	var full_rate: float = FarTierRules.casualty_rate(archers, pair[1])
+	archers.count = 60   # half of max_soldiers (120)
+	assert_almost_eq(FarTierRules.casualty_rate(archers, pair[1]), full_rate, 0.0001,
+		"a thinned archer formation volleys exactly as hard as a full-strength one")
+
+
+func test_ranged_defender_uses_missile_defense_not_melee_defense() -> void:
+	# TIGHT has no melee_defense_factor effect but does cut incoming missile damage.
+	var pair := _frontal_pair()
+	var archers: FarTierFormation = pair[0]
+	archers.is_ranged = true
+	var defender: FarTierFormation = pair[1]
+	defender.formation_mode = Unit.FORMATION_TIGHT
+	var expected: float = maxf(1.0, 12.0 - 6.0) * Unit.RANGED_DAMAGE_FACTOR \
+			* (1.0 - Unit.TIGHT_MISSILE_DEFENSE)
+	assert_almost_eq(FarTierRules.strike_expectation(archers, defender), expected, 0.0001)
+	assert_eq(FarTierRules.melee_defense_factor(defender, archers.position), 1.0,
+		"TIGHT has no melee_defense_factor bonus — only missile")
+
+
+func test_shield_wall_missile_defense_is_frontal_only_like_melee_defense() -> void:
+	var defender := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	defender.formation_mode = Unit.FORMATION_SHIELD_WALL
+	var frontal: float = FarTierRules.missile_defense_factor(defender, Vector2(0.0, 100.0))
+	var rear: float = FarTierRules.missile_defense_factor(defender, Vector2(0.0, -100.0))
+	assert_almost_eq(frontal, 1.0 - Unit.SHIELD_WALL_MISSILE_DEFENSE, 0.0001)
+	assert_eq(rear, 1.0, "a flank/rear volley bypasses the wall")
+
+
+func test_square_gets_no_missile_defense_bonus() -> void:
+	# Unlike melee/charge, a square's all-around shields don't help against plunging arrows.
+	var defender := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	defender.formation_mode = Unit.FORMATION_SQUARE
+	assert_eq(FarTierRules.missile_defense_factor(defender, Vector2(0.0, 100.0)), 1.0)
+	assert_eq(FarTierRules.missile_defense_factor(defender, Vector2(0.0, -100.0)), 1.0)
+
+
+func test_testudo_ranged_output_has_no_melee_offence_penalty() -> void:
+	# A far-tier testudo takes the melee-only offence penalty (formation_melee_attack_factor)
+	# when it strikes in melee, but not when it shoots — mirroring UnitCombat.shoot, which
+	# never applies formation_melee_attack_factor to a volley.
+	var pair := _frontal_pair()
+	var archers: FarTierFormation = pair[0]
+	archers.is_ranged = true
+	archers.formation_mode = Unit.FORMATION_TESTUDO
+	var expected: float = maxf(1.0, 12.0 - 6.0) * Unit.RANGED_DAMAGE_FACTOR
+	assert_almost_eq(FarTierRules.strike_expectation(archers, pair[1]), expected, 0.0001,
+		"testudo's melee penalty does not apply to ranged output")
+
+
+func test_a_ranged_formation_takes_no_return_melee_attrition_beyond_melee_reach() -> void:
+	# The archers stand at RANGED_RANGE — well beyond the melee attacker's own reach — and
+	# strike every tick, while the melee side closes the gap and deals nothing until it
+	# arrives at ITS OWN striking range.
+	var archers := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	archers.is_ranged = true
+	var melee := _make_rec(Vector2(0.0, Unit.RANGED_RANGE), Vector2.UP)
+	var delta: float = 1.0 / Replay.PHYSICS_TPS
+	FarTierRules.tick_pair(archers, melee, delta)
+	assert_eq(melee.casualties, 0,
+		"one tick isn't enough to kill a whole soldier, but the rate must be nonzero")
+	assert_true(FarTierRules.in_striking_range(archers, melee), "archers are in their own range")
+	assert_false(FarTierRules.in_striking_range(melee, archers),
+		"the melee side is nowhere near its own (short) striking range yet")
+	assert_eq(archers.casualties, 0, "no return melee attrition while still out of melee reach")
+	# The melee side advances (not yet in reach); the archers hold and square up (in reach).
+	assert_true(archers.position.distance_to(Vector2.ZERO) < 0.0001, "archers hold their ground")
+	assert_true(melee.position.y < Unit.RANGED_RANGE, "the melee side presses in")
+
+
+func test_a_ranged_formation_grinds_down_a_melee_formation_before_it_arrives() -> void:
+	# Run the pair fight to resolution: since the archers open up at RANGED_RANGE while the
+	# melee side must close nearly the whole gap first, the archers get several free ticks of
+	# attrition — a plausibility check that the ranged branch actually behaves like a ranged
+	# formation, not a melee one that closes to reach immediately.
+	var archers := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	archers.is_ranged = true
+	var melee := _make_rec(Vector2(0.0, 500.0), Vector2.UP)
+	var delta: float = 1.0 / Replay.PHYSICS_TPS
+	var melee_casualties_at_first_melee_hit := -1
+	var archer_casualties_at_first_melee_hit := -1
+	for i in 6000:
+		if not (FarTierRules.can_fight(archers) and FarTierRules.can_fight(melee)):
+			break
+		FarTierRules.tick_pair(archers, melee, delta)
+		if melee_casualties_at_first_melee_hit < 0 and archers.casualties > 0:
+			melee_casualties_at_first_melee_hit = melee.casualties
+			archer_casualties_at_first_melee_hit = archers.casualties
+	assert_gt(melee_casualties_at_first_melee_hit, 0,
+		"the archers inflicted real losses before the melee side ever landed a blow")
+
+
 # --- the done-check scenario: two far-tier formations, no per-soldier state ---------------
 
 ## Run the isolated two-formation engagement until it resolves, asserting the curve
