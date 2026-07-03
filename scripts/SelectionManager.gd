@@ -270,9 +270,9 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		return true
 	elif event.keycode == KEY_O and event.shift_pressed:
 		# Shift+O jumps straight to the schiltron -- the other hollow-square variant,
-		# sharing O's key since every plain letter is already claimed (I went to
-		# rank-relief toggle, #612). The harder anti-cavalry brace, at a deeper offence
-		# cost than orbis. Toggles back to Normal like the other direct-select stances.
+		# sharing O's key since every plain letter is already claimed (I is the
+		# rank-relief toggle). The harder anti-cavalry brace, at a deeper offence cost
+		# than orbis. Toggles back to Normal like the other direct-select stances.
 		_toggle_schiltron()
 		return true
 	elif event.keycode == KEY_O:
@@ -766,8 +766,8 @@ func _toggle_square() -> void:
 
 
 ## Directly set (or unset) the schiltron on all selected friendly units -- the cavalry
-## specialist among the two hollow-square variants (#488): a harder charge brace than
-## orbis at a deeper offence cost. Same toggle semantics as _toggle_square.
+## specialist among the two hollow-square variants: a harder charge brace than orbis
+## at a deeper offence cost. Same toggle semantics as _toggle_square.
 func _toggle_schiltron() -> void:
 	_toggle_formation(Unit.FORMATION_SCHILTRON)
 

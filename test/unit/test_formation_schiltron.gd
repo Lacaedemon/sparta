@@ -1,5 +1,5 @@
 extends GutTest
-## Schiltron: the cavalry-specialist hollow-square variant (#488), distinct from the
+## Schiltron: the cavalry-specialist hollow-square variant, distinct from the
 ## orbis (plain FORMATION_SQUARE). Both share the same hollow-square geometry (a real
 ## square grid with the perimeter facing outward -- test_formation_square.gd covers that
 ## shared machinery), so this file focuses on what makes them DISTINCT stances rather than
@@ -249,8 +249,8 @@ func _sm_with_unit(u: Unit):
 
 
 func test_shift_o_key_dispatches_to_the_schiltron_toggle() -> void:
-	# Every plain letter is claimed (I went to rank-relief toggle, #612), so schiltron
-	# shares O's key with Shift -- plain O still reaches orbis (see the next test).
+	# Every plain letter is claimed (I is the rank-relief toggle), so schiltron shares
+	# O's key with Shift -- plain O still reaches orbis (see the next test).
 	var u := _make_unit()   # Normal
 	var pair = _sm_with_unit(u)
 	var handled: bool = pair[0]._dispatch_key(_key_event(KEY_O, true))

@@ -221,7 +221,7 @@ const LOOSE_SEPARATION_SCALE: float = 1.35
 #     can't find an open side to hit at full impact.
 # The shared cost: mobility (SQUARE_MOVE_FACTOR of pace for both variants). Offence and
 # charge-bracing strength diverge below -- that's what makes them distinct stances
-# rather than one generic square (#488).
+# rather than one generic square.
 const SQUARE_CHARGE_BACKFIRE: float = 0.5
 const SQUARE_CHARGE_FLOOR: float = 0.6
 const SQUARE_MOVE_FACTOR: float = 0.4

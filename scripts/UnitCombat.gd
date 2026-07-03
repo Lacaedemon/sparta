@@ -38,7 +38,7 @@ static func charge_multiplier(u: Unit, enemy: Unit) -> float:
 	# reversal as set anti-cav spears, floored so a full charge never drops below the
 	# variant's floor. This is what "braces the charge from any direction" means: there's
 	# no open side. Schiltron's hedge is denser and braces harder than the orbis (a lower
-	# floor, a stronger backfire) -- the cavalry specialist's whole point (#488).
+	# floor, a stronger backfire) -- the cavalry specialist's whole point.
 	if enemy.in_schiltron():
 		return maxf(Unit.SCHILTRON_CHARGE_FLOOR, 1.0 - charge * Unit.SCHILTRON_CHARGE_BACKFIRE)
 	if enemy.in_square():
@@ -204,7 +204,7 @@ static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
 ## body count, not a double-counted multiplier. Callers pass their flank (1.0 = frontal/melee).
 ## The orbis (FORMATION_SQUARE) last-stand ring further scales down the base erosion via
 ## formation_morale_erosion_factor -- it holds its nerve better under losses than any other
-## stance, schiltron included (#488).
+## stance, schiltron included.
 static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flank: float) -> void:
 	var morale_scale: float = 1.0 + REAR_MORALE_EXTRA * (morale_flank - 1.0)
 	# Fraction-of-force scaled, not a flat per-head amount -- see Unit.MORALE_LOSS_PER_FULL_LOSS.
