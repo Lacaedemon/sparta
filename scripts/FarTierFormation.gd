@@ -59,7 +59,8 @@ var casualty_carry: float = 0.0
 ## breaks (FarTierRules.is_broken); ROUTING is the persistent flag that keeps it fleeing
 ## rather than fighting even after morale recovers past zero (mirroring the close tier's
 ## rout arc, where morale climbs toward ROUT_RALLY_BASELINE while still routing).
-## Ordinary combat/movement never sets these directly — only FarTierRules.tick_rout_state.
+## Ordinary combat/movement never sets these directly — only FarTierRules.enter_rout,
+## tick_rout, rally, and shatter.
 var routing: bool = false
 ## Counts down from Unit.ROUT_TIME while routing; when it (or the earlier rally check)
 ## resolves, the formation either rallies (routing = false, reduced morale) or shatters
