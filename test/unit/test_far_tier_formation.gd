@@ -31,6 +31,8 @@ func test_defaults_match_a_fresh_full_strength_formation() -> void:
 	assert_eq(rec.march_speed, 45.0)    # Unit.walk_speed default
 	assert_eq(rec.casualty_carry, 0.0)
 	assert_false(rec.is_ranged)         # Unit.is_ranged default
+	assert_false(rec.routing)           # Unit.State.ROUTING default (fresh formations fight)
+	assert_eq(rec.rout_timer, 0.0)
 
 
 func test_fields_round_trip() -> void:
@@ -96,6 +98,23 @@ func test_from_unit_copies_is_ranged() -> void:
 	u.is_ranged = true
 	var rec := FarTierFormation.from_unit(u)
 	assert_true(rec.is_ranged)
+
+
+func test_from_unit_copies_routing_state() -> void:
+	var u := _make_unit()
+	u.state = Unit.State.ROUTING
+	u._rout_timer = 2.5
+	var rec := FarTierFormation.from_unit(u)
+	assert_true(rec.routing)
+	assert_almost_eq(rec.rout_timer, 2.5, 0.0001)
+
+
+func test_from_unit_reports_not_routing_for_a_fighting_unit() -> void:
+	var u := _make_unit()
+	u.state = Unit.State.FIGHTING
+	var rec := FarTierFormation.from_unit(u)
+	assert_false(rec.routing)
+	assert_eq(rec.rout_timer, 0.0)
 
 
 func test_from_unit_derives_casualties_from_losses_so_far() -> void:
