@@ -174,16 +174,25 @@ const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
 
 # Formation modes: how tightly the regiment is packed, plus the two shielded
-# close-order stances built on TIGHT's locked-shield density.
+# close-order stances built on TIGHT's locked-shield density, and the two hollow-square
+# (anti-cavalry ring) variants.
 # TIGHT: soldiers close ranks — better missile defense (shields raised) and
 #        better charge resistance, at the cost of a smaller footprint.
 # NORMAL: default spacing.
 # LOOSE: soldiers spread out — wider area coverage.
-# SQUARE: an anti-cavalry all-around stance (the hollow square / orbis / spear-ring
-#         schiltron). Soldiers face spears/shields outward on every side, so the unit
-#         presents no weak flank or rear to cavalry: the flank/rear damage multiplier
-#         no longer applies against it, and it braces a charge coming from ANY
-#         direction. The price is mobility (it crawls) and reduced offensive output.
+# SQUARE (orbis): the all-around defensive ring, tuned as a last-stand stance. Soldiers
+#         face spears/shields outward on every side, so the unit presents no weak flank
+#         or rear to cavalry: the flank/rear damage multiplier no longer applies against
+#         it, and it braces a charge coming from ANY direction. The price is mobility (it
+#         crawls) and reduced offensive output. Its distinguishing trait vs SCHILTRON is
+#         morale: a ring making its last stand holds together better under losses
+#         (ORBIS_MORALE_EROSION_RESIST).
+# SCHILTRON: the same hollow-square geometry as SQUARE/orbis, but tuned as the cavalry
+#         specialist — a denser hedge of levelled spears braces a charge harder than the
+#         orbis does (a lower charge floor / stronger backfire), at the cost of hitting
+#         even softer in return (SCHILTRON_ATTACK_FACTOR below SQUARE_ATTACK_FACTOR). No
+#         morale bonus — unlike orbis, it isn't a last-stand stance, just the hard
+#         anti-cavalry counter.
 # SHIELD_WALL: shields locked edge-to-edge in a static line. Strong FRONTAL missile
 #        and melee defense, but slow and immobile — a holding stance.
 # TESTUDO: shields locked front, sides, and overhead. Very strong missile defense
@@ -194,6 +203,7 @@ const FORMATION_LOOSE := 2
 const FORMATION_SQUARE := 3
 const FORMATION_SHIELD_WALL := 4
 const FORMATION_TESTUDO := 5
+const FORMATION_SCHILTRON := 6
 # In tight formation, shields reduce incoming missile damage by this fraction.
 const TIGHT_MISSILE_DEFENSE: float = 0.25
 # In tight formation, this fraction of a cavalry charge bonus is absorbed
@@ -216,22 +226,40 @@ const TESTUDO_SPEED_SCALE: float = 0.3
 # Separation-radius scale factors per formation mode.
 const TIGHT_SEPARATION_SCALE: float = 0.75
 const LOOSE_SEPARATION_SCALE: float = 1.35
-# Anti-cavalry square (orbis / schiltron). Its defining trait is all-around defence:
-# no weak flank/rear facing vs cavalry. UnitCombat reads these (gated on in_square()):
+# Anti-cavalry square (orbis / schiltron). Both variants share the defining trait of
+# all-around defence: no weak flank/rear facing vs cavalry. UnitCombat reads these
+# (gated on in_square(), true for SQUARE and SCHILTRON alike):
 #   * a squared unit takes NO flank/rear damage multiplier -- an attack from any
 #     direction is treated as frontal (flank_multiplier returns 1.0). The ring
 #     presents spears/shields on every side.
 #   * a charge into the square backfires like set anti-cav spears from any direction --
-#     the same speed-scaled reversal, floored at SQUARE_CHARGE_FLOOR, so cavalry can't
-#     find an open side to hit at full impact.
-# The stance's cost: mobility (SQUARE_MOVE_FACTOR of pace) and offence
-# (SQUARE_ATTACK_FACTOR of melee/ranged damage) — a hunkered ring is slow and hits softer.
+#     the same speed-scaled reversal, floored at the variant's charge floor, so cavalry
+#     can't find an open side to hit at full impact.
+# The shared cost: mobility (SQUARE_MOVE_FACTOR of pace for both variants). Offence and
+# charge-bracing strength diverge below -- that's what makes them distinct stances
+# rather than one generic square.
 const SQUARE_CHARGE_BACKFIRE: float = 0.5
 const SQUARE_CHARGE_FLOOR: float = 0.6
 const SQUARE_MOVE_FACTOR: float = 0.4
 const SQUARE_ATTACK_FACTOR: float = 0.7
-# The square packs to the same close-order floor as TIGHT (shields locked outward), so
-# it reuses TIGHT_SEPARATION_SCALE and keeps spacing_scale at 1.0.
+# Orbis: the last-stand ring. Its offence/charge-bracing sit at the original square's
+# baseline numbers above; its distinguishing trait is morale (ORBIS_MORALE_EROSION_RESIST
+# below) -- a regiment making its final stand holds its nerve better under losses.
+# Erosion resistance: a fraction ORBIS_MORALE_EROSION_RESIST of the normal morale hit from
+# a casualty is what actually lands (0.7 = 30% less morale erosion per casualty) --
+# register_casualties scales base_erosion by this for a unit in orbis.
+const ORBIS_MORALE_EROSION_RESIST: float = 0.7
+# Schiltron: the cavalry specialist. A denser hedge of levelled spears braces a charge
+# harder than the orbis does -- a lower floor and a stronger backfire, so cavalry that
+# rides into a schiltron comes off worse than riding into an orbis -- at the cost of
+# hitting even softer in return than the orbis's already-reduced offence. No morale bonus:
+# unlike orbis this isn't a last-stand stance, just the hard anti-cavalry counter.
+const SCHILTRON_CHARGE_BACKFIRE: float = 0.75
+const SCHILTRON_CHARGE_FLOOR: float = 0.45
+const SCHILTRON_ATTACK_FACTOR: float = 0.55
+# Both the square (orbis) and the schiltron pack to the same close-order floor as TIGHT
+# (shields locked outward), so they reuse TIGHT_SEPARATION_SCALE and keep spacing_scale
+# at 1.0.
 # Open-order grid-spacing scale. FORMATION_SPACING already sits at the historically
 # attested close-order / locked-shield floor (~0.45 m per man) -- there's no
 # historically grounded room to pack soldiers tighter than that, so TIGHT reuses the
@@ -1454,11 +1482,13 @@ func set_formation(mode: int) -> void:
 	formation_mode = mode
 	var base := _base_separation_radius
 	# The close-order stances all build on TIGHT's locked-shield collision footprint.
-	# SQUARE also packs to that floor but relays out its GRID as a real square
-	# (soldier_world_slots / UnitFormation.square_slots), not the wide line. SHIELD_WALL
-	# and TESTUDO go further and squeeze the grid spacing itself below the floor -- a
-	# real, measurably tighter block -- on top of sharing the tight collision footprint.
-	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE:
+	# SQUARE and SCHILTRON also pack to that floor but relay out their GRID as a real
+	# square (soldier_world_slots / UnitFormation.square_slots), not the wide line --
+	# they're the same hollow-square geometry, differing only in their combat tuning
+	# (see the constants above). SHIELD_WALL and TESTUDO go further and squeeze the grid
+	# spacing itself below the floor -- a real, measurably tighter block -- on top of
+	# sharing the tight collision footprint.
+	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE or mode == FORMATION_SCHILTRON:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
 		spacing_scale = 1.0   # already at the historical close-order/locked-shield floor
 	elif mode == FORMATION_SHIELD_WALL:
@@ -1553,14 +1583,16 @@ func formation_melee_attack_factor() -> float:
 
 
 ## Cap on this unit's top pace, as a fraction of normal. The planted close-order stances
-## (shield wall, testudo, and the anti-cav square) barely move; others march at full speed.
+## (shield wall, testudo, and the two square variants) barely move; others march at full
+## speed. Orbis and schiltron share the same crawl -- SQUARE_MOVE_FACTOR -- their
+## divergence is offence/charge-bracing, not mobility.
 func formation_speed_factor() -> float:
 	match formation_mode:
 		FORMATION_SHIELD_WALL:
 			return SHIELD_WALL_SPEED_SCALE
 		FORMATION_TESTUDO:
 			return TESTUDO_SPEED_SCALE
-		FORMATION_SQUARE:
+		FORMATION_SQUARE, FORMATION_SCHILTRON:
 			return SQUARE_MOVE_FACTOR
 		_:
 			return 1.0
@@ -1587,17 +1619,41 @@ func _is_frontal_attack(attacker: Unit) -> bool:
 	return facing.dot(to_attacker.normalized()) > 0.0
 
 
-## True when the unit is holding the anti-cavalry square (orbis / schiltron): the
-## all-around defensive ring. Combat reads this to negate the flank/rear multiplier
-## and brace a charge from any direction; movement reads it for the mobility penalty.
+## True when the unit is holding either hollow-square variant (orbis / SQUARE, or
+## schiltron / SCHILTRON): the all-around defensive ring. Combat reads this to negate
+## the flank/rear multiplier and brace a charge from any direction; movement reads it
+## for the mobility penalty; the formation-geometry helpers read it for the square grid.
 func in_square() -> bool:
-	return formation_mode == FORMATION_SQUARE
+	return formation_mode == FORMATION_SQUARE or formation_mode == FORMATION_SCHILTRON
 
 
-## Offensive-output scale from the formation stance. The square hunkers to defend on
-## every side, so it hits softer (SQUARE_ATTACK_FACTOR); every other stance is 1.0.
+## True when the unit is specifically in the schiltron variant (the cavalry specialist),
+## as opposed to the orbis (plain SQUARE). Combat reads this for schiltron's stronger
+## charge brace and deeper offence penalty; morale erosion reads its complement (orbis
+## alone gets the last-stand resistance).
+func in_schiltron() -> bool:
+	return formation_mode == FORMATION_SCHILTRON
+
+
+## Offensive-output scale from the formation stance. Both square variants hunker to
+## defend on every side, so they hit softer -- schiltron harder still than orbis
+## (SCHILTRON_ATTACK_FACTOR < SQUARE_ATTACK_FACTOR), trading offence for the stronger
+## anti-cavalry brace below. Every other stance is 1.0.
 func formation_attack_factor() -> float:
-	return SQUARE_ATTACK_FACTOR if formation_mode == FORMATION_SQUARE else 1.0
+	if formation_mode == FORMATION_SCHILTRON:
+		return SCHILTRON_ATTACK_FACTOR
+	if formation_mode == FORMATION_SQUARE:
+		return SQUARE_ATTACK_FACTOR
+	return 1.0
+
+
+## Scale applied to morale erosion from a casualty (UnitCombat.register_casualties). Orbis
+## is tuned as the last-stand ring: it holds its nerve better under losses
+## (ORBIS_MORALE_EROSION_RESIST -- less erosion per casualty). Schiltron is the cavalry
+## specialist, not a morale stance, so it takes normal erosion like any other formation;
+## every other mode is unscaled too.
+func formation_morale_erosion_factor() -> float:
+	return ORBIS_MORALE_EROSION_RESIST if formation_mode == FORMATION_SQUARE else 1.0
 
 
 ## Push out of any overlapping unit so regiments form a solid line instead of
@@ -1867,37 +1923,39 @@ func soldier_world_slots(count: int) -> PackedVector2Array:
 
 
 ## The file count (frontage) UNDER THE CURRENT formation_mode, for `count` soldiers.
-## SQUARE lays out its own square grid (UnitFormation.square_files, files ~= ranks),
-## not the wide-line frontage every other formation uses (UnitFormation.frontage). This is
-## the SINGLE source of truth for "how many files is the live grid" -- formation_slots,
-## soldier_world_facings, AND the combat geometry that reasons about ranks (_front_depth,
-## engaged_soldier_indices) all key off this, so a SQUARE unit's front-rank/engaged-soldier
-## math always agrees with the grid its soldiers are actually standing on, instead of the
-## render reading one file count and combat reading another. Pure -- a function of (count,
-## formation_mode, the unit's frontage inputs).
+## Either square variant (in_square(): SQUARE/orbis or SCHILTRON) lays out its own square
+## grid (UnitFormation.square_files, files ~= ranks), not the wide-line frontage every
+## other formation uses (UnitFormation.frontage). This is the SINGLE source of truth for
+## "how many files is the live grid" -- formation_slots, soldier_world_facings, AND the
+## combat geometry that reasons about ranks (_front_depth, engaged_soldier_indices) all key
+## off this, so a squared unit's front-rank/engaged-soldier math always agrees with the
+## grid its soldiers are actually standing on, instead of the render reading one file count
+## and combat reading another. Pure -- a function of (count, formation_mode, the unit's
+## frontage inputs).
 func formation_files(count: int) -> int:
-	if formation_mode == FORMATION_SQUARE:
+	if in_square():
 		return UnitFormation.square_files(count)
 	return UnitFormation.frontage(self)
 
 
-## Local-space slot layout for `count` soldiers under the CURRENT formation_mode.
-## SQUARE lays out a real square grid (UnitFormation.square_slots -- files ~= ranks, bbox
-## aspect ~1) instead of the wide line frontage, so the block's actual footprint -- and
-## everything sized off it (soldier_world_slots, the render extent/shadow) -- reads as a
-## square, not just a combat-multiplier flag. Every other mode keeps the wide-line grid
-## (UnitFormation.slots), with SHIELD_WALL/TESTUDO already packed tighter via spacing_scale
-## (set in set_formation). Pure -- a function of (count, formation_mode, spacing_scale, the
-## unit's frontage inputs) -- so it stays deterministic and replay-safe like the callers below.
+## Local-space slot layout for `count` soldiers under the CURRENT formation_mode. Either
+## square variant lays out a real square grid (UnitFormation.square_slots -- files ~=
+## ranks, bbox aspect ~1) instead of the wide line frontage, so the block's actual
+## footprint -- and everything sized off it (soldier_world_slots, the render
+## extent/shadow) -- reads as a square, not just a combat-multiplier flag. Every other
+## mode keeps the wide-line grid (UnitFormation.slots), with SHIELD_WALL/TESTUDO already
+## packed tighter via spacing_scale (set in set_formation). Pure -- a function of (count,
+## formation_mode, spacing_scale, the unit's frontage inputs) -- so it stays deterministic
+## and replay-safe like the callers below.
 func formation_slots(count: int) -> PackedVector2Array:
-	if formation_mode == FORMATION_SQUARE:
+	if in_square():
 		return UnitFormation.block_slots(count, formation_files(count), FORMATION_SPACING * spacing_scale)
 	return UnitFormation.slots(self, count)
 
 
 ## World-space per-soldier facing directions for `count` soldiers, index-aligned with
-## soldier_world_slots. SQUARE points every soldier on the block's outer ring
-## radially OUTWARD from the block centre -- the anti-cav ring actually presents
+## soldier_world_slots. Either square variant points every soldier on the block's outer
+## ring radially OUTWARD from the block centre -- the anti-cav ring actually presents
 ## shields/spears on every side, not one uniform facing -- while the interior fill keeps
 ## the unit's own heading. Every other formation is uniform at the unit's heading (the
 ## prior behaviour). Pure -- deterministic in (count, position, facing, formation_mode,
@@ -1905,7 +1963,7 @@ func formation_slots(count: int) -> PackedVector2Array:
 func soldier_world_facings(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	out.resize(count)
-	if formation_mode != FORMATION_SQUARE:
+	if not in_square():
 		out.fill(facing)
 		return out
 	var files: int = formation_files(count)
@@ -2459,6 +2517,8 @@ func formation_summary() -> String:
 			return "Shield Wall"
 		FORMATION_TESTUDO:
 			return "Testudo"
+		FORMATION_SCHILTRON:
+			return "Schiltron"
 		_:
 			return "Normal"
 

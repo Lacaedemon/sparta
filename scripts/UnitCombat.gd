@@ -33,10 +33,14 @@ static func charge_multiplier(u: Unit, enemy: Unit) -> float:
 	# Speed directed at the target (combines closing speed and angle, relative to it).
 	var speed_toward: float = maxf(0.0, u._approach_velocity.dot(to_target.normalized()))
 	var charge: float = Unit.CHARGE_BONUS_AT_REF_SPEED * (speed_toward / Unit.CHARGE_REFERENCE_SPEED)
-	# Anti-cavalry square: a spear-ring set on every side, so a charge from ANY
-	# direction meets braced spears and backfires -- the same speed-scaled reversal
-	# as set anti-cav spears, floored so a full charge never drops below x0.6. This
-	# is what "braces the charge from any direction" means: there's no open side.
+	# Anti-cavalry square (either variant): a spear-ring set on every side, so a charge
+	# from ANY direction meets braced spears and backfires -- the same speed-scaled
+	# reversal as set anti-cav spears, floored so a full charge never drops below the
+	# variant's floor. This is what "braces the charge from any direction" means: there's
+	# no open side. Schiltron's hedge is denser and braces harder than the orbis (a lower
+	# floor, a stronger backfire) -- the cavalry specialist's whole point.
+	if enemy.in_schiltron():
+		return maxf(Unit.SCHILTRON_CHARGE_FLOOR, 1.0 - charge * Unit.SCHILTRON_CHARGE_BACKFIRE)
 	if enemy.in_square():
 		return maxf(Unit.SQUARE_CHARGE_FLOOR, 1.0 - charge * Unit.SQUARE_CHARGE_BACKFIRE)
 	if enemy.anti_cavalry:
@@ -198,11 +202,15 @@ static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
 ## driven by the casualty COUNT; `morale_flank` adds only the OPTIONAL extra rear/flank debuff
 ## gated by REAR_MORALE_EXTRA (0 by default), so a rear attack shakes morale through its higher
 ## body count, not a double-counted multiplier. Callers pass their flank (1.0 = frontal/melee).
+## The orbis (FORMATION_SQUARE) last-stand ring further scales down the base erosion via
+## formation_morale_erosion_factor -- it holds its nerve better under losses than any other
+## stance, schiltron included.
 static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flank: float) -> void:
 	var morale_scale: float = 1.0 + REAR_MORALE_EXTRA * (morale_flank - 1.0)
 	# Fraction-of-force scaled, not a flat per-head amount -- see Unit.MORALE_LOSS_PER_FULL_LOSS.
 	var casualty_frac: float = float(total) / float(u.max_soldiers) if u.max_soldiers > 0 else 0.0
-	var base_erosion: float = casualty_frac * Unit.MORALE_LOSS_PER_FULL_LOSS * morale_scale
+	var base_erosion: float = casualty_frac * Unit.MORALE_LOSS_PER_FULL_LOSS * morale_scale \
+			* u.formation_morale_erosion_factor()
 	u.morale -= base_erosion
 	var ratio: float = float(u.soldiers) / float(u.max_soldiers)
 	if ratio < Unit.MORALE_CRUMBLE_RATIO_THRESHOLD:

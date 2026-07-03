@@ -28,6 +28,7 @@ func test_formation_name_maps_each_member() -> void:
 	assert_eq(DemoState.formation_name(3), "SQUARE")
 	assert_eq(DemoState.formation_name(4), "SHIELD_WALL")
 	assert_eq(DemoState.formation_name(5), "TESTUDO")
+	assert_eq(DemoState.formation_name(6), "SCHILTRON")
 
 
 func test_formation_name_unknown_int_is_visible_token() -> void:

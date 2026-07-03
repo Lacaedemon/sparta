@@ -60,6 +60,7 @@ func test_key_step_maps_to_a_keycode() -> void:
 	assert_eq(r._by_tick[10][0]["kind"], "key", "a key step is a key event")
 	assert_eq(r._by_tick[10][0]["keycode"], KEY_Y, "the key string resolves to its keycode")
 	assert_false(r._by_tick[10][0]["ctrl"], "ctrl defaults off")
+	assert_false(r._by_tick[10][0]["shift"], "shift defaults off")
 
 
 func test_key_step_ctrl_sets_the_ctrl_modifier() -> void:
@@ -67,6 +68,13 @@ func test_key_step_ctrl_sets_the_ctrl_modifier() -> void:
 	var r = _rec()
 	r._schedule([{"tick": 6, "key": "H", "ctrl": true}])
 	assert_true(r._by_tick[6][0]["ctrl"], "ctrl: true marks the event ctrl-chorded")
+
+
+func test_key_step_shift_sets_the_shift_modifier() -> void:
+	# Shift+O drives the schiltron toggle, sharing O's key with orbis.
+	var r = _rec()
+	r._schedule([{"tick": 6, "key": "O", "shift": true}])
+	assert_true(r._by_tick[6][0]["shift"], "shift: true marks the event shift-chorded")
 
 
 func test_box_expands_to_a_left_drag() -> void:

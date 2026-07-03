@@ -299,9 +299,8 @@ every direction.
 ## Form square against cavalry
 
 When horse threatens a unit's flank or rear and you have no spear screen to spare,
-press <kbd>O</kbd> (for *orbis*) to form **Square** at once --- the hollow square /
-orbis / schiltron. (<kbd>O</kbd> jumps straight there, and the control bar's Square
-button does too; <kbd>T</kbd> also reaches it by cycling through Tight and Loose.) The
+form a hollow **square** at once: <kbd>O</kbd> (for *orbis*) jumps straight to the
+Square stance, and <kbd>T</kbd> also reaches it by cycling through Tight and Loose. The
 soldiers face outward on every side, so the unit presents **no weak facing**: an
 attack from any direction lands as if it were frontal (the usual ×1.5 flank / ×2 rear
 bonus is gone), and a cavalry charge into the ring is braced and **backfires** whether
@@ -319,6 +318,25 @@ Square is a defensive commitment, not a free upgrade. While it holds, the unit
   charge *and* keeps your line mobile and hitting hard; square is what you reach for
   when a unit is caught in the open with cavalry on a bad angle.
 
+**Orbis vs schiltron.** The hollow square comes in two variants with different
+trade-offs, not one generic stance:
+
+- **Orbis** (<kbd>O</kbd>, or the control bar's **Square (Orbis)** button) is the
+  last-stand ring. Its charge brace and offence sit at the square's baseline, but it
+  holds its nerve better than any other stance --- casualties erode its morale more
+  slowly, so a surrounded unit fighting to the end is less likely to break outright.
+  Reach for it when a unit is cut off and simply needs to survive as long as possible.
+- **Schiltron** (<kbd>Shift</kbd> + <kbd>O</kbd>, or the control bar's **Schiltron**
+  button) is the cavalry specialist. Its denser hedge of levelled spears braces a
+  charge *harder* than the orbis does --- cavalry riding into a schiltron comes off
+  worse than riding into an orbis --- at the cost of hitting even softer in return,
+  and it carries no morale bonus. Reach for it when the priority is breaking the
+  charge itself, not outlasting
+  a siege.
+
+Both variants share the same hollow-square footprint and the same mobility penalty;
+only the charge-bracing strength, offence, and morale resilience differ.
+
 ::: {#fig-square .demo}
 
 ```{=html}
@@ -334,6 +352,22 @@ Anti-cavalry square: an infantry unit is charged in the rear by two cavalry,
 then cycled to Square (T). The hollow ring faces outward on every side,
 so the rear charge finds no weak facing and is braced from behind &mdash;
 the unit holds where a rear-charged line would break.
+:::
+
+::: {#fig-schiltron .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/schiltron.jpg">
+  <source src="media/schiltron.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Schiltron: the same rear cavalry charge as above, but the unit forms
+Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge
+harder than orbis does, at a deeper offence cost.
 :::
 
 ## Weapon reach
