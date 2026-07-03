@@ -187,7 +187,7 @@ func test_a_broken_formation_does_not_use_the_ordinary_recovery_path() -> void:
 	assert_eq(rec.morale, 0.0, "a broken formation doesn't use the ordinary rest recovery")
 
 
-# --- rout / rally / shatter (#580) ----------------------------------------------------------
+# --- rout / rally / shatter -------------------------------------------------------------------
 
 func test_apply_casualties_latches_rout_the_instant_morale_hits_zero() -> void:
 	# Mirrors register_casualties' own trigger order: enter_rout fires in the SAME call
@@ -365,7 +365,7 @@ func test_tick_rout_rallies_when_the_timer_expires_with_enough_survivors_and_bro
 
 
 func test_tick_pair_routes_a_broken_side_instead_of_absorbing() -> void:
-	# The done-check for #580: a side that breaks flees rather than sitting inert forever.
+	# The done-check for the rout/rally arc: a side that breaks flees rather than sitting inert forever.
 	var a := _make_rec(Vector2.ZERO, Vector2.DOWN)
 	var b := _make_rec(Vector2(0.0, 40.0), Vector2.UP)   # already in melee contact
 	a.morale = 1.0
@@ -389,7 +389,7 @@ func test_tick_pair_a_routing_side_deals_no_attrition_either() -> void:
 
 
 func test_tick_pair_is_still_deterministic_through_a_full_rout_arc() -> void:
-	# The design doc's determinism invariant, extended through #580's new state: same
+	# The design doc's determinism invariant, extended through the new rout/rally state: same
 	# records, same tick sequence, twice, all the way through a break-flee-rally arc.
 	var results: Array = []
 	for run in 2:
@@ -460,7 +460,7 @@ func test_striking_range_is_asymmetric_for_a_longer_reach() -> void:
 	assert_false(FarTierRules.in_striking_range(swords, spears))
 
 
-# --- ranged/volley attrition (#579) ---------------------------------------------------------
+# --- ranged/volley attrition ------------------------------------------------------------------
 
 func test_ranged_striking_range_uses_ranged_range_not_melee_reach() -> void:
 	var archers := _make_rec(Vector2.ZERO, Vector2.DOWN)
@@ -508,6 +508,21 @@ func test_ranged_casualty_rate_is_one_expected_volley_per_ranged_interval() -> v
 	archers.is_ranged = true
 	var expected: float = (6.0 * Unit.RANGED_DAMAGE_FACTOR) / Unit.RANGED_INTERVAL
 	assert_almost_eq(FarTierRules.casualty_rate(archers, pair[1]), expected, 0.0001)
+
+
+func test_ranged_casualty_rate_does_not_scale_down_for_a_thinned_formation() -> void:
+	# UnitCombat.shoot draws volley damage from the flat attack stat with no soldier-count
+	# scaling: a 10-man archer regiment volleys exactly as hard as a 140-man one. The
+	# strength_ratio thinning term is melee-only (its own justification is grounded in the
+	# close tier's per-soldier melee path), so a half-strength archer formation must inflict
+	# the SAME casualty rate as a full-strength one, unlike the melee case above.
+	var pair := _frontal_pair()
+	var archers: FarTierFormation = pair[0]
+	archers.is_ranged = true
+	var full_rate: float = FarTierRules.casualty_rate(archers, pair[1])
+	archers.count = 60   # half of max_soldiers (120)
+	assert_almost_eq(FarTierRules.casualty_rate(archers, pair[1]), full_rate, 0.0001,
+		"a thinned archer formation volleys exactly as hard as a full-strength one")
 
 
 func test_ranged_defender_uses_missile_defense_not_melee_defense() -> void:
@@ -674,7 +689,7 @@ func test_the_stronger_side_wins_and_recovers_after_the_fight() -> void:
 	_run_pair_to_resolution(strong, weak, _pair_budget_ticks(strong, weak))
 	assert_true(FarTierRules.can_fight(strong), "the stronger side is still in the fight")
 	assert_false(FarTierRules.can_fight(weak), "the weaker side broke first")
-	assert_true(weak.routing, "the weaker side is routing, not merely absorbing (#580)")
+	assert_true(weak.routing, "the weaker side is routing, not merely absorbing")
 	assert_lt(strong.casualties, weak.casualties, "the winner bled less")
 	# Post-fight: the survivor recovers morale where it stands (tick_pair's rest branch),
 	# and the routing side flees rather than fighting on.

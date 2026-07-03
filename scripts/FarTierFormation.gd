@@ -54,7 +54,7 @@ var is_ranged: bool = false
 ## a disengage the way the close tier's attack timer does.
 var casualty_carry: float = 0.0
 
-## Rout state (FarTierRules phase 2 follow-up, #580) — the aggregate analog of
+## Rout state (a FarTierRules phase 2 follow-up) — the aggregate analog of
 ## Unit.state == State.ROUTING / Unit._rout_timer. A formation whose morale hits zero
 ## breaks (FarTierRules.is_broken); ROUTING is the persistent flag that keeps it fleeing
 ## rather than fighting even after morale recovers past zero (mirroring the close tier's
