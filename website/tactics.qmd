@@ -104,6 +104,15 @@ bloodied. So a veteran unit facing the same sustained pressure still routs
 eventually --- it just takes noticeably longer and costs the attacker more losses
 to break it than a green unit under the same attack.
 
+**Rank relief (discipline toggle).** Rank cycling is on by default for every unit,
+but you can switch it off with <kbd>I</kbd> (see [How to play](how-to-play.qmd) for
+the control). A unit with rank relief off holds its ranks fixed --- no fatigue
+relief, no in-fight morale recovery from cycling --- which trades away that
+endurance edge for a line that never opens the small gaps a whistled rotation
+briefly creates. Leave it on for a grinding attritional fight; consider switching
+it off only when you'd rather keep the front rank locked in place than let it
+step back mid-melee.
+
 ## Line relief
 
 Rank cycling rotates soldiers *within* a regiment; **line relief** rotates whole
@@ -318,11 +327,12 @@ trade-offs, not one generic stance:
   holds its nerve better than any other stance --- casualties erode its morale more
   slowly, so a surrounded unit fighting to the end is less likely to break outright.
   Reach for it when a unit is cut off and simply needs to survive as long as possible.
-- **Schiltron** (<kbd>I</kbd>, or the control bar's **Schiltron** button) is the
-  cavalry specialist. Its denser hedge of levelled spears braces a charge *harder* than
-  the orbis does --- cavalry riding into a schiltron comes off worse than riding into
-  an orbis --- at the cost of hitting even softer in return, and it carries no morale
-  bonus. Reach for it when the priority is breaking the charge itself, not outlasting
+- **Schiltron** (<kbd>Shift</kbd> + <kbd>O</kbd>, or the control bar's **Schiltron**
+  button) is the cavalry specialist. Its denser hedge of levelled spears braces a
+  charge *harder* than the orbis does --- cavalry riding into a schiltron comes off
+  worse than riding into an orbis --- at the cost of hitting even softer in return,
+  and it carries no morale bonus. Reach for it when the priority is breaking the
+  charge itself, not outlasting
   a siege.
 
 Both variants share the same hollow-square footprint and the same mobility penalty;
@@ -357,8 +367,8 @@ the unit holds where a rear-charged line would break.
 ```
 
 Schiltron: the same rear cavalry charge as above, but the unit forms
-Schiltron (I) instead of Orbis. The denser hedge braces the charge harder
-than orbis does, at a deeper offence cost.
+Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge
+harder than orbis does, at a deeper offence cost.
 :::
 
 ## Weapon reach

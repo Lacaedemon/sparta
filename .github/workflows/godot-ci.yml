@@ -1,6 +1,18 @@
 # CI for the Godot game: imports the project (validating scripts/scenes in full
 # context) and runs the GUT unit-test suite headlessly. No export presets exist
 # yet, so this validates and tests rather than exporting a build.
+#
+# Runs on every PR AND on every push to main. The push-to-main trigger matters on
+# its own: a PR only ever sees the two-way merge of its branch with main at review
+# time, never the *combination* of several PRs that landed in quick succession.
+# Two individually-clean PRs can still collide semantically once both are on main
+# (one PR removed fields from a shared script that another PR, reviewed against an
+# older main, still read -- each PR's own CI was green, but the merged result broke
+# several tests).
+# A push-to-main run is the first point that combination actually exists, so it's
+# the first point this class of bug can be caught -- but only if a red run there
+# gets noticed. The `notify-on-main-failure` job below turns that into a filed
+# issue instead of a red check nobody happens to look at.
 name: Godot CI
 
 on:
@@ -60,3 +72,53 @@ jobs:
           godot --headless -s addons/gut/gut_cmdln.gd \
             -gdir=res://test -ginclude_subdirs -gexit \
             -gjunit_xml_file=res://test_results.xml
+
+  notify-on-main-failure:
+    name: File issue for main breakage
+    needs: test
+    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read   # actions/checkout needs this; an explicit permissions:
+                       # block replaces the default token scope, not adds to it
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Open or update the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          MARKER="<!-- sparta-ci-main-failure -->"
+          TITLE="main CI red: Godot CI failed on push (${SHA:0:7})"
+          BODY=$(printf '%s\n## Validate & test failed on push to main\n\nCommit: %s\nRun: %s\n\nThis is most likely a semantic collision between two individually-clean PRs that\nmerged cleanly but combine incorrectly (see #600 for the case that motivated this\ncheck) -- each PR passed its own CI, but the merged tree does not. `git bisect`\nor `bash tools/check.sh test` against recent main commits to isolate which merge\nintroduced the break.\n\nThis issue stays open (and threads further failures as comments) until a later\npush to main goes green, which closes it automatically.' \
+            "$MARKER" "$SHA" "$RUN_URL")
+          UPDATE_BODY=$(printf 'Still red at %s (%s).' "${SHA:0:7}" "$RUN_URL")
+          tools/ci/upsert-issue.sh \
+            "${{ github.repository }}" "$MARKER" "ci-failure" "$TITLE" "$BODY" "ci-failure,P0" "$UPDATE_BODY"
+
+  resolve-main-failure:
+    name: Close tracking issue on green
+    needs: test
+    if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read   # actions/checkout needs this; an explicit permissions:
+                       # block replaces the default token scope, not adds to it
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Close the tracking issue if one is open
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          MARKER="<!-- sparta-ci-main-failure -->"
+          COMMENT=$(printf 'Resolved: Validate & test passed on push to main at %s (%s).' "${SHA:0:7}" "$RUN_URL")
+          tools/ci/resolve-issue.sh "${{ github.repository }}" "$MARKER" "ci-failure" "$COMMENT"

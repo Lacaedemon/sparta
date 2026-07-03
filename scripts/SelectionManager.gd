@@ -228,7 +228,15 @@ func _unhandled_input(event: InputEvent) -> void:
 func _dispatch_key(event: InputEventKey) -> bool:
 	var mode: int = _order_mode_for_keycode(event.physical_keycode)
 	if mode >= 0:
-		_set_armed_mode(mode)   # arm a smart-order stance
+		if event.ctrl_pressed:
+			# Ctrl+<stance key> writes the stance in place immediately -- no move/attack
+			# needed -- instead of arming it for the next order (see enqueue_stance).
+			_issue_stance(mode)
+		else:
+			_set_armed_mode(mode)   # arm a smart-order stance
+		return true
+	elif event.keycode == KEY_I:
+		_toggle_rank_relief()   # I: toggle the intra-unit rank-relief (discipline) mode
 		return true
 	elif event.keycode == KEY_V:
 		_issue_conversio()   # conversio: every soldier reverses 180° in place
@@ -260,18 +268,19 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_T:
 		_cycle_formation()   # cycle normal → tight → loose → square for selected units
 		return true
+	elif event.keycode == KEY_O and event.shift_pressed:
+		# Shift+O jumps straight to the schiltron -- the other hollow-square variant,
+		# sharing O's key since every plain letter is already claimed (I is the
+		# rank-relief toggle). The harder anti-cavalry brace, at a deeper offence cost
+		# than orbis. Toggles back to Normal like the other direct-select stances.
+		_toggle_schiltron()
+		return true
 	elif event.keycode == KEY_O:
 		# Jump straight to the anti-cavalry square (O for orbis) -- a fast reaction to
 		# a charge, without cycling through Tight/Loose first. Toggles back to Normal
-		# so the same key drops the square once the horse is beaten off.
+		# so the same key drops the square once the horse is beaten off. (Shift+O
+		# reaches the schiltron variant instead -- see above.)
 		_toggle_square()
-		return true
-	elif event.keycode == KEY_I:
-		# Jump straight to the schiltron (I sits next to O for orbis, so the two
-		# hollow-square variants share a key row). The harder anti-cavalry brace, at
-		# a deeper offence cost than orbis. Toggles back to Normal like the other
-		# direct-select stances.
-		_toggle_schiltron()
 		return true
 	elif event.keycode == KEY_L:
 		# Lock the shield wall (L for locked shields) -- a frontal holding stance.
@@ -679,6 +688,44 @@ func _issue_nudge(dir: int) -> void:
 	Sfx.play(&"order")
 
 
+## Ctrl+<stance key>: write `mode` on every selected friendly unit in place, no
+## move/attack needed -- unlike the plain hotkey, which only ARMS the stance for the
+## next order. Routed through Battle.enqueue_stance so it's recorded and replays
+## exactly (RankRelief.LEAVE: this gesture never touches the rank-relief mode).
+func _issue_stance(mode: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	_battle.enqueue_stance(uids, mode, BattleRef.RankRelief.LEAVE)
+	if _hud != null:
+		_hud.flash_message(str(BattleRef.ORDER_MODE_NAMES.get(mode, "")))
+	Sfx.play(&"order")
+
+
+## I: toggle the intra-unit rank-relief (discipline) mode on every selected friendly
+## unit -- the training-driven rank-cycle/morale-recovery knob. A shared
+## direct-select toggle like _toggle_formation: flips OFF if the lead unit currently
+## has it ON, else ON, so a mixed selection follows the lead unit's setting. Routed
+## through Battle.enqueue_stance (stance -1 = leave the order_mode alone) so the
+## toggle is recorded and replays exactly.
+func _toggle_rank_relief() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if _selected.is_empty() or not is_instance_valid(_selected[0]):
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	var turning_on: bool = not _selected[0].rank_relief
+	var toggle: int = BattleRef.RankRelief.ON if turning_on else BattleRef.RankRelief.OFF
+	_battle.enqueue_stance(uids, -1, toggle)
+	if _hud != null:
+		_hud.flash_message("Rank relief: %s" % ("On" if turning_on else "Off"))
+	Sfx.play(&"order")
+
+
 ## Whether any friendly unit is currently selected. The camera reads this so the
 ## arrow keys nudge the selection instead of panning while a unit is selected
 ## (WASD always pans regardless).
@@ -719,8 +766,8 @@ func _toggle_square() -> void:
 
 
 ## Directly set (or unset) the schiltron on all selected friendly units -- the cavalry
-## specialist among the two hollow-square variants (#488): a harder charge brace than
-## orbis at a deeper offence cost. Same toggle semantics as _toggle_square.
+## specialist among the two hollow-square variants: a harder charge brace than orbis
+## at a deeper offence cost. Same toggle semantics as _toggle_square.
 func _toggle_schiltron() -> void:
 	_toggle_formation(Unit.FORMATION_SCHILTRON)
 

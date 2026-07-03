@@ -108,7 +108,12 @@ script under `demos/inputs/`:
   - `rmb_drag { "from": [x,y], "to": [x,y], "shift": false }` — a right-drag (move / form-up;
     `shift` toggles the form-up ordering variant). Drags animate over a few ticks so the
     live preview renders.
-  - `key "Y"` — a gameplay hotkey press (formation cycle, order stance, etc.).
+  - `key "Y"` — a gameplay hotkey press (formation cycle, order stance, etc.). Add
+    `"ctrl": true` to chord it with Ctrl (e.g. `{"key": "H", "ctrl": true}` writes the
+    Hold stance on the selection in place — see the stance-order gesture in
+    `how-to-play.qmd`) or `"shift": true` to chord it with Shift (e.g.
+    `{"key": "O", "shift": true}` jumps straight to the schiltron stance, sharing
+    orbis's O key — see "Square: orbis and schiltron" in `how-to-play.qmd`).
 - `drill` (optional bool) — solo/no-opponent rehearsal: only the player army (team 0)
   deploys and the battle never auto-ends on "no enemies", so a unit can rehearse a maneuver
   with no combat. Good for maneuver demos (quarter-turn, conversio, wheeling).
@@ -260,7 +265,7 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `position`, `facing` | World-space `[x, y]` pairs (rounded). |
 | `morale` | Current morale (100 = fresh; a rout triggers at 0). |
 | `state` | Readable `State` name — `IDLE` / `MOVING` / `FIGHTING` / `ROUTING` / `DEAD`. |
-| `formation` | Readable formation — `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE` / `SHIELD_WALL` / `TESTUDO`. |
+| `formation` | Readable formation — `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE` / `SHIELD_WALL` / `TESTUDO` / `SCHILTRON`. |
 | `soldiers` | Living soldier count (drops as the unit takes casualties). |
 | `current_speed` | Current movement speed (world units/s). |
 | `order_mode` | Readable order stance (`Normal`, `Hold`, `Attack flank`, …). |

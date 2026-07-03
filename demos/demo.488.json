@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/schiltron.json",
-  "caption": "Schiltron (I): the cavalry-specialist hollow-square variant. Watch the lone infantry unit brace a rear cavalry charge harder than the plain orbis (O) would -- the trade is a deeper offence penalty and no morale bonus, unlike orbis's last-stand resilience.",
+  "caption": "Schiltron (Shift+O): the cavalry-specialist hollow-square variant. Watch the lone infantry unit brace a rear cavalry charge harder than the plain orbis (O) would -- the trade is a deeper offence penalty and no morale bonus, unlike orbis's last-stand resilience.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 15,

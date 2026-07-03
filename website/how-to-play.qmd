@@ -42,9 +42,11 @@ Selecting units and issuing move/attack orders during a battle.
 | Relieve a friendly | **Right-click** an engaged friendly outside the selection --- the fresh unit takes over the fight and the tired one falls back |
 | Add waypoint | **Shift + Right-click** (chain several move points) |
 | Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>J</kbd> cycle charge · <kbd>Esc</kbd> clear |
+| Set stance in place | <kbd>Ctrl</kbd> + a stance key writes that stance on the selection immediately --- no move/attack order needed |
+| Rank relief (discipline) | <kbd>I</kbd> toggles rank cycling for the selection (on by default; see [Tactics](tactics.qmd#rank-cycling-trained-units)) |
 | Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose / Square) · or **control bar** |
 | Anti-cavalry square | <kbd>O</kbd> jumps straight to Square / orbis (press again to drop back to Normal) · or click **Square (Orbis)** in the control bar |
-| Schiltron | <kbd>I</kbd> jumps straight to Schiltron, the harder-bracing anti-cavalry variant (press again to drop back to Normal) · or click **Schiltron** in the control bar |
+| Schiltron | <kbd>Shift</kbd> + <kbd>O</kbd> jumps straight to Schiltron, the harder-bracing anti-cavalry variant (press again to drop back to Normal) · or click **Schiltron** in the control bar |
 | Shielded stances | <kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or the **control bar** menu |
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | File-doubling | <kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) |
@@ -75,9 +77,10 @@ Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking
 
 - **Formation** --- click Normal, Tight, Loose, or Square (Orbis) directly (same as
   <kbd>T</kbd>), or pick one of the other direct-select stances: **Schiltron**
-  (<kbd>I</kbd>, the harder-bracing anti-cavalry variant), **Shield Wall** (<kbd>L</kbd>),
-  or **Testudo** (<kbd>U</kbd>). <kbd>T</kbd> cycles only the density set plus Square; the
-  other three stances are set from the menu or their direct keys.
+  (<kbd>Shift</kbd> + <kbd>O</kbd>, the harder-bracing anti-cavalry variant),
+  **Shield Wall** (<kbd>L</kbd>), or **Testudo** (<kbd>U</kbd>). <kbd>T</kbd> cycles only
+  the density set plus Square; the other three stances are set from the menu or their
+  direct keys.
 - **Stance** --- click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).
 - **Reform** --- toggle Reform before move (same as ☰ Menu → Reform before move).
 - **Focused atk / Spread atk** --- cycle the group-attack mode (same as <kbd>X</kbd>).
@@ -272,6 +275,30 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
   standoff, and charge again, so each run lands a fresh momentum hit instead of
   grinding once the charge is spent (see [Tactics](tactics.qmd#order-stances)).
 
+Pressing a stance key alone only **arms** it for your next move/attack order ---
+it doesn't touch a unit that's already standing still. To change a selected
+unit's stance right where it stands, with no move needed, hold <kbd>Ctrl</kbd>
+while pressing the stance key; a toast confirms the write. Separately,
+<kbd>I</kbd> toggles each selected unit's **rank relief** (discipline) mode ---
+the on-by-default knob behind rank cycling (see
+[Tactics](tactics.qmd#rank-cycling-trained-units)) --- with its own confirming
+toast.
+
+::: {#fig-stance-order .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/stance_order.jpg">
+  <source src="media/stance_order.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Setting a stance in place with <kbd>Ctrl</kbd>+<kbd>H</kbd>, then toggling
+rank relief off with <kbd>I</kbd> --- both confirmed by a flash toast.
+:::
+
 ::: {#fig-support .demo}
 
 ```{=html}
@@ -352,9 +379,9 @@ There are two variants of the ring, trading off differently:
   charge *harder* than the orbis does, so cavalry that rides into a schiltron comes off
   worse than riding into an orbis, at the cost of hitting even softer in return. It
   carries no morale bonus --- unlike orbis this isn't a last-stand stance, just the hard
-  anti-cavalry counter. <kbd>I</kbd> (next to <kbd>O</kbd> on the keyboard) jumps a unit
-  straight to Schiltron --- press it again to drop back to Normal --- and the control
-  bar's **Schiltron** button does the same.
+  anti-cavalry counter. <kbd>Shift</kbd> + <kbd>O</kbd> jumps a unit straight to
+  Schiltron --- press it again to drop back to Normal --- and the control bar's
+  **Schiltron** button does the same.
 
 **Shielded close-order stances.** Two heavier stances build on Tight's locked-shield
 density, chosen from the control-bar Formation menu:
