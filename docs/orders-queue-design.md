@@ -2,7 +2,8 @@
 
 Status: **in implementation — phases 1–3 landed** (the `Order` type + queue +
 apply-once, the movement-maneuver migration, and the transition/relief/waypoint
-absorption); phases 4–5 remain design. This
+absorption); phases 4–5 (the guard vocabulary and the transcript's remaining
+gaps) are implemented and in review (#525, #526). This
 note consolidates the design from #516 (and its refinement comments) into one
 spec, and lays out the phased implementation plan tracked by the phase issues
 linked below.
@@ -429,6 +430,47 @@ No wall-clock, no unseeded RNG. Guard evaluation order must be fixed.
 serialized state; a conditional order's pending condition shows in the transcript;
 a replay with conditions produces identical branch choices on re-run.
 
+**As implemented (#525).** Three scoping decisions:
+
+- **The guard lives on the `Order` itself, evaluated by a new pure module,
+  `OrderGuards.gd`.** `Order.guard` (a `Guard` enum: `ENEMY_IN_RANGE`,
+  `CONTACT_MADE`, `MORALE_BELOW`, `ALLY_EXHAUSTED`, `TICKS_ELAPSED`, `FLANKED`)
+  plus `guard_param` / `guard_uid` cover the closed vocabulary; `_guard_ticks`
+  is the one piece of live execution state a guard needs (advanced once per
+  tick, reset for free because each `Order` is a fresh instance). Attached at
+  construction via a fluent `Order.new_move(dest).with_guard(...)`, mirroring
+  the constructor-helper pattern the taxonomy table already uses. A satisfied
+  guard retires the order early from `Unit._update_current_order`, checked
+  before the per-type match so it pre-empts ANY order kind's own completion
+  condition — the general form of "terminal condition," not a MOVE-specific
+  carve-out.
+- **"Advance UNTIL contact THEN attack" is the guard-plus-append composition
+  the design doc names, not a new order type.** A `MoveOrder` guarded by
+  `CONTACT_MADE` with an appended, unresolved `AttackOrder` (`target_uid < 0`)
+  behind it: the guard firing retires the move and promotes the attack on the
+  same tick, and a new promotion hook (`Unit._start_promoted_attack`) resolves
+  the unresolved attack's target to whatever enemy is actually in contact —
+  the counterpart to the existing `_start_promoted_move` hook that commits a
+  promoted route leg's march. A player-issued attack (a resolved `target_uid`)
+  is untouched; `Battle._apply_order_cmd` already sets `target_enemy` at issue
+  time.
+- **"Hold UNTIL in range THEN fire" needed no new mechanism.** A ranged unit
+  already fires at any live enemy inside `RANGED_RANGE` unconditionally (the
+  `is_ranged` branch in `Unit._think` is not gated on `order_mode`), so
+  fire-at-will is the existing default rather than a mode of its own. The ROE
+  modes the design doc asks to promote (`HOLD` / `SKIRMISH` / `CYCLE_CHARGE` /
+  `SUPPORT` / the flank/rear attack bias) already exist as `Unit.OrderMode` —
+  phase 4 documents them as the mode-layer promotion in place (see the
+  comment block above `Unit.ORDER_HOLD`) rather than renaming or duplicating
+  them; the guard vocabulary is what was actually missing, and gives the
+  queue a first-class way to gate an order's own early completion on one of
+  them instead of the ad-hoc `if order_mode == ORDER_HOLD` checks scattered
+  through `_think`.
+- **No new player gesture yet**, matching phase 3's `StanceOrder` precedent:
+  guarded orders are reachable via the `Order` API (for demos, tests, and a
+  future reactive-AI layer per the design doc's "out of the core" boundary),
+  with the hotkey/UI surface left as follow-up work.
+
 ### Phase 5 — transcript records order + phase + condition (verification payoff)
 
 **Scope.** Finish the transcript surface: `current_order`, active phase, pending
@@ -442,6 +484,32 @@ non-deterministic ordering when dumping the queue.
 **Done-check.** A single transcript read distinguishes conversio from centre-pivot
 (the #517 verification), shows a held-until condition, and shows every durable
 mode — no motion-inference needed.
+
+**As implemented (#526).** Phases 1–4 already delivered `current_order`,
+`order_phase`, and `order_guard` on the state-dump snapshot
+(`DemoInputRecorder._unit_record`); phase 5's own gaps were two fields plus
+the verification itself:
+
+- **`frontage`** — the file count a `FRONTAGE` order last wrote (or the
+  type-derived default when none has), read via the same
+  `UnitFormation.frontage` lookup the sim itself uses. The taxonomy table's
+  other durable modes were already covered: `formation` (`formation_mode`),
+  `order_mode` + `rank_relief` (stance). `active_weapon` has no field to dump
+  — `SwitchWeaponOrder` is still future work (phase 3's own scoping note: no
+  weapon-switch mechanic exists yet), so there is nothing there to surface
+  until that mechanic lands.
+- **`queue_tail`** — the not-yet-current queued orders' type names, in queue
+  order. Optional per the design doc, and cheap once `current_order` /
+  `order_phase` / `order_guard` already existed: a plain slice of `Unit.orders`
+  past the head. Empty (`[]`), not `null`, when nothing is queued, so a reader
+  distinguishes "no current order" (`current_order: null`) from "current
+  order, nothing behind it."
+- **The #517 verification itself, now a permanent regression test**
+  (`test_orders_transcript.gd`): stages a plain forward march and a rear-move
+  about-face on the same unit through the SAME snapshot code CI's demo
+  state-dump path runs (not a hand-rolled read of `Unit` fields), and asserts
+  `order_phase` alone reads `NONE` vs `TURN` — the one-field read the whole
+  design exists to make possible.
 
 ## Relationship to existing issues
 

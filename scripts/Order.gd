@@ -18,6 +18,17 @@ extends RefCounted
 ## The in-flight targeting references (Unit.target_enemy / support_target) stay on the
 ## unit: the reactive layer (enemy AI, auto-engage) writes target_enemy directly with no
 ## order behind it, so they are execution state the queue reads, not queue state.
+##
+## Phase 4 adds an optional GUARD to any order: a bounded, enumerated condition (see
+## OrderGuards.gd) that -- once satisfied -- retires the order early and promotes the next
+## queued one, exactly like any other early-retirement path (an interrupt, an arrival).
+## "Advance UNTIL contact THEN attack" is a MOVE order with guard = CONTACT_MADE followed
+## by an appended ATTACK order; "hold UNTIL in range THEN fire" is the existing
+## ranged-auto-fire behaviour, so a HOLD stance with guard = ENEMY_IN_RANGE on a queued
+## follow-on order covers the general "wait, then act" shape without a HOLD-specific
+## carve-out. Every guard reads only serialized Unit/sim state (positions, facing, morale,
+## fatigue, a per-order elapsed-tick counter) -- no wall-clock, no RNG -- so it evaluates
+## identically on replay (docs/orders-queue-design.md, "Two invariants").
 
 ## The order kinds phases 1-3 cover. Most arrive via Battle's recorded/replayed
 ## order-dispatch path; the two standalone drills (ABOUT_FACE / QUARTER_TURN, the V/Q/E
@@ -63,6 +74,33 @@ enum Phase {
 	REFORM, ## Re-forming the ranks square to the new heading between the about-face and the
 	        ## march (move-to-rear issued with reform-before-move on). Appended after MARCH so
 	        ## recorded transcripts keep their phase values stable.
+}
+
+## Phase 4's bounded, enumerated guard vocabulary (docs/orders-queue-design.md,
+## "Guards from a bounded, enumerated vocabulary"). A guard names a condition that, once
+## true, retires the order early -- the self-terminating form of queue advancement. Kept
+## deliberately closed (no free-form predicate) so every guard is a pure function of
+## serialized state (OrderGuards.satisfied); adding a new guard is a new enum member plus a
+## new OrderGuards branch, never inline scripting on the order itself.
+enum Guard {
+	NONE,            ## No guard: the order runs to its own normal completion only.
+	ENEMY_IN_RANGE,  ## A live enemy is within guard_param world units of this unit.
+	CONTACT_MADE,    ## A live enemy is within melee contact distance (attack_range + radii).
+	MORALE_BELOW,    ## This unit's morale has fallen below guard_param.
+	ALLY_EXHAUSTED,  ## The unit named by guard_uid (a friendly) has fatigue >= guard_param.
+	TICKS_ELAPSED,   ## guard_param physics ticks have elapsed since the order became current.
+	FLANKED,         ## A live enemy currently stands in this unit's flank/rear arc within
+	                 ## guard_param world units (contact range when guard_param <= 0).
+}
+
+const GUARD_NAMES := {
+	Guard.NONE: "NONE",
+	Guard.ENEMY_IN_RANGE: "ENEMY_IN_RANGE",
+	Guard.CONTACT_MADE: "CONTACT_MADE",
+	Guard.MORALE_BELOW: "MORALE_BELOW",
+	Guard.ALLY_EXHAUSTED: "ALLY_EXHAUSTED",
+	Guard.TICKS_ELAPSED: "TICKS_ELAPSED",
+	Guard.FLANKED: "FLANKED",
 }
 
 const TYPE_NAMES := {
@@ -138,6 +176,37 @@ var reform: bool = false
 ## ally's uid for the transcript; this is the resolved node the exemption compares.)
 var relief_partner: Unit = null
 
+# --- Terminal-condition / guard state (phase 4) -------------------------------
+# The guard itself (which condition, and its parameter) is set once at issue time and never
+# mutated; _guard_ticks is the one piece of live execution state a guard needs, owned by the
+# order like every other maneuver-execution field above so it resets cleanly when the order
+# is replaced or interrupted.
+
+## The bounded guard condition gating this order's early retirement; Guard.NONE (default)
+## means the order runs to its own ordinary completion only. Set at issue time.
+var guard: int = Guard.NONE
+## The guard's numeric parameter: a range in world units (ENEMY_IN_RANGE, FLANKED), a morale
+## threshold (MORALE_BELOW), a fatigue threshold (ALLY_EXHAUSTED), or a tick count
+## (TICKS_ELAPSED). Unused (0.0) for CONTACT_MADE, which has no parameter.
+var guard_param: float = 0.0
+## The friendly unit's uid ALLY_EXHAUSTED watches; -1 for every other guard.
+var guard_uid: int = -1
+## TICKS_ELAPSED only: physics ticks counted since this order became current. Advanced once
+## per tick by Unit._think (a deterministic per-order counter, not a wall-clock read) and
+## reset whenever the order (re)starts, so an order re-armed after an interrupt restarts its
+## count rather than inheriting a stale one.
+var _guard_ticks: int = 0
+
+
+## Attach a guard to this order and return it, for a fluent call at the constructor site
+## (e.g. `Order.new_move(dest).with_guard(Order.Guard.CONTACT_MADE)`). `param` and `uid`
+## default to "unused" so most call sites only need the guard kind itself.
+func with_guard(guard_kind: int, param: float = 0.0, uid: int = -1) -> Order:
+	guard = guard_kind
+	guard_param = param
+	guard_uid = uid
+	return self
+
 
 static func type_name(value: int) -> String:
 	return TYPE_NAMES.get(value, "TYPE(%d)" % value)
@@ -147,11 +216,20 @@ static func phase_name(value: int) -> String:
 	return PHASE_NAMES.get(value, "PHASE(%d)" % value)
 
 
-## Readable one-line description for logs/transcripts, e.g. "MOVE:TURN" or "ATTACK".
+static func guard_name(value: int) -> String:
+	return GUARD_NAMES.get(value, "GUARD(%d)" % value)
+
+
+## Readable one-line description for logs/transcripts, e.g. "MOVE:TURN", "ATTACK", or
+## "MOVE until CONTACT_MADE". The guard suffix is appended after any phase suffix so a
+## phased, guarded order (rare but not disallowed) still reads left-to-right.
 func describe() -> String:
-	if phase == Phase.NONE:
-		return type_name(type)
-	return "%s:%s" % [type_name(type), phase_name(phase)]
+	var base: String = type_name(type)
+	if phase != Phase.NONE:
+		base = "%s:%s" % [base, phase_name(phase)]
+	if guard != Guard.NONE:
+		base = "%s until %s" % [base, guard_name(guard)]
+	return base
 
 
 static func new_move(dest: Vector2, mode: int = 0) -> Order:

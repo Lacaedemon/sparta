@@ -100,3 +100,53 @@ func test_new_relief_starts_with_no_pass_through_link() -> void:
 	# The swap link (relief_partner) is armed by UnitRelief.begin at the apply site,
 	# never by the constructor.
 	assert_null(Order.new_relief(3).relief_partner)
+
+
+# --- Phase 4: guard vocabulary -----------------------------------------------
+
+func test_guard_name_maps_every_known_guard() -> void:
+	assert_eq(Order.guard_name(Order.Guard.NONE), "NONE")
+	assert_eq(Order.guard_name(Order.Guard.ENEMY_IN_RANGE), "ENEMY_IN_RANGE")
+	assert_eq(Order.guard_name(Order.Guard.CONTACT_MADE), "CONTACT_MADE")
+	assert_eq(Order.guard_name(Order.Guard.MORALE_BELOW), "MORALE_BELOW")
+	assert_eq(Order.guard_name(Order.Guard.ALLY_EXHAUSTED), "ALLY_EXHAUSTED")
+	assert_eq(Order.guard_name(Order.Guard.TICKS_ELAPSED), "TICKS_ELAPSED")
+	assert_eq(Order.guard_name(Order.Guard.FLANKED), "FLANKED")
+
+
+func test_guard_name_falls_back_for_an_unmapped_value() -> void:
+	assert_eq(Order.guard_name(99), "GUARD(99)")
+
+
+func test_a_fresh_order_carries_no_guard() -> void:
+	var o := Order.new_move(Vector2(1, 1))
+	assert_eq(o.guard, Order.Guard.NONE)
+	assert_eq(o.guard_param, 0.0)
+	assert_eq(o.guard_uid, -1)
+	assert_eq(o._guard_ticks, 0)
+
+
+func test_with_guard_sets_the_guard_and_returns_the_order() -> void:
+	var o := Order.new_move(Vector2(1, 1))
+	var same := o.with_guard(Order.Guard.CONTACT_MADE)
+	assert_eq(same, o, "fluent -- returns self for chaining at the constructor site")
+	assert_eq(o.guard, Order.Guard.CONTACT_MADE)
+
+
+func test_with_guard_carries_its_param_and_uid() -> void:
+	var o := Order.new_move(Vector2(1, 1)).with_guard(Order.Guard.MORALE_BELOW, 25.0)
+	assert_eq(o.guard, Order.Guard.MORALE_BELOW)
+	assert_eq(o.guard_param, 25.0)
+	var ally_o := Order.new_move(Vector2(1, 1)).with_guard(Order.Guard.ALLY_EXHAUSTED, 80.0, 7)
+	assert_eq(ally_o.guard_uid, 7)
+
+
+func test_describe_appends_the_pending_guard() -> void:
+	var o := Order.new_move(Vector2(1, 1)).with_guard(Order.Guard.CONTACT_MADE)
+	assert_eq(o.describe(), "MOVE until CONTACT_MADE")
+
+
+func test_describe_orders_phase_before_guard() -> void:
+	var o := Order.new_move(Vector2(1, 1)).with_guard(Order.Guard.ENEMY_IN_RANGE)
+	o.phase = Order.Phase.MARCH
+	assert_eq(o.describe(), "MOVE:MARCH until ENEMY_IN_RANGE")
