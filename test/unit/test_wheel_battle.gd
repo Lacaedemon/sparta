@@ -69,18 +69,39 @@ func test_wheel_in_live_battle_hinges_without_surge() -> void:
 	assert_gt(far_travel, 30.0, "the far end swept a real arc")
 
 
+## Ticks past the demo script's last scripted key (Z at tick 150) before it's meaningful to
+## start polling for the second wheel's completion — polling any earlier could catch the unit
+## between the two scripted wheels (idle, not yet wheeling) and exit the settle loop before
+## the second wheel has even started. A little past 150 is enough; the settle loop below
+## supplies its own generous cap for however long the actual swing takes.
+const _LAST_SCRIPTED_KEY_TICK := 150
+# Generous cap on top of the last scripted key: covers the ~60-tick swing plus headroom for
+# any per-tick scheduling variance between runners, so the poll loop -- not a fixed frame
+# count -- is what decides when the wheel has actually finished.
+const _SETTLE_TICK_CAP := 200
+
+
 ## The committed wheel demo drives the real controls end to end: load the scripted-input
 ## recorder with demos/inputs/wheel.json and confirm it actually wheels the target unit. Guards
 ## the demo (and its Z/C hotkeys) against silent breakage, the way the demo doubles as a smoke
 ## test for the input path.
+##
+## Waits for the wheel to actually settle (polling is_wheeling() each tick, up to a generous
+## cap) rather than a fixed frame count -- see test_wheel.gd's _run_wheel for the same idiom on
+## a bare unit. A fixed-count wait only has to be a little too tight on a slower runner to flake;
+## polling for the real end condition removes that margin entirely.
 func test_wheel_demo_input_drives_a_wheel() -> void:
 	OS.set_environment("SPARTA_DEMO_INPUT", "demos/inputs/wheel.json")
 	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
 	add_child_autofree(recorder)
-	# Step past the last scripted key (tick 150) plus a full ~1 s swing and settle.
-	for _k in range(240):
-		await get_tree().physics_frame
+	# The recorder defers spawning Battle (_start_battle.call_deferred()), so it isn't a child
+	# yet on this frame; wait for it before reading its tick.
+	await get_tree().physics_frame
 	var battle: Node = recorder.get_node("Battle")
+	# Step past every scripted input (the last is Z at tick 150) so both wheels have been
+	# issued before we start looking for a target or polling for settle.
+	while battle.current_tick() <= _LAST_SCRIPTED_KEY_TICK:
+		await get_tree().physics_frame
 	var target: Unit = null
 	var best := INF
 	for u in get_tree().get_nodes_in_group("units"):
@@ -93,6 +114,12 @@ func test_wheel_demo_input_drives_a_wheel() -> void:
 	assert_not_null(target, "the drill-mode recorder spawned the target unit")
 	if target == null:
 		return
+	# Poll until the second wheel actually settles (or the cap trips), so the assertions below
+	# never race a still-in-flight swing on a slower runner.
+	var settle_ticks := 0
+	while target.is_wheeling() and settle_ticks < _SETTLE_TICK_CAP:
+		await get_tree().physics_frame
+		settle_ticks += 1
 	# The script wheels right (C) then back left (Z); the unit spawns facing south. After both
 	# swings settle it should be back near south — proving both hotkeys drove a wheel, not that
 	# nothing happened. Assert it's not still mid-swing and ended on a cardinal-ish heading.

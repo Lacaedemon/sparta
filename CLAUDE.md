@@ -45,7 +45,9 @@ individual checks by hand so local and CI results stay in sync.
 ## Gameplay demos in PRs
 When your change is **user-visible** — it affects how the game looks or plays
 (`scenes/`, `scripts/`, `assets/`, `project.godot`) — help reviewers *see* it:
-commit a **`demos/demo.json`** so CI records a short clip and posts it on the PR.
+commit a **`demos/demo.json`** so CI records a short clip and inserts it into the
+PR **description** (not a comment — the description stays visible at the top of
+the PR page no matter how long the review thread grows).
 
 - **Author demos as a scripted-input recording — not a hand-authored replay.** Write a
   deterministic input script (`demos/inputs/*.json`: a list of mouse clicks/drags and
@@ -63,8 +65,8 @@ commit a **`demos/demo.json`** so CI records a short clip and posts it on the PR
 - If your change genuinely **can't** be shown by a recorded battle (a paused-overlay
   interaction, an editor-only tool, a non-visual refactor), don't let CI post an
   unrelated generic clip: commit a `demos/demo.json` with `"skip": true` and a
-  `"reason"`. CI then posts a short note explaining the absence instead
-  (`demos/demo.skip.example.json` is a template).
+  `"reason"`. CI then inserts a short note explaining the absence into the same
+  description section instead (`demos/demo.skip.example.json` is a template).
 - **Keep each demo simple and focused on one thing — use multiple demos when a PR
   touches multiple features, rather than one clip trying to show everything.** A
   clip that chains an unrelated setup phase (spawning, an AI unit's first move
@@ -95,8 +97,9 @@ media.
 - See `demos/README.md` for how to produce the PNG (pull a frame from the demo
   recording, or screenshot a scene) and the full image contract.
 - This is separate from the `demos/demo.json` video manifest: images go in the PR
-  **body** (you post them), the gameplay clip still posts as a CI comment. For a
-  static UI a recorded battle can't film, `skip` the clip (above) and rely on the
+  **body** (you post them by hand), while CI inserts the gameplay clip into the same
+  body, in its own marked section (not a comment). For a static UI a recorded battle
+  can't film, `skip` the clip (above) and rely on the
   image.
 
 ## Website updates in user-facing PRs

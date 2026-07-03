@@ -1,0 +1,21 @@
+{
+  "_comment": "Battle AI phase 1 (#584) showcase: three unit-leader decisions issued as real queue orders, with no direct target_enemy write. (1) The AI spearmen (anti_cavalry) on the left forms the anti-cavalry square on its own as player cavalry closes -- no player key press arms it, unlike the player-driven anti-cav-square.json demo. (2) The AI infantry on the right advances and attacks the player infantry it's assigned (the advance/attack fallback, now a real ATTACK order) while a second player unit is walked onto its flank; the AI leader reacts by re-facing onto the flanker. Deterministic (scenario + seed + scripted input).",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 400, "y": 700, "count": 60},
+    {"team": 1, "type": "Spearmen", "x": 400, "y": 500, "count": 140},
+    {"team": 0, "type": "Infantry", "x": 900, "y": 620, "count": 100},
+    {"team": 0, "type": "Cavalry", "x": 1080, "y": 650, "count": 60},
+    {"team": 1, "type": "Infantry", "x": 900, "y": 500, "count": 120}
+  ],
+  "camera": [
+    {"tick": 0, "x": 650.0, "y": 560.0, "zoom": 1.1}
+  ],
+  "steps": [
+    {"tick": 8, "click": [400, 700]},
+    {"tick": 10, "rmb_click": [400, 590]},
+    {"tick": 150, "click": [1080, 650]},
+    {"tick": 155, "rmb_click": [910, 545]}
+  ],
+  "state": [30, 150, 250, 300, 330, 360, 420, 450, 480, 510, 540, 570, 600]
+}

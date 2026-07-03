@@ -1,15 +1,18 @@
 # Gameplay demos in PRs
 
 When a PR makes a **user-visible change** (anything affecting how the game looks
-or plays), a short clip is posted so reviewers can *see* the change, not just read
+or plays), a short clip is inserted so reviewers can *see* the change, not just read
 the diff.
 [`.github/workflows/demo-video.yml`](../.github/workflows/demo-video.yml) plays a
-replay back headlessly (Godot Movie Maker → ffmpeg) and posts it as an inline GIF
-that **plays once** (it freezes on the final frame instead of looping) in the PR
-conversation — plus a link to an **MP4 with sound** (the GIF is silent; see
-[Sound](#sound) below). An inline GIF is used rather than a poster-linked MP4
-because GitHub's blob-view video player doesn't work on the mobile site or app,
-while a GIF renders inline everywhere.
+replay back headlessly (Godot Movie Maker → ffmpeg) and upserts it into the PR
+**description** as an inline GIF that **plays once** (it freezes on the final frame
+instead of looping) — plus a link to an **MP4 with sound** (the GIF is silent; see
+[Sound](#sound) below). It lives in the description (not a comment) so it stays
+visible at the top of the PR page no matter how long the review thread grows; a
+compact **state transcript** (when one dumps) still posts as its own comment — see
+[CI posts the transcript automatically](#ci-posts-the-transcript-automatically). An
+inline GIF is used rather than a poster-linked MP4 because GitHub's blob-view video
+player doesn't work on the mobile site or app, while a GIF renders inline everywhere.
 
 CI can't infer what a diff changed, so to make the clip *demonstrate your change*
 you **declare what to show**: commit a small **manifest** pointing at a **replay**
@@ -342,15 +345,16 @@ You don't have to run the dump by hand for a reviewer to see the state — `demo
 does it for every PR whose demo is a **scripted-input** recording (a manifest with an `input`
 field). Alongside the GIF/MP4, CI runs the same headless dump for the same input script, at the
 ticks the script already cares about (its `state` list, else its `frames` list, else a default
-`8,60,140`), then adds two things to the demo comment:
+`8,60,140`), then posts two things:
 
-- **A compact per-tick table inlined in the comment body** — a collapsible `🔬 Per-tick state
-  transcript` block, one row per unit per dumped tick, with State / formation / order mode /
-  morale / soldier count / centroid. This puts the exact numbers in the PR conversation, where
-  both a human reviewer and the `@claude` review bot read them directly — the bot reviews the PR
-  thread and diff, not the media branch, so an inlined block is what makes the transcript
-  actually reach it.
-- **A link to the full JSON** — `🔬 Full machine-readable state transcript (JSON)`, the complete
+- **A compact per-tick table in a PR comment** — a `🔬 Per-tick state transcript` heading with
+  one row per unit per dumped tick (State / formation / order mode / morale / soldier count /
+  centroid), and a link to the full JSON. It's a **comment**, not part of the description, because
+  it's large technical detail most reviewers don't need at a glance; the description (where the
+  GIF lives) links to it. Both a human reviewer and the `@claude` review bot read PR comments
+  directly — the bot reviews the PR thread and diff, not the media branch, so this is what makes
+  the transcript actually reach it.
+- **A link to the full JSON** — `Full machine-readable state transcript (JSON)`, the complete
   per-tick snapshots (every field, including `soldier_summary`) published next to the GIF/MP4 on
   the `demo-media` branch for detail.
 
@@ -515,10 +519,10 @@ To say so, commit a `demos/demo.<slug>.json` that opts out:
 }
 ```
 
-CI records nothing and upserts the demo comment with an honest note (`🚫 No gameplay
-clip for this PR — <reason>`) rather than a misleading GIF. Only use this when the
-change really can't be filmed — for anything visible in a normal battle, a tailored
-replay (or `showcase.json`) is far better.
+CI records nothing and upserts the demo section of the PR **description** with an
+honest note (`🚫 No gameplay clip for this PR — <reason>`) rather than a misleading
+GIF. Only use this when the change really can't be filmed — for anything visible in
+a normal battle, a tailored replay (or `showcase.json`) is far better.
 
 ## Still images for static features
 
@@ -565,24 +569,28 @@ deleted on merge — a branch-name URL works while the PR is open but breaks onc
 branch is gone. The PNG is committed in-repo, so it's permanent in `main` after merge.
 
 This is independent of the `demos/demo.json` manifest: the manifest drives the CI
-gameplay **clip** (posted as a comment), while these images live in the PR **body**
-and you add them yourself. For a static UI a battle can't film, combine them — opt
-the clip out with `"skip": true` (see [No clip applies](#no-clip-applies)) and post a
-still in the description instead.
+gameplay **clip**, which CI itself inserts into the PR **description** (see
+[Where the GIF lives](#where-the-gif-lives)), while these images live in the same
+**description** but you add them yourself, by hand, outside CI's marked section. For
+a static UI a battle can't film, combine them — opt the clip out with `"skip": true`
+(see [No clip applies](#no-clip-applies)) and post a still in the description instead.
 
 ## Where the GIF lives
 
 The GIF (and the MP4 — see [Sound](#sound)) is pushed to a long-lived
 **`demo-media`** branch and embedded/linked by raw URL. This deliberately avoids
 committing to your PR's own branch: it never disturbs the PR's required status
-checks, and the clip keeps working after the PR branch is deleted on merge. The
-comment is updated in place on each push (no spam), and the filename carries the
-commit SHA so GitHub never shows a stale cached frame.
+checks, and the clip keeps working after the PR branch is deleted on merge. CI
+upserts it into the PR **description** between `<!-- sparta-demo -->` /
+`<!-- /sparta-demo -->` markers, replacing only that section in place on each push
+(no spam, and the rest of your description is left untouched) — see
+[`tools/ci/upsert-pr-body-section.sh`](../tools/ci/upsert-pr-body-section.sh). The
+filename carries the commit SHA so GitHub never shows a stale cached frame.
 
 ## Sound
 
 The inline preview is a GIF (it plays once and freezes on the final frame), and
-**GIF can't carry audio** — so the clip you see in the comment is silent. The
+**GIF can't carry audio** — so the clip you see in the description is silent. The
 workflow also encodes an **MP4 with sound** (Godot's Movie Maker captures the game's
 audio into the recording; the GIF step just drops it) and links it under the GIF as
 *"watch with sound"*. Click it to play the clip with audio, pause, and scrub. SFX

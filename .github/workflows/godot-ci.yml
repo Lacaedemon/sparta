@@ -67,11 +67,23 @@ jobs:
 
       - name: Run unit tests (GUT)
         # gut_cmdln runs without enabling the editor plugin; -gexit sets a
-        # non-zero exit code if any test fails or errors.
+        # non-zero exit code if any test fails or errors -- but NOT if a test
+        # script fails to parse. GUT's loader reports that with a plain print(),
+        # not through the counters -gexit's exit code is derived from, so a
+        # script that fails to parse is silently dropped from the run while the
+        # suite still reports success and exits 0. Godot does print the
+        # underlying script/parse-error markers to the log, though -- the same
+        # ones the import step above already greps for -- so fail the job on
+        # those too. Mirrors tools/check.sh's check_test.
         run: |
+          set -o pipefail
           godot --headless -s addons/gut/gut_cmdln.gd \
             -gdir=res://test -ginclude_subdirs -gexit \
-            -gjunit_xml_file=res://test_results.xml
+            -gjunit_xml_file=res://test_results.xml 2>&1 | tee test.log
+          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" test.log; then
+            echo "::error::GUT reported script/parse errors -- a test script failed to load and its tests were silently skipped"
+            exit 1
+          fi
 
   notify-on-main-failure:
     name: File issue for main breakage

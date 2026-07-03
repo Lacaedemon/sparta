@@ -26,6 +26,12 @@ Damage and morale multipliers by attack angle.
 **Maneuver behind the enemy line.** A regiment pinned frontally by a screen while
 your cavalry hits its rear will melt --- and start a rout that spreads.
 
+**The enemy watches its own flanks too.** An AI-controlled unit that finds a live
+threat closing on its side or rear turns to meet it --- it won't stand fighting
+head-on while your cavalry lines up an unanswered flank strike. Catching the enemy
+still costs real setup: bring the second threat into contact before it reacts, or
+pin the front so the flanking unit has nowhere better to turn.
+
 ## Morale & routing
 
 Units don't fight to the last soldier. When a unit loses enough soldiers or takes
@@ -311,6 +317,11 @@ spot on the field, on top of the soldiers' own outward-facing marks.
 Square is a defensive commitment, not a free upgrade. While it holds, the unit
 **crawls** (it can't charge out) and **hits softer** (reduced offensive output). So:
 
+**The AI squares up on its own.** An AI-controlled spear unit forms Square the
+moment enemy cavalry closes on it, with no player prompting it --- the same
+reaction a disciplined human commander would take. Charging AI spearmen in the
+open only works if the cavalry arrives before the square finishes forming.
+
 - **Square up early** --- before the charge lands, not as it connects. The mobility
   penalty means a late square may not finish forming in time.
 - **Drop back to Normal** the moment the horse is beaten off or pulls away, or the
@@ -369,6 +380,24 @@ the unit holds where a rear-charged line would break.
 Schiltron: the same rear cavalry charge as above, but the unit forms
 Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge
 harder than orbis does, at a deeper offence cost.
+:::
+
+::: {#fig-battle-ai-leaders .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/battle_ai_leaders.jpg">
+  <source src="media/battle_ai_leaders.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two AI unit-leader decisions in one clash: the AI spearmen on the left form the
+anti-cavalry square on their own as player cavalry closes, with no player key
+press arming it. The AI infantry on the right advances and attacks, then
+re-targets and turns to face a second player unit that closes on its flank
+instead of fighting on with its back exposed.
 :::
 
 ## Weapon reach
