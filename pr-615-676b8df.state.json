@@ -127,24 +127,24 @@
             0.0,
             1.0
           ],
-          "formation": "NORMAL",
+          "formation": "FORMATION(6)",
           "morale": 100.0,
           "name": "Infantry 1",
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            800.0,
-            500.0
+            800.05,
+            499.56
           ],
-          "rank_relief": false,
+          "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              126.0,
-              63.0
+              119.57,
+              67.32
             ],
             "centroid": [
-              800.0,
-              500.0
+              800.09,
+              499.88
             ],
             "count": 120,
             "prone_count": 0
@@ -243,24 +243,24 @@
             0.0,
             1.0
           ],
-          "formation": "NORMAL",
+          "formation": "FORMATION(6)",
           "morale": 100.0,
           "name": "Infantry 1",
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            800.0,
-            500.0
+            799.55,
+            499.72
           ],
-          "rank_relief": false,
+          "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              126.0,
-              63.0
+              90.0,
+              90.28
             ],
             "centroid": [
-              800.0,
-              500.0
+              799.54,
+              500.08
             ],
             "count": 120,
             "prone_count": 0
@@ -287,17 +287,17 @@
           "order_phase": null,
           "position": [
             748.81,
-            287.87
+            287.86
           ],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              72.36,
-              57.65
+              72.39,
+              57.61
             ],
             "centroid": [
               749.09,
-              289.11
+              289.1
             ],
             "count": 80,
             "prone_count": 0
@@ -314,7 +314,7 @@
           "current_speed": 34.0,
           "engaged": false,
           "facing": [
-            -0.23,
+            -0.24,
             0.97
           ],
           "formation": "NORMAL",
@@ -323,17 +323,17 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            851.19,
+            851.17,
             287.87
           ],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              72.36,
-              57.65
+              72.33,
+              57.7
             ],
             "centroid": [
-              850.91,
+              850.89,
               289.11
             ],
             "count": 80,
