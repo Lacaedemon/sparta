@@ -1,0 +1,30 @@
+{
+  "_comment": "LOD phase 5 acceptance-test scenario (docs/large-scale-simulation-design.md, phase 5; #560). Reuses large-battle.json's proven 16-unit engaged front (~1,720 soldiers, measured to sit right at the 60fps physics budget on its own -- see the design doc's phase-4 table) as the close-tier core, then adds 6 far-tier reserve corps deployed 810 world units behind the line -- well beyond DEMOTE_RANGE (600) from the nearest enemy, so every reserve corps demotes to the aggregate tier on the very first _tick_tier_transitions pass, before its soldier-body arrays are ever built (Unit.step_all_sim_soldiers/SoldierBodies.step, which seed those arrays, run AFTER the tier-transition pass each tick -- see Battle._physics_process/_on_soldier_tick). A far-tier formation's STATE is O(1) regardless of its 'count' (see FarTierFormation/TierTransition), but the reserves sit on team 0 ONLY, same as echelon-battle.json and for the identical reason: Battle._run_enemy_ai sets target_enemy directly on every non-fighting team-1 unit each AI period, unconditionally, regardless of distance (Unit._think's 'elif target_enemy != null' branch chases an explicit target with no HOLD/detection-range gate -- see sparta.md's rout/rally maneuver notes on why HOLD doesn't suppress an explicitly-set target). A team-1 reserve would therefore immediately start marching toward the distant front, which (a) promotes it back to close tier well before DEMOTE_RANGE lets go and (b) keeps re-triggering Unit._refresh_flock_render's O(count) render-grid rebuild every tick the facing changes while it's still far-tier (a real, measured cost -- see the design doc's phase-5 verification notes). Team 0 never auto-advances, so its reserves stay stationary and far-tier for the whole run. A far-tier formation's cost is O(1) once settled, which is the mechanism that lets this scenario approach Cannae-scale totals (order-of-magnitude 40k+ combatants) while the promoted (close-tier) bubble stays exactly the ~1,720-soldier front the phase-4 benchmark already validated against the measured ceiling. This is deliberately an order-of-magnitude milestone toward the ~100k+ long-horizon target (#550), not the full figure -- see the design doc's 'Sizing the far tier's job' section for why the close-tier ceiling caps how much of a Cannae-scale battle can be engaged at once regardless of how large the far-tier reserves get. Run via tools/benchmark/run-benchmark.sh (SPARTA_BENCHMARK_SCENARIO=res://benchmarks/scenarios/cannae-scale.json) to confirm the promoted count and tick budget; verify the reserves' aggregate behavior via tools/demo/dump-state.sh (the reserve corps show tier: FAR with soldier_summary absent, per the design doc's transcript section).",
+  "seed": "560001",
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 275,  "y": 490, "count": 140},
+    {"team": 0, "type": "Spearmen", "x": 425,  "y": 490, "count": 140},
+    {"team": 0, "type": "Infantry", "x": 575,  "y": 490, "count": 120},
+    {"team": 0, "type": "Infantry", "x": 725,  "y": 490, "count": 120},
+    {"team": 0, "type": "Archers",  "x": 875,  "y": 490, "count": 90},
+    {"team": 0, "type": "Archers",  "x": 1025, "y": 490, "count": 90},
+    {"team": 0, "type": "Cavalry",  "x": 1175, "y": 490, "count": 80},
+    {"team": 0, "type": "Cavalry",  "x": 1325, "y": 490, "count": 80},
+
+    {"team": 1, "type": "Spearmen", "x": 275,  "y": 510, "count": 140},
+    {"team": 1, "type": "Spearmen", "x": 425,  "y": 510, "count": 140},
+    {"team": 1, "type": "Infantry", "x": 575,  "y": 510, "count": 120},
+    {"team": 1, "type": "Infantry", "x": 725,  "y": 510, "count": 120},
+    {"team": 1, "type": "Archers",  "x": 875,  "y": 510, "count": 90},
+    {"team": 1, "type": "Archers",  "x": 1025, "y": 510, "count": 90},
+    {"team": 1, "type": "Cavalry",  "x": 1175, "y": 510, "count": 80},
+    {"team": 1, "type": "Cavalry",  "x": 1325, "y": 510, "count": 80},
+
+    {"team": 0, "type": "Spearmen", "x": 275,  "y": -320, "count": 8000, "facing": [0, 1]},
+    {"team": 0, "type": "Spearmen", "x": 575,  "y": -320, "count": 8000, "facing": [0, 1]},
+    {"team": 0, "type": "Infantry", "x": 875,  "y": -320, "count": 8000, "facing": [0, 1]},
+    {"team": 0, "type": "Infantry", "x": 1175, "y": -320, "count": 8000, "facing": [0, 1]},
+    {"team": 0, "type": "Archers",  "x": 425,  "y": -320, "count": 6000, "facing": [0, 1]},
+    {"team": 0, "type": "Cavalry",  "x": 1025, "y": -320, "count": 4000, "facing": [0, 1]}
+  ]
+}
