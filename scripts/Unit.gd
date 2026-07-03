@@ -150,6 +150,22 @@ var ordered_facing: Vector2 = Vector2.ZERO
 # Stance values from Battle.OrderMode that Unit's own behaviour reacts to, mirrored
 # as plain ints to avoid a Unit<->Battle preload cycle (kept in sync with the enum;
 # Battle._ready asserts they match). NORMAL is 0 (Unit's default order_mode).
+#
+# These ARE the reactive ROE (rules-of-engagement) modes the unified orders-queue design
+# calls for (docs/orders-queue-design.md, "Standing conditional behavior = the mode
+# layer"): durable Unit state a StanceOrder writes, that modifies how the CURRENT order
+# executes rather than branching inside it. HOLD is "don't chase past what's already
+# engaged" (the _think fallthrough at the bottom of the enemy branch skips the
+# auto-advance-on-a-near-enemy path when order_mode == ORDER_HOLD); it does NOT suppress
+# fighting or firing at whatever is already in range/contact, so "hold UNTIL in range THEN
+# fire" needs no HOLD-specific carve-out -- a ranged unit fires at anything within
+# RANGED_RANGE unconditionally (see the is_ranged branch below _think's ORDER_SUPPORT
+# early return), i.e. fire-at-will is the default rather than a mode of its own.
+# CYCLE_CHARGE is the caracole/repeated-charge ROE; SKIRMISH is the ranged kite-at-range
+# ROE; ATTACK_FLANK/ATTACK_REAR bias the approach angle. Phase 4 is the promotion
+# referenced above: these were a "crude version" per the design doc before the guard
+# vocabulary (Order.Guard / OrderGuards.gd) gave the queue a first-class way to gate an
+# order's own early completion on one of them.
 const ORDER_HOLD := 1
 const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
@@ -700,6 +716,7 @@ func retire_current_order() -> void:
 		orders.pop_front()
 	current_order = orders[0] if not orders.is_empty() else null
 	_start_promoted_move()
+	_start_promoted_attack()
 
 
 ## Commit the march of a MOVE order just promoted to current, when no march is already in
@@ -713,6 +730,25 @@ func _start_promoted_move() -> void:
 		return
 	move_target = current_order.target_pos
 	has_move_target = true
+
+
+## Resolve a just-promoted, UNRESOLVED ATTACK order (target_uid < 0) to whatever live enemy
+## is already in melee contact -- the promotion path a guard-driven "advance UNTIL contact
+## THEN attack" macro relies on (phase 4): the guard retires the MOVE order the instant
+## contact is made, and the queue promotes the appended ATTACK order that names no specific
+## enemy, so it must acquire target_enemy itself on the very tick it becomes current or
+## _update_current_order's target_enemy == null check would retire it unfought. A resolved
+## ATTACK order (target_uid >= 0, the ordinary player-issued case) is untouched here --
+## Battle._apply_order_cmd already set target_enemy at issue time. No-op for every other
+## order kind or an ATTACK that's already carrying a live target.
+func _start_promoted_attack() -> void:
+	if current_order == null or current_order.type != Order.Type.ATTACK:
+		return
+	if current_order.target_uid >= 0:
+		return
+	if target_enemy != null and is_instance_valid(target_enemy):
+		return
+	target_enemy = UnitTargeting.current_target(self)
 
 
 ## Destinations of the queued (not-yet-current) MOVE legs, in queue order -- the route the
@@ -798,10 +834,26 @@ func about_face_goal() -> Vector2:
 ## maneuver phases themselves (TURN -> REFORM -> MARCH, the drill/wheel completions) are
 ## advanced at their execution sites in _think, which know exactly when a handoff happens;
 ## this pass covers the retirements that still key off legacy state -- arrival
-## (has_move_target / waypoints), a dead attack target, a resolved relief or support.
+## (has_move_target / waypoints), a dead attack target, a resolved relief or support -- AND,
+## as of phase 4, an order's own guard condition (Order.Guard), checked before the per-type
+## match so a satisfied guard retires ANY order kind early, regardless of how it would
+## otherwise complete. This is the terminal-condition mechanism: "advance UNTIL contact THEN
+## attack" is a MOVE order guarded by CONTACT_MADE with an appended ATTACK order behind it --
+## the guard firing retires the MOVE and promotes the ATTACK on the very same tick.
 func _update_current_order() -> void:
 	if current_order == null:
 		return
+	if current_order.guard != Order.Guard.NONE:
+		current_order._guard_ticks += 1
+		if OrderGuards.satisfied(self, current_order):
+			# A guard can fire mid-march (that's the whole point of CONTACT_MADE on a MOVE
+			# order): settle any in-place turn the outgoing order had running, and drop the
+			# march state, so nothing resurrects a stale move_target once the promoted order
+			# takes over -- the same cleanup a fresh player order performs at the apply site.
+			_interrupt_current_order()
+			has_move_target = false
+			retire_current_order()
+			return
 	match current_order.type:
 		Order.Type.MOVE, Order.Type.NUDGE:
 			# Retire on arrival (has_move_target cleared, no queued route leg), unless the

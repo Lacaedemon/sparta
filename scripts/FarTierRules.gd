@@ -7,18 +7,26 @@ extends RefCounted
 ## the seeded Replay.rng stream.
 ##
 ## The rules mirror the close tier's own regiment-level combat path IN EXPECTATION. Where
-## UnitCombat.strike draws a seeded roll in [0.6, 1.4] per strike, the far tier applies the
-## roll's mean (1.0) as a continuous casualty rate; morale bookkeeping follows
-## UnitCombat.register_casualties' formula exactly. Two simplifications, both formation-level
-## abstractions rather than lost soldier detail:
+## UnitCombat.strike/shoot draws a seeded roll in [0.6, 1.4] per strike, the far tier applies
+## the roll's mean (1.0) as a continuous casualty rate; morale bookkeeping follows
+## UnitCombat.register_casualties' formula exactly. A formation's is_ranged flag (mirroring
+## Unit.is_ranged) splits the rate/reach rules the same way the close tier does: a ranged
+## attacker strikes from RANGED_RANGE on the RANGED_INTERVAL/RANGED_DAMAGE_FACTOR cadence
+## against the defender's missile_defense_factor, instead of melee's ATTACK_INTERVAL/
+## attack_range against melee_defense_factor — see strike_expectation/casualty_rate/
+## in_striking_range. Interception and real flight time (ProjectileField) stay below this
+## tier's resolution: a far-tier volley lands its expected casualties the same tick, with no
+## simulated arrow travel. Remaining simplifications, both formation-level abstractions
+## rather than lost soldier detail:
 ## - Fatigue, cohesion, and training read as fresh/untrained defaults — the far-tier
 ##   record carries none of them (so there is no rank-cycle in-fight morale recovery).
-## - Every engagement resolves as sustained melee contact; ranged volley pacing is a
-##   refinement the far tier doesn't model yet.
-## The attacker's output also scales with its remaining-strength ratio (a thinned formation
-## presents less fighting frontage), which is where the model earns its Lanchester-style
-## attrition curves: the close tier's live per-soldier melee scales output with living
-## fighters the same way, so the ratio keeps the aggregate broadly consistent with it.
+## A MELEE attacker's output also scales with its remaining-strength ratio (a thinned
+## formation presents less fighting frontage), which is where the model earns its
+## Lanchester-style attrition curves: the close tier's live per-soldier melee scales output
+## with living fighters the same way, so the ratio keeps the aggregate broadly consistent
+## with it. A RANGED attacker is exempt from this thinning term: UnitCombat.shoot draws
+## volley damage from the flat attack stat with no soldier-count scaling, so the far tier's
+## ranged output stays flat too, to keep mirroring it faithfully.
 
 
 ## Remaining-strength ratio in [0, 1]: the aggregate analog of soldiers / max_soldiers.
@@ -98,6 +106,24 @@ static func melee_defense_factor(defender: FarTierFormation, attacker_pos: Vecto
 	return 1.0
 
 
+## Incoming-RANGED damage scale from the defender's stance — mirrors Unit.missile_defense_factor:
+## TIGHT/TESTUDO raise shields against volleys from any direction; SHIELD_WALL's locked wall
+## only covers the front (a flank/rear volley bypasses it and lands full); SQUARE gets no
+## missile bonus (its all-around shields face a charge, not plunging arrows).
+static func missile_defense_factor(defender: FarTierFormation, attacker_pos: Vector2) -> float:
+	match defender.formation_mode:
+		Unit.FORMATION_TIGHT:
+			return 1.0 - Unit.TIGHT_MISSILE_DEFENSE
+		Unit.FORMATION_TESTUDO:
+			return 1.0 - Unit.TESTUDO_MISSILE_DEFENSE
+		Unit.FORMATION_SHIELD_WALL:
+			if is_frontal(defender, attacker_pos):
+				return 1.0 - Unit.SHIELD_WALL_MISSILE_DEFENSE
+			return 1.0
+		_:
+			return 1.0
+
+
 ## 1.0 frontal, 1.5 flank, 2.0 rear, relative to the DEFENDER's facing — mirrors
 ## UnitCombat.flank_multiplier, including both square variants' all-around defence (no
 ## weak side).
@@ -119,8 +145,15 @@ static func flank_multiplier(defender: FarTierFormation, attacker_pos: Vector2) 
 ## Expected casualties from ONE close-tier regiment strike (UnitCombat.strike's formula
 ## path) with the damage roll at its mean: max(1, effective attack - defense), then the
 ## defender's stance blunting. Flanking and the attacker's thinning scale the rate, not
-## the strike, so they live in casualty_rate below.
+## the strike, so they live in casualty_rate below. A ranged attacker mirrors
+## UnitCombat.shoot instead: no melee-stance offence penalty (a testudo still looses
+## volleys head-up), RANGED_DAMAGE_FACTOR applied, and the defender's stance blunts it via
+## missile_defense_factor rather than melee_defense_factor.
 static func strike_expectation(attacker: FarTierFormation, defender: FarTierFormation) -> float:
+	if attacker.is_ranged:
+		var eff_ranged: float = float(attacker.attack) * formation_attack_factor(attacker)
+		var ranged_base: float = maxf(1.0, eff_ranged - float(defender.defense)) * Unit.RANGED_DAMAGE_FACTOR
+		return ranged_base * missile_defense_factor(defender, attacker.position)
 	var eff_attack: float = float(attacker.attack) \
 			* formation_attack_factor(attacker) * formation_melee_attack_factor(attacker)
 	var base: float = maxf(1.0, eff_attack - float(defender.defense))
@@ -128,19 +161,29 @@ static func strike_expectation(attacker: FarTierFormation, defender: FarTierForm
 
 
 ## Expected casualties per second the attacker inflicts on the defender: one expected
-## strike per ATTACK_INTERVAL, scaled by the defender's flank exposure and the attacker's
-## remaining-strength ratio (the Lanchester-style thinning term).
+## strike per ATTACK_INTERVAL (or, for a ranged attacker, one expected volley per
+## RANGED_INTERVAL), scaled by the defender's flank exposure. A melee attacker's output is
+## also scaled by its remaining-strength ratio (the Lanchester-style thinning term) — mirroring
+## the close tier's per-soldier melee, which naturally loses output as fighters fall. A ranged
+## attacker is NOT thinned this way: UnitCombat.shoot draws volley damage from the flat
+## attack stat with no soldier-count scaling, so a 10-man archer regiment volleys exactly as
+## hard as a 140-man one, and the far tier must match that to stay a faithful mirror.
 static func casualty_rate(attacker: FarTierFormation, defender: FarTierFormation) -> float:
+	var interval: float = Unit.RANGED_INTERVAL if attacker.is_ranged else Unit.ATTACK_INTERVAL
+	var thinning: float = 1.0 if attacker.is_ranged else strength_ratio(attacker)
 	return strike_expectation(attacker, defender) \
 			* flank_multiplier(defender, attacker.position) \
-			* strength_ratio(attacker) / Unit.ATTACK_INTERVAL
+			* thinning / interval
 
 
 ## Whether the attacker's centroid is close enough to strike — mirrors the close tier's
-## contact check (attack_range + both unit radii), so a longer-reach formation opens up
-## first, exactly like a spear line meeting a sword line.
+## contact check for a melee attacker (attack_range + both unit radii), so a longer-reach
+## formation opens up first, exactly like a spear line meeting a sword line. A ranged
+## attacker instead uses RANGED_RANGE, matching the close tier's archer, which looses
+## volleys from well beyond melee contact rather than closing to reach.
 static func in_striking_range(attacker: FarTierFormation, defender: FarTierFormation) -> bool:
-	var reach: float = attacker.attack_range + Unit.RADIUS * 2.0
+	var reach: float = Unit.RANGED_RANGE if attacker.is_ranged \
+			else attacker.attack_range + Unit.RADIUS * 2.0
 	return attacker.position.distance_to(defender.position) <= reach
 
 

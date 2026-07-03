@@ -30,6 +30,7 @@ func test_defaults_match_a_fresh_full_strength_formation() -> void:
 	assert_eq(rec.attack_range, 26.0)   # Unit.attack_range default (gladius baseline)
 	assert_eq(rec.march_speed, 45.0)    # Unit.walk_speed default
 	assert_eq(rec.casualty_carry, 0.0)
+	assert_false(rec.is_ranged)         # Unit.is_ranged default
 
 
 func test_fields_round_trip() -> void:
@@ -88,6 +89,13 @@ func test_from_unit_copies_the_durable_regiment_stats() -> void:
 	assert_eq(rec.attack_range, 48.0)
 	assert_eq(rec.march_speed, 40.0)   # the sustained AUTO pace is the walk
 	assert_eq(rec.casualty_carry, 0.0)
+
+
+func test_from_unit_copies_is_ranged() -> void:
+	var u := _make_unit()
+	u.is_ranged = true
+	var rec := FarTierFormation.from_unit(u)
+	assert_true(rec.is_ranged)
 
 
 func test_from_unit_derives_casualties_from_losses_so_far() -> void:

@@ -284,6 +284,11 @@ func _unit_record(u: Node) -> Dictionary:
 		"morale": DemoState.round_to(u.morale, 1),
 		"state": DemoState.state_name(u.state),
 		"formation": DemoState.formation_name(u.formation_mode),
+		# Durable frontage (phase 5): the file count a FRONTAGE order last wrote (or the
+		# type-derived default when none has). Like formation/order_mode/rank_relief, this is
+		# mode-layer state a completed order writes and that then persists as queryable Unit
+		# state -- UnitFormation.frontage is the same pure lookup the sim itself uses.
+		"frontage": UnitFormation.frontage(u),
 		"soldiers": u.soldiers,
 		"current_speed": DemoState.round_to(u._current_speed, 1),
 		"order_mode": DemoState.order_mode_name(_battle.ORDER_MODE_NAMES, u.order_mode),
@@ -303,6 +308,20 @@ func _unit_record(u: Node) -> Dictionary:
 		# march). null when the unit is idle (no current order).
 		"current_order": Order.type_name(u.current_order.type) if u.current_order != null else null,
 		"order_phase": Order.phase_name(u.current_order.phase) if u.current_order != null else null,
+		# The current order's pending terminal condition, e.g. "Hold: until
+		# enemy_in_range" from the design doc becomes order_guard: "ENEMY_IN_RANGE" here --
+		# null when the order carries no guard (or there is no current order at all), so a
+		# reader can tell "unconditional order" apart from "guard not yet satisfied."
+		"order_guard": Order.guard_name(u.current_order.guard) \
+				if u.current_order != null and u.current_order.guard != Order.Guard.NONE else null,
+		# Phase 5: the not-yet-current queued orders behind current_order, for full
+		# plan legibility (the design doc's "optionally the queue tail"). Each entry is just
+		# the order's type name -- current_order/order_phase/order_guard already cover the
+		# one that's actually executing, so the tail only needs to answer "and then what."
+		# Empty (not null) when nothing is queued, so a reader doesn't have to special-case
+		# "no current order" (current_order null) vs "current order, nothing queued behind
+		# it" (queue_tail []).
+		"queue_tail": _queue_tail(u),
 	}
 	# A far-tier formation has no individual bodies, so its record carries NO per-soldier
 	# payload at all -- not even a zeroed summary. The explicit `tier` field above is what
@@ -314,6 +333,18 @@ func _unit_record(u: Node) -> Dictionary:
 		if _state_full:
 			rec["soldiers_full"] = _soldier_arrays(u)
 	return rec
+
+
+## Type names of the queued orders BEHIND u.current_order, in queue order (u.orders[0] is
+## current_order itself, already reported separately -- see DemoState.sort_records_by_uid's
+## sibling note on why records stay stable: orders[1:] is a plain array slice, no group
+## reshuffling to guard against here). Mirrors Unit.queued_move_points' "everything after
+## the head" shape but reports every order kind, not just MOVE legs.
+func _queue_tail(u: Node) -> Array:
+	var tail: Array = []
+	for i in range(1, u.orders.size()):
+		tail.append(Order.type_name(u.orders[i].type))
+	return tail
 
 
 ## The raw per-soldier arrays for one unit, for --full deep debugging. Positions and facings are
