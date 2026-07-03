@@ -347,6 +347,24 @@ so the rear charge finds no weak facing and is braced from behind &mdash;
 the unit holds where a rear-charged line would break.
 :::
 
+::: {#fig-battle-ai-leaders .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/battle_ai_leaders.jpg">
+  <source src="media/battle_ai_leaders.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two AI unit-leader decisions in one clash: the AI spearmen on the left form the
+anti-cavalry square on their own as player cavalry closes, with no player key
+press arming it. The AI infantry on the right advances and attacks, then
+re-targets and turns to face a second player unit that closes on its flank
+instead of fighting on with its back exposed.
+:::
+
 ## Weapon reach
 
 Each weapon has an **effective reach** --- how close two units must get before they
