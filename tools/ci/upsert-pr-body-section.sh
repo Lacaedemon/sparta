@@ -18,12 +18,20 @@
 #                    not included in this argument)
 #   [label]         optional noun used in the log line (default: "PR body section")
 #
-# Requires the `gh` CLI authenticated via GH_TOKEN in the environment, and `awk`.
+# Requires the `gh` CLI authenticated via GH_TOKEN in the environment, plus `awk`
+# and `jq`.
 #
-# Uses `gh api -f body=@-` (stdin) rather than `gh pr edit --body-file`, which has
-# been observed to silently no-op on at least one Windows/Git Bash setup -- piping
-# straight to the REST API is the more reliable path for programmatic find-and-replace,
-# and lets the caller verify the write by reading the body back afterward.
+# Uses `jq -Rs '{body: .}' | gh api --input -` (a pre-built JSON payload piped via
+# stdin) rather than `gh pr edit --body-file`, which has been observed to silently
+# no-op on at least one Windows/Git Bash setup. NOTE: `gh api -f body=@-` looks like
+# it should also read the field value from stdin (by analogy with `--body-file -`
+# elsewhere in the gh CLI), but it does NOT -- confirmed empirically against gh
+# 2.52.0: it sets the literal 3-character string "@-" as the field value, no error,
+# no warning. `-f`/`-F` only support `@filename` for a field value; `@-` is not a
+# recognized stdin sentinel for them. Only `--input -` (a full pre-built request
+# body) honors `-` as stdin. This is exactly the kind of silent-no-op CI hazard
+# CLAUDE.md's push_error/exit-code note warns about, which is why this script
+# reads the body back afterward and fails loudly if it doesn't match.
 set -euo pipefail
 
 if [ "$#" -lt 5 ]; then
@@ -84,11 +92,12 @@ if [ "$MODE" != "REPLACED" ]; then
   NEW_BODY=$(printf '%s\n\n%s' "$CURRENT_BODY" "$SECTION")
 fi
 
-# Pipe via stdin (-f body=@-), not --body-file / a shell-interpolated -f
-# body="$VAR" -- both have been unreliable for large/multiline bodies on at
-# least one setup this repo has hit. Piping to the REST API directly is the
-# most reliable programmatic path.
-printf '%s' "$NEW_BODY" | gh api -X PATCH "repos/${REPO}/pulls/${PR}" -f body=@- >/dev/null
+# Build the request body as JSON with jq (-R raw input, -s slurp the whole
+# stdin into one string) so quotes/backslashes/newlines in NEW_BODY are
+# escaped correctly, then pipe that JSON to `gh api --input -`. This is the
+# reliable path for a large/multiline body; see the note above on why
+# `-f body=@-` is NOT equivalent despite looking like it should be.
+printf '%s' "$NEW_BODY" | jq -Rs '{body: .}' | gh api -X PATCH "repos/${REPO}/pulls/${PR}" --input - >/dev/null
 
 # Verify the write actually landed by reading the body back, rather than
 # trusting the PATCH's exit code (CLAUDE.md: push_error-style silent no-ops
