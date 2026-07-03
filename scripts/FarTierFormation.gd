@@ -42,6 +42,11 @@ var attack_range: float = 26.0
 ## walks by default and only jogs under fire or sprints on the terminal charge — bursts
 ## below the far tier's resolution, so the aggregate marches at the walk.
 var march_speed: float = 45.0
+## Whether this formation is a ranged formation (archers), matching Unit.is_ranged's default.
+## Drives FarTierRules' rate/reach split: a ranged formation strikes at RANGED_RANGE on the
+## RANGED_INTERVAL/RANGED_DAMAGE_FACTOR cadence and never takes return melee attrition from a
+## target beyond melee reach, mirroring how a close-tier archer skirmishes rather than presses.
+var is_ranged: bool = false
 
 ## Fractional casualties accumulated by the far tier's continuous attrition rate, carried
 ## between ticks until a whole soldier falls (FarTierRules.tick_attrition). Sub-soldier
@@ -70,4 +75,5 @@ static func from_unit(u: Unit) -> FarTierFormation:
 	rec.defense = u.defense
 	rec.attack_range = u.attack_range
 	rec.march_speed = u.walk_speed
+	rec.is_ranged = u.is_ranged
 	return rec
