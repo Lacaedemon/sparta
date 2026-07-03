@@ -232,7 +232,7 @@ static func tick_attrition(defender: FarTierFormation, rate: float, delta: float
 ## Break into rout: the aggregate analog of Unit._rout(). Latches rec.routing and arms the
 ## timer at ROUT_TIME. A no-op if already routing, matching Unit._rout()'s own re-entrancy
 ## guard. Contagion (morale-shaking nearby friendlies, ROUT_SHOCK_RADIUS) is orchestration
-## across many formations — out of this pair-scoped rule's reach; see tick_shock below for
+## across many formations — out of this pair-scoped rule's reach; see tick_rout below for
 ## the isolated two-body analog this phase actually implements.
 static func enter_rout(rec: FarTierFormation) -> void:
 	if rec.routing:
