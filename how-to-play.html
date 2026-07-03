@@ -577,69 +577,73 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 </tr>
 <tr class="odd">
 <td>Anti-cavalry square</td>
-<td><kbd>O</kbd> jumps straight to Square (press again to drop back to Normal) · or click <strong>Square</strong> in the control bar</td>
+<td><kbd>O</kbd> jumps straight to Square / orbis (press again to drop back to Normal) · or click <strong>Square (Orbis)</strong> in the control bar</td>
 </tr>
 <tr class="even">
+<td>Schiltron</td>
+<td><kbd>Shift</kbd> + <kbd>O</kbd> jumps straight to Schiltron, the harder-bracing anti-cavalry variant (press again to drop back to Normal) · or click <strong>Schiltron</strong> in the control bar</td>
+</tr>
+<tr class="odd">
 <td>Shielded stances</td>
 <td><kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or the <strong>control bar</strong> menu</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Line width</td>
 <td><kbd>[</kbd> narrower · <kbd>]</kbd> wider, or <strong>drag a flank grip</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>File-doubling</td>
 <td><kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Drill turn in place</td>
 <td><kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Wheel (hinge on a flank)</td>
 <td><kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Nudge (small step, holds facing)</td>
 <td><kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↓</kbd> back-step (a few metres each)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Merge selected units</td>
 <td><kbd>M</kbd></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Control groups</td>
 <td><kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Distance legend</td>
 <td><strong>☰ Menu → Distance legend</strong> toggles the map-scale bar (bottom-right, on by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Order distance labels</td>
 <td><strong>☰ Menu → Order distance labels</strong> toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Unit speed labels</td>
 <td><strong>☰ Menu → Unit speed labels</strong> shows each unit’s current speed in metres/second above it in the hold-<kbd>Space</kbd> survey (off by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Pan camera</td>
 <td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges (the ←→↓ arrows nudge instead while a unit is selected; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> always pans)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Zoom</td>
 <td><strong>Mouse wheel</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Show all orders + formation preview</td>
 <td>hold <kbd>Space</kbd></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Active pause</td>
 <td><kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>All shortcuts (this list, in-game)</td>
 <td><kbd>?</kbd> (Shift + <kbd>/</kbd>) or <strong>☰ Menu → Shortcuts</strong></td>
 </tr>
@@ -651,7 +655,7 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 <p>A right-click on empty ground is a <strong>move</strong> order; a right-click on an enemy is an <strong>attack</strong> order. Selection and camera stay live even while paused, so you can plan under pressure.</p>
 <p><strong>Control bar.</strong> When you have units selected, a control bar appears at the bottom of the screen with clickable buttons for the most-used unit toggles. Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.</p>
 <ul>
-<li><strong>Formation</strong> — click Normal, Tight, Loose, or Square directly (same as <kbd>T</kbd>), or pick one of the two shielded close-order stances, <strong>Shield Wall</strong> (<kbd>L</kbd>) or <strong>Testudo</strong> (<kbd>U</kbd>). <kbd>T</kbd> cycles only the density set plus Square; the two shielded stances are set from the menu or their direct keys.</li>
+<li><strong>Formation</strong> — click Normal, Tight, Loose, or Square (Orbis) directly (same as <kbd>T</kbd>), or pick one of the other direct-select stances: <strong>Schiltron</strong> (<kbd>Shift</kbd> + <kbd>O</kbd>, the harder-bracing anti-cavalry variant), <strong>Shield Wall</strong> (<kbd>L</kbd>), or <strong>Testudo</strong> (<kbd>U</kbd>). <kbd>T</kbd> cycles only the density set plus Square; the other three stances are set from the menu or their direct keys.</li>
 <li><strong>Stance</strong> — click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).</li>
 <li><strong>Reform</strong> — toggle Reform before move (same as ☰ Menu → Reform before move).</li>
 <li><strong>Focused atk / Spread atk</strong> — cycle the group-attack mode (same as <kbd>X</kbd>).</li>
@@ -794,7 +798,11 @@ Figure&nbsp;9: Line relief: a fresh unit passes through its tired ally and takes
 </figure>
 </div>
 <p>Press <kbd>T</kbd> to cycle a selected unit’s <strong>formation</strong> — <em>Tight</em> closes ranks for better missile and charge defence, <em>Loose</em> spreads out, and <em>Square</em> forms the anti-cavalry ring described below. Every unit can cycle through all four; each type just starts at a different one — spearmen deploy Tight (locked shields against a charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry deploy at the plain Normal combat order.</p>
-<p><strong>Square (anti-cavalry ring).</strong> <em>Square</em> forms a hollow square / orbis / schiltron: the soldiers face spears and shields outward on every side, so the unit has <strong>no weak flank or rear</strong> — an attack from any direction lands as if it were frontal, and a cavalry charge into the ring is braced (and backfires) no matter which side it hits. The price is mobility (the ring crawls) and offence (it hits softer while hunkered), so square up <em>before</em> the horse arrives and drop back to Normal once the threat is gone. Because it’s a reaction you want to trigger fast, <kbd>O</kbd> (for <em>orbis</em>) jumps a unit straight to Square without cycling through Tight and Loose — press it again to drop back to Normal — and the control bar’s <strong>Square</strong> button does the same with one click.</p>
+<p><strong>Square: orbis and schiltron (anti-cavalry rings).</strong> <em>Square</em> forms a hollow square: the soldiers face spears and shields outward on every side, so the unit has <strong>no weak flank or rear</strong> — an attack from any direction lands as if it were frontal, and a cavalry charge into the ring is braced (and backfires) no matter which side it hits. The price is mobility (the ring crawls) and offence (it hits softer while hunkered), so square up <em>before</em> the horse arrives and drop back to Normal once the threat is gone. There are two variants of the ring, trading off differently:</p>
+<ul>
+<li><strong>Orbis</strong> — the last-stand ring. Its offence and charge-bracing sit at the square’s baseline, and it holds its nerve better than any other stance: casualties erode its morale more slowly, so a surrounded unit making a final stand is less likely to break outright. Because it’s a reaction you want to trigger fast, <kbd>O</kbd> (for <em>orbis</em>) jumps a unit straight to Square without cycling through Tight and Loose — press it again to drop back to Normal — and the control bar’s <strong>Square (Orbis)</strong> button does the same with one click.</li>
+<li><strong>Schiltron</strong> — the cavalry specialist. A denser hedge of levelled spears braces a charge <em>harder</em> than the orbis does, so cavalry that rides into a schiltron comes off worse than riding into an orbis, at the cost of hitting even softer in return. It carries no morale bonus — unlike orbis this isn’t a last-stand stance, just the hard anti-cavalry counter. <kbd>Shift</kbd> + <kbd>O</kbd> jumps a unit straight to Schiltron — press it again to drop back to Normal — and the control bar’s <strong>Schiltron</strong> button does the same.</li>
+</ul>
 <p><strong>Shielded close-order stances.</strong> Two heavier stances build on Tight’s locked-shield density, chosen from the control-bar Formation menu:</p>
 <ul>
 <li><strong>Shield Wall</strong> — shields locked edge-to-edge in a static line. It sharply cuts <em>frontal</em> missile and melee damage, but only to the front: a shot or blow into the flank or rear bypasses the wall entirely. The wall barely moves, so it is a holding stance — plant it to anchor a line, not to advance.</li>
