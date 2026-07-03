@@ -460,7 +460,7 @@ func test_striking_range_is_asymmetric_for_a_longer_reach() -> void:
 	assert_false(FarTierRules.in_striking_range(swords, spears))
 
 
-# --- ranged/volley attrition (#579) ---------------------------------------------------------
+# --- ranged/volley attrition ------------------------------------------------------------------
 
 func test_ranged_striking_range_uses_ranged_range_not_melee_reach() -> void:
 	var archers := _make_rec(Vector2.ZERO, Vector2.DOWN)
@@ -508,6 +508,21 @@ func test_ranged_casualty_rate_is_one_expected_volley_per_ranged_interval() -> v
 	archers.is_ranged = true
 	var expected: float = (6.0 * Unit.RANGED_DAMAGE_FACTOR) / Unit.RANGED_INTERVAL
 	assert_almost_eq(FarTierRules.casualty_rate(archers, pair[1]), expected, 0.0001)
+
+
+func test_ranged_casualty_rate_does_not_scale_down_for_a_thinned_formation() -> void:
+	# UnitCombat.shoot draws volley damage from the flat attack stat with no soldier-count
+	# scaling: a 10-man archer regiment volleys exactly as hard as a 140-man one. The
+	# strength_ratio thinning term is melee-only (its own justification is grounded in the
+	# close tier's per-soldier melee path), so a half-strength archer formation must inflict
+	# the SAME casualty rate as a full-strength one, unlike the melee case above.
+	var pair := _frontal_pair()
+	var archers: FarTierFormation = pair[0]
+	archers.is_ranged = true
+	var full_rate: float = FarTierRules.casualty_rate(archers, pair[1])
+	archers.count = 60   # half of max_soldiers (120)
+	assert_almost_eq(FarTierRules.casualty_rate(archers, pair[1]), full_rate, 0.0001,
+		"a thinned archer formation volleys exactly as hard as a full-strength one")
 
 
 func test_ranged_defender_uses_missile_defense_not_melee_defense() -> void:

@@ -42,6 +42,8 @@ Selecting units and issuing move/attack orders during a battle.
 | Relieve a friendly | **Right-click** an engaged friendly outside the selection --- the fresh unit takes over the fight and the tired one falls back |
 | Add waypoint | **Shift + Right-click** (chain several move points) |
 | Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>J</kbd> cycle charge · <kbd>Esc</kbd> clear |
+| Set stance in place | <kbd>Ctrl</kbd> + a stance key writes that stance on the selection immediately --- no move/attack order needed |
+| Rank relief (discipline) | <kbd>I</kbd> toggles rank cycling for the selection (on by default; see [Tactics](tactics.qmd#rank-cycling-trained-units)) |
 | Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose / Square) · or **control bar** |
 | Anti-cavalry square | <kbd>O</kbd> jumps straight to Square (press again to drop back to Normal) · or click **Square** in the control bar |
 | Shielded stances | <kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or the **control bar** menu |
@@ -269,6 +271,30 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
 - **Cycle charge** (<kbd>J</kbd>) --- cavalry charge the target, pull back to a
   standoff, and charge again, so each run lands a fresh momentum hit instead of
   grinding once the charge is spent (see [Tactics](tactics.qmd#order-stances)).
+
+Pressing a stance key alone only **arms** it for your next move/attack order ---
+it doesn't touch a unit that's already standing still. To change a selected
+unit's stance right where it stands, with no move needed, hold <kbd>Ctrl</kbd>
+while pressing the stance key; a toast confirms the write. Separately,
+<kbd>I</kbd> toggles each selected unit's **rank relief** (discipline) mode ---
+the on-by-default knob behind rank cycling (see
+[Tactics](tactics.qmd#rank-cycling-trained-units)) --- with its own confirming
+toast.
+
+::: {#fig-stance-order .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/stance_order.jpg">
+  <source src="media/stance_order.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Setting a stance in place with <kbd>Ctrl</kbd>+<kbd>H</kbd>, then toggling
+rank relief off with <kbd>I</kbd> --- both confirmed by a flash toast.
+:::
 
 ::: {#fig-support .demo}
 
