@@ -147,6 +147,52 @@ func test_shield_wall_defender_takes_fewer_frontal_wounds_via_soldier_path() -> 
 		0.001, "by exactly the shield wall's frontal melee defense")
 
 
+func test_square_attacker_inflicts_fewer_wounds_via_soldier_path() -> void:
+	# #490: the anti-cavalry square's offence penalty (formation_attack_factor) must
+	# flow into the per-soldier melee path (SoldierMelee.resolve's wound_scale), not
+	# just the regiment-formula path (UnitCombat.strike) -- a squared attacker hunkers
+	# to defend all around, so it hits softer here too.
+	Replay.rng.seed = SEED
+	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+
+	Replay.rng.seed = SEED
+	var a_square := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a_square.set_formation(Unit.FORMATION_SQUARE)
+	var d_square := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var square_wounds: float = _wounds_over(a_square, d_square, 10)
+
+	assert_gt(normal_wounds, 0.0, "the normal attacker lands wounds (sanity)")
+	assert_lt(square_wounds, normal_wounds,
+		"a squared attacker wounds less over the per-soldier melee path (offence penalty)")
+	assert_almost_eq(square_wounds, normal_wounds * Unit.SQUARE_ATTACK_FACTOR,
+		0.001, "by exactly the square's offence factor")
+
+
+func test_schiltron_attacker_inflicts_fewer_wounds_than_orbis_via_soldier_path() -> void:
+	# Schiltron (#488) pays a DEEPER offence penalty than orbis for its harder charge
+	# brace -- this must hold in the per-soldier path too, not just
+	# formation_attack_factor() in isolation.
+	Replay.rng.seed = SEED
+	var a_orbis := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a_orbis.set_formation(Unit.FORMATION_SQUARE)
+	var d_orbis := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var orbis_wounds: float = _wounds_over(a_orbis, d_orbis, 10)
+
+	Replay.rng.seed = SEED
+	var a_schiltron := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a_schiltron.set_formation(Unit.FORMATION_SCHILTRON)
+	var d_schiltron := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var schiltron_wounds: float = _wounds_over(a_schiltron, d_schiltron, 10)
+
+	assert_gt(orbis_wounds, 0.0, "the orbis attacker lands wounds (sanity)")
+	assert_lt(schiltron_wounds, orbis_wounds,
+		"a schiltron attacker wounds less than an orbis attacker over the per-soldier path")
+	assert_almost_eq(schiltron_wounds, orbis_wounds * (Unit.SCHILTRON_ATTACK_FACTOR / Unit.SQUARE_ATTACK_FACTOR),
+		0.001, "by exactly the ratio between the two variants' offence factors")
+
+
 # --- deaths compact the arrays ------------------------------------------------
 
 func test_death_compacts_the_body_arrays() -> void:
