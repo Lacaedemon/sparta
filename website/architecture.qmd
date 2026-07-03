@@ -89,6 +89,8 @@ disengages and falls back. See
 [`docs/large-scale-simulation-design.md`](https://github.com/Lacaedemon/sparta/blob/main/docs/large-scale-simulation-design.md)
 for the full design and the phased build-out.
 
+::: {#fig-cannae-scale .demo}
+
 ```{=html}
 <video class="demo-video" controls muted loop playsinline preload="metadata"
        poster="media/cannae_scale.jpg">
@@ -101,6 +103,7 @@ for the full design and the phased build-out.
 The engaged close-tier front (fully detailed, individually-simulated soldiers) in
 the foreground, and the far larger aggregate far-tier reserve force revealed as the
 camera pulls back.
+:::
 
 ## Determinism
 
