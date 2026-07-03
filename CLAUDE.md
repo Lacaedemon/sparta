@@ -65,6 +65,22 @@ commit a **`demos/demo.json`** so CI records a short clip and posts it on the PR
   unrelated generic clip: commit a `demos/demo.json` with `"skip": true` and a
   `"reason"`. CI then posts a short note explaining the absence instead
   (`demos/demo.skip.example.json` is a template).
+- **Keep each demo simple and focused on one thing — use multiple demos when a PR
+  touches multiple features, rather than one clip trying to show everything.** A
+  clip that chains an unrelated setup phase (spawning, an AI unit's first move
+  order, a formation change) onto the actual feature under review makes the
+  reviewer wade through noise to find the point — or worse, mistakes an unrelated
+  transient (e.g. the spawn-facing churn tracked in #631) for a bug in the change
+  being reviewed. CI's demo-video workflow only auto-posts **one** clip per PR
+  (`demos/demo.*.json` — if several exist, it warns and picks the first
+  alphabetically), so when a PR genuinely has multiple features worth showing
+  separately: pick the most complete/representative one as the primary
+  `demos/demo.json`, and record any others as supplementary GIFs committed under
+  `demos/shots/` and embedded directly in the PR description (same raw-URL/commit-SHA
+  pattern as the static-image case below, but animated). (Learned on PR #615: the
+  original single clip conflated a pre-existing spawn/facing-flip transient with
+  the actual formation-change and charge-bracing mechanics being reviewed, reading
+  as "physics is broken" until traced with a state dump.)
 
 ### Static features: images in the PR description
 For changes a still shows better than motion — new **interfaces/menus/HUD**, **new
