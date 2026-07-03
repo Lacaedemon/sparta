@@ -2,7 +2,7 @@
   "input": "demos/inputs/schiltron-charge-received.json",
   "caption": "Schiltron receiving a charge: the infantry unit starts the clip already formed up in Schiltron and holds its ground while two cavalry charge into its rear. The ring braces the hit harder than plain orbis would, at the cost of a deeper offence penalty and no morale bonus -- both sides take real losses as the clash settles in. (A separate GIF in the PR description shows the Shift+O formation change itself.)",
   "fixed_fps": 30,
-  "max_frames": 340,
+  "max_frames": 460,
   "fps": 15,
   "width": 640
 }
