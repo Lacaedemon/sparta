@@ -666,7 +666,7 @@ Figure&nbsp;3: Testudo under fire: an infantry unit locked in testudo, ringed by
 </section>
 <section id="form-square-against-cavalry" class="level2">
 <h2 class="anchored" data-anchor-id="form-square-against-cavalry">Form square against cavalry</h2>
-<p>When horse threatens a unit’s flank or rear and you have no spear screen to spare, press <kbd>O</kbd> (for <em>orbis</em>) to form <strong>Square</strong> at once — the hollow square / orbis / schiltron. (<kbd>O</kbd> jumps straight there, and the control bar’s Square button does too; <kbd>T</kbd> also reaches it by cycling through Tight and Loose.) The soldiers face outward on every side, so the unit presents <strong>no weak facing</strong>: an attack from any direction lands as if it were frontal (the usual ×1.5 flank / ×2 rear bonus is gone), and a cavalry charge into the ring is braced and <strong>backfires</strong> whether it hits the front, a flank, or the rear. There is no open side for the horse to exploit.</p>
+<p>When horse threatens a unit’s flank or rear and you have no spear screen to spare, form a hollow <strong>square</strong> at once: <kbd>O</kbd> (for <em>orbis</em>) jumps straight to the Square stance, and <kbd>T</kbd> also reaches it by cycling through Tight and Loose. The soldiers face outward on every side, so the unit presents <strong>no weak facing</strong>: an attack from any direction lands as if it were frontal (the usual ×1.5 flank / ×2 rear bonus is gone), and a cavalry charge into the ring is braced and <strong>backfires</strong> whether it hits the front, a flank, or the rear. There is no open side for the horse to exploit.</p>
 <p>Square is a defensive commitment, not a free upgrade. While it holds, the unit <strong>crawls</strong> (it can’t charge out) and <strong>hits softer</strong> (reduced offensive output). So:</p>
 <p><strong>The AI squares up on its own.</strong> An AI-controlled spear unit forms Square the moment enemy cavalry closes on it, with no player prompting it — the same reaction a disciplined human commander would take. Charging AI spearmen in the open only works if the cavalry arrives before the square finishes forming.</p>
 <ul>
@@ -674,6 +674,12 @@ Figure&nbsp;3: Testudo under fire: an infantry unit locked in testudo, ringed by
 <li><strong>Drop back to Normal</strong> the moment the horse is beaten off or pulls away, or the offence and mobility penalties will cost you against enemy foot.</li>
 <li><strong>It’s a fallback, not a replacement for spearmen.</strong> A spear screen still blunts the charge <em>and</em> keeps your line mobile and hitting hard; square is what you reach for when a unit is caught in the open with cavalry on a bad angle.</li>
 </ul>
+<p><strong>Orbis vs schiltron.</strong> The hollow square comes in two variants with different trade-offs, not one generic stance:</p>
+<ul>
+<li><strong>Orbis</strong> (<kbd>O</kbd>, or the control bar’s <strong>Square (Orbis)</strong> button) is the last-stand ring. Its charge brace and offence sit at the square’s baseline, but it holds its nerve better than any other stance — casualties erode its morale more slowly, so a surrounded unit fighting to the end is less likely to break outright. Reach for it when a unit is cut off and simply needs to survive as long as possible.</li>
+<li><strong>Schiltron</strong> (<kbd>Shift</kbd> + <kbd>O</kbd>, or the control bar’s <strong>Schiltron</strong> button) is the cavalry specialist. Its denser hedge of levelled spears braces a charge <em>harder</em> than the orbis does — cavalry riding into a schiltron comes off worse than riding into an orbis — at the cost of hitting even softer in return, and it carries no morale bonus. Reach for it when the priority is breaking the charge itself, not outlasting a siege.</li>
+</ul>
+<p>Both variants share the same hollow-square footprint and the same mobility penalty; only the charge-bracing strength, offence, and morale resilience differ.</p>
 <div id="fig-square" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -685,6 +691,34 @@ Figure&nbsp;3: Testudo under fire: an infantry unit locked in testudo, ringed by
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;4: Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.
+</figcaption>
+</figure>
+</div>
+<div id="fig-schiltron" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-schiltron-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/schiltron.jpg">
+  <source src="media/schiltron.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-schiltron-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Schiltron: the same rear cavalry charge as above, but the unit forms Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge harder than orbis does, at a deeper offence cost.
+</figcaption>
+</figure>
+</div>
+<div id="fig-battle-ai-leaders" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-battle-ai-leaders-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/battle_ai_leaders.jpg">
+  <source src="media/battle_ai_leaders.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-battle-ai-leaders-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Two AI unit-leader decisions in one clash: the AI spearmen on the left form the anti-cavalry square on their own as player cavalry closes, with no player key press arming it. The AI infantry on the right advances and attacks, then re-targets and turns to face a second player unit that closes on its flank instead of fighting on with its back exposed.
 </figcaption>
 </figure>
 </div>
@@ -765,7 +799,7 @@ Table&nbsp;2: Movement paces by unit type, in metres per second.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pace-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;5: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
+Figure&nbsp;7: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
 </figcaption>
 </figure>
 </div>
@@ -799,7 +833,7 @@ Figure&nbsp;5: Pace modes: regiments walk on approach, jog when enemy archers op
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;6: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+Figure&nbsp;8: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
 </figcaption>
 </figure>
 </div>
@@ -845,7 +879,7 @@ Figure&nbsp;6: Braking on arrival: a lone Infantry regiment sprints toward a mov
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;9: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
