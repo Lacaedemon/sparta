@@ -215,6 +215,20 @@ preflight_godot_count() {
 # --- checks ----------------------------------------------------------------
 # Each returns 0 on pass, non-zero on fail.
 
+# has_script_errors <log> — true (and echoes the offending lines to stderr) when
+# the log contains a Godot script/parse/compile error marker. Godot doesn't
+# reliably turn these into a non-zero process exit code, and GUT's own -gexit
+# exit code is no better: a test script that fails to parse is reported via a
+# plain print() in test_collector.gd, not through the totals/errors counters
+# -gexit derives its exit code from, so the script is silently dropped from the
+# run (its tests never counted) while the suite still reports success. Godot
+# does print these markers to the log regardless of which command hit them, so
+# every check that runs Godot against project or test scripts greps for them.
+has_script_errors() {
+  local log="$1"
+  grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" "$log" >&2
+}
+
 check_validate() {
   require_godot || return 1
   ensure_gut || return 1
@@ -234,7 +248,7 @@ check_validate() {
   fi
   # Send the matched error lines to stderr so all of this check's error output
   # (these plus the err() message below) stays on one stream.
-  if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" "$log" >&2; then
+  if has_script_errors "$log"; then
     err "Godot reported script/resource errors during import (see above)."
     rm -f "$log"
     return 1
@@ -247,16 +261,37 @@ check_test() {
   require_godot || return 1
   ensure_gut || return 1
   # gut_cmdln runs the suite without enabling the editor plugin; -gexit makes it
-  # exit non-zero if any test fails or errors.
+  # exit non-zero if any test fails or errors -- but NOT if a test script fails
+  # to parse (see has_script_errors above). Tee the output so the run still
+  # streams live, and fail on the same script/parse-error markers
+  # check_validate already fails on.
+  local log; log="$(mktemp)"
   local rc=0
   ( cd "$PROJECT_ROOT" && run_bounded "$TEST_TIMEOUT" \
       "$GODOT_BIN" --headless -s addons/gut/gut_cmdln.gd \
-      -gdir=res://test -ginclude_subdirs -gexit ) || rc=$?
+      -gdir=res://test -ginclude_subdirs -gexit ) 2>&1 | tee "$log"
+  rc="${PIPESTATUS[0]}"
   if run_bounded_timed_out "$rc"; then
     err "GUT suite timed out after ${TEST_TIMEOUT}s and was killed (no orphan left behind)."
+    rm -f "$log"
     return 1
   fi
-  return "$rc"
+  if [ "$rc" -ne 0 ]; then
+    rm -f "$log"
+    return "$rc"
+  fi
+  # A clean exit code alone doesn't prove every test script actually ran --
+  # confirm none of them failed to parse/load.
+  if has_script_errors "$log"; then
+    err "GUT reported script/parse errors during the run (see above) -- at least one"
+    err "test script failed to load and its tests were silently skipped, even though"
+    err "the suite reported success. Fix the broken script; a passing run must load"
+    err "every test script."
+    rm -f "$log"
+    return 1
+  fi
+  rm -f "$log"
+  return 0
 }
 
 check_coverage() {

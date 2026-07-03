@@ -1174,23 +1174,20 @@ func _tick_tier_transitions() -> void:
 			TierTransition.demote(u)
 
 
+## Battle AI phase 1 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets a
+## unit leader (UnitLeader.decide) that reads the current sim state -- the omniscient
+## placeholder perception phase 1 uses -- and returns at most one order-command Dictionary,
+## which is applied through _apply_order_cmd, the SAME single apply site a player order
+## goes through. No unit state is written directly here or in UnitLeader -- closing the
+## backdoor the old direct `u.target_enemy = nearest` write left open (see the design doc's
+## "Today's AI is a backdoor" section). Deterministic: a pure function of already-serialized
+## unit state, decided in uid order, so live play and replay reach identical decisions.
 func _run_enemy_ai() -> void:
-	# Each idle enemy advances on the nearest player unit; combat auto-resolves.
-	var players := _team_units(0)
-	if players.is_empty():
-		return
+	var all_units: Array = get_tree().get_nodes_in_group("units")
 	for u in _team_units(1):
-		if u.state == UnitRef.State.FIGHTING:
-			continue
-		var nearest = null
-		var best: float = INF
-		for p in players:
-			var d: float = u.position.distance_to(p.position)
-			if d < best:
-				best = d
-				nearest = p
-		if nearest != null:
-			u.target_enemy = nearest
+		var cmd: Dictionary = UnitLeader.decide(u, all_units)
+		if not cmd.is_empty():
+			_apply_order_cmd(cmd)
 
 
 func _team_units(team: int) -> Array:
