@@ -581,12 +581,20 @@ Table&nbsp;1: Each script and its responsibility.
 <li><strong>Far tier</strong> — an aggregate record (living count, morale, position, facing) evolved by statistical rules instead of per-soldier physics, for formations far from any fight (reserves, a second echelon). A far tier formation costs the same regardless of how many soldiers it represents, so a handful of aggregate reserve corps can stand in for tens of thousands of soldiers without the per-soldier cost.</li>
 </ul>
 <p>A formation crosses tiers automatically as it nears or leaves combat — promoting to close tier as an enemy closes to strike range, demoting back to far tier once it disengages and falls back. See <a href="https://github.com/Lacaedemon/sparta/blob/main/docs/large-scale-simulation-design.md"><code>docs/large-scale-simulation-design.md</code></a> for the full design and the phased build-out.</p>
+<div id="fig-cannae-scale" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-cannae-scale-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/cannae_scale.jpg">
   <source src="media/cannae_scale.mp4" type="video/mp4">
   Your browser can't play this clip --- see the
   <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
 </video>
-<p>The engaged close-tier front (fully detailed, individually-simulated soldiers) in the foreground, and the far larger aggregate far-tier reserve force revealed as the camera pulls back.</p>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cannae-scale-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: The engaged close-tier front (fully detailed, individually-simulated soldiers) in the foreground, and the far larger aggregate far-tier reserve force revealed as the camera pulls back.
+</figcaption>
+</figure>
+</div>
 </section>
 <section id="determinism" class="level2">
 <h2 class="anchored" data-anchor-id="determinism">Determinism</h2>
