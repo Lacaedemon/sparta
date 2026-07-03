@@ -148,10 +148,10 @@ func test_shield_wall_defender_takes_fewer_frontal_wounds_via_soldier_path() -> 
 
 
 func test_square_attacker_inflicts_fewer_wounds_via_soldier_path() -> void:
-	# #490: the anti-cavalry square's offence penalty (formation_attack_factor) must
-	# flow into the per-soldier melee path (SoldierMelee.resolve's wound_scale), not
-	# just the regiment-formula path (UnitCombat.strike) -- a squared attacker hunkers
-	# to defend all around, so it hits softer here too.
+	# The anti-cavalry square's offence penalty (formation_attack_factor) must flow
+	# into the per-soldier melee path (SoldierMelee.resolve's wound_scale), not just
+	# the regiment-formula path (UnitCombat.strike) -- a squared attacker hunkers to
+	# defend all around, so it hits softer here too.
 	Replay.rng.seed = SEED
 	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
@@ -171,9 +171,9 @@ func test_square_attacker_inflicts_fewer_wounds_via_soldier_path() -> void:
 
 
 func test_schiltron_attacker_inflicts_fewer_wounds_than_orbis_via_soldier_path() -> void:
-	# Schiltron (#488) pays a DEEPER offence penalty than orbis for its harder charge
-	# brace -- this must hold in the per-soldier path too, not just
-	# formation_attack_factor() in isolation.
+	# Schiltron pays a DEEPER offence penalty than orbis for its harder charge brace --
+	# this must hold in the per-soldier path too, not just formation_attack_factor()
+	# in isolation.
 	Replay.rng.seed = SEED
 	var a_orbis := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	a_orbis.set_formation(Unit.FORMATION_SQUARE)
