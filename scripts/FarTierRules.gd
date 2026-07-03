@@ -64,10 +64,20 @@ static func can_fight(rec: FarTierFormation) -> bool:
 	return not is_destroyed(rec) and not is_broken(rec) and not rec.routing
 
 
-## Offensive-output scale from the stance — mirrors Unit.formation_attack_factor: the
-## anti-cav square hunkers to defend all around and hits softer.
+## True for either hollow-square variant (orbis / SQUARE or schiltron / SCHILTRON) —
+## mirrors Unit.in_square().
+static func in_square(rec: FarTierFormation) -> bool:
+	return rec.formation_mode == Unit.FORMATION_SQUARE or rec.formation_mode == Unit.FORMATION_SCHILTRON
+
+
+## Offensive-output scale from the stance — mirrors Unit.formation_attack_factor: both
+## anti-cav square variants hunker to defend all around and hit softer, schiltron more so.
 static func formation_attack_factor(rec: FarTierFormation) -> float:
-	return Unit.SQUARE_ATTACK_FACTOR if rec.formation_mode == Unit.FORMATION_SQUARE else 1.0
+	if rec.formation_mode == Unit.FORMATION_SCHILTRON:
+		return Unit.SCHILTRON_ATTACK_FACTOR
+	if rec.formation_mode == Unit.FORMATION_SQUARE:
+		return Unit.SQUARE_ATTACK_FACTOR
+	return 1.0
 
 
 ## Melee-output scale from the stance — mirrors Unit.formation_melee_attack_factor: a
@@ -84,7 +94,7 @@ static func formation_speed_factor(rec: FarTierFormation) -> float:
 			return Unit.SHIELD_WALL_SPEED_SCALE
 		Unit.FORMATION_TESTUDO:
 			return Unit.TESTUDO_SPEED_SCALE
-		Unit.FORMATION_SQUARE:
+		Unit.FORMATION_SQUARE, Unit.FORMATION_SCHILTRON:
 			return Unit.SQUARE_MOVE_FACTOR
 		_:
 			return 1.0
@@ -127,9 +137,10 @@ static func missile_defense_factor(defender: FarTierFormation, attacker_pos: Vec
 
 
 ## 1.0 frontal, 1.5 flank, 2.0 rear, relative to the DEFENDER's facing — mirrors
-## UnitCombat.flank_multiplier, including the square's all-around defence (no weak side).
+## UnitCombat.flank_multiplier, including both square variants' all-around defence (no
+## weak side).
 static func flank_multiplier(defender: FarTierFormation, attacker_pos: Vector2) -> float:
-	if defender.formation_mode == Unit.FORMATION_SQUARE:
+	if in_square(defender):
 		return 1.0
 	var to_attacker: Vector2 = attacker_pos - defender.position
 	if to_attacker.length() < 0.001:
@@ -191,11 +202,13 @@ static func in_striking_range(attacker: FarTierFormation, defender: FarTierForma
 ## Apply `killed` whole casualties to the record: clamp to the living, book the losses,
 ## and erode morale by UnitCombat.register_casualties' exact formula — the
 ## fraction-of-force base erosion plus the crumble boost once the formation thins below
-## the threshold ratio. Returns the casualties actually applied. Morale floors at zero.
-## Mirrors register_casualties' own trigger order exactly: wipe-out takes priority (a
-## formation whose count just hit zero is destroyed, not routing — is_destroyed already
-## covers it, so enter_rout is skipped), otherwise a fresh break into zero morale latches
-## rout THIS call, same tick as the casualties that caused it.
+## the threshold ratio, scaled by the stance's erosion resistance (orbis holds its nerve
+## better as a last-stand ring — Unit.formation_morale_erosion_factor's far-tier mirror).
+## Returns the casualties actually applied. Morale floors at zero rather than going
+## negative. Mirrors register_casualties' own trigger order exactly: wipe-out takes
+## priority (a formation whose count just hit zero is destroyed, not routing —
+## is_destroyed already covers it, so enter_rout is skipped), otherwise a fresh break
+## into zero morale latches rout THIS call, same tick as the casualties that caused it.
 static func apply_casualties(rec: FarTierFormation, killed: int) -> int:
 	var applied: int = clampi(killed, 0, rec.count)
 	if applied <= 0:
@@ -203,8 +216,10 @@ static func apply_casualties(rec: FarTierFormation, killed: int) -> int:
 	rec.count -= applied
 	rec.casualties += applied
 	if rec.max_soldiers > 0:
+		var erosion_factor: float = Unit.ORBIS_MORALE_EROSION_RESIST \
+				if rec.formation_mode == Unit.FORMATION_SQUARE else 1.0
 		var casualty_frac: float = float(applied) / float(rec.max_soldiers)
-		var base_erosion: float = casualty_frac * Unit.MORALE_LOSS_PER_FULL_LOSS
+		var base_erosion: float = casualty_frac * Unit.MORALE_LOSS_PER_FULL_LOSS * erosion_factor
 		rec.morale -= base_erosion
 		var ratio: float = strength_ratio(rec)
 		if ratio < Unit.MORALE_CRUMBLE_RATIO_THRESHOLD:

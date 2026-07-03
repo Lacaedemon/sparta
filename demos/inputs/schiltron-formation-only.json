@@ -1,0 +1,12 @@
+{
+  "_comment": "Schiltron formation-change demo, split out of the combined schiltron.json into a dedicated clip -- see demos/README.md. No cavalry at all, so there's no spawn-facing-flip churn and no combat to distract from the transition itself. A single player Infantry unit spawns in NORMAL formation, gets selected, and the clip shows the Shift+O jump straight to Schiltron -- the block relaying out into the real outward-facing hollow square. Recorded as a standalone GIF for the PR description (not the CI-posted demo.488.json clip, which shows the receiving-the-charge scenario instead). Deterministic (seed + scripted input, no scenario override -- uses the default line spawn).",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 650.0, "y": 300.0, "zoom": 1.6}
+  ],
+  "steps": [
+    {"tick": 8, "click": [650, 300]},
+    {"tick": 24, "key": "O", "shift": true}
+  ],
+  "state": [8, 24, 40, 60, 90]
+}

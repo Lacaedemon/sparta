@@ -31,6 +31,7 @@ const FORMATION_NAMES := {
 	3: "SQUARE",
 	4: "SHIELD_WALL",
 	5: "TESTUDO",
+	6: "SCHILTRON",
 }
 
 ## The node groups that together hold every combat unit still on the field. A unit lives in
