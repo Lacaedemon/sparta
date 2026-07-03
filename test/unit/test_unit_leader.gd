@@ -1,5 +1,5 @@
 extends GutTest
-## Battle AI phase 1 (docs/battle-ai-design.md, #584): UnitLeader.decide's tactical
+## Battle AI phase 1 (docs/battle-ai-design.md): UnitLeader.decide's tactical
 ## repertoire. Exercised at the same level as test_battle.gd's order-dispatch tests --
 ## units built directly via the script (add_child_autofree so _ready() joins "units"),
 ## no full Battle scene needed since UnitLeader reads only unit fields and the
@@ -233,6 +233,39 @@ func test_wavering_unit_ignores_a_fresh_ally_that_is_itself_fighting() -> void:
 	tired.facing = Vector2.DOWN
 	var cmd: Dictionary = UnitLeaderScript.decide(tired, _all())
 	assert_true(cmd.is_empty(), "the only ally nearby is busy fighting, so no relief call fires")
+
+
+# --- a reliever's own RELIEF order must survive its own re-decide ---------------
+
+func test_reliever_mid_advance_keeps_its_relief_order_on_a_later_decide() -> void:
+	# UnitRelief.begin sets target_enemy but never touches state, so a reliever
+	# advancing toward the swap is NOT yet FIGHTING -- exactly the state the
+	# fallback branch normally issues a fresh ATTACK order for. Without the
+	# RELIEF exclusion, this decide() call would clobber the reliever's own
+	# current_order (and its relief_partner link) with an ATTACK order.
+	var reliever := _unit(1, Vector2(0, 0), 1)
+	reliever.set_current_order(Order.new_relief(99))   # already ordered to relieve `tired`
+	var foe := _unit(2, Vector2(400, 0), 0)   # a living enemy the fallback could target
+	reliever.target_enemy = foe   # UnitRelief.begin's effect: target set, state untouched
+	var cmd: Dictionary = UnitLeaderScript.decide(reliever, _all())
+	assert_true(cmd.is_empty(),
+		"a unit already executing its own RELIEF order keeps it -- no fresh ATTACK order")
+	assert_eq(reliever.current_order.type, Order.Type.RELIEF,
+		"the RELIEF order itself is untouched by this decide() call")
+
+
+func test_reliever_still_reacts_to_a_flank_threat_while_relieving() -> void:
+	# The RELIEF exclusion only guards the advance/attack fallback -- a reliever
+	# that picks up a flank/rear contact along the way still reacts to it, same
+	# priority order as every other tactical case.
+	var reliever := _unit(1, Vector2(0, 0), 1)
+	reliever.set_current_order(Order.new_relief(99))
+	reliever.facing = Vector2.DOWN
+	reliever.attack_range = 100.0
+	var flanker := _unit(2, Vector2(60, 0), 0)   # to the side: flank contact
+	var cmd: Dictionary = UnitLeaderScript.decide(reliever, _all())
+	assert_eq(int(cmd["target"]), flanker.uid,
+		"a flank threat still overrides the relief order's advance, same as any other unit")
 
 
 # --- priority ordering ---------------------------------------------------------

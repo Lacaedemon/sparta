@@ -1,5 +1,5 @@
 extends GutTest
-## Battle AI phase 1 (docs/battle-ai-design.md, #584), live-battle integration: the enemy
+## Battle AI phase 1 (docs/battle-ai-design.md), live-battle integration: the enemy
 ## AI's decisions must arrive as real queue orders on a live-battle unit, not the old
 ## direct target_enemy write with no order behind it -- and the same seed must replay to
 ## the same AI orders (the design's determinism contract). Instantiates the real Battle

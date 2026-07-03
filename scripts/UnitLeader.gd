@@ -17,7 +17,8 @@ const BattleRef = preload("res://scripts/Battle.gd")
 ## already controls. Same seed -> same perception -> same decisions, so replay re-derives
 ## AI orders exactly as the old _run_enemy_ai did.
 ##
-## Tactical repertoire (first slice, per #584's acceptance criteria):
+## Tactical repertoire (first slice, matching docs/battle-ai-design.md's phase-1
+## acceptance criteria):
 ##   1. Face a flank threat -- an enemy already in contact from the unit's flank/rear
 ##      gets retargeted so the unit turns to meet it (Unit._face_for_action re-faces
 ##      toward target_enemy; see UnitCombat.flank_multiplier for the same geometry).
@@ -41,7 +42,7 @@ const RELIEF_CALL_RANGE := 220.0
 ## How close enemy cavalry must close before an anti_cavalry unit forms square.
 const SQUARE_TRIGGER_RANGE := 160.0
 ## facing.dot(to_attacker) at/below which a live threat counts as flank or rear
-## (mirrors UnitCombat.flank_multiplier's own -0.35 frontal cutoff -- see there).
+## (mirrors UnitCombat.flank_multiplier's own 0.35 frontal cutoff -- see there).
 const FLANK_DOT_THRESHOLD := 0.35
 
 
@@ -68,8 +69,15 @@ static func decide(u: Unit, all_units: Array) -> Dictionary:
 
 	# Fallback: advance/attack the nearest living enemy, subsuming the old
 	# direct-target-write behaviour. Skip units already committed to a fight --
-	# their own _think loop chases/engages target_enemy without a fresh order.
-	if u.state != Unit.State.FIGHTING:
+	# their own _think loop chases/engages target_enemy without a fresh order --
+	# and skip a unit already executing a RELIEF order: it's mid-swap with a
+	# tired ally (UnitRelief.begin sets target_enemy but not state, so it isn't
+	# FIGHTING yet), and a fresh ATTACK order here would silently clobber the
+	# RELIEF order and its relief_partner link. Mirrors the same exclusion in
+	# _relief_candidate, which stops OTHER units from calling this one away.
+	var already_relieving: bool = u.current_order != null \
+		and u.current_order.type == Order.Type.RELIEF
+	if u.state != Unit.State.FIGHTING and not already_relieving:
 		var nearest: Unit = UnitTargeting.nearest_enemy_to(u, u.position, INF)
 		if nearest != null and u.target_enemy != nearest:
 			return _attack_cmd(u, nearest)
