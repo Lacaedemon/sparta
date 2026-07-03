@@ -228,7 +228,15 @@ func _unhandled_input(event: InputEvent) -> void:
 func _dispatch_key(event: InputEventKey) -> bool:
 	var mode: int = _order_mode_for_keycode(event.physical_keycode)
 	if mode >= 0:
-		_set_armed_mode(mode)   # arm a smart-order stance
+		if event.ctrl_pressed:
+			# Ctrl+<stance key> writes the stance in place immediately -- no move/attack
+			# needed -- instead of arming it for the next order (see enqueue_stance).
+			_issue_stance(mode)
+		else:
+			_set_armed_mode(mode)   # arm a smart-order stance
+		return true
+	elif event.keycode == KEY_I:
+		_toggle_rank_relief()   # I: toggle the intra-unit rank-relief (discipline) mode
 		return true
 	elif event.keycode == KEY_V:
 		_issue_conversio()   # conversio: every soldier reverses 180° in place
@@ -669,6 +677,44 @@ func _issue_nudge(dir: int) -> void:
 	if uids.is_empty():
 		return
 	_battle.enqueue_nudge(uids, dir)
+	Sfx.play(&"order")
+
+
+## Ctrl+<stance key>: write `mode` on every selected friendly unit in place, no
+## move/attack needed -- unlike the plain hotkey, which only ARMS the stance for the
+## next order. Routed through Battle.enqueue_stance so it's recorded and replays
+## exactly (RankRelief.LEAVE: this gesture never touches the rank-relief mode).
+func _issue_stance(mode: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	_battle.enqueue_stance(uids, mode, BattleRef.RankRelief.LEAVE)
+	if _hud != null:
+		_hud.flash_message(str(BattleRef.ORDER_MODE_NAMES.get(mode, "")))
+	Sfx.play(&"order")
+
+
+## I: toggle the intra-unit rank-relief (discipline) mode on every selected friendly
+## unit -- the training-driven rank-cycle/morale-recovery knob. A shared
+## direct-select toggle like _toggle_formation: flips OFF if the lead unit currently
+## has it ON, else ON, so a mixed selection follows the lead unit's setting. Routed
+## through Battle.enqueue_stance (stance -1 = leave the order_mode alone) so the
+## toggle is recorded and replays exactly.
+func _toggle_rank_relief() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if _selected.is_empty() or not is_instance_valid(_selected[0]):
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	var turning_on: bool = not _selected[0].rank_relief
+	var toggle: int = BattleRef.RankRelief.ON if turning_on else BattleRef.RankRelief.OFF
+	_battle.enqueue_stance(uids, -1, toggle)
+	if _hud != null:
+		_hud.flash_message("Rank relief: %s" % ("On" if turning_on else "Off"))
 	Sfx.play(&"order")
 
 
