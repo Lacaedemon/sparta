@@ -20,10 +20,13 @@ extends RefCounted
 ## rather than lost soldier detail:
 ## - Fatigue, cohesion, and training read as fresh/untrained defaults — the far-tier
 ##   record carries none of them (so there is no rank-cycle in-fight morale recovery).
-## The attacker's output also scales with its remaining-strength ratio (a thinned formation
-## presents less fighting frontage), which is where the model earns its Lanchester-style
-## attrition curves: the close tier's live per-soldier melee scales output with living
-## fighters the same way, so the ratio keeps the aggregate broadly consistent with it.
+## A MELEE attacker's output also scales with its remaining-strength ratio (a thinned
+## formation presents less fighting frontage), which is where the model earns its
+## Lanchester-style attrition curves: the close tier's live per-soldier melee scales output
+## with living fighters the same way, so the ratio keeps the aggregate broadly consistent
+## with it. A RANGED attacker is exempt from this thinning term: UnitCombat.shoot draws
+## volley damage from the flat attack stat with no soldier-count scaling, so the far tier's
+## ranged output stays flat too, to keep mirroring it faithfully.
 
 
 ## Remaining-strength ratio in [0, 1]: the aggregate analog of soldiers / max_soldiers.
@@ -148,13 +151,18 @@ static func strike_expectation(attacker: FarTierFormation, defender: FarTierForm
 
 ## Expected casualties per second the attacker inflicts on the defender: one expected
 ## strike per ATTACK_INTERVAL (or, for a ranged attacker, one expected volley per
-## RANGED_INTERVAL), scaled by the defender's flank exposure and the attacker's remaining-
-## strength ratio (the Lanchester-style thinning term).
+## RANGED_INTERVAL), scaled by the defender's flank exposure. A melee attacker's output is
+## also scaled by its remaining-strength ratio (the Lanchester-style thinning term) — mirroring
+## the close tier's per-soldier melee, which naturally loses output as fighters fall. A ranged
+## attacker is NOT thinned this way: UnitCombat.shoot draws volley damage from the flat
+## attack stat with no soldier-count scaling, so a 10-man archer regiment volleys exactly as
+## hard as a 140-man one, and the far tier must match that to stay a faithful mirror.
 static func casualty_rate(attacker: FarTierFormation, defender: FarTierFormation) -> float:
 	var interval: float = Unit.RANGED_INTERVAL if attacker.is_ranged else Unit.ATTACK_INTERVAL
+	var thinning: float = 1.0 if attacker.is_ranged else strength_ratio(attacker)
 	return strike_expectation(attacker, defender) \
 			* flank_multiplier(defender, attacker.position) \
-			* strength_ratio(attacker) / interval
+			* thinning / interval
 
 
 ## Whether the attacker's centroid is close enough to strike — mirrors the close tier's
