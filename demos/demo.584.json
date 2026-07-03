@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/battle-ai-unit-leaders.json",
+  "caption": "Battle AI phase 1: the enemy AI no longer writes target_enemy directly -- every decision is a real queue order applied through the same apply site a player order takes (visible in the transcript as ATTACK/FORMATION orders, not a hidden side channel). Three unit-leader decisions in one clash: the AI spearmen on the left forms the anti-cavalry square on its own as player cavalry closes, with no player key press arming it. The AI infantry on the right advances and attacks the nearest player unit (the old nearest-enemy behavior, now a real ATTACK order) -- then, when a second player unit closes on its flank, its leader re-targets and turns to face the new threat instead of fighting on with its back exposed.",
+  "fixed_fps": 60,
+  "max_frames": 720,
+  "fps": 24,
+  "width": 720
+}
