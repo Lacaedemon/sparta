@@ -117,6 +117,17 @@ var formation_mode: int = FORMATION_NORMAL
 # fatigue reduction and in-fight morale recovery on it, so turning it off makes a
 # disciplined unit tire and waver like an untrained one.
 var rank_relief: bool = true
+# Which frontage the unit settles into after an engage/attack re-face turn-in-place
+# (_settle_engage_turn) completes. KEEP_NEW_FRONTING is the shipped MVP: the men stay put
+# and the unit fights with whatever edge the turn left facing the enemy. The other two
+# layer a reshape on top of that same turn, reusing the frontage-resize grid-op
+# (UnitFormation.files_for_halfwidth / set_frontage) so the reshape eases in via the
+# soldier-body arrival dynamics exactly like a manual [ / ] resize -- no teleport, no new
+# mechanism. RECREATE_WIDTH restores the file count the unit had before the turn (a wide
+# line stays a wide line facing the new way); MATCH_TARGET instead adopts the enemy's own
+# current file count (to the extent this unit's max_soldiers allows).
+enum EngageReshapeMode { KEEP_NEW_FRONTING, RECREATE_WIDTH, MATCH_TARGET }
+var engage_reshape_mode: int = EngageReshapeMode.KEEP_NEW_FRONTING
 # Simulation tier (FormationTier.CLOSE / FAR) — the multi-resolution design's per-formation
 # fidelity marker (docs/large-scale-simulation-design.md). CLOSE runs the full per-soldier
 # path; FAR carries no per-soldier state at all — the soldier-layer steps skip it (see
@@ -1052,7 +1063,7 @@ func _think(delta: float) -> void:
 			state = State.FIGHTING
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
-			if _face_for_action(enemy.position, delta) and _attack_cd <= 0.0:
+			if _face_for_action(enemy.position, delta, enemy) and _attack_cd <= 0.0:
 				_attack_cd = RANGED_INTERVAL
 				UnitCombat.shoot(self, enemy)
 			return
@@ -1066,7 +1077,7 @@ func _think(delta: float) -> void:
 			# place gradually (they hold their ground) before the line strikes; a small
 			# correction snaps and fights now. _face_for_action reports when the front is
 			# brought to bear — the strike is withheld until then.
-			var faced: bool = _face_for_action(enemy.position, delta)
+			var faced: bool = _face_for_action(enemy.position, delta, enemy)
 			if faced and _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
 				UnitCombat.strike(self, enemy)
@@ -1232,12 +1243,12 @@ func _support_tick(delta: float) -> void:
 		var in_contact: bool = dist <= attack_range + RADIUS + threat.RADIUS
 		if is_ranged and not in_contact and dist <= RANGED_RANGE:
 			state = State.FIGHTING
-			if _face_for_action(threat.position, delta) and _attack_cd <= 0.0:
+			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = RANGED_INTERVAL
 				UnitCombat.shoot(self, threat)
 		elif in_contact:
 			state = State.FIGHTING
-			if _face_for_action(threat.position, delta) and _attack_cd <= 0.0:
+			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
 				UnitCombat.strike(self, threat)
 		else:
@@ -1406,14 +1417,16 @@ func _face(point: Vector2) -> void:
 	_face_dir(point - position)
 
 
-## Face `point` for an engage/attack action. A small heading correction snaps (stays
+## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
+## bringing the front to bear on; kept so the settle step can reshape toward it under
+## MATCH_TARGET -- see engage_reshape_mode). A small heading correction snaps (stays
 ## responsive at close quarters); a large swing (>ENGAGE_TURN_THRESHOLD, ~a quarter-turn or
 ## more) turns the men in place gradually instead — the line pivots to bring its front to bear
 ## without the grid collapsing and re-expanding. Returns whether the unit is faced enough to
 ## fight this tick (true when snapping, or once a turn has closed to within
 ## ENGAGE_TURN_FIGHT_TOLERANCE); the caller withholds the strike while still turning. Reuses
 ## the drill turns' arrival-freeze + _formation_angle-absorb, so the bodies hold their ground.
-func _face_for_action(point: Vector2, delta: float) -> bool:
+func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> bool:
 	var dir: Vector2 = point - position
 	if dir.length() < 0.01:
 		return true
@@ -1421,6 +1434,7 @@ func _face_for_action(point: Vector2, delta: float) -> bool:
 	# Already turning: keep rotating toward the (possibly moved) target and settle on arrival.
 	if _engage_turn_target != Vector2.ZERO:
 		_engage_turn_target = dir.normalized()
+		_engage_turn_enemy = enemy_unit
 		if _advance_turn(_engage_turn_target, delta):
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
@@ -1429,9 +1443,12 @@ func _face_for_action(point: Vector2, delta: float) -> bool:
 		_face_dir(dir)
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
-	# facing rotates; the strike is withheld until the front comes to bear.
+	# facing rotates; the strike is withheld until the front comes to bear. Capture the
+	# pre-turn frontage and the enemy now, before anything reshapes or the target changes.
 	_engage_turn_start_facing = facing
 	_engage_turn_target = dir.normalized()
+	_engage_turn_old_files = formation_files(soldiers)
+	_engage_turn_enemy = enemy_unit
 	if _advance_turn(_engage_turn_target, delta):
 		_settle_engage_turn()
 	return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
@@ -1439,12 +1456,32 @@ func _face_for_action(point: Vector2, delta: float) -> bool:
 
 ## Finish an engage turn-in-place: fold the rotation into _formation_angle (so the men keep
 ## their world positions and the block presents its new front without surging) and clear the
-## turn state. Shares the settle math with the quarter-turn.
+## turn state. Shares the settle math with the quarter-turn. Then, per engage_reshape_mode,
+## optionally layers a frontage reshape on top of the turn that just completed -- RECREATE_WIDTH
+## restores the file count the unit had before the turn, MATCH_TARGET adopts the enemy's own
+## file count. Both go through set_frontage(), the SAME grid-op a manual [ / ] resize uses, so
+## the bodies ease into the reshaped slots via the arrival dynamics (no teleport, no surge)
+## instead of a new mechanism. KEEP_NEW_FRONTING (the default) reshapes nothing, matching the
+## shipped MVP behavior exactly.
 func _settle_engage_turn() -> void:
 	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
 	_engage_turn_target = Vector2.ZERO
 	_render_dirty = true
+	match engage_reshape_mode:
+		EngageReshapeMode.RECREATE_WIDTH:
+			if _engage_turn_old_files > 0:
+				set_frontage(_engage_turn_old_files)
+		EngageReshapeMode.MATCH_TARGET:
+			var enemy: Unit = _engage_turn_enemy
+			if enemy != null and is_instance_valid(enemy) and enemy.state != State.DEAD:
+				# formation_files (not UnitFormation.frontage) so a hollow-square enemy
+				# (SQUARE/SCHILTRON) is matched by its actual square file count, the same
+				# accessor the RECREATE_WIDTH branch above uses for the acting unit's own
+				# pre-turn frontage.
+				set_frontage(enemy.formation_files(enemy.soldiers))
+	_engage_turn_old_files = 0
+	_engage_turn_enemy = null
 
 
 ## Snap `facing` to `dir` instantly. A small change (the common case: a moving unit's
@@ -1916,6 +1953,14 @@ var _per_soldier_facing: bool = false
 # it does not re-arm every tick.
 var _engage_turn_target: Vector2 = Vector2.ZERO
 var _engage_turn_start_facing: Vector2 = Vector2.ZERO
+# The file count the unit presented just BEFORE the turn was armed, and the enemy it is
+# turning to face -- captured once at arm time so the settle step can reshape the frontage
+# per engage_reshape_mode without either value drifting mid-turn (the enemy may itself be
+# maneuvering, and the unit's own live frontage changes the instant the turn starts folding
+# into _formation_angle). The enemy ref is not re-validated here; _settle_engage_turn checks
+# is_instance_valid/State.DEAD itself before reading it, same as every other target_enemy use.
+var _engage_turn_old_files: int = 0
+var _engage_turn_enemy: Unit = null
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
 # instead of snapping. Below it a small correction snaps, keeping close-quarters combat
 # responsive; only a large swing (roughly a quarter-turn or more) turns the men in place.
@@ -2671,6 +2716,7 @@ func start_order_response() -> void:
 	# in-flight engage re-face turn: the order supersedes it and the reform squares the block.
 	_formation_angle = 0.0
 	_engage_turn_target = Vector2.ZERO
+	_engage_turn_enemy = null
 
 
 ## Commit a pending reform-before-move: hand off the stored destination to the
@@ -2756,6 +2802,7 @@ func _rout() -> void:
 	_reform_until_settled = false
 	_reform_on_arrival = false
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
+	_engage_turn_enemy = null
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_rout_timer = ROUT_TIME
 	_shattered = false   # starts "broken": can still recover morale and rally

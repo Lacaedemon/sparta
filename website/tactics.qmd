@@ -570,7 +570,13 @@ has come about. A small correction still snaps and fights at once, so a unit
 already roughly fronting its target loses no time. The upshot: catching a unit on
 the flank buys you a genuine window --- it must turn to answer you before it can
 strike back --- so a flank attack rewards you both with the flank casualty bonus
-*and* the beat the enemy spends coming about.
+*and* the beat the enemy spends coming about. Once the turn settles, the unit
+by default just fights with whatever edge it now presents; the engine also
+supports reshaping the frontage right after the turn --- back to the width it
+had before turning, or to match the frontage of the enemy it turned to face
+--- reusing the same width-resize easing as a manual frontage drag, so the
+reshape never teleports the ranks. There's no in-game control to pick a
+non-default reshape yet, so every unit still fights this out today.
 
 The pivot itself also **slows as the unit picks up speed** --- a unit turns
 fastest from a stand and tightens its turn rate the faster it's already moving
