@@ -157,8 +157,8 @@ var _formation_angle: float = 0.0
 # guarantee. Forcing it to a new value in the SAME tick `ang` is held constant flips every
 # off-centre soldier's sign for that tick even though nothing about the rotation changed: the
 # exact point-reflection bug this flag exists to fix, just triggered by an engage re-face or a
-# large facing snap instead of a reform (an earlier version of this fix made exactly this
-# mistake -- caught in review on PR #670).
+# large facing snap instead of a reform, for a unit still marching after a countermarched
+# reform.
 var _formation_mirror_x: bool = false
 # Facing to pivot to once a move order's destination is reached, set by a
 # drag-to-form-up order so the unit deploys facing the dragged line rather than its
@@ -1451,12 +1451,12 @@ func _face_for_action(point: Vector2, delta: float) -> bool:
 ## men keep their world positions... without surging" means. `_formation_mirror_x` doesn't
 ## affect whether `ang` is invariant (a mirrored slot rotated by the same `ang` is just as
 ## stable a mapping as an unmirrored one), so leaving it alone here preserves the no-surge
-## guarantee. Forcing it to a new value in this same tick -- which an earlier version of this
-## fix did -- flips every off-centre soldier's target sign for that one tick even though `ang`
-## itself didn't change: the exact point-reflection/flank-swap bug this file's countermarch fix
-## exists to eliminate, just triggered by an engage re-face instead of a reform (reachable
-## whenever a unit engages combat mid-march after a countermarched reform, since the mirror
-## flag stays true through that march). Caught in review on PR #670.
+## guarantee. Forcing it to a new value in this same tick flips every off-centre soldier's
+## target sign for that one tick even though `ang` itself didn't change: the exact
+## point-reflection/flank-swap bug this file's countermarch fix exists to eliminate, just
+## triggered by an engage re-face instead of a reform (reachable whenever a unit engages combat
+## mid-march after a countermarched reform, since the mirror flag stays true through that
+## march).
 func _settle_engage_turn() -> void:
 	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
@@ -1479,12 +1479,11 @@ func _settle_engage_turn() -> void:
 ## Deliberately does NOT touch _formation_mirror_x, for the same reason
 ## _settle_engage_turn() doesn't: this fold holds `ang` invariant across the snap, and
 ## _formation_mirror_x has no bearing on whether `ang` is invariant, so leaving it alone
-## preserves the "no soldier surges" guarantee above. Forcing it to a fixed value here (an
-## earlier version of this fix did) flips every off-centre soldier's sign in the same tick
-## `ang` is held constant, reproducing the exact point-reflection bug this file's countermarch
-## fix exists to eliminate -- just via a large facing snap (e.g. a chase target appearing
-## behind a unit still marching off a countermarched reform) instead of a reform. Caught in
-## review on PR #670.
+## preserves the "no soldier surges" guarantee above. Forcing it to a fixed value here flips
+## every off-centre soldier's sign in the same tick `ang` is held constant, reproducing the
+## exact point-reflection bug this file's countermarch fix exists to eliminate -- just via a
+## large facing snap (e.g. a chase target appearing behind a unit still marching off a
+## countermarched reform) instead of a reform.
 func _face_dir(dir: Vector2) -> void:
 	if dir.length() <= 0.01:
 		return

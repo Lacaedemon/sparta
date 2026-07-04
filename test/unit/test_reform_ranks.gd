@@ -216,17 +216,15 @@ func test_interrupted_about_face_drops_the_parked_reform_with_the_march() -> voi
 
 
 # --- regression: engage-turn / face-snap folds must not disturb an active mirror ------------
-# Caught in review on PR #670: an earlier version of the countermarch fix cleared
-# _formation_mirror_x inside _settle_engage_turn() and _face_dir()'s snap-absorb branch,
-# reasoning that a fresh fold "supersedes" the mirror. That reasoning was wrong -- both folds
-# exist specifically to hold `ang` (soldier_world_slots' rotation) INVARIANT across the facing
-# change so bodies don't surge, and _formation_mirror_x has no bearing on whether `ang` is
-# invariant. Forcing it to a new value in the SAME tick `ang` is held constant flips every
-# off-centre soldier's sign for that tick even though the rotation itself didn't change --
-# reproducing the exact point-reflection/flank-swap bug this file's countermarch fix exists to
-# eliminate, just triggered by a combat re-face instead of a reform (reachable whenever a unit
-# engages combat, or gets a fresh chase target, while still marching off a countermarched
-# reform -- the mirror flag stays true through that whole march).
+# _settle_engage_turn() and _face_dir()'s snap-absorb branch each fold a rotation into
+# _formation_angle specifically to hold `ang` (soldier_world_slots' rotation) INVARIANT across
+# the facing change so bodies don't surge. _formation_mirror_x has no bearing on whether `ang`
+# is invariant, so clearing it inside either fold -- forcing it to a new value in the SAME tick
+# `ang` is held constant -- flips every off-centre soldier's sign for that tick even though the
+# rotation itself didn't change, reproducing the exact point-reflection/flank-swap bug this
+# file's countermarch fix exists to eliminate, just triggered by a combat re-face instead of a
+# reform (reachable whenever a unit engages combat, or gets a fresh chase target, while still
+# marching off a countermarched reform -- the mirror flag stays true through that whole march).
 
 ## After reform_ranks() arms the mirror (the exact settled-about-face state
 ## test_reform_resquares_a_flipped_partial_grid stages), completing an unrelated engage-turn
