@@ -1,0 +1,12 @@
+{
+  "_comment": "Forward-nudge demo: zoom in on the lone Spearmen (seed 12345, ~500,300, facing south toward the enemy), select it, then tap Up once. Up orders a small fixed FORWARD step that HOLDS the unit's south-facing line -- the regiment steps forward without turning to face the move, mirroring how Down back-steps. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 318.0, "zoom": 2.0}
+  ],
+  "steps": [
+    {"tick": 10, "click": [500, 300]},
+    {"tick": 30, "key": "Up"}
+  ],
+  "state": [28, 90, 155, 200]
+}

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/forward-nudge.json",
+  "caption": "Adds a fourth arrow-key nudge direction: Up now forward-steps the selected regiment a small fixed distance, mirroring how Left/Right side-step and Down back-steps. A lone Spearmen regiment faces south; with it selected, a single tap of Up steps it forward along its own facing while holding that facing throughout -- the regiment does not turn to face the step, just as the existing side-step and back-step never do. While a unit is selected all four arrows now nudge instead of panning the camera; WASD still always pans.",
+  "fixed_fps": 30,
+  "max_frames": 180,
+  "fps": 15,
+  "width": 640
+}
