@@ -1,5 +1,5 @@
 extends GutTest
-## Regression guard for a Battle teardown leak (#477): spawning and freeing several full
+## Regression guard for a Battle teardown leak: spawning and freeing several full
 ## Battle scenes in one test run must never corrupt a LATER, unrelated battle's soldier-body
 ## seeding. Battle._exit_tree() used to guard its physics_frame disconnect with
 ## `get_tree().physics_frame.is_connected(...)` -- during real tree teardown get_tree() can

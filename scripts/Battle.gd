@@ -247,7 +247,7 @@ func _exit_tree() -> void:
 	# get_tree() itself can ALSO already be null by the time _exit_tree runs (the node has
 	# already left the tree during teardown), so read it into a local ONCE and guard on that,
 	# rather than calling get_tree() twice more below — a null-unguarded call there throws and
-	# aborts this function early, silently skipping the static releases beneath it (#477).
+	# aborts this function early, silently skipping the static releases beneath it.
 	var tree := get_tree()
 	if tree != null and tree.physics_frame.is_connected(_on_soldier_tick):
 		tree.physics_frame.disconnect(_on_soldier_tick)
