@@ -85,6 +85,15 @@ func test_small_facing_correction_still_snaps_immediately() -> void:
 	assert_true(u.facing.is_equal_approx(Vector2(0.05, 0.999).normalized()))
 
 
+func test_degenerate_zero_length_dir_leaves_facing_unchanged() -> void:
+	# A zero-length dir (e.g. a body exactly on its target point) is a no-op -- the guard
+	# clause predates this fix and must still hold, with no _formation_angle side effect.
+	var u := _unit(1, 0, Vector2(500, 500), Vector2.DOWN)
+	u._face_dir(Vector2.ZERO)
+	assert_true(u.facing.is_equal_approx(Vector2.DOWN), "facing is untouched by a zero dir")
+	assert_eq(u._formation_angle, 0.0, "nothing to absorb from a no-op snap")
+
+
 # --- live Battle replay of the issue's exact repro (demos/inputs/schiltron.json) ---------
 
 ## The scripted click (tick 10) selects the player Infantry; the shift+O (tick 30) switches
