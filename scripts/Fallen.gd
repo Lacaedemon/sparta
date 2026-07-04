@@ -1,5 +1,5 @@
 class_name Fallen
-extends Node2D
+extends TransientEffect
 ## Fallen soldiers (Stage C): a small heap of dark body marks dropped where men fall in
 ## melee, fading into the ground as the fight moves on. Spawned from Unit.take_casualties on
 ## the deterministic sim tick but animated on render time (_process), in no sim group, and
@@ -16,7 +16,6 @@ const FADE_START := 0.5         # fraction of LIFETIME the heap stays opaque bef
 var _color: Color = Color(0.2, 0.2, 0.2)
 var _marks: PackedVector2Array = PackedVector2Array()
 var _mark_radius: float = MARK_RADIUS   # body size for this heap (foot vs cavalry, set by spawn)
-var _age: float = 0.0
 
 
 ## Spawn a heap at `at` (world space). `count` (casualties this strike) scales the heap up
@@ -27,6 +26,7 @@ var _age: float = 0.0
 static func spawn(parent: Node, at: Vector2, color: Color, count: int,
 		mark_radius: float = MARK_RADIUS) -> void:
 	var fx := Fallen.new()
+	fx._lifetime = LIFETIME
 	fx._mark_radius = mark_radius
 	# Widen the heap in proportion to the body size, so bigger (cavalry) bodies don't pack
 	# into the same footprint as foot soldiers — the whole pile scales, not just the marks.
@@ -47,14 +47,6 @@ static func spawn(parent: Node, at: Vector2, color: Color, count: int,
 	parent.add_child(fx)
 	fx.global_position = at
 	fx.z_index = 1   # on the ground: above the field (0), below the soldier marks (eff 2)
-
-
-func _process(delta: float) -> void:
-	_age += delta
-	if _age >= LIFETIME:
-		queue_free()
-		return
-	queue_redraw()
 
 
 func _draw() -> void:

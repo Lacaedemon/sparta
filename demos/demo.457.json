@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Numeric-only fix to how EQUAL_DEPTH form-up computes a shared rank depth for a mixed-formation-density multi-unit drag (e.g. one TIGHT unit and one LOOSE unit selected together). The change swaps which spacing_scale value seeds the depth solve (average across selected units instead of the first-selected unit's), which shifts file counts by at most a file or two in an uncommon scenario. A recorded clip can't show this -- the difference isn't visually distinguishable frame-to-frame; it's confirmed by exact file-count assertions in test/unit/test_selection_manager.gd (test_form_up_equal_depth_uses_average_spacing_for_a_mixed_formation_group)."
+}

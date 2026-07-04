@@ -1,5 +1,5 @@
 class_name VolleyTrail
-extends Node2D
+extends TransientEffect
 ## A short-lived arrow-volley trail: a small cluster of streaks that fly from a
 ## ranged unit toward its target when it looses a volley (Unit._shoot), fading as they
 ## land. Purely cosmetic — spawned on the deterministic sim tick but animated on render
@@ -16,13 +16,13 @@ const ARC_STEPS := 6            # polyline segments per streak for the curved pa
 var _delta: Vector2 = Vector2.ZERO    # shooter -> target offset, in local space
 var _lift_dir: Vector2 = Vector2.ZERO # unit-length perpendicular to _delta, for the arc
 var _color: Color = Color.WHITE
-var _age: float = 0.0
 
 
 ## Spawn a trail under `parent` flying from `from` to `to` (both world-space). Colour
 ## is the shooter's team colour, brightened so the arrows read against the field.
 static func spawn(parent: Node, from: Vector2, to: Vector2, color: Color) -> void:
 	var trail := VolleyTrail.new()
+	trail._lifetime = LIFETIME
 	parent.add_child(trail)
 	trail.global_position = from
 	trail._delta = to - from
@@ -33,14 +33,6 @@ static func spawn(parent: Node, from: Vector2, to: Vector2, color: Color) -> voi
 	# on-screen directions, which looks natural and is consistent per-shot.
 	if trail._delta.length() > 0.001:
 		trail._lift_dir = trail._delta.orthogonal().normalized()
-
-
-func _process(delta: float) -> void:
-	_age += delta
-	if _age >= LIFETIME:
-		queue_free()
-		return
-	queue_redraw()
 
 
 func _draw() -> void:
