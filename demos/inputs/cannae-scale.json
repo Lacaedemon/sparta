@@ -1,0 +1,37 @@
+{
+  "_comment": "LOD phase 5 acceptance-test demo (#560): shows the multi-resolution design's payoff visually -- the camera opens tight on the ~1,720-soldier engaged close-tier front (same layout as benchmarks/scenarios/cannae-scale.json), holds, then pulls back in one smooth move to reveal the far-tier reserve corps stacked behind the line -- tens of thousands more soldiers, each an aggregate FarTierFormation record rather than individually-simulated bodies -- then holds on the wide view. No input steps: this is a pure camera-presentation demo (a 'scenario' stages both armies directly, so drill mode is neither needed nor applicable -- see Battle._ready, which spawns strictly from 'scenario' when present and ignores drill_mode's default-line-spawn branch), matching camera-showcase.json's pattern.",
+  "seed": "560001",
+  "camera": [
+    {"tick": 0,   "x": 800.0, "y": 500.0, "zoom": 1.6},
+    {"tick": 60,  "x": 800.0, "y": 500.0, "zoom": 1.6},
+    {"tick": 180, "x": 800.0, "y": 50.0,  "zoom": 0.37},
+    {"tick": 300, "x": 800.0, "y": 50.0,  "zoom": 0.37}
+  ],
+  "steps": [],
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 275,  "y": 490, "count": 140},
+    {"team": 0, "type": "Spearmen", "x": 425,  "y": 490, "count": 140},
+    {"team": 0, "type": "Infantry", "x": 575,  "y": 490, "count": 120},
+    {"team": 0, "type": "Infantry", "x": 725,  "y": 490, "count": 120},
+    {"team": 0, "type": "Archers",  "x": 875,  "y": 490, "count": 90},
+    {"team": 0, "type": "Archers",  "x": 1025, "y": 490, "count": 90},
+    {"team": 0, "type": "Cavalry",  "x": 1175, "y": 490, "count": 80},
+    {"team": 0, "type": "Cavalry",  "x": 1325, "y": 490, "count": 80},
+
+    {"team": 1, "type": "Spearmen", "x": 275,  "y": 510, "count": 140},
+    {"team": 1, "type": "Spearmen", "x": 425,  "y": 510, "count": 140},
+    {"team": 1, "type": "Infantry", "x": 575,  "y": 510, "count": 120},
+    {"team": 1, "type": "Infantry", "x": 725,  "y": 510, "count": 120},
+    {"team": 1, "type": "Archers",  "x": 875,  "y": 510, "count": 90},
+    {"team": 1, "type": "Archers",  "x": 1025, "y": 510, "count": 90},
+    {"team": 1, "type": "Cavalry",  "x": 1175, "y": 510, "count": 80},
+    {"team": 1, "type": "Cavalry",  "x": 1325, "y": 510, "count": 80},
+
+    {"team": 0, "type": "Spearmen", "x": 275,  "y": -320, "count": 8000, "facing": [0, 1]},
+    {"team": 0, "type": "Spearmen", "x": 575,  "y": -320, "count": 8000, "facing": [0, 1]},
+    {"team": 0, "type": "Infantry", "x": 875,  "y": -320, "count": 8000, "facing": [0, 1]},
+    {"team": 0, "type": "Infantry", "x": 1175, "y": -320, "count": 8000, "facing": [0, 1]},
+    {"team": 0, "type": "Archers",  "x": 425,  "y": -320, "count": 6000, "facing": [0, 1]},
+    {"team": 0, "type": "Cavalry",  "x": 1025, "y": -320, "count": 4000, "facing": [0, 1]}
+  ]
+}

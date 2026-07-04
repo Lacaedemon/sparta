@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Far-tier rout/rally/pursuit rules (LOD phase 2 follow-up) are representational, same as phase 2 itself (#557, PR #577) and #579: the rules are unit-tested in isolation on FarTierFormation/FarTierRules pairs, and nothing in Battle orchestrates a live far-tier-vs-far-tier fight during play yet, so no recorded battle can show a formation routing or rallying. It becomes observable once far-tier formations actually fight in a live scenario (phase 5, #560)."
+}

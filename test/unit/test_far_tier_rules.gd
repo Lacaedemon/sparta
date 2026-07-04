@@ -178,11 +178,233 @@ func test_recovery_mirrors_the_close_tier_resting_rate_and_caps_at_full() -> voi
 	assert_eq(rec.morale, 100.0)
 
 
-func test_a_broken_formation_does_not_recover() -> void:
+func test_a_broken_formation_does_not_use_the_ordinary_recovery_path() -> void:
+	# A broken-but-not-yet-routing record (routing set by hand here, bypassing enter_rout)
+	# doesn't recover via the ordinary resting rate — it has its own curve (tick_rout).
 	var rec := _make_rec()
 	rec.morale = 0.0
 	FarTierRules.tick_recovery(rec, 10.0)
-	assert_eq(rec.morale, 0.0, "broken is absorbing at the far tier — no rally rules yet")
+	assert_eq(rec.morale, 0.0, "a broken formation doesn't use the ordinary rest recovery")
+
+
+# --- rout / rally / shatter -------------------------------------------------------------------
+
+func test_apply_casualties_latches_rout_the_instant_morale_hits_zero() -> void:
+	# Mirrors register_casualties' own trigger order: enter_rout fires in the SAME call
+	# that spends the last morale, not a tick later.
+	var rec := _make_rec()
+	rec.count = 5
+	rec.casualties = 115
+	rec.morale = 1.0
+	FarTierRules.apply_casualties(rec, 3)
+	assert_true(rec.routing, "rout latches the instant morale hits zero")
+	assert_almost_eq(rec.rout_timer, Unit.ROUT_TIME, 0.0001)
+
+
+func test_apply_casualties_does_not_rout_a_formation_it_just_destroyed() -> void:
+	# Wipe-out takes priority over rout, mirroring register_casualties' soldiers <= 0 branch.
+	var rec := _make_rec()
+	rec.count = 3
+	rec.morale = 1.0
+	FarTierRules.apply_casualties(rec, 3)
+	assert_true(FarTierRules.is_destroyed(rec))
+	assert_false(rec.routing, "a destroyed formation doesn't also rout")
+
+
+func test_enter_rout_is_idempotent() -> void:
+	var rec := _make_rec()
+	FarTierRules.enter_rout(rec)
+	rec.rout_timer = 1.0   # simulate a tick's countdown
+	FarTierRules.enter_rout(rec)
+	assert_almost_eq(rec.rout_timer, 1.0, 0.0001, "already routing: the timer isn't re-armed")
+
+
+func test_can_rally_requires_enough_survivors() -> void:
+	var rec := _make_rec()
+	rec.count = int(round(120 * Unit.SHATTER_STRENGTH_FRAC)) - 1   # just under the floor
+	var enemy := _make_rec(Vector2(0.0, 10000.0))   # far away: contact is broken
+	assert_false(FarTierRules.can_rally(rec, enemy), "too few survivors to reform")
+	rec.count = int(round(120 * Unit.SHATTER_STRENGTH_FRAC))
+	assert_true(FarTierRules.can_rally(rec, enemy))
+
+
+func test_can_rally_requires_broken_contact() -> void:
+	var rec := _make_rec(Vector2.ZERO)
+	var enemy := _make_rec(Vector2(0.0, Unit.RALLY_CONTACT_RADIUS))
+	assert_false(FarTierRules.can_rally(rec, enemy), "still within contact range")
+	enemy.position.y += 1.0
+	assert_true(FarTierRules.can_rally(rec, enemy), "just past contact range")
+
+
+func test_can_rally_treats_a_destroyed_enemy_as_broken_contact() -> void:
+	var rec := _make_rec(Vector2.ZERO)
+	var enemy := _make_rec(Vector2.ZERO)   # right on top of it, but...
+	enemy.count = 0                        # ...destroyed: no live threat left
+	assert_true(FarTierRules.can_rally(rec, enemy))
+
+
+func test_rally_clears_routing_and_floors_morale() -> void:
+	var rec := _make_rec()
+	FarTierRules.enter_rout(rec)
+	rec.morale = 5.0
+	FarTierRules.rally(rec)
+	assert_false(rec.routing)
+	assert_eq(rec.morale, Unit.RALLY_MORALE, "morale floors at RALLY_MORALE")
+	assert_eq(rec.rout_timer, 0.0)
+
+
+func test_rally_never_lowers_morale_already_above_the_floor() -> void:
+	var rec := _make_rec()
+	FarTierRules.enter_rout(rec)
+	rec.morale = Unit.RALLY_MORALE + 20.0
+	FarTierRules.rally(rec)
+	assert_eq(rec.morale, Unit.RALLY_MORALE + 20.0)
+
+
+func test_shatter_empties_the_roster_and_books_the_losses() -> void:
+	var rec := _make_rec()
+	rec.count = 22
+	rec.casualties = 98
+	FarTierRules.enter_rout(rec)
+	FarTierRules.shatter(rec)
+	assert_eq(rec.count, 0)
+	assert_eq(rec.casualties, 120, "every remaining soldier is booked as a casualty")
+	assert_true(FarTierRules.is_destroyed(rec))
+	assert_false(rec.routing)
+
+
+func test_tick_rout_is_a_noop_when_not_routing() -> void:
+	var rec := _make_rec(Vector2.ZERO)
+	var enemy := _make_rec(Vector2(0.0, 100.0))
+	var before := rec.position
+	FarTierRules.tick_rout(rec, enemy, 1.0)
+	assert_eq(rec.position, before, "not routing: tick_rout does nothing")
+
+
+func test_tick_rout_flees_directly_away_from_the_enemy() -> void:
+	var rec := _make_rec(Vector2.ZERO)
+	rec.morale = 0.0
+	FarTierRules.enter_rout(rec)
+	var enemy := _make_rec(Vector2(0.0, 100.0))
+	FarTierRules.tick_rout(rec, enemy, 1.0)
+	assert_almost_eq(rec.position.x, 0.0, 0.0001)
+	assert_lt(rec.position.y, 0.0, "flees away from the enemy (which is at +y)")
+	assert_almost_eq(rec.facing.x, 0.0, 0.0001)
+	assert_almost_eq(rec.facing.y, -1.0, 0.0001, "faces the direction of flight")
+
+
+func test_tick_rout_flee_speed_is_the_close_tier_multiplier_on_the_march_pace() -> void:
+	var rec := _make_rec(Vector2.ZERO)
+	rec.morale = 0.0
+	FarTierRules.enter_rout(rec)
+	var enemy := _make_rec(Vector2(0.0, 100.0))
+	FarTierRules.tick_rout(rec, enemy, 1.0)
+	assert_almost_eq(rec.position.distance_to(Vector2.ZERO),
+		rec.march_speed * FarTierRules.FLEE_SPEED_MULTIPLIER, 0.0001)
+
+
+func test_tick_rout_morale_climbs_toward_the_rally_baseline() -> void:
+	var rec := _make_rec(Vector2.ZERO)
+	rec.morale = 0.0
+	FarTierRules.enter_rout(rec)
+	# Enemy stays within contact range so the formation can't rally mid-test — isolates the
+	# morale-climb behavior from the "rallies the instant it crosses the threshold" branch.
+	var enemy := _make_rec(Vector2(0.0, 1.0))
+	var delta: float = 1.0 / Replay.PHYSICS_TPS
+	for i in 10:
+		FarTierRules.tick_rout(rec, enemy, delta)
+		enemy.position = rec.position + Vector2(0.0, 1.0)   # stay in contact as it flees
+	assert_gt(rec.morale, 0.0, "morale climbed")
+	assert_lt(rec.morale, Unit.ROUT_RALLY_BASELINE, "but hasn't reached the baseline yet")
+
+
+func test_tick_rout_rallies_early_once_morale_and_contact_allow_it() -> void:
+	var rec := _make_rec(Vector2.ZERO)
+	rec.morale = Unit.RALLY_MORALE_THRESHOLD   # already past the threshold
+	FarTierRules.enter_rout(rec)
+	var enemy := _make_rec(Vector2(0.0, 10000.0))   # far away: contact already broken
+	FarTierRules.tick_rout(rec, enemy, 1.0 / Replay.PHYSICS_TPS)
+	assert_false(rec.routing, "rallies on the first tick — no need to run out the timer")
+	assert_true(FarTierRules.can_fight(rec))
+
+
+func test_tick_rout_shatters_when_the_timer_expires_without_enough_survivors() -> void:
+	var rec := _make_rec(Vector2.ZERO)
+	rec.count = 1   # below SHATTER_STRENGTH_FRAC of max_soldiers (120)
+	rec.morale = 0.0
+	FarTierRules.enter_rout(rec)
+	var enemy := _make_rec(Vector2(0.0, 10000.0))   # contact broken, but too few men either way
+	var delta: float = 1.0 / Replay.PHYSICS_TPS
+	for i in int(ceil(Unit.ROUT_TIME * Replay.PHYSICS_TPS)) + 2:
+		FarTierRules.tick_rout(rec, enemy, delta)
+	assert_true(FarTierRules.is_destroyed(rec), "shattered: too few survivors to reform")
+	assert_false(rec.routing)
+
+
+func test_tick_rout_rallies_when_the_timer_expires_with_enough_survivors_and_broken_contact() -> void:
+	# Keep the enemy IN contact range for most of the run (blocking the early-rally branch
+	# even once morale crosses RALLY_MORALE_THRESHOLD, since can_rally also requires broken
+	# contact), then break contact with enough ticks left for the early-rally check to
+	# observe it before the timer would otherwise expire and shatter the formation instead.
+	var rec := _make_rec(Vector2.ZERO)
+	rec.morale = 0.0
+	FarTierRules.enter_rout(rec)
+	var enemy := _make_rec(Vector2(0.0, 1.0))
+	var delta: float = 1.0 / Replay.PHYSICS_TPS
+	var total_ticks: int = int(ceil(Unit.ROUT_TIME * Replay.PHYSICS_TPS)) + 2
+	var break_contact_at: int = total_ticks - 10
+	for i in total_ticks:
+		if i >= break_contact_at:
+			enemy.position = Vector2(0.0, 10000.0)   # contact broken with ticks to spare
+		else:
+			enemy.position = rec.position + Vector2(0.0, 1.0)   # stay in contact as it flees
+		FarTierRules.tick_rout(rec, enemy, delta)
+	assert_false(rec.routing, "broke contact with time on the clock: rallies rather than shatters")
+	assert_true(FarTierRules.can_fight(rec))
+	assert_gte(rec.morale, Unit.RALLY_MORALE, "rally never leaves morale below the RALLY_MORALE floor")
+
+
+func test_tick_pair_routes_a_broken_side_instead_of_absorbing() -> void:
+	# The done-check for the rout/rally arc: a side that breaks flees rather than sitting inert forever.
+	var a := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	var b := _make_rec(Vector2(0.0, 40.0), Vector2.UP)   # already in melee contact
+	a.morale = 1.0
+	# One heavy blow breaks a outright.
+	FarTierRules.apply_casualties(a, 100)
+	assert_true(a.routing)
+	var pos_before: Vector2 = a.position
+	var delta: float = 1.0 / Replay.PHYSICS_TPS
+	FarTierRules.tick_pair(a, b, delta)
+	assert_gt(a.position.distance_to(pos_before), 0.0, "the routing side fled this tick")
+	assert_eq(a.casualties, 100, "a routing side takes no further attrition")
+
+
+func test_tick_pair_a_routing_side_deals_no_attrition_either() -> void:
+	var a := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	var b := _make_rec(Vector2(0.0, 40.0), Vector2.UP)
+	FarTierRules.enter_rout(a)
+	var b_casualties_before := b.casualties
+	FarTierRules.tick_pair(a, b, 1.0 / Replay.PHYSICS_TPS)
+	assert_eq(b.casualties, b_casualties_before, "a routing formation deals no attrition")
+
+
+func test_tick_pair_is_still_deterministic_through_a_full_rout_arc() -> void:
+	# The design doc's determinism invariant, extended through the new rout/rally state: same
+	# records, same tick sequence, twice, all the way through a break-flee-rally arc.
+	var results: Array = []
+	for run in 2:
+		var a := _make_rec(Vector2.ZERO, Vector2.DOWN)
+		var b := _make_rec(Vector2(0.0, 500.0), Vector2.UP)
+		b.attack = 14
+		var delta: float = 1.0 / Replay.PHYSICS_TPS
+		for i in 3000:
+			FarTierRules.tick_pair(a, b, delta)
+		results.append([a.count, a.morale, a.casualties, a.position, a.facing, a.routing,
+				a.rout_timer, b.count, b.morale, b.casualties, b.position, b.facing,
+				b.routing, b.rout_timer])
+	for field in results[0].size():
+		assert_eq(results[0][field], results[1][field],
+			"field %d matches across runs" % field)
 
 
 # --- movement ------------------------------------------------------------------------------
@@ -467,15 +689,18 @@ func test_the_stronger_side_wins_and_recovers_after_the_fight() -> void:
 	_run_pair_to_resolution(strong, weak, _pair_budget_ticks(strong, weak))
 	assert_true(FarTierRules.can_fight(strong), "the stronger side is still in the fight")
 	assert_false(FarTierRules.can_fight(weak), "the weaker side broke first")
+	assert_true(weak.routing, "the weaker side is routing, not merely absorbing")
 	assert_lt(strong.casualties, weak.casualties, "the winner bled less")
 	# Post-fight: the survivor recovers morale where it stands (tick_pair's rest branch),
-	# and the broken side stays broken.
+	# and the routing side flees rather than fighting on.
 	var morale_after_fight: float = strong.morale
+	var weak_pos_after_fight: Vector2 = weak.position
 	var delta: float = 1.0 / Replay.PHYSICS_TPS
 	for i in Replay.PHYSICS_TPS:
 		FarTierRules.tick_pair(strong, weak, delta)
 	assert_almost_eq(strong.morale, morale_after_fight + Unit.MORALE_RECOVER_PER_SEC, 0.001)
-	assert_true(FarTierRules.is_broken(weak))
+	assert_false(FarTierRules.can_fight(weak), "the routing side still isn't fighting")
+	assert_gt(weak.position.distance_to(weak_pos_after_fight), 0.0, "the routing side fled")
 
 
 func test_the_whole_run_is_deterministic() -> void:

@@ -29,6 +29,14 @@ extends RefCounted
 ## ranged output stays flat too, to keep mirroring it faithfully.
 
 
+## A routing formation's flee pace, relative to its (stance-capped) march speed — mirrors
+## Unit._process_rout's move_speed * 1.3 flee rate. The close tier flees at its sprint pace
+## (move_speed), which the far-tier record doesn't carry (bursts are below this tier's
+## resolution; see the walk-only march_speed field), so this scales the walk-derived
+## effective_speed instead — the same 1.3 multiplier applied to the far tier's only pace.
+const FLEE_SPEED_MULTIPLIER: float = 1.3
+
+
 ## Remaining-strength ratio in [0, 1]: the aggregate analog of soldiers / max_soldiers.
 static func strength_ratio(rec: FarTierFormation) -> float:
 	if rec.max_soldiers <= 0:
@@ -41,15 +49,19 @@ static func is_destroyed(rec: FarTierFormation) -> bool:
 	return rec.count <= 0
 
 
-## Morale spent. The far-tier analog of the close tier's rout trigger (morale <= 0). Broken
-## is absorbing at this tier for now — no rally, no pursuit — matching how the close tier's
-## take_casualties path also stops applying attrition to a ROUTING unit.
+## Morale spent: the far-tier analog of the close tier's rout TRIGGER (morale <= 0). This is
+## the instantaneous threshold check, not the persistent state — enter_rout latches the
+## formation into rec.routing, which (like the close tier) can outlast the morale dip that
+## caused it, since morale climbs back toward ROUT_RALLY_BASELINE while still routing.
 static func is_broken(rec: FarTierFormation) -> bool:
 	return rec.morale <= 0.0
 
 
+## Fightable: alive, not broken, and not already routing. A routing formation takes no
+## further formula attrition and deals none — mirroring the close tier's take_casualties
+## guard on a ROUTING unit — until it rallies (tick_rout) back into can_fight.
 static func can_fight(rec: FarTierFormation) -> bool:
-	return not is_destroyed(rec) and not is_broken(rec)
+	return not is_destroyed(rec) and not is_broken(rec) and not rec.routing
 
 
 ## True for either hollow-square variant (orbis / SQUARE or schiltron / SCHILTRON) —
@@ -192,8 +204,11 @@ static func in_striking_range(attacker: FarTierFormation, defender: FarTierForma
 ## fraction-of-force base erosion plus the crumble boost once the formation thins below
 ## the threshold ratio, scaled by the stance's erosion resistance (orbis holds its nerve
 ## better as a last-stand ring — Unit.formation_morale_erosion_factor's far-tier mirror).
-## Returns the casualties actually applied. Morale floors at zero (broken) rather than
-## going negative, since the record has no rout state to hand off to.
+## Returns the casualties actually applied. Morale floors at zero rather than going
+## negative. Mirrors register_casualties' own trigger order exactly: wipe-out takes
+## priority (a formation whose count just hit zero is destroyed, not routing —
+## is_destroyed already covers it, so enter_rout is skipped), otherwise a fresh break
+## into zero morale latches rout THIS call, same tick as the casualties that caused it.
 static func apply_casualties(rec: FarTierFormation, killed: int) -> int:
 	var applied: int = clampi(killed, 0, rec.count)
 	if applied <= 0:
@@ -212,6 +227,8 @@ static func apply_casualties(rec: FarTierFormation, killed: int) -> int:
 					/ Unit.MORALE_CRUMBLE_RATIO_THRESHOLD
 			rec.morale -= base_erosion * Unit.MORALE_CRUMBLE_BOOST * crumble_depth
 	rec.morale = maxf(rec.morale, 0.0)
+	if not is_destroyed(rec) and is_broken(rec):
+		enter_rout(rec)
 	return applied
 
 
@@ -227,8 +244,85 @@ static func tick_attrition(defender: FarTierFormation, rate: float, delta: float
 	return apply_casualties(defender, whole)
 
 
-## Out-of-combat morale recovery — mirrors UnitMorale.tick_morale's resting branch. A
-## broken formation does not recover (broken is absorbing at this tier; see is_broken).
+## Break into rout: the aggregate analog of Unit._rout(). Latches rec.routing and arms the
+## timer at ROUT_TIME. A no-op if already routing, matching Unit._rout()'s own re-entrancy
+## guard. Contagion (morale-shaking nearby friendlies, ROUT_SHOCK_RADIUS) is orchestration
+## across many formations — out of this pair-scoped rule's reach; see tick_rout below for
+## the isolated two-body analog this phase actually implements.
+static func enter_rout(rec: FarTierFormation) -> void:
+	if rec.routing:
+		return
+	rec.routing = true
+	rec.rout_timer = Unit.ROUT_TIME
+
+
+## Whether a routing formation recovers rather than shatters: the far-tier analog of
+## Unit._can_rally(). It must still field enough men to reform (>= SHATTER_STRENGTH_FRAC of
+## max_soldiers) and have broken contact with `enemy` — no live enemy within
+## RALLY_CONTACT_RADIUS. The close tier scans every enemy on the field; the far tier's pair
+## model has only the one opposing formation to check, the natural two-body analog.
+static func can_rally(rec: FarTierFormation, enemy: FarTierFormation) -> bool:
+	if rec.count < int(round(float(rec.max_soldiers) * Unit.SHATTER_STRENGTH_FRAC)):
+		return false
+	if is_destroyed(enemy):
+		return true
+	return rec.position.distance_to(enemy.position) > Unit.RALLY_CONTACT_RADIUS
+
+
+## Recover from a rout: the far-tier analog of Unit._rally(). Clears the routing flag and
+## floors morale at RALLY_MORALE (never lower — a rallied formation reforms shaken but
+## fightable), so it re-enters can_fight from here.
+static func rally(rec: FarTierFormation) -> void:
+	rec.routing = false
+	rec.morale = maxf(rec.morale, Unit.RALLY_MORALE)
+	rec.rout_timer = 0.0
+
+
+## Shatter: a routed formation that couldn't escape, or was gutted past recovery, leaves
+## play for good — the far-tier analog of Unit._shatter(). count = 0 is already
+## is_destroyed's own definition of gone, so shattering just empties the roster; the
+## casualties ledger absorbs whoever was still standing, matching how a close-tier shatter
+## removes the unit (soldiers implicitly to zero) rather than killing them one at a time.
+static func shatter(rec: FarTierFormation) -> void:
+	rec.casualties += rec.count
+	rec.count = 0
+	rec.routing = false
+	rec.rout_timer = 0.0
+
+
+## One tick of a routing formation's flight: the far-tier analog of Unit._process_rout().
+## Flees straight away from `enemy` (the pair's own opposing formation — the far tier has no
+## fixed "own back edge" to run toward, so fleeing the immediate threat is the natural
+## two-body substitute) at 1.3x the march pace, matching the close tier's flee multiplier.
+## Morale steadies toward ROUT_RALLY_BASELINE at a rate proportional to the remaining gap,
+## and the formation rallies the moment it crosses RALLY_MORALE_THRESHOLD with contact
+## broken — it need not run out the timer. Otherwise, when the timer expires, it rallies if
+## it still can (can_rally) or shatters. No-op if the formation isn't routing.
+static func tick_rout(rec: FarTierFormation, enemy: FarTierFormation, delta: float) -> void:
+	if not rec.routing:
+		return
+	var away: Vector2 = rec.position - enemy.position
+	if away.length() >= 0.001:
+		rec.facing = away.normalized()
+		rec.position += rec.facing * (effective_speed(rec) * FLEE_SPEED_MULTIPLIER) * delta
+	if rec.morale < Unit.ROUT_RALLY_BASELINE:
+		rec.morale += (Unit.ROUT_RALLY_BASELINE - rec.morale) * Unit.ROUT_MORALE_RECOVER_RATE * delta
+	if rec.morale >= Unit.RALLY_MORALE_THRESHOLD and can_rally(rec, enemy):
+		rally(rec)
+		return
+	rec.rout_timer -= delta
+	if rec.rout_timer > 0.0:
+		return
+	if can_rally(rec, enemy):
+		rally(rec)
+	else:
+		shatter(rec)
+
+
+## Out-of-combat morale recovery — mirrors UnitMorale.tick_morale's resting branch. Gated by
+## can_fight, so neither a broken-but-not-yet-routing formation nor an already-routing one
+## uses this path: routing recovery follows its own curve toward ROUT_RALLY_BASELINE
+## (tick_rout), not the ordinary resting rate up to 100.
 static func tick_recovery(rec: FarTierFormation, delta: float) -> void:
 	if not can_fight(rec) or rec.morale >= 100.0:
 		return
@@ -264,17 +358,28 @@ static func face_toward(rec: FarTierFormation, point: Vector2) -> void:
 
 
 ## One tick of the isolated two-formation engagement the phase verifies: two far-tier
-## formations close on each other, exchange attrition once in reach, and stop when one
-## breaks or is destroyed, with survivors recovering morale afterward. All reads happen
-## against the PRE-tick state before any write, so the exchange is simultaneous — neither
-## side gets a first-mover advantage, and a mirrored matchup stays exactly symmetric.
-## Orchestrating many formations (target selection, pursuit) is later-phase work; this
-## driver is the two-body rule the design doc's done-check runs.
+## formations close on each other, exchange attrition once in reach, and a side
+## that breaks flees, rallies, or shatters instead of just absorbing (the old phase-2
+## behavior). All reads happen against the PRE-tick state before any write, so the exchange
+## is simultaneous — neither side gets a first-mover advantage, and a mirrored matchup stays
+## exactly symmetric. Orchestrating many formations (target selection, pursuit across more
+## than a pair, contagion) is later-phase work; this driver is the two-body rule the design
+## doc's done-checks run.
 static func tick_pair(a: FarTierFormation, b: FarTierFormation, delta: float) -> void:
+	# A side that broke on a PRIOR tick's attrition is already routing here: apply_casualties
+	# latches enter_rout the instant morale hits zero (same tick as the casualties that
+	# caused it, mirroring register_casualties' own u._rout() call), so by the time this
+	# function runs for the next tick, rec.routing already reflects it.
 	var a_fights: bool = can_fight(a)
 	var b_fights: bool = can_fight(b)
+	if a.routing:
+		tick_rout(a, b, delta)
+	if b.routing:
+		tick_rout(b, a, delta)
 	if not (a_fights and b_fights):
-		# No live fight (one side gone or broken): survivors recover where they stand.
+		# No live fight (one side gone, routing, or freshly broken): a still-fightable
+		# survivor recovers where it stands. A routing side's own recovery already ran
+		# above (tick_rout), so it's excluded here to avoid double-applying morale.
 		if a_fights:
 			tick_recovery(a, delta)
 		if b_fights:
