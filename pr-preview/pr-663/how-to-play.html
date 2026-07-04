@@ -480,7 +480,7 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>You command the <span class="army-blue"><strong>blue army</strong></span> (top of the field). Your objective: defeat the <span class="army-red"><strong>red army</strong></span> (bottom). A side loses when it has no units left on the field — every one dead or shattered. A unit that is merely <strong>routing</strong> still counts: it is off fighting for now, but it may break contact and rally back into the line, so the battle stays live while it might recover.</p>
+<p>You command the <span class="army-blue"><strong>blue army</strong></span> (top of the field). Your objective: defeat the <span class="army-red"><strong>red army</strong></span> (bottom). A side loses when it has no units left on the field — every one destroyed or fled clear of the map. A unit that is merely <strong>routing</strong> still counts: it’s off fighting for now, but the battle stays live while it’s still on the field, whether it’s “broken” (still able to rally) or has “shattered” (lost its nerve for good, but still has to either run for it or be run down before it’s actually gone).</p>
 <div id="fig-clash" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-clash-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -533,7 +533,7 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 </tr>
 <tr class="even">
 <td>Form-up split mode</td>
-<td><kbd>Y</kbd> cycles through enabled modes (equal-depth / equal-width); configure which modes cycle and which is the battle default in <strong>☰ Menu</strong></td>
+<td><kbd>Y</kbd> cycles through enabled modes (equal-depth / equal-width); <kbd>Shift</kbd> + <kbd>Y</kbd> cycles the other way; configure which modes cycle and which is the battle default in <strong>☰ Menu</strong></td>
 </tr>
 <tr class="odd">
 <td>Reform before move</td>
@@ -549,7 +549,7 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 </tr>
 <tr class="even">
 <td>Group attack mode</td>
-<td><kbd>X</kbd> cycles focused ↔︎ distributed · or <strong>control bar</strong></td>
+<td><kbd>X</kbd> cycles focused ↔︎ distributed (<kbd>Shift</kbd> + <kbd>X</kbd> cycles the other way) · or <strong>control bar</strong></td>
 </tr>
 <tr class="odd">
 <td>Relieve a friendly</td>
@@ -573,7 +573,7 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 </tr>
 <tr class="even">
 <td>Formation</td>
-<td><kbd>T</kbd> (cycles Normal / Tight / Loose / Square) · or <strong>control bar</strong></td>
+<td><kbd>T</kbd> (cycles Normal / Tight / Loose / Square; <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way) · or <strong>control bar</strong></td>
 </tr>
 <tr class="odd">
 <td>Anti-cavalry square</td>
@@ -890,12 +890,12 @@ Figure&nbsp;14: Cavalry charge: two horse units receive an attack order and acce
 </figure>
 </div>
 <ol type="1">
-<li><strong>Select</strong> — left-click a unit, or drag a box to grab several at once. The info panel fills with the selected unit’s stats.</li>
+<li><strong>Select</strong> — left-click a unit, or drag a box to grab several at once. The info panel fills with the selected unit’s stats, including a flavor <strong>Commander</strong> rank (Centurion, Pilus Prior, Decurion, …) drawn from the real Roman officer hierarchy — cosmetic only, it has no effect on combat.</li>
 <li><strong>Order</strong> — right-click to send them. Move them onto an enemy’s flank, or right-click the enemy directly to attack. There is a brief <strong>reaction delay</strong> (~0.5 s, faster for cavalry) before units execute — orders aren’t instant.</li>
 <li><strong>Watch the bars</strong> — each unit flies a small <strong>regimental flag</strong> in its team colour and shows a strength bar that drops as it takes casualties. The flag is a click target too: clicking it selects the unit, just like clicking the block. Morale matters as much as numbers (see <a href="./tactics.html">Tactics</a>).</li>
 <li><strong>Navigate terrain</strong> — the field has two terrain patches: a <strong>dark-green forest</strong> (slows movement to 60%) on the left flank, and a <strong>tan hill</strong> (impassable) on the right. Units route around the hill automatically. See <a href="./tactics.html#terrain">Tactics → Terrain</a>.</li>
 <li><strong>Exploit the break</strong> — when a unit <strong>routs</strong>, it flees (shown faded) and stops fighting for now. Routs spread to nearby allies, so a single break can cascade. A fugitive that breaks contact can <strong>rally</strong> and reform back under your control at low morale, so chase down a broken enemy to finish it before it recovers — and give your own routers room to escape and rally.</li>
-<li><strong>Win</strong> — destroy the entire enemy army (every unit dead or shattered for good) and a <strong>Victory</strong> overlay appears, with <strong>Fight Again</strong> to restart. A routing enemy isn’t beaten yet: run it down or it may rally.</li>
+<li><strong>Win</strong> — destroy the entire enemy army (every unit dead, or fled clear of the map) and a <strong>Victory</strong> overlay appears, with <strong>Fight Again</strong> to restart. A routing enemy isn’t beaten yet: a “broken” one may yet rally, and even a “shattered” one (its nerve gone for good) still has to escape or be run down before it’s actually off the field.</li>
 </ol>
 </section>
 <section id="campaign-map" class="level2">
