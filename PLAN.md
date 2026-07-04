@@ -35,9 +35,13 @@ then grow outward.
    stack on one another. Every movement/combat feature is designed around this constraint, and
    collision correctness/perf takes priority over new feature breadth.
    - **Current state:** soft separation in `Unit.gd` → `_separate()` — each frame a unit pushes
-     out of any overlapping unit (live or routing) by half the overlap (neighbor corrects the rest).
-     Spacing is the center-to-center floor `RADIUS + other.RADIUS`. It is intentionally *soft* so
-     regiments still press into melee contact (attack reach > separation floor) instead of bouncing apart.
+     out of any overlapping unit (live or routing) by half the overlap (neighbor corrects the rest),
+     using a **per-type** center-to-center floor (cavalry wider than infantry) rather than a shared
+     `RADIUS`. It is intentionally *soft* so regiments still press into melee contact (attack reach >
+     separation floor) instead of bouncing apart — except against a spearman screen, where `_separate()`
+     → `_push_share()` gives cavalry the full correction so it can't ride through the line. Neighbor
+     lookups run on the `SpatialHash` grid rather than an O(n²) scan. All five roadmap items below
+     have landed.
    - **Individual-soldier layer (#164, phases 1-3 landed):** alongside the regiment circle, soldiers
      exist as simulated bodies (`_sim_soldier_pos`), seeded from formation slots, separated
      per-soldier across regiments (engaged front ranks, on a `SoldierSpatialHash`), and **rendered
@@ -47,12 +51,19 @@ then grow outward.
      phase 5 retires the circle. See `docs/individual-collision-design.md`.
    - **Roadmap (in priority order):**
      1. ✅ No-stack soft separation between live units.
-     2. Per-type footprint (cavalry wider than infantry) so charges and screens read correctly.
-     3. Formation cohesion: a regiment holds a block/line shape while moving, not a blob.
-     4. Hard blocking interactions: spearmen screen and physically stop cavalry passage; lines
-        form chokepoints. This is where collision and the rock-paper-scissors design meet.
-     5. Scale: replace the O(n²) neighbor scan with a spatial grid (and/or move to Godot
-        `CharacterBody2D`/`move_and_slide`) before unit counts grow past a few dozen.
+     2. ✅ Per-type footprint (cavalry wider than infantry) so charges and screens read correctly.
+        Landed as the per-type separation radii (`SEPARATION_RADIUS_INFANTRY`/`_SPEARMEN`/`_CAVALRY`)
+        in `Unit.gd`.
+     3. ✅ Formation cohesion: a regiment holds a block/line shape while moving, not a blob. Landed as
+        the block/line slot geometry in `UnitFormation.gd`.
+     4. ✅ Hard blocking interactions: spearmen screen and physically stop cavalry passage; lines
+        form chokepoints. This is where collision and the rock-paper-scissors design meet. Landed as
+        the asymmetric push-share in `Unit.gd` → `_push_share()`: a spearman takes none of the
+        separation correction against cavalry, so the horse can't push through.
+     5. ✅ Scale: replace the O(n²) neighbor scan with a spatial grid (and/or move to Godot
+        `CharacterBody2D`/`move_and_slide`) before unit counts grow past a few dozen. Landed as
+        `SpatialHash.gd`/`SoldierSpatialHash.gd`; see `docs/individual-collision-design.md` for the
+        full individual-collision design.
 2. **Bottom-up emergence over top-down heuristics.** As we move away from control-theory/springs/
    heuristics, we add more realistic behaviors at each organizational level — soldier, file/rank,
    unit/regiment, army — and let system-level phenomena (formation shape, morale/routing,
@@ -135,11 +146,11 @@ features that depend on it, then independent polish.
   - #12 M1 first run & verification in Godot — nothing below is validated until this passes.
   - #13 Spacebar active pause — implemented in PR #2, pending live confirm.
 - **P1 — Collision pillar (core, in dependency order):**
-  - #6 Per-type footprint (`_separate()` currently uses the shared `RADIUS`; make it per-type).
-  - #10 NavigationAgent2D pathfinding (decide path-vs-collision split here).
-  - #9 Scale beyond O(n²) — pairs with #10.
-  - #7 Formation cohesion (depends on #6).
-  - #8 Hard blocking: spears stop cavalry (depends on solid collision + formations).
+  - #6 Per-type footprint (`_separate()` now uses per-type separation radii instead of the shared `RADIUS`). (shipped)
+  - #10 NavigationAgent2D pathfinding (decide path-vs-collision split here). (shipped)
+  - #9 Scale beyond O(n²) — pairs with #10. (shipped)
+  - #7 Formation cohesion (depends on #6). (shipped)
+  - #8 Hard blocking: spears stop cavalry (depends on solid collision + formations). (shipped)
 - **P2 — Features on the shared "collision-exemption" primitive (build it once in #5, reuse):**
   - #5 Friendly pass-through (simplest; establishes the primitive).
   - #4 Line relief (adds fatigue stat + handoff).
