@@ -549,7 +549,13 @@ func _physics_process(_delta: float) -> void:
 func _on_soldier_tick() -> void:
 	if _ended or get_tree().paused:
 		return
+	# Both groups: a ROUTING unit leaves "units" for "routers" but its soldier bodies must
+	# keep stepping/coupling while it flees, or they freeze at wherever they were the
+	# instant it broke -- the render then silently diverges further from the regiment's
+	# actual (moving) position every tick it stays routing, until some later state change
+	# forces a redraw and the bodies visibly snap to catch up.
 	var units: Array = get_tree().get_nodes_in_group("units")
+	units.append_array(get_tree().get_nodes_in_group("routers"))
 	# Friendly-avoidance steering first (it sets the velocity bias the bodies feed
 	# forward), then integrate the bodies, then slide each regiment center toward its
 	# soldiers' centroid (phase 5: friendly collision emerges from the soldier layer via

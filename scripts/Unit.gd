@@ -1372,6 +1372,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	if braking_to_stop:
 		advance = minf(advance, dist_to_stop)
 	position += dir * advance
+	# A non-routing unit stops at the field's own edge -- the retreat margin is for a
+	# ROUTING unit to flee into (see Unit.retreat_bounds / _process_rout), not a place a
+	# pursuer can follow it. This is the only thing that stops a unit chasing a routing
+	# enemy from crossing into the margin after it: field_bounds is the same rect used
+	# for skirmisher kiting (FIELD), just enforced here for ordinary chase/move movement.
+	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 	state = State.MOVING
 	_moved_last_frame = true
 	# Charge velocity; terrain-scaled so forest reduces the charge bonus (intentional — can't sprint in trees).
@@ -1389,6 +1396,10 @@ func _press_into(point: Vector2, delta: float) -> void:
 	if to.length() < 1.0:
 		return
 	position += to.normalized() * move_speed * MELEE_PRESS_FRACTION * delta
+	# Same field-edge stop as _move_to: a non-routing unit doesn't follow a routing
+	# enemy into the retreat margin, even while pressing a lean into melee contact.
+	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 
 
 func _face(point: Vector2) -> void:
