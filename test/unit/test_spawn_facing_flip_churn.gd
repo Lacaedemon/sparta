@@ -1,5 +1,5 @@
 extends GutTest
-## Spawn-facing-flip formation churn (#631): a unit that spawns facing one way and is
+## Spawn-facing-flip formation churn: a unit that spawns facing one way and is
 ## immediately drawn into combat roughly the opposite way used to have every soldier's
 ## formation slot swap to the far side of the block in one tick (soldier_world_slots rotates
 ## the local slot grid by the unit's CURRENT facing). Soldiers ARRIVE at slots under bounded
@@ -11,9 +11,9 @@ extends GutTest
 ## and the engage re-face already use -- so soldier_world_slots reproduces each body's own
 ## pre-snap slot under the new facing instead of swapping every slot to the other side. These
 ## tests pin it two ways: an isolated-unit unit test on _face_dir/_formation_angle directly
-## (fast, exact), and a LIVE Battle scene replay of the exact demos/inputs/schiltron.json
-## repro from the issue, tick-by-tick, asserting the bbox never collapses (this repo's
-## "verify by state, not by eyeballing a GIF" convention).
+## (fast, exact), and a LIVE Battle scene replay of demos/inputs/spawn-facing-flip-fixed.json
+## (a minimal, cavalry-only reproduction), tick-by-tick, asserting the bbox never collapses
+## (this repo's "verify by state, not by eyeballing a GIF" convention).
 
 
 func _bbox(ps: PackedVector2Array) -> Vector2:
@@ -94,20 +94,18 @@ func test_degenerate_zero_length_dir_leaves_facing_unchanged() -> void:
 	assert_eq(u._formation_angle, 0.0, "nothing to absorb from a no-op snap")
 
 
-# --- live Battle replay of the issue's exact repro (demos/inputs/schiltron.json) ---------
+# --- live Battle replay of the issue's repro (demos/inputs/spawn-facing-flip-fixed.json) --
 
-## The scripted click (tick 10) selects the player Infantry; the shift+O (tick 30) switches
-## it to Schiltron. Neither affects the cavalry (team 1) being measured, but stepping past
-## both keeps the replay's own scripted state consistent before we start sampling.
-const _LAST_SCRIPTED_KEY_TICK := 30
-## Enough ticks past the scripted input for the pre-fix churn to fully play out (the issue
-## measured the compress/expand cycle bottoming out around tick 90-95 and regrowing by 150,
-## measured from the cavalry's own spawn -- comfortably inside this cap).
+## Enough ticks for the pre-fix churn to fully play out (the issue measured the compress/
+## expand cycle bottoming out around tick 90-95 and regrowing by 150, measured from the
+## cavalry's own spawn -- comfortably inside this cap).
 const _SAMPLE_TICKS := 160
 
 
-func test_schiltron_demo_no_bbox_collapse_on_spawn_facing_flip() -> void:
-	OS.set_environment("SPARTA_DEMO_INPUT", "demos/inputs/schiltron.json")
+func test_demo_no_bbox_collapse_on_spawn_facing_flip() -> void:
+	# A minimal, cavalry-only scenario (no player input at all) isolates the auto-advance
+	# facing flip from any unrelated setup step, per this repo's demo-simplicity convention.
+	OS.set_environment("SPARTA_DEMO_INPUT", "demos/inputs/spawn-facing-flip-fixed.json")
 	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
 	add_child_autofree(recorder)
 	# The recorder defers spawning Battle (_start_battle.call_deferred()), so it isn't a
@@ -129,7 +127,7 @@ func test_schiltron_demo_no_bbox_collapse_on_spawn_facing_flip() -> void:
 		if cavalry != null and not cavalry._sim_soldier_pos.is_empty():
 			break
 		await get_tree().physics_frame
-	assert_not_null(cavalry, "the schiltron scenario spawned a team-1 cavalry unit")
+	assert_not_null(cavalry, "the scenario spawned a team-1 cavalry unit")
 	if cavalry == null:
 		return
 	assert_false(cavalry._sim_soldier_pos.is_empty(), "the cavalry's soldier bodies are seeded")
