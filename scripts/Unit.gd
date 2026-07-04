@@ -130,6 +130,17 @@ var tier: int = FormationTier.CLOSE
 # change rides the replay command stream so playback reproduces it. Honoured and
 # clamped to [1, max_soldiers] in UnitFormation.frontage.
 var frontage_override: int = 0
+# "Close the ranks" (#470): whether the auto (non-override) frontage is currently
+# stepped down a notch to reform the casualty-thinned survivors into a deeper, denser
+# block instead of holding the full-strength line's width. A single cached bool, not a
+# recomputed-every-call fraction check, so the step is a discrete ONE-TIME reflow at the
+# threshold crossing rather than a continuous per-tick recompute (the same churn the
+# stable-frontage design already avoids -- see UnitFormation.frontage's docstring).
+# Updated once per tick in _physics_process via UnitFormation.should_close_ranks, which
+# hysteresis-gaps the contract/recover thresholds so a unit hovering near the line
+# doesn't flap back and forth. Ignored while frontage_override is set -- a player's
+# explicit frontage always wins, same as the auto width it stands in for.
+var _ranks_closed: bool = false
 # Extra rotation (radians) applied to the formation slot grid, on top of the unit heading.
 # A quarter-turn turns every soldier in place WITHOUT reorganising the grid: each man
 # faces a new way but stands where he stood. unit.facing rotates 90°, and this offset cancels
@@ -652,6 +663,7 @@ func _physics_process(delta: float) -> void:
 	UnitMorale.tick_morale(self, delta)
 	tick_engaged(delta)
 	UnitRelief.update(self)
+	_ranks_closed = UnitFormation.should_close_ranks(_ranks_closed, soldiers, max_soldiers)
 
 	# A stationary, non-fighting unit carries no momentum: drop any leftover approach
 	# velocity so a later standing strike can't charge off it. While FIGHTING we

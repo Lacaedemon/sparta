@@ -1772,6 +1772,49 @@ func test_frontage_override_clamps_to_range() -> void:
 			"a non-positive override means auto (the floor-at-one lives in set_frontage)")
 
 
+# --- close the ranks (#470): contract frontage under heavy losses -----------
+
+func test_ranks_close_after_a_tick_of_heavy_losses() -> void:
+	var u := _make_unit(100)
+	var full: int = UnitFormation.frontage(u)
+	u.soldiers = 40   # 40% strength: below the 50% contract threshold
+	assert_false(u._ranks_closed, "not yet re-evaluated -- still the pre-tick default")
+	u._physics_process(0.016)
+	assert_true(u._ranks_closed, "one tick past heavy losses closes the ranks")
+	assert_eq(UnitFormation.frontage(u), UnitFormation.narrowed_files(full),
+			"the auto frontage steps down one notch once closed")
+
+
+func test_ranks_stay_open_above_the_contract_threshold() -> void:
+	var u := _make_unit(100)
+	u.soldiers = 80   # 80% strength: well above the contract threshold
+	u._physics_process(0.016)
+	assert_false(u._ranks_closed, "light casualties don't close the ranks")
+	assert_eq(UnitFormation.frontage(u), UnitFormation._files(100),
+			"the line holds its full auto width")
+
+
+func test_ranks_reopen_once_reinforced_past_the_recover_threshold() -> void:
+	var u := _make_unit(100)
+	u.soldiers = 40
+	u._physics_process(0.016)
+	assert_true(u._ranks_closed, "closed after heavy losses")
+	u.soldiers = 70   # reinforced (e.g. absorb()) back above the recover threshold
+	u._physics_process(0.016)
+	assert_false(u._ranks_closed, "reinforced past the recover threshold reopens the ranks")
+
+
+func test_ranks_stay_closed_inside_the_hysteresis_gap() -> void:
+	var u := _make_unit(100)
+	u.soldiers = 40
+	u._physics_process(0.016)
+	assert_true(u._ranks_closed, "closed after heavy losses")
+	u.soldiers = 60   # inside the 50-65% gap: neither contract nor recover fires
+	u._physics_process(0.016)
+	assert_true(u._ranks_closed,
+			"a partial recovery inside the hysteresis gap does not reopen the ranks yet")
+
+
 func test_set_frontage_stores_a_clamped_override() -> void:
 	var u := _make_unit(60)
 	u.set_frontage(20)
