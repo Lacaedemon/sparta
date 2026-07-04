@@ -567,6 +567,35 @@ func test_form_up_equal_depth_gives_units_the_same_rank_depth() -> void:
 			"both units form up to within one rank of the same depth")
 
 
+func test_form_up_equal_depth_uses_average_spacing_for_a_mixed_formation_group() -> void:
+	# A mixed-density group (one TIGHT, one LOOSE) shares a pitch based on the AVERAGE
+	# spacing_scale across both units, not just the first-selected unit's. Regression
+	# test for #457: previously `_files_for_mode` always borrowed units[0]'s
+	# spacing_scale, so swapping selection order changed the resulting file counts even
+	# though the units and the drag span didn't change.
+	var sm := _sm()
+	var tight := _unit()
+	tight.max_soldiers = 100
+	tight.set_formation(UnitScript.FORMATION_TIGHT)
+	var loose := _unit()
+	loose.max_soldiers = 100
+	loose.set_formation(UnitScript.FORMATION_LOOSE)
+	assert_ne(tight.spacing_scale, loose.spacing_scale,
+			"the two units must actually differ in density for this test to mean anything")
+
+	var slices_tight_first: Array = sm._form_up_slices(
+			[tight, loose], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH)
+	var slices_loose_first: Array = sm._form_up_slices(
+			[loose, tight], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH)
+
+	# Selection order must not change the file counts -- both orderings solve from the
+	# same (order-independent) average spacing.
+	assert_eq(int(slices_tight_first[0]["files"]), int(slices_loose_first[1]["files"]),
+			"the tight unit's file count is the same regardless of selection order")
+	assert_eq(int(slices_tight_first[1]["files"]), int(slices_loose_first[0]["files"]),
+			"the loose unit's file count is the same regardless of selection order")
+
+
 func test_form_up_equal_width_gives_units_the_same_frontage() -> void:
 	# Equal-width: same files for equal-line-share regardless of size, so a big and a small
 	# unit get the same frontage (the small one just ends up deeper).
