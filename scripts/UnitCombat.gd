@@ -225,7 +225,13 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 		u.soldiers = 0
 		u._die()
 		Sfx.play(&"death")
-	elif u.morale <= 0.0:
+	elif u.morale <= 0.0 and u.state != Unit.State.ROUTING:
+		# Only the FIRST break plays the cue and calls _rout() -- a routing unit is now a
+		# valid target (see UnitTargeting.nearest_enemy's include_routing), so it can keep
+		# taking casualties tick after tick while run down; without this guard, every one of
+		# those hits would re-satisfy `morale <= 0.0` and replay the "rout" sting throughout
+		# the whole chase (u._rout() itself is a safe no-op on an already-routing unit, but
+		# the sound cue isn't).
 		u._rout()
 		Sfx.play(&"rout")
 
