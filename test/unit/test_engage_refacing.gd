@@ -211,6 +211,100 @@ func test_enemy_leaves_range_mid_turn_settles_the_turn() -> void:
 		"the engage turn is settled when the enemy breaks contact and the unit chases")
 
 
+# --- frontage-reshape variants (RECREATE_WIDTH / MATCH_TARGET) ---------------
+# The turn-in-place itself is unchanged (asserted above); these pin the RESHAPE layered on
+# top once the turn settles, per engage_reshape_mode. KEEP_NEW_FRONTING (the default,
+# asserted implicitly by every test above never touching frontage_override) reshapes nothing.
+
+func test_recreate_width_restores_pre_turn_frontage() -> void:
+	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
+	var enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
+	a.engage_reshape_mode = Unit.EngageReshapeMode.RECREATE_WIDTH
+	a.set_frontage(4)   # narrow the line by hand before the re-face turns it
+	var pre_turn_files: int = a.formation_files(a.soldiers)
+	assert_eq(pre_turn_files, 4, "the unit is narrowed to 4 files before the turn starts")
+
+	for _i in range(60):
+		a._think(0.05)
+		if a._engage_turn_target == Vector2.ZERO:
+			break
+	assert_eq(a._engage_turn_target, Vector2.ZERO, "the turn has completed")
+	assert_eq(a.frontage_override, pre_turn_files,
+		"RECREATE_WIDTH reshapes back to the exact file count the unit had before the turn")
+
+
+func test_match_target_adopts_enemy_frontage() -> void:
+	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
+	# A much smaller enemy presents a narrower frontage than attacker `a`'s own (9-file)
+	# default at 40 soldiers, so adopting it is a real, observable change. Zero the
+	# attacker's damage so the tiny enemy survives the whole turn-in-place instead of being
+	# wiped out mid-test (this test is about the reshape, not the combat outcome).
+	var enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
+	enemy.max_soldiers = 4
+	enemy.soldiers = 4
+	enemy.seed_sim_soldiers()
+	a.attack = 0
+	a.engage_reshape_mode = Unit.EngageReshapeMode.MATCH_TARGET
+	var enemy_files: int = UnitFormation.frontage(enemy)
+	assert_lt(enemy_files, a.formation_files(a.soldiers),
+		"the enemy's frontage is narrower than the attacker's default, so matching it is observable")
+
+	for _i in range(60):
+		a._think(0.05)
+		if a._engage_turn_target == Vector2.ZERO:
+			break
+	assert_eq(a._engage_turn_target, Vector2.ZERO, "the turn has completed")
+	assert_eq(a.frontage_override, enemy_files,
+		"MATCH_TARGET reshapes to the enemy's own file count")
+
+
+func test_keep_new_fronting_leaves_frontage_untouched() -> void:
+	# The default mode: no reshape at all, matching the shipped #476 MVP behavior exactly.
+	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
+	var _enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
+	assert_eq(a.engage_reshape_mode, Unit.EngageReshapeMode.KEEP_NEW_FRONTING,
+		"KEEP_NEW_FRONTING is the default")
+
+	for _i in range(60):
+		a._think(0.05)
+		if a._engage_turn_target == Vector2.ZERO:
+			break
+	assert_eq(a._engage_turn_target, Vector2.ZERO, "the turn has completed")
+	assert_eq(a.frontage_override, 0, "no reshape is applied -- frontage_override stays untouched")
+
+
+func test_reshape_eases_in_without_a_body_surge() -> void:
+	# The reshape must ride the same arrival-spring easing as a manual [ / ] resize -- no
+	# teleport. Immediately after the turn settles the bodies should NOT already be on their
+	# new (wider) slots; they arrive at speed over subsequent ticks.
+	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
+	var enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
+	a.engage_reshape_mode = Unit.EngageReshapeMode.RECREATE_WIDTH
+	a.set_frontage(2)   # a big narrow-to-wide swing on settle makes any teleport obvious
+	var pre_turn_files: int = a.formation_files(a.soldiers)
+
+	var settled := false
+	for _i in range(60):
+		a._think(0.05)
+		a.step_sim_soldiers(0.05)
+		if a._engage_turn_target == Vector2.ZERO:
+			settled = true
+			break
+	assert_true(settled, "the turn completes within the test window")
+	assert_eq(a.frontage_override, pre_turn_files, "the reshape command is issued on settle")
+
+	# The reshaped (wide) slots differ substantially from the still-narrow body positions --
+	# proof the bodies have not yet snapped onto them.
+	var new_slots: PackedVector2Array = a.soldier_world_slots(a.soldiers)
+	var still_arriving := false
+	for i in range(a._sim_soldier_pos.size()):
+		if a._sim_soldier_pos[i].distance_to(new_slots[i]) > 5.0:
+			still_arriving = true
+			break
+	assert_true(still_arriving,
+		"immediately after settle the bodies are still easing toward the reshaped slots, not teleported")
+
+
 # --- the same dangling-turn cleanup applies in the support stance -------------
 
 func test_support_threat_killed_mid_turn_clears_the_turn() -> void:
