@@ -63,6 +63,14 @@ func _ready() -> void:
 	# Free-run physics as fast as the CPU allows -- see the class doc for why this matters:
 	# a capped/vsynced rate would measure the cap, not the sim's real per-tick cost.
 	Engine.max_fps = 0
+	# This runner measures physics-step time only (see the class doc) -- SFX playback is
+	# presentation-only and would just be unheard mixing overhead here. Forcing it off for
+	# this run only (set_sfx_enabled_session: no disk write, no `changed` signal -- see
+	# Settings.gd) also sidesteps a real leak: a pooled Sfx voice that's still mid-playback
+	# when get_tree().quit() tears down the tree can leak its AudioStreamPlaybackWAV/stream
+	# past process exit (a developer machine with SFX on in user://settings.cfg carries that
+	# setting into this run, same as any other Settings value).
+	Settings.set_sfx_enabled_session(false)
 
 	_scenario_path = _env_str("SPARTA_BENCHMARK_SCENARIO", DEFAULT_SCENARIO)
 	_warmup_ticks = _env_int("SPARTA_BENCHMARK_WARMUP_TICKS", DEFAULT_WARMUP_TICKS)
