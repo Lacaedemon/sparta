@@ -243,13 +243,30 @@ func _exit_tree() -> void:
 	# reload_current_scene(). Without disconnecting, this freed-but-not-yet-gone
 	# Battle gets one more _on_soldier_tick after it leaves the tree, where
 	# get_tree() is null — "Invalid access to property 'paused' on a null instance".
-	if get_tree().physics_frame.is_connected(_on_soldier_tick):
-		get_tree().physics_frame.disconnect(_on_soldier_tick)
+	#
+	# get_tree() itself can ALSO already be null by the time _exit_tree runs (the node has
+	# already left the tree during teardown), so read it into a local ONCE and guard on that,
+	# rather than calling get_tree() twice more below — a null-unguarded call there throws and
+	# aborts this function early, silently skipping the static releases beneath it.
+	var tree := get_tree()
+	if tree != null and tree.physics_frame.is_connected(_on_soldier_tick):
+		tree.physics_frame.disconnect(_on_soldier_tick)
 
-	# Don't let this battle's pathfinding grid outlive it (e.g. across a scene
-	# reload or a future return-to-map flow). The next Battle._ready() republishes.
+	# Don't let this battle's pathfinding grid or in-flight projectiles outlive it (e.g. across
+	# a scene reload or a future return-to-map flow) — release them unconditionally, regardless
+	# of whether the disconnect above ran, so a teardown that hits the null-tree case above
+	# still frees these. The next Battle._ready() republishes both.
 	PathField.active = null
 	ProjectileField.active = null   # drop any in-flight arrows with the battle
+
+	# The per-tick spatial-hash grids (SpatialHash / SoldierSpatialHash) key their cached
+	# _cells on the physics frame they were built for and rebuild from a fresh group scan
+	# every tick a battle is running, so they self-heal on the next live battle's first
+	# rebuild() regardless. Still reset them here so a freed battle never leaves the LAST
+	# built grid pinning freed Unit references between spawns (e.g. across a whole GUT run
+	# with no battle currently alive) — cheap, and removes the dangling-reference window.
+	SpatialHash.reset()
+	SoldierSpatialHash.reset()
 
 
 func _draw() -> void:
