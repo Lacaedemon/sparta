@@ -40,10 +40,10 @@ const ORDER_FRONTAGE_ONLY := -4
 const ORDER_WHEEL := -5
 # Sentinel for an arrow-key nudge: a small fixed-distance drill move that holds
 # facing. The nudge direction rides the "frontage" field (1 = left, 2 = right,
-# 3 = back), so the replay format is unchanged. Each unit steps from its own
-# facing, so a mixed-facing selection nudges correctly per unit.
+# 3 = back, 4 = forward), so the replay format is unchanged. Each unit steps
+# from its own facing, so a mixed-facing selection nudges correctly per unit.
 const ORDER_NUDGE := -6
-enum NudgeDir { LEFT = 1, RIGHT = 2, BACK = 3 }
+enum NudgeDir { LEFT = 1, RIGHT = 2, BACK = 3, FORWARD = 4 }
 # Sentinel for a standalone stance-change order (no movement, no target): writes the
 # durable order_mode and/or the intra-unit rank-relief mode on each unit, leaving all
 # movement state untouched. The stance rides the existing "mode" field (-1 = leave the
@@ -657,7 +657,8 @@ func enqueue_frontage(uids: Array, delta: int) -> void:
 
 
 ## Arrow-key nudge: order each unit a small fixed-distance drill step to its own
-## `dir` (LEFT / RIGHT side-step, or BACK back-step), holding facing throughout.
+## `dir` (LEFT / RIGHT side-step, BACK back-step, or FORWARD forward-step), holding
+## facing throughout.
 ## Recorded (the direction rides the frontage field) so replays reproduce it, and
 ## applied immediately for zero-latency feedback like every other order.
 func enqueue_nudge(uids: Array, dir: int) -> void:
@@ -732,7 +733,8 @@ func enqueue_wheel(uids: Array, dir: int) -> void:
 
 ## World-space offset for a nudge of `dir` given a unit's `facing`. LEFT / RIGHT
 ## are perpendicular to facing (a side-step); BACK is straight opposite facing (a
-## back-step). Each is NUDGE_DISTANCE long. Pure/static so it's unit-testable.
+## back-step); FORWARD is straight along facing (a forward step). Each is
+## NUDGE_DISTANCE long. Pure/static so it's unit-testable.
 static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
 	var fwd: Vector2 = facing.normalized() if facing.length() > 0.01 else Vector2.UP
 	var perp := Vector2(-fwd.y, fwd.x)   # unit's right-hand side in world space
@@ -743,6 +745,8 @@ static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
 			return perp * NUDGE_DISTANCE
 		NudgeDir.BACK:
 			return -fwd * NUDGE_DISTANCE
+		NudgeDir.FORWARD:
+			return fwd * NUDGE_DISTANCE
 		_:
 			return Vector2.ZERO
 

@@ -44,7 +44,8 @@ enum Type {
 	RELIEF,     ## Inter-unit relief: a fresh unit passes through/replaces a tired ally in contact.
 	SUPPORT,    ## Guard a friendly ward, engaging threats near it until the ward is gone.
 	WHEEL,      ## Circumductio: swing the line 90 degrees about a fixed flank file.
-	NUDGE,      ## A short fixed-distance drill step (side-step or back-step), holding facing.
+	NUDGE,      ## A short fixed-distance drill step (side-step, back-step, or forward-step),
+	            ## holding facing.
 	FORMATION,  ## Change formation_mode (tight/loose/square/shield-wall/testudo). Instantaneous.
 	FRONTAGE,   ## Resize frontage to an absolute file count (manual resize or a file-double/
 	            ## file-halve maneuver -- same execution, different caller-derived target width).

@@ -36,6 +36,7 @@ const _ROWS: Array = [
 	["Line width (narrower/wider)", "[ / ]"],
 	["File-doubling (explicatio wider / duplicatio deeper)", "B / N"],
 	["Form-up split mode", "Y"],
+	["Nudge (small drill step, holds facing)", "Arrow keys"],
 	["About-face (180° in place)", "V"],
 	["Quarter-turn left / right (90° in place)", "Q / E"],
 	["Wheel left / right (90° hinge on flank)", "Z / C"],

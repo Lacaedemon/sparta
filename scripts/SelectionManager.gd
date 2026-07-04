@@ -265,6 +265,9 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_DOWN and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.BACK)    # back-step (holds facing)
 		return true
+	elif event.keycode == KEY_UP and has_selection():
+		_issue_nudge(BattleRef.NudgeDir.FORWARD)   # forward-step (holds facing)
+		return true
 	elif event.keycode == KEY_T:
 		_cycle_formation()   # cycle normal → tight → loose → square for selected units
 		return true
@@ -676,8 +679,9 @@ func _issue_merge() -> void:
 
 
 ## Arrow-key nudge: order the selected friendly units a small fixed-distance drill
-## step to `dir` (LEFT / RIGHT side-step, or BACK back-step), holding facing. Routed
-## through Battle so it's recorded and replays exactly, like every other order.
+## step to `dir` (LEFT / RIGHT side-step, BACK back-step, or FORWARD forward-step),
+## holding facing. Routed through Battle so it's recorded and replays exactly, like
+## every other order.
 func _issue_nudge(dir: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return

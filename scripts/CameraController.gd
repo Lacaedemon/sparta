@@ -44,17 +44,16 @@ func _process(delta: float) -> void:
 		return
 	var dir := Vector2.ZERO
 
-	# The nudge arrows (Left / Right / Down) pan only when nothing is selected;
+	# The nudge arrows (Left / Right / Up / Down) pan only when nothing is selected;
 	# while a unit is selected they nudge the selection (handled in SelectionManager).
-	# WASD always pans, and Up (no nudge bound) always pans, so the player never
-	# loses camera control.
+	# WASD always pans regardless, so the player never loses camera control.
 	var arrows_pan: bool = _selection == null or not _selection.has_selection()
 
 	if Input.is_key_pressed(KEY_A) or (arrows_pan and Input.is_key_pressed(KEY_LEFT)):
 		dir.x -= 1
 	if Input.is_key_pressed(KEY_D) or (arrows_pan and Input.is_key_pressed(KEY_RIGHT)):
 		dir.x += 1
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+	if Input.is_key_pressed(KEY_W) or (arrows_pan and Input.is_key_pressed(KEY_UP)):
 		dir.y -= 1
 	if Input.is_key_pressed(KEY_S) or (arrows_pan and Input.is_key_pressed(KEY_DOWN)):
 		dir.y += 1
