@@ -181,9 +181,11 @@ static func friendly_interceptor(u: Unit, target: Unit) -> Unit:
 	return closest
 
 
-## Called by an attacker. Applies flanking from the DEFENDER's (`u`'s) facing.
+## Called by an attacker. Applies flanking from the DEFENDER's (`u`'s) facing. A routing
+## (broken or shattered) unit CAN take casualties here --- fleeing doesn't grant immunity,
+## it can still be run down and annihilated (soldiers reaching zero) before it escapes.
 static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
-	if u.state == Unit.State.DEAD or u.state == Unit.State.ROUTING:
+	if u.state == Unit.State.DEAD:
 		return
 
 	var flank: float = flank_multiplier(u, attacker)
@@ -219,7 +221,7 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 		var crumble_depth: float = (Unit.MORALE_CRUMBLE_RATIO_THRESHOLD - ratio) / Unit.MORALE_CRUMBLE_RATIO_THRESHOLD
 		u.morale -= base_erosion * Unit.MORALE_CRUMBLE_BOOST * crumble_depth
 
-	if u.soldiers <= 0:
+	if u.soldiers <= 0:   # ANNIHILATED: every soldier lost, on the field, win or lose
 		u.soldiers = 0
 		u._die()
 		Sfx.play(&"death")

@@ -1452,8 +1452,10 @@ func _draw_orders() -> void:
 		# elif — keeps the move-route else reachable when a SUPPORT unit has no valid
 		# ward (e.g. a SUPPORT order on empty ground, which leaves a move target).
 		var ward: UnitRef = _support_ward_of(u) if u.order_mode == UnitRef.ORDER_SUPPORT else null
+		# A routing target (broken or shattered) still draws the attack overlay --- it's
+		# still a live, fightable enemy (see UnitTargeting.nearest_enemy's include_routing).
 		if tgt != null and is_instance_valid(tgt) \
-				and tgt.state != UnitRef.State.DEAD and tgt.state != UnitRef.State.ROUTING:
+				and tgt.state != UnitRef.State.DEAD:
 			var tp: Vector2 = tgt.global_position
 			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
 			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
