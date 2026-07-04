@@ -672,7 +672,7 @@ func test_form_up_dist_default_clamps_out_of_range() -> void:
 # _draw_formation_preview used to call UnitFormation.slots(u, u.soldiers) directly,
 # bypassing Unit.formation_slots() -- the per-formation layout dispatch. So the
 # destination ghost still showed the wide-line grid for a squared unit (a real square
-# footprint since #534) instead of the live shape the unit actually stands on. Fixed
+# footprint) instead of the live shape the unit actually stands on. Fixed
 # to call u.formation_slots(u.soldiers) instead.
 
 func test_formation_preview_slots_match_the_units_live_square_shape() -> void:
@@ -720,7 +720,7 @@ func test_formation_preview_bbox_is_square_not_the_wide_line_for_a_squared_unit(
 
 
 func test_formation_preview_matches_schiltron_shape_too() -> void:
-	# Schiltron (#488) shares the same hollow-square geometry as orbis via in_square(),
+	# Schiltron shares the same hollow-square geometry as orbis via in_square(),
 	# so the preview fix covers it automatically -- confirm it does.
 	var u := _unit()
 	u.max_soldiers = 120

@@ -1527,9 +1527,9 @@ func _draw_move_marker(p: Vector2, color: Color) -> void:
 ## current facing — exact for form-up orders (which update facing immediately on issue)
 ## and single-destination moves; on multi-waypoint routes the ghost may not match the
 ## final arrival orientation if the last leg turns significantly from the current one.
-## Reads formation_slots() -- the per-formation layout dispatch (#534) -- rather than
+## Reads formation_slots() -- the per-formation layout dispatch -- rather than
 ## the plain wide-line UnitFormation.slots(), so the ghost matches the unit's ACTUAL
-## live grid: a real square for SQUARE/SCHILTRON (#488), the tightened SHIELD_WALL/
+## live grid: a real square for SQUARE/SCHILTRON, the tightened SHIELD_WALL/
 ## TESTUDO spacing, not just the generic line every formation used to share.
 func _draw_formation_preview(p: Vector2, u: UnitRef) -> void:
 	var slots := u.formation_slots(u.soldiers)
