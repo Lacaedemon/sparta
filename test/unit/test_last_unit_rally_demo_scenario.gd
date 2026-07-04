@@ -4,10 +4,10 @@ extends GutTest
 ## declaring defeat. Team 0 fields a single full-strength (120) but jittery (morale 15)
 ## infantry block against an enemy infantry of equal size; contact breaks its brittle morale
 ## and it flees (drawn faded) while barely bloodied. Losing its last fightable unit must NOT
-## end the battle outright -- the sim stays live while the router is still on the field, per
-## #495. This pins the demo's determinism against the #529 morale retune: if a balance change
-## ever stops the unit routing (or breaks the "still in the fight while routing" invariant),
-## this fails instead of the demo silently going stale.
+## end the battle outright -- the sim stays live while the router is still on the field. This
+## pins the demo's determinism against a future morale retune: if a balance change ever stops
+## the unit routing (or breaks the "still in the fight while routing" invariant), this fails
+## instead of the demo silently going stale.
 ##
 ## This does NOT assert the router eventually RALLIES: with roughly equal-speed combatants,
 ## the pursuer can keep pace and repeatedly re-catch it (routing units are valid combat
@@ -18,7 +18,8 @@ extends GutTest
 ## specific resolution here would just be pinning one RNG-sensitive outcome among several
 ## plausible ones. See test_rout_annihilation_demo_scenario.gd and
 ## test_morale_recovery_demo_scenario.gd for the two demos that isolate a single, clean
-## outcome each; this one only guards the #495 invariant for this specific matchup.
+## outcome each; this one only guards the "battle stays live while routing" invariant for
+## this specific matchup.
 
 const ROUT_ONSET_BUDGET := 900   # ticks allowed for the block to break and start routing
 const STAYS_LIVE_MARGIN := 300   # further ticks to confirm the battle doesn't end while routing
@@ -72,7 +73,7 @@ func test_scenario_routs_without_the_battle_ending() -> void:
 	assert_true(routed_tick >= 0, "the jittery unit breaks and ROUTS within the budget")
 	assert_false(_battle._ended, "the battle hasn't ended the instant its last unit routs")
 
-	# Confirm the #495 invariant holds for a further stretch of routing: the battle must NOT
+	# Confirm the invariant holds for a further stretch of routing: the battle must NOT
 	# end while this unit is still on the field (whether it's ultimately headed for a rally,
 	# an escape, or an annihilated-eventually grind -- any of which can take a very long time
 	# under relentless pursuit, so this only samples a bounded window rather than waiting for

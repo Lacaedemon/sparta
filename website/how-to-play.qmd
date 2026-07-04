@@ -5,9 +5,10 @@ description: "Controls, the objective, and the moment-to-moment battle loop."
 
 You command the [**blue army**]{.army-blue} (top of the field). Your objective:
 defeat the [**red army**]{.army-red} (bottom). A side loses when it has no units
-left on the field --- every one dead or shattered. A unit that is merely
-**routing** still counts: it is off fighting for now, but it may break contact
-and rally back into the line, so the battle stays live while it might recover.
+left on the field --- every one destroyed or fled clear of the map. A unit that
+is merely **routing** still counts, even once it's lost its nerve for good: it's
+off fighting for now, but the battle stays live while it's still on the field,
+whether it might yet rally, run for it, or be run down.
 
 ::: {#fig-clash .demo}
 
@@ -552,9 +553,10 @@ and accelerate to full speed on contact.
    fugitive that breaks contact can **rally** and reform back under your control at low
    morale, so chase down a broken enemy to finish it before it recovers --- and give
    your own routers room to escape and rally.
-6. **Win** --- destroy the entire enemy army (every unit dead or shattered for good)
-   and a **Victory** overlay appears, with **Fight Again** to restart. A routing enemy
-   isn't beaten yet: run it down or it may rally.
+6. **Win** --- destroy the entire enemy army (every unit dead, or fled clear of the
+   map) and a **Victory** overlay appears, with **Fight Again** to restart. A
+   routing enemy isn't beaten yet even once it's lost its nerve for good: run it
+   down before it escapes, or it may yet rally.
 
 ## Campaign Map
 
