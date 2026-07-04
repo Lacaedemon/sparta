@@ -522,3 +522,33 @@ reviewer cited "one short line max — never write multi-line comment blocks" as
 a CLAUDE.md rule; it isn't in sparta's `CLAUDE.md`, and the codebase's own
 convention (e.g. `Settings.gd`) wraps explanatory comments across 2-3 lines.
 Rebutting with that distinction is fine — verify the citation, don't just comply.
+
+## A stub-review retry's recovered verdict posts under `github-actions`, not `claude`
+
+When auditing a PR's true review status, don't filter comments by
+`author.login == "claude"` alone — a comment matching that filter can be a
+stale earlier verdict, while the actual final verdict was posted under a
+**different** identity and gets silently missed.
+
+**Why:** the repo's `claude-code-review` workflow has a stub-review retry path
+(gha#185/#218 — the first attempt runs to completion but posts no `### Verdict`
+line). When the retry recovers, it posts its result via a plain `gh pr comment`
+step running under the workflow's default token, which attributes the comment
+to **`github-actions[bot]`**, not `claude[bot]`. The original (stubbed or
+successfully-verdicted) attempt posts natively as `claude[bot]`. So a PR's
+comment history can contain an OLD `claude[bot]` "Needs more work" alongside a
+NEWER `github-actions[bot]` "Ready for merge" — and a check that only looks for
+the `claude` login finds the stale one and misses the real, current verdict.
+
+**How to catch it:** don't filter by a specific bot login at all. Pull every
+comment (`gh api repos/<owner>/<repo>/issues/<N>/comments`), sort by
+`created_at`, and read the actual last one — or grep the full comment list for
+`### Verdict` and take the latest match, regardless of author. Also check
+`gh pr checks <N>` timing against the comment timestamps: a `review /
+claude-review` / `review / require-review` run that completed **after** the
+`claude[bot]` comment's timestamp is a strong signal a newer verdict exists
+somewhere, even if the obvious author filter doesn't surface it.
+(`Lacaedemon/sparta` PR #647, 2026-07-04 — the agent's own "fully clean, Ready
+for merge" report was correct; a first-pass verification that filtered by
+`author.login == "claude"` found only the stale "Needs more work" comment and
+nearly contradicted a true report.)
