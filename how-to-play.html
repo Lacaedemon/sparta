@@ -593,7 +593,7 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 </tr>
 <tr class="odd">
 <td>File-doubling</td>
-<td><kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper)</td>
+<td><kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) · <kbd>Shift+B</kbd> / <kbd>Ctrl+B</kbd> anchored explicatio (right / left flank held fixed)</td>
 </tr>
 <tr class="even">
 <td>Drill turn in place</td>
@@ -839,6 +839,21 @@ Figure&nbsp;11: File-doubling: duplicatio (N) folds the line into a deep column;
 </figcaption>
 </figure>
 </div>
+<p><strong>Anchored (asymmetric) explicatio.</strong> The plain explicatio above widens symmetrically about the unit’s own centre — both flanks step outward by the same amount. Press <kbd>Shift+B</kbd> to widen instead while holding the <strong>right</strong> flank fixed, or <kbd>Ctrl+B</kbd> to hold the <strong>left</strong> flank fixed: the whole widen lands on the opposite side, so the unit’s position on the field shifts rather than staying centred. Useful when a flank must stay pinned to terrain or a neighbouring unit while the line still needs to broaden.</p>
+<div id="fig-file-doubling-asymmetric" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-file-doubling-asymmetric-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/file_doubling_asymmetric.jpg">
+  <source src="media/file_doubling_asymmetric.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-asymmetric-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
+</figcaption>
+</figure>
+</div>
 <p><strong>Deploy with a drag (form up).</strong> With a single unit selected, <strong>right-click and drag across open ground</strong> to lay out where it should stand: the start of the drag is the unit’s <strong>left flank</strong>, the end is its <strong>right flank</strong>. The unit marches over and pivots to face the line — the drag sets its position, width, and facing in one gesture, with a live preview of the front line and a forward arrow. A short right-click (no drag) is still a plain move.</p>
 <p><strong>Deploy several units at once.</strong> Select multiple units first, then drag the same flank line: it’s split into one contiguous slice per unit, with a small gap between them. By default the line splits to <strong>equal depth</strong> — every regiment forms up the same number of ranks, so a bigger unit simply takes a wider slice and the whole front is a uniform wall. Press <kbd>Y</kbd> to switch to <strong>equal width</strong> (every unit the same frontage, so a small unit just stacks deeper) and back; the choice you make in <strong>☰ Menu → Form-up</strong> is the default each battle starts with. By default the units fill the line <strong>left-to-right by where they already stand</strong>, so each marches to the nearest slice without crossing a neighbour; hold <strong>Shift</strong> while you drag to place them in <strong>selection order</strong> instead (the first unit you picked takes the left flank). The preview shows every unit’s slice, file count, and the active split mode before you release.</p>
 <p><strong>Survey all orders (hold Space).</strong> Holding <kbd>Space</kbd> overlays every unit’s current order on the battlefield: a dashed green line to each move destination, a red line to each attack target, and a teal link for support duties. At the end of each move line, a <strong>ghost formation</strong> (faint green dots) shows exactly where each individual soldier will stand when the regiment finishes its march — so you can check whether units will fit, overlap, or leave a gap before they arrive. The ghost reads the destination stance’s actual shape, so a unit marching in Square (or Schiltron) previews as the real hollow-square footprint, not the wide line the other formations use.</p>
@@ -852,7 +867,7 @@ Figure&nbsp;11: File-doubling: duplicatio (N) folds the line into a deep column;
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-formation-preview-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
+Figure&nbsp;13: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
 </figcaption>
 </figure>
 </div>
@@ -867,7 +882,7 @@ Figure&nbsp;12: Move-order ghost preview: a unit forms Square, then marches unde
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-order-distance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;13: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
+Figure&nbsp;14: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
 </figcaption>
 </figure>
 </div>
@@ -885,7 +900,7 @@ Figure&nbsp;13: Order distance labels: the green move line shows the remaining m
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;14: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
+Figure&nbsp;15: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
 </figcaption>
 </figure>
 </div>
