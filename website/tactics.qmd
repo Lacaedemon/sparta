@@ -36,24 +36,32 @@ pin the front so the flanking unit has nowhere better to turn.
 
 Units don't fight to the last soldier. When a unit loses enough soldiers or takes
 flank/rear hits, it **routs** --- it flees (shown faded) toward its own back edge and
-stops fighting for now. A routing unit **stays on the field**: it huddles at
-the back line where you can still see it, rather than vanishing off the map.
+stops fighting for now. A routing unit can flee past the field's visible edge into a
+margin beyond it before it's gone for good, staying on the field --- and still
+fightable --- for as long as it's plausibly still in view.
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
 - This makes morale a *weapon*: you can win by breaking the enemy's will before
   you've killed even half their soldiers.
-- **A routing unit can rally.** As it flees, its nerve steadies --- morale climbs back
-  toward a baseline, fast at first and levelling off. If it **breaks contact** (no enemy
-  close on its heels) and still fields enough men, its recovering morale carries it over
-  the rally threshold and it **returns to your control**, ready to fight again. So chase
-  a broken enemy down to finish it: a router you leave alone will reform and come back.
-- A unit still in contact, or gutted past reforming, **shatters** instead --- it leaves
-  play for good.
+- **A routing unit is still fair game.** Routing doesn't grant immunity --- a fleeing
+  unit can still be struck and run down, chased as relentlessly as your pursuer can
+  manage. So chase a broken enemy down to finish it, rather than assuming it's out of
+  the fight.
+- **A "broken" unit can rally** if nothing catches it. As it flees, its nerve steadies
+  --- morale climbs back toward a baseline, fast at first and levelling off. If it
+  **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
+  men, its recovering morale carries it over the rally threshold and it **returns to
+  your control**, ready to fight again.
+- **Keep pressing it and it "shatters" instead** --- still in contact when its time
+  runs out, or gutted past reforming. A shattered unit does NOT vanish: it stays on the
+  field, still routing, but can never again recover morale or rally. From there it
+  either **escapes** (flees clear of the map, gone but got away) or is run down and
+  **annihilated** (soldiers reduced to zero) before it can.
 - **The battle isn't over while a side is only routing.** A team is beaten only once
-  its last unit is truly gone (dead or shattered), not while its final unit is merely
-  routing. Even a lone survivor that breaks can flee, rally, and fight on --- so press a
-  rout home rather than assuming a broken last unit is a win.
+  its last unit is truly gone (escaped, annihilated, or otherwise removed), not while
+  its final unit is merely routing. Even a lone survivor that breaks can flee, rally,
+  and fight on --- so press a rout home rather than assuming a broken last unit is a win.
 
 ::: {#fig-rout-rally .demo}
 
@@ -66,10 +74,12 @@ the back line where you can still see it, rather than vanishing off the map.
 </video>
 ```
 
-Rout and rally: a low-morale infantry block is charged by cavalry and breaks &mdash;
-it flees faded toward its own edge, staying on the field rather than running off.
-The cavalry lose the router and stop; its morale recovers as it flees,
-and it reforms under control, back in the fight.
+Rout and pursuit: a low-morale infantry block is charged by cavalry and breaks &mdash;
+it flees faded toward its own edge. The faster cavalry catch it before it can put
+real distance between them, and the casualties from being run down keep its morale
+too low to ever recover: it's annihilated rather than rallying. A broken unit that
+truly breaks free instead recovers cleanly, as in the isolated case
+`test_morale_recovery_demo_scenario.gd` guards against regressing.
 :::
 
 ::: {#fig-last-unit-rally .demo}
@@ -83,10 +93,11 @@ and it reforms under control, back in the fight.
 </video>
 ```
 
-A team's last unit routs, then rallies. A lone player infantry is broken and
-flees (faded); with no fightable unit left the enemy AI halts, so the fugitive
-breaks contact and reforms back under control at low morale &mdash; the battle
-stays live instead of ending the instant the last unit broke.
+A team's last unit routs. A lone player infantry is broken and flees (faded);
+the enemy keeps pressing since a routing unit is still fair game, so this
+matchup grinds on rather than resolving cleanly &mdash; but the point still
+holds: the battle stays live instead of ending the instant the last unit
+broke, for as long as it's still on the field.
 :::
 
 ## Rank cycling (trained units)
@@ -227,7 +238,8 @@ you read its losses as a shrinking depth, not a fraying line.
 line (right-click and drag): the line splits among them. By default it splits to **equal
 depth**, so every regiment forms up the same number of ranks --- a uniform front where
 bigger units just take a wider slice. That keeps your whole line's staying power even, with
-no thin spot for the enemy to punch through. Press <kbd>Y</kbd> to cycle to **equal width**
+no thin spot for the enemy to punch through. Press <kbd>Y</kbd> (or <kbd>Shift</kbd> +
+<kbd>Y</kbd> to cycle the other way) to switch to **equal width**
 when you'd rather every unit cover the same frontage (small units stack deeper). They sort
 left-to-right by where they already stand, so nobody crosses the field to reach a slot ---
 a fast way to dress a ragged group into one clean front before the enemy closes. Hold Shift
@@ -273,9 +285,28 @@ commit your horse.
 
 Press <kbd>T</kbd> to cycle a unit's density --- **Normal**, **Tight** (closed ranks:
 better missile and charge defence), **Loose** (open order: room to fire), and **Square**
-(the anti-cavalry ring, covered below). Two heavier **shielded close-order stances**
+(the anti-cavalry ring, covered below). <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other
+way, handy for stepping back one density without looping all the way round. Two heavier
+**shielded close-order stances**
 build on Tight's locked-shield density and are set from the control-bar Formation menu or
 their own direct keys.
+
+::: {#fig-formation-shift-reverse .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/formation_shift_reverse.jpg">
+  <source src="media/formation_shift_reverse.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to
+Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight --- the same
+parallelism as Shift+Y and Shift+X reversing the form-up-split and
+group-attack-mode cycles.
+:::
 
 - **Shield Wall** (<kbd>L</kbd>) --- shields locked edge-to-edge, a static line. It
   sharply cuts the missile and melee damage a unit takes **from the front**, but only
@@ -566,7 +597,13 @@ has come about. A small correction still snaps and fights at once, so a unit
 already roughly fronting its target loses no time. The upshot: catching a unit on
 the flank buys you a genuine window --- it must turn to answer you before it can
 strike back --- so a flank attack rewards you both with the flank casualty bonus
-*and* the beat the enemy spends coming about.
+*and* the beat the enemy spends coming about. Once the turn settles, the unit
+by default just fights with whatever edge it now presents; the engine also
+supports reshaping the frontage right after the turn --- back to the width it
+had before turning, or to match the frontage of the enemy it turned to face
+--- reusing the same width-resize easing as a manual frontage drag, so the
+reshape never teleports the ranks. There's no in-game control to pick a
+non-default reshape yet, so every unit still fights this out today.
 
 The pivot itself also **slows as the unit picks up speed** --- a unit turns
 fastest from a stand and tightens its turn rate the faster it's already moving
@@ -672,7 +709,8 @@ cycle between two attack modes:
   and leaving the rest unengaged.
 
 The flash message in the top-centre of the screen confirms the active mode. The mode
-is sticky --- it stays set until you press <kbd>X</kbd> again.
+is sticky --- it stays set until you press <kbd>X</kbd> again (<kbd>Shift</kbd> + <kbd>X</kbd>
+cycles the other way).
 
 ::: {#fig-group-attack .demo}
 

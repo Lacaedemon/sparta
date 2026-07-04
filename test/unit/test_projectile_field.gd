@@ -90,7 +90,9 @@ func test_landing_is_deterministic() -> void:
 	assert_eq(results[0], results[1], "same launch -> same survivors, every run")
 
 
-func test_target_that_dies_in_flight_is_skipped() -> void:
+func test_target_that_routs_in_flight_still_lands() -> void:
+	# A routing (broken or shattered) target is still fair game --- fleeing doesn't dodge
+	# an arrow already in flight (matches UnitCombat.take_casualties: only DEAD is skipped).
 	var shooter := _unit(1, 0, 10, Vector2(0, 0), Vector2.DOWN, true)
 	var target := _unit(2, 1, 20, Vector2(400, 0), Vector2.UP, false)
 	var fb: Array = _field_and_battle(shooter, target)
@@ -98,8 +100,20 @@ func test_target_that_dies_in_flight_is_skipped() -> void:
 	field.launch(shooter.position, target.position, shooter.uid, target.uid, 5, 1.0, true)
 	target.state = Unit.State.ROUTING   # routed away before the arrows arrive
 	field.step(10.0, fb[1])
+	assert_eq(field.count(), 0, "the projectile is consumed")
+	assert_eq(target.soldiers, 15, "a routing target still takes the volley's casualties")
+
+
+func test_target_that_dies_in_flight_is_skipped() -> void:
+	var shooter := _unit(1, 0, 10, Vector2(0, 0), Vector2.DOWN, true)
+	var target := _unit(2, 1, 20, Vector2(400, 0), Vector2.UP, false)
+	var fb: Array = _field_and_battle(shooter, target)
+	var field: ProjectileField = fb[0]
+	field.launch(shooter.position, target.position, shooter.uid, target.uid, 5, 1.0, true)
+	target.state = Unit.State.DEAD   # actually gone before the arrows arrive
+	field.step(10.0, fb[1])
 	assert_eq(field.count(), 0, "the projectile is still consumed")
-	assert_eq(target.soldiers, 20, "but a routing target takes no casualties (matches take_casualties)")
+	assert_eq(target.soldiers, 20, "a dead target takes no further casualties")
 
 
 func test_fallback_applies_the_flanked_count_without_re_flanking() -> void:

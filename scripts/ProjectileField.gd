@@ -89,15 +89,16 @@ func ground_of(i: int) -> Vector2:
 	return ProjectilePhysics.ground_at(_from[i], _to[i], f)
 
 
-## Deliver projectile `i`'s casualties to its target. Skips a dead/routing/freed target. Uses
-## the launch point as the near-side selection origin; the shooter (if still alive) is the
-## killer for morale/fallen direction. Falls back to the regiment formula if the target has
-## no soldier layer.
+## Deliver projectile `i`'s casualties to its target. Skips a dead/freed target --- a
+## routing one (broken or shattered) is still fair game; fleeing doesn't dodge an arrow
+## already in flight. Uses the launch point as the near-side selection origin; the shooter
+## (if still alive) is the killer for morale/fallen direction. Falls back to the regiment
+## formula if the target has no soldier layer.
 func _resolve(i: int, battle: Node) -> void:
 	var target = battle.unit_by_uid(_target_uid[i])
 	if target == null or not is_instance_valid(target):
 		return
-	if target.state == UnitRef.State.DEAD or target.state == UnitRef.State.ROUTING:
+	if target.state == UnitRef.State.DEAD:
 		return
 	var killer = battle.unit_by_uid(_shooter_uid[i])   # may be null if the shooter has died
 	if not target._sim_soldier_hp.is_empty():
