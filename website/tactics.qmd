@@ -208,6 +208,13 @@ the maneuver in contact, and give it room before the enemy arrives. A natural rh
 duplicatio to march a column through a chokepoint, then explicatio to deploy back into line on
 the far side.
 
+**Anchored explicatio for a pinned flank.** The plain explicatio widens about the unit's own
+centre, so both flanks drift when the frontage doubles --- fine in the open, but a problem when
+one flank is braced against a hill, a river, or a neighbouring unit that can't shift with it.
+<kbd>Shift+B</kbd> widens while holding the right flank fixed; <kbd>Ctrl+B</kbd> holds the left.
+The whole widen lands on the free flank instead, so the pinned side never moves and the line
+still gets the extra frontage where there's room for it.
+
 **How a line reforms after losses.** The front rank takes the hits, but the block loses
 depth from the rear. The front rank keeps its full width, the file behind each fighter feeds
 men forward to hold the contact line, and the depth shrinks rank by rank. When the rearmost rank is left

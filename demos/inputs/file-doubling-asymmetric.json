@@ -1,0 +1,12 @@
+{
+  "_comment": "Asymmetric (anchored) explicatio demo (drill mode -- player army only, no enemy, no auto-win): zoom on the Spearmen block (seed 12345 at ~500,300), select it, press Shift+B for a RIGHT-anchored explicatio -- the right flank stays fixed in place while the whole widen lands off the LEFT flank, unlike the plain centred explicatio (B) which grows symmetrically about the unit's own centre. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "drill": true,
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 300.0, "zoom": 2.0}
+  ],
+  "steps": [
+    {"tick": 10, "click": [500, 300]},
+    {"tick": 40, "key": "B", "shift": true}
+  ]
+}

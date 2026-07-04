@@ -49,7 +49,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Schiltron | <kbd>Shift</kbd> + <kbd>O</kbd> jumps straight to Schiltron, the harder-bracing anti-cavalry variant (press again to drop back to Normal) · or click **Schiltron** in the control bar |
 | Shielded stances | <kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or the **control bar** menu |
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
-| File-doubling | <kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) |
+| File-doubling | <kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) · <kbd>Shift+B</kbd> / <kbd>Ctrl+B</kbd> anchored explicatio (right / left flank held fixed) |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
 | Wheel (hinge on a flank) | <kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file) |
 | Nudge (small step, holds facing) | <kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↑</kbd> forward-step · <kbd>↓</kbd> back-step (a few metres each) |
@@ -449,6 +449,30 @@ bottoms out at one file.
 
 File-doubling: duplicatio (N) folds the line into a deep column;
 explicatio (B) unfolds it back into a broad line.
+:::
+
+**Anchored (asymmetric) explicatio.** The plain explicatio above widens
+symmetrically about the unit's own centre --- both flanks step outward by the
+same amount. Press <kbd>Shift+B</kbd> to widen instead while holding the
+**right** flank fixed, or <kbd>Ctrl+B</kbd> to hold the **left** flank fixed:
+the whole widen lands on the opposite side, so the unit's position on the
+field shifts rather than staying centred. Useful when a flank must stay
+pinned to terrain or a neighbouring unit while the line still needs to
+broaden.
+
+::: {#fig-file-doubling-asymmetric .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/file_doubling_asymmetric.jpg">
+  <source src="media/file_doubling_asymmetric.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Anchored explicatio (Shift+B): the right flank stays fixed while the
+whole widen lands on the left.
 :::
 
 **Deploy with a drag (form up).** With a single unit selected, **right-click and drag

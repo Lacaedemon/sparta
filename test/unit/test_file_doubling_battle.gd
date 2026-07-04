@@ -103,3 +103,56 @@ func test_duplicatio_deepens_the_line() -> void:
 		"bodies ease into the deeper block, no teleport (worst %.3f px)" % worst_step)
 	assert_lt(target.position.distance_to(start_pos), CENTRE_SETTLE_TOLERANCE_PX,
 		"the reshape moves the formation, not the regiment centre")
+
+
+func test_explicatio_right_anchored_holds_the_right_flank_in_place() -> void:
+	# The asymmetric variant (Shift+B in SelectionManager): anchoring RIGHT should hold
+	# the right-flank SLOT in its world position while the block widens entirely off
+	# the LEFT flank, unlike the plain centred explicatio where both flanks move
+	# outward symmetrically. Read the target SLOT geometry (soldier_world_slots),
+	# not live soldier-body positions -- widening relabels which body occupies which
+	# slot index, so a body's own eased position doesn't track "the right flank" the
+	# way the slot it's walking toward does.
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	for _k in range(40):                      # spawn the armies and let the bodies settle
+		await get_tree().physics_frame
+	var target: Unit = _target_unit(get_tree())
+	assert_not_null(target, "found a team-0 unit to reshape")
+	if target == null:
+		return
+
+	var start_frontage: int = UnitFormation.frontage(target)
+	var start_slots := target.soldier_world_slots(target.soldiers)
+	var right_flank_start: Vector2 = start_slots[start_frontage - 1]   # front-rank rightmost slot
+	var left_flank_start: Vector2 = start_slots[0]                     # front-rank leftmost slot
+	battle.enqueue_file_double([target.uid], 1, UnitFormation.Anchor.RIGHT)   # asymmetric explicatio
+	var new_frontage: int = UnitFormation.frontage(target)
+	assert_eq(new_frontage, start_frontage * 2,
+		"anchored explicatio still doubles the frontage like the centred variant")
+
+	# The reshape is instantaneous in slot geometry (only the bodies ease at velocity),
+	# so the target slots can be read immediately -- no need to step the sim first.
+	# The block also gets SHALLOWER (halving ranks), so the front rank legitimately
+	# sits at a different DEPTH (world Y here, since this unit faces along Y) -- that's
+	# an expected side effect of ranks changing, not the anchor. The anchor is about
+	# the LATERAL axis only, so compare X (the unit's file axis), not the full 2D point.
+	var new_slots := target.soldier_world_slots(target.soldiers)
+	var right_flank_end: Vector2 = new_slots[new_frontage - 1]   # new front-rank rightmost slot
+	var left_flank_end: Vector2 = new_slots[0]                   # new front-rank leftmost slot
+
+	assert_almost_eq(right_flank_end.x, right_flank_start.x, 0.5,
+		"the anchored (right) flank slot's lateral position stays fixed as the block widens")
+	assert_gt(absf(left_flank_end.x - left_flank_start.x), CENTRE_SETTLE_TOLERANCE_PX,
+		"the opposite (left) flank slot's lateral position moves as the whole widen lands on that side")
+
+	# The bodies still ease toward the new slots at velocity -- no teleport -- exactly
+	# like the centred variant.
+	var prev: PackedVector2Array = target._sim_soldier_pos.duplicate()
+	var worst_step := 0.0
+	for _i in range(90):                      # ~1.5 s to ease into the new block
+		await get_tree().physics_frame
+		worst_step = maxf(worst_step, _max_step(prev, target._sim_soldier_pos))
+		prev = target._sim_soldier_pos.duplicate()
+	assert_lt(worst_step, 6.0,
+		"bodies ease into the anchored slots at velocity, no teleport (worst %.3f px)" % worst_step)

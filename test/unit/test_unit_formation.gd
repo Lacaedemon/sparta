@@ -123,6 +123,75 @@ func test_narrowed_files_floors_at_one() -> void:
 	assert_eq(UnitFormation.narrowed_files(1), 1, "never narrower than a single column")
 
 
+# --- anchored (asymmetric) explicatio/duplicatio ----------------------------
+
+func test_anchor_shift_is_zero_for_centre() -> void:
+	# CENTRE reproduces the plain symmetric widen: no lateral shift at all.
+	assert_almost_eq(UnitFormation.anchor_shift(8, 16, 3.4, UnitFormation.Anchor.CENTRE),
+		0.0, 0.001, "centre anchor never shifts the block")
+
+
+func test_anchor_shift_right_holds_the_right_edge_fixed() -> void:
+	# Widening 8 -> 16 files at spacing 4.0: half-width goes from 14.0 to 30.0, a
+	# gain of 16.0. Anchoring RIGHT slides the (already-centred) block left by that
+	# full gain, so the +X edge lands back where it started.
+	var spacing := 4.0
+	var old_files := 8
+	var new_files := 16
+	var shift: float = UnitFormation.anchor_shift(old_files, new_files, spacing, UnitFormation.Anchor.RIGHT)
+	var old_slots := UnitFormation.block_slots(old_files, old_files, spacing)
+	var new_slots := UnitFormation.anchored_block_slots(new_files, old_files, new_files, spacing,
+		UnitFormation.Anchor.RIGHT)
+	var old_right_edge: float = old_slots[old_files - 1].x   # front rank's rightmost slot
+	var new_right_edge: float = new_slots[new_files - 1].x   # front rank's rightmost slot
+	assert_almost_eq(new_right_edge, old_right_edge, 0.001,
+		"the right edge stays fixed as the block widens")
+	assert_lt(shift, 0.0, "widening right-anchored slides the centred block toward -X")
+
+
+func test_anchor_shift_left_holds_the_left_edge_fixed() -> void:
+	# The mirror of the RIGHT case: the -X edge stays fixed, the block slides +X.
+	var spacing := 4.0
+	var old_files := 8
+	var new_files := 16
+	var shift: float = UnitFormation.anchor_shift(old_files, new_files, spacing, UnitFormation.Anchor.LEFT)
+	var old_slots := UnitFormation.block_slots(old_files, old_files, spacing)
+	var new_slots := UnitFormation.anchored_block_slots(new_files, old_files, new_files, spacing,
+		UnitFormation.Anchor.LEFT)
+	var old_left_edge: float = old_slots[0].x   # front rank's leftmost slot
+	var new_left_edge: float = new_slots[0].x   # front rank's leftmost slot
+	assert_almost_eq(new_left_edge, old_left_edge, 0.001,
+		"the left edge stays fixed as the block widens")
+	assert_gt(shift, 0.0, "widening left-anchored slides the centred block toward +X")
+
+
+func test_anchored_block_slots_matches_block_slots_at_centre() -> void:
+	# Anchor.CENTRE must reproduce the plain centred layout exactly -- the existing
+	# symmetric explicatio/duplicatio behaviour is a special case of the general
+	# anchored layout, not a separate code path.
+	var plain := UnitFormation.block_slots(40, 16, 3.4)
+	var anchored := UnitFormation.anchored_block_slots(40, 8, 16, 3.4, UnitFormation.Anchor.CENTRE)
+	assert_eq(anchored.size(), plain.size(), "same slot count")
+	for i in range(plain.size()):
+		assert_true(anchored[i].is_equal_approx(plain[i]),
+			"slot %d matches the plain centred layout under Anchor.CENTRE" % i)
+
+
+func test_anchored_block_slots_narrowing_also_respects_the_anchor() -> void:
+	# Duplicatio (narrowing) anchored RIGHT: the +X edge of the narrower block still
+	# lines up with the +X edge of the wider block it started from.
+	var spacing := 4.0
+	var old_files := 16
+	var new_files := 8
+	var old_slots := UnitFormation.block_slots(old_files, old_files, spacing)
+	var new_slots := UnitFormation.anchored_block_slots(new_files, old_files, new_files, spacing,
+		UnitFormation.Anchor.RIGHT)
+	var old_right_edge: float = old_slots[old_files - 1].x
+	var new_right_edge: float = new_slots[new_files - 1].x
+	assert_almost_eq(new_right_edge, old_right_edge, 0.001,
+		"the right edge stays fixed as the block narrows too")
+
+
 # --- casualty adaptation (recompute from the LIVE count) --------------------
 # A unit can take casualties mid-maneuver, so a maneuver recomputes its target shape from
 # the live soldier count every tick rather than caching it. These pin the property the

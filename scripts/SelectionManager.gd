@@ -302,7 +302,17 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		_resize_frontage(-1)   # [ narrows the line by one file
 		return true
 	elif event.keycode == KEY_B:
-		_issue_file_double(1)    # explicatio: files split, doubling frontage / halving depth
+		# Plain B is the centred (symmetric) explicatio; Shift+B / Ctrl+B hold the
+		# right/left flank fixed instead and let the whole widen land on the other
+		# side -- an asymmetric explicatio for when a flank must stay pinned to
+		# terrain or a neighbour. Mirrors the Shift-modifier convention Shift+O
+		# already uses for a stance variant.
+		if event.shift_pressed:
+			_issue_file_double(1, UnitFormation.Anchor.RIGHT)
+		elif event.ctrl_pressed:
+			_issue_file_double(1, UnitFormation.Anchor.LEFT)
+		else:
+			_issue_file_double(1)    # explicatio: files split, doubling frontage / halving depth
 		return true
 	elif event.keycode == KEY_N:
 		_issue_file_double(-1)   # duplicatio: files tuck in, halving frontage / doubling depth
@@ -832,17 +842,19 @@ func _resize_frontage(delta: int) -> void:
 
 ## File-doubling maneuver on every selected friendly unit: `direction` > 0 is EXPLICATIO
 ## (files split, doubling the frontage / halving the depth), `direction` < 0 is DUPLICATIO
-## (alternate files tuck in behind, halving the frontage / doubling the depth). Routed
-## through Battle so it reshapes each unit from its own current width, is recorded, and
-## replays exactly -- the same path as the [ / ] single-file resize, one whole factor
-## instead of one file. Blocked during playback.
-func _issue_file_double(direction: int) -> void:
+## (alternate files tuck in behind, halving the frontage / doubling the depth). `anchor`
+## (UnitFormation.Anchor) picks which flank stays fixed for an asymmetric explicatio --
+## CENTRE (default) is the plain symmetric maneuver. Routed through Battle so it reshapes
+## each unit from its own current width, is recorded, and replays exactly -- the same path
+## as the [ / ] single-file resize, one whole factor instead of one file. Blocked during
+## playback.
+func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTRE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var uids: Array = _selected_uids()
 	if uids.is_empty():
 		return
-	_battle.enqueue_file_double(uids, direction)
+	_battle.enqueue_file_double(uids, direction, anchor)
 	_refresh_hud()
 	Sfx.play(&"order")
 
