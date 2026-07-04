@@ -1,5 +1,5 @@
 class_name RoutShockwave
-extends Node2D
+extends TransientEffect
 ## A morale-shock ripple drawn when a unit routs: a translucent ring that flashes
 ## at the router and expands while fading, sized to the rout's morale-shock radius and
 ## tinted by the routing unit's team. The fill is a soft radial gradient (denser at the
@@ -13,25 +13,17 @@ const START_SCALE := 0.45       # ring starts at this fraction of the full radiu
 
 var _radius: float = 140.0
 var _color: Color = Color.WHITE
-var _age: float = 0.0
 
 
 ## Spawn a ripple centred at `at` (world-space) reaching `radius`, tinted by `color`.
 static func spawn(parent: Node, at: Vector2, radius: float, color: Color) -> void:
 	var fx := RoutShockwave.new()
+	fx._lifetime = LIFETIME
 	parent.add_child(fx)
 	fx.global_position = at
 	fx._radius = radius
 	fx._color = color
 	fx.z_index = 4   # above the field, below volley trails and the HUD / overlay
-
-
-func _process(delta: float) -> void:
-	_age += delta
-	if _age >= LIFETIME:
-		queue_free()
-		return
-	queue_redraw()
 
 
 func _draw() -> void:
