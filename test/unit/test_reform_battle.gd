@@ -78,6 +78,20 @@ func _turn_budget(u: Unit) -> int:
 	return int(ceil(seconds * Replay.PHYSICS_TPS)) + 30
 
 
+## Signed lateral offset of body `index` from the unit's own centre, projected onto a FIXED
+## world-space axis -- which flank of the block it stands on and how far out. Deliberately a
+## FIXED axis (captured once, e.g. from the unit's pre-turn facing), not `u.facing.rotated(PI
+## * 0.5)` re-read at each call: an about-face rotates facing a full 180°, which flips that
+## axis to point the opposite way in world space, so re-deriving it from the CURRENT facing at
+## two different times would flag every soldier as having "crossed sides" even when none of
+## them actually moved sideways at all -- exactly the same-file/opposite-file ambiguity the
+## fix itself has to resolve (see soldier_world_slots' _formation_mirror_x doc). Comparing
+## before/after on one FIXED axis is what actually answers "did this soldier end up on the
+## same physical flank it started on".
+func _lateral_offset(u: Unit, index: int, file_axis: Vector2) -> float:
+	return (u._sim_soldier_pos[index] - u.position).dot(file_axis)
+
+
 func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 	var u := _stage_lone_spearmen()
 	assert_not_null(u, "the scenario staged the lone spearmen regiment")
@@ -125,15 +139,22 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 		if u.has_move_target:
 			break
 	assert_true(u.has_move_target, "the parked march commits once the ranks re-form")
-	# The centre-coupling follow (SoldierBodies.couple) drags `position` a little toward the
-	# body centroid for as long as the countermarch is settling, so the tolerance scales with
-	# how long that settling window runs -- u._reform_timeout(), which is itself derived from
-	# the unit's own back_speed_fraction (a slower per-type backward pace settles more slowly,
-	# widening the window and so accumulating more follow drift). 2.0px was tuned for the old
-	# uniform 0.5 fraction at this unit's depth; scale it by how much slower THIS type's own
-	# fraction is than that 0.5 baseline, instead of hard-coding a wider fixed literal, so a
-	# future per-type retune stays correct here too.
-	var creep_tolerance: float = 2.0 * (0.5 / u.back_speed_fraction)
+	# A partial rear rank centres on fewer columns than a full one, so the block's own local
+	# grid (UnitFormation.block_slots) is not perfectly centred on `position` -- its true mean
+	# sits a fraction of a rank off, front-to-back. SoldierBodies.couple() gently follows the
+	# soldiers' actual centroid toward that mean while they arrive on their (re-)squared slots,
+	# so `position` always wobbles a little during any reform, independent of which soldier
+	# lands on which slot. The countermarch fix changes each soldier's individual target (see
+	# soldier_world_slots' _formation_mirror_x), which changes how far bodies travel and so
+	# exactly where in its decaying oscillation couple() gets caught at the instant the ranks
+	# finish settling -- a strictly smaller total march can commit sooner and catch the wobble
+	# at a slightly less-settled point than a slower one does. On top of that, the settling
+	# window itself (_reform_timeout()) is derived from the unit's own back_speed_fraction: a
+	# slower per-type backward pace widens the window and so accumulates more follow drift.
+	# Bound the wobble at one file spacing scaled by how much slower THIS type's own fraction
+	# is than the 0.5 baseline the countermarch fix was tuned against -- loose enough not to be
+	# a coin flip on exactly which tick the reform happens to commit, at any type's pace.
+	var creep_tolerance: float = Unit.FORMATION_SPACING * (0.5 / u.back_speed_fraction)
 	assert_lt(u.position.distance_to(start_pos), creep_tolerance,
 		"the regiment held its ground for the reform (no march creep, tolerance %.3f px)"
 			% creep_tolerance)
@@ -152,6 +173,88 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 	if u.current_order != null:
 		assert_eq(u.current_order.phase, Order.Phase.MARCH,
 			"the order transcript advanced REFORM -> MARCH")
+
+
+## Regression test for the countermarch file-swap bug: a completed drilled about-face +
+## reform must keep every soldier on its OWN FLANK (only rank/depth order reverses within a
+## file), never swap it to the opposite side of the block. Before the fix, reform_ranks()
+## dropped _formation_angle straight to 0 and soldier_world_slots rotated the whole grid by
+## the resulting `ang` in one rigid step -- a POINT reflection of every local slot, which
+## negates the lateral (file) coordinate along with the depth (rank) coordinate. That put the
+## leftmost soldier (index 0, file 0) on the RIGHT flank after reform and vice versa: soldiers
+## visually "collapsed and expanded" across the block instead of just trading front-for-rear
+## within their own file. Confirmed via state-dump on demos/inputs/back-speed-by-type.json's
+## Spearmen regiment: soldier 0 moved from world x=431.5 to x=368.5 while soldier 7 moved the
+## opposite direction (368.5 to 431.5) -- an exact file-0/file-7 swap.
+func test_drilled_reform_keeps_every_soldier_on_its_own_flank() -> void:
+	var u := _stage_lone_spearmen()
+	assert_not_null(u, "the scenario staged the lone spearmen regiment")
+	if u == null:
+		return
+	for _k in range(40):   # let the spawned bodies settle on their slots
+		await get_tree().physics_frame
+	var files: int = u.formation_files(u.soldiers)
+	assert_eq(files, 9, "40 spearmen deploy 9 files wide (4 full ranks + a 4-man partial)")
+	var dest := SPAWN + Vector2(0, -180)   # straight behind the DOWN-facing unit
+
+	# A FIXED reference axis, captured once from the PRE-turn facing -- the about-face reverses
+	# facing a full 180°, which would flip a same-tick-derived "facing.rotated(PI/2)" axis to
+	# point the opposite way, so re-deriving it fresh at each measurement would flag every
+	# soldier as having switched flanks even when none of them actually did. One fixed axis
+	# answers "is this soldier still on the physical side of the battlefield it started on".
+	var file_axis: Vector2 = u.facing.rotated(PI * 0.5)
+
+	# Capture each body's lateral (flank) offset before the about-face -- the invariant a
+	# countermarch must preserve is this side, not the world-frame x/y (those necessarily
+	# change as the block reverses heading).
+	var lateral_before: PackedFloat32Array = PackedFloat32Array()
+	for i in range(SPEARMEN_COUNT):
+		lateral_before.push_back(_lateral_offset(u, i, file_axis))
+
+	_battle._apply_order_cmd({"units": [u.uid], "x": dest.x, "y": dest.y,
+		"target": -1, "mode": 0, "reform": true})
+
+	# Run the about-face out.
+	for _i in range(_turn_budget(u)):
+		await get_tree().physics_frame
+		if not u.is_order_turning():
+			break
+	assert_false(u.is_order_turning(), "the about-face completed within its budget")
+
+	# Run the reform out until the parked march commits (ranks re-formed onto the new slots).
+	await get_tree().physics_frame   # let _update_current_order advance the phase bookkeeping
+	var reform_budget: int = int(ceil(u._reform_timeout() * Replay.PHYSICS_TPS)) + 30
+	for _i in range(reform_budget):
+		await get_tree().physics_frame
+		if u.has_move_target:
+			break
+	assert_true(u.has_move_target, "the parked march commits once the ranks re-form")
+	assert_true(u._reform_bodies_settled(), "the march waited for the ranks, not the timeout")
+
+	# The core assertion: every body's lateral offset kept its SIGN (same flank) across the
+	# whole about-face + reform. A point-reflection bug flips the sign for every soldier not
+	# sitting exactly on the centreline; a correct depth-only reflection never does.
+	var flipped: Array = []
+	for i in range(SPEARMEN_COUNT):
+		var before_l: float = lateral_before[i]
+		var after_l: float = _lateral_offset(u, i, file_axis)
+		# Bodies near the centreline (|offset| well under half a file spacing) carry no
+		# meaningful flank to preserve; skip them to avoid a sign flip on float noise.
+		if absf(before_l) < Unit.FORMATION_SPACING * 0.25:
+			continue
+		if sign(before_l) != sign(after_l):
+			flipped.append(i)
+	assert_eq(flipped, [], "no soldier crossed to the opposite flank during the countermarch")
+
+	# Concretely, the reported case: the leftmost and rightmost bodies of the original front
+	# rank (indices 0 and files-1) must still be the leftmost/rightmost bodies after reform,
+	# not swapped.
+	var first_sign: float = sign(lateral_before[0])
+	var last_sign: float = sign(lateral_before[files - 1])
+	assert_eq(sign(_lateral_offset(u, 0, file_axis)), first_sign,
+		"soldier 0 is still on the flank it started on after reform")
+	assert_eq(sign(_lateral_offset(u, files - 1, file_axis)), last_sign,
+		"soldier %d is still on the flank it started on after reform" % (files - 1))
 
 
 func test_hasty_rear_move_marches_with_the_flipped_grid_and_reforms_on_arrival() -> void:

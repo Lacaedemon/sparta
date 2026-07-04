@@ -13,6 +13,40 @@ static func _files(n: int) -> int:
 	return maxi(1, int(ceil(sqrt(float(n) * Unit.FORMATION_ASPECT))))
 
 
+# "Close the ranks": a heavily-mauled unit narrows its AUTO frontage one notch so
+# the survivors reform into a deeper, denser block instead of holding the full-strength
+# line's width with a thin, brittle depth -- the historical practice the file-closer
+# (ouragos) enforced (see UnitFormation.block_slots' docstring).
+# Trigger on a single hysteresis-gapped fraction-of-strength crossing, evaluated ONCE PER
+# TICK and cached (Unit._ranks_closed), not recomputed continuously -- the same
+# every-soldier-jumps-at-once churn the stable full-strength frontage above already
+# avoids. CONTRACT_FRAC (50%) is a worked example: a unit down to half
+# strength has lost enough depth that a still-full-width line is reading as thin cover,
+# not a solid block. RECOVER_FRAC sits a further 15 points up (mirrors FormationTier's
+# PROMOTE/DEMOTE gap) so a unit hovering right at half strength -- reinforced by absorb(),
+# or just trading casualties back and forth near the line -- doesn't flap the whole grid
+# back and forth tick to tick; it only re-widens once meaningfully recovered.
+const CLOSE_RANKS_CONTRACT_FRAC: float = 0.5
+const CLOSE_RANKS_RECOVER_FRAC: float = 0.65
+
+
+## Whether the auto frontage should currently be contracted a notch, with hysteresis:
+## contract at or below CLOSE_RANKS_CONTRACT_FRAC of max strength, recover at or above
+## CLOSE_RANKS_RECOVER_FRAC, and HOLD the current state in the gap between (so a unit
+## sitting near the line doesn't flicker the grid tick to tick). Mirrors
+## SoldierFlock.lod_should_detail's currently-active-plus-new-reading shape. Pure --
+## unit-testable without a live Unit.
+static func should_close_ranks(currently_closed: bool, soldiers: int, max_soldiers: int) -> bool:
+	if max_soldiers <= 0:
+		return currently_closed
+	var frac: float = float(soldiers) / float(max_soldiers)
+	if frac <= CLOSE_RANKS_CONTRACT_FRAC:
+		return true
+	if frac >= CLOSE_RANKS_RECOVER_FRAC:
+		return false
+	return currently_closed
+
+
 ## The regiment's stable file count (frontage): `_files` at FULL strength, so the LINE
 ## KEEPS ITS WIDTH as casualties thin its DEPTH (ranks). Keying the slot layout and the
 ## engaged-rank cutoff off this -- not the live count -- stops the whole grid from
@@ -22,11 +56,18 @@ static func _files(n: int) -> int:
 ##
 ## A player-set `frontage_override` (> 0) wins over the auto width, clamped to
 ## [1, max_soldiers] -- so the line can be widened (shallower) or narrowed (deeper)
-## by hand, still keying every downstream layout off one stable file count.
+## by hand, still keying every downstream layout off one stable file count. Otherwise,
+## once the unit's casualties have crossed the close-the-ranks threshold (`u._ranks_closed`,
+## ticked once per frame by should_close_ranks above), the auto width itself steps down
+## one notch (narrowed_files) so the mauled survivors reform deeper rather than holding a
+## thin full-width line -- a single discrete step, not a continuous reflow.
 static func frontage(u: Unit) -> int:
 	if u.frontage_override > 0:
 		return clampi(u.frontage_override, 1, maxi(1, u.max_soldiers))
-	return _files(u.max_soldiers)
+	var full: int = _files(u.max_soldiers)
+	if u._ranks_closed:
+		return narrowed_files(full)
+	return full
 
 
 ## File count for a drag-resize handle pulled to `half_width` world units from the
