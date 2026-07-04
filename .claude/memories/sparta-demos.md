@@ -197,9 +197,10 @@ out of its original test.
 on every unit through to the last tick. If a "climax" moment (contact,
 formation completing, a rally) lands at or after the frame cutoff, either
 extend `max_frames` or — better, when the combat isn't actually relevant to
-what the PR changed — replace it with a focused no-enemies scenario (see the
-`schiltron-formation-only.json` pattern in the "Author a scripted-input demo"
-section above). This is the same "keep each demo simple and focused"
+what the PR changed — replace it with a focused no-enemies scenario, e.g.
+`demos/inputs/schiltron-formation-only.json`, which drives one unit through a
+formation change with no enemy units present so there's no combat arc to time
+against `max_frames` at all. This is the same "keep each demo simple and focused"
 principle CLAUDE.md already states, extended with a concrete failure mode:
 inherited scenario elements that don't actually complete are worse than no
 scenario elements at all. (`Lacaedemon/sparta` PR #623, 2026-07-03.)
