@@ -111,12 +111,12 @@
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              62.57,
-              26.79
+              63.01,
+              26.53
             ],
             "centroid": [
-              400.0,
-              430.9
+              400.01,
+              430.88
             ],
             "count": 30,
             "prone_count": 0
@@ -189,19 +189,19 @@
           "order_mode": "Normal",
           "order_phase": "REFORM",
           "position": [
-            400.01,
-            430.28
+            400.06,
+            427.68
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              31.63,
-              18.99
+              63.01,
+              21.14
             ],
             "centroid": [
-              400.01,
-              429.13
+              400.06,
+              426.3
             ],
             "count": 30,
             "prone_count": 0
@@ -215,262 +215,7 @@
         },
         {
           "current_order": "MOVE",
-          "current_speed": 0.0,
-          "engaged": false,
-          "facing": [
-            0.0,
-            -1.0
-          ],
-          "formation": "NORMAL",
-          "frontage": 8,
-          "morale": 100.0,
-          "name": "Archers 1",
-          "order_guard": null,
-          "order_mode": "Normal",
-          "order_phase": "REFORM",
-          "position": [
-            650.01,
-            432.22
-          ],
-          "queue_tail": [],
-          "rank_relief": true,
-          "soldier_summary": {
-            "bbox": [
-              30.66,
-              26.35
-            ],
-            "centroid": [
-              650.01,
-              431.38
-            ],
-            "count": 30,
-            "prone_count": 0
-          },
-          "soldiers": 30,
-          "state": "IDLE",
-          "target_enemy_uid": null,
-          "team": 0,
-          "tier": "CLOSE",
-          "uid": 1
-        }
-      ]
-    },
-    {
-      "tick": 240,
-      "units": [
-        {
-          "current_order": "MOVE",
-          "current_speed": 0.0,
-          "engaged": false,
-          "facing": [
-            0.0,
-            -1.0
-          ],
-          "formation": "NORMAL",
-          "frontage": 8,
-          "morale": 100.0,
-          "name": "Spearmen 1",
-          "order_guard": null,
-          "order_mode": "Normal",
-          "order_phase": "REFORM",
-          "position": [
-            400.01,
-            429.96
-          ],
-          "queue_tail": [],
-          "rank_relief": true,
-          "soldier_summary": {
-            "bbox": [
-              55.68,
-              27.07
-            ],
-            "centroid": [
-              400.01,
-              429.18
-            ],
-            "count": 30,
-            "prone_count": 0
-          },
-          "soldiers": 30,
-          "state": "IDLE",
-          "target_enemy_uid": null,
-          "team": 0,
-          "tier": "CLOSE",
-          "uid": 0
-        },
-        {
-          "current_order": "MOVE",
-          "current_speed": 0.0,
-          "engaged": false,
-          "facing": [
-            0.0,
-            -1.0
-          ],
-          "formation": "NORMAL",
-          "frontage": 8,
-          "morale": 100.0,
-          "name": "Archers 1",
-          "order_guard": null,
-          "order_mode": "Normal",
-          "order_phase": "REFORM",
-          "position": [
-            650.01,
-            432.44
-          ],
-          "queue_tail": [],
-          "rank_relief": true,
-          "soldier_summary": {
-            "bbox": [
-              59.46,
-              27.19
-            ],
-            "centroid": [
-              650.01,
-              431.56
-            ],
-            "count": 30,
-            "prone_count": 0
-          },
-          "soldiers": 30,
-          "state": "IDLE",
-          "target_enemy_uid": null,
-          "team": 0,
-          "tier": "CLOSE",
-          "uid": 1
-        }
-      ]
-    },
-    {
-      "tick": 245,
-      "units": [
-        {
-          "current_order": "MOVE",
-          "current_speed": 0.0,
-          "engaged": false,
-          "facing": [
-            0.0,
-            -1.0
-          ],
-          "formation": "NORMAL",
-          "frontage": 8,
-          "morale": 100.0,
-          "name": "Spearmen 1",
-          "order_guard": null,
-          "order_mode": "Normal",
-          "order_phase": "REFORM",
-          "position": [
-            400.01,
-            430.03
-          ],
-          "queue_tail": [],
-          "rank_relief": true,
-          "soldier_summary": {
-            "bbox": [
-              58.05,
-              27.68
-            ],
-            "centroid": [
-              400.01,
-              429.27
-            ],
-            "count": 30,
-            "prone_count": 0
-          },
-          "soldiers": 30,
-          "state": "IDLE",
-          "target_enemy_uid": null,
-          "team": 0,
-          "tier": "CLOSE",
-          "uid": 0
-        },
-        {
-          "current_order": "MOVE",
-          "current_speed": 0.0,
-          "engaged": false,
-          "facing": [
-            0.0,
-            -1.0
-          ],
-          "formation": "NORMAL",
-          "frontage": 8,
-          "morale": 100.0,
-          "name": "Archers 1",
-          "order_guard": null,
-          "order_mode": "Normal",
-          "order_phase": "REFORM",
-          "position": [
-            650.01,
-            432.45
-          ],
-          "queue_tail": [],
-          "rank_relief": true,
-          "soldier_summary": {
-            "bbox": [
-              61.4,
-              27.25
-            ],
-            "centroid": [
-              650.01,
-              431.56
-            ],
-            "count": 30,
-            "prone_count": 0
-          },
-          "soldiers": 30,
-          "state": "IDLE",
-          "target_enemy_uid": null,
-          "team": 0,
-          "tier": "CLOSE",
-          "uid": 1
-        }
-      ]
-    },
-    {
-      "tick": 250,
-      "units": [
-        {
-          "current_order": "MOVE",
-          "current_speed": 0.0,
-          "engaged": false,
-          "facing": [
-            0.0,
-            -1.0
-          ],
-          "formation": "NORMAL",
-          "frontage": 8,
-          "morale": 100.0,
-          "name": "Spearmen 1",
-          "order_guard": null,
-          "order_mode": "Normal",
-          "order_phase": "REFORM",
-          "position": [
-            400.01,
-            430.12
-          ],
-          "queue_tail": [],
-          "rank_relief": true,
-          "soldier_summary": {
-            "bbox": [
-              60.02,
-              28.22
-            ],
-            "centroid": [
-              400.01,
-              429.38
-            ],
-            "count": 30,
-            "prone_count": 0
-          },
-          "soldiers": 30,
-          "state": "IDLE",
-          "target_enemy_uid": null,
-          "team": 0,
-          "tier": "CLOSE",
-          "uid": 0
-        },
-        {
-          "current_order": "MOVE",
-          "current_speed": 0.7,
+          "current_speed": 3.3,
           "engaged": false,
           "facing": [
             0.0,
@@ -484,19 +229,274 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            650.01,
-            432.44
+            650.06,
+            431.17
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              62.8,
-              27.18
+              63.01,
+              26.9
             ],
             "centroid": [
-              650.01,
-              431.54
+              650.06,
+              430.26
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldiers": 30,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 240,
+      "units": [
+        {
+          "current_order": "MOVE",
+          "current_speed": 7.7,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 8,
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.06,
+            426.16
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              27.45
+            ],
+            "centroid": [
+              400.06,
+              425.26
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldiers": 30,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "current_order": "MOVE",
+          "current_speed": 30.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 8,
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            650.06,
+            420.08
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              29.98
+            ],
+            "centroid": [
+              650.06,
+              419.27
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldiers": 30,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 245,
+      "units": [
+        {
+          "current_order": "MOVE",
+          "current_speed": 9.3,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 8,
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.06,
+            425.71
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              27.34
+            ],
+            "centroid": [
+              400.06,
+              424.77
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldiers": 30,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "current_order": "MOVE",
+          "current_speed": 33.3,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 8,
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            650.06,
+            417.47
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              30.33
+            ],
+            "centroid": [
+              650.06,
+              416.66
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldiers": 30,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 250,
+      "units": [
+        {
+          "current_order": "MOVE",
+          "current_speed": 11.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 8,
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.06,
+            425.16
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              27.14
+            ],
+            "centroid": [
+              400.06,
+              424.17
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldiers": 30,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "current_order": "MOVE",
+          "current_speed": 36.7,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 8,
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            650.06,
+            414.57
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              30.67
+            ],
+            "centroid": [
+              650.06,
+              413.77
             ],
             "count": 30,
             "prone_count": 0
@@ -515,7 +515,7 @@
       "units": [
         {
           "current_order": "MOVE",
-          "current_speed": 0.0,
+          "current_speed": 24.3,
           "engaged": false,
           "facing": [
             0.0,
@@ -527,27 +527,27 @@
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
-          "order_phase": "REFORM",
+          "order_phase": "MARCH",
           "position": [
-            400.01,
-            430.76
+            400.06,
+            417.31
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.42,
-              28.61
+              63.01,
+              27.02
             ],
             "centroid": [
-              400.01,
-              429.94
+              400.06,
+              416.19
             ],
             "count": 30,
             "prone_count": 0
           },
           "soldiers": 30,
-          "state": "IDLE",
+          "state": "MOVING",
           "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
@@ -555,7 +555,7 @@
         },
         {
           "current_order": "MOVE",
-          "current_speed": 27.3,
+          "current_speed": 63.3,
           "engaged": false,
           "facing": [
             0.0,
@@ -569,19 +569,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            650.01,
-            423.34
+            650.05,
+            381.59
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.43,
-              27.0
+              63.01,
+              33.31
             ],
             "centroid": [
-              650.01,
-              422.6
+              650.05,
+              380.84
             ],
             "count": 30,
             "prone_count": 0
@@ -600,7 +600,7 @@
       "units": [
         {
           "current_order": "MOVE",
-          "current_speed": 0.0,
+          "current_speed": 26.0,
           "engaged": false,
           "facing": [
             0.0,
@@ -612,27 +612,27 @@
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
-          "order_phase": "REFORM",
+          "order_phase": "MARCH",
           "position": [
-            400.01,
-            430.8
+            400.06,
+            415.92
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.0,
-              27.9
+              63.01,
+              27.02
             ],
             "centroid": [
-              400.01,
-              429.95
+              400.06,
+              414.79
             ],
             "count": 30,
             "prone_count": 0
           },
           "soldiers": 30,
-          "state": "IDLE",
+          "state": "MOVING",
           "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
@@ -640,7 +640,7 @@
         },
         {
           "current_order": "MOVE",
-          "current_speed": 30.7,
+          "current_speed": 66.7,
           "engaged": false,
           "facing": [
             0.0,
@@ -654,19 +654,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            650.01,
-            420.99
+            650.04,
+            376.23
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.16,
-              27.0
+              63.01,
+              33.62
             ],
             "centroid": [
-              650.01,
-              420.26
+              650.04,
+              375.49
             ],
             "count": 30,
             "prone_count": 0
@@ -685,7 +685,7 @@
       "units": [
         {
           "current_order": "MOVE",
-          "current_speed": 1.0,
+          "current_speed": 27.7,
           "engaged": false,
           "facing": [
             0.0,
@@ -699,19 +699,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            400.01,
-            430.79
+            400.06,
+            414.44
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.0,
-              27.41
+              63.01,
+              27.02
             ],
             "centroid": [
-              400.01,
-              429.91
+              400.05,
+              413.29
             ],
             "count": 30,
             "prone_count": 0
@@ -725,7 +725,7 @@
         },
         {
           "current_order": "MOVE",
-          "current_speed": 34.0,
+          "current_speed": 70.0,
           "engaged": false,
           "facing": [
             0.0,
@@ -739,19 +739,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            650.01,
-            418.37
+            650.04,
+            370.6
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              62.92,
-              27.0
+              63.01,
+              33.93
             ],
             "centroid": [
-              650.01,
-              417.65
+              650.04,
+              369.86
             ],
             "count": 30,
             "prone_count": 0
@@ -770,7 +770,7 @@
       "units": [
         {
           "current_order": "MOVE",
-          "current_speed": 21.0,
+          "current_speed": 47.7,
           "engaged": false,
           "facing": [
             0.0,
@@ -784,19 +784,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            400.01,
-            423.43
+            400.05,
+            389.47
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.0,
-              27.0
+              63.01,
+              27.02
             ],
             "centroid": [
-              400.01,
-              422.34
+              400.05,
+              388.17
             ],
             "count": 30,
             "prone_count": 0
@@ -810,7 +810,7 @@
         },
         {
           "current_order": "MOVE",
-          "current_speed": 74.0,
+          "current_speed": 56.5,
           "engaged": false,
           "facing": [
             0.0,
@@ -824,19 +824,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            650.01,
-            365.74
+            650.02,
+            298.83
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.2,
-              27.0
+              63.01,
+              26.86
             ],
             "centroid": [
-              650.01,
-              365.13
+              650.02,
+              297.2
             ],
             "count": 30,
             "prone_count": 0
@@ -855,7 +855,7 @@
       "units": [
         {
           "current_order": "MOVE",
-          "current_speed": 41.0,
+          "current_speed": 56.0,
           "engaged": false,
           "facing": [
             0.0,
@@ -869,19 +869,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            400.01,
-            402.86
+            400.04,
+            354.11
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.0,
-              27.0
+              63.01,
+              27.02
             ],
             "centroid": [
-              400.01,
-              401.59
+              400.04,
+              352.78
             ],
             "count": 30,
             "prone_count": 0
@@ -895,7 +895,7 @@
         },
         {
           "current_order": "MOVE",
-          "current_speed": 54.0,
+          "current_speed": 21.3,
           "engaged": false,
           "facing": [
             0.0,
@@ -910,18 +910,18 @@
           "order_phase": "MARCH",
           "position": [
             650.0,
-            294.57
+            256.7
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.0,
+              63.01,
               27.02
             ],
             "centroid": [
               650.0,
-              292.98
+              255.48
             ],
             "count": 30,
             "prone_count": 0
