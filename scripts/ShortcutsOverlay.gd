@@ -35,6 +35,7 @@ const _ROWS: Array = [
 	["Shield wall / Testudo (toggle direct)", "L / U"],
 	["Line width (narrower/wider)", "[ / ]"],
 	["File-doubling (explicatio wider / duplicatio deeper)", "B / N"],
+	["Asymmetric explicatio (hold right / left flank fixed)", "Shift+B / Ctrl+B"],
 	["Form-up split mode", "Y (Shift+Y reverses)"],
 	["Nudge (small drill step, holds facing)", "Arrow keys"],
 	["About-face (180° in place)", "V"],

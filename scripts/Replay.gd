@@ -53,6 +53,9 @@ var forced_seed: int = -1
 #               "mode": int (Battle.OrderMode; 0 = NORMAL),
 #               "formation"?: int (Unit.FORMATION_*; omitted when 0 = NORMAL),
 #               "frontage"?: int (absolute file count for a -4 resize or a form-up move),
+#               "anchor_offset"?: float (UnitFormation.anchor_shift-derived local-X shift for
+#                   an asymmetric (anchored) -4 resize; omitted when 0.0 = the plain centred
+#                   resize every other frontage change already uses),
 #               "face"?: float (deploy facing in radians for a drag-to-form-up move),
 #               "walk_advance"?: bool (omitted when false),
 #               "group_attack"?: int (Battle.GroupAttackMode; omitted when 0 = FOCUSED) }.
@@ -182,6 +185,8 @@ func start_playback(path: String) -> bool:
 			entry["formation"] = int(o["formation"])
 		if o.has("frontage"):
 			entry["frontage"] = int(o["frontage"])
+		if o.has("anchor_offset"):
+			entry["anchor_offset"] = float(o["anchor_offset"])
 		if o.has("face"):
 			entry["face"] = float(o["face"])
 		if o.has("walk_advance"):
@@ -251,7 +256,7 @@ func replays_dir() -> String:
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		order_mode: int = 0, formation: int = 0, frontage: int = 0, face: float = INF,
-		group_attack: int = 0, walk_advance: bool = false) -> void:
+		group_attack: int = 0, walk_advance: bool = false, anchor_offset: float = 0.0) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
@@ -266,6 +271,11 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		entry["formation"] = formation
 	if frontage != 0:
 		entry["frontage"] = frontage
+	# An asymmetric (anchored) explicatio/duplicatio's flank-fixing shift; 0.0 is the plain
+	# centred resize every other frontage change already uses, so it's omitted for those
+	# (old replays -- and every non-anchored resize in a new one -- stay exactly as compact).
+	if anchor_offset != 0.0:
+		entry["anchor_offset"] = anchor_offset
 	# A drag-to-form-up order carries a deploy facing (radians); INF means "none"
 	# (a plain move), so any real angle -- including 0 -- is recorded.
 	if not is_inf(face):

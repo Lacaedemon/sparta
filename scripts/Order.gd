@@ -136,6 +136,9 @@ var target_uid: int = -1
 var formation: int = -1
 ## FRONTAGE target file count; -1 when unused.
 var frontage: int = -1
+## FRONTAGE anchor shift (UnitFormation.anchor_shift): the local-X offset an asymmetric
+## explicatio/duplicatio holds one flank fixed with; 0.0 is the plain centred resize.
+var frontage_anchor_offset: float = 0.0
 ## WHEEL/NUDGE/QUARTER_TURN direction (Battle.NudgeDir for NUDGE; +-1 otherwise); 0 when unused.
 var dir: int = 0
 ## The order_mode (Battle.OrderMode) the issuing command carried, for MOVE/ATTACK/SUPPORT.
@@ -305,8 +308,9 @@ static func new_formation(formation_mode: int) -> Order:
 	return o
 
 
-static func new_frontage(files: int) -> Order:
+static func new_frontage(files: int, anchor_offset: float = 0.0) -> Order:
 	var o := Order.new()
 	o.type = Type.FRONTAGE
 	o.frontage = files
+	o.frontage_anchor_offset = anchor_offset
 	return o

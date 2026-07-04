@@ -48,6 +48,7 @@ DEMOS=(
   "schiltron|demos/inputs/schiltron.json|30|300|640|input"
   "order_distance|demos/inputs/order-distance.json|30|120|640|input"
   "file_doubling|demos/inputs/file-doubling.json|30|300|640|input"
+  "file_doubling_asymmetric|demos/inputs/file-doubling-asymmetric.json|30|150|640|input"
   "cycle_charge|demos/inputs/cycle-charge.json|30|600|640|input"
   "rout_rally|demos/inputs/rout-rally-recover.json|30|300|640|input"
   "last_unit_rally|demos/inputs/last-unit-rally.json|30|650|640|input"

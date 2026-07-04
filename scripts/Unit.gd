@@ -142,6 +142,13 @@ var tier: int = FormationTier.CLOSE
 # change rides the replay command stream so playback reproduces it. Honoured and
 # clamped to [1, max_soldiers] in UnitFormation.frontage.
 var frontage_override: int = 0
+# Lateral (local X) shift applied on top of the centred formation grid, so an
+# anchored (asymmetric) explicatio/duplicatio can hold one flank's edge fixed
+# while the opposite flank grows or shrinks (UnitFormation.anchor_shift). 0.0 is
+# the plain centred behaviour every other resize/reshape already has. Set once,
+# absolutely, by Battle._apply_order_cmd (ORDER_FRONTAGE_ONLY carries it), so
+# re-applying the pending order on the tick is idempotent like frontage_override.
+var frontage_anchor_offset: float = 0.0
 # "Close the ranks": whether the auto (non-override) frontage is currently
 # stepped down a notch to reform the casualty-thinned survivors into a deeper, denser
 # block instead of holding the full-strength line's width. A single cached bool, not a
@@ -1675,11 +1682,14 @@ func _reset_shield_hold_angles() -> void:
 	_sim_soldier_shield_hold_angle.fill(shield_rest_angle())
 
 
-## Set the regiment's frontage (file count). Clamped to [1, max_soldiers]; the
-## formation grid (UnitFormation.slots) picks it up on the next tick and the
-## soldier bodies ease toward the reshaped slots at velocity (no teleport).
-func set_frontage(files: int) -> void:
+## Set the regiment's frontage (file count), and optionally an anchor shift for an
+## asymmetric explicatio/duplicatio (UnitFormation.anchor_shift; 0.0 is the plain
+## centred behaviour). Clamped to [1, max_soldiers]; the formation grid
+## (UnitFormation.slots) picks both up on the next tick and the soldier bodies ease
+## toward the reshaped slots at velocity (no teleport).
+func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
+	frontage_anchor_offset = anchor_offset
 
 
 ## Multiplier applied to incoming ranged damage. Shielded stances raise shields to

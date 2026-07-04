@@ -123,6 +123,118 @@ func test_narrowed_files_floors_at_one() -> void:
 	assert_eq(UnitFormation.narrowed_files(1), 1, "never narrower than a single column")
 
 
+# --- anchored (asymmetric) explicatio/duplicatio ----------------------------
+
+func test_anchor_shift_is_zero_for_centre() -> void:
+	# CENTRE reproduces the plain symmetric widen: no lateral shift at all.
+	assert_almost_eq(UnitFormation.anchor_shift(8, 16, 3.4, UnitFormation.Anchor.CENTRE),
+		0.0, 0.001, "centre anchor never shifts the block")
+
+
+func test_anchor_shift_right_holds_the_right_edge_fixed() -> void:
+	# Widening 8 -> 16 files at spacing 4.0: half-width goes from 14.0 to 30.0, a
+	# gain of 16.0. Anchoring RIGHT slides the (already-centred) block left by that
+	# full gain, so the +X edge lands back where it started.
+	var spacing := 4.0
+	var old_files := 8
+	var new_files := 16
+	var shift: float = UnitFormation.anchor_shift(old_files, new_files, spacing, UnitFormation.Anchor.RIGHT)
+	var old_slots := UnitFormation.block_slots(old_files, old_files, spacing)
+	var new_slots := UnitFormation.anchored_block_slots(new_files, old_files, new_files, spacing,
+		UnitFormation.Anchor.RIGHT)
+	var old_right_edge: float = old_slots[old_files - 1].x   # front rank's rightmost slot
+	var new_right_edge: float = new_slots[new_files - 1].x   # front rank's rightmost slot
+	assert_almost_eq(new_right_edge, old_right_edge, 0.001,
+		"the right edge stays fixed as the block widens")
+	assert_lt(shift, 0.0, "widening right-anchored slides the centred block toward -X")
+
+
+func test_anchor_shift_left_holds_the_left_edge_fixed() -> void:
+	# The mirror of the RIGHT case: the -X edge stays fixed, the block slides +X.
+	var spacing := 4.0
+	var old_files := 8
+	var new_files := 16
+	var shift: float = UnitFormation.anchor_shift(old_files, new_files, spacing, UnitFormation.Anchor.LEFT)
+	var old_slots := UnitFormation.block_slots(old_files, old_files, spacing)
+	var new_slots := UnitFormation.anchored_block_slots(new_files, old_files, new_files, spacing,
+		UnitFormation.Anchor.LEFT)
+	var old_left_edge: float = old_slots[0].x   # front rank's leftmost slot
+	var new_left_edge: float = new_slots[0].x   # front rank's leftmost slot
+	assert_almost_eq(new_left_edge, old_left_edge, 0.001,
+		"the left edge stays fixed as the block widens")
+	assert_gt(shift, 0.0, "widening left-anchored slides the centred block toward +X")
+
+
+func test_anchored_block_slots_matches_block_slots_at_centre() -> void:
+	# Anchor.CENTRE must reproduce the plain centred layout exactly -- the existing
+	# symmetric explicatio/duplicatio behaviour is a special case of the general
+	# anchored layout, not a separate code path.
+	var plain := UnitFormation.block_slots(40, 16, 3.4)
+	var anchored := UnitFormation.anchored_block_slots(40, 8, 16, 3.4, UnitFormation.Anchor.CENTRE)
+	assert_eq(anchored.size(), plain.size(), "same slot count")
+	for i in range(plain.size()):
+		assert_true(anchored[i].is_equal_approx(plain[i]),
+			"slot %d matches the plain centred layout under Anchor.CENTRE" % i)
+
+
+func test_anchored_block_slots_narrowing_also_respects_the_anchor() -> void:
+	# Duplicatio (narrowing) anchored RIGHT: the +X edge of the narrower block still
+	# lines up with the +X edge of the wider block it started from.
+	var spacing := 4.0
+	var old_files := 16
+	var new_files := 8
+	var old_slots := UnitFormation.block_slots(old_files, old_files, spacing)
+	var new_slots := UnitFormation.anchored_block_slots(new_files, old_files, new_files, spacing,
+		UnitFormation.Anchor.RIGHT)
+	var old_right_edge: float = old_slots[old_files - 1].x
+	var new_right_edge: float = new_slots[new_files - 1].x
+	assert_almost_eq(new_right_edge, old_right_edge, 0.001,
+		"the right edge stays fixed as the block narrows too")
+
+
+func test_anchor_shift_composes_across_repeated_widens() -> void:
+	# anchor_shift always computes a SINGLE step's shift as if starting from a
+	# centred block (offset 0) -- it does NOT know about a unit's existing anchor
+	# offset from an earlier anchored widen. A caller applying this a second time
+	# (e.g. Battle.enqueue_file_double, pressing Shift+B twice on the same unit)
+	# must ADD the new shift to the unit's current offset, not replace it, or the
+	# "held" flank silently drifts. This pins the composed-offset math directly,
+	# mirroring the worked example from the review that caught the bug.
+	var spacing := 1.0
+	var files_a := 8
+	var files_b := 16
+	var files_c := 32
+	# Step 1: centred (offset 0) -> RIGHT-anchored widen 8 -> 16.
+	var shift1: float = UnitFormation.anchor_shift(files_a, files_b, spacing, UnitFormation.Anchor.RIGHT)
+	var offset_after_1: float = 0.0 + shift1
+	var right_edge_1: float = UnitFormation._half_width(files_b, spacing) + offset_after_1
+	# Step 2: RIGHT-anchored widen again, 16 -> 32, composing onto the existing offset.
+	var shift2: float = UnitFormation.anchor_shift(files_b, files_c, spacing, UnitFormation.Anchor.RIGHT)
+	var offset_after_2: float = offset_after_1 + shift2
+	var right_edge_2: float = UnitFormation._half_width(files_c, spacing) + offset_after_2
+	assert_almost_eq(right_edge_2, right_edge_1, 0.001,
+		"the right flank stays fixed across TWO composed anchored widens, not just one")
+
+
+func test_anchor_shift_does_not_compose_correctly_if_treated_as_absolute() -> void:
+	# The bug the review caught: if a caller (wrongly) uses anchor_shift's return
+	# value as an ABSOLUTE offset on the second application (ignoring the unit's
+	# existing offset), the held flank visibly jumps. This documents the failure
+	# mode so a regression that reintroduces the absolute-overwrite bug is caught.
+	var spacing := 1.0
+	var files_a := 8
+	var files_b := 16
+	var files_c := 32
+	var shift1: float = UnitFormation.anchor_shift(files_a, files_b, spacing, UnitFormation.Anchor.RIGHT)
+	var right_edge_1: float = UnitFormation._half_width(files_b, spacing) + shift1
+	# WRONG: treat the second shift as an absolute offset instead of composing it.
+	var wrong_offset_after_2: float = UnitFormation.anchor_shift(files_b, files_c, spacing,
+		UnitFormation.Anchor.RIGHT)
+	var wrong_right_edge_2: float = UnitFormation._half_width(files_c, spacing) + wrong_offset_after_2
+	assert_ne(wrong_right_edge_2, right_edge_1,
+		"treating the shift as absolute (not composed) is the bug -- the flank jumps")
+
+
 # --- close the ranks: contract frontage under heavy losses -----------
 
 func test_should_close_ranks_triggers_at_or_below_the_contract_threshold() -> void:

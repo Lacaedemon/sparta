@@ -91,11 +91,17 @@ static func files_label(n: int) -> String:
 
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep grid (front
 ## rank toward -Y, the rotated "forward"). Pure and deterministic -- a function of `n`,
-## the unit's frontage, and its density (TIGHT/NORMAL/LOOSE scales spacing without
-## changing the file/rank count) -- so it's unit-testable; the render adds stable jitter
-## on top.
+## the unit's frontage, its density (TIGHT/NORMAL/LOOSE scales spacing without changing
+## the file/rank count), and its anchor shift (an asymmetric explicatio/duplicatio holds
+## one flank fixed instead of centring the block; 0.0 is the plain centred behaviour) --
+## so it's unit-testable; the render adds stable jitter on top.
 static func slots(u: Unit, n: int) -> PackedVector2Array:
-	return block_slots(n, frontage(u), Unit.FORMATION_SPACING * u.spacing_scale)
+	var out := block_slots(n, frontage(u), Unit.FORMATION_SPACING * u.spacing_scale)
+	if u.frontage_anchor_offset != 0.0:
+		var shift := Vector2(u.frontage_anchor_offset, 0.0)
+		for i in range(out.size()):
+			out[i] = out[i] + shift
+	return out
 
 
 # --- Grid operations (#367) --------------------------------------------------
@@ -188,13 +194,75 @@ static func transposed_files(n: int, files: int) -> int:
 	return maxi(1, ranks_for(n, files))
 
 
-## Explicatio (#373): widen the frontage -- double the files, halving the depth -- capped
+## Explicatio: widen the frontage -- double the files, halving the depth -- capped
 ## at `n` (a single rank). The rear half of each file steps out laterally to form new files.
 static func widened_files(n: int, files: int) -> int:
 	return mini(maxi(1, n), files * 2)
 
 
-## Duplicatio (#373): narrow the frontage -- halve the files, doubling the depth. Alternate
+## Duplicatio: narrow the frontage -- halve the files, doubling the depth. Alternate
 ## files tuck in behind their neighbours. Floored at one file (a single column).
 static func narrowed_files(files: int) -> int:
 	return maxi(1, files / 2)
+
+
+# --- Anchored (asymmetric) explicatio ----------------------------------------
+# The centred explicatio above widens the line symmetrically about the unit's own
+# centre (the block's centroid never moves laterally). An ANCHORED widen instead
+# holds one flank's edge fixed and lets the whole block grow off the opposite
+# flank -- the line's own position on the field shifts, which matters when a flank
+# must stay pinned to terrain or a neighbouring unit. Anchor.CENTRE reproduces the
+# plain symmetric widen (zero shift); LEFT/RIGHT hold that respective edge in place.
+
+## Anchor flank for an asymmetric explicatio/duplicatio: which edge of the block
+## (viewed from the front, facing the same way the unit is) stays fixed while the
+## opposite flank grows or shrinks. CENTRE holds the block's own centre fixed --
+## the plain, symmetric behaviour `widened_files`/`narrowed_files` already give.
+enum Anchor { LEFT = -1, CENTRE = 0, RIGHT = 1 }
+
+
+## Half-width (local +/-X extent) of a full-rank block at `files` columns, `spacing`
+## px apart: `files` columns span `(files-1)` gaps, so the half-width is half that
+## span. Pure; shared by block_slots (which centres on this) and the anchor-shift
+## math below (which needs the SAME half-width block_slots actually laid out).
+static func _half_width(files: int, spacing: float) -> float:
+	return maxi(files - 1, 0) * 0.5 * spacing
+
+
+## Lateral (local X) shift that keeps the ANCHOR flank's edge fixed when the file
+## count changes from `old_files` to `new_files` at `spacing` px apart, for a SINGLE
+## widen/narrow starting from a CENTRED block (offset 0). block_slots always centres
+## the block on local X=0, so widening/narrowing moves BOTH edges outward/inward by
+## half the width change; shifting the whole (already-centred) block by this offset
+## cancels that motion on the anchored side only, so that edge stays put and the whole
+## width change shows up on the opposite flank. Anchor.CENTRE is a no-op (0.0), matching
+## the existing symmetric maneuver. Pure -- a function of (old_files, new_files,
+## spacing, anchor).
+##
+## Callers applying this to a unit that may ALREADY carry a non-zero anchor offset
+## (a prior anchored widen) must ADD this shift to that existing offset, not replace
+## it -- this function only ever computes the delta for one step from centre, so
+## reusing it as an absolute value across repeated anchored widens on the same unit
+## would silently let the "held" flank drift. See Battle.enqueue_file_double.
+static func anchor_shift(old_files: int, new_files: int, spacing: float, anchor: int) -> float:
+	if anchor == Anchor.CENTRE:
+		return 0.0
+	var delta: float = _half_width(new_files, spacing) - _half_width(old_files, spacing)
+	# RIGHT anchor: hold the +X edge fixed, so the centred block must slide -X
+	# (toward -X) by the width gained on that side. LEFT anchor is the mirror.
+	return -delta if anchor == Anchor.RIGHT else delta
+
+
+## Anchored explicatio/duplicatio slot layout: the same centred grid `block_slots`
+## lays out, translated in local X by `anchor_shift` so the requested flank's edge
+## stays fixed as the file count changes from `old_files` to `new_files`. Anchor.CENTRE
+## reproduces `block_slots(n, new_files, spacing)` exactly (zero shift). Pure and
+## deterministic -- unit-testable and replay-safe like every other grid-op here.
+static func anchored_block_slots(n: int, old_files: int, new_files: int, spacing: float,
+		anchor: int) -> PackedVector2Array:
+	var shift: float = anchor_shift(old_files, new_files, spacing, anchor)
+	var out := block_slots(n, new_files, spacing)
+	if shift != 0.0:
+		for i in range(out.size()):
+			out[i] = out[i] + Vector2(shift, 0.0)
+	return out

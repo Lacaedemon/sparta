@@ -534,7 +534,8 @@ func _physics_process(_delta: float) -> void:
 					int(o.get("frontage", 0)),
 					float(o.get("face", INF)),
 					int(o.get("group_attack", GroupAttackMode.FOCUSED)),
-					bool(o.get("walk_advance", false)))
+					bool(o.get("walk_advance", false)),
+					float(o.get("anchor_offset", 0.0)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -745,7 +746,21 @@ func enqueue_nudge(uids: Array, dir: int) -> void:
 ## same absolute ORDER_FRONTAGE_ONLY command the [ / ] resize uses, so the soldier bodies
 ## ease into the reshaped slots at velocity (no teleport) and the maneuver rides the
 ## replay stream exactly like a manual resize.
-func enqueue_file_double(uids: Array, direction: int) -> void:
+##
+## `anchor` (UnitFormation.Anchor) picks which flank stays fixed: CENTRE (default) is
+## the plain symmetric widen/narrow above -- and RE-CENTRES the block, discarding any
+## earlier anchor shift, exactly like the pre-existing [ / ] resize always has; LEFT/
+## RIGHT hold that edge in place and let the whole width change land on the opposite
+## flank -- an asymmetric explicatio/duplicatio for when a flank must stay pinned to
+## terrain or a neighbour. `anchor_shift` always computes the shift a SINGLE widen from
+## a centred block needs, so a LEFT/RIGHT anchor composes it on top of the unit's
+## CURRENT offset (unit.frontage_anchor_offset) rather than replacing it -- otherwise a
+## second anchored widen on the same unit would recompute the shift as if starting from
+## centre and the "held" flank would jump. The resulting absolute offset is carried on
+## the same command, so re-applying it on the tick is idempotent and it rides the replay
+## stream exactly like the centred maneuver.
+func enqueue_file_double(uids: Array, direction: int,
+		anchor: int = UnitFormation.Anchor.CENTRE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or direction == 0:
 		return
 	for uid in uids:
@@ -759,6 +774,13 @@ func enqueue_file_double(uids: Array, direction: int) -> void:
 		else:
 			files = UnitFormation.narrowed_files(current)
 		files = clampi(files, 1, maxi(1, u.max_soldiers))
+		var spacing: float = Unit.FORMATION_SPACING * u.spacing_scale
+		var anchor_offset: float
+		if anchor == UnitFormation.Anchor.CENTRE:
+			anchor_offset = 0.0
+		else:
+			anchor_offset = u.frontage_anchor_offset \
+				+ UnitFormation.anchor_shift(current, files, spacing, anchor)
 		var cmd := {
 			"units": [uid],
 			"x": 0.0,
@@ -766,6 +788,7 @@ func enqueue_file_double(uids: Array, direction: int) -> void:
 			"target": ORDER_FRONTAGE_ONLY,
 			"mode": OrderMode.NORMAL,
 			"frontage": files,
+			"anchor_offset": anchor_offset,
 		}
 		_pending_orders.append(cmd)
 		_apply_order_live(cmd)
@@ -850,19 +873,22 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				if u.current_order == null:
 					u.set_current_order(Order.new_formation(fm))
 		return
-	# Frontage-resize-only: set each unit's file count to the absolute target,
-	# leaving movement and order-mode state untouched. Absolute so re-applying the
-	# pending order on the tick is a no-op (idempotent), matching move/formation.
+	# Frontage-resize-only: set each unit's file count (and anchor shift, for an
+	# asymmetric explicatio/duplicatio -- 0.0 for the plain [ / ] resize) to the
+	# absolute target, leaving movement and order-mode state untouched. Absolute so
+	# re-applying the pending order on the tick is a no-op (idempotent), matching
+	# move/formation.
 	if target_uid == ORDER_FRONTAGE_ONLY:
 		var files: int = int(cmd.get("frontage", 0))
 		if files > 0:
+			var anchor_offset: float = float(cmd.get("anchor_offset", 0.0))
 			for uid in cmd["units"]:
 				var u: Unit = _unit_by_uid(int(uid))
 				if u != null:
-					u.set_frontage(files)
+					u.set_frontage(files, anchor_offset)
 					# Same idle-only queue write as the formation branch above.
 					if u.current_order == null:
-						u.set_current_order(Order.new_frontage(files))
+						u.set_current_order(Order.new_frontage(files, anchor_offset))
 		return
 	# Stance-change-only: write the durable order_mode and/or rank-relief mode on each
 	# unit, leaving all movement and formation state untouched. Both are instantaneous
