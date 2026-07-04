@@ -3180,13 +3180,16 @@ func _draw() -> void:
 		# Reset to screen-space for HUD overlays.
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	# Shielded-stance overlay: a locked shield line (shield wall) or an overhead shield
-	# roof (testudo), drawn in the facing-rotated block frame so it rotates with the unit
-	# and scales with the block. Unlike the centre emblem, it stays visible at the zoomed-in
-	# figure LOD -- it represents the stance's raised/overhead shields, which the individual
-	# soldier silhouettes don't themselves show, so it must read at every zoom. No-op in any
-	# other formation. Sized off the live formation shape, not the bare radius.
-	if formation_mode == FORMATION_SHIELD_WALL or formation_mode == FORMATION_TESTUDO:
+	# Shielded-stance overlay: a locked shield line (shield wall), an overhead shield roof
+	# (testudo), or a ring of outward spear ticks (the hollow square, orbis/schiltron)
+	# -- drawn in the facing-rotated block frame so it rotates with the unit and
+	# scales with the block. Unlike the centre emblem, it stays visible at the zoomed-in
+	# figure LOD -- it represents raised/overhead shields or the outward-facing ring, which
+	# the individual soldier silhouettes alone don't read clearly at every zoom (especially
+	# the ring at mark LOD, zoomed out). No-op in any other formation. Sized off the live
+	# formation shape, not the bare radius.
+	if formation_mode == FORMATION_SHIELD_WALL or formation_mode == FORMATION_TESTUDO \
+			or in_square():
 		draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5, Vector2.ONE)
 		UnitShields.draw(self, body_c, dark_c, lite_c)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

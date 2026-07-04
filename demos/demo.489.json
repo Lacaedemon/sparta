@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/anti-cav-square-formation-only.json",
+  "caption": "Hollow-square rendering (#489): the ring of outward-facing soldiers is now reinforced by a spear-tick overlay around the whole perimeter, so the square reads clearly at any zoom -- not just from the individual soldier facings.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 640
+}

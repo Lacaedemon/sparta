@@ -1,13 +1,14 @@
 class_name UnitShields
-## Cosmetic shield overlay for the shielded close-order stances (shield wall & testudo),
-## drawn on a Unit's chrome layer. Purely presentational: it reads the unit's formation
-## block shape and formation_mode and draws locked shields on top -- nothing writes back
+## Cosmetic shield overlay for the shielded close-order stances (shield wall & testudo)
+## and the hollow-square anti-cavalry ring (orbis & schiltron), drawn on a Unit's
+## chrome layer. Purely presentational: it reads the unit's formation block shape and
+## formation_mode and draws locked shields / a spear ring on top -- nothing writes back
 ## into the simulation. Called from within the unit's _draw(), in the facing-rotated local
 ## frame (forward = up / -Y, files span X), the same frame the centre emblem uses.
 ##
 ## The geometry (block half-width along the file axis, block depth along ranks, and the
-## per-shield rectangle layout) is factored into pure static helpers so it is directly
-## unit-testable and independent of the unit's world position/facing.
+## per-shield/per-tick rectangle layout) is factored into pure static helpers so it is
+## directly unit-testable and independent of the unit's world position/facing.
 
 
 ## Half-width of the formation block along its FILE axis (local +X), in world units:
@@ -88,17 +89,71 @@ static func testudo_shields(cols: int, rows: int, half_width: float, half_depth:
 	return out
 
 
+## --- Hollow-square spear/shield ring (orbis & schiltron) -------------------
+## The block geometry (soldier_world_slots, the outward per-soldier facings) already
+## makes the ring real -- this overlay draws a continuous ring of outward-pointing
+## spear ticks around the block's perimeter ON TOP, so the "hollow square" reads at a
+## glance even when the individual soldier marks are too small to show their own
+## facing (mark LOD, zoomed out). One tick per PERIMETER SLOT (not an independent
+## count), so the ticks line up with the actual soldiers standing on that ring.
+
+## Local-space perimeter points for a square block of `files` x `ranks` at `spacing`,
+## reusing block_slots' exact rank-major grid and UnitFormation.square_is_perimeter's
+## indexing so the ring always agrees with where the perimeter soldiers actually stand.
+## Pure and deterministic.
+static func square_perimeter_points(n: int, files: int, spacing: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	if n <= 0 or files <= 0:
+		return out
+	var slots := UnitFormation.block_slots(n, files, spacing)
+	for i in range(slots.size()):
+		if UnitFormation.square_is_perimeter(i, n, files):
+			out.push_back(slots[i])
+	return out
+
+
+## One outward-pointing spear tick per perimeter point: a short line from `tick_len`
+## short of the point (base, just inside the ring) to `tick_len` beyond it (tip,
+## pointing away from the block centre). Degenerate points at the exact centre (a
+## 1-soldier block) are skipped -- there is no outward direction to point. Returns an
+## Array of 2-element PackedVector2Array [base, tip] pairs. Pure.
+static func square_ring_ticks(perimeter: PackedVector2Array, tick_len: float) -> Array:
+	var out: Array = []
+	for p in perimeter:
+		if p.length() < 0.001:
+			continue
+		var dir: Vector2 = p.normalized()
+		out.push_back(PackedVector2Array([p - dir * tick_len * 0.3, p + dir * tick_len]))
+	return out
+
+
+## Draw the ring of outward spear ticks for `u`'s hollow-square stance (orbis or
+## schiltron -- in_square()). Reuses the unit's own live formation grid
+## (formation_files/spacing_scale) so the ring always matches soldier_world_slots.
+static func _draw_square_ring(u: Unit, dark: Color, lite: Color) -> void:
+	var n: int = u.soldiers
+	var files: int = u.formation_files(n)
+	var spacing: float = Unit.FORMATION_SPACING * u.spacing_scale
+	var perimeter := square_perimeter_points(n, files, spacing)
+	var tick_len: float = maxf(u.soldier_body_radius() * 0.9, 5.0)
+	for tick in square_ring_ticks(perimeter, tick_len):
+		u.draw_line(tick[0], tick[1], dark, 2.0)
+		u.draw_circle(tick[1], 1.5, lite)   # a small spearpoint glint at the tip
+
+
 ## Draw the shield overlay for `u`'s current stance onto its chrome layer. No-op for any
-## stance other than SHIELD_WALL / TESTUDO. Must be called from within `u._draw()`, with
-## the draw transform ALREADY set to the facing-rotated local frame (forward = -Y), the
-## same frame the centre emblem is drawn in; the caller restores the transform afterward.
-## `body`/`dark`/`lite` are the unit's team-tinted chrome colours (so the shields read as
-## this team's), matching the emblem's palette.
+## stance other than SHIELD_WALL / TESTUDO / the hollow-square variants. Must be called
+## from within `u._draw()`, with the draw transform ALREADY set to the facing-rotated
+## local frame (forward = -Y), the same frame the centre emblem is drawn in; the caller
+## restores the transform afterward. `body`/`dark`/`lite` are the unit's team-tinted
+## chrome colours (so the shields read as this team's), matching the emblem's palette.
 static func draw(u: Unit, body: Color, dark: Color, lite: Color) -> void:
 	if u.formation_mode == Unit.FORMATION_SHIELD_WALL:
 		_draw_shield_wall(u, body, dark, lite)
 	elif u.formation_mode == Unit.FORMATION_TESTUDO:
 		_draw_testudo(u, body, dark, lite)
+	elif u.in_square():
+		_draw_square_ring(u, dark, lite)
 
 
 ## Shield-wall: a locked edge-to-edge shield line along the block's front face.

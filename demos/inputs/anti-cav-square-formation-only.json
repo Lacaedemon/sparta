@@ -1,0 +1,12 @@
+{
+  "_comment": "Hollow-square shield-ring overlay demo, no enemies. This PR is a pure render change (a spear-tick overlay traced around the square's outward-facing perimeter) -- no combat logic touched -- but the prior anti-cav-square.json scenario kept a rear cavalry charge from the original anti-cavalry-square feature test, and the charge never actually connects within the clip's frame budget (cavalry are still MOVING and unengaged with only ~20 ticks left when the clip ends). That leaves the clip showing nothing but a stalled approach, distracting from the overlay itself. A single player Infantry unit spawns via the default line spawn (no scenario override), gets selected and zoomed in on, then presses O to jump straight to Square -- the clip shows the ring relaying out with the spear-tick overlay tracing its perimeter, cleanly, with nothing else on screen to explain away.",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 650.0, "y": 300.0, "zoom": 1.6}
+  ],
+  "steps": [
+    {"tick": 8, "click": [650, 300]},
+    {"tick": 24, "key": "O"}
+  ],
+  "state": [8, 24, 40, 60, 90]
+}
