@@ -53,11 +53,15 @@ screening spearmen, cavalry charges, and chokepoints are only meaningful if unit
 **cannot** pass through or stack on one another. Collision correctness and
 performance take priority over new-feature breadth.
 
-**Current state --- soft separation.** Each frame, a unit pushes out of any overlapping
-unit (live or routing) by *half* the overlap; the neighbor corrects the other half.
-The center-to-center floor is `RADIUS + other.RADIUS`. It's intentionally *soft* so
-regiments still press into melee contact (attack reach > separation floor) instead of
-bouncing apart. The logic lives in `Unit.gd` → `_separate()`.
+**Current state --- soft separation, plus everything below.** Each frame, a unit pushes
+out of any overlapping unit (live or routing) by *half* the overlap; the neighbor
+corrects the other half. The center-to-center floor is a **per-type** radius (cavalry
+wider than infantry), not a shared constant, and it's intentionally *soft* so regiments
+still press into melee contact (attack reach > separation floor) instead of bouncing
+apart. Two engaged enemy lines close until their front ranks meet, and a spearman line
+holds firm against cavalry --- the horse takes the full correction, so it can't ride
+through a screen. The logic lives in `Unit.gd` → `_separate()`, on top of the
+`SpatialHash.gd` neighbor grid. All five roadmap items below have landed.
 
 ### Collision roadmap (priority order)
 
@@ -67,7 +71,9 @@ bouncing apart. The logic lives in `Unit.gd` → `_separate()`.
 3. ✅ **Formation cohesion** --- a regiment holds a block/line shape while moving, not a
    blob. Landed as the block/line slot geometry in `UnitFormation.gd`.
 4. ✅ **Hard blocking** --- spearmen screen and physically stop cavalry passage; lines form
-   chokepoints. Where collision and the rock-paper-scissors design meet.
+   chokepoints. Where collision and the rock-paper-scissors design meet. Landed as the
+   asymmetric push-share in `Unit.gd` → `_separate()`: an engaged spearman takes none of
+   the separation correction against cavalry, so the horse can't push through.
 5. ✅ **Scale** --- replace the O(n²) neighbor scan with a spatial grid (and/or
    `CharacterBody2D` / `move_and_slide`) before unit counts grow past a few dozen. Landed
    as `SpatialHash.gd`/`SoldierSpatialHash.gd`; see `docs/individual-collision-design.md`
