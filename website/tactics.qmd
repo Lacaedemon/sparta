@@ -550,11 +550,32 @@ An in-place maneuver that makes men *back up* takes longer than one where they
 step forward. When a formation **reshapes** without the block marching --- a
 frontage change, a centre pivot on the spot --- some soldiers have to move
 backward relative to the way they face to reach their new slots. Troops shuffle
-backward at roughly **half** their forward pace, so those men lag, and the whole
-maneuver settles more slowly than it would if everyone were stepping forward. The
-practical upshot: a reshape that pushes the rear ranks backward (deepening the
-line) is the slowest to dress. Order it with a margin of time before contact, not
-at the moment of impact.
+backward at only a fraction of their forward (jog) pace, so those men lag, and
+the whole maneuver settles more slowly than it would if everyone were stepping
+forward. That fraction varies by type --- a heavily-kitted Spearman shuffles
+backward at barely a third of his jog pace, while a lighter Archer is closer to
+half --- so a reshape's settling time depends on which type is doing the
+backing up, not just how far it must move. The practical upshot: a reshape that
+pushes the rear ranks backward (deepening the line) is the slowest to dress,
+and slowest of all for the heaviest-kitted troops. Order it with a margin of
+time before contact, not at the moment of impact.
+
+::: {#fig-back-speed-by-type .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/back_speed_by_type.jpg">
+  <source src="media/back_speed_by_type.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the
+same formation density and given the same rear-move order at the same tick.
+The lighter-kitted Archers settle their countermarch and step off first; the
+heavier-kitted Spearmen are still holding position when the clip ends.
+:::
 
 The **about-face (conversio)** and **quarter-turn** are not reshapes, so this
 penalty doesn't touch them: every soldier turns in place and holds their exact

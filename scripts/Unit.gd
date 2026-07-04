@@ -34,8 +34,9 @@ var uid: int = -1
 # reshape -- where the rear ranks back up into new slots) is capped slower than one
 # moving forward. Real troops shuffle backward at roughly half their forward pace,
 # so a maneuver where men must back up takes longer than one where they step forward.
-# This is a single tunable, not a full per-type stat; a per-loadout backward-speed
-# value is a deferred follow-up.
+# Battle.gd sets this per-type from the loadout's "back_fraction" (see
+# Battle._default_loadout). This 0.5 default is the fallback for a bare test unit
+# that never gets a loadout.
 @export var back_speed_fraction: float = 0.5
 # Acceleration/deceleration, in world units/s^2 -- how fast this unit's actual speed
 # ramps toward whichever pace it's targeting (see _current_speed below), instead of

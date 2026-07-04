@@ -147,12 +147,17 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 	# lands on which slot. The countermarch fix changes each soldier's individual target (see
 	# soldier_world_slots' _formation_mirror_x), which changes how far bodies travel and so
 	# exactly where in its decaying oscillation couple() gets caught at the instant the ranks
-	# finish settling -- a strictly smaller total march (this fix) can commit sooner and catch
-	# the wobble at a slightly less-settled point than a slower one does. Bound the wobble at
-	# less than one file spacing -- far too small to read as an actual march, but loose enough
-	# not to be a coin flip on exactly which tick the reform happens to commit.
-	assert_lt(u.position.distance_to(start_pos), Unit.FORMATION_SPACING,
-		"the regiment held its ground for the reform (no march creep)")
+	# finish settling -- a strictly smaller total march can commit sooner and catch the wobble
+	# at a slightly less-settled point than a slower one does. On top of that, the settling
+	# window itself (_reform_timeout()) is derived from the unit's own back_speed_fraction: a
+	# slower per-type backward pace widens the window and so accumulates more follow drift.
+	# Bound the wobble at one file spacing scaled by how much slower THIS type's own fraction
+	# is than the 0.5 baseline the countermarch fix was tuned against -- loose enough not to be
+	# a coin flip on exactly which tick the reform happens to commit, at any type's pace.
+	var creep_tolerance: float = Unit.FORMATION_SPACING * (0.5 / u.back_speed_fraction)
+	assert_lt(u.position.distance_to(start_pos), creep_tolerance,
+		"the regiment held its ground for the reform (no march creep, tolerance %.3f px)"
+			% creep_tolerance)
 	assert_true(u._reform_bodies_settled(), "the march waited for the ranks, not the timeout")
 	assert_eq(_front_row_count(u), files,
 		"a FULL rank fronts the new heading at step-off, not the 4-man partial")

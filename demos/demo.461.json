@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/back-speed-by-type.json",
+  "caption": "Per-type backward-walk speed: a Spearmen regiment and an Archers regiment, forced to the same Normal formation density, both given the same drilled rear-move order at the same tick. The lighter-kitted Archers (back_fraction 0.55) settle their rear-rank countermarch and step off around tick 245; the heavier-kitted Spearmen (back_fraction 0.35) don't step off until around tick 295, so by the end of the clip Archers has marched noticeably farther. Previously both types shared one uniform 0.5 fraction and would have reformed in lockstep.",
+  "fixed_fps": 30,
+  "max_frames": 430,
+  "fps": 15,
+  "width": 720
+}
