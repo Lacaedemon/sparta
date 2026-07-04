@@ -570,9 +570,9 @@ func test_form_up_equal_depth_gives_units_the_same_rank_depth() -> void:
 func test_form_up_equal_depth_uses_average_spacing_for_a_mixed_formation_group() -> void:
 	# A mixed-density group (one TIGHT, one LOOSE) shares a pitch based on the AVERAGE
 	# spacing_scale across both units, not just the first-selected unit's. Regression
-	# test for #457: previously `_files_for_mode` always borrowed units[0]'s
-	# spacing_scale, so swapping selection order changed the resulting file counts even
-	# though the units and the drag span didn't change.
+	# test: previously `_files_for_mode` always borrowed units[0]'s spacing_scale, so
+	# swapping selection order changed the resulting file counts even though the units
+	# and the drag span didn't change.
 	var sm := _sm()
 	var tight := _unit()
 	tight.max_soldiers = 100
