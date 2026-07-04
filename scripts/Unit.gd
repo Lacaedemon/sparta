@@ -365,6 +365,12 @@ var support_target: Unit = null
 # Field rectangle the unit keeps inside when kiting (set by Battle on spawn). The
 # default is effectively unbounded so direct Unit tests don't need to set it.
 var field_bounds: Rect2 = Rect2(-100000, -100000, 200000, 200000)
+# Wider rectangle a ROUTING unit may flee into before it escapes for good (set by
+# Battle on spawn, grown from field_bounds by a retreat margin). Non-routing behavior
+# (including skirmisher kiting) still uses field_bounds, unaffected by this. The
+# default matches field_bounds's effectively-unbounded default so direct Unit tests
+# don't need to set it.
+var retreat_bounds: Rect2 = Rect2(-100000, -100000, 200000, 200000)
 
 const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0
@@ -516,6 +522,12 @@ const ANTI_CAV_CHARGE_FLOOR: float = 0.6
 
 var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
+# A ROUTING unit starts "broken" (this false): its morale still recovers and it can
+# rally back to control. If it runs out of time still in contact, or too gutted to
+# reform, it's SHATTERED (this true): it keeps fleeing but can never again recover
+# morale or rally --- the only way out from there is to escape (see _shatter()/_escape()).
+# Reset false at the top of every fresh _rout(), so a unit that rallies can break again.
+var _shattered: bool = false
 # Counts down after a new order is received; the unit holds its current action
 # until this reaches zero. A fighting unit ticks it down but is not gated by it
 # (it keeps executing _think() — retargets, disengages, and support orders all
@@ -1360,6 +1372,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	if braking_to_stop:
 		advance = minf(advance, dist_to_stop)
 	position += dir * advance
+	# A non-routing unit stops at the field's own edge -- the retreat margin is for a
+	# ROUTING unit to flee into (see Unit.retreat_bounds / _process_rout), not a place a
+	# pursuer can follow it. This is the only thing that stops a unit chasing a routing
+	# enemy from crossing into the margin after it: field_bounds is the same rect used
+	# for skirmisher kiting (FIELD), just enforced here for ordinary chase/move movement.
+	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 	state = State.MOVING
 	_moved_last_frame = true
 	# Charge velocity; terrain-scaled so forest reduces the charge bonus (intentional — can't sprint in trees).
@@ -1377,6 +1396,10 @@ func _press_into(point: Vector2, delta: float) -> void:
 	if to.length() < 1.0:
 		return
 	position += to.normalized() * move_speed * MELEE_PRESS_FRACTION * delta
+	# Same field-edge stop as _move_to: a non-routing unit doesn't follow a routing
+	# enemy into the retreat margin, even while pressing a lean into melee contact.
+	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 
 
 func _face(point: Vector2) -> void:
@@ -2496,8 +2519,11 @@ func order_summary() -> String:
 				and current_order.relief_partner != null \
 				and is_instance_valid(current_order.relief_partner):
 			return "Relieving %s" % current_order.relief_partner.unit_name
+		# A routing target still counts (it's still a live, fightable enemy --- see
+		# UnitTargeting.nearest_enemy's include_routing), so the HUD keeps reporting
+		# "Attacking" rather than falling through to "Holding position".
 		var has_target: bool = target_enemy != null and is_instance_valid(target_enemy) \
-				and target_enemy.state != State.DEAD and target_enemy.state != State.ROUTING
+				and target_enemy.state != State.DEAD
 		if has_target:
 			return "Attacking %s" % target_enemy.unit_name
 		# A maneuver in flight reads straight off the queue (phase 2): the drills and the
@@ -2697,6 +2723,9 @@ func _merged_away() -> void:
 
 # --- Death & routing -------------------------------------------------------
 
+## Annihilated: every soldier lost to combat while still on the field (see
+## UnitCombat.register_casualties's soldiers <= 0 check) --- distinct from a routing unit
+## being shattered (stays in play, fleeing) or escaping (leaves play, but got away).
 func _die() -> void:
 	_remove_from_play()
 
@@ -2729,6 +2758,7 @@ func _rout() -> void:
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_rout_timer = ROUT_TIME
+	_shattered = false   # starts "broken": can still recover morale and rally
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
 	add_to_group("routers")
@@ -2747,18 +2777,31 @@ func _rout() -> void:
 
 
 func _process_rout(delta: float) -> void:
-	# Flee toward own back edge (team 0 started at top, team 1 at bottom). Clamp to the
-	# battle field so a router stays visible on the map instead of running off the edge —
-	# it huddles at the back line where the player can still see it rally or shatter.
+	# Flee toward own back edge (team 0 started at top, team 1 at bottom). A router may
+	# cross the visible battlefield edge into the wider retreat_bounds margin — but a
+	# soldier whose flee step (or a separation shove) would carry it past THAT outer
+	# edge has fled clear of the battlefield entirely: the unit ESCAPES immediately,
+	# distinct from a SHATTER (which is run down or gutted while still on the field).
 	var flee: Vector2 = Vector2.UP if team == 0 else Vector2.DOWN
 	facing = flee
-	position += flee * (move_speed * 1.3) * delta
-	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
-	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
+	var next: Vector2 = position + flee * (move_speed * 1.3) * delta
+	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
+			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
+		_escape()
+		return
+	position = next
 
-	# The regiment's nerve steadies as it flees: while below the baseline, morale ticks up
-	# toward it at a rate proportional to the remaining gap, so it recovers quickly at first
-	# and levels off. A unit already above the baseline has nothing to recover toward.
+	# A SHATTERED unit has lost its nerve for good: it just keeps fleeing (the movement
+	# above already ran), with no morale recovery and no rally check ever again. The only
+	# way out from here is _escape() (handled above).
+	if _shattered:
+		queue_redraw()
+		return
+
+	# Still "broken" (recoverable): the regiment's nerve steadies as it flees, while below
+	# the baseline morale ticks up toward it at a rate proportional to the remaining gap,
+	# so it recovers quickly at first and levels off. A unit already above the baseline has
+	# nothing to recover toward.
 	if morale < ROUT_RALLY_BASELINE:
 		morale += (ROUT_RALLY_BASELINE - morale) * ROUT_MORALE_RECOVER_RATE * delta
 
@@ -2776,7 +2819,9 @@ func _process_rout(delta: float) -> void:
 		queue_redraw()
 		return
 	# Timer ran out: a unit that broke contact and kept enough men RALLIES back into
-	# the fight; one still in contact, or gutted past reforming, SHATTERS for good.
+	# the fight; one still in contact, or gutted past reforming, SHATTERS --- it keeps
+	# fleeing (still on the field, still fightable) but can never recover morale or rally
+	# again from here on.
 	if _can_rally():
 		_rally()
 	else:
@@ -2809,11 +2854,22 @@ func _rally() -> void:
 	queue_redraw()
 
 
-## Shatter: a routed unit that couldn't escape, or was gutted past recovery, is
-## destroyed for good — the terminal counterpart to a rally. Reuses the synchronous
-## group teardown so it never lingers in a spatial-hash / separation scan after
-## leaving play (queue_free() alone defers to end of frame).
+## Shatter: a routed ("broken") unit that couldn't recover in time --- still in contact,
+## or gutted past reforming --- loses its nerve for good. It does NOT leave play: it stays
+## on the field, still simulated, still fightable, and keeps fleeing forever (see
+## _process_rout's _shattered branch) with no more morale recovery and no more rallying.
+## The only way it ever leaves play from here is to flee clear of the map (_escape()), or
+## be run down and annihilated in combat (soldiers reach zero, see UnitCombat).
 func _shatter() -> void:
+	_shattered = true
+
+
+## Escape: a routing unit (broken or shattered) whose flight carried it past the
+## retreat_bounds margin has fled clear of the battlefield entirely --- gone for good, but
+## got away rather than being run down. The terminal counterpart to a rally; reuses the
+## synchronous group teardown so it never lingers in a spatial-hash / separation scan
+## after leaving play (queue_free() alone defers to end of frame).
+func _escape() -> void:
 	_remove_from_play()
 
 

@@ -9,6 +9,16 @@ const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
+# Extra room beyond FIELD that a ROUTING unit may flee into before it's removed from play
+# (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn once
+# as a visible margin strip at battle start (see _draw()). Sized to the game's maximum
+# visual range — the longest ranged attack (RANGED_RANGE) and the farthest a unit can
+# currently be noticed at (DETECTION_RANGE, the closest existing stand-in for a
+# fog-of-war vision range, which this game doesn't have yet) — so a fleeing unit stays a
+# plausible target for as long as it's still visible, rather than vanishing early.
+var ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
+var FIELD_WITH_MARGIN: Rect2 = FIELD.grow(ROUT_MARGIN)
+
 # Terrain patches; type keys into TERRAIN_COLOR. kind="block" is impassable; kind="slow" is a speed zone.
 const TERRAIN: Array = [
 	{"rect": Rect2(200,  380, 250, 200), "type": "forest", "kind": "slow", "speed": 0.6},
@@ -270,6 +280,10 @@ func _exit_tree() -> void:
 
 
 func _draw() -> void:
+	# The retreat margin (see FIELD_WITH_MARGIN) drawn first, under the field, so it reads
+	# as a dimmer strip of ground beyond the playable edge — where a routing unit may still
+	# be fleeing (and still fightable) before it's gone for good.
+	draw_rect(FIELD_WITH_MARGIN, Color(0.34, 0.42, 0.27).darkened(0.3))
 	# Simple grass field + a center line, so the world is readable before art.
 	draw_rect(FIELD, Color(0.34, 0.42, 0.27))
 	draw_rect(FIELD, Color(0.2, 0.25, 0.16), false, 4.0)
@@ -405,6 +419,7 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.facing = facing
 	u.position = pos
 	u.field_bounds = FIELD   # so a skirmisher kites without backing off the map
+	u.retreat_bounds = FIELD_WITH_MARGIN   # a router may flee this far before it escapes
 	_units.add_child(u)
 	# Set after add_child() so _ready() has already established the type's base
 	# separation_radius for set_formation() to scale from, and set soldiers from
@@ -551,7 +566,13 @@ func _physics_process(_delta: float) -> void:
 func _on_soldier_tick() -> void:
 	if _ended or get_tree().paused:
 		return
+	# Both groups: a ROUTING unit leaves "units" for "routers" but its soldier bodies must
+	# keep stepping/coupling while it flees, or they freeze at wherever they were the
+	# instant it broke -- the render then silently diverges further from the regiment's
+	# actual (moving) position every tick it stays routing, until some later state change
+	# forces a redraw and the bodies visibly snap to catch up.
 	var units: Array = get_tree().get_nodes_in_group("units")
+	units.append_array(get_tree().get_nodes_in_group("routers"))
 	# Friendly-avoidance steering first (it sets the velocity bias the bodies feed
 	# forward), then integrate the bodies, then slide each regiment center toward its
 	# soldiers' centroid (phase 5: friendly collision emerges from the soldier layer via
@@ -925,13 +946,16 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	var attack_targets: Array = []
 	if cmd.get("group_attack", GroupAttackMode.FOCUSED) == GroupAttackMode.DISTRIBUTED \
 			and target_unit != null and not is_move:
-		for node in get_tree().get_nodes_in_group("units"):
-			var candidate: Unit = node as Unit
-			if candidate == null or candidate.team != target_unit.team \
-					or candidate.state == Unit.State.DEAD \
-					or candidate.state == Unit.State.ROUTING:
-				continue
-			attack_targets.append(candidate)
+		# Scan both "units" and "routers" --- a routing (broken or shattered) enemy is
+		# still a live, fightable candidate (see UnitTargeting.nearest_enemy's
+		# include_routing); it just lives in the other group while fleeing.
+		for group in ["units", "routers"]:
+			for node in get_tree().get_nodes_in_group(group):
+				var candidate: Unit = node as Unit
+				if candidate == null or candidate.team != target_unit.team \
+						or candidate.state == Unit.State.DEAD:
+					continue
+				attack_targets.append(candidate)
 		var ref_pos: Vector2 = target_unit.position
 		attack_targets.sort_custom(func(a: Unit, b: Unit) -> bool:
 			var da: float = a.position.distance_to(ref_pos)

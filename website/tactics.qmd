@@ -36,24 +36,32 @@ pin the front so the flanking unit has nowhere better to turn.
 
 Units don't fight to the last soldier. When a unit loses enough soldiers or takes
 flank/rear hits, it **routs** --- it flees (shown faded) toward its own back edge and
-stops fighting for now. A routing unit **stays on the field**: it huddles at
-the back line where you can still see it, rather than vanishing off the map.
+stops fighting for now. A routing unit can flee past the field's visible edge into a
+margin beyond it before it's gone for good, staying on the field --- and still
+fightable --- for as long as it's plausibly still in view.
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
 - This makes morale a *weapon*: you can win by breaking the enemy's will before
   you've killed even half their soldiers.
-- **A routing unit can rally.** As it flees, its nerve steadies --- morale climbs back
-  toward a baseline, fast at first and levelling off. If it **breaks contact** (no enemy
-  close on its heels) and still fields enough men, its recovering morale carries it over
-  the rally threshold and it **returns to your control**, ready to fight again. So chase
-  a broken enemy down to finish it: a router you leave alone will reform and come back.
-- A unit still in contact, or gutted past reforming, **shatters** instead --- it leaves
-  play for good.
+- **A routing unit is still fair game.** Routing doesn't grant immunity --- a fleeing
+  unit can still be struck and run down, chased as relentlessly as your pursuer can
+  manage. So chase a broken enemy down to finish it, rather than assuming it's out of
+  the fight.
+- **A "broken" unit can rally** if nothing catches it. As it flees, its nerve steadies
+  --- morale climbs back toward a baseline, fast at first and levelling off. If it
+  **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
+  men, its recovering morale carries it over the rally threshold and it **returns to
+  your control**, ready to fight again.
+- **Keep pressing it and it "shatters" instead** --- still in contact when its time
+  runs out, or gutted past reforming. A shattered unit does NOT vanish: it stays on the
+  field, still routing, but can never again recover morale or rally. From there it
+  either **escapes** (flees clear of the map, gone but got away) or is run down and
+  **annihilated** (soldiers reduced to zero) before it can.
 - **The battle isn't over while a side is only routing.** A team is beaten only once
-  its last unit is truly gone (dead or shattered), not while its final unit is merely
-  routing. Even a lone survivor that breaks can flee, rally, and fight on --- so press a
-  rout home rather than assuming a broken last unit is a win.
+  its last unit is truly gone (escaped, annihilated, or otherwise removed), not while
+  its final unit is merely routing. Even a lone survivor that breaks can flee, rally,
+  and fight on --- so press a rout home rather than assuming a broken last unit is a win.
 
 ::: {#fig-rout-rally .demo}
 
@@ -66,10 +74,12 @@ the back line where you can still see it, rather than vanishing off the map.
 </video>
 ```
 
-Rout and rally: a low-morale infantry block is charged by cavalry and breaks &mdash;
-it flees faded toward its own edge, staying on the field rather than running off.
-The cavalry lose the router and stop; its morale recovers as it flees,
-and it reforms under control, back in the fight.
+Rout and pursuit: a low-morale infantry block is charged by cavalry and breaks &mdash;
+it flees faded toward its own edge. The faster cavalry catch it before it can put
+real distance between them, and the casualties from being run down keep its morale
+too low to ever recover: it's annihilated rather than rallying. A broken unit that
+truly breaks free instead recovers cleanly, as in the isolated case
+`test_morale_recovery_demo_scenario.gd` guards against regressing.
 :::
 
 ::: {#fig-last-unit-rally .demo}
@@ -83,10 +93,11 @@ and it reforms under control, back in the fight.
 </video>
 ```
 
-A team's last unit routs, then rallies. A lone player infantry is broken and
-flees (faded); with no fightable unit left the enemy AI halts, so the fugitive
-breaks contact and reforms back under control at low morale &mdash; the battle
-stays live instead of ending the instant the last unit broke.
+A team's last unit routs. A lone player infantry is broken and flees (faded);
+the enemy keeps pressing since a routing unit is still fair game, so this
+matchup grinds on rather than resolving cleanly &mdash; but the point still
+holds: the battle stays live instead of ending the instant the last unit
+broke, for as long as it's still on the field.
 :::
 
 ## Rank cycling (trained units)
