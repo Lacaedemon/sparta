@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Teardown/resource-lifecycle fix (#477): makes Battle._exit_tree() null-safe against get_tree() already being null during teardown, and unconditionally releases PathField.active / ProjectileField.active / the SpatialHash + SoldierSpatialHash grids so they never stay pinned by a freed battle. There is nothing to show on screen -- the change only affects what happens to internal state after a battle is torn down (verified by a new regression test that spawns and frees several Battle scenes in one run and asserts a fresh battle still seeds its soldier bodies), not anything visible in a recorded clip."
+}
