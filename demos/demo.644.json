@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Editor-only tooling fix: tools/benchmark/BenchmarkRunner.gd is a headless performance-benchmark script (see tools/benchmark/README.md), not gameplay code. The change disables SFX during a benchmark run to stop an AudioStreamWAV leak at process exit -- it has no player-visible effect on scenes/, scripts/ gameplay behavior, assets/, or project.godot."
+}
