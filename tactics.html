@@ -827,7 +827,21 @@ Figure&nbsp;8: Pace modes: regiments walk on approach, jog when enemy archers op
 </section>
 <section id="backing-up-costs-time" class="level2">
 <h2 class="anchored" data-anchor-id="backing-up-costs-time">Backing up costs time</h2>
-<p>An in-place maneuver that makes men <em>back up</em> takes longer than one where they step forward. When a formation <strong>reshapes</strong> without the block marching — a frontage change, a centre pivot on the spot — some soldiers have to move backward relative to the way they face to reach their new slots. Troops shuffle backward at roughly <strong>half</strong> their forward pace, so those men lag, and the whole maneuver settles more slowly than it would if everyone were stepping forward. The practical upshot: a reshape that pushes the rear ranks backward (deepening the line) is the slowest to dress. Order it with a margin of time before contact, not at the moment of impact.</p>
+<p>An in-place maneuver that makes men <em>back up</em> takes longer than one where they step forward. When a formation <strong>reshapes</strong> without the block marching — a frontage change, a centre pivot on the spot — some soldiers have to move backward relative to the way they face to reach their new slots. Troops shuffle backward at only a fraction of their forward (jog) pace, so those men lag, and the whole maneuver settles more slowly than it would if everyone were stepping forward. That fraction varies by type — a heavily-kitted Spearman shuffles backward at barely a third of his jog pace, while a lighter Archer is closer to half — so a reshape’s settling time depends on which type is doing the backing up, not just how far it must move. The practical upshot: a reshape that pushes the rear ranks backward (deepening the line) is the slowest to dress, and slowest of all for the heaviest-kitted troops. Order it with a margin of time before contact, not at the moment of impact.</p>
+<div id="fig-back-speed-by-type" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/back_speed_by_type.jpg">
+  <source src="media/back_speed_by_type.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;9: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
+</figcaption>
+</figure>
+</div>
 <p>The <strong>about-face (conversio)</strong> and <strong>quarter-turn</strong> are not reshapes, so this penalty doesn’t touch them: every soldier turns in place and holds their exact position for the whole turn — nobody steps forward or backward at all, only facing changes. Their duration depends solely on the drill turn rate, not the backward-speed cap.</p>
 <p>The <strong>reform after an about-face</strong> is where the penalty comes back. Flipping a unit that has taken losses puts its short, under-strength rank — previously the safe rear rank — at the new front, so a rear move reforms after the turn: the men counter-march through the block onto ranks squared to the new heading, bringing a full rank forward and sending the short rank back. Some of those men are stepping backward relative to their facing, so a deep, depleted block takes a couple of seconds to dress. With <strong>Reform before move</strong> on, that time is spent before the unit steps off — order the retreat with a margin. With it off, the unit marches at once and reforms on arrival, buying speed at the price of leading the whole march with its thinnest rank.</p>
 </section>
@@ -849,7 +863,7 @@ Figure&nbsp;8: Pace modes: regiments walk on approach, jog when enemy archers op
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+Figure&nbsp;10: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
 </figcaption>
 </figure>
 </div>
@@ -895,7 +909,7 @@ Figure&nbsp;9: Braking on arrival: a lone Infantry regiment sprints toward a mov
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;11: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
