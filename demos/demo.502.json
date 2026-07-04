@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This PR only adds an extra 'Commander: <rank>' segment to the HUD selected-unit info panel's text (scripts/HUD.gd show_unit / scripts/OfficerRank.gd). That panel does not render in CI's headless Movie Maker capture -- confirmed against demos/shots/control-bar.png, an existing shipped screenshot selecting three units, where the same bottom-left info panel is likewise absent while the control bar next to it does render. The change was instead verified directly against a live-spawned Unit's state (HUD.show_unit(unit, 1) with a real 140-soldier anti-cavalry Spearmen unit produced the text 'Type: Spearmen  Commander: Primus Pilus', matching OfficerRank.title_for's design) and by the new unit tests in test/unit/test_officer_rank.gd."
+}
