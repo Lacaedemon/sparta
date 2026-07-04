@@ -6,7 +6,7 @@ class_name UnitSprites
 ## `Unit.RADIUS` / `Unit.FLAG_*`.
 ##
 ## The former per-type centre emblem (a large icon hovering over the whole block) was
-## removed (#627): unit type is already conveyed by the per-soldier mark/figure shapes
+## removed: unit type is already conveyed by the per-soldier mark/figure shapes
 ## (see UnitMeshes — dart/kite/pointer marks and the figure silhouettes, both distinct
 ## per type at any zoom), the flag's own mini emblem below, and the selected-unit info
 ## card (HUD.gd).
