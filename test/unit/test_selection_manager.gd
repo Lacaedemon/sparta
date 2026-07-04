@@ -85,9 +85,9 @@ func test_unit_speed_label_reads_zero_for_a_halted_unit() -> void:
 
 
 func test_unit_speed_label_reads_wheeling_mid_swing_instead_of_zero() -> void:
-	# #484: _advance_wheel rotates the block about a hinge without ever calling
-	# _move_to, so current_speed never leaves 0 during a wheel -- the label must not
-	# claim the unit is stationary while it's visibly swinging.
+	# _advance_wheel rotates the block about a hinge without ever calling _move_to,
+	# so current_speed never leaves 0 during a wheel -- the label must not claim the
+	# unit is stationary while it's visibly swinging.
 	var sm := _sm()
 	var u := _unit()
 	Settings.show_unit_speed = true
