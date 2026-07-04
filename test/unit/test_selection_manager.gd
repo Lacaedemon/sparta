@@ -279,12 +279,13 @@ func test_resize_frontage_routes_an_absolute_command_to_battle() -> void:
 
 # --- keystroke overlay capture --------------------------
 
-func _key_event(keycode: int, ctrl: bool = false) -> InputEventKey:
+func _key_event(keycode: int, ctrl: bool = false, shift: bool = false) -> InputEventKey:
 	var ev := InputEventKey.new()
 	ev.keycode = keycode
 	ev.physical_keycode = keycode
 	ev.pressed = true
 	ev.ctrl_pressed = ctrl
+	ev.shift_pressed = shift
 	return ev
 
 
@@ -319,6 +320,60 @@ func test_dispatch_key_routes_resize_and_reports_handled() -> void:
 	assert_true(sm._dispatch_key(_key_event(KEY_BRACKETRIGHT)), "] is a handled hotkey")
 	assert_eq(UnitFormation.frontage(u), start + 1, "and widens the selected unit")
 	assert_false(sm._dispatch_key(_key_event(KEY_P)), "an unbound key is not handled")
+
+
+func test_dispatch_key_shift_b_issues_right_anchored_explicatio() -> void:
+	# Shift+B (asymmetric explicatio): widens like plain B, but with a non-zero
+	# anchor offset that holds the right flank fixed instead of the plain centred
+	# widen's zero offset.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 11
+	u.soldiers = 120
+	u.max_soldiers = 120
+	b._by_uid[11] = u
+	var start: int = UnitFormation.frontage(u)
+	sm._select(u)
+	assert_true(sm._dispatch_key(_key_event(KEY_B, false, true)), "Shift+B is a handled hotkey")
+	assert_eq(UnitFormation.frontage(u), start * 2, "still doubles the frontage like plain B")
+	assert_ne(u.frontage_anchor_offset, 0.0, "right-anchored explicatio carries a non-zero anchor shift")
+
+
+func test_dispatch_key_ctrl_b_issues_left_anchored_explicatio() -> void:
+	# Ctrl+B is the mirror: same widen, opposite (left) anchor -- so the shift sign
+	# is the opposite of Shift+B's for the same starting layout.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 12
+	u.soldiers = 120
+	u.max_soldiers = 120
+	b._by_uid[12] = u
+	sm._select(u)
+	assert_true(sm._dispatch_key(_key_event(KEY_B, true)), "Ctrl+B is a handled hotkey")
+	assert_ne(u.frontage_anchor_offset, 0.0, "left-anchored explicatio carries a non-zero anchor shift")
+
+
+func test_dispatch_key_plain_b_stays_centred() -> void:
+	# Plain B (no modifier) is unchanged: the centred explicatio carries a zero
+	# anchor offset, exactly like before this asymmetric variant existed.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 13
+	u.soldiers = 120
+	u.max_soldiers = 120
+	b._by_uid[13] = u
+	sm._select(u)
+	assert_true(sm._dispatch_key(_key_event(KEY_B)), "plain B is a handled hotkey")
+	assert_eq(u.frontage_anchor_offset, 0.0, "the plain centred explicatio has no anchor shift")
 
 
 func test_dispatch_key_routes_up_arrow_to_forward_nudge() -> void:
