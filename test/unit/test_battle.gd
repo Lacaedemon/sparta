@@ -1006,9 +1006,10 @@ func test_form_up_order_never_side_steps() -> void:
 	var b := _battle([u])
 	b.enqueue_form_up([1], Vector2(0, 20), 1.0, 20)   # short lateral form-up
 	assert_eq(u.ordered_facing, Vector2.ZERO, "form-up uses deploy_facing, not a side-step hold")
+	assert_ne(u.deploy_facing, Vector2.ZERO, "...and parks its commanded facing instead")
 
 
-# --- per-type backward-walk speed (#461) ----------------------------------------
+# --- per-type backward-walk speed ----------------------------------------
 
 func test_default_loadout_carries_a_back_fraction_per_type() -> void:
 	# Every entry in the default loadout states its own backward-walk fraction,

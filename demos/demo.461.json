@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "This makes the backward-walk speed cap from #456 a per-loadout stat instead of one uniform fraction: Spearmen back up at 0.35x jog, Infantry 0.45x, Archers 0.55x, Cavalry 0.3x (was a single shared 0.5x for every type). The visible effect is the same sub-second difference in reform settling time #456 already documented as too subtle for a recorded clip to distinguish from normal arrival motion, now split across types by a similarly small margin -- not something a short clip can show side by side. Covered by unit tests (test_battle.gd: each loadout entry carries its own back_fraction, a spawned unit's back_speed_fraction matches its type, a bare unit without a loadout keeps the Unit.gd default) and documented in website/tactics.qmd ('Backing up costs time')."
+  "input": "demos/inputs/back-speed-by-type.json",
+  "caption": "Per-type backward-walk speed: a Spearmen regiment and an Archers regiment, forced to the same Normal formation density, both given the same drilled rear-move order at the same tick. The lighter-kitted Archers (back_fraction 0.55) settle their rear-rank countermarch and step off around tick 245; the heavier-kitted Spearmen (back_fraction 0.35) don't step off until around tick 295, so by the end of the clip Archers has marched noticeably farther. Previously both types shared one uniform 0.5 fraction and would have reformed in lockstep.",
+  "fixed_fps": 30,
+  "max_frames": 430,
+  "fps": 15,
+  "width": 720
 }
