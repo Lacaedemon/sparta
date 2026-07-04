@@ -156,3 +156,65 @@ func test_explicatio_right_anchored_holds_the_right_flank_in_place() -> void:
 		prev = target._sim_soldier_pos.duplicate()
 	assert_lt(worst_step, 6.0,
 		"bodies ease into the anchored slots at velocity, no teleport (worst %.3f px)" % worst_step)
+
+
+func test_explicatio_right_anchored_settles_with_the_regiment_centre_held_and_body_centroid_shifted() -> void:
+	# Regression test: SoldierBodies.couple() slides `position` toward the soldier bodies'
+	# own centroid each tick to correct genuine off-formation drift (friendly-avoidance,
+	# knockback). An anchored explicatio/duplicatio makes the TARGET slot centroid itself
+	# sit away from `position` on purpose (frontage_anchor_offset) -- not drift to correct.
+	# Before the fix, coupling misread that permanent, intentional gap as drift and kept
+	# dragging `position` every tick right up until the bodies (separately easing onto the
+	# anchored slots) caught up -- so by the time the bodies settled, `position` had been
+	# pulled tens of world units off, and the render's selection ring (drawn at `position`)
+	# visibly no longer centred on the widened block, even though the immediately-read slot
+	# geometry (the sibling test above) looked correct the instant the order was issued.
+	# This test steps the FULL sim long enough for the bodies to actually settle and checks
+	# both ends of the same regression: `position` stays put, AND the body centroid ends up
+	# genuinely off-centre (proving the widen is actually asymmetric in the live render, not
+	# just in the instantaneous target math).
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	for _k in range(40):                      # spawn the armies and let the bodies settle
+		await get_tree().physics_frame
+	var target: Unit = _target_unit(get_tree())
+	assert_not_null(target, "found a team-0 unit to reshape")
+	if target == null:
+		return
+
+	var start_pos: Vector2 = target.position
+	var start_bbox: Vector2 = _bbox(target._sim_soldier_pos)
+	var start_centroid := Vector2.ZERO
+	for p in target._sim_soldier_pos:
+		start_centroid += p
+	start_centroid /= float(target._sim_soldier_pos.size())
+
+	battle.enqueue_file_double([target.uid], 1, UnitFormation.Anchor.RIGHT)   # asymmetric explicatio
+
+	# Settle well past the ~1.5 s a plain widen needs (test above) -- the anchored case has
+	# further to travel on the growing flank, so give it a generous margin.
+	for _i in range(300):
+		await get_tree().physics_frame
+
+	assert_almost_eq(target.position.x, start_pos.x, 1.0,
+		"the regiment centre holds still through an anchored widen, exactly like the centred one")
+	assert_almost_eq(target.position.y, start_pos.y, 1.0,
+		"the regiment centre holds still through an anchored widen, exactly like the centred one")
+
+	var end_centroid := Vector2.ZERO
+	for p in target._sim_soldier_pos:
+		end_centroid += p
+	end_centroid /= float(target._sim_soldier_pos.size())
+	var end_bbox: Vector2 = _bbox(target._sim_soldier_pos)
+
+	# The widened block is measurably wider than it started (more files).
+	assert_gt(end_bbox.x, start_bbox.x + CENTRE_SETTLE_TOLERANCE_PX,
+		"the anchored widen genuinely broadens the block's world footprint")
+	# An anchored widen is NOT a plain centred widen: the body centroid must shift by a
+	# real amount (half the width gained, landing on the un-anchored flank) rather than
+	# staying near the pre-widen centroid the way test_explicatio_widens_the_line_... does.
+	assert_gt(start_centroid.distance_to(end_centroid), CENTRE_SETTLE_TOLERANCE_PX,
+		"the anchored widen visibly shifts the soldiers' own centroid off the old centre " +
+		"(a plain centred widen would not) -- this is the render-visible asymmetry the " +
+		"anchor is FOR; a regiment-centre-drags-to-cancel-it bug would collapse this back " +
+		"toward zero")

@@ -94,3 +94,42 @@ func test_replay_without_camera_moves_has_no_track() -> void:
 	assert_true(loaded.start_playback(path), "it loads")
 	assert_false(loaded.has_camera_track(), "no camera keyframes -> no presentation track")
 	assert_eq(loaded.camera_for_tick(0), {}, "playback drives nothing -> static camera")
+
+
+func test_save_load_round_trips_an_anchored_frontage_orders_anchor_offset() -> void:
+	# Regression test: an asymmetric (anchored) explicatio/duplicatio's anchor_offset must
+	# survive a save/load round trip like every other order field, or a saved-and-replayed
+	# anchored widen silently re-centres instead of holding the flank (live-vs-replay desync
+	# -- the anchor read correctly in a live session, since Battle.enqueue_file_double applies
+	# it immediately, but a *replayed* recording of the same session would drop it, since
+	# record_order never carried it to the saved file).
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [0], Vector2.ZERO, -4, 0, 0, 32, INF, 0, false, -72.0)   # -4 = ORDER_FRONTAGE_ONLY
+	var path: String = r.save("Test", 5)
+	assert_ne(path, "", "the recording saves")
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1, "the frontage order round-trips")
+	assert_almost_eq(float(due[0].get("anchor_offset", 0.0)), -72.0, 0.0001,
+			"the anchor offset round-trips through save/load, not just live recording")
+
+
+func test_a_centred_frontage_order_omits_anchor_offset_on_round_trip() -> void:
+	# The plain (centred) case -- anchor_offset 0.0 -- stays omitted on save (matching the
+	# in-memory record_order behaviour for every other optional field) and reads back as the
+	# same 0.0 default, so an old replay recorded before this field existed still loads and
+	# plays exactly like a fresh centred resize.
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [0], Vector2.ZERO, -4, 0, 0, 16)   # -4 = ORDER_FRONTAGE_ONLY, no anchor
+	var path: String = r.save("Test", 5)
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1, "the frontage order round-trips")
+	assert_false(due[0].has("anchor_offset"),
+			"a centred resize's order carries no anchor_offset key at all, like a pre-anchor replay")

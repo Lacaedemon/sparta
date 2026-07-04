@@ -534,7 +534,8 @@ func _physics_process(_delta: float) -> void:
 					int(o.get("frontage", 0)),
 					float(o.get("face", INF)),
 					int(o.get("group_attack", GroupAttackMode.FOCUSED)),
-					bool(o.get("walk_advance", false)))
+					bool(o.get("walk_advance", false)),
+					float(o.get("anchor_offset", 0.0)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply

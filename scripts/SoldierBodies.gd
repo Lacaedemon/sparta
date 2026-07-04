@@ -295,6 +295,22 @@ static func _cap_body_speed(unit: Unit, i: int) -> Vector2:
 ## level up. During a clean march the bodies sit on their moving slots (drift ~0) so this is
 ## silent and never double-counts the march. Capped at MAX_FOLLOW_SPEED*delta so the center
 ## can never teleport. Per-unit and RNG-free -- replay-safe.
+##
+## An anchored (asymmetric) explicatio/duplicatio breaks the "mean(slots) ~ position" premise
+## ON PURPOSE: unit.frontage_anchor_offset shifts every slot by a fixed local-X amount so one
+## flank's edge holds fixed as the block widens/narrows (UnitFormation.slots), which moves the
+## slot centroid away from `position` by that same amount for as long as the offset is nonzero
+## -- not a transient lag that resolves as bodies arrive, but a standing, intentional gap. Left
+## alone, coupling reads that permanent gap as bodies pushed off formation and keeps dragging
+## `position` to close it every tick right up until the moment the bodies (which are separately
+## easing onto the anchored slots via SoldierBodies.step) finish arriving -- at which point
+## `position` has been pulled to whatever it happened to be dragged to, not the anchor's own
+## fixed flank (this is a marginal/neutral feedback loop between this step and the arrival step:
+## any position at all is a fixed point once the bodies catch up to wherever the slots ended up,
+## so the actual endpoint is a transient-dependent accident, not the intended fixed flank).
+## Skip coupling entirely while an anchor offset is in effect -- mirroring the wheel skip right
+## below -- so `position` holds still and the bodies alone (correctly) ease onto the anchored
+## slots; coupling resumes the moment a fresh order clears the offset back to 0.0.
 static func couple(unit: Unit, delta: float) -> void:
 	var n: int = unit._sim_soldier_pos.size()
 	if n == 0:
@@ -304,7 +320,7 @@ static func couple(unit: Unit, delta: float) -> void:
 	# slot centroid, so coupling would read that lag as off-formation drift and drag the centre
 	# BACKWARD against the arc — pulling the standing flank off its hinge. Skip it; the arrival
 	# alone brings the bodies onto the arc, and coupling resumes once the wheel completes.
-	if unit.is_wheeling():
+	if unit.is_wheeling() or unit.frontage_anchor_offset != 0.0:
 		unit._body_follow_vel = Vector2.ZERO
 		return
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
