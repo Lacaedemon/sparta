@@ -1607,11 +1607,23 @@ func _draw_order_distance(a: Vector2, b: Vector2, world_dist: float, color: Colo
 ## The unit's `current_speed` is world units/second; it's converted back to the m/s the
 ## loadout declared via Battle.WORLD_UNITS_PER_METER and Battle.SPEED_SCALE so it reads in
 ## the same metric units as the distance labels. Opt-in via Settings.show_unit_speed
-## (default off). A halted unit reads "0.0 m/s". Pure (no drawing) so it's unit-testable;
-## _draw_unit_speed just positions and renders whatever this returns.
+## (default off). A halted unit reads "0.0 m/s".
+##
+## `current_speed` tracks only translational march speed (ramped by _move_to); a wheel
+## (_advance_wheel) rotates the whole block about a fixed hinge without ever calling
+## _move_to, so it never sets current_speed above 0 even while the block visibly swings.
+## Rather than compute and expose a separate arc-speed metric, a wheeling unit shows
+## "wheeling" instead of a misleading "0.0 m/s" -- the label still tells the player the
+## unit isn't idle, without inventing a number for a motion this label was never designed
+## to describe.
+##
+## Pure (no drawing) so it's unit-testable; _draw_unit_speed just positions and renders
+## whatever this returns.
 func _unit_speed_label(u: UnitRef) -> String:
 	if not Settings.show_unit_speed:
 		return ""
+	if u.is_wheeling():
+		return "wheeling"
 	var mps: float = DistanceLegend.mps_for_world_speed(
 			u.current_speed, BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
 	return DistanceLegend.speed_label_text(mps)

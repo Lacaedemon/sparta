@@ -84,6 +84,22 @@ func test_unit_speed_label_reads_zero_for_a_halted_unit() -> void:
 	assert_eq(sm._unit_speed_label(u), "0.0 m/s", "a stationary unit reads 0.0 m/s")
 
 
+func test_unit_speed_label_reads_wheeling_mid_swing_instead_of_zero() -> void:
+	# _advance_wheel rotates the block about a hinge without ever calling _move_to,
+	# so current_speed never leaves 0 during a wheel -- the label must not claim the
+	# unit is stationary while it's visibly swinging.
+	var sm := _sm()
+	var u := _unit()
+	Settings.show_unit_speed = true
+	u._current_speed = 0.0
+	var w := Order.new_wheel(1)
+	w.turn_start_facing = u.facing
+	w.turn_target = u.facing.rotated(PI * 0.5)
+	u.set_current_order(w)
+	assert_true(u.is_wheeling(), "setup: the order is a mid-swing wheel")
+	assert_eq(sm._unit_speed_label(u), "wheeling", "a mid-wheel unit reads 'wheeling', not '0.0 m/s'")
+
+
 # --- order-overlay distance label: route length (#413) -----------------------
 
 func test_route_length_single_leg_is_the_straight_distance() -> void:
