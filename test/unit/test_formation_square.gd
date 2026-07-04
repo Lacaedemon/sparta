@@ -175,7 +175,7 @@ func test_t_cycle_reaches_square_then_wraps_to_normal() -> void:
 
 
 func test_shift_t_reverses_the_formation_cycle() -> void:
-	# #505: Shift+T is the reverse of T (prev_formation), the same parallelism as
+	# Shift+T is the reverse of T (prev_formation), the same parallelism as
 	# Shift+Tab reversing Tab -- stepping forward then back returns to the start.
 	const SM = preload("res://scripts/SelectionManager.gd")
 	assert_eq(SM.prev_formation(Unit.FORMATION_TIGHT), Unit.FORMATION_NORMAL,

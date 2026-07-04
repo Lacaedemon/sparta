@@ -273,6 +273,23 @@ way, handy for stepping back one density without looping all the way round. Two 
 build on Tight's locked-shield density and are set from the control-bar Formation menu or
 their own direct keys.
 
+::: {#fig-formation-shift-reverse .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/formation_shift_reverse.jpg">
+  <source src="media/formation_shift_reverse.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to
+Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight --- the same
+parallelism as Shift+Y and Shift+X reversing the form-up-split and
+group-attack-mode cycles.
+:::
+
 - **Shield Wall** (<kbd>L</kbd>) --- shields locked edge-to-edge, a static line. It
   sharply cuts the missile and melee damage a unit takes **from the front**, but only
   from the front: a shot or blow into the flank or rear ignores the wall. The wall barely

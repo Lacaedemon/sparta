@@ -689,7 +689,7 @@ func test_cycle_form_up_dist_hotkey_flips_the_live_mode() -> void:
 
 
 func test_shift_y_reverses_the_form_up_dist_cycle() -> void:
-	# Shift+Y is the reverse of Y (#505), parallel to Shift+Tab reversing Tab: a forward
+	# Shift+Y is the reverse of Y, parallel to Shift+Tab reversing Tab: a forward
 	# press then a Shift+ press should return to the mode Y started at.
 	var sm := _sm()
 	sm._form_up_dist = EQUAL_DEPTH
@@ -731,7 +731,7 @@ func test_form_up_dist_default_clamps_out_of_range() -> void:
 # --- group-attack-mode cycle (X, Shift+X reverses) -------
 
 func test_x_cycles_group_attack_mode_and_shift_x_reverses() -> void:
-	# #505: Shift+X reverses X, the same parallelism as Shift+Y reversing Y and
+	# Shift+X reverses X, the same parallelism as Shift+Y reversing Y and
 	# Shift+Tab reversing Tab.
 	var sm := _sm()
 	var start: int = sm._group_attack_mode
