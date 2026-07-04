@@ -59,6 +59,7 @@ DEMOS=(
   "formation_preview_square|demos/inputs/formation-preview-square.json|30|300|640|input"
   "cannae_scale|demos/inputs/cannae-scale.json|60|300|720|input"
   "battle_ai_leaders|demos/inputs/battle-ai-unit-leaders.json|60|720|640|input"
+  "back_speed_by_type|demos/inputs/back-speed-by-type.json|30|430|720|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a
