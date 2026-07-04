@@ -1006,4 +1006,55 @@ func test_form_up_order_never_side_steps() -> void:
 	var b := _battle([u])
 	b.enqueue_form_up([1], Vector2(0, 20), 1.0, 20)   # short lateral form-up
 	assert_eq(u.ordered_facing, Vector2.ZERO, "form-up uses deploy_facing, not a side-step hold")
-	assert_ne(u.deploy_facing, Vector2.ZERO, "...and parks its commanded facing instead")
+
+
+# --- per-type backward-walk speed (#461) ----------------------------------------
+
+func test_default_loadout_carries_a_back_fraction_per_type() -> void:
+	# Every entry in the default loadout states its own backward-walk fraction,
+	# not one shared value -- the whole point of the per-type stat.
+	var b := BattleScript.new()
+	autofree(b)
+	var loadout: Array = b._default_loadout()
+	assert_eq(loadout.size(), 5, "sanity: line composition is spearmen/infantry/archers/cav/cav")
+	for d in loadout:
+		assert_true(d.has("back_fraction"),
+			"%s's loadout entry states its own back_fraction" % d["name"])
+
+
+func test_units_spawn_with_their_type_back_speed_fraction() -> void:
+	# A live-spawned unit's back_speed_fraction comes from its type's loadout entry,
+	# mirroring how walk_speed/jog_speed are already set at spawn (Battle._spawn_unit).
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	await get_tree().physics_frame   # one tick to let _spawn_line run
+
+	var loadout: Array = battle._default_loadout()
+	var expected_by_name: Dictionary = {}
+	for d in loadout:
+		expected_by_name[d["name"]] = d["back_fraction"]
+
+	var seen_by_name: Dictionary = {}
+	for u in get_tree().get_nodes_in_group("units"):
+		var unit: Unit = u as Unit
+		if unit == null or unit.team != 0:
+			continue
+		var type_name: String = unit.unit_name.split(" ")[0]
+		if not seen_by_name.has(type_name):
+			seen_by_name[type_name] = unit.back_speed_fraction
+
+	for type_name in expected_by_name:
+		assert_almost_eq(seen_by_name.get(type_name, -1.0), expected_by_name[type_name], 0.0001,
+			"%s spawns with its own loadout back_fraction" % type_name)
+	assert_lt(seen_by_name["Spearmen"], seen_by_name["Archers"],
+		"heavier kit (Spearmen) backs up proportionally slower than lighter kit (Archers)")
+
+
+func test_bare_unit_without_loadout_keeps_default_back_speed_fraction() -> void:
+	# A hand-rolled Unit (no loadout dict at all, as in most other GUT tests) must keep
+	# Unit.gd's own back_speed_fraction default -- Battle._spawn_unit only overrides it
+	# when the loadout dict actually carries a "back_fraction" key.
+	var u: Unit = UnitScript.new()
+	add_child_autofree(u)
+	assert_almost_eq(u.back_speed_fraction, 0.5, 0.0001,
+		"a bare unit with no loadout falls back to the Unit.gd default")

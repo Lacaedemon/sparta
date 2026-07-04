@@ -125,8 +125,18 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 		if u.has_move_target:
 			break
 	assert_true(u.has_move_target, "the parked march commits once the ranks re-form")
-	assert_lt(u.position.distance_to(start_pos), 2.0,
-		"the regiment held its ground for the reform (no march creep)")
+	# The centre-coupling follow (SoldierBodies.couple) drags `position` a little toward the
+	# body centroid for as long as the countermarch is settling, so the tolerance scales with
+	# how long that settling window runs -- u._reform_timeout(), which is itself derived from
+	# the unit's own back_speed_fraction (a slower per-type backward pace settles more slowly,
+	# widening the window and so accumulating more follow drift). 2.0px was tuned for the old
+	# uniform 0.5 fraction at this unit's depth; scale it by how much slower THIS type's own
+	# fraction is than that 0.5 baseline, instead of hard-coding a wider fixed literal, so a
+	# future per-type retune stays correct here too.
+	var creep_tolerance: float = 2.0 * (0.5 / u.back_speed_fraction)
+	assert_lt(u.position.distance_to(start_pos), creep_tolerance,
+		"the regiment held its ground for the reform (no march creep, tolerance %.3f px)"
+			% creep_tolerance)
 	assert_true(u._reform_bodies_settled(), "the march waited for the ranks, not the timeout")
 	assert_eq(_front_row_count(u), files,
 		"a FULL rank fronts the new heading at step-off, not the 4-man partial")

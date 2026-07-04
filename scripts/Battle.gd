@@ -317,6 +317,15 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# spearmen brace tight by default (locked shields against a charge); ranged
 	# skirmishers start loose (room to fire, less to lose from spreading out);
 	# sword-armed foot and cavalry start at the plain combat-order default.
+	#
+	# `back_fraction` is the type's backward-walk speed, as a fraction of its own
+	# jog_mps (see Unit.back_speed_fraction) -- a soldier backing up during an
+	# in-place maneuver moves slower than one stepping forward, and the shortfall
+	# scales with kit weight the same way the pace speeds above do: a heavily-kitted
+	# spearman shuffles backward at barely a third of his jog pace, while a light
+	# skirmisher archer is closer to half. Cavalry back a horse up carefully rather
+	# than trotting it backward, so it sits lowest of all. Optional per entry --
+	# _spawn_unit falls back to the Unit.gd default (0.5) when a loadout omits it.
 	var loadout := _default_loadout()
 	# Tighten spacing as the line grows so even a max stack stays on the field.
 	var spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
@@ -352,13 +361,18 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 ## `formation` is the type's default density (every unit can still cycle Tight/Normal/Loose
 ## live with the T hotkey): anti-cavalry spearmen brace tight, ranged skirmishers start
 ## loose, sword-armed foot and cavalry at the plain combat-order default.
+##
+## `back_fraction` is the type's backward-walk speed as a fraction of its own jog_mps (see
+## Unit.back_speed_fraction) -- heavier kit backs up proportionally slower, same reasoning
+## as the pace speeds above. Optional; _spawn_unit falls back to the Unit.gd default (0.5)
+## for a loadout entry that omits it.
 func _default_loadout() -> Array:
 	return [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "shield": LoadoutRegistry.SHIELD_SCUTUM, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "shield": LoadoutRegistry.SHIELD_SCUTUM, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "back_fraction": 0.55, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
 	]
 
 
@@ -386,6 +400,11 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.move_speed = d["sprint_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 	u.accel = d["accel_mps2"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 	u.decel = d["decel_mps2"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+	# Per-type backward-walk speed, as a fraction of this type's own jog_speed (see
+	# Unit.back_speed_fraction). A dict without a "back_fraction" key (a bare test unit)
+	# keeps the Unit.gd default (0.5), matching pre-loadout behavior.
+	if d.has("back_fraction"):
+		u.back_speed_fraction = d["back_fraction"]
 	# Loadout types: interned LoadoutRegistry ids. The weapon type is the single
 	# source of truth for melee reach — its reach_m (metres) -> world units becomes
 	# the unit's attack_range, the same scalar combat read before the registry

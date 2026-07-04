@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This makes the backward-walk speed cap from #456 a per-loadout stat instead of one uniform fraction: Spearmen back up at 0.35x jog, Infantry 0.45x, Archers 0.55x, Cavalry 0.3x (was a single shared 0.5x for every type). The visible effect is the same sub-second difference in reform settling time #456 already documented as too subtle for a recorded clip to distinguish from normal arrival motion, now split across types by a similarly small margin -- not something a short clip can show side by side. Covered by unit tests (test_battle.gd: each loadout entry carries its own back_fraction, a spawned unit's back_speed_fraction matches its type, a bare unit without a loadout keeps the Unit.gd default) and documented in website/tactics.qmd ('Backing up costs time')."
+}
