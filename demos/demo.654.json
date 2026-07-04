@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/rout-rally-recover.json",
+  "caption": "Routing units are now valid combat targets and can flee past the visible field into a margin before they're gone for good. Here the faster cavalry catch the fleeing infantry and run it down (annihilated) instead of losing interest -- the old version of this demo showed the same matchup rallying, back when routing units were untargetable.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

@@ -33,7 +33,9 @@ static func satisfied(u: Unit, order: Order) -> bool:
 
 
 ## A live, non-routing enemy is within `range_units` of `u`. range_units <= 0 falls back to
-## Unit.DETECTION_RANGE, matching normal auto-acquisition's reach.
+## Unit.DETECTION_RANGE. Unlike combat auto-acquisition (UnitTargeting.nearest_enemy), this
+## guard does NOT count a routing enemy --- it gates order transitions ("enemy sighted"),
+## where a fleeing regiment isn't the kind of threat that should re-trigger a scripted order.
 static func enemy_in_range(u: Unit, range_units: float) -> bool:
 	var radius: float = range_units if range_units > 0.0 else Unit.DETECTION_RANGE
 	return UnitTargeting.nearest_enemy_to(u, u.position, radius) != null

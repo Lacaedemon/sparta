@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This PR adds two internal frontage-reshape variants (RECREATE_WIDTH / MATCH_TARGET) on Unit.engage_reshape_mode, layered on top of the turn-in-place PR #476 already ships and demos. There is no player-facing control (keybinding/HUD) in this PR to select a non-default mode, so a recorded battle at default settings would look identical to #476's existing clip -- it can't show the new behavior. The reshape mechanism itself (reusing Unit.set_frontage's arrival-eased grid-op, no teleport) is covered by GUT tests in test/unit/test_engage_refacing.gd."
+}

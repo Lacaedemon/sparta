@@ -181,9 +181,11 @@ static func friendly_interceptor(u: Unit, target: Unit) -> Unit:
 	return closest
 
 
-## Called by an attacker. Applies flanking from the DEFENDER's (`u`'s) facing.
+## Called by an attacker. Applies flanking from the DEFENDER's (`u`'s) facing. A routing
+## (broken or shattered) unit CAN take casualties here --- fleeing doesn't grant immunity,
+## it can still be run down and annihilated (soldiers reaching zero) before it escapes.
 static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
-	if u.state == Unit.State.DEAD or u.state == Unit.State.ROUTING:
+	if u.state == Unit.State.DEAD:
 		return
 
 	var flank: float = flank_multiplier(u, attacker)
@@ -219,11 +221,17 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 		var crumble_depth: float = (Unit.MORALE_CRUMBLE_RATIO_THRESHOLD - ratio) / Unit.MORALE_CRUMBLE_RATIO_THRESHOLD
 		u.morale -= base_erosion * Unit.MORALE_CRUMBLE_BOOST * crumble_depth
 
-	if u.soldiers <= 0:
+	if u.soldiers <= 0:   # ANNIHILATED: every soldier lost, on the field, win or lose
 		u.soldiers = 0
 		u._die()
 		Sfx.play(&"death")
-	elif u.morale <= 0.0:
+	elif u.morale <= 0.0 and u.state != Unit.State.ROUTING:
+		# Only the FIRST break plays the cue and calls _rout() -- a routing unit is now a
+		# valid target (see UnitTargeting.nearest_enemy's include_routing), so it can keep
+		# taking casualties tick after tick while run down; without this guard, every one of
+		# those hits would re-satisfy `morale <= 0.0` and replay the "rout" sting throughout
+		# the whole chase (u._rout() itself is a safe no-op on an already-routing unit, but
+		# the sound cue isn't).
 		u._rout()
 		Sfx.play(&"rout")
 

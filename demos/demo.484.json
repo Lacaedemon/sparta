@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "The unit-speed label is an opt-in overlay that only appears while holding Space with '☰ Menu → Unit speed labels' toggled on (default off), same as #444's original label feature. This fix changes only what text that label shows during a wheel maneuver ('wheeling' instead of a misleading '0.0 m/s') -- a recorded battle can't flip that menu checkbox in an unattended run, so the label wouldn't render at all. See the PR description for the before/after text."
+}
