@@ -62,13 +62,16 @@ bouncing apart. The logic lives in `Unit.gd` → `_separate()`.
 ### Collision roadmap (priority order)
 
 1. ✅ **No-stack soft separation** between live units.
-2. **Per-type footprint** --- cavalry wider than infantry, so charges and screens read
-   correctly.
-3. **Formation cohesion** --- a regiment holds a block/line shape while moving, not a blob.
-4. **Hard blocking** --- spearmen screen and physically stop cavalry passage; lines form
+2. ✅ **Per-type footprint** --- cavalry wider than infantry, so charges and screens read
+   correctly. Landed as the per-type separation radii in `Unit.gd`.
+3. ✅ **Formation cohesion** --- a regiment holds a block/line shape while moving, not a
+   blob. Landed as the block/line slot geometry in `UnitFormation.gd`.
+4. ✅ **Hard blocking** --- spearmen screen and physically stop cavalry passage; lines form
    chokepoints. Where collision and the rock-paper-scissors design meet.
-5. **Scale** --- replace the O(n²) neighbor scan with a spatial grid (and/or
-   `CharacterBody2D` / `move_and_slide`) before unit counts grow past a few dozen.
+5. ✅ **Scale** --- replace the O(n²) neighbor scan with a spatial grid (and/or
+   `CharacterBody2D` / `move_and_slide`) before unit counts grow past a few dozen. Landed
+   as `SpatialHash.gd`/`SoldierSpatialHash.gd`; see `docs/individual-collision-design.md`
+   for the full individual-collision design.
 
 ## Scaling to large battles: two simulation tiers
 
