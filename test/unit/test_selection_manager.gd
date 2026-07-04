@@ -295,12 +295,13 @@ func test_resize_frontage_routes_an_absolute_command_to_battle() -> void:
 
 # --- keystroke overlay capture --------------------------
 
-func _key_event(keycode: int, ctrl: bool = false) -> InputEventKey:
+func _key_event(keycode: int, ctrl: bool = false, shift: bool = false) -> InputEventKey:
 	var ev := InputEventKey.new()
 	ev.keycode = keycode
 	ev.physical_keycode = keycode
 	ev.pressed = true
 	ev.ctrl_pressed = ctrl
+	ev.shift_pressed = shift
 	return ev
 
 
@@ -703,6 +704,19 @@ func test_cycle_form_up_dist_hotkey_flips_the_live_mode() -> void:
 	assert_eq(sm._form_up_dist, EQUAL_DEPTH, "a second press wraps back to the first mode")
 
 
+func test_shift_y_reverses_the_form_up_dist_cycle() -> void:
+	# Shift+Y is the reverse of Y, parallel to Shift+Tab reversing Tab: a forward
+	# press then a Shift+ press should return to the mode Y started at.
+	var sm := _sm()
+	sm._form_up_dist = EQUAL_DEPTH
+	sm._dispatch_key(_key_event(SelectionManagerScript.FORM_UP_DIST_CYCLE_KEY))
+	assert_eq(sm._form_up_dist, EQUAL_WIDTH, "Y advances to the next mode")
+	assert_true(
+		sm._dispatch_key(_key_event(SelectionManagerScript.FORM_UP_DIST_CYCLE_KEY, false, true)),
+		"Shift+Y is a handled hotkey")
+	assert_eq(sm._form_up_dist, EQUAL_DEPTH, "Shift+Y steps back to the mode Y started at")
+
+
 func test_changing_the_default_snaps_the_live_mode_over() -> void:
 	# A ☰-menu change to the default (Settings.form_up_dist_default) snaps the live mode to it.
 	var sm := _sm()
@@ -728,6 +742,23 @@ func test_form_up_dist_default_clamps_out_of_range() -> void:
 			"an over-range default clamps to the last mode")
 	Settings.form_up_dist_default = -5
 	assert_eq(Settings.form_up_dist_default, 0, "a negative default clamps to the first mode")
+
+
+# --- group-attack-mode cycle (X, Shift+X reverses) -------
+
+func test_x_cycles_group_attack_mode_and_shift_x_reverses() -> void:
+	# Shift+X reverses X, the same parallelism as Shift+Y reversing Y and
+	# Shift+Tab reversing Tab.
+	var sm := _sm()
+	var start: int = sm._group_attack_mode
+	assert_true(sm._dispatch_key(_key_event(SelectionManagerScript.GROUP_ATTACK_CYCLE_KEY)),
+			"X is a handled hotkey")
+	var advanced: int = sm._group_attack_mode
+	assert_ne(advanced, start, "X advances to the other group-attack mode")
+	assert_true(
+		sm._dispatch_key(_key_event(SelectionManagerScript.GROUP_ATTACK_CYCLE_KEY, false, true)),
+		"Shift+X is a handled hotkey")
+	assert_eq(sm._group_attack_mode, start, "Shift+X steps back to the mode X started at")
 
 
 # --- move-order ghost preview reads per-formation geometry --------------------

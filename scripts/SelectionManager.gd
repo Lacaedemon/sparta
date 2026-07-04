@@ -268,6 +268,9 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_UP and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.FORWARD)   # forward-step (holds facing)
 		return true
+	elif event.keycode == KEY_T and event.shift_pressed:
+		_cycle_formation(true)   # Shift+T: cycle the other way (parallels Shift+Tab)
+		return true
 	elif event.keycode == KEY_T:
 		_cycle_formation()   # cycle normal → tight → loose → square for selected units
 		return true
@@ -307,8 +310,14 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_N:
 		_issue_file_double(-1)   # duplicatio: files tuck in, halving frontage / doubling depth
 		return true
+	elif event.keycode == FORM_UP_DIST_CYCLE_KEY and event.shift_pressed:
+		_cycle_form_up_dist(true)   # Shift+Y: cycle the other way (parallels Shift+Tab)
+		return true
 	elif event.keycode == FORM_UP_DIST_CYCLE_KEY:
 		_cycle_form_up_dist()   # switch how a multi-unit form-up splits the line
+		return true
+	elif event.keycode == GROUP_ATTACK_CYCLE_KEY and event.shift_pressed:
+		_cycle_group_attack_mode(true)   # Shift+X: cycle the other way (parallels Shift+Tab)
 		return true
 	elif event.keycode == GROUP_ATTACK_CYCLE_KEY:
 		_cycle_group_attack_mode()   # switch focused / distributed attack for multi-unit orders
@@ -318,11 +327,17 @@ func _dispatch_key(event: InputEventKey) -> bool:
 
 ## Cycle the live multi-unit form-up distribution mode through _form_up_dist_cycle and flash
 ## the new mode. Affects only how the dragged line is split among units (not the persisted
-## default); an open form-up preview redraws to show the new split.
-func _cycle_form_up_dist() -> void:
+## default); an open form-up preview redraws to show the new split. Shift+Y reverses the
+## direction (reverse: true), parallel to Shift+T and Shift+X.
+func _cycle_form_up_dist(reverse: bool = false) -> void:
 	var idx: int = _form_up_dist_cycle.find(_form_up_dist)
-	_form_up_dist = _form_up_dist_cycle[(idx + 1) % _form_up_dist_cycle.size()] if idx >= 0 \
-			else _form_up_dist_cycle[0]
+	var size: int = _form_up_dist_cycle.size()
+	if reverse:
+		_form_up_dist = _form_up_dist_cycle[(idx - 1 + size) % size] if idx >= 0 \
+				else _form_up_dist_cycle[0]
+	else:
+		_form_up_dist = _form_up_dist_cycle[(idx + 1) % size] if idx >= 0 \
+				else _form_up_dist_cycle[0]
 	if _hud != null:
 		_hud.flash_message("Form-up: " + str(FORM_UP_DIST_NAMES.get(_form_up_dist, "")))
 	Sfx.play(&"order")
@@ -331,10 +346,16 @@ func _cycle_form_up_dist() -> void:
 
 ## Cycle the live group-attack distribution mode and flash the new name.
 ## Affects only multi-unit attack orders (single unit or non-attack orders always use focused).
-func _cycle_group_attack_mode() -> void:
+## Shift+X reverses the direction (reverse: true), parallel to Shift+T and Shift+Y.
+func _cycle_group_attack_mode(reverse: bool = false) -> void:
 	var idx: int = GROUP_ATTACK_MODE_CYCLE.find(_group_attack_mode)
-	_group_attack_mode = GROUP_ATTACK_MODE_CYCLE[(idx + 1) % GROUP_ATTACK_MODE_CYCLE.size()] if idx >= 0 \
-			else GROUP_ATTACK_MODE_CYCLE[0]
+	var size: int = GROUP_ATTACK_MODE_CYCLE.size()
+	if reverse:
+		_group_attack_mode = GROUP_ATTACK_MODE_CYCLE[(idx - 1 + size) % size] if idx >= 0 \
+				else GROUP_ATTACK_MODE_CYCLE[0]
+	else:
+		_group_attack_mode = GROUP_ATTACK_MODE_CYCLE[(idx + 1) % size] if idx >= 0 \
+				else GROUP_ATTACK_MODE_CYCLE[0]
 	if _hud != null:
 		_hud.flash_message(BattleRef.GROUP_ATTACK_MODE_NAMES.get(_group_attack_mode, ""))
 		_hud.update_group_attack_mode(_group_attack_mode)
@@ -770,6 +791,15 @@ static func next_formation(current: int) -> int:
 	return FORMATION_CYCLE[(idx + 1) % FORMATION_CYCLE.size()]
 
 
+## The formation mode one step before `current` in FORMATION_CYCLE (wrapping at the
+## start) -- Shift+T's reverse of next_formation, mirroring the same wrap-and-fallback
+## behaviour. Static + pure so the Shift+T order is directly testable.
+static func prev_formation(current: int) -> int:
+	var idx: int = FORMATION_CYCLE.find(current)
+	var size: int = FORMATION_CYCLE.size()
+	return FORMATION_CYCLE[(idx - 1 + size) % size] if idx >= 0 else FORMATION_CYCLE[0]
+
+
 ## Directly set (or unset) the anti-cavalry square on all selected friendly units,
 ## bypassing the T-cycle so a player can react to a charge with one key. If the lead
 ## unit is already squared, drop back to Normal -- a toggle -- otherwise form square.
@@ -808,13 +838,15 @@ func _toggle_formation(mode: int) -> void:
 
 
 ## Cycle the formation of all selected friendly units through FORMATION_CYCLE
-## (Normal → Tight → Loose → Square → Normal).
-func _cycle_formation() -> void:
+## (Normal → Tight → Loose → Square → Normal). Shift+T reverses the direction
+## (reverse: true), parallel to how Shift reverses the other mode cycles below.
+func _cycle_formation(reverse: bool = false) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	if _selected.is_empty() or not is_instance_valid(_selected[0]):
 		return
-	var next: int = next_formation(_selected[0].formation_mode)
+	var next: int = prev_formation(_selected[0].formation_mode) if reverse \
+			else next_formation(_selected[0].formation_mode)
 	var uids: Array = []
 	for unit in _selected:
 		if is_instance_valid(unit):
