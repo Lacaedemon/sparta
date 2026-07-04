@@ -26,7 +26,8 @@ extends GutTest
 # constants (with generous margin) rather than the demo's presentation clip length.
 #
 # A two-cavalry charge onto a morale-1 block routs it; the faster cavalry then run it down within
-# ROUT_TIME (observed annihilation around tick ~440 during development). ROUT_ONSET_BUDGET covers
+# ROUT_TIME (observed annihilation around tick ~230 once the soldier bodies correctly keep
+# stepping/coupling while routing --- see Battle._on_soldier_tick). ROUT_ONSET_BUDGET covers
 # the charge-in and break; ROUT_TIME plus margin covers the chase-and-catch. The onset budget is
 # deliberately generous so a physics retune (e.g. a change to the soldier-body arrival dynamics)
 # that shifts *when* the block breaks doesn't push the arc past the budget: the onset has been
