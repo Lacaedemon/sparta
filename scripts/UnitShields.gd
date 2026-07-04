@@ -4,7 +4,7 @@ class_name UnitShields
 ## chrome layer. Purely presentational: it reads the unit's formation block shape and
 ## formation_mode and draws locked shields / a spear ring on top -- nothing writes back
 ## into the simulation. Called from within the unit's _draw(), in the facing-rotated local
-## frame (forward = up / -Y, files span X), the same frame the centre emblem uses.
+## frame (forward = up / -Y, files span X).
 ##
 ## The geometry (block half-width along the file axis, block depth along ranks, and the
 ## per-shield/per-tick rectangle layout) is factored into pure static helpers so it is
@@ -144,9 +144,8 @@ static func _draw_square_ring(u: Unit, dark: Color, lite: Color) -> void:
 ## Draw the shield overlay for `u`'s current stance onto its chrome layer. No-op for any
 ## stance other than SHIELD_WALL / TESTUDO / the hollow-square variants. Must be called
 ## from within `u._draw()`, with the draw transform ALREADY set to the facing-rotated
-## local frame (forward = -Y), the same frame the centre emblem is drawn in; the caller
-## restores the transform afterward. `body`/`dark`/`lite` are the unit's team-tinted
-## chrome colours (so the shields read as this team's), matching the emblem's palette.
+## local frame (forward = -Y); the caller restores the transform afterward. `body`/`dark`/
+## `lite` are the unit's team-tinted chrome colours, so the shields read as this team's.
 static func draw(u: Unit, body: Color, dark: Color, lite: Color) -> void:
 	if u.formation_mode == Unit.FORMATION_SHIELD_WALL:
 		_draw_shield_wall(u, body, dark, lite)
