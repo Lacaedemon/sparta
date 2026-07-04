@@ -617,7 +617,8 @@ Figure&nbsp;2: A team’s last unit routs. A lone player infantry is broken and 
 <li><strong>Wide and shallow</strong> puts more men in the front rank, so more of them are swinging at once — good for overlapping an enemy’s flank or covering ground so a foe can’t slip around your line.</li>
 <li><strong>Narrow and deep</strong> stacks more ranks behind a thinner front. Fewer fight at any moment, but the column has more bodies to feed forward as the front falls — it holds a chokepoint or punches through one spot rather than spreading thin.</li>
 </ul>
-<p>A wider line is easier to outlast in depth and quicker to crumble once it bends; a deeper one trades frontage for staying power. The width holds as casualties thin the ranks, so a line you set wide stays wide until you change it.</p>
+<p>A wider line is easier to outlast in depth and quicker to crumble once it bends; a deeper one trades frontage for staying power. A width you’ve set by hand (the bracket keys or a flank drag) holds exactly as you left it — the game never overrides your explicit choice.</p>
+<p><strong>Close the ranks.</strong> Left on auto, though, a regiment that’s lost half its strength narrows its own frontage one notch, trading width for depth so the survivors reform into a smaller, still-solid block rather than stretching a nearly-spent line across its original width. It widens back out again if the regiment claws back above about two-thirds strength (reinforcement, a relief, a lull in the fighting) — but not the instant it edges past halfway, so a unit trading casualties right around the line doesn’t flicker between shapes fight to fight.</p>
 <p><strong>File-doubling for a fast reshape.</strong> The <kbd>[</kbd> / <kbd>]</kbd> steps are fine for fine-tuning, but two drill maneuvers swap the whole shape in one press. <kbd>B</kbd> (<strong>explicatio</strong>) doubles the frontage and halves the depth — a column unfolds into a wide line to overlap a flank or plug a gap. <kbd>N</kbd> (<strong>duplicatio</strong>) does the reverse: it halves the frontage and doubles the depth, folding a broad line into a deep column so you can squeeze down a lane or mass depth to punch through one point. The men walk to their new slots rather than snapping, so there’s a beat of disorder while the block reshapes — don’t start the maneuver in contact, and give it room before the enemy arrives. A natural rhythm is duplicatio to march a column through a chokepoint, then explicatio to deploy back into line on the far side.</p>
 <p><strong>Anchored explicatio for a pinned flank.</strong> The plain explicatio widens about the unit’s own centre, so both flanks drift when the frontage doubles — fine in the open, but a problem when one flank is braced against a hill, a river, or a neighbouring unit that can’t shift with it. <kbd>Shift+B</kbd> widens while holding the right flank fixed; <kbd>Ctrl+B</kbd> holds the left. The whole widen lands on the free flank instead, so the pinned side never moves and the line still gets the extra frontage where there’s room for it.</p>
 <p><strong>How a line reforms after losses.</strong> The front rank takes the hits, but the block loses depth from the rear. The front rank keeps its full width, the file behind each fighter feeds men forward to hold the contact line, and the depth shrinks rank by rank. When the rearmost rank is left short-handed, its survivors close up toward the centre — the wings shorten first while the middle files stay deepest — rather than leaving a ragged, gap-toothed back rank. So a mauled unit still presents a solid front and never bulges wider than the frontage you set; you read its losses as a shrinking depth, not a fraying line.</p>
@@ -827,7 +828,21 @@ Figure&nbsp;8: Pace modes: regiments walk on approach, jog when enemy archers op
 </section>
 <section id="backing-up-costs-time" class="level2">
 <h2 class="anchored" data-anchor-id="backing-up-costs-time">Backing up costs time</h2>
-<p>An in-place maneuver that makes men <em>back up</em> takes longer than one where they step forward. When a formation <strong>reshapes</strong> without the block marching — a frontage change, a centre pivot on the spot — some soldiers have to move backward relative to the way they face to reach their new slots. Troops shuffle backward at roughly <strong>half</strong> their forward pace, so those men lag, and the whole maneuver settles more slowly than it would if everyone were stepping forward. The practical upshot: a reshape that pushes the rear ranks backward (deepening the line) is the slowest to dress. Order it with a margin of time before contact, not at the moment of impact.</p>
+<p>An in-place maneuver that makes men <em>back up</em> takes longer than one where they step forward. When a formation <strong>reshapes</strong> without the block marching — a frontage change, a centre pivot on the spot — some soldiers have to move backward relative to the way they face to reach their new slots. Troops shuffle backward at only a fraction of their forward (jog) pace, so those men lag, and the whole maneuver settles more slowly than it would if everyone were stepping forward. That fraction varies by type — a heavily-kitted Spearman shuffles backward at barely a third of his jog pace, while a lighter Archer is closer to half — so a reshape’s settling time depends on which type is doing the backing up, not just how far it must move. The practical upshot: a reshape that pushes the rear ranks backward (deepening the line) is the slowest to dress, and slowest of all for the heaviest-kitted troops. Order it with a margin of time before contact, not at the moment of impact.</p>
+<div id="fig-back-speed-by-type" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/back_speed_by_type.jpg">
+  <source src="media/back_speed_by_type.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;9: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
+</figcaption>
+</figure>
+</div>
 <p>The <strong>about-face (conversio)</strong> and <strong>quarter-turn</strong> are not reshapes, so this penalty doesn’t touch them: every soldier turns in place and holds their exact position for the whole turn — nobody steps forward or backward at all, only facing changes. Their duration depends solely on the drill turn rate, not the backward-speed cap.</p>
 <p>The <strong>reform after an about-face</strong> is where the penalty comes back. Flipping a unit that has taken losses puts its short, under-strength rank — previously the safe rear rank — at the new front, so a rear move reforms after the turn: the men counter-march through the block onto ranks squared to the new heading, bringing a full rank forward and sending the short rank back. Some of those men are stepping backward relative to their facing, so a deep, depleted block takes a couple of seconds to dress. With <strong>Reform before move</strong> on, that time is spent before the unit steps off — order the retreat with a margin. With it off, the unit marches at once and reforms on arrival, buying speed at the price of leading the whole march with its thinnest rank.</p>
 </section>
@@ -849,7 +864,7 @@ Figure&nbsp;8: Pace modes: regiments walk on approach, jog when enemy archers op
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+Figure&nbsp;10: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
 </figcaption>
 </figure>
 </div>
@@ -895,7 +910,7 @@ Figure&nbsp;9: Braking on arrival: a lone Infantry regiment sprints toward a mov
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;11: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
