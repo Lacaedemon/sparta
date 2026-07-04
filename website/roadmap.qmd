@@ -1,6 +1,6 @@
 ---
 title: "Roadmap"
-description: "Milestones, the prioritized issue backlog, and design goals captured early."
+description: "Milestones and the prioritized issue backlog."
 ---
 
 The strategy is a **vertical slice**: build the hardest, most-differentiating piece
@@ -23,63 +23,29 @@ The battle scene was kept self-contained specifically to make the M3 hand-off cl
 
 ## Prioritized backlog
 
-Tracked as issues on [`Lacaedemon/sparta`](https://github.com/Lacaedemon/sparta/issues)
-with `P0`--`P3` labels. Order reflects **dependencies** --- validate the foundation, build
-the collision pillar, then features that depend on it, then independent polish.
+The foundation, the collision pillar (per-type footprint, pathfinding, formation
+cohesion, hard blocking), and the shared collision-exemption primitive (friendly
+pass-through, line relief, unit merging) all shipped --- see
+[`PLAN.md`](https://github.com/Lacaedemon/sparta/blob/main/PLAN.md)'s design-pillars
+section for how each landed. With that early backlog cleared, the issue tracker
+itself is the live source of truth for what's prioritized now: browse
+[open issues on `Lacaedemon/sparta`](https://github.com/Lacaedemon/sparta/issues)
+with `P0`--`P3` labels, or the two dominant current threads below.
 
-### P0 --- Foundation
-- First run & verification in Godot --- nothing below is validated until this passes.
-- Spacebar active pause --- confirm live.
+Two threads dominate the current `P2` backlog, both feeding the M2/M3 milestones
+above:
 
-### P1 --- Collision pillar (in dependency order)
-- **Per-type footprint** --- `_separate()` currently uses a shared `RADIUS`; make it per-type.
-- **NavigationAgent2D pathfinding** --- decide the path-vs-collision split here.
-- **Scale beyond O(n²)** --- pairs with pathfinding.
-- **Formation cohesion** --- depends on per-type footprint.
-- **Hard blocking** --- spears stop cavalry; depends on solid collision + formations.
+- **Campaign layer** --- [phase 1 through phase 7](https://github.com/Lacaedemon/sparta/issues?q=is%3Aissue+is%3Aopen+%22Campaign+phase%22+in%3Atitle)
+  build out map/time, army composition, battle-resolution modes, real-geography
+  ingestion, logistics, sagas, and dynasty in sequence.
+- **Battle AI** --- [phase 2 through phase 5](https://github.com/Lacaedemon/sparta/issues?q=is%3Aissue+is%3Aopen+%22Battle+AI+phase%22+in%3Atitle)
+  build subcommanders, a general layer with doctrine and reserves, player
+  delegation to AI subcommanders, and fog-of-war-aware perception.
 
-### P2 --- Features on the shared "collision-exemption" primitive
-Build the primitive once, then reuse it:
-
-- **Friendly pass-through** --- simplest; establishes the primitive.
-- **Line relief** --- adds a fatigue stat + a choreographed front-line handoff.
-- **Unit merging** --- stat blending + a temporary "strangers" debuff.
-
-### P3 --- Independent polish
-- **Richer selection** --- double-click type-select, control groups.
-
-## Design goals captured early
-
-These are recorded so the intent isn't lost --- not yet scheduled.
-
-::: {.callout-note collapse="true"}
-## Unit merging --- combine two units into one
-Fold depleted units together after casualties, or deliberately bind units into a
-single wider, coordinated block (ties into the collision/formation pillar). Merging
-forces strangers together, so the result starts with a **temporary debuff** that
-decays as the unit "gels". Open questions: capped vs summed `max_soldiers`, type/team
-restrictions, reversibility, and how to blend stats.
-:::
-
-::: {.callout-note collapse="true"}
-## Line relief --- cycle tired units out of combat
-A fresh unit relieves an engaged friendly: it advances into the front-line slot as
-the tired one peels back. Requires a **new fatigue/stamina stat** and a choreographed
-swap where the two units **pass through each other** --- directly exercising the
-collision-exemption primitive. The hard part is making the handoff read well and not
-be exploitable.
-:::
-
-::: {.callout-note collapse="true"}
-## Move-through friendly units --- coordinated pass-through
-Let a unit move *through* an idle friendly smoothly (ranks interleave, the idle unit
-parts and reforms) instead of colliding or detouring. Shares the collision-exemption
-mechanism with line relief; distinct in that the mover keeps going rather than taking
-over the slot.
-:::
-
-Relief, merging, and pass-through should likely share **one** underlying
-"soft-pass / collision-exemption" primitive --- which is why P2 builds it once.
+Independent of those two threads, `P2`/`P3` also carries near-term fixes and
+design work (formation/spawn edge cases, the soldier weapon/shield type model,
+a maneuver-queue refactor) --- the tracker's labels and open-issue list are more
+current than any snapshot repeated here.
 
 ---
 
