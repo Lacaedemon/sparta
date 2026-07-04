@@ -568,7 +568,7 @@ Table&nbsp;1: Each script and its responsibility.
 <li>✅ <strong>No-stack soft separation</strong> between live units.</li>
 <li>✅ <strong>Per-type footprint</strong> — cavalry wider than infantry, so charges and screens read correctly. Landed as the per-type separation radii in <code>Unit.gd</code>.</li>
 <li>✅ <strong>Formation cohesion</strong> — a regiment holds a block/line shape while moving, not a blob. Landed as the block/line slot geometry in <code>UnitFormation.gd</code>.</li>
-<li>✅ <strong>Hard blocking</strong> — spearmen screen and physically stop cavalry passage; lines form chokepoints. Where collision and the rock-paper-scissors design meet. Landed as the asymmetric push-share in <code>Unit.gd</code> → <code>_separate()</code>: an engaged spearman takes none of the separation correction against cavalry, so the horse can’t push through.</li>
+<li>✅ <strong>Hard blocking</strong> — spearmen screen and physically stop cavalry passage; lines form chokepoints. Where collision and the rock-paper-scissors design meet. Landed as the asymmetric push-share in <code>Unit.gd</code> → <code>_separate()</code>: a spearman takes none of the separation correction against cavalry, so the horse can’t push through.</li>
 <li>✅ <strong>Scale</strong> — replace the O(n²) neighbor scan with a spatial grid (and/or <code>CharacterBody2D</code> / <code>move_and_slide</code>) before unit counts grow past a few dozen. Landed as <code>SpatialHash.gd</code>/<code>SoldierSpatialHash.gd</code>; see <code>docs/individual-collision-design.md</code> for the full individual-collision design.</li>
 </ol>
 </section>
