@@ -175,3 +175,31 @@ manifest, and check for a `demos/demo.<PR#>.json` first: CI prefers a
 correct clip records even if the merge left `demo.json` holding another PR's
 content. Still fix `demo.json` when it's stale — a `git merge origin/main`
 silently takes main's `demo.json` (theirs).
+
+## An inherited demo scenario must still resolve within its own frame budget
+
+When a demo's `input` scenario gets reused or adapted from an earlier feature
+(e.g. a hollow-square-render PR reusing the original anti-cavalry-square
+combat scenario), it's not enough that the scenario runs without erroring —
+verify the specific thing the caption claims actually happens on screen
+*before* `max_frames` cuts the clip off. A pure-render PR (#623, the
+shield-ring overlay) inherited `anti-cav-square.json`'s rear-cavalry-charge
+setup, but the cavalry never reached the infantry within the manifest's
+300-frame budget — still `MOVING`/unengaged with ~20 frames left, only
+reaching `FIGHTING` at the exact cutoff tick. The clip showed a stalled
+approach instead of anything the caption described, and the caption itself
+never even claimed a charge (it only described the render change) — the
+combat setup was vestigial, carried over from before the feature was split
+out of its original test.
+
+**How to catch this:** `tools/demo/dump-state.sh` at ticks spanning the whole
+`max_frames` window (not just a few early ones) and check `engaged`/`state`
+on every unit through to the last tick. If a "climax" moment (contact,
+formation completing, a rally) lands at or after the frame cutoff, either
+extend `max_frames` or — better, when the combat isn't actually relevant to
+what the PR changed — replace it with a focused no-enemies scenario (see the
+`schiltron-formation-only.json` pattern in the "Author a scripted-input demo"
+section above). This is the same "keep each demo simple and focused"
+principle CLAUDE.md already states, extended with a concrete failure mode:
+inherited scenario elements that don't actually complete are worse than no
+scenario elements at all. (`Lacaedemon/sparta` PR #623, 2026-07-03.)

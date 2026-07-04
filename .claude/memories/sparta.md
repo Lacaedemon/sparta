@@ -472,6 +472,23 @@ clean while the main checkout shows the edits).
   directory's checked-out branch. Run `gh pr create` (and branch-scoped
   `git push`) from the **worktree** dir.
 
+**A second, distinct hazard: reusing a PR branch name for a NEW worktree when a
+`wave5-*`-style dispatch worktree already has it checked out.** This repo's
+wave-based backlog sweeps leave many named worktrees behind
+(`.claude/worktrees/wave5-<slug>`), each tracking one PR's branch — they don't
+get cleaned up until the PR merges and someone runs a sweep. If a later task
+(e.g. resolving a fresh merge conflict on that same PR) creates a *second*
+worktree for the same branch instead of reusing the existing one, git can
+silently repoint the shared branch ref out from under the first worktree
+rather than refusing outright — the first worktree then shows a wall of
+spurious modified/deleted files (not real data loss, just its checked-out
+files diffing against the ref's new tip). Always `git worktree list | grep
+<branch>` before adding a new worktree for a PR branch; if one already exists,
+reuse it (`git fetch` + `git reset --hard origin/<branch>`) rather than adding
+a second on the same name. (Full mechanics and recovery steps: ai-config
+`memories/tools.md`, "Two worktrees on the same branch name silently move a
+shared ref, not a conflict error" — hit on PR #626, 2026-07-03.)
+
 ## GII / multi-session scope — unclaimed issues, own worktree only
 
 GII (grab issues iteratively) means picking up **unclaimed** open issues — no
