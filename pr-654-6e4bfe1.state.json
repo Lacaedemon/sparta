@@ -349,21 +349,21 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            783.88,
-            435.57
+            781.43,
+            455.14
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              154.47,
-              100.93
+              154.72,
+              106.11
             ],
             "centroid": [
-              784.96,
-              460.72
+              778.26,
+              474.68
             ],
-            "count": 140,
+            "count": 129,
             "prone_count": 0
           },
           "soldiers": 129,
@@ -415,11 +415,11 @@
         },
         {
           "current_order": "ATTACK",
-          "current_speed": 78.7,
+          "current_speed": 70.0,
           "engaged": true,
           "facing": [
-            0.29,
-            -0.96
+            0.34,
+            -0.94
           ],
           "formation": "NORMAL",
           "frontage": 12,
@@ -429,25 +429,25 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            761.89,
-            507.62
+            763.12,
+            505.29
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              90.67,
-              95.46
+              91.63,
+              95.53
             ],
             "centroid": [
-              761.18,
-              510.23
+              760.95,
+              511.07
             ],
             "count": 80,
             "prone_count": 0
           },
           "soldiers": 80,
-          "state": "MOVING",
+          "state": "FIGHTING",
           "target_enemy_uid": 0,
           "team": 1,
           "tier": "CLOSE",
@@ -458,8 +458,8 @@
           "current_speed": 81.3,
           "engaged": false,
           "facing": [
-            -0.54,
-            -0.84
+            -0.65,
+            -0.76
           ],
           "formation": "NORMAL",
           "frontage": 12,
@@ -469,19 +469,19 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            831.22,
-            510.16
+            830.54,
+            510.64
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              88.59,
-              94.7
+              88.58,
+              94.54
             ],
             "centroid": [
-              832.7,
-              511.18
+              832.53,
+              511.19
             ],
             "count": 80,
             "prone_count": 0
