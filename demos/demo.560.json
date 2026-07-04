@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/cannae-scale.json",
+  "caption": "LOD phase 5 acceptance test: the ~1,720-soldier engaged close-tier front (same battle as large-battle.json) plus far-tier reserve corps behind it -- tens of thousands more soldiers simulated as aggregate FarTierFormation records rather than individual bodies. The camera holds on the engaged line, then pulls back to reveal the full scale.",
+  "fixed_fps": 60,
+  "max_frames": 300,
+  "fps": 30,
+  "width": 720
+}

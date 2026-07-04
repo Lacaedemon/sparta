@@ -54,6 +54,19 @@ var is_ranged: bool = false
 ## a disengage the way the close tier's attack timer does.
 var casualty_carry: float = 0.0
 
+## Rout state (a FarTierRules phase 2 follow-up) — the aggregate analog of
+## Unit.state == State.ROUTING / Unit._rout_timer. A formation whose morale hits zero
+## breaks (FarTierRules.is_broken); ROUTING is the persistent flag that keeps it fleeing
+## rather than fighting even after morale recovers past zero (mirroring the close tier's
+## rout arc, where morale climbs toward ROUT_RALLY_BASELINE while still routing).
+## Ordinary combat/movement never sets these directly — only FarTierRules.enter_rout,
+## tick_rout, rally, and shatter.
+var routing: bool = false
+## Counts down from Unit.ROUT_TIME while routing; when it (or the earlier rally check)
+## resolves, the formation either rallies (routing = false, reduced morale) or shatters
+## (count = 0), matching Unit._process_rout's timer.
+var rout_timer: float = 0.0
+
 
 ## Snapshot a live unit's aggregate view — the pure reduction a real demotion will perform.
 ## Read-only and RNG-free (a deterministic function of the unit's fields, per the design
@@ -76,4 +89,7 @@ static func from_unit(u: Unit) -> FarTierFormation:
 	rec.attack_range = u.attack_range
 	rec.march_speed = u.walk_speed
 	rec.is_ranged = u.is_ranged
+	rec.routing = u.state == Unit.State.ROUTING
+	if rec.routing:
+		rec.rout_timer = u._rout_timer
 	return rec
