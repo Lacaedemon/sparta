@@ -192,6 +192,49 @@ func test_anchored_block_slots_narrowing_also_respects_the_anchor() -> void:
 		"the right edge stays fixed as the block narrows too")
 
 
+func test_anchor_shift_composes_across_repeated_widens() -> void:
+	# anchor_shift always computes a SINGLE step's shift as if starting from a
+	# centred block (offset 0) -- it does NOT know about a unit's existing anchor
+	# offset from an earlier anchored widen. A caller applying this a second time
+	# (e.g. Battle.enqueue_file_double, pressing Shift+B twice on the same unit)
+	# must ADD the new shift to the unit's current offset, not replace it, or the
+	# "held" flank silently drifts. This pins the composed-offset math directly,
+	# mirroring the worked example from the review that caught the bug.
+	var spacing := 1.0
+	var files_a := 8
+	var files_b := 16
+	var files_c := 32
+	# Step 1: centred (offset 0) -> RIGHT-anchored widen 8 -> 16.
+	var shift1: float = UnitFormation.anchor_shift(files_a, files_b, spacing, UnitFormation.Anchor.RIGHT)
+	var offset_after_1: float = 0.0 + shift1
+	var right_edge_1: float = UnitFormation._half_width(files_b, spacing) + offset_after_1
+	# Step 2: RIGHT-anchored widen again, 16 -> 32, composing onto the existing offset.
+	var shift2: float = UnitFormation.anchor_shift(files_b, files_c, spacing, UnitFormation.Anchor.RIGHT)
+	var offset_after_2: float = offset_after_1 + shift2
+	var right_edge_2: float = UnitFormation._half_width(files_c, spacing) + offset_after_2
+	assert_almost_eq(right_edge_2, right_edge_1, 0.001,
+		"the right flank stays fixed across TWO composed anchored widens, not just one")
+
+
+func test_anchor_shift_does_not_compose_correctly_if_treated_as_absolute() -> void:
+	# The bug the review caught: if a caller (wrongly) uses anchor_shift's return
+	# value as an ABSOLUTE offset on the second application (ignoring the unit's
+	# existing offset), the held flank visibly jumps. This documents the failure
+	# mode so a regression that reintroduces the absolute-overwrite bug is caught.
+	var spacing := 1.0
+	var files_a := 8
+	var files_b := 16
+	var files_c := 32
+	var shift1: float = UnitFormation.anchor_shift(files_a, files_b, spacing, UnitFormation.Anchor.RIGHT)
+	var right_edge_1: float = UnitFormation._half_width(files_b, spacing) + shift1
+	# WRONG: treat the second shift as an absolute offset instead of composing it.
+	var wrong_offset_after_2: float = UnitFormation.anchor_shift(files_b, files_c, spacing,
+		UnitFormation.Anchor.RIGHT)
+	var wrong_right_edge_2: float = UnitFormation._half_width(files_c, spacing) + wrong_offset_after_2
+	assert_ne(wrong_right_edge_2, right_edge_1,
+		"treating the shift as absolute (not composed) is the bug -- the flank jumps")
+
+
 # --- casualty adaptation (recompute from the LIVE count) --------------------
 # A unit can take casualties mid-maneuver, so a maneuver recomputes its target shape from
 # the live soldier count every tick rather than caching it. These pin the property the

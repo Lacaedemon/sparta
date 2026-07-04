@@ -342,6 +342,40 @@ func test_dispatch_key_shift_b_issues_right_anchored_explicatio() -> void:
 	assert_ne(u.frontage_anchor_offset, 0.0, "right-anchored explicatio carries a non-zero anchor shift")
 
 
+func test_dispatch_key_shift_b_pressed_twice_keeps_the_right_flank_fixed() -> void:
+	# Regression for the bug the review caught: a SECOND Shift+B on the same unit
+	# must compose its anchor shift onto the existing offset, not overwrite it, or
+	# the "held" right flank silently jumps between presses.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 14
+	u.soldiers = 240
+	u.max_soldiers = 240
+	b._by_uid[14] = u
+	sm._select(u)
+
+	var slots_before := u.soldier_world_slots(u.soldiers)
+	var frontage_before: int = UnitFormation.frontage(u)
+	var right_edge_before: float = slots_before[frontage_before - 1].x
+
+	assert_true(sm._dispatch_key(_key_event(KEY_B, false, true)), "first Shift+B is handled")
+	var slots_after_1 := u.soldier_world_slots(u.soldiers)
+	var frontage_after_1: int = UnitFormation.frontage(u)
+	var right_edge_after_1: float = slots_after_1[frontage_after_1 - 1].x
+	assert_almost_eq(right_edge_after_1, right_edge_before, 0.5,
+		"the right flank stays fixed after the first anchored widen")
+
+	assert_true(sm._dispatch_key(_key_event(KEY_B, false, true)), "second Shift+B is handled")
+	var slots_after_2 := u.soldier_world_slots(u.soldiers)
+	var frontage_after_2: int = UnitFormation.frontage(u)
+	var right_edge_after_2: float = slots_after_2[frontage_after_2 - 1].x
+	assert_almost_eq(right_edge_after_2, right_edge_before, 0.5,
+		"the right flank STILL stays fixed after a SECOND anchored widen (composed offset)")
+
+
 func test_dispatch_key_ctrl_b_issues_left_anchored_explicatio() -> void:
 	# Ctrl+B is the mirror: same widen, opposite (left) anchor -- so the shift sign
 	# is the opposite of Shift+B's for the same starting layout.

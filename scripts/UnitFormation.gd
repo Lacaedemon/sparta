@@ -189,13 +189,20 @@ static func _half_width(files: int, spacing: float) -> float:
 
 
 ## Lateral (local X) shift that keeps the ANCHOR flank's edge fixed when the file
-## count changes from `old_files` to `new_files` at `spacing` px apart. block_slots
-## always centres the block on local X=0, so widening/narrowing moves BOTH edges
-## outward/inward by half the width change. Shifting the whole (already-centred)
-## block by this offset cancels that motion on the anchored side only, so that
-## edge stays put and the whole width change shows up on the opposite flank.
-## Anchor.CENTRE is a no-op (0.0), matching the existing symmetric maneuver.
-## Pure -- a function of (old_files, new_files, spacing, anchor).
+## count changes from `old_files` to `new_files` at `spacing` px apart, for a SINGLE
+## widen/narrow starting from a CENTRED block (offset 0). block_slots always centres
+## the block on local X=0, so widening/narrowing moves BOTH edges outward/inward by
+## half the width change; shifting the whole (already-centred) block by this offset
+## cancels that motion on the anchored side only, so that edge stays put and the whole
+## width change shows up on the opposite flank. Anchor.CENTRE is a no-op (0.0), matching
+## the existing symmetric maneuver. Pure -- a function of (old_files, new_files,
+## spacing, anchor).
+##
+## Callers applying this to a unit that may ALREADY carry a non-zero anchor offset
+## (a prior anchored widen) must ADD this shift to that existing offset, not replace
+## it -- this function only ever computes the delta for one step from centre, so
+## reusing it as an absolute value across repeated anchored widens on the same unit
+## would silently let the "held" flank drift. See Battle.enqueue_file_double.
 static func anchor_shift(old_files: int, new_files: int, spacing: float, anchor: int) -> float:
 	if anchor == Anchor.CENTRE:
 		return 0.0

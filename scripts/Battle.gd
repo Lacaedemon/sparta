@@ -707,12 +707,17 @@ func enqueue_nudge(uids: Array, dir: int) -> void:
 ## replay stream exactly like a manual resize.
 ##
 ## `anchor` (UnitFormation.Anchor) picks which flank stays fixed: CENTRE (default) is
-## the plain symmetric widen/narrow above; LEFT/RIGHT hold that edge in place and let
-## the whole width change land on the opposite flank -- an asymmetric explicatio/
-## duplicatio for when a flank must stay pinned to terrain or a neighbour. The shift is
-## resolved to an absolute local-X offset here (from each unit's OWN current frontage,
-## like the file count above) and carried on the same command, so re-applying it on the
-## tick is idempotent and it rides the replay stream exactly like the centred maneuver.
+## the plain symmetric widen/narrow above -- and RE-CENTRES the block, discarding any
+## earlier anchor shift, exactly like the pre-existing [ / ] resize always has; LEFT/
+## RIGHT hold that edge in place and let the whole width change land on the opposite
+## flank -- an asymmetric explicatio/duplicatio for when a flank must stay pinned to
+## terrain or a neighbour. `anchor_shift` always computes the shift a SINGLE widen from
+## a centred block needs, so a LEFT/RIGHT anchor composes it on top of the unit's
+## CURRENT offset (unit.frontage_anchor_offset) rather than replacing it -- otherwise a
+## second anchored widen on the same unit would recompute the shift as if starting from
+## centre and the "held" flank would jump. The resulting absolute offset is carried on
+## the same command, so re-applying it on the tick is idempotent and it rides the replay
+## stream exactly like the centred maneuver.
 func enqueue_file_double(uids: Array, direction: int,
 		anchor: int = UnitFormation.Anchor.CENTRE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or direction == 0:
@@ -729,7 +734,12 @@ func enqueue_file_double(uids: Array, direction: int,
 			files = UnitFormation.narrowed_files(current)
 		files = clampi(files, 1, maxi(1, u.max_soldiers))
 		var spacing: float = Unit.FORMATION_SPACING * u.spacing_scale
-		var anchor_offset: float = UnitFormation.anchor_shift(current, files, spacing, anchor)
+		var anchor_offset: float
+		if anchor == UnitFormation.Anchor.CENTRE:
+			anchor_offset = 0.0
+		else:
+			anchor_offset = u.frontage_anchor_offset \
+				+ UnitFormation.anchor_shift(current, files, spacing, anchor)
 		var cmd := {
 			"units": [uid],
 			"x": 0.0,
