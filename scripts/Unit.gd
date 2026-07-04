@@ -117,6 +117,17 @@ var formation_mode: int = FORMATION_NORMAL
 # fatigue reduction and in-fight morale recovery on it, so turning it off makes a
 # disciplined unit tire and waver like an untrained one.
 var rank_relief: bool = true
+# Which frontage the unit settles into after an engage/attack re-face turn-in-place
+# (_settle_engage_turn) completes. KEEP_NEW_FRONTING is the shipped MVP: the men stay put
+# and the unit fights with whatever edge the turn left facing the enemy. The other two
+# layer a reshape on top of that same turn, reusing the frontage-resize grid-op
+# (UnitFormation.files_for_halfwidth / set_frontage) so the reshape eases in via the
+# soldier-body arrival dynamics exactly like a manual [ / ] resize -- no teleport, no new
+# mechanism. RECREATE_WIDTH restores the file count the unit had before the turn (a wide
+# line stays a wide line facing the new way); MATCH_TARGET instead adopts the enemy's own
+# current file count (to the extent this unit's max_soldiers allows).
+enum EngageReshapeMode { KEEP_NEW_FRONTING, RECREATE_WIDTH, MATCH_TARGET }
+var engage_reshape_mode: int = EngageReshapeMode.KEEP_NEW_FRONTING
 # Simulation tier (FormationTier.CLOSE / FAR) — the multi-resolution design's per-formation
 # fidelity marker (docs/large-scale-simulation-design.md). CLOSE runs the full per-soldier
 # path; FAR carries no per-soldier state at all — the soldier-layer steps skip it (see
@@ -389,6 +400,12 @@ var support_target: Unit = null
 # Field rectangle the unit keeps inside when kiting (set by Battle on spawn). The
 # default is effectively unbounded so direct Unit tests don't need to set it.
 var field_bounds: Rect2 = Rect2(-100000, -100000, 200000, 200000)
+# Wider rectangle a ROUTING unit may flee into before it escapes for good (set by
+# Battle on spawn, grown from field_bounds by a retreat margin). Non-routing behavior
+# (including skirmisher kiting) still uses field_bounds, unaffected by this. The
+# default matches field_bounds's effectively-unbounded default so direct Unit tests
+# don't need to set it.
+var retreat_bounds: Rect2 = Rect2(-100000, -100000, 200000, 200000)
 
 const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0
@@ -540,6 +557,12 @@ const ANTI_CAV_CHARGE_FLOOR: float = 0.6
 
 var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
+# A ROUTING unit starts "broken" (this false): its morale still recovers and it can
+# rally back to control. If it runs out of time still in contact, or too gutted to
+# reform, it's SHATTERED (this true): it keeps fleeing but can never again recover
+# morale or rally --- the only way out from there is to escape (see _shatter()/_escape()).
+# Reset false at the top of every fresh _rout(), so a unit that rallies can break again.
+var _shattered: bool = false
 # Counts down after a new order is received; the unit holds its current action
 # until this reaches zero. A fighting unit ticks it down but is not gated by it
 # (it keeps executing _think() — retargets, disengages, and support orders all
@@ -1068,7 +1091,7 @@ func _think(delta: float) -> void:
 			state = State.FIGHTING
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
-			if _face_for_action(enemy.position, delta) and _attack_cd <= 0.0:
+			if _face_for_action(enemy.position, delta, enemy) and _attack_cd <= 0.0:
 				_attack_cd = RANGED_INTERVAL
 				UnitCombat.shoot(self, enemy)
 			return
@@ -1082,7 +1105,7 @@ func _think(delta: float) -> void:
 			# place gradually (they hold their ground) before the line strikes; a small
 			# correction snaps and fights now. _face_for_action reports when the front is
 			# brought to bear — the strike is withheld until then.
-			var faced: bool = _face_for_action(enemy.position, delta)
+			var faced: bool = _face_for_action(enemy.position, delta, enemy)
 			if faced and _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
 				UnitCombat.strike(self, enemy)
@@ -1248,12 +1271,12 @@ func _support_tick(delta: float) -> void:
 		var in_contact: bool = dist <= attack_range + RADIUS + threat.RADIUS
 		if is_ranged and not in_contact and dist <= RANGED_RANGE:
 			state = State.FIGHTING
-			if _face_for_action(threat.position, delta) and _attack_cd <= 0.0:
+			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = RANGED_INTERVAL
 				UnitCombat.shoot(self, threat)
 		elif in_contact:
 			state = State.FIGHTING
-			if _face_for_action(threat.position, delta) and _attack_cd <= 0.0:
+			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
 				UnitCombat.strike(self, threat)
 		else:
@@ -1388,6 +1411,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	if braking_to_stop:
 		advance = minf(advance, dist_to_stop)
 	position += dir * advance
+	# A non-routing unit stops at the field's own edge -- the retreat margin is for a
+	# ROUTING unit to flee into (see Unit.retreat_bounds / _process_rout), not a place a
+	# pursuer can follow it. This is the only thing that stops a unit chasing a routing
+	# enemy from crossing into the margin after it: field_bounds is the same rect used
+	# for skirmisher kiting (FIELD), just enforced here for ordinary chase/move movement.
+	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 	state = State.MOVING
 	_moved_last_frame = true
 	# Charge velocity; terrain-scaled so forest reduces the charge bonus (intentional — can't sprint in trees).
@@ -1405,20 +1435,26 @@ func _press_into(point: Vector2, delta: float) -> void:
 	if to.length() < 1.0:
 		return
 	position += to.normalized() * move_speed * MELEE_PRESS_FRACTION * delta
+	# Same field-edge stop as _move_to: a non-routing unit doesn't follow a routing
+	# enemy into the retreat margin, even while pressing a lean into melee contact.
+	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 
 
 func _face(point: Vector2) -> void:
 	_face_dir(point - position)
 
 
-## Face `point` for an engage/attack action. A small heading correction snaps (stays
+## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
+## bringing the front to bear on; kept so the settle step can reshape toward it under
+## MATCH_TARGET -- see engage_reshape_mode). A small heading correction snaps (stays
 ## responsive at close quarters); a large swing (>ENGAGE_TURN_THRESHOLD, ~a quarter-turn or
 ## more) turns the men in place gradually instead — the line pivots to bring its front to bear
 ## without the grid collapsing and re-expanding. Returns whether the unit is faced enough to
 ## fight this tick (true when snapping, or once a turn has closed to within
 ## ENGAGE_TURN_FIGHT_TOLERANCE); the caller withholds the strike while still turning. Reuses
 ## the drill turns' arrival-freeze + _formation_angle-absorb, so the bodies hold their ground.
-func _face_for_action(point: Vector2, delta: float) -> bool:
+func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> bool:
 	var dir: Vector2 = point - position
 	if dir.length() < 0.01:
 		return true
@@ -1426,6 +1462,7 @@ func _face_for_action(point: Vector2, delta: float) -> bool:
 	# Already turning: keep rotating toward the (possibly moved) target and settle on arrival.
 	if _engage_turn_target != Vector2.ZERO:
 		_engage_turn_target = dir.normalized()
+		_engage_turn_enemy = enemy_unit
 		if _advance_turn(_engage_turn_target, delta):
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
@@ -1434,9 +1471,12 @@ func _face_for_action(point: Vector2, delta: float) -> bool:
 		_face_dir(dir)
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
-	# facing rotates; the strike is withheld until the front comes to bear.
+	# facing rotates; the strike is withheld until the front comes to bear. Capture the
+	# pre-turn frontage and the enemy now, before anything reshapes or the target changes.
 	_engage_turn_start_facing = facing
 	_engage_turn_target = dir.normalized()
+	_engage_turn_old_files = formation_files(soldiers)
+	_engage_turn_enemy = enemy_unit
 	if _advance_turn(_engage_turn_target, delta):
 		_settle_engage_turn()
 	return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
@@ -1444,24 +1484,48 @@ func _face_for_action(point: Vector2, delta: float) -> bool:
 
 ## Finish an engage turn-in-place: fold the rotation into _formation_angle (so the men keep
 ## their world positions and the block presents its new front without surging) and clear the
-## turn state. Shares the settle math with the quarter-turn.
+## turn state. Shares the settle math with the quarter-turn. Then, per engage_reshape_mode,
+## optionally layers a frontage reshape on top of the turn that just completed -- RECREATE_WIDTH
+## restores the file count the unit had before the turn, MATCH_TARGET adopts the enemy's own
+## file count. Both go through set_frontage(), the SAME grid-op a manual [ / ] resize uses, so
+## the bodies ease into the reshaped slots via the arrival dynamics (no teleport, no surge)
+## instead of a new mechanism. KEEP_NEW_FRONTING (the default) reshapes nothing, matching the
+## shipped MVP behavior exactly.
 ##
-## Deliberately does NOT touch _formation_mirror_x. This fold exists specifically to hold
-## `ang` (soldier_world_slots' rotation) INVARIANT across the facing change -- that's what "the
-## men keep their world positions... without surging" means. `_formation_mirror_x` doesn't
-## affect whether `ang` is invariant (a mirrored slot rotated by the same `ang` is just as
-## stable a mapping as an unmirrored one), so leaving it alone here preserves the no-surge
-## guarantee. Forcing it to a new value in this same tick flips every off-centre soldier's
-## target sign for that one tick even though `ang` itself didn't change: the exact
-## point-reflection/flank-swap bug this file's countermarch fix exists to eliminate, just
-## triggered by an engage re-face instead of a reform (reachable whenever a unit engages combat
-## mid-march after a countermarched reform, since the mirror flag stays true through that
-## march).
+## Deliberately does NOT touch _formation_mirror_x. The _formation_angle fold above exists
+## specifically to hold `ang` (soldier_world_slots' rotation) INVARIANT across the facing
+## change -- that's what "the men keep their world positions... without surging" means.
+## `_formation_mirror_x` doesn't affect whether `ang` is invariant (a mirrored slot rotated by
+## the same `ang` is just as stable a mapping as an unmirrored one), so leaving it alone here
+## preserves the no-surge guarantee. Forcing it to a new value in this same tick flips every
+## off-centre soldier's target sign for that one tick even though `ang` itself didn't change:
+## the exact point-reflection/flank-swap bug this file's countermarch fix exists to eliminate,
+## just triggered by an engage re-face instead of a reform (reachable whenever a unit engages
+## combat mid-march after a countermarched reform, since the mirror flag stays true through
+## that march). The reshape branches above are orthogonal to this: set_frontage() changes the
+## file/rank COUNT (which slot index `i` maps to), the same relabelling a reshape always causes
+## regardless of the mirror -- _formation_mirror_x only decides whether soldier_world_slots
+## negates local x before rotating, so it doesn't make a reshape any less (or more) consistent
+## than an unmirrored one; the two concerns don't interact.
 func _settle_engage_turn() -> void:
 	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
 	_engage_turn_target = Vector2.ZERO
 	_render_dirty = true
+	match engage_reshape_mode:
+		EngageReshapeMode.RECREATE_WIDTH:
+			if _engage_turn_old_files > 0:
+				set_frontage(_engage_turn_old_files)
+		EngageReshapeMode.MATCH_TARGET:
+			var enemy: Unit = _engage_turn_enemy
+			if enemy != null and is_instance_valid(enemy) and enemy.state != State.DEAD:
+				# formation_files (not UnitFormation.frontage) so a hollow-square enemy
+				# (SQUARE/SCHILTRON) is matched by its actual square file count, the same
+				# accessor the RECREATE_WIDTH branch above uses for the acting unit's own
+				# pre-turn frontage.
+				set_frontage(enemy.formation_files(enemy.soldiers))
+	_engage_turn_old_files = 0
+	_engage_turn_enemy = null
 
 
 ## Snap `facing` to `dir` instantly. A small change (the common case: a moving unit's
@@ -1942,6 +2006,14 @@ var _per_soldier_facing: bool = false
 # it does not re-arm every tick.
 var _engage_turn_target: Vector2 = Vector2.ZERO
 var _engage_turn_start_facing: Vector2 = Vector2.ZERO
+# The file count the unit presented just BEFORE the turn was armed, and the enemy it is
+# turning to face -- captured once at arm time so the settle step can reshape the frontage
+# per engage_reshape_mode without either value drifting mid-turn (the enemy may itself be
+# maneuvering, and the unit's own live frontage changes the instant the turn starts folding
+# into _formation_angle). The enemy ref is not re-validated here; _settle_engage_turn checks
+# is_instance_valid/State.DEAD itself before reading it, same as every other target_enemy use.
+var _engage_turn_old_files: int = 0
+var _engage_turn_enemy: Unit = null
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
 # instead of snapping. Below it a small correction snaps, keeping close-quarters combat
 # responsive; only a large swing (roughly a quarter-turn or more) turns the men in place.
@@ -2565,8 +2637,11 @@ func order_summary() -> String:
 				and current_order.relief_partner != null \
 				and is_instance_valid(current_order.relief_partner):
 			return "Relieving %s" % current_order.relief_partner.unit_name
+		# A routing target still counts (it's still a live, fightable enemy --- see
+		# UnitTargeting.nearest_enemy's include_routing), so the HUD keeps reporting
+		# "Attacking" rather than falling through to "Holding position".
 		var has_target: bool = target_enemy != null and is_instance_valid(target_enemy) \
-				and target_enemy.state != State.DEAD and target_enemy.state != State.ROUTING
+				and target_enemy.state != State.DEAD
 		if has_target:
 			return "Attacking %s" % target_enemy.unit_name
 		# A maneuver in flight reads straight off the queue (phase 2): the drills and the
@@ -2715,6 +2790,7 @@ func start_order_response() -> void:
 	_formation_angle = 0.0
 	_formation_mirror_x = false
 	_engage_turn_target = Vector2.ZERO
+	_engage_turn_enemy = null
 
 
 ## Commit a pending reform-before-move: hand off the stored destination to the
@@ -2767,6 +2843,9 @@ func _merged_away() -> void:
 
 # --- Death & routing -------------------------------------------------------
 
+## Annihilated: every soldier lost to combat while still on the field (see
+## UnitCombat.register_casualties's soldiers <= 0 check) --- distinct from a routing unit
+## being shattered (stays in play, fleeing) or escaping (leaves play, but got away).
 func _die() -> void:
 	_remove_from_play()
 
@@ -2797,9 +2876,11 @@ func _rout() -> void:
 	_reform_until_settled = false
 	_reform_on_arrival = false
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
+	_engage_turn_enemy = null
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_formation_mirror_x = false
 	_rout_timer = ROUT_TIME
+	_shattered = false   # starts "broken": can still recover morale and rally
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
 	add_to_group("routers")
@@ -2818,18 +2899,31 @@ func _rout() -> void:
 
 
 func _process_rout(delta: float) -> void:
-	# Flee toward own back edge (team 0 started at top, team 1 at bottom). Clamp to the
-	# battle field so a router stays visible on the map instead of running off the edge —
-	# it huddles at the back line where the player can still see it rally or shatter.
+	# Flee toward own back edge (team 0 started at top, team 1 at bottom). A router may
+	# cross the visible battlefield edge into the wider retreat_bounds margin — but a
+	# soldier whose flee step (or a separation shove) would carry it past THAT outer
+	# edge has fled clear of the battlefield entirely: the unit ESCAPES immediately,
+	# distinct from a SHATTER (which is run down or gutted while still on the field).
 	var flee: Vector2 = Vector2.UP if team == 0 else Vector2.DOWN
 	facing = flee
-	position += flee * (move_speed * 1.3) * delta
-	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
-	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
+	var next: Vector2 = position + flee * (move_speed * 1.3) * delta
+	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
+			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
+		_escape()
+		return
+	position = next
 
-	# The regiment's nerve steadies as it flees: while below the baseline, morale ticks up
-	# toward it at a rate proportional to the remaining gap, so it recovers quickly at first
-	# and levels off. A unit already above the baseline has nothing to recover toward.
+	# A SHATTERED unit has lost its nerve for good: it just keeps fleeing (the movement
+	# above already ran), with no morale recovery and no rally check ever again. The only
+	# way out from here is _escape() (handled above).
+	if _shattered:
+		queue_redraw()
+		return
+
+	# Still "broken" (recoverable): the regiment's nerve steadies as it flees, while below
+	# the baseline morale ticks up toward it at a rate proportional to the remaining gap,
+	# so it recovers quickly at first and levels off. A unit already above the baseline has
+	# nothing to recover toward.
 	if morale < ROUT_RALLY_BASELINE:
 		morale += (ROUT_RALLY_BASELINE - morale) * ROUT_MORALE_RECOVER_RATE * delta
 
@@ -2847,7 +2941,9 @@ func _process_rout(delta: float) -> void:
 		queue_redraw()
 		return
 	# Timer ran out: a unit that broke contact and kept enough men RALLIES back into
-	# the fight; one still in contact, or gutted past reforming, SHATTERS for good.
+	# the fight; one still in contact, or gutted past reforming, SHATTERS --- it keeps
+	# fleeing (still on the field, still fightable) but can never recover morale or rally
+	# again from here on.
 	if _can_rally():
 		_rally()
 	else:
@@ -2880,11 +2976,22 @@ func _rally() -> void:
 	queue_redraw()
 
 
-## Shatter: a routed unit that couldn't escape, or was gutted past recovery, is
-## destroyed for good — the terminal counterpart to a rally. Reuses the synchronous
-## group teardown so it never lingers in a spatial-hash / separation scan after
-## leaving play (queue_free() alone defers to end of frame).
+## Shatter: a routed ("broken") unit that couldn't recover in time --- still in contact,
+## or gutted past reforming --- loses its nerve for good. It does NOT leave play: it stays
+## on the field, still simulated, still fightable, and keeps fleeing forever (see
+## _process_rout's _shattered branch) with no more morale recovery and no more rallying.
+## The only way it ever leaves play from here is to flee clear of the map (_escape()), or
+## be run down and annihilated in combat (soldiers reach zero, see UnitCombat).
 func _shatter() -> void:
+	_shattered = true
+
+
+## Escape: a routing unit (broken or shattered) whose flight carried it past the
+## retreat_bounds margin has fled clear of the battlefield entirely --- gone for good, but
+## got away rather than being run down. The terminal counterpart to a rally; reuses the
+## synchronous group teardown so it never lingers in a spatial-hash / separation scan
+## after leaving play (queue_free() alone defers to end of frame).
+func _escape() -> void:
 	_remove_from_play()
 
 

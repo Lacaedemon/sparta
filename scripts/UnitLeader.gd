@@ -78,7 +78,8 @@ static func decide(u: Unit, all_units: Array) -> Dictionary:
 	var already_relieving: bool = u.current_order != null \
 		and u.current_order.type == Order.Type.RELIEF
 	if u.state != Unit.State.FIGHTING and not already_relieving:
-		var nearest: Unit = UnitTargeting.nearest_enemy_to(u, u.position, INF)
+		# include_routing=true: press the advantage and chase down a fleeing enemy too.
+		var nearest: Unit = UnitTargeting.nearest_enemy_to(u, u.position, INF, true)
 		if nearest != null and u.target_enemy != nearest:
 			return _attack_cmd(u, nearest)
 

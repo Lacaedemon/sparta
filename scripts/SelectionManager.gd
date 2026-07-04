@@ -268,6 +268,9 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_UP and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.FORWARD)   # forward-step (holds facing)
 		return true
+	elif event.keycode == KEY_T and event.shift_pressed:
+		_cycle_formation(true)   # Shift+T: cycle the other way (parallels Shift+Tab)
+		return true
 	elif event.keycode == KEY_T:
 		_cycle_formation()   # cycle normal → tight → loose → square for selected units
 		return true
@@ -307,8 +310,14 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_N:
 		_issue_file_double(-1)   # duplicatio: files tuck in, halving frontage / doubling depth
 		return true
+	elif event.keycode == FORM_UP_DIST_CYCLE_KEY and event.shift_pressed:
+		_cycle_form_up_dist(true)   # Shift+Y: cycle the other way (parallels Shift+Tab)
+		return true
 	elif event.keycode == FORM_UP_DIST_CYCLE_KEY:
 		_cycle_form_up_dist()   # switch how a multi-unit form-up splits the line
+		return true
+	elif event.keycode == GROUP_ATTACK_CYCLE_KEY and event.shift_pressed:
+		_cycle_group_attack_mode(true)   # Shift+X: cycle the other way (parallels Shift+Tab)
 		return true
 	elif event.keycode == GROUP_ATTACK_CYCLE_KEY:
 		_cycle_group_attack_mode()   # switch focused / distributed attack for multi-unit orders
@@ -318,11 +327,17 @@ func _dispatch_key(event: InputEventKey) -> bool:
 
 ## Cycle the live multi-unit form-up distribution mode through _form_up_dist_cycle and flash
 ## the new mode. Affects only how the dragged line is split among units (not the persisted
-## default); an open form-up preview redraws to show the new split.
-func _cycle_form_up_dist() -> void:
+## default); an open form-up preview redraws to show the new split. Shift+Y reverses the
+## direction (reverse: true), parallel to Shift+T and Shift+X.
+func _cycle_form_up_dist(reverse: bool = false) -> void:
 	var idx: int = _form_up_dist_cycle.find(_form_up_dist)
-	_form_up_dist = _form_up_dist_cycle[(idx + 1) % _form_up_dist_cycle.size()] if idx >= 0 \
-			else _form_up_dist_cycle[0]
+	var size: int = _form_up_dist_cycle.size()
+	if reverse:
+		_form_up_dist = _form_up_dist_cycle[(idx - 1 + size) % size] if idx >= 0 \
+				else _form_up_dist_cycle[0]
+	else:
+		_form_up_dist = _form_up_dist_cycle[(idx + 1) % size] if idx >= 0 \
+				else _form_up_dist_cycle[0]
 	if _hud != null:
 		_hud.flash_message("Form-up: " + str(FORM_UP_DIST_NAMES.get(_form_up_dist, "")))
 	Sfx.play(&"order")
@@ -331,10 +346,16 @@ func _cycle_form_up_dist() -> void:
 
 ## Cycle the live group-attack distribution mode and flash the new name.
 ## Affects only multi-unit attack orders (single unit or non-attack orders always use focused).
-func _cycle_group_attack_mode() -> void:
+## Shift+X reverses the direction (reverse: true), parallel to Shift+T and Shift+Y.
+func _cycle_group_attack_mode(reverse: bool = false) -> void:
 	var idx: int = GROUP_ATTACK_MODE_CYCLE.find(_group_attack_mode)
-	_group_attack_mode = GROUP_ATTACK_MODE_CYCLE[(idx + 1) % GROUP_ATTACK_MODE_CYCLE.size()] if idx >= 0 \
-			else GROUP_ATTACK_MODE_CYCLE[0]
+	var size: int = GROUP_ATTACK_MODE_CYCLE.size()
+	if reverse:
+		_group_attack_mode = GROUP_ATTACK_MODE_CYCLE[(idx - 1 + size) % size] if idx >= 0 \
+				else GROUP_ATTACK_MODE_CYCLE[0]
+	else:
+		_group_attack_mode = GROUP_ATTACK_MODE_CYCLE[(idx + 1) % size] if idx >= 0 \
+				else GROUP_ATTACK_MODE_CYCLE[0]
 	if _hud != null:
 		_hud.flash_message(BattleRef.GROUP_ATTACK_MODE_NAMES.get(_group_attack_mode, ""))
 		_hud.update_group_attack_mode(_group_attack_mode)
@@ -770,6 +791,15 @@ static func next_formation(current: int) -> int:
 	return FORMATION_CYCLE[(idx + 1) % FORMATION_CYCLE.size()]
 
 
+## The formation mode one step before `current` in FORMATION_CYCLE (wrapping at the
+## start) -- Shift+T's reverse of next_formation, mirroring the same wrap-and-fallback
+## behaviour. Static + pure so the Shift+T order is directly testable.
+static func prev_formation(current: int) -> int:
+	var idx: int = FORMATION_CYCLE.find(current)
+	var size: int = FORMATION_CYCLE.size()
+	return FORMATION_CYCLE[(idx - 1 + size) % size] if idx >= 0 else FORMATION_CYCLE[0]
+
+
 ## Directly set (or unset) the anti-cavalry square on all selected friendly units,
 ## bypassing the T-cycle so a player can react to a charge with one key. If the lead
 ## unit is already squared, drop back to Normal -- a toggle -- otherwise form square.
@@ -808,13 +838,15 @@ func _toggle_formation(mode: int) -> void:
 
 
 ## Cycle the formation of all selected friendly units through FORMATION_CYCLE
-## (Normal → Tight → Loose → Square → Normal).
-func _cycle_formation() -> void:
+## (Normal → Tight → Loose → Square → Normal). Shift+T reverses the direction
+## (reverse: true), parallel to how Shift reverses the other mode cycles below.
+func _cycle_formation(reverse: bool = false) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	if _selected.is_empty() or not is_instance_valid(_selected[0]):
 		return
-	var next: int = next_formation(_selected[0].formation_mode)
+	var next: int = prev_formation(_selected[0].formation_mode) if reverse \
+			else next_formation(_selected[0].formation_mode)
 	var uids: Array = []
 	for unit in _selected:
 		if is_instance_valid(unit):
@@ -1462,8 +1494,10 @@ func _draw_orders() -> void:
 		# elif — keeps the move-route else reachable when a SUPPORT unit has no valid
 		# ward (e.g. a SUPPORT order on empty ground, which leaves a move target).
 		var ward: UnitRef = _support_ward_of(u) if u.order_mode == UnitRef.ORDER_SUPPORT else null
+		# A routing target (broken or shattered) still draws the attack overlay --- it's
+		# still a live, fightable enemy (see UnitTargeting.nearest_enemy's include_routing).
 		if tgt != null and is_instance_valid(tgt) \
-				and tgt.state != UnitRef.State.DEAD and tgt.state != UnitRef.State.ROUTING:
+				and tgt.state != UnitRef.State.DEAD:
 			var tp: Vector2 = tgt.global_position
 			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
 			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
@@ -1605,11 +1639,23 @@ func _draw_order_distance(a: Vector2, b: Vector2, world_dist: float, color: Colo
 ## The unit's `current_speed` is world units/second; it's converted back to the m/s the
 ## loadout declared via Battle.WORLD_UNITS_PER_METER and Battle.SPEED_SCALE so it reads in
 ## the same metric units as the distance labels. Opt-in via Settings.show_unit_speed
-## (default off). A halted unit reads "0.0 m/s". Pure (no drawing) so it's unit-testable;
-## _draw_unit_speed just positions and renders whatever this returns.
+## (default off). A halted unit reads "0.0 m/s".
+##
+## `current_speed` tracks only translational march speed (ramped by _move_to); a wheel
+## (_advance_wheel) rotates the whole block about a fixed hinge without ever calling
+## _move_to, so it never sets current_speed above 0 even while the block visibly swings.
+## Rather than compute and expose a separate arc-speed metric, a wheeling unit shows
+## "wheeling" instead of a misleading "0.0 m/s" -- the label still tells the player the
+## unit isn't idle, without inventing a number for a motion this label was never designed
+## to describe.
+##
+## Pure (no drawing) so it's unit-testable; _draw_unit_speed just positions and renders
+## whatever this returns.
 func _unit_speed_label(u: UnitRef) -> String:
 	if not Settings.show_unit_speed:
 		return ""
+	if u.is_wheeling():
+		return "wheeling"
 	var mps: float = DistanceLegend.mps_for_world_speed(
 			u.current_speed, BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
 	return DistanceLegend.speed_label_text(mps)

@@ -488,16 +488,17 @@ func test_order_summary_moving_without_target_advances() -> void:
 		"moving with no explicit destination reports advancing on the enemy")
 
 
-func test_order_summary_ignores_routing_target() -> void:
+func test_order_summary_still_reports_a_routing_target() -> void:
 	var u := _make_unit()
 	var enemy := _attacker_at(FRONT)
 	enemy.unit_name = "Infantry 9"
 	u.target_enemy = enemy
 	enemy.state = Unit.State.ROUTING
-	# A routing enemy is no longer a valid attack target, so the order falls
-	# through to the move/state description (here: idle -> holding).
-	assert_eq(u.order_summary(), "Holding position",
-		"a routing target is not reported as an attack order")
+	# A routing enemy is STILL a valid, fightable attack target (see
+	# UnitTargeting.nearest_enemy's include_routing), so the order keeps reporting
+	# the attack rather than falling through to "Holding position".
+	assert_eq(u.order_summary(), "Attacking Infantry 9",
+		"a routing target is still reported as an attack order")
 
 
 func test_order_summary_ignores_dead_target() -> void:
@@ -1672,30 +1673,31 @@ func test_merge_blends_using_current_soldiers_not_max() -> void:
 	assert_eq(a.attack, 15, "attack weights by current soldiers, not max")
 
 
-# --- rout timeout teardown -------------------------------------
+# --- escape teardown --------------------------------------------
 
-func test_rout_timeout_leaves_groups_synchronously() -> void:
+func test_escape_leaves_groups_synchronously() -> void:
+	# An escape (flees past retreat_bounds) is the removal path that must still tear
+	# groups down synchronously, even though queue_free() itself is deferred.
 	var u := _make_unit()
-	# An enemy in contact means the rout can't rally, so it SHATTERS at timeout —
-	# the removal path that must still tear groups down synchronously.
-	var enemy := _make_unit()
-	enemy.team = 1
-	enemy.position = Vector2(20, 0)   # well inside RALLY_CONTACT_RADIUS
+	u.retreat_bounds = Rect2(0, 0, 400, 400)   # no margin at all: matches the field's own edge
+	u.position = Vector2(200, 5)   # team 0 flees UP (toward negative y)
 	u._rout()
+	u.morale = 0.0   # stay well below RALLY_MORALE_THRESHOLD for the few ticks this takes
 	assert_true(u.is_in_group("routers"), "a routing unit joins the routers group")
 	assert_false(u.is_in_group("units"), "a routing unit has left the units group")
-	# Expire the rout timer so the next call triggers the timeout.
-	u._rout_timer = 0.0
-	u._process_rout(0.016)
-	assert_eq(u.state, Unit.State.DEAD, "a rout that can't rally shatters at timeout")
+	for i in range(10):   # a handful of ticks is enough to cross y=0 from y=5
+		if u.state != Unit.State.ROUTING:
+			break
+		u._process_rout(0.016)
+	assert_eq(u.state, Unit.State.DEAD, "fled past the margin --- escaped")
 	# queue_free() is deferred to end of frame, but the group memberships must be
 	# dropped synchronously so a DEAD unit never lingers in the spatial-hash /
 	# separation scans (both of which include the routers group) for the rest of
 	# the tick.
 	assert_false(u.is_in_group("routers"),
-		"a shattered unit leaves the routers group the same tick it dies")
+		"an escaped unit leaves the routers group the same tick it's gone")
 	assert_false(u.is_in_group("units"),
-		"a shattered unit is not in the units group either")
+		"an escaped unit is not in the units group either")
 
 
 # --- rout recovery: rally vs shatter ---------------------------
@@ -1717,6 +1719,8 @@ func test_rout_rallies_after_breaking_contact() -> void:
 
 
 func test_rout_shatters_when_still_in_contact() -> void:
+	# SHATTER no longer removes the unit from play --- it stays on the field, still
+	# routing, still in the routers group, but can never again recover morale or rally.
 	var u := _make_unit()
 	var enemy := _make_unit()
 	enemy.team = 1
@@ -1724,17 +1728,39 @@ func test_rout_shatters_when_still_in_contact() -> void:
 	u._rout()
 	u._rout_timer = 0.0
 	u._process_rout(0.016)
-	assert_eq(u.state, Unit.State.DEAD, "a unit still in contact shatters")
+	assert_eq(u.state, Unit.State.ROUTING, "a unit still in contact shatters but stays on the field")
+	assert_true(u._shattered, "shattered: no more morale recovery or rally, ever")
+	assert_true(u.is_in_group("routers"), "still fleeing, still in the routers group")
 
 
 func test_rout_shatters_when_gutted_even_if_clear() -> void:
-	# Broke contact, but too few men remain to reform -> shatter.
+	# Broke contact, but too few men remain to reform -> shatter (stays on the field).
 	var u := _make_unit(100)
 	u._rout()
 	u.soldiers = 5   # below SHATTER_STRENGTH_FRAC * 100 (= 15)
 	u._rout_timer = 0.0
 	u._process_rout(0.016)
-	assert_eq(u.state, Unit.State.DEAD, "a gutted rout shatters even with no enemy near")
+	assert_eq(u.state, Unit.State.ROUTING, "a gutted rout shatters but stays on the field")
+	assert_true(u._shattered, "gutted past reforming: no more morale recovery or rally")
+
+
+func test_shattered_unit_never_recovers_morale() -> void:
+	# Once shattered, morale stops ticking toward the rally baseline even though it's
+	# well below it --- the whole point of "can never recover from routing".
+	var u := _make_unit()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)   # in contact --- forces shatter, not rally, at timeout
+	u._rout()
+	u.morale = 0.0
+	u._rout_timer = 0.0
+	u._process_rout(0.016)   # times out in contact --- shatters
+	assert_true(u._shattered)
+	var morale_at_shatter: float = u.morale
+	for i in range(30):   # ~0.5 s more of fleeing
+		u._process_rout(0.016)
+	assert_eq(u.state, Unit.State.ROUTING, "still fleeing, well inside the default unbounded retreat_bounds")
+	assert_almost_eq(u.morale, morale_at_shatter, 0.001, "a shattered unit's morale never rises")
 
 
 # --- individual-soldier formation layout (Stage A) ---------------
@@ -2499,27 +2525,52 @@ func test_routing_morale_recovers_asymptotically() -> void:
 	assert_true(u.morale < Unit.ROUT_RALLY_BASELINE, "and stays below the baseline (asymptotic)")
 
 
-func test_routing_unit_stays_within_field_bounds() -> void:
-	# A router flees toward its back edge but is clamped to the field so it stays visible.
-	# An enemy in contact keeps _can_rally() false, so no threshold rally can fire mid-loop
-	# (which would leave us calling _process_rout on an already-IDLE unit).
+func test_routing_unit_flees_into_the_retreat_margin_unclamped() -> void:
+	# A router may cross the field's own edge (y=0) into a wider retreat_bounds margin,
+	# instead of being clamped there. An enemy in contact keeps _can_rally() false, so
+	# no threshold rally can fire mid-loop (which would leave us calling _process_rout
+	# on an already-IDLE unit).
 	var u := _make_unit()
 	var enemy := _make_unit()
 	enemy.team = 1
-	u.field_bounds = Rect2(0, 0, 400, 400)
-	u.position = Vector2(200, 5)   # team 0 flees UP (toward y=0)
+	u.retreat_bounds = Rect2(0, -500, 400, 900)   # y: -500..400, well past the y=0 field edge
+	u.position = Vector2(200, 5)   # team 0 flees UP (toward negative y)
 	enemy.position = Vector2(220, 5)   # in contact, so the router can't rally away
 	u.morale = 0.0
 	u._rout()
 	u.morale = 0.0
 	u._rout_timer = 10.0
-	for i in range(120):   # ~2 s of fleeing at 60 fps
+	var delta: float = 0.016
+	var ticks: int = 60
+	for i in range(ticks):
+		u._process_rout(delta)
+	assert_eq(u.state, Unit.State.ROUTING, "still routing --- in contact, and well inside the margin")
+	var expected_y: float = 5.0 - u.move_speed * 1.3 * delta * ticks
+	assert_true(expected_y < 0.0, "sanity: this only proves the point if it actually crosses y=0")
+	assert_almost_eq(u.position.y, expected_y, 0.5, "flees past y=0 unclamped, into the margin")
+
+
+func test_routing_unit_escapes_when_it_flees_past_the_retreat_margin() -> void:
+	# Once a router's flee step would carry it past retreat_bounds's own outer edge, it
+	# has fled clear of the battlefield and ESCAPES instantly instead of clamping ---
+	# distinct from a SHATTER, which is being run down or gutted while still on the
+	# field. An enemy in contact keeps _can_rally() false so the handful of ticks here
+	# can't rally away first.
+	var u := _make_unit()
+	var enemy := _make_unit()
+	enemy.team = 1
+	u.retreat_bounds = Rect2(0, 0, 400, 400)   # no margin at all: matches the field's own edge
+	u.position = Vector2(200, 5)   # team 0 flees UP (toward negative y)
+	enemy.position = Vector2(220, 5)   # in contact, so the router can't rally away
+	u.morale = 0.0
+	u._rout()
+	u.morale = 0.0
+	u._rout_timer = 10.0
+	for i in range(10):   # a handful of ticks is enough to cross y=0 from y=5
+		if u.state != Unit.State.ROUTING:
+			break
 		u._process_rout(0.016)
-	assert_eq(u.state, Unit.State.ROUTING, "still routing (in contact, can't rally)")
-	assert_true(u.position.y >= u.field_bounds.position.y,
-		"a routing unit never runs off the top of the field")
-	assert_true(u.field_bounds.has_point(u.position) or is_equal_approx(u.position.y, 0.0),
-		"the router stays on the visible map")
+	assert_eq(u.state, Unit.State.DEAD, "escaped past the margin --- gone, not shattered in place")
 
 
 func test_routing_unit_rallies_when_already_above_threshold() -> void:
