@@ -4,12 +4,12 @@ extends GutTest
 ## this only covers the one piece of _ready() that runs synchronously before the battle starts
 ## and doesn't need a live battle: forcing SFX off for the run.
 ##
-## Regression guard for #628: a benchmark run can leak an AudioStreamWAV/AudioStreamPlaybackWAV
-## at process exit if a pooled Sfx voice is still mid-playback when get_tree().quit() tears
-## down the tree. BenchmarkRunner never intends to produce audio (it measures physics-step
-## time only), so it forces Settings.sfx_enabled off for the run -- which also prevents any
-## voice from ever starting a live playback, eliminating the leak at the source rather than
-## trying to stop voices after the fact.
+## Regression guard: a benchmark run can leak an AudioStreamWAV/AudioStreamPlaybackWAV at
+## process exit if a pooled Sfx voice is still mid-playback when get_tree().quit() tears down
+## the tree. BenchmarkRunner never intends to produce audio (it measures physics-step time
+## only), so it forces Settings.sfx_enabled off for the run -- which also prevents any voice
+## from ever starting a live playback, eliminating the leak at the source rather than trying
+## to stop voices after the fact.
 
 const BenchmarkRunnerScene := preload("res://tools/benchmark/BenchmarkRunner.tscn")
 
