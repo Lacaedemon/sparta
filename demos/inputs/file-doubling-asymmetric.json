@@ -1,7 +1,10 @@
 {
-  "_comment": "Asymmetric (anchored) explicatio demo (drill mode -- player army only, no enemy, no auto-win): zoom on the Spearmen block (seed 12345 at ~500,300), select it, press Shift+B for a RIGHT-anchored explicatio -- the right flank stays fixed in place while the whole widen lands off the LEFT flank, unlike the plain centred explicatio (B) which grows symmetrically about the unit's own centre. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "_comment": "Asymmetric (anchored) explicatio demo (drill mode -- a single Spearmen unit staged alone via 'scenario', no enemy, no auto-win, no other player-side units in frame). The default line spawn's other four units (Infantry/Archers/Cavalry) fall within camera range at this zoom and genuinely overlap the Spearmen block in world space once it widens, so this scenario isolates the one unit the demo is meant to showcase -- the same isolation other maneuver demos (about-face.json, decel-arrival.json) already use. Select the lone Spearmen at (500,300), press Shift+B for a RIGHT-anchored explicatio -- the right flank stays fixed in place while the whole widen lands off the LEFT flank, unlike the plain centred explicatio (B) which grows symmetrically about the unit's own centre. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "12345",
   "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 500, "y": 300, "facing": [0, 1]}
+  ],
   "camera": [
     {"tick": 0, "x": 500.0, "y": 300.0, "zoom": 2.0}
   ],
