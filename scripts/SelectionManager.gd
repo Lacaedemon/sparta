@@ -574,11 +574,21 @@ func _files_for_mode(units: Array, usable: float, mode: int) -> Array:
 		return out
 	# EQUAL_DEPTH: target a total frontage that fills the span (a grid of f files spans
 	# (f-1) gaps of spacing, so the units together want ~usable/spacing + N files), then
-	# share one rank depth across the units to hit it. Uses the first unit's spacing_scale
-	# as the shared pitch -- correct for a same-formation group; a genuinely mixed group
-	# (e.g. TIGHT spears + LOOSE archers together) would need a per-unit target, which is
-	# a bigger refactor (tracked separately).
-	var effective_spacing: float = UnitRef.FORMATION_SPACING * units[0].spacing_scale
+	# share one rank depth across the units to hit it. Uses the AVERAGE spacing_scale
+	# across the selected units as the shared pitch. That's exact for the common case --
+	# a same-formation group, where every unit's spacing_scale is equal and the average
+	# equals it -- and a deliberate approximation for a genuinely mixed group (e.g. TIGHT
+	# spears + LOOSE archers dragged together): the average treats every selected unit's
+	# density evenly, rather than letting whichever unit happens to be first in the
+	# selection silently dictate the shared pitch. Mixing formation modes within one
+	# multi-unit drag is uncommon in practice, so a full per-unit-spacing depth solve
+	# (each unit's file count derived from its own spacing at a shared target depth) is
+	# more machinery than the benefit warrants; the average keeps the fix small while
+	# removing the arbitrary "first selected unit wins" bias.
+	var spacing_sum: float = 0.0
+	for u in units:
+		spacing_sum += u.spacing_scale
+	var effective_spacing: float = UnitRef.FORMATION_SPACING * (spacing_sum / float(units.size()))
 	var f_target: int = maxi(units.size(), int(round(usable / effective_spacing)) + units.size())
 	var depth: int = _equal_depth_for_target(units, f_target)
 	for u in units:
