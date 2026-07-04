@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Removing a static hover icon reads better as a paired before/after screenshot than a battle clip -- see the images embedded in the PR description (demos/shots/issue-627-before.png and issue-627-after.png)."
+}

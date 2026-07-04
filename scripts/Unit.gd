@@ -3043,7 +3043,6 @@ const LOD_ZOOM_IN: float = 1.55
 const LOD_ZOOM_OUT: float = 1.30
 # The figure-silhouette geometry and its foot-render-kind enum (FOOT_INFANTRY / SPEAR /
 # ARCHER) live in UnitMeshes; _foot_kind maps a unit's type flags onto one of them.
-const EMBLEM_SCALE: float = 0.5         # the per-type sprite, shrunk to a centre emblem
 const FLAG_POLE_BASE_GAP: float = 34.0  # px above the block extent where the pole foot sits
 const FLAG_POLE_HEIGHT: float = 18.0    # pole from above-bar to flag attachment point
 const FLAG_WIDTH: float = 12.0          # horizontal extent of the flag rectangle
@@ -3226,14 +3225,9 @@ func _update_lod() -> void:
 	var flip: bool = want and facing.x < 0.0
 	if want == _detailed_lod and flip == _figure_faces_left:
 		return
-	var lod_changed: bool = want != _detailed_lod
 	_detailed_lod = want
 	_figure_faces_left = flip
 	_apply_lod_meshes()
-	# The centre emblem shows only at the flat-mark LOD, so redraw the chrome when the LOD
-	# (not merely the facing side) changes, to hide it behind the figures or bring it back.
-	if lod_changed:
-		queue_redraw()
 
 
 ## Assign the mesh pair the MultiMeshes draw for the current LOD and, at the figure LOD,
@@ -3371,8 +3365,8 @@ func _draw() -> void:
 
 	# The soldier marks (Stage B) are rendered by the flocking MultiMeshes and the
 	# ground shadow by a Polygon2D — both child nodes layered under this chrome via
-	# z_index. _draw() handles only the screen-relative chrome: state ring, type emblem,
-	# selection halo and stat bars. `_block_extent` (maintained by _process) sizes
+	# z_index. _draw() handles only the screen-relative chrome: state ring, shielded-stance
+	# overlay, selection halo and stat bars. `_block_extent` (maintained by _process) sizes
 	# them to the live block rather than the bare collision radius.
 	var extent: float = _block_extent
 
@@ -3386,32 +3380,14 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, extent + 2.0, 0, TAU, 36,
 					Color(0.95, 0.50, 0.05, 1.0), 3.5)
 
-	# A small per-type emblem (for at-a-glance type) at the block centre, like a standard,
-	# drawn in the facing-rotated local frame (forward = up). Hidden at the zoomed-in
-	# figure LOD: the per-type silhouettes already carry the type, so the centre emblem
-	# would just float superimposed on the individual soldiers.
-	if not _detailed_lod:
-		draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5,
-				Vector2(EMBLEM_SCALE, EMBLEM_SCALE))
-		if is_cavalry:
-			UnitSprites.cavalry(self, body_c, dark_c, lite_c)
-		elif anti_cavalry:
-			UnitSprites.spear(self, body_c, dark_c, lite_c)
-		elif is_ranged:
-			UnitSprites.archer(self, body_c, dark_c, lite_c)
-		else:
-			UnitSprites.infantry(self, body_c, dark_c, lite_c)
-		# Reset to screen-space for HUD overlays.
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
 	# Shielded-stance overlay: a locked shield line (shield wall), an overhead shield roof
 	# (testudo), or a ring of outward spear ticks (the hollow square, orbis/schiltron)
 	# -- drawn in the facing-rotated block frame so it rotates with the unit and
-	# scales with the block. Unlike the centre emblem, it stays visible at the zoomed-in
-	# figure LOD -- it represents raised/overhead shields or the outward-facing ring, which
-	# the individual soldier silhouettes alone don't read clearly at every zoom (especially
-	# the ring at mark LOD, zoomed out). No-op in any other formation. Sized off the live
-	# formation shape, not the bare radius.
+	# scales with the block. Stays visible at the zoomed-in figure LOD -- it represents
+	# raised/overhead shields or the outward-facing ring, which the individual soldier
+	# silhouettes alone don't read clearly at every zoom (especially the ring at mark LOD,
+	# zoomed out). No-op in any other formation. Sized off the live formation shape, not
+	# the bare radius.
 	if formation_mode == FORMATION_SHIELD_WALL or formation_mode == FORMATION_TESTUDO \
 			or in_square():
 		draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5, Vector2.ONE)
