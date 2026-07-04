@@ -205,8 +205,17 @@ across a different shape:
   holds a chokepoint or punches through one spot rather than spreading thin.
 
 A wider line is easier to outlast in depth and quicker to crumble once it bends;
-a deeper one trades frontage for staying power. The width holds as casualties thin
-the ranks, so a line you set wide stays wide until you change it.
+a deeper one trades frontage for staying power. A width you've set by hand (the
+bracket keys or a flank drag) holds exactly as you left it --- the game never
+overrides your explicit choice.
+
+**Close the ranks.** Left on auto, though, a regiment that's lost half its strength
+narrows its own frontage one notch, trading width for depth so the survivors reform
+into a smaller, still-solid block rather than stretching a nearly-spent line across
+its original width. It widens back out again if the regiment claws back above about
+two-thirds strength (reinforcement, a relief, a lull in the fighting) --- but not the
+instant it edges past halfway, so a unit trading casualties right around the line
+doesn't flicker between shapes fight to fight.
 
 **File-doubling for a fast reshape.** The <kbd>[</kbd> / <kbd>]</kbd> steps are fine for
 fine-tuning, but two drill maneuvers swap the whole shape in one press. <kbd>B</kbd>

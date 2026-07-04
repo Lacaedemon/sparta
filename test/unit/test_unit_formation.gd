@@ -235,6 +235,63 @@ func test_anchor_shift_does_not_compose_correctly_if_treated_as_absolute() -> vo
 		"treating the shift as absolute (not composed) is the bug -- the flank jumps")
 
 
+# --- close the ranks: contract frontage under heavy losses -----------
+
+func test_should_close_ranks_triggers_at_or_below_the_contract_threshold() -> void:
+	assert_true(UnitFormation.should_close_ranks(false, 50, 100),
+			"exactly half strength crosses the contract threshold")
+	assert_true(UnitFormation.should_close_ranks(false, 30, 100),
+			"well below half strength stays contracted")
+	assert_false(UnitFormation.should_close_ranks(false, 51, 100),
+			"just above half strength does not yet contract")
+
+
+func test_should_close_ranks_recovers_at_or_above_the_recover_threshold() -> void:
+	assert_false(UnitFormation.should_close_ranks(true, 65, 100),
+			"reinforced back to the recover threshold widens again")
+	assert_false(UnitFormation.should_close_ranks(true, 90, 100),
+			"well above the recover threshold widens again")
+
+
+func test_should_close_ranks_holds_state_inside_the_hysteresis_gap() -> void:
+	# Between the contract (50%) and recover (65%) fractions, neither predicate fires --
+	# the unit keeps whatever state it was already in, so it can't flap tick to tick.
+	assert_true(UnitFormation.should_close_ranks(true, 60, 100),
+			"already contracted, still inside the gap: stays contracted")
+	assert_false(UnitFormation.should_close_ranks(false, 60, 100),
+			"already full width, still inside the gap: stays full width")
+
+
+func test_should_close_ranks_guards_against_zero_max_soldiers() -> void:
+	assert_false(UnitFormation.should_close_ranks(false, 0, 0),
+			"a degenerate zero-strength unit holds its current state, no division by zero")
+	assert_true(UnitFormation.should_close_ranks(true, 0, 0),
+			"holds true too -- the guard preserves whatever state it was given")
+
+
+func test_frontage_contracts_a_notch_once_ranks_closed() -> void:
+	var u := Unit.new()
+	u.max_soldiers = 120
+	add_child_autofree(u)
+	var full: int = UnitFormation.frontage(u)
+	u._ranks_closed = true
+	assert_eq(UnitFormation.frontage(u), UnitFormation.narrowed_files(full),
+			"once ranks are closed the auto frontage steps down one notch")
+	assert_lt(UnitFormation.frontage(u), full,
+			"the contracted frontage is narrower than the full-strength line")
+
+
+func test_frontage_override_still_wins_when_ranks_closed() -> void:
+	# A player's explicit frontage choice is never overridden by the automatic contraction --
+	# same precedence as the full-strength auto width it stands in for.
+	var u := Unit.new()
+	u.max_soldiers = 120
+	add_child_autofree(u)
+	u.frontage_override = 20
+	u._ranks_closed = true
+	assert_eq(UnitFormation.frontage(u), 20, "the override wins over the close-ranks contraction")
+
+
 # --- casualty adaptation (recompute from the LIVE count) --------------------
 # A unit can take casualties mid-maneuver, so a maneuver recomputes its target shape from
 # the live soldier count every tick rather than caching it. These pin the property the
