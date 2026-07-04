@@ -64,19 +64,19 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            473.34,
-            299.46
+            500.0,
+            300.0
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              138.33,
-              71.28
+              136.75,
+              71.36
             ],
             "centroid": [
-              500.45,
-              301.21
+              500.94,
+              301.24
             ],
             "count": 140,
             "prone_count": 0
@@ -109,19 +109,19 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            430.42,
-            299.99
+            500.0,
+            300.0
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              211.79,
-              46.4
+              173.7,
+              57.81
             ],
             "centroid": [
-              502.33,
-              302.71
+              520.86,
+              303.34
             ],
             "count": 140,
             "prone_count": 0
