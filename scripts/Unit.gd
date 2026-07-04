@@ -136,6 +136,19 @@ var frontage_override: int = 0
 # that rotation in soldier_world_slots so the slots stay put -- the men don't drift. 0 = the
 # grid is square to the heading (the default). A fresh move order / rout reforms it to 0.
 var _formation_angle: float = 0.0
+# True for exactly one thing: a countermarch just performed by reform_ranks() after an about-
+# face folded _formation_angle to ±PI. A single rigid rotation of the whole grid by ang (the
+# normal soldier_world_slots formula) is a POINT reflection -- it negates both the file (lateral)
+# and rank (depth) axes of every local slot, which is correct for holding a body's world position
+# steady DURING the turn (that's the identity-holding invariant _settle_order_turn relies on),
+# but wrong for the reform that follows: re-squaring the grid should only reverse rank order
+# within each file (a countermarch), never swap a soldier to the opposite flank. While this flag
+# is set, soldier_world_slots negates each local slot's file (x) coordinate before rotating by the
+# CURRENT ang -- a depth-only reflection -- so a body that stood in the front rank on one flank
+# lands in the rear rank on that SAME flank, matching real countermarch drill. Cleared by
+# set_current_order() and _rout() (any fresh order or maneuver re-squares from a clean baseline,
+# so a stale mirror must not compound with the next turn's own _formation_angle fold).
+var _formation_mirror_x: bool = false
 # Facing to pivot to once a move order's destination is reached, set by a
 # drag-to-form-up order so the unit deploys facing the dragged line rather than its
 # march direction. Vector2.ZERO means "keep the march facing" (no deploy turn).
@@ -696,6 +709,10 @@ func set_current_order(order: Order) -> void:
 		q.append(order)
 	orders = q
 	current_order = order
+	# A fresh order always re-squares from a clean baseline (see start_order_response, called
+	# right after this for every dispatched order): a stale countermarch mirror must not
+	# compound with whatever fold the new order's own maneuver applies to _formation_angle.
+	_formation_mirror_x = false
 
 
 ## Append `order` to the queue tail (a shift-click waypoint leg). If the unit is currently idle
@@ -1421,6 +1438,10 @@ func _settle_engage_turn() -> void:
 	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
 	_engage_turn_target = Vector2.ZERO
+	# This fold supersedes any countermarch mirror still in effect from an earlier reform (a
+	# unit can engage combat mid-march after its rear-move reform): the two would otherwise
+	# compound into a mapping soldier_world_slots was never meant to produce.
+	_formation_mirror_x = false
 	_render_dirty = true
 
 
@@ -1441,6 +1462,9 @@ func _face_dir(dir: Vector2) -> void:
 	var new_facing: Vector2 = dir.normalized()
 	if absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
 		_formation_angle = wrapf(_formation_angle - angle_difference(facing.angle(), new_facing.angle()), -PI, PI)
+		# This fold supersedes any countermarch mirror still in effect from an earlier reform,
+		# the same reasoning as _settle_engage_turn's clear just above.
+		_formation_mirror_x = false
 		_render_dirty = true
 	facing = new_facing
 
@@ -1941,7 +1965,16 @@ func soldier_world_slots(count: int) -> PackedVector2Array:
 	# grid: it cancels the heading rotation here, so the slots (and the men) stay put.
 	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
 	for i in range(slots.size()):
-		out.push_back(position + slots[i].rotated(ang))
+		var slot: Vector2 = slots[i]
+		if _formation_mirror_x:
+			# A countermarch reform: negate the local file (x) coordinate before rotating by
+			# the CURRENT ang, instead of just rotating the raw slot. A plain rotation by ang
+			# is a point reflection of the pre-reform grid (it swaps a soldier to the opposite
+			# flank -- see the _formation_mirror_x field doc); negating x first turns that into
+			# a depth-only reflection, so a body keeps its own flank and only trades its rank
+			# (front <-> rear) -- a real countermarch, not a mirror-image swap.
+			slot.x = -slot.x
+		out.push_back(position + slot.rotated(ang))
 	return out
 
 
@@ -2152,6 +2185,15 @@ func _finish_order_turn() -> void:
 ## has NO partial rank -- a full grid is centre-symmetric, so the flip already fronts a full
 ## rank and a reform would only churn every man through the block for zero shape change.
 ## Returns true when a reform actually starts.
+##
+## The ±PI case (an about-face fold, the only fold this composite's rear-move actually
+## produces) arms _formation_mirror_x rather than just dropping the fold: a plain rotation by
+## the post-reform ang is a POINT reflection of the pre-reform grid (it would swap every
+## soldier to the OPPOSITE FLANK, not just trade rank order -- see soldier_world_slots and the
+## field doc), so the ±PI case needs the depth-only reflection that flag arms instead. Any
+## other fold (not ±PI -- unreachable via the rear-move composite today, but the general
+## primitive is defensive here) keeps the old plain drop: nothing but a rear-move's about-face
+## produces the point-reflection hazard the flag exists for.
 func reform_ranks() -> bool:
 	var angle: float = wrapf(_formation_angle, -PI, PI)
 	if absf(angle) < 0.01:
@@ -2161,9 +2203,11 @@ func reform_ranks() -> bool:
 	# half-turn of it is just a lateral mirror of the same centred row.
 	if UnitFormation.ranks_for(soldiers, files) <= 1:
 		return false
-	if absf(absf(angle) - PI) < 0.01 and soldiers % files == 0:
+	var is_about_face_fold: bool = absf(absf(angle) - PI) < 0.01
+	if is_about_face_fold and soldiers % files == 0:
 		return false
 	_formation_angle = 0.0
+	_formation_mirror_x = is_about_face_fold
 	_render_dirty = true
 	return true
 
@@ -2644,6 +2688,7 @@ func start_order_response() -> void:
 	# this a deliberate reshape; until then a clean reform is the safe default). Also drop any
 	# in-flight engage re-face turn: the order supersedes it and the reform squares the block.
 	_formation_angle = 0.0
+	_formation_mirror_x = false
 	_engage_turn_target = Vector2.ZERO
 
 
@@ -2728,6 +2773,7 @@ func _rout() -> void:
 	_reform_on_arrival = false
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
+	_formation_mirror_x = false
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
