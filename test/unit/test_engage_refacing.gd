@@ -245,7 +245,7 @@ func test_match_target_adopts_enemy_frontage() -> void:
 	enemy.seed_sim_soldiers()
 	a.attack = 0
 	a.engage_reshape_mode = Unit.EngageReshapeMode.MATCH_TARGET
-	var enemy_files: int = UnitFormation.frontage(enemy)
+	var enemy_files: int = enemy.formation_files(enemy.soldiers)
 	assert_lt(enemy_files, a.formation_files(a.soldiers),
 		"the enemy's frontage is narrower than the attacker's default, so matching it is observable")
 
@@ -258,8 +258,32 @@ func test_match_target_adopts_enemy_frontage() -> void:
 		"MATCH_TARGET reshapes to the enemy's own file count")
 
 
+func test_match_target_uses_the_squared_enemys_actual_file_count() -> void:
+	# A hollow-square enemy's real grid (UnitFormation.square_files) is a different, narrower
+	# shape than its wide-line frontage (UnitFormation.frontage) would report -- MATCH_TARGET
+	# must adopt the square's actual file count (formation_files), not the wide-line one the
+	# enemy isn't even standing on.
+	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
+	var enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
+	enemy.set_formation(Unit.FORMATION_SQUARE)
+	var square_files: int = enemy.formation_files(enemy.soldiers)
+	var wide_line_files: int = UnitFormation.frontage(enemy)
+	assert_ne(square_files, wide_line_files,
+		"the square's real file count differs from its (unused) wide-line frontage")
+	a.attack = 0
+	a.engage_reshape_mode = Unit.EngageReshapeMode.MATCH_TARGET
+
+	for _i in range(60):
+		a._think(0.05)
+		if a._engage_turn_target == Vector2.ZERO:
+			break
+	assert_eq(a._engage_turn_target, Vector2.ZERO, "the turn has completed")
+	assert_eq(a.frontage_override, square_files,
+		"MATCH_TARGET reshapes to the square's actual file count, not its wide-line frontage")
+
+
 func test_keep_new_fronting_leaves_frontage_untouched() -> void:
-	# The default mode: no reshape at all, matching the shipped #476 MVP behavior exactly.
+	# The default mode: no reshape at all, matching the shipped turn-in-place MVP behavior.
 	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
 	var _enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
 	assert_eq(a.engage_reshape_mode, Unit.EngageReshapeMode.KEEP_NEW_FRONTING,

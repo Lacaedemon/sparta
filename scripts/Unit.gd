@@ -1475,7 +1475,11 @@ func _settle_engage_turn() -> void:
 		EngageReshapeMode.MATCH_TARGET:
 			var enemy: Unit = _engage_turn_enemy
 			if enemy != null and is_instance_valid(enemy) and enemy.state != State.DEAD:
-				set_frontage(UnitFormation.frontage(enemy))
+				# formation_files (not UnitFormation.frontage) so a hollow-square enemy
+				# (SQUARE/SCHILTRON) is matched by its actual square file count, the same
+				# accessor the RECREATE_WIDTH branch above uses for the acting unit's own
+				# pre-turn frontage.
+				set_frontage(enemy.formation_files(enemy.soldiers))
 	_engage_turn_old_files = 0
 	_engage_turn_enemy = null
 
