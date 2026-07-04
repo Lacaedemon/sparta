@@ -174,6 +174,23 @@ func test_t_cycle_reaches_square_then_wraps_to_normal() -> void:
 		"Square wraps back to Normal")
 
 
+func test_shift_t_reverses_the_formation_cycle() -> void:
+	# Shift+T is the reverse of T (prev_formation), the same parallelism as
+	# Shift+Tab reversing Tab -- stepping forward then back returns to the start.
+	const SM = preload("res://scripts/SelectionManager.gd")
+	assert_eq(SM.prev_formation(Unit.FORMATION_TIGHT), Unit.FORMATION_NORMAL,
+		"Tight steps back to Normal")
+	assert_eq(SM.prev_formation(Unit.FORMATION_LOOSE), Unit.FORMATION_TIGHT,
+		"Loose steps back to Tight")
+	assert_eq(SM.prev_formation(Unit.FORMATION_SQUARE), Unit.FORMATION_LOOSE,
+		"Square steps back to Loose")
+	assert_eq(SM.prev_formation(Unit.FORMATION_NORMAL), Unit.FORMATION_SQUARE,
+		"Normal wraps back to Square")
+	for mode in SM.FORMATION_CYCLE:
+		assert_eq(SM.next_formation(SM.prev_formation(mode)), mode,
+			"prev then next returns to the same mode")
+
+
 # A minimal stand-in for Battle: _cycle_formation calls _battle.enqueue_formation
 # (its parent, via get_parent()). This records the enqueued mode so the test can
 # assert the T-cycle routed the right next mode through the recording path.
@@ -198,6 +215,27 @@ func test_cycle_formation_enqueues_the_next_mode() -> void:
 	sm._cycle_formation()
 	assert_eq(battle.last_formation, Unit.FORMATION_SQUARE,
 		"cycling from Loose enqueues Square")
+
+
+func test_shift_t_dispatches_the_reverse_cycle() -> void:
+	# Drive Shift+T through the real key-dispatch path (not just the pure helper)
+	# so the hotkey wiring itself is covered, not only prev_formation's math.
+	const SM = preload("res://scripts/SelectionManager.gd")
+	var battle := _StubBattle.new()
+	add_child_autofree(battle)
+	var sm = SM.new()
+	battle.add_child(sm)
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_LOOSE)
+	sm._select(u)
+	var ev := InputEventKey.new()
+	ev.keycode = KEY_T
+	ev.physical_keycode = KEY_T
+	ev.pressed = true
+	ev.shift_pressed = true
+	assert_true(sm._dispatch_key(ev), "Shift+T is a handled hotkey")
+	assert_eq(battle.last_formation, Unit.FORMATION_TIGHT,
+		"Shift+T from Loose enqueues Tight (one step back)")
 
 
 func _sm_with_unit(u: Unit):

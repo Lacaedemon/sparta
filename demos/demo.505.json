@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/formation-shift-reverse-505.json",
+  "caption": "#505: modifier-key shortcuts. Selecting the Spearmen (spawn formation Tight), T cycles the formation forward (Tight -> Loose, visibly wider spacing); Shift+T cycles the other way, stepping back (Loose -> Tight) -- the same tab/shift-tab parallelism the issue asks for. Shift+Y and Shift+X reverse the form-up split and group-attack-mode cycles the same way (see the PR description).",
+  "fixed_fps": 30,
+  "max_frames": 130,
+  "fps": 15,
+  "width": 640
+}
