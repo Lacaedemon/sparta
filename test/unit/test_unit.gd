@@ -1798,7 +1798,7 @@ func test_frontage_override_clamps_to_range() -> void:
 			"a non-positive override means auto (the floor-at-one lives in set_frontage)")
 
 
-# --- close the ranks (#470): contract frontage under heavy losses -----------
+# --- close the ranks: contract frontage under heavy losses -----------
 
 func test_ranks_close_after_a_tick_of_heavy_losses() -> void:
 	var u := _make_unit(100)

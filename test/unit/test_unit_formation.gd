@@ -123,7 +123,7 @@ func test_narrowed_files_floors_at_one() -> void:
 	assert_eq(UnitFormation.narrowed_files(1), 1, "never narrower than a single column")
 
 
-# --- close the ranks (#470): contract frontage under heavy losses -----------
+# --- close the ranks: contract frontage under heavy losses -----------
 
 func test_should_close_ranks_triggers_at_or_below_the_contract_threshold() -> void:
 	assert_true(UnitFormation.should_close_ranks(false, 50, 100),

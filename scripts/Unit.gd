@@ -130,7 +130,7 @@ var tier: int = FormationTier.CLOSE
 # change rides the replay command stream so playback reproduces it. Honoured and
 # clamped to [1, max_soldiers] in UnitFormation.frontage.
 var frontage_override: int = 0
-# "Close the ranks" (#470): whether the auto (non-override) frontage is currently
+# "Close the ranks": whether the auto (non-override) frontage is currently
 # stepped down a notch to reform the casualty-thinned survivors into a deeper, denser
 # block instead of holding the full-strength line's width. A single cached bool, not a
 # recomputed-every-call fraction check, so the step is a discrete ONE-TIME reflow at the

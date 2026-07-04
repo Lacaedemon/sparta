@@ -13,14 +13,14 @@ static func _files(n: int) -> int:
 	return maxi(1, int(ceil(sqrt(float(n) * Unit.FORMATION_ASPECT))))
 
 
-# "Close the ranks" (#470): a heavily-mauled unit narrows its AUTO frontage one notch so
+# "Close the ranks": a heavily-mauled unit narrows its AUTO frontage one notch so
 # the survivors reform into a deeper, denser block instead of holding the full-strength
 # line's width with a thin, brittle depth -- the historical practice the file-closer
-# (ouragos) enforced (see UnitFormation.block_slots' docstring and PR #471's sources).
+# (ouragos) enforced (see UnitFormation.block_slots' docstring).
 # Trigger on a single hysteresis-gapped fraction-of-strength crossing, evaluated ONCE PER
 # TICK and cached (Unit._ranks_closed), not recomputed continuously -- the same
 # every-soldier-jumps-at-once churn the stable full-strength frontage above already
-# avoids. CONTRACT_FRAC (50%) is the issue's own worked example: a unit down to half
+# avoids. CONTRACT_FRAC (50%) is a worked example: a unit down to half
 # strength has lost enough depth that a still-full-width line is reading as thin cover,
 # not a solid block. RECOVER_FRAC sits a further 15 points up (mirrors FormationTier's
 # PROMOTE/DEMOTE gap) so a unit hovering right at half strength -- reinforced by absorb(),
