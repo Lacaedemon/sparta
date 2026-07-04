@@ -146,7 +146,7 @@ features that depend on it, then independent polish.
   - #12 M1 first run & verification in Godot — nothing below is validated until this passes.
   - #13 Spacebar active pause — implemented in PR #2, pending live confirm.
 - **P1 — Collision pillar (core, in dependency order):**
-  - #6 Per-type footprint (`_separate()` currently uses the shared `RADIUS`; make it per-type). (shipped)
+  - #6 Per-type footprint (`_separate()` now uses per-type separation radii instead of the shared `RADIUS`). (shipped)
   - #10 NavigationAgent2D pathfinding (decide path-vs-collision split here). (shipped)
   - #9 Scale beyond O(n²) — pairs with #10. (shipped)
   - #7 Formation cohesion (depends on #6). (shipped)
