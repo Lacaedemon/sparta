@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure internal refactor: Fallen/VolleyTrail/RoutShockwave now share a TransientEffect base class for their age/queue_free bookkeeping, with no change to drawing, timing, or spawn behavior. A recorded clip would look pixel-identical to any existing demo, so it wouldn't show anything about this change."
+}
