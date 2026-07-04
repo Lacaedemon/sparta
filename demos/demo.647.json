@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/spawn-facing-flip-fixed.json",
+  "caption": "The two cavalry (top) spawn facing north; the enemy AI's auto-advance snaps them to face the player infantry almost immediately -- a large flip in one tick. Before this fix that flip swapped every soldier's formation slot to the opposite side of the block, so the whole cavalry formation visibly compressed then re-expanded over ~1.5-3 seconds while everyone walked to their new side (\"pulsing\"). Watch the two cavalry blocks stay a steady size through the flip instead of shrinking and regrowing.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 720
+}

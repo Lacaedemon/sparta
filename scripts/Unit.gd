@@ -1424,9 +1424,25 @@ func _settle_engage_turn() -> void:
 	_render_dirty = true
 
 
+## Snap `facing` to `dir` instantly. A small change (the common case: a moving unit's
+## travel direction drifting tick to tick, or a close-quarters combat correction) is
+## visually a non-event, so soldier_world_slots' facing-relative grid barely moves and the
+## men stay near their own slots. A LARGE snap (e.g. an idle unit's very first move order
+## firing while it still faces its spawn heading, or a combat chase target appearing behind
+## it) would instead swap every slot to the opposite side of the block in one tick --
+## _formation_angle absorbs the jump the same way a completed drill turn does, so
+## soldier_world_slots reproduces each body's own pre-snap slot under the new facing and no
+## soldier surges across the formation. Unlike the drill turns, this is a same-tick snap, not
+## an animated turn-in-place -- a combat/chase re-face must stay responsive, only the
+## resulting slot-swap churn is what's being suppressed.
 func _face_dir(dir: Vector2) -> void:
-	if dir.length() > 0.01:
-		facing = dir.normalized()
+	if dir.length() <= 0.01:
+		return
+	var new_facing: Vector2 = dir.normalized()
+	if absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
+		_formation_angle = wrapf(_formation_angle - angle_difference(facing.angle(), new_facing.angle()), -PI, PI)
+		_render_dirty = true
+	facing = new_facing
 
 
 ## Rotate `facing` toward `target_dir` by at most `rate` * delta this frame — the
@@ -1885,6 +1901,13 @@ const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
 # the line to bear before it fights, but it need not be dead-on. Slightly under a flank
 # boundary so a re-faced unit lands frontal blows.
 const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
+# Beyond this heading offset (radians) an instant facing snap (_face_dir) folds the jump into
+# _formation_angle instead of leaving soldier_world_slots' facing-relative grid to swap every
+# slot to the new side of the block. A small snap (normal travel-direction drift, a
+# close-quarters correction) is left alone -- the grid barely moves and there is nothing to
+# absorb. Same threshold as ENGAGE_TURN_THRESHOLD (roughly a quarter-turn or more): past that
+# angle the slot swap is large enough to read as the formation collapsing and re-expanding.
+const FACING_SNAP_ABSORB_THRESHOLD: float = ENGAGE_TURN_THRESHOLD
 
 # A rear-sector move order parks its march destination and its reform choice on the Order
 # itself (target_pos / reform -- has_move_target stays false during the turn so _think's

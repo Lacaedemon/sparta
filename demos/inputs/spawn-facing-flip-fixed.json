@@ -1,0 +1,14 @@
+{
+  "_comment": "Spawn-facing-flip formation churn demo, cavalry-only -- split out from schiltron.json (which chains an unrelated player Infantry click + Shift+O Schiltron switch around the same flip) per the CLAUDE.md demo-simplicity rule and the prior art in schiltron-formation-only.json/schiltron-charge-received.json. Two cavalry spawn facing north (team 1, above); a single player Infantry unit spawns south of them (team 0, no scenario formation override, no scripted steps at all). The enemy AI's auto-advance snaps the cavalry's facing toward the infantry almost immediately (~tick 20, a >90 degree flip) with nothing else happening on screen -- the fix keeps their formation blocks a steady size through that flip instead of visibly compressing then re-expanding. Camera holds on the two cavalry blocks throughout. Deterministic (scenario + seed, no scripted input needed). Verified via tools/demo/dump-state.sh against this scenario: cavalry soldier_summary.bbox stays within ~2% of its spawn size through the flip.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 500, "count": 120},
+    {"team": 1, "type": "Cavalry", "x": 740, "y": 250},
+    {"team": 1, "type": "Cavalry", "x": 860, "y": 250}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 300.0, "zoom": 1.5}
+  ],
+  "steps": [],
+  "state": [0, 18, 20, 40, 90, 150]
+}
