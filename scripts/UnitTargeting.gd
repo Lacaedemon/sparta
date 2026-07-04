@@ -7,38 +7,57 @@ class_name UnitTargeting
 ## The order-EXECUTION that consumes these (the AI brain, the support tick) stays on Unit.
 
 
-## The unit's committed melee target if it is still a live, non-routing enemy; otherwise
-## clear the stale reference and auto-acquire the nearest threat.
+## The unit's committed melee target if it is still live; otherwise clear the stale
+## reference and auto-acquire the nearest threat. A routing enemy (broken or shattered)
+## stays a live target here --- a unit doesn't lose interest in prey just because it broke
+## and ran; it keeps pressing the pursuit. Pursuit can be relentless (nothing caps how far
+## a unit will chase); what keeps a chased router from rallying is morale, not a targeting
+## radius --- continuing to take casualties while run down erodes morale (see
+## UnitCombat.register_casualties) faster than _process_rout's baseline recovery, so it
+## never crosses RALLY_MORALE_THRESHOLD. A router that actually breaks free (outruns its
+## pursuer, or the pursuer disengages) stops taking hits and recovers normally.
 static func current_target(u: Unit) -> Unit:
 	var t: Unit = u.target_enemy
-	if t != null and is_instance_valid(t) and t.state != Unit.State.DEAD and t.state != Unit.State.ROUTING:
+	if t != null and is_instance_valid(t) and t.state != Unit.State.DEAD:
 		return t
 	u.target_enemy = null
 	return nearest_enemy(u)
 
 
 ## Nearest threat for normal auto-acquisition: centred on the unit, within DETECTION_RANGE.
+## Includes routing enemies --- see nearest_enemy_to's include_routing.
 static func nearest_enemy(u: Unit) -> Unit:
-	return nearest_enemy_to(u, u.position, Unit.DETECTION_RANGE)
+	return nearest_enemy_to(u, u.position, Unit.DETECTION_RANGE, true)
 
 
-## Nearest living, non-routing enemy within `radius` of `center`. Backs both normal
-## auto-acquisition (centred on this unit, DETECTION_RANGE) and the support stance,
-## which scans around the WARD's position so a supporter meets threats closing on its
-## charge rather than only ones near itself.
-static func nearest_enemy_to(u: Unit, center: Vector2, radius: float) -> Unit:
+## Nearest living enemy within `radius` of `center`. Backs both normal auto-acquisition
+## (centred on this unit, DETECTION_RANGE, routing enemies included) and the support
+## stance, which scans around the WARD's position so a supporter meets threats closing on
+## its charge rather than only ones near itself.
+##
+## `include_routing` (default false) governs whether a routing enemy (broken or
+## shattered --- still on the field, in the "routers" group, until it escapes or is
+## annihilated) counts as a candidate, at the same `radius` as everyone else --- no
+## separate leash. Combat auto-acquisition wants routing enemies included (a fleeing
+## regiment can still be run down, relentlessly if the pursuer can keep pace); the rally
+## contact-check (Unit._can_rally) wants them excluded --- a routing enemy passing nearby
+## shouldn't itself count as "still in contact" blocking this unit's own rally.
+static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
+		include_routing: bool = false) -> Unit:
 	var best: Unit = null
 	var best_d: float = radius
-	for o in u.get_tree().get_nodes_in_group("units"):
-		var other: Unit = o as Unit
-		if other == null or other.team == u.team:
-			continue
-		if other.state == Unit.State.DEAD or other.state == Unit.State.ROUTING:
-			continue
-		var d: float = center.distance_to(other.position)
-		if d < best_d:
-			best_d = d
-			best = other
+	var groups: Array = ["units", "routers"] if include_routing else ["units"]
+	for group in groups:
+		for o in u.get_tree().get_nodes_in_group(group):
+			var other: Unit = o as Unit
+			if other == null or other.team == u.team:
+				continue
+			if other.state == Unit.State.DEAD:
+				continue
+			var d: float = center.distance_to(other.position)
+			if d < best_d:
+				best_d = d
+				best = other
 	return best
 
 

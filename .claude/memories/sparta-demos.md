@@ -204,3 +204,54 @@ against `max_frames` at all. This is the same "keep each demo simple and focused
 principle CLAUDE.md already states, extended with a concrete failure mode:
 inherited scenario elements that don't actually complete are worse than no
 scenario elements at all. (`Lacaedemon/sparta` PR #623, 2026-07-03.)
+
+## Construct scenarios to isolate the phenomenon in question
+
+The general form of the lesson above, generalized beyond a single frame-budget
+timing bug: **when a demo or regression test is meant to prove one specific
+mechanic works, stage the scenario so nothing else can interfere with it** —
+don't layer the mechanic onto a combat arc whose outcome also depends on
+unrelated factors (relative unit speeds, AI targeting choices, RNG).
+
+Concrete case: `test_rout_rally_demo_scenario.gd` (two cavalry vs. one weak
+infantry) used to prove a routed unit RALLIES — it relied on routing units
+being untargetable, so the cavalry lost interest and the infantry reliably
+broke contact. When routing units became valid combat targets (#638, PR #654:
+routing units should be attackable), the *same* scenario now reliably shows
+the *opposite* outcome — the faster cavalry catch and annihilate the
+infantry before it can recover — because "does it rally" now depends on
+whether the pursuer can keep pace, not just on the rout mechanic itself. The
+combat arc was never a clean proof of "broken units can recover"; it only
+happened to demonstrate that under one specific matchup's relative speeds.
+
+Fixed by splitting into two demos/tests, each isolating one phenomenon:
+- `test_rout_annihilation_demo_scenario.gd` (renamed from the original file)
+  keeps the two-cavalry matchup, now asserting what it actually proves: a
+  relentlessly-pursued router is run down and destroyed, not that it rallies.
+- `test_morale_recovery_demo_scenario.gd` (new) proves the RECOVERABLE side of
+  routing in isolation: a single unit, started already `_rout()`-ing directly
+  (not via combat), with **no enemy on the field at all**. Nothing can
+  interfere with its morale recovery, so it cleanly demonstrates the "broken"
+  state's recovery path on its own.
+
+**Gotcha hit building the isolated version:** a scenario with zero team-1
+units (no `{"team": 1, ...}` entries at all) makes `Battle._check_victory()`
+see `_team_in_play(1) == false` from tick 0 — with `p_alive == true` this
+takes the `elif not e_alive: _end("Victory!")` branch *immediately*, which
+sets `get_tree().paused = true`. A GUT test looping `await
+get_tree().physics_frame` then hangs forever, since physics frames don't fire
+while the tree is paused — `_check_victory()`'s own `drill_mode` early return
+exists for exactly this "no opponent" case, so set `_battle.drill_mode =
+true` on any single-team scenario, even when using a custom `scenario` array
+rather than the default line spawn (`drill_mode` only changes *spawning*
+behavior on the default-line path, but `_check_victory()` reads it
+unconditionally regardless of how units were spawned).
+
+Also relevant when authoring a demo this way: a routing state can currently
+only be reached as a side effect of real combat casualties
+(`UnitCombat.register_casualties`'s `morale <= 0` check calls `Unit._rout()`)
+— a scenario/replay file alone can't declare a unit's starting state as
+ROUTING the way a GUT test can by calling `_rout()` directly. That's why the
+isolated recovery case above is a GUT-test-only regression guard for now, not
+also a recordable website demo clip — sparta#657 tracks the follow-up to make
+it recordable. (`Lacaedemon/sparta` PR #654, 2026-07-04.)
