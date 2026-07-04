@@ -25,4 +25,11 @@ exclude = [
   # (even after re-runs). The site is reachable in a browser, so skip it rather
   # than re-cost a CI re-run each time.
   "^https://divideetimperamod\\.com",
+  # opengameart.org (linked from ASSETS.md, assets/sfx/CREDITS.md,
+  # assets/sfx/README.md, docs/asset-sources.md, website/assets.qmd) rejects
+  # lychee's automated requests with HTTP 502 Bad Gateway, even though the
+  # site loads normally in a browser — the same false-positive pattern as
+  # pixabay above. Skip it rather than reddening unrelated PRs on an
+  # unavoidable CI flake.
+  "^https://opengameart\\.org",
 ]
