@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/about-face.json",
+  "caption": "Fixes a countermarch geometry bug (#668) in the reform PR #565 landed for #552: after a drilled about-face, re-squaring the grid to the new heading used to rotate every soldier's slot by a single rigid 180 deg turn -- a point reflection that swapped each soldier to the OPPOSITE FLANK (left-right side) of the block, not just the opposite rank. The staged regiment is the same 40 spearmen at 9 files (4 full ranks + a 4-man partial rank) from #565's demo: the about-face holds every soldier's position (unchanged from the true-conversio fix), then the reform now countermarches each soldier straight to the new rank on its OWN side -- the leftmost file stays the leftmost file throughout, only trading front for rear -- instead of crossing to the mirror-image file. Verified by per-soldier state dump: soldier 0 (originally leftmost) and soldier 8 (originally rightmost) each keep their own flank across the whole about-face + reform. NOTE for reviewers: a real countermarch is SUPPOSED to look dramatic -- the original front rank and the short rear rank visibly trade depth positions (front becomes rear, rear becomes front), which reads as ranks reordering on screen. That depth-order swap is the intended fix (see #552); what this PR eliminates is soldiers additionally crossing to the OPPOSITE SIDE (left/right) of the block, which they no longer do.",
+  "fixed_fps": 30,
+  "max_frames": 260,
+  "fps": 12,
+  "width": 640
+}
