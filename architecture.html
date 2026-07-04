@@ -445,6 +445,7 @@ ul.task-list li input[type="checkbox"] {
   <ul class="collapse">
   <li><a href="#collision-roadmap-priority-order" id="toc-collision-roadmap-priority-order" class="nav-link" data-scroll-target="#collision-roadmap-priority-order">Collision roadmap (priority order)</a></li>
   </ul></li>
+  <li><a href="#scaling-to-large-battles-two-simulation-tiers" id="toc-scaling-to-large-battles-two-simulation-tiers" class="nav-link" data-scroll-target="#scaling-to-large-battles-two-simulation-tiers">Scaling to large battles: two simulation tiers</a></li>
   <li><a href="#determinism" id="toc-determinism" class="nav-link" data-scroll-target="#determinism">Determinism</a></li>
   <li><a href="#tuning-pointers" id="toc-tuning-pointers" class="nav-link" data-scroll-target="#tuning-pointers">Tuning pointers</a></li>
   </ul>
@@ -472,7 +473,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-07-03</p>
+      <p class="date">Last updated: 2026-07-04</p>
     </div>
   </div>
   
@@ -571,6 +572,29 @@ Table&nbsp;1: Each script and its responsibility.
 <li><strong>Scale</strong> — replace the O(n²) neighbor scan with a spatial grid (and/or <code>CharacterBody2D</code> / <code>move_and_slide</code>) before unit counts grow past a few dozen.</li>
 </ol>
 </section>
+</section>
+<section id="scaling-to-large-battles-two-simulation-tiers" class="level2">
+<h2 class="anchored" data-anchor-id="scaling-to-large-battles-two-simulation-tiers">Scaling to large battles: two simulation tiers</h2>
+<p>A single battle scene can mix two simulation fidelities at once, one per formation:</p>
+<ul>
+<li><strong>Close tier</strong> — full per-soldier simulation, exactly the individual-body collision/combat model described above. Used for formations currently in or near active combat.</li>
+<li><strong>Far tier</strong> — an aggregate record (living count, morale, position, facing) evolved by statistical rules instead of per-soldier physics, for formations far from any fight (reserves, a second echelon). A far tier formation costs the same regardless of how many soldiers it represents, so a handful of aggregate reserve corps can stand in for tens of thousands of soldiers without the per-soldier cost.</li>
+</ul>
+<p>A formation crosses tiers automatically as it nears or leaves combat — promoting to close tier as an enemy closes to strike range, demoting back to far tier once it disengages and falls back. See <a href="https://github.com/Lacaedemon/sparta/blob/main/docs/large-scale-simulation-design.md"><code>docs/large-scale-simulation-design.md</code></a> for the full design and the phased build-out.</p>
+<div id="fig-cannae-scale" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-cannae-scale-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/cannae_scale.jpg">
+  <source src="media/cannae_scale.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cannae-scale-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: The engaged close-tier front (fully detailed, individually-simulated soldiers) in the foreground, and the far larger aggregate far-tier reserve force revealed as the camera pulls back.
+</figcaption>
+</figure>
+</div>
 </section>
 <section id="determinism" class="level2">
 <h2 class="anchored" data-anchor-id="determinism">Determinism</h2>
