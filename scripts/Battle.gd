@@ -40,8 +40,8 @@ const ORDER_FRONTAGE_ONLY := -4
 const ORDER_WHEEL := -5
 # Sentinel for an arrow-key nudge: a small fixed-distance drill move that holds
 # facing. The nudge direction rides the "frontage" field (1 = left, 2 = right,
-# 3 = back), so the replay format is unchanged. Each unit steps from its own
-# facing, so a mixed-facing selection nudges correctly per unit.
+# 3 = back, 4 = forward), so the replay format is unchanged. Each unit steps
+# from its own facing, so a mixed-facing selection nudges correctly per unit.
 const ORDER_NUDGE := -6
 enum NudgeDir { LEFT = 1, RIGHT = 2, BACK = 3, FORWARD = 4 }
 # Sentinel for a standalone stance-change order (no movement, no target): writes the

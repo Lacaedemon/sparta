@@ -321,6 +321,23 @@ func test_dispatch_key_routes_resize_and_reports_handled() -> void:
 	assert_false(sm._dispatch_key(_key_event(KEY_P)), "an unbound key is not handled")
 
 
+func test_dispatch_key_routes_up_arrow_to_forward_nudge() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 11
+	b._by_uid[11] = u
+	sm._select(u)
+	assert_true(sm._dispatch_key(_key_event(KEY_UP)), "Up is a handled hotkey while a unit is selected")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_NUDGE,
+			"routed as a recorded nudge command")
+	assert_eq(int(cmd["frontage"]), BattleScript.NudgeDir.FORWARD,
+			"the direction rides the frontage field, per enqueue_nudge's doc comment")
+
+
 # --- standalone stance gesture -----------------------------------------
 
 func test_ctrl_stance_key_writes_the_stance_in_place() -> void:
