@@ -796,13 +796,13 @@ func _info_panel_raise() -> void:
 	if _info_panel == null or _ctrl_bar == null:
 		return
 	var bar_h := _ctrl_bar.get_combined_minimum_size().y
-	_info_panel.set_deferred("position:y", -(PANEL_MIN.y + PANEL_BOTTOM_GAP + bar_h + 8.0))
+	_info_panel.set_deferred("position", Vector2(_info_panel.position.x, -(PANEL_MIN.y + PANEL_BOTTOM_GAP + bar_h + 8.0)))
 
 
 func _info_panel_lower() -> void:
 	if _info_panel == null:
 		return
-	_info_panel.set_deferred("position:y", -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
+	_info_panel.set_deferred("position", Vector2(_info_panel.position.x, -(PANEL_MIN.y + PANEL_BOTTOM_GAP)))
 
 
 func _build_ctrl_option_buttons() -> Control:
