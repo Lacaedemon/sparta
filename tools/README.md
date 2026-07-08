@@ -10,7 +10,7 @@ A single entry point that reproduces the **gating** checks from
 failure) without pushing and waiting on the runners.
 
 ```sh
-tools/check.sh                 # default set: validate, test, chars
+tools/check.sh                 # default set: validate, test, chars, comments
 tools/check.sh test chars      # only the named checks, in order
 tools/check.sh all             # every check (adds links if lychee is installed)
 tools/check.sh --list          # list the available checks
@@ -22,6 +22,7 @@ tools/check.sh --help          # full usage
 | `validate` | `godot --headless --import` loads the whole project (autoloads, `class_name` globals, cross-script refs) and fails on any script/parse error. | `godot-ci.yml` |
 | `test` | Runs the GUT unit suite headlessly (`-gexit`). | `godot-ci.yml` |
 | `chars` | Flags curly quotes and en/em dashes in the Quarto docs (`*.qmd`, `*.R`), which are kept plain-ASCII. | `check-non-standard-chars.yml` |
+| `comments` | Flags issue/PR-number citations (`#123`) in GDScript (`*.gd`) comments — CLAUDE.md's "no issue-number references" rule (`TODO(#N):`/`FIXME(#N):` excepted). | `check-comment-citations.yml` |
 | `links` | Markdown link-check via [lychee](https://github.com/lycheeverse/lychee), if installed. Needs network, so it's **not** in the default set. | `check-links.yml` |
 
 Exit status is non-zero if any selected check fails, so it drops straight into a
