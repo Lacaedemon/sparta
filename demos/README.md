@@ -456,8 +456,21 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 3 | 8 |
 | Cavalry | 4 | 9 |
 
-Both lines center on `start_x = 500` with `spacing = 150` px on the `1600 × 1000`
-field, so they start **400 px** apart vertically. Each unit's sprint speed is stated
+Both lines center on the `1600 × 1000` field, so they start **400 px** apart
+vertically. The horizontal spacing is no longer a flat 150 px per unit (issue
+#677: a flat spacing let a wide LOOSE-order Archers regiment overlap its
+Infantry neighbour) — each adjacent pair's gap widens to fit their actual
+formation widths, so the standard 5v5's `x` positions are:
+
+| uid | Type | `x` |
+| --- | --- | --- |
+| 0 / 5 | Spearmen | 476.75 |
+| 1 / 6 | Infantry | 626.75 |
+| 2 / 7 | Archers | 806.75 |
+| 3 / 8 | Cavalry | 973.25 |
+| 4 / 9 | Cavalry | 1123.25 |
+
+Each unit's sprint speed is stated
 in the loadout in **metres/second** (`sprint_mps`); effective px/s is
 `sprint_mps × WORLD_UNITS_PER_METER` (`20`) `× SPEED_SCALE` (`1.0`):
 

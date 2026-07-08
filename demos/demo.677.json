@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Fixes a spawn-position overlap that's only visible in a screenshot/render taken at or near battle start (cosmetic per the issue itself) -- a recorded battle clip wouldn't show the fix any better than the numbers already do. Verified instead with a GUT test (test/unit/test_battle_spawn_no_overlap.gd) asserting no two default-line units' formation bounding boxes overlap, run against the real formation geometry (UnitFormation.half_width_for_soldiers) rather than eyeballed."
+}
