@@ -13,7 +13,9 @@
 #             .github/workflows/check-non-standard-chars.yml.
 #   comments  Issue/PR-number citations (#123) in GDScript comments — CLAUDE.md's
 #             "no issue-number references" rule (TODO(#N):/FIXME(#N): excepted).
-#             Mirrors .github/workflows/check-comment-citations.yml.
+#             Scoped to this diff's own added lines, not a whole-tree grep, so
+#             pre-existing citations elsewhere in the repo don't fail every
+#             future run. Mirrors .github/workflows/check-comment-citations.yml.
 #   coverage  GUT suite instrumented for line coverage; writes coverage/lcov.info.
 #             Mirrors .github/workflows/test-coverage.yml. Slower than `test` and
 #             non-gating, so not in the default set (run it explicitly or via "all").
@@ -44,6 +46,12 @@
 #                Warn when more than this many Godot processes are already
 #                running before the checks start (default 5) — the early signal
 #                of an orphan leak building up.
+#   SPARTA_CHECK_COMMENTS_BASE
+#                Commit-ish the `comments` check diffs HEAD against to find
+#                *new* lines to scan (default: tries origin/main, then main; CI
+#                sets this per-event — see check-comment-citations.yml). When no
+#                base can be resolved, the check skips rather than scanning the
+#                whole tree.
 #
 # Exit status is non-zero if any selected check fails, so it drops straight into
 # a pre-push hook or a `&&` chain.
@@ -126,7 +134,7 @@ list_checks() {
   info "  validate   Godot import / script-validation (godot-ci.yml)"
   info "  test       GUT unit suite (godot-ci.yml)"
   info "  chars      non-standard characters in docs (check-non-standard-chars.yml)"
-  info "  comments   issue/PR-number citations in GDScript comments (check-comment-citations.yml)"
+  info "  comments   issue/PR-number citations in NEW GDScript comment lines (check-comment-citations.yml)"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  links      Markdown link-check via lychee (check-links.yml)"
   info ""
@@ -365,39 +373,95 @@ check_chars() {
   info "Docs are free of curly quotes / en-em dashes."
 }
 
+# resolve_comments_base — print the first candidate commit-ish that both (a) is
+# non-empty and not git's all-zero "no such commit" sentinel (the value a push
+# event's `before` takes on a brand-new branch), and (b) actually resolves in
+# this checkout, or fail if none do. Candidates, in order: an explicit
+# SPARTA_CHECK_COMMENTS_BASE override (CI sets this per-event -- see
+# check-comment-citations.yml), then origin/main, then a local main branch --
+# the same "best available" fallback a developer's own checkout would have.
+resolve_comments_base() {
+  local candidate
+  for candidate in "${SPARTA_CHECK_COMMENTS_BASE:-}" "origin/main" "main"; do
+    [ -n "$candidate" ] || continue
+    case "$candidate" in
+      0000000000000000000000000000000000000000) continue ;;
+    esac
+    if ( cd "$PROJECT_ROOT" && git rev-parse --verify --quiet "${candidate}^{commit}" >/dev/null 2>&1 ); then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
 check_comments() {
-  # Flag issue/PR-number citations (#123) in GDScript comments — CLAUDE.md's
-  # "Comments: no issue-number references" rule under "Code conventions": the
-  # explanation should stand on its own, since issue numbers rot as issues close
-  # and renumber. TODO(#N):/FIXME(#N): are explicitly allowed by that rule (they
-  # link outstanding work, not explain the code), so those are excluded.
+  # Flag NEW issue/PR-number citations (#123) introduced by ADDED lines in this
+  # diff's GDScript comments -- CLAUDE.md's "Comments: no issue-number
+  # references" rule under "Code conventions". Scoped to the diff against a base
+  # ref, not a whole-tree grep of every tracked *.gd file: a repo-wide scan fails
+  # on every pre-existing citation -- including ones that predate this check
+  # itself -- in files this change never touched, which would fail forever
+  # rather than catching only what's actually new. TODO(#N):/FIXME(#N): are
+  # explicitly allowed by that rule (they link outstanding work, not explain the
+  # code).
   #
-  # Matching is intentionally narrow to keep false positives low: a citation is
-  # a '#' immediately followed by 2-4 digits and a word boundary. That misses
-  # single-digit hashes (rank/slot markers like "#5") and, more importantly,
-  # never fires on a hex colour literal (Color("#3355ff") has letters; a
-  # 6/8-digit numeric one like "#000000" fails the word-boundary check because
-  # more digits immediately follow the 4-digit match attempt).
-  local files=()
-  while IFS= read -r -d '' f; do
-    files+=("$f")
-  done < <(cd "$PROJECT_ROOT" && git ls-files -z '*.gd')
-  if [ ${#files[@]} -eq 0 ]; then
-    info "No GDScript files to check."
+  # Matching is intentionally narrow, same as before rescoping: a citation is a
+  # '#' immediately followed by 2-4 digits and a word boundary -- misses
+  # single-digit hashes (rank/slot markers like "#5") and never fires on a hex
+  # colour literal (Color("#3355ff") has letters; a purely-numeric 6/8-digit one
+  # like "#000000" fails the word-boundary check, since more digits immediately
+  # follow the 4-digit match attempt).
+  local base
+  if ! base="$(resolve_comments_base)"; then
+    warn "No base ref to diff against (shallow checkout, no 'main'/'origin/main',"
+    warn "or a brand-new branch with no shared history) -- skipping the"
+    warn "comment-citation check rather than scanning the whole tree."
+    warn "Set SPARTA_CHECK_COMMENTS_BASE, or fetch full history (git fetch --unshallow)."
+    set_result comments skip
     return 0
   fi
 
+  local merge_base head
+  merge_base="$(cd "$PROJECT_ROOT" && git merge-base HEAD "$base" 2>/dev/null)"
+  head="$(cd "$PROJECT_ROOT" && git rev-parse HEAD 2>/dev/null)"
+  if [ -z "$merge_base" ]; then
+    warn "No common history with '$base' -- skipping the comment-citation check."
+    set_result comments skip
+    return 0
+  fi
+  if [ "$merge_base" = "$head" ]; then
+    info "HEAD is '$base' (or an ancestor of it) -- no new commits to check."
+    return 0
+  fi
+
+  local diff
+  diff="$(cd "$PROJECT_ROOT" && git diff --no-color -U0 "$merge_base" HEAD -- '*.gd')"
+  if [ -z "$diff" ]; then
+    info "No GDScript changes in this diff."
+    return 0
+  fi
+
+  # Turn the unified diff into "file:line:content" rows for each ADDED line
+  # only (tracking the current file from "+++ b/<path>" headers and the
+  # current line number from "@@ ... +<start>,<count> @@" hunk headers), so the
+  # citation regex below only ever sees lines this diff actually introduces.
   local out
-  out="$(cd "$PROJECT_ROOT" && grep -nE '#[0-9]{2,4}\b' "${files[@]}" 2>/dev/null \
-      | grep -vE '(TODO|FIXME)\(#[0-9]+\):')"
+  out="$(printf '%s\n' "$diff" | awk '
+      /^\+\+\+ / { file = substr($0, 7); next }
+      /^@@ /     { match($0, /\+[0-9]+/); line = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
+      /^\+/      { print file ":" line ":" substr($0, 2); line++; next }
+      { next }
+    ' | grep -E '#[0-9]{2,4}\b' | grep -vE '(TODO|FIXME)\(#[0-9]+\):')"
+
   if [ -n "$out" ]; then
-    err "Issue/PR-number citations found in GDScript comments (CLAUDE.md: explain"
-    err "the change on its own terms, not by pointing at a tracker link -- only"
-    err "TODO(#N):/FIXME(#N): are allowed):"
+    err "Issue/PR-number citations found in new/changed GDScript comment lines"
+    err "(CLAUDE.md: explain the change on its own terms, not by pointing at a"
+    err "tracker link -- only TODO(#N):/FIXME(#N): are allowed):"
     printf '%s\n' "$out" >&2
     return 1
   fi
-  info "No issue/PR-number citations found in GDScript comments."
+  info "No new issue/PR-number citations found in this diff's GDScript comments."
 }
 
 check_links() {
