@@ -82,7 +82,7 @@ jobs:
       - name: Upload demo media
         # One artifact carrying both the clips and their posters; the publish job
         # extracts it into website/media before Quarto renders. Retained 14 days
-        # (not the default/shorter window) so website-demo-diff.yml (#532) can
+        # (not the default/shorter window) so the website demo-diff workflow can
         # download this same artifact from the latest successful run here as its
         # PR-diff comparison baseline — a 1-day window would almost always have
         # already expired by the time a PR's diff check runs.
