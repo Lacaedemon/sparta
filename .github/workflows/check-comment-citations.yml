@@ -21,6 +21,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # tools/check.sh's `comments` check diffs HEAD against origin/main (or
+          # an explicit base) to find only the lines THIS change adds. A shallow
+          # (default) checkout has no origin/main ref and no shared history to
+          # compute a merge-base against, so fetch everything.
+          fetch-depth: 0
 
       - name: Check for issue/PR-number citations in GDScript comments
+        env:
+          # Pass the per-event base explicitly rather than relying on the
+          # checkout's local main/origin/main state: a PR's base SHA is the
+          # actual target of the merge, and a push event's `before` is the
+          # previous tip of the branch. Falls through to check.sh's own
+          # origin/main/main fallback (see resolve_comments_base) when neither
+          # applies (e.g. workflow_dispatch).
+          SPARTA_CHECK_COMMENTS_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: tools/check.sh comments
