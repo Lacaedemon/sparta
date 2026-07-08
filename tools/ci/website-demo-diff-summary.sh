@@ -2,7 +2,7 @@
 # Build a markdown table comparing a freshly-recorded set of website demo clips
 # (this PR's website/tools/record-demos.sh output) against a baseline set (the
 # last successfully published main-branch build), by sha256 + byte size per
-# clip. This is a cheap "visual snapshot test" surrogate for #532: it can't say
+# clip. This is a cheap "visual snapshot test" surrogate: it can't say
 # HOW a clip's pixels changed, only THAT its rendered output changed — but a
 # deterministic replay recorded on the same pipeline should otherwise
 # byte-for-byte reproduce, so any diff is a real signal (game behavior, camera
