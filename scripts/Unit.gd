@@ -1628,7 +1628,7 @@ func _front_depth() -> float:
 ## unit. This is the piece of set_formation's mode dispatch that Battle._spawn_line also
 ## needs -- to size a regiment's formation footprint (UnitFormation.half_width_for_soldiers)
 ## BEFORE the Unit node exists to call set_formation on. set_formation itself calls this
-## rather than repeating the mapping, so the two can't drift apart (issue #677).
+## rather than repeating the mapping, so the two can't drift apart.
 static func spacing_scale_for_mode(mode: int) -> float:
 	if mode == FORMATION_SHIELD_WALL:
 		return SHIELD_WALL_SPACING_SCALE

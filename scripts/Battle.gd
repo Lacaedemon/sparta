@@ -343,7 +343,7 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	var loadout := _default_loadout()
 	# Tighten the BASE spacing as the line grows so even a max stack stays on the field --
 	# but never let it collapse below what keeps a wide neighbour's formation block from
-	# overlapping the unit next to it (issue #677). A flat per-unit spacing assumed a
+	# overlapping the unit next to it. A flat per-unit spacing assumed a
 	# roughly-uniform unit width that doesn't hold once soldier counts / formation density
 	# vary per type in the cycling loadout above -- e.g. a 90-soldier LOOSE-order Archers
 	# block (UnitFormation.half_width_for_soldiers, scaled by Unit.spacing_scale_for_mode)
