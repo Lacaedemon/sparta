@@ -2,7 +2,7 @@
 # DEMOS array — every clip embedded on the docs site, not just one) on every PR
 # that changes game-visible code, and posts a PR comment summarizing which
 # clips' rendered output changed compared to the last successfully published
-# main-branch build. This is the "snapshot testing" check from #532: a
+# main-branch build. This is a "snapshot testing" check: a
 # deterministic replay recorded on the same pipeline should otherwise
 # reproduce byte-for-byte, so a hash/size diff is a real signal that either
 # (a) the PR intentionally changed what a clip shows (worth describing in the
@@ -17,11 +17,12 @@
 # necessarily touch directly, not a per-PR showcase.
 #
 # Deliberately INFORMATIONAL, not a blocking gate (per the issue's own framing
-# and CLAUDE.md's "avoid false positives from rendering nondeterminism" ask):
+# that a hash/size diff can false-positive on rendering nondeterminism):
 # the whole job is continue-on-error and posts a plain comment, never a
 # check-run failure. Recording ~28 clips is much heavier than demo-video.yml's
 # single clip, so this also isn't a required check for turnaround-time reasons
 # — see the timeout-minutes budget below.
+
 name: Website demo diff
 
 on:
