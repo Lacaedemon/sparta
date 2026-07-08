@@ -22,7 +22,7 @@ tools/check.sh --help          # full usage
 | `validate` | `godot --headless --import` loads the whole project (autoloads, `class_name` globals, cross-script refs) and fails on any script/parse error. | `godot-ci.yml` |
 | `test` | Runs the GUT unit suite headlessly (`-gexit`). | `godot-ci.yml` |
 | `chars` | Flags curly quotes and en/em dashes in the Quarto docs (`*.qmd`, `*.R`), which are kept plain-ASCII. | `check-non-standard-chars.yml` |
-| `comments` | Flags issue/PR-number citations (`#123`) in GDScript (`*.gd`) comments — CLAUDE.md's "no issue-number references" rule (`TODO(#N):`/`FIXME(#N):` excepted). | `check-comment-citations.yml` |
+| `comments` | Flags issue/PR-number citations (`#123`) added by this diff's GDScript (`*.gd`) comment lines — CLAUDE.md's "no issue-number references" rule (`TODO(#N):`/`FIXME(#N):` excepted). Diff-scoped against `origin/main` (or `SPARTA_CHECK_COMMENTS_BASE`), not a whole-repo scan, so pre-existing citations elsewhere in the tree don't fail the check. | `check-comment-citations.yml` |
 | `links` | Markdown link-check via [lychee](https://github.com/lycheeverse/lychee), if installed. Needs network, so it's **not** in the default set. | `check-links.yml` |
 
 Exit status is non-zero if any selected check fails, so it drops straight into a
@@ -42,6 +42,10 @@ tools/check.sh && git push
 - **GUT** is vendored on demand into `addons/gut/` the first time `validate`/`test`
   runs (it isn't committed); no manual install needed.
 - **lychee** only for the optional `links` check.
+- **`comments`** needs a resolvable diff base (`origin/main`, a local `main`, or
+  `SPARTA_CHECK_COMMENTS_BASE`) to find the lines this diff adds — see below. A
+  shallow clone with no such ref available skips the check rather than falling
+  back to a whole-tree scan.
 
 ### Environment variables
 
@@ -53,6 +57,7 @@ tools/check.sh && git push
 | `SPARTA_CHECK_VALIDATE_TIMEOUT` | `900` | Hard timeout (s) for the `validate` Godot run. |
 | `SPARTA_CHECK_TEST_TIMEOUT` | `1800` | Hard timeout (s) for the `test` Godot run. |
 | `SPARTA_CHECK_COVERAGE_TIMEOUT` | `2700` | Hard timeout (s) for the `coverage` Godot run. |
+| `SPARTA_CHECK_COMMENTS_BASE` | _(unset)_ | Commit-ish the `comments` check diffs `HEAD` against to find new lines to scan. Falls back to `origin/main` then a local `main`; CI sets this per-event (PR base SHA, or the push event's `before`) — see `check-comment-citations.yml`. |
 | `SPARTA_GODOT_PREFLIGHT_LIMIT` | `5` | Warn when more Godot processes than this are already running before the checks start. |
 
 ## Orphaned Godot processes: prevention and cleanup
