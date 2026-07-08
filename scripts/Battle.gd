@@ -359,13 +359,35 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 				* Unit.spacing_scale_for_mode(d.get("formation", Unit.FORMATION_NORMAL))
 		half_widths.append(UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing))
 
+	# The no-overlap gap above guarantees adjacent blocks never touch, but it makes no
+	# promise about the TOTAL line width -- a max-size campaign stack (CampaignBattle.
+	# MAX_UNITS) cycling several wide LOOSE-order types back to back can need more total
+	# width than FIELD has room for, which would push the outer units off the playable
+	# field entirely (the no-overlap fix's own follow-up finding). So sum the no-overlap
+	# gaps first; if that sum would overflow the same FIELD budget the old flat spacing
+	# always respected, scale every gap down proportionally until the line fits. This
+	# accepts a little unavoidable overlap only in that rare wide/high-count extreme --
+	# normal-size battles (the standard 5v5 demo, and any count whose no-overlap gaps
+	# already fit) are untouched, since the scale factor is 1.0 whenever the raw sum is
+	# already within budget.
+	var gaps: Array[float] = []
+	var raw_total_width: float = 0.0
+	for i in range(count - 1):
+		var gap: float = maxf(base_spacing,
+				half_widths[i] + half_widths[i + 1] + Unit.FORMATION_SPACING)
+		gaps.append(gap)
+		raw_total_width += gap
+	var field_budget: float = FIELD.size.x - 200.0
+	if raw_total_width > field_budget and raw_total_width > 0.0:
+		var shrink: float = field_budget / raw_total_width
+		for i in range(gaps.size()):
+			gaps[i] *= shrink
+
 	# xs[i] is unit i's x-offset from the line's own left edge (xs[0] == 0.0); the whole
 	# line is then centred on the field below, same as the old uniform-spacing layout.
 	var xs: Array[float] = [0.0]
 	for i in range(count - 1):
-		var gap: float = maxf(base_spacing,
-				half_widths[i] + half_widths[i + 1] + Unit.FORMATION_SPACING)
-		xs.append(xs[i] + gap)
+		xs.append(xs[i] + gaps[i])
 	var start_x: float = FIELD.size.x * 0.5 - xs[xs.size() - 1] * 0.5
 
 	for i in range(count):
