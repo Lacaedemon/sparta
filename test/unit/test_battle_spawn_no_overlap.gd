@@ -1,8 +1,8 @@
 extends GutTest
 ## Default battle spawn line: adjacent units' formation blocks must never overlap in
-## world space, regardless of each type's soldier count / formation density (issue #677
-## -- a flat 150-world-unit spacing let the standard loadout's wide LOOSE-order Archers
-## regiment overlap its Infantry neighbour by ~21 world units). Verified against the
+## world space, regardless of each type's soldier count / formation density -- a flat
+## 150-world-unit spacing let the standard loadout's wide LOOSE-order Archers
+## regiment overlap its Infantry neighbour by ~21 world units. Verified against the
 ## actual formation geometry (UnitFormation.half_width_for_soldiers), not by eyeballing
 ## a render -- see the "Verify maneuvers/soldier bodies tick by tick" memory.
 ##
