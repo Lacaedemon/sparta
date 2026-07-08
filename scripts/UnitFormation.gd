@@ -79,9 +79,9 @@ static func frontage(u: Unit) -> int:
 ##
 ## Pure -- doesn't need a live Unit, so Battle._spawn_line can call it while still
 ## building the loadout, to space a line of units apart by their actual footprint
-## instead of a fixed per-unit spacing that assumes uniform width (issue #677: a
+## instead of a fixed per-unit spacing that assumes uniform width -- a
 ## 90-soldier LOOSE-order Archers block is far wider than a same-count TIGHT block,
-## so a flat spacing constant lets a wide neighbour's formation overlap it).
+## so a flat spacing constant lets a wide neighbour's formation overlap it.
 static func half_width_for_soldiers(soldiers: int, spacing: float) -> float:
 	return _half_width(_files(soldiers), spacing)
 
