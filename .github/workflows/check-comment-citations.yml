@@ -1,0 +1,26 @@
+# Flags issue/PR-number citations (#123) left in GDScript comments -- CLAUDE.md's
+# "Comments: no issue-number references" rule under "Code conventions". These
+# slip through reflexively (grounding a fix by citing the PR that reported it)
+# and were previously caught only by a later @claude review round; this check
+# fails fast instead, the same way tools/check.sh's `chars` check catches
+# curly-quote/em-dash violations.
+#
+# No Godot setup needed -- this is a plain grep over *.gd files via
+# tools/check.sh comments, so the job runs fast with just a checkout.
+name: Check Comment Citations
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Comment citations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for issue/PR-number citations in GDScript comments
+        run: tools/check.sh comments
