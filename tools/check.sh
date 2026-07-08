@@ -11,6 +11,9 @@
 #   chars     Curly quotes and en/em dashes in the website docs (*.qmd, *.R) —
 #             the Quarto source is kept plain-ASCII. Mirrors
 #             .github/workflows/check-non-standard-chars.yml.
+#   comments  Issue/PR-number citations (#123) in GDScript comments — CLAUDE.md's
+#             "no issue-number references" rule (TODO(#N):/FIXME(#N): excepted).
+#             Mirrors .github/workflows/check-comment-citations.yml.
 #   coverage  GUT suite instrumented for line coverage; writes coverage/lcov.info.
 #             Mirrors .github/workflows/test-coverage.yml. Slower than `test` and
 #             non-gating, so not in the default set (run it explicitly or via "all").
@@ -19,7 +22,7 @@
 #             default set (run it explicitly or via "all").
 #
 # Usage:
-#   tools/check.sh                 # default set: validate, test, chars
+#   tools/check.sh                 # default set: validate, test, chars, comments
 #   tools/check.sh test chars      # only the named checks, in the given order
 #   tools/check.sh all             # every check (links included if lychee is present)
 #   tools/check.sh -l | --list     # list the available checks
@@ -62,8 +65,8 @@ COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-2700}"
 # shellcheck source=lib/run-bounded.sh
 . "$SCRIPT_DIR/lib/run-bounded.sh"
 
-DEFAULT_CHECKS=(validate test chars)
-ALL_CHECKS=(validate test chars coverage links)
+DEFAULT_CHECKS=(validate test chars comments)
+ALL_CHECKS=(validate test chars comments coverage links)
 
 # --- pretty output ---------------------------------------------------------
 # Colour only when stdout is a terminal and NO_COLOR isn't set. Per the NO_COLOR
@@ -123,6 +126,7 @@ list_checks() {
   info "  validate   Godot import / script-validation (godot-ci.yml)"
   info "  test       GUT unit suite (godot-ci.yml)"
   info "  chars      non-standard characters in docs (check-non-standard-chars.yml)"
+  info "  comments   issue/PR-number citations in GDScript comments (check-comment-citations.yml)"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  links      Markdown link-check via lychee (check-links.yml)"
   info ""
@@ -361,6 +365,41 @@ check_chars() {
   info "Docs are free of curly quotes / en-em dashes."
 }
 
+check_comments() {
+  # Flag issue/PR-number citations (#123) in GDScript comments — CLAUDE.md's
+  # "Comments: no issue-number references" rule under "Code conventions": the
+  # explanation should stand on its own, since issue numbers rot as issues close
+  # and renumber. TODO(#N):/FIXME(#N): are explicitly allowed by that rule (they
+  # link outstanding work, not explain the code), so those are excluded.
+  #
+  # Matching is intentionally narrow to keep false positives low: a citation is
+  # a '#' immediately followed by 2-4 digits and a word boundary. That misses
+  # single-digit hashes (rank/slot markers like "#5") and, more importantly,
+  # never fires on a hex colour literal (Color("#3355ff") has letters; a
+  # 6/8-digit numeric one like "#000000" fails the word-boundary check because
+  # more digits immediately follow the 4-digit match attempt).
+  local files=()
+  while IFS= read -r -d '' f; do
+    files+=("$f")
+  done < <(cd "$PROJECT_ROOT" && git ls-files -z '*.gd')
+  if [ ${#files[@]} -eq 0 ]; then
+    info "No GDScript files to check."
+    return 0
+  fi
+
+  local out
+  out="$(cd "$PROJECT_ROOT" && grep -nE '#[0-9]{2,4}\b' "${files[@]}" 2>/dev/null \
+      | grep -vE '(TODO|FIXME)\(#[0-9]+\):')"
+  if [ -n "$out" ]; then
+    err "Issue/PR-number citations found in GDScript comments (CLAUDE.md: explain"
+    err "the change on its own terms, not by pointing at a tracker link -- only"
+    err "TODO(#N):/FIXME(#N): are allowed):"
+    printf '%s\n' "$out" >&2
+    return 1
+  fi
+  info "No issue/PR-number citations found in GDScript comments."
+}
+
 check_links() {
   if ! have lychee; then
     warn "lychee not installed — skipping link check."
@@ -411,7 +450,7 @@ main() {
       -h|--help) usage; exit 0 ;;
       -l|--list) list_checks; exit 0 ;;
       all)       checks+=("${ALL_CHECKS[@]}") ;;
-      validate|test|chars|coverage|links) checks+=("$arg") ;;
+      validate|test|chars|comments|coverage|links) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
   done
