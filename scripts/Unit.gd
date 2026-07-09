@@ -3432,3 +3432,12 @@ func _draw() -> void:
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
 
 	UnitSprites.flag(self, body_c, alpha, extent)
+
+	# Per-soldier ID overlay: draw index labels on living soldiers of the selected unit,
+	# gated to figure LOD (zoomed in). Pure rendering feature, no new sim state.
+	if selected and Settings.show_soldier_ids and _detailed_lod:
+		var font := ThemeDB.fallback_font
+		var mark_r: float = MARK_RADIUS if not is_cavalry else CAV_MARK_RADIUS
+		for i in range(_sim_soldier_pos.size()):
+			draw_string(font, to_local(_sim_soldier_pos[i]) + Vector2(-4, -mark_r),
+					str(i), HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(1, 1, 1, 0.9))
