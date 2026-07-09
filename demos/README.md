@@ -574,10 +574,10 @@ Commit the PNG under `demos/shots/` on your PR branch (create the dir if needed)
 then embed it in the **PR description** by raw URL with a caption:
 
 ```md
-![New roster panel](https://github.com/lacaedemon/sparta/raw/5ded263b64eb20f2943270f28fd509786b0cc703/demos/shots/control-bar.png)
+![What changed](https://github.com/lacaedemon/sparta/raw/COMMIT_SHA/demos/shots/YOUR_IMAGE.png)
 ```
 
-Use the **commit SHA** (immutable) so the image keeps rendering after the branch is
+Replace `COMMIT_SHA` with the commit you push (use `git rev-parse HEAD` to get it) and `YOUR_IMAGE.png` with the name of the screenshot file you committed. Use the **commit SHA** (immutable) so the image keeps rendering after the branch is
 deleted on merge — a branch-name URL works while the PR is open but breaks once the
 branch is gone. The PNG is committed in-repo, so it's permanent in `main` after merge.
 
