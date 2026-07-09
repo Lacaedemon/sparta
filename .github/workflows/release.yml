@@ -4,11 +4,15 @@
 # workflow artifacts for testing, without touching a release.
 #
 # Godot cross-exports every platform from the Linux runner using the matching
-# export templates (downloaded below). Builds are UNSIGNED — on macOS the app is
-# a universal (x86_64 + arm64) .app, so first-launch needs a right-click → Open
-# (or `xattr -dr com.apple.quarantine`) to get past Gatekeeper; on Windows
-# SmartScreen may warn. Code-signing / notarization and an installer are tracked
-# as follow-ups (they need signing certificates, which live outside CI).
+# export templates (downloaded below). On macOS the app is a universal
+# (x86_64 + arm64) .app; on Windows the .exe (and the NSIS installer built
+# below) is a PE binary. Both are code-signed and, for macOS, notarized when
+# the required secrets are configured (see the "Code-sign / notarize" steps
+# below and tools/installer/README.md for the exact secret names and how to
+# obtain them) — otherwise those steps no-op with a log notice and the build
+# ships unsigned, same as before: on macOS first-launch needs a right-click →
+# Open (or `xattr -dr com.apple.quarantine`) to get past Gatekeeper; on
+# Windows SmartScreen may warn.
 name: Release builds
 
 on:
@@ -25,11 +29,27 @@ env:
   # Keep in sync with godot-ci.yml / config/features in project.godot. The export
   # templates downloaded below must match this exact version.
   GODOT_VERSION: 4.7.0
+  # rcodesign (apple-codesign) release used to sign/notarize macOS builds from
+  # the Linux runner. Bump this if a newer release is needed; check
+  # https://github.com/indygreg/apple-platform-rs/releases for the current tag.
+  RCODESIGN_VERSION: 0.29.0
 
 jobs:
   export:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # GitHub Actions does not allow the `secrets` context in step-level `if:`
+      # conditionals — only in `env:`, `with:`, and `run:` (see
+      # https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions#accessing-your-secrets).
+      # Map each code-signing secret to a job-level env var once here so the
+      # "code-sign" / "skip" steps below can gate on `env.X != ''` instead.
+      WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+      WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+      MACOS_CODESIGN_P12_BASE64: ${{ secrets.MACOS_CODESIGN_P12_BASE64 }}
+      MACOS_CODESIGN_P12_PASSWORD: ${{ secrets.MACOS_CODESIGN_P12_PASSWORD }}
+      MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+      MACOS_NOTARY_API_KEY_JSON: ${{ secrets.MACOS_NOTARY_API_KEY_JSON }}
     steps:
       - uses: actions/checkout@v4
 
@@ -86,6 +106,107 @@ jobs:
           done
           ls -la build/windows build/linux build/macos
 
+      - name: Code-sign Windows executable
+        # Signs build/windows/sparta.exe in place with an Authenticode
+        # certificate via osslsigncode (a Linux-native Authenticode signer, so
+        # no Windows runner is needed). No-ops (see the skip step below) until
+        # both secrets are configured. See tools/installer/README.md for what
+        # to add and how to generate them.
+        if: ${{ env.WINDOWS_CODESIGN_PFX_BASE64 != '' && env.WINDOWS_CODESIGN_PASSWORD != '' }}
+        env:
+          PFX_BASE64: ${{ env.WINDOWS_CODESIGN_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ env.WINDOWS_CODESIGN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y osslsigncode
+          echo "$PFX_BASE64" | base64 -d > /tmp/windows-codesign.pfx
+          osslsigncode sign \
+            -pkcs12 /tmp/windows-codesign.pfx -pass "$PFX_PASSWORD" \
+            -n "Sparta" -i "https://github.com/${{ github.repository }}" \
+            -t http://timestamp.digicert.com \
+            -in build/windows/sparta.exe -out build/windows/sparta.signed.exe
+          mv build/windows/sparta.signed.exe build/windows/sparta.exe
+          rm -f /tmp/windows-codesign.pfx
+
+      - name: Skip Windows code-signing (secrets not configured)
+        if: ${{ env.WINDOWS_CODESIGN_PFX_BASE64 == '' || env.WINDOWS_CODESIGN_PASSWORD == '' }}
+        run: |
+          echo "::notice::WINDOWS_CODESIGN_PFX_BASE64/WINDOWS_CODESIGN_PASSWORD not set — shipping an unsigned Windows build. See tools/installer/README.md."
+
+      - name: Code-sign & notarize macOS app
+        # Signs the exported .app with a Developer ID Application certificate
+        # and submits it to Apple's notary service, using rcodesign
+        # (apple-codesign) so this runs on the Linux runner without a Mac.
+        # No-ops (see the skip step below) until all four secrets are
+        # configured. See tools/installer/README.md for what to add and how
+        # to generate them.
+        #
+        # Staple the .app bundle itself, not the distribution zip: Apple's
+        # stapling mechanism attaches the notarization ticket to a bundle
+        # (.app/.pkg/.dmg), and a plain .zip has no defined location for a
+        # staple to attach to. So the order here is submit-as-zip (notarization
+        # requires a zip/dmg/pkg upload format) → wait for approval → staple
+        # the extracted .app directory → re-zip the now-stapled .app as the
+        # actual release artifact, rather than stapling the zip in place.
+        # Unverified against a real signing/notarization run, like the rest of
+        # this scaffold (see tools/installer/README.md) — no signing certs
+        # exist yet to exercise it end-to-end — but this ordering matches
+        # Apple's and rcodesign's documented stapling requirement.
+        if: ${{ env.MACOS_CODESIGN_P12_BASE64 != '' && env.MACOS_CODESIGN_P12_PASSWORD != '' && env.MACOS_TEAM_ID != '' && env.MACOS_NOTARY_API_KEY_JSON != '' }}
+        env:
+          P12_BASE64: ${{ env.MACOS_CODESIGN_P12_BASE64 }}
+          P12_PASSWORD: ${{ env.MACOS_CODESIGN_P12_PASSWORD }}
+          TEAM_ID: ${{ env.MACOS_TEAM_ID }}
+          NOTARY_API_KEY_JSON: ${{ env.MACOS_NOTARY_API_KEY_JSON }}
+        run: |
+          set -euo pipefail
+          curl -fsSL -o rcodesign.tar.gz \
+            "https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F${RCODESIGN_VERSION}/apple-codesign-${RCODESIGN_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          tar xzf rcodesign.tar.gz
+          RCODESIGN="$(pwd)/apple-codesign-${RCODESIGN_VERSION}-x86_64-unknown-linux-musl/rcodesign"
+          chmod +x "$RCODESIGN"
+
+          echo "$P12_BASE64" | base64 -d > /tmp/macos-codesign.p12
+          echo "$NOTARY_API_KEY_JSON" > /tmp/notary-api-key.json
+
+          cd build/macos
+          rm -rf _signing
+          unzip -q sparta.zip -d _signing
+          APP_DIR="$(find _signing -maxdepth 1 -name '*.app')"
+
+          "$RCODESIGN" sign \
+            --p12-file /tmp/macos-codesign.p12 --p12-password "$P12_PASSWORD" \
+            --team-name "$TEAM_ID" \
+            "$APP_DIR"
+
+          # Notarization only accepts a zip/dmg/pkg upload, so re-zip the signed
+          # .app into a throwaway submission archive — this is NOT the final
+          # distribution zip, just notary-submit's required upload format.
+          rm -f notary-submission.zip
+          (cd _signing && zip -qr ../notary-submission.zip "$(basename "$APP_DIR")")
+
+          # Submit and wait for Apple's decision, but don't staple the zip
+          # (--staple would try to staple this throwaway submission archive,
+          # which isn't a bundle format stapling supports).
+          "$RCODESIGN" notary-submit --api-key-path /tmp/notary-api-key.json \
+            --wait notary-submission.zip
+
+          # Staple the ticket to the .app bundle itself.
+          "$RCODESIGN" staple "$APP_DIR"
+
+          # Re-zip the now-stapled .app as the actual release artifact.
+          rm -f sparta.zip notary-submission.zip
+          (cd _signing && zip -qr ../sparta.zip "$(basename "$APP_DIR")")
+
+          rm -rf _signing
+          cd -
+          rm -f /tmp/macos-codesign.p12 /tmp/notary-api-key.json
+
+      - name: Skip macOS code-signing/notarization (secrets not configured)
+        if: ${{ env.MACOS_CODESIGN_P12_BASE64 == '' || env.MACOS_CODESIGN_P12_PASSWORD == '' || env.MACOS_TEAM_ID == '' || env.MACOS_NOTARY_API_KEY_JSON == '' }}
+        run: |
+          echo "::notice::MACOS_CODESIGN_P12_BASE64/MACOS_CODESIGN_P12_PASSWORD/MACOS_TEAM_ID/MACOS_NOTARY_API_KEY_JSON not fully set — shipping an unsigned, un-notarized macOS build. See tools/installer/README.md."
+
       - name: Install NSIS
         # NSIS 3.x (currently 3.08 on ubuntu-latest). No exact pin needed — the
         # script uses only stable NSIS 3 features; a future 3.x bump is safe.
@@ -107,6 +228,26 @@ jobs:
             -DOUTFILE="$(pwd)/build/sparta-${V}-windows-setup.exe" \
             -DEXE_PATH="$(pwd)/build/windows/sparta.exe" \
             tools/installer/sparta.nsi
+
+      - name: Code-sign Windows installer
+        # Signs the installer .exe itself (in addition to the app .exe it
+        # contains) with the same Authenticode certificate as above.
+        if: ${{ env.WINDOWS_CODESIGN_PFX_BASE64 != '' && env.WINDOWS_CODESIGN_PASSWORD != '' }}
+        env:
+          PFX_BASE64: ${{ env.WINDOWS_CODESIGN_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ env.WINDOWS_CODESIGN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          V="${GITHUB_REF_NAME//\//-}"
+          IN="build/sparta-${V}-windows-setup.exe"
+          echo "$PFX_BASE64" | base64 -d > /tmp/windows-codesign.pfx
+          osslsigncode sign \
+            -pkcs12 /tmp/windows-codesign.pfx -pass "$PFX_PASSWORD" \
+            -n "Sparta Installer" -i "https://github.com/${{ github.repository }}" \
+            -t http://timestamp.digicert.com \
+            -in "$IN" -out "${IN}.signed"
+          mv "${IN}.signed" "$IN"
+          rm -f /tmp/windows-codesign.pfx
 
       - name: Package
         run: |
