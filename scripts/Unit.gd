@@ -1624,6 +1624,21 @@ func _front_depth() -> float:
 	return minf(depth, attack_range * 0.5)
 
 
+## Formation spacing scale for a given formation `mode`, pure and independent of a live
+## unit. This is the piece of set_formation's mode dispatch that Battle._spawn_line also
+## needs -- to size a regiment's formation footprint (UnitFormation.half_width_for_soldiers)
+## BEFORE the Unit node exists to call set_formation on. set_formation itself calls this
+## rather than repeating the mapping, so the two can't drift apart.
+static func spacing_scale_for_mode(mode: int) -> float:
+	if mode == FORMATION_SHIELD_WALL:
+		return SHIELD_WALL_SPACING_SCALE
+	if mode == FORMATION_TESTUDO:
+		return TESTUDO_SPACING_SCALE
+	if mode == FORMATION_LOOSE:
+		return LOOSE_SPACING_SCALE
+	return 1.0   # NORMAL, TIGHT, SQUARE, SCHILTRON all sit at the historical floor
+
+
 ## Change the regiment's formation and recalculate its separation footprint.
 ## Uses _base_separation_radius (which absorb() keeps updated) so a formation
 ## cycle on a merged unit doesn't discard the merge-widened body.
@@ -1639,19 +1654,15 @@ func set_formation(mode: int) -> void:
 	# sharing the tight collision footprint.
 	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE or mode == FORMATION_SCHILTRON:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
-		spacing_scale = 1.0   # already at the historical close-order/locked-shield floor
 	elif mode == FORMATION_SHIELD_WALL:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
-		spacing_scale = SHIELD_WALL_SPACING_SCALE
 	elif mode == FORMATION_TESTUDO:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
-		spacing_scale = TESTUDO_SPACING_SCALE
 	elif mode == FORMATION_LOOSE:
 		separation_radius = minf(SEPARATION_RADIUS_MAX, base * LOOSE_SEPARATION_SCALE)
-		spacing_scale = LOOSE_SPACING_SCALE
 	else:
 		separation_radius = base
-		spacing_scale = 1.0
+	spacing_scale = spacing_scale_for_mode(mode)
 	_reset_shield_hold_angles()
 
 

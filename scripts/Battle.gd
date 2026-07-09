@@ -341,13 +341,58 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# than trotting it backward, so it sits lowest of all. Optional per entry --
 	# _spawn_unit falls back to the Unit.gd default (0.5) when a loadout omits it.
 	var loadout := _default_loadout()
-	# Tighten spacing as the line grows so even a max stack stays on the field.
-	var spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
-	var start_x: float = FIELD.size.x * 0.5 - (count - 1) * spacing * 0.5
+	# Tighten the BASE spacing as the line grows so even a max stack stays on the field --
+	# but never let it collapse below what keeps a wide neighbour's formation block from
+	# overlapping the unit next to it. A flat per-unit spacing assumed a
+	# roughly-uniform unit width that doesn't hold once soldier counts / formation density
+	# vary per type in the cycling loadout above -- e.g. a 90-soldier LOOSE-order Archers
+	# block (UnitFormation.half_width_for_soldiers, scaled by Unit.spacing_scale_for_mode)
+	# is far wider than a same-count TIGHT block, so the old flat spacing let it overlap
+	# whichever neighbour it cycled next to. Each adjacent pair's minimum gap is instead the
+	# sum of their own half-widths plus a soldier-file's worth of daylight (FORMATION_SPACING),
+	# so no two blocks so much as touch, regardless of composition.
+	var base_spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
+	var half_widths: Array[float] = []
+	for i in range(count):
+		var d: Dictionary = loadout[i % loadout.size()]
+		var d_spacing: float = Unit.FORMATION_SPACING \
+				* Unit.spacing_scale_for_mode(d.get("formation", Unit.FORMATION_NORMAL))
+		half_widths.append(UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing))
+
+	# The no-overlap gap above guarantees adjacent blocks never touch, but it makes no
+	# promise about the TOTAL line width -- a max-size campaign stack (CampaignBattle.
+	# MAX_UNITS) cycling several wide LOOSE-order types back to back can need more total
+	# width than FIELD has room for, which would push the outer units off the playable
+	# field entirely (the no-overlap fix's own follow-up finding). So sum the no-overlap
+	# gaps first; if that sum would overflow the same FIELD budget the old flat spacing
+	# always respected, scale every gap down proportionally until the line fits. This
+	# accepts a little unavoidable overlap only in that rare wide/high-count extreme --
+	# normal-size battles (the standard 5v5 demo, and any count whose no-overlap gaps
+	# already fit) are untouched, since the scale factor is 1.0 whenever the raw sum is
+	# already within budget.
+	var gaps: Array[float] = []
+	var raw_total_width: float = 0.0
+	for i in range(count - 1):
+		var gap: float = maxf(base_spacing,
+				half_widths[i] + half_widths[i + 1] + Unit.FORMATION_SPACING)
+		gaps.append(gap)
+		raw_total_width += gap
+	var field_budget: float = FIELD.size.x - 200.0
+	if raw_total_width > field_budget and raw_total_width > 0.0:
+		var shrink: float = field_budget / raw_total_width
+		for i in range(gaps.size()):
+			gaps[i] *= shrink
+
+	# xs[i] is unit i's x-offset from the line's own left edge (xs[0] == 0.0); the whole
+	# line is then centred on the field below, same as the old uniform-spacing layout.
+	var xs: Array[float] = [0.0]
+	for i in range(count - 1):
+		xs.append(xs[i] + gaps[i])
+	var start_x: float = FIELD.size.x * 0.5 - xs[xs.size() - 1] * 0.5
 
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
-		var pos := Vector2(start_x + i * spacing, y)
+		var pos := Vector2(start_x + xs[i], y)
 		_spawn_unit(d, team, facing, pos, "%s %d" % [d["name"], i + 1])
 
 

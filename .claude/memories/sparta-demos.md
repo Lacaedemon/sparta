@@ -37,12 +37,18 @@ etc.) — don't reflexively `skip` them.
 
 **Standard 5v5 (`seed "12345"`):** player uids 0-4 =
 Spearmen(140)/Infantry(120)/Archers(90)/Cavalry(80)/Cavalry(80) at
-x=500/650/800/950/1100, y=300; enemies 5-9 at y=700. Spawn positions are
-seed-independent, so clicks land regardless. For a form-up facing the enemy
-(+y/down), drag **right→left** (start point on the right). Box-select a horizontal
-row with e.g. `{from:[450,270], to:[850,330]}` (grabs uids 0/1/2). Pick infantry
-(pointer marks) for facing-maneuver demos — they read cleanly under rotation.
-Demo click coords are **world** coords (cursor override), not screen.
+x=476.75/626.75/806.75/973.25/1123.25, y=300; enemies 5-9 at y=700 (issue #677:
+the x's are no longer an even 500/650/800/950/1100 -- `Battle._spawn_line` now
+widens each adjacent pair's gap to fit their actual formation widths instead of a
+flat 150 px, so a wide LOOSE-order regiment like Archers can't overlap its
+neighbour; see `demos/README.md` for the per-unit table and the derivation).
+Spawn positions are seed-independent, so clicks land regardless. For a form-up
+facing the enemy (+y/down), drag **right→left** (start point on the right).
+Box-select a horizontal row with e.g. `{from:[450,270], to:[850,330]}` (grabs
+uids 0/1/2 -- still valid since it only needs to bracket the row, not exact x's).
+Pick infantry (pointer marks) for facing-maneuver demos — they read cleanly
+under rotation. Demo click coords are **world** coords (cursor override), not
+screen.
 
 ## Verify locally without ffmpeg (PNG-frame capture)
 

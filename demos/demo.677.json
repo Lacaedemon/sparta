@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This fixes a spawn-position/formation-geometry overlap, and it's fully verified by exact numeric assertions rather than visual inspection: test/unit/test_battle_spawn_no_overlap.gd asserts no two default-line units' formation bounding boxes overlap, run against the real formation geometry (UnitFormation.half_width_for_soldiers) and pinned against the issue's own reported bbox widths. demos/README.md's position table documents the exact spawn coordinates the fix produces. A screenshot wouldn't add any verification value beyond what the test and the documented position table already provide -- bbox overlap is a precise numeric property, not something better judged by eye. So no screenshot is needed for this PR."
+}

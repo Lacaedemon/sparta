@@ -70,6 +70,22 @@ static func frontage(u: Unit) -> int:
 	return full
 
 
+## Half-width (local +/-X extent, world units) of a FRESH, full-strength unit's
+## formation block -- `_half_width` at the FULL frontage (`_files(soldiers)`), before
+## any ranks-closed narrowing or player frontage_override apply (both only kick in
+## after a live Unit has taken casualties or been manually resized). `spacing` is
+## the formation's world-unit spacing (Unit.FORMATION_SPACING scaled by the type's
+## Unit.spacing_scale_for_mode(formation_mode)).
+##
+## Pure -- doesn't need a live Unit, so Battle._spawn_line can call it while still
+## building the loadout, to space a line of units apart by their actual footprint
+## instead of a fixed per-unit spacing that assumes uniform width -- a
+## 90-soldier LOOSE-order Archers block is far wider than a same-count TIGHT block,
+## so a flat spacing constant lets a wide neighbour's formation overlap it.
+static func half_width_for_soldiers(soldiers: int, spacing: float) -> float:
+	return _half_width(_files(soldiers), spacing)
+
+
 ## File count for a drag-resize handle pulled to `half_width` world units from the
 ## regiment's centre along its file axis. A grid of f files spans (f-1) gaps of
 ## `spacing`, so its half-width is (f-1)/2 * spacing; invert that and round to the
