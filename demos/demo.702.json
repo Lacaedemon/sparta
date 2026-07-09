@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Developer debug visual (per-soldier ID overlay) toggled via a checkbox in a paused menu; not visible in normal battle playback."
+  "reason": "Developer debug visual (soldier ID overlay) — not part of normal battle recording since it requires opening the Battle Menu and toggling the 'Soldier IDs' checkbox. Static diagram embedded in PR description."
 }

@@ -91,7 +91,7 @@ func test_show_unit_speed_defaults_off_and_round_trips() -> void:
 
 
 func test_show_soldier_ids_defaults_off_and_round_trips() -> void:
-	# Default off — the soldier ID overlay is opt-in, purely for debugging.
+	# Default off — the soldier ID overlay is opt-in.
 	assert_false(_settings().show_soldier_ids, "soldier IDs default off")
 
 	var a = SettingsScript.new()

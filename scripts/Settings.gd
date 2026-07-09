@@ -125,9 +125,8 @@ var show_unit_speed: bool = false:
 			_save()
 			changed.emit()
 
-# Soldier ID overlay: per-soldier index labels drawn on the selected unit's soldier
-# marks, gated to figure LOD (zoomed in). Cosmetic only. Default off — purely a
-# developer/debugging feature for tracking individual soldier movement during maneuvers.
+# Soldier ID overlay: display the per-unit-local array index for each soldier in the
+# selected unit at figure LOD (zoomed in). Dev/debug visual only. Default off.
 var show_soldier_ids: bool = false:
 	set(value):
 		if value == show_soldier_ids:
