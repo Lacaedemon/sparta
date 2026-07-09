@@ -71,6 +71,7 @@ static func order_mode_modifiers(u: Unit, target: Unit) -> Vector2:
 	var defense_mult: float = 1.0
 	if u.order_mode == Unit.ORDER_ALL_OUT_ATTACK:
 		attack_mult = ALL_OUT_ATTACK_HIT_BONUS
+	if target.order_mode == Unit.ORDER_ALL_OUT_ATTACK:
 		defense_mult = ALL_OUT_ATTACK_DEFENSE_PENALTY
 	return Vector2(attack_mult, defense_mult)
 

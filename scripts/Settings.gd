@@ -135,7 +135,7 @@ const DEFAULT_ORDER_BINDINGS := {
 	"skirmish": KEY_K,
 	"support": KEY_G,
 	"cycle_charge": KEY_J,
-	"all_out_attack": KEY_A,
+	"all_out_attack": KEY_X,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
