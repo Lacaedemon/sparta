@@ -87,3 +87,26 @@ var move_target: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
 var target_enemy: Unit = null
 var selected: bool = false
+# The unified orders queue (docs/orders-queue-design.md). `current_order` (orders[0],
+# or null when idle) is the single, transcript-visible source of truth for "what is this
+# unit doing right now" -- including its active phase, for a phased order like the
+# move-to-rear about-face. As of phase 2 the queue is AUTHORITATIVE for the movement
+# maneuvers: an in-place turn (a rear move's about-face phase, the standalone
+# about-face/quarter-turn drills) and the wheel keep their execution state on the Order
+# itself (turn_target / turn_start_facing / pivot), _think advances it off current_order,
+# and replacing or clearing the queue interrupts the maneuver in flight
+# (_interrupt_current_order). As of phase 3 the queue is also authoritative for the ROUTE:
+# a queued waypoint leg IS a queued MOVE order (there is no parallel waypoint list), with
+# move_target/has_move_target kept as the in-flight leg's execution state, and a line
+# relief's swap state lives on the RELIEF order (Order.relief_partner). The in-flight
+# targeting references (target_enemy / support_target) stay unit fields: the reactive
+# layer (enemy AI, auto-engage) writes target_enemy directly with no order behind it, so
+# they are execution state the queue reads -- _update_current_order retires
+# ATTACK/RELIEF/SUPPORT orders by reading them.
+var orders: Array[Order] = []
+var current_order: Order = null
+# Order stance, set by Battle._apply_order_cmd from the order's mode.
+# Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
+# The smart-order behaviours read this; NORMAL is current behaviour.
+var order_mode: int = 0
+var formation_mode: int = FORMATION_NORMAL
