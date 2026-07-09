@@ -43,7 +43,7 @@ This document compiles historical sources on how disciplined infantry units refo
 - Standalone reform phase after about-face
 - Refills front rank where soldiers have advanced
 - Implemented as composable primitive alongside march phases
-- Tested in `test_quartermaster.gd` and formation unit tests
+- Tested in `test/unit/test_reform_ranks.gd` and `test/unit/test_reform_battle.gd`
 
 ### 3. Flanking Reformation Under Flank Attack
 
@@ -56,8 +56,7 @@ This document compiles historical sources on how disciplined infantry units refo
 **Sources:**
 - Livy, *Ab Urbe Condita* (I century BC): Tactical responses to flank threats
 - Plutarch, *Life of Pyrrhus* (I-II century AD): Flank reform under elephant attacks
-- Slingers and archers: McHugh, *Formations in Medieval Cavalry* (2016)
-- Modern analysis: Salman, *Heavy Cavalry in the High Middle Ages* (2006)
+- Historical analysis of tactical repositioning under flank pressure
 
 **Current Status (Not Yet Implemented):**
 - Existing quarter-turn mechanics (#371) provide directional re-facing
@@ -75,8 +74,8 @@ This document compiles historical sources on how disciplined infantry units refo
 **Sources:**
 - Arrian on the phalanx's scaling: depth compensation when frontage was reduced
 - Roman legion reorganization rules (from military manuals cited in Vegetius)
-- Medieval pike companies: combining damaged pike and shot files (McHugh, 2016)
-- Modern historical analysis: Goldsworthy, *The Roman Army at War* (1996)
+- Historical analysis of pike company consolidation procedures
+- Goldsworthy, *The Roman Army at War* (1996): Roman legion reformation practices
 
 **Current Status (Partial Implementation):**
 - Close-the-ranks handles frontage narrowing
@@ -95,7 +94,7 @@ This document compiles historical sources on how disciplined infantry units refo
 **Sources:**
 - Aulus Gellius, *Noctes Atticae* (II century AD): Roman legion absorption procedures
 - Military manuals referenced in Vegetius's compilation
-- Medieval mercenary companies: consolidation of damaged companies (Curry, 2001)
+- Medieval mercenary companies: consolidation of damaged companies (Curry, 2003)
 
 **Current Status (Not Yet Implemented):**
 - Campaign map (M2/M3) will introduce reinforcement absorption
@@ -155,15 +154,12 @@ High-discipline units (historical elite formations) would reform better:
    - Curry, Anne E. *The Hundred Years' War, 1337-1453* (2003)
    - Goldsworthy, Adrian K. *The Roman Army at War 100 BC - AD 200* (1996)
    - Lendon, J. E. *Soldiers and Ghosts* (2005)
-   - McHugh, Michael J. *Formations in Medieval Cavalry* (2016)
-   - Salman, Michael. *Heavy Cavalry in the High Middle Ages* (2006)
 
 3. **In-Game Implementation References:**
    - PR #470/#669: "close the ranks" frontage contraction
    - PR #552/#565: "reform phase" front-rank refill after about-face
    - PR #670: "countermarch reform" symmetry preservation
    - PR #487: Anti-cavalry square formation
-   - Issue #468: Per-type maneuver variants
    - Issue #402: Engage/attack re-facing behavior
 
 ## Summary for Developers
