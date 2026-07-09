@@ -32,4 +32,11 @@ exclude = [
   # pixabay above. Skip it rather than reddening unrelated PRs on an
   # unavoidable CI flake.
   "^https://opengameart\\.org",
+  # game-icons.net (linked from docs/asset-sources.md, website/assets.qmd) is
+  # failing lychee with "SSL certificate expired" as of 2026-07-09 — an
+  # upstream cert-management issue outside this repo's control, reddening
+  # every open PR's link-checker regardless of what the PR touches. Skip it
+  # until the site renews its certificate; re-check periodically and remove
+  # this exclusion once https://game-icons.net/ loads cleanly again.
+  "^https://game-icons\\.net",
 ]
