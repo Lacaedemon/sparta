@@ -29,3 +29,61 @@ var uid: int = -1
 # never get a loadout.
 @export var walk_speed: float = 45.0
 @export var jog_speed: float = 67.5
+# Backward-walk speed factor: a soldier repositioning BACKWARD relative to his own
+# facing (a common motion during a maneuver -- conversio, quarter-turn, frontage
+# reshape -- where the rear ranks back up into new slots) is capped slower than one
+# moving forward. Real troops shuffle backward at roughly half their forward pace,
+# so a maneuver where men must back up takes longer than one where they step forward.
+# Battle.gd sets this per-type from the loadout's "back_fraction" (see
+# Battle._default_loadout). This 0.5 default is the fallback for a bare test unit
+# that never gets a loadout.
+@export var back_speed_fraction: float = 0.5
+# Acceleration/deceleration, in world units/s^2 -- how fast this unit's actual speed
+# ramps toward whichever pace it's targeting (see _current_speed below), instead of
+# snapping there instantly. Independent per-type values (Battle sets them from the
+# loadout's accel_mps2/decel_mps2), following the same panoply-weight reasoning as
+# walk_speed/jog_speed: heavier kit accelerates slower, and decel > accel for foot
+# troops (stopping needs no propulsive effort; starting does). Cavalry is symmetric --
+# a galloping horse can't be reined in any faster than it can build up speed.
+# Defaults are a middling (infantry-like) value for bare test units without a loadout.
+@export var accel: float = 30.0
+@export var decel: float = 60.0
+# Effective melee reach, in world units (Battle sets it per weapon from reach_m;
+# the 26 default is the infantry/sword baseline). A unit counts as in melee
+# contact when the gap to its target closes within attack_range + both RADII, so a
+# longer-reach weapon (a spear) reaches contact — and strikes — sooner than a
+# shorter one (a sword) as the lines close.
+@export var attack_range: float = 26.0
+# Interned loadout type ids (see LoadoutRegistry): which weapon and shield TYPE
+# this regiment's soldiers carry. Battle._spawn_unit sets them per type from the
+# loadout table, and the per-soldier arrays (_sim_soldier_weapon_id /
+# _sim_soldier_shield_id below) are seeded from them. Defaults are the infantry
+# baseline (gladius + scutum), matching the attack_range default above, so a
+# bare test unit spawned without a loadout still resolves to real types.
+var weapon_type_id: int = LoadoutRegistry.WEAPON_GLADIUS
+var shield_type_id: int = LoadoutRegistry.SHIELD_SCUTUM
+@export var is_cavalry: bool = false
+@export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
+@export var is_ranged: bool = false   # archers: loose volleys from a distance
+# Seconds before the unit starts executing a new order. Models the real-world
+# lag between a signal and the regiment actually stepping off. Default 0.5 s;
+# faster units (cavalry) can be given a lower value at spawn time.
+@export var order_response_delay: float = 0.5
+# Discipline and experience level (0.0 raw recruits → 1.0 veteran legionaries).
+# Well-trained melee units cycle their ranks in combat: fresh files rotate to the
+# front, which reduces fatigue buildup and sustains morale through prolonged fights.
+@export var training: float = 0.0:
+	set(v):
+		training = clampf(v, 0.0, 1.0)
+
+# --- Runtime state ---
+var soldiers: int
+var morale: float = 100.0
+var fatigue: float = 0.0   # 0 fresh .. 100 exhausted; rotated out by relief
+var cohesion: float = 1.0   # 1.0 gelled; drops on a merge, then ramps back
+var state: int = State.IDLE
+var facing: Vector2 = Vector2.DOWN
+var move_target: Vector2 = Vector2.ZERO
+var has_move_target: bool = false
+var target_enemy: Unit = null
+var selected: bool = false
