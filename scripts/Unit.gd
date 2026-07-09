@@ -3439,5 +3439,5 @@ func _draw() -> void:
 		var font := ThemeDB.fallback_font
 		var mark_r: float = MARK_RADIUS if not is_cavalry else CAV_MARK_RADIUS
 		for i in range(_sim_soldier_pos.size()):
-			draw_string(font, to_local(_sim_soldier_pos[i]) + Vector2(-4, -mark_r),
+			draw_string(font, (_sim_soldier_pos[i] - position) + Vector2(-4, -mark_r),
 					str(i), HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(1, 1, 1, 0.9))
