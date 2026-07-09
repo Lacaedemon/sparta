@@ -125,6 +125,20 @@ var show_unit_speed: bool = false:
 			_save()
 			changed.emit()
 
+# Dev/debug overlay: draws each living soldier's index into the selected unit's
+# `_sim_soldier_pos` (its array position, same identity `tools/demo/dump-state.sh`'s
+# `soldiers_full` arrays are already index-aligned with) above its mark, at figure LOD,
+# for the currently-selected unit only. Cosmetic/diagnostic only — no gameplay effect.
+# Default off, like the other opt-in debug overlays (show_unit_speed). See sparta#675.
+var show_soldier_ids: bool = false:
+	set(value):
+		if value == show_soldier_ids:
+			return
+		show_soldier_ids = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Order-mode selector hotkeys: stable slug -> physical keycode. Slugs (and the
 # menu order) are owned by Battle.ORDER_MODE_HOTKEYS; these are the factory defaults.
 # Physical keycodes keep the bindings layout-independent (like the camera/pause keys).
@@ -211,6 +225,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_distance_legend = bool(cfg.get_value("camera", "show_distance_legend", show_distance_legend))
 	show_order_distance = bool(cfg.get_value("camera", "show_order_distance", show_order_distance))
 	show_unit_speed = bool(cfg.get_value("camera", "show_unit_speed", show_unit_speed))
+	show_soldier_ids = bool(cfg.get_value("camera", "show_soldier_ids", show_soldier_ids))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
 	_loading = false
@@ -229,6 +244,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "show_distance_legend", show_distance_legend)
 	cfg.set_value("camera", "show_order_distance", show_order_distance)
 	cfg.set_value("camera", "show_unit_speed", show_unit_speed)
+	cfg.set_value("camera", "show_soldier_ids", show_soldier_ids)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
 	cfg.save(path)
