@@ -1,0 +1,60 @@
+name: Periodic Opposition Research
+
+# Periodically run the opposition-research skill to identify features demanded
+# by competitor communities and file tracking issues.
+#
+# NOTE: The schedule trigger below should be enabled once reviewed and approved.
+# For now, the workflow can be triggered manually via workflow_dispatch for testing.
+
+on:
+  # Uncomment the schedule trigger below to enable automatic weekly runs.
+  # Currently set to run weekly on Mondays at 09:00 UTC.
+  #
+  # schedule:
+  #   - cron: '0 9 * * 1'
+
+  # Allow manual trigger for testing and on-demand runs
+  workflow_dispatch:
+
+jobs:
+  opposition-research:
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: write
+    uses: d-morrison/gha/.github/workflows/claude.yml@v2
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
+    with:
+      setup-r: false
+      prompt: |
+        Run the opposition-research skill to identify features demanded by competitor
+        communities. Report the top-ranked findings and any newly filed issues.
+
+        Invoke: /opposition-research
+
+        **Target competitor:** Godot game engine and other real-time tactics game engines.
+
+        **Scope (on-scope features for Sparta):**
+        - Real-time tactical gameplay mechanics
+        - Turn-based strategy elements
+        - Player-vs-AI interaction systems
+        - Unit control and formation interfaces
+        - Physics and simulation optimization
+        - Camera/viewport management in tactical views
+
+        **Reporting contract:**
+        1. Identify the top 5–10 community-demanded features from competitor forums,
+           issue trackers, subreddits, and review sites.
+        2. For each, state the demand signal (upvotes, recurring threads, etc.) and
+           source link.
+        3. Map each to on-scope or off-scope for Sparta's roadmap.
+        4. For on-scope ideas, check if we already track them (search open issues).
+        5. Present ranked findings and ask which issues to file.
+        6. File approved issues with demand evidence linked in the body.
+
+        This is a standing weekly automation. Report findings as usual.
