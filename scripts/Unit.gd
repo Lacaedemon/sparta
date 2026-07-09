@@ -226,6 +226,7 @@ const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
+const ORDER_ALL_OUT_ATTACK := 7
 
 # Formation modes: how tightly the regiment is packed, plus the two shielded
 # close-order stances built on TIGHT's locked-shield density, and the two hollow-square

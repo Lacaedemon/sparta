@@ -17,6 +17,12 @@ class_name UnitCombat
 const REAR_MORALE_EXTRA: float = 0.0
 
 
+## All-out attack modifiers: boost to hit chance (+20% = 1.2x effective attack)
+## and penalty to defense (-20% = 0.8x effective defense) when order_mode == ALL_OUT_ATTACK.
+const ALL_OUT_ATTACK_HIT_BONUS: float = 1.2
+const ALL_OUT_ATTACK_DEFENSE_PENALTY: float = 0.8
+
+
 ## Physics-based cavalry charge multiplier: the bonus is the rider's IMPACT MOMENTUM, not
 ## a one-shot token. It scales with the component of the unit's approach velocity aimed
 ## straight at the target -- so a fast, head-on gallop lands the full bonus, a
@@ -57,6 +63,18 @@ static func charge_multiplier(u: Unit, enemy: Unit) -> float:
 	return 1.0 + charge
 
 
+## Apply order-mode-based combat modifiers. All-out-attack boosts hit chance
+## at the cost of defense; other modes don't apply modifiers here.
+## Returns a tuple (attack_mult, defense_mult).
+static func order_mode_modifiers(u: Unit, target: Unit) -> Vector2:
+	var attack_mult: float = 1.0
+	var defense_mult: float = 1.0
+	if u.order_mode == Unit.ORDER_ALL_OUT_ATTACK:
+		attack_mult = ALL_OUT_ATTACK_HIT_BONUS
+		defense_mult = ALL_OUT_ATTACK_DEFENSE_PENALTY
+	return Vector2(attack_mult, defense_mult)
+
+
 static func strike(u: Unit, enemy: Unit) -> void:
 	# Phase 4b: when both regiments have an engaged soldier layer, resolve melee per
 	# soldier (the model's opposed roll + wound against per-soldier health) instead of the
@@ -74,9 +92,10 @@ static func strike(u: Unit, enemy: Unit) -> void:
 	# squared unit hunkers to defend all around and so hits softer (formation_attack_factor);
 	# a TESTUDO fights head-down under cover and hits softest (formation_melee_attack_factor).
 	# All scale effective attack before defence.
+	var mods := order_mode_modifiers(u, enemy)
 	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion \
-			* u.formation_attack_factor() * u.formation_melee_attack_factor()
-	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
+			* u.formation_attack_factor() * u.formation_melee_attack_factor() * mods.x
+	var base: float = maxf(1.0, eff_attack - float(enemy.defense) * mods.y)
 	# Draw from the seeded replay RNG (one stream, stable order) so battles are
 	# reproducible. This is the simulation's only source of randomness.
 	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
@@ -105,9 +124,10 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	var rng_roll: float = Replay.rng.randf_range(0.6, 1.4)
 	var interceptor: Unit = friendly_interceptor(u, enemy)
 	var target: Unit = enemy if interceptor == null else interceptor
+	var mods := order_mode_modifiers(u, target)
 	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion \
-			* u.formation_attack_factor()
-	var base: float = maxf(1.0, eff_attack - float(target.defense))
+			* u.formation_attack_factor() * mods.x
+	var base: float = maxf(1.0, eff_attack - float(target.defense) * mods.y)
 	# Pass the shooter so SHIELD_WALL's shields only stop a frontal volley; a flank/rear
 	# shot bypasses the wall. TIGHT/TESTUDO ignore direction (all-around cover).
 	#
