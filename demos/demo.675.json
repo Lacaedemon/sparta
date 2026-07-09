@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Dev/debug-only diagnostic overlay (Settings.show_soldier_ids, off by default, menu-toggled): draws each selected unit's soldier array indices as tiny numeric labels at figure LOD. It's a developer tool for tracing maneuver/reform bugs tick-by-tick, not a player-facing gameplay feature, and the labels are only legible zoomed in tight on one unit -- a recorded battle clip at normal demo width/zoom wouldn't show anything readable. See sparta#675 for the design rationale."
+}
