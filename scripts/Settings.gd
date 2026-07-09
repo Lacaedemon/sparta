@@ -135,6 +135,7 @@ const DEFAULT_ORDER_BINDINGS := {
 	"skirmish": KEY_K,
 	"support": KEY_G,
 	"cycle_charge": KEY_J,
+	"sweep_routers": KEY_W,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.

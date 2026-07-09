@@ -226,6 +226,7 @@ const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
+const ORDER_SWEEP_ROUTERS := 7
 
 # Formation modes: how tightly the regiment is packed, plus the two shielded
 # close-order stances built on TIGHT's locked-shield density, and the two hollow-square
@@ -1072,6 +1073,12 @@ func _think(delta: float) -> void:
 			return
 		support_target = null
 		order_mode = 0   # ward gone: revert to NORMAL
+
+	# Sweep routers: prioritize routing enemies over still-fighting units
+	if order_mode == ORDER_SWEEP_ROUTERS:
+		var routing_enemy: Unit = UnitTargeting.nearest_routing_enemy(self)
+		if routing_enemy != null:
+			target_enemy = routing_enemy
 
 	var enemy: Unit = UnitTargeting.current_target(self)
 	if enemy != null:
