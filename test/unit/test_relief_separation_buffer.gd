@@ -4,10 +4,9 @@ extends GutTest
 ## sufficiently apart — confirming soldiers are no longer interpenetrating when
 ## steering forces resume.
 ##
-## This test was written to investigate issue #682 (chaotic entity swirling during
-## line relief). The hypothesis: the current 24px buffer in UnitRelief.update()
-## clears the exemption before soldiers are fully separated, causing steering
-## reversals when separation forces kick in.
+## This validates that the separation buffer in UnitRelief.update() clears the
+## exemption at a distance where soldiers are fully separated, preventing
+## steering reversals when separation forces resume.
 
 var battle: Battle
 var unit_a: Unit
@@ -33,7 +32,7 @@ func test_relief_exemption_clears_with_separation() -> void:
 	## Verify that once separation exemption clears, the pair is actually apart.
 
 	# Start a relief: unit_a takes over unit_b (the tired unit)
-	var relief_order := Order.new_relief(unit_b)
+	var relief_order := Order.new_relief(unit_b.uid)
 	unit_a.enqueue_order(relief_order)
 
 	# Advance unit_a toward unit_b to close the gap
@@ -47,7 +46,7 @@ func test_relief_exemption_clears_with_separation() -> void:
 	assert_true(relief_started, "Relief order should be current on unit_a")
 
 	# The exemption should be armed
-	var exemption_armed := unit_a.current_order.relief_partner == unit_b
+	var exemption_armed := unit_a.current_order.relief_partner == unit_b.uid
 	assert_true(exemption_armed, "Relief exemption should be armed")
 
 	# Record the initial separation distance
@@ -91,11 +90,11 @@ func test_relief_exemption_clears_with_separation() -> void:
 func test_relief_interruptible_on_dead() -> void:
 	## Verify that relief exemption clears immediately if the partner dies/routs.
 
-	var relief_order := Order.new_relief(unit_b)
+	var relief_order := Order.new_relief(unit_b.uid)
 	unit_a.enqueue_order(relief_order)
 
 	await gut.wait_frames(1)
-	assert_true(unit_a.current_order.relief_partner == unit_b, "Relief should be armed")
+	assert_true(unit_a.current_order.relief_partner == unit_b.uid, "Relief should be armed")
 
 	# Kill the partner mid-relief
 	unit_b.state = Unit.State.DEAD
@@ -108,7 +107,7 @@ func test_relief_interruptible_on_dead() -> void:
 func test_self_relief_refused() -> void:
 	## Verify that a unit can't relieve itself (no-op).
 
-	var relief_order := Order.new_relief(unit_a)
+	var relief_order := Order.new_relief(unit_a.uid)
 	UnitRelief.begin(unit_a, unit_a, relief_order)
 
 	# The exemption should not arm
