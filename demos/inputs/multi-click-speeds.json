@@ -1,0 +1,34 @@
+{
+  "_comment": "Multi-click move speeds demo (#385): four identical Cavalry units (drill mode, no enemy) lined up side by side are each sent on the same 260 px move, one at a time, but with a different right-click count on the destination: 1 click = Walk, 2 = Jog, 3 = Run, 4 = Sprint. All four orders land within the first ~3 s, so the lanes visibly pull apart at different paces (trot/canter/gallop for cavalry) and the Walk unit is still only two-thirds of the way there once Sprint has already stopped -- the opposite of pace-modes.json's AUTO walk/jog/sprint transitions, which react to distance/fire rather than being chosen by the player via click count.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 500, "y": 300, "facing": [0, 1]},
+    {"team": 0, "type": "Cavalry", "x": 650, "y": 300, "facing": [0, 1]},
+    {"team": 0, "type": "Cavalry", "x": 800, "y": 300, "facing": [0, 1]},
+    {"team": 0, "type": "Cavalry", "x": 950, "y": 300, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 725.0, "y": 480.0, "zoom": 1.0}
+  ],
+  "steps": [
+    {"tick": 5,  "click": [500, 300]},
+    {"tick": 8,  "rmb_click": [500, 560]},
+
+    {"tick": 15, "click": [650, 300]},
+    {"tick": 18, "rmb_click": [650, 560]},
+    {"tick": 21, "rmb_click": [650, 560]},
+
+    {"tick": 30, "click": [800, 300]},
+    {"tick": 33, "rmb_click": [800, 560]},
+    {"tick": 36, "rmb_click": [800, 560]},
+    {"tick": 39, "rmb_click": [800, 560]},
+
+    {"tick": 45, "click": [950, 300]},
+    {"tick": 48, "rmb_click": [950, 560]},
+    {"tick": 51, "rmb_click": [950, 560]},
+    {"tick": 54, "rmb_click": [950, 560]},
+    {"tick": 57, "rmb_click": [950, 560]}
+  ],
+  "state": [8, 90, 250, 460, 660]
+}

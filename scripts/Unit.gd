@@ -227,6 +227,14 @@ const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
 
+# Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
+# decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
+# RUN (triple), SPRINT (quadruple+). See Battle.gd's Gait enum.
+const GAIT_WALK := 0
+const GAIT_JOG := 1
+const GAIT_RUN := 2
+const GAIT_SPRINT := 3
+
 # Formation modes: how tightly the regiment is packed, plus the two shielded
 # close-order stances built on TIGHT's locked-shield density, and the two hollow-square
 # (anti-cavalry ring) variants.
@@ -1365,13 +1373,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 			and current_order.gait >= 0
 	if override_gait:
 		match current_order.gait:
-			BattleRef.Gait.WALK:
+			GAIT_WALK:
 				pace_speed = walk_speed
-			BattleRef.Gait.JOG:
+			GAIT_JOG:
 				pace_speed = jog_speed
-			BattleRef.Gait.RUN:
+			GAIT_RUN:
 				pace_speed = move_speed if position.distance_to(point) <= SPRINT_START_DISTANCE else jog_speed
-			BattleRef.Gait.SPRINT:
+			GAIT_SPRINT:
 				pace_speed = move_speed
 			_:
 				pace_speed = walk_speed  # fallback
