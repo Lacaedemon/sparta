@@ -87,9 +87,6 @@ website:
       - roadmap.qmd
       - assets.qmd
 
-filters:
-  - equation-anchors
-
 format:
   html:
     theme:
