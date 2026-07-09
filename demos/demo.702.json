@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Developer debug visual (per-soldier ID overlay) toggled via a checkbox in a paused menu; not visible in normal battle playback."
+}
