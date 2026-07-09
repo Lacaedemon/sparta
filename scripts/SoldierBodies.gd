@@ -221,6 +221,11 @@ static func step(unit: Unit, delta: float) -> void:
 			# sub-pixel oscillation around the exact point.
 			desired_vel += (to_slot / dist) * (dist / delta)
 		var new_vel: Vector2 = unit._sim_body_vel[i].move_toward(desired_vel, body_accel * delta)
+		# Apply kinetic friction damping (Newton's laws collision phase 1): velocity
+		# held from knockback or collision decays over time. Stationary/slow bodies
+		# experience higher friction ("stickier"), fast bodies coast longer.
+		# See SoldierCollision.apply_kinetic_friction and SoldierCombat friction constants.
+		new_vel = SoldierCollision.apply_kinetic_friction(new_vel, unit.combat_profile()["mass"], 0.0, delta)
 		# The sqrt(2 a d) arrival profile decelerates to 0 at the slot in continuous time, but
 		# its slope steepens near the slot faster than a bounded decel can follow, so a body
 		# arriving with residual inbound speed (built up from the previous tick's move_toward)
