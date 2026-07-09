@@ -38,6 +38,18 @@ jobs:
   export:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # GitHub Actions does not allow the `secrets` context in step-level `if:`
+      # conditionals — only in `env:`, `with:`, and `run:` (see
+      # https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions#accessing-your-secrets).
+      # Map each code-signing secret to a job-level env var once here so the
+      # "code-sign" / "skip" steps below can gate on `env.X != ''` instead.
+      WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+      WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+      MACOS_CODESIGN_P12_BASE64: ${{ secrets.MACOS_CODESIGN_P12_BASE64 }}
+      MACOS_CODESIGN_P12_PASSWORD: ${{ secrets.MACOS_CODESIGN_P12_PASSWORD }}
+      MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+      MACOS_NOTARY_API_KEY_JSON: ${{ secrets.MACOS_NOTARY_API_KEY_JSON }}
     steps:
       - uses: actions/checkout@v4
 
@@ -100,10 +112,10 @@ jobs:
         # no Windows runner is needed). No-ops (see the skip step below) until
         # both secrets are configured. See tools/installer/README.md for what
         # to add and how to generate them.
-        if: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 != '' && secrets.WINDOWS_CODESIGN_PASSWORD != '' }}
+        if: ${{ env.WINDOWS_CODESIGN_PFX_BASE64 != '' && env.WINDOWS_CODESIGN_PASSWORD != '' }}
         env:
-          PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
-          PFX_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+          PFX_BASE64: ${{ env.WINDOWS_CODESIGN_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ env.WINDOWS_CODESIGN_PASSWORD }}
         run: |
           set -euo pipefail
           sudo apt-get update && sudo apt-get install -y osslsigncode
@@ -117,7 +129,7 @@ jobs:
           rm -f /tmp/windows-codesign.pfx
 
       - name: Skip Windows code-signing (secrets not configured)
-        if: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 == '' || secrets.WINDOWS_CODESIGN_PASSWORD == '' }}
+        if: ${{ env.WINDOWS_CODESIGN_PFX_BASE64 == '' || env.WINDOWS_CODESIGN_PASSWORD == '' }}
         run: |
           echo "::notice::WINDOWS_CODESIGN_PFX_BASE64/WINDOWS_CODESIGN_PASSWORD not set — shipping an unsigned Windows build. See tools/installer/README.md."
 
@@ -140,12 +152,12 @@ jobs:
         # this scaffold (see tools/installer/README.md) — no signing certs
         # exist yet to exercise it end-to-end — but this ordering matches
         # Apple's and rcodesign's documented stapling requirement.
-        if: ${{ secrets.MACOS_CODESIGN_P12_BASE64 != '' && secrets.MACOS_CODESIGN_P12_PASSWORD != '' && secrets.MACOS_TEAM_ID != '' && secrets.MACOS_NOTARY_API_KEY_JSON != '' }}
+        if: ${{ env.MACOS_CODESIGN_P12_BASE64 != '' && env.MACOS_CODESIGN_P12_PASSWORD != '' && env.MACOS_TEAM_ID != '' && env.MACOS_NOTARY_API_KEY_JSON != '' }}
         env:
-          P12_BASE64: ${{ secrets.MACOS_CODESIGN_P12_BASE64 }}
-          P12_PASSWORD: ${{ secrets.MACOS_CODESIGN_P12_PASSWORD }}
-          TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
-          NOTARY_API_KEY_JSON: ${{ secrets.MACOS_NOTARY_API_KEY_JSON }}
+          P12_BASE64: ${{ env.MACOS_CODESIGN_P12_BASE64 }}
+          P12_PASSWORD: ${{ env.MACOS_CODESIGN_P12_PASSWORD }}
+          TEAM_ID: ${{ env.MACOS_TEAM_ID }}
+          NOTARY_API_KEY_JSON: ${{ env.MACOS_NOTARY_API_KEY_JSON }}
         run: |
           set -euo pipefail
           curl -fsSL -o rcodesign.tar.gz \
@@ -191,7 +203,7 @@ jobs:
           rm -f /tmp/macos-codesign.p12 /tmp/notary-api-key.json
 
       - name: Skip macOS code-signing/notarization (secrets not configured)
-        if: ${{ secrets.MACOS_CODESIGN_P12_BASE64 == '' || secrets.MACOS_CODESIGN_P12_PASSWORD == '' || secrets.MACOS_TEAM_ID == '' || secrets.MACOS_NOTARY_API_KEY_JSON == '' }}
+        if: ${{ env.MACOS_CODESIGN_P12_BASE64 == '' || env.MACOS_CODESIGN_P12_PASSWORD == '' || env.MACOS_TEAM_ID == '' || env.MACOS_NOTARY_API_KEY_JSON == '' }}
         run: |
           echo "::notice::MACOS_CODESIGN_P12_BASE64/MACOS_CODESIGN_P12_PASSWORD/MACOS_TEAM_ID/MACOS_NOTARY_API_KEY_JSON not fully set — shipping an unsigned, un-notarized macOS build. See tools/installer/README.md."
 
@@ -220,10 +232,10 @@ jobs:
       - name: Code-sign Windows installer
         # Signs the installer .exe itself (in addition to the app .exe it
         # contains) with the same Authenticode certificate as above.
-        if: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 != '' && secrets.WINDOWS_CODESIGN_PASSWORD != '' }}
+        if: ${{ env.WINDOWS_CODESIGN_PFX_BASE64 != '' && env.WINDOWS_CODESIGN_PASSWORD != '' }}
         env:
-          PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
-          PFX_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+          PFX_BASE64: ${{ env.WINDOWS_CODESIGN_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ env.WINDOWS_CODESIGN_PASSWORD }}
         run: |
           set -euo pipefail
           V="${GITHUB_REF_NAME//\//-}"
