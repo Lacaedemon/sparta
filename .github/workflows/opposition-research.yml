@@ -4,7 +4,11 @@ name: Periodic Opposition Research
 # by competitor communities and file tracking issues.
 #
 # NOTE: The schedule trigger below should be enabled once reviewed and approved.
-# For now, the workflow can be triggered manually via workflow_dispatch for testing.
+# KNOWN LIMITATION: the reusable d-morrison/gha claude.yml job's own `if:` gate
+# never matches workflow_dispatch or schedule triggers, so neither trigger below
+# actually runs the job yet — this workflow is intentionally merged in an
+# honestly-documented-inert state. Tracked upstream at d-morrison/gha#245; once
+# that's fixed, both triggers here will work as named.
 
 on:
   # Uncomment the schedule trigger below to enable automatic weekly runs.
@@ -13,7 +17,7 @@ on:
   # schedule:
   #   - cron: '0 9 * * 1'
 
-  # Allow manual trigger for testing and on-demand runs
+  # Manual trigger — currently inert; see the gha#245 note above.
   workflow_dispatch:
 
 jobs:
