@@ -116,40 +116,13 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		var brace_d: float = SoldierCombat.brace_depth(file_braces)
 		var cap: float = SoldierCombat.BRACE_CAPACITY * brace_d   # avoids a second walk of file_braces
 		var received: float = maxf(0.0, impulse_mag - cap)
-		# Newton's laws collision (bidirectional impulses): both attacker and defender
-		# exchange momentum. The impulse is split inversely by effective mass (which
-		# includes bracing). Bracing gates the DEFENDER's forward motion (via `cap`
-		# above), but does NOT reduce the attacker's recoil — a braced defender still
-		# pushes back with full force. Lighter units recoil harder; heavier units shrug
-		# off shoves. See SoldierCollision.bidirectional_impulse.
-		if impulse_mag > 0.0:
-			var attacker_brace: float = attacker.soldier_brace()
-			var [impulse_attacker, impulse_defender] = SoldierCollision.bidirectional_impulse(
-				impulse_mag,
-				push_dir,
-				my_prof["mass"],
-				attacker_brace,
-				en_prof["mass"],
-				brace_d
-			)
-			# Apply recoil to attacker (always, even if bracing absorbs the defender's motion).
-			if impulse_attacker.length() > 0.01:
-				attacker._sim_body_vel[ai] = SoldierCombat.capped_knockback_velocity(
-					attacker._sim_body_vel[ai], impulse_attacker)
-			# Apply reduced impulse to defender (still gated by bracing capacity).
-			if received > 0.0:
-				defender._sim_body_vel[target] = SoldierCombat.capped_knockback_velocity(
-						defender._sim_body_vel[target], impulse_defender)
 		# Accumulate under a clamp: impulses from every attacker shoving this body this
 		# cadence accumulate in its velocity, and each application clamps the summed result
 		# (SoldierCombat.capped_knockback_velocity) -- a pile-on in an intermixed press
 		# knocks a man back body-lengths, never launches him across the field.
-		# NOTE: the bidirectional split above replaces the old unidirectional knockback path.
-		# Legacy path preserved only for non-momentum-exchange strikes (if impulse_mag == 0);
-		# that case is now dead (impulse_mag is always > 0 from knockback_impulse).
-		#if received > 0.0:
-		#	defender._sim_body_vel[target] = SoldierCombat.capped_knockback_velocity(
-		#			defender._sim_body_vel[target], push_dir * received)
+		if received > 0.0:
+			defender._sim_body_vel[target] = SoldierCombat.capped_knockback_velocity(
+					defender._sim_body_vel[target], push_dir * received)
 		if landed:
 			defender._sim_soldier_hp[target] -= \
 					SoldierCombat.wound(lethality_a, c, en_prof["armour"], cond_a) * wound_scale
