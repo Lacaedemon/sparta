@@ -87,3 +87,45 @@ var move_target: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
 var target_enemy: Unit = null
 var selected: bool = false
+# The unified orders queue (docs/orders-queue-design.md). `current_order` (orders[0],
+# or null when idle) is the single, transcript-visible source of truth for "what is this
+# unit doing right now" -- including its active phase, for a phased order like the
+# move-to-rear about-face. As of phase 2 the queue is AUTHORITATIVE for the movement
+# maneuvers: an in-place turn (a rear move's about-face phase, the standalone
+# about-face/quarter-turn drills) and the wheel keep their execution state on the Order
+# itself (turn_target / turn_start_facing / pivot), _think advances it off current_order,
+# and replacing or clearing the queue interrupts the maneuver in flight
+# (_interrupt_current_order). As of phase 3 the queue is also authoritative for the ROUTE:
+# a queued waypoint leg IS a queued MOVE order (there is no parallel waypoint list), with
+# move_target/has_move_target kept as the in-flight leg's execution state, and a line
+# relief's swap state lives on the RELIEF order (Order.relief_partner). The in-flight
+# targeting references (target_enemy / support_target) stay unit fields: the reactive
+# layer (enemy AI, auto-engage) writes target_enemy directly with no order behind it, so
+# they are execution state the queue reads -- _update_current_order retires
+# ATTACK/RELIEF/SUPPORT orders by reading them.
+var orders: Array[Order] = []
+var current_order: Order = null
+# Order stance, set by Battle._apply_order_cmd from the order's mode.
+# Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
+# The smart-order behaviours read this; NORMAL is current behaviour.
+var order_mode: int = 0
+var formation_mode: int = FORMATION_NORMAL
+# Intra-unit rank-relief: whether rear ranks rotate forward to relieve their own unit's
+# fighting line. A durable mode (the design doc's verbs-vs-modes split), written by a
+# STANCE order, NOT a queue entry -- the rotation is standing behavior inside one unit,
+# unlike the inter-unit RELIEF order where a fresh unit swaps with a tired ally. On by
+# default (the historical behavior); UnitMorale gates the training-driven rank-cycle
+# fatigue reduction and in-fight morale recovery on it, so turning it off makes a
+# disciplined unit tire and waver like an untrained one.
+var rank_relief: bool = true
+# Which frontage the unit settles into after an engage/attack re-face turn-in-place
+# (_settle_engage_turn) completes. KEEP_NEW_FRONTING is the shipped MVP: the men stay put
+# and the unit fights with whatever edge the turn left facing the enemy. The other two
+# layer a reshape on top of that same turn, reusing the frontage-resize grid-op
+# (UnitFormation.files_for_halfwidth / set_frontage) so the reshape eases in via the
+# soldier-body arrival dynamics exactly like a manual [ / ] resize -- no teleport, no new
+# mechanism. RECREATE_WIDTH restores the file count the unit had before the turn (a wide
+# line stays a wide line facing the new way); MATCH_TARGET instead adopts the enemy's own
+# current file count (to the extent this unit's max_soldiers allows).
+enum EngageReshapeMode { KEEP_NEW_FRONTING, RECREATE_WIDTH, MATCH_TARGET }
+var engage_reshape_mode: int = EngageReshapeMode.KEEP_NEW_FRONTING
