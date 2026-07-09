@@ -220,12 +220,21 @@ var ordered_facing: Vector2 = Vector2.ZERO
 # referenced above: these were a "crude version" per the design doc before the guard
 # vocabulary (Order.Guard / OrderGuards.gd) gave the queue a first-class way to gate an
 # order's own early completion on one of them.
+# CHASE is relentless pursuit: it overrides the normal disengage-on-plain-move-order
+# path (the _think fallthrough that lets a unit break contact/pursuit when it has no
+# explicit target_enemy — see the in_contact/elif target_enemy branches below) so a
+# chasing unit keeps closing on and re-engaging the SAME fleeing/repositioning enemy
+# instead of peeling off to obey a later move order or drift onto a closer distraction.
+# It does not change target ACQUISITION (UnitTargeting.current_target/nearest_enemy
+# already let a pursuer keep and re-close on a routing enemy indefinitely); it changes
+# what makes the unit let go of a target once it has one.
 const ORDER_HOLD := 1
 const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
+const ORDER_CHASE := 7
 
 # Formation modes: how tightly the regiment is packed, plus the two shielded
 # close-order stances built on TIGHT's locked-shield density, and the two hollow-square
@@ -1077,6 +1086,13 @@ func _think(delta: float) -> void:
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
+		# Chase: relentless pursuit. Everywhere else in this branch gates fighting/closing
+		# on "target_enemy != null or not has_move_target" (an explicit attack order, or no
+		# move order at all) — that's what lets a plain move order pull a unit off a foe it
+		# only auto-acquired. A CHASE unit never takes that out: it keeps re-engaging and
+		# re-closing on the SAME enemy regardless of any later move order, so it can't be
+		# walked off a fleeing/repositioning target the way a normal unit can.
+		var chasing: bool = order_mode == ORDER_CHASE
 		# Cycle charge: a melee unit lands a charge, then peels back to a standoff and
 		# re-charges, rather than grinding in a spent-bonus melee. Handled up front (like
 		# skirmish) so it overrides the press-and-grind melee below. Ranged units and a
@@ -1107,7 +1123,7 @@ func _think(delta: float) -> void:
 		# Gated by the same "not disengaging" rule as melee: a plain move order with
 		# no explicit attack target marches them off rather than rooting them to fire.
 		if is_ranged and not in_contact and dist <= RANGED_RANGE \
-				and (target_enemy != null or not has_move_target):
+				and (target_enemy != null or not has_move_target or chasing):
 			state = State.FIGHTING
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
@@ -1118,8 +1134,9 @@ func _think(delta: float) -> void:
 		# Fight when in contact, UNLESS the player gave a plain move order with no
 		# explicit attack target — that's a disengage command, so march off and let
 		# the unit break contact. (Pulling out exposes the rear; the enemy chasing
-		# it strikes for the ×2 flank bonus, which is the cost of disengaging.)
-		if in_contact and (target_enemy != null or not has_move_target):
+		# it strikes for the ×2 flank bonus, which is the cost of disengaging.) A
+		# CHASE unit never takes this disengage: it keeps fighting the same foe.
+		if in_contact and (target_enemy != null or not has_move_target or chasing):
 			state = State.FIGHTING
 			# Re-face for action: a large swing off the current fronting turns the men in
 			# place gradually (they hold their ground) before the line strikes; a small
@@ -1139,10 +1156,11 @@ func _think(delta: float) -> void:
 			if _engage_turn_target == Vector2.ZERO and not is_ranged and order_mode != ORDER_HOLD:
 				_press_into(enemy.position, delta)
 			return
-		elif target_enemy != null:
-			# Explicit attack order, not yet in contact: chase past any move target.
-			# A flank/rear stance closes on the enemy's side or back instead of
-			# head-on, so the strike on arrival lands with the flank/rear bonus.
+		elif target_enemy != null or (chasing and not in_contact):
+			# Explicit attack order (or a CHASE unit's auto-acquired quarry), not yet in
+			# contact: chase past any move target. A flank/rear stance closes on the
+			# enemy's side or back instead of head-on, so the strike on arrival lands with
+			# the flank/rear bonus.
 			# If the enemy broke contact mid-turn, settle the re-face first — the unit is
 			# marching after it now, so the frozen arrival must release (the turn resumes on
 			# the next contact when _face_for_action runs again).
