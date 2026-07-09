@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/sweep-routers.json",
+  "caption": "Sweep routers (Ctrl+W, closes #693): a unit under the new SWEEP_ROUTERS stance prioritizes attacking a routing (fleeing) enemy over a closer enemy that's still standing and fighting. The player Cavalry in the middle is given the Sweep routers stance right away, before either enemy has broken. A weak enemy Infantry to its right soon breaks and starts fleeing, while a second, full-strength enemy Infantry stays locked in melee on the left the whole clip and is consistently the CLOSER of the two -- yet the swept unit bypasses it and chases down the more distant router instead, finishing the pursuit by the end of the clip. Verified by state dump: from tick ~40 the sweeper's target_enemy_uid stays fixed on the routing unit, never the nearer still-fighting one, even as the gap narrows -- only falling back to the closer unit once the router is run down.",
+  "fixed_fps": 30,
+  "max_frames": 130,
+  "fps": 15,
+  "width": 720
+}
