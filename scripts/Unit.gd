@@ -434,6 +434,12 @@ const DETECTION_RANGE: float = 190.0
 # strikes per second. (Per-soldier strike timing would come with the individual-
 # soldier layer; see docs/individual-collision-design.md.)
 const ATTACK_INTERVAL: float = 0.6
+# PIN_DOWN stance: defensive attack that trades reduced attack frequency for exposure
+# during the attack window. Longer interval between strikes; exposure lasts for a
+# portion of the interval, during which defense is reduced.
+const PIN_DOWN_ATTACK_INTERVAL: float = 1.2
+const PIN_DOWN_ATTACK_FRAME_DURATION: float = 0.4
+const PIN_DOWN_DEFENSE_FACTOR: float = 0.5
 const ROUT_TIME: float = 6.0
 # How long a non-fighting unit holds position to reform its ranks after a fresh move
 # order is issued with reform_before_move on. Runs concurrently with order_response_delay
@@ -575,6 +581,9 @@ const ANTI_CAV_CHARGE_BACKFIRE: float = 0.5
 const ANTI_CAV_CHARGE_FLOOR: float = 0.6
 
 var _attack_cd: float = 0.0
+# For PIN_DOWN stance: duration the unit is exposed (takes reduced defense) during
+# its own attack. Set to PIN_DOWN_ATTACK_FRAME_DURATION when _attack_cd resets.
+var _attack_frame_remaining: float = 0.0
 var _rout_timer: float = 0.0
 # A ROUTING unit starts "broken" (this false): its morale still recovers and it can
 # rally back to control. If it runs out of time still in contact, or too gutted to
@@ -704,6 +713,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_attack_cd = max(0.0, _attack_cd - delta)
+	_attack_frame_remaining = max(0.0, _attack_frame_remaining - delta)
 	_moved_last_frame = false
 
 	_think(delta)
@@ -1127,7 +1137,11 @@ func _think(delta: float) -> void:
 			# brought to bear — the strike is withheld until then.
 			var faced: bool = _face_for_action(enemy.position, delta, enemy)
 			if faced and _attack_cd <= 0.0:
-				_attack_cd = ATTACK_INTERVAL
+				if order_mode == ORDER_PIN_DOWN:
+					_attack_cd = PIN_DOWN_ATTACK_INTERVAL
+					_attack_frame_remaining = PIN_DOWN_ATTACK_FRAME_DURATION
+				else:
+					_attack_cd = ATTACK_INTERVAL
 				UnitCombat.strike(self, enemy)
 			# Press into contact: a committed melee unit keeps advancing onto the enemy
 			# while it fights, so the lines close to body contact (separation provides the
@@ -1264,7 +1278,11 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 		# cavalry speeds the cycle period exceeds ATTACK_INTERVAL, so this rarely bites —
 		# but the gate keeps it correct if speed or the interval is later retuned.)
 		if _attack_cd <= 0.0:
-			_attack_cd = ATTACK_INTERVAL
+			if order_mode == ORDER_PIN_DOWN:
+				_attack_cd = PIN_DOWN_ATTACK_INTERVAL
+				_attack_frame_remaining = PIN_DOWN_ATTACK_FRAME_DURATION
+			else:
+				_attack_cd = ATTACK_INTERVAL
 			UnitCombat.strike(self, enemy)
 			_cycle_recharging = true
 		return true
@@ -1297,7 +1315,11 @@ func _support_tick(delta: float) -> void:
 		elif in_contact:
 			state = State.FIGHTING
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
-				_attack_cd = ATTACK_INTERVAL
+				if order_mode == ORDER_PIN_DOWN:
+					_attack_cd = PIN_DOWN_ATTACK_INTERVAL
+					_attack_frame_remaining = PIN_DOWN_ATTACK_FRAME_DURATION
+				else:
+					_attack_cd = ATTACK_INTERVAL
 				UnitCombat.strike(self, threat)
 		else:
 			# Threat out of range: chase it. Settle a dangling re-face first so the frozen
@@ -1716,6 +1738,18 @@ func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
 ## direction against the unit's facing; with no attacker (a plain query) it grants its
 ## frontal value. Normal/loose: no modifier.
 func missile_defense_factor(attacker: Unit = null) -> float:
+	# PIN_DOWN stance: exposed during own attack frame, takes reduced defense to ranged too
+	if order_mode == ORDER_PIN_DOWN and _attack_frame_remaining > 0.0:
+		var base_defense: float = 1.0
+		match formation_mode:
+			FORMATION_TIGHT:
+				base_defense = 1.0 - TIGHT_MISSILE_DEFENSE
+			FORMATION_TESTUDO:
+				base_defense = 1.0 - TESTUDO_MISSILE_DEFENSE
+			FORMATION_SHIELD_WALL:
+				if _is_frontal_attack(attacker):
+					base_defense = 1.0 - SHIELD_WALL_MISSILE_DEFENSE
+		return base_defense * PIN_DOWN_DEFENSE_FACTOR
 	match formation_mode:
 		FORMATION_TIGHT:
 			return 1.0 - TIGHT_MISSILE_DEFENSE
@@ -1732,6 +1766,12 @@ func missile_defense_factor(attacker: Unit = null) -> float:
 ## Multiplier applied to incoming MELEE damage. A locked SHIELD_WALL blunts a frontal
 ## melee assault (flank/rear blows slip past the wall and land full). Other stances: none.
 func melee_defense_factor(attacker: Unit = null) -> float:
+	# PIN_DOWN stance: exposed during own attack frame, takes reduced defense
+	if order_mode == ORDER_PIN_DOWN and _attack_frame_remaining > 0.0:
+		var base_defense: float = 1.0
+		if formation_mode == FORMATION_SHIELD_WALL and _is_frontal_attack(attacker):
+			base_defense = 1.0 - SHIELD_WALL_MELEE_DEFENSE
+		return base_defense * PIN_DOWN_DEFENSE_FACTOR
 	if formation_mode == FORMATION_SHIELD_WALL and _is_frontal_attack(attacker):
 		return 1.0 - SHIELD_WALL_MELEE_DEFENSE
 	return 1.0
