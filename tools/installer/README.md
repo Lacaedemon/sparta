@@ -1,1 +1,100 @@
-IyBXaW5kb3dzIGluc3RhbGxlciAmIHJlbGVhc2UgY29kZS1zaWduaW5nCgojIyBgc3BhcnRhLm5zaWAKCk5TSVMgc2NyaXB0IHRoYXQgYnVpbGRzIHRoZSBXaW5kb3dzIGluc3RhbGxlciAoYHNwYXJ0YS08dmVyc2lvbj4td2luZG93cy1zZXR1cC5leGVgKS4KQnVpbHQgYnkgYC5naXRodWIvd29ya2Zsb3dzL3JlbGVhc2UueW1sYCdzICJCdWlsZCBXaW5kb3dzIGluc3RhbGxlciIgc3RlcDoKCmBgYHNoCm1ha2Vuc2lzIC1EVkVSU0lPTj0wLjEuMCAtREVYRV9QQVRIPXNwYXJ0YS5leGUgc3BhcnRhLm5zaQpgYGAKCmBPVVRGSUxFYCBkZWZhdWx0cyB0byBhIG5hbWUgaW4gdGhpcyBzY3JpcHQncyBvd24gZGlyZWN0b3J5IGZvciBhIHBsYWluIGxvY2FsCmJ1aWxkOyB0aGUgcmVsZWFzZSB3b3JrZmxvdyBwYXNzZXMgYW4gYWJzb2x1dGUgYC1ET1VURklMRT0uLi5gIHNvIHRoZSBidWlsdAppbnN0YWxsZXIgbGFuZHMgaW4gYGJ1aWxkL2AgaW5zdGVhZCAoc2VlIHRoZSBjb21tZW50IGF0IHRoZSB0b3Agb2YgdGhlIGAubnNpYApmaWxlIC0tIGEgcmVsYXRpdmUgYE91dEZpbGVgIHJlc29sdmVzIGFnYWluc3QgdGhlIHNjcmlwdCdzIGRpcmVjdG9yeSwgbm90IHRoZQpjYWxsZXIncyB3b3JraW5nIGRpcmVjdG9yeSkuCgojIyBDb2RlLXNpZ25pbmcgJiBub3Rhcml6YXRpb24KClJlbGVhc2UgYnVpbGRzIChtYWNPUyBgLnppcGAvYC5hcHBgLCB0aGUgV2luZG93cyBgLmV4ZWAsIGFuZCB0aGUgV2luZG93cwppbnN0YWxsZXIgYnVpbHQgZnJvbSB0aGlzIGRpcmVjdG9yeSkgYXJlICoqdW5zaWduZWQgYnkgZGVmYXVsdCoqLiBUaGUKYHJlbGVhc2UueW1sYCB3b3JrZmxvdyBoYXMgdGhlIHBsdW1iaW5nIHdpcmVkIHVwIHRvIHNpZ24gYW5kIG5vdGFyaXplIHRoZW0KYXV0b21hdGljYWxseSAtLSBpdCBqdXN0IG5lZWRzIHRoZSBjZXJ0aWZpY2F0ZXMgYmVsb3cgYWRkZWQgYXMgKipyZXBvc2l0b3J5CnNlY3JldHMqKiAoU2V0dGluZ3MgLT4gU2VjcmV0cyBhbmQgdmFyaWFibGVzIC0+IEFjdGlvbnMgLT4gTmV3IHJlcG9zaXRvcnkKc2VjcmV0KS4gVW50aWwgdGhleSdyZSBhbGwgcHJlc2VudCwgdGhlIGNvcnJlc3BvbmRpbmcgc3RlcCBsb2dzIGFuCmA6Om5vdGljZTo6YCBhbmQgbm8tb3BzOyB0aGUgYnVpbGQgc3RpbGwgc3VjY2VlZHMsIGp1c3QgdW5zaWduZWQsIGV4YWN0bHkgYXMKdG9kYXkuCgoqKlRoaXMgc2Vzc2lvbiBjYW5ub3Qgb2J0YWluIG9yIHByb3Zpc2lvbiB0aGVzZSBmb3IgeW91KiogLS0gdGhleSByZXF1aXJlIGEKcGFpZCBBcHBsZSBEZXZlbG9wZXIgUHJvZ3JhbSBtZW1iZXJzaGlwIGFuZCBhIHB1cmNoYXNlZCBXaW5kb3dzIGNvZGUtc2lnbmluZwpjZXJ0aWZpY2F0ZSwgYm90aCB0aWVkIHRvIHRoZSBtYWludGFpbmVyJ3Mgb3duIGlkZW50aXR5L29yZ2FuaXphdGlvbi4gTm90aGluZwpzaG9ydCBvZiB0aGUgYWN0dWFsIHJlcG8gb3duZXIgYnV5aW5nIGFuZCBnZW5lcmF0aW5nIHRoZXNlIGNhbiB0dXJuIHNpZ25pbmcKb24uCgojIyMgbWFjT1M6IERldmVsb3BlciBJRCBzaWduaW5nICsgbm90YXJpemF0aW9uCgpHb2RvdCBjcm9zcy1leHBvcnRzIG1hY09TIGZyb20gdGhlIExpbnV4IHJ1bm5lciwgc28gc2lnbmluZy9ub3Rhcml6aW5nIGFsc28KcnVucyB0aGVyZSAtLSB2aWEgW2ByY29kZXNpZ25gXShodHRwczovL2dpdGh1Yi5jb20vaW5keWdvL2FwcGxlLXBsYXRmb3JtLXJzKQoodGhlIGBhcHBsZS1jb2Rlc2lnbmAgcHJvamVjdCksIHdoaWNoIHJlaW1wbGVtZW50cyBBcHBsZSdzIGNvZGVzaWduL25vdGFyeQp0b29scyBpbiBhIHdheSB0aGF0IGRvZXNuJ3QgcmVxdWlyZSBhIE1hYy4gYHJlbGVhc2UueW1sYCBkb3dubG9hZHMgYSBwaW5uZWQKYHJjb2Rlc2lnbmAgcmVsZWFzZSAoYFJDT0RFU0lHTl9WRVJTSU9OYCBhdCB0aGUgdG9wIG9mIHRoZSB3b3JrZmxvdyAtLSBidW1wIGl0CmlmIGEgbmV3ZXIgcmVsZWFzZSBpcyBuZWVkZWQpLgoKUmVxdWlyZWQgc2VjcmV0cywgYWxsIGZvdXIgdG9nZXRoZXIgKHBhcnRpYWwgY29uZmlndXJhdGlvbiBpcyB0cmVhdGVkIGFzCiJub3QgY29uZmlndXJlZCIgYW5kIHRoZSBzdGVwIG5vLW9wcyk6CgF8IFNlY3JldCB8IFdoYXQgaXQgaXMgfCBIb3cgdG8gZ2V0IGl0IHwKfCAtLS0gfCAtLS0gfCAtLS0gfAp8IGBNQUNPU19DT0RFU0lHTl9QMTJfQkFTRTY0YCB8IEJhc2U2NCBvZiBhIERldmVsb3BlciBJRCBBcHBsaWNhdGlvbiBgLnAxMmAgY2VydGlmaWNhdGUgfCBJbiBLZXljaGFpbiBBY2Nlc3MsIGV4cG9ydCB0aGUgRGV2ZWxvcGVyIElEIEFwcGxpY2F0aW9uIGNlcnRpZmljYXRlICh3aXRoIGl0cyBwcml2YXRlIGtleSkgYXMgYSBgLnAxMmAsIHRoZW4gYGJhc2U2NCAtaSBjZXJ0LnAxMiB8IHBib2NvcHlgIChvciBgYmFzZTY0IC13MCBjZXJ0LnAxMmAgb24gTGludXgpIHwKfCBgTUFDT1NfQ09ERVNJR05fUDEyX1BBU1NXT1JEYCB8IFBhc3N3b3JkIHByb3RlY3RpbmcgdGhhdCBgLnAxMmAgfCBXaGF0ZXZlciBwYXNzd29yZCB5b3Ugc2V0IHdoZW4gZXhwb3J0aW5nIGl0IHwKfCBgTUFDT1NfVEVBTV9JRGAgfCBBcHBsZSBEZXZlbG9wZXIgVGVhbSBJRCAoMTAgY2hhcmFjdGVycykgfCBkZXZlbG9wZXIuYXBwbGUuY29tL2FjY291bnQgLT4gTWVtYmVyc2hpcCBkZXRhaWxzIHwKfCBgTUFDT1NfTk9UQVJZX0FQSV9LRVlfSlNPTmAgfCBBbiBBcHAgU3RvcmUgQ29ubmVjdCBBUEkga2V5LCBwcmUtZW5jb2RlZCBpbnRvIHRoZSBKU09OIGJsb2IgYHJjb2Rlc2lnbmAgZXhwZWN0cyB8IENyZWF0ZSBhIGtleSBhdCBhcHBzdG9yZWNvbm5lY3QuYXBwbGUuY29tL2FjY2Vzcy9hcGkgKG5lZWRzIHRoZSAiRGV2ZWxvcGVyIiByb2xlIG9yIGFib3ZlKSwgZG93bmxvYWQgdGhlIGBBdXRoS2V5XzxrZXkgaWQ+LnA4YCwgdGhlbiBydW4gYHJjb2Rlc2lnbiBlbmNvZGUtYXBwLXN0b3JlLWNvbm5lY3QtYXBpLWtleSA8aXNzdWVyX2lkPiA8a2V5X2lkPiBBdXRoS2V5XzxrZXlfaWQ+LnA4YCBsb2NhbGx5IGFuZCBwYXN0ZSB0aGUgSlNPTiBpdCBwcmludHMgYXMgdGhlIHNlY3JldCB2YWx1ZSB8CgpUaGUgd29ya2Zsb3cgc2lnbnMgdGhlIGV4cG9ydGVkIGAuYXBwYCwgdGhlbiB6aXBzIGl0IGludG8gYSB0aHJvd2F3YXkKYXJjaGl2ZSB1c2VkIG9ubHkgZm9yIG5vdGFyeSBzdWJtaXNzaW9uLiBJdCBydW5zCmByY29kZXNpZ24gbm90YXJ5LXN1Ym1pdCAtLXdhaXRgIChubyBgLS1zdGFwbGVgIGZsYWcpIGFnYWluc3QgdGhhdCB0aHJvd2F3YXkKemlwLCB0aGVuIHJ1bnMgYHJjb2Rlc2lnbiBzdGFwbGVgIHNlcGFyYXRlbHkgKmRpcmVjdGx5IGFnYWluc3QgdGhlIGAuYXBwYApkaXJlY3RvcnkgaXRzZWxmKiwgbm90IHRoZSB6aXAgLS0gc3RhcGxpbmcgb25seSB3b3JrcyBvbiB0aGUgYnVuZGxlLCBub3QgYW4KYXJjaGl2ZSBvZiBpdC4gVGhlIG5vdy1zdGFwbGVkIGAuYXBwYCBpcyB0aGVuIHJlLXppcHBlZCBhcyB0aGUgZmluYWwKYHNwYXJ0YS56aXBgIGRpc3RyaWJ1dGlvbiBhcnRpZmFjdCAtLSBzbyB0aGUgc2hpcHBlZCBgLnppcGAvYC5hcHBgIHBhc3NlcwpHYXRla2VlcGVyIHdpdGggbm8gcmlnaHQtY2xpY2stT3BlbiB3b3JrYXJvdW5kIG5lZWRlZC4KCkJlY2F1c2UgdGhpcyBjYW4ndCBiZSBleGVyY2lzZWQgZW5kLXRvLWVuZCB3aXRob3V0IHJlYWwgY3JlZGVudGlhbHMsIHRyZWF0CnRoZSBleGFjdCBgcmNvZGVzaWduYCBpbnZvY2F0aW9uIGFzIGEgYmVzdC1lZmZvcnQgc2NhZmZvbGQgYmFzZWQgb24gaXRzCmRvY3VtZW50ZWQgQ0xJIC0tIHRoZSBtYWludGFpbmVyIHNob3VsZCB3YXRjaCB0aGUgZmlyc3QgcmVhbCBzaWduaW5nIHJ1bgpjbG9zZWx5IGFuZCBhZGp1c3QgZmxhZ3MgaWYgYHJjb2Rlc2lnbmAncyBDTEkgaGFzIG1vdmVkIHNpbmNlCmBSQ09ERVNJR05fVkVSU0lPTmAgd2FzIHBpbm5lZC4KCiMjIyBXaW5kb3dzOiBBdXRoZW50aWNvZGUgc2lnbmluZwoKU2lnbmluZyBhbHNvIHJ1bnMgb24gdGhlIExpbnV4IHJ1bm5lciwgdmlhCltgb3NzbHNpZ25jb2RlYF0oaHR0cHM6Ly9naXRodWIuY29tL210cm9qbmFyL29zc2xzaWduY29kZSkgKGEgTGludXgtbmF0aXZlCkF1dGhlbnRpY29kZSBzaWduZXIgLS0gaW5zdGFsbGVkIGJ5IGBhcHQtZ2V0YCBpbiB0aGUgd29ya2Zsb3cpLCBzbyBubyBXaW5kb3dzCnJ1bm5lciBvciBgc2lnbnRvb2xgIGlzIG5lZWRlZC4gQm90aCB0aGUgcmF3IGBzcGFydGEuZXhlYCBhbmQgdGhlIE5TSVMKaW5zdGFsbGVyIGJ1aWx0IGZyb20gdGhpcyBkaXJlY3RvcnkgZ2V0IHNpZ25lZC4KClJlcXVpcmVkIHNlY3JldHMsIGJvdGggdG9nZXRoZXI6CgF8IFNlY3JldCB8IFdoYXQgaXQgaXMgfCBIb3cgdG8gZ2V0IGl0IHwKfCAtLS0gfCAtLS0gfCAtLS0gfAp8IGBXSU5ET1dTX0NPREVTSUdOX1BGWF9CQVNFNjRgIHwgQmFzZTY0IG9mIGFuIEF1dGhlbnRpY29kZSBjb2RlLXNpZ25pbmcgY2VydGlmaWNhdGUgKGAucGZ4YC9gLnAxMmApIC0tIGFuIE9WIG9yIEVWIGNlcnRpZmljYXRlIGZyb20gYSBDQSAoRGlnaUNlcnQsIFNlY3RpZ28sIFNTTC5jb20sIGV0Yy4pIHwgYGJhc2U2NCAtdzAgY2VydC5wZnhgIChMaW51eC9tYWNPUykgb3IgYFtDb252ZXJ0XTo6VG9CYXNlNjRTdHJpbmcoW0lPLkZpbGVdOjpSZWFkQWxsQnl0ZXMoImNlcnQucGZ4IikpYCAoUG93ZXJTaGVsbCkgfAp8IGBXSU5ET1dTX0NPREVTSUdOX1BBU1NXT1JEYCB8IFBhc3N3b3JkIHByb3RlY3RpbmcgdGhhdCBgLnBmeGAgfCBXaGF0ZXZlciBwYXNzd29yZCB0aGUgQ0EvZXhwb3J0IGdhdmUgaXQgfAoKQW4gRVYgY2VydGlmaWNhdGUgaXMgdXN1YWxseSBoZWxkIG9uIGEgaGFyZHdhcmUgdG9rZW4gYW5kIGNhbid0IGJlIGV4cG9ydGVkCmFzIGEgcG9ydGFibGUgYC5wZnhgIGF0IGFsbCAtLSBpZiB0aGUgbWFpbnRhaW5lcidzIGNlcnRpZmljYXRlIGlzIEVWLW9uLXRva2VuLAp0aGlzIHBsdW1iaW5nICh3aGljaCBhc3N1bWVzIGFuIGV4cG9ydGFibGUgYC5wZnhgIHJlYWNoYWJsZSB2aWEgQ0kgc2VjcmV0cykKd29uJ3Qgd29yayBhcy1pcywgYW5kIENJLWJhc2VkIHNpZ25pbmcgd291bGQgbmVlZCBhIGRpZmZlcmVudCBhcHByb2FjaCAoZS5nLiBhCnNlbGYtaG9zdGVkIHJ1bm5lciB3aXRoIHRoZSB0b2tlbiBhdHRhY2hlZCkuIEFuIE9WIGNlcnRpZmljYXRlIGV4cG9ydGVkIGFzIGEKYC5wZnhgIHdvcmtzIHdpdGggdGhlIHNldHVwIGFib3ZlIHVubW9kaWZpZWQuCgojIyMgV2hhdCdzIGFscmVhZHkgYWN0aW9uYWJsZSB2cy4gZ2VudWluZWx5IGJsb2NrZWQKCi0gKipBY3Rpb25hYmxlIG5vdywgZG9uZSBpbiB0aGlzIFBSOioqIHRoZSBDSSBzdGVwcyB0aGF0IHNpZ24vbm90YXJpemUgd2hlbgpzZWNyZXRzIGV4aXN0LCBuby1vcCB3aXRoIGEgY2xlYXIgbG9nIG1lc3NhZ2Ugd2hlbiB0aGV5IGRvbid0LCBhbmQgdGhpcwpkb2N1bWVudGF0aW9uIG9mIGV4YWN0bHkgd2hpY2ggc2VjcmV0cyB0byBhZGQuCi0gKipHZW51aW5lbHkgYmxvY2tlZCBvbiB0aGUgcmVwbyBvd25lcjoqKiBvYnRhaW5pbmcgdGhlIHJlYWwgQXBwbGUgRGV2ZWxvcGVyCklEIGNlcnRpZmljYXRlICsgQXBwIFN0b3JlIENvbm5lY3QgQVBJIGtleSwgYW5kIHRoZSByZWFsIFdpbmRvd3MKY29kZS1zaWduaW5nIGNlcnRpZmljYXRlLCBhbmQgYWRkaW5nIHRoZW0gYXMgdGhlIHJlcG8gc2VjcmV0cyBuYW1lZCBhYm92ZS4KTm8gY29kZSBjaGFuZ2UgY2FuIHN1YnN0aXR1dGUgZm9yIGEgcmVhbCwgcGFpZCwgaWRlbnRpdHktdmVyaWZpZWQKY2VydGlmaWNhdGUuCg==
+# Windows installer & release code-signing
+
+## `sparta.nsi`
+
+NSIS script that builds the Windows installer (`sparta-<version>-windows-setup.exe`).
+Built by `.github/workflows/release.yml`'s "Build Windows installer" step:
+
+```sh
+makensis -DVERSION=0.1.0 -DEXE_PATH=sparta.exe sparta.nsi
+```
+
+`OUTFILE` defaults to a name in this script's own directory for a plain local
+build; the release workflow passes an absolute `-DOUTFILE=...` so the built
+installer lands in `build/` instead (see the comment at the top of the `.nsi`
+file — a relative `OutFile` resolves against the script's directory, not the
+caller's working directory).
+
+## Code-signing & notarization
+
+Release builds (macOS `.zip`/`.app`, the Windows `.exe`, and the Windows
+installer built from this directory) are **unsigned by default**. The
+`release.yml` workflow has the plumbing wired up to sign and notarize them
+automatically — it just needs the certificates below added as **repository
+secrets** (Settings → Secrets and variables → Actions → New repository
+secret). Until they're all present, the corresponding step logs an
+`::notice::` and no-ops; the build still succeeds, just unsigned, exactly as
+today.
+
+**This session cannot obtain or provision these for you** — they require a
+paid Apple Developer Program membership and a purchased Windows code-signing
+certificate, both tied to the maintainer's own identity/organization. Nothing
+short of the actual repo owner buying and generating these can turn signing
+on.
+
+### macOS: Developer ID signing + notarization
+
+Godot cross-exports macOS from the Linux runner, so signing/notarizing also
+runs there — via [`rcodesign`](https://github.com/indygreg/apple-platform-rs)
+(the `apple-codesign` project), which reimplements Apple's codesign/notary
+tools in a way that doesn't require a Mac. `release.yml` downloads a pinned
+`rcodesign` release (`RCODESIGN_VERSION` at the top of the workflow — bump it
+if a newer release is needed).
+
+Required secrets, all four together (partial configuration is treated as
+"not configured" and the step no-ops):
+
+| Secret | What it is | How to get it |
+| --- | --- | --- |
+| `MACOS_CODESIGN_P12_BASE64` | Base64 of a Developer ID Application `.p12` certificate | In Keychain Access, export the Developer ID Application certificate (with its private key) as a `.p12`, then `base64 -i cert.p12 \| pbcopy` (or `base64 -w0 cert.p12` on Linux) |
+| `MACOS_CODESIGN_P12_PASSWORD` | Password protecting that `.p12` | Whatever password you set when exporting it |
+| `MACOS_TEAM_ID` | Apple Developer Team ID (10 characters) | developer.apple.com/account → Membership details |
+| `MACOS_NOTARY_API_KEY_JSON` | An App Store Connect API key, pre-encoded into the JSON blob `rcodesign` expects | Create a key at appstoreconnect.apple.com/access/api (needs the "Developer" role or above), download the `AuthKey_<key id>.p8`, then run `rcodesign encode-app-store-connect-api-key <issuer_id> <key_id> AuthKey_<key_id>.p8` locally and paste the JSON it prints as the secret value |
+
+The workflow signs the exported `.app`, then zips it into a throwaway
+archive used only for notary submission. It runs
+`rcodesign notary-submit --wait` (no `--staple` flag) against that throwaway
+zip, then runs `rcodesign staple` separately *directly against the `.app`
+directory itself*, not the zip — stapling only works on the bundle, not an
+archive of it. The now-stapled `.app` is then re-zipped as the final
+`sparta.zip` distribution artifact — so the shipped `.zip`/`.app` passes
+Gatekeeper with no right-click-Open workaround needed.
+
+Because this can't be exercised end-to-end without real credentials, treat
+the exact `rcodesign` invocation as a best-effort scaffold based on its
+documented CLI — the maintainer should watch the first real signing run
+closely and adjust flags if `rcodesign`'s CLI has moved since
+`RCODESIGN_VERSION` was pinned.
+
+### Windows: Authenticode signing
+
+Signing also runs on the Linux runner, via
+[`osslsigncode`](https://github.com/mtrojnar/osslsigncode) (a Linux-native
+Authenticode signer — installed by `apt-get` in the workflow), so no Windows
+runner or `signtool` is needed. Both the raw `sparta.exe` and the NSIS
+installer built from this directory get signed.
+
+Required secrets, both together:
+
+| Secret | What it is | How to get it |
+| --- | --- | --- |
+| `WINDOWS_CODESIGN_PFX_BASE64` | Base64 of an Authenticode code-signing certificate (`.pfx`/`.p12`) — an OV or EV certificate from a CA (DigiCert, Sectigo, SSL.com, etc.) | `base64 -w0 cert.pfx` (Linux/macOS) or `[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))` (PowerShell) |
+| `WINDOWS_CODESIGN_PASSWORD` | Password protecting that `.pfx` | Whatever password the CA/export gave it |
+
+An EV certificate is usually held on a hardware token and can't be exported
+as a portable `.pfx` at all — if the maintainer's certificate is EV-on-token,
+this plumbing (which assumes an exportable `.pfx` reachable via CI secrets)
+won't work as-is, and CI-based signing would need a different approach (e.g. a
+self-hosted runner with the token attached). An OV certificate exported as a
+`.pfx` works with the setup above unmodified.
+
+### What's already actionable vs. genuinely blocked
+
+- **Actionable now, done in this PR:** the CI steps that sign/notarize when
+  secrets exist, no-op with a clear log message when they don't, and this
+  documentation of exactly which secrets to add.
+- **Genuinely blocked on the repo owner:** obtaining the real Apple Developer
+  ID certificate + App Store Connect API key, and the real Windows
+  code-signing certificate, and adding them as the repo secrets named above.
+  No code change can substitute for a real, paid, identity-verified
+  certificate.
