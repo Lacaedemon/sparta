@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Multi-click move speeds is a control/mechanics feature (1-click walk, 2-click jog, 3-click run, 4-click sprint). The speed difference isn't visually distinctive in a gameplay clip — the feature affects internal gait state, not rendering. Control mechanics are better verified via unit tests and gameplay interaction than video."
+}
