@@ -2933,14 +2933,24 @@ func _rout() -> void:
 
 
 func _process_rout(delta: float) -> void:
-	# Flee toward own back edge (team 0 started at top, team 1 at bottom). A router may
-	# cross the visible battlefield edge into the wider retreat_bounds margin — but a
-	# soldier whose flee step (or a separation shove) would carry it past THAT outer
-	# edge has fled clear of the battlefield entirely: the unit ESCAPES immediately,
-	# distinct from a SHATTER (which is run down or gutted while still on the field).
+	# Flee toward own back edge (team 0 started at top, team 1 at bottom). Route around
+	# impassable terrain via PathField.next_step() if available (same as _move_to does).
+	# If trapped with no escape path, fall back to fighting to the death.
 	var flee: Vector2 = Vector2.UP if team == 0 else Vector2.DOWN
-	facing = flee
-	var next: Vector2 = position + flee * (move_speed * 1.3) * delta
+
+	# Check for viable escape path using PathField (like _move_to does).
+	# If trapped in terrain with no escape route, stop routing and fight instead.
+	if PathField.active != null and _is_escape_path_blocked(flee):
+		_stop_rout_and_fight()
+		return
+
+	# Route around terrain: consult PathField for the next safe step (same logic as _move_to).
+	var step: Vector2 = flee
+	if PathField.active != null:
+		step = PathField.active.next_step(position, position + flee * 1000.0)
+
+	facing = step.normalized()
+	var next: Vector2 = position + step.normalized() * (move_speed * 1.3) * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
 		_escape()
@@ -3027,6 +3037,45 @@ func _shatter() -> void:
 ## after leaving play (queue_free() alone defers to end of frame).
 func _escape() -> void:
 	_remove_from_play()
+
+
+## Check if escape path is blocked: true if all viable escape directions (within 90 degree
+## cone around the team's flee direction) are impassable. Returns false if PathField is
+## inactive (no terrain checks) so routing proceeds unchecked.
+func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
+	# Scan directions around the flee vector: check a 90-degree cone
+	# (45 degrees to each side of the primary flee direction).
+	var angles_to_check: Array = []
+	var base_angle: float = flee_direction.angle()
+	for offset_deg in [-45.0, -30.0, -15.0, 0.0, 15.0, 30.0, 45.0]:
+		angles_to_check.append(base_angle + deg_to_rad(offset_deg))
+
+	# Check each direction: if ANY has a viable escape step, the path is not fully blocked.
+	var escape_target: Vector2 = position + flee_direction * 1000.0
+	for angle in angles_to_check:
+		var direction: Vector2 = Vector2.from_angle(angle)
+		var far_point: Vector2 = position + direction * 1000.0
+		var next_step: Vector2 = PathField.active.next_step(position, far_point)
+		# If next_step differs significantly from current position, a path forward exists.
+		if next_step.distance_to(position) > 1.0:
+			return false
+
+	# All directions blocked: unit is trapped.
+	return true
+
+
+## Unit is trapped by terrain with no viable escape path: stop routing and stand ground
+## to fight to the death. Marks the unit as shattered (will fight but can't rally/escape).
+func _stop_rout_and_fight() -> void:
+	# Exit routing state: rejoin the fighting units instead of routers.
+	state = State.IDLE
+	remove_from_group("routers")
+	add_to_group("units")
+	# Mark as shattered so the unit will fight to the death without rallying if it
+	# happens to break contact temporarily. The unit will only leave play via
+	# annihilation (soldiers reach zero) or being run down in combat.
+	_shattered = true
+	queue_redraw()
 
 
 # --- Visuals ------------------------------------------------------------------

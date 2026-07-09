@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/routing-terrain-pathfinding.json",
+  "caption": "Routing units path around impassable terrain: routed units detect the blocked hill and escape via the left flank instead of charging straight through.",
+  "fixed_fps": 30,
+  "max_frames": 180,
+  "fps": 15,
+  "width": 720
+}
