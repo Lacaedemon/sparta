@@ -31,7 +31,7 @@ jobs:
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
     with:
       setup-r: false
-      prompt: |
+      prompt-addendum: |
         Run the opposition-research skill to identify features demanded by competitor
         communities. Report the top-ranked findings and any newly filed issues.
 
