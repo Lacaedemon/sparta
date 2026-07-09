@@ -77,6 +77,12 @@ const NUDGE_DISTANCE := 30.0
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
 enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE }
 
+## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
+## or SPRINT (quadruple). Disciplined units use the specified gait; undisciplined
+## units ignore the gait and move at their default speed. For cavalry, the gaits
+## correspond to walk/trot/canter/gallop.
+enum Gait { WALK, JOG, RUN, SPRINT }
+
 ## How a multi-unit attack order distributes its target among the ordered units.
 ## Focused (default): every unit attacks the same enemy.
 ## Distributed: units spread across nearby enemies sorted by proximity to the
@@ -86,6 +92,13 @@ enum GroupAttackMode { FOCUSED = 0, DISTRIBUTED = 1 }
 const GROUP_ATTACK_MODE_NAMES := {
 	GroupAttackMode.FOCUSED: "Attack: focused",
 	GroupAttackMode.DISTRIBUTED: "Attack: distributed",
+}
+
+const GAIT_NAMES := {
+	Gait.WALK: "Walk",
+	Gait.JOG: "Jog",
+	Gait.RUN: "Run",
+	Gait.SPRINT: "Sprint",
 }
 
 ## Human-readable mode names for the HUD / cursor indicator.
@@ -676,7 +689,8 @@ func _apply_order_live(cmd: Dictionary) -> void:
 ## deterministic path with exactly-once application.
 func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		order_mode: int = OrderMode.NORMAL,
-		group_attack: int = GroupAttackMode.FOCUSED) -> void:
+		group_attack: int = GroupAttackMode.FOCUSED,
+		gait: int = Gait.RUN) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -688,6 +702,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"reform": Settings.reform_before_move,
 		"walk_advance": Settings.walk_advance,
 		"group_attack": group_attack,
+		"gait": gait,
 	}
 	_pending_orders.append(cmd)
 	# A waypoint append is tick-authoritative (its point is derived from positions at
@@ -1017,6 +1032,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	# The order's stance, stamped on each ordered unit below for the smart-
 	# order behaviours to consume. Defaults to NORMAL for older replays / merges.
 	var mode: int = int(cmd.get("mode", OrderMode.NORMAL))
+	# The movement gait (WALK/JOG/RUN/SPRINT) for MOVE orders. Defaults to RUN (triple-click)
+	# for older replays / merges where the field is not set.
+	var gait: int = int(cmd.get("gait", Gait.RUN))
 	# The target uid may be an enemy (attack) or a friendly (line relief); a
 	# plain move has no target. Resolve it and dispatch per ordered unit by team.
 	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
@@ -1129,7 +1147,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# idle unit starts marching it now (append_order made it current); a
 				# busy one continues its current order and the leg commits when it is
 				# promoted (retire_current_order -> _start_promoted_move).
-				var leg := Order.new_move(point, mode)
+				var leg := Order.new_move(point, mode, gait)
 				u.append_order(leg)
 				if u.current_order == leg and not u.has_move_target:
 					u.move_target = point
@@ -1163,7 +1181,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# Reform timing rides the recorded "reform" field on the Order: for a plain
 				# move it arms the reform-before-move hold below; for a rear move it times
 				# the composite's reform phase (see Unit._finish_order_turn).
-				var order := Order.new_move(point, mode)
+				var order := Order.new_move(point, mode, gait)
 				order.reform = bool(cmd.get("reform", false))
 				# Install the order first: set_current_order interrupts whatever maneuver
 				# the old order had in flight (a standing drill turn folds and settles; a
