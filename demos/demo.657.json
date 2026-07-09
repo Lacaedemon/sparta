@@ -1,0 +1,5 @@
+{
+  "_comment": "Demo for issue #657: isolated morale-recovery scenario. The recovery mechanic is proven by test/unit/test_morale_recovery_demo_scenario.gd -- a unit that starts routing recovers morale and returns to IDLE when no enemies are present. A recorded gameplay clip would require either (1) a complex combat scenario where a volley routs the target and the attacker can't pursue, or (2) adding a scenario-spec 'starting_state' field so a unit can start ROUTING for demo purposes. The input scenario demos/inputs/morale-recovery.json demonstrates the combat-trigger path (infantry faces cavalry at close range, routs at ~tick 200) but ends in annihilation (sustained pursuit by a faster, stronger unit) rather than recovery. The test is the cleaner proof; a future PR can add scenario-spec fields to make recordable demos feasible.",
+  "skip": true,
+  "reason": "Morale recovery mechanism proven by test/unit/test_morale_recovery_demo_scenario.gd; recorded demo not straightforward given scenario system limitations. Add scenario-spec 'starting_state' field to make recordable."
+}
