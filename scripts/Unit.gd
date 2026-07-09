@@ -3432,3 +3432,11 @@ func _draw() -> void:
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
 
 	UnitSprites.flag(self, body_c, alpha, extent)
+
+	# Per-soldier ID overlay (dev debug feature): render each soldier's array index
+	# above its mark when this unit is selected and the feature is enabled at figure LOD.
+	if selected and Settings.show_soldier_ids and _detailed_lod:
+		var font := ThemeDB.fallback_font
+		for i in range(_sim_soldier_pos.size()):
+			draw_string(font, to_local(_sim_soldier_pos[i]) + Vector2(-4, -mark_r),
+					str(i), HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(1, 1, 1, 0.9))

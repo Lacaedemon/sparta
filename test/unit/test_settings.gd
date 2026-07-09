@@ -90,6 +90,24 @@ func test_show_unit_speed_defaults_off_and_round_trips() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
+func test_show_soldier_ids_defaults_off_and_round_trips() -> void:
+	# Default off — the soldier ID overlay is an opt-in developer debug feature.
+	assert_false(_settings().show_soldier_ids, "soldier IDs default off")
+
+	var a = SettingsScript.new()
+	autofree(a)
+	a._loading = true
+	a.show_soldier_ids = true
+	a._save(TEST_PATH)
+
+	var b = SettingsScript.new()
+	autofree(b)
+	b._load(TEST_PATH)
+	assert_true(b.show_soldier_ids, "the toggle survives save + load")
+
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+
+
 # Spy that counts _save() calls; partial_double() generates an invalid double of
 # SettingsScript under Godot 4.7 (GUT's stub codegen breaks on void-returning methods).
 class _SaveCountingSettings:
