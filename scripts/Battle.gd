@@ -75,7 +75,7 @@ const NUDGE_DISTANCE := 30.0
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, ALL_OUT_ATTACK }
 
 ## How a multi-unit attack order distributes its target among the ordered units.
 ## Focused (default): every unit attacks the same enemy.
@@ -97,6 +97,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.SKIRMISH: "Skirmish",
 	OrderMode.SUPPORT: "Support",
 	OrderMode.CYCLE_CHARGE: "Cycle charge",
+	OrderMode.ALL_OUT_ATTACK: "All-out attack",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -111,6 +112,7 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.SKIRMISH, "slug": "skirmish"},
 	{"mode": OrderMode.SUPPORT, "slug": "support"},
 	{"mode": OrderMode.CYCLE_CHARGE, "slug": "cycle_charge"},
+	{"mode": OrderMode.ALL_OUT_ATTACK, "slug": "all_out_attack"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
