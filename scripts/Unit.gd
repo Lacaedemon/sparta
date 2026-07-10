@@ -3154,6 +3154,13 @@ func _rally() -> void:
 	# floor — a unit that rallies the instant its timer expires still reforms shaken.
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
+	# _rout() zeroed _formation_angle so the unit "reforms square to its heading on rally"
+	# (its own comment), but fleeing can re-fold it via _face_dir's snap-absorb (a sharp
+	# turn away from the enemy at the moment routing starts). reform_ranks() is the
+	# established mechanism for dropping that fold back to zero -- unlike a raw
+	# `_formation_angle = 0.0`, it correctly arms _formation_mirror_x for an exact
+	# about-face fold instead of point-reflecting the whole block.
+	reform_ranks()
 	# The orders queue (route legs included) was already dropped by _rout()'s
 	# clear_orders(), so a rallied unit reforms with no orders.
 	remove_from_group("routers")
