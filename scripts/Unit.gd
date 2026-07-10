@@ -227,6 +227,14 @@ const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
 
+# Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
+# decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
+# RUN (triple), SPRINT (quadruple+). See Battle.gd's Gait enum.
+const GAIT_WALK := 0
+const GAIT_JOG := 1
+const GAIT_RUN := 2
+const GAIT_SPRINT := 3
+
 # Formation modes: how tightly the regiment is packed, plus the two shielded
 # close-order stances built on TIGHT's locked-shield density, and the two hollow-square
 # (anti-cavalry ring) variants.
@@ -1356,8 +1364,26 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# walks by default, jogs under missile fire, and sprints at full speed once
 	# close to the target. Each pace is this unit's own gait speed, not a fraction
 	# of another -- see walk_speed/jog_speed/move_speed above.
+	# A MOVE order with an explicit gait (from multi-click) overrides AUTO: single-click
+	# forces walk, double-click forces jog, triple-click defaults to run, quadruple-click
+	# forces sprint.
 	var pace_speed: float
-	if maneuvering or walk_advance:
+	# Check if current_order specifies a gait to use
+	var override_gait: bool = current_order != null and current_order.type == Order.Type.MOVE \
+			and current_order.gait >= 0
+	if override_gait:
+		match current_order.gait:
+			GAIT_WALK:
+				pace_speed = walk_speed
+			GAIT_JOG:
+				pace_speed = jog_speed
+			GAIT_RUN:
+				pace_speed = move_speed if position.distance_to(point) <= SPRINT_START_DISTANCE else jog_speed
+			GAIT_SPRINT:
+				pace_speed = move_speed
+			_:
+				pace_speed = walk_speed  # fallback
+	elif maneuvering or walk_advance:
 		pace_speed = walk_speed
 	elif position.distance_to(point) <= SPRINT_START_DISTANCE:
 		pace_speed = move_speed  # sprint distance beats under-fire: charge through the kill zone at full speed
