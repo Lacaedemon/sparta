@@ -561,6 +561,45 @@ AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to
 walk pace throughout.
 :::
 
+### Choosing a gait by click count
+
+AUTO pace is the default, but you can lock a move order to a specific gait
+instead: right-click a destination once for **Walk**, twice for **Jog**,
+three times for **Run**, and four or more times for **Sprint** --- click the
+same spot again within the multi-click window to add another click to the
+count. A click on a new destination (or one far enough from the last click,
+or one that arrives after the window has passed) restarts the count at Walk.
+
+There are only three real paces per unit type (for cavalry, walk/trot/gallop
+--- see the speed table above). Run has no pace of its own: it holds jog
+speed while still far from the destination and switches to sprint speed
+once inside the same close-range threshold AUTO uses, so it's a distance-gated
+mix of the two rather than a fourth gait.
+
+This overrides AUTO for that order: an explicit gait holds for the whole
+move, ignoring the fire/distance triggers AUTO would otherwise use. Reach
+for a chosen gait when you want a unit to hold a slow, orderly walk past a
+threat it would otherwise jog or sprint through (screening a flank, keeping
+a formation intact under fire without also toggling Walk advance), or to
+force an early sprint before AUTO's close-range threshold would normally
+trigger it.
+
+::: {#fig-multi-click-speeds .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/multi_click_speeds.jpg">
+  <source src="media/multi_click_speeds.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Four identical Cavalry regiments sent on the same move, one click apart:
+Walk, Jog, Run, and Sprint pull apart into four distinct paces instead of
+moving in lockstep.
+:::
+
 ## Side-stepping the line
 
 A small lateral move order is carried out as a **side-step**: the unit shuffles
