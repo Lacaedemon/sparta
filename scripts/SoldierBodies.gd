@@ -169,6 +169,11 @@ static func step(unit: Unit, delta: float) -> void:
 	# jog here keeps the arrival target consistent with it. A body that needs to move faster
 	# than jog does so only via the march feed-forward, which is added on top and uncapped.
 	var max_arrive: float = unit.jog_speed
+	# Hoisted out of the per-soldier loop below: mass is uniform across a unit's own
+	# soldiers (SoldierCombat.profile_for keys it only on unit-level type/training), so
+	# looking it up once per unit-step -- like body_accel and max_arrive above -- avoids
+	# allocating a fresh combat_profile() Dictionary on every soldier, every tick.
+	var mass: float = unit.combat_profile()["mass"]
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -230,7 +235,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# next tick for move_toward to correct a deficit move_toward itself just created.
 		# See SoldierCollision.apply_kinetic_friction and SoldierCombat friction constants.
 		var damped_vel: Vector2 = SoldierCollision.apply_kinetic_friction(
-				unit._sim_body_vel[i], unit.combat_profile()["mass"], 0.0, delta)
+				unit._sim_body_vel[i], mass, 0.0, delta)
 		var new_vel: Vector2 = damped_vel.move_toward(desired_vel, body_accel * delta)
 		# The sqrt(2 a d) arrival profile decelerates to 0 at the slot in continuous time, but
 		# its slope steepens near the slot faster than a bounded decel can follow, so a body

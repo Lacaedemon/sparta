@@ -149,9 +149,13 @@ static func apply_kinetic_friction(
 	brace: float,
 	delta: float
 ) -> Vector2:
-	var v_mag: float = current_velocity.length()
-	if v_mag < 0.01:
+	# length_squared() avoids the sqrt in .length() for the common case of an at-rest body
+	# (this is called for EVERY soldier body EVERY tick, so most calls in a large battle are
+	# for soldiers with no active knockback -- the squared comparison (0.01^2) is exactly
+	# equivalent to the un-squared one below since both sides are non-negative.
+	if current_velocity.length_squared() < 0.0001:
 		return Vector2.ZERO  # Already stopped
+	var v_mag: float = current_velocity.length()
 
 	# Friction damping: base + stationary_boost * (1 - min(v / v_ref, 1))
 	# At v=0 (stationary): f = base + boost
