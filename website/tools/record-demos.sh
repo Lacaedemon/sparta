@@ -62,6 +62,7 @@ DEMOS=(
   "battle_ai_leaders|demos/inputs/battle-ai-unit-leaders.json|60|720|640|input"
   "back_speed_by_type|demos/inputs/back-speed-by-type.json|30|430|720|input"
   "formation_shift_reverse|demos/inputs/formation-shift-reverse-505.json|30|130|640|input"
+  "roll_the_line|demos/inputs/roll-the-line.json|30|270|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a

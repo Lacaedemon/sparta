@@ -53,6 +53,7 @@ const _STANCE_ENTRIES := [
 	{"id": 4, "mode": BattleRef.OrderMode.SKIRMISH, "label": "Skirmish", "slug": "skirmish"},
 	{"id": 5, "mode": BattleRef.OrderMode.SUPPORT, "label": "Support", "slug": "support"},
 	{"id": 6, "mode": BattleRef.OrderMode.CYCLE_CHARGE, "label": "Cycle charge", "slug": "cycle_charge"},
+	{"id": 7, "mode": BattleRef.OrderMode.ROLL_THE_LINE, "label": "Roll the line", "slug": "roll_the_line"},
 ]
 
 # Display names and menu order for every formation mode, shared by the button

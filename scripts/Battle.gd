@@ -184,7 +184,7 @@ func _ready() -> void:
 			and UnitRef.ORDER_SKIRMISH == OrderMode.SKIRMISH \
 			and UnitRef.ORDER_SUPPORT == OrderMode.SUPPORT \
 			and UnitRef.ORDER_CYCLE_CHARGE == OrderMode.CYCLE_CHARGE \
-			and UnitRef.ORDER_PIN_DOWN == OrderMode.PIN_DOWN,
+			and UnitRef.ORDER_ROLL_THE_LINE == OrderMode.ROLL_THE_LINE,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 
 	# Start a fresh recording for every live battle (so any battle can be
