@@ -200,18 +200,18 @@
           "order_phase": null,
           "position": [
             800.0,
-            238.44
+            239.54
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
               99.0,
-              54.0
+              53.65
             ],
             "centroid": [
               800.0,
-              244.9
+              244.78
             ],
             "count": 80,
             "prone_count": 0
@@ -245,18 +245,18 @@
           "order_phase": null,
           "position": [
             800.0,
-            240.22
+            227.62
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
               99.0,
-              54.0
+              23.01
             ],
             "centroid": [
               800.0,
-              241.57
+              223.9
             ],
             "count": 80,
             "prone_count": 0
