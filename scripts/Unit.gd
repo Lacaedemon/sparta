@@ -2954,13 +2954,12 @@ func _rout() -> void:
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_formation_mirror_x = false
 	_rout_timer = ROUT_TIME
-	# Starts "broken": can still recover morale and rally -- unless a prior
-	# _stop_rout_and_fight() already shattered this unit for good. That call
-	# returns the unit to State.IDLE (so it can fight again), and a later
-	# morale collapse can route back through here; don't let re-entering
-	# ROUTING quietly undo the permanent "fights to the death" guarantee.
-	if not _shattered:
-		_shattered = false
+	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
+	# (recoverable) only when it wasn't already permanently shattered by a
+	# prior _stop_rout_and_fight(). That call returns the unit to State.IDLE
+	# (so it can fight again), and a later morale collapse can route back
+	# through here -- leaving `_shattered` untouched is what keeps that
+	# "fights to the death" guarantee from being quietly undone.
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
 	add_to_group("routers")
