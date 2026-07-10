@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/all-out-attack.json",
+  "caption": "All-out attack (#689): a new order stance that trades defense for offense (Battle.OrderMode.ALL_OUT_ATTACK, hotkey '). UnitCombat.order_mode_modifiers gives the attacking side +20% effective attack when the STRIKER is in this stance, and -20% effective defense when the TARGET is -- applied through SoldierMelee.resolve()'s wound scaling so the effect holds in the per-soldier melee path every real, in-contact fight actually takes (not just the regiment-formula/ranged fallback) -- so a unit fighting all-out both hits harder and gets hit harder. This clip stages two matched Infantry regiments (identical stats, 100 soldiers each) head-on: the player unit (top) is selected and switched to All-out attack (') the instant the clip starts, before the enemy closes -- the HUD flashes 'All-out attack' and the label appears over the unit. The two lines then clash under only that one asymmetry. State-dump verified against an identical un-modified baseline fight: by tick 300 the all-out unit has inflicted 12 casualties on the enemy (vs. 9 in the unmodified baseline) while itself taking 9 (vs. 7 baseline) -- it deals noticeably more damage than a fair fight would produce, at the cost of noticeably more of its own losses too.",
+  "fixed_fps": 30,
+  "max_frames": 200,
+  "fps": 15,
+  "width": 640
+}
