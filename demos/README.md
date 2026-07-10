@@ -602,7 +602,7 @@ Commit the PNG under `demos/shots/` on your PR branch (create the dir if needed)
 then embed it in the **PR description** by raw URL with a caption:
 
 ```md
-![New roster panel](https://github.com/lacaedemon/sparta/raw/<commit-sha>/demos/shots/roster-panel.png)
+![What changed](https://github.com/lacaedemon/sparta/raw/COMMIT_SHA/demos/shots/YOUR_IMAGE.png)
 ```
 
 Use the **commit SHA** (immutable) so the image keeps rendering after the branch is
