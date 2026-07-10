@@ -2958,6 +2958,7 @@ func _rout() -> void:
 	_reform_on_arrival = false
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_engage_turn_enemy = null
+	_pin_down_exposure_cd = 0.0        # a rout ends the exposure window instead of freezing it open
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_formation_mirror_x = false
 	_rout_timer = ROUT_TIME
