@@ -797,6 +797,13 @@ into different tools:
   attack order can carry a unit through a whole line of weaker enemies one
   after another --- useful once you've broken through a flank and want the
   advance to keep rolling without a fresh order for every foe.
+- **Pin down** (<kbd>.</kbd>) --- a stall/pin trade for a unit confronted head-on: it
+  swings roughly half as often as a normal stance, so it deals less damage over
+  time --- but each swing's follow-through opens a brief window where its own
+  defense is lowered, so a foe that catches it mid-swing hits harder than it
+  otherwise would. Use it to hold a line cheaply in casualties from its own
+  attacks, not to win a stand-up fight outright; it's a genuine tradeoff, not a
+  strict upgrade over a normal stance.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and
