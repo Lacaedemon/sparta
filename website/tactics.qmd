@@ -797,7 +797,14 @@ into different tools:
   attack order can carry a unit through a whole line of weaker enemies one
   after another --- useful once you've broken through a flank and want the
   advance to keep rolling without a fresh order for every foe.
-- **Chase** (<kbd>.</kbd>) --- relentless pursuit: the unit overrides the normal
+- **Pin down** (<kbd>.</kbd>) --- a stall/pin trade for a unit confronted head-on: it
+  swings roughly half as often as a normal stance, so it deals less damage over
+  time --- but each swing's follow-through opens a brief window where its own
+  defense is lowered, so a foe that catches it mid-swing hits harder than it
+  otherwise would. Use it to hold a line cheaply in casualties from its own
+  attacks, not to win a stand-up fight outright; it's a genuine tradeoff, not a
+  strict upgrade over a normal stance.
+- **Chase** (<kbd>'</kbd>) --- relentless pursuit: the unit overrides the normal
   disengage exit a plain move order (or losing steady contact) otherwise gives
   it, so it keeps closing on and re-engaging the same fleeing or repositioning
   enemy instead of breaking off. Use it to run down a routing foe rather than

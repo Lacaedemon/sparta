@@ -236,7 +236,8 @@ const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
 const ORDER_SWEEP_ROUTERS := 7
 const ORDER_ROLL_THE_LINE := 8
-const ORDER_CHASE := 9
+const ORDER_PIN_DOWN := 9
+const ORDER_CHASE := 10
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
@@ -453,6 +454,18 @@ const DETECTION_RANGE: float = 190.0
 # strikes per second. (Per-soldier strike timing would come with the individual-
 # soldier layer; see docs/individual-collision-design.md.)
 const ATTACK_INTERVAL: float = 0.6
+# Pin down / stall: a defensive attack stance that trades attack tempo for a brief,
+# self-inflicted exposure window. A pinning unit swings roughly half as often as the
+# baseline melee/ranged cadence (PIN_DOWN_ATTACK_INTERVAL vs. ATTACK_INTERVAL/
+# RANGED_INTERVAL) -- committing to a stall rather than a normal press -- but for
+# PIN_DOWN_EXPOSURE_DURATION after each swing, the follow-through leaves it open:
+# its own defense is scaled by PIN_DOWN_DEFENSE_FACTOR (see pin_down_defense_factor())
+# for any hit landed while _pin_down_exposure_cd is still counting down. So the
+# stance is a genuine tradeoff -- fewer, slower attacks for the unit itself, not a
+# pure defensive buff -- rather than a strict upgrade over the normal stance.
+const PIN_DOWN_ATTACK_INTERVAL: float = 1.2
+const PIN_DOWN_EXPOSURE_DURATION: float = 0.3
+const PIN_DOWN_DEFENSE_FACTOR: float = 0.7
 const ROUT_TIME: float = 6.0
 # How long a non-fighting unit holds position to reform its ranks after a fresh move
 # order is issued with reform_before_move on. Runs concurrently with order_response_delay
@@ -594,6 +607,12 @@ const ANTI_CAV_CHARGE_BACKFIRE: float = 0.5
 const ANTI_CAV_CHARGE_FLOOR: float = 0.6
 
 var _attack_cd: float = 0.0
+# Counts down from PIN_DOWN_EXPOSURE_DURATION after a PIN_DOWN strike/shot lands;
+# while positive, pin_down_defense_factor() reports the unit's own lowered defense.
+# Unrelated to (and ticks independently of) _attack_cd -- the two windows overlap
+# but PIN_DOWN_ATTACK_INTERVAL is tuned longer than PIN_DOWN_EXPOSURE_DURATION, so
+# the exposure always closes well before the next swing is even possible.
+var _pin_down_exposure_cd: float = 0.0
 var _rout_timer: float = 0.0
 # A ROUTING unit starts "broken" (this false): its morale still recovers and it can
 # rally back to control. If it runs out of time still in contact, or too gutted to
@@ -723,6 +742,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_attack_cd = max(0.0, _attack_cd - delta)
+	_pin_down_exposure_cd = max(0.0, _pin_down_exposure_cd - delta)
 	_moved_last_frame = false
 
 	_think(delta)
@@ -987,6 +1007,20 @@ func _update_current_order() -> void:
 			retire_current_order()
 
 
+## Arm the attack cooldown for the swing about to land, picking the interval that
+## matches the unit's stance: PIN_DOWN swings on the slower PIN_DOWN_ATTACK_INTERVAL
+## and opens its own exposure window (pin_down_defense_factor); every other stance
+## uses the normal baseline (ATTACK_INTERVAL melee / RANGED_INTERVAL ranged). Called
+## right before UnitCombat.strike()/shoot(), so the exposure window is already open
+## for any riposte that lands later in the same tick.
+func _start_attack_cd(baseline_interval: float) -> void:
+	if order_mode == ORDER_PIN_DOWN:
+		_attack_cd = PIN_DOWN_ATTACK_INTERVAL
+		_pin_down_exposure_cd = PIN_DOWN_EXPOSURE_DURATION
+	else:
+		_attack_cd = baseline_interval
+
+
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
 	_update_current_order()
@@ -1170,7 +1204,7 @@ func _think(delta: float) -> void:
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
 			if _face_for_action(enemy.position, delta, enemy) and _attack_cd <= 0.0:
-				_attack_cd = RANGED_INTERVAL
+				_start_attack_cd(RANGED_INTERVAL)
 				UnitCombat.shoot(self, enemy)
 			return
 		# Fight when in contact, UNLESS the player gave a plain move order with no
@@ -1186,7 +1220,7 @@ func _think(delta: float) -> void:
 			# brought to bear — the strike is withheld until then.
 			var faced: bool = _face_for_action(enemy.position, delta, enemy)
 			if faced and _attack_cd <= 0.0:
-				_attack_cd = ATTACK_INTERVAL
+				_start_attack_cd(ATTACK_INTERVAL)
 				UnitCombat.strike(self, enemy)
 			# Press into contact: a committed melee unit keeps advancing onto the enemy
 			# while it fights, so the lines close to body contact (separation provides the
@@ -1812,6 +1846,19 @@ func missile_defense_factor(attacker: Unit = null) -> float:
 func melee_defense_factor(attacker: Unit = null) -> float:
 	if formation_mode == FORMATION_SHIELD_WALL and _is_frontal_attack(attacker):
 		return 1.0 - SHIELD_WALL_MELEE_DEFENSE
+	return 1.0
+
+
+## Multiplier applied to THIS UNIT'S OWN defense stat (both melee and ranged --
+## unlike melee_defense_factor/missile_defense_factor, the exposure isn't tied to the
+## incoming attack's direction) while it's in a PIN_DOWN attack frame. A pinning unit
+## commits its whole body to the stalled attack, so it's measurably easier to hit for
+## PIN_DOWN_EXPOSURE_DURATION after each swing lands -- the cost side of the stall/pin
+## tradeoff (see the PIN_DOWN_* constants above _attack_cd). Every other stance, or a
+## PIN_DOWN unit between exposure windows, defends at full value.
+func pin_down_defense_factor() -> float:
+	if order_mode == ORDER_PIN_DOWN and _pin_down_exposure_cd > 0.0:
+		return PIN_DOWN_DEFENSE_FACTOR
 	return 1.0
 
 
@@ -2989,6 +3036,7 @@ func _rout() -> void:
 	_reform_on_arrival = false
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_engage_turn_enemy = null
+	_pin_down_exposure_cd = 0.0        # a rout ends the exposure window instead of freezing it open
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_formation_mirror_x = false
 	_rout_timer = ROUT_TIME

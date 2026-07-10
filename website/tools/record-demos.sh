@@ -64,6 +64,7 @@ DEMOS=(
   "back_speed_by_type|demos/inputs/back-speed-by-type.json|30|430|720|input"
   "formation_shift_reverse|demos/inputs/formation-shift-reverse-505.json|30|130|640|input"
   "chase|demos/inputs/chase-attack.json|30|300|720|input"
+  "pin_down|demos/inputs/pin-down-attack.json|30|320|640|input"
   "sweep_routers|demos/inputs/sweep-routers.json|30|130|720|input"
   "roll_the_line|demos/inputs/roll-the-line.json|30|270|640|input"
   "multi_click_speeds|demos/inputs/multi-click-speeds.json|30|330|720|input"
