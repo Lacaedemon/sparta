@@ -1,0 +1,14 @@
+{
+  "_comment": "Isolated morale-recovery scenario (#657): single infantry unit, started already ROUTING via the scenario's starting_state field (no enemy ever on the field, so nothing can interfere), recovers morale in isolation and rallies back to IDLE. Mirrors test_morale_recovery_demo_scenario.gd's staging: morale is pinned low (1.0) so the recovery is gradual instead of an instant one-tick rally, and drill mode keeps the battle from declaring a false victory the moment it sees zero team-1 units. State-dump verified (tools/demo/dump-state.sh): morale climbs from 1.0 -> ~35 and the unit rallies (ROUTING -> IDLE) around tick 353-360 (60Hz dump basis), settling near y=250 after fleeing from its y=400 spawn. Camera frames the recovering unit from a close zoom to show individual soldier detail, panning to track the flee and finishing (tick 180, in this manifest's 30fps recording basis -- see demos/README.md's note on the two tick bases) right around the rally, then holding.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 400, "count": 80, "morale": 1.0, "starting_state": 3}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 400.0, "zoom": 2.0},
+    {"tick": 180, "x": 800.0, "y": 250.0, "zoom": 1.8}
+  ],
+  "steps": [],
+  "state": [0, 60, 180, 300, 360, 420]
+}
