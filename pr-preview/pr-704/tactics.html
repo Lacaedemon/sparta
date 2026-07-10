@@ -547,6 +547,20 @@ Table&nbsp;1: Damage and morale multipliers by attack angle.
 <li><strong>Keep pressing it and it “shatters” instead</strong> — still in contact when its time runs out, or gutted past reforming. A shattered unit does NOT vanish: it stays on the field, still routing, but can never again recover morale or rally. From there it either <strong>escapes</strong> (flees clear of the map, gone but got away) or is run down and <strong>annihilated</strong> (soldiers reduced to zero) before it can.</li>
 <li><strong>The battle isn’t over while a side is only routing.</strong> A team is beaten only once its last unit is truly gone (escaped, annihilated, or otherwise removed), not while its final unit is merely routing. Even a lone survivor that breaks can flee, rally, and fight on — so press a rout home rather than assuming a broken last unit is a win.</li>
 </ul>
+<div id="fig-morale-recovery" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-morale-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/morale_recovery.jpg">
+  <source src="media/morale_recovery.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-morale-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: A broken unit recovering with nothing to interfere: staged already routing, with no enemy anywhere on the field, so pursuit and further casualties can’t factor in. Its nerve steadies as it flees, morale climbs back over the rally threshold, and it returns to your control. (The regression guard for this behavior is <code>test_morale_recovery_demo_scenario.gd</code>.)
+</figcaption>
+</figure>
+</div>
 <div id="fig-rout-rally" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-rout-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -557,7 +571,7 @@ Table&nbsp;1: Damage and morale multipliers by attack angle.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-rout-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: Rout and pursuit: a low-morale infantry block is charged by cavalry and breaks — it flees faded toward its own edge. The faster cavalry catch it before it can put real distance between them, and the casualties from being run down keep its morale too low to ever recover: it’s annihilated rather than rallying. A broken unit that truly breaks free instead recovers cleanly, as in the isolated case <code>test_morale_recovery_demo_scenario.gd</code> guards against regressing.
+Figure&nbsp;2: Rout and pursuit: a low-morale infantry block is charged by cavalry and breaks — it flees faded toward its own edge. The faster cavalry catch it before it can put real distance between them, and the casualties from being run down keep its morale too low to ever recover: it’s annihilated rather than rallying — contrast the isolated recovery above (<a href="#fig-morale-recovery" class="quarto-xref">Figure&nbsp;1</a>), where nothing interferes.
 </figcaption>
 </figure>
 </div>
@@ -571,7 +585,7 @@ Figure&nbsp;1: Rout and pursuit: a low-morale infantry block is charged by caval
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-last-unit-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2: A team’s last unit routs. A lone player infantry is broken and flees (faded); the enemy keeps pressing since a routing unit is still fair game, so this matchup grinds on rather than resolving cleanly — but the point still holds: the battle stays live instead of ending the instant the last unit broke, for as long as it’s still on the field.
+Figure&nbsp;3: A team’s last unit routs. A lone player infantry is broken and flees (faded); the enemy keeps pressing since a routing unit is still fair game, so this matchup grinds on rather than resolving cleanly — but the point still holds: the battle stays live instead of ending the instant the last unit broke, for as long as it’s still on the field.
 </figcaption>
 </figure>
 </div>
@@ -657,7 +671,7 @@ Figure&nbsp;2: A team’s last unit routs. A lone player infantry is broken and 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-formation-shift-reverse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight — the same parallelism as Shift+Y and Shift+X reversing the form-up-split and group-attack-mode cycles.
+Figure&nbsp;4: Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight — the same parallelism as Shift+Y and Shift+X reversing the form-up-split and group-attack-mode cycles.
 </figcaption>
 </figure>
 </div>
@@ -676,7 +690,7 @@ Figure&nbsp;3: Formation density cycling with the Shift-reverse: <kbd>T</kbd> st
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-testudo-under-fire-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4: Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.
+Figure&nbsp;5: Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.
 </figcaption>
 </figure>
 </div>
@@ -707,7 +721,7 @@ Figure&nbsp;4: Testudo under fire: an infantry unit locked in testudo, ringed by
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;5: Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.
+Figure&nbsp;6: Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.
 </figcaption>
 </figure>
 </div>
@@ -721,7 +735,7 @@ Figure&nbsp;5: Anti-cavalry square: an infantry unit is charged in the rear by t
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-schiltron-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;6: Schiltron: the same rear cavalry charge as above, but the unit forms Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge harder than orbis does, at a deeper offence cost.
+Figure&nbsp;7: Schiltron: the same rear cavalry charge as above, but the unit forms Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge harder than orbis does, at a deeper offence cost.
 </figcaption>
 </figure>
 </div>
@@ -735,7 +749,7 @@ Figure&nbsp;6: Schiltron: the same rear cavalry charge as above, but the unit fo
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-battle-ai-leaders-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Two AI unit-leader decisions in one clash: the AI spearmen on the left form the anti-cavalry square on their own as player cavalry closes, with no player key press arming it. The AI infantry on the right advances and attacks, then re-targets and turns to face a second player unit that closes on its flank instead of fighting on with its back exposed.
+Figure&nbsp;8: Two AI unit-leader decisions in one clash: the AI spearmen on the left form the anti-cavalry square on their own as player cavalry closes, with no player key press arming it. The AI infantry on the right advances and attacks, then re-targets and turns to face a second player unit that closes on its flank instead of fighting on with its back exposed.
 </figcaption>
 </figure>
 </div>
@@ -816,7 +830,7 @@ Table&nbsp;2: Movement paces by unit type, in metres per second.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pace-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;8: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
+Figure&nbsp;9: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
 </figcaption>
 </figure>
 </div>
@@ -839,7 +853,7 @@ Figure&nbsp;8: Pace modes: regiments walk on approach, jog when enemy archers op
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
+Figure&nbsp;10: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
 </figcaption>
 </figure>
 </div>
@@ -864,7 +878,7 @@ Figure&nbsp;9: Per-type backward-walk speed: a Spearmen and an Archers regiment,
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+Figure&nbsp;11: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
 </figcaption>
 </figure>
 </div>
@@ -911,7 +925,7 @@ Figure&nbsp;10: Braking on arrival: a lone Infantry regiment sprints toward a mo
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;12: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
