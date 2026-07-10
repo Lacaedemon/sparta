@@ -1,9 +1,12 @@
 class_name SoldierCollision
 ## Newton's laws collision physics for individual soldiers. Per-soldier bodies collide
 ## bidirectionally (F = -F') with force magnitude inversely proportional to mass. Bracing
-## and motion state affect friction: stationary units have higher friction threshold
-## (static friction) than moving units (kinetic friction). See SoldierCombat.gd for
-## the friction model constants.
+## and motion state affect friction: a moving body's kinetic friction damping is stronger
+## the closer it is to rest (SoldierCombat.KINETIC_FRICTION_STATIONARY_BOOST). A separate
+## static-friction gate (overcomes_static_friction below) is implemented and tested but not
+## yet called from any production path -- wiring it into the melee/collision impulse path
+## so a resting body can fully resist a sub-threshold shove is tracked as a follow-up. See
+## SoldierCombat.gd for the friction model constants.
 ##
 ## Pure functions, no state, testable in isolation (like SoldierCombat.gd).
 ## Called from: SoldierMelee.gd (bidirectional impulse split on strikes),
@@ -69,11 +72,39 @@ static func bidirectional_impulse(
 	return [impulse_attacker, impulse_defender]
 
 
+## Scale a defender's bidirectional-impulse component by how much of the strike survives
+## bracing absorption. `received` is the surplus impulse magnitude above the defender's file
+## brace capacity (SoldierCombat.brace_capacity) -- 0 at or below capacity, rising toward
+## `impulse_magnitude` as the strike overwhelms it. Scaling `impulse_defender` by the ratio
+## received/impulse_magnitude (rather than gating on `received > 0` and applying it at full
+## magnitude) makes the defender's shove grow smoothly from zero at the capacity threshold,
+## instead of jumping straight to the full momentum-split impulse the instant the strike
+## crosses it. Does not touch the attacker's own recoil -- bracing absorbs the defender's
+## motion, not the attacker's.
+##
+## Args:
+##   impulse_defender: the defender's raw impulse from bidirectional_impulse (impulses[1])
+##   received: the surplus impulse magnitude above brace capacity (0 if fully absorbed)
+##   impulse_magnitude: the strike's total impulse magnitude (bidirectional_impulse's own
+##     first argument) -- the denominator of the surviving fraction
+##
+## Returns: impulse_defender scaled by received/impulse_magnitude, or Vector2.ZERO if
+## impulse_magnitude is negligible (guards div-by-zero; there is nothing to scale).
+static func braced_defender_impulse(
+	impulse_defender: Vector2,
+	received: float,
+	impulse_magnitude: float
+) -> Vector2:
+	if impulse_magnitude < 0.01:
+		return Vector2.ZERO
+	return impulse_defender * (received / impulse_magnitude)
+
+
 ## Check if an impulse overcomes a stationary body's static friction and initiates motion.
 ## A standing body (v ≈ 0) has a friction threshold that must be exceeded to start moving;
-## a moving body (v > VELOCITY_THRESHOLD) experiences kinetic friction instead, with no
-## threshold gate. Returns true if the impulse should move the body, false if static
-## friction absorbs it.
+## a moving body (v > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE) experiences kinetic
+## friction instead, with no threshold gate. Returns true if the impulse should move the
+## body, false if static friction absorbs it.
 ##
 ## Args:
 ##   impulse_magnitude: magnitude of the applied impulse
@@ -89,7 +120,7 @@ static func overcomes_static_friction(
 	brace: float
 ) -> bool:
 	# If already moving, static friction doesn't gate further motion (kinetic friction only).
-	if body_velocity_magnitude > 1.0:
+	if body_velocity_magnitude > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE:
 		return true
 
 	# Standing body: compare impulse against effective-mass-scaled threshold.

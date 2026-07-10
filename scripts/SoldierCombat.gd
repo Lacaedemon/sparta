@@ -195,14 +195,24 @@ static func brace_capacity(file_braces: PackedFloat32Array) -> float:
 # This makes a braced defender recoil less and impart more recoil to the attacker.
 const FRICTION_BRACING_MULTIPLIER: float = 0.5  # bracing raises effective mass by up to 50%
 
-# Static friction: a stationary body (v < KINETIC_FRICTION_VELOCITY_REFERENCE) resists
-# motion. An impulse below this threshold does not overcome static friction and leaves
-# the body at rest; above it, the body moves. Scaled by effective mass.
+# Static friction: a body at rest (v < STATIC_FRICTION_VELOCITY_GATE below -- a much lower
+# bar than KINETIC_FRICTION_VELOCITY_REFERENCE, which instead governs how fast the
+# *continuous* kinetic-friction damping decays for an already-moving body, a separate
+# concern) resists motion. An impulse below this threshold does not overcome static
+# friction and leaves the body at rest; above it, the body moves. Scaled by effective mass.
 const STATIC_FRICTION_THRESHOLD: float = 20.0  # impulse units; scaled per effective mass
+
+# Below this speed a body counts as "at rest" for the static-friction gate
+# (SoldierCollision.overcomes_static_friction): once past it, kinetic friction applies with
+# no impulse threshold. Deliberately much lower than KINETIC_FRICTION_VELOCITY_REFERENCE
+# below (jog speed) -- static/kinetic friction transitions near-zero velocity in reality,
+# not at a walking pace.
+const STATIC_FRICTION_VELOCITY_GATE: float = 1.0  # world units/sec
 
 # Kinetic friction damping: a moving body decelerates due to ground friction at this
 # exponential decay rate per second. Applied as v_new = v_old * (1 - k * delta).
-# At v ~ jog_speed (50 u/s), ~8% per tick (60 Hz); a flung soldier slows over ~1-2 sec.
+# At v ~ jog_speed (50 u/s), ~0.13% per tick (60 Hz), i.e. ~8% per second; a flung
+# soldier takes roughly 10+ sec to meaningfully decelerate (time constant 1/k ~ 12.5s).
 const KINETIC_FRICTION_DAMPING: float = 0.08  # decay rate per second
 
 # Velocity reference for kinetic friction modulation: bodies moving slower than this are

@@ -469,6 +469,15 @@ spear line keeps knocking swordsmen out past their own reach while staying in it
 lines no longer snap apart by a spacing rule; the gap is the live balance of the press
 forward against the knockback, so it breathes as the fight ebbs and flows.
 
+**Knockback now pushes both ways.** Every blow obeys Newton's third law: the struck
+soldier is shoved back as before, but the striking soldier also recoils along the same
+line, split between the two by effective mass (bracing counts as extra mass). A light,
+unbraced attacker rocks backward hard on contact; a heavy or set formation barely
+moves. That's why a cavalry charge into a braced spear wall now visibly backfires on
+the horses themselves, not just on the spearmen holding their ground --- the heavier,
+set defenders absorb most of the shove and hand a proportionally bigger kick back to
+the lighter attacker.
+
 ## Movement speed
 
 Units move at **realistic real-world speeds**, measured in metres per second, with

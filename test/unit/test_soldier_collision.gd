@@ -231,3 +231,55 @@ func test_static_friction_bracing_raises_threshold():
 	var moves_braced: bool = SoldierCollision.overcomes_static_friction(
 		impulse, body_vel, mass, 1.0)
 	assert_false(moves_braced, "Braced body should resist this impulse (higher threshold)")
+
+
+# --- braced_defender_impulse: no discontinuity at the brace-capacity threshold ------------
+
+func test_braced_defender_impulse_zero_at_or_below_capacity():
+	## At or below the brace capacity, `received` is 0 -- the defender gets no shove at all,
+	## matching the "absorbed" case (this is also what the `received > 0.0` gate in
+	## SoldierMelee.gd already skips, but the function itself should still return zero here).
+	var impulse_defender := Vector2(0.0, 20.0)
+	var result: Vector2 = SoldierCollision.braced_defender_impulse(impulse_defender, 0.0, 50.0)
+	assert_eq(result, Vector2.ZERO, "no surviving impulse means no shove")
+
+
+func test_braced_defender_impulse_grows_smoothly_from_the_capacity_threshold():
+	## The bug this fixes: applying `impulse_defender` at FULL magnitude the instant
+	## impulse_magnitude clears `cap` would jump straight from ~0 to the full mass-split
+	## shove. Scaling by received/impulse_magnitude instead means the shove magnitude is
+	## small just above the threshold and grows continuously as the strike overwhelms the
+	## brace further -- never a jump to the unscaled impulse_defender magnitude.
+	var cap: float = 50.0
+	var impulse_defender := Vector2(0.0, 20.0)  # the mass-split defender share, at some impulse_magnitude
+
+	# Just above cap: received is tiny, so the applied shove should be tiny too.
+	var impulse_mag_just_above: float = cap + 0.01
+	var received_just_above: float = impulse_mag_just_above - cap
+	var result_just_above: Vector2 = SoldierCollision.braced_defender_impulse(
+		impulse_defender, received_just_above, impulse_mag_just_above)
+	assert_lt(result_just_above.length(), 0.01,
+		"just above the brace-capacity threshold, the defender's shove should be near zero, not the full mass-split impulse")
+
+	# Well above cap: received is most of impulse_magnitude, so the shove approaches (but
+	# never reaches or exceeds) the unscaled impulse_defender magnitude.
+	var impulse_mag_well_above: float = cap * 100.0
+	var received_well_above: float = impulse_mag_well_above - cap
+	var result_well_above: Vector2 = SoldierCollision.braced_defender_impulse(
+		impulse_defender, received_well_above, impulse_mag_well_above)
+	assert_almost_eq(result_well_above.y, impulse_defender.y, 0.5,
+		"far above the brace-capacity threshold, the shove should approach the full mass-split impulse")
+	assert_lte(result_well_above.length(), impulse_defender.length(),
+		"the scaled shove should never exceed the unscaled mass-split impulse")
+
+	# Monotonic: a strike further above cap yields a larger (or equal) shove than one just
+	# above cap -- growth, not a jump followed by a plateau or reversal.
+	assert_gt(result_well_above.length(), result_just_above.length(),
+		"the shove should grow as the strike overwhelms the brace capacity further")
+
+
+func test_braced_defender_impulse_guards_zero_impulse_magnitude():
+	## Degenerate case: impulse_magnitude ~ 0 (nothing to scale by) returns zero rather than
+	## dividing by ~zero.
+	var result: Vector2 = SoldierCollision.braced_defender_impulse(Vector2(0.0, 20.0), 0.0, 0.0)
+	assert_eq(result, Vector2.ZERO, "zero impulse magnitude guards against div-by-zero")
