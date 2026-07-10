@@ -3040,7 +3040,12 @@ func _rout() -> void:
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_formation_mirror_x = false
 	_rout_timer = ROUT_TIME
-	_shattered = false   # starts "broken": can still recover morale and rally
+	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
+	# (recoverable) only when it wasn't already permanently shattered by a
+	# prior _stop_rout_and_fight(). That call returns the unit to State.IDLE
+	# (so it can fight again), and a later morale collapse can route back
+	# through here -- leaving `_shattered` untouched is what keeps that
+	# "fights to the death" guarantee from being quietly undone.
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
 	add_to_group("routers")
@@ -3059,14 +3064,33 @@ func _rout() -> void:
 
 
 func _process_rout(delta: float) -> void:
-	# Flee toward own back edge (team 0 started at top, team 1 at bottom). A router may
-	# cross the visible battlefield edge into the wider retreat_bounds margin — but a
-	# soldier whose flee step (or a separation shove) would carry it past THAT outer
-	# edge has fled clear of the battlefield entirely: the unit ESCAPES immediately,
-	# distinct from a SHATTER (which is run down or gutted while still on the field).
+	# Flee toward own back edge (team 0 started at top, team 1 at bottom). Route around
+	# impassable terrain via PathField.next_step() if available (same as _move_to does).
+	# If trapped with no escape path, fall back to fighting to the death.
 	var flee: Vector2 = Vector2.UP if team == 0 else Vector2.DOWN
-	facing = flee
-	var next: Vector2 = position + flee * (move_speed * 1.3) * delta
+
+	# Check for viable escape path using PathField (like _move_to does).
+	# If trapped in terrain with no escape route, stop routing and fight instead.
+	if PathField.active != null and _is_escape_path_blocked(flee):
+		_stop_rout_and_fight()
+		return
+
+	# Route around terrain: consult PathField for the next safe step. Unlike _move_to's
+	# explicit destination, fleeing has no fixed target -- just a direction -- so this
+	# goes through next_step_fleeing(), which clips the far-off candidate point to the
+	# field's own grid bounds first (mirroring has_escape_route() above). An unclipped
+	# point 1000px out lands off the grid for virtually every real position, which A*
+	# can never reach regardless of terrain -- silently defeating this whole detour.
+	var step: Vector2 = position + flee * 1000.0
+	if PathField.active != null:
+		step = PathField.active.next_step_fleeing(position, flee)
+
+	# next_step() returns an absolute world-space point, not a direction -- subtract
+	# position first (as _move_to() does) before normalizing.
+	var to: Vector2 = step - position
+	var dir: Vector2 = to.normalized()
+	facing = dir
+	var next: Vector2 = position + dir * (move_speed * 1.3) * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
 		_escape()
@@ -3153,6 +3177,55 @@ func _shatter() -> void:
 ## after leaving play (queue_free() alone defers to end of frame).
 func _escape() -> void:
 	_remove_from_play()
+
+
+## Check if escape path is blocked: true if all viable escape directions (within 90 degree
+## cone around the team's flee direction) are impassable. Assumes PathField.active is set --
+## the sole call site already guards on that, so routing proceeds unchecked when there's no
+## terrain layer at all rather than reaching this function.
+func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
+	# Scan directions around the flee vector: check a 90-degree cone
+	# (45 degrees to each side of the primary flee direction).
+	var angles_to_check: Array = []
+	var base_angle: float = flee_direction.angle()
+	for offset_deg in [-45.0, -30.0, -15.0, 0.0, 15.0, 30.0, 45.0]:
+		angles_to_check.append(base_angle + deg_to_rad(offset_deg))
+
+	# Check each direction: if ANY has a genuine route out, the path is not fully blocked.
+	# PathField.has_escape_route() distinguishes "a route exists" from "no route,
+	# fell back to the raw target" -- next_step()'s own return value can't tell those
+	# apart, and it clips the candidate target to the field's own bounds so the check
+	# isn't asking for a route to an inherently unreachable off-map point.
+	for angle in angles_to_check:
+		var direction: Vector2 = Vector2.from_angle(angle)
+		if PathField.active.has_escape_route(position, direction):
+			return false
+
+	# All directions blocked: unit is trapped.
+	return true
+
+
+## Unit is trapped by terrain with no viable escape path: stop routing and stand ground
+## to fight to the death. Marks the unit as shattered (will fight but can't rally/escape).
+func _stop_rout_and_fight() -> void:
+	# Exit routing state: rejoin the fighting units instead of routers.
+	state = State.IDLE
+	remove_from_group("routers")
+	add_to_group("units")
+	# Mark as shattered so the unit will fight to the death without rallying if it
+	# happens to break contact temporarily. The unit will only leave play via
+	# annihilation (soldiers reach zero) or being run down in combat.
+	_shattered = true
+	# Morale was <= 0 -- that's what triggered the original rout -- and left
+	# untouched, UnitCombat.register_casualties' "morale <= 0.0 and state !=
+	# ROUTING" guard re-satisfies on the very next casualty, calling _rout() again
+	# and flipping this unit straight back into ROUTING (replaying the rout
+	# SFX/shockwave and re-firing the friendly-morale contagion every casualty
+	# tick, instead of the one stable transition this function is meant to make).
+	# _shattered already forecloses any further rally, so restoring morale here
+	# grants no actual recovery -- it only stops that spurious re-trigger.
+	morale = RALLY_MORALE
+	queue_redraw()
 
 
 # --- Visuals ------------------------------------------------------------------
