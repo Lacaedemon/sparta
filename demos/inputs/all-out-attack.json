@@ -1,5 +1,5 @@
 {
-  "_comment": "All-out attack (#689/#704): a stance that trades defense for offense (UnitCombat.order_mode_modifiers -- +20% effective attack when the ATTACKER is in ALL_OUT_ATTACK, -20% effective defense when the DEFENDER is). Stages two matched Infantry units (same stats -- atk 13/def 6) head-on so the only asymmetry in the clash is the stance. The player unit is selected and immediately set to All-out attack (Ctrl+,) before the enemy closes the gap, so its whole fight is played under the stance: it should visibly grind the enemy down faster (higher effective attack) while itself bleeding faster too (its own lower effective defense makes every enemy hit land harder). Camera holds tight on the clash. No move/attack order needed -- the enemy AI closes on its own; the stance write (enqueue_stance/ORDER_STANCE_ONLY) is an instant mode change independent of movement/order state, so it takes effect immediately and never gets reset by a later order in this scenario.",
+  "_comment": "All-out attack (#689/#704): a stance that trades defense for offense (UnitCombat.order_mode_modifiers -- +20% effective attack when the ATTACKER is in ALL_OUT_ATTACK, -20% effective defense when the DEFENDER is). Stages two matched Infantry units (same stats -- atk 13/def 6) head-on so the only asymmetry in the clash is the stance. The player unit is selected and immediately set to All-out attack (Ctrl+.) before the enemy closes the gap, so its whole fight is played under the stance: it should visibly grind the enemy down faster (higher effective attack) while itself bleeding faster too (its own lower effective defense makes every enemy hit land harder). Camera holds tight on the clash. No move/attack order needed -- the enemy AI closes on its own; the stance write (enqueue_stance/ORDER_STANCE_ONLY) is an instant mode change independent of movement/order state, so it takes effect immediately and never gets reset by a later order in this scenario.",
   "seed": "12345",
   "scenario": [
     {"team": 0, "type": "Infantry", "x": 800, "y": 440, "count": 100},
@@ -10,7 +10,7 @@
   ],
   "steps": [
     {"tick": 5, "click": [800, 440]},
-    {"tick": 10, "key": "Comma", "ctrl": true}
+    {"tick": 10, "key": "Period", "ctrl": true}
   ],
   "frames": [10, 90, 180, 300],
   "state": [10, 90, 180, 300]
