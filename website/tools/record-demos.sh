@@ -63,6 +63,7 @@ DEMOS=(
   "battle_ai_leaders|demos/inputs/battle-ai-unit-leaders.json|60|720|640|input"
   "back_speed_by_type|demos/inputs/back-speed-by-type.json|30|430|720|input"
   "formation_shift_reverse|demos/inputs/formation-shift-reverse-505.json|30|130|640|input"
+  "chase|demos/inputs/chase-attack.json|30|300|720|input"
   "all_out_attack|demos/inputs/all-out-attack.json|30|200|640|input"
   "trapped_routing|demos/inputs/routing-terrain-pathfinding.json|30|260|640|input"
   "pin_down|demos/inputs/pin-down-attack.json|30|320|640|input"

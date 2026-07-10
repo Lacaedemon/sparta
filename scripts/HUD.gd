@@ -57,6 +57,7 @@ const _STANCE_ENTRIES := [
 	{"id": 8, "mode": BattleRef.OrderMode.ROLL_THE_LINE, "label": "Roll the line", "slug": "roll_the_line"},
 	{"id": 9, "mode": BattleRef.OrderMode.PIN_DOWN, "label": "Pin down", "slug": "pin_down"},
 	{"id": 10, "mode": BattleRef.OrderMode.ALL_OUT_ATTACK, "label": "All-out attack", "slug": "all_out_attack"},
+	{"id": 11, "mode": BattleRef.OrderMode.CHASE, "label": "Chase", "slug": "chase"},
 ]
 
 # Display names and menu order for every formation mode, shared by the button

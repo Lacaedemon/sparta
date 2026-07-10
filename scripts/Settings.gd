@@ -160,6 +160,9 @@ const DEFAULT_ORDER_BINDINGS := {
 	# KEY_BRACKETRIGHT are already claimed for frontage resize
 	# (SelectionManager.gd), so apostrophe is the next unclaimed punctuation key.
 	"all_out_attack": KEY_APOSTROPHE,
+	# Same letter-key exhaustion as above; comma/semicolon/period/apostrophe are
+	# already taken, so chase takes the next punctuation-row key over.
+	"chase": KEY_BACKSLASH,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.

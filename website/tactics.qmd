@@ -835,6 +835,11 @@ into different tools:
   all-out. It hits harder and dies faster at the same time, so use it to force
   a quick, costly decision --- finishing off a wavering enemy, or a rearguard
   buying time --- not as a strict upgrade over a normal stance.
+- **Chase** (<kbd>\\</kbd>) --- relentless pursuit: the unit overrides the normal
+  disengage exit a plain move order (or losing steady contact) otherwise gives
+  it, so it keeps closing on and re-engaging the same fleeing or repositioning
+  enemy instead of breaking off. Use it to run down a routing foe rather than
+  let it escape to rally and rejoin the fight later.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and
