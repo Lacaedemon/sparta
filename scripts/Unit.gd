@@ -3457,4 +3457,14 @@ func _draw() -> void:
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw, 4.0), Color(0.15, 0.15, 0.15, alpha))
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
 
+	# Soldier ID overlay (dev/debug visual, figure-LOD gated, selected unit only).
+	# _sim_soldier_pos is parent-local (like the body MultiMesh above), so convert to this
+	# node's own local drawing space the same way the body loop does: subtract `position`,
+	# not to_local() (which expects a global/world position and would double-convert).
+	if selected and Settings.show_soldier_ids and _detailed_lod:
+		var id_mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+		for i in range(_sim_soldier_pos.size()):
+			draw_string(font, (_sim_soldier_pos[i] - position) + Vector2(-4, -id_mark_r),
+					str(i), HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(1, 1, 1, 0.9))
+
 	UnitSprites.flag(self, body_c, alpha, extent)
