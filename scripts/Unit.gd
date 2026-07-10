@@ -3130,6 +3130,15 @@ func _stop_rout_and_fight() -> void:
 	# happens to break contact temporarily. The unit will only leave play via
 	# annihilation (soldiers reach zero) or being run down in combat.
 	_shattered = true
+	# Morale was <= 0 -- that's what triggered the original rout -- and left
+	# untouched, UnitCombat.register_casualties' "morale <= 0.0 and state !=
+	# ROUTING" guard re-satisfies on the very next casualty, calling _rout() again
+	# and flipping this unit straight back into ROUTING (replaying the rout
+	# SFX/shockwave and re-firing the friendly-morale contagion every casualty
+	# tick, instead of the one stable transition this function is meant to make).
+	# _shattered already forecloses any further rally, so restoring morale here
+	# grants no actual recovery -- it only stops that spurious re-trigger.
+	morale = RALLY_MORALE
 	queue_redraw()
 
 

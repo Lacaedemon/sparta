@@ -133,11 +133,14 @@ broke, for as long as it's still on the field.
 </video>
 ```
 
-Fight if trapped: a weak unit routs toward the hill and two cavalry close off
-the other escape angles. With every direction in its escape cone blocked, it
-gives up fleeing and stands to fight rather than running uselessly in place
-against the terrain &mdash; and is gradually ground down instead of routing
-forever.
+Routing around terrain: a weak unit breaks and flees straight toward the hill,
+but paths around the obstacle instead of walking into it, the same way an
+ordered march does. Two pursuing cavalry keep the pressure on throughout,
+gradually grinding it down instead of letting it put real distance between
+them. A router with no terrain escape route left at all stands and fights
+instead of fleeing in place (see [Terrain](#terrain)) &mdash; the open field
+this clip runs in never actually boxes a unit in, so that specific case isn't
+shown here.
 :::
 
 ## Rank cycling (trained units)

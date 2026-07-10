@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/routing-terrain-pathfinding.json",
-  "caption": "Fight if trapped: a weak player unit routs (its flee path runs into the impassable hill), but two cavalry close off the flanks too. Finding every escape direction blocked, it gives up fleeing and stands to fight rather than running uselessly in place against the terrain -- and is gradually ground down rather than routing forever.",
+  "caption": "Routing around terrain: a weak player unit breaks and flees toward the impassable hill directly in its path, but -- instead of walking straight into it -- it paths around the obstacle the same way an ordered march does. Two pursuing cavalry keep the pressure on throughout, gradually grinding it down. (The separate 'stands and fight when genuinely trapped' behavior, for a unit with no terrain escape route left at all, is verified directly by a dedicated unit test -- this game's terrain never actually encloses a unit in the open field, so it can't be staged as a recordable clip.)",
   "fixed_fps": 30,
   "max_frames": 260,
   "fps": 15,

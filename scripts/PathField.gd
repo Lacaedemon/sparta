@@ -108,8 +108,21 @@ func has_escape_route(from: Vector2, direction: Vector2) -> bool:
 ## unclipped point outside the grid can never be reached by find_path()'s A*,
 ## so next_step() would always fall back to the raw straight-line direction --
 ## silently defeating routing around terrain for every fleeing unit.
+##
+## Near (or past) this field's own edge, that clip degenerates toward `from`
+## itself (_clip_to_bounds pulls the exit point in by one cell, which can put
+## it behind `from` once there's less than a cell of grid left to cross) --
+## freezing a fleeing unit in place instead of letting it continue on toward
+## a caller's own, larger escape boundary. There's no terrain to route around
+## out there anyway (this field only ever registers obstacles inside its own
+## bounds), so fall back to the raw, unclipped target in that case, the same
+## way next_step() itself falls back with no PathField active at all.
 func next_step_fleeing(from: Vector2, direction: Vector2) -> Vector2:
-	return next_step(from, _clip_to_bounds(from, direction.normalized()))
+	var dir: Vector2 = direction.normalized()
+	var clipped: Vector2 = _clip_to_bounds(from, dir)
+	if from.distance_to(clipped) < _cell:
+		return from + dir * 1000.0
+	return next_step(from, clipped)
 
 
 ## The point where a ray from `from` toward `direction` exits this field's grid,
