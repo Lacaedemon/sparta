@@ -79,18 +79,28 @@ above do — flagged as an open question rather than asserted as verified.
 
 **Soldier spacing in formation:**
 - `FORMATION_SPACING = 9.0` world units = 0.45 m (`scripts/Unit.gd`).
-- Polybius records the ancient world's *tightest* attested close-order
-  spacing — the Macedonian phalanx in close order (synaspismos) — at **3 Roman
-  feet per man (≈0.89 m)**; Roman legionary spacing needed to be looser still
-  (≈6 feet / ≈1.8 m) to leave sword-and-shield room. Source:
+- The Hellenistic phalanx had **three** density tiers, not two, and it's easy
+  to conflate the middle one with the tightest: **open order** (~1.8–2 m/man),
+  **close order** / *pyknosis* (~0.9–1 m/man — this is Polybius's "3 feet"
+  figure for the phalanx in battle order), and **synaspismos** ("locked
+  shields", ~0.45 m/man), explicitly the *tightest* of the three, used only
+  under exceptional pressure (a frontal cavalry charge or heavy missile fire).
+  Source: [Phalanx — Wikipedia](https://en.wikipedia.org/wiki/Phalanx);
   [Fordham Ancient History Sourcebook, Polybius on the legion vs. the
-  phalanx](https://sourcebooks.fordham.edu/ancient/polybius-maniple.asp);
-  [A Collection of Unmitigated Pedantry, "Shield Walls and Spacing"](https://acoup.blog/2023/12/15/collections-shield-walls-and-spacing-hollywood-mobs-and-ancient-tactics/).
-  **Correction to the original draft:** 0.45 m is not "tight but acceptable" —
-  it is roughly **half** the tightest spacing attested for *any* historical
-  close-order infantry, including the notoriously dense Macedonian phalanx.
-  This is a genuine, citable discrepancy, and it validates the specific
-  concern raised in issue #661 ("tight spacing seems unrealistically tight").
+  phalanx](https://sourcebooks.fordham.edu/ancient/polybius-maniple.asp)
+  (the Polybius translation there describes the 3-foot close-order figure but
+  does not itself use the word "synaspismos"). Roman legionary spacing needed
+  to be looser than even close order (~6 feet / ~1.8 m) to leave
+  sword-and-shield room.
+  **Correction to a previous draft of this document:** 0.45 m is not "about
+  half the tightest historically attested spacing" — that comparison
+  mislabeled the 0.9 m *close-order* (pyknosis) figure as synaspismos.
+  Synaspismos, the tier that is actually tightest, is 0.45 m/man — Sparta's
+  `FORMATION_SPACING` **matches** it. The real, smaller discrepancy is that
+  Sparta uses this exceptional, high-pressure spacing as the unit's *only*
+  formation density, where history treats it as a rare, temporary stance
+  rather than the standing default — worth noting, but a materially different
+  (and much smaller) claim than "half the historical minimum."
 
 **Unit radii (collision bodies):**
 
@@ -117,13 +127,19 @@ assets themselves.
 Most of Sparta's movement parameters check out against cited historical and
 physiological benchmarks — walking pace matches military march rates, and
 unit jog/sprint speeds are a defensible (if conservative) proxy for a
-formation's cohesion-limited pace rather than an individual's sprint. Two
-concrete, citable discrepancies came out of this pass, both already
-suspected by the issue reporter:
+formation's cohesion-limited pace rather than an individual's sprint. One
+of the two spacing/speed concerns raised in the issue turns out to already
+match the tightest historical tier once the terminology is applied
+correctly; the other is a real, citable discrepancy:
 
-1. **Formation spacing (0.45 m) is about half the tightest historically
-   attested close-order spacing (≈0.89 m, Macedonian phalanx).** This is a
-   real gap, not a perception issue.
+1. **Formation spacing (0.45 m) actually matches synaspismos, the
+   *tightest* attested Hellenistic-phalanx tier** — not "about half the
+   tightest historically attested spacing" as an earlier draft of this
+   document claimed (that draft mislabeled the looser 0.9 m *close-order*
+   figure as synaspismos). The real, smaller discrepancy: Sparta applies
+   this exceptional emergency stance as the unit's only/default density,
+   where history used it briefly under extreme pressure rather than as a
+   standing formation.
 2. **Cavalry charge speed (8.5 m/s / 30.6 km/h) sits between a canter and a
    true gallop** — faster than the 16–27 km/h canter range, well short of
    the 40–48 km/h gallop range. The earlier draft of this document asserted
@@ -139,8 +155,11 @@ either way; also tracked separately.
 
 ### Follow-up issues filed from this verification
 
-- [#719](https://github.com/Lacaedemon/sparta/issues/719) — formation
-  spacing tightness vs. the historical ≈0.89 m minimum (`FORMATION_SPACING`).
+- [#719](https://github.com/Lacaedemon/sparta/issues/719) — Sparta's
+  default formation spacing matches the exceptional synaspismos tier
+  rather than the standing close-order tier — consider whether the
+  *default* density should loosen toward close order (~0.9 m/man), with
+  synaspismos-tight spacing reserved for a specific defensive stance.
 - [#720](https://github.com/Lacaedemon/sparta/issues/720) — cavalry charge
   speed sits between a canter and a true gallop — reconsider `sprint_mps`
   for cavalry (or document why the slower value is intentional for
