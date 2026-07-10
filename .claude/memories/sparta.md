@@ -337,6 +337,28 @@ sibling lands, not just once at the start. Re-check every open PR's
 skill's cascade-conflict-scan step) rather than assuming a clean resolve
 earlier in the day still holds.
 
+**The hotkey half of the collision can be preemptively deconflicted between
+two still-open sibling PRs; the enum VALUE half cannot.** When two siblings
+each independently rebind onto the same free key after a shared ancestor
+merge (e.g. both #704's `ALL_OUT_ATTACK` and #713's `CHASE` picked
+`KEY_APOSTROPHE` after #707's `PIN_DOWN` merge forced both off
+`KEY_PERIOD`), it's safe to edit one sibling's still-open branch directly and
+rebind it to a different free key — a hotkey is just an integer with no
+cross-branch invariant, so this permanently removes that specific collision
+regardless of merge order. **Don't try the same trick on the enum value**
+(e.g. reserving `CHASE = 11` on one branch so it won't collide with
+`ALL_OUT_ATTACK = 10` on the other): `test_hud_stance.gd`'s
+`test_stance_entry_ids_are_sequential_and_unique` asserts each branch's own
+`HUD._STANCE_ENTRIES` ids run `0..N-1` with no gaps, so a branch can only
+place its newest stance at exactly `(highest existing value) + 1` — it can't
+reserve a future slot for a sibling it can't see. That half of the collision
+stays real and can only resolve at actual merge time, via the normal cascade
+process above. (`Lacaedemon/sparta` PR #713, 2026-07-10: attempted
+`CHASE = 11` to preemptively dodge #704, immediately failed
+`test_stance_entry_ids_are_sequential_and_unique` with
+`[0..9, 11] != [0..9, 10]`; reverted the enum change, kept the hotkey
+rebind to `KEY_BACKSLASH`.)
+
 ## Routing units early-return in `_physics_process` — merge-isolated
 
 In `scripts/Unit.gd`, `_physics_process` takes an **early return** for a routing
