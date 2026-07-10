@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This PR only adds a CI workflow (.github/workflows/opposition-research.yml) that periodically runs an automation skill against external competitor sites — no scenes/scripts/assets/project.godot changes, so there is nothing a recorded battle clip could show."
+}
