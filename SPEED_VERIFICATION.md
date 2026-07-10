@@ -2,60 +2,97 @@
 
 ## Current Loadout Parameters
 
-From `Battle.gd::_default_loadout()`, all speeds in meters per second (m/s):
+From `Battle.gd::_default_loadout()`, all speeds in meters per second (m/s)
+(verified line-by-line against the dict literals in the source, which is the
+single source of truth — this table is not hand-maintained separately):
 
 | Unit Type | Walk | Jog/Trot | Sprint/Charge | Accel | Decel | Notes |
 |-----------|------|----------|---------------|-------|-------|-------|
 | Spearmen | 1.1 | 1.8 | 2.8 | 1.0 | 2.5 | Anti-cav trained heavy inf |
 | Infantry | 1.3 | 2.5 | 4.0 | 1.5 | 3.0 | General purpose medium inf |
 | Archers | 1.5 | 3.0 | 4.5 | 2.0 | 3.5 | Light, mobile |
-| Cavalry | 1.7 | 3.5 | 8.5 | 2.0 | 2.0 | Mounted charge is fast |
+| Cavalry | 1.7 | 3.5 | 8.5 | 2.0 | 2.0 | Mounted charge |
 
-**Conversion:** All values multiplied by `WORLD_UNITS_PER_METER = 20`, so world-unit speeds are 5× higher.
-- Infantry walk: 26 world-units/s (~1.3 m/s)
-- Infantry sprint: 80 world-units/s (~4.0 m/s)
+**Conversion:** every `*_mps`/`*_mps2` value is multiplied by
+`WORLD_UNITS_PER_METER = 20.0` and `SPEED_SCALE = 1.0` (`Battle.gd`), so
+world-unit speeds are exactly 20× the m/s figures above and `SPEED_SCALE`
+does not currently rescale anything (it's a global multiplier hook, left at
+its identity value). Infantry walk: 26 world-units/s (1.3 m/s); infantry
+sprint: 80 world-units/s (4.0 m/s).
 
-## Historical Benchmarks
+## Historical Benchmarks (cited)
 
-### Human Infantry
+### Human infantry — walking and running
 
-**Walking pace:** 1.4 m/s (5 km/h) is standard military march. Sparta's 1.1-1.5 m/s is **realistic**.
+- **Military march pace.** Roman legionaries' "military pace" (recruit
+  standard) covered 20 Roman miles in 5 summer hours under a ~20.5 kg pack —
+  about 5.9 km/h (1.6 m/s); the veteran "full pace" was faster still. In
+  practice, a marching column sustained roughly 4–5 km/h (1.1–1.4 m/s) for
+  hours, with short bursts to 6–7 km/h. Source:
+  [Loaded march — Wikipedia](https://en.wikipedia.org/wiki/Loaded_march);
+  [Banda Arc Geophysics, "Marching Roman Legionaries"](https://www.bandaarcgeophysics.co.uk/arch/Roman_legionary_marchingV2.html).
+  **Sparta's walk speeds (1.1–1.7 m/s) sit inside this historical band.**
 
-**Jogging/running:**
-- Untrained soldier: ~2-3 m/s (7-11 km/h)
-- Trained runner: ~4-5 m/s (14-18 km/h)
-- **Sparta's 1.8-3.0 m/s for jogging is CONSERVATIVE** (represents controlled unit discipline, not individual sprinting)
+- **Jogging / running, modern reference points.** A trained soldier's sprint
+  standard (unarmored short bursts) is commonly benchmarked at 100 m in 12 s
+  (≈8.3 m/s) or 60 m in 8 s (≈7.5 m/s); an untrained adult sustains a jog around
+  8–10 km/h (2.2–2.8 m/s) and can sprint 12–16 km/h (3.3–4.4 m/s) briefly.
+  Source: [Spotter Up, "The Soldier's Ideal Speed"](https://spotterup.com/the-soldiers-ideal-speed/);
+  [Marathon Handbook, "Average Human Sprint Speed"](https://marathonhandbook.com/average-human-sprint-speed/).
+  **Sparta's jog (1.8–3.5 m/s) and sprint (2.8–4.5 m/s) are both well below an
+  individual soldier's true sprint capability** (7.5–8.3 m/s). That gap is
+  defensible — these values represent a whole *formation* holding a line
+  while moving, not one runner's max effort — but it means the earlier draft
+  of this document overstated the case by calling sprint "realistic for
+  armored foot troops" outright. It is realistic **as a formation-cohesion
+  speed**, not as an individual's top speed; the two are different
+  quantities and shouldn't be compared as if interchangeable.
 
-**Charging/sprinting:**
-- Trained runner max: ~6 m/s (21 km/h)
-- Olympic sprinter: ~10 m/s (36 km/h)
-- **Sparta's 2.8-4.5 m/s is REALISTIC for armored infantry** (heavier equipment → slower than bare runners)
+### Mounted cavalry
 
-### Mounted Cavalry
+- **Horse gaits.** Averages: walk ≈7 km/h (1.9 m/s), trot ≈13 km/h (3.6 m/s,
+  wide range), canter 16–27 km/h (4.4–7.5 m/s), gallop **40–48 km/h
+  (11.1–13.3 m/s)**, with short sprints by racing/quarter horses reaching
+  65–88 km/h (18–24.5 m/s). Source:
+  [Horse gait — Wikipedia](https://en.wikipedia.org/wiki/Horse_gait).
+  **Correction to the original draft:** Sparta's cavalry "sprint" of 8.5 m/s
+  (30.6 km/h) is **not** "the upper end of the historical gallop range" — a
+  true gallop averages 40–48 km/h, nearly 1.5× faster. 8.5 m/s instead lands
+  inside the **canter** range (16–27 km/h), a controlled three-beat gait
+  slower than a full gallop. Whether that's the right in-game value is a
+  gameplay-balance question (a full 40+ km/h charge might be unplayable at
+  this map/camera scale) rather than a factual one — but the earlier
+  "verdict" claim was wrong and is corrected here.
 
-**Horse gaits:**
-- Walk: 1.5 m/s (5.4 km/h)
-- Trot: 3.3 m/s (12 km/h)
-- Gallop: **6-9 m/s (22-32 km/h)** depending on terrain and horse condition
-- Charge gallop: ~9-12 m/s (32-43 km/h) for short bursts
+### Acceleration/deceleration
 
-**Sparta cavalry sprint of 8.5 m/s (30.6 km/h) is WITHIN HISTORICAL RANGE** for a cavalry charge.
-
-### Acceleration/Deceleration
-
-Real-world research on military maneuvers:
-- Starting from halt: ~0.5-2 m/s² (varies by load, terrain, discipline)
-- Stopping: ~1-2 m/s² (depends on urgency and footing)
-- **Sparta's 1.0-2.0 m/s² accel and 2.0-3.5 m/s² decel are realistic.**
+No single authoritative source gives m/s² figures for a formed unit
+(individual short-sprint studies measure 0-to-top-speed time, not a
+disciplined line's collective accel/decel, and the two aren't equivalent).
+Sparta's 1.0–2.0 m/s² accel / 2.0–3.5 m/s² decel are a plausible order of
+magnitude for a walking-to-jogging transition, but this document does not
+have a citation backing the specific figures the way the walk/gallop numbers
+above do — flagged as an open question rather than asserted as verified.
 
 ## Unit Geometry Verification
 
 **Soldier spacing in formation:**
-- `FORMATION_SPACING = 9.0` world units = 0.45 m (9 / 20 WORLD_UNITS_PER_METER)
-- Historical rank gap (front-to-back): 0.6-1.0 m
-- **0.45 m is TIGHT but acceptable for a disciplined line** (slightly closer than historical but within bounds for a sim)
+- `FORMATION_SPACING = 9.0` world units = 0.45 m (`scripts/Unit.gd`).
+- Polybius records the ancient world's *tightest* attested close-order
+  spacing — the Macedonian phalanx in close order (synaspismos) — at **3 Roman
+  feet per man (≈0.89 m)**; Roman legionary spacing needed to be looser still
+  (≈6 feet / ≈1.8 m) to leave sword-and-shield room. Source:
+  [Fordham Ancient History Sourcebook, Polybius on the legion vs. the
+  phalanx](https://sourcebooks.fordham.edu/ancient/polybius-maniple.asp);
+  [A Collection of Unmitigated Pedantry, "Shield Walls and Spacing"](https://acoup.blog/2023/12/15/collections-shield-walls-and-spacing-hollywood-mobs-and-ancient-tactics/).
+  **Correction to the original draft:** 0.45 m is not "tight but acceptable" —
+  it is roughly **half** the tightest spacing attested for *any* historical
+  close-order infantry, including the notoriously dense Macedonian phalanx.
+  This is a genuine, citable discrepancy, and it validates the specific
+  concern raised in issue #661 ("tight spacing seems unrealistically tight").
 
 **Unit radii (collision bodies):**
+
 | Type | Radius (world units) | Real size |
 |------|---------------------|-----------|
 | Infantry | 18 | 0.9 m |
@@ -63,27 +100,49 @@ Real-world research on military maneuvers:
 | Cavalry | 24 | 1.2 m |
 | Max | 28 | 1.4 m |
 
-Historical reference:
-- Human footprint: ~0.3 m × 0.4 m
-- Horse (with rider): ~0.8 m × 2.5 m (length)
-- **Sim uses round collision bodies → oversize sidestep to be safe** (18-24 world units = 0.9-1.2 m diameter is larger than actual, but prevents units clipping through each other unrealistically)
-- **Cavalry 1.2 m radius (diameter 2.4 m) is appropriate for a mounted unit occupying space,** much wider than infantry
-- **The "horses seem small" concern may refer to the VISUAL rendering, not the collision radius.** Verify with UnitMeshes/figure rendering separately.
+A human footprint is roughly 0.3 m × 0.4 m and a horse-with-rider occupies
+roughly 0.8 m × 2.5 m (length); round collision bodies necessarily oversize a
+human silhouette to avoid unrealistic clipping, and 0.9–1.2 m diameter is a
+reasonable compromise for that purpose. The cavalry radius (1.2 m) being
+wider than infantry (0.9 m) correctly represents a mounted unit's greater
+footprint. **The "horses seem small" concern in #661 is a rendering/visual-art
+question (silhouette scale in `UnitMeshes`), not a collision-geometry one** —
+this document only verifies the physics radii, which are internally
+consistent; the visual mismatch needs a separate look at the sprite/mesh
+assets themselves.
 
-## Verdict: Speeds Are Realistic
+## Verdict
 
-All empirical speed values fall **within historical bounds for trained, equipped ancient infantry**:
+Most of Sparta's movement parameters check out against cited historical and
+physiological benchmarks — walking pace matches military march rates, and
+unit jog/sprint speeds are a defensible (if conservative) proxy for a
+formation's cohesion-limited pace rather than an individual's sprint. Two
+concrete, citable discrepancies came out of this pass, both already
+suspected by the issue reporter:
 
-✓ **Walk (1.1-1.5 m/s):** Standard military march  
-✓ **Jog/trot (1.8-3.5 m/s):** Unit-discipline running, not individual max  
-✓ **Sprint (2.8-4.5 m/s):** Realistic for armored foot troops  
-✓ **Cavalry charge (8.5 m/s):** Upper end of historical gallop range  
+1. **Formation spacing (0.45 m) is about half the tightest historically
+   attested close-order spacing (≈0.89 m, Macedonian phalanx).** This is a
+   real gap, not a perception issue.
+2. **Cavalry charge speed (8.5 m/s / 30.6 km/h) reads as a fast canter, not
+   a gallop** (true gallop: 40–48 km/h). The earlier draft of this document
+   asserted the opposite; corrected here.
 
-**No changes required to Battle.gd speeds.** If gameplay feels slow, the issue is **visual pacing / frame rate / scale perception,** not the underlying m/s values.
+Neither is fixed in this PR: changing either value is a gameplay-balance
+change (formation width/spacing math, unit collision spacing, and relative
+unit speeds all ripple from these constants) that needs its own playtesting
+pass, not a drive-by edit alongside a verification writeup. See the tracked
+follow-up issues below. The third original concern — cavalry visual size —
+is a rendering question this document's physics-radius check can't settle
+either way; also tracked separately.
 
-### Secondary Issues to File Separately
+### Follow-up issues filed from this verification
 
-1. **Visual size mismatch** — cavalry silhouettes may not match their collision radius (UnitMeshes/figure rendering, not speed)
-2. **Formation spacing tightness** — 0.45 m is realistic but tight; worth playtesting whether 0.6-0.75 m reads better
-3. **Acceleration curves** — currently linear; a real unit has inertia (asymptotic ramp toward max speed), which could be modeled separately
-
+- [#719](https://github.com/Lacaedemon/sparta/issues/719) — formation
+  spacing tightness vs. the historical ≈0.89 m minimum (`FORMATION_SPACING`).
+- [#720](https://github.com/Lacaedemon/sparta/issues/720) — cavalry charge
+  speed reads as a canter, not a gallop — reconsider `sprint_mps` for
+  cavalry (or document why the slower value is intentional for
+  playability at this scale).
+- [#721](https://github.com/Lacaedemon/sparta/issues/721) — cavalry
+  visual/silhouette size vs. collision radius (rendering, not physics) —
+  separate from anything this document verifies.
