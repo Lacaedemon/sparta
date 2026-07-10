@@ -3,13 +3,14 @@ class_name SoldierCollision
 ## bidirectionally (F = -F') with force magnitude inversely proportional to mass. Bracing
 ## and motion state affect friction: a moving body's kinetic friction damping is stronger
 ## the closer it is to rest (SoldierCombat.KINETIC_FRICTION_STATIONARY_BOOST). A separate
-## static-friction gate (overcomes_static_friction below) is implemented and tested but not
-## yet called from any production path -- wiring it into the melee/collision impulse path
-## so a resting body can fully resist a sub-threshold shove is tracked as a follow-up. See
+## static-friction gate (overcomes_static_friction below) decides whether the defender's
+## shove application in SoldierMelee.gd moves the body at all: a resting (or slow) body
+## fully resists a sub-threshold shove instead of receiving a small nudge. See
 ## SoldierCombat.gd for the friction model constants.
 ##
 ## Pure functions, no state, testable in isolation (like SoldierCombat.gd).
-## Called from: SoldierMelee.gd (bidirectional impulse split on strikes),
+## Called from: SoldierMelee.gd (bidirectional impulse split on strikes, and the static-friction
+## gate on whether the surviving impulse moves the defender at all),
 ## SoldierBodies.gd (kinetic friction damping each frame).
 
 
@@ -105,6 +106,10 @@ static func braced_defender_impulse(
 ## a moving body (v > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE) experiences kinetic
 ## friction instead, with no threshold gate. Returns true if the impulse should move the
 ## body, false if static friction absorbs it.
+##
+## Called from SoldierMelee.gd's defender-shove application, gating whether the surviving
+## post-brace-capacity impulse (`received`) moves the defender's body at all -- using the
+## defender's own current body velocity, mass, and file brace depth (`brace_d`).
 ##
 ## Args:
 ##   impulse_magnitude: magnitude of the applied impulse
