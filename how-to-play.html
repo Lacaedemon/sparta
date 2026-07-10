@@ -742,6 +742,7 @@ Figure&nbsp;5: Wheel (circumductio): the line swings 90° about its standing fla
 <li><strong>Skirmish</strong> (<kbd>K</kbd>) — a ranged unit keeps its distance, backing off when a threat closes instead of standing to fire.</li>
 <li><strong>Support</strong> (<kbd>G</kbd>) — right-click a friendly to guard it: the unit shadows that ally and engages anything that threatens it.</li>
 <li><strong>Cycle charge</strong> (<kbd>J</kbd>) — cavalry charge the target, pull back to a standoff, and charge again, so each run lands a fresh momentum hit instead of grinding once the charge is spent (see <a href="./tactics.html#order-stances">Tactics</a>).</li>
+<li><strong>Roll the line</strong> (<kbd>;</kbd>) — once the current target routs or is destroyed, the unit automatically re-targets the next-closest enemy still fighting instead of standing idle or chasing a broken foe, so a single attack order can carry a unit down a whole enemy line (see <a href="./tactics.html#order-stances">Tactics</a>).</li>
 </ul>
 <p>Pressing a stance key alone only <strong>arms</strong> it for your next move/attack order — it doesn’t touch a unit that’s already standing still. To change a selected unit’s stance right where it stands, with no move needed, hold <kbd>Ctrl</kbd> while pressing the stance key; a toast confirms the write. Separately, <kbd>I</kbd> toggles each selected unit’s <strong>rank relief</strong> (discipline) mode — the on-by-default knob behind rank cycling (see <a href="./tactics.html#rank-cycling-trained-units">Tactics</a>) — with its own confirming toast.</p>
 <div id="fig-stance-order" class="demo quarto-float quarto-figure quarto-figure-center anchored">
@@ -786,6 +787,20 @@ Figure&nbsp;8: Cycle charge stance: cavalry charge, land the impact hit, peel ba
 </figcaption>
 </figure>
 </div>
+<div id="fig-roll-the-line" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-roll-the-line-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/roll_the_line.jpg">
+  <source src="media/roll_the_line.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-roll-the-line-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;9: Roll the line stance: a single attack order carries the unit through three enemies in a row, one after another, as each breaks and routs.
+</figcaption>
+</figure>
+</div>
 <p><strong>Relieve a fighting friendly (line relief).</strong> Right-click an <strong>engaged friendly</strong> outside your selection to order a relief: the fresh unit advances into the fight and the tired one peels back toward its own rear to rest. The two regiments pass through each other during the swap — the reliever takes over the melee, and the relieved unit’s retreat is a real move order, so holding <kbd>Space</kbd> shows it like any other march. Any fresh order to the reliever cancels the swap where it stands. Relief is how you win a long grind — see <a href="./tactics.html#line-relief">Tactics</a>.</p>
 <div id="fig-line-relief" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -797,7 +812,7 @@ Figure&nbsp;8: Cycle charge stance: cavalry charge, land the impact hit, peel ba
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-line-relief-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: Line relief: a fresh unit passes through its tired ally and takes over the fight; the relieved unit falls back to the rear.
+Figure&nbsp;10: Line relief: a fresh unit passes through its tired ally and takes over the fight; the relieved unit falls back to the rear.
 </figcaption>
 </figure>
 </div>
@@ -823,7 +838,7 @@ Figure&nbsp;9: Line relief: a fresh unit passes through its tired ally and takes
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-shielded-stances-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Shielded-stance visuals: a shield wall (left) draws a locked shield line along its front face, and a testudo (right) draws an overhead shield roof over the whole block — so each stance reads at a glance.
+Figure&nbsp;11: Shielded-stance visuals: a shield wall (left) draws a locked shield line along its front face, and a testudo (right) draws an overhead shield roof over the whole block — so each stance reads at a glance.
 </figcaption>
 </figure>
 </div>
@@ -839,7 +854,7 @@ Figure&nbsp;10: Shielded-stance visuals: a shield wall (left) draws a locked shi
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
+Figure&nbsp;12: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
 </figcaption>
 </figure>
 </div>
@@ -854,7 +869,7 @@ Figure&nbsp;11: File-doubling: duplicatio (N) folds the line into a deep column;
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-asymmetric-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
+Figure&nbsp;13: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
 </figcaption>
 </figure>
 </div>
@@ -871,7 +886,7 @@ Figure&nbsp;12: Anchored explicatio (Shift+B): the right flank stays fixed while
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-formation-preview-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;13: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
+Figure&nbsp;14: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
 </figcaption>
 </figure>
 </div>
@@ -886,7 +901,7 @@ Figure&nbsp;13: Move-order ghost preview: a unit forms Square, then marches unde
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-order-distance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;14: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
+Figure&nbsp;15: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
 </figcaption>
 </figure>
 </div>
@@ -904,7 +919,7 @@ Figure&nbsp;14: Order distance labels: the green move line shows the remaining m
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;15: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
+Figure&nbsp;16: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
 </figcaption>
 </figure>
 </div>
