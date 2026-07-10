@@ -278,7 +278,15 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
 - **Cycle charge** (<kbd>J</kbd>) --- cavalry charge the target, pull back to a
   standoff, and charge again, so each run lands a fresh momentum hit instead of
   grinding once the charge is spent (see [Tactics](tactics.qmd#order-stances)).
-- **Chase** (<kbd>,</kbd>) --- relentless pursuit: the unit never takes the
+- **Sweep routers** (<kbd>,</kbd>) --- the unit prioritizes a routing (fleeing) enemy
+  over a closer enemy that's still standing and fighting, chasing down the break
+  before mopping up the line (see [Tactics](tactics.qmd#order-stances)).
+- **Roll the line** (<kbd>;</kbd>) --- once the current target routs or is
+  destroyed, the unit automatically re-targets the next-closest enemy still
+  fighting instead of standing idle or chasing a broken foe, so a single
+  attack order can carry a unit down a whole enemy line
+  (see [Tactics](tactics.qmd#order-stances)).
+- **Chase** (<kbd>.</kbd>) --- relentless pursuit: the unit never takes the
   normal disengage exit a plain move order gives it, so it keeps closing on and
   re-engaging the same fleeing or repositioning enemy instead of breaking off
   (see [Tactics](tactics.qmd#order-stances)).
@@ -334,6 +342,36 @@ Support stance: a unit guards an ally, shadowing it and engaging any threat.
 
 Cycle charge stance: cavalry charge, land the impact hit,
 peel back to a standoff, then charge again.
+:::
+
+::: {#fig-sweep-routers .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/sweep_routers.jpg">
+  <source src="media/sweep_routers.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Sweep routers stance: the unit bypasses a closer, still-fighting enemy
+to chase down a more distant one that has broken and is fleeing.
+:::
+
+::: {#fig-roll-the-line .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/roll_the_line.jpg">
+  <source src="media/roll_the_line.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Roll the line stance: a single attack order carries the unit through
+three enemies in a row, one after another, as each breaks and routs.
 :::
 
 ::: {#fig-chase .demo}

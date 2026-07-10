@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/chase-attack.json",
-  "caption": "New CHASE attack order (, key): the unit relentlessly pursues its target -- once it breaks and routs, the cavalry keeps pressing the same fleeing enemy instead of disengaging.",
+  "caption": "New CHASE attack order (. key): the unit relentlessly pursues its target -- once it breaks and routs, the cavalry keeps pressing the same fleeing enemy instead of disengaging.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 15,
