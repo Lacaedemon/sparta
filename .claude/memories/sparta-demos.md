@@ -261,3 +261,43 @@ ROUTING the way a GUT test can by calling `_rout()` directly. That's why the
 isolated recovery case above is a GUT-test-only regression guard for now, not
 also a recordable website demo clip — sparta#657 tracks the follow-up to make
 it recordable. (`Lacaedemon/sparta` PR #654, 2026-07-04.)
+
+## A hotkey rebind (merge-conflict collision fix) has THREE copies to sync, not one
+
+When resolving an `OrderMode`-enum merge collision (see `sparta.md`'s
+"Battle.gd merge" section) forces a stance's default hotkey to change —
+e.g. `all_out_attack` rebinding off a colliding `KEY_COMMA` to a free
+`KEY_PERIOD` — the code fix (`Settings.gd`'s `DEFAULT_ORDER_BINDINGS`,
+`Battle.gd`, `HUD.gd`) is only one of three places that name the key. The
+other two are easy to miss because they're prose/data, not code a compiler
+or test suite checks:
+
+- **The scripted-input demo file itself** (`demos/inputs/<name>.json`):
+  its `steps` array presses the OLD key literally
+  (`{"key": "Comma", "ctrl": true}`), so after a rebind it silently arms the
+  WRONG stance instead of erroring — the recording still runs to completion,
+  it just demonstrates the wrong thing. Its own `_comment` field usually
+  also spells out the key in prose ("Ctrl+,") and goes stale the same way.
+- **The per-PR demo manifest's caption** (`demos/demo.<N>.json`'s
+  `"caption"` field): CI copies this verbatim into the PR description, so a
+  stale key symbol here (`"hotkey ,)"`) tells every reader of the PR the
+  wrong key even though the code and the recording are both already fixed.
+
+None of these three are caught by `tools/check.sh validate test` — the
+Godot import and GUT suite don't read caption strings or demo JSON prose.
+The only thing that catches the demo-input-file case is actually running
+the recording and reading the result: `tools/demo/dump-state.sh
+demos/inputs/<name>.json <ticks> <outdir>`, then confirming the armed
+unit's `order_mode` field names the INTENDED stance, not some other one —
+CI's own per-tick state transcript comment on the PR is the same check,
+just after the fact. After any hotkey rebind, grep the whole repo for the
+OLD key's string name (`grep -rn '"key": "Comma"' demos/` or whatever the
+prior binding was) to find every stale copy before considering the fix
+complete, and re-verify with a state dump rather than trusting that fixing
+`Settings.gd` was the whole job. (`Lacaedemon/sparta` PR #704, 2026-07-10:
+a merge-resolution agent correctly rebound `all_out_attack` to `KEY_PERIOD`
+in every code site but missed both `demos/inputs/all-out-attack.json`'s own
+key press and `demos/demo.704.json`'s caption — caught only via the live
+CI state transcript showing `Sweep routers` armed instead of `All-out
+attack`, then a second stale caption reference caught by a follow-up
+review round.)
