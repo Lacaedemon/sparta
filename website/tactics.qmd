@@ -68,6 +68,24 @@ fightable --- for as long as it's plausibly still in view.
   its final unit is merely routing. Even a lone survivor that breaks can flee, rally,
   and fight on --- so press a rout home rather than assuming a broken last unit is a win.
 
+::: {#fig-morale-recovery .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/morale_recovery.jpg">
+  <source src="media/morale_recovery.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A broken unit recovering with nothing to interfere: staged already routing, with no
+enemy anywhere on the field, so pursuit and further casualties can't factor in. Its
+nerve steadies as it flees, morale climbs back over the rally threshold, and it
+returns to your control. (The regression guard for this behavior is
+`test_morale_recovery_demo_scenario.gd`.)
+:::
+
 ::: {#fig-rout-rally .demo}
 
 ```{=html}
@@ -82,9 +100,8 @@ fightable --- for as long as it's plausibly still in view.
 Rout and pursuit: a low-morale infantry block is charged by cavalry and breaks &mdash;
 it flees faded toward its own edge. The faster cavalry catch it before it can put
 real distance between them, and the casualties from being run down keep its morale
-too low to ever recover: it's annihilated rather than rallying. A broken unit that
-truly breaks free instead recovers cleanly, as in the isolated case
-`test_morale_recovery_demo_scenario.gd` guards against regressing.
+too low to ever recover: it's annihilated rather than rallying &mdash; contrast the
+isolated recovery above (@fig-morale-recovery), where nothing interferes.
 :::
 
 ::: {#fig-last-unit-rally .demo}
