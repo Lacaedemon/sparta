@@ -57,9 +57,10 @@ sprint: 80 world-units/s (4.0 m/s).
   [Horse gait — Wikipedia](https://en.wikipedia.org/wiki/Horse_gait).
   **Correction to the original draft:** Sparta's cavalry "sprint" of 8.5 m/s
   (30.6 km/h) is **not** "the upper end of the historical gallop range" — a
-  true gallop averages 40–48 km/h, nearly 1.5× faster. 8.5 m/s instead lands
-  inside the **canter** range (16–27 km/h), a controlled three-beat gait
-  slower than a full gallop. Whether that's the right in-game value is a
+  true gallop averages 40–48 km/h, nearly 1.5× faster. 8.5 m/s instead falls
+  **between the canter and gallop ranges** (faster than a 16–27 km/h canter,
+  well short of a 40–48 km/h gallop) — closer to a fast canter than to any
+  gait actually called a gallop. Whether that's the right in-game value is a
   gameplay-balance question (a full 40+ km/h charge might be unplayable at
   this map/camera scale) rather than a factual one — but the earlier
   "verdict" claim was wrong and is corrected here.
@@ -123,9 +124,10 @@ suspected by the issue reporter:
 1. **Formation spacing (0.45 m) is about half the tightest historically
    attested close-order spacing (≈0.89 m, Macedonian phalanx).** This is a
    real gap, not a perception issue.
-2. **Cavalry charge speed (8.5 m/s / 30.6 km/h) reads as a fast canter, not
-   a gallop** (true gallop: 40–48 km/h). The earlier draft of this document
-   asserted the opposite; corrected here.
+2. **Cavalry charge speed (8.5 m/s / 30.6 km/h) sits between a canter and a
+   true gallop** — faster than the 16–27 km/h canter range, well short of
+   the 40–48 km/h gallop range. The earlier draft of this document asserted
+   it was "the upper end of the gallop range"; corrected here.
 
 Neither is fixed in this PR: changing either value is a gameplay-balance
 change (formation width/spacing math, unit collision spacing, and relative
@@ -140,8 +142,8 @@ either way; also tracked separately.
 - [#719](https://github.com/Lacaedemon/sparta/issues/719) — formation
   spacing tightness vs. the historical ≈0.89 m minimum (`FORMATION_SPACING`).
 - [#720](https://github.com/Lacaedemon/sparta/issues/720) — cavalry charge
-  speed reads as a canter, not a gallop — reconsider `sprint_mps` for
-  cavalry (or document why the slower value is intentional for
+  speed sits between a canter and a true gallop — reconsider `sprint_mps`
+  for cavalry (or document why the slower value is intentional for
   playability at this scale).
 - [#721](https://github.com/Lacaedemon/sparta/issues/721) — cavalry
   visual/silhouette size vs. collision radius (rendering, not physics) —
