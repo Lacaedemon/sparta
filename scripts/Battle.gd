@@ -494,6 +494,9 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.set_formation(d.get("formation", Unit.FORMATION_NORMAL))
 	if d.has("morale"):
 		u.morale = float(d["morale"])
+	# Apply a starting state if specified (ROUTING for demo recovery scenarios, etc).
+	if d.has("starting_state"):
+		_apply_starting_state(u, int(d["starting_state"]))
 	return u
 
 
@@ -520,6 +523,8 @@ func _spawn_scenario(specs: Array) -> void:
 			d["morale"] = float(spec["morale"])
 		if spec.has("formation"):
 			d["formation"] = int(spec["formation"])
+		if spec.has("starting_state"):
+			d["starting_state"] = int(spec["starting_state"])
 		var team := int(spec.get("team", 0))
 		var pos := Vector2(float(spec.get("x", FIELD.size.x * 0.5)), float(spec.get("y", FIELD.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
@@ -543,6 +548,26 @@ func _loadout_for_type(loadout: Array, type_name: String) -> Dictionary:
 		if str(d["name"]) == type_name:
 			return d
 	return {}
+
+
+## Apply a starting state to a unit (ROUTING for demos/tests). For demo tooling only;
+## a normal battle never calls this. ROUTING starts the disengagement/rally sequence.
+func _apply_starting_state(u: Unit, starting_state: int) -> void:
+	match starting_state:
+		Unit.State.ROUTING:
+			u._rout()
+		Unit.State.DEAD:
+			# Unlike the real death path (Unit._remove_from_play), this leaves the unit
+			# in place (not freed) so a demo can show an already-dead body on the field --
+			# but it still shouldn't count as a fightable unit, so leave the "units" group
+			# same as a real death does.
+			u.state = Unit.State.DEAD
+			u.remove_from_group("units")
+		_:
+			# Match _spawn_scenario's unknown-'type' handling: warn loudly instead of a
+			# silent no-op, so a typo'd enum value (e.g. IDLE's 0 meant as ROUTING's 3)
+			# surfaces immediately instead of shipping a demo that doesn't show what it claims.
+			push_warning("[battle] scenario 'starting_state' %d is not ROUTING or DEAD; leaving the unit IDLE." % starting_state)
 
 
 func _physics_process(_delta: float) -> void:
