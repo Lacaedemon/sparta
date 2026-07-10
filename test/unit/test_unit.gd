@@ -1564,8 +1564,12 @@ func test_relief_exemption_clears_once_pair_moves_apart() -> void:
 	fresh.position = Vector2.ZERO
 	_begin_relief(fresh, tired)
 	assert_true(fresh._separation_exempt(tired), "exempt while still overlapping")
-	# Move the reliever well clear of the tired unit (past the clear distance).
-	fresh.position = Vector2(fresh.separation_radius + tired.separation_radius + 50.0, 0.0)
+	# Move the reliever well clear of the tired unit: past the regiments' separation
+	# radii AND past both blocks' own soldier extents (see UnitRelief.update), which
+	# the clearing distance is measured against -- not just a flat regiment radius.
+	var clear_distance: float = fresh.separation_radius + tired.separation_radius \
+		+ fresh.soldier_block_extent() + tired.soldier_block_extent() + 10.0
+	fresh.position = Vector2(clear_distance, 0.0)
 	UnitRelief.update(fresh)
 	assert_false(fresh._separation_exempt(tired),
 		"the exemption ends once the swapping pair has moved apart")
@@ -1603,7 +1607,11 @@ func test_relief_order_waits_for_the_swap_to_resolve_before_retiring() -> void:
 	fresh._update_current_order()
 	assert_eq(fresh.current_order, order, "the order holds while the swap is unresolved")
 	# The pair moves apart; the resolve pass clears the link and the order retires.
-	fresh.position = Vector2(fresh.separation_radius + tired.separation_radius + 50.0, 0.0)
+	# Past the regiments' separation radii AND both blocks' own soldier extents --
+	# see UnitRelief.update and test_relief_exemption_clears_once_pair_moves_apart.
+	var clear_distance: float = fresh.separation_radius + tired.separation_radius \
+		+ fresh.soldier_block_extent() + tired.soldier_block_extent() + 10.0
+	fresh.position = Vector2(clear_distance, 0.0)
 	UnitRelief.update(fresh)
 	fresh._update_current_order()
 	assert_null(fresh.current_order, "the order retires once the swap has resolved")
