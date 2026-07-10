@@ -830,7 +830,7 @@ into different tools:
   otherwise would. Use it to hold a line cheaply in casualties from its own
   attacks, not to win a stand-up fight outright; it's a genuine tradeoff, not a
   strict upgrade over a normal stance.
-- **Chase** (<kbd>\</kbd>) --- relentless pursuit: the unit overrides the normal
+- **Chase** (<kbd>\\</kbd>) --- relentless pursuit: the unit overrides the normal
   disengage exit a plain move order (or losing steady contact) otherwise gives
   it, so it keeps closing on and re-engaging the same fleeing or repositioning
   enemy instead of breaking off. Use it to run down a routing foe rather than
