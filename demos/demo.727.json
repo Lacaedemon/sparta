@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/sidestep.json",
+  "caption": "The website 'Side-step' demo had gone stale: PR #685 widened the default spawn-line spacing, moving the lone Spearmen's spawn x from 500 to 476.75, so the scenario's old fixed click target (536, 300) became a 59.25-unit move -- past UnitManeuver.SIDESTEP_MAX_DISTANCE (40.0) -- and the unit centre-pivoted to face the move instead of side-stepping. Retargeted the click to (505, 300), a ~28-unit shift from the unit's current spawn position. Watch the Spearmen shuffle right at a walk while holding its south-facing line, instead of pivoting.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 720
+}
