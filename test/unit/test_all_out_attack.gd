@@ -4,8 +4,12 @@ extends GutTest
 ## attack when the STRIKER is in this stance, and -20% effective defense when the
 ## TARGET is -- so a unit fighting all-out both hits harder and gets hit harder.
 ## Covers the acceptance criteria directly (own hit chance up, own defense down) and
-## guards the exact bug three review rounds caught and fixed: the defense penalty
-## must be keyed on the TARGET's own order_mode, never the attacker's.
+## guards two review-caught bugs: (1) the defense penalty must be keyed on the
+## TARGET's own order_mode, never the attacker's; (2) order_mode_modifiers() must
+## actually apply in the per-soldier melee path (SoldierMelee.resolve()'s wound_scale),
+## not just the regiment-formula/ranged fallback -- the melee end-to-end tests below
+## stage genuinely ENGAGED units (see _make_engaged_unit) so they exercise the same
+## dispatch branch real, in-contact combat takes, rather than the rarely-hit fallback.
 
 const BattleScript = preload("res://scripts/Battle.gd")
 const SettingsScript = preload("res://scripts/Settings.gd")
@@ -18,6 +22,24 @@ func _make_unit(max_soldiers: int = 100) -> Unit:
 	add_child_autofree(u)   # _ready() sets soldiers = max_soldiers, joins "units"
 	u.facing = Vector2.DOWN
 	u.position = Vector2.ZERO
+	return u
+
+
+## A bare _make_unit() never engages: UnitCombat.strike()'s per-soldier melee branch
+## (Unit.INDIVIDUAL_COLLISION and both units engaged/seeded) requires is_engaged() true
+## and a populated _sim_soldier_pos, so a test built only on _make_unit() exercises just
+## the regiment-formula fallback -- the path real, engaged melee never actually takes.
+## This mirrors test_soldier_melee.gd's _unit() pattern (tick_engaged + seed_sim_soldiers)
+## so strike() dispatches into the SAME branch live combat does.
+func _make_engaged_unit(max_soldiers: int, pos: Vector2, face: Vector2) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = max_soldiers
+	add_child_autofree(u)
+	u.position = pos
+	u.facing = face
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.1)     # latch is_engaged() true
+	u.seed_sim_soldiers()   # seed bodies + full health
 	return u
 
 
@@ -70,61 +92,80 @@ func test_both_units_all_out_attack_apply_independently() -> void:
 
 
 # --- end-to-end: strike()/shoot() actually move casualty counts --------------
+#
+# These stage ENGAGED units (tick_engaged + seed_sim_soldiers, matching
+# test_soldier_melee.gd's pattern), not bare Unit.new() instances, so UnitCombat.strike()
+# dispatches into the per-soldier SoldierMelee.resolve() path -- the branch every real,
+# in-contact melee fight actually takes (Unit.INDIVIDUAL_COLLISION is a hardcoded true
+# const) -- rather than the regiment-formula fallback that only runs for a non-engaged or
+# unseeded edge case. A first version of this test file used bare units here and passed
+# even though order_mode_modifiers() was never wired into SoldierMelee.resolve() at all,
+# because bare units always fall through to the (irrelevant, in real combat) formula path.
 
-func test_all_out_attack_striker_deals_more_melee_damage() -> void:
-	# Same attacker/defender stat line and the same RNG draw; only the attacker's
+func test_all_out_attack_striker_deals_more_melee_damage_when_engaged() -> void:
+	# Same attacker/defender stat line and the same RNG draws; only the attacker's
 	# stance differs, so any damage delta is attributable to ALL_OUT_ATTACK alone.
-	var attacker_all_out := _make_unit()
+	var attacker_all_out := _make_engaged_unit(100, Vector2(0, 0), Vector2.DOWN)
 	attacker_all_out.team = 0
 	attacker_all_out.order_mode = Unit.ORDER_ALL_OUT_ATTACK
-	var defender_a := _make_unit()
+	var defender_a := _make_engaged_unit(100, Vector2(0, 10), Vector2.UP)
 	defender_a.team = 1
 	var before_a: int = defender_a.soldiers
 
-	var attacker_normal := _make_unit()
+	var attacker_normal := _make_engaged_unit(100, Vector2(0, 0), Vector2.DOWN)
 	attacker_normal.team = 0
-	var defender_b := _make_unit()
+	var defender_b := _make_engaged_unit(100, Vector2(0, 10), Vector2.UP)
 	defender_b.team = 1
 	var before_b: int = defender_b.soldiers
 
+	# 16 cadences (empirically checked against 8/12/16/20/25/30/40): enough to open a
+	# clear, consistent gap between the two RNG-identical fights while both regiments
+	# stay well short of full wipeout -- at 8 cadences the gap hadn't opened yet (both
+	# sides landed exactly 8 casualties by coincidence at that low a sample), and past
+	# ~30 both regiments start converging back together as they approach annihilation.
 	Replay.rng.seed = 12345
-	UnitCombat.strike(attacker_all_out, defender_a)
+	for _k in range(16):
+		UnitCombat.strike(attacker_all_out, defender_a)
 	var casualties_all_out: int = before_a - defender_a.soldiers
 
-	Replay.rng.seed = 12345   # replay the identical RNG draw against the normal attacker
-	UnitCombat.strike(attacker_normal, defender_b)
+	Replay.rng.seed = 12345   # replay the identical RNG draws against the normal attacker
+	for _k in range(16):
+		UnitCombat.strike(attacker_normal, defender_b)
 	var casualties_normal: int = before_b - defender_b.soldiers
 
 	assert_gt(casualties_all_out, casualties_normal,
-		"an all-out-attack striker inflicts more melee casualties than a normal one")
+		"an engaged all-out-attack striker inflicts more melee casualties than a normal one")
 
 
-func test_all_out_attack_defender_takes_more_melee_damage() -> void:
-	# Same attacker, same RNG draw; only the DEFENDER's stance differs, isolating the
+func test_all_out_attack_defender_takes_more_melee_damage_when_engaged() -> void:
+	# Same attacker, same RNG draws; only the DEFENDER's stance differs, isolating the
 	# defense-penalty half of the tradeoff (the half the bug hid for three rounds).
-	var attacker_a := _make_unit()
+	var attacker_a := _make_engaged_unit(100, Vector2(0, 0), Vector2.DOWN)
 	attacker_a.team = 0
-	var defender_all_out := _make_unit()
+	var defender_all_out := _make_engaged_unit(100, Vector2(0, 10), Vector2.UP)
 	defender_all_out.team = 1
 	defender_all_out.order_mode = Unit.ORDER_ALL_OUT_ATTACK
 	var before_a: int = defender_all_out.soldiers
 
-	var attacker_b := _make_unit()
+	var attacker_b := _make_engaged_unit(100, Vector2(0, 0), Vector2.DOWN)
 	attacker_b.team = 0
-	var defender_normal := _make_unit()
+	var defender_normal := _make_engaged_unit(100, Vector2(0, 10), Vector2.UP)
 	defender_normal.team = 1
 	var before_b: int = defender_normal.soldiers
 
+	# 16 cadences -- see the matching comment on the striker-side test above.
 	Replay.rng.seed = 12345
-	UnitCombat.strike(attacker_a, defender_all_out)
+	for _k in range(16):
+		UnitCombat.strike(attacker_a, defender_all_out)
 	var casualties_exposed: int = before_a - defender_all_out.soldiers
 
 	Replay.rng.seed = 12345
-	UnitCombat.strike(attacker_b, defender_normal)
+	for _k in range(16):
+		UnitCombat.strike(attacker_b, defender_normal)
 	var casualties_safe: int = before_b - defender_normal.soldiers
 
 	assert_gt(casualties_exposed, casualties_safe,
-		"a defender fighting all-out takes more melee casualties than one that isn't")
+		"an engaged defender fighting all-out takes more melee casualties than one that isn't")
 
 
 func test_all_out_attack_striker_deals_more_ranged_damage() -> void:
