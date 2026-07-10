@@ -226,6 +226,15 @@ const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
+const ORDER_ROLL_THE_LINE := 7
+
+# Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
+# decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
+# RUN (triple), SPRINT (quadruple+). See Battle.gd's Gait enum.
+const GAIT_WALK := 0
+const GAIT_JOG := 1
+const GAIT_RUN := 2
+const GAIT_SPRINT := 3
 
 # Formation modes: how tightly the regiment is packed, plus the two shielded
 # close-order stances built on TIGHT's locked-shield density, and the two hollow-square
@@ -1073,7 +1082,20 @@ func _think(delta: float) -> void:
 		support_target = null
 		order_mode = 0   # ward gone: revert to NORMAL
 
-	var enemy: Unit = UnitTargeting.current_target(self)
+	# Roll the line: a beaten (dead or routed) foe no longer holds this unit's attention --
+	# it moves straight on to the next-closest enemy still actually fighting, instead of
+	# either idling once the kill lands or grinding out a chase against a target that's
+	# already broken (current_target's ordinary chase-to-destroy behaviour). Persist the
+	# fresh pick to target_enemy itself (unlike current_target, which leaves that write to
+	# an explicit order) -- ROLL_THE_LINE's whole point is to keep committing to a new foe
+	# with no fresh player/AI order behind it, so the not-yet-in-contact chase branch below
+	# (which reads the target_enemy field, not this local) needs it set too.
+	var enemy: Unit
+	if order_mode == ORDER_ROLL_THE_LINE:
+		enemy = UnitTargeting.roll_the_line_target(self)
+		target_enemy = enemy
+	else:
+		enemy = UnitTargeting.current_target(self)
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
@@ -1356,8 +1378,26 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# walks by default, jogs under missile fire, and sprints at full speed once
 	# close to the target. Each pace is this unit's own gait speed, not a fraction
 	# of another -- see walk_speed/jog_speed/move_speed above.
+	# A MOVE order with an explicit gait (from multi-click) overrides AUTO: single-click
+	# forces walk, double-click forces jog, triple-click defaults to run, quadruple-click
+	# forces sprint.
 	var pace_speed: float
-	if maneuvering or walk_advance:
+	# Check if current_order specifies a gait to use
+	var override_gait: bool = current_order != null and current_order.type == Order.Type.MOVE \
+			and current_order.gait >= 0
+	if override_gait:
+		match current_order.gait:
+			GAIT_WALK:
+				pace_speed = walk_speed
+			GAIT_JOG:
+				pace_speed = jog_speed
+			GAIT_RUN:
+				pace_speed = move_speed if position.distance_to(point) <= SPRINT_START_DISTANCE else jog_speed
+			GAIT_SPRINT:
+				pace_speed = move_speed
+			_:
+				pace_speed = walk_speed  # fallback
+	elif maneuvering or walk_advance:
 		pace_speed = walk_speed
 	elif position.distance_to(point) <= SPRINT_START_DISTANCE:
 		pace_speed = move_speed  # sprint distance beats under-fire: charge through the kill zone at full speed
@@ -3483,5 +3523,15 @@ func _draw() -> void:
 	# Morale (green → yellow → red as it degrades).
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw, 4.0), Color(0.15, 0.15, 0.15, alpha))
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
+
+	# Soldier ID overlay (dev/debug visual, figure-LOD gated, selected unit only).
+	# _sim_soldier_pos is parent-local (like the body MultiMesh above), so convert to this
+	# node's own local drawing space the same way the body loop does: subtract `position`,
+	# not to_local() (which expects a global/world position and would double-convert).
+	if selected and Settings.show_soldier_ids and _detailed_lod:
+		var id_mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+		for i in range(_sim_soldier_pos.size()):
+			draw_string(font, (_sim_soldier_pos[i] - position) + Vector2(-4, -id_mark_r),
+					str(i), HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(1, 1, 1, 0.9))
 
 	UnitSprites.flag(self, body_c, alpha, extent)

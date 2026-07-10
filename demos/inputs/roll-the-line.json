@@ -1,0 +1,19 @@
+{
+  "_comment": "Scenario-staged ROLL_THE_LINE demo: a full-strength (120) player Infantry unit is ordered under the roll-the-line stance to attack a lone weak (15-man, low-morale) enemy at the front of a line of three. As each enemy in turn breaks and routs, the attacker automatically rolls onto the next-closest enemy still fighting -- no fresh order issued for the second or third target. Camera holds on the line so the sequential engagement reads clearly.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 480, "count": 120, "morale": 100.0},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 560, "count": 15, "morale": 20.0},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 660, "count": 15, "morale": 20.0},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 760, "count": 15, "morale": 20.0}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 620.0, "zoom": 1.1}
+  ],
+  "steps": [
+    {"tick": 5, "click": [800, 480]},
+    {"tick": 10, "key": "Semicolon"},
+    {"tick": 15, "rmb_click": [800, 560]}
+  ],
+  "state": [10, 60, 120, 180, 240, 300]
+}

@@ -75,7 +75,16 @@ const NUDGE_DISTANCE := 30.0
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, ROLL_THE_LINE }
+
+## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
+## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
+## any unit that receives an explicit gait; an order with no gait set (-1, AUTO) keeps
+## the old walk/jog-under-fire/sprint-at-close-range logic in Unit._move_to. There are
+## only three real per-type speeds (walk/jog/sprint -- for cavalry, walk/trot/gallop);
+## RUN has no speed of its own, it's jog while far from the target and sprint once
+## inside SPRINT_START_DISTANCE (see Unit._move_to).
+enum Gait { WALK, JOG, RUN, SPRINT }
 
 ## How a multi-unit attack order distributes its target among the ordered units.
 ## Focused (default): every unit attacks the same enemy.
@@ -88,6 +97,13 @@ const GROUP_ATTACK_MODE_NAMES := {
 	GroupAttackMode.DISTRIBUTED: "Attack: distributed",
 }
 
+const GAIT_NAMES := {
+	Gait.WALK: "Walk",
+	Gait.JOG: "Jog",
+	Gait.RUN: "Run",
+	Gait.SPRINT: "Sprint",
+}
+
 ## Human-readable mode names for the HUD / cursor indicator.
 const ORDER_MODE_NAMES := {
 	OrderMode.NORMAL: "Normal",
@@ -97,6 +113,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.SKIRMISH: "Skirmish",
 	OrderMode.SUPPORT: "Support",
 	OrderMode.CYCLE_CHARGE: "Cycle charge",
+	OrderMode.ROLL_THE_LINE: "Roll the line",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -111,6 +128,7 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.SKIRMISH, "slug": "skirmish"},
 	{"mode": OrderMode.SUPPORT, "slug": "support"},
 	{"mode": OrderMode.CYCLE_CHARGE, "slug": "cycle_charge"},
+	{"mode": OrderMode.ROLL_THE_LINE, "slug": "roll_the_line"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
@@ -181,7 +199,8 @@ func _ready() -> void:
 			and UnitRef.ORDER_ATTACK_REAR == OrderMode.ATTACK_REAR \
 			and UnitRef.ORDER_SKIRMISH == OrderMode.SKIRMISH \
 			and UnitRef.ORDER_SUPPORT == OrderMode.SUPPORT \
-			and UnitRef.ORDER_CYCLE_CHARGE == OrderMode.CYCLE_CHARGE,
+			and UnitRef.ORDER_CYCLE_CHARGE == OrderMode.CYCLE_CHARGE \
+			and UnitRef.ORDER_ROLL_THE_LINE == OrderMode.ROLL_THE_LINE,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 
 	# Start a fresh recording for every live battle (so any battle can be
@@ -701,7 +720,8 @@ func _apply_order_live(cmd: Dictionary) -> void:
 ## deterministic path with exactly-once application.
 func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		order_mode: int = OrderMode.NORMAL,
-		group_attack: int = GroupAttackMode.FOCUSED) -> void:
+		group_attack: int = GroupAttackMode.FOCUSED,
+		gait: int = -1) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -713,6 +733,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"reform": Settings.reform_before_move,
 		"walk_advance": Settings.walk_advance,
 		"group_attack": group_attack,
+		"gait": gait,
 	}
 	_pending_orders.append(cmd)
 	# A waypoint append is tick-authoritative (its point is derived from positions at
@@ -1042,6 +1063,11 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	# The order's stance, stamped on each ordered unit below for the smart-
 	# order behaviours to consume. Defaults to NORMAL for older replays / merges.
 	var mode: int = int(cmd.get("mode", OrderMode.NORMAL))
+	# The movement gait (WALK/JOG/RUN/SPRINT) for MOVE orders. Defaults to -1 (AUTO,
+	# matching Order.gait's own default) for older replays / merges / programmatic
+	# orders where the field is not set, so they keep the old walk/jog/sprint logic
+	# instead of being silently forced onto a fixed gait.
+	var gait: int = int(cmd.get("gait", -1))
 	# The target uid may be an enemy (attack) or a friendly (line relief); a
 	# plain move has no target. Resolve it and dispatch per ordered unit by team.
 	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
@@ -1154,7 +1180,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# idle unit starts marching it now (append_order made it current); a
 				# busy one continues its current order and the leg commits when it is
 				# promoted (retire_current_order -> _start_promoted_move).
-				var leg := Order.new_move(point, mode)
+				var leg := Order.new_move(point, mode, gait)
 				u.append_order(leg)
 				if u.current_order == leg and not u.has_move_target:
 					u.move_target = point
@@ -1188,7 +1214,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# Reform timing rides the recorded "reform" field on the Order: for a plain
 				# move it arms the reform-before-move hold below; for a rear move it times
 				# the composite's reform phase (see Unit._finish_order_turn).
-				var order := Order.new_move(point, mode)
+				var order := Order.new_move(point, mode, gait)
 				order.reform = bool(cmd.get("reform", false))
 				# Install the order first: set_current_order interrupts whatever maneuver
 				# the old order had in flight (a standing drill turn folds and settles; a

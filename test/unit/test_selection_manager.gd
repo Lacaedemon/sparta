@@ -648,6 +648,111 @@ func test_issue_form_up_routes_a_recorded_order() -> void:
 	assert_true(b._pending_orders[-1].has("face"), "routed as a recorded form-up order")
 
 
+# --- multi-click move gait (walk/jog/run/sprint) -------------------------
+
+func test_gait_from_click_count_maps_counts_to_gaits() -> void:
+	var sm := _sm()
+	assert_eq(sm._gait_from_click_count(1), BattleScript.Gait.WALK, "a single click walks")
+	assert_eq(sm._gait_from_click_count(2), BattleScript.Gait.JOG, "a double click jogs")
+	assert_eq(sm._gait_from_click_count(3), BattleScript.Gait.RUN, "a triple click runs")
+	assert_eq(sm._gait_from_click_count(4), BattleScript.Gait.SPRINT, "a quadruple click sprints")
+	assert_eq(sm._gait_from_click_count(9), BattleScript.Gait.SPRINT, "any further click stays at sprint")
+
+
+func test_gait_from_click_count_append_always_runs() -> void:
+	var sm := _sm()
+	assert_eq(sm._gait_from_click_count(1, true), BattleScript.Gait.RUN,
+			"an appended waypoint runs even on the first click")
+	assert_eq(sm._gait_from_click_count(4, true), BattleScript.Gait.RUN,
+			"an appended waypoint stays at run regardless of click count")
+
+
+func test_finish_right_button_first_click_orders_a_walk() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 21
+	sm._select(u)
+	sm._finish_right_button(Vector2(300, 300), false)
+	assert_eq(int(b._pending_orders[-1]["gait"]), BattleScript.Gait.WALK,
+			"a single right-click orders a walk")
+
+
+func test_finish_right_button_click_combo_escalates_the_gait() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 22
+	sm._select(u)
+	var dest := Vector2(300, 300)
+	sm._finish_right_button(dest, false)
+	assert_eq(int(b._pending_orders[-1]["gait"]), BattleScript.Gait.WALK, "1st click walks")
+	sm._finish_right_button(dest, false)
+	assert_eq(int(b._pending_orders[-1]["gait"]), BattleScript.Gait.JOG,
+			"a 2nd click on the same spot jogs")
+	sm._finish_right_button(dest, false)
+	assert_eq(int(b._pending_orders[-1]["gait"]), BattleScript.Gait.RUN, "a 3rd click runs")
+	sm._finish_right_button(dest, false)
+	assert_eq(int(b._pending_orders[-1]["gait"]), BattleScript.Gait.SPRINT, "a 4th click sprints")
+	sm._finish_right_button(dest, false)
+	assert_eq(int(b._pending_orders[-1]["gait"]), BattleScript.Gait.SPRINT,
+			"a 5th click stays at sprint")
+
+
+func test_finish_right_button_combo_resets_once_the_window_expires() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 23
+	sm._select(u)
+	var dest := Vector2(300, 300)
+	sm._finish_right_button(dest, false)
+	sm._finish_right_button(dest, false)
+	assert_eq(int(b._pending_orders[-1]["gait"]), BattleScript.Gait.JOG, "2 clicks in a row jog")
+	sm._last_right_click_ms -= (sm._click_combo_window_ms + 1)
+	sm._finish_right_button(dest, false)
+	assert_eq(int(b._pending_orders[-1]["gait"]), BattleScript.Gait.WALK,
+			"a click after the combo window expires restarts the count at walk")
+
+
+func test_finish_right_button_combo_resets_on_a_different_destination() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 24
+	sm._select(u)
+	sm._finish_right_button(Vector2(300, 300), false)
+	sm._finish_right_button(Vector2(300, 300), false)
+	assert_eq(int(b._pending_orders[-1]["gait"]), BattleScript.Gait.JOG,
+			"2 clicks on the same spot jog")
+	sm._finish_right_button(Vector2(900, 900), false)
+	assert_eq(int(b._pending_orders[-1]["gait"]), BattleScript.Gait.WALK,
+			"a click on a different destination restarts the count at walk")
+
+
+func test_finish_right_button_resets_the_click_count_after_a_drag() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 25
+	sm._select(u)
+	sm._click_count = 3
+	sm._rmb_dragging = true
+	sm._rmb_start = Vector2(300, 300)
+	sm._finish_right_button(Vector2(500, 300), false)   # wide enough to form up
+	assert_eq(sm._click_count, 0, "a form-up drag resets the click count")
+
+
 # --- multi-unit drag-to-form-up -------------------------
 
 const EQUAL_DEPTH := SelectionManagerScript.FormUpDist.EQUAL_DEPTH
