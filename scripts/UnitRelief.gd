@@ -61,8 +61,19 @@ static func update(u: Unit) -> void:
 	var gone: bool = not is_instance_valid(partner) \
 		or partner.state == Unit.State.DEAD \
 		or partner.state == Unit.State.ROUTING
+	# The exemption in SoldierSteering is all-or-nothing for the whole regiment pair (it
+	# skips every soldier-body pair between the two units while relief_partner is armed),
+	# so clearing it too early -- while the blocks still overlap -- turns separation back on
+	# for bodies that are still interpenetrating, and they all get shoved apart on the same
+	# tick: the chaotic swirl. The regiments' CENTER distance has to clear each block's own
+	# half-extent (soldier_block_extent -- the same reach the render/shadow size off, a
+	# function of soldier count, frontage and formation density, not a flat per-type radius)
+	# on top of the regiment separation_radius floor, or the check still fires while a wide
+	# LOOSE-order block's edge is well past where the smaller separation_radius alone would
+	# call it "clear".
 	var apart: bool = is_instance_valid(partner) \
 		and u.position.distance_to(partner.position) \
-			> u.separation_radius + partner.separation_radius + 24.0
+			> u.separation_radius + partner.separation_radius \
+				+ u.soldier_block_extent() + partner.soldier_block_extent()
 	if gone or apart:
 		order.relief_partner = null

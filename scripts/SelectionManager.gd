@@ -112,6 +112,13 @@ var _was_showing_orders: bool = false
 # Double-click type-select: the last clicked unit and when (ms).
 var _last_click_unit = null
 var _last_click_ms: int = -100000
+# Multi-click for movement gait: track consecutive right-clicks on ground positions.
+# Used to determine gait (walk/jog/run/sprint) for disciplined units.
+var _last_right_click_pos: Vector2 = Vector2.ZERO
+var _last_right_click_ms: int = -100000
+var _click_count: int = 0
+# Maximum milliseconds between consecutive right-clicks to count as a multi-click combo.
+var _click_combo_window_ms: int = 500
 # Control groups: number-key digit -> bound Array of units.
 var _groups: Dictionary = {}
 # Armed order mode: the next right-click issues an order in this stance.
@@ -426,7 +433,20 @@ func _same_type(a, b) -> bool:
 			and a.is_ranged == b.is_ranged
 
 
-func _issue_order(world_pos: Vector2, append: bool = false) -> void:
+## Return the Gait for the current multi-click count: WALK (1 click), JOG (2),
+## RUN (3), SPRINT (4+). Returns RUN whenever append is true, regardless of click
+## count (Shift+click for waypoint append uses run speed to maintain current behavior).
+func _gait_from_click_count(click_count: int, append: bool = false) -> int:
+	if append:
+		return BattleRef.Gait.RUN
+	match click_count:
+		1: return BattleRef.Gait.WALK
+		2: return BattleRef.Gait.JOG
+		3: return BattleRef.Gait.RUN
+		_: return BattleRef.Gait.SPRINT
+
+
+func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> void:
 	# Orders are replayed, so the player can't steer a playback.
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
@@ -466,7 +486,7 @@ func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 	var group_attack: int = BattleRef.GroupAttackMode.FOCUSED
 	if uids.size() > 1 and enemy != null:
 		group_attack = _group_attack_mode
-	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode, group_attack)
+	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode, group_attack, gait)
 	Sfx.play(&"order")
 
 
@@ -484,10 +504,23 @@ func _finish_right_button(end_pos: Vector2, append: bool) -> void:
 		# On a form-up drag, Shift switches the left->right placement from field order
 		# (the default) to selection order; it has no append meaning here.
 		_issue_form_up(start, end_pos, append)
+		# Reset click count on a drag (not a simple click).
+		_click_count = 0
 	else:
 		# Shift+right-click appends a waypoint to the route instead of replacing it,
 		# so a march can be plotted as a multi-leg path.
-		_issue_order(end_pos, append)
+		# Track multi-clicks on ground moves to determine gait (walk/jog/run/sprint).
+		var now_ms: int = Time.get_ticks_msec()
+		var click_combo: bool = (now_ms - _last_right_click_ms <= _click_combo_window_ms) and \
+			end_pos.distance_to(_last_right_click_pos) < 10.0
+		if click_combo:
+			_click_count += 1
+		else:
+			_click_count = 1
+		_last_right_click_pos = end_pos
+		_last_right_click_ms = now_ms
+		var gait: int = _gait_from_click_count(_click_count, append)
+		_issue_order(end_pos, append, gait)
 
 
 ## Whether a right-drag from `a` to `b` should deploy a formation line rather than
