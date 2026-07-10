@@ -548,6 +548,20 @@ Table&nbsp;1: Damage and morale multipliers by attack angle.
 <li><strong>A routing unit paths around impassable terrain too</strong> — fleeing is no longer a straight line toward the back edge; a router detours around a hill in its way the same as an ordered move does. If every escape direction is blocked, it gives up fleeing and stands to fight instead of uselessly running in place against the obstacle.</li>
 <li><strong>The battle isn’t over while a side is only routing.</strong> A team is beaten only once its last unit is truly gone (escaped, annihilated, or otherwise removed), not while its final unit is merely routing. Even a lone survivor that breaks can flee, rally, and fight on — so press a rout home rather than assuming a broken last unit is a win.</li>
 </ul>
+<div id="fig-morale-recovery" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-morale-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/morale_recovery.jpg">
+  <source src="media/morale_recovery.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-morale-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: A broken unit recovering with nothing to interfere: staged already routing, with no enemy anywhere on the field, so pursuit and further casualties can’t factor in. Its nerve steadies as it flees, morale climbs back over the rally threshold, and it returns to your control. (The regression guard for this behavior is <code>test_morale_recovery_demo_scenario.gd</code>.)
+</figcaption>
+</figure>
+</div>
 <div id="fig-rout-rally" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-rout-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -558,7 +572,7 @@ Table&nbsp;1: Damage and morale multipliers by attack angle.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-rout-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: Rout and pursuit: a low-morale infantry block is charged by cavalry and breaks — it flees faded toward its own edge. The faster cavalry catch it before it can put real distance between them, and the casualties from being run down keep its morale too low to ever recover: it’s annihilated rather than rallying. A broken unit that truly breaks free instead recovers cleanly, as in the isolated case <code>test_morale_recovery_demo_scenario.gd</code> guards against regressing.
+Figure&nbsp;2: Rout and pursuit: a low-morale infantry block is charged by cavalry and breaks — it flees faded toward its own edge. The faster cavalry catch it before it can put real distance between them, and the casualties from being run down keep its morale too low to ever recover: it’s annihilated rather than rallying — contrast the isolated recovery above (<a href="#fig-morale-recovery" class="quarto-xref">Figure&nbsp;1</a>), where nothing interferes.
 </figcaption>
 </figure>
 </div>
@@ -572,7 +586,7 @@ Figure&nbsp;1: Rout and pursuit: a low-morale infantry block is charged by caval
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-last-unit-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2: A team’s last unit routs. A lone player infantry is broken and flees (faded); the enemy keeps pressing since a routing unit is still fair game, so this matchup grinds on rather than resolving cleanly — but the point still holds: the battle stays live instead of ending the instant the last unit broke, for as long as it’s still on the field.
+Figure&nbsp;3: A team’s last unit routs. A lone player infantry is broken and flees (faded); the enemy keeps pressing since a routing unit is still fair game, so this matchup grinds on rather than resolving cleanly — but the point still holds: the battle stays live instead of ending the instant the last unit broke, for as long as it’s still on the field.
 </figcaption>
 </figure>
 </div>
@@ -586,7 +600,7 @@ Figure&nbsp;2: A team’s last unit routs. A lone player infantry is broken and 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-trapped-routing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: Fight if trapped: a weak unit routs toward the hill and two cavalry close off the other escape angles. With every direction in its escape cone blocked, it gives up fleeing and stands to fight rather than running uselessly in place against the terrain — and is gradually ground down instead of routing forever.
+Figure&nbsp;4: Fight if trapped: a weak unit routs toward the hill and two cavalry close off the other escape angles. With every direction in its escape cone blocked, it gives up fleeing and stands to fight rather than running uselessly in place against the terrain — and is gradually ground down instead of routing forever.
 </figcaption>
 </figure>
 </div>
@@ -672,7 +686,7 @@ Figure&nbsp;3: Fight if trapped: a weak unit routs toward the hill and two caval
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-formation-shift-reverse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4: Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight — the same parallelism as Shift+Y and Shift+X reversing the form-up-split and group-attack-mode cycles.
+Figure&nbsp;5: Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight — the same parallelism as Shift+Y and Shift+X reversing the form-up-split and group-attack-mode cycles.
 </figcaption>
 </figure>
 </div>
@@ -691,7 +705,7 @@ Figure&nbsp;4: Formation density cycling with the Shift-reverse: <kbd>T</kbd> st
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-testudo-under-fire-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;5: Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.
+Figure&nbsp;6: Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.
 </figcaption>
 </figure>
 </div>
@@ -722,7 +736,7 @@ Figure&nbsp;5: Testudo under fire: an infantry unit locked in testudo, ringed by
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;6: Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.
+Figure&nbsp;7: Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.
 </figcaption>
 </figure>
 </div>
@@ -736,7 +750,7 @@ Figure&nbsp;6: Anti-cavalry square: an infantry unit is charged in the rear by t
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-schiltron-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Schiltron: the same rear cavalry charge as above, but the unit forms Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge harder than orbis does, at a deeper offence cost.
+Figure&nbsp;8: Schiltron: the same rear cavalry charge as above, but the unit forms Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge harder than orbis does, at a deeper offence cost.
 </figcaption>
 </figure>
 </div>
@@ -750,7 +764,7 @@ Figure&nbsp;7: Schiltron: the same rear cavalry charge as above, but the unit fo
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-battle-ai-leaders-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;8: Two AI unit-leader decisions in one clash: the AI spearmen on the left form the anti-cavalry square on their own as player cavalry closes, with no player key press arming it. The AI infantry on the right advances and attacks, then re-targets and turns to face a second player unit that closes on its flank instead of fighting on with its back exposed.
+Figure&nbsp;9: Two AI unit-leader decisions in one clash: the AI spearmen on the left form the anti-cavalry square on their own as player cavalry closes, with no player key press arming it. The AI infantry on the right advances and attacks, then re-targets and turns to face a second player unit that closes on its flank instead of fighting on with its back exposed.
 </figcaption>
 </figure>
 </div>
@@ -831,7 +845,7 @@ Table&nbsp;2: Movement paces by unit type, in metres per second.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pace-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
+Figure&nbsp;10: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
 </figcaption>
 </figure>
 </div>
@@ -854,7 +868,7 @@ Figure&nbsp;9: Pace modes: regiments walk on approach, jog when enemy archers op
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
+Figure&nbsp;11: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
 </figcaption>
 </figure>
 </div>
@@ -879,7 +893,7 @@ Figure&nbsp;10: Per-type backward-walk speed: a Spearmen and an Archers regiment
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+Figure&nbsp;12: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
 </figcaption>
 </figure>
 </div>
@@ -925,7 +939,7 @@ Figure&nbsp;11: Braking on arrival: a lone Infantry regiment sprints toward a mo
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;13: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
@@ -1013,6 +1027,182 @@ Table&nbsp;3: Terrain patches and their movement effects.
 <hr>
 <p><em>Source: <a href="https://github.com/Lacaedemon/sparta/blob/main/README.md"><code>README.md</code></a> · combat math lives in <a href="https://github.com/Lacaedemon/sparta/blob/main/scripts/Unit.gd"><code>scripts/Unit.gd</code></a> (<code>_strike()</code>, <code>_flank_multiplier()</code>).</em></p>
 
+
+<script>
+function getQuartoHeadingAnchorIcon() {
+  const afterBodyScript = document.getElementById("quarto-html-after-body");
+  if (!afterBodyScript) {
+    return null;
+  }
+
+  const match = afterBodyScript.textContent.match(/const icon = ["']([^"']+)["']/);
+  return match ? match[1] : null;
+}
+
+// Quarto chain-link glyph from Bootstrap Icons.
+const chainLinkIconFallback = "\ue9cb";
+const headingAnchorIcon = getQuartoHeadingAnchorIcon();
+const defaultAnchorIconFallback =
+  headingAnchorIcon && headingAnchorIcon !== "#" ? headingAnchorIcon : chainLinkIconFallback;
+
+function getDefaultAnchorTemplate() {
+  // Prefer Quarto heading anchors first so the visible chain-link icon is reused.
+  const defaultAnchor =
+    document.querySelector(".anchored > a.anchorjs-link") ||
+    document.querySelector("a.anchorjs-link[data-anchorjs-icon]");
+  if (!defaultAnchor) {
+    return null;
+  }
+
+  return {
+    // Detect icon value from the template anchor's attribute or text.
+    icon: defaultAnchor.getAttribute("data-anchorjs-icon") || defaultAnchor.textContent.trim(),
+    hasDataIcon: defaultAnchor.hasAttribute("data-anchorjs-icon"),
+    style: defaultAnchor.getAttribute("style")
+  };
+}
+
+function normalizeAnchorIcon(icon) {
+  if (!icon || icon === "#") {
+    return defaultAnchorIconFallback;
+  }
+
+  return icon;
+}
+
+function createChainLinkSvgIcon() {
+  const svgNs = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNs, "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("fill", "currentColor");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.setAttribute("class", "equation-anchor-icon");
+
+  [
+    "M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.83-2H11a4 4 0 0 1-4 3H4a4 4 0 0 1 0-8h2.354z",
+    "M9.646 10.5H12a3 3 0 1 0 0-6H9a3 3 0 0 0-2.83 2H5a4 4 0 0 1 4-3h3a4 4 0 0 1 0 8H9.646z",
+    "M5.5 8a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1H6a.5.5 0 0 1-.5-.5"
+  ].forEach(function (pathData) {
+    const path = document.createElementNS(svgNs, "path");
+    path.setAttribute("d", pathData);
+    svg.appendChild(path);
+  });
+
+  return svg;
+}
+
+function alignEquationAnchorWithDefault(anchor, template) {
+  if (!anchor) {
+    return;
+  }
+
+  anchor.classList.remove("external");
+  anchor.classList.add("no-external");
+
+  const normalizedIcon = normalizeAnchorIcon(template && template.icon);
+  if (normalizedIcon === chainLinkIconFallback) {
+    anchor.removeAttribute("data-anchorjs-icon");
+    anchor.textContent = "";
+    anchor.appendChild(createChainLinkSvgIcon());
+  } else if (template && template.hasDataIcon) {
+    anchor.setAttribute("data-anchorjs-icon", normalizedIcon);
+    anchor.textContent = normalizedIcon;
+  } else {
+    anchor.removeAttribute("data-anchorjs-icon");
+    anchor.textContent = normalizedIcon;
+  }
+
+  if (template && template.style) {
+    anchor.setAttribute("style", template.style);
+  } else {
+    anchor.removeAttribute("style");
+  }
+}
+
+function alignEquationAnchorsWithDefault() {
+  const template = getDefaultAnchorTemplate();
+  document.querySelectorAll("a.equation-anchor").forEach(function (anchor) {
+    alignEquationAnchorWithDefault(anchor, template);
+  });
+}
+
+function ensureEquationAnchorStyles() {
+  if (document.getElementById("equation-anchor-styles")) {
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "equation-anchor-styles";
+  style.textContent = `
+    .equation-anchor-target {
+      --equation-anchor-offset: 1.2rem;
+      position: relative;
+      display: block;
+    }
+    .equation-anchor {
+      position: absolute;
+      left: calc(-1 * var(--equation-anchor-offset));
+      top: 50%;
+      transform: translateY(-50%);
+      text-decoration: none;
+      opacity: 0.7;
+      font-size: 0.9em;
+    }
+    .equation-anchor:hover {
+      opacity: 1;
+    }
+    .equation-anchor-icon {
+      width: 0.9em;
+      height: 0.9em;
+      vertical-align: -0.125em;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  ensureEquationAnchorStyles();
+
+  let counter = 0;
+
+  document.querySelectorAll(".math.display").forEach(function (mathEl) {
+    // For labeled equations, Quarto wraps the math display span in an eq-* span.
+    // For unlabeled equations, use the parent element (typically a <p>).
+    const labeledContainer = mathEl.closest("[id^='eq-']");
+    const target = labeledContainer || mathEl.parentElement;
+
+    if (!target) {
+      return;
+    }
+
+    // Skip if already processed.
+    if (target.querySelector(".equation-anchor")) {
+      return;
+    }
+
+    // Use the labeled container's id, or assign an auto-generated id.
+    let id = labeledContainer ? labeledContainer.id : target.id;
+    if (!id) {
+      counter++;
+      id = "eq-anchor-" + counter;
+      target.id = id;
+    }
+
+    target.classList.add("equation-anchor-target");
+
+    const anchor = document.createElement("a");
+    anchor.className = "equation-anchor anchorjs-link";
+    anchor.href = "#" + id;
+    anchor.setAttribute("aria-label", "Permalink to this equation");
+    target.appendChild(anchor);
+  });
+
+  alignEquationAnchorsWithDefault();
+});
+
+window.addEventListener("load", alignEquationAnchorsWithDefault);
+</script>
 
 </section>
 
