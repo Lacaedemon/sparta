@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/morale-recovery.json",
+  "caption": "A routing unit recovers morale gradually in isolation and rallies back to IDLE, with no enemy to interfere.",
+  "fixed_fps": 30,
+  "max_frames": 270,
+  "fps": 15,
+  "width": 720
+}

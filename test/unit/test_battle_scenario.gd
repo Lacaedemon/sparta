@@ -69,3 +69,61 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 	cav_labels.sort()
 	assert_eq(cav_labels, ["Cavalry 1", "Cavalry 2"],
 		"unit labels are numbered per type, so cross-team spawns still read 1, 2 within a type")
+
+
+func test_scenario_starting_state_routing_spawns_an_already_routing_unit() -> void:
+	# For demo/test staging only (e.g. the isolated morale-recovery demo): a scenario spec
+	# can force a unit straight into ROUTING on spawn, since a normal battle can only ever
+	# reach that state as a side effect of real combat casualties.
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.drill_mode = true   # no team-1 units below, so _check_victory must not fire
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 800, "y": 400, "starting_state": Unit.State.ROUTING},
+	]
+	add_child_autofree(battle)
+
+	var routers: Array = get_tree().get_nodes_in_group("routers")
+	assert_eq(routers.size(), 1, "the unit spawns already in the routers group")
+	if routers.is_empty():
+		return
+	var unit: Unit = routers[0] as Unit
+	assert_eq(unit.state, Unit.State.ROUTING, "starting_state ROUTING puts the unit straight into ROUTING")
+
+
+func test_scenario_starting_state_dead_sets_the_unit_state_directly() -> void:
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.drill_mode = true
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 800, "y": 400, "starting_state": Unit.State.DEAD},
+	]
+	add_child_autofree(battle)
+
+	# Unlike a real death (Unit._remove_from_play), this leaves the unit un-freed so a demo
+	# can show an already-dead body on the field -- find it via the Units container, not the
+	# "units" group, since it's deliberately removed from that group (no longer fightable).
+	var spawned: Array = battle.get_node("Units").get_children()
+	assert_eq(spawned.size(), 1, "the unit still spawns (starting_state doesn't skip spawning)")
+	if spawned.is_empty():
+		return
+	var unit: Unit = spawned[0] as Unit
+	assert_eq(unit.state, Unit.State.DEAD, "starting_state DEAD sets the unit's state directly")
+	assert_false(unit.is_in_group("units"), "a dead unit doesn't count as fightable, same as a real death")
+
+
+func test_scenario_starting_state_unknown_value_is_a_no_op() -> void:
+	# An unrecognized value (e.g. a typo'd enum int) must not silently do nothing worse than
+	# leave the unit at its default IDLE -- it also warns (see _apply_starting_state), but the
+	# no-crash / stays-IDLE behavior is what's asserted here.
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.drill_mode = true
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 800, "y": 400, "starting_state": 99},
+	]
+	add_child_autofree(battle)
+
+	var units: Array = get_tree().get_nodes_in_group("units")
+	assert_eq(units.size(), 1, "the unit still spawns")
+	if units.is_empty():
+		return
+	var unit: Unit = units[0] as Unit
+	assert_eq(unit.state, Unit.State.IDLE, "an unrecognized starting_state value leaves the unit at the default IDLE")

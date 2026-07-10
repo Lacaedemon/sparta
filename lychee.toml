@@ -39,4 +39,18 @@ exclude = [
   # until the site renews its certificate; re-check periodically and remove
   # this exclusion once https://game-icons.net/ loads cleanly again.
   "^https://game-icons\\.net",
+  # spotterup.com rejects lychee's automated request with HTTP 415
+  # (Unsupported Media Type) even though the page loads fine in a browser —
+  # the same false-positive pattern as pixabay/opengameart above. Linked as a
+  # citation from docs/SPEED_VERIFICATION.md.
+  "^https://spotterup\\.com",
+  # bandaarcgeophysics.co.uk rejects lychee's automated request with HTTP 403
+  # (bot-blocking), same false-positive pattern. Linked as a citation from
+  # docs/SPEED_VERIFICATION.md.
+  "^https://www\\.bandaarcgeophysics\\.co\\.uk",
+  # marathonhandbook.com rejects lychee's automated request with HTTP 403
+  # (bot-blocking) even though the page loads fine in a browser, same
+  # false-positive pattern as the two entries above. Linked as a citation
+  # from docs/SPEED_VERIFICATION.md.
+  "^https://marathonhandbook\\.com",
 ]

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/line-relief-queue.json",
+  "caption": "Fixes #682's chaotic entity swirling during a line-relief swap. UnitRelief.update's separation exemption is a queue-driven pass-through link: while it's armed, SoldierSteering skips separation for every soldier-body pair between the fresh reliever and the tired unit it's replacing, so the fresh unit can advance through the tired one instead of shoving it. The exemption used to clear once the regiments' CENTERS cleared a flat separation_radius sum, before the (much larger) soldier BLOCKS had actually stopped overlapping -- turning separation back on for dozens of still-interpenetrating body pairs on the same tick, all at once: the swirl. The fix waits for each unit's own soldier_block_extent() too, so the clip's box-select-then-right-click relief order resolves smoothly: the fresh Infantry advances through the tired, already-fighting Infantry, takes over its fight, and the tired unit peels back to the rear with no shove.",
+  "fixed_fps": 60,
+  "max_frames": 450,
+  "fps": 20,
+  "width": 640
+}
