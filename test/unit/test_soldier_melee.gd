@@ -228,24 +228,34 @@ func test_melee_is_deterministic() -> void:
 # --- knockback: the enemy collision response ----------------------------------
 
 func test_in_reach_strike_shoves_the_defender_away() -> void:
-	# Attacker at the origin facing down; unbraced defender just ahead, in reach. Every
-	# in-reach strike adds at least the defended-blow impulse to the defender's body
-	# velocity, pointed away from the attacker (here: +y). The defender is set to skirmish
-	# so it isn't braced (a braced lone infantry man absorbs normal blows below J_cap). Health
-	# is pinned high so the one strike can't kill and reap the body before we read it.
+	# Attacker at the origin facing down; unbraced defender just ahead, in reach. A moderate
+	# charge (approach velocity) guarantees the surviving impulse clears the RESTING defender's
+	# static-friction threshold (SoldierCollision.overcomes_static_friction, wired into this
+	# path) even for the weakest (turned-aside) blow -- without a charge, a defended blow at
+	# mass 1 / brace 0 is BELOW that threshold and would (correctly) leave a resting body
+	# untouched; see test_tiny_impulse_leaves_a_resting_unbraced_defender_still below for that
+	# case. The defender is set to skirmish so it isn't braced (a braced lone infantry man
+	# absorbs normal blows below J_cap). Health is pinned high so the one strike can't kill and
+	# reap the body before we read it.
 	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var closing: float = 150.0
+	a._approach_velocity = Vector2(0, closing)
 	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
 	b.order_mode = Unit.ORDER_SKIRMISH   # unbraced: pure knockback with no absorption
 	b._sim_soldier_hp[0] = 9999.0
 	a.resolve_soldier_melee(b)
-	# Infantry attacker (lethality 1) vs infantry defender (mass 1), no charge: the minimum
-	# (turned-aside) impulse is the floor every in-reach strike clears. Under the bidirectional
+	# Infantry attacker (lethality 1) vs infantry defender (mass 1), with the charge above: the
+	# minimum (turned-aside) impulse is the floor every in-reach strike clears -- and, with this
+	# charge, clears the static-friction threshold too (checked below). Under the bidirectional
 	# Newton's-laws split (SoldierCollision.bidirectional_impulse), the defender receives only
 	# its SHARE of that impulse -- weighted by the ATTACKER's effective mass over the total
 	# effective mass of both bodies -- since the rest goes to the attacker's own recoil. The
 	# attacker here is engaged and not skirmishing, so it's braced (soldier_brace() == 1.0);
 	# the defender is unbraced (skirmish).
-	var min_impulse: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, SoldierCombat.ETA_DEFENDED)
+	var c: float = SoldierCombat.charge_factor(closing)
+	var min_impulse: float = SoldierCombat.knockback_impulse(1.0, c, 1.0, SoldierCombat.ETA_DEFENDED)
+	assert_gt(min_impulse, SoldierCombat.STATIC_FRICTION_THRESHOLD,
+		"sanity: this charge clears the resting defender's static-friction threshold even at the defended floor")
 	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 1.0)
 	var defender_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 0.0)
 	var min_shove: float = min_impulse * attacker_m_eff / (attacker_m_eff + defender_m_eff)
@@ -254,13 +264,56 @@ func test_in_reach_strike_shoves_the_defender_away() -> void:
 	assert_almost_eq(b._sim_body_vel[0].x, 0.0, 1e-3, "no lateral knockback for a head-on strike")
 
 
+func test_tiny_impulse_leaves_a_resting_unbraced_defender_still() -> void:
+	# The fix this test guards: SoldierCollision.overcomes_static_friction gates
+	# whether a strike's surviving impulse moves a RESTING body at all -- a genuinely tiny
+	# shove now leaves a resting, unbraced defender completely still instead of nudging it,
+	# and there is no in-between "trickle" motion: every cadence either leaves the reset-to-
+	# rest defender exactly still (the impulse was absorbed by static friction) or shoves it
+	# at least the defended-blow floor, mass-split by the attacker's share -- same as
+	# test_in_reach_strike_shoves_the_defender_away asserts for an impulse that clears the
+	# gate. Looping (and resetting the defender to rest each cadence) samples both a landed
+	# and a defended roll under the fixed seed, so both outcomes are exercised.
+	Replay.rng.seed = SEED
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)   # no charge: c = 0
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	b.order_mode = Unit.ORDER_SKIRMISH   # unbraced
+	b._sim_soldier_hp[0] = 9999.0
+	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 1.0)
+	var defender_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 0.0)
+	var min_defended_impulse: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, SoldierCombat.ETA_DEFENDED)
+	var min_shove: float = min_defended_impulse * attacker_m_eff / (attacker_m_eff + defender_m_eff)
+	var saw_still: bool = false
+	var saw_shoved: bool = false
+	for _k in range(40):
+		b._sim_body_vel[0] = Vector2.ZERO   # reset to rest before every cadence
+		a.resolve_soldier_melee(b)
+		var shove: float = b._sim_body_vel[0].length()
+		if shove < 1e-3:
+			saw_still = true
+		else:
+			saw_shoved = true
+			assert_gte(shove, min_shove - 1e-3,
+				"any nonzero shove is at least the defended-blow floor -- no sub-threshold trickle")
+	assert_true(saw_still,
+		"at least one sub-threshold (defended, no-charge) strike left the resting defender still")
+	assert_true(saw_shoved,
+		"at least one strike cleared the static-friction threshold and shoved the defender")
+
+
 func test_knockback_points_away_from_the_attacker() -> void:
 	# Off-axis geometry: the impulse follows the attacker->defender line, not a fixed axis.
 	# Defender is in skirmish (unbraced) so the impulse is never absorbed by brace capacity.
+	# This test is about DIRECTION, not the (separately tested) static-friction gate, so start
+	# the defender already moving -- above SoldierCombat.STATIC_FRICTION_VELOCITY_GATE, so the
+	# strike is in the kinetic-friction regime and always moves the body -- and in the OPPOSITE
+	# direction from the expected knockback, so a positive result still proves the shove
+	# overcomes that initial motion rather than merely inheriting its sign.
 	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var b := _unit(2, 1, 1, Vector2(5, 5), Vector2.UP, false)
 	b.order_mode = Unit.ORDER_SKIRMISH
 	b._sim_soldier_hp[0] = 9999.0
+	b._sim_body_vel[0] = Vector2(-1.5, -1.5)   # already moving, opposite the expected shove
 	a.resolve_soldier_melee(b)
 	assert_gt(b._sim_body_vel[0].x, 0.0, "knocked back along +x, away from the attacker")
 	assert_gt(b._sim_body_vel[0].y, 0.0, "and +y")
@@ -312,19 +365,26 @@ func test_heavier_defender_is_knocked_back_less() -> void:
 	# Same infantry attacker and the same seed, striking a light archer (mass 0.9) vs a heavy
 	# cavalry body (mass 2.5): the heavy body takes a smaller impulse (J ~ 1/mass). Both
 	# defenders are set to skirmish so brace capacity doesn't absorb the blow — this tests
-	# mass alone. The eta can't flip in cavalry's favour: cavalry's shield (0.25) > archer's
-	# (0.05) means its p_land is strictly <= the archer's, so "cavalry lands" implies "archer
-	# lands"; the mass ratio then dominates in every reachable land/defend outcome.
+	# mass alone, not the (separately tested) static-friction gate, so both start already
+	# moving -- above SoldierCombat.STATIC_FRICTION_VELOCITY_GATE, in the same direction the
+	# shove will push them -- so the strike is always in the kinetic-friction regime for both.
+	# Since the preset is identical for both and additive with the (mass-scaled) shove, the
+	# comparison between the two final speeds still isolates the mass effect. The eta can't
+	# flip in cavalry's favour: cavalry's shield (0.25) > archer's (0.05) means its p_land is
+	# strictly <= the archer's, so "cavalry lands" implies "archer lands"; the mass ratio then
+	# dominates in every reachable land/defend outcome.
 	Replay.rng.seed = SEED
 	var atk1 := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var archer := _typed_defender(2, Vector2(0, 6), Vector2.UP, false, true)
 	archer.order_mode = Unit.ORDER_SKIRMISH   # unbraced — test mass, not bracing
+	archer._sim_body_vel[0] = Vector2(0, 1.5)   # already moving: bypasses the static-friction gate
 	atk1.resolve_soldier_melee(archer)
 	var light_kb: float = archer._sim_body_vel[0].length()
 	Replay.rng.seed = SEED
 	var atk2 := _unit(3, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var cav := _typed_defender(4, Vector2(0, 6), Vector2.UP, true, false)
 	cav.order_mode = Unit.ORDER_SKIRMISH
+	cav._sim_body_vel[0] = Vector2(0, 1.5)   # same preset as the archer, for a fair comparison
 	atk2.resolve_soldier_melee(cav)
 	var heavy_kb: float = cav._sim_body_vel[0].length()
 	assert_lt(heavy_kb, light_kb, "a heavy (cavalry) defender is knocked back less than a light (archer) one")
