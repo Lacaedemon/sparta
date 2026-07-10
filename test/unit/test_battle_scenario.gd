@@ -98,12 +98,16 @@ func test_scenario_starting_state_dead_sets_the_unit_state_directly() -> void:
 	]
 	add_child_autofree(battle)
 
-	var units: Array = get_tree().get_nodes_in_group("units")
-	assert_eq(units.size(), 1, "the unit still spawns (starting_state doesn't skip spawning)")
-	if units.is_empty():
+	# Unlike a real death (Unit._remove_from_play), this leaves the unit un-freed so a demo
+	# can show an already-dead body on the field -- find it via the Units container, not the
+	# "units" group, since it's deliberately removed from that group (no longer fightable).
+	var spawned: Array = battle.get_node("Units").get_children()
+	assert_eq(spawned.size(), 1, "the unit still spawns (starting_state doesn't skip spawning)")
+	if spawned.is_empty():
 		return
-	var unit: Unit = units[0] as Unit
+	var unit: Unit = spawned[0] as Unit
 	assert_eq(unit.state, Unit.State.DEAD, "starting_state DEAD sets the unit's state directly")
+	assert_false(unit.is_in_group("units"), "a dead unit doesn't count as fightable, same as a real death")
 
 
 func test_scenario_starting_state_unknown_value_is_a_no_op() -> void:

@@ -554,7 +554,12 @@ func _apply_starting_state(u: Unit, starting_state: int) -> void:
 		Unit.State.ROUTING:
 			u._rout()
 		Unit.State.DEAD:
+			# Unlike the real death path (Unit._remove_from_play), this leaves the unit
+			# in place (not freed) so a demo can show an already-dead body on the field --
+			# but it still shouldn't count as a fightable unit, so leave the "units" group
+			# same as a real death does.
 			u.state = Unit.State.DEAD
+			u.remove_from_group("units")
 		_:
 			# Match _spawn_scenario's unknown-'type' handling: warn loudly instead of a
 			# silent no-op, so a typo'd enum value (e.g. IDLE's 0 meant as ROUTING's 3)
