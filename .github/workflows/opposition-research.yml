@@ -7,8 +7,8 @@ name: Periodic Opposition Research
 # KNOWN LIMITATION: the reusable d-morrison/gha claude.yml job's own `if:` gate
 # never matches workflow_dispatch or schedule triggers, so neither trigger below
 # actually runs the job yet — this workflow is intentionally merged in an
-# honestly-documented-inert state. Tracked upstream at d-morrison/gha#245; once
-# that's fixed, both triggers here will work as named.
+# honestly-documented-inert state, pending an upstream fix to that gate; both
+# triggers here will work as named once it lands.
 
 on:
   # Uncomment the schedule trigger below to enable automatic weekly runs.
@@ -17,7 +17,7 @@ on:
   # schedule:
   #   - cron: '0 9 * * 1'
 
-  # Manual trigger — currently inert; see the gha#245 note above.
+  # Manual trigger — currently inert; see the KNOWN LIMITATION note above.
   workflow_dispatch:
 
 jobs:
