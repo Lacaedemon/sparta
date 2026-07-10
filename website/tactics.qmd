@@ -720,6 +720,11 @@ into different tools:
   grinding in a static melee where the charge bonus is already spent. The charge
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
   into braced spears, where a fast charge backfires.
+- **All-out attack** (<kbd>,</kbd>) --- a straight offense/defense trade: +20%
+  effective attack, but the unit's own defense drops 20% while it's fighting
+  all-out. It hits harder and dies faster at the same time, so use it to force
+  a quick, costly decision --- finishing off a wavering enemy, or a rearguard
+  buying time --- not as a strict upgrade over a normal stance.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and
