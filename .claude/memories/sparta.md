@@ -246,6 +246,30 @@ editing `settings.cfg` to restore.
   `C:\Users\<user>\AppData\Roaming\Godot\app_userdata\Sparta\settings.cfg`
   (Windows) for stale values and restore.
 
+**This same file is shared ACROSS worktrees, not just across test runs in
+one.** Godot's `user://` path keys off the project **name** ("Sparta"), not
+the checkout path, so `godot --headless --import`, `tools/check.sh test`, and
+`tools/demo/dump-state.sh` all read/write the identical
+`~/.local/share/godot/app_userdata/Sparta/settings.cfg` (Linux) regardless of
+which `.claude/worktrees/pr-<N>/` they're invoked from. Running a merge
+resolution's test suite in one worktree while verifying a demo's keybinding
+via `dump-state.sh` in a different worktree at the same time can silently
+clobber the second run's keybindings mid-verification — the state dump then
+shows the WRONG stance armed (or none at all), looking exactly like a code
+bug in the just-resolved merge, when the actual cause is the other worktree's
+concurrent GUT run persisting its own (possibly test-scrambled) keybinding
+overrides to the same shared file. If a state-dump result looks wrong right
+after a merge-conflict resolution, `rm -f
+~/.local/share/godot/app_userdata/Sparta/settings.cfg` and re-run the dump
+before concluding the fix itself is broken — don't trust a single dump when
+another worktree's Godot process could have been running concurrently.
+(Session running parallel background agents across `pr-704`/`pr-707`/`pr-713`
+worktrees, 2026-07-10: a `sweep-routers.json` sanity dump showed
+`order_mode: "All-out attack"` — a completely unrelated PR's stance — at the
+exact tick its own `Ctrl+,` should have armed `Sweep routers`, traced to a
+`settings.cfg` on disk holding scrambled keybinding values from a concurrent
+test run in a sibling worktree.)
+
 ## MultiMesh instance transforms don't read back in headless tests
 
 `MultiMesh.set_instance_transform_2d(i, t)` followed immediately by
@@ -294,6 +318,46 @@ resolving a `Battle.gd` merge:
 **Verify the resolve with `tools/check.sh validate`** (Godot import) before
 trusting the merge — a redeclaration or shadow surfaces only at parse time.
 Learned resyncing #469 (arrow-key nudge) after main merged #474 (wheel).
+
+**At cascade scale: resolving once doesn't mean the sentinel collision is
+over — merging ANY sibling into `main` re-conflicts every OTHER sibling a
+second time.** When several `OrderMode`-adding PRs are open at once (five,
+2026-07-10: `ALL_OUT_ATTACK` #704, `PIN_DOWN` #707, `ROLL_THE_LINE` #708,
+`SWEEP_ROUTERS` #711, `CHASE` #713), each one independently claims the next
+free enum value/hotkey against whatever `main` looked like when it was last
+resynced — so resolving PR A against PR B's already-merged value doesn't
+settle anything permanently. The moment PR B (or C, or D) itself merges to
+`main`, every other still-open sibling's `mergeable_state` flips back to
+`dirty`, because `main` just moved again and picked up yet another occupied
+enum/hotkey slot. This isn't a one-time fan-out to absorb; it's a recurring
+tax that hits once per merge in the cascade — expect to re-run this same
+renumbering exercise on every remaining sibling after each individual
+sibling lands, not just once at the start. Re-check every open PR's
+`mergeable_state` right after any one of them merges (the `post-merge`
+skill's cascade-conflict-scan step) rather than assuming a clean resolve
+earlier in the day still holds.
+
+**The hotkey half of the collision can be preemptively deconflicted between
+two still-open sibling PRs; the enum VALUE half cannot.** When two siblings
+each independently rebind onto the same free key after a shared ancestor
+merge (e.g. both #704's `ALL_OUT_ATTACK` and #713's `CHASE` picked
+`KEY_APOSTROPHE` after #707's `PIN_DOWN` merge forced both off
+`KEY_PERIOD`), it's safe to edit one sibling's still-open branch directly and
+rebind it to a different free key — a hotkey is just an integer with no
+cross-branch invariant, so this permanently removes that specific collision
+regardless of merge order. **Don't try the same trick on the enum value**
+(e.g. reserving `CHASE = 11` on one branch so it won't collide with
+`ALL_OUT_ATTACK = 10` on the other): `test_hud_stance.gd`'s
+`test_stance_entry_ids_are_sequential_and_unique` asserts each branch's own
+`HUD._STANCE_ENTRIES` ids run `0..N-1` with no gaps, so a branch can only
+place its newest stance at exactly `(highest existing value) + 1` — it can't
+reserve a future slot for a sibling it can't see. That half of the collision
+stays real and can only resolve at actual merge time, via the normal cascade
+process above. (`Lacaedemon/sparta` PR #713, 2026-07-10: attempted
+`CHASE = 11` to preemptively dodge #704, immediately failed
+`test_stance_entry_ids_are_sequential_and_unique` with
+`[0..9, 11] != [0..9, 10]`; reverted the enum change, kept the hotkey
+rebind to `KEY_BACKSLASH`.)
 
 ## Routing units early-return in `_physics_process` — merge-isolated
 
