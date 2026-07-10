@@ -451,7 +451,10 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#form-square-against-cavalry" id="toc-form-square-against-cavalry" class="nav-link" data-scroll-target="#form-square-against-cavalry">Form square against cavalry</a></li>
   <li><a href="#weapon-reach" id="toc-weapon-reach" class="nav-link" data-scroll-target="#weapon-reach">Weapon reach</a></li>
   <li><a href="#movement-speed" id="toc-movement-speed" class="nav-link" data-scroll-target="#movement-speed">Movement speed</a></li>
-  <li><a href="#pace-modes" id="toc-pace-modes" class="nav-link" data-scroll-target="#pace-modes">Pace modes</a></li>
+  <li><a href="#pace-modes" id="toc-pace-modes" class="nav-link" data-scroll-target="#pace-modes">Pace modes</a>
+  <ul class="collapse">
+  <li><a href="#choosing-a-gait-by-click-count" id="toc-choosing-a-gait-by-click-count" class="nav-link" data-scroll-target="#choosing-a-gait-by-click-count">Choosing a gait by click count</a></li>
+  </ul></li>
   <li><a href="#side-stepping-the-line" id="toc-side-stepping-the-line" class="nav-link" data-scroll-target="#side-stepping-the-line">Side-stepping the line</a></li>
   <li><a href="#backing-up-costs-time" id="toc-backing-up-costs-time" class="nav-link" data-scroll-target="#backing-up-costs-time">Backing up costs time</a></li>
   <li><a href="#the-centre-pivot" id="toc-the-centre-pivot" class="nav-link" data-scroll-target="#the-centre-pivot">The centre pivot</a></li>
@@ -763,6 +766,7 @@ Figure&nbsp;8: Two AI unit-leader decisions in one clash: the AI spearmen on the
 <li><strong>Archers</strong> carry only a short sidearm (~0.6 m); they’re meant to shoot, not duel in the press.</li>
 </ul>
 <p>So a spear line meeting a sword line head-on gets free hits during the approach — another reason to lead with spearmen and let the shorter weapons pin and flank. Combat now resolves <strong>per soldier</strong> by weapon reach: a spearman strikes any enemy within its longer reach, while a swordsman beyond its own (shorter) reach cannot strike back. The <em>sustained</em> standoff — a spear line physically holding swordsmen out at weapon length — now emerges from <strong>knockback</strong>: a landed blow shoves the struck soldier back, so a spear line keeps knocking swordsmen out past their own reach while staying in its. The lines no longer snap apart by a spacing rule; the gap is the live balance of the press forward against the knockback, so it breathes as the fight ebbs and flows.</p>
+<p><strong>Knockback now pushes both ways.</strong> Every blow obeys Newton’s third law: the struck soldier is shoved back as before, but the striking soldier also recoils along the same line, split between the two by effective mass (bracing counts as extra mass). A light, unbraced attacker rocks backward hard on contact; a heavy or set formation barely moves. That’s why a cavalry charge into a braced spear wall now visibly backfires on the horses themselves, not just on the spearmen holding their ground — the heavier, set defenders absorb most of the shove and hand a proportionally bigger kick back to the lighter attacker.</p>
 </section>
 <section id="movement-speed" class="level2">
 <h2 class="anchored" data-anchor-id="movement-speed">Movement speed</h2>
@@ -834,6 +838,26 @@ Figure&nbsp;9: Pace modes: regiments walk on approach, jog when enemy archers op
 </figcaption>
 </figure>
 </div>
+<section id="choosing-a-gait-by-click-count" class="level3">
+<h3 class="anchored" data-anchor-id="choosing-a-gait-by-click-count">Choosing a gait by click count</h3>
+<p>AUTO pace is the default, but you can lock a move order to a specific gait instead: right-click a destination once for <strong>Walk</strong>, twice for <strong>Jog</strong>, three times for <strong>Run</strong>, and four or more times for <strong>Sprint</strong> — click the same spot again within the multi-click window to add another click to the count. A click on a new destination (or one far enough from the last click, or one that arrives after the window has passed) restarts the count at Walk.</p>
+<p>There are only three real paces per unit type (for cavalry, walk/trot/gallop — see the speed table above). Run has no pace of its own: it holds jog speed while still far from the destination and switches to sprint speed once inside the same close-range threshold AUTO uses, so it’s a distance-gated mix of the two rather than a fourth gait.</p>
+<p>This overrides AUTO for that order: an explicit gait holds for the whole move, ignoring the fire/distance triggers AUTO would otherwise use. Reach for a chosen gait when you want a unit to hold a slow, orderly walk past a threat it would otherwise jog or sprint through (screening a flank, keeping a formation intact under fire without also toggling Walk advance), or to force an early sprint before AUTO’s close-range threshold would normally trigger it.</p>
+<div id="fig-multi-click-speeds" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-multi-click-speeds-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/multi_click_speeds.jpg">
+  <source src="media/multi_click_speeds.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-multi-click-speeds-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10: Four identical Cavalry regiments sent on the same move, one click apart: Walk, Jog, Run, and Sprint pull apart into four distinct paces instead of moving in lockstep.
+</figcaption>
+</figure>
+</div>
+</section>
 </section>
 <section id="side-stepping-the-line" class="level2">
 <h2 class="anchored" data-anchor-id="side-stepping-the-line">Side-stepping the line</h2>
@@ -853,7 +877,7 @@ Figure&nbsp;9: Pace modes: regiments walk on approach, jog when enemy archers op
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
+Figure&nbsp;11: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
 </figcaption>
 </figure>
 </div>
@@ -878,7 +902,7 @@ Figure&nbsp;10: Per-type backward-walk speed: a Spearmen and an Archers regiment
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+Figure&nbsp;12: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
 </figcaption>
 </figure>
 </div>
@@ -925,7 +949,7 @@ Figure&nbsp;11: Braking on arrival: a lone Infantry regiment sprints toward a mo
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;13: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
