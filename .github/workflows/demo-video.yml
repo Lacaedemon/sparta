@@ -468,7 +468,7 @@ jobs:
           done
           [ -n "$published" ] || { echo "::error::could not publish demo to $MEDIA_BRANCH after 5 attempts"; exit 1; }
 
-          RAW_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST}"
+          RAW_URL="https://raw.githubusercontent.com/${{ github.repository }}/${MEDIA_BRANCH}/${DEST}"
           MARKER_OPEN="<!-- sparta-demo -->"
           MARKER_CLOSE="<!-- /sparta-demo -->"
           # The inline GIF plays once and is silent (GIF can't carry audio). When an
@@ -487,7 +487,7 @@ jobs:
           SECTION=$(printf '### 🎬 Gameplay demo\n\n%s\n\n![demo](%s)' \
             "$CAPTION" "$RAW_URL")
           if [ -s /tmp/demo.mp4 ]; then
-            RAW_MP4_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_MP4}"
+            RAW_MP4_URL="https://raw.githubusercontent.com/${{ github.repository }}/${MEDIA_BRANCH}/${DEST_MP4}"
             SECTION="$SECTION"$(printf '\n\n🔊 The GIF above plays once and is silent — [watch with sound, pause and scrub (MP4)](%s).' "$RAW_MP4_URL")
           fi
           # The full per-tick state transcript is large technical detail that not every
@@ -523,7 +523,7 @@ jobs:
           # state-transcript-summary.sh), so no extra heading is added here — that would
           # just duplicate the summary line the collapsible block already shows.
           if [ "${STATE_OK:-false}" = "true" ] && [ -s /tmp/transcript.md ]; then
-            RAW_STATE_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_STATE}"
+            RAW_STATE_URL="https://raw.githubusercontent.com/${{ github.repository }}/${MEDIA_BRANCH}/${DEST_STATE}"
             TRANSCRIPT_MARKER="<!-- sparta-demo-transcript -->"
             # A leading blank line after the marker has to survive so GitHub starts a
             # fresh block instead of butting <details> up against the marker comment --
