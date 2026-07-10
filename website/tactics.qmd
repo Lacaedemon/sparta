@@ -720,6 +720,12 @@ into different tools:
   grinding in a static melee where the charge bonus is already spent. The charge
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
   into braced spears, where a fast charge backfires.
+- **Sweep routers** (<kbd>W</kbd>) --- the unit prioritizes a routing (fleeing) enemy
+  over a closer enemy that's still standing and fighting, even as the gap to the
+  router narrows. Arm it on a unit you want cleaning up broken formations rather
+  than getting drawn into (or staying stuck in) a fresh melee with whoever happens
+  to be nearest --- a natural pairing with a flanking cavalry sweep once the enemy
+  line starts to crack.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and

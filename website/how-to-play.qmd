@@ -277,6 +277,9 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
 - **Cycle charge** (<kbd>J</kbd>) --- cavalry charge the target, pull back to a
   standoff, and charge again, so each run lands a fresh momentum hit instead of
   grinding once the charge is spent (see [Tactics](tactics.qmd#order-stances)).
+- **Sweep routers** (<kbd>W</kbd>) --- the unit prioritizes a routing (fleeing) enemy
+  over a closer enemy that's still standing and fighting, chasing down the break
+  before mopping up the line (see [Tactics](tactics.qmd#order-stances)).
 
 Pressing a stance key alone only **arms** it for your next move/attack order ---
 it doesn't touch a unit that's already standing still. To change a selected
@@ -329,6 +332,21 @@ Support stance: a unit guards an ally, shadowing it and engaging any threat.
 
 Cycle charge stance: cavalry charge, land the impact hit,
 peel back to a standoff, then charge again.
+:::
+
+::: {#fig-sweep-routers .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/sweep_routers.jpg">
+  <source src="media/sweep_routers.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Sweep routers stance: the unit bypasses a closer, still-fighting enemy
+to chase down a more distant one that has broken and is fleeing.
 :::
 
 **Relieve a fighting friendly (line relief).** Right-click an **engaged friendly**

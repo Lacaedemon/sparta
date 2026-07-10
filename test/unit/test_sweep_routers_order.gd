@@ -5,7 +5,9 @@ extends GutTest
 ## The test stages three units: a team-0 unit under SWEEP_ROUTERS order, a far-away
 ## team-1 unit (will be routed), and a closer non-routing team-1 unit. When the far
 ## unit routs, the test verifies the sweeper re-targets it in preference to the closer
-## still-fighting unit.
+## still-fighting unit. A fourth test covers the no-router "relentless pursuit"
+## persistence invariant: with no router in range, a newly-arrived closer enemy must
+## not force the sweeper to abandon its already-committed target.
 
 
 const Battle = preload("res://scripts/Battle.gd")
@@ -153,3 +155,53 @@ func test_sweep_routers_falls_back_to_non_routing_if_no_routers_nearby() -> void
 	# Verify it targets the closer enemy (no routers exist yet)
 	assert_eq(sweeper.target_enemy, closer_enemy,
 		"with no routing enemies, sweeper targets the nearest non-routing enemy")
+
+
+func test_sweep_routers_persists_target_when_a_new_closer_enemy_appears() -> void:
+	# Regression test for the "relentless pursuit" persistence invariant: with no
+	# routing enemy in range, SWEEP_ROUTERS must behave like NORMAL and keep its
+	# already-committed target even when a new, closer enemy shows up -- it must NOT
+	# force-reacquire just because UnitTargeting.nearest_routing_enemy runs every
+	# tick. (Previously nearest_routing_enemy fell back to the nearest non-routing
+	# enemy instead of null, so Unit._think() unconditionally overwrote target_enemy
+	# every tick and broke this invariant in exactly this no-router case.)
+	var battle := _spawn_three_unit_battle()
+	await get_tree().physics_frame
+
+	var sweeper: Unit = null
+	var closer_enemy: Unit = null
+	var team1_units = _find_all_units_of_team(1)
+
+	if team1_units[0].position.x < team1_units[1].position.x:
+		closer_enemy = team1_units[0]
+	else:
+		closer_enemy = team1_units[1]
+
+	var team0_units = _find_all_units_of_team(0)
+	sweeper = team0_units[0]
+
+	sweeper.order_mode = Battle.OrderMode.SWEEP_ROUTERS
+
+	# Let the sweeper commit to the closer (only) non-routing enemy first.
+	for _i in range(10):
+		await get_tree().physics_frame
+	assert_eq(sweeper.target_enemy, closer_enemy,
+		"sweeper commits to the nearest non-routing enemy")
+
+	# Spawn a brand-new team-1 unit right next to the sweeper -- much closer than the
+	# already-committed target, and still not routing.
+	var infantry_loadout: Dictionary = battle._default_loadout()[1]
+	var new_enemy: Unit = battle._spawn_unit(
+		infantry_loadout, 1, Vector2(0, -1), sweeper.position + Vector2(20, 0), "New Enemy")
+	await get_tree().physics_frame
+
+	for _i in range(10):
+		await get_tree().physics_frame
+
+	# Still no routing enemy anywhere, so the sweeper must hold its original target --
+	# it must not flip to the newly-arrived, much-closer enemy.
+	assert_eq(sweeper.target_enemy, closer_enemy,
+		"sweeper keeps its committed target when a new, closer non-routing enemy " +
+		"appears and no router is present (relentless-pursuit persistence)")
+	assert_ne(sweeper.target_enemy, new_enemy,
+		"sweeper does not re-acquire the newly-arrived closer enemy")

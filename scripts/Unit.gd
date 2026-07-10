@@ -1074,11 +1074,20 @@ func _think(delta: float) -> void:
 		support_target = null
 		order_mode = 0   # ward gone: revert to NORMAL
 
-	# Sweep routers: prioritize routing enemies over still-fighting units
+	# Sweep routers: prioritize routing enemies over still-fighting units. A router in
+	# range always wins (forces the switch, even off an already-committed target). With
+	# none in range, fall back through current_target() -- which keeps an already-live
+	# target rather than re-scanning for the nearest -- so a newly-closer non-routing
+	# enemy doesn't yank the sweeper off a target it's already engaging. (This mirrors
+	# every other order mode's persistence, but unlike them, SWEEP_ROUTERS still commits
+	# the result to target_enemy so a state inspection sees the acquired target the same
+	# way it would mid-router-chase.)
 	if order_mode == ORDER_SWEEP_ROUTERS:
 		var routing_enemy: Unit = UnitTargeting.nearest_routing_enemy(self)
 		if routing_enemy != null:
 			target_enemy = routing_enemy
+		else:
+			target_enemy = UnitTargeting.current_target(self)
 
 	var enemy: Unit = UnitTargeting.current_target(self)
 	if enemy != null:
