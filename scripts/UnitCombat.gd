@@ -96,7 +96,12 @@ static func strike(u: Unit, enemy: Unit) -> void:
 	var mods := order_mode_modifiers(u, enemy)
 	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion \
 			* u.formation_attack_factor() * u.formation_melee_attack_factor() * mods.x
-	var base: float = maxf(1.0, eff_attack - float(enemy.defense) * mods.y)
+	# A PIN_DOWN defender caught mid-exposure fights with its own defense scaled down
+	# (pin_down_defense_factor) -- the stall/pin tradeoff's cost side, on top of
+	# whatever formation cover it otherwise gets. An ALL_OUT_ATTACK defender's own
+	# defense penalty (mods.y) stacks with that.
+	var eff_defense: float = float(enemy.defense) * enemy.pin_down_defense_factor() * mods.y
+	var base: float = maxf(1.0, eff_attack - eff_defense)
 	# Draw from the seeded replay RNG (one stream, stable order) so battles are
 	# reproducible. This is the simulation's only source of randomness.
 	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
@@ -128,7 +133,11 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	var mods := order_mode_modifiers(u, target)
 	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion \
 			* u.formation_attack_factor() * mods.x
-	var base: float = maxf(1.0, eff_attack - float(target.defense) * mods.y)
+	# See strike()'s matching comment: a PIN_DOWN target caught mid-exposure defends
+	# with its own defense stat scaled down, whether the incoming hit is melee or ranged;
+	# an ALL_OUT_ATTACK target's defense penalty (mods.y) stacks with that too.
+	var eff_defense: float = float(target.defense) * target.pin_down_defense_factor() * mods.y
+	var base: float = maxf(1.0, eff_attack - eff_defense)
 	# Pass the shooter so SHIELD_WALL's shields only stop a frontal volley; a flank/rear
 	# shot bypasses the wall. TIGHT/TESTUDO ignore direction (all-around cover).
 	#

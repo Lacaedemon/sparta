@@ -152,9 +152,14 @@ const DEFAULT_ORDER_BINDINGS := {
 	# binding fall back to the punctuation row instead.
 	"sweep_routers": KEY_COMMA,
 	"roll_the_line": KEY_SEMICOLON,
-	# all_out_attack's original default (KEY_COMMA) collides with sweep_routers
-	# above, so it falls back to the next free punctuation key.
-	"all_out_attack": KEY_PERIOD,
+	"pin_down": KEY_PERIOD,
+	# all_out_attack's original default (KEY_PERIOD) now collides with pin_down
+	# above (added independently by another PR), so it falls back to the next
+	# free punctuation key. KEY_SLASH is already claimed (Shift+/ opens the
+	# shortcuts dialog, HUD._is_shortcuts_keypress) and KEY_BRACKETLEFT/
+	# KEY_BRACKETRIGHT are already claimed for frontage resize
+	# (SelectionManager.gd), so apostrophe is the next unclaimed punctuation key.
+	"all_out_attack": KEY_APOSTROPHE,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.

@@ -75,7 +75,7 @@ const NUDGE_DISTANCE := 30.0
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, ALL_OUT_ATTACK }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
 ## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
@@ -115,6 +115,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.CYCLE_CHARGE: "Cycle charge",
 	OrderMode.SWEEP_ROUTERS: "Sweep routers",
 	OrderMode.ROLL_THE_LINE: "Roll the line",
+	OrderMode.PIN_DOWN: "Pin down",
 	OrderMode.ALL_OUT_ATTACK: "All-out attack",
 }
 
@@ -132,6 +133,7 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.CYCLE_CHARGE, "slug": "cycle_charge"},
 	{"mode": OrderMode.SWEEP_ROUTERS, "slug": "sweep_routers"},
 	{"mode": OrderMode.ROLL_THE_LINE, "slug": "roll_the_line"},
+	{"mode": OrderMode.PIN_DOWN, "slug": "pin_down"},
 	{"mode": OrderMode.ALL_OUT_ATTACK, "slug": "all_out_attack"},
 ]
 
@@ -206,6 +208,7 @@ func _ready() -> void:
 			and UnitRef.ORDER_CYCLE_CHARGE == OrderMode.CYCLE_CHARGE \
 			and UnitRef.ORDER_SWEEP_ROUTERS == OrderMode.SWEEP_ROUTERS \
 			and UnitRef.ORDER_ROLL_THE_LINE == OrderMode.ROLL_THE_LINE \
+			and UnitRef.ORDER_PIN_DOWN == OrderMode.PIN_DOWN \
 			and UnitRef.ORDER_ALL_OUT_ATTACK == OrderMode.ALL_OUT_ATTACK,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 

@@ -286,7 +286,11 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
   fighting instead of standing idle or chasing a broken foe, so a single
   attack order can carry a unit down a whole enemy line
   (see [Tactics](tactics.qmd#order-stances)).
-- **All-out attack** (<kbd>.</kbd>) --- trade defense for offense: the unit
+- **Pin down** (<kbd>.</kbd>) --- stall an enemy confronted head-on: the unit
+  swings less often than normal, but each swing's follow-through briefly leaves
+  it more exposed to a hit --- a genuine tradeoff, not a pure defensive buff
+  (see [Tactics](tactics.qmd#order-stances)).
+- **All-out attack** (<kbd>'</kbd>) --- trade defense for offense: the unit
   hits harder but is itself easier to hit, so both sides in the exchange take
   more casualties than a fair fight would (see [Tactics](tactics.qmd#order-stances)).
 
@@ -371,6 +375,21 @@ to chase down a more distant one that has broken and is fleeing.
 
 Roll the line stance: a single attack order carries the unit through
 three enemies in a row, one after another, as each breaks and routs.
+:::
+
+::: {#fig-pin-down .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/pin_down.jpg">
+  <source src="media/pin_down.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Pin down stance: a defensive stall in a head-on clash --- fewer
+swings, each one briefly more exposed on the follow-through.
 :::
 
 ::: {#fig-all-out-attack .demo}
