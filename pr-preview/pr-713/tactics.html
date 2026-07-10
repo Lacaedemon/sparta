@@ -548,6 +548,7 @@ Table&nbsp;1: Damage and morale multipliers by attack angle.
 <li><strong>A routing unit is still fair game.</strong> Routing doesn’t grant immunity — a fleeing unit can still be struck and run down, chased as relentlessly as your pursuer can manage. So chase a broken enemy down to finish it, rather than assuming it’s out of the fight.</li>
 <li><strong>A “broken” unit can rally</strong> if nothing catches it. As it flees, its nerve steadies — morale climbs back toward a baseline, fast at first and levelling off. If it <strong>breaks contact</strong> (no enemy close enough to keep hitting it) and still fields enough men, its recovering morale carries it over the rally threshold and it <strong>returns to your control</strong>, ready to fight again.</li>
 <li><strong>Keep pressing it and it “shatters” instead</strong> — still in contact when its time runs out, or gutted past reforming. A shattered unit does NOT vanish: it stays on the field, still routing, but can never again recover morale or rally. From there it either <strong>escapes</strong> (flees clear of the map, gone but got away) or is run down and <strong>annihilated</strong> (soldiers reduced to zero) before it can.</li>
+<li><strong>A routing unit paths around impassable terrain too</strong> — fleeing is no longer a straight line toward the back edge; a router detours around a hill in its way the same as an ordered move does. If every escape direction is blocked, it gives up fleeing and stands to fight instead of uselessly running in place against the obstacle.</li>
 <li><strong>The battle isn’t over while a side is only routing.</strong> A team is beaten only once its last unit is truly gone (escaped, annihilated, or otherwise removed), not while its final unit is merely routing. Even a lone survivor that breaks can flee, rally, and fight on — so press a rout home rather than assuming a broken last unit is a win.</li>
 </ul>
 <div id="fig-morale-recovery" class="demo quarto-float quarto-figure quarto-figure-center anchored">
@@ -589,6 +590,20 @@ Figure&nbsp;2: Rout and pursuit: a low-morale infantry block is charged by caval
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-last-unit-rally-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;3: A team’s last unit routs. A lone player infantry is broken and flees (faded); the enemy keeps pressing since a routing unit is still fair game, so this matchup grinds on rather than resolving cleanly — but the point still holds: the battle stays live instead of ending the instant the last unit broke, for as long as it’s still on the field.
+</figcaption>
+</figure>
+</div>
+<div id="fig-trapped-routing" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-trapped-routing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/trapped_routing.jpg">
+  <source src="media/trapped_routing.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-trapped-routing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Routing around terrain: a weak unit breaks and flees straight toward the hill, but paths around the obstacle instead of walking into it, the same way an ordered march does. Two pursuing cavalry keep the pressure on throughout, gradually grinding it down instead of letting it put real distance between them. A router with no terrain escape route left at all stands and fights instead of fleeing in place (see <a href="#terrain">Terrain</a>) — the open field this clip runs in never actually boxes a unit in, so that specific case isn’t shown here.
 </figcaption>
 </figure>
 </div>
@@ -674,7 +689,7 @@ Figure&nbsp;3: A team’s last unit routs. A lone player infantry is broken and 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-formation-shift-reverse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4: Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight — the same parallelism as Shift+Y and Shift+X reversing the form-up-split and group-attack-mode cycles.
+Figure&nbsp;5: Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight — the same parallelism as Shift+Y and Shift+X reversing the form-up-split and group-attack-mode cycles.
 </figcaption>
 </figure>
 </div>
@@ -693,7 +708,7 @@ Figure&nbsp;4: Formation density cycling with the Shift-reverse: <kbd>T</kbd> st
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-testudo-under-fire-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;5: Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.
+Figure&nbsp;6: Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.
 </figcaption>
 </figure>
 </div>
@@ -724,7 +739,7 @@ Figure&nbsp;5: Testudo under fire: an infantry unit locked in testudo, ringed by
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;6: Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.
+Figure&nbsp;7: Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.
 </figcaption>
 </figure>
 </div>
@@ -738,7 +753,7 @@ Figure&nbsp;6: Anti-cavalry square: an infantry unit is charged in the rear by t
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-schiltron-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Schiltron: the same rear cavalry charge as above, but the unit forms Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge harder than orbis does, at a deeper offence cost.
+Figure&nbsp;8: Schiltron: the same rear cavalry charge as above, but the unit forms Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge harder than orbis does, at a deeper offence cost.
 </figcaption>
 </figure>
 </div>
@@ -752,7 +767,7 @@ Figure&nbsp;7: Schiltron: the same rear cavalry charge as above, but the unit fo
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-battle-ai-leaders-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;8: Two AI unit-leader decisions in one clash: the AI spearmen on the left form the anti-cavalry square on their own as player cavalry closes, with no player key press arming it. The AI infantry on the right advances and attacks, then re-targets and turns to face a second player unit that closes on its flank instead of fighting on with its back exposed.
+Figure&nbsp;9: Two AI unit-leader decisions in one clash: the AI spearmen on the left form the anti-cavalry square on their own as player cavalry closes, with no player key press arming it. The AI infantry on the right advances and attacks, then re-targets and turns to face a second player unit that closes on its flank instead of fighting on with its back exposed.
 </figcaption>
 </figure>
 </div>
@@ -834,7 +849,7 @@ Table&nbsp;2: Movement paces by unit type, in metres per second.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pace-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
+Figure&nbsp;10: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
 </figcaption>
 </figure>
 </div>
@@ -853,7 +868,7 @@ Figure&nbsp;9: Pace modes: regiments walk on approach, jog when enemy archers op
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-multi-click-speeds-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Four identical Cavalry regiments sent on the same move, one click apart: Walk, Jog, Run, and Sprint pull apart into four distinct paces instead of moving in lockstep.
+Figure&nbsp;11: Four identical Cavalry regiments sent on the same move, one click apart: Walk, Jog, Run, and Sprint pull apart into four distinct paces instead of moving in lockstep.
 </figcaption>
 </figure>
 </div>
@@ -877,7 +892,7 @@ Figure&nbsp;10: Four identical Cavalry regiments sent on the same move, one clic
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
+Figure&nbsp;12: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
 </figcaption>
 </figure>
 </div>
@@ -902,7 +917,7 @@ Figure&nbsp;11: Per-type backward-walk speed: a Spearmen and an Archers regiment
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+Figure&nbsp;13: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
 </figcaption>
 </figure>
 </div>
@@ -929,7 +944,8 @@ Figure&nbsp;12: Braking on arrival: a lone Infantry regiment sprints toward a mo
 <li><strong>Cycle charge</strong> (<kbd>J</kbd>) — a caracole for cavalry: the unit charges, lands its impact hit, then peels back to a standoff and charges again, instead of grinding in a static melee where the charge bonus is already spent. The charge bonus scales with closing speed, so each fresh run lands hard — but don’t cycle into braced spears, where a fast charge backfires.</li>
 <li><strong>Sweep routers</strong> (<kbd>,</kbd>) — the unit prioritizes a routing (fleeing) enemy over a closer enemy that’s still standing and fighting, even as the gap to the router narrows. Arm it on a unit you want cleaning up broken formations rather than getting drawn into (or staying stuck in) a fresh melee with whoever happens to be nearest — a natural pairing with a flanking cavalry sweep once the enemy line starts to crack.</li>
 <li><strong>Roll the line</strong> (<kbd>;</kbd>) — once the current target routs or is destroyed, the unit automatically re-targets the next-closest enemy still fighting instead of standing idle or chasing a broken foe down. A single attack order can carry a unit through a whole line of weaker enemies one after another — useful once you’ve broken through a flank and want the advance to keep rolling without a fresh order for every foe.</li>
-<li><strong>Chase</strong> (<kbd>.</kbd>) — relentless pursuit: the unit overrides the normal disengage exit a plain move order (or losing steady contact) otherwise gives it, so it keeps closing on and re-engaging the same fleeing or repositioning enemy instead of breaking off. Use it to run down a routing foe rather than let it escape to rally and rejoin the fight later.</li>
+<li><strong>Pin down</strong> (<kbd>.</kbd>) — a stall/pin trade for a unit confronted head-on: it swings roughly half as often as a normal stance, so it deals less damage over time — but each swing’s follow-through opens a brief window where its own defense is lowered, so a foe that catches it mid-swing hits harder than it otherwise would. Use it to hold a line cheaply in casualties from its own attacks, not to win a stand-up fight outright; it’s a genuine tradeoff, not a strict upgrade over a normal stance.</li>
+<li><strong>Chase</strong> (<kbd>&lt;/kbd&gt;) — relentless pursuit: the unit overrides the normal disengage exit a plain move order (or losing steady contact) otherwise gives it, so it keeps closing on and re-engaging the same fleeing or repositioning enemy instead of breaking off. Use it to run down a routing foe rather than let it escape to rally and rejoin the fight later.</kbd></li>
 </ul>
 <p>A volley is not instant: the arrows fly a real arc and <strong>land where they were aimed a moment later</strong>, so a fast unit can partly outrun a shot loosed at long range, and casualties arrive on the beat the arrows come down rather than the instant they leave the bow.</p>
 </section>
@@ -951,7 +967,7 @@ Figure&nbsp;12: Braking on arrival: a lone Infantry regiment sprints toward a mo
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;13: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;14: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
@@ -994,7 +1010,8 @@ Table&nbsp;3: Terrain patches and their movement effects.
 </div>
 </figure>
 </div>
-<p>Units automatically path around impassable terrain when ordered to move. The forest is a different trade-off: routing <em>around</em> it costs distance; routing <em>through</em> it costs time. Generally it is faster to push cavalry or fast-moving infantry through rather than around a narrow forest.</p>
+<p>Units automatically path around impassable terrain when ordered to move. The forest is a different trade-off: going <em>around</em> it costs distance; going <em>through</em> it costs time. Generally it is faster to push cavalry or fast-moving infantry through rather than around a narrow forest.</p>
+<p>A <a href="#morale-routing">routing</a> unit paths around a hill the same way while fleeing — it’s no longer a straight sprint toward the back edge. If a router is boxed in with every escape direction blocked, it gives up fleeing and stands to fight rather than running in place against the obstacle.</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
