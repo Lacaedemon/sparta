@@ -35,3 +35,7 @@ website/_freeze/
 # Demo clips are recorded by CI (publish-site.yml) into website/media/, not committed
 website/media/*.mp4
 website/media/*.jpg
+
+# Per-PR git worktrees used by AI sessions (see CLAUDE.md) — each is its own
+# checkout, not repo content to track from the main checkout's perspective.
+/.claude/worktrees/
