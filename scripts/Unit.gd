@@ -226,7 +226,9 @@ const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
-const ORDER_PIN_DOWN := 7
+const ORDER_SWEEP_ROUTERS := 7
+const ORDER_ROLL_THE_LINE := 8
+const ORDER_PIN_DOWN := 9
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
@@ -1115,7 +1117,39 @@ func _think(delta: float) -> void:
 		support_target = null
 		order_mode = 0   # ward gone: revert to NORMAL
 
-	var enemy: Unit = UnitTargeting.current_target(self)
+	# Sweep routers: prioritize routing enemies over still-fighting units. A router in
+	# range always wins (forces the switch, even off an already-committed target). With
+	# none in range, fall back through current_target() -- which keeps an already-live
+	# target rather than re-scanning for the nearest -- so a newly-closer non-routing
+	# enemy doesn't yank the sweeper off a target it's already engaging. (This mirrors
+	# every other order mode's persistence, but unlike them, SWEEP_ROUTERS still commits
+	# the result to target_enemy so a state inspection sees the acquired target the same
+	# way it would mid-router-chase.) That commit is gated by the same "not disengaging"
+	# check the combat branches below use: a plain move order clears target_enemy to null
+	# and sets has_move_target to signal disengage, and committing an auto-acquired target
+	# here unconditionally would silently override that signal one tick early, re-engaging
+	# a fight the player just tried to break off from.
+	if order_mode == ORDER_SWEEP_ROUTERS:
+		var routing_enemy: Unit = UnitTargeting.nearest_routing_enemy(self)
+		if routing_enemy != null:
+			target_enemy = routing_enemy
+		elif target_enemy != null or not has_move_target:
+			target_enemy = UnitTargeting.current_target(self)
+
+	# Roll the line: a beaten (dead or routed) foe no longer holds this unit's attention --
+	# it moves straight on to the next-closest enemy still actually fighting, instead of
+	# either idling once the kill lands or grinding out a chase against a target that's
+	# already broken (current_target's ordinary chase-to-destroy behaviour). Persist the
+	# fresh pick to target_enemy itself (unlike current_target, which leaves that write to
+	# an explicit order) -- ROLL_THE_LINE's whole point is to keep committing to a new foe
+	# with no fresh player/AI order behind it, so the not-yet-in-contact chase branch below
+	# (which reads the target_enemy field, not this local) needs it set too.
+	var enemy: Unit
+	if order_mode == ORDER_ROLL_THE_LINE:
+		enemy = UnitTargeting.roll_the_line_target(self)
+		target_enemy = enemy
+	else:
+		enemy = UnitTargeting.current_target(self)
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS

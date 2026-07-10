@@ -146,7 +146,13 @@ const DEFAULT_ORDER_BINDINGS := {
 	"skirmish": KEY_K,
 	"support": KEY_G,
 	"cycle_charge": KEY_J,
-	"pin_down": KEY_SEMICOLON,
+	# KEY_W collides with the fixed WASD camera-pan keys (CameraController.gd) --
+	# every other unused letter key is already claimed by a fixed formation/UI
+	# hotkey (see SelectionManager.gd/HUD.gd), so this and roll_the_line's
+	# binding fall back to the punctuation row instead.
+	"sweep_routers": KEY_COMMA,
+	"roll_the_line": KEY_SEMICOLON,
+	"pin_down": KEY_PERIOD,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
