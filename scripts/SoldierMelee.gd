@@ -153,7 +153,14 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 			# mass-split impulse the instant impulse_mag crosses it. The attacker's own recoil
 			# (above) is untouched by this scaling, matching the "bracing does NOT reduce the
 			# attacker's recoil" rule stated above.
-			if received > 0.0:
+			# Static friction gates whether the surviving impulse moves the defender's body AT
+			# ALL: a resting (or slow) body needs `received` to clear a mass/bracing-scaled
+			# threshold before it budges, so a genuinely tiny shove leaves it standing still
+			# instead of nudging it (SoldierCollision.overcomes_static_friction). A body already
+			# in motion has no such gate (kinetic friction only) -- it's the CURRENT velocity,
+			# read before this strike's own impulse is applied, that decides which regime applies.
+			if received > 0.0 and SoldierCollision.overcomes_static_friction(
+					received, defender._sim_body_vel[target].length(), en_prof["mass"], brace_d):
 				var braced_impulse_defender: Vector2 = SoldierCollision.braced_defender_impulse(
 						impulse_defender, received, impulse_mag)
 				defender._sim_body_vel[target] = SoldierCombat.capped_knockback_velocity(

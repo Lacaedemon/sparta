@@ -146,7 +146,15 @@ const DEFAULT_ORDER_BINDINGS := {
 	"skirmish": KEY_K,
 	"support": KEY_G,
 	"cycle_charge": KEY_J,
-	"all_out_attack": KEY_COMMA,
+	# KEY_W collides with the fixed WASD camera-pan keys (CameraController.gd) --
+	# every other unused letter key is already claimed by a fixed formation/UI
+	# hotkey (see SelectionManager.gd/HUD.gd), so this and roll_the_line's
+	# binding fall back to the punctuation row instead.
+	"sweep_routers": KEY_COMMA,
+	"roll_the_line": KEY_SEMICOLON,
+	# all_out_attack's original default (KEY_COMMA) collides with sweep_routers
+	# above, so it falls back to the next free punctuation key.
+	"all_out_attack": KEY_PERIOD,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.

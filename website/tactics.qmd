@@ -785,7 +785,19 @@ into different tools:
   grinding in a static melee where the charge bonus is already spent. The charge
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
   into braced spears, where a fast charge backfires.
-- **All-out attack** (<kbd>,</kbd>) --- a straight offense/defense trade: +20%
+- **Sweep routers** (<kbd>,</kbd>) --- the unit prioritizes a routing (fleeing) enemy
+  over a closer enemy that's still standing and fighting, even as the gap to the
+  router narrows. Arm it on a unit you want cleaning up broken formations rather
+  than getting drawn into (or staying stuck in) a fresh melee with whoever happens
+  to be nearest --- a natural pairing with a flanking cavalry sweep once the enemy
+  line starts to crack.
+- **Roll the line** (<kbd>;</kbd>) --- once the current target routs or is
+  destroyed, the unit automatically re-targets the next-closest enemy still
+  fighting instead of standing idle or chasing a broken foe down. A single
+  attack order can carry a unit through a whole line of weaker enemies one
+  after another --- useful once you've broken through a flank and want the
+  advance to keep rolling without a fresh order for every foe.
+- **All-out attack** (<kbd>.</kbd>) --- a straight offense/defense trade: +20%
   effective attack, but the unit's own defense drops 20% while it's fighting
   all-out. It hits harder and dies faster at the same time, so use it to force
   a quick, costly decision --- finishing off a wavering enemy, or a rearguard

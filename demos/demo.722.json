@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This wires SoldierCollision.overcomes_static_friction into the melee shove path so that a resting, unbraced body fully resists a genuinely tiny (sub-threshold) impulse instead of receiving a small nudge. The effect only changes outcomes at the smallest end of the impulse range (a few world units of body displacement at most, on a single struck soldier, for exactly one cadence) -- a recorded battle clip can't show the difference between 'no nudge' and 'a barely-visible nudge' at that scale. Verified instead via a tick-by-tick GUT test (test/unit/test_soldier_melee.gd's test_tiny_impulse_leaves_a_resting_unbraced_defender_still) that resets the defender to rest each cadence and asserts the exact body-velocity outcome."
+}

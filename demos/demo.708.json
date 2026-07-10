@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/roll-the-line.json",
+  "caption": "Roll the line (closes #691): a single Infantry unit is ordered to attack the front enemy in a line of three under the new roll-the-line stance. Once that enemy breaks and routs, the attacker automatically re-targets the next-closest enemy still fighting -- and again for the third -- with no fresh order issued after the first. All three enemies are routing by the end of the clip.",
+  "fixed_fps": 30,
+  "max_frames": 270,
+  "fps": 15,
+  "width": 720
+}
