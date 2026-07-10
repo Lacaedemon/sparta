@@ -80,8 +80,10 @@ enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYC
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
 ## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
 ## any unit that receives an explicit gait; an order with no gait set (-1, AUTO) keeps
-## the old walk/jog-under-fire/sprint-at-close-range logic in Unit._move_to. For
-## cavalry, the gaits correspond to walk/trot/canter/gallop.
+## the old walk/jog-under-fire/sprint-at-close-range logic in Unit._move_to. There are
+## only three real per-type speeds (walk/jog/sprint -- for cavalry, walk/trot/gallop);
+## RUN has no speed of its own, it's jog while far from the target and sprint once
+## inside SPRINT_START_DISTANCE (see Unit._move_to).
 enum Gait { WALK, JOG, RUN, SPRINT }
 
 ## How a multi-unit attack order distributes its target among the ordered units.
