@@ -105,7 +105,7 @@
           "order_phase": "NONE",
           "position": [
             800.0,
-            413.86
+            413.87
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -116,7 +116,7 @@
             ],
             "centroid": [
               800.0,
-              415.53
+              415.5
             ],
             "count": 80,
             "prone_count": 0
@@ -145,7 +145,7 @@
           "order_phase": "NONE",
           "position": [
             800.0,
-            556.13
+            556.16
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -156,7 +156,7 @@
             ],
             "centroid": [
               800.0,
-              556.13
+              556.19
             ],
             "count": 50,
             "prone_count": 0
@@ -175,10 +175,10 @@
       "units": [
         {
           "current_order": "ATTACK",
-          "current_speed": 67.3,
+          "current_speed": 68.7,
           "engaged": true,
           "facing": [
-            -0.03,
+            -0.02,
             1.0
           ],
           "formation": "NORMAL",
@@ -189,19 +189,19 @@
           "order_mode": "Chase",
           "order_phase": "NONE",
           "position": [
-            799.83,
-            484.41
+            799.74,
+            484.29
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              101.69,
-              41.71
+              104.19,
+              43.18
             ],
             "centroid": [
-              799.67,
-              481.33
+              799.51,
+              479.18
             ],
             "count": 71,
             "prone_count": 0
@@ -215,33 +215,33 @@
         },
         {
           "current_order": "ATTACK",
-          "current_speed": 45.0,
+          "current_speed": 46.0,
           "engaged": true,
           "facing": [
-            0.03,
+            0.02,
             -1.0
           ],
           "formation": "NORMAL",
           "frontage": 10,
-          "morale": 4.2,
+          "morale": 4.3,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            799.16,
-            511.42
+            799.2,
+            511.85
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              81.1,
-              26.88
+              81.06,
+              26.86
             ],
             "centroid": [
-              799.04,
-              508.12
+              799.02,
+              510.18
             ],
             "count": 39,
             "prone_count": 0
