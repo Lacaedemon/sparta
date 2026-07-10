@@ -75,7 +75,7 @@ const NUDGE_DISTANCE := 30.0
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, ROLL_THE_LINE }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
 ## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
@@ -113,6 +113,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.SKIRMISH: "Skirmish",
 	OrderMode.SUPPORT: "Support",
 	OrderMode.CYCLE_CHARGE: "Cycle charge",
+	OrderMode.SWEEP_ROUTERS: "Sweep routers",
 	OrderMode.ROLL_THE_LINE: "Roll the line",
 }
 
@@ -128,6 +129,7 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.SKIRMISH, "slug": "skirmish"},
 	{"mode": OrderMode.SUPPORT, "slug": "support"},
 	{"mode": OrderMode.CYCLE_CHARGE, "slug": "cycle_charge"},
+	{"mode": OrderMode.SWEEP_ROUTERS, "slug": "sweep_routers"},
 	{"mode": OrderMode.ROLL_THE_LINE, "slug": "roll_the_line"},
 ]
 
@@ -200,6 +202,7 @@ func _ready() -> void:
 			and UnitRef.ORDER_SKIRMISH == OrderMode.SKIRMISH \
 			and UnitRef.ORDER_SUPPORT == OrderMode.SUPPORT \
 			and UnitRef.ORDER_CYCLE_CHARGE == OrderMode.CYCLE_CHARGE \
+			and UnitRef.ORDER_SWEEP_ROUTERS == OrderMode.SWEEP_ROUTERS \
 			and UnitRef.ORDER_ROLL_THE_LINE == OrderMode.ROLL_THE_LINE,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 

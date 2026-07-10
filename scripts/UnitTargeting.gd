@@ -30,6 +30,31 @@ static func nearest_enemy(u: Unit) -> Unit:
 	return nearest_enemy_to(u, u.position, Unit.DETECTION_RANGE, true)
 
 
+## Nearest routing enemy for SWEEP_ROUTERS stance: the closest routing (broken/shattered)
+## enemy within DETECTION_RANGE, or null if none is routing. Returns null rather than
+## falling back to the nearest non-routing enemy --- the caller (Unit._think) only
+## overwrites target_enemy when this returns non-null, so a null result leaves
+## current_target()/nearest_enemy() to own the ordinary no-router targeting, preserving
+## the "relentless pursuit" persistence invariant when the stance has nothing to prioritize.
+static func nearest_routing_enemy(u: Unit) -> Unit:
+	var best_router: Unit = null
+	var best_router_d: float = Unit.DETECTION_RANGE
+
+	for o in u.get_tree().get_nodes_in_group("routers"):
+		var other: Unit = o as Unit
+		if other == null or other.team == u.team:
+			continue
+		if other.state != Unit.State.ROUTING:
+			continue
+
+		var d: float = u.position.distance_to(other.position)
+		if d < best_router_d:
+			best_router_d = d
+			best_router = other
+
+	return best_router
+
+
 ## ROLL_THE_LINE re-target: like current_target, but a target that has routed or died no
 ## longer holds the unit's interest -- it moves on to the next-closest FRESH (non-routing)
 ## enemy instead of continuing the pursuit current_target's ordinary chase-to-destroy
