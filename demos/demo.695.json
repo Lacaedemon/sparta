@@ -1,0 +1,9 @@
+{
+  "_comment": "Multi-click move speeds (#385, PR #695). Tailored demo -- see demos/inputs/multi-click-speeds.json.",
+  "input": "demos/inputs/multi-click-speeds.json",
+  "caption": "Multi-click move orders now set a disciplined unit's gait: right-clicking a destination once orders a Walk, twice a Jog, three times a Run, four (or more) times a Sprint -- previously every move order used the same AUTO pace logic (walk, then jog under fire, then sprint at close range) with no way to ask for a specific speed. This clip lines up four identical Cavalry units and sends each on the same 260px move with a different click count: the Walk unit is still ambling along once the Sprint unit has already pulled up at the destination, and the Jog/Run units land in between -- the four lanes visibly pull apart at their own paces (walk/trot/gallop) instead of moving in lockstep.",
+  "fixed_fps": 30,
+  "max_frames": 330,
+  "fps": 15,
+  "width": 720
+}
