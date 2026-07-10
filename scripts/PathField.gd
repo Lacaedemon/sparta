@@ -102,6 +102,16 @@ func has_escape_route(from: Vector2, direction: Vector2) -> bool:
 	return has_path(from, _clip_to_bounds(from, direction.normalized()))
 
 
+## next_step(), but for a fleeing unit with no fixed destination -- just a
+## direction to run in. Clips the far-off candidate target to this field's own
+## grid bounds first, for the same reason has_escape_route() does: an
+## unclipped point outside the grid can never be reached by find_path()'s A*,
+## so next_step() would always fall back to the raw straight-line direction --
+## silently defeating routing around terrain for every fleeing unit.
+func next_step_fleeing(from: Vector2, direction: Vector2) -> Vector2:
+	return next_step(from, _clip_to_bounds(from, direction.normalized()))
+
+
 ## The point where a ray from `from` toward `direction` exits this field's grid,
 ## pulled in by one cell so the result lands solidly in-bounds rather than
 ## exactly on the edge.

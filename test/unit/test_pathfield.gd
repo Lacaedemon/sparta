@@ -117,6 +117,36 @@ func test_has_escape_route_false_when_fully_boxed_in() -> void:
 			"every direction is blocked, so no escape route exists toward %s" % direction)
 
 
+func test_next_step_fleeing_routes_around_a_wall_with_a_gap() -> void:
+	# Regression: next_step_fleeing() used to hand next_step() an unclipped point
+	# 1000 units out in the flee direction, which lands off this FIELD (640x640) --
+	# an unreachable goal find_path() can never resolve regardless of terrain, so a
+	# fleeing unit facing a wall with a gap silently got no detour at all (identical
+	# to no pathfinding). Clipping the target to the grid first (mirroring
+	# has_escape_route()) is what makes A* able to find the real route around.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 0, 64, 480))   # a vertical wall, gap along the bottom
+	var from := Vector2(50, 50)
+	var direction := Vector2(1, 0)
+	var step := pf.next_step_fleeing(from, direction)
+	assert_ne(step, from + direction * 1000.0,
+		"a blocked flee line detours instead of heading straight for the unreachable raw target")
+	assert_false(pf.is_blocked(step), "the next step itself never lands inside the wall")
+
+
+func test_next_step_fleeing_stays_within_field_bounds_on_open_ground() -> void:
+	# With nothing to route around, the returned step must still be the clipped,
+	# in-bounds point -- not the raw 1000-unit-out target, which sits far outside
+	# this FIELD (640x640) and would leave next_step_fleeing() indistinguishable
+	# from an unclipped, always-off-grid caller.
+	var pf := PathField.new(FIELD)
+	var from := Vector2(320, 320)
+	var direction := Vector2(0, -1)
+	var step := pf.next_step_fleeing(from, direction)
+	assert_true(FIELD.grow(1.0).has_point(step),
+		"the fleeing step lands within (or right at the edge of) the field, not 1000 units out")
+
+
 func test_speed_rect_returns_configured_scale() -> void:
 	var pf := PathField.new(FIELD)
 	pf.set_speed_rect(Rect2(200, 200, 128, 128), 0.6)

@@ -2989,10 +2989,15 @@ func _process_rout(delta: float) -> void:
 		_stop_rout_and_fight()
 		return
 
-	# Route around terrain: consult PathField for the next safe step (same logic as _move_to).
+	# Route around terrain: consult PathField for the next safe step. Unlike _move_to's
+	# explicit destination, fleeing has no fixed target -- just a direction -- so this
+	# goes through next_step_fleeing(), which clips the far-off candidate point to the
+	# field's own grid bounds first (mirroring has_escape_route() above). An unclipped
+	# point 1000px out lands off the grid for virtually every real position, which A*
+	# can never reach regardless of terrain -- silently defeating this whole detour.
 	var step: Vector2 = position + flee * 1000.0
 	if PathField.active != null:
-		step = PathField.active.next_step(position, position + flee * 1000.0)
+		step = PathField.active.next_step_fleeing(position, flee)
 
 	# next_step() returns an absolute world-space point, not a direction -- subtract
 	# position first (as _move_to() does) before normalizing.
@@ -3089,8 +3094,9 @@ func _escape() -> void:
 
 
 ## Check if escape path is blocked: true if all viable escape directions (within 90 degree
-## cone around the team's flee direction) are impassable. Returns false if PathField is
-## inactive (no terrain checks) so routing proceeds unchecked.
+## cone around the team's flee direction) are impassable. Assumes PathField.active is set --
+## the sole call site already guards on that, so routing proceeds unchecked when there's no
+## terrain layer at all rather than reaching this function.
 func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
 	# Scan directions around the flee vector: check a 90-degree cone
 	# (45 degrees to each side of the primary flee direction).
