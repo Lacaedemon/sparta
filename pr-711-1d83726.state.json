@@ -4,7 +4,7 @@
       "tick": 10,
       "units": [
         {
-          "current_order": "STANCE",
+          "current_order": null,
           "current_speed": 6.7,
           "engaged": false,
           "facing": [
@@ -16,8 +16,8 @@
           "morale": 100.0,
           "name": "Cavalry 1",
           "order_guard": null,
-          "order_mode": "Sweep routers",
-          "order_phase": "NONE",
+          "order_mode": "Normal",
+          "order_phase": null,
           "position": [
             800.29,
             500.52
@@ -106,7 +106,7 @@
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              99.35,
+              99.34,
               54.89
             ],
             "centroid": [
@@ -191,7 +191,7 @@
             ],
             "centroid": [
               886.41,
-              643.51
+              643.5
             ],
             "count": 19,
             "prone_count": 0
@@ -213,37 +213,37 @@
           "current_speed": 26.7,
           "engaged": false,
           "facing": [
-            0.51,
-            0.86
+            -0.61,
+            0.79
           ],
           "formation": "NORMAL",
           "frontage": 12,
           "morale": 100.0,
           "name": "Cavalry 1",
           "order_guard": null,
-          "order_mode": "Sweep routers",
+          "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            798.91,
-            503.55
+            798.12,
+            503.5
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              101.3,
-              62.59
+              101.37,
+              62.62
             ],
             "centroid": [
-              798.6,
-              502.79
+              798.56,
+              502.81
             ],
             "count": 80,
             "prone_count": 0
           },
           "soldiers": 80,
           "state": "MOVING",
-          "target_enemy_uid": 4,
+          "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
           "uid": 0
@@ -264,19 +264,19 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            677.52,
-            605.39
+            677.47,
+            605.44
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
               133.49,
-              78.0
+              78.67
             ],
             "centroid": [
-              689.74,
-              611.34
+              689.76,
+              611.64
             ],
             "count": 137,
             "prone_count": 0
@@ -304,19 +304,19 @@
           "order_mode": "Hold",
           "order_phase": null,
           "position": [
-            901.02,
-            612.07
+            901.03,
+            612.02
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              102.71,
-              59.13
+              103.18,
+              59.07
             ],
             "centroid": [
-              900.78,
-              614.29
+              900.83,
+              614.11
             ],
             "count": 70,
             "prone_count": 0
@@ -344,18 +344,18 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            708.56,
-            619.25
+            708.51,
+            619.23
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
               125.89,
-              61.13
+              61.18
             ],
             "centroid": [
-              704.31,
+              704.21,
               616.55
             ],
             "count": 115,
@@ -385,7 +385,7 @@
           "order_phase": null,
           "position": [
             884.76,
-            649.23
+            649.22
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -395,8 +395,8 @@
               16.86
             ],
             "centroid": [
-              882.43,
-              645.65
+              882.42,
+              645.62
             ],
             "count": 18,
             "prone_count": 0
@@ -418,37 +418,37 @@
           "current_speed": 66.7,
           "engaged": false,
           "facing": [
-            0.43,
-            0.9
+            -0.59,
+            0.81
           ],
           "formation": "NORMAL",
           "frontage": 12,
           "morale": 100.0,
           "name": "Cavalry 1",
           "order_guard": null,
-          "order_mode": "Sweep routers",
+          "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            803.01,
-            519.8
+            779.8,
+            526.82
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              103.27,
-              60.37
+              112.59,
+              89.47
             ],
             "centroid": [
-              800.91,
-              515.92
+              780.64,
+              525.4
             ],
             "count": 80,
             "prone_count": 0
           },
           "soldiers": 80,
           "state": "MOVING",
-          "target_enemy_uid": 4,
+          "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
           "uid": 0
@@ -458,8 +458,8 @@
           "current_speed": 0.0,
           "engaged": true,
           "facing": [
-            0.99,
-            0.11
+            1.0,
+            0.06
           ],
           "formation": "TIGHT",
           "frontage": 16,
@@ -469,19 +469,19 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            680.18,
-            611.52
+            679.89,
+            614.19
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              119.82,
-              101.34
+              118.54,
+              102.93
             ],
             "centroid": [
-              686.09,
-              613.43
+              686.02,
+              615.97
             ],
             "count": 137,
             "prone_count": 0
@@ -498,30 +498,30 @@
           "current_speed": 0.0,
           "engaged": true,
           "facing": [
-            -0.36,
-            0.93
+            -0.34,
+            0.94
           ],
           "formation": "NORMAL",
           "frontage": 12,
-          "morale": 89.1,
+          "morale": 89.2,
           "name": "Cavalry 2",
           "order_guard": null,
           "order_mode": "Hold",
           "order_phase": null,
           "position": [
-            901.82,
-            612.34
+            901.45,
+            610.24
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              105.57,
-              78.76
+              107.39,
+              78.16
             ],
             "centroid": [
-              901.59,
-              612.88
+              901.2,
+              610.38
             ],
             "count": 70,
             "prone_count": 0
@@ -538,8 +538,8 @@
           "current_speed": 0.0,
           "engaged": true,
           "facing": [
-            -0.99,
-            -0.11
+            -1.0,
+            -0.06
           ],
           "formation": "NORMAL",
           "frontage": 15,
@@ -549,19 +549,19 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            715.59,
-            615.29
+            715.43,
+            615.99
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              117.86,
-              108.39
+              119.94,
+              102.39
             ],
             "centroid": [
-              713.83,
-              613.97
+              713.55,
+              615.08
             ],
             "count": 114,
             "prone_count": 0
@@ -589,19 +589,19 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            878.05,
-            675.61
+            878.8,
+            675.47
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              38.44,
-              17.01
+              37.69,
+              15.96
             ],
             "centroid": [
-              877.41,
-              659.9
+              878.12,
+              658.88
             ],
             "count": 15,
             "prone_count": 0
@@ -620,40 +620,40 @@
       "units": [
         {
           "current_order": null,
-          "current_speed": 106.7,
-          "engaged": false,
+          "current_speed": 94.0,
+          "engaged": true,
           "facing": [
-            0.38,
-            0.93
+            -0.75,
+            0.66
           ],
           "formation": "NORMAL",
           "frontage": 12,
           "morale": 100.0,
           "name": "Cavalry 1",
           "order_guard": null,
-          "order_mode": "Sweep routers",
+          "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            822.61,
-            562.35
+            741.2,
+            574.79
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              115.95,
-              49.67
+              101.89,
+              121.73
             ],
             "centroid": [
-              821.09,
-              557.75
+              745.19,
+              572.11
             ],
             "count": 80,
             "prone_count": 0
           },
           "soldiers": 80,
-          "state": "MOVING",
-          "target_enemy_uid": 4,
+          "state": "FIGHTING",
+          "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
           "uid": 0
@@ -663,35 +663,35 @@
           "current_speed": 0.0,
           "engaged": true,
           "facing": [
-            0.92,
-            -0.4
+            0.82,
+            -0.57
           ],
           "formation": "TIGHT",
           "frontage": 16,
-          "morale": 99.3,
+          "morale": 98.0,
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            685.34,
-            620.47
+            681.2,
+            622.33
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              93.73,
-              126.35
+              91.28,
+              130.77
             ],
             "centroid": [
-              687.76,
-              620.99
+              686.97,
+              619.79
             ],
-            "count": 137,
+            "count": 135,
             "prone_count": 0
           },
-          "soldiers": 137,
+          "soldiers": 135,
           "state": "FIGHTING",
           "target_enemy_uid": null,
           "team": 0,
@@ -703,30 +703,30 @@
           "current_speed": 0.0,
           "engaged": false,
           "facing": [
-            -0.36,
-            0.93
+            -0.34,
+            0.94
           ],
           "formation": "NORMAL",
           "frontage": 12,
-          "morale": 91.1,
+          "morale": 91.2,
           "name": "Cavalry 2",
           "order_guard": null,
           "order_mode": "Hold",
           "order_phase": null,
           "position": [
-            901.81,
-            612.32
+            901.43,
+            609.07
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              105.33,
-              74.15
+              105.39,
+              72.74
             ],
             "centroid": [
-              901.58,
-              612.92
+              901.21,
+              609.66
             ],
             "count": 70,
             "prone_count": 0
@@ -743,35 +743,35 @@
           "current_speed": 0.0,
           "engaged": true,
           "facing": [
-            -0.92,
-            0.4
+            -0.82,
+            0.57
           ],
           "formation": "NORMAL",
           "frontage": 15,
-          "morale": 92.7,
+          "morale": 65.7,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            718.68,
-            605.57
+            710.22,
+            601.83
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              103.08,
-              144.03
+              111.3,
+              136.31
             ],
             "centroid": [
-              716.93,
-              605.12
+              707.34,
+              600.8
             ],
-            "count": 109,
+            "count": 73,
             "prone_count": 0
           },
-          "soldiers": 109,
+          "soldiers": 73,
           "state": "FIGHTING",
           "target_enemy_uid": 1,
           "team": 1,
@@ -794,19 +794,19 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            878.38,
-            699.62
+            878.73,
+            699.49
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              42.33,
-              41.46
+              38.06,
+              37.63
             ],
             "centroid": [
-              878.62,
-              687.39
+              878.94,
+              683.84
             ],
             "count": 15,
             "prone_count": 0
@@ -825,40 +825,40 @@
       "units": [
         {
           "current_order": null,
-          "current_speed": 146.7,
-          "engaged": false,
+          "current_speed": 94.0,
+          "engaged": true,
           "facing": [
-            0.3,
-            0.96
+            -0.99,
+            -0.12
           ],
           "formation": "NORMAL",
           "frontage": 12,
           "morale": 100.0,
           "name": "Cavalry 1",
           "order_guard": null,
-          "order_mode": "Sweep routers",
+          "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            854.23,
-            641.04
+            728.37,
+            598.94
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              124.28,
-              56.67
+              80.39,
+              129.01
             ],
             "centroid": [
-              853.37,
-              635.92
+              722.92,
+              602.11
             ],
             "count": 80,
             "prone_count": 0
           },
           "soldiers": 80,
-          "state": "MOVING",
-          "target_enemy_uid": 4,
+          "state": "FIGHTING",
+          "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
           "uid": 0
@@ -868,35 +868,35 @@
           "current_speed": 0.0,
           "engaged": true,
           "facing": [
-            0.81,
-            -0.58
+            0.58,
+            -0.81
           ],
           "formation": "TIGHT",
           "frontage": 16,
-          "morale": 96.7,
+          "morale": 97.3,
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            688.73,
-            624.8
+            681.96,
+            624.73
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              116.39,
-              116.16
+              144.64,
+              156.59
             ],
             "centroid": [
-              690.28,
-              623.84
+              684.38,
+              620.42
             ],
-            "count": 132,
+            "count": 133,
             "prone_count": 0
           },
-          "soldiers": 132,
+          "soldiers": 133,
           "state": "FIGHTING",
           "target_enemy_uid": null,
           "team": 0,
@@ -908,30 +908,30 @@
           "current_speed": 0.0,
           "engaged": false,
           "facing": [
-            -0.36,
-            0.93
+            -0.34,
+            0.94
           ],
           "formation": "NORMAL",
           "frontage": 12,
-          "morale": 93.1,
+          "morale": 93.2,
           "name": "Cavalry 2",
           "order_guard": null,
           "order_mode": "Hold",
           "order_phase": null,
           "position": [
-            901.81,
-            612.32
+            901.43,
+            609.06
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              105.33,
-              74.15
+              105.34,
+              72.74
             ],
             "centroid": [
-              901.58,
-              612.92
+              901.21,
+              609.67
             ],
             "count": 70,
             "prone_count": 0
@@ -948,37 +948,37 @@
           "current_speed": 0.0,
           "engaged": true,
           "facing": [
-            -0.81,
-            0.58
+            0.99,
+            0.12
           ],
           "formation": "NORMAL",
-          "frontage": 15,
-          "morale": 88.2,
+          "frontage": 7,
+          "morale": 55.2,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            718.46,
-            603.59
+            702.97,
+            595.14
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              137.82,
-              164.7
+              116.15,
+              159.13
             ],
             "centroid": [
-              718.42,
-              604.15
+              703.23,
+              598.29
             ],
-            "count": 103,
+            "count": 59,
             "prone_count": 0
           },
-          "soldiers": 103,
+          "soldiers": 59,
           "state": "FIGHTING",
-          "target_enemy_uid": 1,
+          "target_enemy_uid": 0,
           "team": 1,
           "tier": "CLOSE",
           "uid": 3
@@ -999,19 +999,19 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            880.23,
-            725.39
+            879.25,
+            723.59
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              62.71,
-              23.86
+              58.11,
+              21.79
             ],
             "centroid": [
-              880.46,
-              714.1
+              879.33,
+              712.16
             ],
             "count": 15,
             "prone_count": 0
@@ -1030,40 +1030,40 @@
       "units": [
         {
           "current_order": null,
-          "current_speed": 159.3,
+          "current_speed": 94.0,
           "engaged": true,
           "facing": [
-            -0.91,
-            -0.41
+            -0.87,
+            -0.49
           ],
           "formation": "NORMAL",
           "frontage": 12,
           "morale": 100.0,
           "name": "Cavalry 1",
           "order_guard": null,
-          "order_mode": "Sweep routers",
+          "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            860.54,
-            668.82
+            724.62,
+            606.47
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              125.76,
-              61.85
+              78.32,
+              123.72
             ],
             "centroid": [
-              865.58,
-              670.24
+              720.04,
+              607.78
             ],
             "count": 80,
             "prone_count": 0
           },
           "soldiers": 80,
-          "state": "MOVING",
-          "target_enemy_uid": 3,
+          "state": "FIGHTING",
+          "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
           "uid": 0
@@ -1073,35 +1073,35 @@
           "current_speed": 0.0,
           "engaged": true,
           "facing": [
-            0.84,
-            -0.55
+            0.57,
+            -0.82
           ],
           "formation": "TIGHT",
           "frontage": 16,
-          "morale": 96.9,
+          "morale": 97.5,
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            687.64,
-            624.68
+            681.41,
+            623.15
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              128.44,
-              115.96
+              165.39,
+              155.71
             ],
             "centroid": [
-              690.46,
-              621.99
+              682.83,
+              619.84
             ],
-            "count": 132,
+            "count": 133,
             "prone_count": 0
           },
-          "soldiers": 132,
+          "soldiers": 133,
           "state": "FIGHTING",
           "target_enemy_uid": null,
           "team": 0,
@@ -1113,30 +1113,30 @@
           "current_speed": 0.0,
           "engaged": false,
           "facing": [
-            -0.36,
-            0.93
+            -0.34,
+            0.94
           ],
           "formation": "NORMAL",
           "frontage": 12,
-          "morale": 93.7,
+          "morale": 93.8,
           "name": "Cavalry 2",
           "order_guard": null,
           "order_mode": "Hold",
           "order_phase": null,
           "position": [
-            901.81,
-            612.32
+            901.43,
+            609.06
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              105.33,
-              74.15
+              105.34,
+              72.74
             ],
             "centroid": [
-              901.58,
-              612.92
+              901.21,
+              609.67
             ],
             "count": 70,
             "prone_count": 0
@@ -1153,40 +1153,80 @@
           "current_speed": 0.0,
           "engaged": true,
           "facing": [
-            -0.84,
-            0.55
+            0.87,
+            0.49
           ],
           "formation": "NORMAL",
-          "frontage": 15,
-          "morale": 88.2,
+          "frontage": 7,
+          "morale": 55.2,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            718.09,
-            604.97
+            702.27,
+            593.4
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              142.86,
-              171.34
+              118.36,
+              156.3
             ],
             "centroid": [
-              718.31,
-              605.3
+              702.45,
+              598.3
             ],
-            "count": 103,
+            "count": 59,
             "prone_count": 0
           },
-          "soldiers": 103,
+          "soldiers": 59,
           "state": "FIGHTING",
-          "target_enemy_uid": 1,
+          "target_enemy_uid": 0,
           "team": 1,
           "tier": "CLOSE",
           "uid": 3
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 8,
+          "morale": 21.3,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            879.35,
+            732.63
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              60.5,
+              18.16
+            ],
+            "centroid": [
+              879.37,
+              721.48
+            ],
+            "count": 15,
+            "prone_count": 0
+          },
+          "soldiers": 15,
+          "state": "ROUTING",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 4
         }
       ]
     }
