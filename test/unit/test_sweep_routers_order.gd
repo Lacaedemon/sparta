@@ -26,10 +26,18 @@ func _spawn_three_unit_battle() -> Node:
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	# Team 0: one infantry unit that will be armed with SWEEP_ROUTERS, positioned center
 	# Team 1: one unit far from team 0 (will be routed), and one closer unit (will remain fighting)
+	#
+	# Both team-1 units must sit within Unit.DETECTION_RANGE (190px) of the sweeper, or
+	# UnitTargeting.nearest_enemy/nearest_routing_enemy never sees them at all and
+	# target_enemy stays null regardless of which one should win priority. Both units
+	# sit on the same +x side, at 80px and 170px, so distance-to-sweeper and the
+	# tests' own "smaller x = closer" identification (both team-1 units share the
+	# sweeper's y, so x-order and distance-order agree) stay consistent, and both
+	# distances remain comfortably inside the 190px detection radius throughout.
 	_battle.scenario = [
 		{"team": 0, "type": "Infantry", "x": 500, "y": 500},
-		{"team": 1, "type": "Infantry", "x": 200, "y": 500},    # Closer non-routing unit
-		{"team": 1, "type": "Infantry", "x": 900, "y": 500},    # Far unit (will be routed)
+		{"team": 1, "type": "Infantry", "x": 580, "y": 500},    # Closer non-routing unit
+		{"team": 1, "type": "Infantry", "x": 670, "y": 500},    # Far unit (will be routed)
 	]
 	add_child(_battle)
 	return _battle
@@ -97,7 +105,15 @@ func test_sweep_routers_prioritizes_routing_over_closer_non_routing() -> void:
 	assert_eq(sweeper.target_enemy, closer_enemy,
 		"initially targets the closer non-routing enemy")
 
-	# Now route the far enemy (this moves it to the "routers" group)
+	# Now route the far enemy (this moves it to the "routers" group). _rout() alone
+	# doesn't keep it routing: an undamaged unit still has full morale, and
+	# _process_rout rallies a routing unit back to IDLE on its very first tick once
+	# morale is at/above RALLY_MORALE_THRESHOLD and it isn't in contact (see
+	# Unit._can_rally) -- exactly this unit's situation, since the test never dealt
+	# it any casualties. Force morale below the threshold first, the same pattern
+	# test_morale_recovery_demo_scenario.gd uses, so it stays ROUTING long enough
+	# for the sweeper to re-target it.
+	far_enemy.morale = 1.0
 	far_enemy._rout()
 	assert_eq(far_enemy.state, Unit.State.ROUTING, "far_enemy is now routing")
 	assert_true(far_enemy.is_in_group("routers"), "routed unit joined the routers group")
