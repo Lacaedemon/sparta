@@ -1,5 +1,5 @@
 {
-  "_comment": "Sweep routers (#693/PR #711): a lone player Cavalry ('Sweeper', uid 0) sits between two enemy targets. 'Holdout' (uid 3) is a full-strength Infantry that closes on a player Spearmen tie-down ('Anvil') and stays FIGHTING it -- close to the sweeper (~140-150 px) but never routs. 'Fleeing' (uid 4) is a weak, low-morale Infantry spawned in contact with a second player Cavalry ('Breaker'); it breaks almost immediately (ROUTING within the first few ticks) and keeps fleeing, ending up farther from the sweeper than Holdout. Giving the sweeper the SWEEP_ROUTERS stance (Ctrl+W) makes it lock onto the more distant ROUTING Fleeing and chase it, bypassing the closer, still-fighting Holdout -- the actual re-targeting choice under test. Verified by state dump: from tick ~15 onward target_enemy_uid stays 4 (Fleeing) throughout, never 3 (Holdout), even though Holdout is consistently the nearer of the two.",
+  "_comment": "Sweep routers (#693/PR #711): a lone player Cavalry ('Sweeper', uid 0) sits between two enemy targets. 'Holdout' (uid 3) is a full-strength Infantry that closes on a player Spearmen tie-down ('Anvil') and stays FIGHTING it -- close to the sweeper (~140-150 px) but never routs. 'Fleeing' (uid 4) is a weak, low-morale Infantry spawned in contact with a second player Cavalry ('Breaker'); it breaks almost immediately (ROUTING within the first few ticks) and keeps fleeing, ending up farther from the sweeper than Holdout. Giving the sweeper the SWEEP_ROUTERS stance (Ctrl+,) makes it lock onto the more distant ROUTING Fleeing and chase it, bypassing the closer, still-fighting Holdout -- the actual re-targeting choice under test. Verified by state dump: from tick ~15 onward target_enemy_uid stays 4 (Fleeing) throughout, never 3 (Holdout), even though Holdout is consistently the nearer of the two.",
   "seed": "12345",
   "scenario": [
     {"team": 0, "type": "Cavalry", "x": 800, "y": 500, "facing": [0, 1]},
@@ -15,7 +15,7 @@
     {"tick": 1, "click": [900, 610]},
     {"tick": 2, "key": "H", "ctrl": true},
     {"tick": 5, "click": [800, 500]},
-    {"tick": 10, "key": "W", "ctrl": true}
+    {"tick": 10, "key": "Comma", "ctrl": true}
   ],
   "state": [10, 40, 100, 160, 220, 240],
   "frames": [10, 100, 160, 220]

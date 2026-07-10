@@ -1090,12 +1090,16 @@ func _think(delta: float) -> void:
 	# enemy doesn't yank the sweeper off a target it's already engaging. (This mirrors
 	# every other order mode's persistence, but unlike them, SWEEP_ROUTERS still commits
 	# the result to target_enemy so a state inspection sees the acquired target the same
-	# way it would mid-router-chase.)
+	# way it would mid-router-chase.) That commit is gated by the same "not disengaging"
+	# check the combat branches below use: a plain move order clears target_enemy to null
+	# and sets has_move_target to signal disengage, and committing an auto-acquired target
+	# here unconditionally would silently override that signal one tick early, re-engaging
+	# a fight the player just tried to break off from.
 	if order_mode == ORDER_SWEEP_ROUTERS:
 		var routing_enemy: Unit = UnitTargeting.nearest_routing_enemy(self)
 		if routing_enemy != null:
 			target_enemy = routing_enemy
-		else:
+		elif target_enemy != null or not has_move_target:
 			target_enemy = UnitTargeting.current_target(self)
 
 	# Roll the line: a beaten (dead or routed) foe no longer holds this unit's attention --
