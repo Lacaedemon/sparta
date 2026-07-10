@@ -37,9 +37,17 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 	# (constant across the cadence, from the units' formation and relative facing), so
 	# compute once. Scales only the wound magnitude, never the seeded land/fall rolls --
 	# the RNG stream (draw count and order) is untouched, so replays stay bit-identical.
+	# order_mode_modifiers folds in All-out attack the same way: mods.x boosts the
+	# wound when the ATTACKER is fighting all-out, and dividing by mods.y (< 1.0 when
+	# the DEFENDER is) inflates the wound the defender takes -- the same asymmetric
+	# attacker/defender lookup the regiment-formula path (UnitCombat.strike/shoot)
+	# already applies, so the per-soldier melee path (the dominant case whenever both
+	# sides are engaged) isn't left as a silent no-op for this stance.
+	var mods: Vector2 = UnitCombat.order_mode_modifiers(attacker, defender)
 	var wound_scale: float = attacker.formation_attack_factor() \
 			* attacker.formation_melee_attack_factor() \
-			* defender.melee_defense_factor(attacker)
+			* defender.melee_defense_factor(attacker) \
+			* mods.x / mods.y
 
 	for ai in attackers:
 		if ai < attacker._sim_prone.size() and attacker._sim_prone[ai] > 0.0:

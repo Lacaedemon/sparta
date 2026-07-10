@@ -229,6 +229,7 @@ const ORDER_CYCLE_CHARGE := 6
 const ORDER_SWEEP_ROUTERS := 7
 const ORDER_ROLL_THE_LINE := 8
 const ORDER_PIN_DOWN := 9
+const ORDER_ALL_OUT_ATTACK := 10
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
