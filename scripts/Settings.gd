@@ -152,6 +152,7 @@ const DEFAULT_ORDER_BINDINGS := {
 	# binding fall back to the punctuation row instead.
 	"sweep_routers": KEY_COMMA,
 	"roll_the_line": KEY_SEMICOLON,
+	"pin_down": KEY_PERIOD,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
