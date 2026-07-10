@@ -153,10 +153,10 @@ const DEFAULT_ORDER_BINDINGS := {
 	"sweep_routers": KEY_COMMA,
 	"roll_the_line": KEY_SEMICOLON,
 	"pin_down": KEY_PERIOD,
-	# Same letter-key exhaustion as above; comma/semicolon/period are already taken
-	# by sweep_routers/roll_the_line/pin_down, so chase takes the next
-	# punctuation-row key over.
-	"chase": KEY_APOSTROPHE,
+	# Same letter-key exhaustion as above; comma/semicolon/period/apostrophe are
+	# already taken (apostrophe by all_out_attack, a sibling PR against the same
+	# main), so chase takes the next punctuation-row key over.
+	"chase": KEY_BACKSLASH,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
