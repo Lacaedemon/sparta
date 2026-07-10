@@ -78,9 +78,10 @@ const NUDGE_DISTANCE := 30.0
 enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
-## or SPRINT (quadruple). Disciplined units use the specified gait; undisciplined
-## units ignore the gait and move at their default speed. For cavalry, the gaits
-## correspond to walk/trot/canter/gallop.
+## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
+## any unit that receives an explicit gait; an order with no gait set (-1, AUTO) keeps
+## the old walk/jog-under-fire/sprint-at-close-range logic in Unit._move_to. For
+## cavalry, the gaits correspond to walk/trot/canter/gallop.
 enum Gait { WALK, JOG, RUN, SPRINT }
 
 ## How a multi-unit attack order distributes its target among the ordered units.
@@ -690,7 +691,7 @@ func _apply_order_live(cmd: Dictionary) -> void:
 func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		order_mode: int = OrderMode.NORMAL,
 		group_attack: int = GroupAttackMode.FOCUSED,
-		gait: int = Gait.RUN) -> void:
+		gait: int = -1) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -1032,9 +1033,11 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	# The order's stance, stamped on each ordered unit below for the smart-
 	# order behaviours to consume. Defaults to NORMAL for older replays / merges.
 	var mode: int = int(cmd.get("mode", OrderMode.NORMAL))
-	# The movement gait (WALK/JOG/RUN/SPRINT) for MOVE orders. Defaults to RUN (triple-click)
-	# for older replays / merges where the field is not set.
-	var gait: int = int(cmd.get("gait", Gait.RUN))
+	# The movement gait (WALK/JOG/RUN/SPRINT) for MOVE orders. Defaults to -1 (AUTO,
+	# matching Order.gait's own default) for older replays / merges / programmatic
+	# orders where the field is not set, so they keep the old walk/jog/sprint logic
+	# instead of being silently forced onto a fixed gait.
+	var gait: int = int(cmd.get("gait", -1))
 	# The target uid may be an enemy (attack) or a friendly (line relief); a
 	# plain move has no target. Resolve it and dispatch per ordered unit by team.
 	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null

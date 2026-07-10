@@ -434,8 +434,8 @@ func _same_type(a, b) -> bool:
 
 
 ## Return the Gait for the current multi-click count: WALK (1 click), JOG (2),
-## RUN (3), SPRINT (4+). Also returns RUN for single clicks if append is true
-## (Shift+click for waypoint append uses default RUN speed to maintain current behavior).
+## RUN (3), SPRINT (4+). Returns RUN whenever append is true, regardless of click
+## count (Shift+click for waypoint append uses run speed to maintain current behavior).
 func _gait_from_click_count(click_count: int, append: bool = false) -> int:
 	if append:
 		return BattleRef.Gait.RUN
@@ -446,7 +446,7 @@ func _gait_from_click_count(click_count: int, append: bool = false) -> int:
 		_: return BattleRef.Gait.SPRINT
 
 
-func _issue_order(world_pos: Vector2, append: bool = false, gait: int = BattleRef.Gait.RUN) -> void:
+func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> void:
 	# Orders are replayed, so the player can't steer a playback.
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
