@@ -2945,12 +2945,16 @@ func _process_rout(delta: float) -> void:
 		return
 
 	# Route around terrain: consult PathField for the next safe step (same logic as _move_to).
-	var step: Vector2 = flee
+	var step: Vector2 = position + flee * 1000.0
 	if PathField.active != null:
 		step = PathField.active.next_step(position, position + flee * 1000.0)
 
-	facing = step.normalized()
-	var next: Vector2 = position + step.normalized() * (move_speed * 1.3) * delta
+	# next_step() returns an absolute world-space point, not a direction -- subtract
+	# position first (as _move_to() does) before normalizing.
+	var to: Vector2 = step - position
+	var dir: Vector2 = to.normalized()
+	facing = dir
+	var next: Vector2 = position + dir * (move_speed * 1.3) * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
 		_escape()
@@ -3050,14 +3054,14 @@ func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
 	for offset_deg in [-45.0, -30.0, -15.0, 0.0, 15.0, 30.0, 45.0]:
 		angles_to_check.append(base_angle + deg_to_rad(offset_deg))
 
-	# Check each direction: if ANY has a viable escape step, the path is not fully blocked.
-	var escape_target: Vector2 = position + flee_direction * 1000.0
+	# Check each direction: if ANY has a genuine route out, the path is not fully blocked.
+	# PathField.has_escape_route() distinguishes "a route exists" from "no route,
+	# fell back to the raw target" -- next_step()'s own return value can't tell those
+	# apart, and it clips the candidate target to the field's own bounds so the check
+	# isn't asking for a route to an inherently unreachable off-map point.
 	for angle in angles_to_check:
 		var direction: Vector2 = Vector2.from_angle(angle)
-		var far_point: Vector2 = position + direction * 1000.0
-		var next_step: Vector2 = PathField.active.next_step(position, far_point)
-		# If next_step differs significantly from current position, a path forward exists.
-		if next_step.distance_to(position) > 1.0:
+		if PathField.active.has_escape_route(position, direction):
 			return false
 
 	# All directions blocked: unit is trapped.

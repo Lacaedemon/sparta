@@ -5,9 +5,10 @@ extends GutTest
 
 func test_routing_unit_uses_pathfield_when_available() -> void:
 	# A routing unit should consult PathField for escape direction (like _move_to does).
-	var battle = _spawn_battle()
-	var unit: Unit = battle._units[0]
-	unit.state = Unit.State.ROUTING
+	var battle: Node = await _spawn_battle()
+	var unit: Unit = _first_team0_unit(battle)
+	assert_not_null(unit, "expected at least one spawned team-0 unit")
+	unit._rout()  # sets state + _rout_timer together, unlike a bare state assignment
 
 	# Create a PathField with no obstacles: routing should proceed straight.
 	var pf := PathField.new(battle.FIELD)
@@ -23,14 +24,14 @@ func test_routing_unit_uses_pathfield_when_available() -> void:
 		true, "team 0 flees upward; team 1 downward")
 
 	PathField.active = old_pf
-	battle.queue_free()
 
 
 func test_trapped_routing_unit_fights_instead_of_fleeing() -> void:
 	# A unit trapped by terrain with no escape route should stop routing and fight.
-	var battle = _spawn_battle()
-	var unit: Unit = battle._units[0]
-	unit.state = Unit.State.ROUTING
+	var battle: Node = await _spawn_battle()
+	var unit: Unit = _first_team0_unit(battle)
+	assert_not_null(unit, "expected at least one spawned team-0 unit")
+	unit._rout()  # sets state + _rout_timer together, unlike a bare state assignment
 	unit.position = Vector2(640, 360)  # middle of the field
 
 	# Create a PathField with a tight cage around the unit.
@@ -54,15 +55,21 @@ func test_trapped_routing_unit_fights_instead_of_fleeing() -> void:
 	assert_true(unit._shattered, "unit marked as shattered (will fight to death)")
 
 	PathField.active = old_pf
-	battle.queue_free()
 
 
 func test_routing_unit_with_open_escape_continues_fleeing() -> void:
 	# A unit with an open escape path should keep routing.
-	var battle = _spawn_battle()
-	var unit: Unit = battle._units[0]
-	unit.state = Unit.State.ROUTING
+	var battle: Node = await _spawn_battle()
+	var unit: Unit = _first_team0_unit(battle)
+	assert_not_null(unit, "expected at least one spawned team-0 unit")
+	unit._rout()  # sets state + _rout_timer together, unlike a bare state assignment
 	unit.position = Vector2(640, 360)
+	# Below RALLY_MORALE_THRESHOLD: _rout() leaves morale untouched, and a fresh unit
+	# spawns at full morale (100) -- which would otherwise rally on this very first
+	# _process_rout() call (broken contact + morale already past the threshold) before
+	# this test gets to observe it still routing. See the one-tick-rout note on
+	# _process_rout's own rally check.
+	unit.morale = 20.0
 
 	# Create a PathField with a wide-open escape direction (team 0 flees UP).
 	var pf := PathField.new(battle.FIELD)
@@ -87,13 +94,13 @@ func test_routing_unit_with_open_escape_continues_fleeing() -> void:
 	assert_gt(unit.position.distance_to(old_pos), 0.0, "unit actually moved")
 
 	PathField.active = old_pf
-	battle.queue_free()
 
 
 func test_escape_path_blocked_detects_cone_around_flee_direction() -> void:
 	# _is_escape_path_blocked checks a 90-degree cone (45 deg each side).
-	var battle = _spawn_battle()
-	var unit: Unit = battle._units[0]
+	var battle: Node = await _spawn_battle()
+	var unit: Unit = _first_team0_unit(battle)
+	assert_not_null(unit, "expected at least one spawned team-0 unit")
 	unit.position = Vector2(640, 360)
 
 	var pf := PathField.new(battle.FIELD)
@@ -117,13 +124,27 @@ func test_escape_path_blocked_detects_cone_around_flee_direction() -> void:
 		"blocking entire escape cone reports path as trapped")
 
 	PathField.active = old_pf
-	battle.queue_free()
 
 
-func _spawn_battle() -> Battle:
-	# Minimal battle setup for routing tests.
+func _spawn_battle() -> Node:
+	# Minimal battle setup for routing tests. Battle.gd has no class_name (it's
+	# preloaded elsewhere to avoid depending on one -- see the file's own header
+	# comment), so the return/local types here stay the untyped `Node` other
+	# tests already use for the same scene (e.g. test_battle_spawn_no_overlap.gd).
 	var scene := load("res://scenes/Battle.tscn") as PackedScene
-	var battle := scene.instantiate() as Battle
+	var battle: Node = scene.instantiate()
 	add_child_autofree(battle)
 	await get_tree().process_frame
 	return battle
+
+
+## The first team-0 unit spawned into `battle`, or null if none spawned (each
+## call site asserts non-null so a regression here fails loudly). `_units`
+## (Battle's Unit container node) isn't an array, so this walks the spawned
+## units by group membership instead of indexing `battle._units[0]`.
+func _first_team0_unit(battle: Node) -> Unit:
+	for node in get_tree().get_nodes_in_group("units"):
+		var unit: Unit = node as Unit
+		if unit != null and unit.team == 0:
+			return unit
+	return null

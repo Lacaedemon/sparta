@@ -63,6 +63,60 @@ func test_blocked_goal_falls_back_to_target() -> void:
 		"an unreachable goal falls back to a straight step")
 
 
+func test_has_path_true_on_a_clear_line() -> void:
+	var pf := PathField.new(FIELD)
+	assert_true(pf.has_path(Vector2(50, 50), Vector2(600, 50)),
+		"an unobstructed straight line is a genuine route")
+
+
+func test_has_path_true_when_a_detour_exists() -> void:
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 0, 64, 480))   # a wall with a gap along the bottom
+	assert_true(pf.has_path(Vector2(50, 50), Vector2(600, 50)),
+		"blocked straight line but A* finds a route around -- still a real path")
+
+
+func test_has_path_false_when_the_goal_is_unreachable() -> void:
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(560, 0, 80, 120))   # fully encloses the goal cell
+	# Unlike next_step() (which falls back to the raw target either way), has_path()
+	# must tell this apart from the clear-line case above.
+	assert_false(pf.has_path(Vector2(50, 50), Vector2(600, 50)),
+		"an unreachable goal is correctly reported as no path")
+
+
+func test_has_escape_route_true_on_open_ground_toward_each_quadrant() -> void:
+	# Regression: an unclipped 1000-unit-out target lands outside this FIELD (640x640)
+	# in every one of these directions, which used to always read as "no path" even on
+	# fully open ground -- has_escape_route() must clip the target to the grid's own
+	# bounds first. Each direction below exercises a different sign combination in
+	# _clip_to_bounds()'s per-axis clamp.
+	var pf := PathField.new(FIELD)
+	var origin := Vector2(320, 320)   # the field's centre
+	for direction in [Vector2(1, -1), Vector2(-1, -1), Vector2(1, 1), Vector2(-1, 1),
+			Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
+		assert_true(pf.has_escape_route(origin, direction),
+			"open ground toward %s is a genuine escape route" % direction)
+
+
+func test_has_escape_route_false_when_fully_boxed_in() -> void:
+	# A one-cell-thick ring of blocked cells surrounds the centre cell -- which itself
+	# stays open, matching a routing unit standing on passable ground that's walled in
+	# on every side (not a unit whose own position is somehow inside the terrain).
+	var pf := PathField.new(FIELD)
+	var centre_cell := Vector2i(5, 5)
+	for dx in [-1, 0, 1]:
+		for dy in [-1, 0, 1]:
+			if dx == 0 and dy == 0:
+				continue
+			var c: Vector2i = centre_cell + Vector2i(dx, dy)
+			pf.block_rect(Rect2(c.x * 64.0, c.y * 64.0, 64.0, 64.0))
+	var centre := Vector2((centre_cell.x + 0.5) * 64.0, (centre_cell.y + 0.5) * 64.0)
+	for direction in [Vector2(1, -1), Vector2(-1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		assert_false(pf.has_escape_route(centre, direction),
+			"every direction is blocked, so no escape route exists toward %s" % direction)
+
+
 func test_speed_rect_returns_configured_scale() -> void:
 	var pf := PathField.new(FIELD)
 	pf.set_speed_rect(Rect2(200, 200, 128, 128), 0.6)

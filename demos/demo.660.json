@@ -1,8 +1,8 @@
 {
   "input": "demos/inputs/routing-terrain-pathfinding.json",
-  "caption": "Routing units path around impassable terrain: routed units detect the blocked hill and escape via the left flank instead of charging straight through.",
+  "caption": "Fight if trapped: a weak player unit routs (its flee path runs into the impassable hill), but two cavalry close off the flanks too. Finding every escape direction blocked, it gives up fleeing and stands to fight rather than running uselessly in place against the terrain -- and is gradually ground down rather than routing forever.",
   "fixed_fps": 30,
-  "max_frames": 180,
+  "max_frames": 260,
   "fps": 15,
   "width": 720
 }

@@ -58,6 +58,11 @@ fightable --- for as long as it's plausibly still in view.
   field, still routing, but can never again recover morale or rally. From there it
   either **escapes** (flees clear of the map, gone but got away) or is run down and
   **annihilated** (soldiers reduced to zero) before it can.
+- **A routing unit paths around impassable terrain too** --- fleeing is no longer a
+  straight line toward the back edge; a router detours around a hill in its way the
+  same as an ordered move does. If every escape direction is blocked, it gives up
+  fleeing and stands to fight instead of uselessly running in place against the
+  obstacle.
 - **The battle isn't over while a side is only routing.** A team is beaten only once
   its last unit is truly gone (escaped, annihilated, or otherwise removed), not while
   its final unit is merely routing. Even a lone survivor that breaks can flee, rally,
@@ -98,6 +103,24 @@ the enemy keeps pressing since a routing unit is still fair game, so this
 matchup grinds on rather than resolving cleanly &mdash; but the point still
 holds: the battle stays live instead of ending the instant the last unit
 broke, for as long as it's still on the field.
+:::
+
+::: {#fig-trapped-routing .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/trapped_routing.jpg">
+  <source src="media/trapped_routing.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Fight if trapped: a weak unit routs toward the hill and two cavalry close off
+the other escape angles. With every direction in its escape cone blocked, it
+gives up fleeing and stands to fight rather than running uselessly in place
+against the terrain &mdash; and is gradually ground down instead of routing
+forever.
 :::
 
 ## Rank cycling (trained units)
@@ -772,9 +795,14 @@ Terrain patches and their movement effects.
 :::
 
 Units automatically path around impassable terrain when ordered to move. The forest
-is a different trade-off: routing *around* it costs distance; routing *through* it
-costs time. Generally it is faster to push cavalry or fast-moving infantry through
-rather than around a narrow forest.
+is a different trade-off: going *around* it costs distance; going *through* it costs
+time. Generally it is faster to push cavalry or fast-moving infantry through rather
+than around a narrow forest.
+
+A [routing](#morale-routing) unit paths around a hill the same way while fleeing ---
+it's no longer a straight sprint toward the back edge. If a router is boxed in with
+every escape direction blocked, it gives up fleeing and stands to fight rather than
+running in place against the obstacle.
 
 ::: {.callout-tip}
 ## Forests slow cavalry charges

@@ -1,14 +1,14 @@
 {
-  "_comment": "Routing terrain pathfinding demo: team 0 units rout toward their back edge (upward), and must navigate around the impassable hill on the right side of the field. They take a left-flank escape route and flee clear of the battlefield.",
+  "_comment": "Scenario-staged fight-if-trapped demo: a lone, weak player unit is staged just south of the impassable hill (Battle.TERRAIN, x:1150-1400 y:380-580) and quickly breaks under a strong two-flank cavalry attack. Team 0 always flees toward its own back edge (upward) on rout -- which runs straight into the hill from this position -- and the two cavalry close off the other escape angles, so within a few ticks _is_escape_path_blocked() finds every direction in the escape cone blocked and the unit gives up fleeing to stand and fight instead of running uselessly in place against the hill. No player input needed; the scenario + seed make the clash deterministic.",
   "seed": "12345",
-  "camera": [
-    {"tick": 0,   "x": 640.0, "y": 400.0, "zoom": 0.8},
-    {"tick": 60,  "x": 640.0, "y": 300.0, "zoom": 0.9}
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 1250, "y": 620, "count": 50, "morale": 20.0},
+    {"team": 1, "type": "Cavalry", "x": 1190, "y": 700},
+    {"team": 1, "type": "Cavalry", "x": 1310, "y": 700}
   ],
-  "steps": [
-    {"tick": 30, "click": [600, 300]},
-    {"tick": 60, "key": "Space"},
-    {"tick": 120, "click": [500, 300]},
-    {"tick": 150, "key": "A"}
-  ]
+  "camera": [
+    {"tick": 0, "x": 1250.0, "y": 520.0, "zoom": 0.65}
+  ],
+  "steps": [],
+  "state": [10, 40, 80, 120, 160, 220, 240]
 }
