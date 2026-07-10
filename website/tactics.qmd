@@ -486,6 +486,15 @@ spear line keeps knocking swordsmen out past their own reach while staying in it
 lines no longer snap apart by a spacing rule; the gap is the live balance of the press
 forward against the knockback, so it breathes as the fight ebbs and flows.
 
+**Knockback now pushes both ways.** Every blow obeys Newton's third law: the struck
+soldier is shoved back as before, but the striking soldier also recoils along the same
+line, split between the two by effective mass (bracing counts as extra mass). A light,
+unbraced attacker rocks backward hard on contact; a heavy or set formation barely
+moves. That's why a cavalry charge into a braced spear wall now visibly backfires on
+the horses themselves, not just on the spearmen holding their ground --- the heavier,
+set defenders absorb most of the shove and hand a proportionally bigger kick back to
+the lighter attacker.
+
 ## Movement speed
 
 Units move at **realistic real-world speeds**, measured in metres per second, with
@@ -550,6 +559,45 @@ Pace modes: regiments walk on approach, jog when enemy archers open fire,
 then sprint at full charge speed within ~200 px of the target &mdash; all three
 AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to
 walk pace throughout.
+:::
+
+### Choosing a gait by click count
+
+AUTO pace is the default, but you can lock a move order to a specific gait
+instead: right-click a destination once for **Walk**, twice for **Jog**,
+three times for **Run**, and four or more times for **Sprint** --- click the
+same spot again within the multi-click window to add another click to the
+count. A click on a new destination (or one far enough from the last click,
+or one that arrives after the window has passed) restarts the count at Walk.
+
+There are only three real paces per unit type (for cavalry, walk/trot/gallop
+--- see the speed table above). Run has no pace of its own: it holds jog
+speed while still far from the destination and switches to sprint speed
+once inside the same close-range threshold AUTO uses, so it's a distance-gated
+mix of the two rather than a fourth gait.
+
+This overrides AUTO for that order: an explicit gait holds for the whole
+move, ignoring the fire/distance triggers AUTO would otherwise use. Reach
+for a chosen gait when you want a unit to hold a slow, orderly walk past a
+threat it would otherwise jog or sprint through (screening a flank, keeping
+a formation intact under fire without also toggling Walk advance), or to
+force an early sprint before AUTO's close-range threshold would normally
+trigger it.
+
+::: {#fig-multi-click-speeds .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/multi_click_speeds.jpg">
+  <source src="media/multi_click_speeds.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Four identical Cavalry regiments sent on the same move, one click apart:
+Walk, Jog, Run, and Sprint pull apart into four distinct paces instead of
+moving in lockstep.
 :::
 
 ## Side-stepping the line
@@ -737,12 +785,18 @@ into different tools:
   grinding in a static melee where the charge bonus is already spent. The charge
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
   into braced spears, where a fast charge backfires.
-- **Sweep routers** (<kbd>W</kbd>) --- the unit prioritizes a routing (fleeing) enemy
+- **Sweep routers** (<kbd>,</kbd>) --- the unit prioritizes a routing (fleeing) enemy
   over a closer enemy that's still standing and fighting, even as the gap to the
   router narrows. Arm it on a unit you want cleaning up broken formations rather
   than getting drawn into (or staying stuck in) a fresh melee with whoever happens
   to be nearest --- a natural pairing with a flanking cavalry sweep once the enemy
   line starts to crack.
+- **Roll the line** (<kbd>;</kbd>) --- once the current target routs or is
+  destroyed, the unit automatically re-targets the next-closest enemy still
+  fighting instead of standing idle or chasing a broken foe down. A single
+  attack order can carry a unit through a whole line of weaker enemies one
+  after another --- useful once you've broken through a flank and want the
+  advance to keep rolling without a fresh order for every foe.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and

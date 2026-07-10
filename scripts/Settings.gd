@@ -125,6 +125,17 @@ var show_unit_speed: bool = false:
 			_save()
 			changed.emit()
 
+# Soldier ID overlay: display the per-unit-local array index for each soldier in the
+# selected unit at figure LOD (zoomed in). Dev/debug visual only. Default off.
+var show_soldier_ids: bool = false:
+	set(value):
+		if value == show_soldier_ids:
+			return
+		show_soldier_ids = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Order-mode selector hotkeys: stable slug -> physical keycode. Slugs (and the
 # menu order) are owned by Battle.ORDER_MODE_HOTKEYS; these are the factory defaults.
 # Physical keycodes keep the bindings layout-independent (like the camera/pause keys).
@@ -135,7 +146,12 @@ const DEFAULT_ORDER_BINDINGS := {
 	"skirmish": KEY_K,
 	"support": KEY_G,
 	"cycle_charge": KEY_J,
-	"sweep_routers": KEY_W,
+	# KEY_W collides with the fixed WASD camera-pan keys (CameraController.gd) --
+	# every other unused letter key is already claimed by a fixed formation/UI
+	# hotkey (see SelectionManager.gd/HUD.gd), so this and roll_the_line's
+	# binding fall back to the punctuation row instead.
+	"sweep_routers": KEY_COMMA,
+	"roll_the_line": KEY_SEMICOLON,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
@@ -212,6 +228,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_distance_legend = bool(cfg.get_value("camera", "show_distance_legend", show_distance_legend))
 	show_order_distance = bool(cfg.get_value("camera", "show_order_distance", show_order_distance))
 	show_unit_speed = bool(cfg.get_value("camera", "show_unit_speed", show_unit_speed))
+	show_soldier_ids = bool(cfg.get_value("camera", "show_soldier_ids", show_soldier_ids))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
 	_loading = false
@@ -230,6 +247,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "show_distance_legend", show_distance_legend)
 	cfg.set_value("camera", "show_order_distance", show_order_distance)
 	cfg.set_value("camera", "show_unit_speed", show_unit_speed)
+	cfg.set_value("camera", "show_soldier_ids", show_soldier_ids)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
 	cfg.save(path)

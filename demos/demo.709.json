@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/arrival-knockback.json",
+  "caption": "Newton's third-law collision forces (closes #678): melee knockback now conserves momentum bidirectionally. Before this PR only the struck defender was shoved; now the attacker also recoils along the same strike axis, and the impulse splits between the two by effective mass (bracing raises effective mass, so a braced defender both moves less AND kicks back harder). This clip is the existing cavalry-into-braced-infantry contact scenario, framed close on the front rank: watch the horses visibly rock backward on each contact tick, not just the infantry line giving ground -- that recoil is the new behavior. Bracing still caps how much of the shove reaches a heavily-braced deep file (fixed this round to scale smoothly instead of snapping on at the capacity threshold), but never reduces the attacker's own recoil. Verified tick-by-tick via a state dump (not just this clip) -- see the state transcript comment on this PR.",
+  "fixed_fps": 30,
+  "max_frames": 200,
+  "fps": 15,
+  "width": 720
+}

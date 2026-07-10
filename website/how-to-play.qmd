@@ -60,6 +60,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (bottom-right, on by default) |
 | Order distance labels | **☰ Menu → Order distance labels** toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default) |
 | Unit speed labels | **☰ Menu → Unit speed labels** shows each unit's current speed in metres/second above it in the hold-<kbd>Space</kbd> survey (off by default) |
+| Soldier IDs (selected unit) | **☰ Menu → Soldier IDs (selected unit)** draws each soldier's per-body index over a selected unit at figure LOD (zoomed in); a developer debug visual (off by default) |
 | Pan camera | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges (all four arrows nudge instead while a unit is selected; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> always pans) |
 | Zoom | **Mouse wheel** |
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
@@ -277,9 +278,14 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
 - **Cycle charge** (<kbd>J</kbd>) --- cavalry charge the target, pull back to a
   standoff, and charge again, so each run lands a fresh momentum hit instead of
   grinding once the charge is spent (see [Tactics](tactics.qmd#order-stances)).
-- **Sweep routers** (<kbd>W</kbd>) --- the unit prioritizes a routing (fleeing) enemy
+- **Sweep routers** (<kbd>,</kbd>) --- the unit prioritizes a routing (fleeing) enemy
   over a closer enemy that's still standing and fighting, chasing down the break
   before mopping up the line (see [Tactics](tactics.qmd#order-stances)).
+- **Roll the line** (<kbd>;</kbd>) --- once the current target routs or is
+  destroyed, the unit automatically re-targets the next-closest enemy still
+  fighting instead of standing idle or chasing a broken foe, so a single
+  attack order can carry a unit down a whole enemy line
+  (see [Tactics](tactics.qmd#order-stances)).
 
 Pressing a stance key alone only **arms** it for your next move/attack order ---
 it doesn't touch a unit that's already standing still. To change a selected
@@ -347,6 +353,21 @@ peel back to a standoff, then charge again.
 
 Sweep routers stance: the unit bypasses a closer, still-fighting enemy
 to chase down a more distant one that has broken and is fleeing.
+:::
+
+::: {#fig-roll-the-line .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/roll_the_line.jpg">
+  <source src="media/roll_the_line.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Roll the line stance: a single attack order carries the unit through
+three enemies in a row, one after another, as each breaks and routs.
 :::
 
 **Relieve a fighting friendly (line relief).** Right-click an **engaged friendly**
