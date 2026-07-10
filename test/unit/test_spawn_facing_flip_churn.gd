@@ -85,6 +85,34 @@ func test_small_facing_correction_still_snaps_immediately() -> void:
 	assert_true(u.facing.is_equal_approx(Vector2(0.05, 0.999).normalized()))
 
 
+func test_rout_flee_facing_snap_keeps_every_body_on_its_own_slot() -> void:
+	# _process_rout's flee-facing update used to assign `facing = flee` directly, bypassing
+	# _face_dir's snap-absorb entirely -- so a unit that starts routing facing sharply away
+	# from its flee direction reproduced the same churn this file guards against for the
+	# move-order path, just via a different call site (scripts/Unit.gd's ROUTING branch).
+	var u := _unit(1, 0, Vector2(500, 500), Vector2.DOWN)   # facing south
+	u._shattered = true   # flee-forever, so nothing rallies mid-observation
+	var start_bbox: Vector2 = _bbox(u._sim_soldier_pos)
+
+	# Team 0 flees Vector2.UP (north) -- facing DOWN is a ~180 degree flip on the first tick.
+	u._process_rout(1.0 / 60.0)
+	assert_ne(u._formation_angle, 0.0,
+		"the rout-triggered flip absorbs into _formation_angle, same as _face_dir's own snap")
+
+	var min_bbox_area: float = start_bbox.x * start_bbox.y
+	for _i in range(90):
+		u._process_rout(1.0 / 60.0)
+		SoldierBodies.step(u, 1.0 / 60.0)
+		var area: Vector2 = _bbox(u._sim_soldier_pos)
+		min_bbox_area = minf(min_bbox_area, area.x * area.y)
+
+	var start_area: float = start_bbox.x * start_bbox.y
+	assert_gt(min_bbox_area, start_area * 0.75,
+		("the formation's footprint never collapses by more than ~25%% when a routing unit's "
+			+ "flee direction sharply differs from its facing at the moment it starts fleeing "
+			+ "(start %.0f, min %.0f sq px)") % [start_area, min_bbox_area])
+
+
 func test_degenerate_zero_length_dir_leaves_facing_unchanged() -> void:
 	# A zero-length dir (e.g. a body exactly on its target point) is a no-op -- the guard
 	# clause predates this fix and must still hold, with no _formation_angle side effect.

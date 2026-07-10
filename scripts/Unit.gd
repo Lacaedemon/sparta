@@ -3090,7 +3090,7 @@ func _process_rout(delta: float) -> void:
 	# position first (as _move_to() does) before normalizing.
 	var to: Vector2 = step - position
 	var dir: Vector2 = to.normalized()
-	facing = dir
+	_face_dir(dir)
 	var next: Vector2 = position + dir * (move_speed * 1.3) * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
