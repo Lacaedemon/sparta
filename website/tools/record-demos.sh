@@ -52,6 +52,7 @@ DEMOS=(
   "cycle_charge|demos/inputs/cycle-charge.json|30|600|640|input"
   "rout_rally|demos/inputs/rout-rally-recover.json|30|300|640|input"
   "last_unit_rally|demos/inputs/last-unit-rally.json|30|650|640|input"
+  "morale_recovery|demos/inputs/morale-recovery.json|30|270|640|input"
   "testudo_under_fire|demos/inputs/testudo-under-fire.json|30|300|640|input"
   "shielded_stances|demos/inputs/shielded-stance-visuals.json|30|180|640|input"
   "decel_arrival|demos/inputs/decel-arrival.json|30|300|640|input"
@@ -63,6 +64,7 @@ DEMOS=(
   "back_speed_by_type|demos/inputs/back-speed-by-type.json|30|430|720|input"
   "formation_shift_reverse|demos/inputs/formation-shift-reverse-505.json|30|130|640|input"
   "chase|demos/inputs/chase-attack.json|30|300|720|input"
+  "multi_click_speeds|demos/inputs/multi-click-speeds.json|30|330|720|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a

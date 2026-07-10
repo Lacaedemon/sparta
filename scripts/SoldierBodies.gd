@@ -169,6 +169,11 @@ static func step(unit: Unit, delta: float) -> void:
 	# jog here keeps the arrival target consistent with it. A body that needs to move faster
 	# than jog does so only via the march feed-forward, which is added on top and uncapped.
 	var max_arrive: float = unit.jog_speed
+	# Hoisted out of the per-soldier loop below: mass is uniform across a unit's own
+	# soldiers (SoldierCombat.profile_for keys it only on unit-level type/training), so
+	# looking it up once per unit-step -- like body_accel and max_arrive above -- avoids
+	# allocating a fresh combat_profile() Dictionary on every soldier, every tick.
+	var mass: float = unit.combat_profile()["mass"]
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -220,7 +225,18 @@ static func step(unit: Unit, delta: float) -> void:
 			# drifting through it and having to turn around -- the last guard against a
 			# sub-pixel oscillation around the exact point.
 			desired_vel += (to_slot / dist) * (dist / delta)
-		var new_vel: Vector2 = unit._sim_body_vel[i].move_toward(desired_vel, body_accel * delta)
+		# Apply kinetic friction damping (Newton's laws collision phase 1) to the velocity
+		# CARRIED OVER from last tick, before this tick's arrival/steering command: velocity
+		# held from a knockback or collision decays over time on its own (stationary/slow bodies
+		# experience higher friction -- "stickier" -- fast bodies coast longer), but the arrival
+		# system's own commanded speed for THIS tick is not itself decaying momentum, so it must
+		# not be damped after move_toward computes it -- that would permanently shave the
+		# steady-state arrival speed below its jog/back-speed target every tick, since there is no
+		# next tick for move_toward to correct a deficit move_toward itself just created.
+		# See SoldierCollision.apply_kinetic_friction and SoldierCombat friction constants.
+		var damped_vel: Vector2 = SoldierCollision.apply_kinetic_friction(
+				unit._sim_body_vel[i], mass, 0.0, delta)
+		var new_vel: Vector2 = damped_vel.move_toward(desired_vel, body_accel * delta)
 		# The sqrt(2 a d) arrival profile decelerates to 0 at the slot in continuous time, but
 		# its slope steepens near the slot faster than a bounded decel can follow, so a body
 		# arriving with residual inbound speed (built up from the previous tick's move_toward)
@@ -228,13 +244,25 @@ static func step(unit: Unit, delta: float) -> void:
 		# (velocity relative to the feed-forward) so it advances at most the remaining distance
 		# this tick, for any positive distance -- the body lands exactly on the slot instead of
 		# coasting through it. No overshoot, no oscillation.
-		if not turning and delta > 0.0 and dist > MIN_DIST:
-			var dir: Vector2 = to_slot / dist
-			var arrival_vel: Vector2 = new_vel - feed_forward
-			var inbound: float = arrival_vel.dot(dir)
-			var max_inbound: float = dist / delta
-			if inbound > max_inbound:
-				new_vel -= dir * (inbound - max_inbound)
+		if not turning and delta > 0.0:
+			if dist > MIN_DIST:
+				var dir: Vector2 = to_slot / dist
+				var arrival_vel: Vector2 = new_vel - feed_forward
+				var inbound: float = arrival_vel.dot(dir)
+				var max_inbound: float = dist / delta
+				if inbound > max_inbound:
+					new_vel -= dir * (inbound - max_inbound)
+			else:
+				# dist has collapsed to (effectively) zero: the body already sits on the slot, so
+				# there is no meaningful direction left to project an inbound component onto -- but
+				# the branch above never runs once dist <= MIN_DIST, so any leftover arrival
+				# velocity (beyond the feed-forward) would otherwise carry the body straight past
+				# the slot this tick with nothing left to clamp it. Zero the arrival component
+				# instead of leaving it unclamped, so a body that just landed doesn't fling itself
+				# to the far side on the very next tick (a gap this friction damping's carried-over
+				# velocity can now expose, since a well-timed arrival used to leave almost no
+				# residual speed at this exact transition).
+				new_vel = feed_forward
 		unit._sim_body_vel[i] = new_vel
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape

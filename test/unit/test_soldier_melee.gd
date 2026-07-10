@@ -239,10 +239,18 @@ func test_in_reach_strike_shoves_the_defender_away() -> void:
 	b._sim_soldier_hp[0] = 9999.0
 	a.resolve_soldier_melee(b)
 	# Infantry attacker (lethality 1) vs infantry defender (mass 1), no charge: the minimum
-	# (turned-aside) impulse is the floor every in-reach strike clears.
-	var min_shove: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, SoldierCombat.ETA_DEFENDED)
+	# (turned-aside) impulse is the floor every in-reach strike clears. Under the bidirectional
+	# Newton's-laws split (SoldierCollision.bidirectional_impulse), the defender receives only
+	# its SHARE of that impulse -- weighted by the ATTACKER's effective mass over the total
+	# effective mass of both bodies -- since the rest goes to the attacker's own recoil. The
+	# attacker here is engaged and not skirmishing, so it's braced (soldier_brace() == 1.0);
+	# the defender is unbraced (skirmish).
+	var min_impulse: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, SoldierCombat.ETA_DEFENDED)
+	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 1.0)
+	var defender_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 0.0)
+	var min_shove: float = min_impulse * attacker_m_eff / (attacker_m_eff + defender_m_eff)
 	assert_gte(b._sim_body_vel[0].y, min_shove - 1e-3,
-		"the struck soldier is knocked back at least the defended-blow impulse, away from the attacker")
+		"the struck soldier is knocked back at least its share of the defended-blow impulse, away from the attacker")
 	assert_almost_eq(b._sim_body_vel[0].x, 0.0, 1e-3, "no lateral knockback for a head-on strike")
 
 

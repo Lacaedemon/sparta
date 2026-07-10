@@ -143,6 +143,10 @@ var frontage_anchor_offset: float = 0.0
 var dir: int = 0
 ## The order_mode (Battle.OrderMode) the issuing command carried, for MOVE/ATTACK/SUPPORT.
 var order_mode: int = 0
+## The gait (Battle.Gait: WALK/JOG/RUN/SPRINT) for MOVE orders. When >= 0, overrides
+## the normal AUTO gait logic and uses the specified speed. Defaults to -1 (disabled).
+## When disabled, units use AUTO mode (walk by default, jog under fire, sprint at close range).
+var gait: int = -1
 ## STANCE target order_mode (Battle.OrderMode) to write on the unit; -1 = leave unchanged.
 var stance: int = -1
 ## STANCE rank-relief mode toggle (Battle.RankRelief): LEAVE keeps the unit's current
@@ -236,11 +240,13 @@ func describe() -> String:
 	return base
 
 
-static func new_move(dest: Vector2, mode: int = 0) -> Order:
+static func new_move(dest: Vector2, mode: int = 0, gait: int = -1) -> Order:
 	var o := Order.new()
 	o.type = Type.MOVE
 	o.target_pos = dest
 	o.order_mode = mode
+	if gait >= 0:
+		o.gait = gait
 	return o
 
 
