@@ -1,0 +1,14 @@
+{
+  "_comment": "Scenario-staged routing-around-terrain demo: a lone, weak player unit is staged just south of the impassable hill (Battle.TERRAIN, x:1150-1400 y:380-580) and quickly breaks under a strong two-flank cavalry attack. Team 0 always flees toward its own back edge (upward) on rout -- which runs straight into the hill from this position -- and PathField.next_step_fleeing() now routes it around the obstacle instead of walking straight in, the same way an ordered march does. The two cavalry keep pace with the detour and gradually grind the fleeing unit down. This scenario does NOT demonstrate the separate 'stands and fight when genuinely trapped' behavior -- the hill is a single free-standing obstacle nowhere near a field edge, so terrain alone can never fully enclose a unit here; that behavior is covered instead by test_trapped_routing_unit_fights_instead_of_fleeing (test/unit/test_routing_terrain_pathfinding.gd), which stages a real 4-sided cage directly. No player input needed; the scenario + seed make the clash deterministic.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 1250, "y": 620, "count": 50, "morale": 20.0},
+    {"team": 1, "type": "Cavalry", "x": 1190, "y": 700},
+    {"team": 1, "type": "Cavalry", "x": 1310, "y": 700}
+  ],
+  "camera": [
+    {"tick": 0, "x": 1250.0, "y": 520.0, "zoom": 0.65}
+  ],
+  "steps": [],
+  "state": [10, 40, 80, 120, 160, 200]
+}
