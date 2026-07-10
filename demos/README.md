@@ -136,6 +136,17 @@ script under `demos/inputs/`:
     `3` Square, `4` Shield Wall, `5` Testudo). Square is the anti-cavalry ring; the two
     shielded stances plant and barely move but blunt missile fire (testudo from all
     sides, shield wall from the front).
+  - `starting_state` (optional) — force the unit's initial `Unit.State` on spawn, for
+    staging a state a normal battle can't otherwise reach: `3` (`ROUTING`) starts the
+    unit already fleeing/recovering — routing is normally only reachable as a side
+    effect of real combat casualties — and `4` (`DEAD`) sets it dead in place. This is
+    the one scenario field that is **not strict** about a bad value: an unrecognized
+    `starting_state` warns (`push_warning`) and leaves the unit at the default `IDLE`,
+    rather than failing the recording outright. Pair `starting_state: 3` with a low
+    `morale` override — a unit that starts ROUTING at the default morale (100) is
+    already above the rally threshold and rallies in a single tick, showing no
+    recovery at all. See `demos/inputs/morale-recovery.json` (morale `1.0`, so the
+    climb back to the ~35 rally threshold is gradual and visible).
 
   Example — stage a lone, low-morale infantry unit against a strong cavalry force so it routs
   (then rallies, if the build has that): `demos/inputs/rout-rally.json`.
@@ -498,6 +509,23 @@ wrong moment.
 
 Note that `max_frames` counts **output video frames at `fixed_fps`**, not physics
 ticks: at the default 30 fps, 480 frames ≈ 16 s and 600 ≈ 20 s.
+
+**`camera`/`max_frames` and `state`/`frames` ticks live on two different tick bases —
+author each against the right one.** The recorded clip (`--fixed-fps` from the
+manifest, default 30) and a state/frame dump (`dump-state.sh`/`capture-frames.sh`,
+which never pass `--fixed-fps` and so run at the project's default 60 physics
+ticks/second) are two *separate* Godot runs of the same input script. Sim behavior
+(morale recovery, rout timers, movement) is driven by real elapsed seconds via
+`delta`, so it converges at the same wall-clock moment either way — but the tick
+*count* that moment falls on differs by the ratio of the two rates (a `fixed_fps: 30`
+recording needs half as many ticks to reach a given real-time point as a 60 Hz state
+dump does). Concretely: author `camera` keyframes and reason about `max_frames`
+against the manifest's own `fixed_fps`; author `state`/`frames` ticks (and any tick
+numbers you verify with `dump-state.sh`/`capture-frames.sh`) against the default 60
+Hz — don't reuse one script's `state` tick numbers as if they were also valid
+`camera` tick numbers, or vice versa. A `scenario`-only demo with no `steps` (like
+`demos/inputs/morale-recovery.json`) only has `camera` on the recording-basis side,
+since there are no player-input ticks to fall out of sync between the two runs.
 
 ## When it runs
 

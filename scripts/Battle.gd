@@ -556,7 +556,10 @@ func _apply_starting_state(u: Unit, starting_state: int) -> void:
 		Unit.State.DEAD:
 			u.state = Unit.State.DEAD
 		_:
-			pass  # unknown state, leave as default IDLE
+			# Match _spawn_scenario's unknown-'type' handling: warn loudly instead of a
+			# silent no-op, so a typo'd enum value (e.g. IDLE's 0 meant as ROUTING's 3)
+			# surfaces immediately instead of shipping a demo that doesn't show what it claims.
+			push_warning("[battle] scenario 'starting_state' %d is not ROUTING or DEAD; leaving the unit IDLE." % starting_state)
 
 
 func _physics_process(_delta: float) -> void:
