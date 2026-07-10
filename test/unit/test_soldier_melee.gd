@@ -231,12 +231,12 @@ func test_in_reach_strike_shoves_the_defender_away() -> void:
 	# Attacker at the origin facing down; unbraced defender just ahead, in reach. A moderate
 	# charge (approach velocity) guarantees the surviving impulse clears the RESTING defender's
 	# static-friction threshold (SoldierCollision.overcomes_static_friction, wired into this
-	# path in #722) even for the weakest (turned-aside) blow -- without a charge, a defended
-	# blow at mass 1 / brace 0 is BELOW that threshold and would (correctly, post-#722) leave a
-	# resting body untouched; see test_tiny_impulse_leaves_a_resting_unbraced_defender_still
-	# below for that case. The defender is set to skirmish so it isn't braced (a braced lone
-	# infantry man absorbs normal blows below J_cap). Health is pinned high so the one strike
-	# can't kill and reap the body before we read it.
+	# path) even for the weakest (turned-aside) blow -- without a charge, a defended blow at
+	# mass 1 / brace 0 is BELOW that threshold and would (correctly) leave a resting body
+	# untouched; see test_tiny_impulse_leaves_a_resting_unbraced_defender_still below for that
+	# case. The defender is set to skirmish so it isn't braced (a braced lone infantry man
+	# absorbs normal blows below J_cap). Health is pinned high so the one strike can't kill and
+	# reap the body before we read it.
 	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var closing: float = 150.0
 	a._approach_velocity = Vector2(0, closing)
@@ -265,7 +265,7 @@ func test_in_reach_strike_shoves_the_defender_away() -> void:
 
 
 func test_tiny_impulse_leaves_a_resting_unbraced_defender_still() -> void:
-	# The fix this test guards (#722): SoldierCollision.overcomes_static_friction gates
+	# The fix this test guards: SoldierCollision.overcomes_static_friction gates
 	# whether a strike's surviving impulse moves a RESTING body at all -- a genuinely tiny
 	# shove now leaves a resting, unbraced defender completely still instead of nudging it,
 	# and there is no in-between "trickle" motion: every cadence either leaves the reset-to-
