@@ -75,7 +75,7 @@ const NUDGE_DISTANCE := 30.0
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, ROLL_THE_LINE }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
 ## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
@@ -113,6 +113,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.SKIRMISH: "Skirmish",
 	OrderMode.SUPPORT: "Support",
 	OrderMode.CYCLE_CHARGE: "Cycle charge",
+	OrderMode.ROLL_THE_LINE: "Roll the line",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -127,6 +128,7 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.SKIRMISH, "slug": "skirmish"},
 	{"mode": OrderMode.SUPPORT, "slug": "support"},
 	{"mode": OrderMode.CYCLE_CHARGE, "slug": "cycle_charge"},
+	{"mode": OrderMode.ROLL_THE_LINE, "slug": "roll_the_line"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
@@ -197,7 +199,8 @@ func _ready() -> void:
 			and UnitRef.ORDER_ATTACK_REAR == OrderMode.ATTACK_REAR \
 			and UnitRef.ORDER_SKIRMISH == OrderMode.SKIRMISH \
 			and UnitRef.ORDER_SUPPORT == OrderMode.SUPPORT \
-			and UnitRef.ORDER_CYCLE_CHARGE == OrderMode.CYCLE_CHARGE,
+			and UnitRef.ORDER_CYCLE_CHARGE == OrderMode.CYCLE_CHARGE \
+			and UnitRef.ORDER_ROLL_THE_LINE == OrderMode.ROLL_THE_LINE,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 
 	# Start a fresh recording for every live battle (so any battle can be

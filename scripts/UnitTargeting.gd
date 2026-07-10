@@ -30,6 +30,21 @@ static func nearest_enemy(u: Unit) -> Unit:
 	return nearest_enemy_to(u, u.position, Unit.DETECTION_RANGE, true)
 
 
+## ROLL_THE_LINE re-target: like current_target, but a target that has routed or died no
+## longer holds the unit's interest -- it moves on to the next-closest FRESH (non-routing)
+## enemy instead of continuing the pursuit current_target's ordinary chase-to-destroy
+## behaviour would. This is what "rolls" a unit down an enemy line: it keeps engaging
+## whoever is closest among the enemies still actually fighting, rather than idling once a
+## beaten foe finally goes down or grinding out a chase against one that's already broken.
+static func roll_the_line_target(u: Unit) -> Unit:
+	var t: Unit = u.target_enemy
+	if t != null and is_instance_valid(t) and t.state != Unit.State.DEAD \
+			and t.state != Unit.State.ROUTING:
+		return t
+	u.target_enemy = null
+	return nearest_enemy_to(u, u.position, Unit.DETECTION_RANGE, false)
+
+
 ## Nearest living enemy within `radius` of `center`. Backs both normal auto-acquisition
 ## (centred on this unit, DETECTION_RANGE, routing enemies included) and the support
 ## stance, which scans around the WARD's position so a supporter meets threats closing on

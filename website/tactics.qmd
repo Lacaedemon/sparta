@@ -785,6 +785,12 @@ into different tools:
   grinding in a static melee where the charge bonus is already spent. The charge
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
   into braced spears, where a fast charge backfires.
+- **Roll the line** (<kbd>;</kbd>) --- once the current target routs or is
+  destroyed, the unit automatically re-targets the next-closest enemy still
+  fighting instead of standing idle or chasing a broken foe down. A single
+  attack order can carry a unit through a whole line of weaker enemies one
+  after another --- useful once you've broken through a flank and want the
+  advance to keep rolling without a fresh order for every foe.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and

@@ -226,6 +226,7 @@ const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
+const ORDER_ROLL_THE_LINE := 7
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
@@ -1081,7 +1082,20 @@ func _think(delta: float) -> void:
 		support_target = null
 		order_mode = 0   # ward gone: revert to NORMAL
 
-	var enemy: Unit = UnitTargeting.current_target(self)
+	# Roll the line: a beaten (dead or routed) foe no longer holds this unit's attention --
+	# it moves straight on to the next-closest enemy still actually fighting, instead of
+	# either idling once the kill lands or grinding out a chase against a target that's
+	# already broken (current_target's ordinary chase-to-destroy behaviour). Persist the
+	# fresh pick to target_enemy itself (unlike current_target, which leaves that write to
+	# an explicit order) -- ROLL_THE_LINE's whole point is to keep committing to a new foe
+	# with no fresh player/AI order behind it, so the not-yet-in-contact chase branch below
+	# (which reads the target_enemy field, not this local) needs it set too.
+	var enemy: Unit
+	if order_mode == ORDER_ROLL_THE_LINE:
+		enemy = UnitTargeting.roll_the_line_target(self)
+		target_enemy = enemy
+	else:
+		enemy = UnitTargeting.current_target(self)
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
