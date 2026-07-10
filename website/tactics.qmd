@@ -720,6 +720,13 @@ into different tools:
   grinding in a static melee where the charge bonus is already spent. The charge
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
   into braced spears, where a fast charge backfires.
+- **Pin down** (<kbd>;</kbd>) --- a stall/pin trade for a unit confronted head-on: it
+  swings roughly half as often as a normal stance, so it deals less damage over
+  time --- but each swing's follow-through opens a brief window where its own
+  defense is lowered, so a foe that catches it mid-swing hits harder than it
+  otherwise would. Use it to hold a line cheaply in casualties from its own
+  attacks, not to win a stand-up fight outright; it's a genuine tradeoff, not a
+  strict upgrade over a normal stance.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and

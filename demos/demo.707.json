@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/pin-down-attack.json",
+  "caption": "Pin down / stall (Battle.OrderMode.PIN_DOWN, ; to arm): a defensive attack stance for a unit confronted head-on. It swings roughly half as often as a normal stance (PIN_DOWN_ATTACK_INTERVAL vs. ATTACK_INTERVAL) -- a genuine stall, not a pure defensive buff -- but each swing's follow-through opens a brief window where its own defense is scaled down (PIN_DOWN_DEFENSE_FACTOR), so a foe that lands a hit during that window does more damage than it otherwise would. The clip stages a clean head-on Infantry-vs-Infantry clash so nothing else (flanking, formation, charge) confounds the read; the accompanying state dump (tools/demo/dump-state.sh with the input's \"state\" ticks) lets a reviewer confirm the slower attack cadence and the exposure window opening/closing by exact values rather than eyeballing the footage.",
+  "fixed_fps": 30,
+  "max_frames": 320,
+  "fps": 15,
+  "width": 720
+}
