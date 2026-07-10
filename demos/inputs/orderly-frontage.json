@@ -6,11 +6,11 @@
   ],
   "steps": [
     {"tick": 4,   "click": [500, 300]},
-    {"tick": 30,  "key": "]"},
-    {"tick": 60,  "key": "]"},
-    {"tick": 90,  "key": "]"},
-    {"tick": 120, "key": "]"},
-    {"tick": 150, "key": "]"},
-    {"tick": 180, "key": "]"}
+    {"tick": 30,  "key": "BracketRight"},
+    {"tick": 60,  "key": "BracketRight"},
+    {"tick": 90,  "key": "BracketRight"},
+    {"tick": 120, "key": "BracketRight"},
+    {"tick": 150, "key": "BracketRight"},
+    {"tick": 180, "key": "BracketRight"}
   ]
 }
