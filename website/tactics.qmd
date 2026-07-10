@@ -720,6 +720,11 @@ into different tools:
   grinding in a static melee where the charge bonus is already spent. The charge
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
   into braced spears, where a fast charge backfires.
+- **Chase** (<kbd>,</kbd>) --- relentless pursuit: the unit overrides the normal
+  disengage exit a plain move order (or losing steady contact) otherwise gives
+  it, so it keeps closing on and re-engaging the same fleeing or repositioning
+  enemy instead of breaking off. Use it to run down a routing foe rather than
+  let it escape to rally and rejoin the fight later.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and

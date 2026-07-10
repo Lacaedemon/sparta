@@ -1,5 +1,5 @@
 {
-  "_comment": "Chase stance demo: a lone player Cavalry attacks a weaker, low-morale enemy Infantry that breaks and routs partway through the fight. Ordered under the Chase stance (A key), the cavalry keeps running the fleeing infantry down instead of losing interest once it's no longer in steady melee contact -- relentless pursuit instead of the normal disengage/auto-acquire drift. Scenario-staged (like rout-rally.json) so the rout happens reliably within the clip.",
+  "_comment": "Chase stance demo: a lone player Cavalry attacks a weaker, low-morale enemy Infantry that breaks and routs partway through the fight. Ordered under the Chase stance (, key), the cavalry keeps running the fleeing infantry down instead of losing interest once it's no longer in steady melee contact -- relentless pursuit instead of the normal disengage/auto-acquire drift. Scenario-staged (like rout-rally.json) so the rout happens reliably within the clip.",
   "seed": "12345",
   "scenario": [
     {"team": 0, "type": "Cavalry", "x": 800, "y": 400},
@@ -11,7 +11,7 @@
   ],
   "steps": [
     {"tick": 6,  "click": [800, 400]},
-    {"tick": 20, "key": "A"},
+    {"tick": 20, "key": "Comma"},
     {"tick": 34, "rmb_click": [800, 560]}
   ]
 }
