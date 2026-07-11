@@ -681,10 +681,11 @@ active split mode before you release.
 </video>
 ```
 
-Three regiments of different density --- Spearmen (Tight), Infantry (Normal),
+Three regiments of different size --- Spearmen (Tight), Infantry (Normal),
 Archers (Loose) --- box-selected and dragged into a flank line under the
-default equal-depth (space) split: each forms up to the same physical depth,
-so the tightly-packed and loosely-spread units split the line differently.
+default equal-depth (space) split: each forms up to the same physical depth.
+Tight and Normal share the same spacing, but the loosely-spread Archers split
+the line differently from both for a genuinely density-driven reason.
 :::
 
 **Survey all orders (hold Space).** Holding <kbd>Space</kbd> overlays every unit's
