@@ -2729,13 +2729,13 @@ const ENGAGED_RANKS: int = 3
 # MAX_FOLLOW_SPEED must exceed the fastest a regiment can advance (CHARGE_REFERENCE_SPEED
 # 170, up to ~1.3x that under a wedge-charge bonus) -- otherwise the cap is structurally
 # incapable of ever correcting a real, sustained drift, no matter how strong the soldier-
-# level contact resistance holding the bodies back is (this was #296's own diagnosed
-# blocker: "a velocity-only soldier push + the bounded body->regiment coupling cannot
-# counteract [a full-speed _move_to charge]"). Set comfortably above any charge pace so
-# SoldierEnemyContact's real contact impulses can actually win: once a braced line's
-# bodies hold position while _move_to keeps advancing regardless, the resulting drift
-# correction here outpaces the runaway, so `position` settles back onto where the bodies
-# actually are -- the regiment visibly arrests on contact instead of riding through it.
+# level contact resistance holding the bodies back is: a velocity-only soldier push
+# against a bounded, too-low coupling cap can never counteract a full-speed _move_to
+# charge. Set comfortably above any charge pace so SoldierEnemyContact's real contact
+# impulses can actually win: once a braced line's bodies hold position while _move_to
+# keeps advancing regardless, the resulting drift correction here outpaces the runaway,
+# so `position` settles back onto where the bodies actually are -- the regiment visibly
+# arrests on contact instead of riding through it.
 const FOLLOW_RATE: float = 6.0
 const MAX_FOLLOW_SPEED: float = 300.0
 
