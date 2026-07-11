@@ -705,6 +705,22 @@ var _block_extent: float = RADIUS       # block half-size; sizes the ring/halo/b
 # and its PackedVector2Array alloc — only runs when the formation footprint changes.
 var _render_dirty: bool = true
 var _render_last_facing: Vector2 = Vector2.DOWN
+# Routing/normal translucency the regimental FLAG fades toward -- the flag is the one
+# element that reads a unit's morale state (a wavering standard), not the soldiers
+# themselves: the per-soldier marks/figures and the rest of the chrome (bars, state ring,
+# shield overlay) always stay fully opaque regardless of routing, so the men themselves
+# never look see-through. Never read directly for the flag's draw color -- _render_alpha
+# (below) is what actually eases toward this target each tick, so a routing transition
+# never jumps straight to 0.45 (or back to 1.0) in a single frame.
+const ROUTING_ALPHA: float = 0.45
+# Per-second rate _render_alpha eases toward its target (an active fade, not a snap) --
+# fast enough to read as an immediate response to the state change, slow enough to
+# actually be visible as a fade rather than an instant cut.
+const ALPHA_FADE_RATE: float = 2.0
+var _render_alpha: float = 1.0
+# Tracks the last _render_alpha _draw() was invoked with, so _process can request a
+# redraw only while the flag is actually mid-fade (not every idle tick).
+var _render_last_alpha: float = 1.0
 var _render_extent_n: int = -1
 var _render_extent_frontage: int = -1
 var _render_extent_mode: int = -1
@@ -3421,7 +3437,7 @@ func _ellipse_polygon(segments: int = 18) -> PackedVector2Array:
 
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_update_lod()
 	if state == State.DEAD:
 		if _mm_body.instance_count != 0:
@@ -3429,6 +3445,19 @@ func _process(_delta: float) -> void:
 			_mm_outline.instance_count = 0
 			_mm_facing_pip.instance_count = 0   # else pips linger a frame after a figure-LOD death
 		return
+	# Ease the flag's routing/normal translucency toward its target rather than snapping
+	# (see ROUTING_ALPHA/ALPHA_FADE_RATE above) -- purely cosmetic, no gameplay effect.
+	# Lives here (frame-rate _process), not _physics_process: a ROUTING unit's
+	# _physics_process takes an early return before ever reaching its render tail, so an
+	# update placed there would never run while a unit is actually routing -- the one
+	# state that needs it. _draw() (where the flag is drawn) only re-executes on
+	# queue_redraw(), so request one while the fade is still moving; once it settles,
+	# stop asking for redraws on its account.
+	var target_alpha: float = ROUTING_ALPHA if state == State.ROUTING else 1.0
+	_render_alpha = move_toward(_render_alpha, target_alpha, ALPHA_FADE_RATE * delta)
+	if not is_equal_approx(_render_alpha, _render_last_alpha):
+		_render_last_alpha = _render_alpha
+		queue_redraw()
 	# Block extent depends only on the soldier count, frontage, and formation mode
 	# (SQUARE/SHIELD_WALL/TESTUDO reshape the grid itself, not just frontage), not body
 	# positions, so recompute (and reshape the shadow/chrome) only when one of those
@@ -3451,7 +3480,8 @@ func _process(_delta: float) -> void:
 	# Marks mirror the simulated bodies. Refresh only when something visible changed: a body
 	# moved (SoldierBodies.step raised _render_dirty), the facing turned (mark rotation,
 	# figure mirror and conversio squash all key off it), the unit is fighting (front-rank
-	# churn / prone flips), or the instance count drifted from the body count.
+	# churn / prone flips), or the instance count drifted from the body count. The routing
+	# fade does NOT belong here -- it never touches the marks (see _apply_flock_color).
 	if _render_dirty or facing != _render_last_facing or state == State.FIGHTING \
 			or _mm_body.instance_count != _render_body_count():
 		_render_dirty = false
@@ -3582,18 +3612,19 @@ static func _facing_pip_transform(prone: bool, sf: Vector2, pos: Vector2) -> Tra
 
 ## Tint the marks via the MultiMeshInstance modulate (one colour for the whole block, so
 ## no per-instance colour buffer): team colour for the body, a darkened shade for the
-## outline, faded while routing. Only re-applied when the colour actually changes.
+## outline. Only re-applied when the colour actually changes.
 func _apply_flock_color() -> void:
-	var alpha: float = 0.45 if state == State.ROUTING else 1.0
+	# Member icons never fade, even while routing -- only the regimental flag does
+	# (ROUTING_ALPHA/_render_alpha, applied in _draw()). The soldiers themselves are
+	# still physically present and fighting/fleeing; dimming their marks would read as
+	# them becoming see-through, which isn't what a routing state means.
+	var alpha: float = 1.0
 	var body_c := Color(team_color.r, team_color.g, team_color.b, alpha)
 	if body_c == _flock_color:
 		return
 	_flock_color = body_c
 	_mmi_body.modulate = body_c
 	_mmi_outline.modulate = Color(body_c.r * 0.35, body_c.g * 0.35, body_c.b * 0.35, alpha)
-	# The facing pip fades with the block while routing, at its own base 0.9 opacity, so it
-	# doesn't stay sharp over a fading figure. (The guard above keys off alpha, so this
-	# tracks the routing state.)
 	_mmi_facing_pip.modulate = Color(1.0, 1.0, 1.0, alpha * 0.9)
 
 
@@ -3607,7 +3638,10 @@ func _update_shadow() -> void:
 
 
 func _draw() -> void:
-	var alpha: float = 0.45 if state == State.ROUTING else 1.0
+	# Chrome (bars, state ring, shield overlay, soldier-ID text) always stays fully
+	# opaque -- only the regimental flag fades while routing (see the flag call at the
+	# end of this function, which uses _render_alpha directly instead of this constant).
+	var alpha: float = 1.0
 	var body_c := Color(team_color.r, team_color.g, team_color.b, alpha)
 	var dark_c := Color(body_c.r * 0.35, body_c.g * 0.35, body_c.b * 0.35, alpha)
 	var lite_c := Color(minf(body_c.r + 0.30, 1.0), minf(body_c.g + 0.30, 1.0),
@@ -3626,7 +3660,6 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, extent + 2.0, 0, TAU, 36,
 					Color(0.90, 0.15, 0.15, alpha), 3.0)
 		State.ROUTING:
-			# alpha=1.0 intentional: ring stays fully visible on the faded routing block.
 			draw_arc(Vector2.ZERO, extent + 2.0, 0, TAU, 36,
 					Color(0.95, 0.50, 0.05, 1.0), 3.5)
 
@@ -3680,4 +3713,8 @@ func _draw() -> void:
 			draw_string(font, (_sim_soldier_pos[i] - position) + Vector2(-4, -id_mark_r),
 					str(i), HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(1, 1, 1, 0.9))
 
-	UnitSprites.flag(self, body_c, alpha, extent)
+	# The regimental flag is the one element that fades while routing (a wavering
+	# standard reads as morale faltering); a separate faded color, not the chrome's
+	# always-opaque body_c/alpha above.
+	var flag_c := Color(team_color.r, team_color.g, team_color.b, _render_alpha)
+	UnitSprites.flag(self, flag_c, _render_alpha, extent)

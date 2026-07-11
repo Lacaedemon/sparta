@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "The visible change is a translucency EASE (ALPHA_FADE_RATE 2.0/s, so the full 0.55 alpha delta takes ~0.275s) replacing an instant switch, on a single small flag icon -- not a new mechanic, control, or a separately-readable HUD value (confirmed: _render_alpha/ROUTING_ALPHA have no consumer outside scripts/Unit.gd, unlike PR #739's current_speed, which also drove the show_unit_speed HUD label). At typical demo GIF frame-rate/compression this sub-third-of-a-second per-pixel alpha blend on a small icon isn't reliably legible. Directly and precisely verified instead by the unit tests in test/unit/test_unit.gd: the exact per-tick delta (not a snap), clean convergence to the routing target, and that member icons stay fully opaque throughout."
+}
