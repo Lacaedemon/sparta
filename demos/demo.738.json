@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/idle-speed-friction.json",
+  "caption": "Idle-speed friction: a unit's speed now bleeds off gradually instead of snapping to zero the instant it stops locomoting with nothing left to chase or march toward. A lone Cavalry regiment charges and wipes out a single weak Infantry regiment; once the last enemy on the field dies, the cavalry has no target and no move order, but is still carrying real charge speed. Watch the HUD speed label (Settings.show_unit_speed) hold near the charge speed through the brief fight, then visibly count down over a couple of seconds instead of instantly reading '0.0 m/s'.",
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 15,
+  "width": 720
+}

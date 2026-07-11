@@ -195,6 +195,17 @@ func set_sfx_enabled_session(value: bool) -> void:
 	_loading = was_loading
 
 
+## Set show_unit_speed for this run only — no persist to disk, no `changed` signal (same
+## _load()-guard trick as set_sfx_enabled_session above). A demo input script can request
+## this label on for its recording (so the HUD speed readout is visible in the clip)
+## without rewriting a developer's saved preference when the recorder is run locally.
+func set_show_unit_speed_session(value: bool) -> void:
+	var was_loading := _loading
+	_loading = true
+	show_unit_speed = value
+	_loading = was_loading
+
+
 ## The physical keycode currently bound to a mode slug (or its default / KEY_NONE).
 func order_binding(slug: String) -> int:
 	return int(order_bindings.get(slug, DEFAULT_ORDER_BINDINGS.get(slug, KEY_NONE)))

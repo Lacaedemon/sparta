@@ -48,6 +48,11 @@ func _ready() -> void:
 	# A recording carries the game's sound (SFX default off); session-only, like DemoRunner.
 	Settings.set_sfx_enabled_session(true)
 	var script: Dictionary = _load_script(OS.get_environment("SPARTA_DEMO_INPUT"))
+	# Optional per-demo HUD toggle: a script that wants the unit-speed label visible in its
+	# recording (Settings.show_unit_speed is off by default -- extra clutter most players
+	# don't want) requests it here, session-only like the SFX toggle above -- never persisted.
+	if script.get("show_unit_speed", false):
+		Settings.set_show_unit_speed_session(true)
 	# Deterministic seed so the recorded battle is reproducible run to run.
 	Replay.forced_seed = int(str(script.get("seed", "12345")))
 	# camera/frames/state go through script_array so a non-array typo degrades that one
