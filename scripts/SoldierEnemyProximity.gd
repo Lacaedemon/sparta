@@ -14,6 +14,14 @@ extends RefCounted
 ## groups return them (stable within a run), buckets purely by position, and
 ## `has_enemy_within`'s membership test only depends on the frozen per-tick
 ## `_sim_soldier_pos`/`_sim_soldier_hp` snapshot -- no RNG, no wall-clock.
+##
+## Testing: this is keyed by Engine.get_physics_frames(), not a caller-supplied
+## frame number, so two synchronous GUT test functions that never advance a
+## physics tick between them share the same cache key. Call reset() at the
+## start of any test that builds its own units and exercises a code path
+## depending on this cache, or it may silently reuse a neighboring test's
+## stale grid instead of rebuilding from its own fixtures (see
+## .claude/memories/sparta.md, "A new physics-frame-keyed static cache...").
 
 # Cell size must exceed the largest real query radius (self radius + candidate
 # radius + candidate reach): the longest weapon reach today is the spear

@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Internal combat-resolution correctness fix: Square/Schiltron's engaged-soldier selection now uses real cross-unit proximity instead of distance-from-own-centroid (closes #752). A viewer watching a recorded clip sees the same visible outcome either way -- defenders around the ring fighting nearby attackers -- since the change is about WHICH exact per-soldier index gets selected as a melee/contact candidate, only distinguishable via a state dump (verified against demos/inputs/anti-cav-square.json, the issue's own reproduction) or the new unit tests, not by eye in a clip."
+}
