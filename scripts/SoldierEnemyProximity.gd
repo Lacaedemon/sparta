@@ -82,10 +82,14 @@ static func rebuild(units: Array, frame: int) -> void:
 		_cells[key].append(i)
 
 
-## True when a living soldier of a team OTHER than `team`, within ITS OWN
-## weapon reach of `pos` (candidate reach + candidate radius + `self_radius`),
-## exists in the 3x3 cell block around `pos`.
-static func has_enemy_within(pos: Vector2, team: int, self_radius: float) -> bool:
+## True when a living soldier of a team OTHER than `team` is within STRIKING distance of
+## `pos` -- either side's own reach counts, not just the candidate's: a longer-reach soldier
+## (e.g. a spear) can threaten a shorter-reach enemy (e.g. a sword) from beyond the sword's
+## own reach, the same spear-vs-sword standoff SoldierMelee.resolve's own reach search
+## honours (a longer reach lets a soldier strike foes who cannot strike back). Using only
+## the candidate's reach here would silently drop that soldier from the engaged set the
+## instant it's the LONGER-reach side, even though it's positioned to strike.
+static func has_enemy_within(pos: Vector2, team: int, self_radius: float, self_reach: float) -> bool:
 	var c := _key(pos)
 	for dx in range(-1, 2):
 		for dy in range(-1, 2):
@@ -95,7 +99,7 @@ static func has_enemy_within(pos: Vector2, team: int, self_radius: float) -> boo
 			for idx in cell:
 				if _team[idx] == team:
 					continue
-				var contact: float = self_radius + _radius[idx] + _reach[idx]
+				var contact: float = self_radius + _radius[idx] + maxf(self_reach, _reach[idx])
 				if pos.distance_squared_to(_pos[idx]) <= contact * contact:
 					return true
 	return false

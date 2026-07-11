@@ -2839,10 +2839,12 @@ func soldier_brace() -> float:
 ## _face_for_action never turns it to bear on one attacker, since every side already
 ## stands ready -- so a fixed rank-0 wedge would sit at whatever direction the grid
 ## happened to be laid out on, unrelated to which side is actually under attack.
-## It instead selects every LIVING soldier with a real enemy soldier currently
-## within that enemy's own weapon reach (SoldierEnemyProximity, a cross-unit
-## spatial hash of every unit's raw soldier positions -- see its class doc), so
-## membership tracks actual multi-attacker contact instead of a fixed-size
+## It instead selects every LIVING soldier with a real enemy soldier currently within
+## STRIKING distance -- either side's own reach counts (SoldierEnemyProximity.
+## has_enemy_within), so a longer-reach soldier (e.g. a spear) is never dropped just
+## because a nearer, shorter-reach enemy's OWN reach alone wouldn't close the gap; see
+## its class doc for the cross-unit spatial hash this reads. Membership tracks actual
+## multi-attacker contact instead of a fixed-size
 ## geometric guess. Sized by real contact, not `square_is_perimeter`'s ring
 ## count: under heavy multi-side pressure this can exceed the old ring size
 ## (more soldiers are genuinely in reach and should be able to fight), and it
@@ -2867,9 +2869,10 @@ func engaged_soldier_indices(count: int) -> PackedInt32Array:
 		all_units.append_array(get_tree().get_nodes_in_group("routers"))
 		SoldierEnemyProximity.rebuild(all_units, Engine.get_physics_frames())
 		var r: float = soldier_body_radius()
+		var reach: float = soldier_reach()
 		var threatened := PackedInt32Array()
 		for i in range(count):
-			if SoldierEnemyProximity.has_enemy_within(_sim_soldier_pos[i], team, r):
+			if SoldierEnemyProximity.has_enemy_within(_sim_soldier_pos[i], team, r, reach):
 				threatened.push_back(i)
 		if not threatened.is_empty():
 			return threatened

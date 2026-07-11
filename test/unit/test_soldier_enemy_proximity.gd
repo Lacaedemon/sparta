@@ -1,7 +1,7 @@
 extends GutTest
 ## Unit tests for SoldierEnemyProximity: the cross-team, cross-unit spatial hash
 ## Unit.engaged_soldier_indices() uses to decide whether a Square/Schiltron soldier
-## has a real enemy soldier within that enemy's own weapon reach. Mirrors
+## has a real enemy soldier within striking distance. Mirrors
 ## test_soldier_enemy_contact.gd's fixture pattern -- a bare Unit.new() needs an
 ## explicit unique uid (it defaults to -1) and seeded soldier arrays.
 
@@ -41,7 +41,7 @@ func test_has_enemy_within_true_for_an_opposing_soldier_in_reach() -> void:
 	b._sim_soldier_pos[0] = a._sim_soldier_pos[0] + Vector2(30, 0)
 	SoldierEnemyProximity.rebuild([a, b], 1)
 	assert_true(SoldierEnemyProximity.has_enemy_within(
-			a._sim_soldier_pos[0], a.team, a.soldier_body_radius()),
+			a._sim_soldier_pos[0], a.team, a.soldier_body_radius(), a.soldier_reach()),
 		"an opposing soldier within its own reach + both radii counts as a threat")
 
 
@@ -51,7 +51,7 @@ func test_has_enemy_within_false_beyond_reach() -> void:
 	b._sim_soldier_pos[0] = a._sim_soldier_pos[0] + Vector2(500, 0)   # far outside any reach
 	SoldierEnemyProximity.rebuild([a, b], 2)
 	assert_false(SoldierEnemyProximity.has_enemy_within(
-			a._sim_soldier_pos[0], a.team, a.soldier_body_radius()),
+			a._sim_soldier_pos[0], a.team, a.soldier_body_radius(), a.soldier_reach()),
 		"an opposing soldier well outside reach is not a threat")
 
 
@@ -61,7 +61,7 @@ func test_has_enemy_within_false_for_a_friendly_at_the_same_spot() -> void:
 	c._sim_soldier_pos[0] = a._sim_soldier_pos[0]   # exactly co-located
 	SoldierEnemyProximity.rebuild([a, c], 3)
 	assert_false(SoldierEnemyProximity.has_enemy_within(
-			a._sim_soldier_pos[0], a.team, a.soldier_body_radius()),
+			a._sim_soldier_pos[0], a.team, a.soldier_body_radius(), a.soldier_reach()),
 		"a same-team soldier is never a threat, no matter how close")
 
 
@@ -72,7 +72,7 @@ func test_has_enemy_within_ignores_a_dead_soldier() -> void:
 	b._sim_soldier_hp[0] = 0.0
 	SoldierEnemyProximity.rebuild([a, b], 4)
 	assert_false(SoldierEnemyProximity.has_enemy_within(
-			a._sim_soldier_pos[0], a.team, a.soldier_body_radius()),
+			a._sim_soldier_pos[0], a.team, a.soldier_body_radius(), a.soldier_reach()),
 		"a dead enemy soldier can't threaten anyone")
 
 
@@ -83,8 +83,26 @@ func test_has_enemy_within_ignores_a_dead_units_whole_roster() -> void:
 	b.state = Unit.State.DEAD
 	SoldierEnemyProximity.rebuild([a, b], 5)
 	assert_false(SoldierEnemyProximity.has_enemy_within(
-			a._sim_soldier_pos[0], a.team, a.soldier_body_radius()),
+			a._sim_soldier_pos[0], a.team, a.soldier_body_radius(), a.soldier_reach()),
 		"a DEAD unit contributes no soldiers to the grid at all")
+
+
+func test_has_enemy_within_counts_the_querying_soldiers_own_longer_reach() -> void:
+	# Regression: a long-reach querier (e.g. a spear, reach 48) must still see a
+	# shorter-reach enemy (e.g. a sword, reach 26) as a threat when it's beyond the
+	# ENEMY's own reach but still within the QUERIER's -- the spear-vs-sword standoff
+	# SoldierMelee.resolve's own reach search honours (a longer reach lets a soldier
+	# strike foes who cannot strike back). Using only the candidate's reach would
+	# compute a contact radius of 4.5+4.5+26=35, missing this 40-unit gap entirely.
+	var a := _make_unit(1, 0, Vector2.ZERO)
+	a.attack_range = 48.0
+	var b := _make_unit(2, 1, Vector2(2000, 2000))
+	b.attack_range = 26.0
+	b._sim_soldier_pos[0] = a._sim_soldier_pos[0] + Vector2(40, 0)
+	SoldierEnemyProximity.rebuild([a, b], 7)
+	assert_true(SoldierEnemyProximity.has_enemy_within(
+			a._sim_soldier_pos[0], a.team, a.soldier_body_radius(), a.soldier_reach()),
+		"the querier's own longer reach must count, not just the candidate enemy's")
 
 
 func test_reset_clears_the_cached_frame() -> void:
