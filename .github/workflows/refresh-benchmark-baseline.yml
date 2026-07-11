@@ -1,0 +1,206 @@
+# Periodically refresh tools/benchmark/baseline.json against the CI runners' current
+# (variable) speed, so benchmark.yml's relative regression check doesn't drift stale and
+# start flagging every PR as a false regression once enough commits land between manual
+# refreshes.
+#
+# Averages two consecutive runs: a single run's timing is noisy enough on a shared runner
+# that two functionally-identical runs can swing ~20% on their own, so averaging guards
+# against a false-positive baseline the same way a manual refresh would, applied here
+# automatically instead of relying on someone noticing drift and re-running it by hand.
+
+name: Refresh benchmark baseline
+
+on:
+  schedule:
+    # Weekly, Monday 06:00 UTC -- ahead of the working week. Cadence matched to how long it
+    # took the baseline to drift far enough to matter last time (roughly 9 days / 52 commits),
+    # not a tighter interval this repo's commit rate doesn't need.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-benchmark-baseline
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  # Keep in sync with benchmark.yml / godot-ci.yml.
+  GODOT_VERSION: 4.7.0
+  GUT_VERSION: v9.7.0
+  # Same CI-tuned measurement window benchmark.yml itself uses (not run-benchmark.sh's local
+  # 120/600 defaults) -- the whole point is to match the conditions the regression check runs
+  # under.
+  WARMUP_TICKS: 60
+  MEASURE_TICKS: 300
+
+jobs:
+  refresh-baseline:
+    # Scheduled/dispatch runs only ever run on the base repo (no fork context here, unlike
+    # benchmark.yml's pull_request trigger), so no fork guard is needed before pushing.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # Persist a push-capable token so open-sync-pr can push without putting the token
+          # in the remote URL (mirrors d-morrison/gha's bump-submodule.yml).
+          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+
+      - name: Install GUT ${{ env.GUT_VERSION }}
+        # The project's test files extend GutTest, so GUT must be present before --import
+        # resolves the whole project (same requirement as benchmark.yml / godot-ci.yml).
+        run: |
+          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
+          mkdir -p addons
+          rm -rf addons/gut
+          cp -r /tmp/gut/addons/gut addons/gut
+
+      - name: Import & validate project
+        run: |
+          set -o pipefail
+          godot --headless --import --verbose 2>&1 | tee import.log
+          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
+            echo "::error::Godot reported script/resource errors during import"
+            exit 1
+          fi
+
+      - name: Run benchmark twice
+        env:
+          SPARTA_BENCHMARK_WARMUP_TICKS: ${{ env.WARMUP_TICKS }}
+          SPARTA_BENCHMARK_TICKS: ${{ env.MEASURE_TICKS }}
+        run: |
+          set -euo pipefail
+          # Two consecutive, functionally-identical runs -- averaged below, see this
+          # workflow's header comment for why.
+          for i in 1 2; do
+            SPARTA_BENCHMARK_OUT="/tmp/benchmark-run${i}.json" tools/benchmark/run-benchmark.sh
+            if [ ! -s "/tmp/benchmark-run${i}.json" ]; then
+              echo "::error::benchmark run ${i} produced no report file"
+              exit 1
+            fi
+          done
+
+      - name: Average the runs and write the refreshed baseline
+        id: refresh
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          import sys
+
+          reports = [json.load(open(f"/tmp/benchmark-run{i}.json")) for i in (1, 2)]
+          for i, r in enumerate(reports, 1):
+              if r.get("early_stop"):
+                  # stderr, not stdout: stdout is redirected into $GITHUB_OUTPUT above, and a
+                  # bare `::warning::` line there isn't valid key=value/heredoc syntax -- it
+                  # would fail the step's output-file parsing.
+                  print(f"::warning::benchmark run {i} ended early; averaged baseline may be partial.", file=sys.stderr)
+
+          means = [r["stats"]["mean_ms"] for r in reports]
+          p95s = [r["stats"]["p95_ms"] for r in reports]
+          maxs = [r["stats"]["max_ms"] for r in reports]
+          avg_mean, avg_p95, avg_max = (sum(v) / 2 for v in (means, p95s, maxs))
+
+          run_url = os.environ["RUN_URL"]
+          old_baseline_path = "tools/benchmark/baseline.json"
+          try:
+              with open(old_baseline_path) as f:
+                  old = json.load(f)
+              old_mean, old_p95, old_max = (
+                  old["stats"]["mean_ms"], old["stats"]["p95_ms"], old["stats"]["max_ms"],
+              )
+          except (FileNotFoundError, KeyError):
+              old_mean = old_p95 = old_max = None
+
+          base = reports[0]
+          comment = (
+              "CI-RUNNER baseline for .github/workflows/benchmark.yml's relative regression "
+              "check. This is NOT the 60fps/reference-hardware target from PLAN.md (a 2022 "
+              "MacBook Air M2 24GB and the developer's PC) -- GitHub Actions runners are "
+              "different, variable-speed hardware; see tools/benchmark/README.md. Established "
+              "as the MEAN of two consecutive, functionally-identical 'Refresh benchmark "
+              f"baseline' workflow runs at {run_url} (mean {means[0]:.3f}ms/p95 {p95s[0]:.3f}ms/"
+              f"max {maxs[0]:.3f}ms and mean {means[1]:.3f}ms/p95 {p95s[1]:.3f}ms/max "
+              f"{maxs[1]:.3f}ms) -- ubuntu-latest, {base['scenario']} at scale "
+              f"{base['scale']}x, warmup_ticks={base['warmup_ticks']} "
+              f"measure_ticks={base['requested_measure_ticks']} (the CI-tuned window in "
+              "benchmark.yml, not BenchmarkRunner's local 120/600 defaults). Averaging two "
+              "runs rather than trusting a single one is deliberate: back-to-back runs with "
+              "zero functional code difference can swing ~20% from noisy shared-runner timing "
+              "alone (see #755) -- a single-run baseline risks reproducing the false-regression "
+              "problem this automation exists to prevent (#748/#756). Refreshed automatically "
+              "by .github/workflows/refresh-benchmark-baseline.yml on a weekly schedule; see "
+              "that workflow for the refresh mechanics, or run it manually via "
+              "workflow_dispatch."
+          )
+          new_baseline = {
+              "_comment": comment,
+              "scenario": base["scenario"],
+              "scale": base["scale"],
+              "soldier_count": base["soldier_count"],
+              "warmup_ticks": base["warmup_ticks"],
+              "requested_measure_ticks": base["requested_measure_ticks"],
+              "samples_collected": base["samples_collected"],
+              "stats": {
+                  "mean_ms": round(avg_mean, 3),
+                  "p95_ms": round(avg_p95, 3),
+                  "max_ms": round(avg_max, 3),
+              },
+          }
+          with open(old_baseline_path, "w") as f:
+              json.dump(new_baseline, f, indent=2)
+              f.write("\n")
+
+          def fmt_row(name, old_v, new_v):
+              old_s = f"{old_v:.3f} ms" if old_v is not None else "n/a"
+              pct = f"{(new_v - old_v) / old_v * 100:+.1f}%" if old_v else "n/a"
+              return f"| {name} | {old_s} | {new_v:.3f} ms | {pct} |"
+
+          table = "\n".join([
+              "| metric | old baseline | new baseline (avg) | change |",
+              "| --- | --- | --- | --- |",
+              fmt_row("mean tick time", old_mean, avg_mean),
+              fmt_row("p95 tick time", old_p95, avg_p95),
+              fmt_row("max tick time", old_max, avg_max),
+          ])
+
+          print("pr_body<<BASELINE_PR_BODY_EOF")
+          print(table)
+          print("BASELINE_PR_BODY_EOF")
+          PY
+
+      - name: Open PR if the baseline changed
+        uses: d-morrison/gha/open-sync-pr@v2
+        with:
+          branch: automated/refresh-benchmark-baseline
+          base: main
+          paths: tools/benchmark/baseline.json
+          commit-message: "chore: refresh benchmark.yml's CI baseline (scheduled)"
+          pr-body: |
+            Automated weekly refresh of `tools/benchmark/baseline.json`, per #756.
+
+            ${{ steps.refresh.outputs.pr_body }}
+
+            Both source runs came from this workflow run:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            No code/behavior change -- `tools/benchmark/baseline.json` only.
+
+            Generated by `.github/workflows/refresh-benchmark-baseline.yml`.
+          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
