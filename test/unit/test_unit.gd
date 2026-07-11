@@ -1101,11 +1101,16 @@ func test_residual_speed_coasts_along_travel_direction_not_facing() -> void:
 	PathField.active = old_pf
 
 
-func test_residual_speed_does_not_coast_without_a_known_travel_direction() -> void:
-	# If _approach_velocity is already zero when the guard fires (e.g. a strike spent it
-	# mid-combat, then the fight ended), there's no direction to coast in -- degrade to
-	# the old behavior (speed decays, position holds) rather than inventing a direction
-	# from facing.
+func test_residual_speed_falls_back_to_facing_when_approach_velocity_was_already_spent() -> void:
+	# UnitCombat's "spend the charge" strike-resolution reset zeroes _approach_velocity on
+	# the exact tick a unit's last opponent dies and it drops out of FIGHTING with
+	# _current_speed still nonzero -- there's no _move_to call left to rebuild a travel
+	# direction. Reproduced live via demos/inputs/idle-speed-friction.json: without a
+	# fallback, current_speed visibly ramped 76.0 -> 0.0 over ~2 seconds while position sat
+	# pixel-frozen the whole time -- the exact "decaying inert number" bug #742/#743 set out
+	# to fix, just relocated from _current_speed onto _approach_velocity. Falling back to
+	# `facing` (a faithful stand-in for the heading that was just spent, since the unit was
+	# fighting head-on) fixes it: the unit coasts forward instead of freezing.
 	var old_pf: PathField = PathField.active
 	PathField.active = null
 	var u := _cavalry()
@@ -1113,9 +1118,31 @@ func test_residual_speed_does_not_coast_without_a_known_travel_direction() -> vo
 	u.facing = Vector2.RIGHT
 	u._approach_velocity = Vector2.ZERO
 	u._current_speed = u.move_speed
+	var brake: float = u.arrival_brake_rate()
+	u._physics_process(0.1)
+	var expected_speed: float = u.move_speed - brake * 0.1
+	assert_almost_eq(u.position.x, expected_speed * 0.1, 0.001,
+		"falls back to facing (right) and coasts by the post-decay speed * delta")
+	assert_almost_eq(u.position.y, 0.0, 0.001, "facing is purely rightward -- no lateral drift")
+	PathField.active = old_pf
+
+
+func test_residual_speed_stays_frozen_when_neither_velocity_nor_facing_give_a_direction() -> void:
+	# The facing-fallback above is deliberately narrow: it only ever fires in the
+	# anomalous zero-velocity/nonzero-speed state a spent charge leaves behind. Confirm it
+	# doesn't paper over a genuinely directionless unit (facing itself zero, never a real
+	# game state, but the guard should still degrade to "no invented drift" rather than a
+	# NaN/garbage direction).
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.ZERO
+	u._approach_velocity = Vector2.ZERO
+	u._current_speed = u.move_speed
 	u._physics_process(0.1)
 	assert_eq(u.position, Vector2.ZERO,
-		"no known travel direction -- speed decays but position holds, no invented drift")
+		"no known travel direction anywhere -- speed decays but position holds, no invented drift")
 	PathField.active = old_pf
 
 
