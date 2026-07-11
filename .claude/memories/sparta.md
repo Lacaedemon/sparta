@@ -1073,10 +1073,10 @@ units for that code path. (`Lacaedemon/sparta` PR #760, 2026-07-11.)
 When computing whether two entities are within striking/contact distance of each other, and
 each side has its OWN independently-valued range (reach, radius, whatever), a check using only
 ONE side's range silently breaks the case where the OTHER side is the one with the longer
-range. This is the spear-vs-sword standoff already documented elsewhere in this file
-(`SoldierMelee.resolve`'s own reach search: "a longer reach lets a soldier strike foes who
-cannot strike back") — but it's easy to re-introduce the same class of bug in a NEW proximity
-check that doesn't reuse that exact code path.
+range. This is the same spear-vs-sword standoff the `SoldierEnemyProximity.has_enemy_within`
+and `Unit.engaged_soldier_indices` code comments themselves call out ("a longer reach lets a
+soldier strike foes who cannot strike back") — but it's easy to re-introduce the same class of
+bug in a NEW proximity check that doesn't reuse that exact code path.
 
 **Concrete case:** PR #760's `SoldierEnemyProximity.has_enemy_within(pos, team, self_radius)`
 computed `contact = self_radius + candidate_radius + candidate_reach` — using only the
