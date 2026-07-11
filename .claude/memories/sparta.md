@@ -489,8 +489,9 @@ conflict-free with the many in-flight PRs that DO touch that code.
 
 **The pattern (mirrors `UnitSprites` / the emblem/flag chrome):**
 
-1. **Pure geometry helper** in its own `class_name` script
-   (`scripts/UnitShields.gd`). Static funcs taking plain shape inputs
+1. **Pure geometry helper** in its own `class_name` script (e.g. the former
+   `scripts/UnitShields.gd`, removed by #753 -- see the pattern in
+   `scripts/UnitSprites.gd` instead for a still-live example). Static funcs taking plain shape inputs
    (frontage/ranks/spacing/mark_r) returning local-frame polygons — a function of
    block shape ONLY, nothing reads or writes the sim. Directly unit-testable and
    replay-safe. Keep block geometry consistent with the formation grid:
