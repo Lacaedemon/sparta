@@ -1283,6 +1283,13 @@ func _think(delta: float) -> void:
 		if is_ranged and not in_contact and dist <= RANGED_RANGE \
 				and (target_enemy != null or not has_move_target or chasing):
 			state = State.FIGHTING
+			# Commit the auto-acquired foe so next tick's current_target() returns it
+			# instead of re-running nearest_enemy() from scratch -- see the melee branch's
+			# matching commit below for why an unpersisted pick thrashes facing, and why
+			# ORDER_HOLD is excluded (the chase branch below has no HOLD guard, since
+			# target_enemy previously only went non-null via an explicit order).
+			if order_mode != ORDER_HOLD:
+				target_enemy = enemy
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
 			if _face_for_action(enemy.position, delta, enemy) and _attack_cd <= 0.0:
@@ -1296,6 +1303,32 @@ func _think(delta: float) -> void:
 		# CHASE unit never takes this disengage: it keeps fighting the same foe.
 		if in_contact and (target_enemy != null or not has_move_target or chasing):
 			state = State.FIGHTING
+			# Commit the auto-acquired foe: current_target() (UnitTargeting.gd) only keeps
+			# returning an already-live target_enemy -- it never writes back the nearest_enemy()
+			# fallback it resolves when target_enemy is null. Left unpersisted, a unit with no
+			# explicit attack order (the common defending case) re-runs a full nearest-enemy scan
+			# EVERY tick, and when two-plus enemies are both close (a multi-attacker press), tiny
+			# jostles in relative distance flip which one is "nearest" tick to tick. Each flip
+			# re-arms _face_for_action's engage-turn toward a new direction, so the whole grid
+			# sweeps back and forth at the turn rate instead of settling on one foe -- visible as
+			# soldiers "flying" once body coupling is fast enough to track it (see enemy contact
+			# physics). Committing here (already gated against the disengage case above) gives
+			# next tick's current_target() a live target to keep, so the turn settles.
+			#
+			# Skip the commit under ORDER_HOLD: the chase branch below (target_enemy != null)
+			# has no HOLD guard, because until now target_enemy only ever went non-null via an
+			# explicit order, which HOLD is meant to still obey ("HOLD only suppresses chasing a
+			# DETECTED foe, not an explicitly-set target" -- .claude/memories/sparta.md). Committing
+			# unconditionally here would let this auto-acquired pick pass as if it were that kind
+			# of explicit target: the instant the fought enemy leaves contact (retreats, gets
+			# knocked back, routs -- current_target() still returns a routing unit), in_contact
+			# goes false, this branch stops firing, but target_enemy is still set, so the chase
+			# branch marches the HELD unit off its position. Leaving target_enemy unset for HOLD
+			# preserves the pre-existing contract at the cost of not fixing its own facing-whipsaw
+			# case (an un-squared HOLD unit under a multi-attacker press) -- not a regression,
+			# since that combination was never fixed by this change in the first place.
+			if order_mode != ORDER_HOLD:
+				target_enemy = enemy
 			# Re-face for action: a large swing off the current fronting turns the men in
 			# place gradually (they hold their ground) before the line strikes; a small
 			# correction snaps and fights now. _face_for_action reports when the front is
@@ -1675,6 +1708,25 @@ func _face(point: Vector2) -> void:
 ## ENGAGE_TURN_FIGHT_TOLERANCE); the caller withholds the strike while still turning. Reuses
 ## the drill turns' arrival-freeze + _formation_angle-absorb, so the bodies hold their ground.
 func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> bool:
+	# An omnidirectional formation (Square/Schiltron) presents no weak facing, so it never
+	# needs to turn the whole grid to bring a "front" to bear on one specific attacker --
+	# every side already stands ready. Skipping the engage-turn here isn't just an
+	# optimization: with a real committed enemy, `dir` tracks that foe's bearing exactly,
+	# and a crowded multi-attacker press can genuinely swing that bearing 100+ degrees in
+	# a second or two as bodies jostle -- turning to chase it would drag every soldier's
+	# target slot through that same arc, visible as the formation sweeping/soldiers
+	# "flying" even with a single, stably-committed target. Treat the unit as always
+	# faced; strike()/shoot() proceed on whatever heading the square is already holding.
+	if in_square():
+		# A unit can switch to Square mid-turn -- ORDER_FORMATION_ONLY's set_formation()
+		# doesn't touch engage-turn state -- while an engage-turn armed before it squared is
+		# still in progress. Without settling it here, every later call takes this early
+		# return and _engage_turn_target is never cleared by anything else: it stays stuck
+		# non-zero forever, which permanently freezes SoldierBodies.step's slot-approach term
+		# (via is_maneuver_turning()) -- the squared body never eases onto its new slots.
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
+		return true
 	var dir: Vector2 = point - position
 	if dir.length() < 0.01:
 		return true
@@ -2734,8 +2786,19 @@ const ENGAGED_RANKS: int = 3
 # so the center can never teleport -- it only ever moves at a bounded velocity, like the
 # soldier bodies. During a clean march the bodies sit on their slots, so the drift is ~0
 # and the coupling is silent; it activates only when bodies are pushed off formation.
+#
+# MAX_FOLLOW_SPEED must exceed the fastest a regiment can advance (CHARGE_REFERENCE_SPEED
+# 170, up to ~1.3x that under a wedge-charge bonus) -- otherwise the cap is structurally
+# incapable of ever correcting a real, sustained drift, no matter how strong the soldier-
+# level contact resistance holding the bodies back is: a velocity-only soldier push
+# against a bounded, too-low coupling cap can never counteract a full-speed _move_to
+# charge. Set comfortably above any charge pace so SoldierEnemyContact's real contact
+# impulses can actually win: once a braced line's bodies hold position while _move_to
+# keeps advancing regardless, the resulting drift correction here outpaces the runaway,
+# so `position` settles back onto where the bodies actually are -- the regiment visibly
+# arrests on contact instead of riding through it.
 const FOLLOW_RATE: float = 6.0
-const MAX_FOLLOW_SPEED: float = 80.0
+const MAX_FOLLOW_SPEED: float = 300.0
 
 # > 0 while engaged; FIGHTING refreshes it, otherwise it decays on the fixed tick.
 var _engaged_linger: float = 0.0
@@ -2770,10 +2833,24 @@ func soldier_brace() -> float:
 ## (rank = index / files, rank 0 = front), so the front ranks are exactly the
 ## first files*ENGAGED_RANKS indices -- using `files` FROM THE SAME GRID the
 ## regiment is actually laid out on (formation_files), not the wide-line
-## frontage() a SQUARE unit no longer uses. Pure and deterministic.
+## frontage() a SQUARE unit no longer uses.
+##
+## An omnidirectional formation (in_square()) has no single front to speak of --
+## _face_for_action never turns it to bear on one attacker, since every side already
+## stands ready -- so a fixed rank-0 wedge would sit at whatever direction the grid
+## happened to be laid out on, unrelated to which side is actually under attack. It
+## returns the whole outer ring instead (UnitFormation.square_is_perimeter), so
+## melee/contact resolution can find a real target regardless of which side a foe
+## closes on. Pure and deterministic.
 func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
+		return out
+	if in_square():
+		var square_file_count: int = formation_files(count)
+		for i in range(count):
+			if UnitFormation.square_is_perimeter(i, count, square_file_count):
+				out.push_back(i)
 		return out
 	var cutoff: int = mini(count, formation_files(count) * ENGAGED_RANKS)
 	for i in range(cutoff):

@@ -283,3 +283,87 @@ func test_braced_defender_impulse_guards_zero_impulse_magnitude():
 	## dividing by ~zero.
 	var result: Vector2 = SoldierCollision.braced_defender_impulse(Vector2(0.0, 20.0), 0.0, 0.0)
 	assert_eq(result, Vector2.ZERO, "zero impulse magnitude guards against div-by-zero")
+
+
+# --- enemy contact impulse (continuous soldier-vs-soldier collision) ----------------------
+
+func test_enemy_contact_separating_pair_is_untouched():
+	## Two bodies moving apart along the normal, not overlapping: nothing to resolve.
+	var result: Array = SoldierCollision.enemy_contact_impulse(
+		Vector2(10.0, 0.0), Vector2(-10.0, 0.0), 1.0, 0.0, 1.0, 0.0, Vector2.RIGHT, 0.0)
+	assert_eq(result[0], Vector2.ZERO, "A gets no impulse when the pair is separating and clear")
+	assert_eq(result[1], Vector2.ZERO, "B gets no impulse when the pair is separating and clear")
+
+
+func test_enemy_contact_head_on_equal_mass_stops_both_bodies():
+	## Two equal-mass bodies closing head-on (A moving toward B, B stationary), fully
+	## inelastic: the resolved impulse should bring their relative normal velocity to
+	## (approximately) zero -- neither body ends up still approaching the other.
+	var vel_a := Vector2(-20.0, 0.0)   # moving toward B (normal points from B to A = +X)
+	var vel_b := Vector2.ZERO
+	var result: Array = SoldierCollision.enemy_contact_impulse(
+		vel_a, vel_b, 1.0, 0.0, 1.0, 0.0, Vector2.RIGHT, 0.0)
+	var new_vel_a: Vector2 = vel_a + result[0]
+	var new_vel_b: Vector2 = vel_b + result[1]
+	var rel_normal: float = (new_vel_a - new_vel_b).dot(Vector2.RIGHT)
+	assert_almost_eq(rel_normal, 0.0, 0.01,
+		"a fully inelastic head-on resolve leaves no residual closing velocity")
+
+
+func test_enemy_contact_heavy_body_pushes_light_body_more():
+	## A heavy charging body (cavalry-like mass) against a light stationary one: the light
+	## body should receive a much larger velocity change than the heavy one -- momentum
+	## conservation, not an even split.
+	var vel_a := Vector2(-20.0, 0.0)   # heavy, approaching
+	var vel_b := Vector2.ZERO           # light, stationary
+	var result: Array = SoldierCollision.enemy_contact_impulse(
+		vel_a, vel_b, 2.5, 0.0, 0.9, 0.0, Vector2.RIGHT, 0.0)
+	var delta_a: float = result[0].length()
+	var delta_b: float = result[1].length()
+	assert_gt(delta_b, delta_a, "the lighter body absorbs more of the velocity change")
+
+
+func test_enemy_contact_bracing_raises_effective_resistance():
+	## A braced defender resists more than an unbraced one of the same mass: for the same
+	## approach, the braced defender's own velocity change should be smaller (it's harder
+	## to move), and the attacker's own recoil correspondingly larger.
+	var vel_a := Vector2(-20.0, 0.0)
+	var vel_b := Vector2.ZERO
+	var unbraced: Array = SoldierCollision.enemy_contact_impulse(
+		vel_a, vel_b, 1.0, 0.0, 1.0, 0.0, Vector2.RIGHT, 0.0)
+	var braced: Array = SoldierCollision.enemy_contact_impulse(
+		vel_a, vel_b, 1.0, 0.0, 1.0, 1.0, Vector2.RIGHT, 0.0)
+	var unbraced_b_delta: float = (unbraced[1] as Vector2).length()
+	var braced_b_delta: float = (braced[1] as Vector2).length()
+	assert_lt(braced_b_delta, unbraced_b_delta,
+		"a braced defender's own velocity change shrinks relative to an unbraced one under the same approach")
+
+
+func test_enemy_contact_overlap_alone_separates_a_co_located_pair():
+	## Two stationary, fully-overlapping bodies (overlap_frac 1.0) still separate, even with
+	## no closing velocity -- the overlap-correction term.
+	var result: Array = SoldierCollision.enemy_contact_impulse(
+		Vector2.ZERO, Vector2.ZERO, 1.0, 0.0, 1.0, 0.0, Vector2.RIGHT, 1.0)
+	assert_gt((result[0] as Vector2).x, 0.0, "A is pushed apart along +normal by the overlap term alone")
+	assert_lt((result[1] as Vector2).x, 0.0, "B is pushed apart along -normal by the overlap term alone")
+
+
+func test_enemy_contact_is_capped_at_knockback_speed_max():
+	## However fast the closing speed, the RESOLVED impulse never exceeds what
+	## KNOCKBACK_SPEED_MAX already permits for any other per-tick body-displacement force in
+	## this system (see the per-tick displacement budget in test_collision_knockback_battle.gd).
+	var fast_close := Vector2(-1000.0, 0.0)   # far beyond any real charge speed
+	var result: Array = SoldierCollision.enemy_contact_impulse(
+		fast_close, Vector2.ZERO, 1.0, 0.0, 1.0, 0.0, Vector2.RIGHT, 0.0)
+	assert_lte((result[0] as Vector2).length(), SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
+		"A's impulse never exceeds the shared knockback ceiling, however fast the approach")
+	assert_lte((result[1] as Vector2).length(), SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
+		"B's impulse never exceeds the shared knockback ceiling, however fast the approach")
+
+
+func test_enemy_contact_degenerate_mass_returns_zero():
+	## Guard against a division by ~zero when a mass input is degenerate.
+	var result: Array = SoldierCollision.enemy_contact_impulse(
+		Vector2(-20.0, 0.0), Vector2.ZERO, 0.0, 0.0, 1.0, 0.0, Vector2.RIGHT, 0.0)
+	assert_eq(result[0], Vector2.ZERO, "degenerate mass_a guards against div-by-zero")
+	assert_eq(result[1], Vector2.ZERO, "degenerate mass_a guards against div-by-zero")
