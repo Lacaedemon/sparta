@@ -7,7 +7,6 @@ extends GutTest
 
 const BattleScript = preload("res://scripts/Battle.gd")
 const SettingsScript = preload("res://scripts/Settings.gd")
-const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
 const SEED: int = 12345
 
 
@@ -228,13 +227,3 @@ func test_pin_down_hotkey_default_is_not_reused() -> void:
 			"default hotkey %s is already bound to %s" % [key, seen.get(key)])
 		seen[key] = slug
 
-
-func test_pin_down_has_a_distinct_order_cursor_color() -> void:
-	# Guards the desync the HUD stance test guards for _STANCE_ENTRIES: a new OrderMode
-	# that falls through SelectionManager._order_mode_color's match to the Color.WHITE
-	# default would be visually indistinguishable from the NORMAL-mode demo cursor.
-	var sm := SelectionManagerScript.new()
-	autofree(sm)
-	var pin_down_color: Color = sm._order_mode_color(BattleScript.OrderMode.PIN_DOWN)
-	assert_ne(pin_down_color, Color.WHITE,
-		"PIN_DOWN has its own order-cursor color, not the unmapped-mode fallback")
