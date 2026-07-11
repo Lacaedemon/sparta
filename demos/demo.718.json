@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/disciplined-vs-undisciplined-march.json",
+  "caption": "Two Infantry regiments get the same quarter-turn move order. The left one is disciplined: it holds during the pre-march reform, centre-pivoting gradually onto its new heading before stepping off as one formed body. The right one is undisciplined: it snaps its facing onto the destination immediately and walks there directly, with no formed pivot.",
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 15,
+  "width": 720
+}

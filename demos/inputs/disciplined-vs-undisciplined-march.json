@@ -1,0 +1,17 @@
+{
+  "_comment": "Two lone Infantry regiments, side by side, each given the same quarter-turn WALK-gait move order. The left one is disciplined (default): it holds during the pre-march reform, centre-pivoting gradually onto its new heading before stepping off as one formed body. The right one is undisciplined: it snaps its facing onto the destination immediately and walks there directly, re-forming as it arrives rather than turning as a body.",
+  "seed": "48217",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 400, "y": 400, "facing": [0, 1]},
+    {"team": 0, "type": "Infantry", "x": 1000, "y": 400, "facing": [0, 1], "disciplined": false}
+  ],
+  "camera": [ { "tick": 0, "x": 760, "y": 400, "zoom": 1.0 } ],
+  "steps": [
+    { "tick": 4,  "click": [400, 400] },
+    { "tick": 8,  "rmb_click": [520, 400] },
+    { "tick": 12, "click": [1000, 400] },
+    { "tick": 16, "rmb_click": [1120, 400] }
+  ],
+  "state": [4, 16, 40, 60, 150, 220]
+}
