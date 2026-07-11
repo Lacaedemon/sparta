@@ -360,7 +360,7 @@
           "order_phase": null,
           "position": [
             700.0,
-            426.23
+            406.39
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -371,7 +371,7 @@
             ],
             "centroid": [
               700.0,
-              425.85
+              407.74
             ],
             "count": 80,
             "prone_count": 0
@@ -405,7 +405,7 @@
           "order_phase": null,
           "position": [
             700.0,
-            456.4
+            406.39
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -416,7 +416,7 @@
             ],
             "centroid": [
               700.0,
-              455.55
+              407.74
             ],
             "count": 80,
             "prone_count": 0
@@ -450,7 +450,7 @@
           "order_phase": null,
           "position": [
             700.0,
-            468.5
+            406.39
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -461,7 +461,7 @@
             ],
             "centroid": [
               700.0,
-              468.29
+              407.74
             ],
             "count": 80,
             "prone_count": 0
@@ -495,7 +495,7 @@
           "order_phase": null,
           "position": [
             700.0,
-            470.78
+            406.39
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -506,7 +506,7 @@
             ],
             "centroid": [
               700.0,
-              472.13
+              407.74
             ],
             "count": 80,
             "prone_count": 0
@@ -540,7 +540,7 @@
           "order_phase": null,
           "position": [
             700.0,
-            470.78
+            406.39
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -551,7 +551,7 @@
             ],
             "centroid": [
               700.0,
-              472.13
+              407.74
             ],
             "count": 80,
             "prone_count": 0
@@ -585,7 +585,7 @@
           "order_phase": null,
           "position": [
             700.0,
-            470.78
+            406.39
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -596,7 +596,7 @@
             ],
             "centroid": [
               700.0,
-              472.13
+              407.74
             ],
             "count": 80,
             "prone_count": 0
@@ -630,7 +630,7 @@
           "order_phase": null,
           "position": [
             700.0,
-            470.78
+            406.39
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -641,7 +641,7 @@
             ],
             "centroid": [
               700.0,
-              472.13
+              407.74
             ],
             "count": 80,
             "prone_count": 0
