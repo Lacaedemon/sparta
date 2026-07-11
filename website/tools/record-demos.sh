@@ -73,6 +73,7 @@ DEMOS=(
   "multi_click_speeds|demos/inputs/multi-click-speeds.json|30|330|720|input"
   "knockback_focus|demos/inputs/knockback-focus.json|30|320|720|input"
   "coast_to_stop|demos/inputs/idle-speed-friction.json|30|220|640|input"
+  "disciplined_march|demos/inputs/disciplined-vs-undisciplined-march.json|30|300|720|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a

@@ -520,6 +520,7 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	if d.has("shield"):
 		u.shield_type_id = d["shield"]
 	u.training = d.get("training", 0.0)
+	u.disciplined = d.get("disciplined", true)
 	# Cavalry respond faster — more mobile and battle-conditioned.
 	if d["cav"]:
 		u.order_response_delay = 0.3
@@ -565,6 +566,8 @@ func _spawn_scenario(specs: Array) -> void:
 			d["formation"] = int(spec["formation"])
 		if spec.has("starting_state"):
 			d["starting_state"] = int(spec["starting_state"])
+		if spec.has("disciplined"):
+			d["disciplined"] = bool(spec["disciplined"])
 		var team := int(spec.get("team", 0))
 		var pos := Vector2(float(spec.get("x", FIELD.size.x * 0.5)), float(spec.get("y", FIELD.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
@@ -1230,7 +1233,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# idle unit starts marching it now (append_order made it current); a
 				# busy one continues its current order and the leg commits when it is
 				# promoted (retire_current_order -> _start_promoted_move).
-				var leg := Order.new_move(point, mode, gait)
+				var leg := Order.new_move(point, mode, gait, false)
 				u.append_order(leg)
 				if u.current_order == leg and not u.has_move_target:
 					u.move_target = point
@@ -1264,7 +1267,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# Reform timing rides the recorded "reform" field on the Order: for a plain
 				# move it arms the reform-before-move hold below; for a rear move it times
 				# the composite's reform phase (see Unit._finish_order_turn).
-				var order := Order.new_move(point, mode, gait)
+				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
 				order.reform = bool(cmd.get("reform", false))
 				# Install the order first: set_current_order interrupts whatever maneuver
 				# the old order had in flight (a standing drill turn folds and settles; a

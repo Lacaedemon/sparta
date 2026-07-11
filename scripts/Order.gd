@@ -147,6 +147,13 @@ var order_mode: int = 0
 ## the normal AUTO gait logic and uses the specified speed. Defaults to -1 (disabled).
 ## When disabled, units use AUTO mode (walk by default, jog under fire, sprint at close range).
 var gait: int = -1
+## Whether this MOVE order is "in haste": too urgent for even a disciplined unit to execute
+## a formed centre-pivot turn before marching (Unit._is_move_order_in_haste). Distinct from
+## `gait` -- a Shift+right-click waypoint append also carries `gait == RUN` to keep travel
+## speed continuous with the leg before it (SelectionManager._gait_from_click_count), but
+## that is NOT an urgency signal, so `new_move` clears `haste` for append legs regardless
+## of `gait`. Only a genuine triple/quadruple-click order (not an append) sets it.
+var haste: bool = false
 ## STANCE target order_mode (Battle.OrderMode) to write on the unit; -1 = leave unchanged.
 var stance: int = -1
 ## STANCE rank-relief mode toggle (Battle.RankRelief): LEAVE keeps the unit's current
@@ -240,13 +247,18 @@ func describe() -> String:
 	return base
 
 
-static func new_move(dest: Vector2, mode: int = 0, gait: int = -1) -> Order:
+## `haste` is a plain passthrough, not derived from `gait`: a caller issuing a genuine
+## click-count-driven RUN/SPRINT order passes `haste = true`, but SelectionManager's
+## waypoint-append path also forces `gait == RUN` for travel-speed continuity with the leg
+## before it (not urgency), so it must pass `haste = false` even at that same gait.
+static func new_move(dest: Vector2, mode: int = 0, gait: int = -1, haste: bool = false) -> Order:
 	var o := Order.new()
 	o.type = Type.MOVE
 	o.target_pos = dest
 	o.order_mode = mode
 	if gait >= 0:
 		o.gait = gait
+	o.haste = haste
 	return o
 
 

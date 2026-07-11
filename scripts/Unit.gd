@@ -94,6 +94,15 @@ var shield_type_id: int = LoadoutRegistry.SHIELD_SCUTUM
 @export var training: float = 0.0:
 	set(v):
 		training = clampf(v, 0.0, 1.0)
+# Whether the unit executes march orders as a formed body -- centre-pivoting gradually
+# onto its new heading before advancing (see _move_to's pivot_as_formation) -- or
+# individually, turning to face the destination immediately and walking there directly
+# (a mob/levy). Deliberately its own flag rather than a threshold on `training` above:
+# `training` defaults to 0.0 on a bare Unit and stays there in most existing tests and
+# any loadout that doesn't set it, so gating march discipline on it would silently flip
+# those fixtures' behavior. `disciplined` defaults to true, matching the formation-
+# preserving march every unit has always executed.
+@export var disciplined: bool = true
 
 # --- Runtime state ---
 var soldiers: int
@@ -1219,9 +1228,17 @@ func _think(delta: float) -> void:
 				state = State.IDLE
 				# Use the hold to centre-pivot in place toward the pending destination, so
 				# the ranks are already coming onto their heading before the first step. A
-				# side-step holds its facing (ordered_facing set), so it doesn't pivot.
+				# side-step holds its facing (ordered_facing set), so it doesn't pivot. An
+				# undisciplined unit (or a disciplined one marching in haste) skips the formed
+				# pivot here too, mirroring _move_to's pivot_as_formation gate -- otherwise it
+				# would still visibly turn as one formed body during the hold, even though the
+				# march that follows won't.
 				if ordered_facing == Vector2.ZERO:
-					_rotate_facing_toward(_reform_target - position, delta)
+					var reform_dir: Vector2 = _reform_target - position
+					if disciplined and not _is_move_order_in_haste():
+						_rotate_facing_toward(reform_dir, delta)
+					else:
+						_face_dir(reform_dir)
 				return
 			_commit_pending_reform()
 
@@ -1619,6 +1636,18 @@ func arrival_brake_rate() -> float:
 	return minf(decel, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR))
 
 
+## Whether the current order is a genuine click-count-driven run/sprint MOVE -- too urgent
+## for even a disciplined unit to execute a formed centre-pivot turn before marching. Shared
+## by _move_to's pivot_as_formation gate and _think's reform-hold pivot so both agree on
+## when a march is "in haste". Reads Order.haste rather than Order.gait directly: a
+## Shift+right-click waypoint append also carries gait == RUN (for travel-speed continuity,
+## not urgency), so it is not haste -- Order.new_move's callers are responsible for setting
+## haste correctly (see Order.gd and Battle._apply_order_cmd).
+func _is_move_order_in_haste() -> bool:
+	return current_order != null and current_order.type == Order.Type.MOVE \
+			and current_order.haste
+
+
 func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
@@ -1711,25 +1740,33 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		rate = brake
 	_current_speed = move_toward(_current_speed, pace_speed, rate * delta)
 	# Facing. A side-step holds its commanded heading and shuffles sideways. An orderly
-	# move order centre-pivots gradually toward its travel direction (the ranks turn in
-	# good order), tapering the pivot rate down as current speed rises -- real turning
-	# capacity is bounded by the lateral force a moving body/formation can exert without
-	# losing footing or cohesion. A combat chase faces travel instantly (must stay responsive).
+	# move order from a DISCIPLINED unit centre-pivots gradually toward its travel
+	# direction (the ranks turn in good order), tapering the pivot rate down as current
+	# speed rises -- real turning capacity is bounded by the lateral force a moving
+	# body/formation can exert without losing footing or cohesion. An undisciplined unit
+	# (a mob/levy) skips that: it turns to face the destination immediately and walks
+	# there directly, same as a combat chase (which must also stay responsive) -- the
+	# soldier bodies' own slot-approach still re-forms them onto the block as they arrive,
+	# so no separate "form up" step is needed. A disciplined unit given an in-haste order
+	# (a triple/quadruple-click RUN/SPRINT gait) temporarily marches the same undisciplined
+	# way -- there's no time to execute a formed turn.
+	var pivot_as_formation: bool = orderly and disciplined and not _is_move_order_in_haste()
 	if maneuvering:
 		_face_dir(ordered_facing)
-	elif orderly:
+	elif pivot_as_formation:
 		var speed_frac: float = clampf(_current_speed / move_speed, 0.0, 1.0)
 		var pivot_rate: float = TURN_RATE * lerpf(1.0, TURN_RATE_TAPER_FLOOR, speed_frac)
 		_rotate_facing_toward(dir, delta, pivot_rate)
 	else:
 		_face_dir(dir)
 	var effective_speed: float = _current_speed * terrain_speed
-	# Turn-before-march: while centre-pivoting an orderly move, scale the advance by how
+	# Turn-before-march: while centre-pivoting a formed march, scale the advance by how
 	# far the unit has come onto its heading. A sharp turn (e.g. a 180° pivot to a rear
 	# destination) nearly halts and pivots, then accelerates as it aligns -- so it
 	# never slides backwards/sideways at speed. Full speed once within ~60 deg of the
-	# heading; side-steps are exempt (they march at a fixed walk perpendicular).
-	if orderly and not maneuvering:
+	# heading; side-steps are exempt (they march at a fixed walk perpendicular), and so
+	# is an undisciplined/in-haste march (it never pivots, so there's nothing to wait on).
+	if pivot_as_formation and not maneuvering:
 		effective_speed *= clampf(facing.dot(dir) * 2.0, 0.0, 1.0)
 	# Inbound clamp: never step PAST the immediate goal point in a single tick -- the
 	# same post-step guard the soldier-body arrival uses. Without it a fast unit whose
