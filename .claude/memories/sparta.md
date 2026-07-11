@@ -1008,12 +1008,15 @@ what actually changed inside the call.
 Merging a PR whose title/body bare-mentions a tracking issue by number (`(partial #752)`,
 `Progress on #752`) can auto-close that issue on merge, even when the PR explicitly states
 "does **not** close it" and a PR/issue comment says "leaving this issue open." Neither PR
-#758's title nor body used a `Closes`/`Fixes`/`Resolves` keyword — the close is most likely
-GitHub's PR "Development" sidebar auto-link (which can auto-suggest linking an issue whose
-number appears in the PR title, independent of body wording) rather than the standard
-keyword-based auto-close. `godot-ci.yml`'s `resolve-main-failure` job ("Close tracking issue
-on green") is NOT the cause — it only ever touches a separate marker-tagged `ci-failure`
-issue, confirmed by reading the workflow.
+#758's title nor body used a `Closes`/`Fixes`/`Resolves` keyword, so it isn't the standard
+keyword-based auto-close. **The exact mechanism is unconfirmed** — the reopening comment
+posted at the time guessed "repo automation matching the `#752` reference in the squash
+commit title," but that's a guess, not a verified cause; a later review round flagged that
+GitHub's PR "Development" sidebar auto-link (an alternative theory this entry originally
+asserted) normally requires a *manually applied* link and doesn't auto-attach just because
+an issue number appears in a PR title, so that theory is probably wrong too. `godot-ci.yml`'s
+`resolve-main-failure` job ("Close tracking issue on green") IS ruled out, though — it only
+ever touches a separate marker-tagged `ci-failure` issue, confirmed by reading the workflow.
 
 **How to apply:** after merging any "partial fix, issue stays open" PR that mentions the
 issue number anywhere in its title or body, check the issue's state immediately —
