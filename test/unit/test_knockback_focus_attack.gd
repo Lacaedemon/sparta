@@ -175,6 +175,41 @@ func test_clear_line_speed_cap_grows_with_distance() -> void:
 	assert_gt(far, near, "a bigger combined front depth raises the 'just clear the line' cap")
 
 
+# --- the push-distance order parameter: the default variant's floor at KNOCKBACK_SPEED_MAX -
+
+func test_knockback_focus_clear_line_cap_floors_at_the_normal_knockback_cap() -> void:
+	# The bug this guards: clear_line_speed_cap() ALONE tops out at ~53.67 wu/s even for
+	# the widest realistic front-depth pairing (two spearmen at full 48wu reach, each
+	# capped at attack_range*0.5 -- Unit._front_depth), which is BELOW the ordinary
+	# attack's KNOCKBACK_SPEED_MAX (60.0). Without a floor, a strong/charging landed hit
+	# that would already reach the normal 60 cap gets shoved LESS far by the default
+	# ("just clear the line") knockback-focus variant than a plain attack -- the opposite
+	# of this stance's "trade damage for a much bigger push-back" framing.
+	var widest_realistic_clear_dist: float = 48.0
+	var raw_cap: float = SoldierCombat.clear_line_speed_cap(
+			widest_realistic_clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
+	assert_lt(raw_cap, SoldierCombat.KNOCKBACK_SPEED_MAX,
+		"sanity check: the raw geometric cap alone falls below the normal knockback cap here")
+	var floored_cap: float = SoldierCombat.knockback_focus_clear_line_cap(
+			widest_realistic_clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
+	assert_almost_eq(floored_cap, SoldierCombat.KNOCKBACK_SPEED_MAX, TOL,
+		"the floor guarantees the default push-distance cap never undercuts a normal attack")
+
+
+func test_knockback_focus_clear_line_cap_still_extends_beyond_the_normal_cap_for_a_wide_pairing() -> void:
+	# For a distance whose raw geometric cap already exceeds KNOCKBACK_SPEED_MAX, the
+	# floor must not clip it back down -- "clear the line" should keep reaching further
+	# than a normal attack whenever the geometry calls for it.
+	var wide_clear_dist: float = 200.0
+	var raw_cap: float = SoldierCombat.clear_line_speed_cap(wide_clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
+	assert_gt(raw_cap, SoldierCombat.KNOCKBACK_SPEED_MAX,
+		"sanity check: a wide enough pairing's raw cap already exceeds the normal cap")
+	var floored_cap: float = SoldierCombat.knockback_focus_clear_line_cap(
+			wide_clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
+	assert_almost_eq(floored_cap, raw_cap, TOL,
+		"the floor must not clip a cap that's already above the normal knockback speed")
+
+
 func test_capped_knockback_velocity_travels_further_under_the_indefinite_cap() -> void:
 	# A single, deterministic proof that the two push-distance variants actually diverge:
 	# an impulse big enough to exceed the modest "clear the line" cap but still well under

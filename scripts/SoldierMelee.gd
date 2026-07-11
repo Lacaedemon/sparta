@@ -135,18 +135,21 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# Knockback focus's own per-order push-distance parameter (Unit.
 		# knockback_push_indefinite): "just clear the line" (the default) caps the shoved
 		# body's speed so it coasts roughly past both blocks' combined front depth before
-		# SoldierBodies.BODY_ACCEL_FLOOR's arrival recovery reins it back in; "indefinite"
-		# uses a much higher fixed cap instead, so the shove clearly outruns that. Only
-		# the struck DEFENDER's cap changes -- the attacker's own recoil below keeps the
-		# ordinary KNOCKBACK_SPEED_MAX default, since the push-distance parameter is about
-		# how far the struck body travels, not the striker's own stagger.
+		# SoldierBodies.BODY_ACCEL_FLOOR's arrival recovery reins it back in -- floored at
+		# KNOCKBACK_SPEED_MAX (SoldierCombat.knockback_focus_clear_line_cap) so a strong/
+		# charging hit is never shoved LESS far by this default variant than a plain
+		# attack already would be; "indefinite" uses a much higher fixed cap instead, so
+		# the shove clearly outruns that. Only the struck DEFENDER's cap changes -- the
+		# attacker's own recoil below keeps the ordinary KNOCKBACK_SPEED_MAX default,
+		# since the push-distance parameter is about how far the struck body travels,
+		# not the striker's own stagger.
 		var defender_speed_cap: float = SoldierCombat.KNOCKBACK_SPEED_MAX
 		if kb_focus:
 			if attacker.knockback_push_indefinite:
 				defender_speed_cap = SoldierCombat.KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP
 			else:
 				var clear_dist: float = attacker._front_depth() + defender._front_depth()
-				defender_speed_cap = SoldierCombat.clear_line_speed_cap(
+				defender_speed_cap = SoldierCombat.knockback_focus_clear_line_cap(
 						clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
 		# Newton's laws collision (bidirectional impulses): both attacker and defender
 		# exchange momentum. The impulse is split inversely by effective mass (which

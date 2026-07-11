@@ -186,6 +186,19 @@ static func clear_line_speed_cap(clear_distance: float, body_accel: float) -> fl
 	return sqrt(2.0 * maxf(0.0, body_accel) * maxf(0.0, clear_distance))
 
 
+## Knockback focus's default ("just clear the line") push-distance cap, floored at
+## KNOCKBACK_SPEED_MAX: clear_line_speed_cap alone can fall BELOW the ordinary attack's
+## cap for realistic front-depth pairings (~53.67 for the widest two-unit reach, per
+## Unit._front_depth's own cap), which would otherwise let a strong/charging landed hit
+## get shoved LESS far under this stance's default variant than a plain attack already
+## pushes it -- the opposite of "trade damage for a much bigger push-back." The floor
+## guarantees the default variant never undercuts a normal attack; clear_line_speed_cap
+## still extends the coast beyond KNOCKBACK_SPEED_MAX whenever the geometry calls for
+## more (a wide pairing). Pure; never negative.
+static func knockback_focus_clear_line_cap(clear_distance: float, body_accel: float) -> float:
+	return maxf(KNOCKBACK_SPEED_MAX, clear_line_speed_cap(clear_distance, body_accel))
+
+
 ## Probability that a knockback impulse `impulse_j` fells the defender (docs/combat-model.md
 ## "Going prone"): surplus impulse over a mass- and bracing-raised threshold, scaled and
 ## capped. `brace_d` is 0 until bracing lands. Pure; clamped to [0, PRONE_CHANCE_MAX].
