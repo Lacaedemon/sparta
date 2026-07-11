@@ -1,11 +1,11 @@
 {
-  "_comment": "Side-step maneuver demo: zoom in on the lone Spearmen (seed 12345, ~500,300, facing south toward the enemy), select it, then right-click a short step to the right. Because the shift is small and sideways, the regiment SIDE-STEPS -- it shuffles right at a walk while holding its south-facing line, instead of centre-pivoting to face the move and pivoting back. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "_comment": "Side-step maneuver demo: zoom in on the lone Spearmen (seed 12345, x=476.75/y=300 per Battle._spawn_line's widened spacing -- see demos/README.md, facing south toward the enemy), select it, then right-click a short step to the right. The click target (505, 300) is a ~28-unit shift, comfortably under UnitManeuver.SIDESTEP_MAX_DISTANCE (40.0), so the regiment SIDE-STEPS -- it shuffles right at a walk while holding its south-facing line, instead of centre-pivoting to face the move and pivoting back. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 500.0, "y": 318.0, "zoom": 2.0}
+    {"tick": 0, "x": 490.0, "y": 318.0, "zoom": 2.0}
   ],
   "steps": [
-    {"tick": 10, "click": [500, 300]},
-    {"tick": 28, "rmb_click": [536, 300]}
+    {"tick": 10, "click": [477, 300]},
+    {"tick": 28, "rmb_click": [505, 300]}
   ]
 }
