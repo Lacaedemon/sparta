@@ -1035,6 +1035,30 @@ func test_approach_velocity_clears_after_a_stationary_frame() -> void:
 		"an idle frame with no movement clears the carried impact velocity")
 
 
+func test_current_speed_decays_gradually_after_a_stationary_frame() -> void:
+	# Unlike _approach_velocity above (an instant, combat-balance clear so no stale charge
+	# bonus survives into a standing strike), _current_speed bleeds off at
+	# arrival_brake_rate() -- friction, not a snap -- whenever the unit isn't actively
+	# locomoting this tick. Regression guard for #738.
+	var u := _cavalry()
+	u._current_speed = u.move_speed
+	var brake: float = u.arrival_brake_rate()
+	u._physics_process(0.016)   # a frame with no enemy / no move
+	assert_almost_eq(u._current_speed, u.move_speed - brake * 0.016, 0.001,
+		"speed drops by exactly brake * delta this tick, not an instant snap to 0")
+
+
+func test_current_speed_reaches_zero_after_enough_stationary_frames() -> void:
+	# Friction eventually brings a halted unit fully to rest, not perpetual coasting.
+	var u := _cavalry()
+	u._current_speed = u.move_speed
+	var brake: float = u.arrival_brake_rate()
+	var ticks_to_stop: int = int(ceil(u.move_speed / brake / 0.016)) + 2
+	for _i in range(ticks_to_stop):
+		u._physics_process(0.016)
+	assert_eq(u._current_speed, 0.0, "friction converges cleanly to a full stop")
+
+
 func test_strike_spends_the_charge_velocity() -> void:
 	# The charge is spent on the strike that lands it, so follow-up grinding strikes in
 	# the same melee don't each re-charge off the same approach.

@@ -778,11 +778,20 @@ func _physics_process(delta: float) -> void:
 	UnitRelief.update(self)
 	_ranks_closed = UnitFormation.should_close_ranks(_ranks_closed, soldiers, max_soldiers)
 
-	# A stationary, non-fighting unit carries no momentum: drop any leftover approach
-	# velocity so a later standing strike can't charge off it. While FIGHTING we
+	# A stationary, non-fighting unit carries no charge momentum: drop any leftover
+	# approach velocity so a later standing strike can't charge off it. While FIGHTING we
 	# keep it — a strike held back by attack cooldown on the contact frame still charges
-	# on the next — and _strike spends it, so grinding strikes after the first don't.
-	# _current_speed resets alongside it so the next march always ramps up from zero.
+	# on the next — and _strike spends it, so grinding strikes after the first don't. This
+	# clear is instant and unconditional on speed, unlike the friction decay below: it's a
+	# combat-balance rule (no stale charge bonus), not a locomotion one, so it always drops
+	# to zero the moment a unit stops actively marching.
+	#
+	# _current_speed instead bleeds off gradually here, at the same arrival_brake_rate()
+	# an orderly march already uses to stop (see _move_to's own arrival branch) — friction,
+	# not a snap, whenever the unit isn't actively locomoting this tick (no _move_to call).
+	# This is purely cosmetic/physical feel: nothing reads _current_speed as a locomotion
+	# gate the way combat code reads _approach_velocity, so slowing its decay changes no
+	# gameplay outcome, only how many ticks a halted unit's speed readout takes to reach 0.
 	#
 	# Guard on both freeze timers too: a unit that was actively cruising and gets
 	# re-ordered is frozen by start_order_response() for order_response_delay seconds,
@@ -791,16 +800,15 @@ func _physics_process(delta: float) -> void:
 	# — _move_to() doesn't run during either freeze, so _moved_last_frame reads false
 	# even though the unit had momentum a moment ago. The two holds run one after the
 	# other (order-response first, then reform), so both must have drained before this
-	# reset is safe to apply. Without this guard, every re-order (a rapid tap sequence,
-	# or any fast order dispatch) would hard-reset speed to zero and force the next
-	# march to ramp up from a standstill each time instead of carrying momentum
-	# through. A genuinely idle unit already has _current_speed == 0, so skipping the
-	# reset while frozen is a no-op for it — this only changes behavior for a unit
-	# that was moving.
+	# decay is safe to apply. Without this guard, every re-order (a rapid tap sequence,
+	# or any fast order dispatch) would bleed speed away and force the next march to ramp
+	# up from a near-standstill each time instead of carrying momentum through. A
+	# genuinely idle unit already has _current_speed == 0, so skipping this while frozen
+	# is a no-op for it — this only changes behavior for a unit that was moving.
 	if not _moved_last_frame and state != State.FIGHTING \
 			and _order_response_timer <= 0.0 and _reform_timer <= 0.0:
 		_approach_velocity = Vector2.ZERO
-		_current_speed = 0.0
+		_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
 
 	# The parallel soldier-body layer (seeding + the global engaged-soldier
 	# separation) is orchestrated once per tick by Battle, AFTER every unit has
