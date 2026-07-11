@@ -307,7 +307,7 @@ func _unit_record(u: Node) -> Dictionary:
 		"rank_relief": u.rank_relief,
 		"target_enemy_uid": target_uid,
 		"engaged": u.is_engaged(),
-		# A single readable label for the in-progress drill/maneuver (#515), consolidating
+		# A single readable label for the in-progress drill/maneuver, consolidating
 		# current_order/order_phase/order_mode into one field a verifier can read directly --
 		# e.g. a conversio and a centre-pivot both otherwise read as current_order: "MOVE"/
 		# order_phase: "TURN" or current_order: "QUARTER_TURN" respectively, so this spares a

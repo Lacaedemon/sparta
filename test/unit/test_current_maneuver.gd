@@ -1,6 +1,6 @@
 extends GutTest
-## Unit.current_maneuver(): a single readable label for the in-progress drill/maneuver
-## (#515), distinguishing cases state/formation/order_mode alone can't -- a conversio and a
+## Unit.current_maneuver(): a single readable label for the in-progress drill/maneuver,
+## distinguishing cases state/formation/order_mode alone can't -- a conversio and a
 ## centre-pivot both otherwise read as `state: MOVING`. Each case here arms the maneuver via
 ## its own real entry point (conversio()/quarter_turn()/wheel()/set_frontage(), or the same
 ## fields Battle._apply_order_cmd's NUDGE branch sets) rather than poking the label logic
@@ -50,7 +50,7 @@ func test_reports_quarter_turn_during_a_quarter_turn() -> void:
 
 
 func test_distinguishes_conversio_from_quarter_turn() -> void:
-	# The concrete case #515 is about: both look identical as state: MOVING, and both set
+	# The concrete case this closes: both look identical as state: MOVING, and both set
 	# is_order_turning() true -- only about_face_goal() (checked inside current_maneuver())
 	# actually tells them apart.
 	var reversing := _make_unit(1)
