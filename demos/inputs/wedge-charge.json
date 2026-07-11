@@ -1,0 +1,18 @@
+{
+  "_comment": "Wedge charge (#692): two matched team-0 Infantry side by side, given a joint move order toward the same distant point, then WEDGE_CHARGE armed on the left one alone AFTER the move is already issued (a fresh move/attack order resets order_mode to NORMAL -- Battle._apply_order_cmd's `if not append: u.order_mode = mode` -- so the stance must be applied via a separate, later stance-only order, ORDER_STANCE_ONLY, which leaves the in-progress move untouched). The wedge-charging unit's WEDGE_CHARGE_SPEED_BONUS pace should then visibly pull it ahead of its unstanced twin as they cross the field, well before either reaches the enemy line. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 700, "y": 440, "count": 100},
+    {"team": 0, "type": "Infantry", "x": 900, "y": 440, "count": 100},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 900, "count": 100}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 650.0, "zoom": 1.0}
+  ],
+  "steps": [
+    {"tick": 5, "box": {"from": [650, 400], "to": [950, 480]}},
+    {"tick": 30, "rmb_click": [800, 900]},
+    {"tick": 45, "click": [700, 440]},
+    {"tick": 50, "key": "Minus", "ctrl": true}
+  ]
+}

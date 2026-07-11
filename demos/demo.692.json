@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/wedge-charge.json",
+  "caption": "Two matched Infantry regiments get the same move order toward the enemy line; the left one is then armed with Wedge charge (attack subtype #692 -- trades defense and faster fatigue buildup for a faster approach) while its twin stays Normal. Watch the wedge-charging unit visibly pull ahead and reach the enemy line first, while its twin is still closing the gap.",
+  "fixed_fps": 30,
+  "max_frames": 270,
+  "fps": 15,
+  "width": 720
+}

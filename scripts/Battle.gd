@@ -75,7 +75,7 @@ const NUDGE_DISTANCE := 30.0
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
 ## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
@@ -118,6 +118,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.PIN_DOWN: "Pin down",
 	OrderMode.ALL_OUT_ATTACK: "All-out attack",
 	OrderMode.CHASE: "Chase",
+	OrderMode.WEDGE_CHARGE: "Wedge charge",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -137,6 +138,7 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.PIN_DOWN, "slug": "pin_down"},
 	{"mode": OrderMode.ALL_OUT_ATTACK, "slug": "all_out_attack"},
 	{"mode": OrderMode.CHASE, "slug": "chase"},
+	{"mode": OrderMode.WEDGE_CHARGE, "slug": "wedge_charge"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
@@ -212,7 +214,8 @@ func _ready() -> void:
 			and UnitRef.ORDER_ROLL_THE_LINE == OrderMode.ROLL_THE_LINE \
 			and UnitRef.ORDER_PIN_DOWN == OrderMode.PIN_DOWN \
 			and UnitRef.ORDER_ALL_OUT_ATTACK == OrderMode.ALL_OUT_ATTACK \
-			and UnitRef.ORDER_CHASE == OrderMode.CHASE,
+			and UnitRef.ORDER_CHASE == OrderMode.CHASE \
+			and UnitRef.ORDER_WEDGE_CHARGE == OrderMode.WEDGE_CHARGE,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 
 	# Start a fresh recording for every live battle (so any battle can be
