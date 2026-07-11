@@ -955,7 +955,8 @@ and under heavy multi-directional pressure (the block reflowing unevenly as diff
 take casualties at different rates) it can still misclassify a soldier pushed inward on one
 side as "engaged" over a genuinely exposed soldier on a less-pressed side. The issue's
 originally-proposed direction (each candidate's nearest ENEMY soldier within a contact
-radius, via `SoldierSpatialHash`) is the fuller fix and remains open follow-up work.
+radius, via `SoldierSpatialHash`) is the fuller fix and remains open follow-up work
+(#752 stays open).
 
 **How to apply:** before implementing a "make this live/position-based instead of
 index-based" fix, verify empirically whether the bug is (a) same-unit index/position
@@ -964,5 +965,5 @@ needs cross-unit proximity data — they look identical from the bug report alon
 ("this-N-vs-that-N mismatch under chaos") but have very different fix complexity. Gate any
 such reproduction to pairs actually within contact/reach range — an ungated "nearest globally"
 metric picks up noise from units still approaching each other, which can make an otherwise-
-sound fix look like it regressed the pristine case. (`Lacaedemon/sparta` PR TBD, closes part
-of #752, 2026-07-11.)
+sound fix look like it regressed the pristine case. (`Lacaedemon/sparta` PR #758, partial
+fix for #752, 2026-07-11.)
