@@ -142,9 +142,12 @@ func test_reports_file_double_deepen_on_the_exact_tick_only() -> void:
 func test_set_frontage_to_the_same_effective_count_is_not_a_reshape() -> void:
 	# Re-applying the pending FRONTAGE order on the same tick is idempotent by design
 	# (frontage_anchor_offset's own docstring) -- a no-op re-application must not spuriously
-	# report a reshape maneuver.
+	# report a NEW reshape maneuver. Establish the baseline and let its own reshape stamp
+	# age out (a physics tick) before the idempotent re-application under test, so this
+	# isn't just re-observing the baseline-establishing call's own genuine reshape.
 	var u := _make_unit(1, 80)
 	u.set_frontage(6)
-	u.set_frontage(6)   # idempotent re-application: same effective count
+	await get_tree().physics_frame
+	u.set_frontage(6)   # idempotent re-application: same effective count as already-set
 	assert_ne(u.current_maneuver(), Unit.Maneuver.FILE_DOUBLE_WIDEN)
 	assert_ne(u.current_maneuver(), Unit.Maneuver.FILE_DOUBLE_DEEPEN)
