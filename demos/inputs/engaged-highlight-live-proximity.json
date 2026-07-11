@@ -1,19 +1,20 @@
 {
-  "_comment": "Engaged-soldier highlight demo (Settings.show_engaged_highlight, dev/debug visual): reuses anti-cav-square.json's rear-cavalry-charge setup (a lone player Infantry unit squares up against two cavalry charging its rear) as its own copy rather than editing the shared anti-cav-square.json in place, since that file is also reused by demo.380.json and website/tools/record-demos.sh's 'square' entry -- turning on a debug overlay there would change what those unrelated demos show. Requests the highlight via the session-only 'show_engaged_highlight' script field (Settings.set_show_engaged_highlight_session, DemoInputRecorder.gd), never persisted. Unlike the original anti-cav-square.json, this ALSO issues Ctrl+H (Hold, immediate via SelectionManager._issue_stance) right after selecting the unit -- the original scenario leaves it on the default Normal order, which auto-chases any detected enemy (Unit._think's default behaviour) and drags the block's centroid noticeably toward the cavalry over the clip, an unrelated movement artifact next to the thing this demo actually wants to show. Held in place, the block receives the charge stationary (still fights once contact is made -- HOLD only suppresses the auto-chase, per test_hold_unit_still_fights_an_enemy_in_contact), which isolates the amber highlight tracking the LIVE ring from that drift. The clip runs well past the point casualties start (~tick 240 in the underlying scenario), so the highlight is shown tracking the ring as soldiers die and the per-soldier array compacts -- the exact case UnitFormation.live_perimeter_indices fixes.",
-  "seed": "12345",
+  "_comment": "Engaged-soldier highlight demo (Settings.show_engaged_highlight, dev/debug visual): a fresh scenario authored for this specific demo, not a copy of anti-cav-square.json's setup -- see .claude/memories/sparta-demos.md's 'author each demo scenario fresh' entry. A single player Spearmen unit is pressed from THREE directions at once (front-left, front-right, and rear) rather than the two-rear-attacker case anti-cav-square.json shows, so the clip also demonstrates the omnidirectional multi-attacker pressure #752 itself is about. Selects the unit, holds it in place (Ctrl+H -- suppresses the auto-chase toward a detected enemy, so the block receives the charge stationary instead of drifting to meet it; still fights normally once contact is made), then squares up (O). Requests the highlight via the session-only 'show_engaged_highlight' script field (Settings.set_show_engaged_highlight_session, DemoInputRecorder.gd), never persisted. Timing verified locally via dump-state.sh: casualties (soldier count dropping) begin around tick 200 and continue through the end of the clip, so the amber highlight is shown tracking the LIVE ring as the per-soldier array compacts -- the exact case UnitFormation.live_perimeter_indices fixes.",
+  "seed": "24601",
   "show_engaged_highlight": true,
   "scenario": [
-    {"team": 0, "type": "Infantry", "x": 800, "y": 500, "count": 120},
-    {"team": 1, "type": "Cavalry", "x": 740, "y": 250},
-    {"team": 1, "type": "Cavalry", "x": 860, "y": 250}
+    {"team": 0, "type": "Spearmen", "x": 600, "y": 500, "count": 130},
+    {"team": 1, "type": "Cavalry", "x": 430, "y": 340},
+    {"team": 1, "type": "Cavalry", "x": 770, "y": 340},
+    {"team": 1, "type": "Cavalry", "x": 600, "y": 720}
   ],
   "camera": [
-    {"tick": 0, "x": 800.0, "y": 380.0, "zoom": 1.25}
+    {"tick": 0, "x": 600.0, "y": 500.0, "zoom": 1.1}
   ],
   "steps": [
-    {"tick": 10, "click": [800, 500]},
+    {"tick": 10, "click": [600, 500]},
     {"tick": 20, "key": "H", "ctrl": true},
     {"tick": 30, "key": "O"}
   ],
-  "state": [30, 90, 150, 210, 240, 270, 300, 360, 420]
+  "state": [30, 90, 150, 200, 230, 260, 300, 360, 420]
 }

@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/engaged-highlight-live-proximity.json",
-  "caption": "New dev/debug visual (Settings.show_engaged_highlight, HUD Menu → Engaged-soldier highlight): tints a unit's soldiers amber when they're in Unit.engaged_soldier_indices()'s returned set -- the soldiers the sim actually treats as melee/contact candidates this tick. Watch the amber ring track the block's LIVE outer edge as the squared Infantry unit takes casualties from the rear cavalry charge and its per-soldier array compacts, instead of drifting off to whatever the original grid predicted -- the exact bug UnitFormation.live_perimeter_indices fixes.",
+  "caption": "New dev/debug visual (Settings.show_engaged_highlight, HUD Menu → Engaged-soldier highlight): tints a unit's soldiers amber when they're in Unit.engaged_soldier_indices()'s returned set -- the soldiers the sim actually treats as melee/contact candidates this tick. A squared Spearmen unit holds against three cavalry charging from three different directions at once; watch the amber ring track the block's LIVE outer edge as it takes casualties and its per-soldier array compacts, instead of drifting off to whatever the original grid predicted -- the exact bug UnitFormation.live_perimeter_indices fixes.",
   "fixed_fps": 30,
   "max_frames": 260,
   "fps": 15,
