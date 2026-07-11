@@ -1002,3 +1002,26 @@ cloud to catch a heap sift-up/sift-down bug the smaller/symmetric tests wouldn't
 apply:** "the output is the same shape/count as before" is not the same claim as "the cost is
 unchanged" -- don't let a same-size-output observation imply a same-cost one without checking
 what actually changed inside the call.
+
+## A merged "partial fix" PR can auto-close its tracking issue even without a `Closes` keyword
+
+Merging a PR whose title/body bare-mentions a tracking issue by number (`(partial #752)`,
+`Progress on #752`) can auto-close that issue on merge, even when the PR explicitly states
+"does **not** close it" and a PR/issue comment says "leaving this issue open." Neither PR
+#758's title nor body used a `Closes`/`Fixes`/`Resolves` keyword, so it isn't the standard
+keyword-based auto-close. **The exact mechanism is unconfirmed** — the reopening comment
+posted at the time guessed "repo automation matching the `#752` reference in the squash
+commit title," but that's a guess, not a verified cause; a later review round flagged that
+GitHub's PR "Development" sidebar auto-link (an alternative theory this entry originally
+asserted) normally requires a *manually applied* link and doesn't auto-attach just because
+an issue number appears in a PR title, so that theory is probably wrong too. `godot-ci.yml`'s
+`resolve-main-failure` job ("Close tracking issue on green") IS ruled out, though — it only
+ever touches a separate marker-tagged `ci-failure` issue, confirmed by reading the workflow.
+
+**How to apply:** after merging any "partial fix, issue stays open" PR that mentions the
+issue number anywhere in its title or body, check the issue's state immediately —
+`state_reason: "completed"` right around the merge timestamp is the tell. Reopen with an
+explanatory comment if it auto-closed; don't assume stating "leaving this open" in the PR
+body is sufficient to prevent it. (`Lacaedemon/sparta` PR #758 / issue #752, 2026-07-11:
+#752 was closed at the exact merge timestamp despite both the PR body and an issue comment
+stating it should stay open; reopened with an explanation.)
