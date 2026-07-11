@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/morale-recovery.json",
+  "caption": "A routing unit spawns facing south, then immediately flees north -- a ~180 degree facing flip on the first tick. Before this fix that flip swapped every soldier's formation slot to the opposite side of the block, so the formation visibly compressed then re-expanded over ~1-1.5s (the same 'pulsing' artifact #631/#647 fixed for the move-order path). Watch the block hold a steady size right through the flip instead of shrinking and regrowing.",
+  "fixed_fps": 30,
+  "max_frames": 270,
+  "fps": 15,
+  "width": 720
+}

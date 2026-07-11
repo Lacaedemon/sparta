@@ -85,6 +85,65 @@ func test_small_facing_correction_still_snaps_immediately() -> void:
 	assert_true(u.facing.is_equal_approx(Vector2(0.05, 0.999).normalized()))
 
 
+func test_rout_flee_facing_snap_keeps_every_body_on_its_own_slot() -> void:
+	# _process_rout's flee-facing update used to assign `facing = flee` directly, bypassing
+	# _face_dir's snap-absorb entirely -- so a unit that starts routing facing sharply away
+	# from its flee direction reproduced the same churn this file guards against for the
+	# move-order path, just via a different call site (scripts/Unit.gd's ROUTING branch).
+	# PathField.active is a global static another test in this suite can leave non-null (e.g.
+	# a live Battle spawn); pin it to null so _process_rout takes its unobstructed-flee branch
+	# regardless of sibling test order, matching test_routing_terrain_pathfinding.gd's pattern.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _unit(1, 0, Vector2(500, 500), Vector2.DOWN)   # facing south
+	u._shattered = true   # flee-forever, so nothing rallies mid-observation
+	var start_bbox: Vector2 = _bbox(u._sim_soldier_pos)
+
+	# Team 0 flees Vector2.UP (north) -- facing DOWN is a ~180 degree flip on the first tick.
+	u._process_rout(1.0 / 60.0)
+	assert_ne(u._formation_angle, 0.0,
+		"the rout-triggered flip absorbs into _formation_angle, same as _face_dir's own snap")
+
+	var min_bbox_area: float = start_bbox.x * start_bbox.y
+	for _i in range(90):
+		u._process_rout(1.0 / 60.0)
+		SoldierBodies.step(u, 1.0 / 60.0)
+		var area: Vector2 = _bbox(u._sim_soldier_pos)
+		min_bbox_area = minf(min_bbox_area, area.x * area.y)
+
+	var start_area: float = start_bbox.x * start_bbox.y
+	assert_gt(min_bbox_area, start_area * 0.75,
+		("the formation's footprint never collapses by more than ~25%% when a routing unit's "
+			+ "flee direction sharply differs from its facing at the moment it starts fleeing "
+			+ "(start %.0f, min %.0f sq px)") % [start_area, min_bbox_area])
+	PathField.active = old_pf
+
+
+func test_rally_after_flee_facing_snap_resets_formation_angle() -> void:
+	# _rout() zeroes _formation_angle so a unit "reforms square to its heading on rally" (its
+	# own comment) -- but fleeing can re-fold it via _face_dir's snap-absorb, so _rally() must
+	# drop that fold back to zero (via reform_ranks(), which also handles the about-face
+	# point-reflection case) rather than leaving the rallied unit's grid rotated relative to
+	# its own facing.
+	var old_pf: PathField = PathField.active
+	PathField.active = null   # see test_rout_flee_facing_snap_keeps_every_body_on_its_own_slot
+	var u := _unit(1, 0, Vector2(500, 500), Vector2.DOWN)   # facing south
+	# _rout() is what a real rout entry calls: without it _rout_timer stays at its default
+	# 0.0, so _process_rout's own "timer ran out" branch fires immediately on the first tick
+	# and rallies right away regardless of morale -- a test-setup bug, not the fix under test.
+	u._rout()
+	u.morale = 0.0   # stay below RALLY_MORALE_THRESHOLD so _process_rout doesn't auto-rally yet
+	u._process_rout(1.0 / 60.0)   # team 0 flees north -- the ~180 degree flip folds the angle
+	assert_ne(u._formation_angle, 0.0, "sanity: the flip did fold _formation_angle")
+
+	u._rally()
+
+	assert_eq(u._formation_angle, 0.0,
+		"rally resets _formation_angle -- the unit reforms square to its facing, "
+			+ "per _rout()'s own invariant")
+	PathField.active = old_pf
+
+
 func test_degenerate_zero_length_dir_leaves_facing_unchanged() -> void:
 	# A zero-length dir (e.g. a body exactly on its target point) is a no-op -- the guard
 	# clause predates this fix and must still hold, with no _formation_angle side effect.
