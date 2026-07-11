@@ -81,6 +81,40 @@ func test_hold_ranged_unit_still_fires_within_range() -> void:
 	assert_eq(u.state, Unit.State.FIGHTING, "a held ranged unit still looses volleys in range")
 
 
+func test_engaging_melee_unit_persists_its_auto_acquired_target() -> void:
+	# UnitTargeting.current_target() only keeps returning an already-live target_enemy --
+	# it never writes back the nearest_enemy() fallback it resolves when target_enemy is
+	# null. Left uncommitted, a unit with no explicit attack order re-scans nearest_enemy()
+	# from scratch every tick, which can flip between two equally-close attackers tick to
+	# tick and drag facing/the engage-turn back and forth. Engaging must commit the pick.
+	var u := _make_unit()
+	u.team = 0
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(u.attack_range + Unit.RADIUS + enemy.RADIUS - 1.0, 0)
+	assert_null(u.target_enemy, "no target committed before engaging")
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "engages the enemy in contact")
+	assert_eq(u.target_enemy, enemy,
+		"the auto-acquired foe is committed so next tick's current_target() doesn't rescan")
+
+
+func test_engaging_ranged_unit_persists_its_auto_acquired_target() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2.ZERO
+	u.position = enemy.position - Vector2(Unit.RANGED_RANGE - 20.0, 0)
+	assert_null(u.target_enemy, "no target committed before engaging")
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "looses at the enemy in range")
+	assert_eq(u.target_enemy, enemy,
+		"the auto-acquired foe is committed the same way the melee branch commits it")
+
+
 # --- skirmish kiting -------------------------------------------------
 
 func test_skirmish_ranged_unit_retreats_from_a_close_enemy() -> void:
@@ -2201,7 +2235,10 @@ func test_front_depth_uses_the_square_file_count_when_squared() -> void:
 		"a squared unit's front depth is measured against the SQUARE grid, not the line frontage")
 
 
-func test_engaged_soldier_indices_uses_the_square_file_count_when_squared() -> void:
+func test_engaged_soldier_indices_is_the_whole_perimeter_when_squared() -> void:
+	# A squared regiment presents no single front (_face_for_action never turns it to bear
+	# on one attacker), so the engaged set is the whole outer ring -- not a fixed rank-0
+	# wedge that would sit at a fixed, attack-direction-independent side.
 	var u := _make_unit(120)
 	u.set_formation(Unit.FORMATION_SQUARE)
 	u.seed_sim_soldiers()
@@ -2210,9 +2247,30 @@ func test_engaged_soldier_indices_uses_the_square_file_count_when_squared() -> v
 	var n: int = u._sim_soldier_pos.size()
 	var indices := u.engaged_soldier_indices(n)
 	var files: int = UnitFormation.square_files(n)
-	var expected_cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
-	assert_eq(indices.size(), expected_cutoff,
-		"the engaged cutoff is measured against the SQUARE grid's own file count")
+	var expected_count: int = 0
+	for i in range(n):
+		if UnitFormation.square_is_perimeter(i, n, files):
+			expected_count += 1
+			assert_true(indices.has(i), "perimeter index %d is in the engaged set" % i)
+	assert_eq(indices.size(), expected_count,
+		"the engaged set is exactly the SQUARE grid's outer ring, no more and no less")
+
+
+func test_face_for_action_is_a_no_op_when_squared() -> void:
+	# An omnidirectional formation presents no weak facing, so it never turns the whole
+	# grid to bear on one attacker -- a rear/flank charger would otherwise drag the block's
+	# orientation (and every soldier's target slot) toward whichever enemy last resolved
+	# a strike, sweeping wildly under a multi-attacker press.
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(500, 0)   # well off-facing -- would normally force a big turn
+	var faced: bool = u._face_for_action(enemy.position, 0.1, enemy)
+	assert_true(faced, "a squared unit reports itself as always faced")
+	assert_eq(u.facing, Vector2.DOWN, "and its facing never turns to chase a specific point")
 
 
 func test_wheel_pivot_uses_the_square_file_count_when_squared() -> void:

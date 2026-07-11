@@ -1274,6 +1274,10 @@ func _think(delta: float) -> void:
 		if is_ranged and not in_contact and dist <= RANGED_RANGE \
 				and (target_enemy != null or not has_move_target or chasing):
 			state = State.FIGHTING
+			# Commit the auto-acquired foe so next tick's current_target() returns it
+			# instead of re-running nearest_enemy() from scratch -- see the melee branch's
+			# matching commit below for why an unpersisted pick thrashes facing.
+			target_enemy = enemy
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
 			if _face_for_action(enemy.position, delta, enemy) and _attack_cd <= 0.0:
@@ -1287,6 +1291,18 @@ func _think(delta: float) -> void:
 		# CHASE unit never takes this disengage: it keeps fighting the same foe.
 		if in_contact and (target_enemy != null or not has_move_target or chasing):
 			state = State.FIGHTING
+			# Commit the auto-acquired foe: current_target() (UnitTargeting.gd) only keeps
+			# returning an already-live target_enemy -- it never writes back the nearest_enemy()
+			# fallback it resolves when target_enemy is null. Left unpersisted, a unit with no
+			# explicit attack order (the common defending case) re-runs a full nearest-enemy scan
+			# EVERY tick, and when two-plus enemies are both close (a multi-attacker press), tiny
+			# jostles in relative distance flip which one is "nearest" tick to tick. Each flip
+			# re-arms _face_for_action's engage-turn toward a new direction, so the whole grid
+			# sweeps back and forth at the turn rate instead of settling on one foe -- visible as
+			# soldiers "flying" once body coupling is fast enough to track it (see enemy contact
+			# physics). Committing here (already gated against the disengage case above) gives
+			# next tick's current_target() a live target to keep, so the turn settles.
+			target_enemy = enemy
 			# Re-face for action: a large swing off the current fronting turns the men in
 			# place gradually (they hold their ground) before the line strikes; a small
 			# correction snaps and fights now. _face_for_action reports when the front is
@@ -1666,6 +1682,17 @@ func _face(point: Vector2) -> void:
 ## ENGAGE_TURN_FIGHT_TOLERANCE); the caller withholds the strike while still turning. Reuses
 ## the drill turns' arrival-freeze + _formation_angle-absorb, so the bodies hold their ground.
 func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> bool:
+	# An omnidirectional formation (Square/Schiltron) presents no weak facing, so it never
+	# needs to turn the whole grid to bring a "front" to bear on one specific attacker --
+	# every side already stands ready. Skipping the engage-turn here isn't just an
+	# optimization: with a real committed enemy, `dir` tracks that foe's bearing exactly,
+	# and a crowded multi-attacker press can genuinely swing that bearing 100+ degrees in
+	# a second or two as bodies jostle -- turning to chase it would drag every soldier's
+	# target slot through that same arc, visible as the formation sweeping/soldiers
+	# "flying" even with a single, stably-committed target. Treat the unit as always
+	# faced; strike()/shoot() proceed on whatever heading the square is already holding.
+	if in_square():
+		return true
 	var dir: Vector2 = point - position
 	if dir.length() < 0.01:
 		return true
@@ -2772,10 +2799,24 @@ func soldier_brace() -> float:
 ## (rank = index / files, rank 0 = front), so the front ranks are exactly the
 ## first files*ENGAGED_RANKS indices -- using `files` FROM THE SAME GRID the
 ## regiment is actually laid out on (formation_files), not the wide-line
-## frontage() a SQUARE unit no longer uses. Pure and deterministic.
+## frontage() a SQUARE unit no longer uses.
+##
+## An omnidirectional formation (in_square()) has no single front to speak of --
+## _face_for_action never turns it to bear on one attacker, since every side already
+## stands ready -- so a fixed rank-0 wedge would sit at whatever direction the grid
+## happened to be laid out on, unrelated to which side is actually under attack. It
+## returns the whole outer ring instead (UnitFormation.square_is_perimeter), so
+## melee/contact resolution can find a real target regardless of which side a foe
+## closes on. Pure and deterministic.
 func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
+		return out
+	if in_square():
+		var square_file_count: int = formation_files(count)
+		for i in range(count):
+			if UnitFormation.square_is_perimeter(i, count, square_file_count):
+				out.push_back(i)
 		return out
 	var cutoff: int = mini(count, formation_files(count) * ENGAGED_RANKS)
 	for i in range(cutoff):

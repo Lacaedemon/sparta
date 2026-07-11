@@ -404,10 +404,10 @@ it hits the front, a flank, or the rear. There is no open side for the horse to
 exploit. A ring of spear ticks around the block's perimeter makes the stance easy to
 spot on the field, on top of the soldiers' own outward-facing marks.
 
-The brace isn't just a damage penalty --- it's physical. Watch a charging cavalry
-regiment hit a set square: its riders' momentum is genuinely absorbed by the
-individual bodies it collides with, not waved through by a flat rule, so the charge
-visibly slows and settles at the ring instead of riding on through it.
+The brace is physical, not a flat damage penalty. Watch a charging cavalry regiment
+hit a set square: its riders' momentum is genuinely absorbed by the individual
+bodies it collides with, not waved through by a rule, so the charge visibly slows
+and settles at the ring instead of riding on through it.
 
 Square is a defensive commitment, not a free upgrade. While it holds, the unit
 **crawls** (it can't charge out) and **hits softer** (reduced offensive output). So:
