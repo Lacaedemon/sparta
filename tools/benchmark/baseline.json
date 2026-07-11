@@ -1,5 +1,5 @@
 {
-  "_comment": "CI-RUNNER baseline for .github/workflows/benchmark.yml's relative regression check. This is NOT the 60fps/reference-hardware target from PLAN.md (a 2022 MacBook Air M2 24GB and the developer's PC) -- GitHub Actions runners are different, variable-speed hardware; see tools/benchmark/README.md. Established from Performance benchmark workflow run https://github.com/Lacaedemon/sparta/actions/runs/28554525773 on PR #551 (feat/performance-benchmark-549), ubuntu-latest, benchmarks/scenarios/large-battle.json at scale 1x, warmup_ticks=60 measure_ticks=300 (the CI-tuned window in benchmark.yml, not BenchmarkRunner's local 120/600 defaults). To refresh: run the workflow, read the mean_ms/p95_ms it reports (workflow log or the PR comment it posts), and update the stats block below with a new _comment noting the new source run.",
+  "_comment": "CI-RUNNER baseline for .github/workflows/benchmark.yml's relative regression check. This is NOT the 60fps/reference-hardware target from PLAN.md (a 2022 MacBook Air M2 24GB and the developer's PC) -- GitHub Actions runners are different, variable-speed hardware; see tools/benchmark/README.md. Established as the MEAN of two consecutive, functionally-identical Performance benchmark workflow runs on PR #755 (fix/refresh-benchmark-baseline) -- run https://github.com/Lacaedemon/sparta/actions/runs/29160156520 (mean 19.770ms/p95 23.522ms/max 31.606ms) and run https://github.com/Lacaedemon/sparta/actions/runs/29160204773 (mean 24.025ms/p95 28.472ms/max 37.475ms) -- ubuntu-latest, benchmarks/scenarios/large-battle.json at scale 1x, warmup_ticks=60 measure_ticks=300 (the CI-tuned window in benchmark.yml, not BenchmarkRunner's local 120/600 defaults). Averaging two runs rather than trusting a single one is deliberate: those two back-to-back runs (zero functional code difference between them) swung ~20% on their own, from noisy shared-runner timing alone -- the same order of magnitude as the drift #748 filed against, so a single-run baseline risks immediately reproducing the false-regression problem this refresh exists to fix. Refreshes the prior baseline (2026-07-03, commit 2f4e984, PR #655), which had drifted ~52 commits stale and was flagging every current PR as a false regression (#748). To refresh: run the workflow at least twice, read the mean_ms/p95_ms/max_ms each reports (workflow log or the PR comment it posts), and update the stats block below to their average with a new _comment noting the new source runs.",
   "scenario": "res://benchmarks/scenarios/large-battle.json",
   "scale": 1.0,
   "soldier_count": 1720,
@@ -7,8 +7,8 @@
   "requested_measure_ticks": 300,
   "samples_collected": 300,
   "stats": {
-    "mean_ms": 18.295,
-    "p95_ms": 22.025,
-    "max_ms": 27.577
+    "mean_ms": 21.898,
+    "p95_ms": 25.997,
+    "max_ms": 34.541
   }
 }
