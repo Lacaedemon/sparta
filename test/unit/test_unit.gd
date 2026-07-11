@@ -68,6 +68,30 @@ func test_hold_unit_still_fights_an_enemy_in_contact() -> void:
 	assert_eq(u.state, Unit.State.FIGHTING, "a held unit still fights an enemy in melee contact")
 
 
+func test_hold_unit_does_not_chase_after_its_engaged_foe_breaks_contact() -> void:
+	# Regression: committing target_enemy on engagement (to fix the facing-whipsaw bug, see
+	# test_engaging_melee_unit_persists_its_auto_acquired_target) must not let a HELD unit
+	# chase off after a foe that breaks contact. The chase branch below (target_enemy != null)
+	# has no ORDER_HOLD guard because target_enemy previously only went non-null via an
+	# explicit order, which HOLD is meant to still obey -- an auto-committed pick must not be
+	# mistaken for one.
+	var u := _make_unit()
+	u.team = 0
+	u.order_mode = Unit.ORDER_HOLD
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(u.attack_range + Unit.RADIUS + enemy.RADIUS - 1.0, 0)
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "engages while in contact")
+	assert_null(u.target_enemy, "HOLD does not commit the auto-acquired foe")
+	enemy.position = Vector2(1000, 0)   # the enemy breaks contact (retreats out of melee range)
+	var before := u.position
+	u._think(0.1)
+	assert_eq(u.position, before,
+		"a HELD unit stays put once its foe leaves contact, instead of chasing")
+
+
 func test_hold_ranged_unit_still_fires_within_range() -> void:
 	var u := _make_unit()
 	u.team = 0
@@ -2299,6 +2323,28 @@ func test_face_for_action_is_a_no_op_when_squared() -> void:
 	var faced: bool = u._face_for_action(enemy.position, 0.1, enemy)
 	assert_true(faced, "a squared unit reports itself as always faced")
 	assert_eq(u.facing, Vector2.DOWN, "and its facing never turns to chase a specific point")
+
+
+func test_face_for_action_settles_an_in_progress_turn_when_squared_mid_turn() -> void:
+	# Regression: ORDER_FORMATION_ONLY -> set_formation() doesn't touch engage-turn state, so
+	# a unit can be switched to Square while an engage-turn armed BEFORE it squared is still
+	# in progress. Left unsettled, every later _face_for_action call takes the in_square()
+	# early return above and nothing else ever clears _engage_turn_target -- it stays stuck
+	# non-zero forever, which permanently freezes SoldierBodies.step's slot-approach term via
+	# is_maneuver_turning() (the squared body would never ease onto its new slots).
+	var u := _make_unit()
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(500, 0)   # a large swing off DOWN -- arms an engage turn
+	u._face_for_action(enemy.position, 0.1, enemy)
+	assert_ne(u._engage_turn_target, Vector2.ZERO, "a large heading swing arms an engage turn")
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var faced: bool = u._face_for_action(enemy.position, 0.1, enemy)
+	assert_true(faced, "a squared unit reports itself as always faced")
+	assert_eq(u._engage_turn_target, Vector2.ZERO,
+		"switching to Square mid-turn settles the in-progress engage turn instead of leaving it stuck")
 
 
 func test_wheel_pivot_uses_the_square_file_count_when_squared() -> void:

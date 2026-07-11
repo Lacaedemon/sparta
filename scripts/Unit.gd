@@ -1285,8 +1285,11 @@ func _think(delta: float) -> void:
 			state = State.FIGHTING
 			# Commit the auto-acquired foe so next tick's current_target() returns it
 			# instead of re-running nearest_enemy() from scratch -- see the melee branch's
-			# matching commit below for why an unpersisted pick thrashes facing.
-			target_enemy = enemy
+			# matching commit below for why an unpersisted pick thrashes facing, and why
+			# ORDER_HOLD is excluded (the chase branch below has no HOLD guard, since
+			# target_enemy previously only went non-null via an explicit order).
+			if order_mode != ORDER_HOLD:
+				target_enemy = enemy
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
 			if _face_for_action(enemy.position, delta, enemy) and _attack_cd <= 0.0:
@@ -1311,7 +1314,21 @@ func _think(delta: float) -> void:
 			# soldiers "flying" once body coupling is fast enough to track it (see enemy contact
 			# physics). Committing here (already gated against the disengage case above) gives
 			# next tick's current_target() a live target to keep, so the turn settles.
-			target_enemy = enemy
+			#
+			# Skip the commit under ORDER_HOLD: the chase branch below (target_enemy != null)
+			# has no HOLD guard, because until now target_enemy only ever went non-null via an
+			# explicit order, which HOLD is meant to still obey ("HOLD only suppresses chasing a
+			# DETECTED foe, not an explicitly-set target" -- .claude/memories/sparta.md). Committing
+			# unconditionally here would let this auto-acquired pick pass as if it were that kind
+			# of explicit target: the instant the fought enemy leaves contact (retreats, gets
+			# knocked back, routs -- current_target() still returns a routing unit), in_contact
+			# goes false, this branch stops firing, but target_enemy is still set, so the chase
+			# branch marches the HELD unit off its position. Leaving target_enemy unset for HOLD
+			# preserves the pre-existing contract at the cost of not fixing its own facing-whipsaw
+			# case (an un-squared HOLD unit under a multi-attacker press) -- not a regression,
+			# since that combination was never fixed by this change in the first place.
+			if order_mode != ORDER_HOLD:
+				target_enemy = enemy
 			# Re-face for action: a large swing off the current fronting turns the men in
 			# place gradually (they hold their ground) before the line strikes; a small
 			# correction snaps and fights now. _face_for_action reports when the front is
@@ -1701,6 +1718,14 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# "flying" even with a single, stably-committed target. Treat the unit as always
 	# faced; strike()/shoot() proceed on whatever heading the square is already holding.
 	if in_square():
+		# A unit can switch to Square mid-turn -- ORDER_FORMATION_ONLY's set_formation()
+		# doesn't touch engage-turn state -- while an engage-turn armed before it squared is
+		# still in progress. Without settling it here, every later call takes this early
+		# return and _engage_turn_target is never cleared by anything else: it stays stuck
+		# non-zero forever, which permanently freezes SoldierBodies.step's slot-approach term
+		# (via is_maneuver_turning()) -- the squared body never eases onto its new slots.
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
 		return true
 	var dir: Vector2 = point - position
 	if dir.length() < 0.01:
