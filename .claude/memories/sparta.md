@@ -51,6 +51,35 @@ When implementing or reviewing a new mechanic, ask: does this emerge from the
 individual-level physics already in place, or is it a shortcut layered on top? Prefer
 the former; flag the latter as a candidate for this list.
 
+## Issue-selection priority: core mechanics over polish
+
+When picking which open issue to grab next (`gi`/`gii`/`gia`/`gip`), prefer **core
+mechanics** work over **polish**, all else equal. Core mechanics is anything that
+changes the actual simulation a battle runs on: combat/collision physics, movement
+and maneuvers, formations, morale/routing, AI decision-making, or the campaign
+layer's own rules — the kind of work the "bottom-up physics" philosophy above
+governs. Polish is everything that makes the existing simulation more presentable or
+more convenient without changing what it computes: rendering/art/asset quality,
+camera behavior, HUD/UI layout, new platforms (3D mode, mobile), demo/tooling
+convenience, or documentation-only issues with no mechanic attached.
+
+This mirrors ai-config's own infra-over-feature tie-breaker (`pr-prioritization.md`)
+— a priority nudge, not an override: an explicit `P0`-`P3` label, a blocking
+relationship, or a direct instruction from the user still ranks above it. Apply it
+only when candidates are otherwise close in priority, the same scope the
+infra-over-feature tie-breaker uses.
+
+Concretely, from the backlog as surveyed 2026-07-11: #164/#296 (individual-level
+collision), #240 (weapon-reach standoff), #453/#458/#480/#718 (maneuvers,
+formations, move-order types, disciplined-vs-undisciplined march behavior), #724
+(engage-turn swirl bug), and #750 (crowding-pressure evaluation) are core mechanics.
+#69 (3D mode), #131 (smartphone version), #386 (terrain art), #414 (fog of war —
+mostly a rendering/visibility-of-information feature once the underlying detection
+already exists), #467 (demo options), #496 (comb wikipedia for ideas), and #756-style
+CI/tooling issues are polish or infrastructure, not core mechanics specifically
+(infrastructure still gets its own tie-breaker per `pr-prioritization.md`, applied
+before this one when the candidates are CI/tooling rather than gameplay UI/art).
+
 ## Pending: migrate to gha quarto-publish `@v2` (branch deploy)
 
 Sparta is the registered `quarto-publish` consumer in gha's `REVDEPS.md`, and
