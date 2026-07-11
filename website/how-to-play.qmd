@@ -497,8 +497,8 @@ deploy at the plain Normal combat order.
 the soldiers face spears and shields outward on every side, so the unit has **no weak
 flank or rear** --- an attack from any direction lands as if it were frontal, and a
 cavalry charge into the ring is braced (and backfires) no matter which side it hits.
-The ring is visible at a glance: the individual soldiers face outward, and a ring of
-spear ticks traces the block's perimeter on top, so it reads clearly at any zoom. The
+The ring is visible at a glance from the individual soldiers' own outward-facing
+marks around the block's perimeter --- no separate overlay drawn on top. The
 price is mobility (the ring crawls) and offence (it hits softer while hunkered), so
 square up *before* the horse arrives and drop back to Normal once the threat is gone.
 There are two variants of the ring, trading off differently:
@@ -531,10 +531,10 @@ density, chosen from the control-bar Formation menu:
   of all. Use it to walk a unit across open ground under heavy archery, then drop back
   to a fighting formation before you close.
 
-Both stances show their shields on the map, so you can read a unit's stance at a
-glance: a shield wall draws a locked shield line along its front face, and a testudo
-draws an overhead shield roof over the whole block (the turtle). The shields are
-tinted to the unit's side and turn with its facing.
+Both stances show their own footprint on the map, so you can read a unit's stance
+directly from how the soldiers stand: a shield wall packs into a tight edge-to-edge
+line, and a testudo packs into a dense, deep block (the turtle) --- no separate
+schematic drawn on top, just the real, physical formation geometry.
 
 ::: {#fig-shielded-stances .demo}
 
@@ -547,9 +547,9 @@ tinted to the unit's side and turn with its facing.
 </video>
 ```
 
-Shielded-stance visuals: a shield wall (left) draws a locked shield line along
-its front face, and a testudo (right) draws an overhead shield roof over the
-whole block --- so each stance reads at a glance.
+Shielded-stance visuals: a shield wall (left) packs into a tight edge-to-edge
+line, and a testudo (right) packs into a dense block --- each stance reads at a
+glance from the soldiers' own positions.
 :::
 
 **Resize the line.** A regiment normally forms up at a sensible width, but you can

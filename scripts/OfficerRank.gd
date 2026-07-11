@@ -1,10 +1,9 @@
 class_name OfficerRank
 ## Cosmetic officer-rank labeling for a unit's commander, using real Roman military
 ## rank names as flavor text (see https://en.wikipedia.org/wiki/Centurion#Hierarchy).
-## Purely informational: it reads a unit's type/size and returns a display string,
-## the same "render-only" shape as UnitShields -- nothing here writes back into the
-## simulation or changes combat/movement behavior. Shown in the HUD's selected-unit
-## info panel (see HUD.gd -> show_unit).
+## Purely informational: it reads a unit's type/size and returns a display string --
+## nothing here writes back into the simulation or changes combat/movement behavior.
+## Shown in the HUD's selected-unit info panel (see HUD.gd -> show_unit).
 ##
 ## Scope: every regiment in this game is already century-to-cohort sized (80-140
 ## soldiers), so rather than model the full legion chain of command (tribunes,
