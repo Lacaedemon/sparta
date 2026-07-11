@@ -53,6 +53,10 @@ func _ready() -> void:
 	# don't want) requests it here, session-only like the SFX toggle above -- never persisted.
 	if script.get("show_unit_speed", false):
 		Settings.set_show_unit_speed_session(true)
+	# Same session-only pattern: a demo wanting the engaged-soldier highlight visible
+	# requests it here rather than needing a scripted menu click.
+	if script.get("show_engaged_highlight", false):
+		Settings.set_show_engaged_highlight_session(true)
 	# Deterministic seed so the recorded battle is reproducible run to run.
 	Replay.forced_seed = int(str(script.get("seed", "12345")))
 	# camera/frames/state go through script_array so a non-array typo degrades that one

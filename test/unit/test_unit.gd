@@ -3397,6 +3397,27 @@ func test_prone_soldiers_facing_pip_collapses() -> void:
 		"a prone soldier's facing pip is collapsed to zero scale")
 
 
+# --- _soldier_render_color: the engaged-highlight debug visual (Settings.show_engaged_highlight) ----------
+# Pure function, no live MultiMesh read-back (same reasoning as _facing_pip_transform above).
+
+func test_soldier_render_color_prone_wins_over_engaged_highlight() -> void:
+	# A felled soldier's dark tint is a more important signal than the debug highlight --
+	# prone always wins, even when the highlight is on and this soldier is engaged.
+	assert_eq(Unit._soldier_render_color(true, true, true), Unit.PRONE_COLOR,
+		"prone beats the engaged highlight")
+
+
+func test_soldier_render_color_highlight_only_when_toggle_on_and_engaged() -> void:
+	assert_eq(Unit._soldier_render_color(false, true, true), Unit.ENGAGED_HIGHLIGHT_COLOR,
+		"toggle on + engaged -> highlighted")
+	assert_eq(Unit._soldier_render_color(false, true, false), Color.WHITE,
+		"toggle on but NOT engaged -> normal white")
+	assert_eq(Unit._soldier_render_color(false, false, true), Color.WHITE,
+		"engaged but toggle off -> normal white (the debug visual is opt-in)")
+	assert_eq(Unit._soldier_render_color(false, false, false), Color.WHITE,
+		"neither prone, toggle, nor engaged -> normal white")
+
+
 # --- drag-to-form-up: deploy facing on arrival ----------
 
 func test_deploy_facing_pivots_on_arrival() -> void:

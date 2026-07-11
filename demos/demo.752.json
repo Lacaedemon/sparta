@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Internal simulation-accuracy fix: which per-soldier array indices Square/Schiltron treats as 'engaged' (and therefore actually simulated in melee/contact resolution) once casualties have compacted the array. The soldiers' visible positions/facings are unchanged -- only which ones the sim picks as combat candidates -- so this isn't distinguishable in a recorded clip. Verified instead via a live state-dump reproduction (demos/inputs/anti-cav-square.json, SPARTA_DEMO_STATE_FULL=1) comparing each attacker's true nearest-defender index against the returned engaged set; the before/after numbers are in the PR description."
+  "input": "demos/inputs/engaged-highlight-live-proximity.json",
+  "caption": "New dev/debug visual (Settings.show_engaged_highlight, HUD Menu → Engaged-soldier highlight): tints a unit's soldiers amber when they're in Unit.engaged_soldier_indices()'s returned set -- the soldiers the sim actually treats as melee/contact candidates this tick. Watch the amber ring track the block's LIVE outer edge as the squared Infantry unit takes casualties from the rear cavalry charge and its per-soldier array compacts, instead of drifting off to whatever the original grid predicted -- the exact bug UnitFormation.live_perimeter_indices fixes.",
+  "fixed_fps": 30,
+  "max_frames": 260,
+  "fps": 15,
+  "width": 720
 }
