@@ -134,6 +134,61 @@ static func overcomes_static_friction(
 	return impulse_magnitude > threshold
 
 
+## Continuous contact resolution between two ENEMY soldier bodies -- unlike a strike's
+## one-shot bidirectional_impulse (fired only on a landed/defended blow, its own attack
+## cadence), this runs every tick two enemy bodies overlap, whether or not either is
+## mid-strike. It is the physical mechanism that actually arrests a charging body on a
+## braced line: the closing momentum a fast, heavy body carries into contact is resisted
+## in proportion to the other body's own (bracing-scaled) effective mass -- the same
+## momentum-split bidirectional_impulse already uses for a strike's shove, just applied
+## continuously from real relative velocity and overlap depth instead of a discrete
+## impulse_magnitude input. `normal` points from B toward A.
+##
+## Folds two effects into one reduced-mass impulse (mirroring a standard rigid-body contact
+## resolver):
+## 1. Closing-velocity resolution: when A and B are approaching along `normal`, the closing
+##    speed is resolved FULLY inelastically (no bounce-back -- a braced line arrests a
+##    charger, it doesn't fling it away).
+## 2. Overlap correction: `overlap_frac` (0 = just touching, 1 = fully co-located, the same
+##    normalised convention SoldierSteering._pair_push uses for friendly separation) adds a
+##    further separating "virtual closing speed" scaled by ENEMY_CONTACT_OVERLAP_RATE, so two
+##    bodies that already interpenetrate (or a fast body that outran the closing-velocity
+##    term in one tick) still separate, not just stop closing further.
+##
+## Returns [impulse_a, impulse_b] (Vector2 pair) -- VELOCITY deltas the caller adds to each
+## body's _sim_body_vel, the same convention as bidirectional_impulse. Zero for a separating
+## (non-overlapping, non-approaching) pair. Pure; no RNG -- replay-safe.
+##
+## The input closing speed itself is uncapped (a full charge can carry ~170-220 wu/s), but
+## the RESOLVED effective closing speed is capped at KNOCKBACK_SPEED_MAX before computing
+## the impulse -- the same ceiling every other per-tick body-displacement force in this
+## system respects (knockback, friendly steering), so one enemy-contact pair can never
+## fling either body further in a tick than a landed strike already could. A closing speed
+## above the ceiling still fully arrests the approach (effective_closing_speed only ever
+## grows the RESOLVED impulse toward, never past, the cap) -- it just means a very fast
+## charge takes more than one tick's worth of contact to fully stop, not that the shove
+## itself escalates without bound.
+const ENEMY_CONTACT_OVERLAP_RATE: float = 60.0   # matches SoldierSteering.STEER_STRENGTH's scale
+
+static func enemy_contact_impulse(
+	vel_a: Vector2, vel_b: Vector2,
+	mass_a: float, brace_a: float,
+	mass_b: float, brace_b: float,
+	normal: Vector2, overlap_frac: float
+) -> Array:
+	var m_a_eff: float = mass_a * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * brace_a)
+	var m_b_eff: float = mass_b * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * brace_b)
+	if m_a_eff < 0.01 or m_b_eff < 0.01:
+		return [Vector2.ZERO, Vector2.ZERO]
+	var closing_speed: float = maxf(0.0, -(vel_a - vel_b).dot(normal))
+	var effective_closing_speed: float = minf(SoldierCombat.KNOCKBACK_SPEED_MAX, closing_speed \
+			+ maxf(0.0, overlap_frac) * ENEMY_CONTACT_OVERLAP_RATE)
+	if effective_closing_speed <= 0.0:
+		return [Vector2.ZERO, Vector2.ZERO]
+	var jn: float = effective_closing_speed / (1.0 / m_a_eff + 1.0 / m_b_eff)
+	return [(jn / m_a_eff) * normal, -(jn / m_b_eff) * normal]
+
+
 ## Apply kinetic friction damping to a body's velocity (exponential decay per frame).
 ## A moving body decelerates due to ground friction: v_new = v * (1 - friction_factor * delta).
 ## The friction factor depends on motion state: stationary/slow bodies (v < v_ref) experience

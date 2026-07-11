@@ -2725,8 +2725,19 @@ const ENGAGED_RANKS: int = 3
 # so the center can never teleport -- it only ever moves at a bounded velocity, like the
 # soldier bodies. During a clean march the bodies sit on their slots, so the drift is ~0
 # and the coupling is silent; it activates only when bodies are pushed off formation.
+#
+# MAX_FOLLOW_SPEED must exceed the fastest a regiment can advance (CHARGE_REFERENCE_SPEED
+# 170, up to ~1.3x that under a wedge-charge bonus) -- otherwise the cap is structurally
+# incapable of ever correcting a real, sustained drift, no matter how strong the soldier-
+# level contact resistance holding the bodies back is (this was #296's own diagnosed
+# blocker: "a velocity-only soldier push + the bounded body->regiment coupling cannot
+# counteract [a full-speed _move_to charge]"). Set comfortably above any charge pace so
+# SoldierEnemyContact's real contact impulses can actually win: once a braced line's
+# bodies hold position while _move_to keeps advancing regardless, the resulting drift
+# correction here outpaces the runaway, so `position` settles back onto where the bodies
+# actually are -- the regiment visibly arrests on contact instead of riding through it.
 const FOLLOW_RATE: float = 6.0
-const MAX_FOLLOW_SPEED: float = 80.0
+const MAX_FOLLOW_SPEED: float = 300.0
 
 # > 0 while engaged; FIGHTING refreshes it, otherwise it decays on the fixed tick.
 var _engaged_linger: float = 0.0

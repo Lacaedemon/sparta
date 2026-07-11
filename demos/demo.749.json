@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/anti-cav-square.json",
+  "caption": "The charge is now physically arrested by soldier-level contact, not just a flat regiment-circle hard-block rule. Two cavalry charge an Infantry unit's rear; it forms Square (O). Watch the cavalry visibly decelerate as their soldier bodies collide with the braced ring's bodies (SoldierEnemyContact.accumulate, a mass-weighted momentum impulse) -- the charge settles at contact instead of a scripted stop. Root cause: soldier-level enemy collision physics didn't exist before this PR outside a landed melee strike, so nothing but the regiment circle's flat push_share rule stood between a charge and interpenetration.",
+  "fixed_fps": 30,
+  "max_frames": 420,
+  "fps": 15,
+  "width": 720
+}

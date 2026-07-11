@@ -73,12 +73,14 @@ func test_no_soldier_launches_through_the_showcase_line_collision() -> void:
 
 
 ## Per-tick displacement bound for an ENGAGED body of `u` (world units per tick): the
-## knockback ceiling, plus the friendly-avoidance steering feed-forward, plus the arrival
-## term at the unit's jog pace, plus one tick of bounded acceleration of slack. Every term
-## comes from the shipped constants, so the bound moves with any future retuning.
+## knockback ceiling, plus the enemy-contact ceiling (SoldierEnemyContact -- capped at the
+## same KNOCKBACK_SPEED_MAX, see SoldierCollision.enemy_contact_impulse), plus the
+## friendly-avoidance steering feed-forward, plus the arrival term at the unit's jog pace,
+## plus one tick of bounded acceleration of slack. Every term comes from the shipped
+## constants, so the bound moves with any future retuning.
 func _engaged_step_bound(u: Unit, delta: float) -> float:
 	var body_accel: float = maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR)
-	var speed_bound: float = SoldierCombat.KNOCKBACK_SPEED_MAX \
+	var speed_bound: float = SoldierCombat.KNOCKBACK_SPEED_MAX + SoldierCombat.KNOCKBACK_SPEED_MAX \
 			+ SoldierSteering.STEER_STRENGTH + u.jog_speed + body_accel * delta
 	return speed_bound * delta
 

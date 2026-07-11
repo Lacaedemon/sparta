@@ -700,14 +700,21 @@ func _on_soldier_tick() -> void:
 	# forces a redraw and the bodies visibly snap to catch up.
 	var units: Array = get_tree().get_nodes_in_group("units")
 	units.append_array(get_tree().get_nodes_in_group("routers"))
-	# Friendly-avoidance steering first (it sets the velocity bias the bodies feed
-	# forward), then integrate the bodies, then slide each regiment center toward its
-	# soldiers' centroid (phase 5: friendly collision emerges from the soldier layer via
-	# this coupling). Enemy spacing is handled by combat knockback, not a separation pass —
-	# so nothing position-corrects a soldier; it all moves at velocity. See SoldierSteering
-	# / SoldierBodies.
+	# Friendly-avoidance steering (velocity bias) and enemy-contact resolution (a direct
+	# _sim_body_vel impulse, the continuous counterpart to combat knockback) both run BEFORE
+	# the bodies integrate, so this tick's contact is already "carried velocity" by the time
+	# step_all_sim_soldiers ramps toward the arrival/feed-forward target. Then couple slides
+	# each regiment center toward its soldiers' centroid (phase 5: both friendly collision
+	# and now enemy-contact resistance emerge from the soldier layer via this coupling). See
+	# SoldierSteering / SoldierEnemyContact / SoldierBodies.
 	var delta: float = get_physics_process_delta_time()
-	SoldierSteering.accumulate(units, Engine.get_physics_frames())
+	var frame: int = Engine.get_physics_frames()
+	SoldierSteering.accumulate(units, frame)
+	# Distinct (always-negative) cache key: SoldierSpatialHash.rebuild is idempotent per key
+	# within a tick, and this pass gathers a different position set (cross-team engaged
+	# pairs, no friendly-contact-tier expansion) than SoldierSteering's own rebuild above, so
+	# it can't share that key without silently reusing the wrong grid.
+	SoldierEnemyContact.accumulate(units, -frame - 1)
 	UnitRef.step_all_sim_soldiers(units, delta)
 	UnitRef.couple_all_sim_soldiers(units, delta)
 	# Advance in-flight volleys and land any that arrived this tick (delivers their casualties
