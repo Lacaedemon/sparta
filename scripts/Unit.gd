@@ -3754,19 +3754,15 @@ func _update_shadow() -> void:
 
 
 func _draw() -> void:
-	# Chrome (bars, state ring, shield overlay, soldier-ID text) always stays fully
-	# opaque -- only the regimental flag fades while routing (see the flag call at the
-	# end of this function, which uses _render_alpha directly instead of this constant).
+	# Chrome (bars, state ring, soldier-ID text) always stays fully opaque -- only the
+	# regimental flag fades while routing (see the flag call at the end of this
+	# function, which uses _render_alpha directly instead of this constant).
 	var alpha: float = 1.0
-	var body_c := Color(team_color.r, team_color.g, team_color.b, alpha)
-	var dark_c := Color(body_c.r * 0.35, body_c.g * 0.35, body_c.b * 0.35, alpha)
-	var lite_c := Color(minf(body_c.r + 0.30, 1.0), minf(body_c.g + 0.30, 1.0),
-			minf(body_c.b + 0.30, 1.0), alpha)
 
 	# The soldier marks (Stage B) are rendered by the flocking MultiMeshes and the
 	# ground shadow by a Polygon2D — both child nodes layered under this chrome via
-	# z_index. _draw() handles only the screen-relative chrome: state ring, shielded-stance
-	# overlay, selection halo and stat bars. `_block_extent` (maintained by _process) sizes
+	# z_index. _draw() handles only the screen-relative chrome: state ring, selection
+	# halo and stat bars. `_block_extent` (maintained by _process) sizes
 	# them to the live block rather than the bare collision radius.
 	var extent: float = _block_extent
 
@@ -3817,6 +3813,6 @@ func _draw() -> void:
 
 	# The regimental flag is the one element that fades while routing (a wavering
 	# standard reads as morale faltering); a separate faded color, not the chrome's
-	# always-opaque body_c/alpha above.
+	# always-opaque alpha above.
 	var flag_c := Color(team_color.r, team_color.g, team_color.b, _render_alpha)
 	UnitSprites.flag(self, flag_c, _render_alpha, extent)
