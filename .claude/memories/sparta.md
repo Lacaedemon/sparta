@@ -16,13 +16,16 @@ modifier or an instant state switch that ignores it. Concretely:
 
 - **No snaps.** A continuously-rendered or continuously-simulated quantity (speed,
   facing, translucency, position) should ease toward its target via a rate
-  (acceleration/friction), never jump there in one frame. See #738/#739
-  (`Unit._current_speed` bled off via friction instead of snapping to 0) and #740/#741
-  (routing translucency fades instead of switching instantly).
+  (acceleration/friction), never jump there in one frame. #738/#739 fixed
+  `Unit._current_speed` bleeding off via friction instead of snapping to 0 (merged).
+  #740/#741 (open as of this writing) applies the same fix to routing translucency,
+  fading it instead of switching instantly.
 - **No inert numbers.** A quantity that represents real motion must actually cause
   motion — a decaying speed that doesn't move the unit is a display artifact, not
-  physics. See #742/#743 (residual `_current_speed` now coasts the unit forward as it
-  decelerates, instead of counting down while `position` sits frozen).
+  physics. #742/#743 (open as of this writing) makes residual `_current_speed` coast
+  the unit forward as it decelerates, instead of counting down while `position` sits
+  frozen. Check whether #741/#743 have merged before citing this section as describing
+  the current codebase state rather than the in-flight direction.
 - **No top-down combat-multiplier gimmicks where a physical mechanism already exists.**
   Prefer deriving an outcome (a spear stopping a charge, a knockback felling a soldier)
   from mass/momentum/impulse over a flat "type X beats type Y" bonus. This is the
