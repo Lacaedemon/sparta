@@ -520,6 +520,7 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	if d.has("shield"):
 		u.shield_type_id = d["shield"]
 	u.training = d.get("training", 0.0)
+	u.disciplined = d.get("disciplined", true)
 	# Cavalry respond faster — more mobile and battle-conditioned.
 	if d["cav"]:
 		u.order_response_delay = 0.3
