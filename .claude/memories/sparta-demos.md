@@ -301,3 +301,56 @@ key press and `demos/demo.704.json`'s caption — caught only via the live
 CI state transcript showing `Sweep routers` armed instead of `All-out
 attack`, then a second stale caption reference caught by a follow-up
 review round.)
+
+## A bare stance/order key only ARMS it — Ctrl+key is what issues it immediately
+
+`SelectionManager._dispatch_key()` resolves a stance/order hotkey (`H`, `F`, `K`, etc. —
+anything in `Settings.order_bindings`) to a mode, then branches on the modifier: a PLAIN
+keypress calls `_set_armed_mode(mode)` ("arm a smart-order stance" — it takes effect on the
+NEXT move/attack order the player issues), while `Ctrl+<key>` calls `_issue_stance(mode)`
+("writes the stance in place immediately — no move/attack needed"). A demo scripting a bare
+`{"key": "H"}` to put a unit on `ORDER_HOLD` right after spawn does NOT actually change
+`order_mode` at all — the state dump keeps reading `order=Normal` no matter how much later
+you check, since nothing ever issued the armed stance (there's no subsequent order to
+trigger it). This differs from a plain FORMATION hotkey (`O`, `T`, `L` for Square/Tight/
+Shield Wall) — those apply immediately on a bare keypress; only ORDER-MODE stances
+(`Settings.order_bindings`' own keys) have the arm-vs-issue split.
+
+**How to apply:** any demo/test that needs a specific `order_mode` (not formation) to be
+ACTIVE, not just armed, must script `{"key": "<letter>", "ctrl": true}` — verify with
+`dump-state.sh`'s `order_mode` field before trusting the scenario, the same way you'd verify
+any other scripted key. (`Lacaedemon/sparta` PR #749, 2026-07-11: `{"key": "H"}` alone left
+`order_mode` reading `Normal` through the whole recording, letting a `HOLD`-intended
+defender auto-chase the approaching charger — fixed by adding `"ctrl": true`.)
+
+## Movie Maker's `fixed_fps` sets the VIDEO frame rate, not the physics tick rate — don't assume 1:1
+
+Physics runs at a fixed 60 ticks/sec regardless of a recording's `--fixed-fps` value
+(`project.godot` has no `physics_ticks_per_second` override, and Movie Maker only forces
+the RENDER/video step to advance in lockstep with simulated time — it doesn't slow physics
+itself down to match). So `demos/demo.*.json`'s `max_frames` (a VIDEO frame count, at
+`fixed_fps`) does NOT equal the number of physics ticks the clip covers unless
+`fixed_fps: 60`. At `fixed_fps: 30`, each video frame spans 2 physics ticks, so
+`max_frames: 210` covers roughly **420** physics ticks, not 210. The existing "Extract
+frames without ffmpeg" section above states "Frame index == physics tick at `--fixed-fps
+60`" — that's only true at `fixed_fps: 60` specifically; it does NOT generalize to other
+`fixed_fps` values, and reading it that way silently miscounts by whatever
+`60 / fixed_fps` ratio applies.
+
+**How to verify empirically rather than assume:** re-run the exact recording command
+(`--fixed-fps <N> --quit-after <max_frames>`) with `SPARTA_DEMO_STATE` armed at ticks near
+your predicted cutoff (both the naive 1:1 guess and the `60/fixed_fps`-scaled one) —
+`dump-state.sh`'s state-dump pass isn't bounded by `max_frames`/`--quit-after` (it runs
+until every armed tick is captured or the recorder itself quits), so whichever ticks
+actually get dumped before the run ends tells you the true cutoff directly, rather than
+computing it by hand.
+
+**Why this matters:** a review finding claimed a demo's `max_frames: 210` (at
+`fixed_fps: 30`) cut off before a claimed "cavalry visibly decelerates" moment, reasoning
+from the WRONG (1:1 tick:frame) assumption — CI's own per-tick state transcript comment
+happened to include ticks up to 390, which is genuinely `dump-state.sh` running past the
+movie's own cutoff (per the tool's design), not evidence the movie itself covered that far.
+The empirical re-run above (ticks 209/270/330/390 all captured within the SAME
+`--quit-after 210` command CI runs) settled it: the clip's actual physics-tick coverage
+extends well past what a naive frame==tick reading would suggest, and the deceleration was
+genuinely within frame budget. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
