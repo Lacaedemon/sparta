@@ -2319,8 +2319,8 @@ func test_engaged_soldier_indices_is_the_whole_perimeter_when_squared() -> void:
 
 
 func test_engaged_soldier_indices_prefers_real_enemy_proximity_over_centroid_distance() -> void:
-	# The remaining #752 gap: "farthest from own centroid" (the test above) is a same-unit
-	# geometric approximation of "actually under attack" and can still misclassify a soldier
+	# The remaining gap this closes: "farthest from own centroid" (the test above) is a
+	# same-unit geometric approximation of "actually under attack" and can still misclassify a soldier
 	# pushed inward on one side as engaged over a genuinely exposed soldier elsewhere. With a
 	# real enemy soldier co-located with only ONE ring soldier, the engaged set must include
 	# that soldier and exclude the ring's farthest-away soldier on the opposite side -- something
