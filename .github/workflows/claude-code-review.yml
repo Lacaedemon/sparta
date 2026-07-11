@@ -57,3 +57,17 @@ jobs:
         rather than relying on the video clip. The block lists each unit's State,
         formation, order mode, morale, soldier count, and centroid at the dumped ticks;
         the linked JSON has the full detail.
+
+        **This verification is mandatory, not a spot-check.** Read every dumped tick in
+        the transcript (or every frame of the video clip, if no transcript is posted) —
+        not just the first and last — and explicitly cross-check each specific claim the
+        PR description makes (an exact position/speed/state value, "slides from X to Y",
+        "coasts instead of snapping") against what the data actually shows at those ticks.
+        A PR whose description states a specific before/after value pair or a described
+        trajectory is asserting something falsifiable — falsify it if it's wrong. A demo
+        that runs without erroring and superficially matches the PR's prose (right units,
+        right general shape) is not the same as one that proves the specific behavioral
+        claim; a quantity that's supposed to change smoothly but is actually frozen for
+        part of the window is a real finding, not a nitpick, even if the overall clip
+        "looks fine." State explicitly in the review which claims were checked against
+        transcript/frame data and what they showed, not just whether a demo was present.

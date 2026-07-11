@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/idle-speed-friction.json",
+  "caption": "Fixes a regression in #743: after the last enemy dies mid-charge, the cavalry now visibly coasts forward on its residual speed before stopping, instead of freezing in place while current_speed silently counts down to zero. Root cause was UnitCombat's \"spend the charge\" strike-resolution reset zeroing _approach_velocity on the exact tick the finishing blow lands, leaving the idle-coast guard with no travel direction to work with. The fix falls back to `facing` in that specific case. Per-tick state transcript (position, current_speed) proves the coast: watch position advance smoothly across the dumped ticks as current_speed ramps down, rather than sitting frozen.",
+  "fixed_fps": 30,
+  "max_frames": 340,
+  "fps": 15,
+  "width": 640
+}
