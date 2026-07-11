@@ -392,7 +392,7 @@ func test_square_is_perimeter_out_of_range_is_false() -> void:
 	assert_false(UnitFormation.square_is_perimeter(9, 9, 3), "index == n is out of range")
 
 
-# --- live_perimeter_indices (#752): position-based, not slot-index-based ----
+# --- live_perimeter_indices: position-based, not slot-index-based -----------
 # square_is_perimeter's index-to-position mapping goes stale once SoldierMelee.reap()
 # has compacted the per-soldier arrays after a casualty (removing a dead soldier shifts
 # every later index down, so index i no longer sits where block_slots originally laid

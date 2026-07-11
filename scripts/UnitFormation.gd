@@ -211,8 +211,8 @@ static func square_is_perimeter(i: int, n: int, files: int) -> bool:
 ## matches the grid cell `block_slots` laid it out on). Empirically, on a live battle with
 ## real casualties, the slot-index perimeter's mismatch rate against attackers' actual
 ## nearest-defender index jumps from 0% (freshly seeded, no casualties yet) to 60-80% once
-## the array has compacted even a little -- see the `anti-cav-square.json` verification
-## referenced from #752.
+## the array has compacted even a little -- see the `anti-cav-square.json` state-dump
+## reproduction described in `.claude/memories/sparta.md`.
 ##
 ## Returns the `target_count` LIVING soldiers (by position-array index) currently farthest
 ## from the block's own live centroid -- the outermost survivors of whatever shape the
