@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/schiltron-asymmetric-pressure.json",
+  "caption": "Engaged-soldier highlight (Settings.show_engaged_highlight, HUD Menu -> Engaged-soldier highlight): tints a unit's soldiers amber when they're in Unit.engaged_soldier_indices()'s returned set. A Schiltron is pressed by two cavalry from ONLY ONE side -- watch the amber highlight concentrate on the pressed front, not ring the WHOLE perimeter the way #758's same-unit centroid-distance selection would regardless of where the real attackers are. That's the difference this PR's cross-unit proximity check makes for #752's remaining gap.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

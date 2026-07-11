@@ -2295,6 +2295,11 @@ func test_engaged_soldier_indices_is_the_whole_perimeter_when_squared() -> void:
 	# see test_unit_formation.gd for the geometry itself; this test only checks the wiring:
 	# engaged_soldier_indices sizes the live selection to match the slot-index ring's own
 	# COUNT (same output size as before) and actually delegates to it.
+	# SoldierEnemyProximity is a static, physics-frame-keyed cache (like PathField.active --
+	# see .claude/memories/sparta.md): reset it first so a neighboring test that happened to
+	# run at the same physics frame can't leave a stale "no enemy nearby" (or enemy-nearby)
+	# grid behind for this test to silently reuse instead of rebuilding from THIS unit.
+	SoldierEnemyProximity.reset()
 	var u := _make_unit(120)
 	u.set_formation(Unit.FORMATION_SQUARE)
 	u.seed_sim_soldiers()
@@ -2311,6 +2316,56 @@ func test_engaged_soldier_indices_is_the_whole_perimeter_when_squared() -> void:
 		"the live-position ring is sized to match the slot-index ring's own count")
 	assert_eq(indices, UnitFormation.live_perimeter_indices(u._sim_soldier_pos, expected_count),
 		"engaged_soldier_indices delegates to the live-position selection for SQUARE")
+
+
+func test_engaged_soldier_indices_prefers_real_enemy_proximity_over_centroid_distance() -> void:
+	# The remaining gap this closes: "farthest from own centroid" (the test above) is a
+	# same-unit geometric approximation of "actually under attack" and can still misclassify a soldier
+	# pushed inward on one side as engaged over a genuinely exposed soldier elsewhere. With a
+	# real enemy soldier co-located with only ONE ring soldier, the engaged set must include
+	# that soldier and exclude the ring's farthest-away soldier on the opposite side -- something
+	# the pure centroid-distance selection (which returns the WHOLE ring regardless) never does.
+	# Reset first -- see the reset() note on the previous test.
+	SoldierEnemyProximity.reset()
+	var u := _make_unit(120)
+	u.uid = 1
+	u.team = 0
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch
+	var n: int = u._sim_soldier_pos.size()
+	var files: int = UnitFormation.square_files(n)
+	var ring: Array[int] = []
+	for i in range(n):
+		if UnitFormation.square_is_perimeter(i, n, files):
+			ring.append(i)
+	assert_true(ring.size() >= 2, "sanity: the ring has at least two soldiers to contrast")
+	# Farthest-apart pair of ring soldiers, by squared distance -- the widest spread the old
+	# whole-ring selection would have lumped together regardless of which side is under attack.
+	var threatened_idx: int = ring[0]
+	var safe_idx: int = ring[0]
+	var worst_d: float = -1.0
+	for a in ring:
+		for b in ring:
+			var d: float = u._sim_soldier_pos[a].distance_squared_to(u._sim_soldier_pos[b])
+			if d > worst_d:
+				worst_d = d
+				threatened_idx = a
+				safe_idx = b
+	var enemy := Unit.new()
+	enemy.max_soldiers = 1   # a single soldier, so none of the enemy's OWN formation spread
+	add_child_autofree(enemy)                # reaches toward safe_idx and contaminates the result
+	enemy.uid = 2
+	enemy.team = 1
+	enemy.position = u._sim_soldier_pos[threatened_idx]
+	enemy.seed_sim_soldiers()
+	enemy._sim_soldier_pos[0] = u._sim_soldier_pos[threatened_idx]   # co-located: certainly in reach
+	var indices := u.engaged_soldier_indices(n)
+	assert_true(indices.has(threatened_idx),
+		"the ring soldier with a real enemy co-located is in the engaged set")
+	assert_false(indices.has(safe_idx),
+		"the ring soldier on the far side, with no real enemy nearby, is excluded")
 
 
 func test_face_for_action_is_a_no_op_when_squared() -> void:

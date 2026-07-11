@@ -1,0 +1,19 @@
+{
+  "_comment": "Engaged-soldier highlight demo (Settings.show_engaged_highlight) for the cross-unit proximity fix (closes #752 more fully than #758's same-unit centroid-distance selection): a fresh scenario authored for THIS demo, not a copy of #758's engaged-highlight-live-proximity.json (three attackers surrounding on three sides) or anti-cav-square.json -- see .claude/memories/sparta-demos.md's 'author each demo scenario fresh' entry. A single player Schiltron unit is pressed from ONLY ONE side (two cavalry both attacking from the front) rather than surrounded on all sides, so the amber highlight should concentrate on the pressed front and leave the untouched rear dark -- a same-unit centroid-distance selection (#758's own fix) would still light up the WHOLE ring regardless of where the real attackers are, so this specifically demonstrates the difference cross-unit proximity makes. Selects the unit, holds it in place (Ctrl+H), then jumps straight to schiltron (Shift+O -- SelectionManager._toggle_schiltron, sharing orbis's O key since every plain letter is already claimed). Requests the highlight via the session-only 'show_engaged_highlight' script field (never persisted). Timing verified locally via dump-state.sh: casualties begin accumulating well before the clip's frame budget ends.",
+  "seed": "90210",
+  "show_engaged_highlight": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 640, "y": 460, "count": 140},
+    {"team": 1, "type": "Cavalry", "x": 560, "y": 700},
+    {"team": 1, "type": "Cavalry", "x": 720, "y": 700}
+  ],
+  "camera": [
+    {"tick": 0, "x": 640.0, "y": 460.0, "zoom": 1.15}
+  ],
+  "steps": [
+    {"tick": 10, "click": [640, 460]},
+    {"tick": 20, "key": "H", "ctrl": true},
+    {"tick": 30, "key": "O", "shift": true}
+  ],
+  "state": [30, 90, 150, 200, 250, 300]
+}

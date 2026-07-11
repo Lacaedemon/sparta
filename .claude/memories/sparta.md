@@ -1025,3 +1025,45 @@ explanatory comment if it auto-closed; don't assume stating "leaving this open" 
 body is sufficient to prevent it. (`Lacaedemon/sparta` PR #758 / issue #752, 2026-07-11:
 #752 was closed at the exact merge timestamp despite both the PR body and an issue comment
 stating it should stay open; reopened with an explanation.)
+
+## A new physics-frame-keyed static cache needs an explicit `reset()` in any test that constructs its own fixture data
+
+This generalizes the existing `PathField.active is a global static` entry above beyond
+pathfinding: ANY new static, frame-keyed cache added to the soldier layer (mirroring
+`SoldierSpatialHash`'s `_frame`/`is_current(frame)` pattern) is a fresh test-isolation
+hazard the moment it's keyed by `Engine.get_physics_frames()` rather than a caller-supplied,
+test-controlled frame number.
+
+**Why this bites GUT tests specifically:** `Engine.get_physics_frames()` only advances on a
+real physics tick. Two different, synchronous test functions that never `await
+get_tree().physics_frame` run at the EXACT SAME frame number, even though they construct
+completely different units. If a cache's `is_current(frame)` gate sees the same frame number
+across both, the SECOND test's call reuses the FIRST test's cached grid -- built from the
+first test's now-freed (or simply different) units -- instead of rebuilding from its own
+fixtures. This is silent: no error, just a wrong (often EMPTY or stale) query result, which
+in turn changes control flow (a fallback branch fires when it shouldn't, or vice versa).
+
+**Concrete case:** `SoldierEnemyProximity` (added for #752's cross-unit-proximity fix, PR
+#760) keys its rebuild by `Engine.get_physics_frames()` internally (unlike
+`SoldierEnemyContact.accumulate(units, frame)`, whose callers -- including its own test
+fixtures -- pass an explicit, test-chosen frame number precisely to avoid this). A new test
+proving the proximity selection excludes a far-side ring soldier passed when run alone, but
+FAILED when the full suite ran: the immediately-preceding test
+(`test_engaged_soldier_indices_is_the_whole_perimeter_when_squared`, a no-enemy Square
+fixture) ran at the same physics frame, rebuilt the grid with only ITS OWN unit, and the new
+test's call then saw `is_current()` true and silently reused that stale, enemy-free grid --
+falling back to the whole-ring selection instead of the proximity-filtered one, so the
+"excluded" assertion failed.
+
+**Fix:** call the cache's `reset()` at the start of any test that builds its own fixture
+data and exercises a code path depending on it -- both the new test AND the pre-existing
+neighboring test needed the guard, since either one could run first and poison the other
+depending on suite ordering. This doesn't fix a production hazard (a real game tick always
+advances `Engine.get_physics_frames()` between ticks, so the real per-tick rebuild is sound)
+-- it's purely a test-isolation gap this kind of cache introduces. When adding a new
+frame-keyed static cache: either accept an explicit frame argument from every caller (like
+`SoldierEnemyContact.accumulate`) so tests can pick collision-free values, or -- if the
+production call site can't reasonably do that (as here, `engaged_soldier_indices()` is called
+from many places with no natural place to thread a frame argument through) -- document the
+`reset()` requirement on the class itself and add it to every test that constructs its own
+units for that code path. (`Lacaedemon/sparta` PR #760, 2026-07-11.)
