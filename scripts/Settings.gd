@@ -136,6 +136,18 @@ var show_soldier_ids: bool = false:
 			_save()
 			changed.emit()
 
+# Engaged-soldier highlight: tint the soldiers Unit.engaged_soldier_indices() currently
+# returns (the front ranks, or the live SQUARE/SCHILTRON ring) a distinct color, for every
+# engaged unit, at any LOD. Dev/debug visual only. Default off.
+var show_engaged_highlight: bool = false:
+	set(value):
+		if value == show_engaged_highlight:
+			return
+		show_engaged_highlight = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Order-mode selector hotkeys: stable slug -> physical keycode. Slugs (and the
 # menu order) are owned by Battle.ORDER_MODE_HOTKEYS; these are the factory defaults.
 # Physical keycodes keep the bindings layout-independent (like the camera/pause keys).
@@ -206,6 +218,17 @@ func set_show_unit_speed_session(value: bool) -> void:
 	_loading = was_loading
 
 
+## Set show_engaged_highlight for this run only — no persist to disk, no `changed` signal
+## (same _load()-guard trick as set_sfx_enabled_session above). A demo input script can
+## request this overlay on for its recording without rewriting a developer's saved
+## preference when the recorder is run locally.
+func set_show_engaged_highlight_session(value: bool) -> void:
+	var was_loading := _loading
+	_loading = true
+	show_engaged_highlight = value
+	_loading = was_loading
+
+
 ## The physical keycode currently bound to a mode slug (or its default / KEY_NONE).
 func order_binding(slug: String) -> int:
 	return int(order_bindings.get(slug, DEFAULT_ORDER_BINDINGS.get(slug, KEY_NONE)))
@@ -258,6 +281,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_order_distance = bool(cfg.get_value("camera", "show_order_distance", show_order_distance))
 	show_unit_speed = bool(cfg.get_value("camera", "show_unit_speed", show_unit_speed))
 	show_soldier_ids = bool(cfg.get_value("camera", "show_soldier_ids", show_soldier_ids))
+	show_engaged_highlight = bool(cfg.get_value("camera", "show_engaged_highlight", show_engaged_highlight))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
 	_loading = false
@@ -277,6 +301,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "show_order_distance", show_order_distance)
 	cfg.set_value("camera", "show_unit_speed", show_unit_speed)
 	cfg.set_value("camera", "show_soldier_ids", show_soldier_ids)
+	cfg.set_value("camera", "show_engaged_highlight", show_engaged_highlight)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
 	cfg.save(path)

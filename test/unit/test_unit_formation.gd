@@ -390,3 +390,98 @@ func test_square_is_perimeter_handles_a_partial_last_rank() -> void:
 func test_square_is_perimeter_out_of_range_is_false() -> void:
 	assert_false(UnitFormation.square_is_perimeter(-1, 9, 3), "negative index")
 	assert_false(UnitFormation.square_is_perimeter(9, 9, 3), "index == n is out of range")
+
+
+# --- live_perimeter_indices: position-based, not slot-index-based -----------
+# square_is_perimeter's index-to-position mapping goes stale once SoldierMelee.reap()
+# has compacted the per-soldier arrays after a casualty (removing a dead soldier shifts
+# every later index down, so index i no longer sits where block_slots originally laid
+# it out). live_perimeter_indices reads ACTUAL positions instead, so it stays correct
+# after compaction -- these tests exercise the geometry directly, independent of Unit.
+
+func test_live_perimeter_indices_picks_the_farthest_points_from_centroid() -> void:
+	# A plus-shape: one point at the centre, four points equidistant on the axes. The
+	# centre is closest to the centroid (itself); the four arm-tips are farthest and
+	# equidistant from each other, so any target_count <= 4 must exclude the centre.
+	var positions := PackedVector2Array([
+		Vector2(0, 0),      # 0: centre
+		Vector2(10, 0),     # 1: east arm
+		Vector2(-10, 0),    # 2: west arm
+		Vector2(0, 10),     # 3: north arm
+		Vector2(0, -10),    # 4: south arm
+	])
+	var picked := UnitFormation.live_perimeter_indices(positions, 4)
+	assert_eq(picked.size(), 4, "picks exactly target_count points")
+	assert_false(picked.has(0), "the centre point is never picked over any of the four arms")
+	for i in [1, 2, 3, 4]:
+		assert_true(picked.has(i), "arm-tip index %d is picked" % i)
+
+
+func test_live_perimeter_indices_survives_array_compaction() -> void:
+	# The concrete bug this fixes: a slot-index perimeter check computed BEFORE a
+	# casualty compacts the array silently mis-selects once the array has shrunk and
+	# shifted. Simulate compaction directly -- an original 3x3 grid (see
+	# test_square_is_perimeter_flags_the_outer_ring_only) with its centre soldier (old
+	# index 4) already reaped, so what was index 5 is now index 4, etc. Live-position
+	# selection must still exclude whichever point is geometrically centremost in the
+	# CURRENT array, regardless of what index it now holds.
+	var full := [
+		Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1),
+		Vector2(-1, 0),  Vector2(0, 0),  Vector2(1, 0),
+		Vector2(-1, 1),  Vector2(0, 1),  Vector2(1, 1),
+	]
+	full.remove_at(4)   # reap the centre soldier, exactly like SoldierMelee.reap()
+	var positions := PackedVector2Array(full)   # 8 soldiers now, all on the outer ring
+	var picked := UnitFormation.live_perimeter_indices(positions, 8)
+	assert_eq(picked.size(), 8, "every surviving soldier is on the ring once the centre is gone")
+
+
+func test_live_perimeter_indices_breaks_ties_by_index() -> void:
+	# Two points equidistant from the centroid: deterministic tie-break picks the
+	# lower index first, so replay/determinism never depends on sort stability.
+	var positions := PackedVector2Array([Vector2(-5, 0), Vector2(5, 0)])
+	assert_eq(UnitFormation.live_perimeter_indices(positions, 1), PackedInt32Array([0]),
+		"tied distances: lower index wins")
+
+
+func test_live_perimeter_indices_degenerate_inputs() -> void:
+	assert_eq(UnitFormation.live_perimeter_indices(PackedVector2Array(), 3).size(), 0,
+		"no positions -> nothing to pick")
+	assert_eq(UnitFormation.live_perimeter_indices(PackedVector2Array([Vector2.ZERO]), 0).size(), 0,
+		"target_count <= 0 -> nothing to pick")
+	var positions := PackedVector2Array([Vector2(1, 0), Vector2(2, 0)])
+	assert_eq(UnitFormation.live_perimeter_indices(positions, 10).size(), 2,
+		"target_count beyond the array size is clamped to the array size")
+
+
+func test_live_perimeter_indices_matches_a_brute_force_full_sort() -> void:
+	# The real implementation is a bounded min-heap (O(n log target_count)), not a full sort
+	# of every soldier -- differential test against a brute-force reference (sort every index
+	# by distance descending, ties broken by index ascending, take the first target_count) on
+	# an irregular point cloud, so a heap sift-up/sift-down bug can't hide behind the other
+	# tests' small or symmetric inputs. Fixed, hand-picked coordinates (no RNG) so the case is
+	# reproducible.
+	var positions := PackedVector2Array([
+		Vector2(3, 1), Vector2(-2, 4), Vector2(5, -3), Vector2(0, 0), Vector2(-4, -4),
+		Vector2(2, 2), Vector2(7, 0), Vector2(-1, -6), Vector2(1, 1), Vector2(-5, 2),
+		Vector2(6, 5), Vector2(0, -3), Vector2(-3, 3), Vector2(4, -1), Vector2(2, -5),
+		Vector2(-6, 1), Vector2(1, 6), Vector2(3, -4), Vector2(-2, -2), Vector2(5, 3),
+	])
+	var centroid := Vector2.ZERO
+	for p in positions:
+		centroid += p
+	centroid /= float(positions.size())
+	var reference: Array = range(positions.size())
+	reference.sort_custom(func(a: int, b: int) -> bool:
+		var da: float = positions[a].distance_squared_to(centroid)
+		var db: float = positions[b].distance_squared_to(centroid)
+		if da == db:
+			return a < b
+		return da > db)
+	for target_count in [1, 3, 7, 12, 20, 25]:
+		var expected := PackedInt32Array()
+		for i in range(mini(target_count, positions.size())):
+			expected.push_back(reference[i])
+		expected.sort()
+		assert_eq(UnitFormation.live_perimeter_indices(positions, target_count), expected,
+			"heap selection matches the brute-force reference at target_count=%d" % target_count)

@@ -2290,7 +2290,11 @@ func test_front_depth_uses_the_square_file_count_when_squared() -> void:
 func test_engaged_soldier_indices_is_the_whole_perimeter_when_squared() -> void:
 	# A squared regiment presents no single front (_face_for_action never turns it to bear
 	# on one attacker), so the engaged set is the whole outer ring -- not a fixed rank-0
-	# wedge that would sit at a fixed, attack-direction-independent side.
+	# wedge that would sit at a fixed, attack-direction-independent side. The ring is
+	# selected by LIVE position (UnitFormation.live_perimeter_indices), not slot index --
+	# see test_unit_formation.gd for the geometry itself; this test only checks the wiring:
+	# engaged_soldier_indices sizes the live selection to match the slot-index ring's own
+	# COUNT (same output size as before) and actually delegates to it.
 	var u := _make_unit(120)
 	u.set_formation(Unit.FORMATION_SQUARE)
 	u.seed_sim_soldiers()
@@ -2303,9 +2307,10 @@ func test_engaged_soldier_indices_is_the_whole_perimeter_when_squared() -> void:
 	for i in range(n):
 		if UnitFormation.square_is_perimeter(i, n, files):
 			expected_count += 1
-			assert_true(indices.has(i), "perimeter index %d is in the engaged set" % i)
 	assert_eq(indices.size(), expected_count,
-		"the engaged set is exactly the SQUARE grid's outer ring, no more and no less")
+		"the live-position ring is sized to match the slot-index ring's own count")
+	assert_eq(indices, UnitFormation.live_perimeter_indices(u._sim_soldier_pos, expected_count),
+		"engaged_soldier_indices delegates to the live-position selection for SQUARE")
 
 
 func test_face_for_action_is_a_no_op_when_squared() -> void:
@@ -3390,6 +3395,27 @@ func test_prone_soldiers_facing_pip_collapses() -> void:
 	var t: Transform2D = Unit._facing_pip_transform(true, Vector2.UP, Vector2(5, 5))
 	assert_almost_eq(t.get_scale().length(), 0.0, 0.001,
 		"a prone soldier's facing pip is collapsed to zero scale")
+
+
+# --- _soldier_render_color: the engaged-highlight debug visual (Settings.show_engaged_highlight) ----------
+# Pure function, no live MultiMesh read-back (same reasoning as _facing_pip_transform above).
+
+func test_soldier_render_color_prone_wins_over_engaged_highlight() -> void:
+	# A felled soldier's dark tint is a more important signal than the debug highlight --
+	# prone always wins, even when the highlight is on and this soldier is engaged.
+	assert_eq(Unit._soldier_render_color(true, true, true), Unit.PRONE_COLOR,
+		"prone beats the engaged highlight")
+
+
+func test_soldier_render_color_highlight_only_when_toggle_on_and_engaged() -> void:
+	assert_eq(Unit._soldier_render_color(false, true, true), Unit.ENGAGED_HIGHLIGHT_COLOR,
+		"toggle on + engaged -> highlighted")
+	assert_eq(Unit._soldier_render_color(false, true, false), Color.WHITE,
+		"toggle on but NOT engaged -> normal white")
+	assert_eq(Unit._soldier_render_color(false, false, true), Color.WHITE,
+		"engaged but toggle off -> normal white (the debug visual is opt-in)")
+	assert_eq(Unit._soldier_render_color(false, false, false), Color.WHITE,
+		"neither prone, toggle, nor engaged -> normal white")
 
 
 # --- drag-to-form-up: deploy facing on arrival ----------

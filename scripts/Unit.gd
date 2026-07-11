@@ -2839,19 +2839,27 @@ func soldier_brace() -> float:
 ## _face_for_action never turns it to bear on one attacker, since every side already
 ## stands ready -- so a fixed rank-0 wedge would sit at whatever direction the grid
 ## happened to be laid out on, unrelated to which side is actually under attack. It
-## returns the whole outer ring instead (UnitFormation.square_is_perimeter), so
-## melee/contact resolution can find a real target regardless of which side a foe
-## closes on. Pure and deterministic.
+## returns the whole outer ring instead -- by LIVE position
+## (UnitFormation.live_perimeter_indices), not slot index: `square_is_perimeter`'s
+## index-to-position mapping goes stale the moment `SoldierMelee.reap()` compacts the
+## per-soldier arrays after a casualty, so this reads `_sim_soldier_pos` directly and
+## sizes the live selection to match the ring's own slot-index COUNT (same output size,
+## correct membership -- live_perimeter_indices' own O(n log target_count) heap selection
+## is more work per call than the old O(n) index scan, see its docstring). Melee/contact
+## resolution can then find a real target regardless of which side a foe closes on, even
+## mid-battle with casualties already taken. Pure
+## and deterministic -- `_sim_soldier_pos` is this tick's frozen snapshot.
 func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
 		return out
 	if in_square():
 		var square_file_count: int = formation_files(count)
+		var ring_size: int = 0
 		for i in range(count):
 			if UnitFormation.square_is_perimeter(i, count, square_file_count):
-				out.push_back(i)
-		return out
+				ring_size += 1
+		return UnitFormation.live_perimeter_indices(_sim_soldier_pos, ring_size)
 	var cutoff: int = mini(count, formation_files(count) * ENGAGED_RANKS)
 	for i in range(cutoff):
 		out.push_back(i)
@@ -3436,6 +3444,26 @@ const FACING_PIP_RADIUS_FRACTION: float = 0.35
 
 const PRONE_COLOR: Color = Color(0.22, 0.22, 0.22, 0.80)   # dark grey, 80% alpha — felled soldiers are slightly translucent; stacks with rout modulate (0.45) to 0.36 for "prone AND routing"
 
+# Dev/debug visual (Settings.show_engaged_highlight): tints a soldier bright amber when its
+# index is in engaged_soldier_indices() -- i.e. the sim actually treats it as a melee/contact
+# candidate this tick. Distinct from PRONE_COLOR (dark grey) and team colors (which stay pure
+# hues) so it reads unambiguously at a glance.
+const ENGAGED_HIGHLIGHT_COLOR: Color = Color(1.0, 0.80, 0.05)
+
+
+## Which color a single soldier's mark should draw in this frame -- prone always wins (a felled
+## soldier's dark tint is a more important signal than the debug highlight), otherwise the
+## engaged highlight applies only when the debug toggle is on AND this soldier is actually in
+## the engaged set, else the normal white. Pure -- a function of the three flags only, so it's
+## directly unit-testable without a live MultiMesh (whose instance data isn't synchronously
+## readable back in headless tests -- see the MultiMesh instance-transform gotcha this mirrors).
+static func _soldier_render_color(prone: bool, engaged_highlight_on: bool, is_engaged: bool) -> Color:
+	if prone:
+		return PRONE_COLOR
+	if engaged_highlight_on and is_engaged:
+		return ENGAGED_HIGHLIGHT_COLOR
+	return Color.WHITE
+
 
 # --- Soldier mark rendering ----------------------------------------------
 # Render-time only: each living soldier draws as a mark at its simulated body position
@@ -3680,6 +3708,18 @@ func _refresh_flock_render() -> void:
 	if _detailed_lod and _mm_facing_pip.instance_count != n:
 		_mm_facing_pip.instance_count = n
 	var sim_prone_n: int = _sim_prone.size()
+	# Engaged-soldier highlight (Settings.show_engaged_highlight, dev/debug): computed once
+	# per refresh, not per soldier -- a far-tier unit has no simulated bodies to look up
+	# (_render_body_count() reads `soldiers`, not _sim_soldier_pos, for it), so the highlight
+	# only applies at the close tier, where n == _sim_soldier_pos.size() as
+	# engaged_soldier_indices expects.
+	var engaged_highlight_on: bool = Settings.show_engaged_highlight and not far_tier
+	var engaged_lookup := PackedByteArray()
+	if engaged_highlight_on:
+		engaged_lookup.resize(n)
+		for idx in engaged_soldier_indices(n):
+			if idx >= 0 and idx < n:
+				engaged_lookup[idx] = 1
 	for i in range(n):
 		# Prone: squash/rotate the mark and tint the body dark; outline stays WHITE.
 		# (A far-tier unit tracks no prone timers; everyone draws standing.)
@@ -3706,7 +3746,8 @@ func _refresh_flock_render() -> void:
 			t = Transform2D(0.0, pos)
 		_mm_body.set_instance_transform_2d(i, t)
 		_mm_outline.set_instance_transform_2d(i, t)
-		_mm_body.set_instance_color(i, PRONE_COLOR if prone else Color.WHITE)
+		var is_engaged: bool = engaged_highlight_on and engaged_lookup[i] == 1
+		_mm_body.set_instance_color(i, _soldier_render_color(prone, engaged_highlight_on, is_engaged))
 		_mm_outline.set_instance_color(i, Color.WHITE)
 		if _detailed_lod:
 			_mm_facing_pip.set_instance_transform_2d(i, _facing_pip_transform(prone, sf, pos))

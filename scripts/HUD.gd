@@ -16,7 +16,7 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH,
 		MENU_FORMUP_CYCLE_DEPTH, MENU_FORMUP_CYCLE_WIDTH,
 		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
-		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_KEYBINDINGS, MENU_SHORTCUTS }
+		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS }
 
 var _hint: Label
 var _info: Label
@@ -199,6 +199,7 @@ func _ready() -> void:
 	popup.add_check_item("Order distance labels", MENU_ORDER_DISTANCE)
 	popup.add_check_item("Unit speed labels", MENU_UNIT_SPEED)
 	popup.add_check_item("Soldier IDs (selected unit)", MENU_SOLDIER_IDS)
+	popup.add_check_item("Engaged-soldier highlight", MENU_ENGAGED_HIGHLIGHT)
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	popup.add_item("Shortcuts… (?)", MENU_SHORTCUTS)
 	_sync_setting_toggles()
@@ -383,6 +384,8 @@ func _sync_setting_toggles() -> void:
 			Settings.show_unit_speed)
 	popup.set_item_checked(popup.get_item_index(MENU_SOLDIER_IDS),
 			Settings.show_soldier_ids)
+	popup.set_item_checked(popup.get_item_index(MENU_ENGAGED_HIGHLIGHT),
+			Settings.show_engaged_highlight)
 	_sync_distance_legend_visibility()
 	_ctrl_bar_sync_settings()
 
@@ -437,6 +440,8 @@ func _on_menu_id(id: int) -> void:
 			Settings.show_unit_speed = not Settings.show_unit_speed
 		MENU_SOLDIER_IDS:
 			Settings.show_soldier_ids = not Settings.show_soldier_ids
+		MENU_ENGAGED_HIGHLIGHT:
+			Settings.show_engaged_highlight = not Settings.show_engaged_highlight
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 		MENU_SHORTCUTS:

@@ -354,3 +354,37 @@ The empirical re-run above (ticks 209/270/330/390 all captured within the SAME
 `--quit-after 210` command CI runs) settled it: the clip's actual physics-tick coverage
 extends well past what a naive frame==tick reading would suggest, and the deceleration was
 genuinely within frame budget. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
+
+## Author each demo scenario fresh — don't copy an existing one's scenario/steps
+
+Copying an existing `demos/inputs/*.json`'s `scenario`/`steps` block as a starting point for
+a new demo — even with modifications (a different unit type swapped in, an extra scripted
+step appended, a tweaked caption) — is not acceptable. Write each new scenario from scratch:
+its own unit types, its own coordinates, its own seed, its own step sequence, chosen to fit
+what THIS demo needs to show, not inherited from whatever scenario happened to be handy.
+
+This is distinct from "Construct scenarios to isolate the phenomenon in question" above —
+that section is about NOT layering a new mechanic onto an inherited combat arc with
+unrelated interfering factors. This rule is broader: don't reuse another demo's scenario
+file as a template at all, even when the borrowed setup would isolate the phenomenon fine on
+its own. A fresh scenario is also more likely to actually fit the new feature (e.g. a
+different unit count/type, a different attack geometry) instead of forcing the new feature
+into a shape designed for something else.
+
+**Concrete case:** PR #758's `engaged-highlight-live-proximity.json` (the engaged-soldier
+highlight debug visual) was first written by copying `anti-cav-square.json`'s two-cavalry-
+rear-charge setup wholesale (same Infantry unit, same coordinates, same seed) and only adding
+a `show_engaged_highlight` flag and a Hold step. The user flagged this directly: "stop
+copying demo scenarios; create each one fresh." Rewritten from scratch with a different unit
+type (Spearmen), different seed, different coordinates, and a materially different setup
+(three cavalry attacking from three directions at once, rather than two from the rear) — a
+choice that also happened to better demonstrate the omnidirectional multi-attacker pressure
+the underlying fix (`UnitFormation.live_perimeter_indices`) is about, something the copied
+two-attacker-rear scenario didn't showcase as clearly.
+
+**How to apply:** when starting a new `demos/inputs/*.json`, don't `Read` an existing one and
+edit a copy. Design the scenario from the feature's own requirements — what unit(s), what
+formation, what attack angle(s), what timing best demonstrates the specific behavior under
+review — then write it fresh. Re-verify its timing empirically via `dump-state.sh` the same
+way any new scenario needs verification, per the sections above. (`Lacaedemon/sparta` PR
+#758, 2026-07-11.)

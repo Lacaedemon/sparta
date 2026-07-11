@@ -203,6 +203,103 @@ static func square_is_perimeter(i: int, n: int, files: int) -> bool:
 	return rank == 0 or rank == ranks - 1 or file == 0 or file == rank_count - 1
 
 
+## Live-position perimeter selection for a hollow-square/schiltron formation. Unlike
+## `square_is_perimeter` (a function of SLOT INDEX in the original, uncompacted grid),
+## this reads each soldier's ACTUAL current position: `SoldierMelee.reap()` removes dead
+## soldiers by splicing the per-soldier arrays, which shifts every later index down and
+## breaks the assumption `square_is_perimeter` relies on (that index `i`'s position still
+## matches the grid cell `block_slots` laid it out on). Empirically, on a live battle with
+## real casualties, the slot-index perimeter's mismatch rate against attackers' actual
+## nearest-defender index jumps from 0% (freshly seeded, no casualties yet) to 60-80% once
+## the array has compacted even a little -- see the `anti-cav-square.json` state-dump
+## reproduction described in `.claude/memories/sparta.md`.
+##
+## Returns the `target_count` LIVING soldiers (by position-array index) currently farthest
+## from the block's own live centroid -- the outermost survivors of whatever shape the
+## block actually occupies right now, not whatever the original grid predicted. `target_count`
+## is normally sized to match `square_is_perimeter`'s own ring size (see
+## `Unit.engaged_soldier_indices`), so this changes WHICH soldiers are selected, not how many.
+## Selection is O(n log target_count) (a bounded min-heap of the target_count farthest
+## candidates seen so far, see `_worse`/`_heap_sift_up`/`_heap_sift_down`) rather than a full
+## O(n log n) sort of every soldier, since only the top `target_count` are ever read. Pure and
+## deterministic: ties broken by index (lower index wins), no RNG, no wall-clock.
+static func live_perimeter_indices(positions: PackedVector2Array, target_count: int) -> PackedInt32Array:
+	var n: int = positions.size()
+	if n <= 0 or target_count <= 0:
+		return PackedInt32Array()
+	if target_count >= n:
+		var all := PackedInt32Array()
+		for i in range(n):
+			all.push_back(i)
+		return all
+	var centroid := Vector2.ZERO
+	for p in positions:
+		centroid += p
+	centroid /= float(n)
+	# Min-heap (by "goodness" -- farther is better, lower index breaks ties) of the
+	# target_count best candidates seen so far; the root (index 0) is always the WORST of
+	# the currently-kept set, so a new candidate only needs one comparison against it to
+	# decide whether it displaces anything.
+	var heap_i := PackedInt32Array()
+	var heap_d := PackedFloat32Array()
+	for i in range(n):
+		var d: float = positions[i].distance_squared_to(centroid)
+		if heap_i.size() < target_count:
+			heap_i.push_back(i)
+			heap_d.push_back(d)
+			_heap_sift_up(heap_i, heap_d, heap_i.size() - 1)
+		elif _worse(heap_d[0], heap_i[0], d, i):
+			heap_i[0] = i
+			heap_d[0] = d
+			_heap_sift_down(heap_i, heap_d, 0)
+	var out := PackedInt32Array(heap_i)
+	out.sort()
+	return out
+
+
+## True if (d_a, idx_a) is a WORSE candidate to keep than (d_b, idx_b): a farther point (larger
+## squared distance) is more worth keeping; among ties, the LOWER soldier index is more worth
+## keeping. Matches the strict-weak-order the equivalent full sort would use (sort by distance
+## descending, ties broken by index ascending) -- `live_perimeter_indices`'s heap is built
+## entirely from this one comparison, so keeping it correct keeps the whole selection correct.
+static func _worse(d_a: float, idx_a: int, d_b: float, idx_b: int) -> bool:
+	if d_a != d_b:
+		return d_a < d_b
+	return idx_a > idx_b
+
+
+## Bubble the entry at `pos` up until its parent is no worse than it (min-heap invariant:
+## the root is always the single worst entry). Private helper for `live_perimeter_indices`.
+static func _heap_sift_up(heap_i: PackedInt32Array, heap_d: PackedFloat32Array, pos: int) -> void:
+	while pos > 0:
+		var parent: int = (pos - 1) / 2
+		if _worse(heap_d[pos], heap_i[pos], heap_d[parent], heap_i[parent]):
+			var ti: int = heap_i[pos]; heap_i[pos] = heap_i[parent]; heap_i[parent] = ti
+			var td: float = heap_d[pos]; heap_d[pos] = heap_d[parent]; heap_d[parent] = td
+			pos = parent
+		else:
+			break
+
+
+## Push the entry at `pos` down until both children are no worse than it. Private helper for
+## `live_perimeter_indices`, called after replacing the root with a better candidate.
+static func _heap_sift_down(heap_i: PackedInt32Array, heap_d: PackedFloat32Array, pos: int) -> void:
+	var n: int = heap_i.size()
+	while true:
+		var left: int = 2 * pos + 1
+		var right: int = 2 * pos + 2
+		var worst: int = pos
+		if left < n and _worse(heap_d[left], heap_i[left], heap_d[worst], heap_i[worst]):
+			worst = left
+		if right < n and _worse(heap_d[right], heap_i[right], heap_d[worst], heap_i[worst]):
+			worst = right
+		if worst == pos:
+			break
+		var ti: int = heap_i[pos]; heap_i[pos] = heap_i[worst]; heap_i[worst] = ti
+		var td: float = heap_d[pos]; heap_d[pos] = heap_d[worst]; heap_d[worst] = td
+		pos = worst
+
+
 ## File count after a 90° in-place turn (quarter-turn, #371): frontage and depth swap,
 ## so the new file count is the old rank count. Transposing twice returns to the original
 ## frontage for a full grid (a partial last rank can shift it by one -- the caller reforms).
