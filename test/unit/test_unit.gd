@@ -1107,10 +1107,11 @@ func test_residual_speed_falls_back_to_facing_when_approach_velocity_was_already
 	# _current_speed still nonzero -- there's no _move_to call left to rebuild a travel
 	# direction. Reproduced live via demos/inputs/idle-speed-friction.json: without a
 	# fallback, current_speed visibly ramped 76.0 -> 0.0 over ~2 seconds while position sat
-	# pixel-frozen the whole time -- the exact "decaying inert number" bug #742/#743 set out
-	# to fix, just relocated from _current_speed onto _approach_velocity. Falling back to
-	# `facing` (a faithful stand-in for the heading that was just spent, since the unit was
-	# fighting head-on) fixes it: the unit coasts forward instead of freezing.
+	# pixel-frozen the whole time -- a decaying number with no kinematic effect, the same
+	# class of bug the residual-speed-coasts fix set out to eliminate, just relocated from
+	# _current_speed onto _approach_velocity. Falling back to `facing` (a faithful stand-in
+	# for the heading that was just spent, since the unit was fighting head-on) fixes it:
+	# the unit coasts forward instead of freezing.
 	var old_pf: PathField = PathField.active
 	PathField.active = null
 	var u := _cavalry()
