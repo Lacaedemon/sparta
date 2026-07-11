@@ -19,6 +19,7 @@ extends GutTest
 
 const BattleScript = preload("res://scripts/Battle.gd")
 const SettingsScript = preload("res://scripts/Settings.gd")
+const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
 const TOL: float = 1e-4
 
 
@@ -246,6 +247,61 @@ func test_knockback_push_indefinite_defaults_to_false() -> void:
 	var u := _make_unit()
 	assert_false(u.knockback_push_indefinite,
 		"a fresh unit defaults to the common 'just clear the line' push variant")
+
+
+# --- Battle._apply_order_cmd: the per-order push-distance parameter actually lands --------
+# (Mirrors test_battle.gd's own _battle helper: a Battle exercised directly via the script,
+# with units registered by uid, so the dispatch is covered without a live scene.)
+
+func _battle(units: Array) -> Node:
+	var b = BattleScript.new()
+	autofree(b)
+	for u in units:
+		b._by_uid[u.uid] = u
+	return b
+
+
+func test_stance_only_order_carries_knockback_indefinite_onto_the_unit() -> void:
+	var u := _make_unit()
+	u.uid = 1
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": BattleScript.OrderMode.KNOCKBACK_FOCUS,
+		"knockback_indefinite": true})
+	assert_true(u.knockback_push_indefinite,
+		"a stance-only KNOCKBACK_FOCUS order carries its own push-distance parameter")
+
+
+func test_move_order_carries_knockback_indefinite_onto_the_unit() -> void:
+	var u := _make_unit()
+	u.uid = 1
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1,
+		"mode": BattleScript.OrderMode.KNOCKBACK_FOCUS, "knockback_indefinite": true})
+	assert_true(u.knockback_push_indefinite,
+		"a move/attack KNOCKBACK_FOCUS order carries its own push-distance parameter too")
+
+
+func test_move_order_defaults_knockback_indefinite_to_false_when_omitted() -> void:
+	var u := _make_unit()
+	u.uid = 1
+	u.knockback_push_indefinite = true   # a prior order armed the far-reaching variant
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1,
+		"mode": BattleScript.OrderMode.KNOCKBACK_FOCUS})
+	assert_false(u.knockback_push_indefinite,
+		"omitting the parameter on a fresh order resets to the default clear-the-line push")
+
+
+# --- SelectionManager.arm_order_mode: the control bar has no Shift gesture ----------------
+
+func test_arm_order_mode_resets_knockback_indefinite() -> void:
+	var sm := SelectionManagerScript.new()
+	add_child_autofree(sm)
+	sm._armed_knockback_indefinite = true   # simulate a prior Shift+hotkey arm
+	sm.arm_order_mode(BattleScript.OrderMode.KNOCKBACK_FOCUS)
+	assert_false(sm._armed_knockback_indefinite,
+		"the control bar has no Shift gesture, so arming from it always resets to the default")
 
 
 # --- OrderMode plumbing: mirror constants, names, hotkeys stay in sync --------------------
