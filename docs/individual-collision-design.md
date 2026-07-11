@@ -189,6 +189,11 @@ The four design/perf trade-offs are settled:
    formation update, of which a realistic peak of **~1,000–1,500** are engaged and
    run the full collision/combat pass. This is the number to keep the 60 Hz tick
    under, and it's the figure to validate against #131's Pixel-6 ≥30 fps goal.
+   **Update:** measured scaling of the engaged/friendly-contact tier is super-linear
+   with soldier count — see
+   [`crowding-pressure-evaluation.md`](crowding-pressure-evaluation.md) for the
+   benchmark data and why this budget is optimistic at higher density than the
+   current reference scenario.
 4. **Cross-platform replay: accept the same-build/platform-only caveat.** Soldier-
    level float ordering amplifies it, but bit-exact cross-platform replay stays out
    of scope — no fixed-point position path. Determinism within a build/platform
