@@ -1233,7 +1233,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# idle unit starts marching it now (append_order made it current); a
 				# busy one continues its current order and the leg commits when it is
 				# promoted (retire_current_order -> _start_promoted_move).
-				var leg := Order.new_move(point, mode, gait)
+				var leg := Order.new_move(point, mode, gait, false)
 				u.append_order(leg)
 				if u.current_order == leg and not u.has_move_target:
 					u.move_target = point
@@ -1267,7 +1267,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# Reform timing rides the recorded "reform" field on the Order: for a plain
 				# move it arms the reform-before-move hold below; for a rear move it times
 				# the composite's reform phase (see Unit._finish_order_turn).
-				var order := Order.new_move(point, mode, gait)
+				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
 				order.reform = bool(cmd.get("reform", false))
 				# Install the order first: set_current_order interrupts whatever maneuver
 				# the old order had in flight (a standing drill turn folds and settles; a

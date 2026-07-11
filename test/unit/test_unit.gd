@@ -1062,8 +1062,10 @@ func test_undisciplined_move_snaps_facing_instead_of_pivoting() -> void:
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
 	u._move_to(Vector2(0, 1000), 0.1, true)   # orderly=true, but undisciplined overrides it
+	assert_almost_eq(u.facing.x, 0.0, 0.001,
+		"an undisciplined unit turns straight onto its travel heading in one tick (x)")
 	assert_almost_eq(u.facing.y, 1.0, 0.001,
-		"an undisciplined unit turns straight onto its travel heading in one tick")
+		"an undisciplined unit turns straight onto its travel heading in one tick (y)")
 
 
 func test_undisciplined_sharp_turn_advances_immediately_instead_of_pivoting_first() -> void:
@@ -1086,10 +1088,12 @@ func test_in_haste_move_snaps_facing_even_for_a_disciplined_unit() -> void:
 	assert_true(u.disciplined, "sanity: the default unit is disciplined")
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
-	u.set_current_order(Order.new_move(Vector2(0, 1000), 0, Unit.GAIT_RUN))
+	u.set_current_order(Order.new_move(Vector2(0, 1000), 0, Unit.GAIT_RUN, true))
 	u._move_to(Vector2(0, 1000), 0.1, true)
+	assert_almost_eq(u.facing.x, 0.0, 0.001,
+		"an in-haste order snaps facing onto travel even for a disciplined unit (x)")
 	assert_almost_eq(u.facing.y, 1.0, 0.001,
-		"an in-haste order snaps facing onto travel even for a disciplined unit")
+		"an in-haste order snaps facing onto travel even for a disciplined unit (y)")
 
 
 func test_walk_gait_move_still_pivots_gradually_for_a_disciplined_unit() -> void:
@@ -1131,8 +1135,10 @@ func test_undisciplined_unit_snaps_facing_instead_of_pivoting_during_the_reform_
 	u._reform_target = Vector2(0, 1000)            # destination straight down
 	u._reform_timer = Unit.REFORM_DURATION
 	u._think(0.1)
+	assert_almost_eq(u.facing.x, 0.0, 0.001,
+		"an undisciplined unit snaps facing onto the destination during the reform hold (x)")
 	assert_almost_eq(u.facing.y, 1.0, 0.001,
-		"an undisciplined unit snaps facing onto the destination during the reform hold")
+		"an undisciplined unit snaps facing onto the destination during the reform hold (y)")
 	assert_eq(u.state, Unit.State.IDLE, "it still holds position during the reform")
 
 
@@ -1143,12 +1149,14 @@ func test_in_haste_move_snaps_facing_during_the_reform_hold_even_for_a_disciplin
 	assert_true(u.disciplined, "sanity: the default unit is disciplined")
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
-	u.set_current_order(Order.new_move(Vector2(0, 1000), 0, Unit.GAIT_RUN))
+	u.set_current_order(Order.new_move(Vector2(0, 1000), 0, Unit.GAIT_RUN, true))
 	u._reform_target = Vector2(0, 1000)
 	u._reform_timer = Unit.REFORM_DURATION
 	u._think(0.1)
+	assert_almost_eq(u.facing.x, 0.0, 0.001,
+		"an in-haste order snaps facing during the reform hold even for a disciplined unit (x)")
 	assert_almost_eq(u.facing.y, 1.0, 0.001,
-		"an in-haste order snaps facing during the reform hold even for a disciplined unit")
+		"an in-haste order snaps facing during the reform hold even for a disciplined unit (y)")
 
 
 func test_orderly_about_face_marches_to_a_rear_destination() -> void:

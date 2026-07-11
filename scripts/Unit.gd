@@ -1636,13 +1636,16 @@ func arrival_brake_rate() -> float:
 	return minf(decel, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR))
 
 
-## Whether the current order is a run/sprint-gait MOVE -- too urgent for even a
-## disciplined unit to execute a formed centre-pivot turn before marching. Shared by
-## _move_to's pivot_as_formation gate and _think's reform-hold pivot so both agree on
-## when a march is "in haste".
+## Whether the current order is a genuine click-count-driven run/sprint MOVE -- too urgent
+## for even a disciplined unit to execute a formed centre-pivot turn before marching. Shared
+## by _move_to's pivot_as_formation gate and _think's reform-hold pivot so both agree on
+## when a march is "in haste". Reads Order.haste rather than Order.gait directly: a
+## Shift+right-click waypoint append also carries gait == RUN (for travel-speed continuity,
+## not urgency), so it is not haste -- Order.new_move's callers are responsible for setting
+## haste correctly (see Order.gd and Battle._apply_order_cmd).
 func _is_move_order_in_haste() -> bool:
 	return current_order != null and current_order.type == Order.Type.MOVE \
-			and current_order.gait >= GAIT_RUN
+			and current_order.haste
 
 
 func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:

@@ -14,8 +14,10 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 	battle.scenario = [
 		# A spearman with every override: count, morale, and an explicit facing that must win
 		# over the team default.
-		{"team": 0, "type": "Spearmen", "x": 500, "y": 250, "count": 40, "morale": 30.0, "facing": [1, 0]},
-		# A plain enemy cavalry unit: no facing override, so it takes the team-1 default (up).
+		{"team": 0, "type": "Spearmen", "x": 500, "y": 250, "count": 40, "morale": 30.0,
+			"facing": [1, 0], "disciplined": false},
+		# A plain enemy cavalry unit: no facing override, so it takes the team-1 default (up),
+		# and no disciplined override, so it takes Unit's own default (true).
 		{"team": 1, "type": "Cavalry", "x": 500, "y": 750},
 		# A second enemy cavalry with a MALFORMED facing (one element): must fall back to the
 		# team default rather than crash, and its label must read "Cavalry 2" (per-type index).
@@ -55,9 +57,11 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 	assert_almost_eq(spear.morale, 30.0, 0.001, "the morale override sets the starting morale")
 	assert_almost_eq(spear.facing.x, 1.0, 0.001, "the explicit facing vector wins over the team default (x)")
 	assert_almost_eq(spear.facing.y, 0.0, 0.001, "...and y")
+	assert_false(spear.disciplined, "the disciplined:false override forwards onto the spawned unit")
 
 	for horse: Unit in team1:
 		assert_true(horse.is_cavalry, "type 'Cavalry' maps onto the cavalry loadout")
+		assert_true(horse.disciplined, "with no override, a spawned unit defaults to disciplined")
 		# The first cavalry has no facing override, the second has a MALFORMED one -- both must
 		# fall back to the team-1 default (facing up), and neither may crash on the bad array.
 		assert_almost_eq(horse.facing.y, -1.0, 0.001,

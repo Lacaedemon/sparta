@@ -306,6 +306,26 @@ func test_append_to_idle_unit_starts_it_marching() -> void:
 	assert_true(u.queued_move_points().is_empty(), "nothing is left queued behind it")
 
 
+func test_append_with_run_gait_does_not_mark_the_leg_as_in_haste() -> void:
+	# SelectionManager._gait_from_click_count forces gait == RUN on every waypoint append
+	# (Shift+right-click), regardless of click count, to keep travel speed continuous with
+	# the leg before it -- not to signal urgency. The appended leg must not be "in haste"
+	# just because of that forced gait, or a disciplined unit would silently skip its formed
+	# centre-pivot on an ordinary waypoint-chained march. Append to an IDLE unit, like
+	# test_append_to_idle_unit_starts_it_marching, so the appended leg becomes current_order
+	# immediately and _is_move_order_in_haste() is actually checking it, not an earlier order.
+	var u := _unit(1, Vector2.ZERO)
+	u.has_move_target = false
+	var b := _battle([u])
+	b._apply_order_cmd({
+		"units": [1], "x": 150.0, "y": 0.0,
+		"target": BattleScript.ORDER_APPEND_WAYPOINT, "gait": Unit.GAIT_RUN,
+	})
+	assert_eq(u.current_order.gait, Unit.GAIT_RUN, "sanity: the leg carries the forced RUN gait")
+	assert_false(u._is_move_order_in_haste(),
+		"an append-forced RUN gait does not make the appended leg 'in haste'")
+
+
 func test_append_via_enqueue_is_not_double_applied() -> void:
 	# An append is the one order enqueue_order does NOT apply live: it leaves the cmd
 	# untagged so the tick drain applies it once (applying it live too would queue the

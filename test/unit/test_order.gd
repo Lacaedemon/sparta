@@ -51,6 +51,20 @@ func test_new_move_defaults_to_unphased() -> void:
 	assert_eq(o.target_pos, Vector2(5, 5))
 
 
+func test_new_move_defaults_haste_to_false_even_at_run_gait() -> void:
+	# haste is a plain passthrough, not derived from gait -- SelectionManager's waypoint-
+	# append path relies on this: it forces gait == RUN for travel-speed continuity, not
+	# urgency, so a caller that omits haste (the default) must NOT get it for free from gait.
+	var o := Order.new_move(Vector2(5, 5), 0, Unit.GAIT_RUN)
+	assert_eq(o.gait, Unit.GAIT_RUN, "sanity: gait is set as requested")
+	assert_false(o.haste, "haste does not default true just because gait is RUN")
+
+
+func test_new_move_sets_haste_when_explicitly_requested() -> void:
+	var o := Order.new_move(Vector2(5, 5), 0, Unit.GAIT_RUN, true)
+	assert_true(o.haste, "an explicit haste=true is honored")
+
+
 func test_new_move_starts_with_idle_maneuver_state() -> void:
 	# The maneuver execution state (phase 2) is armed by Unit.begin_about_face / the drill
 	# methods, never by the constructor.
