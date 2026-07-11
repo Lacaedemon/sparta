@@ -18,14 +18,18 @@ modifier or an instant state switch that ignores it. Concretely:
   facing, translucency, position) should ease toward its target via a rate
   (acceleration/friction), never jump there in one frame. #738/#739 fixed
   `Unit._current_speed` bleeding off via friction instead of snapping to 0 (merged).
-  #740/#741 (open as of this writing) applies the same fix to routing translucency,
-  fading it instead of switching instantly.
+  #740/#741 applies the same fix to routing translucency, fading it instead of
+  switching instantly (merged) — scoped to the regimental flag only, per design
+  feedback: the per-soldier marks and other chrome stay fully opaque.
 - **No inert numbers.** A quantity that represents real motion must actually cause
   motion — a decaying speed that doesn't move the unit is a display artifact, not
   physics. #742/#743 (open as of this writing) makes residual `_current_speed` coast
   the unit forward as it decelerates, instead of counting down while `position` sits
-  frozen. Check whether #741/#743 have merged before citing this section as describing
-  the current codebase state rather than the in-flight direction.
+  frozen; the fix consolidates onto `_approach_velocity` (the unit's actual travel
+  velocity, already read by the soldier-body feed-forward and combat charge bonus —
+  never truly combat-only, just under-documented as one) rather than adding a
+  parallel velocity field. Check whether #743 has merged before citing this section
+  as describing the current codebase state rather than the in-flight direction.
 - **No top-down combat-multiplier gimmicks where a physical mechanism already exists.**
   Prefer deriving an outcome (a spear stopping a charge, a knockback felling a soldier)
   from mass/momentum/impulse over a flat "type X beats type Y" bonus. This is the
