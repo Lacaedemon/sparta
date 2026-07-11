@@ -293,7 +293,7 @@
           },
           "soldiers": 114,
           "state": "FIGHTING",
-          "target_enemy_uid": 1,
+          "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
           "uid": 0
@@ -378,7 +378,7 @@
           },
           "soldiers": 114,
           "state": "FIGHTING",
-          "target_enemy_uid": 1,
+          "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
           "uid": 0
@@ -463,7 +463,7 @@
           },
           "soldiers": 112,
           "state": "FIGHTING",
-          "target_enemy_uid": 1,
+          "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
           "uid": 0
@@ -548,7 +548,7 @@
           },
           "soldiers": 112,
           "state": "FIGHTING",
-          "target_enemy_uid": 1,
+          "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
           "uid": 0
