@@ -38,3 +38,20 @@ func test_cursor_sprite_hidden_when_disarmed() -> void:
 	sm._set_armed_mode(BattleRef.OrderMode.NORMAL)
 	assert_false(sm._cursor_sprite.visible,
 		"cursor sprite is hidden again when returning to NORMAL mode")
+
+
+func test_every_order_mode_has_a_distinct_order_cursor_color() -> void:
+	# Guards against a new OrderMode falling through _order_mode_color's match
+	# to the Color.WHITE default, where it would be visually indistinguishable
+	# from the unmapped-mode fallback (and, if two modes collide, from each other).
+	var sm := _sm()
+	var seen: Dictionary = {}
+	for mode in BattleRef.OrderMode.values():
+		if mode == BattleRef.OrderMode.NORMAL:
+			continue
+		var mode_color: Color = sm._order_mode_color(mode)
+		assert_ne(mode_color, Color.WHITE,
+			"OrderMode %d has its own order-cursor color, not the unmapped-mode fallback" % mode)
+		assert_false(seen.has(mode_color),
+			"OrderMode %d's color collides with OrderMode %s's" % [mode, seen.get(mode_color)])
+		seen[mode_color] = mode

@@ -1248,6 +1248,11 @@ func _order_mode_color(mode: int) -> Color:
 		BattleRef.OrderMode.SUPPORT: return Color(0.4, 0.95, 0.7)
 		BattleRef.OrderMode.CYCLE_CHARGE: return Color(0.85, 0.4, 1.0)
 		BattleRef.OrderMode.PIN_DOWN: return Color(0.55, 0.45, 0.3)
+		BattleRef.OrderMode.ROLL_THE_LINE: return Color(0.61, 0.9, 0.32)
+		BattleRef.OrderMode.WEDGE_CHARGE: return Color(0.32, 0.9, 0.36)
+		BattleRef.OrderMode.SWEEP_ROUTERS: return Color(0.32, 0.82, 0.9)
+		BattleRef.OrderMode.CHASE: return Color(0.55, 0.43, 0.95)
+		BattleRef.OrderMode.ALL_OUT_ATTACK: return Color(1.0, 0.25, 0.69)
 		_: return Color.WHITE
 
 

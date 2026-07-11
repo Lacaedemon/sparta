@@ -1,0 +1,16 @@
+{
+  "_comment": "Arms each of the five newer OrderMode stances that previously fell through SelectionManager._order_mode_color to the white default (SWEEP_ROUTERS, ROLL_THE_LINE, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE), one at a time, so the order-cursor color for each is visible on screen. drill mode: no enemy needed to show the cursor overlay.",
+  "seed": "12345",
+  "drill": true,
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 300.0, "zoom": 1.6}
+  ],
+  "steps": [
+    {"tick": 10, "key": "Comma"},
+    {"tick": 50, "key": "Semicolon"},
+    {"tick": 90, "key": "Apostrophe"},
+    {"tick": 130, "key": "Backslash"},
+    {"tick": 170, "key": "Minus"}
+  ],
+  "frames": [15, 55, 95, 135, 175]
+}

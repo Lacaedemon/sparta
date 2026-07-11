@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/order-mode-colors.json",
+  "caption": "The order-cursor color now distinguishes Sweep routers, Roll the line, All-out attack, Chase, and Wedge charge -- previously all five fell through to the same white default cursor.",
+  "fixed_fps": 30,
+  "max_frames": 200,
+  "fps": 15,
+  "width": 720
+}
