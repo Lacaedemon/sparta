@@ -1025,21 +1025,23 @@ func test_orderly_about_face_marches_to_a_rear_destination() -> void:
 
 
 func test_approach_velocity_clears_after_a_stationary_frame() -> void:
-	# A stationary, non-fighting unit carries no momentum: the impact velocity is dropped
-	# so a later standing strike can't charge off stale motion.
+	# A stationary, non-fighting unit's carried velocity decays in lockstep with
+	# _current_speed (see the next test) -- with _current_speed already at its default
+	# zero here, that decay lands _approach_velocity's magnitude at zero on the very
+	# first idle tick too, so no stale motion survives into a later standing strike.
 	var u := _cavalry()
 	u.position = Vector2.ZERO
 	u._approach_velocity = Vector2(u.move_speed, 0)   # as if it just galloped in
 	u._physics_process(0.016)                          # a frame with no enemy / no move
 	assert_eq(u._approach_velocity, Vector2.ZERO,
-		"an idle frame with no movement clears the carried impact velocity")
+		"an idle frame with no residual current_speed clears the carried impact velocity")
 
 
 func test_current_speed_decays_gradually_after_a_stationary_frame() -> void:
-	# Unlike _approach_velocity above (an instant, combat-balance clear so no stale charge
-	# bonus survives into a standing strike), _current_speed bleeds off at
-	# arrival_brake_rate() -- friction, not a snap -- whenever the unit isn't actively
-	# locomoting this tick.
+	# _current_speed bleeds off at arrival_brake_rate() -- friction, not a snap --
+	# whenever the unit isn't actively locomoting this tick; _approach_velocity's own
+	# magnitude tracks it in lockstep (see test_residual_speed_coast_distance_matches_
+	# stopping_distance_physics for the multi-tick version of this).
 	var u := _cavalry()
 	u._current_speed = u.move_speed
 	var brake: float = u.arrival_brake_rate()
@@ -1049,7 +1051,8 @@ func test_current_speed_decays_gradually_after_a_stationary_frame() -> void:
 
 
 func test_current_speed_reaches_zero_after_enough_stationary_frames() -> void:
-	# Friction eventually brings a halted unit fully to rest, not perpetual coasting.
+	# Friction eventually brings a halted unit fully to rest -- see the coasting tests
+	# below for what happens to its position while that decay plays out.
 	var u := _cavalry()
 	u._current_speed = u.move_speed
 	var brake: float = u.arrival_brake_rate()
@@ -1057,6 +1060,110 @@ func test_current_speed_reaches_zero_after_enough_stationary_frames() -> void:
 	for _i in range(ticks_to_stop):
 		u._physics_process(0.016)
 	assert_eq(u._current_speed, 0.0, "friction converges cleanly to a full stop")
+
+
+func test_residual_speed_coasts_the_unit_forward_while_decaying() -> void:
+	# Speed must kinematically translate into motion, not just decay as an inert number
+	# while position sits frozen: a unit with residual speed coasts along its last real
+	# direction of travel (_approach_velocity) as it decelerates, mirroring _move_to's
+	# own effective_speed/advance math.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u._approach_velocity = Vector2.RIGHT * u.move_speed   # as if it was marching this way
+	u._current_speed = u.move_speed
+	var brake: float = u.arrival_brake_rate()
+	u._physics_process(0.1)
+	var expected_speed: float = u.move_speed - brake * 0.1
+	assert_almost_eq(u._current_speed, expected_speed, 0.001, "sanity check: speed decayed as expected")
+	assert_almost_eq(u.position.x, expected_speed * 0.1, 0.001,
+		"the unit advanced along its travel direction by exactly the post-decay speed * delta")
+	assert_almost_eq(u.position.y, 0.0, 0.001, "no lateral drift off the travel axis")
+	PathField.active = old_pf
+
+
+func test_residual_speed_coasts_along_travel_direction_not_facing() -> void:
+	# Direction of travel is its own quantity, distinct from `facing` (an orderly march
+	# pivots facing gradually onto its heading, so mid-turn the two genuinely differ).
+	# Set them to different directions and confirm the coast follows the travel
+	# direction (_approach_velocity), not whatever the body happens to be facing.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN                                # facing one way...
+	u._approach_velocity = Vector2.RIGHT * u.move_speed     # ...but actually moving another
+	u._current_speed = u.move_speed
+	u._physics_process(0.1)
+	assert_gt(u.position.x, 0.0, "the unit coasts along its travel direction (right)...")
+	assert_almost_eq(u.position.y, 0.0, 0.001, "...not toward where it happens to be facing (down)")
+	PathField.active = old_pf
+
+
+func test_residual_speed_does_not_coast_without_a_known_travel_direction() -> void:
+	# If _approach_velocity is already zero when the guard fires (e.g. a strike spent it
+	# mid-combat, then the fight ended), there's no direction to coast in -- degrade to
+	# the old behavior (speed decays, position holds) rather than inventing a direction
+	# from facing.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._approach_velocity = Vector2.ZERO
+	u._current_speed = u.move_speed
+	u._physics_process(0.1)
+	assert_eq(u.position, Vector2.ZERO,
+		"no known travel direction -- speed decays but position holds, no invented drift")
+	PathField.active = old_pf
+
+
+func test_residual_speed_coast_terrain_scaling_matches_position_advance() -> void:
+	# _approach_velocity must stay terrain-scaled while coasting, exactly like _move_to's
+	# own effective_speed -- otherwise a unit coasting to a stop in slow terrain (a forest)
+	# publishes a velocity magnitude downstream consumers (SoldierBodies' march
+	# feed-forward, UnitCombat's charge-bonus dot product) would over-read relative to the
+	# unit's real, terrain-reduced speed of travel.
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 1600, 1000))
+	pf.set_speed_rect(Rect2(-100, -100, 200, 200), 0.5)   # slow zone straddling the unit
+	PathField.active = pf
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u._approach_velocity = Vector2.RIGHT * u.move_speed
+	u._current_speed = u.move_speed
+	u._physics_process(0.1)
+	assert_almost_eq(u._approach_velocity.length(), u._current_speed * 0.5, 0.001,
+		"the stored velocity magnitude reflects the 0.5x terrain speed, not the raw speed")
+	assert_almost_eq(u.position.x, u._current_speed * 0.5 * 0.1, 0.001,
+		"position advanced by the same terrain-scaled amount the velocity now reports")
+	PathField.active = old_pf
+
+
+func test_residual_speed_coast_distance_matches_stopping_distance_physics() -> void:
+	# Total distance coasted while decelerating to a stop should match the classic
+	# stopping-distance formula v^2 / (2 * brake) (a constant-deceleration integral),
+	# not just that speed eventually reaches 0. This also regression-guards the
+	# multi-tick coast itself: _approach_velocity's direction must survive every tick of
+	# the decay (rescaled to the shrinking _current_speed, not zeroed), or the unit would
+	# stop coasting after the first tick and fall well short of this distance.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u._approach_velocity = Vector2.RIGHT * u.move_speed
+	u._current_speed = u.move_speed
+	var brake: float = u.arrival_brake_rate()
+	var delta: float = 0.016
+	var ticks_to_stop: int = int(ceil(u.move_speed / brake / delta)) + 2
+	for _i in range(ticks_to_stop):
+		u._physics_process(delta)
+	assert_eq(u._current_speed, 0.0, "sanity check: fully stopped by the end of the loop")
+	var expected_distance: float = (u.move_speed * u.move_speed) / (2.0 * brake)
+	assert_almost_eq(u.position.x, expected_distance, expected_distance * 0.05,
+		"total coast distance matches the stopping-distance physics within discretization error")
+	PathField.active = old_pf
 
 
 func test_strike_spends_the_charge_velocity() -> void:

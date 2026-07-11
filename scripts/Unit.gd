@@ -651,15 +651,20 @@ var _order_response_timer: float = 0.0
 var _reform_target: Vector2 = Vector2.ZERO
 var _reform_timer: float = 0.0
 var _moved_last_frame: bool = false
-# Velocity the unit carried into its last move; the cavalry charge bonus reads it
-# at contact. Spent by _strike (so only the contact strike charges, not the grinding
-# strikes after) and cleared when the unit goes idle/holds (a stationary unit carries no
-# momentum); kept while FIGHTING so a strike delayed by attack cooldown still lands it.
+# This unit's actual travel velocity (direction + magnitude, world units/s) — not a
+# combat-only quantity, just historically under-documented as one: the cavalry charge
+# bonus (UnitCombat.charge_multiplier) reads it at contact, but so does the soldier-body
+# march feed-forward (SoldierBodies.step) and the closing-speed term in SoldierMelee.
+# _strike spends it on the contact-making strike (so only that first strike charges, not
+# the grinding strikes after); otherwise, while idle, it decays in lockstep with
+# _current_speed below rather than snapping to zero — one friction rule, not a separate
+# instant "combat balance" reset (see the decay guard in _physics_process). Kept
+# untouched while FIGHTING so a strike delayed by attack cooldown still lands it.
 var _approach_velocity: Vector2 = Vector2.ZERO
 # This unit's actual current speed (world units/s, unsigned), ramping toward whichever
-# pace _move_to selects via accel/decel rather than snapping there. Reset alongside
-# _approach_velocity below (a stationary unit carries no momentum, so the next march
-# always ramps up from zero, never resumes at a stale carried-over speed).
+# pace _move_to selects via accel/decel rather than snapping there. Bleeds off gradually
+# (friction, not a snap) in lockstep with _approach_velocity above whenever the unit isn't
+# actively locomoting this tick — see the decay guard in _physics_process.
 var _current_speed: float = 0.0
 # Read-only public view of the ramping speed above, for consumers outside this script
 # (the order overlay's speed label). Keeps _current_speed private while giving readers a
@@ -794,20 +799,32 @@ func _physics_process(delta: float) -> void:
 	UnitRelief.update(self)
 	_ranks_closed = UnitFormation.should_close_ranks(_ranks_closed, soldiers, max_soldiers)
 
-	# A stationary, non-fighting unit carries no charge momentum: drop any leftover
-	# approach velocity so a later standing strike can't charge off it. While FIGHTING we
-	# keep it — a strike held back by attack cooldown on the contact frame still charges
-	# on the next — and _strike spends it, so grinding strikes after the first don't. This
-	# clear is instant and unconditional on speed, unlike the friction decay below: it's a
-	# combat-balance rule (no stale charge bonus), not a locomotion one, so it always drops
-	# to zero the moment a unit stops actively marching.
+	# A stationary, non-fighting unit's momentum bleeds off under the same friction as an
+	# orderly arrival (arrival_brake_rate(), the rate _move_to's own braking branch uses) —
+	# whenever the unit isn't actively locomoting this tick (no _move_to call). _current_speed
+	# ramps down instead of snapping to zero, and _approach_velocity — the unit's actual
+	# travel velocity (SoldierBodies' march feed-forward and UnitCombat's charge bonus both
+	# already read it as such; it was never combat-only, just under-documented as one) —
+	# decays in lockstep: same direction, magnitude rescaled to the new _current_speed. No
+	# separate instant "combat balance" reset — one velocity, one friction rule, kinematic
+	# and cosmetic together. While FIGHTING this whole block is skipped, so a strike held
+	# back by attack cooldown on the contact frame still charges on the next (_strike itself
+	# spends the velocity on that first contact — see UnitCombat.strike — so grinding
+	# strikes after don't re-charge).
 	#
-	# _current_speed instead bleeds off gradually here, at the same arrival_brake_rate()
-	# an orderly march already uses to stop (see _move_to's own arrival branch) — friction,
-	# not a snap, whenever the unit isn't actively locomoting this tick (no _move_to call).
-	# This is purely cosmetic/physical feel: nothing reads _current_speed as a locomotion
-	# gate the way combat code reads _approach_velocity, so slowing its decay changes no
-	# gameplay outcome, only how many ticks a halted unit's speed readout takes to reach 0.
+	# Kinematic, not cosmetic: residual speed actually coasts the unit forward as it decays,
+	# mirroring _move_to's own effective_speed/advance/field-bounds-clamp, so a stopping unit
+	# visibly slides to rest instead of a decaying number sitting frozen in place.
+	#
+	# Direction of travel is its own quantity, distinct from `facing` (visual/formation
+	# orientation) -- the two can differ (an orderly march pivots facing gradually onto
+	# its heading, so mid-turn the body still points somewhere other than where it's
+	# actually moving). Read _approach_velocity's direction before rescaling its magnitude
+	# below, rather than substituting `facing` (which would coast the unit toward whatever
+	# it happens to be oriented at, not where it was actually headed). Rescaling instead of
+	# zeroing also keeps that direction valid on every subsequent idle tick, so a multi-tick
+	# coast to a full stop follows one consistent heading rather than losing it after the
+	# first tick.
 	#
 	# Guard on both freeze timers too: a unit that was actively cruising and gets
 	# re-ordered is frozen by start_order_response() for order_response_delay seconds,
@@ -823,8 +840,21 @@ func _physics_process(delta: float) -> void:
 	# is a no-op for it — this only changes behavior for a unit that was moving.
 	if not _moved_last_frame and state != State.FIGHTING \
 			and _order_response_timer <= 0.0 and _reform_timer <= 0.0:
-		_approach_velocity = Vector2.ZERO
+		var travel_dir: Vector2 = _approach_velocity.normalized() \
+				if _approach_velocity.length_squared() > 0.0001 else Vector2.ZERO
 		_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
+		# Terrain-scaled, matching _move_to's own effective_speed -- a unit coasting to a
+		# stop in a forest carries proportionally less real velocity, just like one still
+		# under active order control, so downstream consumers (the march feed-forward, the
+		# charge-bonus dot product) see a consistent value regardless of which code path
+		# last touched _approach_velocity.
+		var terrain_speed: float = PathField.active.speed_at(position) \
+				if PathField.active != null else 1.0
+		_approach_velocity = travel_dir * (_current_speed * terrain_speed)
+		if _current_speed > 0.0 and travel_dir != Vector2.ZERO:
+			position += travel_dir * (_current_speed * terrain_speed * delta)
+			position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+			position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 
 	# The parallel soldier-body layer (seeding + the global engaged-soldier
 	# separation) is orchestrated once per tick by Battle, AFTER every unit has
