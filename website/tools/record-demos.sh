@@ -72,6 +72,7 @@ DEMOS=(
   "roll_the_line|demos/inputs/roll-the-line.json|30|270|640|input"
   "multi_click_speeds|demos/inputs/multi-click-speeds.json|30|330|720|input"
   "knockback_focus|demos/inputs/knockback-focus.json|30|320|720|input"
+  "coast_to_stop|demos/inputs/idle-speed-friction.json|30|220|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a
