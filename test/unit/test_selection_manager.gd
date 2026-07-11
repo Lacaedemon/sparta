@@ -757,10 +757,12 @@ func test_finish_right_button_resets_the_click_count_after_a_drag() -> void:
 
 const EQUAL_DEPTH := SelectionManagerScript.FormUpDist.EQUAL_DEPTH
 const EQUAL_WIDTH := SelectionManagerScript.FormUpDist.EQUAL_WIDTH
+const EQUAL_DEPTH_SPACE := SelectionManagerScript.FormUpDist.EQUAL_DEPTH_SPACE
+const EQUAL_WIDTH_COUNT := SelectionManagerScript.FormUpDist.EQUAL_WIDTH_COUNT
 
 
 func test_form_up_equal_depth_gives_units_the_same_rank_depth() -> void:
-	# Equal-depth (default): a bigger unit gets MORE files than a smaller one, but both
+	# Equal-depth (count basis): a bigger unit gets MORE files than a smaller one, but both
 	# deploy at (about) the same number of ranks — the uniform battle-line look.
 	var sm := _sm()
 	var big := _unit()
@@ -807,8 +809,8 @@ func test_form_up_equal_depth_uses_average_spacing_for_a_mixed_formation_group()
 
 
 func test_form_up_equal_width_gives_units_the_same_frontage() -> void:
-	# Equal-width: same files for equal-line-share regardless of size, so a big and a small
-	# unit get the same frontage (the small one just ends up deeper).
+	# Equal-width (space basis): same files for equal-line-share regardless of size, so a big
+	# and a small unit get the same frontage (the small one just ends up deeper).
 	var sm := _sm()
 	var big := _unit()
 	big.max_soldiers = 200
@@ -819,6 +821,103 @@ func test_form_up_equal_width_gives_units_the_same_frontage() -> void:
 			"equal width gives both units the same frontage")
 
 
+func test_form_up_equal_width_count_gives_units_the_same_file_count() -> void:
+	# Equal-width, count basis: every unit gets the same FILE count directly (the mode
+	# EQUAL_WIDTH's space basis is measured against) -- for a same-density group the two
+	# coincide (see test_form_up_equal_width_count_matches_equal_width_for_a_same_density_group).
+	var sm := _sm()
+	var big := _unit()
+	big.max_soldiers = 200
+	var small := _unit()
+	small.max_soldiers = 100
+	var slices: Array = sm._form_up_slices(
+			[big, small], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH_COUNT)
+	assert_eq(slices[0]["files"], slices[1]["files"],
+			"equal-width-count gives both units the same file count")
+
+
+func test_form_up_equal_width_count_matches_equal_width_for_a_same_density_group() -> void:
+	# The space and count bases of a dimension coincide whenever every unit in the drag
+	# shares one spacing_scale -- both derive the same shared file count from the same
+	# usable span, just via different search shapes.
+	var sm := _sm()
+	var big := _unit()
+	big.max_soldiers = 200
+	var small := _unit()
+	small.max_soldiers = 100
+	var space_slices: Array = sm._form_up_slices(
+			[big, small], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH)
+	var count_slices: Array = sm._form_up_slices(
+			[big, small], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH_COUNT)
+	assert_eq(int(space_slices[0]["files"]), int(count_slices[0]["files"]),
+			"same-density group: equal-width and equal-width-count agree (big unit)")
+	assert_eq(int(space_slices[1]["files"]), int(count_slices[1]["files"]),
+			"same-density group: equal-width and equal-width-count agree (small unit)")
+
+
+func test_form_up_equal_width_count_differs_for_a_mixed_density_group() -> void:
+	# The count basis holds file count equal (so a TIGHT unit's slice is physically narrower
+	# than a LOOSE unit's at the same count); the space basis (EQUAL_WIDTH) instead holds
+	# frontage equal, giving them DIFFERENT file counts. Confirms the two bases are genuinely
+	# distinct for a mixed group, not just differently-named aliases of the same math.
+	var sm := _sm()
+	var tight := _unit()
+	tight.max_soldiers = 100
+	tight.set_formation(UnitScript.FORMATION_TIGHT)
+	var loose := _unit()
+	loose.max_soldiers = 100
+	loose.set_formation(UnitScript.FORMATION_LOOSE)
+	assert_ne(tight.spacing_scale, loose.spacing_scale,
+			"the two units must actually differ in density for this test to mean anything")
+	var slices: Array = sm._form_up_slices(
+			[tight, loose], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH_COUNT)
+	assert_eq(int(slices[0]["files"]), int(slices[1]["files"]),
+			"equal-width-count holds file count equal even across densities")
+
+
+func test_form_up_equal_depth_space_gives_units_the_same_physical_depth() -> void:
+	# Equal-depth (space basis, the default): a TIGHT unit packs more ranks into the same
+	# physical depth than a LOOSE one, so their RANK COUNTS differ even though their physical
+	# depths agree -- the opposite of EQUAL_DEPTH's own count-basis test above.
+	var sm := _sm()
+	var tight := _unit()
+	tight.max_soldiers = 100
+	tight.set_formation(UnitScript.FORMATION_TIGHT)
+	var loose := _unit()
+	loose.max_soldiers = 100
+	loose.set_formation(UnitScript.FORMATION_LOOSE)
+	assert_ne(tight.spacing_scale, loose.spacing_scale,
+			"the two units must actually differ in density for this test to mean anything")
+	var slices: Array = sm._form_up_slices(
+			[tight, loose], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH_SPACE)
+	var ranks_tight: int = int(ceil(100.0 / float(slices[0]["files"])))
+	var ranks_loose: int = int(ceil(100.0 / float(slices[1]["files"])))
+	var depth_tight: float = float(ranks_tight - 1) * UnitScript.FORMATION_SPACING * tight.spacing_scale
+	var depth_loose: float = float(ranks_loose - 1) * UnitScript.FORMATION_SPACING * loose.spacing_scale
+	assert_ne(ranks_tight, ranks_loose,
+			"physically-equal depth gives the tighter unit MORE ranks than the looser one")
+	assert_almost_eq(depth_tight, depth_loose, UnitScript.FORMATION_SPACING * tight.spacing_scale,
+			"both units form up to within one rank's worth of the same physical depth")
+
+
+func test_form_up_equal_depth_space_matches_equal_depth_for_a_same_density_group() -> void:
+	# For a same-density group the reference-depth conversion is the identity, so the space
+	# and count bases of "equal depth" must produce IDENTICAL results.
+	var sm := _sm()
+	var big := _unit()
+	big.max_soldiers = 200
+	var small := _unit()
+	small.max_soldiers = 100
+	var count_slices: Array = sm._form_up_slices(
+			[big, small], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH)
+	var space_slices: Array = sm._form_up_slices(
+			[big, small], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH_SPACE)
+	assert_eq(int(count_slices[0]["files"]), int(space_slices[0]["files"]),
+			"same-density group: equal-depth and equal-depth-space agree (big unit)")
+	assert_eq(int(count_slices[1]["files"]), int(space_slices[1]["files"]),
+			"same-density group: equal-depth and equal-depth-space agree (small unit)")
+
+
 func test_form_up_single_unit_slice_fills_the_whole_line() -> void:
 	# One unit collapses to the old behaviour: no gap, slice centre at the line midpoint,
 	# regardless of mode.
@@ -826,9 +925,10 @@ func test_form_up_single_unit_slice_fills_the_whole_line() -> void:
 	var u := _unit()
 	u.max_soldiers = 120
 	# A lone unit fills the 140 px drag with the same frontage the original single-unit deploy
-	# used (files_for_halfwidth of the half-width) — in BOTH modes, since equal depth is vacuous.
+	# used (files_for_halfwidth of the half-width) — in EVERY mode, since holding anything
+	# "equal" is vacuous with only one unit to compare.
 	var want_files: int = UnitFormation.files_for_halfwidth(70.0, 120)
-	for mode in [EQUAL_DEPTH, EQUAL_WIDTH]:
+	for mode in [EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT]:
 		var slices: Array = sm._form_up_slices([u], Vector2(400, 500), Vector2(540, 500), mode)
 		assert_eq(slices.size(), 1, "a lone unit is one slice")
 		assert_almost_eq(slices[0]["center"].x, 470.0, 0.001, "centred on the line midpoint")

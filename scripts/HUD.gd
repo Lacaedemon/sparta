@@ -10,11 +10,14 @@ const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
 const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
 const UnitRef = preload("res://scripts/Unit.gd")
 
-# Stable ids for the Menu popup's items (independent of index / separators). The two
-# MENU_FORMUP_* ids set the default multi-unit form-up distribution (radio-checked).
+# Stable ids for the Menu popup's items (independent of index / separators). The four
+# MENU_FORMUP_EQUAL_* ids set the default multi-unit form-up distribution (radio-checked);
+# the four MENU_FORMUP_CYCLE_* ids toggle Y-key cycle membership (see _FORMUP_ENTRIES below).
 enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
-		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH,
-		MENU_FORMUP_CYCLE_DEPTH, MENU_FORMUP_CYCLE_WIDTH,
+		MENU_FORMUP_EQUAL_DEPTH_SPACE, MENU_FORMUP_EQUAL_DEPTH,
+		MENU_FORMUP_EQUAL_WIDTH, MENU_FORMUP_EQUAL_WIDTH_COUNT,
+		MENU_FORMUP_CYCLE_DEPTH_SPACE, MENU_FORMUP_CYCLE_DEPTH,
+		MENU_FORMUP_CYCLE_WIDTH, MENU_FORMUP_CYCLE_WIDTH_COUNT,
 		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
 		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS }
 
@@ -60,6 +63,22 @@ const _STANCE_ENTRIES := [
 	{"id": 11, "mode": BattleRef.OrderMode.CHASE, "label": "Chase", "slug": "chase"},
 	{"id": 12, "mode": BattleRef.OrderMode.WEDGE_CHARGE, "label": "Wedge charge", "slug": "wedge_charge"},
 	{"id": 13, "mode": BattleRef.OrderMode.KNOCKBACK_FOCUS, "label": "Knockback focus", "slug": "knockback_focus"},
+]
+
+# The four multi-unit form-up distribution modes, in menu order (the default, EQUAL_DEPTH_SPACE,
+# first). Each entry drives BOTH the "default" radio item and the "Y-key cycles through" check
+# item for that mode, sharing one label so the two sections read consistently. Adding a mode
+# updates the menu, the sync/dispatch logic, and the labels in one place -- see
+# SelectionManager.FormUpDist's own doc comment for what each mode holds equal.
+const _FORMUP_ENTRIES := [
+	{"mode": SelectionManagerRef.FormUpDist.EQUAL_DEPTH_SPACE, "label": "Equal depth (space)",
+		"default_id": MENU_FORMUP_EQUAL_DEPTH_SPACE, "cycle_id": MENU_FORMUP_CYCLE_DEPTH_SPACE},
+	{"mode": SelectionManagerRef.FormUpDist.EQUAL_DEPTH, "label": "Equal depth (count)",
+		"default_id": MENU_FORMUP_EQUAL_DEPTH, "cycle_id": MENU_FORMUP_CYCLE_DEPTH},
+	{"mode": SelectionManagerRef.FormUpDist.EQUAL_WIDTH, "label": "Equal width (space)",
+		"default_id": MENU_FORMUP_EQUAL_WIDTH, "cycle_id": MENU_FORMUP_CYCLE_WIDTH},
+	{"mode": SelectionManagerRef.FormUpDist.EQUAL_WIDTH_COUNT, "label": "Equal width (count)",
+		"default_id": MENU_FORMUP_EQUAL_WIDTH_COUNT, "cycle_id": MENU_FORMUP_CYCLE_WIDTH_COUNT},
 ]
 
 # Display names and menu order for every formation mode, shared by the button
@@ -186,12 +205,12 @@ func _ready() -> void:
 	# Default split for a multi-unit drag-to-form-up (radio: pick one). The live mode can
 	# also be cycled mid-battle with the form-up distribution hotkey.
 	popup.add_separator("Form-up: split a line by…")
-	popup.add_radio_check_item("Equal depth (ranks)", MENU_FORMUP_EQUAL_DEPTH)
-	popup.add_radio_check_item("Equal width (frontage)", MENU_FORMUP_EQUAL_WIDTH)
+	for entry in _FORMUP_ENTRIES:
+		popup.add_radio_check_item(entry["label"], entry["default_id"])
 	# Which modes the Y-key cycles through (check to include, uncheck to skip).
 	popup.add_separator("Form-up: Y-key cycles through…")
-	popup.add_check_item("Equal depth (ranks)", MENU_FORMUP_CYCLE_DEPTH)
-	popup.add_check_item("Equal width (frontage)", MENU_FORMUP_CYCLE_WIDTH)
+	for entry in _FORMUP_ENTRIES:
+		popup.add_check_item(entry["label"], entry["cycle_id"])
 	popup.add_separator()
 	popup.add_check_item("Reform before move", MENU_REFORM_BEFORE_MOVE)
 	popup.add_check_item("Walk advance (no jog/sprint)", MENU_WALK_ADVANCE)
@@ -341,23 +360,19 @@ func _sync_setting_toggles() -> void:
 	popup.set_item_checked(popup.get_item_index(MENU_EDGE_SCROLL), Settings.edge_scroll)
 	popup.set_item_checked(popup.get_item_index(MENU_SFX), Settings.sfx_enabled)
 	# Radio-check the chosen default form-up distribution. Compare each item to the setting
-	# directly (not `not depth`) so adding a third mode later can't leave both unchecked.
-	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_DEPTH),
-			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH)
-	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_WIDTH),
-			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
-	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_DEPTH),
-			Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_DEPTH))
-	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
-			Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_WIDTH))
-	# Disable the cycle checkbox for whichever mode is the current battle default: unchecking
-	# it would leave the default unreachable by the Y-key cycle, with no feedback that it
-	# happened. Disabling it (rather than warning after the fact) makes the inconsistency
-	# impossible instead of just visible.
-	popup.set_item_disabled(popup.get_item_index(MENU_FORMUP_CYCLE_DEPTH),
-			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH)
-	popup.set_item_disabled(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
-			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
+	# directly (not e.g. `not depth`), so a table with any number of modes can't leave more
+	# or fewer than exactly one item checked.
+	for entry in _FORMUP_ENTRIES:
+		popup.set_item_checked(popup.get_item_index(entry["default_id"]),
+				Settings.form_up_dist_default == entry["mode"])
+		popup.set_item_checked(popup.get_item_index(entry["cycle_id"]),
+				Settings.form_up_dist_cycle.has(entry["mode"]))
+		# Disable the cycle checkbox for whichever mode is the current battle default:
+		# unchecking it would leave the default unreachable by the Y-key cycle, with no
+		# feedback that it happened. Disabling it (rather than warning after the fact) makes
+		# the inconsistency impossible instead of just visible.
+		popup.set_item_disabled(popup.get_item_index(entry["cycle_id"]),
+				Settings.form_up_dist_default == entry["mode"])
 	# The default can also become excluded the other way: the player narrows the cycle to one
 	# OTHER mode, then later switches the default radio to the excluded one. Guarantee the
 	# current default is always in the cycle, and re-check its (now-disabled) box directly —
@@ -368,10 +383,9 @@ func _sync_setting_toggles() -> void:
 		cycle.append(Settings.form_up_dist_default)
 		Settings.form_up_dist_cycle = SelectionManagerRef.FORM_UP_DIST_CYCLE.filter(
 				func(m) -> bool: return cycle.has(m))
-		popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_DEPTH),
-				Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_DEPTH))
-		popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
-				Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_WIDTH))
+		for entry in _FORMUP_ENTRIES:
+			popup.set_item_checked(popup.get_item_index(entry["cycle_id"]),
+					Settings.form_up_dist_cycle.has(entry["mode"]))
 	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
 			Settings.reform_before_move)
 	popup.set_item_checked(popup.get_item_index(MENU_WALK_ADVANCE),
@@ -405,6 +419,17 @@ func _refresh_hint() -> void:
 
 ## Dispatch a Menu popup selection by its stable item id.
 func _on_menu_id(id: int) -> void:
+	# Dispatched via a table scan ahead of the match: match's case list is static, so it
+	# can't loop over _FORMUP_ENTRIES the way this scan does -- one case per entry would
+	# defeat the point of the table.
+	for entry in _FORMUP_ENTRIES:
+		if id == entry["default_id"]:
+			# Settings.changed -> _sync_setting_toggles re-checks the radios.
+			Settings.form_up_dist_default = entry["mode"]
+			return
+		if id == entry["cycle_id"]:
+			_toggle_form_up_cycle(entry["mode"])
+			return
 	match id:
 		MENU_RESTART:
 			_on_restart()
@@ -417,15 +442,6 @@ func _on_menu_id(id: int) -> void:
 			Settings.edge_scroll = not Settings.edge_scroll
 		MENU_SFX:
 			Settings.sfx_enabled = not Settings.sfx_enabled
-		MENU_FORMUP_EQUAL_DEPTH:
-			# Settings.changed -> _sync_setting_toggles re-checks the radios.
-			Settings.form_up_dist_default = SelectionManagerRef.FormUpDist.EQUAL_DEPTH
-		MENU_FORMUP_EQUAL_WIDTH:
-			Settings.form_up_dist_default = SelectionManagerRef.FormUpDist.EQUAL_WIDTH
-		MENU_FORMUP_CYCLE_DEPTH:
-			_toggle_form_up_cycle(Settings.FORM_UP_DIST_EQUAL_DEPTH)
-		MENU_FORMUP_CYCLE_WIDTH:
-			_toggle_form_up_cycle(Settings.FORM_UP_DIST_EQUAL_WIDTH)
 		MENU_REFORM_BEFORE_MOVE:
 			Settings.reform_before_move = not Settings.reform_before_move
 		MENU_WALK_ADVANCE:

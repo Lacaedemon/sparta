@@ -35,20 +35,39 @@ const FORM_UP_COLOR: Color = Color(0.45, 0.95, 0.55, 0.95)   # match the move-or
 # Gap (world px) left between adjacent units' slices in a multi-unit line, so each regiment
 # reads as distinct and their flanks don't jostle at the seams.
 const MULTI_FORM_UP_GAP: float = 12.0
+# A max_soldiers cap large enough that files_for_halfwidth's own [1, max_soldiers] clamp never
+# binds when computing a SHARED file count (before the real per-unit clamp is applied
+# separately) -- see _equal_count_width_files. Far above any loadout's actual max_soldiers.
+const UNBOUNDED_FILES: int = 1000000
 
-# How a multi-unit form-up splits the dragged line among the selected units. Equal depth
-# (the default) gives every unit the same number of ranks — wider units just get more files,
-# the uniform battle-line look; equal width gives every unit the same frontage regardless of
-# size. The int values mirror Settings.form_up_dist_default (persisted), so keep them aligned.
-enum FormUpDist { EQUAL_DEPTH, EQUAL_WIDTH }
+# How a multi-unit form-up splits the dragged line among the selected units, along two
+# independent axes: which DIMENSION is held equal (depth = ranks, front-to-back; width =
+# files, the dragged frontage), and which BASIS it's held equal in (space = physical world
+# units, accounting for each unit's own spacing_scale; count = a plain integer rank/file
+# count, blind to spacing differences). EQUAL_DEPTH_SPACE is the default: every unit forms up
+# to the same PHYSICAL depth (a TIGHT unit packs more ranks into that depth than a LOOSE one).
+# EQUAL_DEPTH is the count basis -- every unit gets the same RANK COUNT regardless of spacing,
+# so a LOOSE unit ends up physically deeper than a TIGHT one at the same rank count.
+# EQUAL_WIDTH is the space basis for width -- every unit gets the same PHYSICAL frontage.
+# EQUAL_WIDTH_COUNT is the count basis for width -- every unit gets the same FILE count. The
+# two bases coincide (produce identical results) whenever every unit in the drag shares the
+# same spacing_scale (the common same-formation-mode case); they diverge only for a mixed
+# TIGHT/LOOSE/NORMAL group. The int values mirror Settings.form_up_dist_default (persisted)
+# and are append-only -- EQUAL_DEPTH/EQUAL_WIDTH keep their original values so an existing
+# player's persisted choice doesn't silently change meaning; new modes are added after them.
+enum FormUpDist { EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT }
 const FORM_UP_DIST_NAMES := {
-	FormUpDist.EQUAL_DEPTH: "Equal depth",
-	FormUpDist.EQUAL_WIDTH: "Equal width",
+	FormUpDist.EQUAL_DEPTH: "Equal depth (count)",
+	FormUpDist.EQUAL_WIDTH: "Equal width (space)",
+	FormUpDist.EQUAL_DEPTH_SPACE: "Equal depth (space)",
+	FormUpDist.EQUAL_WIDTH_COUNT: "Equal width (count)",
 }
-# Canonical mode list — the full set in preferred order. Used as the fallback when
-# Settings.form_up_dist_cycle is empty (all modes disabled), and as the reference for
-# validating cycle entries loaded from disk. Players configure a subset in ☰ Menu.
-const FORM_UP_DIST_CYCLE := [FormUpDist.EQUAL_DEPTH, FormUpDist.EQUAL_WIDTH]
+# Canonical mode list — the full set in preferred order (the default first). Used as the
+# fallback when Settings.form_up_dist_cycle is empty (all modes disabled), and as the
+# reference for validating cycle entries loaded from disk. Players configure a subset in
+# ☰ Menu.
+const FORM_UP_DIST_CYCLE := [FormUpDist.EQUAL_DEPTH_SPACE, FormUpDist.EQUAL_DEPTH,
+		FormUpDist.EQUAL_WIDTH, FormUpDist.EQUAL_WIDTH_COUNT]
 const FORM_UP_DIST_CYCLE_KEY := KEY_Y   # cycles the live distribution mode
 const DEMO_FORMUP_WINDOW: int = 90   # ticks a replayed deploy line lingers (spans the march)
 
@@ -94,8 +113,8 @@ var _rmb_shift: bool = false   # Shift state captured at right-button press
 # Live multi-unit form-up distribution mode (a FormUpDist value). Starts at the persisted
 # default and is cycled on the fly by FORM_UP_DIST_CYCLE_KEY; _form_up_dist_default tracks
 # the persisted default so a menu change to it snaps the live mode over (see _on_settings_changed).
-var _form_up_dist: int = FormUpDist.EQUAL_DEPTH
-var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH
+var _form_up_dist: int = FormUpDist.EQUAL_DEPTH_SPACE
+var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH_SPACE
 # Live cycle list: the enabled subset of modes the Y-key steps through, in canonical order.
 # Derived from Settings.form_up_dist_cycle; rebuilt whenever that setting changes.
 var _form_up_dist_cycle: Array = FORM_UP_DIST_CYCLE.duplicate()
@@ -624,45 +643,117 @@ func _form_up_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
 
 
 ## The per-unit file (frontage) counts for a `usable`-wide span under distribution `mode`,
-## left->right matching `units`. Equal width splits the span evenly; equal depth picks a
-## shared rank depth so every unit deploys the same number of ranks (wider units get more
-## files). Each count is clamped to [1, max_soldiers].
+## left->right matching `units`. See the FormUpDist doc comment for what each of the four
+## modes holds equal. Each count is clamped to [1, max_soldiers].
 func _files_for_mode(units: Array, usable: float, mode: int) -> Array:
-	# A lone unit just fills the drag in BOTH modes (equal depth is vacuous with one unit),
+	# A lone unit just fills the drag in every mode (there's nothing to hold equal against),
 	# matching the original single-unit deploy's frontage exactly.
 	if units.size() == 1:
 		var u0: Unit = units[0]
 		return [UnitFormation.files_for_halfwidth(usable * 0.5, u0.max_soldiers,
 				UnitRef.FORMATION_SPACING * u0.spacing_scale)]
+	match mode:
+		FormUpDist.EQUAL_WIDTH:
+			return _equal_space_width_files(units, usable)
+		FormUpDist.EQUAL_WIDTH_COUNT:
+			return _equal_count_width_files(units, usable)
+		FormUpDist.EQUAL_DEPTH_SPACE:
+			return _equal_space_depth_files(units, usable)
+		_:   # FormUpDist.EQUAL_DEPTH
+			return _equal_count_depth_files(units, usable)
+
+
+## EQUAL_WIDTH: split the span evenly by PHYSICAL frontage -- every unit gets the same
+## usable/N world-unit share, inverted to files via its own spacing (so a TIGHT unit's share
+## packs more files than a LOOSE unit's identical share).
+func _equal_space_width_files(units: Array, usable: float) -> Array:
+	var w: float = usable / float(units.size())
 	var out: Array = []
-	if mode == FormUpDist.EQUAL_WIDTH:
-		var w: float = usable / float(units.size())
-		for u in units:
-			out.append(UnitFormation.files_for_halfwidth(w * 0.5, u.max_soldiers,
-					UnitRef.FORMATION_SPACING * u.spacing_scale))
-		return out
-	# EQUAL_DEPTH: target a total frontage that fills the span (a grid of f files spans
-	# (f-1) gaps of spacing, so the units together want ~usable/spacing + N files), then
-	# share one rank depth across the units to hit it. Uses the AVERAGE spacing_scale
-	# across the selected units as the shared pitch. That's exact for the common case --
-	# a same-formation group, where every unit's spacing_scale is equal and the average
-	# equals it -- and a deliberate approximation for a genuinely mixed group (e.g. TIGHT
-	# spears + LOOSE archers dragged together): the average treats every selected unit's
-	# density evenly, rather than letting whichever unit happens to be first in the
-	# selection silently dictate the shared pitch. Mixing formation modes within one
-	# multi-unit drag is uncommon in practice, so a full per-unit-spacing depth solve
-	# (each unit's file count derived from its own spacing at a shared target depth) is
-	# more machinery than the benefit warrants; the average keeps the fix small while
-	# removing the arbitrary "first selected unit wins" bias.
-	var spacing_sum: float = 0.0
 	for u in units:
-		spacing_sum += u.spacing_scale
-	var effective_spacing: float = UnitRef.FORMATION_SPACING * (spacing_sum / float(units.size()))
+		out.append(UnitFormation.files_for_halfwidth(w * 0.5, u.max_soldiers,
+				UnitRef.FORMATION_SPACING * u.spacing_scale))
+	return out
+
+
+## EQUAL_WIDTH_COUNT: every unit gets the same FILE count -- the count counterpart to
+## _equal_space_width_files, which instead inverts each unit's own per-unit physical share
+## through its OWN spacing. Here the shared count is derived the same way (an equal usable/N
+## physical share per unit, inverted via files_for_halfwidth's own round-to-nearest formula),
+## but through the group's AVERAGE spacing (mirroring _equal_count_depth_files' own
+## average-spacing choice) rather than any one unit's -- so for a same-spacing group the two
+## bases produce IDENTICAL results (the average equals every unit's own spacing), and only
+## diverge for a genuinely mixed group, where physical frontage then differs unit to unit
+## (a TIGHT unit's files pack narrower than a LOOSE unit's at the same shared count).
+func _equal_count_width_files(units: Array, usable: float) -> Array:
+	var effective_spacing: float = _average_spacing(units)
+	var w: float = usable / float(units.size())
+	var shared_files: int = UnitFormation.files_for_halfwidth(
+			w * 0.5, UNBOUNDED_FILES, effective_spacing)
+	var out: Array = []
+	for u in units:
+		out.append(clampi(shared_files, 1, maxi(1, u.max_soldiers)))
+	return out
+
+
+## EQUAL_DEPTH: target a total frontage that fills the span (a grid of f files spans (f-1)
+## gaps of spacing, so the units together want ~usable/spacing + N files), then share one
+## RANK COUNT across the units to hit it (wider units just get more files). Uses the AVERAGE
+## spacing_scale across the selected units as the shared pitch for the frontage target --
+## exact for the common case (a same-formation group, where every unit's spacing_scale is
+## equal and the average equals it), and a deliberate approximation for a genuinely mixed
+## group (e.g. TIGHT spears + LOOSE archers): the average treats every selected unit's density
+## evenly, rather than letting whichever unit happens to be first in the selection silently
+## dictate the shared pitch. The shared quantity itself (the rank count) stays spacing-blind
+## by design -- every unit gets the SAME COUNT of ranks regardless of its own density, so a
+## LOOSE unit ends up physically deeper than a TIGHT one at that count. See
+## _equal_space_depth_files for the mode that instead holds PHYSICAL depth equal.
+func _equal_count_depth_files(units: Array, usable: float) -> Array:
+	var effective_spacing: float = _average_spacing(units)
 	var f_target: int = maxi(units.size(), int(round(usable / effective_spacing)) + units.size())
 	var depth: int = _equal_depth_for_target(units, f_target)
+	var out: Array = []
 	for u in units:
 		out.append(clampi(int(ceil(float(maxi(1, u.max_soldiers)) / float(depth))), 1, maxi(1, u.max_soldiers)))
 	return out
+
+
+## EQUAL_DEPTH_SPACE: every unit forms up to the same PHYSICAL depth (front-to-back extent),
+## the space counterpart to _equal_count_depth_files. The shared quantity searched for is a
+## REFERENCE rank count at the group's average spacing (matching _equal_count_depth_files'
+## own average-spacing frontage target), then converted to each unit's own rank count via
+## that unit's ACTUAL spacing -- so a TIGHT unit packs more ranks into the same physical depth
+## than a LOOSE one, instead of both sharing the same raw rank count. For a same-spacing
+## group (every unit sharing one formation mode) this produces IDENTICAL results to
+## _equal_count_depth_files, since the per-unit conversion is then the identity.
+func _equal_space_depth_files(units: Array, usable: float) -> Array:
+	var effective_spacing: float = _average_spacing(units)
+	var f_target: int = maxi(units.size(), int(round(usable / effective_spacing)) + units.size())
+	var ref_depth: int = _equal_space_depth_for_target(units, f_target, effective_spacing)
+	var out: Array = []
+	for u in units:
+		var ranks_u: int = _ranks_at_reference_depth(u, ref_depth, effective_spacing)
+		out.append(clampi(int(ceil(float(maxi(1, u.max_soldiers)) / float(ranks_u))), 1, maxi(1, u.max_soldiers)))
+	return out
+
+
+## The average FORMATION_SPACING-scaled pitch across `units` -- the shared reference spacing
+## both depth modes' frontage-target math uses (see _equal_count_depth_files' doc comment for
+## why an average rather than any one unit's own spacing).
+func _average_spacing(units: Array) -> float:
+	var spacing_sum: float = 0.0
+	for u in units:
+		spacing_sum += u.spacing_scale
+	return UnitRef.FORMATION_SPACING * (spacing_sum / float(units.size()))
+
+
+## `u`'s own rank count at a shared REFERENCE depth (a rank count expressed at the group's
+## average spacing): converts the reference depth's physical front-to-back extent to `u`'s
+## own rank count via its own spacing. Reduces to `ref_depth` itself when `u`'s spacing_scale
+## equals the group average (the common same-formation-group case).
+func _ranks_at_reference_depth(u: Unit, ref_depth: int, effective_spacing: float) -> int:
+	var physical_depth: float = float(ref_depth - 1) * effective_spacing
+	var spacing_u: float = UnitRef.FORMATION_SPACING * u.spacing_scale
+	return clampi(int(round(physical_depth / spacing_u)) + 1, 1, maxi(1, u.max_soldiers))
 
 
 ## The shallowest shared rank depth whose total files fit within `f_target` (so the deployed
@@ -687,6 +778,34 @@ func _total_files_at_depth(units: Array, depth: int) -> int:
 	var total: int = 0
 	for u in units:
 		total += int(ceil(float(maxi(1, u.max_soldiers)) / float(depth)))
+	return total
+
+
+## The shallowest shared REFERENCE depth (a rank count at the group's average spacing) whose
+## total files -- each unit's OWN rank count, derived by converting the reference depth's
+## physical extent through that unit's own spacing (_ranks_at_reference_depth) -- fit within
+## `f_target`. Mirrors _equal_depth_for_target's search shape exactly, substituting the
+## spacing-aware per-unit conversion for the plain "every unit gets `depth` ranks" mapping.
+func _equal_space_depth_for_target(units: Array, f_target: int, effective_spacing: float) -> int:
+	var total_soldiers: int = 0
+	var max_size: int = 1
+	for u in units:
+		var size: int = maxi(1, u.max_soldiers)
+		total_soldiers += size
+		max_size = maxi(max_size, size)
+	var depth: int = clampi(total_soldiers / maxi(1, f_target), 1, max_size)
+	while depth < max_size and _total_files_at_reference_depth(units, depth, effective_spacing) > f_target:
+		depth += 1
+	return depth
+
+
+## Total files across `units` at a shared REFERENCE depth: each unit's own rank count via
+## _ranks_at_reference_depth, then ceil(size / that unit's ranks).
+func _total_files_at_reference_depth(units: Array, ref_depth: int, effective_spacing: float) -> int:
+	var total: int = 0
+	for u in units:
+		var ranks_u: int = _ranks_at_reference_depth(u, ref_depth, effective_spacing)
+		total += int(ceil(float(maxi(1, u.max_soldiers)) / float(ranks_u)))
 	return total
 
 
