@@ -1067,3 +1067,57 @@ production call site can't reasonably do that (as here, `engaged_soldier_indices
 from many places with no natural place to thread a frame argument through) -- document the
 `reset()` requirement on the class itself and add it to every test that constructs its own
 units for that code path. (`Lacaedemon/sparta` PR #760, 2026-07-11.)
+
+## A symmetric "is X near Y" contact check needs BOTH sides' own range, not just one side's
+
+When computing whether two entities are within striking/contact distance of each other, and
+each side has its OWN independently-valued range (reach, radius, whatever), a check using only
+ONE side's range silently breaks the case where the OTHER side is the one with the longer
+range. This is the spear-vs-sword standoff already documented elsewhere in this file
+(`SoldierMelee.resolve`'s own reach search: "a longer reach lets a soldier strike foes who
+cannot strike back") — but it's easy to re-introduce the same class of bug in a NEW proximity
+check that doesn't reuse that exact code path.
+
+**Concrete case:** PR #760's `SoldierEnemyProximity.has_enemy_within(pos, team, self_radius)`
+computed `contact = self_radius + candidate_radius + candidate_reach` — using only the
+CANDIDATE enemy's reach, never the QUERYING soldier's own. A long-reach querier (a Schiltron
+spear, reach 48) could be wrongly dropped from the engaged set when facing a shorter-reach
+enemy (a sword, reach 26) at a distance the QUERIER could actually close (e.g. 40 units --
+beyond the sword's own 35-unit contact radius, but within the spear's 62-unit one). Caught by
+`claude[bot]` review, not the original implementation or its own tests (which only tested the
+candidate-has-a-longer-reach direction, never the reverse).
+
+**Fix:** `contact = self_radius + candidate_radius + maxf(self_reach, candidate_reach)` --
+thread the QUERYING side's own reach into the call (a new `self_reach` parameter), not just
+the candidate's. **How to apply:** whenever a new pairwise contact/proximity check is added
+for two entities with independently-valued per-side ranges, test BOTH directions explicitly
+(querier-is-longer-range and candidate-is-longer-range) rather than assuming symmetry --
+a same-magnitude test case can pass by coincidence even when the formula silently favors one
+side. (`Lacaedemon/sparta` PR #760, 2026-07-11.)
+
+## Claiming a demo change "can't be shown visually" needs a check for existing debug-visual precedent first
+
+Before writing `skip: true` with a "the difference isn't visually distinguishable" rationale,
+grep for an existing debug-visual overlay that already renders the exact internal state the
+change affects -- a sibling PR may have already built and used one for the very same function.
+
+**Concrete case:** PR #760 (closing #752) initially skipped its demo, reasoning that changing
+WHICH soldier index gets selected as an engaged/melee candidate wasn't something a viewer could
+see in a recorded clip. But PR #758 (the immediately-preceding partial fix to the SAME
+function, `engaged_soldier_indices()`) had already built and used
+`Settings.show_engaged_highlight` -- a dev/debug visual that tints exactly the returned
+soldiers amber -- for exactly this purpose. `claude[bot]` review caught the precedent; fixed by
+authoring a fresh scenario (`schiltron-asymmetric-pressure.json`, per the standing "author each
+demo scenario fresh" rule) using that existing highlight: a Schiltron pressed from only ONE
+side, so the highlight visibly concentrates on the pressed front instead of ringing the whole
+perimeter the way the prior PR's centroid-distance selection would regardless of attacker
+position -- a real, visible proof of the improvement.
+
+**How to apply:** before skipping a demo for an "internal selection logic, not visually
+distinguishable" reason, check whether ANY existing `Settings.show_*` debug toggle, highlight
+overlay, or similar dev visual already renders the specific internal state your change affects
+-- especially on a function a recent sibling PR also touched, since that PR may have built the
+exact visual tool you need. Only skip once you've confirmed no such visual exists. (Also
+verify locally with `dump-state.sh` before claiming the scenario demonstrates the fix, per this
+file's other verification-before-claiming entries -- don't just trust that the render will show
+what you intend.) (`Lacaedemon/sparta` PR #760, 2026-07-11.)
