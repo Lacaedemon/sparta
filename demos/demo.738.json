@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "A few-tick difference in how fast a halted unit's speed reads down to 0 (friction via arrival_brake_rate() instead of an instant snap) isn't visually distinguishable at normal demo GIF fidelity -- the position/render impact is sub-pixel over the affected ticks. Verified with unit tests (test_current_speed_decays_gradually_after_a_stationary_frame / test_current_speed_reaches_zero_after_enough_stationary_frames) rather than a recorded clip."
+}
