@@ -71,3 +71,20 @@ func test_accumulate_fans_apart_an_exactly_co_located_enemy_pair() -> void:
 	SoldierEnemyContact.accumulate([a, b], 90005)
 	assert_true(a._sim_body_vel[0].length() > 0.0 or b._sim_body_vel[0].length() > 0.0,
 		"a co-located enemy pair still resolves to a nonzero separating impulse")
+
+
+func test_accumulate_caps_a_soldiers_summed_velocity_across_multiple_simultaneous_enemies() -> void:
+	# Regression: enemy_contact_impulse's own KNOCKBACK_SPEED_MAX cap is scoped to ONE pair --
+	# a soldier touching several enemy bodies at once (e.g. a Square-perimeter defender pressed
+	# by more than one attacker from the same side) must not have their individually-capped
+	# impulses sum past that cap.
+	var a := _make_unit(1, 0, Vector2(2000, 2000))
+	var b := _make_unit(2, 1, Vector2(-2000, -2000))
+	# Two of b's soldiers overlap the SAME defender soldier from the SAME direction, so their
+	# impulses stack instead of partially canceling -- the worst case for the write-back clamp.
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)
+	b._sim_soldier_pos[1] = Vector2(5, 0)
+	SoldierEnemyContact.accumulate([a, b], 90006)
+	assert_true(a._sim_body_vel[0].length() <= SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
+		"a soldier's summed contact impulse across multiple simultaneous enemies stays capped, not additive")

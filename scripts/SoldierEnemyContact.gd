@@ -96,6 +96,15 @@ static func accumulate(units: Array, frame: int) -> void:
 				svel[a], svel[b], smass[a], sbrace[a], smass[b], sbrace[b], normal, overlap_frac)
 			delta_v[a] += impulses[0]
 			delta_v[b] += impulses[1]
+	# Apply each body's SUMMED delta under a clamp, not a raw add: enemy_contact_impulse's own
+	# KNOCKBACK_SPEED_MAX cap is scoped to one pair, but a soldier can be simultaneously touching
+	# several enemy bodies (a Square-perimeter defender pressed by more than one attacker from
+	# one side is exactly this) whose individual impulses each pass that per-pair cap yet sum to
+	# more. capped_knockback_velocity clamps the RESULTING velocity, mirroring the pile-on clamp
+	# SoldierMelee.resolve already applies to accumulated strike knockback on one body.
 	for k in range(n):
 		if delta_v[k] != Vector2.ZERO:
-			sowners[k]._sim_body_vel[sslots[k]] += delta_v[k]
+			var owner: Unit = sowners[k]
+			var slot: int = sslots[k]
+			owner._sim_body_vel[slot] = SoldierCombat.capped_knockback_velocity(
+				owner._sim_body_vel[slot], delta_v[k])
