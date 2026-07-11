@@ -1039,7 +1039,7 @@ func test_current_speed_decays_gradually_after_a_stationary_frame() -> void:
 	# Unlike _approach_velocity above (an instant, combat-balance clear so no stale charge
 	# bonus survives into a standing strike), _current_speed bleeds off at
 	# arrival_brake_rate() -- friction, not a snap -- whenever the unit isn't actively
-	# locomoting this tick. Regression guard for #738.
+	# locomoting this tick.
 	var u := _cavalry()
 	u._current_speed = u.move_speed
 	var brake: float = u.arrival_brake_rate()
