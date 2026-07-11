@@ -683,3 +683,39 @@ PathField.active = old_pf
 ```
 Do this in any new isolated-unit test that calls a `Unit` method sensitive to
 `PathField.active`, not just tests that are themselves about pathfinding.
+
+## A new stance's derived cap can invert the baseline it's supposed to exceed — check the full input range, not just a weak test case
+
+When a new order-mode/stance introduces its own derived cap or multiplier computed from
+geometry or other per-unit inputs (not a flat constant), verify across the REALISTIC RANGE
+of those inputs that the derived value can't fall below an existing baseline constant it's
+meant to exceed. A test that only exercises a narrow/weak scenario can pass while the
+general claim in its own assertion message is false for stronger inputs elsewhere in the
+range.
+
+**Concrete case:** PR #736 (knockback focus) added `SoldierCombat.clear_line_speed_cap()`
+— the default "just clear the line" push-distance cap, `sqrt(2 * body_accel *
+clear_distance)` — intending "trade damage for a much bigger push-back." But for realistic
+front-depth pairings (`Unit._front_depth()`'s own `attack_range * 0.5` cap bounds
+`clear_distance` to roughly 26-48 wu), the geometric formula tops out around 39.5-53.67
+wu/s, BELOW the ordinary attack's `KNOCKBACK_SPEED_MAX = 60.0` — so a strong/charging
+landed hit got shoved LESS far by the stance's own default variant than a plain attack
+already pushes it, the opposite of the stated design. The included test
+(`test_knockback_focus_pushes_the_defender_back_harder_than_a_normal_attacker`) asserted
+this generally ("even at the default 'clear the line' setting") but only exercised a weak,
+no-charge 12-soldier scenario where the normal-attack impulse never approached the cap, so
+it passed despite the inversion. Caught by a `claude[bot]` review pass, not by the original
+implementation or its own test.
+
+**Fix pattern:** floor the derived cap at the baseline it's meant to exceed
+(`maxf(KNOCKBACK_SPEED_MAX, clear_line_speed_cap(...))`, extracted as its own pure function
+`knockback_focus_clear_line_cap()` so the floor is directly unit-testable) rather than using
+the raw geometric formula alone. Add tests at BOTH ends of the input range: one proving the
+floor binds where the raw formula would undercut the baseline, one proving it doesn't clip
+a case where the raw formula already exceeds the baseline.
+
+**How to apply:** when reviewing (or writing) any new per-unit derived cap/multiplier that's
+framed as "at least as strong as / bigger than" an existing baseline, don't trust a single
+weak-case test to prove that framing — compute (or test) the derived value at the edges of
+the realistic input range and confirm it never crosses below the baseline it's supposed to
+dominate. (`Lacaedemon/sparta` PR #736, 2026-07-11.)
