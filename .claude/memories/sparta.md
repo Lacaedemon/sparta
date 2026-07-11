@@ -7,6 +7,39 @@ metadata:
 
 # Sparta — working notes
 
+## Standing design philosophy: bottom-up physics, no top-down gimmicks
+
+Sparta's combat/movement sim is built **bottom-up from individual-level physics**
+(mass, momentum, acceleration/friction, real collision), not top-down shortcuts. A
+mechanic should **emerge from the underlying physics**, not be bolted on as a flat
+modifier or an instant state switch that ignores it. Concretely:
+
+- **No snaps.** A continuously-rendered or continuously-simulated quantity (speed,
+  facing, translucency, position) should ease toward its target via a rate
+  (acceleration/friction), never jump there in one frame. #738/#739 fixed
+  `Unit._current_speed` bleeding off via friction instead of snapping to 0 (merged).
+  #740/#741 applies the same fix to routing translucency, fading it instead of
+  switching instantly (merged) — scoped to the regimental flag only, per design
+  feedback: the per-soldier marks and other chrome stay fully opaque.
+- **No inert numbers.** A quantity that represents real motion must actually cause
+  motion — a decaying speed that doesn't move the unit is a display artifact, not
+  physics. #742/#743 (open as of this writing) makes residual `_current_speed` coast
+  the unit forward as it decelerates, instead of counting down while `position` sits
+  frozen; the fix consolidates onto `_approach_velocity` (the unit's actual travel
+  velocity, already read by the soldier-body feed-forward and combat charge bonus —
+  never truly combat-only, just under-documented as one) rather than adding a
+  parallel velocity field. Check whether #743 has merged before citing this section
+  as describing the current codebase state rather than the in-flight direction.
+- **No top-down combat-multiplier gimmicks where a physical mechanism already exists.**
+  Prefer deriving an outcome (a spear stopping a charge, a knockback felling a soldier)
+  from mass/momentum/impulse over a flat "type X beats type Y" bonus. This is the
+  standing rationale behind #164/#296 (move collision to the individual soldier level)
+  and the long-horizon #550 (individual-level LOD simulation at Cannae scale).
+
+When implementing or reviewing a new mechanic, ask: does this emerge from the
+individual-level physics already in place, or is it a shortcut layered on top? Prefer
+the former; flag the latter as a candidate for this list.
+
 ## Pending: migrate to gha quarto-publish `@v2` (branch deploy)
 
 Sparta is the registered `quarto-publish` consumer in gha's `REVDEPS.md`, and
