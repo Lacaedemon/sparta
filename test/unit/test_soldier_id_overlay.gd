@@ -4,7 +4,7 @@ extends GutTest
 ## `_detailed_lod`. Purely cosmetic -- no sim/combat exercised. Drive it the way the
 ## engine does (add a live unit to the tree, request a redraw, let a frame pass) so
 ## Unit._draw actually runs under the real draw notification, per the render-only
-## overlay pattern used by test_unit_shields.gd.
+## overlay pattern's own coverage approach (see .claude/memories/sparta.md).
 
 
 func _live_unit() -> Unit:
