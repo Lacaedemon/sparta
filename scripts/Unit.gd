@@ -789,9 +789,10 @@ func _physics_process(delta: float) -> void:
 	# _current_speed instead bleeds off gradually here, at the same arrival_brake_rate()
 	# an orderly march already uses to stop (see _move_to's own arrival branch) — friction,
 	# not a snap, whenever the unit isn't actively locomoting this tick (no _move_to call).
-	# This is purely cosmetic/physical feel: nothing reads _current_speed as a locomotion
-	# gate the way combat code reads _approach_velocity, so slowing its decay changes no
-	# gameplay outcome, only how many ticks a halted unit's speed readout takes to reach 0.
+	# Kinematic, not cosmetic: residual speed actually coasts the unit forward along its
+	# current facing (below) as it decays, mirroring _move_to's own
+	# effective_speed/advance/field-bounds-clamp, so a stopping unit visibly slides to
+	# rest instead of a decaying number sitting frozen in place.
 	#
 	# Guard on both freeze timers too: a unit that was actively cruising and gets
 	# re-ordered is frozen by start_order_response() for order_response_delay seconds,
@@ -809,6 +810,12 @@ func _physics_process(delta: float) -> void:
 			and _order_response_timer <= 0.0 and _reform_timer <= 0.0:
 		_approach_velocity = Vector2.ZERO
 		_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
+		if _current_speed > 0.0:
+			var terrain_speed: float = PathField.active.speed_at(position) \
+					if PathField.active != null else 1.0
+			position += facing * (_current_speed * terrain_speed * delta)
+			position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+			position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 
 	# The parallel soldier-body layer (seeding + the global engaged-soldier
 	# separation) is orchestrated once per tick by Battle, AFTER every unit has

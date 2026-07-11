@@ -1049,7 +1049,8 @@ func test_current_speed_decays_gradually_after_a_stationary_frame() -> void:
 
 
 func test_current_speed_reaches_zero_after_enough_stationary_frames() -> void:
-	# Friction eventually brings a halted unit fully to rest, not perpetual coasting.
+	# Friction eventually brings a halted unit fully to rest -- see the coasting tests
+	# below for what happens to its position while that decay plays out.
 	var u := _cavalry()
 	u._current_speed = u.move_speed
 	var brake: float = u.arrival_brake_rate()
@@ -1057,6 +1058,42 @@ func test_current_speed_reaches_zero_after_enough_stationary_frames() -> void:
 	for _i in range(ticks_to_stop):
 		u._physics_process(0.016)
 	assert_eq(u._current_speed, 0.0, "friction converges cleanly to a full stop")
+
+
+func test_residual_speed_coasts_the_unit_forward_while_decaying() -> void:
+	# Speed must kinematically translate into motion, not just decay as an inert number
+	# while position sits frozen: a unit with residual speed coasts along its current
+	# facing as it decelerates, mirroring _move_to's own effective_speed/advance math.
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._current_speed = u.move_speed
+	var brake: float = u.arrival_brake_rate()
+	u._physics_process(0.1)
+	var expected_speed: float = u.move_speed - brake * 0.1
+	assert_almost_eq(u._current_speed, expected_speed, 0.001, "sanity check: speed decayed as expected")
+	assert_almost_eq(u.position.x, expected_speed * 0.1, 0.001,
+		"the unit advanced along facing by exactly the post-decay speed * delta")
+	assert_almost_eq(u.position.y, 0.0, 0.001, "no lateral drift off the facing axis")
+
+
+func test_residual_speed_coast_distance_matches_stopping_distance_physics() -> void:
+	# Total distance coasted while decelerating to a stop should match the classic
+	# stopping-distance formula v^2 / (2 * brake) (a constant-deceleration integral),
+	# not just that speed eventually reaches 0.
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._current_speed = u.move_speed
+	var brake: float = u.arrival_brake_rate()
+	var delta: float = 0.016
+	var ticks_to_stop: int = int(ceil(u.move_speed / brake / delta)) + 2
+	for _i in range(ticks_to_stop):
+		u._physics_process(delta)
+	assert_eq(u._current_speed, 0.0, "sanity check: fully stopped by the end of the loop")
+	var expected_distance: float = (u.move_speed * u.move_speed) / (2.0 * brake)
+	assert_almost_eq(u.position.x, expected_distance, expected_distance * 0.05,
+		"total coast distance matches the stopping-distance physics within discretization error")
 
 
 func test_strike_spends_the_charge_velocity() -> void:
