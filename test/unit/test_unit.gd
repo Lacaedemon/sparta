@@ -1119,6 +1119,28 @@ func test_residual_speed_does_not_coast_without_a_known_travel_direction() -> vo
 	PathField.active = old_pf
 
 
+func test_residual_speed_coast_terrain_scaling_matches_position_advance() -> void:
+	# _approach_velocity must stay terrain-scaled while coasting, exactly like _move_to's
+	# own effective_speed -- otherwise a unit coasting to a stop in slow terrain (a forest)
+	# publishes a velocity magnitude downstream consumers (SoldierBodies' march
+	# feed-forward, UnitCombat's charge-bonus dot product) would over-read relative to the
+	# unit's real, terrain-reduced speed of travel.
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 1600, 1000))
+	pf.set_speed_rect(Rect2(-100, -100, 200, 200), 0.5)   # slow zone straddling the unit
+	PathField.active = pf
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u._approach_velocity = Vector2.RIGHT * u.move_speed
+	u._current_speed = u.move_speed
+	u._physics_process(0.1)
+	assert_almost_eq(u._approach_velocity.length(), u._current_speed * 0.5, 0.001,
+		"the stored velocity magnitude reflects the 0.5x terrain speed, not the raw speed")
+	assert_almost_eq(u.position.x, u._current_speed * 0.5 * 0.1, 0.001,
+		"position advanced by the same terrain-scaled amount the velocity now reports")
+	PathField.active = old_pf
+
+
 func test_residual_speed_coast_distance_matches_stopping_distance_physics() -> void:
 	# Total distance coasted while decelerating to a stop should match the classic
 	# stopping-distance formula v^2 / (2 * brake) (a constant-deceleration integral),

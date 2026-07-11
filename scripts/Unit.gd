@@ -827,10 +827,15 @@ func _physics_process(delta: float) -> void:
 		var travel_dir: Vector2 = _approach_velocity.normalized() \
 				if _approach_velocity.length_squared() > 0.0001 else Vector2.ZERO
 		_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
-		_approach_velocity = travel_dir * _current_speed
+		# Terrain-scaled, matching _move_to's own effective_speed -- a unit coasting to a
+		# stop in a forest carries proportionally less real velocity, just like one still
+		# under active order control, so downstream consumers (the march feed-forward, the
+		# charge-bonus dot product) see a consistent value regardless of which code path
+		# last touched _approach_velocity.
+		var terrain_speed: float = PathField.active.speed_at(position) \
+				if PathField.active != null else 1.0
+		_approach_velocity = travel_dir * (_current_speed * terrain_speed)
 		if _current_speed > 0.0 and travel_dir != Vector2.ZERO:
-			var terrain_speed: float = PathField.active.speed_at(position) \
-					if PathField.active != null else 1.0
 			position += travel_dir * (_current_speed * terrain_speed * delta)
 			position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
 			position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
