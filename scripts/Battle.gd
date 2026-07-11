@@ -220,6 +220,12 @@ func _ready() -> void:
 			and UnitRef.ORDER_WEDGE_CHARGE == OrderMode.WEDGE_CHARGE \
 			and UnitRef.ORDER_KNOCKBACK_FOCUS == OrderMode.KNOCKBACK_FOCUS,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
+	# Same mirror-and-assert pattern for Unit's NUDGE_* constants (Battle.NudgeDir).
+	assert(UnitRef.NUDGE_LEFT == NudgeDir.LEFT \
+			and UnitRef.NUDGE_RIGHT == NudgeDir.RIGHT \
+			and UnitRef.NUDGE_BACK == NudgeDir.BACK \
+			and UnitRef.NUDGE_FORWARD == NudgeDir.FORWARD,
+			"Unit nudge-direction mirror constants are out of sync with Battle.NudgeDir")
 
 	# Start a fresh recording for every live battle (so any battle can be
 	# replayed for debugging). During playback the recorder is already armed by

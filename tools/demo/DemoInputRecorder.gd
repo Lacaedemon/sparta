@@ -307,6 +307,12 @@ func _unit_record(u: Node) -> Dictionary:
 		"rank_relief": u.rank_relief,
 		"target_enemy_uid": target_uid,
 		"engaged": u.is_engaged(),
+		# A single readable label for the in-progress drill/maneuver (#515), consolidating
+		# current_order/order_phase/order_mode into one field a verifier can read directly --
+		# e.g. a conversio and a centre-pivot both otherwise read as current_order: "MOVE"/
+		# order_phase: "TURN" or current_order: "QUARTER_TURN" respectively, so this spares a
+		# reader from reconstructing the distinction by hand. See Unit.current_maneuver().
+		"maneuver": DemoState.maneuver_name(u.current_maneuver()),
 		# The formation's simulation tier (docs/large-scale-simulation-design.md): CLOSE runs
 		# the full per-soldier arrays, FAR is the aggregate record with no individual bodies.
 		# Serialized as the readable name via FormationTier's own stable table.

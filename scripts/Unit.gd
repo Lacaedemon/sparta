@@ -9,6 +9,25 @@ class_name Unit
 
 enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }
 
+## Readable label for current_maneuver(): distinguishes the in-progress drill/turn a plain
+## `state`/`formation`/`order_mode` read can't -- e.g. an about-face and a centre-pivot both
+## read as `state: MOVING` otherwise. See current_maneuver()'s own docstring for how each
+## value is derived and its precedence over the others.
+enum Maneuver {
+	IDLE,
+	MARCHING,
+	FIGHTING,
+	CONVERSIO,
+	QUARTER_TURN,
+	WHEELING,
+	FILE_DOUBLE_DEEPEN,
+	FILE_DOUBLE_WIDEN,
+	NUDGE_SIDESTEP,
+	NUDGE_BACKSTEP,
+	NUDGE_FORWARD_STEP,
+	CYCLE_CHARGE,
+}
+
 # Stable per-battle id (assigned by Battle.gd at spawn). Replays reference units
 # by this so recorded orders survive scene reloads.
 var uid: int = -1
@@ -157,6 +176,13 @@ var frontage_override: int = 0
 # absolutely, by Battle._apply_order_cmd (ORDER_FRONTAGE_ONLY carries it), so
 # re-applying the pending order on the tick is idempotent like frontage_override.
 var frontage_anchor_offset: float = 0.0
+# Physics-frame stamp of the last set_frontage() call that actually changed the
+# effective file count, and which direction it moved -- current_maneuver()'s only
+# way to report FILE_DOUBLE_DEEPEN/WIDEN, since the order itself retires the same
+# tick it's applied (Order.Type.FRONTAGE has no other in-progress state to read).
+# -1 means "never" (Engine.get_physics_frames() starts at 0, so 0 alone isn't a safe sentinel).
+var _last_reshape_tick: int = -1
+var _last_reshape_widened: bool = false
 # "Close the ranks": whether the auto (non-override) frontage is currently
 # stepped down a notch to reform the casualty-thinned survivors into a deeper, denser
 # block instead of holding the full-strength line's width. A single cached bool, not a
@@ -257,6 +283,14 @@ const GAIT_WALK := 0
 const GAIT_JOG := 1
 const GAIT_RUN := 2
 const GAIT_SPRINT := 3
+
+# Nudge direction (Battle.NudgeDir), mirrored as plain ints for the same decoupling
+# reason as the ORDER_*/GAIT_* constants above -- current_maneuver() reads
+# current_order.dir against these to tell a side-step from a back-/forward-step.
+const NUDGE_LEFT := 1
+const NUDGE_RIGHT := 2
+const NUDGE_BACK := 3
+const NUDGE_FORWARD := 4
 
 # Formation modes: how tightly the regiment is packed, plus the two shielded
 # close-order stances built on TIGHT's locked-shield density, and the two hollow-square
@@ -1020,6 +1054,51 @@ func about_face_goal() -> Vector2:
 			or (current_order.type == Order.Type.MOVE
 					and current_order.phase == Order.Phase.TURN)
 	return current_order.turn_target if reversing else Vector2.ZERO
+
+
+## A single readable label for whichever drill/maneuver this unit is currently executing,
+## distinguishing cases state/formation/order_mode can't -- e.g. a conversio and a
+## centre-pivot both read as `state: MOVING` otherwise, and a Square/Schiltron file-double
+## and an ordinary casualty-driven reflow both read as `formation: SQUARE` unchanged. A pure
+## read of already-authoritative fields (is_order_turning/is_wheeling/about_face_goal are
+## themselves derived from current_order, which each maneuver's own code already sets and
+## clears at its start/completion sites) -- not a parallel state machine to keep in sync.
+##
+## Precedence, highest first (the turn family is mutually exclusive by construction --
+## _can_drill() refuses to arm a new drill while another is active, so at most one of
+## {order-turn, wheel} is ever true on a given tick):
+## 1. A frontage change this EXACT tick (FILE_DOUBLE_DEEPEN/WIDEN) -- Order.Type.FRONTAGE
+##    retires the same tick it's applied, so this is the only place that in-progress state
+##    could be read; report it first since it's rare and easy to miss otherwise.
+## 2. An in-place turn (about_face_goal() != ZERO -> CONVERSIO, else QUARTER_TURN).
+## 3. A wheel mid-swing (WHEELING).
+## 4. A nudge order still translating (NUDGE_SIDESTEP/BACKSTEP/FORWARD_STEP, keyed by
+##    current_order.dir).
+## 5. The durable CYCLE_CHARGE stance (order_mode), independent of the above -- can layer
+##    under MOVING or FIGHTING, but nothing above it applies while it's issued.
+## 6. Otherwise the baseline: FIGHTING / MARCHING / IDLE, from `state`.
+func current_maneuver() -> int:
+	if _last_reshape_tick == Engine.get_physics_frames():
+		return Maneuver.FILE_DOUBLE_WIDEN if _last_reshape_widened else Maneuver.FILE_DOUBLE_DEEPEN
+	if is_order_turning():
+		return Maneuver.CONVERSIO if about_face_goal() != Vector2.ZERO else Maneuver.QUARTER_TURN
+	if is_wheeling():
+		return Maneuver.WHEELING
+	if current_order != null and current_order.type == Order.Type.NUDGE and has_move_target:
+		match current_order.dir:
+			NUDGE_LEFT, NUDGE_RIGHT:
+				return Maneuver.NUDGE_SIDESTEP
+			NUDGE_BACK:
+				return Maneuver.NUDGE_BACKSTEP
+			NUDGE_FORWARD:
+				return Maneuver.NUDGE_FORWARD_STEP
+	if order_mode == ORDER_CYCLE_CHARGE:
+		return Maneuver.CYCLE_CHARGE
+	if state == State.FIGHTING:
+		return Maneuver.FIGHTING
+	if state == State.MOVING:
+		return Maneuver.MARCHING
+	return Maneuver.IDLE
 
 
 ## Advance current_order's bookkeeping for this tick: retire orders whose work is done. The
@@ -1951,8 +2030,12 @@ func _reset_shield_hold_angles() -> void:
 ## (UnitFormation.slots) picks both up on the next tick and the soldier bodies ease
 ## toward the reshaped slots at velocity (no teleport).
 func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
+	var old_files: int = UnitFormation.frontage(self)
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 	frontage_anchor_offset = anchor_offset
+	if frontage_override != old_files:
+		_last_reshape_tick = Engine.get_physics_frames()
+		_last_reshape_widened = frontage_override > old_files
 
 
 ## Multiplier applied to incoming ranged damage. Shielded stances raise shields to
