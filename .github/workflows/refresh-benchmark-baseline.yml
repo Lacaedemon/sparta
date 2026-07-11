@@ -1,20 +1,19 @@
 # Periodically refresh tools/benchmark/baseline.json against the CI runners' current
 # (variable) speed, so benchmark.yml's relative regression check doesn't drift stale and
-# start flagging every PR as a false regression -- see #748 (the drift that motivated this),
-# #755 (the one-time manual fix), and #756 (this recurring automation).
+# start flagging every PR as a false regression once enough commits land between manual
+# refreshes.
 #
-# Averages two consecutive runs, the same methodology #755's manual refresh used: a single
-# run's timing is noisy enough on a shared runner that two functionally-identical runs can
-# swing ~20% on their own (see #755's own before/after table), so averaging is the same
-# false-positive guard applied automatically here instead of relying on someone noticing
-# drift and re-running it by hand.
+# Averages two consecutive runs: a single run's timing is noisy enough on a shared runner
+# that two functionally-identical runs can swing ~20% on their own, so averaging guards
+# against a false-positive baseline the same way a manual refresh would, applied here
+# automatically instead of relying on someone noticing drift and re-running it by hand.
 
 name: Refresh benchmark baseline
 
 on:
   schedule:
     # Weekly, Monday 06:00 UTC -- ahead of the working week. Cadence matched to how long it
-    # took the baseline to drift far enough to matter last time (#748: ~9 days / 52 commits),
+    # took the baseline to drift far enough to matter last time (roughly 9 days / 52 commits),
     # not a tighter interval this repo's commit rate doesn't need.
     - cron: '0 6 * * 1'
   workflow_dispatch:
@@ -84,8 +83,8 @@ jobs:
           SPARTA_BENCHMARK_TICKS: ${{ env.MEASURE_TICKS }}
         run: |
           set -euo pipefail
-          # Two consecutive, functionally-identical runs -- averaged below -- for the same
-          # reason #755's manual refresh averaged two runs: see this workflow's header comment.
+          # Two consecutive, functionally-identical runs -- averaged below, see this
+          # workflow's header comment for why.
           for i in 1 2; do
             SPARTA_BENCHMARK_OUT="/tmp/benchmark-run${i}.json" tools/benchmark/run-benchmark.sh
             if [ ! -s "/tmp/benchmark-run${i}.json" ]; then
@@ -103,11 +102,15 @@ jobs:
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           import os
+          import sys
 
           reports = [json.load(open(f"/tmp/benchmark-run{i}.json")) for i in (1, 2)]
           for i, r in enumerate(reports, 1):
               if r.get("early_stop"):
-                  print(f"::warning::benchmark run {i} ended early; averaged baseline may be partial.")
+                  # stderr, not stdout: stdout is redirected into $GITHUB_OUTPUT above, and a
+                  # bare `::warning::` line there isn't valid key=value/heredoc syntax -- it
+                  # would fail the step's output-file parsing.
+                  print(f"::warning::benchmark run {i} ended early; averaged baseline may be partial.", file=sys.stderr)
 
           means = [r["stats"]["mean_ms"] for r in reports]
           p95s = [r["stats"]["p95_ms"] for r in reports]
