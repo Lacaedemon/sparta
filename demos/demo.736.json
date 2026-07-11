@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/knockback-focus.json",
+  "caption": "Knockback focus (#688): a new attack-order subtype that trades damage for a much bigger, more probable push-back (hotkey Ctrl+=). UnitCombat.order_mode_modifiers discounts the STRIKER's own effective attack (-40%) when it's fighting this way, while SoldierMelee.resolve() boosts its knockback impulse 2.5x -- which also raises the chance of felling the defender outright, since one bigger impulse feeds both the shove and the prone roll. A per-order push-distance parameter (Unit.knockback_push_indefinite, Shift+hotkey for the far-reaching 'indefinite' variant, the plain hotkey for the default 'just clear the line' one) caps how far the struck body travels. This clip drives the standard 5v5 spawn: the player Infantry (blue, uid 1) is sprint-ordered onto its opposite-number enemy Infantry (red, uid 6), then switched to Knockback focus the moment before contact -- watch the blue block visibly buckle and get shoved into the red line as the fight grinds on, trading a slower casualty count of its own for a rougher shove every strike.",
+  "fixed_fps": 30,
+  "max_frames": 320,
+  "fps": 15,
+  "width": 720
+}

@@ -56,6 +56,23 @@ const ETA_DEFENDED: float = 0.35              # eta for a defended (not landed) 
 # the body carries away is bounded.
 const KNOCKBACK_SPEED_MAX: float = 60.0
 
+# Knockback focus (UnitCombat.KNOCKBACK_FOCUS_DAMAGE_MULT's counterpart): the stance trades
+# damage for a much bigger, more probable shove. Scales the raw impulse BEFORE the speed cap
+# (knockback_impulse's impulse_mult) -- feeding a bigger number into the same prone_chance
+# check below raises knockdown probability too, so one multiplier drives both "higher
+# intensity" and "higher probability" without a second knob. 2.5x: enough to reliably clear
+# the KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP threshold below on a solid landed hit, not so much
+# that a single glancing (defended) blow already maxes out every cap.
+const KNOCKBACK_FOCUS_IMPULSE_MULT: float = 2.5
+
+# Knockback focus's "indefinite" push-distance variant (Unit.knockback_push_indefinite):
+# not physically endless under this engine's bounded-recovery body controller (nothing is,
+# see KNOCKBACK_SPEED_MAX's own comment above), but far enough past the normal ceiling that
+# SoldierBodies.BODY_ACCEL_FLOOR's arrival recovery takes several times longer to arrest it,
+# so the shove clearly outruns the "just clear the line" variant's clear_line_speed_cap.
+# 3.3x KNOCKBACK_SPEED_MAX (so ~11x the coast distance, since distance scales with v^2).
+const KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP: float = 200.0
+
 # Going prone (docs/combat-model.md "Going prone and getting up"): a knockback impulse J
 # large enough to clear a mass- and bracing-raised threshold can fell the defender.
 #   p_prone = clip((J - J_fall * (1 + br_D) * m_D) / J_scale, 0, p_prone_max)
@@ -130,23 +147,43 @@ static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float =
 
 ## Knockback impulse magnitude J (world units/sec along the strike axis): the blow's force
 ## (lethality * (1 + charge)) divided by the defender's mass, times eta (1 landed, < 1
-## defended). See docs/combat-model.md "Knockback impulse". Pure; never negative.
-static func knockback_impulse(lethality_a: float, c: float, defender_mass: float, eta: float) -> float:
-	# Numerator (force * charge * eta) over the defender's mass -- grouped so eta reads as a
-	# numerator term, not part of the denominator.
-	var force: float = KNOCKBACK_IMPULSE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) * maxf(0.0, eta)
+## defended), times an optional `impulse_mult` (KNOCKBACK_FOCUS_IMPULSE_MULT for a
+## knockback-focus attacker, 1.0 -- the default, unchanged behaviour -- for every other
+## stance). See docs/combat-model.md "Knockback impulse". Pure; never negative.
+static func knockback_impulse(lethality_a: float, c: float, defender_mass: float, eta: float,
+		impulse_mult: float = 1.0) -> float:
+	# Numerator (force * charge * eta * impulse_mult) over the defender's mass -- grouped so
+	# eta/impulse_mult read as numerator terms, not part of the denominator.
+	var force: float = KNOCKBACK_IMPULSE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) \
+			* maxf(0.0, eta) * maxf(0.0, impulse_mult)
 	return force / maxf(0.01, defender_mass)
 
 
 ## Apply a knockback impulse to a body's velocity, bounded (add-then-clamp): the impulse
-## adds to the velocity, then the result's SPEED is clamped to KNOCKBACK_SPEED_MAX -- or to
-## the speed the body already carried, whichever is higher, so a blow never accelerates an
-## already-faster body (a galloping horse) and repeated blows can never ratchet a body past
-## the ceiling. The melee resolver calls this once per strike, so simultaneous strikes from
-## several attackers accumulate and clamp cumulatively. Pure; no RNG -- replay-safe.
-static func capped_knockback_velocity(vel: Vector2, impulse: Vector2) -> Vector2:
-	var cap: float = maxf(vel.length(), KNOCKBACK_SPEED_MAX)
+## adds to the velocity, then the result's SPEED is clamped to `speed_cap` (KNOCKBACK_SPEED_MAX
+## by default) -- or to the speed the body already carried, whichever is higher, so a blow
+## never accelerates an already-faster body (a galloping horse) and repeated blows can never
+## ratchet a body past the ceiling. The melee resolver calls this once per strike, so
+## simultaneous strikes from several attackers accumulate and clamp cumulatively. A caller
+## overrides `speed_cap` for knockback focus's per-order push-distance parameter (see
+## clear_line_speed_cap / KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP); every other caller keeps the
+## unchanged default. Pure; no RNG -- replay-safe.
+static func capped_knockback_velocity(vel: Vector2, impulse: Vector2,
+		speed_cap: float = KNOCKBACK_SPEED_MAX) -> Vector2:
+	var cap: float = maxf(vel.length(), speed_cap)
 	return (vel + impulse).limit_length(cap)
+
+
+## Speed cap for knockback focus's default "just clear the line" push (Unit.
+## knockback_push_indefinite == false): the speed at which a body, under the bounded
+## arrival recovery (`body_accel`, SoldierBodies.BODY_ACCEL_FLOOR in practice), coasts
+## exactly `clear_distance` world units before the recovery arrests it -- solving the same
+## v^2 = 2*a*d relationship the flat KNOCKBACK_SPEED_MAX comment above already documents for
+## a caller-supplied distance instead of the fixed ~3 m every other knockback settles at.
+## Pure; never negative. Kept decoupled from SoldierBodies (no direct reference) so this
+## stays a plain, directly unit-testable function of its inputs, like the rest of this file.
+static func clear_line_speed_cap(clear_distance: float, body_accel: float) -> float:
+	return sqrt(2.0 * maxf(0.0, body_accel) * maxf(0.0, clear_distance))
 
 
 ## Probability that a knockback impulse `impulse_j` fells the defender (docs/combat-model.md

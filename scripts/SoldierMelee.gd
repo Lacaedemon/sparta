@@ -101,7 +101,15 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# the push, then decelerates and returns to its slot under bounded arrival force.
 		# Velocity only -- never a position snap.
 		var eta: float = 1.0 if landed else SoldierCombat.ETA_DEFENDED
-		var impulse_mag: float = SoldierCombat.knockback_impulse(lethality_a, c, en_prof["mass"], eta)
+		# Knockback focus (UnitCombat.KNOCKBACK_FOCUS_DAMAGE_MULT's counterpart): a much
+		# bigger impulse in exchange for the attack_mult penalty already folded into
+		# wound_scale above. Boosting the raw impulse (rather than only the capped speed
+		# below) also raises the prone_chance draw further down, so "higher intensity" and
+		# "higher probability" both fall out of this one multiplier.
+		var kb_focus: bool = attacker.order_mode == Unit.ORDER_KNOCKBACK_FOCUS
+		var impulse_mult: float = SoldierCombat.KNOCKBACK_FOCUS_IMPULSE_MULT if kb_focus else 1.0
+		var impulse_mag: float = SoldierCombat.knockback_impulse(
+				lethality_a, c, en_prof["mass"], eta, impulse_mult)
 		# Bracing: a front-facing, set, deep file resists a shove with the whole column's
 		# footing (docs/combat-model.md "Bracing"). Walk the target's file rearward (phi > 0 only:
 		# a flank/rear blow gets no buttress), stopping at the first dead/missing rank. A
@@ -124,6 +132,22 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		var brace_d: float = SoldierCombat.brace_depth(file_braces)
 		var cap: float = SoldierCombat.BRACE_CAPACITY * brace_d   # avoids a second walk of file_braces
 		var received: float = maxf(0.0, impulse_mag - cap)
+		# Knockback focus's own per-order push-distance parameter (Unit.
+		# knockback_push_indefinite): "just clear the line" (the default) caps the shoved
+		# body's speed so it coasts roughly past both blocks' combined front depth before
+		# SoldierBodies.BODY_ACCEL_FLOOR's arrival recovery reins it back in; "indefinite"
+		# uses a much higher fixed cap instead, so the shove clearly outruns that. Only
+		# the struck DEFENDER's cap changes -- the attacker's own recoil below keeps the
+		# ordinary KNOCKBACK_SPEED_MAX default, since the push-distance parameter is about
+		# how far the struck body travels, not the striker's own stagger.
+		var defender_speed_cap: float = SoldierCombat.KNOCKBACK_SPEED_MAX
+		if kb_focus:
+			if attacker.knockback_push_indefinite:
+				defender_speed_cap = SoldierCombat.KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP
+			else:
+				var clear_dist: float = attacker._front_depth() + defender._front_depth()
+				defender_speed_cap = SoldierCombat.clear_line_speed_cap(
+						clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
 		# Newton's laws collision (bidirectional impulses): both attacker and defender
 		# exchange momentum. The impulse is split inversely by effective mass (which
 		# includes bracing). Bracing gates the DEFENDER's forward motion (via `cap`
@@ -164,7 +188,7 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 				var braced_impulse_defender: Vector2 = SoldierCollision.braced_defender_impulse(
 						impulse_defender, received, impulse_mag)
 				defender._sim_body_vel[target] = SoldierCombat.capped_knockback_velocity(
-						defender._sim_body_vel[target], braced_impulse_defender)
+						defender._sim_body_vel[target], braced_impulse_defender, defender_speed_cap)
 		# Accumulate under a clamp: impulses from every attacker shoving this body this
 		# cadence accumulate in its velocity, and each application clamps the summed result
 		# (SoldierCombat.capped_knockback_velocity) -- a pile-on in an intermixed press

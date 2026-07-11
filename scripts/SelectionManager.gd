@@ -125,6 +125,13 @@ var _groups: Dictionary = {}
 # Selected by hotkey (rebindable via ☰ Menu → Keybindings) and shown by the
 # cursor + a HUD indicator. Stays armed (sticky) until changed or cleared (Esc).
 var _armed_mode: int = BattleRef.OrderMode.NORMAL
+# KNOCKBACK_FOCUS's own per-order push-distance parameter, captured from Shift at the
+# moment the stance is (re)armed or (re)issued -- a genuine per-order setting (not a
+# global Settings toggle): plain hotkey = push just clear of the battle line (false, the
+# common case), Shift+hotkey = push much further (true). Meaningless for any other mode;
+# rides along on the same enqueue_order/enqueue_stance/enqueue_form_up call that carries
+# _armed_mode, so Battle._apply_order_cmd only reads it when mode == KNOCKBACK_FOCUS.
+var _armed_knockback_indefinite: bool = false
 
 # Deterministic cursor injection. Normally null (the cursor follows the live OS mouse). A
 # demo-recording tool or a test sets a world position here so the selection/order logic and
@@ -235,6 +242,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func _dispatch_key(event: InputEventKey) -> bool:
 	var mode: int = _order_mode_for_keycode(event.physical_keycode)
 	if mode >= 0:
+		# KNOCKBACK_FOCUS's own per-order push-distance parameter: Shift held at the
+		# moment the hotkey fires picks "indefinite" (push much further) over the
+		# default "just clear the line" -- captured here so both the immediate
+		# (Ctrl+key) and armed (plain key) paths below carry it.
+		_armed_knockback_indefinite = mode == BattleRef.OrderMode.KNOCKBACK_FOCUS \
+				and event.shift_pressed
 		if event.ctrl_pressed:
 			# Ctrl+<stance key> writes the stance in place immediately -- no move/attack
 			# needed -- instead of arming it for the next order (see enqueue_stance).
@@ -486,7 +499,8 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	var group_attack: int = BattleRef.GroupAttackMode.FOCUSED
 	if uids.size() > 1 and enemy != null:
 		group_attack = _group_attack_mode
-	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode, group_attack, gait)
+	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode, group_attack, gait,
+			_armed_knockback_indefinite)
 	Sfx.play(&"order")
 
 
@@ -553,7 +567,8 @@ func _issue_form_up(a: Vector2, b: Vector2, by_selection_order: bool = false) ->
 		return
 	var face: float = _form_up_facing(a, b)
 	for slice in _form_up_slices(units, a, b, _form_up_dist):
-		_battle.enqueue_form_up([slice["unit"].uid], slice["center"], face, slice["files"], _armed_mode)
+		_battle.enqueue_form_up([slice["unit"].uid], slice["center"], face, slice["files"],
+				_armed_mode, _armed_knockback_indefinite)
 	Sfx.play(&"order")
 
 
@@ -776,7 +791,7 @@ func _issue_stance(mode: int) -> void:
 	var uids: Array = _selected_uids()
 	if uids.is_empty():
 		return
-	_battle.enqueue_stance(uids, mode, BattleRef.RankRelief.LEAVE)
+	_battle.enqueue_stance(uids, mode, BattleRef.RankRelief.LEAVE, _armed_knockback_indefinite)
 	if _hud != null:
 		_hud.flash_message(str(BattleRef.ORDER_MODE_NAMES.get(mode, "")))
 	Sfx.play(&"order")
@@ -1168,8 +1183,11 @@ func set_formation_to(mode: int) -> void:
 	Sfx.play(&"order")
 
 
-## Arm a specific order-mode stance (called from the control bar).
+## Arm a specific order-mode stance (called from the control bar). The control bar has no
+## Shift-modifier gesture, so KNOCKBACK_FOCUS always arms its default "just clear the line"
+## push-distance variant from here; Shift+hotkey is the only way to arm "indefinite".
 func arm_order_mode(mode: int) -> void:
+	_armed_knockback_indefinite = false
 	_set_armed_mode(mode)
 
 
@@ -1253,6 +1271,7 @@ func _order_mode_color(mode: int) -> Color:
 		BattleRef.OrderMode.SWEEP_ROUTERS: return Color(0.32, 0.82, 0.9)
 		BattleRef.OrderMode.CHASE: return Color(0.55, 0.43, 0.95)
 		BattleRef.OrderMode.ALL_OUT_ATTACK: return Color(1.0, 0.25, 0.69)
+		BattleRef.OrderMode.KNOCKBACK_FOCUS: return Color(0.95, 0.75, 0.1)
 		_: return Color.WHITE
 
 

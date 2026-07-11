@@ -75,7 +75,7 @@ const NUDGE_DISTANCE := 30.0
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE, KNOCKBACK_FOCUS }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
 ## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
@@ -119,6 +119,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.ALL_OUT_ATTACK: "All-out attack",
 	OrderMode.CHASE: "Chase",
 	OrderMode.WEDGE_CHARGE: "Wedge charge",
+	OrderMode.KNOCKBACK_FOCUS: "Knockback focus",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -139,6 +140,7 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.ALL_OUT_ATTACK, "slug": "all_out_attack"},
 	{"mode": OrderMode.CHASE, "slug": "chase"},
 	{"mode": OrderMode.WEDGE_CHARGE, "slug": "wedge_charge"},
+	{"mode": OrderMode.KNOCKBACK_FOCUS, "slug": "knockback_focus"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
@@ -215,7 +217,8 @@ func _ready() -> void:
 			and UnitRef.ORDER_PIN_DOWN == OrderMode.PIN_DOWN \
 			and UnitRef.ORDER_ALL_OUT_ATTACK == OrderMode.ALL_OUT_ATTACK \
 			and UnitRef.ORDER_CHASE == OrderMode.CHASE \
-			and UnitRef.ORDER_WEDGE_CHARGE == OrderMode.WEDGE_CHARGE,
+			and UnitRef.ORDER_WEDGE_CHARGE == OrderMode.WEDGE_CHARGE \
+			and UnitRef.ORDER_KNOCKBACK_FOCUS == OrderMode.KNOCKBACK_FOCUS,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 
 	# Start a fresh recording for every live battle (so any battle can be
@@ -736,7 +739,8 @@ func _apply_order_live(cmd: Dictionary) -> void:
 func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		order_mode: int = OrderMode.NORMAL,
 		group_attack: int = GroupAttackMode.FOCUSED,
-		gait: int = -1) -> void:
+		gait: int = -1,
+		knockback_indefinite: bool = false) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -749,6 +753,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"walk_advance": Settings.walk_advance,
 		"group_attack": group_attack,
 		"gait": gait,
+		"knockback_indefinite": knockback_indefinite,
 	}
 	_pending_orders.append(cmd)
 	# A waypoint append is tick-authoritative (its point is derived from positions at
@@ -780,7 +785,11 @@ func enqueue_formation(uids: Array, formation: int) -> void:
 ## replays stay exact. No gesture drives this yet -- the stance hotkeys still arm a mode
 ## for the NEXT move/attack order -- but the order path exists so the mode layer is
 ## reachable from the same recorded, exactly-once dispatch as every other command.
-func enqueue_stance(uids: Array, stance: int = -1, rank_relief: int = RankRelief.LEAVE) -> void:
+## `knockback_indefinite` is KNOCKBACK_FOCUS's own per-order push-distance parameter (see
+## Unit.knockback_push_indefinite): false pushes a struck body just clear of the battle
+## line, true pushes it much further. Ignored for every other stance.
+func enqueue_stance(uids: Array, stance: int = -1, rank_relief: int = RankRelief.LEAVE,
+		knockback_indefinite: bool = false) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -790,6 +799,7 @@ func enqueue_stance(uids: Array, stance: int = -1, rank_relief: int = RankRelief
 		"target": ORDER_STANCE_ONLY,
 		"mode": stance,
 		"frontage": rank_relief,
+		"knockback_indefinite": knockback_indefinite,
 	}
 	_pending_orders.append(cmd)
 	_apply_order_live(cmd)
@@ -942,7 +952,7 @@ static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
 ## dragged flank line. A plain move order (target -1) carrying the extra face +
 ## frontage, recorded so replays reproduce the deploy.
 func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
-		order_mode: int = OrderMode.NORMAL) -> void:
+		order_mode: int = OrderMode.NORMAL, knockback_indefinite: bool = false) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -955,6 +965,7 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"face": face,
 		"reform": Settings.reform_before_move,
 		"walk_advance": Settings.walk_advance,
+		"knockback_indefinite": knockback_indefinite,
 	}
 	_pending_orders.append(cmd)
 	_apply_order_live(cmd)
@@ -1010,6 +1021,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				continue
 			if stance >= 0:
 				u.order_mode = stance
+				# KNOCKBACK_FOCUS's own per-order parameter: how far to push a struck body
+				# (see Unit.knockback_push_indefinite). Only meaningful for this stance --
+				# refreshed every time the stance is (re)issued so the player can pick
+				# either variant each time, rather than it being a fixed/global setting.
+				if stance == OrderMode.KNOCKBACK_FOCUS:
+					u.knockback_push_indefinite = bool(cmd.get("knockback_indefinite", false))
 				# A stance carrying no ward is not a guard duty: SUPPORT only arms via a
 				# targeted support order, so a bare stance write can't strand the unit in
 				# the support tick with no ward (it would revert next think anyway).
@@ -1130,6 +1147,11 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 		# duty; a SUPPORT order re-sets it in the friendly-target branch below.
 		if not append:
 			u.order_mode = mode
+			# Same per-order push-distance parameter as the stance-only branch above,
+			# carried on an ordinary move/attack order too (arming KNOCKBACK_FOCUS then
+			# issuing a move/attack is the normal way to use it).
+			if mode == OrderMode.KNOCKBACK_FOCUS:
+				u.knockback_push_indefinite = bool(cmd.get("knockback_indefinite", false))
 			u.walk_advance = bool(cmd.get("walk_advance", false))
 			u.support_target = null
 			# A fresh order restarts the cycle-charge loop in its charging phase, so a

@@ -109,6 +109,14 @@ var current_order: Order = null
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
 var order_mode: int = 0
+# KNOCKBACK_FOCUS's own per-order parameter: how far a struck enemy body should be shoved.
+# false (default) -- just clear the battle line -- is the common case; true pushes it much
+# further. A genuine per-ORDER setting, not a global Settings toggle: Battle._apply_order_cmd
+# refreshes it from the order's own "knockback_indefinite" field each time the stance is
+# (re)armed or (re)issued (Ctrl+<key> writes it immediately; the plain hotkey arms it for the
+# next move/attack order), so the player picks a variant every time they give the order. Read
+# by SoldierMelee.resolve() only when order_mode == ORDER_KNOCKBACK_FOCUS; meaningless otherwise.
+var knockback_push_indefinite: bool = false
 var formation_mode: int = FORMATION_NORMAL
 # Intra-unit rank-relief: whether rear ranks rotate forward to relieve their own unit's
 # fighting line. A durable mode (the design doc's verbs-vs-modes split), written by a
@@ -240,6 +248,7 @@ const ORDER_PIN_DOWN := 9
 const ORDER_ALL_OUT_ATTACK := 10
 const ORDER_CHASE := 11
 const ORDER_WEDGE_CHARGE := 12
+const ORDER_KNOCKBACK_FOCUS := 13
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),

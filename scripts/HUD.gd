@@ -59,6 +59,7 @@ const _STANCE_ENTRIES := [
 	{"id": 10, "mode": BattleRef.OrderMode.ALL_OUT_ATTACK, "label": "All-out attack", "slug": "all_out_attack"},
 	{"id": 11, "mode": BattleRef.OrderMode.CHASE, "label": "Chase", "slug": "chase"},
 	{"id": 12, "mode": BattleRef.OrderMode.WEDGE_CHARGE, "label": "Wedge charge", "slug": "wedge_charge"},
+	{"id": 13, "mode": BattleRef.OrderMode.KNOCKBACK_FOCUS, "label": "Knockback focus", "slug": "knockback_focus"},
 ]
 
 # Display names and menu order for every formation mode, shared by the button
