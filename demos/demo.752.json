@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Internal simulation-accuracy fix: which per-soldier array indices Square/Schiltron treats as 'engaged' (and therefore actually simulated in melee/contact resolution) once casualties have compacted the array. The soldiers' visible positions/facings are unchanged -- only which ones the sim picks as combat candidates -- so this isn't distinguishable in a recorded clip. Verified instead via a live state-dump reproduction (demos/inputs/anti-cav-square.json, SPARTA_DEMO_STATE_FULL=1) comparing each attacker's true nearest-defender index against the returned engaged set; the before/after numbers are in the PR description."
+}
