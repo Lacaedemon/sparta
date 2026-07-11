@@ -203,6 +203,45 @@ static func square_is_perimeter(i: int, n: int, files: int) -> bool:
 	return rank == 0 or rank == ranks - 1 or file == 0 or file == rank_count - 1
 
 
+## Live-position perimeter selection for a hollow-square/schiltron formation. Unlike
+## `square_is_perimeter` (a function of SLOT INDEX in the original, uncompacted grid),
+## this reads each soldier's ACTUAL current position: `SoldierMelee.reap()` removes dead
+## soldiers by splicing the per-soldier arrays, which shifts every later index down and
+## breaks the assumption `square_is_perimeter` relies on (that index `i`'s position still
+## matches the grid cell `block_slots` laid it out on). Empirically, on a live battle with
+## real casualties, the slot-index perimeter's mismatch rate against attackers' actual
+## nearest-defender index jumps from 0% (freshly seeded, no casualties yet) to 60-80% once
+## the array has compacted even a little -- see the `anti-cav-square.json` verification
+## referenced from #752.
+##
+## Returns the `target_count` LIVING soldiers (by position-array index) currently farthest
+## from the block's own live centroid -- the outermost survivors of whatever shape the
+## block actually occupies right now, not whatever the original grid predicted. `target_count`
+## is normally sized to match `square_is_perimeter`'s own ring size (see
+## `Unit.engaged_soldier_indices`), so this changes WHICH soldiers are selected, not how many
+## -- the per-tick cost bound is unchanged. Pure and deterministic: ties broken by index, no
+## RNG, no wall-clock.
+static func live_perimeter_indices(positions: PackedVector2Array, target_count: int) -> PackedInt32Array:
+	var n: int = positions.size()
+	if n <= 0 or target_count <= 0:
+		return PackedInt32Array()
+	var centroid := Vector2.ZERO
+	for p in positions:
+		centroid += p
+	centroid /= float(n)
+	var order: Array = range(n)
+	order.sort_custom(func(a: int, b: int) -> bool:
+		var da: float = positions[a].distance_squared_to(centroid)
+		var db: float = positions[b].distance_squared_to(centroid)
+		if da == db:
+			return a < b
+		return da > db)
+	var out := PackedInt32Array()
+	for i in range(mini(target_count, n)):
+		out.push_back(order[i])
+	return out
+
+
 ## File count after a 90° in-place turn (quarter-turn, #371): frontage and depth swap,
 ## so the new file count is the old rank count. Transposing twice returns to the original
 ## frontage for a full grid (a partial last rank can shift it by one -- the caller reforms).

@@ -928,3 +928,41 @@ resolved values (not just the top-level assertion) the first time it's written �
 probe test (construct the fixtures, print `engaged_soldier_indices()`/`soldier_id()`/the
 resulting velocities) is the fast way to catch it, faster than reasoning through the pair
 loop by hand. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
+
+## Square/Schiltron's engaged-set staleness root cause: array compaction after casualties, not just "multi-attacker chaos"
+
+#752 reported `Unit.engaged_soldier_indices()`'s SQUARE/SCHILTRON branch (slot-index
+perimeter, `UnitFormation.square_is_perimeter`) as wrong under "multi-attacker chaos" but
+didn't pin down the mechanism. Empirical check (`demos/inputs/anti-cav-square.json`,
+`SPARTA_DEMO_STATE_FULL=1`, comparing each attacker soldier's true nearest-defender index
+against the returned engaged set, gated to pairs actually within contact range) found a much
+sharper signal: the mismatch rate is **0% at every tick before the first casualty**, then
+jumps to 32%+ the instant `SoldierMelee.reap()` compacts the array. Root cause:
+`square_is_perimeter(i, n, files)` is a function of SLOT INDEX in the ORIGINAL grid, but
+`reap()` removes dead soldiers by splicing the per-soldier arrays — every index after a
+removed soldier shifts down, so index `i` no longer sits where `block_slots` originally laid
+it out. This is a **same-unit geometry bug**, not fundamentally about needing enemy-position
+data (the issue's own proposed direction) — the array is stale relative to itself.
+
+**Fix, partial:** `UnitFormation.live_perimeter_indices(positions, target_count)` replaces
+the slot-index selection with the `target_count` LIVING soldiers currently farthest from the
+block's own LIVE centroid (`_sim_soldier_pos`, read directly — same target count as the old
+ring, so the per-tick cost bound is unchanged). This measurably improves the gated mismatch
+rate at every post-casualty tick checked (32%→22%, 78%→70%, 67%→60%, 67%→47%, 62%→45%) with
+no regression on the pristine (no-casualty) case and no cost increase. **It does not fully
+close #752** — "farthest from live centroid" is still an approximation of "true outer ring,"
+and under heavy multi-directional pressure (the block reflowing unevenly as different sides
+take casualties at different rates) it can still misclassify a soldier pushed inward on one
+side as "engaged" over a genuinely exposed soldier on a less-pressed side. The issue's
+originally-proposed direction (each candidate's nearest ENEMY soldier within a contact
+radius, via `SoldierSpatialHash`) is the fuller fix and remains open follow-up work.
+
+**How to apply:** before implementing a "make this live/position-based instead of
+index-based" fix, verify empirically whether the bug is (a) same-unit index/position
+staleness (fixable by reading live positions, no cross-unit data needed) or (b) genuinely
+needs cross-unit proximity data — they look identical from the bug report alone
+("this-N-vs-that-N mismatch under chaos") but have very different fix complexity. Gate any
+such reproduction to pairs actually within contact/reach range — an ungated "nearest globally"
+metric picks up noise from units still approaching each other, which can make an otherwise-
+sound fix look like it regressed the pristine case. (`Lacaedemon/sparta` PR TBD, closes part
+of #752, 2026-07-11.)

@@ -2839,19 +2839,25 @@ func soldier_brace() -> float:
 ## _face_for_action never turns it to bear on one attacker, since every side already
 ## stands ready -- so a fixed rank-0 wedge would sit at whatever direction the grid
 ## happened to be laid out on, unrelated to which side is actually under attack. It
-## returns the whole outer ring instead (UnitFormation.square_is_perimeter), so
-## melee/contact resolution can find a real target regardless of which side a foe
-## closes on. Pure and deterministic.
+## returns the whole outer ring instead -- by LIVE position
+## (UnitFormation.live_perimeter_indices), not slot index: `square_is_perimeter`'s
+## index-to-position mapping goes stale the moment `SoldierMelee.reap()` compacts the
+## per-soldier arrays after a casualty, so this reads `_sim_soldier_pos` directly and
+## sizes the live selection to match the ring's own slot-index count (same cost bound,
+## correct membership). Melee/contact resolution can then find a real target regardless
+## of which side a foe closes on, even mid-battle with casualties already taken. Pure
+## and deterministic -- `_sim_soldier_pos` is this tick's frozen snapshot.
 func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
 		return out
 	if in_square():
 		var square_file_count: int = formation_files(count)
+		var ring_size: int = 0
 		for i in range(count):
 			if UnitFormation.square_is_perimeter(i, count, square_file_count):
-				out.push_back(i)
-		return out
+				ring_size += 1
+		return UnitFormation.live_perimeter_indices(_sim_soldier_pos, ring_size)
 	var cutoff: int = mini(count, formation_files(count) * ENGAGED_RANKS)
 	for i in range(cutoff):
 		out.push_back(i)
