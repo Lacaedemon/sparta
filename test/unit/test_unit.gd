@@ -3002,6 +3002,58 @@ func test_render_dirty_clears_after_a_refreshing_process_tick() -> void:
 	assert_false(u._render_dirty, "a process tick consumes the dirty flag")
 
 
+func test_render_alpha_fades_toward_routing_target_instead_of_snapping() -> void:
+	# A routing unit's translucency eases at Unit.ALPHA_FADE_RATE, not an instant drop to
+	# Unit.ROUTING_ALPHA -- the same "active fade, not a snap" pattern as _current_speed's
+	# friction decay above.
+	var u := _make_unit(40)
+	u.state = Unit.State.ROUTING
+	u._process(0.1)
+	assert_almost_eq(u._render_alpha, 1.0 - Unit.ALPHA_FADE_RATE * 0.1, 0.001,
+		"alpha drops by exactly ALPHA_FADE_RATE * delta this tick, not an instant snap")
+	assert_gt(u._render_alpha, Unit.ROUTING_ALPHA,
+		"one tick isn't enough to reach the fully-faded target")
+
+
+func test_render_alpha_fades_back_to_full_when_no_longer_routing() -> void:
+	var u := _make_unit(40)
+	u._render_alpha = Unit.ROUTING_ALPHA   # as if it had already faded while routing
+	u.state = Unit.State.IDLE              # rallied
+	u._process(0.1)
+	assert_almost_eq(u._render_alpha, Unit.ROUTING_ALPHA + Unit.ALPHA_FADE_RATE * 0.1, 0.001,
+		"alpha rises by exactly ALPHA_FADE_RATE * delta this tick, not an instant snap back to 1.0")
+	assert_lt(u._render_alpha, 1.0, "one tick isn't enough to reach fully opaque again")
+
+
+func test_render_alpha_converges_to_routing_target_after_enough_ticks() -> void:
+	var u := _make_unit(40)
+	u.state = Unit.State.ROUTING
+	var ticks_to_settle: int = int(ceil(1.0 / Unit.ALPHA_FADE_RATE / 0.1)) + 2
+	for _i in range(ticks_to_settle):
+		u._process(0.1)
+	assert_almost_eq(u._render_alpha, Unit.ROUTING_ALPHA, 0.001,
+		"the fade converges cleanly to the routing target, no overshoot below it")
+
+
+func test_member_icons_never_fade_while_routing() -> void:
+	# Only the regimental flag reads the routing fade (_render_alpha) -- the per-soldier
+	# marks (MultiMesh body/outline/facing-pip modulate) always stay fully opaque, even
+	# after a long stretch of routing. The men themselves are still physically present;
+	# a routing state means faltering morale (a wavering flag), not soldiers turning
+	# translucent.
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.ROUTING
+	for _i in range(20):
+		u._process(0.1)
+	assert_almost_eq(u._mmi_body.modulate.a, 1.0, 0.001, "body marks stay fully opaque")
+	assert_almost_eq(u._mmi_outline.modulate.a, 1.0, 0.001, "outline marks stay fully opaque")
+	assert_almost_eq(u._mmi_facing_pip.modulate.a, 0.9, 0.001,
+		"the facing pip holds its own fixed base opacity, independent of routing")
+	assert_lt(u._render_alpha, 1.0,
+		"sanity check: the flag's own _render_alpha DID fade over these ticks")
+
+
 func _archer_unit() -> Unit:
 	var u: Unit = Unit.new()
 	u.is_ranged = true   # set before _ready() so the figure is built as an archer
