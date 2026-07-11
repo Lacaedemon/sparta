@@ -452,3 +452,36 @@ func test_live_perimeter_indices_degenerate_inputs() -> void:
 	var positions := PackedVector2Array([Vector2(1, 0), Vector2(2, 0)])
 	assert_eq(UnitFormation.live_perimeter_indices(positions, 10).size(), 2,
 		"target_count beyond the array size is clamped to the array size")
+
+
+func test_live_perimeter_indices_matches_a_brute_force_full_sort() -> void:
+	# The real implementation is a bounded min-heap (O(n log target_count)), not a full sort
+	# of every soldier -- differential test against a brute-force reference (sort every index
+	# by distance descending, ties broken by index ascending, take the first target_count) on
+	# an irregular point cloud, so a heap sift-up/sift-down bug can't hide behind the other
+	# tests' small or symmetric inputs. Fixed, hand-picked coordinates (no RNG) so the case is
+	# reproducible.
+	var positions := PackedVector2Array([
+		Vector2(3, 1), Vector2(-2, 4), Vector2(5, -3), Vector2(0, 0), Vector2(-4, -4),
+		Vector2(2, 2), Vector2(7, 0), Vector2(-1, -6), Vector2(1, 1), Vector2(-5, 2),
+		Vector2(6, 5), Vector2(0, -3), Vector2(-3, 3), Vector2(4, -1), Vector2(2, -5),
+		Vector2(-6, 1), Vector2(1, 6), Vector2(3, -4), Vector2(-2, -2), Vector2(5, 3),
+	])
+	var centroid := Vector2.ZERO
+	for p in positions:
+		centroid += p
+	centroid /= float(positions.size())
+	var reference: Array = range(positions.size())
+	reference.sort_custom(func(a: int, b: int) -> bool:
+		var da: float = positions[a].distance_squared_to(centroid)
+		var db: float = positions[b].distance_squared_to(centroid)
+		if da == db:
+			return a < b
+		return da > db)
+	for target_count in [1, 3, 7, 12, 20, 25]:
+		var expected := PackedInt32Array()
+		for i in range(mini(target_count, positions.size())):
+			expected.push_back(reference[i])
+		expected.sort()
+		assert_eq(UnitFormation.live_perimeter_indices(positions, target_count), expected,
+			"heap selection matches the brute-force reference at target_count=%d" % target_count)

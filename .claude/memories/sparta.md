@@ -946,10 +946,13 @@ data (the issue's own proposed direction) — the array is stale relative to its
 
 **Fix, partial:** `UnitFormation.live_perimeter_indices(positions, target_count)` replaces
 the slot-index selection with the `target_count` LIVING soldiers currently farthest from the
-block's own LIVE centroid (`_sim_soldier_pos`, read directly — same target count as the old
-ring, so the per-tick cost bound is unchanged). This measurably improves the gated mismatch
-rate at every post-casualty tick checked (32%→22%, 78%→70%, 67%→60%, 67%→47%, 62%→45%) with
-no regression on the pristine (no-casualty) case and no cost increase. **It does not fully
+block's own LIVE centroid (`_sim_soldier_pos`, read directly — same OUTPUT SIZE/target count
+as the old ring, not the same runtime cost: selection itself is a bounded min-heap,
+O(n log target_count), vs. the old O(n) index scan — more work per call, though bounded and
+small relative to a tick's other per-soldier costs at this game's regiment sizes). This
+measurably improves the gated mismatch rate at every post-casualty tick checked (32%→22%,
+78%→70%, 67%→60%, 67%→47%, 62%→45%) with no regression on the pristine (no-casualty) case.
+**It does not fully
 close #752** — "farthest from live centroid" is still an approximation of "true outer ring,"
 and under heavy multi-directional pressure (the block reflowing unevenly as different sides
 take casualties at different rates) it can still misclassify a soldier pushed inward on one
@@ -967,3 +970,19 @@ such reproduction to pairs actually within contact/reach range — an ungated "n
 metric picks up noise from units still approaching each other, which can make an otherwise-
 sound fix look like it regressed the pristine case. (`Lacaedemon/sparta` PR #758, partial
 fix for #752, 2026-07-11.)
+
+**Caught by review, not the original implementation:** the first version of this fix used a
+full `Array.sort_custom` over every soldier to pick the `target_count` farthest, then claimed
+"the per-tick cost bound is unchanged" because the OUTPUT size matched the old algorithm's --
+conflating output-size parity with runtime-cost parity. `claude[bot]` correctly called this
+out: the old SQUARE branch was a single O(n) index scan; the new one added an O(n) centroid
+pass plus an O(n log n) sort, strictly more work, and the claim was baked into three separate
+comments/docs (`Unit.gd`, `test/unit/test_unit.gd`, this file) that all needed fixing, not just
+one. Replaced the full sort with a bounded min-heap of the `target_count` best candidates
+(O(n log target_count) — see `UnitFormation._worse`/`_heap_sift_up`/`_heap_sift_down`), which
+is strictly less work than a full sort whenever `target_count < n` (always true here), and
+added a differential test against a brute-force full-sort reference on an irregular point
+cloud to catch a heap sift-up/sift-down bug the smaller/symmetric tests wouldn't. **How to
+apply:** "the output is the same shape/count as before" is not the same claim as "the cost is
+unchanged" -- don't let a same-size-output observation imply a same-cost one without checking
+what actually changed inside the call.

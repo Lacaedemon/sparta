@@ -2294,7 +2294,7 @@ func test_engaged_soldier_indices_is_the_whole_perimeter_when_squared() -> void:
 	# selected by LIVE position (UnitFormation.live_perimeter_indices), not slot index --
 	# see test_unit_formation.gd for the geometry itself; this test only checks the wiring:
 	# engaged_soldier_indices sizes the live selection to match the slot-index ring's own
-	# count (same per-tick cost bound as before) and actually delegates to it.
+	# COUNT (same output size as before) and actually delegates to it.
 	var u := _make_unit(120)
 	u.set_formation(Unit.FORMATION_SQUARE)
 	u.seed_sim_soldiers()

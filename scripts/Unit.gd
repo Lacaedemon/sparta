@@ -2843,9 +2843,11 @@ func soldier_brace() -> float:
 ## (UnitFormation.live_perimeter_indices), not slot index: `square_is_perimeter`'s
 ## index-to-position mapping goes stale the moment `SoldierMelee.reap()` compacts the
 ## per-soldier arrays after a casualty, so this reads `_sim_soldier_pos` directly and
-## sizes the live selection to match the ring's own slot-index count (same cost bound,
-## correct membership). Melee/contact resolution can then find a real target regardless
-## of which side a foe closes on, even mid-battle with casualties already taken. Pure
+## sizes the live selection to match the ring's own slot-index COUNT (same output size,
+## correct membership -- live_perimeter_indices' own O(n log target_count) heap selection
+## is more work per call than the old O(n) index scan, see its docstring). Melee/contact
+## resolution can then find a real target regardless of which side a foe closes on, even
+## mid-battle with casualties already taken. Pure
 ## and deterministic -- `_sim_soldier_pos` is this tick's frozen snapshot.
 func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
