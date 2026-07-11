@@ -34,6 +34,24 @@ const FORMATION_NAMES := {
 	6: "SCHILTRON",
 }
 
+## Unit.current_maneuver() int -> readable name. Mirrors `enum Maneuver { IDLE, MARCHING,
+## FIGHTING, CONVERSIO, QUARTER_TURN, WHEELING, FILE_DOUBLE_DEEPEN, FILE_DOUBLE_WIDEN,
+## NUDGE_SIDESTEP, NUDGE_BACKSTEP, NUDGE_FORWARD_STEP, CYCLE_CHARGE }` on Unit.gd.
+const MANEUVER_NAMES := {
+	0: "IDLE",
+	1: "MARCHING",
+	2: "FIGHTING",
+	3: "CONVERSIO",
+	4: "QUARTER_TURN",
+	5: "WHEELING",
+	6: "FILE_DOUBLE_DEEPEN",
+	7: "FILE_DOUBLE_WIDEN",
+	8: "NUDGE_SIDESTEP",
+	9: "NUDGE_BACKSTEP",
+	10: "NUDGE_FORWARD_STEP",
+	11: "CYCLE_CHARGE",
+}
+
 ## The node groups that together hold every combat unit still on the field. A unit lives in
 ## exactly one at a time: "units" while fightable, "routers" while ROUTING (Unit._rout()
 ## moves it over; _rally() moves it back). A snapshot must walk BOTH — walking "units" alone
@@ -55,6 +73,10 @@ static func state_name(value: int) -> String:
 
 static func formation_name(value: int) -> String:
 	return name_from(FORMATION_NAMES, value, "FORMATION")
+
+
+static func maneuver_name(value: int) -> String:
+	return name_from(MANEUVER_NAMES, value, "MANEUVER")
 
 
 ## An order_mode int -> its readable name using Battle.ORDER_MODE_NAMES (passed in so this

@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Adds a new read-only 'maneuver' field to the machine-readable state transcript (Unit.current_maneuver(), consolidating current_order/order_phase/order_mode into one label for AI/spot verification) -- a pure data-dump addition with no change to rendering, gameplay behavior, or anything a recorded clip could show. Unlike #760's case, there is no existing debug-visual overlay this maps to; it only ever shows up in the JSON transcript, which the per-tick state-transcript comment already exercises (see the 'maneuver' field on each unit record there)."
+}
