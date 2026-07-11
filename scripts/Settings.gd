@@ -166,6 +166,10 @@ const DEFAULT_ORDER_BINDINGS := {
 	# Comma/semicolon/period/apostrophe/backslash are all taken; minus is the next
 	# unclaimed punctuation-row key.
 	"wedge_charge": KEY_MINUS,
+	# Comma/semicolon/period/apostrophe/backslash/minus are all taken; equals is the next
+	# unclaimed punctuation-row key. Shift+this key arms/issues the "indefinite" push
+	# variant instead of the default "just clear the line" push (SelectionManager.gd).
+	"knockback_focus": KEY_EQUAL,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.

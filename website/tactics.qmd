@@ -845,6 +845,14 @@ into different tools:
   while fighting, and faster fatigue buildup while engaged. Use it to punch a
   hole in the enemy line before it can brace, not as a strict upgrade over a
   normal stance --- the unit that arrives first is also the easier one to hit.
+- **Knockback focus** (<kbd>=</kbd>) --- an offense-only trade: the unit hits
+  40% softer, but every blow shoves the enemy back much harder and is more
+  likely to fell it outright. Hold <kbd>Shift</kbd> when you arm or issue it
+  to pick the push distance: the plain hotkey shoves a struck enemy just far
+  enough to clear the battle line, while Shift+hotkey drives it much further
+  back. Use it to break up a packed formation or buy room to maneuver, not to
+  win a straight fight --- the softer hits mean it trades its own damage
+  output for control of space.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and

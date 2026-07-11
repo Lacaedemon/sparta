@@ -28,6 +28,15 @@ const ALL_OUT_ATTACK_DEFENSE_PENALTY: float = 0.8
 ## slightly more defense than all-out-attack's combat-only tradeoff.
 const WEDGE_CHARGE_DEFENSE_PENALTY: float = 0.75
 
+## Knockback focus's own damage tradeoff (-40% = 0.6x effective attack) when
+## order_mode == KNOCKBACK_FOCUS -- the stance trades striking power for a much stronger,
+## more probable shove (SoldierCombat.KNOCKBACK_FOCUS_IMPULSE_MULT, applied in
+## SoldierMelee.resolve()'s per-soldier impulse), so a unit fighting this way hits softer in
+## exchange for reliably knocking the enemy back instead. Unlike ALL_OUT_ATTACK/WEDGE_CHARGE
+## (which trade defense), this stance costs OFFENSE only -- it isn't meant to make the
+## striker any easier to hit.
+const KNOCKBACK_FOCUS_DAMAGE_MULT: float = 0.6
+
 
 ## Physics-based cavalry charge multiplier: the bonus is the rider's IMPACT MOMENTUM, not
 ## a one-shot token. It scales with the component of the unit's approach velocity aimed
@@ -71,13 +80,17 @@ static func charge_multiplier(u: Unit, enemy: Unit) -> float:
 
 ## Apply order-mode-based combat modifiers. All-out-attack boosts hit chance at the cost
 ## of defense; wedge charge costs defense only (its speed/fatigue tradeoff is applied
-## elsewhere -- Unit.gd's pace_speed, UnitMorale.tick_fatigue). Other modes don't apply
+## elsewhere -- Unit.gd's pace_speed, UnitMorale.tick_fatigue). Knockback focus costs
+## effective attack only, in exchange for a much stronger push (applied separately, in
+## SoldierCombat/SoldierMelee's knockback-impulse chain). Other modes don't apply
 ## modifiers here. Returns a tuple (attack_mult, defense_mult).
 static func order_mode_modifiers(u: Unit, target: Unit) -> Vector2:
 	var attack_mult: float = 1.0
 	var defense_mult: float = 1.0
 	if u.order_mode == Unit.ORDER_ALL_OUT_ATTACK:
 		attack_mult = ALL_OUT_ATTACK_HIT_BONUS
+	if u.order_mode == Unit.ORDER_KNOCKBACK_FOCUS:
+		attack_mult = KNOCKBACK_FOCUS_DAMAGE_MULT
 	if target.order_mode == Unit.ORDER_ALL_OUT_ATTACK:
 		defense_mult = ALL_OUT_ATTACK_DEFENSE_PENALTY
 	if target.order_mode == Unit.ORDER_WEDGE_CHARGE:
