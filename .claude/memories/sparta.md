@@ -616,3 +616,70 @@ somewhere, even if the obvious author filter doesn't surface it.
 for merge" report was correct; a first-pass verification that filtered by
 `author.login == "claude"` found only the stale "Needs more work" comment and
 nearly contradicted a true report.)
+
+## Verify an issue's own stated root cause empirically before implementing its proposed fix
+
+A well-written bug issue with specific code references (line numbers, a named mechanism,
+a plausible-sounding causal chain) is still a hypothesis, not a verified fact — even when
+it was clearly written after real investigation. Before implementing the issue's own
+"fix direction," reproduce the bug live and confirm the ACTUAL code path taken matches the
+diagnosis, rather than trusting the write-up and jumping straight to the proposed fix.
+
+**Why this matters:** issue #724 diagnosed a swirling-formation bug as `_face_for_action`'s
+"already turning" branch never settling (its re-target-every-tick logic defeating
+`_advance_turn`'s tight arrival epsilon). The fix direction (a positional deadband before
+re-targeting) was specific, well-reasoned, and referenced real line numbers. Implementing
+it and running the exact reproduction (`demos/inputs/all-out-attack.json` via
+`tools/demo/dump-state.sh`) showed **zero change** in output vs. unpatched `main` — a
+temporary debug print in `_face_for_action` revealed `_engage_turn_target` was NEVER
+non-zero across the whole 300-tick window the bug manifests in. The offset stayed under 1°
+the entire time, so every tick took the *small*-offset instant-snap branch (`_face_dir`),
+never the branch the issue diagnosed and the fix targeted. The real mechanism turned out to
+involve the raw **position** itself arcing (not just facing), with soldier counts and
+frontage essentially frozen throughout — ruling out the issue's own "third instance of the
+same hazard family" framing and pointing at `_press_into()`/`_separate()` instead.
+
+**How to apply:** before implementing a fix a reviewer or issue author proposed (yours or
+someone else's), run the issue's own reproduction command (or write an equivalent
+`dump-state.sh`/live-battle trace) against the UNMODIFIED code first, and instrument the
+specific branch/variable the diagnosis claims is at fault. Confirm that variable's state
+actually matches the story before spending effort on the proposed fix — a `git stash` +
+re-run diff (patched vs. unpatched output, byte for byte) is a fast, decisive way to catch
+a fix that silently does nothing. This is the same "never assume; always verify" principle
+`preferences.md` states generally, applied specifically to a bug's root-cause narrative,
+not just its resolution status.
+
+## A freshly-constructed test Unit defaults to morale 100 — routing tests can auto-rally instantly
+
+`Unit.gd`'s `morale` field defaults to `100.0`. A GUT test that constructs a bare `Unit`
+via `Unit.new()` and immediately calls `_process_rout()` to test rout/flee behavior can hit
+`_process_rout`'s own auto-rally check (`morale >= RALLY_MORALE_THRESHOLD and _can_rally()`)
+on the very first call — `_can_rally()` trivially returns true in an isolated unit test
+(full soldier strength, and `UnitTargeting.nearest_enemy_to` finds nothing since no enemy
+Unit exists in the scene), so the unit rallies immediately regardless of what the test
+meant to observe. Either set `u.morale = 0.0` (or another value below
+`RALLY_MORALE_THRESHOLD`) before the first `_process_rout()` call, or set `u._shattered =
+true` if the test wants a flee-forever unit that never rallies at all. Also call the real
+`u._rout()` first if the test depends on `_rout_timer` being armed (`ROUT_TIME`) — a unit
+that never went through `_rout()` has `_rout_timer == 0.0`, so `_process_rout`'s own
+"timer ran out" branch fires on the very first call, which look like a rally/shatter
+outcome from the fix under test rather than from the unarmed timer.
+(`Lacaedemon/sparta` PR #730, 2026-07-10.)
+
+## `PathField.active` is a global static — reset it around any isolated-unit test touching movement/routing
+
+`PathField.active` (a `static var`) persists across GUT tests within the same run, not just
+within one test function. A test that constructs a bare `Unit` and calls `_process_rout()`
+or `_move_to()` directly (bypassing a live Battle scene) gets different behavior depending
+on whether some EARLIER test in the same run left a real `PathField` instance active — if
+so, the pathfinding branch runs instead of the simpler straight-line-flee/move branch,
+which can silently change which code path the test is actually exercising. Save and restore
+it around the test, the pattern already used in `test_routing_terrain_pathfinding.gd`:
+```gdscript
+var old_pf: PathField = PathField.active
+PathField.active = null   # (or a specific PathField, if the test needs terrain)
+...
+PathField.active = old_pf
+```
+Do this in any new isolated-unit test that calls a `Unit` method sensitive to
+`PathField.active`, not just tests that are themselves about pathfinding.
