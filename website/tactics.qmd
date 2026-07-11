@@ -35,8 +35,8 @@ pin the front so the flanking unit has nowhere better to turn.
 ## Morale & routing
 
 Units don't fight to the last soldier. When a unit loses enough soldiers or takes
-flank/rear hits, it **routs** --- it flees (shown faded) toward its own back edge and
-stops fighting for now. A routing unit can flee past the field's visible edge into a
+flank/rear hits, it **routs** --- it flees (its flag fading) toward its own back edge
+and stops fighting for now. A routing unit can flee past the field's visible edge into a
 margin beyond it before it's gone for good, staying on the field --- and still
 fightable --- for as long as it's plausibly still in view.
 
@@ -98,7 +98,7 @@ returns to your control. (The regression guard for this behavior is
 ```
 
 Rout and pursuit: a low-morale infantry block is charged by cavalry and breaks &mdash;
-it flees faded toward its own edge. The faster cavalry catch it before it can put
+it flees, its flag fading, toward its own edge. The faster cavalry catch it before it can put
 real distance between them, and the casualties from being run down keep its morale
 too low to ever recover: it's annihilated rather than rallying &mdash; contrast the
 isolated recovery above (@fig-morale-recovery), where nothing interferes.
@@ -115,7 +115,7 @@ isolated recovery above (@fig-morale-recovery), where nothing interferes.
 </video>
 ```
 
-A team's last unit routs. A lone player infantry is broken and flees (faded);
+A team's last unit routs. A lone player infantry is broken and flees, its flag fading;
 the enemy keeps pressing since a routing unit is still fair game, so this
 matchup grinds on rather than resolving cleanly &mdash; but the point still
 holds: the battle stays live instead of ending the instant the last unit
