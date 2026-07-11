@@ -1228,9 +1228,17 @@ func _think(delta: float) -> void:
 				state = State.IDLE
 				# Use the hold to centre-pivot in place toward the pending destination, so
 				# the ranks are already coming onto their heading before the first step. A
-				# side-step holds its facing (ordered_facing set), so it doesn't pivot.
+				# side-step holds its facing (ordered_facing set), so it doesn't pivot. An
+				# undisciplined unit (or a disciplined one marching in haste) skips the formed
+				# pivot here too, mirroring _move_to's pivot_as_formation gate -- otherwise it
+				# would still visibly turn as one formed body during the hold, even though the
+				# march that follows won't.
 				if ordered_facing == Vector2.ZERO:
-					_rotate_facing_toward(_reform_target - position, delta)
+					var reform_dir: Vector2 = _reform_target - position
+					if disciplined and not _is_move_order_in_haste():
+						_rotate_facing_toward(reform_dir, delta)
+					else:
+						_face_dir(reform_dir)
 				return
 			_commit_pending_reform()
 
@@ -1628,6 +1636,15 @@ func arrival_brake_rate() -> float:
 	return minf(decel, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR))
 
 
+## Whether the current order is a run/sprint-gait MOVE -- too urgent for even a
+## disciplined unit to execute a formed centre-pivot turn before marching. Shared by
+## _move_to's pivot_as_formation gate and _think's reform-hold pivot so both agree on
+## when a march is "in haste".
+func _is_move_order_in_haste() -> bool:
+	return current_order != null and current_order.type == Order.Type.MOVE \
+			and current_order.gait >= GAIT_RUN
+
+
 func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
@@ -1730,9 +1747,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# so no separate "form up" step is needed. A disciplined unit given an in-haste order
 	# (a triple/quadruple-click RUN/SPRINT gait) temporarily marches the same undisciplined
 	# way -- there's no time to execute a formed turn.
-	var in_haste: bool = current_order != null and current_order.type == Order.Type.MOVE \
-			and current_order.gait >= GAIT_RUN
-	var pivot_as_formation: bool = orderly and disciplined and not in_haste
+	var pivot_as_formation: bool = orderly and disciplined and not _is_move_order_in_haste()
 	if maneuvering:
 		_face_dir(ordered_facing)
 	elif pivot_as_formation:

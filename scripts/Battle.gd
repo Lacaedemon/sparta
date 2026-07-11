@@ -566,6 +566,8 @@ func _spawn_scenario(specs: Array) -> void:
 			d["formation"] = int(spec["formation"])
 		if spec.has("starting_state"):
 			d["starting_state"] = int(spec["starting_state"])
+		if spec.has("disciplined"):
+			d["disciplined"] = bool(spec["disciplined"])
 		var team := int(spec.get("team", 0))
 		var pos := Vector2(float(spec.get("x", FIELD.size.x * 0.5)), float(spec.get("y", FIELD.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the

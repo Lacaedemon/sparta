@@ -1119,6 +1119,38 @@ func test_unit_pivots_in_place_during_the_reform_hold() -> void:
 	assert_almost_eq(u.position.y, 0.0, 0.001, "no advance during the hold (y)")
 
 
+func test_undisciplined_unit_snaps_facing_instead_of_pivoting_during_the_reform_hold() -> void:
+	# Mirrors test_unit_pivots_in_place_during_the_reform_hold, but for an undisciplined
+	# unit: it should snap its facing onto the pending destination during the hold, not
+	# gradually centre-pivot -- otherwise it would still visibly turn as one formed body
+	# during the hold even though its march afterward won't.
+	var u := _make_unit()
+	u.disciplined = false
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._reform_target = Vector2(0, 1000)            # destination straight down
+	u._reform_timer = Unit.REFORM_DURATION
+	u._think(0.1)
+	assert_almost_eq(u.facing.y, 1.0, 0.001,
+		"an undisciplined unit snaps facing onto the destination during the reform hold")
+	assert_eq(u.state, Unit.State.IDLE, "it still holds position during the reform")
+
+
+func test_in_haste_move_snaps_facing_during_the_reform_hold_even_for_a_disciplined_unit() -> void:
+	# Mirrors test_in_haste_move_snaps_facing_even_for_a_disciplined_unit, but for the
+	# reform-hold pivot rather than _move_to's -- both must agree on "in haste".
+	var u := _make_unit()
+	assert_true(u.disciplined, "sanity: the default unit is disciplined")
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u.set_current_order(Order.new_move(Vector2(0, 1000), 0, Unit.GAIT_RUN))
+	u._reform_target = Vector2(0, 1000)
+	u._reform_timer = Unit.REFORM_DURATION
+	u._think(0.1)
+	assert_almost_eq(u.facing.y, 1.0, 0.001,
+		"an in-haste order snaps facing during the reform hold even for a disciplined unit")
+
+
 func test_orderly_about_face_marches_to_a_rear_destination() -> void:
 	# End to end through _think: ordered to a point behind it, the unit about-faces
 	# then marches there, ending up facing the destination -- not reversing into it.
