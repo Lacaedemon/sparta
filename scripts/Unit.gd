@@ -842,6 +842,15 @@ func _physics_process(delta: float) -> void:
 			and _order_response_timer <= 0.0 and _reform_timer <= 0.0:
 		var travel_dir: Vector2 = _approach_velocity.normalized() \
 				if _approach_velocity.length_squared() > 0.0001 else Vector2.ZERO
+		# UnitCombat's "spend the charge" strike-resolution reset can zero
+		# _approach_velocity on the exact tick a unit's last opponent dies and it drops
+		# out of FIGHTING with _current_speed still nonzero -- direction is lost with no
+		# _move_to call left to rebuild it. Fall back to `facing`: at this instant the
+		# unit was just fighting head-on, so its facing is a faithful stand-in for the
+		# travel heading that was spent, and this only ever applies in that anomalous
+		# zero-velocity/nonzero-speed state, never to a unit still under normal control.
+		if travel_dir == Vector2.ZERO and _current_speed > 0.0:
+			travel_dir = facing
 		_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
 		# Terrain-scaled, matching _move_to's own effective_speed -- a unit coasting to a
 		# stop in a forest carries proportionally less real velocity, just like one still
