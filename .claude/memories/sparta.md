@@ -23,13 +23,24 @@ modifier or an instant state switch that ignores it. Concretely:
   feedback: the per-soldier marks and other chrome stay fully opaque.
 - **No inert numbers.** A quantity that represents real motion must actually cause
   motion — a decaying speed that doesn't move the unit is a display artifact, not
-  physics. #742/#743 (open as of this writing) makes residual `_current_speed` coast
-  the unit forward as it decelerates, instead of counting down while `position` sits
+  physics. #742/#743 (merged) made residual `_current_speed` coast the unit
+  forward as it decelerates, instead of counting down while `position` sits
   frozen; the fix consolidates onto `_approach_velocity` (the unit's actual travel
   velocity, already read by the soldier-body feed-forward and combat charge bonus —
   never truly combat-only, just under-documented as one) rather than adding a
-  parallel velocity field. Check whether #743 has merged before citing this section
-  as describing the current codebase state rather than the in-flight direction.
+  parallel velocity field. #747 (merged) fixed a gap #743's own tests never
+  exercised: `UnitCombat`'s "spend the charge" strike reset zeroed
+  `_approach_velocity` on the exact tick a unit's last opponent died, leaving the
+  idle-coast guard with no travel direction — see "A prior PR's own claimed
+  verification can be wrong even after merge" below. #749 (merged, closes #745's
+  first slice) went further: added real soldier-to-soldier enemy-contact collision
+  physics (`SoldierCollision.enemy_contact_impulse` /
+  `SoldierEnemyContact.accumulate`), and made the regiment's own `position` a pure
+  function of its soldier bodies' actual positions (`SoldierBodies.couple`) rather
+  than an independently-controlled point the bodies must return to — see "Regiment
+  position is a pure function of body positions" below. #752 tracks the remaining
+  gap in that slice (Square/Schiltron's engaged-soldier selection is still
+  index-based, not live-proximity-based, under multi-attacker chaos).
 - **No top-down combat-multiplier gimmicks where a physical mechanism already exists.**
   Prefer deriving an outcome (a spear stopping a charge, a knockback felling a soldier)
   from mass/momentum/impulse over a flat "type X beats type Y" bonus. This is the
@@ -752,3 +763,168 @@ framed as "at least as strong as / bigger than" an existing baseline, don't trus
 weak-case test to prove that framing — compute (or test) the derived value at the edges of
 the realistic input range and confirm it never crosses below the baseline it's supposed to
 dominate. (`Lacaedemon/sparta` PR #736, 2026-07-11.)
+
+## A prior PR's own claimed verification can be wrong even after merge
+
+The existing "verify an issue's own stated root cause empirically" memory above covers a
+not-yet-merged issue's hypothesis. It extends to a **merged, review-clean PR's own claims**
+too: don't cite one as describing the current codebase state just because it merged with a
+passing review — spot-check the actual reproduction before trusting it.
+
+**Concrete case:** #743 (merged) claimed, with specific before/after position values, that
+it fixed the coast-to-stop bug (residual `_current_speed` decaying while `position` sits
+frozen), and its own review rounds confirmed it. The claim didn't reproduce against the
+actually-merged commit: `dump-state.sh` on `main` still showed `position` pixel-frozen while
+`current_speed` ramped down. Root cause: `UnitCombat`'s "spend the charge" strike-resolution
+reset zeroed `_approach_velocity` on the exact tick a unit's last enemy died — the SAME tick
+the idle-coast guard started reading it for a travel direction — a case #743's own tests
+never exercised (they set up `_approach_velocity`/`facing` directly, never went through a
+real combat kill). Fixed in #747 by falling back to `facing` in that specific
+zero-velocity/nonzero-speed anomalous state.
+
+**How to apply:** before citing a merged PR's demo/description as proof of current behavior
+(e.g. when deciding whether a design-philosophy note still needs a "check whether X has
+merged" hedge, or when building on top of a mechanism a recent PR claims to have fixed),
+re-run its own reproduction against the current `main` rather than trusting the PR body.
+This is cheap (`dump-state.sh` against the PR's own demo input) and catches exactly this
+class of gap: a fix that works in the narrow scenario its own tests constructed, but not in
+the real path the bug actually occurs on.
+
+## Regiment position is a pure function of body positions
+
+As of #749, `Unit.position` (the regiment's own kinematic point) is not an independently-
+controlled value the soldier bodies chase — it's continuously re-derived FROM the bodies.
+`SoldierBodies.couple()` runs every tick, computes the drift between the soldier bodies'
+actual centroid and their formation-slot centroid, and slides `position` a bounded fraction
+of that drift (`FOLLOW_RATE`, capped at `MAX_FOLLOW_SPEED`) toward the bodies. This runs
+**unconditionally** — for every unit, every tick, regardless of order state.
+
+**Consequence:** a unit with NO move order (including one under `ORDER_HOLD`, or simply
+idle) can still visibly move if its soldier bodies get physically displaced by something
+else — enemy-contact impulses, knockback, a failed brace. This isn't a bug or a "unit
+trying to move" — it's the intended emergent behavior of the "no top-down gimmicks"
+philosophy above: a real line hit hard enough to yield ground would physically cede that
+ground, not teleport back to a fixed spot. Before #749, `MAX_FOLLOW_SPEED` was 80 (a mild
+drift, largely invisible); #749 raised it to 300 specifically so this coupling could win
+against genuine contact resistance, which also makes any body displacement (including from
+unrelated causes) far more visible than before.
+
+**How to apply:** when a "stationary" or `HOLD`-ordered unit appears to drift in a demo or
+state dump, don't assume its order/state logic is misfiring — check whether its soldier
+BODIES are being displaced (contact physics, knockback, a facing/grid change dragging slot
+targets) and whether `couple()` is just honestly reporting that drift back up to `position`.
+(`Lacaedemon/sparta` PR #749, 2026-07-11.)
+
+## Multi-pair force accumulation needs a write-back clamp, not just a per-pair cap
+
+When a per-tick force resolves in **pairs** (soldier-vs-soldier contact, not a single
+discrete strike) and the same body can appear in more than one pair simultaneously, a cap
+applied ONLY inside the per-pair resolution function is not enough — the pair-wise caps
+compose additively across pairs unless the SUMMED result is also clamped before it's
+written back to the body's velocity.
+
+**Concrete case:** `SoldierCollision.enemy_contact_impulse()` caps its own
+`effective_closing_speed` at `KNOCKBACK_SPEED_MAX`, with a docstring explicitly scoped to
+"one enemy-contact pair." `SoldierEnemyContact.accumulate()` sums that impulse into each
+body's `delta_v` across every simultaneously-overlapping enemy, but originally applied the
+sum with a raw `+=` — a soldier touching 2-3 enemies at once (e.g. a Square-perimeter
+defender pressed by several attackers from one side — MORE likely after #749's own fix
+making `engaged_soldier_indices()` return the whole perimeter for Square/Schiltron, not
+just a front wedge) could receive 2-3x the stated per-tick cap. No downstream clamp rescues
+this for an actively-fighting body (`SoldierBodies._cap_body_speed()` only runs when idle
+or reforming). Caught by `claude[bot]` review, not the original implementation or its test
+(which only budgeted one `KNOCKBACK_SPEED_MAX` term per tick in
+`test_collision_knockback_battle.gd`'s displacement bound).
+
+**Fix pattern:** apply the write-back through `SoldierCombat.capped_knockback_velocity`
+(which clamps the RESULTING velocity — `max(current speed, cap)` — after adding the
+impulse) instead of a raw add, mirroring the pile-on clamp `SoldierMelee.resolve` already
+uses for accumulated strike knockback on one body ("impulses from every attacker shoving
+this body this cadence accumulate in its velocity, and each application clamps the summed
+result"). Test the worst case directly: two (or more) pairs whose contact normals point in
+the SAME direction (impulses stack instead of partially canceling), asserting the total
+stays capped. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
+
+## `target_enemy` persistence must respect `ORDER_HOLD`'s existing contract
+
+`UnitTargeting.current_target()`'s doc/comment states its purpose as "keep an already-live
+target rather than re-scanning for the nearest," but the auto-acquire fallback path
+(`nearest_enemy()`, used when `target_enemy` is null) never actually wrote its pick back
+into `target_enemy` — so a unit with no explicit attack order re-ran a full nearest-enemy
+scan from scratch EVERY tick. Under a multi-attacker press, tiny jostles in relative
+distance flip which enemy is "nearest" tick to tick, and each flip re-arms
+`_face_for_action`'s engage-turn toward a new direction — the whole grid sweeps back and
+forth at the turn rate instead of settling on one foe (visible as soldiers "flying" once
+body coupling is fast enough to track it — see #749 above).
+
+**The gotcha:** persisting the auto-acquired pick (`target_enemy = enemy`, in `_think()`'s
+gated combat-engagement branches) fixes that whipsaw, but `Unit.gd`'s chase branch
+(`elif target_enemy != null or (chasing and not in_contact): ... _move_to(goal, delta)`)
+has **no `ORDER_HOLD` guard** — because until this change, `target_enemy` only ever went
+non-null via an EXPLICIT order, which `ORDER_HOLD` is specifically meant to still obey
+("HOLD only suppresses chasing a DETECTED foe, not an explicitly-set target"). Committing
+an auto-acquired pick unconditionally reclassifies it as that kind of explicit target: the
+instant the fought enemy leaves contact (retreats, gets knocked back, routs —
+`current_target()` still returns a routing unit, only `state != DEAD` is checked), the
+melee/ranged branch stops firing but `target_enemy` is still set, so the HELD unit marches
+off after it. Caught by `claude[bot]` review, not by the original fix or its own tests
+(which only called `_think()` once, never reaching the tick where the enemy has left
+contact).
+
+**Fix:** skip the `target_enemy = enemy` commit specifically when `order_mode == ORDER_HOLD`
+— this preserves the pre-existing contract at the cost of not fixing the facing-whipsaw for
+an un-squared HELD unit under a multi-attacker press specifically (not a regression, since
+that combination was never fixed by the persistence change in the first place — Square is
+exempted from engage-turning entirely regardless of order_mode, so the common case is
+covered anyway). **How to apply:** any time a field's "only ever set by an explicit order"
+invariant is broken by a new auto-commit path, grep every consumer of that field for logic
+that assumes the old invariant (here: an unguarded chase branch) before shipping — a single
+unconditional write can silently reclassify state elsewhere in the same file relies on
+staying scoped. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
+
+## An early return added to `_face_for_action` must settle any in-progress engage turn
+
+`_face_for_action()` tracks an in-progress turn via `_engage_turn_target` (nonzero while
+turning), cleared only by `_settle_engage_turn()` at completion or interruption. Adding a
+NEW unconditional early return to this function (e.g. `if in_square(): return true`, added
+in #749 so an omnidirectional formation never needs to reface) can strand that state: if a
+unit is mid-turn when it gets switched to the new early-return condition (here,
+`ORDER_FORMATION_ONLY` calling `Unit.set_formation()` mid-turn, which doesn't touch
+`_engage_turn_target`), every SUBSEQUENT call takes the new early return before ever
+reaching the `_advance_turn`/`_settle_engage_turn` logic that would normally finish and
+clear it. `_engage_turn_target` then stays stuck non-zero forever, which — per
+`is_maneuver_turning()`'s own docstring — permanently freezes `SoldierBodies.step`'s
+slot-approach term: the squared body never eases onto its new slots. Caught by `claude[bot]`
+review (reachable via the exact anti-cav-square flow #749 is built around: a unit turning
+to face an approaching charger, then squared reactively before the turn finishes), not by
+the original implementation.
+
+**Fix:** settle any in-progress turn before taking the early return:
+`if _engage_turn_target != Vector2.ZERO: _settle_engage_turn()` before `return true`.
+**How to apply:** any new early return added to a stateful turn/maneuver function in this
+file (anything tracking `_engage_turn_target`, `is_wheeling()`, `is_order_turning()`, or
+similar) needs to settle or explicitly account for whatever in-progress state it might be
+short-circuiting past — grep the function for every OTHER path that clears the same state
+before assuming a new early return is safe. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
+
+## A bare `Unit.new()` test fixture defaults to `uid -1` — soldier-id collisions across fixtures
+
+`Unit.soldier_id(index)` computes `uid * SOLDIER_ID_STRIDE + index`, and `Unit.gd`'s `uid`
+field defaults to `-1` (only ever assigned a real, unique value by `Battle`'s spawn path).
+A GUT test that constructs TWO bare `Unit.new()` fixtures (never spawned through Battle) and
+exercises any logic keyed on `soldier_id()` — e.g. `SoldierEnemyContact.accumulate()`'s pair
+canonicalization, `if sgids[b] <= sgids[a]: continue` — will see BOTH fixtures' soldier 0
+resolve to the identical id (`-1 * STRIDE + 0`), so the pair gets silently treated as
+already-resolved/duplicate and skipped, regardless of what the test actually intended to
+exercise. This doesn't fail loudly — a test asserting "nothing changed" can pass for the
+WRONG reason (id collision) instead of the reason its docstring claims (e.g. a same-team
+skip, or a dead-unit skip).
+
+**How to apply:** any GUT test constructing more than one bare `Unit.new()` fixture and
+exercising soldier-id-keyed logic must assign each a distinct `uid` explicitly (e.g.
+`u.uid = 1`, `u.uid = 2`), matching what a real `Battle`-spawned unit always gets. Verify a
+new cross-unit test isn't accidentally passing via this collision by checking the actual
+resolved values (not just the top-level assertion) the first time it's written — a debug
+probe test (construct the fixtures, print `engaged_soldier_indices()`/`soldier_id()`/the
+resulting velocities) is the fast way to catch it, faster than reasoning through the pair
+loop by hand. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
