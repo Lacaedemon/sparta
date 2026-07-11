@@ -2838,22 +2838,41 @@ func soldier_brace() -> float:
 ## An omnidirectional formation (in_square()) has no single front to speak of --
 ## _face_for_action never turns it to bear on one attacker, since every side already
 ## stands ready -- so a fixed rank-0 wedge would sit at whatever direction the grid
-## happened to be laid out on, unrelated to which side is actually under attack. It
-## returns the whole outer ring instead -- by LIVE position
-## (UnitFormation.live_perimeter_indices), not slot index: `square_is_perimeter`'s
-## index-to-position mapping goes stale the moment `SoldierMelee.reap()` compacts the
-## per-soldier arrays after a casualty, so this reads `_sim_soldier_pos` directly and
-## sizes the live selection to match the ring's own slot-index COUNT (same output size,
-## correct membership -- live_perimeter_indices' own O(n log target_count) heap selection
-## is more work per call than the old O(n) index scan, see its docstring). Melee/contact
-## resolution can then find a real target regardless of which side a foe closes on, even
-## mid-battle with casualties already taken. Pure
-## and deterministic -- `_sim_soldier_pos` is this tick's frozen snapshot.
+## happened to be laid out on, unrelated to which side is actually under attack.
+## It instead selects every LIVING soldier with a real enemy soldier currently
+## within that enemy's own weapon reach (SoldierEnemyProximity, a cross-unit
+## spatial hash of every unit's raw soldier positions -- see its class doc), so
+## membership tracks actual multi-attacker contact instead of a fixed-size
+## geometric guess. Sized by real contact, not `square_is_perimeter`'s ring
+## count: under heavy multi-side pressure this can exceed the old ring size
+## (more soldiers are genuinely in reach and should be able to fight), and it
+## shrinks back down as contact eases. When nothing is currently within reach
+## (freshly engaged, contact just broke, or an isolated no-enemy scenario),
+## falls back to the live-position ring (UnitFormation.live_perimeter_indices)
+## so an engaged unit still has *some* defenders selected rather than none --
+## `square_is_perimeter`'s index-to-position mapping goes stale the moment
+## `SoldierMelee.reap()` compacts the per-soldier arrays after a casualty, so
+## the fallback reads `_sim_soldier_pos` directly rather than by slot index.
+## Melee/contact resolution can then find a real target regardless of which
+## side a foe closes on, even mid-battle with casualties already taken. Pure
+## and deterministic -- `_sim_soldier_pos`/`_sim_soldier_hp` are this tick's
+## frozen snapshot, and SoldierEnemyProximity's rebuild reads the same
+## snapshot from every unit in the scene tree, no RNG, no wall-clock.
 func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
 		return out
 	if in_square():
+		var all_units: Array = get_tree().get_nodes_in_group("units")
+		all_units.append_array(get_tree().get_nodes_in_group("routers"))
+		SoldierEnemyProximity.rebuild(all_units, Engine.get_physics_frames())
+		var r: float = soldier_body_radius()
+		var threatened := PackedInt32Array()
+		for i in range(count):
+			if SoldierEnemyProximity.has_enemy_within(_sim_soldier_pos[i], team, r):
+				threatened.push_back(i)
+		if not threatened.is_empty():
+			return threatened
 		var square_file_count: int = formation_files(count)
 		var ring_size: int = 0
 		for i in range(count):
