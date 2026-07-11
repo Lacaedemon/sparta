@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/shielded-stance-visuals.json",
+  "caption": "Shield wall and testudo no longer draw a schematic shield overlay on top of the block -- the stance now reads purely from the soldiers' own physical positions (a tight edge-to-edge grid for shield wall, a dense packed block for testudo), matching how orbis/schiltron already reads from its real outward-facing square.",
+  "fixed_fps": 30,
+  "max_frames": 180,
+  "fps": 15,
+  "width": 640
+}

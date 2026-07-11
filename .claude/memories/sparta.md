@@ -466,16 +466,32 @@ last fightable unit ended the battle instantly and froze the router mid-rout.
 
 ## Render-only cosmetic overlay pattern
 
-When a PR is purely **"show an existing sim state on screen"** (e.g. #486: draw
-shields for the SHIELD_WALL / TESTUDO `formation_mode` stances — the defensive
-effects already existed, only the visual was missing), build it as a
-**render-only overlay** so it never touches sim/combat/formation code and stays
+**Superseded for the shield-wall/testudo/square case by #753:** the owner
+decided the schematic overlay this pattern originally shipped
+(`scripts/UnitShields.gd`, added by #486/#487/#623) was the wrong call for
+those stances specifically — since #534 already restructures the real
+soldier-block geometry per formation (a tight edge-to-edge grid for shield
+wall/testudo, a real outward-facing square for orbis/schiltron), drawing a
+second schematic on top duplicated what the physical soldier positions
+already show, in tension with the "no top-down gimmicks" philosophy at the
+top of this file. #753 removed `UnitShields.gd` and its call site entirely;
+these formations are now read purely from the soldiers' own positions. The
+pattern below is kept as a still-valid recipe for a genuinely different
+future case (an effect the soldier positions truly can't convey on their
+own), not as a template to reach for reflexively — check whether the real
+per-soldier geometry already tells the story before adding a schematic
+overlay on top of it.
+
+When a PR is purely **"show an existing sim state on screen"** that the
+soldiers' own positions can't already convey, build it as a **render-only
+overlay** so it never touches sim/combat/formation code and stays
 conflict-free with the many in-flight PRs that DO touch that code.
 
 **The pattern (mirrors `UnitSprites` / the emblem/flag chrome):**
 
-1. **Pure geometry helper** in its own `class_name` script
-   (`scripts/UnitShields.gd`). Static funcs taking plain shape inputs
+1. **Pure geometry helper** in its own `class_name` script (e.g. the former
+   `scripts/UnitShields.gd`, removed by #753 -- see the pattern in
+   `scripts/UnitSprites.gd` instead for a still-live example). Static funcs taking plain shape inputs
    (frontage/ranks/spacing/mark_r) returning local-frame polygons — a function of
    block shape ONLY, nothing reads or writes the sim. Directly unit-testable and
    replay-safe. Keep block geometry consistent with the formation grid:

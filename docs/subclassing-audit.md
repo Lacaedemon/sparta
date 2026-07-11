@@ -94,9 +94,9 @@ re-confirming it here rather than re-litigating it.
 
 ### 3. `formation_mode` (tight/loose/square/shield-wall/testudo/...) — not worth it, for a reason beyond the issue's own test
 
-`formation_mode` branching is scattered across five files (`Unit.gd`,
-`UnitCombat.gd`, `UnitShields.gd`, `FarTierRules.gd`,
-`SelectionManager.gd` — 77 references total) and, unlike `Order.type`, each
+`formation_mode` branching is scattered across four files (`Unit.gd`,
+`UnitCombat.gd`, `FarTierRules.gd`, `SelectionManager.gd` — 34 references
+total) and, unlike `Order.type`, each
 unit genuinely has exactly one formation mode at a time with no combinatorial
 overlap: the issue's "clean tree" test says yes.
 
@@ -117,12 +117,11 @@ issue's own test (combinatorial vs. tree) doesn't cover it, and this is the
 concrete case that would otherwise look like a false positive.
 
 The current shape — a plain `int` field plus scattered `match`/`if` dispatch,
-several of them already factored into small pure static helpers
-(`UnitShields.gd`'s geometry helpers, `FarTierRules.gd`'s multiplier table) —
-is already the project's chosen mitigation (see the "render-only overlay
-pattern" used for `UnitShields`), and PLAN.md's #530/#534 direction is
-replacing the *multiplier* abstraction with real per-soldier geometry, not
-introducing a class hierarchy. Recommendation: no change.
+some of it already factored into small pure static helpers
+(`FarTierRules.gd`'s multiplier table) — is already the project's chosen
+mitigation, and PLAN.md's #530/#534 direction is replacing the *multiplier*
+abstraction with real per-soldier geometry, not introducing a class
+hierarchy. Recommendation: no change.
 
 ### 4. HUD widgets and controls — no branching pattern to fix
 

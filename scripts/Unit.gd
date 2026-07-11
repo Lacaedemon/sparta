@@ -3754,19 +3754,15 @@ func _update_shadow() -> void:
 
 
 func _draw() -> void:
-	# Chrome (bars, state ring, shield overlay, soldier-ID text) always stays fully
-	# opaque -- only the regimental flag fades while routing (see the flag call at the
-	# end of this function, which uses _render_alpha directly instead of this constant).
+	# Chrome (bars, state ring, soldier-ID text) always stays fully opaque -- only the
+	# regimental flag fades while routing (see the flag call at the end of this
+	# function, which uses _render_alpha directly instead of this constant).
 	var alpha: float = 1.0
-	var body_c := Color(team_color.r, team_color.g, team_color.b, alpha)
-	var dark_c := Color(body_c.r * 0.35, body_c.g * 0.35, body_c.b * 0.35, alpha)
-	var lite_c := Color(minf(body_c.r + 0.30, 1.0), minf(body_c.g + 0.30, 1.0),
-			minf(body_c.b + 0.30, 1.0), alpha)
 
 	# The soldier marks (Stage B) are rendered by the flocking MultiMeshes and the
 	# ground shadow by a Polygon2D — both child nodes layered under this chrome via
-	# z_index. _draw() handles only the screen-relative chrome: state ring, shielded-stance
-	# overlay, selection halo and stat bars. `_block_extent` (maintained by _process) sizes
+	# z_index. _draw() handles only the screen-relative chrome: state ring, selection
+	# halo and stat bars. `_block_extent` (maintained by _process) sizes
 	# them to the live block rather than the bare collision radius.
 	var extent: float = _block_extent
 
@@ -3778,20 +3774,6 @@ func _draw() -> void:
 		State.ROUTING:
 			draw_arc(Vector2.ZERO, extent + 2.0, 0, TAU, 36,
 					Color(0.95, 0.50, 0.05, 1.0), 3.5)
-
-	# Shielded-stance overlay: a locked shield line (shield wall), an overhead shield roof
-	# (testudo), or a ring of outward spear ticks (the hollow square, orbis/schiltron)
-	# -- drawn in the facing-rotated block frame so it rotates with the unit and
-	# scales with the block. Stays visible at the zoomed-in figure LOD -- it represents
-	# raised/overhead shields or the outward-facing ring, which the individual soldier
-	# silhouettes alone don't read clearly at every zoom (especially the ring at mark LOD,
-	# zoomed out). No-op in any other formation. Sized off the live formation shape, not
-	# the bare radius.
-	if formation_mode == FORMATION_SHIELD_WALL or formation_mode == FORMATION_TESTUDO \
-			or in_square():
-		draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5, Vector2.ONE)
-		UnitShields.draw(self, body_c, dark_c, lite_c)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if selected:
 		draw_arc(Vector2.ZERO, extent + 4.0, 0, TAU, 36, Color(0.95, 0.95, 0.3), 2.5)
@@ -3831,6 +3813,6 @@ func _draw() -> void:
 
 	# The regimental flag is the one element that fades while routing (a wavering
 	# standard reads as morale faltering); a separate faded color, not the chrome's
-	# always-opaque body_c/alpha above.
+	# always-opaque alpha above.
 	var flag_c := Color(team_color.r, team_color.g, team_color.b, _render_alpha)
 	UnitSprites.flag(self, flag_c, _render_alpha, extent)
