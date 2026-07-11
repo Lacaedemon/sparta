@@ -840,6 +840,11 @@ into different tools:
   it, so it keeps closing on and re-engaging the same fleeing or repositioning
   enemy instead of breaking off. Use it to run down a routing foe rather than
   let it escape to rally and rejoin the fight later.
+- **Wedge charge** (<kbd>-</kbd>) --- maximizes the approach at the cost of
+  defense and stamina: a faster pace toward the target, a lower own defense
+  while fighting, and faster fatigue buildup while engaged. Use it to punch a
+  hole in the enemy line before it can brace, not as a strict upgrade over a
+  normal stance --- the unit that arrives first is also the easier one to hit.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and

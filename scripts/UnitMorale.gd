@@ -14,7 +14,12 @@ static func tick_fatigue(u: Unit, delta: float) -> void:
 	if u.state == Unit.State.FIGHTING:
 		var cycles: bool = not u.is_ranged and u.rank_relief
 		var cycle_reduction := u.training * Unit.RANK_CYCLE_FATIGUE_REDUCTION if cycles else 0.0
-		u.fatigue = minf(100.0, u.fatigue + Unit.FATIGUE_PER_SEC * (1.0 - cycle_reduction) * delta)
+		# Wedge charge's tradeoff: the charge that punches through the line also wears the
+		# men down faster (Unit.WEDGE_CHARGE_FATIGUE_MULT), on top of whatever rank-cycling
+		# reduction the unit already earns.
+		var wedge_mult: float = Unit.WEDGE_CHARGE_FATIGUE_MULT if u.order_mode == Unit.ORDER_WEDGE_CHARGE else 1.0
+		u.fatigue = minf(100.0,
+			u.fatigue + Unit.FATIGUE_PER_SEC * wedge_mult * (1.0 - cycle_reduction) * delta)
 	else:
 		u.fatigue = maxf(0.0, u.fatigue - Unit.FATIGUE_RECOVER_PER_SEC * delta)
 

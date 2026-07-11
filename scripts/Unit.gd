@@ -239,6 +239,7 @@ const ORDER_ROLL_THE_LINE := 8
 const ORDER_PIN_DOWN := 9
 const ORDER_ALL_OUT_ATTACK := 10
 const ORDER_CHASE := 11
+const ORDER_WEDGE_CHARGE := 12
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
@@ -522,6 +523,14 @@ const FATIGUE_MAX_ATTACK_PENALTY: float = 0.4
 # effective fatigue buildup. At training=1.0, buildup is halved. Ranged units don't
 # cycle ranks (they fire from static lines), so the reduction only applies to melee.
 const RANK_CYCLE_FATIGUE_REDUCTION: float = 0.5
+# Wedge charge (an attack-order subtype): trades defense (UnitCombat's
+# WEDGE_CHARGE_DEFENSE_PENALTY) and faster fatigue buildup for a quicker approach, aiming
+# to punch a hole in the enemy line before it can brace. 1.3x pace and 1.5x fatigue
+# buildup are deliberately less extreme than all-out-attack's combat-only tradeoff, since
+# this stance's cost lands continuously (every tick of movement AND fighting) rather than
+# only while fighting.
+const WEDGE_CHARGE_SPEED_BONUS: float = 1.3
+const WEDGE_CHARGE_FATIGUE_MULT: float = 1.5
 # A well-trained unit also sustains its morale while fighting — the visible discipline
 # of rotation keeps the formation steady. Threshold is the minimum training for any
 # morale recovery to kick in; at threshold it's minimal, scaling up to full at 1.0. This
@@ -1482,6 +1491,12 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# its top pace: the men hold a locked ring/wall and only creep, so the target pace
 	# is scaled down before the ramp.
 	pace_speed *= formation_speed_factor()
+	# Wedge charge trades defense and fatigue (UnitCombat.order_mode_modifiers,
+	# UnitMorale.tick_fatigue) for a faster approach -- the whole point of the stance is to
+	# hit the enemy line harder and sooner, so the bonus applies to every pace, not just a
+	# full sprint.
+	if order_mode == ORDER_WEDGE_CHARGE:
+		pace_speed *= WEDGE_CHARGE_SPEED_BONUS
 	# Final approach: brake to a stop on the destination instead of holding pace to the
 	# wire and letting the outer arrival check hard-reset _current_speed to 0 in a single
 	# tick. The pace is capped at the (margin-derated) arrival envelope sqrt(2 * a * d) --

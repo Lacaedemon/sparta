@@ -297,6 +297,9 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
   normal disengage exit a plain move order gives it, so it keeps closing on and
   re-engaging the same fleeing or repositioning enemy instead of breaking off
   (see [Tactics](tactics.qmd#order-stances)).
+- **Wedge charge** (<kbd>-</kbd>) --- trade defense and stamina for a faster
+  approach: the unit closes the distance quicker, but is itself easier to hit
+  and tires faster while fighting (see [Tactics](tactics.qmd#order-stances)).
 
 Pressing a stance key alone only **arms** it for your next move/attack order ---
 it doesn't touch a unit that's already standing still. To change a selected
@@ -424,6 +427,21 @@ all-out both deals and takes more casualties than a fair fight would.
 
 Chase stance: once the enemy breaks and routs, the cavalry keeps
 pressing the same fleeing target instead of disengaging.
+:::
+
+::: {#fig-wedge-charge .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/wedge_charge.jpg">
+  <source src="media/wedge_charge.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Wedge charge stance: two matched regiments given the same move order, one
+wedge-charging --- it visibly pulls ahead and reaches the enemy line first.
 :::
 
 **Relieve a fighting friendly (line relief).** Right-click an **engaged friendly**

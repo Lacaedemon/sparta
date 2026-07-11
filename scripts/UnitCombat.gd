@@ -22,6 +22,12 @@ const REAR_MORALE_EXTRA: float = 0.0
 const ALL_OUT_ATTACK_HIT_BONUS: float = 1.2
 const ALL_OUT_ATTACK_DEFENSE_PENALTY: float = 0.8
 
+## Wedge charge's own defense penalty (-25% = 0.75x effective defense) when
+## order_mode == WEDGE_CHARGE -- the stance spends speed and fatigue (Unit.gd,
+## UnitMorale.tick_fatigue) AND defense to punch through the enemy line, so it costs
+## slightly more defense than all-out-attack's combat-only tradeoff.
+const WEDGE_CHARGE_DEFENSE_PENALTY: float = 0.75
+
 
 ## Physics-based cavalry charge multiplier: the bonus is the rider's IMPACT MOMENTUM, not
 ## a one-shot token. It scales with the component of the unit's approach velocity aimed
@@ -63,9 +69,10 @@ static func charge_multiplier(u: Unit, enemy: Unit) -> float:
 	return 1.0 + charge
 
 
-## Apply order-mode-based combat modifiers. All-out-attack boosts hit chance
-## at the cost of defense; other modes don't apply modifiers here.
-## Returns a tuple (attack_mult, defense_mult).
+## Apply order-mode-based combat modifiers. All-out-attack boosts hit chance at the cost
+## of defense; wedge charge costs defense only (its speed/fatigue tradeoff is applied
+## elsewhere -- Unit.gd's pace_speed, UnitMorale.tick_fatigue). Other modes don't apply
+## modifiers here. Returns a tuple (attack_mult, defense_mult).
 static func order_mode_modifiers(u: Unit, target: Unit) -> Vector2:
 	var attack_mult: float = 1.0
 	var defense_mult: float = 1.0
@@ -73,6 +80,8 @@ static func order_mode_modifiers(u: Unit, target: Unit) -> Vector2:
 		attack_mult = ALL_OUT_ATTACK_HIT_BONUS
 	if target.order_mode == Unit.ORDER_ALL_OUT_ATTACK:
 		defense_mult = ALL_OUT_ATTACK_DEFENSE_PENALTY
+	if target.order_mode == Unit.ORDER_WEDGE_CHARGE:
+		defense_mult = WEDGE_CHARGE_DEFENSE_PENALTY
 	return Vector2(attack_mult, defense_mult)
 
 
