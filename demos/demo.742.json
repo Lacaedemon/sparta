@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/idle-speed-friction.json",
+  "caption": "Residual speed now coasts the unit instead of decaying as an inert number while it sits frozen. A lone Cavalry regiment wipes out a single weak Infantry regiment; once the last enemy on the field dies, the cavalry has no target and no move order, but is still carrying real charge speed -- watch it visibly slide forward, decelerating, before coming to rest, instead of stopping dead the instant it runs out of things to fight.",
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 15,
+  "width": 720
+}
