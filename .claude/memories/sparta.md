@@ -1236,3 +1236,37 @@ cumulative-torque-instrumentation technique (temporary `print()`s in
 `Battle._on_soldier_tick()`, one running total per stage, printed every N ticks -- always
 revert before committing) to find which specific subsystem is the source for THIS
 reproduction before assuming a fix that didn't work for one case will work for the other.
+
+## A live-battle GUT test reading `current_order` needs the tick-count wait loop, not a single bare `await physics_frame`
+
+`Battle._physics_process` increments `_tick` AFTER running that tick's `_run_enemy_ai()` (so
+`current_tick()` reads `N` *during* tick `N`'s own processing, then becomes `N+1` right after).
+The established live-battle AI test pattern (`test_battle_ai_leaders.gd`, `_subcommanders.gd`)
+accounts for this with `while battle.current_tick() <= SOME_TICK: await get_tree().physics_frame`
+-- looping until the counter has genuinely advanced past the tick whose AI decision the test
+wants to read. A test that instead does a single bare `await get_tree().physics_frame`
+immediately after `add_child_autofree(battle)` and then reads live `current_order` state is
+racing an off-by-one: whether that one signal lands after the newly-added Battle node's FIRST
+`_physics_process` call isn't guaranteed by Godot's node-lifecycle timing, and the race is far
+more likely to be lost under heavier scheduling load (a full ~100-plus-script suite run) than
+when the single file runs alone.
+
+**Concrete case:** PR #794's `test_two_doctrines_produce_visibly_different_army_behavior_from_the_same_seed`
+used a single bare await, unlike every sibling test in the same file (which either call the
+pure `General.decide_army()` directly -- immune to the race, since it doesn't depend on the
+live tick having fired -- or already use the tick-count loop for their own live-order check).
+It passed reliably in isolation (`-gselect=test_battle_ai_general.gd`, 5/5) but failed
+consistently under the full suite (1571/1572, always the same test) -- the tell that it's a
+timing race tied to system load, not a logic bug in the code under test. Root-caused by first
+ruling out `DoctrineRegistry`'s static `_cache` (no in-place mutation anywhere, confirmed by
+grep) and `General.gd`'s own RNG usage (there is none), then checking `_physics_process`'s
+actual tick-increment ordering directly. Fixed by switching to
+`while aggressive.current_tick() < 1: await get_tree().physics_frame`, matching the sibling
+pattern.
+
+**How to apply:** any new live-battle GUT test that spawns a `Battle` and reads
+`current_order`/other live per-tick state (not just calling a pure decision function directly)
+must wait via a `current_tick()` loop, never a bare single `await physics_frame` -- and a test
+that passes alone but fails only under the full suite is a strong first hint to check for
+exactly this pattern before suspecting the actual feature code. (`Lacaedemon/sparta` PR #794,
+2026-07-12.)
