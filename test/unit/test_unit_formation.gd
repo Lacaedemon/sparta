@@ -485,3 +485,53 @@ func test_live_perimeter_indices_matches_a_brute_force_full_sort() -> void:
 		expected.sort()
 		assert_eq(UnitFormation.live_perimeter_indices(positions, target_count), expected,
 			"heap selection matches the brute-force reference at target_count=%d" % target_count)
+
+
+func test_live_front_indices_picks_the_farthest_forward_points() -> void:
+	# Five points scored against forward=Vector2.UP=(0,-1) (Unit.gd's own "front rank toward
+	# -Y" convention): the two most-forward (largest projection = most-negative Y) must be
+	# picked over the three that sit farther back, regardless of array order.
+	var positions := PackedVector2Array([
+		Vector2(0, -5),   # 0: farthest forward (score 5)
+		Vector2(2, 10),   # 1: farthest back (score -10)
+		Vector2(-3, -3),  # 2: forward (score 3)
+		Vector2(1, 4),    # 3: back (score -4)
+		Vector2(-1, 0),   # 4: middle (score 0)
+	])
+	var picked := UnitFormation.live_front_indices(positions, 2, Vector2.ZERO, Vector2.UP)
+	assert_eq(picked, PackedInt32Array([0, 2]), "the two most-forward points are picked, sorted by index")
+
+
+func test_live_front_indices_survives_array_compaction() -> void:
+	# The concrete bug this fixes: a fixed "first target_count indices" front-rank selection
+	# computed BEFORE a casualty compacts the array silently mis-selects once the array has
+	# shrunk and shifted (SoldierMelee.reap() splices out the dead, shifting later indices
+	# down). Simulate exactly that: a genuinely-front point ends up at a high array index,
+	# a genuinely-rear point at a low one -- live-position selection must follow the swap.
+	var positions := PackedVector2Array([
+		Vector2(0, 10),   # 0: rear (was front before the simulated compaction below)
+		Vector2(0, 0),
+		Vector2(0, -10),  # 2: front (was rear before the simulated compaction below)
+	])
+	positions[0] = Vector2(0, -10)  # now index 0 holds the front-most position
+	positions[2] = Vector2(0, 10)   # and index 2 holds the rear-most
+	var picked := UnitFormation.live_front_indices(positions, 1, Vector2.ZERO, Vector2.UP)
+	assert_eq(picked, PackedInt32Array([0]), "selection follows the live position, not the original index")
+
+
+func test_live_front_indices_breaks_ties_by_index() -> void:
+	# Two points with equal forward projection: deterministic tie-break picks the lower
+	# index first, so replay/determinism never depends on sort stability.
+	var positions := PackedVector2Array([Vector2(-5, 3), Vector2(5, 3)])
+	assert_eq(UnitFormation.live_front_indices(positions, 1, Vector2.ZERO, Vector2.UP), PackedInt32Array([0]),
+		"tied projections: lower index wins")
+
+
+func test_live_front_indices_degenerate_inputs() -> void:
+	assert_eq(UnitFormation.live_front_indices(PackedVector2Array(), 3, Vector2.ZERO, Vector2.UP).size(), 0,
+		"no positions -> nothing to pick")
+	assert_eq(UnitFormation.live_front_indices(PackedVector2Array([Vector2.ZERO]), 0, Vector2.ZERO, Vector2.UP).size(), 0,
+		"target_count <= 0 -> nothing to pick")
+	var positions := PackedVector2Array([Vector2(1, 0), Vector2(2, 0)])
+	assert_eq(UnitFormation.live_front_indices(positions, 10, Vector2.ZERO, Vector2.UP).size(), 2,
+		"target_count beyond the array size is clamped to the array size")

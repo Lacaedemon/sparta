@@ -1,0 +1,17 @@
+{
+  "_comment": "Engaged-soldier highlight demo (Settings.show_engaged_highlight, the same dev/debug visual PR #758/#760 used for the SQUARE-branch sibling fixes) for #779's NORMAL-formation fix: a fresh scenario authored for THIS demo, not a copy of engaged-highlight-live-proximity.json or schiltron-asymmetric-pressure.json's setups -- see .claude/memories/sparta-demos.md's 'author each demo scenario fresh' entry. Two matched 40-soldier Infantry line regiments meet head-on and grind through prolonged melee; as casualties compact each side's per-soldier arrays (SoldierMelee.reap()), the amber highlight should keep tracking the LIVE front-facing soldiers (UnitFormation.live_front_indices) rather than drifting toward whatever indices happen to remain low in the compacted array -- the exact staleness #779 fixes. Team 0 is stationary by default, so an early attack-move order (right-click on the enemy block) is required to bring the two lines together. Requests the highlight via the session-only 'show_engaged_highlight' script field (Settings.set_show_engaged_highlight_session, never persisted). Timing verified locally via dump-state.sh: casualties (soldier count dropping on both sides) begin within the clip's frame budget and continue through the end.",
+  "seed": "77901",
+  "show_engaged_highlight": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 600, "y": 460, "count": 40},
+    {"team": 1, "type": "Infantry", "x": 600, "y": 620, "count": 40}
+  ],
+  "camera": [
+    {"tick": 0, "x": 600.0, "y": 540.0, "zoom": 2.4}
+  ],
+  "steps": [
+    {"tick": 10, "click": [600, 460]},
+    {"tick": 20, "rmb_click": [600, 620]}
+  ],
+  "state": [10, 60, 120, 180, 240, 300, 360, 420]
+}
