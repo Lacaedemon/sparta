@@ -693,6 +693,51 @@ func test_move_to_without_ordered_facing_turns_to_travel() -> void:
 	assert_almost_eq(u.facing.y, 1.0, 0.001, "with no held facing the unit turns to face travel")
 
 
+# --- near-target bearing freeze (BEARING_STEER_FREEZE_RADIUS) ---------------------------
+# A raw bearing to a point very close by is numerically unstable -- its angle is
+# arbitrarily sensitive to sub-pixel position noise -- so _move_to must hold the current
+# facing instead of chasing it once the remaining distance drops inside the freeze radius.
+
+func test_move_to_freezes_facing_snap_when_very_close_to_the_target() -> void:
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	var start_facing: Vector2 = u.facing
+	# Well within BEARING_STEER_FREEZE_RADIUS, in a direction (LEFT) wildly different from
+	# the current facing (DOWN) -- exactly what a jittery near-target bearing looks like.
+	u._move_to(Vector2(-3, 0), 0.1)
+	assert_eq(u.facing, start_facing,
+		"an un-ordered move's facing snap does not chase a noisy near-target bearing")
+
+
+func test_move_to_freezes_disciplined_pivot_when_very_close_to_the_target() -> void:
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	assert_true(u.disciplined, "the default unit is disciplined, exercising the pivot branch")
+	var start_facing: Vector2 = u.facing
+	u._move_to(Vector2(-3, 0), 0.1, true)   # orderly=true -> the disciplined centre-pivot path
+	# The pivot rotates by exactly 0 (frozen) but still round-trips facing through
+	# Vector2.from_angle(facing.angle()), which can flip a component's float sign at zero
+	# (0.0 <-> -0.0) -- assert_almost_eq per component, not assert_eq, for that reason.
+	assert_almost_eq(u.facing.x, start_facing.x, 0.0001,
+		"a disciplined orderly march's centre-pivot does not chase a noisy near-target bearing")
+	assert_almost_eq(u.facing.y, start_facing.y, 0.0001,
+		"a disciplined orderly march's centre-pivot does not chase a noisy near-target bearing")
+
+
+func test_move_to_still_steers_toward_a_target_outside_the_freeze_radius() -> void:
+	# Contrast case: the same off-axis direction, but far enough away that the bearing is
+	# stable -- steering must proceed normally, proving the freeze is scoped to close range.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	var start_facing: Vector2 = u.facing
+	u._move_to(Vector2(-1000, 0), 0.1)
+	assert_ne(u.facing, start_facing,
+		"facing does turn toward a target well outside the freeze radius")
+
+
 # --- accel/decel ramp (no instant pace snap) ---------------------------------
 
 func test_move_to_ramps_up_from_rest_instead_of_snapping() -> void:

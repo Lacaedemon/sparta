@@ -426,6 +426,11 @@ const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed 
 # braked all the way down its arrival envelope finalizes its order instead of forever
 # creeping the last fraction of a wu/s.
 const ARRIVE_SPEED_EPSILON: float = 1.0
+# Below this remaining distance, _move_to stops steering by the raw bearing to the
+# target -- see the comment at its use site for why. Comfortably above the routine
+# sub-world-unit noise soldier-body coupling introduces each tick, comfortably below a
+# march distance that matters.
+const BEARING_STEER_FREEZE_RADIUS: float = 8.0
 # The arrival envelope is derated below the brake authority by this factor. Tracking
 # sqrt(2 * a * d) while only able to shed speed at exactly `a` is neutrally stable: any
 # excess speed shrinks d faster, which drops the envelope faster than the unit can shed,
@@ -1668,6 +1673,19 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 			_moved_last_frame = true
 		return
 	var dir: Vector2 = to.normalized()
+	# A raw bearing to a nearby point is numerically unstable: its ANGLE is arbitrarily
+	# sensitive to sub-pixel position noise as `to.length()` shrinks toward the arrival
+	# threshold above (a routine, ever-present source of that noise is soldier-body
+	# coupling, which nudges `position` by a fraction of a world unit most ticks -- see
+	# SoldierBodies.couple). Chasing that noisy bearing with facing/pivot logic reads as
+	# the whole regiment spinning in place near its destination, sometimes for hundreds of
+	# ticks, since the turn-before-march speed damping below throttles advance toward zero
+	# exactly when the bearing is most unstable (facing and dir disagree), which keeps the
+	# unit hovering in the unstable zone instead of crossing back out of it. This is a
+	# geometric artifact of the calculation, not a physical effect, so freezing the STEERING
+	# direction (not the actual movement step below, which stays smooth and self-correcting)
+	# once `to` is this small is the right fix rather than a "no top-down gimmicks" violation.
+	var steer_dir: Vector2 = dir if to.length() >= BEARING_STEER_FREEZE_RADIUS else facing
 	var maneuvering: bool = ordered_facing != Vector2.ZERO
 	# Pace: a maneuver or walk-advance holds walk speed throughout. AUTO otherwise
 	# walks by default, jogs under missile fire, and sprints at full speed once
@@ -1756,9 +1774,9 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	elif pivot_as_formation:
 		var speed_frac: float = clampf(_current_speed / move_speed, 0.0, 1.0)
 		var pivot_rate: float = TURN_RATE * lerpf(1.0, TURN_RATE_TAPER_FLOOR, speed_frac)
-		_rotate_facing_toward(dir, delta, pivot_rate)
+		_rotate_facing_toward(steer_dir, delta, pivot_rate)
 	else:
-		_face_dir(dir)
+		_face_dir(steer_dir)
 	var effective_speed: float = _current_speed * terrain_speed
 	# Turn-before-march: while centre-pivoting a formed march, scale the advance by how
 	# far the unit has come onto its heading. A sharp turn (e.g. a 180° pivot to a rear
@@ -1767,7 +1785,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# heading; side-steps are exempt (they march at a fixed walk perpendicular), and so
 	# is an undisciplined/in-haste march (it never pivots, so there's nothing to wait on).
 	if pivot_as_formation and not maneuvering:
-		effective_speed *= clampf(facing.dot(dir) * 2.0, 0.0, 1.0)
+		effective_speed *= clampf(facing.dot(steer_dir) * 2.0, 0.0, 1.0)
 	# Inbound clamp: never step PAST the immediate goal point in a single tick -- the
 	# same post-step guard the soldier-body arrival uses. Without it a fast unit whose
 	# per-tick step exceeds the remaining distance crosses the point, the direction
