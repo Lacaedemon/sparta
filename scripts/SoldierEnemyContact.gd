@@ -23,6 +23,20 @@ class_name SoldierEnemyContact
 ## end). No RNG, no instance-id/wall-clock -- replay-safe like the rest of the soldier layer.
 
 
+## The per-body scale factor a summed contact delta must be trimmed by to match what
+## capped_knockback_velocity would allow this body in isolation -- reusing that existing clamp
+## rather than solving the exact per-body quadratic, a deliberate simplification. Returns 1.0
+## for a zero delta (nothing to trim). Pure and directly unit-testable; see accumulate()'s own
+## comment for why this per-body ratio then has to be applied per-PAIR (the smaller of the two
+## endpoints' ratios), not directly to each body's own summed delta.
+static func body_trim_scale(orig_vel: Vector2, delta: Vector2) -> float:
+	if delta == Vector2.ZERO:
+		return 1.0
+	var isolated: Vector2 = SoldierCombat.capped_knockback_velocity(orig_vel, delta)
+	var effective: Vector2 = isolated - orig_vel
+	return clampf(effective.length() / delta.length(), 0.0, 1.0)
+
+
 ## Resolve every enemy-contact pair this tick, writing the resulting velocity deltas into
 ## each body's _sim_body_vel. `frame` keys the spatial hash; pass a value distinct from
 ## SoldierSteering.accumulate's own frame key (the two passes gather different position
@@ -73,6 +87,12 @@ static func accumulate(units: Array, frame: int) -> void:
 	SoldierSpatialHash.rebuild(spos, frame)
 	var delta_v := PackedVector2Array()
 	delta_v.resize(n)
+	# Every resolved pair is also kept (not just folded into delta_v) so the trim pass below
+	# can rescale each pair's OWN two impulses together -- see that pass for why.
+	var pair_a: PackedInt32Array = PackedInt32Array()
+	var pair_b: PackedInt32Array = PackedInt32Array()
+	var pair_impulse_a: PackedVector2Array = PackedVector2Array()
+	var pair_impulse_b: PackedVector2Array = PackedVector2Array()
 	for a in range(n):
 		for b in SoldierSpatialHash.query(spos[a]):
 			if sgids[b] <= sgids[a]:
@@ -101,15 +121,63 @@ static func accumulate(units: Array, frame: int) -> void:
 				svel[a], svel[b], smass[a], sbrace[a], smass[b], sbrace[b], normal, overlap_frac)
 			delta_v[a] += impulses[0]
 			delta_v[b] += impulses[1]
-	# Apply each body's SUMMED delta under a clamp, not a raw add: enemy_contact_impulse's own
-	# KNOCKBACK_SPEED_MAX cap is scoped to one pair, but a soldier can be simultaneously touching
-	# several enemy bodies (a Square-perimeter defender pressed by more than one attacker from
-	# one side is exactly this) whose individual impulses each pass that per-pair cap yet sum to
-	# more. capped_knockback_velocity clamps the RESULTING velocity, mirroring the pile-on clamp
-	# SoldierMelee.resolve already applies to accumulated strike knockback on one body.
+			pair_a.push_back(a)
+			pair_b.push_back(b)
+			pair_impulse_a.push_back(impulses[0])
+			pair_impulse_b.push_back(impulses[1])
+
+	# Trim each body's SUMMED delta to what capped_knockback_velocity would allow it in
+	# isolation, expressed as a per-body scale factor -- reusing the existing clamp rather than
+	# solving the exact per-body quadratic, a deliberate simplification. A soldier can be
+	# simultaneously touching several enemy bodies (a Square-perimeter defender pressed by more
+	# than one attacker from one side is exactly this), whose individual impulses each pass
+	# enemy_contact_impulse's own per-pair KNOCKBACK_SPEED_MAX cap yet sum to more.
+	#
+	# Trimming delta_v directly per body (the original approach) breaks Newton's third law: pair
+	# (a, b)'s two impulses are equal and opposite by construction, but a's trim ratio and b's
+	# trim ratio are independent numbers -- scaling each body's SUMMED delta by its own ratio
+	# scales a's share of THIS pair by one factor and b's share by a different one, so the pair's
+	# net contribution to total system momentum is no longer zero. Summed over an entire contact
+	# line, that leftover per-pair residual is a real net force with no opposing reaction anywhere
+	# in the system -- and a net force applied off-center is a net TORQUE. Applied every tick two
+	# prolonged, roughly-matched regiments grind against each other, that undamped torque
+	# accumulates into a slow, continuous rotation of both regiments around their clash point
+	# (root-caused via the torque-proxy instrumentation documented in .claude/memories/sparta.md).
+	#
+	# Fix: apply the SAME scale to both of a pair's impulses -- the smaller of the two bodies'
+	# own scale factors, so neither body ever ends up over-trimmed relative to what it alone
+	# would allow. This keeps every pair's contribution exactly action/reaction (near-zero net
+	# system momentum and torque from this pass -- see the final safety-net clamp below for the
+	# one case that can still reintroduce a small asymmetry), at the cost of sometimes trimming
+	# a body's total delta a bit more conservatively than its own isolated cap strictly requires
+	# -- an acceptable trade since physical correctness (far less phantom torque) matters more
+	# here than extracting the absolute maximum knockback per body.
+	var body_scale := PackedFloat32Array()
+	body_scale.resize(n)
 	for k in range(n):
-		if delta_v[k] != Vector2.ZERO:
+		body_scale[k] = body_trim_scale(svel[k], delta_v[k])
+
+	var scaled_delta_v := PackedVector2Array()
+	scaled_delta_v.resize(n)
+	for p in range(pair_a.size()):
+		var ia: int = pair_a[p]
+		var ib: int = pair_b[p]
+		var s: float = minf(body_scale[ia], body_scale[ib])
+		scaled_delta_v[ia] += pair_impulse_a[p] * s
+		scaled_delta_v[ib] += pair_impulse_b[p] * s
+
+	# Final safety-net clamp: pair-level trimming with mismatched per-body scale factors can
+	# still leave a body's summed, rescaled delta over its own isolated cap -- e.g. when a
+	# body's raw delta benefited from partial cancellation between two roughly-opposing pairs,
+	# and one of those pairs then gets trimmed hard by a heavily-loaded partner, destroying that
+	# cancellation. This clamp is itself a per-body-independent operation (the same shape the
+	# pair-level trim above exists to avoid), so on that specific geometry it can reintroduce a
+	# bounded asymmetry -- consistent with this fix's own measured residual (-0.169 net torque
+	# over a 700-tick clash, not exactly zero) rather than contradicting the claim above: a
+	# large, genuine reduction (~100,000x), not an exact conservation guarantee.
+	for k in range(n):
+		if scaled_delta_v[k] != Vector2.ZERO:
 			var owner: Unit = sowners[k]
 			var slot: int = sslots[k]
 			owner._sim_body_vel[slot] = SoldierCombat.capped_knockback_velocity(
-				owner._sim_body_vel[slot], delta_v[k])
+				owner._sim_body_vel[slot], scaled_delta_v[k])
