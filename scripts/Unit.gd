@@ -3020,7 +3020,47 @@ func soldier_brace() -> float:
 ## and deterministic -- `_sim_soldier_pos`/`_sim_soldier_hp` are this tick's
 ## frozen snapshot, and SoldierEnemyProximity's rebuild reads the same
 ## snapshot from every unit in the scene tree, no RNG, no wall-clock.
-func engaged_soldier_indices(count: int) -> PackedInt32Array:
+## Memoized per physics tick: this is called from seven places (SoldierMelee.resolve for
+## both attacker and defender, SoldierSteering.accumulate, SoldierEnemyContact.accumulate,
+## SoldierBodies.step, SoldierBodies.couple, and the engaged-highlight debug draw), all of
+## which can run within the same tick. Keyed by (Engine.get_physics_frames(), count) rather
+## than the frame alone: every caller always passes a freshly-read `_sim_soldier_pos.size()`,
+## so if SoldierMelee.reap() splices a soldier out mid-tick (this unit was the DEFENDER in
+## some other unit's strike, resolved earlier in this same tick's _physics_process pass), the
+## next caller's `count` no longer matches the cached call's `count` and the cache misses --
+## recomputing against the current (post-reap) array rather than returning stale indices. No
+## explicit reap() invalidation hook needed.
+##
+## The (frame, count) key is NOT enough on its own to cover every caller, though:
+## SoldierBodies.step() calls this BEFORE it integrates this tick's body positions, while
+## SoldierBodies.couple() (the last soldier-layer sub-step) calls it AFTER every unit's
+## step() has already run -- so on a tick with no casualty (count unchanged), couple()'s call
+## would otherwise hit the cache and silently reuse a selection computed from pre-integration
+## positions instead of the just-integrated ones the unmemoized code always read. Every other
+## caller (both SoldierMelee.resolve() calls, SoldierSteering.accumulate,
+## SoldierEnemyContact.accumulate, and step()'s own internal call) genuinely shares one
+## frozen snapshot -- `_sim_soldier_pos` as it stood at the end of the PREVIOUS tick's
+## soldier-layer pass, since nothing between them writes to it. couple() passes
+## `use_cache = false` to bypass the cache entirely (neither reads nor writes it) and always
+## recompute against whatever `_sim_soldier_pos` holds at its own call time.
+var _engaged_indices_cache: PackedInt32Array = PackedInt32Array()
+var _engaged_indices_cache_frame: int = -1
+var _engaged_indices_cache_count: int = -1
+
+func engaged_soldier_indices(count: int, use_cache: bool = true) -> PackedInt32Array:
+	if not use_cache:
+		return _compute_engaged_soldier_indices(count)
+	var frame: int = Engine.get_physics_frames()
+	if _engaged_indices_cache_frame == frame and _engaged_indices_cache_count == count:
+		return _engaged_indices_cache
+	var result: PackedInt32Array = _compute_engaged_soldier_indices(count)
+	_engaged_indices_cache = result
+	_engaged_indices_cache_frame = frame
+	_engaged_indices_cache_count = count
+	return result
+
+
+func _compute_engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
 		return out

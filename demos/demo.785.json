@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure performance optimization (memoizes Unit.engaged_soldier_indices() per physics tick) -- no gameplay behavior change, so there is nothing for a recorded battle to show. Verified with tools/benchmark/run-benchmark.sh instead -- see the PR description."
+}

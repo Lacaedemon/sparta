@@ -349,6 +349,14 @@ static func _cap_body_speed(unit: Unit, i: int) -> Vector2:
 ## docs/individual-collision-design.md for the empirical trace that found this. Falls back to
 ## the whole-regiment average when there's no engaged soldier (the pre-existing friendly-
 ## collision / non-combat path), which this change leaves unaffected.
+##
+## couple() is the LAST soldier-layer sub-step this tick -- every unit's step() has already
+## integrated this tick's body positions by the time it runs, unlike engaged_soldier_indices()'s
+## other callers (SoldierMelee.resolve, SoldierSteering.accumulate, SoldierEnemyContact.accumulate,
+## step()'s own internal call), which all run against the frozen pre-step snapshot and share its
+## per-tick cache. Passing use_cache=false keeps couple() reading whatever _sim_soldier_pos holds
+## at ITS OWN call time -- on a no-casualty tick that cache would otherwise return a stale,
+## pre-integration selection instead.
 static func couple(unit: Unit, delta: float) -> void:
 	var n: int = unit._sim_soldier_pos.size()
 	if n == 0:
@@ -364,7 +372,7 @@ static func couple(unit: Unit, delta: float) -> void:
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
 	if slots.size() != n:
 		return   # arrays mid-resize this tick; couple next tick when they realign
-	var indices: PackedInt32Array = unit.engaged_soldier_indices(n) if unit.is_engaged() \
+	var indices: PackedInt32Array = unit.engaged_soldier_indices(n, false) if unit.is_engaged() \
 			else PackedInt32Array()
 	var body_centroid := Vector2.ZERO
 	var slot_centroid := Vector2.ZERO
