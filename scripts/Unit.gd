@@ -1553,6 +1553,20 @@ func _think(delta: float) -> void:
 			if _reform_on_arrival:
 				_reform_on_arrival = false
 				reform_ranks()
+			# A lateral pivot kept its pre-pivot footprint for the whole march (no reform);
+			# the destination-side close is a turn back to that original facing, not a
+			# reshape -- arm it as a fresh TURN via begin_pivot, then mark the phase
+			# RETURN_TURN so _finish_order_turn retires the order once it completes instead
+			# of routing it through the reform/march handoff a forward TURN would take.
+			elif current_order != null and current_order.type == Order.Type.MOVE \
+					and current_order.pivot_return_angle != 0.0:
+				var return_angle: float = current_order.pivot_return_angle
+				current_order.pivot_return_angle = 0.0
+				if begin_pivot(current_order, return_angle):
+					current_order.phase = Order.Phase.RETURN_TURN
+				# else: bodies not seeded, or fighting broke out on arrival -- the order
+				# just retires normally (has_move_target false, turn_target still zero),
+				# leaving the unit facing the pivoted heading instead of turning back.
 	elif enemy != null and order_mode != ORDER_HOLD:
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
 		# range/contact). If a re-face turn was in progress, settle it first: the unit is
@@ -2732,9 +2746,14 @@ func _settle_order_turn() -> void:
 ## reform the ranks square to the new heading first (the drilled default; the countermarch
 ## brings a full rank to the new front instead of the old partial rear rank), or step off at
 ## once with the flipped grid and reform on arrival (the hasty variant). Either way the
-## block faces travel, so it advances forward, not backward. A standalone drill
-## (ABOUT_FACE / QUARTER_TURN) is simply done, and retires.
+## block faces travel, so it advances forward, not backward. A lateral pivot's RETURN_TURN
+## phase completing (turning back to the pre-pivot facing) has no further phase to hand off
+## to -- the order is simply done. A standalone drill (ABOUT_FACE / QUARTER_TURN) is simply
+## done too, and retires.
 func _finish_order_turn() -> void:
+	if current_order.phase == Order.Phase.RETURN_TURN:
+		retire_current_order()
+		return
 	if current_order.type != Order.Type.MOVE:
 		retire_current_order()
 		return
@@ -2744,7 +2763,11 @@ func _finish_order_turn() -> void:
 		_reform_until_settled = true
 		current_order.phase = Order.Phase.REFORM
 	else:
-		_reform_on_arrival = not current_order.reform
+		# A lateral pivot (pivot_return_angle != 0) never reforms on arrival either -- it
+		# keeps its pre-pivot footprint for the whole march and only turns back once it gets
+		# there (the arrival handler below), so _reform_on_arrival stays false for it even
+		# though reform is also false.
+		_reform_on_arrival = not current_order.reform and current_order.pivot_return_angle == 0.0
 		move_target = current_order.target_pos
 		has_move_target = true
 		current_order.phase = Order.Phase.MARCH

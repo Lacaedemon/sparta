@@ -684,20 +684,24 @@ func test_forest_is_not_blocked() -> void:
 # --- reform-before-move ------------------------------------------------
 
 func test_reform_cmd_starts_reform_timer_not_move_target() -> void:
-	# "reform": true → destination stored in _reform_target, timer started, has_move_target stays false.
+	# "reform": true → destination stored in _reform_target, timer started, has_move_target
+	# stays false. Straight ahead of the unit's default (DOWN) facing -- a large lateral
+	# destination is a lateral pivot, which this test isn't about (that maneuver forces
+	# reform off, overriding the cmd, since it never reforms -- see
+	# test_lateral_pivot_maneuver.gd).
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
-	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1, "reform": true})
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1, "reform": true})
 	assert_false(u.has_move_target,
 		"a reform order doesn't set has_move_target until the timer expires")
 	assert_gt(u._reform_timer, 0.0, "the reform timer starts counting")
-	assert_eq(u._reform_target, Vector2(50, 0), "the destination is stored for later commit")
+	assert_eq(u._reform_target, Vector2(0, 50), "the destination is stored for later commit")
 
 
 func test_no_reform_cmd_sets_move_target_directly() -> void:
 	# "reform": false (or absent) → old behaviour: has_move_target set immediately.
-	# Straight ahead of the unit's default (DOWN) facing -- a large lateral destination
-	# forces reform on regardless of the cmd, which this test isn't about.
+	# Straight ahead of the unit's default (DOWN) facing, so it isn't a lateral pivot
+	# (that maneuver forces reform off unconditionally, which this test isn't about).
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1, "reform": false})
@@ -738,7 +742,9 @@ func test_current_speed_survives_the_reform_hold_while_cruising() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	u._current_speed = u.walk_speed   # as if it was already cruising
 	var b := _battle([u])
-	b._apply_order_cmd({"units": [1], "x": 500.0, "y": 0.0, "target": -1, "reform": true})
+	# Straight ahead of the unit's default (DOWN) facing, so it isn't a lateral pivot
+	# (that maneuver forces reform off unconditionally, which this test isn't about).
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 500.0, "target": -1, "reform": true})
 	assert_gt(u._reform_timer, 0.0, "the reform order starts the reform-hold timer")
 	# Drain only the order-response timer (not the longer reform hold) so the unit is
 	# still frozen by _reform_timer alone on the final tick.
