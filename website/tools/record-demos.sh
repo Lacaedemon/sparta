@@ -78,6 +78,7 @@ DEMOS=(
   "form_up_modes|demos/inputs/multi-unit-form-up-modes.json|30|400|720|input"
   "subcommander_mutual_support|demos/inputs/subcommander-mutual-support.json|60|480|640|input"
   "lateral_pivot_flank_march|demos/inputs/lateral-pivot-flank-march.json|30|400|720|input"
+  "general_doctrine_reserves|demos/inputs/general-doctrine-reserves.json|60|900|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a

@@ -120,6 +120,10 @@ script under `demos/inputs/`:
 - `drill` (optional bool) — solo/no-opponent rehearsal: only the player army (team 0)
   deploys and the battle never auto-ends on "no enemies", so a unit can rehearse a maneuver
   with no combat. Good for maneuver demos (quarter-turn, conversio, wheeling).
+- `doctrine` (optional string) — override team 1's battle-AI doctrine profile (a
+  `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` — see `data/doctrines/*.json`
+  and `docs/battle-ai-design.md`'s phase-3 section). Set before the battle spawns, like
+  `drill`/`scenario` above. Omit to use `Battle.ai_doctrine`'s own default.
 - `scenario` (optional) — **stage a custom matchup** instead of the default 5v5 lines, so a
   demo can show a *specific* fight the default battle won't produce on its own (a weak unit
   that routs, an enemy placed off a unit's flank, cavalry vs a single target). A list of unit

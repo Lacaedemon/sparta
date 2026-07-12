@@ -534,6 +534,46 @@ freed unit to guard its still-fighting neighbor, and it closes the distance
 to join the melee directly.
 :::
 
+## The general
+
+Above the subcommander sits a general, driven by a **doctrine profile** ---
+data, not code, so a non-programmer can author a new one. Each profile sets:
+
+- **Which army plans it knows** --- an advance-in-line or an envelop split
+  into two wings, picked each AI tick against how the battle actually looks
+  (an envelop needs a real numeric edge over the enemy, not just an
+  even fight).
+- **A reserve fraction** --- how many units start held back instead of
+  joining the active line.
+- **A reserve-commit threshold** --- once the active line's own
+  weighted-average morale drops below this, the reserves fold in.
+- **Whether to pursue routers** --- an aggressive doctrine chases a broken
+  enemy down; a cautious one holds the line instead.
+
+Two doctrines reading the identical battle can commit to different plans.
+A held-back reserve doesn't just sit inert, either --- it still turns to
+face a flank threat, forms anti-cavalry square, or answers a nearby ally's
+call for relief, exactly like any other unit; only its own advance is put
+on hold.
+
+::: {#fig-general-doctrine-reserves .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/general_doctrine_reserves.jpg">
+  <source src="media/general_doctrine_reserves.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A cautious general holds two full-strength units in reserve while three
+weaker units alone meet the enemy. As the front line takes losses its
+morale crosses the doctrine's threshold, and the general folds the
+reserves into the fight --- they break their stationary hold, march up,
+and join the melee.
+:::
+
 ## Weapon reach
 
 Each weapon has an **effective reach** --- how close two units must get before they
