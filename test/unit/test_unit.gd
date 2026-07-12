@@ -2533,6 +2533,46 @@ func test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indi
 		"the soldier now physically at the rear (front_idx's array slot, post-swap) is excluded")
 
 
+func test_engaged_soldier_indices_memoizes_within_the_same_physics_tick() -> void:
+	# Called from up to six places per tick; the second call with the same
+	# (Engine.get_physics_frames(), count) must reuse the first call's cached result rather
+	# than recomputing, so all same-tick callers see one consistent selection cheaply.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	var first: PackedInt32Array = u.engaged_soldier_indices(n)
+	assert_eq(u._engaged_indices_cache_frame, Engine.get_physics_frames(),
+		"the cache records the frame the first call ran on")
+	assert_eq(u._engaged_indices_cache_count, n, "and the count that call used")
+	var second: PackedInt32Array = u.engaged_soldier_indices(n)
+	assert_eq(second, first, "a same-frame, same-count call returns the identical selection")
+
+
+func test_engaged_soldier_indices_recomputes_when_reap_shrinks_the_array_same_tick() -> void:
+	# SoldierMelee.reap() can splice a soldier out of _sim_soldier_pos mid-tick (this unit was
+	# the DEFENDER in some other unit's strike, resolved earlier in the same tick's
+	# _physics_process pass) -- a bare frame-keyed cache would then hand a LATER same-tick
+	# caller stale indices computed against the pre-reap array, out of bounds for the
+	# post-reap one. Every real caller always passes a freshly-read `_sim_soldier_pos.size()`,
+	# so the (frame, count) cache key must miss and recompute the moment that size changes.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	u.engaged_soldier_indices(n)   # first caller this tick, before the simulated reap
+	# Simulate reap() splicing out a soldier: shrink the array by one, same as a real casualty.
+	u._sim_soldier_pos.remove_at(u._sim_soldier_pos.size() - 1)
+	var shrunk: int = u._sim_soldier_pos.size()
+	var second: PackedInt32Array = u.engaged_soldier_indices(shrunk)
+	assert_eq(u._engaged_indices_cache_count, shrunk,
+		"the cache key updated to the new, smaller count -- it did not reuse the stale entry")
+	for i in second:
+		assert_lt(i, shrunk, "every index is valid for the post-reap (shrunk) array, not the stale one")
+
+
 func test_face_for_action_is_a_no_op_when_squared() -> void:
 	# An omnidirectional formation presents no weak facing, so it never turns the whole
 	# grid to bear on one attacker -- a rear/flank charger would otherwise drag the block's
