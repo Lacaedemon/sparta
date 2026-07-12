@@ -1,0 +1,2494 @@
+{
+  "ticks": [
+    {
+      "tick": 60,
+      "units": [
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            476.75,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              301.03
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            626.75,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              63.0
+            ],
+            "centroid": [
+              626.75,
+              300.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            806.37,
+            299.99
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "centroid": [
+              806.34,
+              300.59
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            973.46,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              98.97,
+              54.0
+            ],
+            "centroid": [
+              973.48,
+              301.35
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1123.25,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              99.0,
+              54.0
+            ],
+            "centroid": [
+              1123.25,
+              301.35
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 4
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 10.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            476.75,
+            697.16
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              695.98
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "MOVING",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 5
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 15.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            626.75,
+            696.16
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              63.0
+            ],
+            "centroid": [
+              626.75,
+              696.19
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "MOVING",
+          "target_enemy_uid": 1,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 6
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 20.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            806.38,
+            694.93
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "centroid": [
+              806.36,
+              694.39
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 7
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 28.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            973.43,
+            690.11
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              99.06,
+              54.0
+            ],
+            "centroid": [
+              973.44,
+              688.83
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 8
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 28.0,
+          "engaged": false,
+          "facing": [
+            -0.93,
+            -0.37
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1120.51,
+            697.75
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              96.18,
+              60.48
+            ],
+            "centroid": [
+              1121.63,
+              698.29
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": 4,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 9
+        }
+      ]
+    },
+    {
+      "tick": 240,
+      "units": [
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            476.75,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              301.03
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            626.75,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              63.0
+            ],
+            "centroid": [
+              626.75,
+              300.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            805.92,
+            299.98
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "centroid": [
+              805.9,
+              300.58
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            973.84,
+            299.99
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              98.99,
+              54.0
+            ],
+            "centroid": [
+              973.86,
+              301.34
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1123.25,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              99.0,
+              54.0
+            ],
+            "centroid": [
+              1123.25,
+              301.35
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 4
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            476.75,
+            631.68
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              630.49
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "MOVING",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 5
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 26.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            626.73,
+            614.67
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              63.01
+            ],
+            "centroid": [
+              626.73,
+              614.32
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "MOVING",
+          "target_enemy_uid": 1,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 6
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 30.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            805.9,
+            599.49
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.05
+            ],
+            "centroid": [
+              805.88,
+              598.49
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 7
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 34.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            973.87,
+            580.81
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              98.96,
+              54.01
+            ],
+            "centroid": [
+              973.89,
+              579.01
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 8
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 34.0,
+          "engaged": false,
+          "facing": [
+            -0.02,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1056.56,
+            647.54
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              93.13,
+              88.81
+            ],
+            "centroid": [
+              1055.12,
+              646.51
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": 4,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 9
+        }
+      ]
+    },
+    {
+      "tick": 420,
+      "units": [
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            476.75,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              301.03
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            626.75,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              63.0
+            ],
+            "centroid": [
+              626.75,
+              300.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            805.66,
+            299.98
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "centroid": [
+              805.66,
+              300.58
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2
+        },
+        {
+          "current_order": null,
+          "current_speed": 22.7,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            974.08,
+            306.55
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              99.15,
+              54.0
+            ],
+            "centroid": [
+              974.08,
+              307.87
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1123.25,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              99.0,
+              54.0
+            ],
+            "centroid": [
+              1123.25,
+              301.35
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 4
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            476.75,
+            588.14
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              586.92
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "MOVING",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 5
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 26.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            626.71,
+            529.77
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.01,
+              63.02
+            ],
+            "centroid": [
+              626.71,
+              529.43
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "MOVING",
+          "target_enemy_uid": 1,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 6
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 30.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            805.61,
+            501.42
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.05
+            ],
+            "centroid": [
+              805.6,
+              500.41
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 7
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 66.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            974.14,
+            457.07
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              99.08,
+              54.76
+            ],
+            "centroid": [
+              974.16,
+              455.43
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 8
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 34.0,
+          "engaged": false,
+          "facing": [
+            0.02,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1054.64,
+            541.21
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              100.0,
+              55.76
+            ],
+            "centroid": [
+              1054.68,
+              539.4
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": 4,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 9
+        }
+      ]
+    },
+    {
+      "tick": 480,
+      "units": [
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            476.75,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              301.03
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            626.73,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              63.0
+            ],
+            "centroid": [
+              626.7,
+              300.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        },
+        {
+          "current_order": null,
+          "current_speed": 19.3,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            805.67,
+            305.63
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.13,
+              108.16
+            ],
+            "centroid": [
+              805.66,
+              307.75
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "FIGHTING",
+          "target_enemy_uid": 7,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2
+        },
+        {
+          "current_order": null,
+          "current_speed": 62.7,
+          "engaged": false,
+          "facing": [
+            0.11,
+            0.99
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            974.88,
+            348.48
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              100.06,
+              54.96
+            ],
+            "centroid": [
+              974.71,
+              349.3
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3
+        },
+        {
+          "current_order": null,
+          "current_speed": 6.0,
+          "engaged": false,
+          "facing": [
+            -0.98,
+            -0.18
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1122.76,
+            299.91
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              99.0,
+              54.0
+            ],
+            "centroid": [
+              1122.76,
+              301.26
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 4
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            476.75,
+            573.63
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              572.4
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "MOVING",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 5
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 26.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            626.71,
+            501.47
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              63.04
+            ],
+            "centroid": [
+              626.71,
+              501.13
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "MOVING",
+          "target_enemy_uid": 1,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 6
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 60.0,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            805.57,
+            459.36
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.08,
+              108.1
+            ],
+            "centroid": [
+              805.58,
+              452.95
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "FIGHTING",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 7
+        },
+        {
+          "current_order": "MOVE",
+          "current_speed": 94.0,
+          "engaged": false,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            983.07,
+            420.82
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              96.73,
+              58.2
+            ],
+            "centroid": [
+              976.12,
+              407.98
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 8
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 43.3,
+          "engaged": false,
+          "facing": [
+            -0.42,
+            -0.91
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1050.75,
+            511.87
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              102.81,
+              64.57
+            ],
+            "centroid": [
+              1051.18,
+              511.5
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 9
+        }
+      ]
+    },
+    {
+      "tick": 540,
+      "units": [
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            476.75,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              301.03
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "current_order": null,
+          "current_speed": 7.0,
+          "engaged": false,
+          "facing": [
+            0.02,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            626.69,
+            300.67
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.77,
+              64.11
+            ],
+            "centroid": [
+              626.68,
+              300.43
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        },
+        {
+          "current_order": null,
+          "current_speed": 19.3,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            805.7,
+            307.69
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.26,
+              104.43
+            ],
+            "centroid": [
+              805.69,
+              310.62
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "FIGHTING",
+          "target_enemy_uid": 7,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2
+        },
+        {
+          "current_order": null,
+          "current_speed": 64.7,
+          "engaged": true,
+          "facing": [
+            -0.59,
+            -0.81
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            974.47,
+            403.09
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              97.26,
+              71.67
+            ],
+            "centroid": [
+              979.71,
+              386.23
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "target_enemy_uid": 8,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3
+        },
+        {
+          "current_order": null,
+          "current_speed": 46.0,
+          "engaged": false,
+          "facing": [
+            -0.92,
+            0.39
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1106.99,
+            305.39
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              96.95,
+              71.81
+            ],
+            "centroid": [
+              1110.08,
+              305.21
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 4
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            476.75,
+            559.11
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              557.88
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "MOVING",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 5
+        },
+        {
+          "current_order": "MOVE",
+          "current_speed": 26.0,
+          "engaged": false,
+          "facing": [
+            0.95,
+            -0.3
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            631.08,
+            487.48
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              127.17,
+              67.42
+            ],
+            "centroid": [
+              628.23,
+              485.81
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 6
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 60.0,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            805.32,
+            427.26
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.36,
+              98.85
+            ],
+            "centroid": [
+              805.38,
+              419.22
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "FIGHTING",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 7
+        },
+        {
+          "current_order": "SUPPORT",
+          "current_speed": 122.0,
+          "engaged": false,
+          "facing": [
+            -0.92,
+            -0.39
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 67.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Support",
+          "order_phase": "NONE",
+          "position": [
+            953.12,
+            369.15
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              76.26,
+              56.32
+            ],
+            "centroid": [
+              983.95,
+              373.04
+            ],
+            "count": 49,
+            "prone_count": 0
+          },
+          "soldiers": 49,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 8
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 83.3,
+          "engaged": false,
+          "facing": [
+            -0.65,
+            -0.76
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1028.5,
+            464.5
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              112.71,
+              88.99
+            ],
+            "centroid": [
+              1029.55,
+              464.97
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 9
+        }
+      ]
+    },
+    {
+      "tick": 600,
+      "units": [
+        {
+          "current_order": null,
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            476.75,
+            300.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              301.03
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "current_order": null,
+          "current_speed": 37.0,
+          "engaged": false,
+          "facing": [
+            0.08,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            627.39,
+            320.03
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              127.68,
+              69.54
+            ],
+            "centroid": [
+              627.27,
+              319.4
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        },
+        {
+          "current_order": null,
+          "current_speed": 19.3,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            805.7,
+            307.35
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.34,
+              103.72
+            ],
+            "centroid": [
+              805.7,
+              310.62
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "FIGHTING",
+          "target_enemy_uid": 7,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2
+        },
+        {
+          "current_order": null,
+          "current_speed": 64.7,
+          "engaged": true,
+          "facing": [
+            -0.18,
+            -0.98
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "FIGHTING",
+          "morale": 99.0,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            976.76,
+            376.52
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              77.45,
+              56.92
+            ],
+            "centroid": [
+              984.4,
+              405.64
+            ],
+            "count": 79,
+            "prone_count": 0
+          },
+          "soldiers": 79,
+          "state": "FIGHTING",
+          "target_enemy_uid": 8,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3
+        },
+        {
+          "current_order": null,
+          "current_speed": 86.0,
+          "engaged": false,
+          "facing": [
+            -0.97,
+            0.24
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1065.81,
+            320.85
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              100.46,
+              97.63
+            ],
+            "centroid": [
+              1070.61,
+              322.01
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 4
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 16,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            476.75,
+            544.59
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.0,
+              72.0
+            ],
+            "centroid": [
+              476.75,
+              543.36
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldiers": 140,
+          "state": "MOVING",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 5
+        },
+        {
+          "current_order": "SUPPORT",
+          "current_speed": 26.0,
+          "engaged": false,
+          "facing": [
+            0.7,
+            -0.71
+          ],
+          "formation": "NORMAL",
+          "frontage": 15,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Support",
+          "order_phase": "NONE",
+          "position": [
+            639.83,
+            476.62
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              125.09,
+              94.95
+            ],
+            "centroid": [
+              639.3,
+              477.61
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 6
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 60.0,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 13,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            805.29,
+            416.44
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              218.0,
+              78.42
+            ],
+            "centroid": [
+              805.28,
+              405.45
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldiers": 90,
+          "state": "FIGHTING",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 7
+        },
+        {
+          "current_order": "ATTACK",
+          "current_speed": 122.0,
+          "engaged": true,
+          "facing": [
+            0.18,
+            0.98
+          ],
+          "formation": "NORMAL",
+          "frontage": 6,
+          "maneuver": "FIGHTING",
+          "morale": 44.8,
+          "name": "Cavalry 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            970.68,
+            343.9
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              46.97,
+              42.7
+            ],
+            "centroid": [
+              968.03,
+              338.37
+            ],
+            "count": 31,
+            "prone_count": 0
+          },
+          "soldiers": 31,
+          "state": "FIGHTING",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 8
+        },
+        {
+          "current_order": "MOVE",
+          "current_speed": 55.3,
+          "engaged": false,
+          "facing": [
+            -0.98,
+            0.2
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Cavalry 5",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            988.97,
+            425.76
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              98.16,
+              113.79
+            ],
+            "centroid": [
+              989.87,
+              419.11
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldiers": 80,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 9
+        }
+      ]
+    }
+  ]
+}
