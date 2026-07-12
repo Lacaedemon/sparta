@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Internal soldier-coupling correction (SoldierBodies.couple() weighting). The regiment-circle's existing hard block (Unit._separate()) is unchanged by this PR and still governs the player-visible charge-arrest behavior in a normal battle, so this fix's effect isn't reliably distinguishable in a recorded clip. Verified instead via a live-battle state-dump reproduction (with _separate()'s enemy branches temporarily disabled to isolate the soldier-level physics) -- see the PR description."
+}

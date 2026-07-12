@@ -339,6 +339,16 @@ static func _cap_body_speed(unit: Unit, i: int) -> Vector2:
 ## Skip coupling entirely while an anchor offset is in effect -- mirroring the wheel skip right
 ## below -- so `position` holds still and the bodies alone (correctly) ease onto the anchored
 ## slots; coupling resumes the moment a fresh order clears the offset back to 0.0.
+##
+## While engaged in melee, the drift average is weighted toward the ENGAGED bodies only, not
+## every soldier in the regiment. SoldierEnemyContact only resists the engaged front rank; the
+## unengaged bulk cheaply snaps onto its own (still-advancing) formation slot every tick
+## regardless of what's happening at the front. Averaging over all n bodies dilutes the
+## resisted front rank's drift by that compliant majority, so the correction below could never
+## grow large enough to counter a sustained kinematic advance (_press_into/_move_to) -- see
+## docs/individual-collision-design.md for the empirical trace that found this. Falls back to
+## the whole-regiment average when there's no engaged soldier (the pre-existing friendly-
+## collision / non-combat path), which this change leaves unaffected.
 static func couple(unit: Unit, delta: float) -> void:
 	var n: int = unit._sim_soldier_pos.size()
 	if n == 0:
@@ -354,12 +364,21 @@ static func couple(unit: Unit, delta: float) -> void:
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
 	if slots.size() != n:
 		return   # arrays mid-resize this tick; couple next tick when they realign
+	var indices: PackedInt32Array = unit.engaged_soldier_indices(n) if unit.is_engaged() \
+			else PackedInt32Array()
 	var body_centroid := Vector2.ZERO
 	var slot_centroid := Vector2.ZERO
-	for i in range(n):
-		body_centroid += unit._sim_soldier_pos[i]
-		slot_centroid += slots[i]
-	var inv: float = 1.0 / float(n)
+	var count: int = indices.size()
+	if count > 0:
+		for i in indices:
+			body_centroid += unit._sim_soldier_pos[i]
+			slot_centroid += slots[i]
+	else:
+		count = n
+		for i in range(n):
+			body_centroid += unit._sim_soldier_pos[i]
+			slot_centroid += slots[i]
+	var inv: float = 1.0 / float(count)
 	var drift: Vector2 = (body_centroid - slot_centroid) * inv
 	var follow_step: Vector2 = (drift * Unit.FOLLOW_RATE * delta).limit_length(Unit.MAX_FOLLOW_SPEED * delta)
 	unit._body_follow_vel = follow_step / delta if delta > 0.0 else Vector2.ZERO
