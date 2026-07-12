@@ -124,8 +124,15 @@ func test_two_doctrines_produce_visibly_different_army_behavior_from_the_same_se
 	# the two tests above already cover: an aggressive general's team-1 units carry MOVE
 	# orders toward two different (wing) destinations at the first AI tick, while a cautious
 	# general's team-1 units include some that get NO order at all (held in reserve).
+	# Reading live current_order (not just calling General.decide_army() directly, like the
+	# two tests above) means this must wait until _physics_process has actually RUN tick 0's
+	## _run_enemy_ai and advanced current_tick() past it -- a single bare `await physics_frame`
+	# only waits for the next frame signal, which is not guaranteed to land after the newly
+	# added Battle node's first _physics_process call (an off-by-one race that's more likely
+	# to lose under full-suite load than running this file alone -- caught exactly that way).
 	var aggressive: Node = _spawn_battle("aggressive")
-	await get_tree().physics_frame
+	while aggressive.current_tick() < 1:
+		await get_tree().physics_frame
 	var aggressive_orders: Dictionary = {}
 	for u in _team1_units(aggressive):
 		aggressive_orders[u.uid] = _order_signature(u)
@@ -133,7 +140,8 @@ func test_two_doctrines_produce_visibly_different_army_behavior_from_the_same_se
 	await get_tree().physics_frame
 
 	var cautious: Node = _spawn_battle("cautious")
-	await get_tree().physics_frame
+	while cautious.current_tick() < 1:
+		await get_tree().physics_frame
 	var cautious_orders: Dictionary = {}
 	for u in _team1_units(cautious):
 		cautious_orders[u.uid] = _order_signature(u)
