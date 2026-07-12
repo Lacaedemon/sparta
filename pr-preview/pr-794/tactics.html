@@ -458,6 +458,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#choosing-a-gait-by-click-count" id="toc-choosing-a-gait-by-click-count" class="nav-link" data-scroll-target="#choosing-a-gait-by-click-count">Choosing a gait by click count</a></li>
   </ul></li>
   <li><a href="#side-stepping-the-line" id="toc-side-stepping-the-line" class="nav-link" data-scroll-target="#side-stepping-the-line">Side-stepping the line</a></li>
+  <li><a href="#the-lateral-pivot" id="toc-the-lateral-pivot" class="nav-link" data-scroll-target="#the-lateral-pivot">The lateral pivot</a></li>
   <li><a href="#backing-up-costs-time" id="toc-backing-up-costs-time" class="nav-link" data-scroll-target="#backing-up-costs-time">Backing up costs time</a></li>
   <li><a href="#the-centre-pivot" id="toc-the-centre-pivot" class="nav-link" data-scroll-target="#the-centre-pivot">The centre pivot</a></li>
   <li><a href="#wheeling-on-a-flank" id="toc-wheeling-on-a-flank" class="nav-link" data-scroll-target="#wheeling-on-a-flank">Wheeling on a flank</a></li>
@@ -929,7 +930,26 @@ Figure&nbsp;13: Four identical Cavalry regiments sent on the same move, one clic
 <section id="side-stepping-the-line" class="level2">
 <h2 class="anchored" data-anchor-id="side-stepping-the-line">Side-stepping the line</h2>
 <p>A small lateral move order is carried out as a <strong>side-step</strong>: the unit shuffles sideways while holding its facing, instead of pivoting to face the move and pivoting back. That matters when you are dressing a line just before contact. Pivoting a regiment turns it away from the enemy for the length of the turn — its front momentarily points sideways, and the ranks lose their dressing while the soldiers reshuffle. A side-step keeps every soldier looking at the enemy and keeps the line aligned, so you can nudge a unit a few paces to close a gap or overlap an enemy flank without ever presenting your own flank in the process.</p>
-<p>The cut-off is roughly a unit’s own width: shifts wider than that, or moves that head forward, turn and march normally. So to reposition laterally in good order, make the adjustment small — a short step keeps the line intact, a long one commits the unit to a march.</p>
+<p>The cut-off is roughly a unit’s own width: a move that heads forward, wider than that or not, turns and marches normally. A <strong>wider lateral shift</strong> is a different maneuver again — see the lateral pivot below — rather than a plain centre pivot. So to reposition laterally in good order, make the adjustment small — a short step keeps the line intact, a long one commits the unit to a pivot and a march.</p>
+</section>
+<section id="the-lateral-pivot" class="level2">
+<h2 class="anchored" data-anchor-id="the-lateral-pivot">The lateral pivot</h2>
+<p>A move too far to the side to side-step, but not far enough off-facing to count as a move to the rear, is a <strong>file march</strong>: the regiment <strong>quarter-turns</strong> toward the destination’s side in place, marches straight there <strong>keeping its pre-turn footprint</strong> — the block never reforms into a line facing the new heading, so it stays exactly the shape it started as, moving sideways relative to its own printed grid — and then <strong>quarter-turns back</strong> to its original facing once it arrives. The unit ends up facing precisely the way it started; the reorientation only ever served the march itself.</p>
+<p>Relative to the <em>new</em> heading, this reads as ranks and files trading places for the length of the march: what was the frontage (spread across the line) becomes the marching column’s depth, and what was the depth becomes its narrow frontage — soldiers advance in file, the way a column on the road does, not shoulder to shoulder. From the outside the block’s world silhouette doesn’t visibly rotate at all while it travels — only the individual soldiers’ own facing, and the direction they’re headed, change. Because nothing ever reforms, a lateral pivot has no countermarch cost the way a move to the rear’s reform does — a depleted unit executes it exactly as fast as a fresh one.</p>
+<div id="fig-lateral-pivot-flank-march" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-lateral-pivot-flank-march-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/lateral_pivot_flank_march.jpg">
+  <source src="media/lateral_pivot_flank_march.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-lateral-pivot-flank-march-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;14: A Spearmen line ordered far to its own right: it quarter-turns toward the destination in place, marches straight there without ever reforming (the wide line stays wide, sliding sideways relative to its own shape), then quarter-turns back to its original facing on arrival.
+</figcaption>
+</figure>
+</div>
 </section>
 <section id="backing-up-costs-time" class="level2">
 <h2 class="anchored" data-anchor-id="backing-up-costs-time">Backing up costs time</h2>
@@ -944,7 +964,7 @@ Figure&nbsp;13: Four identical Cavalry regiments sent on the same move, one clic
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;14: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
+Figure&nbsp;15: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
 </figcaption>
 </figure>
 </div>
@@ -969,7 +989,7 @@ Figure&nbsp;14: Per-type backward-walk speed: a Spearmen and an Archers regiment
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;15: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+Figure&nbsp;16: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
 </figcaption>
 </figure>
 </div>
@@ -984,7 +1004,7 @@ Figure&nbsp;15: Braking on arrival: a lone Infantry regiment sprints toward a mo
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-coast-to-stop-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;16: Coasting to a stop: a lone Cavalry regiment wipes out its target mid-charge; with no enemy left to chase and no new order, it keeps sliding forward on its residual charge speed, decelerating, before finally coming to rest.
+Figure&nbsp;17: Coasting to a stop: a lone Cavalry regiment wipes out its target mid-charge; with no enemy left to chase and no new order, it keeps sliding forward on its residual charge speed, decelerating, before finally coming to rest.
 </figcaption>
 </figure>
 </div>
@@ -1037,7 +1057,7 @@ Figure&nbsp;16: Coasting to a stop: a lone Cavalry regiment wipes out its target
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;18: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
