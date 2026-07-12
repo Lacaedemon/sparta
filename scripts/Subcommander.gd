@@ -150,10 +150,11 @@ static func _mutual_support_directives(group: Array, directives: Dictionary) -> 
 
 
 ## Whether `u` is free to receive a NEW directive this tick: alive, not already fighting or
-## routing, not already guarding a ward or mid-relief-swap from a previous tick's order, and
-## not already claimed by a directive earlier this same decide_group() call. Shared fitness
-## check for both mutual-support and flank-coverage candidate search -- the same criteria a
-## player would look for before pulling a unit out of the group to send it somewhere else.
+## routing, not already guarding a ward or mid-relief-swap from a previous tick's order, not
+## already chasing a live target of its own, and not already claimed by a directive earlier
+## this same decide_group() call. Shared fitness check for both mutual-support and
+## flank-coverage candidate search -- the same criteria a player would look for before
+## pulling a unit out of the group to send it somewhere else.
 static func _is_available(u: Unit, self_unit: Unit, directives: Dictionary) -> bool:
 	if u == null or u == self_unit or directives.has(u.uid):
 		return false
@@ -164,6 +165,11 @@ static func _is_available(u: Unit, self_unit: Unit, directives: Dictionary) -> b
 		return false
 	if u.current_order != null and (u.current_order.type == Order.Type.RELIEF \
 			or u.current_order.type == Order.Type.SUPPORT):
+		return false
+	# A unit mid-chase against a live target is UnitLeader.decide's own concern to leave
+	# alone (see UnitLeader.is_chasing_live_target) -- don't even offer it as a directive
+	# candidate here, so a directive is never built (and then discarded) for it.
+	if UnitLeader.is_chasing_live_target(u):
 		return false
 	return true
 
@@ -203,6 +209,10 @@ static func _line_integrity_directives(group: Array, axis: Vector2, directives: 
 	for node in group:
 		var u := node as Unit
 		if u == null or directives.has(u.uid) or u.state == Unit.State.FIGHTING:
+			continue
+		# Same exemption as _is_available: a unit already chasing a live target of its own
+		# is left to close and fight, not held back to the line mid-pursuit.
+		if UnitLeader.is_chasing_live_target(u):
 			continue
 		var proj: float = u.position.dot(axis)
 		if proj - median <= LINE_AHEAD_THRESHOLD:

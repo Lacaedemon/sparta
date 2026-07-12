@@ -91,7 +91,13 @@ static func decide(u: Unit, all_units: Array, directive: Dictionary = {}) -> Dic
 	var already_relieving: bool = u.current_order != null \
 		and u.current_order.type == Order.Type.RELIEF
 	if u.state != Unit.State.FIGHTING and not already_relieving:
-		if not directive.is_empty():
+		# A directive is strictly lower-priority than a unit's own live pursuit of a real
+		# threat, same as flank-threat/square/relief above: a unit already chasing a
+		# target that's still alive and able to fight back must be left to close and
+		# fight, not pulled off mid-chase into a group-level directive. This is the one
+		# case priorities 1-3 above don't already cover -- a unit not yet in contact, so
+		# _flank_threat's contact-only check doesn't see the closing enemy either.
+		if not directive.is_empty() and not is_chasing_live_target(u):
 			return _directive_cmd(u, directive)
 		# include_routing=true: press the advantage and chase down a fleeing enemy too.
 		var nearest: Unit = UnitTargeting.nearest_enemy_to(u, u.position, INF, true)
@@ -99,6 +105,16 @@ static func decide(u: Unit, all_units: Array, directive: Dictionary = {}) -> Dic
 			return _attack_cmd(u, nearest)
 
 	return {}
+
+
+## Whether `u` already has a live ATTACK order chasing a target that is still alive and
+## able to fight back (not DEAD, not ROUTING). Shared by decide()'s own directive guard
+## above and by Subcommander (which also skips such a unit as a directive candidate in the
+## first place) -- see decide()'s comment for why this case needs guarding at all.
+static func is_chasing_live_target(u: Unit) -> bool:
+	return u.current_order != null and u.current_order.type == Order.Type.ATTACK \
+		and u.target_enemy != null and u.target_enemy.state != Unit.State.DEAD \
+		and u.target_enemy.state != Unit.State.ROUTING
 
 
 ## A living enemy already in contact (attack range) that is closing from this unit's

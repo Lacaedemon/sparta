@@ -133,6 +133,27 @@ func test_mutual_support_skips_an_ally_mid_relief_swap() -> void:
 	assert_false(directives.has(near_ally.uid))
 
 
+func test_mutual_support_skips_an_ally_already_chasing_a_live_target() -> void:
+	# The subcommander's own defense-in-depth counterpart to
+	# UnitLeader.is_chasing_live_target: a unit mid-pursuit of a live foe is never even
+	# offered as a directive candidate, so it's skipped in favour of the next-nearest
+	# ally even though it's physically closer.
+	var fighter := _unit(1, Vector2(600, 600))
+	fighter.state = Unit.State.FIGHTING
+	var chasing_ally := _unit(2, Vector2(640, 600))   # nearest by distance, but mid-chase
+	var foe := _unit(3, Vector2(900, 600), 0)         # chasing_ally's live target
+	chasing_ally.set_current_order(Order.new_attack(foe.uid))
+	chasing_ally.target_enemy = foe
+	var near_ally := _unit(4, Vector2(650, 600))      # next-nearest, free to be sent
+	var group: Array = [fighter, chasing_ally, near_ally]
+
+	var directives: Dictionary = SubcommanderScript.decide_group(group, group)
+
+	assert_eq(directives, {
+		near_ally.uid: {"type": SubcommanderScript.DIRECTIVE_SUPPORT, "ward_uid": fighter.uid},
+	}, "an ally already chasing a live target of its own is skipped, even though nearest")
+
+
 func test_no_idle_ally_in_range_means_no_support_directive() -> void:
 	var fighter := _unit(1, Vector2(600, 600))
 	fighter.state = Unit.State.FIGHTING

@@ -268,6 +268,58 @@ func test_reliever_still_reacts_to_a_flank_threat_while_relieving() -> void:
 		"a flank threat still overrides the relief order's advance, same as any other unit")
 
 
+# --- a subcommander directive must not interrupt a live chase ------------------
+
+func test_directive_does_not_interrupt_a_unit_already_chasing_a_live_target() -> void:
+	# The unit has a live ATTACK order closing on a still-alive foe -- a subcommander
+	# directive must not pull it off that pursuit mid-chase (it would leave the unit
+	# defenseless with no target, the same self-preservation-first principle the
+	# flank-threat/square/relief priorities above already apply).
+	var u := _unit(1, Vector2(0, 0), 1)
+	var foe := _unit(2, Vector2(200, 0), 0)   # not yet in contact, but alive
+	u.set_current_order(Order.new_attack(foe.uid))
+	u.target_enemy = foe
+	var directive := {"type": Subcommander.DIRECTIVE_HOLD_LINE, "x": 999.0, "y": 999.0}
+	var cmd: Dictionary = UnitLeaderScript.decide(u, _all(), directive)
+	assert_true(cmd.is_empty(),
+		"already chasing the only living enemy: the directive doesn't interrupt it")
+
+
+func test_directive_applies_once_the_chased_target_is_dead() -> void:
+	var u := _unit(1, Vector2(0, 0), 1)
+	var foe := _unit(2, Vector2(200, 0), 0)
+	foe.state = Unit.State.DEAD
+	u.set_current_order(Order.new_attack(foe.uid))
+	u.target_enemy = foe
+	var directive := {"type": Subcommander.DIRECTIVE_HOLD_LINE, "x": 50.0, "y": 60.0}
+	var cmd: Dictionary = UnitLeaderScript.decide(u, _all(), directive)
+	assert_eq(int(cmd["target"]), -1, "the chased target is dead: the directive is free to apply")
+	assert_almost_eq(float(cmd["x"]), 50.0, 0.01)
+	assert_almost_eq(float(cmd["y"]), 60.0, 0.01)
+
+
+func test_directive_applies_once_the_chased_target_is_routing() -> void:
+	var u := _unit(1, Vector2(0, 0), 1)
+	var foe := _unit(2, Vector2(200, 0), 0)
+	foe.state = Unit.State.ROUTING
+	u.set_current_order(Order.new_attack(foe.uid))
+	u.target_enemy = foe
+	var directive := {"type": Subcommander.DIRECTIVE_HOLD_LINE, "x": 50.0, "y": 60.0}
+	var cmd: Dictionary = UnitLeaderScript.decide(u, _all(), directive)
+	assert_eq(int(cmd["target"]), -1, "the chased target is routing: the directive is free to apply")
+
+
+func test_directive_applies_when_the_unit_has_no_attack_order_at_all() -> void:
+	# A directive should not be over-blocked either -- with no ATTACK order in flight,
+	# is_chasing_live_target must read false and the directive applies normally, same
+	# as before this guard existed.
+	var u := _unit(1, Vector2(0, 0), 1)
+	var foe := _unit(2, Vector2(200, 0), 0)
+	var directive := {"type": Subcommander.DIRECTIVE_HOLD_LINE, "x": 50.0, "y": 60.0}
+	var cmd: Dictionary = UnitLeaderScript.decide(u, _all(), directive)
+	assert_eq(int(cmd["target"]), -1, "no live chase in progress: the directive applies")
+
+
 # --- priority ordering ---------------------------------------------------------
 
 func test_flank_threat_takes_priority_over_square_formation() -> void:
