@@ -112,6 +112,26 @@ func test_reform_noops_on_a_single_rank() -> void:
 	assert_false(u.reform_ranks(), "one rank IS the fullest rank; a flip only mirrors it")
 
 
+## Regression: the single-rank early return above is scoped to the ABOUT-FACE (+-PI) fold
+## specifically -- it used to fire for ANY fold angle, so a single-rank grid folded by a
+## quarter-turn (e.g. a maneuver's own in-place pivot) never re-squared: reform_ranks()
+## returned false and left _formation_angle standing, instead of dropping the fold like
+## any other shape at a non-PI angle.
+func test_reform_resquares_a_single_rank_folded_by_a_quarter_turn() -> void:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 6
+	add_child_autofree(u)
+	u.facing = Vector2.DOWN
+	u.frontage_override = 8   # clamped to max_soldiers: 6 men in one single rank
+	u.seed_sim_soldiers()
+	u.facing = Vector2.RIGHT   # a settled 90-degree turn: facing rotated, turn absorbed
+	u._formation_angle = -PI * 0.5
+	assert_true(u.reform_ranks(),
+		"a quarter-turn genuinely rotates the grid axis, even for a single rank -- unlike " +
+		"the about-face's point-reflection no-op, this fold is not a mirror of the same row")
+	assert_eq(u._formation_angle, 0.0, "the grid is re-squared to the current heading")
+
+
 func test_bodies_settle_check_is_true_right_after_seeding() -> void:
 	var u := _make_partial_unit()
 	assert_true(u._reform_bodies_settled(), "seeded bodies stand exactly on their slots")

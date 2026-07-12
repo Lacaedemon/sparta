@@ -1260,8 +1260,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 						and u.state != UnitRef.State.FIGHTING \
 						and UnitManeuver.is_rear_move(u.facing, move_vec)
 				# A longer lateral move quarter-turns toward the destination's side in
-				# place, widens back into a line facing it, then marches -- rather than
-				# pivoting the whole block onto the new bearing while already under way.
+				# place, marches sideways to it keeping its pre-turn footprint, then
+				# quarter-turns back to the original facing on arrival -- a file march,
+				# not a repointed unit that ends up permanently facing the new direction.
 				var lateral_pivot: bool = not cmd.has("face") and not side_step \
 						and not back_step and not rear_move \
 						and u.state != UnitRef.State.FIGHTING \
@@ -1277,13 +1278,13 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# marches), so the ranks come onto the new bearing in good order rather
 				# than the whole line flipping its facing at order time.
 				# Reform timing rides the recorded "reform" field on the Order: for a plain
-				# move it arms the reform-before-move hold below; for a rear move or a
-				# lateral pivot it times the composite's reform phase (see
-				# Unit._finish_order_turn). A lateral pivot's widen-back-into-a-line step
-				# isn't optional -- it's the whole point of the maneuver -- so it always
-				# forces reform on, regardless of what the player's own command requested.
+				# move it arms the reform-before-move hold below; for a rear move it times
+				# the composite's reform phase (see Unit._finish_order_turn). A lateral
+				# pivot never reforms -- it keeps its pre-turn footprint for the whole march
+				# by design (the file-march character of the maneuver), so it forces reform
+				# off regardless of what the player's own command requested.
 				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
-				order.reform = bool(cmd.get("reform", false)) or lateral_pivot
+				order.reform = bool(cmd.get("reform", false)) and not lateral_pivot
 				# Install the order first: set_current_order interrupts whatever maneuver
 				# the old order had in flight (a standing drill turn folds and settles; a
 				# wheel stops mid-swing), so a fresh move always starts from consistent
@@ -1301,12 +1302,20 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					# Same handoff as a rear move, but a quarter-turn toward the
 					# destination's side instead of a full reversal. begin_pivot refuses
 					# the same way begin_about_face does (fighting, or bodies not seeded
-					# yet) -- but unlike rear_move, order.reform is already forced true
-					# above regardless of whether the turn armed, so the fallback here is
-					# the reform-hold below, not an immediate march.
+					# yet) -- and since order.reform is forced false above (never true) for
+					# a lateral pivot, the fallback here is the same plain-march branch a
+					# refused rear move takes, not a reform-hold.
 					u.has_move_target = false
 					var turn_angle: float = PI * 0.5 * UnitManeuver.lateral_pivot_dir(u.facing, move_vec)
 					turn_armed = u.begin_pivot(order, turn_angle)
+					if turn_armed:
+						# Record the return leg now, while turn_angle is still in scope --
+						# consumed once by Unit._think's arrival handler, which arms the
+						# closing quarter-turn back to this facing and clears the field so
+						# it can't re-fire. Left at zero if the turn never armed (the
+						# fallback march below never pivoted out, so there's nothing to
+						# turn back from).
+						order.pivot_return_angle = -turn_angle
 				# A rear move or lateral pivot that armed its turn parks its march for
 				# _think to commit on completion; every other move commits here
 				# (reform-hold or immediate). Fighting units bypass the hold in _think and
