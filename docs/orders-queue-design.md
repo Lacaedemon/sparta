@@ -170,6 +170,15 @@ reuse and compound player commands **without** a persistent tree: the executed
 structure stays flat, so `current_order` is always a single legible primitive in
 the transcript.
 
+The grouping itself is `Unit.enqueue_macro(steps: Array[Order]) -> int`: it stamps
+every step with a fresh `Order.macro_id` and appends each in turn, so the existing
+queue/promotion machinery runs them exactly like any other queued sequence.
+`Unit.cancel_macro(macro_id)` drops the macro's not-yet-executed remainder from
+the queue, leaving a step already in flight (the currently-executing order)
+untouched -- interrupt that with `set_current_order()`/`clear_orders()` instead.
+No maneuver expands itself into a macro yet; that is left to whatever combo a
+future command builds on top of `enqueue_macro`.
+
 ### 3. No deep order-tree / behavior-tree
 
 Avoid by default. It is more machinery than the domain needs, harder to serialize

@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Foundation only: Order.macro_id + Unit.enqueue_macro()/cancel_macro() add group-cancel semantics to the orders queue, but nothing in the game calls them yet -- no maneuver primitive or player-facing combo is built on top of this PR, so there is no gameplay behavior a recorded battle could show. Covered by GUT tests in test/unit/test_orders_queue.gd and test/unit/test_order.gd instead."
+}
