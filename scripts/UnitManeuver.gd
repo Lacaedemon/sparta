@@ -2,10 +2,14 @@ class_name UnitManeuver
 ## Pure, deterministic helpers for the classic drill maneuvers a move order can
 ## trigger. Stateless so the choice logic is unit-testable without a SceneTree.
 ##
-## The first maneuver is the SIDE-STEP: a small lateral shift is executed by
-## holding facing and shuffling sideways, rather than centre-pivoting the whole line
-## to face the destination and back. About-face, file-march pivots, and flank
-## wheeling (circumductio) are tracked as follow-ups and will add their own
+## SIDE-STEP: a small lateral shift holds facing and shuffles sideways, rather
+## than centre-pivoting the whole line to face the destination and back.
+## REAR-MOVE: a destination behind the unit about-faces (conversio) in place,
+## then marches, rather than a 180° centre pivot.
+## BACK-STEP: a SHORT rear-sector move holds facing and shuffles backward,
+## rather than about-facing for what would only be a nudge.
+## File-march pivots and an about-face + flank-pivot (wheel) composite for
+## large turns (#786) are tracked as follow-ups and will add their own
 ## classifiers here.
 
 # A move counts as a side-step when its lateral offset (perpendicular to the
@@ -51,3 +55,16 @@ static func is_rear_move(facing: Vector2, move_vec: Vector2) -> bool:
 		return false
 	var angle := rad_to_deg(absf(facing.angle_to(move_vec)))
 	return angle >= REAR_MOVE_MIN_ANGLE_DEG
+
+
+## Whether a move order from `facing` along `move_vec` is a short reposition into
+## the rear sector -- close enough that a real drill back-steps (holds facing,
+## shuffles backward) rather than about-facing in place and marching. Mirrors
+## `is_sidestep`'s short-distance cap for the lateral case: within
+## SIDESTEP_MAX_DISTANCE a rear-sector move reads as a nudge, not a repositioning
+## march. `facing` is the current heading; `move_vec` is destination minus current
+## position.
+static func is_backstep(facing: Vector2, move_vec: Vector2) -> bool:
+	if move_vec.length() > SIDESTEP_MAX_DISTANCE:
+		return false
+	return is_rear_move(facing, move_vec)
