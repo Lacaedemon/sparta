@@ -69,12 +69,18 @@ enum Type {
 ## phasing"). Every other order type stays NONE; the mechanism exists so a later phase can add
 ## more phased orders without a new Order subtype.
 enum Phase {
-	NONE,   ## Not phased, or a phased order that hasn't started its first phase yet.
-	TURN,   ## In-place about-face running before the march (move-to-rear only).
-	MARCH,  ## Marching to the destination -- the phase every other MOVE order is in throughout.
-	REFORM, ## Re-forming the ranks square to the new heading between the about-face and the
-	        ## march (move-to-rear issued with reform-before-move on). Appended after MARCH so
-	        ## recorded transcripts keep their phase values stable.
+	NONE,        ## Not phased, or a phased order that hasn't started its first phase yet.
+	TURN,        ## In-place about-face running before the march (move-to-rear only).
+	MARCH,       ## Marching to the destination -- the phase every other MOVE order is in
+	             ## throughout.
+	REFORM,      ## Re-forming the ranks square to the new heading between the about-face and
+	             ## the march (move-to-rear issued with reform-before-move on). Appended after
+	             ## MARCH so recorded transcripts keep their phase values stable.
+	RETURN_TURN, ## Turning back to the pre-pivot facing after the march arrives (a lateral
+	             ## pivot's closing phase -- see Unit.begin_pivot / pivot_return_angle). The
+	             ## grid was never reformed during the march, so nothing but facing needs to
+	             ## move here. Appended after REFORM so recorded transcripts keep their phase
+	             ## values stable.
 }
 
 ## Phase 4's bounded, enumerated guard vocabulary (docs/orders-queue-design.md,
@@ -123,6 +129,7 @@ const PHASE_NAMES := {
 	Phase.TURN: "TURN",
 	Phase.MARCH: "MARCH",
 	Phase.REFORM: "REFORM",
+	Phase.RETURN_TURN: "RETURN_TURN",
 }
 
 var type: int = Type.MOVE
@@ -182,6 +189,13 @@ var pivot: Vector2 = Vector2.ZERO
 ## "reform" field). For a rear move: true = re-form the ranks square to the new heading
 ## between the about-face and the march; false = step off at once and re-form on arrival.
 var reform: bool = false
+## MOVE only, lateral-pivot composite: the signed turn angle (radians, Unit.begin_pivot's
+## `facing.rotated(angle)` convention) to turn back BY once the march arrives -- the negation
+## of the initial pivot's own signed angle. Zero (default) means this MOVE order has no
+## return leg -- every other MOVE order, and a lateral pivot whose initial turn never armed
+## (see Battle._apply_order_cmd), leaves it at zero. Set once at issue time, consumed (and
+## cleared to zero, so it only fires once) by Unit._think's arrival handler.
+var pivot_return_angle: float = 0.0
 ## RELIEF only: the tired ally this order is swapping with, while the pass-through
 ## exemption is live -- Unit._separation_exempt lets the pair interpenetrate as long as
 ## either side's current RELIEF order names the other. UnitRelief.update clears it (the

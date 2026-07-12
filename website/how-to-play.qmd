@@ -141,8 +141,9 @@ you issued them.
 to the side --- less than about its own width --- is carried out as a **side-step**: the
 unit shuffles sideways at a walk while holding its current facing, instead of pivoting
 the whole line round to face the move and then pivoting back. So a small dressing of the
-line keeps every soldier looking the same way and keeps the ranks in order. A longer move,
-or one that heads forward, still turns to face the destination and marches normally.
+line keeps every soldier looking the same way and keeps the ranks in order. A move that
+heads forward still turns to face the destination and marches normally; a longer move to
+the side is a **lateral pivot** instead, covered below.
 
 ::: {#fig-sidestep .demo}
 
@@ -244,6 +245,33 @@ Move to the rear: ordered to a point behind it, the regiment about-faces in plac
 (each soldier reversing 180&deg;), reforms so a full rank fronts the new heading ---
 the under-strength rank counter-marching back to the rear --- and then marches off
 facing the destination.
+:::
+
+**Lateral pivot (quarter-turn, file march, quarter-turn back).** A longer move
+order to one **side** --- too far to side-step, but not far enough off-facing to
+count as behind the unit --- is a **file march**: the regiment **quarter-turns**
+toward the destination's side in place, marches straight there **keeping its
+pre-turn footprint** the whole way (the block never reforms to face the new
+heading, so a wide line stays wide instead of narrowing into a column), and then
+**quarter-turns back** to its original facing once it arrives. The unit ends up
+facing exactly the way it started --- the reorientation is temporary, for the
+march only, not a permanent repointing of the whole regiment.
+
+::: {#fig-lateral-pivot-flank-march .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/lateral_pivot_flank_march.jpg">
+  <source src="media/lateral_pivot_flank_march.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Lateral pivot: ordered far to its own side, the regiment quarter-turns toward the
+destination in place, marches straight there without reforming (the wide line
+stays wide, moving sideways relative to its own printed shape), then
+quarter-turns back to its original facing on arrival.
 :::
 
 **About-face in place (conversio, <kbd>V</kbd>).** Press <kbd>V</kbd> with a unit

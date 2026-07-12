@@ -1,0 +1,13 @@
+{
+  "seed": "51203",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 500, "y": 450, "count": 48}
+  ],
+  "camera": [{"tick": 0, "x": 680.0, "y": 450.0, "zoom": 0.9}],
+  "steps": [
+    {"tick": 5, "click": [500, 450]},
+    {"tick": 10, "rmb_click": [700, 450]}
+  ],
+  "state": [10, 60, 150, 400, 650, 700, 750]
+}

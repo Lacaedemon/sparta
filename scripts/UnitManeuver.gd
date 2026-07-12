@@ -8,14 +8,17 @@ class_name UnitManeuver
 ## then marches, rather than a 180° centre pivot.
 ## BACK-STEP: a SHORT rear-sector move holds facing and shuffles backward,
 ## rather than about-facing for what would only be a nudge.
-## File-march pivots and an about-face + flank-pivot (wheel) composite for
-## large turns are tracked as follow-ups and will add their own classifiers
-## here.
+## LATERAL-PIVOT: a LARGE lateral shift quarter-turns toward the destination's
+## side in place, widens back into a line facing it, then marches -- rather
+## than centre-pivoting the whole block onto the new bearing at speed.
+## An about-face + flank-pivot (wheel) composite for large rear/oblique turns
+## is tracked as a follow-up and will add its own classifier here.
 
 # A move counts as a side-step when its lateral offset (perpendicular to the
 # unit's current facing) dominates its forward offset AND the whole move is
 # short -- roughly one unit-width. Beyond that distance a lateral move is large
-# enough to warrant a file-march pivot (future work) instead of a shuffle.
+# enough to warrant a lateral-pivot maneuver (see is_lateral_pivot) instead of
+# a shuffle.
 const SIDESTEP_MAX_DISTANCE := 40.0
 # The lateral component must be at least this multiple of the forward component
 # for the move to read as a sideways shift rather than a forward/diagonal advance.
@@ -68,3 +71,34 @@ static func is_backstep(facing: Vector2, move_vec: Vector2) -> bool:
 	if move_vec.length() > SIDESTEP_MAX_DISTANCE:
 		return false
 	return is_rear_move(facing, move_vec)
+
+
+## Whether a move order from `facing` along `move_vec` is a lateral-pivot case: a
+## lateral-dominant offset too far to shuffle as a side-step, and not into the rear
+## sector (that's is_rear_move's about-face case instead). Such a move quarter-turns
+## in place toward the destination's side, widens back into a line facing it, then
+## marches -- rather than centre-pivoting the whole block onto the new bearing while
+## already under way. `facing` is the current heading; `move_vec` is destination
+## minus current position.
+static func is_lateral_pivot(facing: Vector2, move_vec: Vector2) -> bool:
+	var dist := move_vec.length()
+	if facing.length() < 0.01 or dist <= SIDESTEP_MAX_DISTANCE:
+		return false
+	if is_rear_move(facing, move_vec):
+		return false
+	var fwd := facing.normalized()
+	var perp := Vector2(-fwd.y, fwd.x)
+	var forward := absf(move_vec.dot(fwd))
+	var lateral := absf(move_vec.dot(perp))
+	return lateral >= forward * SIDESTEP_LATERAL_RATIO
+
+
+## The signed quarter-turn direction (matching Unit.quarter_turn's `dir` convention:
+## +1 turns toward the unit's own right, -1 toward its own left) a lateral-pivot move
+## should turn toward -- whichever side of current facing the destination falls on.
+## Computed via facing.rotated(PI * 0.5), the SAME rotation Unit.begin_pivot applies
+## for a dir=+1 turn, so the sign is guaranteed consistent with the actual turn by
+## construction rather than a separately-derived perpendicular formula.
+static func lateral_pivot_dir(facing: Vector2, move_vec: Vector2) -> int:
+	var right: Vector2 = facing.rotated(PI * 0.5)
+	return 1 if move_vec.dot(right) >= 0.0 else -1

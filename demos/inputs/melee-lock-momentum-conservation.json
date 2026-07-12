@@ -1,0 +1,10 @@
+{
+  "seed": "40217",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 700, "y": 380, "count": 60},
+    {"team": 1, "type": "Infantry", "x": 700, "y": 620, "count": 60}
+  ],
+  "camera": [{"tick": 0, "x": 700.0, "y": 500.0, "zoom": 1.35}],
+  "steps": [],
+  "state": [10, 100, 300, 450, 600]
+}

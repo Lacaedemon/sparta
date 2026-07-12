@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/melee-lock-momentum-conservation.json",
+  "caption": "Two matched 60-soldier Infantry regiments grind through prolonged melee. Previously, SoldierEnemyContact.accumulate() trimmed each body's summed enemy-contact impulse to its own per-body speed cap independently -- but a contact pair's two impulses are equal and opposite by construction, so trimming each side by a DIFFERENT ratio broke that symmetry and injected a small net force (and, off-center, a net TORQUE) into the two-regiment system every tick it fired. Over hundreds of ticks that undamped torque accumulated into the #724 melee-lock swirl -- both regiments slowly and continuously rotating around their clash point, eventually sweeping 200+ degrees. Fixed by trimming per PAIR instead of per body: both of a pair's impulses now scale by the SAME factor (the smaller of the two bodies' own isolated-cap ratios), which keeps every pair's contribution exactly action/reaction. Verified empirically (torque-proxy instrumentation against this exact reproduction): net torque injected by this pass drops from -17327.7 to -0.169 over a 700-tick clash -- a ~100,000x reduction.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
