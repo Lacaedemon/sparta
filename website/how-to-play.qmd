@@ -159,6 +159,27 @@ Side-step: a short lateral move shuffles the regiment sideways
 while it holds its facing, rather than pivoting.
 :::
 
+**Back-step (short moves to the rear).** The same short-distance exception applies
+behind the unit: a move order that only shifts it a short way straight back is a
+**back-step** --- it shuffles backward at a walk while holding its facing, the same
+nudge as the <kbd>↓</kbd> arrow key below. A longer move into the rear arc is a real
+repositioning march instead, covered next.
+
+::: {#fig-back-step .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/back_step.jpg">
+  <source src="media/back_step.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Back-step: a short move behind the unit shuffles it backward
+while it holds its facing, rather than about-facing.
+:::
+
 **Arrow-key nudges.** With a unit selected, the arrow keys order a small fixed step
 without touching the mouse: <kbd>←</kbd> and <kbd>→</kbd> side-step the unit a few metres
 to that side, <kbd>↑</kbd> steps it forward, and <kbd>↓</kbd> back-steps it a few metres
@@ -191,9 +212,10 @@ So a unit always marches facing its destination, and never reverses into it. (A 
 charging unit still turns instantly --- the gradual pivot is for your own move orders, where
 order matters more than the last fraction of a second.)
 
-**Move to the rear (about-face, reform, then march).** A move order to a destination
-roughly **behind** the unit (more than 135° off its facing) is not a centre pivot at all:
-the regiment first performs the standing **about-face** (*conversio*, below) --- every
+**Move to the rear (about-face, reform, then march).** A longer move order to a
+destination roughly **behind** the unit (more than 135° off its facing) is not a
+centre pivot at all: the regiment first performs the standing **about-face**
+(*conversio*, below) --- every
 soldier reverses 180° where they stand, the front rank becoming the rear rank
 man-for-man --- and then marches to the destination facing it. The block keeps its
 footprint the whole time rather than swinging the whole line round about its centre, so
