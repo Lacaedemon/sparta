@@ -1199,6 +1199,23 @@ they're driven by different subsystems and (so far) resist the same fixes:
   feedback-resonance hypothesis -- also no effect). Root cause not yet found; likely lives
   inside `SoldierEnemyContact`'s per-soldier contact-pair geometry itself (WHICH soldiers
   end up in contact, not the impulse formula, which IS Newton's-third-law symmetric per pair).
+  A THIRD hypothesis, tried in a later session: `Unit.engaged_soldier_indices()`'s
+  NORMAL-formation branch selected soldiers by raw array index (`for i in range(cutoff):
+  out.push_back(i)`), which `SoldierMelee.reap()`'s casualty-driven array compaction makes
+  stale -- the same staleness class #752/PR #758 already fixed for the SQUARE branch (see
+  that section below). Instrumentation confirmed a real, growing, LOCAL-FRAME-CONSISTENT
+  skew in both units' naive selections as casualties mount (which, since the two units face
+  180° apart, resolves to OPPOSITE world-frame sides -- a structural, not random, asymmetry).
+  Fixed as `UnitFormation.live_front_indices` (#779/PR #780) -- but this only
+  MEASURABLY SLOWS the swirl's onset (the early-window ticks 100-300 rotation rate drops from
+  ~170°+ to ~18° in the `all-out-attack.json` reproduction) rather than eliminating it: the
+  rotation re-accelerates later once casualties exhaust the genuinely-forward candidates too,
+  reaching a comparable ~222° by tick 700. Real partial mitigation, not the root cause. Next
+  angle to try: instrument the actual soldier-to-soldier PAIRING `SoldierEnemyContact`
+  resolves each tick (via `SoldierSpatialHash.query`'s 3x3 neighborhood) for a systematic
+  left/right asymmetry independent of which soldiers get gathered -- two now-correctly-selected
+  front lines could still pair asymmetrically if each side's actual footprint has reshaped
+  differently under casualties.
 - **#774 (march swirl, no combat):** a unit's facing swings wildly while MARCHING near other
   units, with zero enemies and zero contact -- reproduces in #458's plain drag-to-form-up
   scenario. The SAME torque-proxy instrumentation, applied to this scenario, found BOTH
