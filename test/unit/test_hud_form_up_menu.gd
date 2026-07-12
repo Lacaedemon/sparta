@@ -40,9 +40,43 @@ func test_menu_builds_with_the_form_up_radio_items() -> void:
 	var hud := _hud()
 	var popup := _popup(hud)
 	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_EQUAL_DEPTH), 0,
-			"the equal-depth radio item is present")
+			"the equal-depth (count) radio item is present")
 	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_EQUAL_WIDTH), 0,
-			"the equal-width radio item is present")
+			"the equal-width (space) radio item is present")
+	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_EQUAL_DEPTH_SPACE), 0,
+			"the equal-depth (space) radio item is present")
+	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_EQUAL_WIDTH_COUNT), 0,
+			"the equal-width (count) radio item is present")
+	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_DEPTH_SPACE), 0,
+			"the equal-depth (space) cycle checkbox is present")
+	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_WIDTH_COUNT), 0,
+			"the equal-width (count) cycle checkbox is present")
+
+
+func test_radio_reflects_equal_depth_space_as_the_persisted_default() -> void:
+	Settings.form_up_dist_default = SelectionManagerScript.FormUpDist.EQUAL_DEPTH_SPACE
+	Settings.form_up_dist_cycle = [SelectionManagerScript.FormUpDist.EQUAL_DEPTH_SPACE,
+			SelectionManagerScript.FormUpDist.EQUAL_WIDTH]
+	var hud := _hud()   # _ready -> _sync_setting_toggles reads the default
+	var popup := _popup(hud)
+	assert_true(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_EQUAL_DEPTH_SPACE)),
+			"equal-depth (space) is checked as the current default")
+	assert_false(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_EQUAL_WIDTH)),
+			"a different mode's radio is unchecked")
+
+
+func test_picking_the_equal_depth_space_radio_sets_and_persists_the_default() -> void:
+	Settings.form_up_dist_default = SelectionManagerScript.FormUpDist.EQUAL_DEPTH
+	Settings.form_up_dist_cycle = [SelectionManagerScript.FormUpDist.EQUAL_DEPTH,
+			SelectionManagerScript.FormUpDist.EQUAL_DEPTH_SPACE]
+	var hud := _hud()
+	hud._on_menu_id(HUDScript.MENU_FORMUP_EQUAL_DEPTH_SPACE)
+	assert_eq(Settings.form_up_dist_default, SelectionManagerScript.FormUpDist.EQUAL_DEPTH_SPACE,
+			"choosing the equal-depth (space) item sets the persisted default")
+	var popup := _popup(hud)
+	assert_true(popup.is_item_checked(
+			popup.get_item_index(HUDScript.MENU_FORMUP_EQUAL_DEPTH_SPACE)),
+			"and the radio re-syncs to the new default")
 
 
 func test_radios_reflect_the_persisted_default() -> void:
@@ -134,6 +168,23 @@ func test_changing_default_to_a_mode_excluded_from_the_cycle_adds_it() -> void:
 	var popup := _popup(hud)
 	assert_true(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_WIDTH)),
 			"the newly-defaulted mode's cycle checkbox shows checked, not stuck unchecked")
+
+
+func test_picking_a_cycle_checkbox_item_toggles_it_via_the_menu_dispatch() -> void:
+	# Drives the MENU_FORMUP_CYCLE_* branch of _on_menu_id (as the popup's id_pressed signal
+	# would), not _toggle_form_up_cycle directly -- proves the menu dispatch itself reaches it.
+	Settings.form_up_dist_default = SelectionManagerScript.FormUpDist.EQUAL_DEPTH
+	Settings.form_up_dist_cycle = [SelectionManagerScript.FormUpDist.EQUAL_DEPTH]
+	var hud := _hud()
+	hud._on_menu_id(HUDScript.MENU_FORMUP_CYCLE_WIDTH)
+	assert_true(Settings.form_up_dist_cycle.has(SelectionManagerScript.FormUpDist.EQUAL_WIDTH),
+			"picking the equal-width cycle checkbox adds it to the cycle")
+	var popup := _popup(hud)
+	assert_true(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_WIDTH)),
+			"and the checkbox re-syncs to checked")
+	hud._on_menu_id(HUDScript.MENU_FORMUP_CYCLE_WIDTH)
+	assert_false(Settings.form_up_dist_cycle.has(SelectionManagerScript.FormUpDist.EQUAL_WIDTH),
+			"picking it again removes it from the cycle")
 
 
 func test_toggling_the_default_out_of_the_cycle_is_a_no_op() -> void:
