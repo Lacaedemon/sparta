@@ -180,3 +180,59 @@ func test_engaged_friendly_holds_and_newcomer_yields() -> void:
 	SoldierSteering.accumulate([fighter, newcomer], 1)
 	assert_almost_eq(fighter._sim_steer[0].length(), 0.0, 1e-4, "the fighting regiment holds the line")
 	assert_gt(newcomer._sim_steer[0].length(), 0.0, "the newcomer yields fully and flows around it")
+
+
+# --- friendly-contact tier gate: circumradius pre-filter + oriented tightening (#769) ---
+
+## A real, wide multi-soldier IDLE regiment at `pos` (facing DOWN, the `_make_unit` default)
+## with its soldier bodies seeded from the actual formation grid -- unlike the single-soldier
+## micro-fixtures above, big enough that soldier_block_extent() (circumradius) and
+## soldier_block_half_extents() (the tighter per-axis reach) meaningfully differ.
+func _wide_idle_unit(uid: int, team: int, n: int, pos: Vector2) -> Unit:
+	var u := _make_unit(uid, n)
+	u.team = team
+	u.state = Unit.State.IDLE
+	u.position = pos
+	u.seed_sim_soldiers()
+	return u
+
+
+## The three per-unit dictionaries accumulate() precomputes and passes into
+## _overlaps_friendly, built the same way for a plain list of units.
+func _friendly_dicts(units: Array) -> Array:
+	var extents := {}
+	var half_extents := {}
+	var angles := {}
+	for o in units:
+		var u: Unit = o as Unit
+		extents[u] = u.soldier_block_extent()
+		half_extents[u] = u.soldier_block_half_extents()
+		angles[u] = u.soldier_block_world_angle()
+	return [extents, half_extents, angles]
+
+
+func test_overlaps_friendly_rejects_a_wide_blocks_circumradius_false_positive() -> void:
+	# Two 100-soldier NORMAL regiments standing shoulder to shoulder (both facing DOWN, so
+	# the connecting axis IS their width axis): circumradius sum is ~145.9 world units, but
+	# the tighter along-axis reach sums to only ~130.0. At a gap the circumradius alone would
+	# flag as overlapping (138 world units apart) their actual near edges sit well clear of
+	# each other -- the exact whole-block-extent-overlap false positive #769 describes.
+	var a := _wide_idle_unit(0, 0, 100, Vector2(0.0, 0.0))
+	var b := _wide_idle_unit(1, 0, 100, Vector2(138.0, 0.0))
+	var dicts: Array = _friendly_dicts([a, b])
+	assert_gt(dicts[0][a] + dicts[0][b], 138.0,
+		"sanity: the old circumradius-only test would have flagged this pair as overlapping")
+	assert_lt(dicts[1][a].x + dicts[1][b].x, 138.0,
+		"sanity: the tighter along-axis reach does not reach the gap")
+	assert_false(SoldierSteering._overlaps_friendly(a, [a, b], dicts[0], dicts[1], dicts[2]),
+		"a wide-but-shallow block pair that only overlaps by the loose circumradius bound is not promoted")
+
+
+func test_overlaps_friendly_still_accepts_a_genuine_oriented_overlap() -> void:
+	# Same pair, close enough that even the tighter along-axis reach overlaps (120 world
+	# units apart) -- the tightening doesn't strand a regiment that's actually crowded.
+	var a := _wide_idle_unit(0, 0, 100, Vector2(0.0, 0.0))
+	var b := _wide_idle_unit(1, 0, 100, Vector2(120.0, 0.0))
+	var dicts: Array = _friendly_dicts([a, b])
+	assert_true(SoldierSteering._overlaps_friendly(a, [a, b], dicts[0], dicts[1], dicts[2]),
+		"a pair whose true near edges overlap is still promoted to the friendly-contact tier")

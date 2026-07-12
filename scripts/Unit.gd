@@ -2880,6 +2880,22 @@ func soldier_block_extent() -> float:
 	return SoldierFlock.compute_extent(self, formation_slots(soldiers))
 
 
+## Per-axis counterpart to soldier_block_extent(): (half-width, half-depth) of the seeded
+## soldier block in its own LOCAL frame (files along x, ranks along y). Lets a caller bound
+## the block's reach along one specific direction (soldier_block_world_angle() gives the
+## rotation to express that direction in) instead of every direction via the circumradius.
+func soldier_block_half_extents() -> Vector2:
+	return SoldierFlock.compute_half_extents(self, formation_slots(soldiers))
+
+
+## The soldier block's current world-space rotation: the same facing + in-progress-maneuver
+## formula soldier_world_slots() rotates its local slots by, factored out so a caller
+## working with soldier_block_half_extents() (also local-frame) can convert a world
+## direction into that same local frame without duplicating the formula.
+func soldier_block_world_angle() -> float:
+	return facing.angle() + PI * 0.5 + _formation_angle
+
+
 ## The render block's current half-size: the cached extent _process maintains as
 ## the block forms and takes casualties (what _draw sizes the state ring / selection halo /
 ## bars to). Unlike soldier_block_extent(), this returns the maintained field rather than a
