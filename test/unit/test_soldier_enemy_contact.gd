@@ -79,6 +79,66 @@ func test_accumulate_fans_apart_an_exactly_co_located_enemy_pair() -> void:
 		"a co-located enemy pair still resolves to a nonzero separating impulse")
 
 
+func test_accumulate_conserves_total_momentum_when_one_body_needs_trimming_and_its_partners_dont() -> void:
+	# Regression for the melee-lock swirl (#724): D (a single-soldier defender) is pressed by
+	# FIVE attacker soldiers from the same unit, all overlapping the exact same point, so their
+	# impulses stack instead of partially canceling -- the same "worst case" geometry as
+	# test_accumulate_caps_a_soldiers_summed_velocity_across_multiple_simultaneous_enemies above,
+	# just with enough attackers that D's raw summed delta clears its own isolated cap by a wide
+	# margin (verified against the pre-fix baseline: this exact setup produced a real 6.7 wu/s
+	# residual before this fix). Each attacker only touches D, so every attacker's own raw
+	# (single-pair) delta is comfortably under ITS isolated cap and needs no trimming at all.
+	#
+	# Trimming D's summed delta independently of the attackers' own deltas (the pre-fix approach)
+	# leaves the attackers receiving their FULL untrimmed share while D receives only a FRACTION
+	# of its matching share -- a residual net force on this cluster with no opposing reaction
+	# anywhere in the system, i.e. non-conservation of momentum. All units share the same type
+	# (equal mass/brace), so each pair's two impulses are exactly equal and opposite
+	# (SoldierCollision.enemy_contact_impulse), making mass-weighted momentum conservation reduce
+	# to a plain sum of velocity deltas.
+	const ATTACKER_COUNT := 5
+	var d := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var attacker := _make_unit(2, 1, Vector2(-2000, -2000), ATTACKER_COUNT)
+	d._sim_soldier_pos[0] = Vector2.ZERO
+	for i in range(ATTACKER_COUNT):
+		attacker._sim_soldier_pos[i] = Vector2(5, 0)
+	var before_d: Vector2 = d._sim_body_vel[0]
+	var before_attacker: Array = []
+	for i in range(ATTACKER_COUNT):
+		before_attacker.append(attacker._sim_body_vel[i])
+
+	SoldierEnemyContact.accumulate([d, attacker], 90007)
+
+	var delta_d: Vector2 = d._sim_body_vel[0] - before_d
+	assert_true(delta_d.length() > 0.0, "sanity: the forced overlaps actually produced an impulse")
+	assert_true(delta_d.length() <= SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
+		"sanity: D's own summed delta is genuinely being trimmed by this scenario")
+	var total: Vector2 = delta_d
+	for i in range(ATTACKER_COUNT):
+		total += attacker._sim_body_vel[i] - (before_attacker[i] as Vector2)
+	assert_almost_eq(total.x, 0.0, 0.05, "trimming a pair must not leave a net x-momentum residual")
+	assert_almost_eq(total.y, 0.0, 0.05, "trimming a pair must not leave a net y-momentum residual")
+
+
+func test_body_trim_scale_is_one_for_a_zero_delta() -> void:
+	assert_eq(SoldierEnemyContact.body_trim_scale(Vector2(10, 0), Vector2.ZERO), 1.0,
+		"nothing to trim -- the body's velocity is untouched")
+
+
+func test_body_trim_scale_is_one_when_the_delta_alone_stays_under_the_cap() -> void:
+	var scale: float = SoldierEnemyContact.body_trim_scale(Vector2.ZERO, Vector2(1.0, 0.0))
+	assert_almost_eq(scale, 1.0, 0.001, "a tiny delta never needs trimming")
+
+
+func test_body_trim_scale_shrinks_a_delta_that_alone_exceeds_the_cap() -> void:
+	# A delta far larger than any realistic cap forces capped_knockback_velocity to clamp hard,
+	# so the scale factor must land well below 1.0.
+	var scale: float = SoldierEnemyContact.body_trim_scale(
+		Vector2.ZERO, Vector2(10.0 * SoldierCombat.KNOCKBACK_SPEED_MAX, 0.0))
+	assert_true(scale > 0.0 and scale < 0.2,
+		"a wildly oversized delta must be trimmed down close to what the cap alone allows")
+
+
 func test_accumulate_caps_a_soldiers_summed_velocity_across_multiple_simultaneous_enemies() -> void:
 	# Regression: enemy_contact_impulse's own KNOCKBACK_SPEED_MAX cap is scoped to ONE pair --
 	# a soldier touching several enemy bodies at once (e.g. a Square-perimeter defender pressed
