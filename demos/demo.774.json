@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/multi-unit-form-up-modes.json",
+  "caption": "Same scenario as #458's form-up demo -- three regiments dragged into a flank line -- now settling cleanly instead of visibly spinning mid-march. The bug: a raw bearing to a nearby target point is numerically unstable (its angle is arbitrarily sensitive to sub-pixel position noise), and the disciplined march's turn-before-advance damping throttled the unit's advance toward zero exactly when that bearing was most unstable, letting it hover and spin in place for hundreds of ticks near arrival. Fixed by freezing the steering direction once a unit is within a small radius of its destination -- the actual movement step stays smooth throughout, only the facing/steering computation is guarded.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
