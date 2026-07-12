@@ -687,7 +687,7 @@ Figure&nbsp;2: Disciplined vs.&nbsp;undisciplined: two regiments get the same qu
 </figure>
 </div>
 <p><strong>Reform before move (default on).</strong> By default, a fresh move order makes a unit hold its position briefly (~0.8 s) while its ranks settle into formation before it steps off. The unit spends this hold <strong>pivoting in place</strong> toward the destination, so its ranks are already coming onto the new heading before the first step. To make units move immediately without the pause, uncheck <strong>☰ Menu → Reform before move</strong> or click <strong>Reform</strong> in the control bar. The setting is baked into each recorded order, so replays reproduce whichever mode was active when you issued them.</p>
-<p><strong>Side-step (small lateral moves).</strong> A move order that only shifts a unit a short way to the side — less than about its own width — is carried out as a <strong>side-step</strong>: the unit shuffles sideways at a walk while holding its current facing, instead of pivoting the whole line round to face the move and then pivoting back. So a small dressing of the line keeps every soldier looking the same way and keeps the ranks in order. A longer move, or one that heads forward, still turns to face the destination and marches normally.</p>
+<p><strong>Side-step (small lateral moves).</strong> A move order that only shifts a unit a short way to the side — less than about its own width — is carried out as a <strong>side-step</strong>: the unit shuffles sideways at a walk while holding its current facing, instead of pivoting the whole line round to face the move and then pivoting back. So a small dressing of the line keeps every soldier looking the same way and keeps the ranks in order. A move that heads forward still turns to face the destination and marches normally; a longer move to the side is a <strong>lateral pivot</strong> instead, covered below.</p>
 <div id="fig-sidestep" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-sidestep-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -749,6 +749,21 @@ Figure&nbsp;6: Move to the rear: ordered to a point behind it, the regiment abou
 </figcaption>
 </figure>
 </div>
+<p><strong>Lateral pivot (quarter-turn, reform, then march).</strong> A longer move order to one <strong>side</strong> — too far to side-step, but not far enough off-facing to count as behind the unit — runs the same shape of maneuver as a move to the rear, just at 90° instead of 180°: the regiment <strong>quarter-turns</strong> toward the destination’s side in place, <strong>reforms</strong> so a full rank fronts the new heading, and only then marches. Like the rear move, the block keeps its footprint through the turn rather than swinging its whole line round about its centre while under way — it squares up first, then steps off never sliding sideways at speed.</p>
+<div id="fig-lateral-pivot-flank-march" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-lateral-pivot-flank-march-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/lateral_pivot_flank_march.jpg">
+  <source src="media/lateral_pivot_flank_march.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-lateral-pivot-flank-march-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: Lateral pivot: ordered far to its own side, the regiment quarter-turns toward the destination in place, reforms into a line facing it, and then marches off — the same turn-reform-march shape as a move to the rear, just at 90°.
+</figcaption>
+</figure>
+</div>
 <p><strong>About-face in place (conversio, <kbd>V</kbd>).</strong> Press <kbd>V</kbd> with a unit selected to issue the <em>conversio</em>: every soldier reverses 180° where they stand — the file/rank grid stays put, the front rank becomes the rear rank man-for-man, and the unit is now facing the other way. Unlike the gradual <strong>centre pivot</strong> that accompanies a move order (which rotates the whole block around its centre as it marches), the conversio is a standing drill command: no one takes a step. Use it to face a threat behind the line without marching first, or to quickly reorient a reserve before it moves up.</p>
 <p><strong>Quarter-turn in place (<kbd>Q</kbd> / <kbd>E</kbd>).</strong> Press <kbd>Q</kbd> to turn the selected unit a quarter-turn left, or <kbd>E</kbd> to turn it right: every soldier pivots 90° where they stand. No one marches and the grid of men does not reorganize — they simply face the new way, so the block now presents its <strong>short edge</strong> as its frontage (its frontage and depth swap relative to the facing, without anyone moving). Like the conversio, it is a standing facing change. Use it to throw a fresh face toward a flank, or as the first step of marching off to the side in good order.</p>
 <p><strong>Wheel on a flank (circumductio, <kbd>Z</kbd> / <kbd>C</kbd>).</strong> Press <kbd>Z</kbd> to wheel the selected unit left, or <kbd>C</kbd> to wheel it right. One end of the line — the standing flank file — holds its ground while the rest of the block swings around it like a door on a hinge, reorienting the whole line 90° while every man keeps his place in the ranks. Unlike the quarter-turn, this is not a standing facing change: the far flank actually marches an arc, so the line ends up facing a new direction <em>and</em> lying along a new line. Use it to refuse a flank, to swing a wing forward and take an enemy line in the side, or to change the front an entire wing presents without breaking its order.</p>
@@ -763,7 +778,7 @@ Figure&nbsp;6: Move to the rear: ordered to a point behind it, the regiment abou
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-wheel-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Wheel (circumductio): the line swings 90° about its standing flank file — the near flank holds while the far flank marches a wide arc — reorienting the whole block without breaking its ranks. Wheeled right (C), then back left (Z).
+Figure&nbsp;8: Wheel (circumductio): the line swings 90° about its standing flank file — the near flank holds while the far flank marches a wide arc — reorienting the whole block without breaking its ranks. Wheeled right (C), then back left (Z).
 </figcaption>
 </figure>
 </div>
@@ -795,7 +810,7 @@ Figure&nbsp;7: Wheel (circumductio): the line swings 90° about its standing fla
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-stance-order-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;8: Setting a stance in place with <kbd>Ctrl</kbd>+<kbd>H</kbd>, then toggling rank relief off with <kbd>I</kbd> — both confirmed by a flash toast.
+Figure&nbsp;9: Setting a stance in place with <kbd>Ctrl</kbd>+<kbd>H</kbd>, then toggling rank relief off with <kbd>I</kbd> — both confirmed by a flash toast.
 </figcaption>
 </figure>
 </div>
@@ -809,7 +824,7 @@ Figure&nbsp;8: Setting a stance in place with <kbd>Ctrl</kbd>+<kbd>H</kbd>, then
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-support-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: Support stance: a unit guards an ally, shadowing it and engaging any threat.
+Figure&nbsp;10: Support stance: a unit guards an ally, shadowing it and engaging any threat.
 </figcaption>
 </figure>
 </div>
@@ -823,7 +838,7 @@ Figure&nbsp;9: Support stance: a unit guards an ally, shadowing it and engaging 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cycle-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Cycle charge stance: cavalry charge, land the impact hit, peel back to a standoff, then charge again.
+Figure&nbsp;11: Cycle charge stance: cavalry charge, land the impact hit, peel back to a standoff, then charge again.
 </figcaption>
 </figure>
 </div>
@@ -837,7 +852,7 @@ Figure&nbsp;10: Cycle charge stance: cavalry charge, land the impact hit, peel b
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sweep-routers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Sweep routers stance: the unit bypasses a closer, still-fighting enemy to chase down a more distant one that has broken and is fleeing.
+Figure&nbsp;12: Sweep routers stance: the unit bypasses a closer, still-fighting enemy to chase down a more distant one that has broken and is fleeing.
 </figcaption>
 </figure>
 </div>
@@ -851,7 +866,7 @@ Figure&nbsp;11: Sweep routers stance: the unit bypasses a closer, still-fighting
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-roll-the-line-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Roll the line stance: a single attack order carries the unit through three enemies in a row, one after another, as each breaks and routs.
+Figure&nbsp;13: Roll the line stance: a single attack order carries the unit through three enemies in a row, one after another, as each breaks and routs.
 </figcaption>
 </figure>
 </div>
@@ -865,7 +880,7 @@ Figure&nbsp;12: Roll the line stance: a single attack order carries the unit thr
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pin-down-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;13: Pin down stance: a defensive stall in a head-on clash — fewer swings, each one briefly more exposed on the follow-through.
+Figure&nbsp;14: Pin down stance: a defensive stall in a head-on clash — fewer swings, each one briefly more exposed on the follow-through.
 </figcaption>
 </figure>
 </div>
@@ -879,7 +894,7 @@ Figure&nbsp;13: Pin down stance: a defensive stall in a head-on clash — fewer 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-all-out-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;14: All-out attack stance: two matched regiments clash, and the one fighting all-out both deals and takes more casualties than a fair fight would.
+Figure&nbsp;15: All-out attack stance: two matched regiments clash, and the one fighting all-out both deals and takes more casualties than a fair fight would.
 </figcaption>
 </figure>
 </div>
@@ -893,7 +908,7 @@ Figure&nbsp;14: All-out attack stance: two matched regiments clash, and the one 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-chase-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;15: Chase stance: once the enemy breaks and routs, the cavalry keeps pressing the same fleeing target instead of disengaging.
+Figure&nbsp;16: Chase stance: once the enemy breaks and routs, the cavalry keeps pressing the same fleeing target instead of disengaging.
 </figcaption>
 </figure>
 </div>
@@ -907,7 +922,7 @@ Figure&nbsp;15: Chase stance: once the enemy breaks and routs, the cavalry keeps
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-wedge-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;16: Wedge charge stance: two matched regiments given the same move order, one wedge-charging — it visibly pulls ahead and reaches the enemy line first.
+Figure&nbsp;17: Wedge charge stance: two matched regiments given the same move order, one wedge-charging — it visibly pulls ahead and reaches the enemy line first.
 </figcaption>
 </figure>
 </div>
@@ -921,7 +936,7 @@ Figure&nbsp;16: Wedge charge stance: two matched regiments given the same move o
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-knockback-focus-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17: Knockback focus stance: a unit switches mid-fight and starts hitting softer while visibly shoving the enemy line back harder with every blow.
+Figure&nbsp;18: Knockback focus stance: a unit switches mid-fight and starts hitting softer while visibly shoving the enemy line back harder with every blow.
 </figcaption>
 </figure>
 </div>
@@ -936,7 +951,7 @@ Figure&nbsp;17: Knockback focus stance: a unit switches mid-fight and starts hit
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-line-relief-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;18: Line relief: a fresh unit passes through its tired ally and takes over the fight; the relieved unit falls back to the rear.
+Figure&nbsp;19: Line relief: a fresh unit passes through its tired ally and takes over the fight; the relieved unit falls back to the rear.
 </figcaption>
 </figure>
 </div>
@@ -962,7 +977,7 @@ Figure&nbsp;18: Line relief: a fresh unit passes through its tired ally and take
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-shielded-stances-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;19: Shielded-stance visuals: a shield wall (left) packs into a tight edge-to-edge line, and a testudo (right) packs into a dense block — each stance reads at a glance from the soldiers’ own positions.
+Figure&nbsp;20: Shielded-stance visuals: a shield wall (left) packs into a tight edge-to-edge line, and a testudo (right) packs into a dense block — each stance reads at a glance from the soldiers’ own positions.
 </figcaption>
 </figure>
 </div>
@@ -978,7 +993,7 @@ Figure&nbsp;19: Shielded-stance visuals: a shield wall (left) packs into a tight
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;20: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
+Figure&nbsp;21: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
 </figcaption>
 </figure>
 </div>
@@ -993,7 +1008,7 @@ Figure&nbsp;20: File-doubling: duplicatio (N) folds the line into a deep column;
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-asymmetric-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;21: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
+Figure&nbsp;22: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
 </figcaption>
 </figure>
 </div>
@@ -1016,7 +1031,7 @@ Figure&nbsp;21: Anchored explicatio (Shift+B): the right flank stays fixed while
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-form-up-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;22: Three regiments of different size — Spearmen (Tight), Infantry (Normal), Archers (Loose) — box-selected and dragged into a flank line under the default equal-depth (space) split: each forms up to the same physical depth. Tight and Normal share the same spacing, but the loosely-spread Archers split the line differently from both for a genuinely density-driven reason.
+Figure&nbsp;23: Three regiments of different size — Spearmen (Tight), Infantry (Normal), Archers (Loose) — box-selected and dragged into a flank line under the default equal-depth (space) split: each forms up to the same physical depth. Tight and Normal share the same spacing, but the loosely-spread Archers split the line differently from both for a genuinely density-driven reason.
 </figcaption>
 </figure>
 </div>
@@ -1031,7 +1046,7 @@ Figure&nbsp;22: Three regiments of different size — Spearmen (Tight), Infantry
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-formation-preview-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;23: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
+Figure&nbsp;24: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
 </figcaption>
 </figure>
 </div>
@@ -1046,7 +1061,7 @@ Figure&nbsp;23: Move-order ghost preview: a unit forms Square, then marches unde
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-order-distance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;24: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
+Figure&nbsp;25: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
 </figcaption>
 </figure>
 </div>
@@ -1064,7 +1079,7 @@ Figure&nbsp;24: Order distance labels: the green move line shows the remaining m
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;25: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
+Figure&nbsp;26: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
 </figcaption>
 </figure>
 </div>
