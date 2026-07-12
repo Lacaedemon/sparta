@@ -1094,13 +1094,17 @@ func is_maneuver_turning() -> bool:
 
 ## Goal facing of the in-place 180° reversal current_order is running (a rear move's TURN
 ## phase or the standalone ABOUT_FACE drill), or ZERO when none. The figure render squashes
-## the marks through a reversal; a quarter-turn keeps the ordinary facing render.
+## the marks through a reversal; a quarter-turn (standalone, or a lateral-pivot move's own
+## 90° TURN phase) keeps the ordinary facing render. A MOVE order's TURN phase is not always
+## a reversal -- a lateral-pivot move also arms one, at 90° -- so this checks the actual
+## turned angle (start/target antiparallel) rather than order type/phase alone.
 func about_face_goal() -> Vector2:
 	if current_order == null:
 		return Vector2.ZERO
 	var reversing: bool = current_order.type == Order.Type.ABOUT_FACE \
 			or (current_order.type == Order.Type.MOVE
-					and current_order.phase == Order.Phase.TURN)
+					and current_order.phase == Order.Phase.TURN
+					and current_order.turn_start_facing.dot(current_order.turn_target) < -0.99)
 	return current_order.turn_target if reversing else Vector2.ZERO
 
 
@@ -2688,19 +2692,27 @@ func quarter_turn(dir: int) -> void:
 	set_current_order(order)
 
 
-## Arm the about-face (TURN) phase of a rear-sector MOVE order: an in-place 180° reversal
-## runs first; the march to order.target_pos starts when it completes (see
-## _finish_order_turn for the reform-vs-hasty handoff). `order` must already be current --
-## set_current_order has interrupted whatever ran before, so nothing else is turning.
-## Returns false when the unit can't turn in place right now (fighting, or the soldier
-## bodies aren't seeded yet); the caller falls back to a plain march.
-func begin_about_face(order: Order) -> bool:
+## Arm the in-place TURN phase of a phased MOVE order, turning `angle` radians (signed,
+## Vector2.rotated's convention) from the current facing: the march to order.target_pos
+## starts when the turn completes (see _finish_order_turn for the reform-vs-hasty
+## handoff). `order` must already be current -- set_current_order has interrupted
+## whatever ran before, so nothing else is turning. Returns false when the unit can't
+## turn in place right now (fighting, or the soldier bodies aren't seeded yet); the
+## caller falls back to a plain march.
+func begin_pivot(order: Order, angle: float) -> bool:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
 		return false
 	order.turn_start_facing = facing
-	order.turn_target = Vector2(-facing.x, -facing.y)
+	order.turn_target = facing.rotated(angle)
 	order.phase = Order.Phase.TURN
 	return true
+
+
+## Arm the about-face (TURN) phase of a rear-sector MOVE order: an in-place 180°
+## reversal. See begin_pivot for the general primitive -- conversio is always a full
+## reversal, so this is just that call with angle = PI.
+func begin_about_face(order: Order) -> bool:
+	return begin_pivot(order, PI)
 
 
 ## Fold the rotation the current order's in-place turn applied (start heading -> current

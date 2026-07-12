@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/lateral-pivot-flank-march.json",
+  "caption": "A 48-soldier Spearmen line, ordered 360 units due right of its facing -- too far to side-step, but not a rear move. It quarter-turns in place toward the destination (the wide line briefly reads as a narrow deep column, since only individual facing rotates -- the footprint doesn't reorganize yet), then widens back into a line facing the new heading (the reform hold), and only then marches -- never sliding sideways at speed.",
+  "fixed_fps": 30,
+  "max_frames": 350,
+  "fps": 15,
+  "width": 720
+}

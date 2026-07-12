@@ -1259,6 +1259,13 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				var rear_move: bool = not cmd.has("face") and not side_step and not back_step \
 						and u.state != UnitRef.State.FIGHTING \
 						and UnitManeuver.is_rear_move(u.facing, move_vec)
+				# A longer lateral move quarter-turns toward the destination's side in
+				# place, widens back into a line facing it, then marches -- rather than
+				# pivoting the whole block onto the new bearing while already under way.
+				var lateral_pivot: bool = not cmd.has("face") and not side_step \
+						and not back_step and not rear_move \
+						and u.state != UnitRef.State.FIGHTING \
+						and UnitManeuver.is_lateral_pivot(u.facing, move_vec)
 				# Drag-to-form-up: apply frontage/facing immediately so soldiers begin
 				# adjusting during the reform phase rather than after the march starts.
 				if cmd.has("face"):
@@ -1270,31 +1277,42 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# marches), so the ranks come onto the new bearing in good order rather
 				# than the whole line flipping its facing at order time.
 				# Reform timing rides the recorded "reform" field on the Order: for a plain
-				# move it arms the reform-before-move hold below; for a rear move it times
-				# the composite's reform phase (see Unit._finish_order_turn).
+				# move it arms the reform-before-move hold below; for a rear move or a
+				# lateral pivot it times the composite's reform phase (see
+				# Unit._finish_order_turn). A lateral pivot's widen-back-into-a-line step
+				# isn't optional -- it's the whole point of the maneuver -- so it always
+				# forces reform on, regardless of what the player's own command requested.
 				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
-				order.reform = bool(cmd.get("reform", false))
+				order.reform = bool(cmd.get("reform", false)) or lateral_pivot
 				# Install the order first: set_current_order interrupts whatever maneuver
 				# the old order had in flight (a standing drill turn folds and settles; a
 				# wheel stops mid-swing), so a fresh move always starts from consistent
 				# ground -- live play and playback take this same path.
 				u.set_current_order(order)
-				var about_faced: bool = false
+				var turn_armed: bool = false
 				if rear_move:
 					# Park the destination on the order and about-face in place; _think
 					# starts the march when the turn completes. has_move_target stays false
 					# so the turn isn't cancelled. begin_about_face refuses before the
 					# bodies seed (a spawn-tick order) -- fall back to a plain march then.
 					u.has_move_target = false
-					about_faced = u.begin_about_face(order)
-				# A rear move that armed the about-face parks its march for _think to commit
-				# on completion; every other move commits here (reform-hold or immediate).
-				# Fighting units bypass the hold in _think and commit immediately.
-				if not about_faced and order.reform:
+					turn_armed = u.begin_about_face(order)
+				elif lateral_pivot:
+					# Same handoff as a rear move, but a quarter-turn toward the
+					# destination's side instead of a full reversal. begin_pivot refuses
+					# the same way begin_about_face does -- fall back to a plain march.
+					u.has_move_target = false
+					var turn_angle: float = PI * 0.5 * UnitManeuver.lateral_pivot_dir(u.facing, move_vec)
+					turn_armed = u.begin_pivot(order, turn_angle)
+				# A rear move or lateral pivot that armed its turn parks its march for
+				# _think to commit on completion; every other move commits here
+				# (reform-hold or immediate). Fighting units bypass the hold in _think and
+				# commit immediately.
+				if not turn_armed and order.reform:
 					u._reform_target = point
 					u._reform_timer = UnitRef.REFORM_DURATION
 					u.has_move_target = false   # stop any prior march while reforming
-				elif not about_faced:
+				elif not turn_armed:
 					u.move_target = point
 					u.has_move_target = true
 		if not append:
