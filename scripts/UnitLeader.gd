@@ -41,6 +41,14 @@ const BattleRef = preload("res://scripts/Battle.gd")
 ## subcommander's group-level intent should never override a unit's own self-preservation.
 ## Only the bottom level actuates -- decide() still returns the same order-command shape
 ## either way, so a directive-driven decision goes through the exact same apply path.
+##
+## Phase 3 (docs/battle-ai-design.md) adds an optional `pursue_routers` parameter -- the
+## general's doctrine-driven rout-exploitation flag (General.decide_army's own
+## "pursue_routers" output). It governs ONLY whether the advance/attack fallback's own
+## nearest-enemy search (4, above) may pick a routing enemy as a fresh target; it changes
+## nothing else about the priority order, and defaults to true so every existing caller that
+## never passes it (including every phase-1/phase-2 test) sees the unchanged prior behaviour
+## (include_routing was hardcoded true before this parameter existed).
 
 
 ## Morale floor below which a unit in contact calls for relief.
@@ -59,10 +67,13 @@ const FLANK_DOT_THRESHOLD := 0.35
 ## today, fogged in phase 5 without this signature changing). `directive` is this unit's
 ## subcommander directive for the tick (Subcommander.decide_group's output for this uid),
 ## or {} when the unit has none -- existing callers that never pass one see the unchanged
-## phase-1 behaviour. Returns an enqueue_order/_apply_order_cmd-shaped Dictionary, or {} for
+## phase-1 behaviour. `pursue_routers` (phase 3) governs the advance/attack fallback's own
+## targeting only -- see the class doc's phase-3 note; defaults to true (the old hardcoded
+## behaviour). Returns an enqueue_order/_apply_order_cmd-shaped Dictionary, or {} for
 ## "no change this tick" (Battle skips applying anything, leaving whatever order is already
 ## running).
-static func decide(u: Unit, all_units: Array, directive: Dictionary = {}) -> Dictionary:
+static func decide(u: Unit, all_units: Array, directive: Dictionary = {},
+		pursue_routers: bool = true) -> Dictionary:
 	if u.state == Unit.State.DEAD or u.state == Unit.State.ROUTING:
 		return {}
 
@@ -99,8 +110,9 @@ static func decide(u: Unit, all_units: Array, directive: Dictionary = {}) -> Dic
 		# _flank_threat's contact-only check doesn't see the closing enemy either.
 		if not directive.is_empty() and not is_chasing_live_target(u):
 			return _directive_cmd(u, directive)
-		# include_routing=true: press the advantage and chase down a fleeing enemy too.
-		var nearest: Unit = UnitTargeting.nearest_enemy_to(u, u.position, INF, true)
+		# include_routing=pursue_routers: press the advantage and chase down a fleeing
+		# enemy too, unless the doctrine says to hold the line instead (phase 3).
+		var nearest: Unit = UnitTargeting.nearest_enemy_to(u, u.position, INF, pursue_routers)
 		if nearest != null and u.target_enemy != nearest:
 			return _attack_cmd(u, nearest)
 

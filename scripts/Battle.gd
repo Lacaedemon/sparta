@@ -189,6 +189,14 @@ var drill_mode: bool = false
 # normal default-loadout spawn, byte-for-byte. See _spawn_scenario and demos/README.md.
 var scenario: Array = []
 
+# Battle AI phase 3 (docs/battle-ai-design.md): which doctrine profile (DoctrineRegistry id,
+# a filename stem under data/doctrines/) team 1's General uses this battle. Settable BEFORE
+# the node enters the tree (like drill_mode/scenario above) so a demo/test can force a
+# specific doctrine; the default matches the roster's own default matchup. An unknown id
+# resolves to {} from DoctrineRegistry, and General.decide_army falls back to phase 2's own
+# single-group/no-reserves/pursue-routers behaviour for an empty doctrine.
+var ai_doctrine: String = "aggressive"
+
 # Units deployed per side when this is a campaign-launched battle; used to
 # scale survivors back to campaign army strength when the battle ends.
 var _camp_atk_spawned: int = 0
@@ -1448,25 +1456,42 @@ func _tick_tier_transitions() -> void:
 			TierTransition.demote(u)
 
 
-## Battle AI phases 1-2 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets
+## Battle AI phases 1-3 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets
 ## a unit leader (UnitLeader.decide) that reads the current sim state -- the omniscient
 ## placeholder perception phase 1 uses -- and returns at most one order-command Dictionary,
 ## which is applied through _apply_order_cmd, the SAME single apply site a player order
-## goes through. No unit state is written directly here, in UnitLeader, or in Subcommander --
-## closing the backdoor the old direct `u.target_enemy = nearest` write left open (see the
-## design doc's "Today's AI is a backdoor" section). Phase 2 adds one subcommander per team,
-## computed once per AI tick over the whole team-1 group (docs/battle-ai-design.md phase 2's
-## "start static" group assignment -- see Subcommander's own class doc); its directives are
-## handed to each unit leader alongside the same perception, never applied on their own.
+## goes through. No unit state is written directly here, in UnitLeader, in Subcommander, or
+## in General -- closing the backdoor the old direct `u.target_enemy = nearest` write left
+## open (see the design doc's "Today's AI is a backdoor" section).
+##
+## Phase 3 adds the general: General.decide_army reads team 1's doctrine profile
+## (ai_doctrine, via DoctrineRegistry) and the same omniscient perception, and returns a plan,
+## a split into one or more Subcommander groups, a reserve pool, and the doctrine's rout-
+## exploitation flag. Subcommander.decide_group runs once PER GROUP (phase 2 ran it once for
+## the whole team); the general's own reserve-hold directives (General.reserve_directives) are
+## folded in alongside them, so a held-back reserve unit gets a directive too, just not a
+## subcommander's. pursue_routers threads down to every UnitLeader.decide call. The general
+## reads team 1's whole ROSTER (_team_roster, fightable + routing), not the narrower
+## _team_units, so a unit that temporarily routs doesn't shrink the reserve-fraction
+## denominator (see _team_roster's own doc comment) -- but only _team_units actually receives
+## an AI order below, since a routing unit can't act on one regardless.
 ## Deterministic: a pure function of already-serialized unit state, decided in uid order, so
 ## live play and replay reach identical decisions.
 func _run_enemy_ai() -> void:
 	var all_units: Array = get_tree().get_nodes_in_group("units")
 	var team1: Array = _team_units(1)
-	var directives: Dictionary = Subcommander.decide_group(team1, all_units)
+	var team1_roster: Array = _team_roster(1)
+	var doctrine: Dictionary = DoctrineRegistry.doctrine(ai_doctrine)
+	var decision: Dictionary = General.decide_army(team1_roster, all_units, doctrine)
+	var directives: Dictionary = General.reserve_directives(decision["reserve_units"])
+	for group in decision["groups"]:
+		var group_directives: Dictionary = Subcommander.decide_group(group, all_units)
+		for uid in group_directives:
+			directives[uid] = group_directives[uid]
+	var pursue_routers: bool = bool(decision.get("pursue_routers", true))
 	for u in team1:
 		var directive: Dictionary = directives.get(u.uid, {})
-		var cmd: Dictionary = UnitLeader.decide(u, all_units, directive)
+		var cmd: Dictionary = UnitLeader.decide(u, all_units, directive, pursue_routers)
 		if not cmd.is_empty():
 			_apply_order_cmd(cmd)
 
@@ -1477,6 +1502,25 @@ func _team_units(team: int) -> Array:
 		var u = node as UnitRef
 		if u != null and u.team == team:
 			out.append(u)
+	return out
+
+
+## `team`'s whole roster still on the field -- fightable ("units") AND currently-routing
+## ("routers") -- the node-returning twin of _team_in_play/_team_survivors' own "units" +
+## "routers" union. General.decide_army reads this (not the narrower _team_units) so a unit
+## that temporarily routs doesn't shrink the reserve-fraction denominator and silently pull a
+## genuine reserve into the active line by pure headcount arithmetic, independent of the
+## doctrine's own morale-commit threshold -- see General.gd's own doc comment on why the
+## roster stays stable across a routing episode. Downstream (Subcommander, UnitLeader) already
+## no-ops for a ROUTING unit regardless of which array it rides in, so including it here is
+## safe even though it can't actually receive or act on a directive right now.
+func _team_roster(team: int) -> Array:
+	var out: Array = []
+	for group in ["units", "routers"]:
+		for node in get_tree().get_nodes_in_group(group):
+			var u = node as UnitRef
+			if u != null and u.team == team:
+				out.append(u)
 	return out
 
 

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/general-doctrine-reserves.json",
+  "caption": "Battle AI phase 3 (#586): the general. Team 1 now has a general above its subcommander -- General.decide_army reads a doctrine profile (data/doctrines/*.json) once per AI tick and produces an army plan, a split into subcommander groups, and a reserve pool, threading the doctrine's rout-exploitation flag down to every unit leader. This clip forces the 'cautious' doctrine (reserve_fraction 0.4, reserve_commit_morale_threshold 30) and shows its reserve pool in action: two full-strength units (a Cavalry and an Infantry, bottom of frame) are held back from the start, HOLD_LINE-pinned at their own position while three weaker Infantry alone meet the enemy. As the front line takes losses its weighted-average morale drops below the doctrine's threshold -- confirmed by state dump at tick 240 -- and General.decide_army folds the two reserves into the active line that same tick. They break their stationary hold, march up, and join the fight. No new order types, no direct unit-state writes -- the general's decision reaches every unit exactly the same way a subcommander's or a unit leader's own decision does, as a real queue-visible order through Battle._apply_order_cmd.",
+  "fixed_fps": 60,
+  "max_frames": 900,
+  "fps": 30,
+  "width": 640
+}

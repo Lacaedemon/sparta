@@ -1,0 +1,8 @@
+{
+  "name": "Aggressive",
+  "plans": ["advance_line", "envelop"],
+  "envelop_ratio_threshold": 1.2,
+  "reserve_fraction": 0.1,
+  "reserve_commit_morale_threshold": 70.0,
+  "pursue_routers": true
+}

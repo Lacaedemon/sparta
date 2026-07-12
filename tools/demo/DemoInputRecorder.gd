@@ -25,6 +25,10 @@ var _camera_track: Array = []          # keyframes [{tick,x,y,zoom}], interpolat
 var _by_tick: Dictionary = {}          # tick -> Array of expanded input events
 var _drill: bool = false               # solo/no-opponent rehearsal (input script "drill" field)
 var _scenario: Array = []              # custom unit matchup (input script "scenario" field)
+# Battle AI phase 3 (docs/battle-ai-design.md): which doctrine profile team 1's General uses,
+# from the input script's optional "doctrine" field (a DoctrineRegistry id). Empty string ==
+# "don't override" -- Battle keeps its own default (see Battle.ai_doctrine's own doc comment).
+var _doctrine: String = ""
 var _frame_ticks: Array = []           # ticks to save a viewport PNG at (frame capture; empty = off)
 var _frame_dir: String = ""            # output dir for captured frames
 var _captured: Dictionary = {}         # tick -> true, so each frame is saved at most once
@@ -70,6 +74,7 @@ func _ready() -> void:
 	_schedule(script.get("steps", []))
 	_drill = bool(script.get("drill", false))
 	_scenario = script.get("scenario", [])
+	_doctrine = str(script.get("doctrine", ""))
 	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
 	_arm_state_dump(DemoFrames.script_array(script, "state"))
 	print("[demo-input] %d scripted input events over %d ticks%s%s" % [
@@ -85,6 +90,8 @@ func _start_battle() -> void:
 	_battle = load(BATTLE_SCENE).instantiate()
 	_battle.drill_mode = _drill   # set before add_child so Battle._ready reads it (no team-1 spawn)
 	_battle.scenario = _scenario  # likewise: a custom matchup replaces the default line spawn
+	if _doctrine != "":
+		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
 	add_child(_battle)
 	_sel = _battle.get_node("SelectionManager")
 	_cam = _battle.get_node("Camera2D")
