@@ -645,10 +645,48 @@ the soldiers reshuffle. A side-step keeps every soldier looking at the enemy and
 keeps the line aligned, so you can nudge a unit a few paces to close a gap or
 overlap an enemy flank without ever presenting your own flank in the process.
 
-The cut-off is roughly a unit's own width: shifts wider than that, or moves that
-head forward, turn and march normally. So to reposition laterally in good order,
-make the adjustment small --- a short step keeps the line intact, a long one
-commits the unit to a march.
+The cut-off is roughly a unit's own width: a move that heads forward, wider than
+that or not, turns and marches normally. A **wider lateral shift** is a different
+maneuver again --- see the lateral pivot below --- rather than a plain centre
+pivot. So to reposition laterally in good order, make the adjustment small --- a
+short step keeps the line intact, a long one commits the unit to a pivot and a
+march.
+
+## The lateral pivot
+
+A move too far to the side to side-step, but not far enough off-facing to count
+as a move to the rear, runs a maneuver of its own shape: the regiment
+**quarter-turns** toward the destination's side in place, **widens back into a
+line** facing the new heading, and only then marches --- the same
+turn-then-reform-then-march composite a move to the rear uses, just at 90°
+instead of 180°. A plain centre pivot would swing the whole block through the
+turn while it is already under way, presenting a partial flank for as long as
+the turn takes; the lateral pivot squares up first, in place, before it ever
+steps off.
+
+While the quarter-turn runs, the wide line briefly reads as a narrow, deep
+column --- only each soldier's individual facing rotates; the footprint itself
+doesn't reorganize until the widening step. That widening is the same
+countermarch a rear move's reform uses, and pays the same backward-shuffle cost
+covered above --- so a lateral pivot on a unit that has already taken losses
+settles more slowly than a fresh one, for the same reason a depleted rear-move
+reform does.
+
+::: {#fig-lateral-pivot-flank-march .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/lateral_pivot_flank_march.jpg">
+  <source src="media/lateral_pivot_flank_march.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A Spearmen line ordered far to its own right: it quarter-turns toward the
+destination in place, widens back into a line facing it, then marches off ---
+never sliding sideways or presenting a flank at speed.
+:::
 
 ## Backing up costs time
 

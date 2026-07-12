@@ -1094,13 +1094,17 @@ func is_maneuver_turning() -> bool:
 
 ## Goal facing of the in-place 180° reversal current_order is running (a rear move's TURN
 ## phase or the standalone ABOUT_FACE drill), or ZERO when none. The figure render squashes
-## the marks through a reversal; a quarter-turn keeps the ordinary facing render.
+## the marks through a reversal; a quarter-turn (standalone, or a lateral-pivot move's own
+## 90° TURN phase) keeps the ordinary facing render. A MOVE order's TURN phase is not always
+## a reversal -- a lateral-pivot move also arms one, at 90° -- so this checks the actual
+## turned angle (start/target antiparallel) rather than order type/phase alone.
 func about_face_goal() -> Vector2:
 	if current_order == null:
 		return Vector2.ZERO
 	var reversing: bool = current_order.type == Order.Type.ABOUT_FACE \
 			or (current_order.type == Order.Type.MOVE
-					and current_order.phase == Order.Phase.TURN)
+					and current_order.phase == Order.Phase.TURN
+					and current_order.turn_start_facing.dot(current_order.turn_target) < -0.99)
 	return current_order.turn_target if reversing else Vector2.ZERO
 
 
@@ -2688,19 +2692,27 @@ func quarter_turn(dir: int) -> void:
 	set_current_order(order)
 
 
-## Arm the about-face (TURN) phase of a rear-sector MOVE order: an in-place 180° reversal
-## runs first; the march to order.target_pos starts when it completes (see
-## _finish_order_turn for the reform-vs-hasty handoff). `order` must already be current --
-## set_current_order has interrupted whatever ran before, so nothing else is turning.
-## Returns false when the unit can't turn in place right now (fighting, or the soldier
-## bodies aren't seeded yet); the caller falls back to a plain march.
-func begin_about_face(order: Order) -> bool:
+## Arm the in-place TURN phase of a phased MOVE order, turning `angle` radians (signed,
+## Vector2.rotated's convention) from the current facing: the march to order.target_pos
+## starts when the turn completes (see _finish_order_turn for the reform-vs-hasty
+## handoff). `order` must already be current -- set_current_order has interrupted
+## whatever ran before, so nothing else is turning. Returns false when the unit can't
+## turn in place right now (fighting, or the soldier bodies aren't seeded yet); the
+## caller falls back to a plain march.
+func begin_pivot(order: Order, angle: float) -> bool:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
 		return false
 	order.turn_start_facing = facing
-	order.turn_target = Vector2(-facing.x, -facing.y)
+	order.turn_target = facing.rotated(angle)
 	order.phase = Order.Phase.TURN
 	return true
+
+
+## Arm the about-face (TURN) phase of a rear-sector MOVE order: an in-place 180°
+## reversal. See begin_pivot for the general primitive -- conversio is always a full
+## reversal, so this is just that call with angle = PI.
+func begin_about_face(order: Order) -> bool:
+	return begin_pivot(order, PI)
 
 
 ## Fold the rotation the current order's in-place turn applied (start heading -> current
@@ -2754,24 +2766,29 @@ func _finish_order_turn() -> void:
 ## rank and a reform would only churn every man through the block for zero shape change.
 ## Returns true when a reform actually starts.
 ##
-## The ±PI case (an about-face fold, the only fold this composite's rear-move actually
-## produces) arms _formation_mirror_x rather than just dropping the fold: a plain rotation by
-## the post-reform ang is a POINT reflection of the pre-reform grid (it would swap every
-## soldier to the OPPOSITE FLANK, not just trade rank order -- see soldier_world_slots and the
-## field doc), so the ±PI case needs the depth-only reflection that flag arms instead. Any
-## other fold (not ±PI -- unreachable via the rear-move composite today, but the general
-## primitive is defensive here) keeps the old plain drop: nothing but a rear-move's about-face
-## produces the point-reflection hazard the flag exists for.
+## The ±PI case (an about-face fold) arms _formation_mirror_x rather than just dropping the
+## fold: a plain rotation by the post-reform ang is a POINT reflection of the pre-reform grid
+## (it would swap every soldier to the OPPOSITE FLANK, not just trade rank order -- see
+## soldier_world_slots and the field doc), so the ±PI case needs the depth-only reflection
+## that flag arms instead. Any other fold (a quarter-turn, e.g. a lateral-pivot move's TURN
+## phase) keeps the plain drop: nothing but an about-face produces the point-reflection
+## hazard the flag exists for.
+##
+## The single-rank early-return above is scoped to the ±PI case specifically: a half-turn of
+## a single centred rank really is a no-op (it's still the same row, just read backwards), but
+## a QUARTER-turn is not -- the grid axis is genuinely rotated relative to facing even with
+## only one rank, so it still needs _formation_angle dropped to re-square the line.
 func reform_ranks() -> bool:
 	var angle: float = wrapf(_formation_angle, -PI, PI)
 	if absf(angle) < 0.01:
 		return false
 	var files: int = maxi(1, formation_files(soldiers))
-	# A single rank has no rear to tuck a gap into (its one rank IS the fullest), and a
-	# half-turn of it is just a lateral mirror of the same centred row.
-	if UnitFormation.ranks_for(soldiers, files) <= 1:
-		return false
 	var is_about_face_fold: bool = absf(absf(angle) - PI) < 0.01
+	# A single rank has no rear to tuck a gap into under a HALF-turn (its one rank IS the
+	# fullest, and a half-turn of it is just a lateral mirror of the same centred row) --
+	# but that's only true for the ±PI fold; any other fold still needs squaring below.
+	if is_about_face_fold and UnitFormation.ranks_for(soldiers, files) <= 1:
+		return false
 	if is_about_face_fold and soldiers % files == 0:
 		return false
 	_formation_angle = 0.0
