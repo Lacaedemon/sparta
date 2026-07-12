@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Physics saturation edge-case fix, not an ordinary-gameplay mechanic: SoldierSteering.accumulate() now caps the accumulated friendly-avoidance steering magnitude at STEER_STRENGTH before writing it to _sim_steer. Bounded acceleration already prevents any single-tick snap, so the change only matters under SUSTAINED EXTREME crowding (many neighbors converging on one soldier for many consecutive ticks) -- a configuration a normal battle order sequence doesn't reliably produce, and ordinary crowding (a couple of regiments jostling) never approaches the cap (see the new test_ordinary_crowding assertion). Covered directly by a differential GUT test (test_soldier_steering.gd) instead: eight friendly neighbors converging on one soldier from the same side."
+}
