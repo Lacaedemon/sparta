@@ -2504,6 +2504,35 @@ func test_engaged_soldier_indices_prefers_real_enemy_proximity_over_centroid_dis
 		"the ring soldier on the far side, with no real enemy nearby, is excluded")
 
 
+func test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indices() -> void:
+	# NORMAL (line) formation, not SQUARE: the front-rank selection here is index-based
+	# ("first files*ENGAGED_RANKS indices"), which SoldierMelee.reap() breaks the moment a
+	# casualty splices the per-soldier arrays -- every index after the removed soldier
+	# shifts down, so "index i is rank i/files" no longer holds. Simulate exactly that
+	# staleness (without needing a real casualty) by swapping a genuinely-front soldier's
+	# LIVE position with a genuinely-rear soldier's: the array index no longer matches
+	# either soldier's actual geometric position, same as after a real reap() compaction.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch
+	var n: int = u._sim_soldier_pos.size()
+	var files: int = u.formation_files(n)
+	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	assert_true(cutoff < n, "sanity: the engaged budget is a genuine subset of the whole block")
+	var front_idx: int = 0        # rank 0, file 0 -- genuinely laid out at the front
+	var rear_idx: int = n - 1     # the last rank's last file -- genuinely laid out at the rear
+	var tmp: Vector2 = u._sim_soldier_pos[front_idx]
+	u._sim_soldier_pos[front_idx] = u._sim_soldier_pos[rear_idx]
+	u._sim_soldier_pos[rear_idx] = tmp
+	var indices := u.engaged_soldier_indices(n)
+	assert_eq(indices.size(), cutoff, "selection size still matches the rank-count budget")
+	assert_true(indices.has(rear_idx),
+		"the soldier now physically at the front (rear_idx's array slot, post-swap) is selected")
+	assert_false(indices.has(front_idx),
+		"the soldier now physically at the rear (front_idx's array slot, post-swap) is excluded")
+
+
 func test_face_for_action_is_a_no_op_when_squared() -> void:
 	# An omnidirectional formation presents no weak facing, so it never turns the whole
 	# grid to bear on one attacker -- a rear/flank charger would otherwise drag the block's

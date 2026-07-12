@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Internal selection-logic fix, not a visible mechanic change: Unit.engaged_soldier_indices()'s NORMAL-formation branch now reads live soldier positions (UnitFormation.live_front_indices) instead of the first files*ENGAGED_RANKS array indices, which SoldierMelee.reap()'s casualty-driven array compaction silently made stale (the same staleness class #752/PR #758 already fixed for the SQUARE branch). The change only affects WHICH already-front-adjacent soldiers get selected for the per-soldier melee/steering/contact passes as casualties mount -- it doesn't change combat outcomes, formation geometry, or anything a recorded battle clip would visibly distinguish from the prior behavior. Verified by a live-battle GUT test (test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indices) asserting the selection follows live position rather than stale array index."
+}

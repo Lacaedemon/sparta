@@ -257,6 +257,51 @@ static func live_perimeter_indices(positions: PackedVector2Array, target_count: 
 	return out
 
 
+## Live-position front-rank selection for a non-square (line/column) formation. Unlike a
+## naive "first `target_count` indices" front-rank selection, this reads each soldier's
+## ACTUAL current position: `SoldierMelee.reap()` removes dead soldiers by splicing the
+## per-soldier arrays, which shifts every later index down and breaks the assumption that
+## index `i` still sits at the grid cell `block_slots` originally laid it out on -- the same
+## staleness `live_perimeter_indices` above fixes for the hollow-square/schiltron case,
+## here for the ordinary line-formation case. `origin` and `forward` are a world-frame
+## reference point and unit vector (the unit's own anchor and its facing-derived forward
+## direction); `positions` shares `origin`'s frame (both parent-local, per
+## `Unit._sim_soldier_pos`'s convention).
+##
+## Returns the `target_count` LIVING soldiers (by position-array index) currently projecting
+## FARTHEST along `forward` from `origin` -- the soldiers physically closest to the enemy
+## right now, not whichever indices happen to occupy the low end of the (possibly
+## casualty-compacted) array. Same O(n log target_count) bounded-min-heap selection as
+## `live_perimeter_indices` (reusing its `_worse`/`_heap_sift_up`/`_heap_sift_down` helpers,
+## which only compare scores -- they don't care whether the score is a squared distance or a
+## forward projection). Pure and deterministic: ties broken by index (lower index wins), no
+## RNG, no wall-clock.
+static func live_front_indices(positions: PackedVector2Array, target_count: int, origin: Vector2, forward: Vector2) -> PackedInt32Array:
+	var n: int = positions.size()
+	if n <= 0 or target_count <= 0:
+		return PackedInt32Array()
+	if target_count >= n:
+		var all := PackedInt32Array()
+		for i in range(n):
+			all.push_back(i)
+		return all
+	var heap_i := PackedInt32Array()
+	var heap_d := PackedFloat32Array()
+	for i in range(n):
+		var score: float = (positions[i] - origin).dot(forward)
+		if heap_i.size() < target_count:
+			heap_i.push_back(i)
+			heap_d.push_back(score)
+			_heap_sift_up(heap_i, heap_d, heap_i.size() - 1)
+		elif _worse(heap_d[0], heap_i[0], score, i):
+			heap_i[0] = i
+			heap_d[0] = score
+			_heap_sift_down(heap_i, heap_d, 0)
+	var out := PackedInt32Array(heap_i)
+	out.sort()
+	return out
+
+
 ## True if (d_a, idx_a) is a WORSE candidate to keep than (d_b, idx_b): a farther point (larger
 ## squared distance) is more worth keeping; among ties, the LOWER soldier index is more worth
 ## keeping. Matches the strict-weak-order the equivalent full sort would use (sort by distance

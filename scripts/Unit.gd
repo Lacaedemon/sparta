@@ -2982,12 +2982,18 @@ func soldier_brace() -> float:
 	return BRACE_SET if (is_engaged() and order_mode != ORDER_SKIRMISH) else 0.0
 
 
-## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks of an engaged
-## regiment, or none when it isn't engaged. The formation grid is rank-major
-## (rank = index / files, rank 0 = front), so the front ranks are exactly the
-## first files*ENGAGED_RANKS indices -- using `files` FROM THE SAME GRID the
-## regiment is actually laid out on (formation_files), not the wide-line
-## frontage() a SQUARE unit no longer uses.
+## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks' worth of an engaged
+## regiment, or none when it isn't engaged. `files*ENGAGED_RANKS` (using `files` FROM
+## THE SAME GRID the regiment is actually laid out on -- formation_files, not the
+## wide-line frontage() a SQUARE unit no longer uses) sizes the selection, but WHICH
+## soldiers fill it is read from LIVE positions (UnitFormation.live_front_indices), not
+## the first files*ENGAGED_RANKS array indices: the formation grid is rank-major at
+## SPAWN (rank = index / files, rank 0 = front), but `SoldierMelee.reap()` splices dead
+## soldiers out of the per-soldier arrays as casualties mount, shifting every later
+## index down -- so "index i is rank i/files" goes stale the moment the first soldier
+## dies, the same staleness `live_perimeter_indices` below documents for the SQUARE
+## case. Selecting by live forward-projection instead keeps the chosen soldiers the
+## ones actually closest to the enemy, regardless of how compacted the array has become.
 ##
 ## An omnidirectional formation (in_square()) has no single front to speak of --
 ## _face_for_action never turns it to bear on one attacker, since every side already
@@ -3037,9 +3043,9 @@ func engaged_soldier_indices(count: int) -> PackedInt32Array:
 				ring_size += 1
 		return UnitFormation.live_perimeter_indices(_sim_soldier_pos, ring_size)
 	var cutoff: int = mini(count, formation_files(count) * ENGAGED_RANKS)
-	for i in range(cutoff):
-		out.push_back(i)
-	return out
+	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
+	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
+	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
 
 
 ## A soldier body's radius for this regiment's type — the drawn mark radius, so
