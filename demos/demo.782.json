@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Docs/comment-only correction (docs/individual-collision-design.md and SoldierEnemyContact.gd's docstring) -- no executable code or gameplay behavior changed, so there is nothing for a recorded battle to show."
+}

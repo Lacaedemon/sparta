@@ -231,7 +231,8 @@ their simulated positions, and **engaged melee resolves per-soldier and drives r
 strength/morale** (the first gameplay change). The per-soldier reach model gives a longer
 weapon the opening-strike advantage on the approach; the fully *sustained* asymmetric
 standoff of #240 (a spear holding a swordsman at bay while locked) still needs enemy
-soldier-level positioning, which rides with #201 (the regiment circle still collapses
-enemy fronts to the separation floor once locked). The next authority slices are ranged
-casualties (kill soldiers in the health pool) and morale-from-soldier-state; enemy
-collision and retiring the regiment circle move with #201.
+soldier-level positioning, which stays blocked on #783 (the regiment circle still
+collapses enemy fronts to the separation floor once locked — see the phase-5 note above
+for why #749's momentum physics alone wasn't enough). The next authority slices are
+ranged casualties (kill soldiers in the health pool) and morale-from-soldier-state; enemy
+collision and retiring the regiment circle move once #783 is fixed and re-verified.
