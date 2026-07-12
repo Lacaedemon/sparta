@@ -76,6 +76,7 @@ DEMOS=(
   "coast_to_stop|demos/inputs/idle-speed-friction.json|30|220|640|input"
   "disciplined_march|demos/inputs/disciplined-vs-undisciplined-march.json|30|300|720|input"
   "form_up_modes|demos/inputs/multi-unit-form-up-modes.json|30|400|720|input"
+  "subcommander_mutual_support|demos/inputs/subcommander-mutual-support.json|30|320|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a

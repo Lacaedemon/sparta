@@ -1,0 +1,11 @@
+{
+  "_comment": "Battle AI phase 2 subcommander demo (#585): mutual support. No scenario override at all -- the standard 5v5 default line spawn (seed 12345), not copied from any other PR's scripted-input file (see .claude/memories/sparta-demos.md's 'author each demo scenario fresh' entry -- an empty scenario override isn't a borrowed template, it's the same starting point test_battle_ai_leaders.gd's own phase-1 tests already use). Nothing needs staging: Subcommander.decide_group's mutual-support behaviour is verified (tools/demo/dump-state.sh) to fire on its own as the enemy (team 1) line closes on the stationary player line -- by tick ~480 the right-flank Cavalry unit (uid 8) drops its own ATTACK order for a bare MOVE with no target (a subcommander directive taking over its UnitLeader fallback branch), then by tick ~540 that resolves into a real SUPPORT order guarding its engaged neighbor (Archers, uid 7) -- current_order reading SUPPORT is a phase-2-only signature, since phase 1's own repertoire (face-flank-threat / form-square / call-for-relief / advance-attack) never issues one. Camera opens on a wide establishing view of both lines, eases into the right flank where the behaviour plays out, and holds there through the clip's end. Verified by state dump: current_order reads SUPPORT for a team-1 unit by tick 600.",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 500.0, "zoom": 0.55},
+    {"tick": 420, "x": 950.0, "y": 440.0, "zoom": 1.3},
+    {"tick": 600, "x": 950.0, "y": 440.0, "zoom": 1.3}
+  ],
+  "steps": [],
+  "state": [60, 240, 420, 480, 540, 600]
+}
