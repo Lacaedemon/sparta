@@ -140,6 +140,11 @@ func test_a_fresh_order_carries_no_guard() -> void:
 	assert_eq(o._guard_ticks, 0)
 
 
+func test_a_fresh_order_is_not_part_of_a_macro() -> void:
+	var o := Order.new_move(Vector2(1, 1))
+	assert_eq(o.macro_id, -1)
+
+
 func test_with_guard_sets_the_guard_and_returns_the_order() -> void:
 	var o := Order.new_move(Vector2(1, 1))
 	var same := o.with_guard(Order.Guard.CONTACT_MADE)

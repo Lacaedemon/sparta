@@ -212,6 +212,14 @@ var guard_uid: int = -1
 ## count rather than inheriting a stale one.
 var _guard_ticks: int = 0
 
+# --- Macro grouping (Composability §2, "Macro expansion") ---------------------
+
+## The group id every step of one Unit.enqueue_macro() call shares, so Unit.cancel_macro()
+## can find and drop only that combo's own not-yet-executed remainder from the queue --
+## see docs/orders-queue-design.md, "Macro expansion". -1 (the default) means this order
+## was appended on its own, not as part of a combo.
+var macro_id: int = -1
+
 
 ## Attach a guard to this order and return it, for a fluent call at the constructor site
 ## (e.g. `Order.new_move(dest).with_guard(Order.Guard.CONTACT_MADE)`). `param` and `uid`
