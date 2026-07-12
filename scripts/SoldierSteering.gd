@@ -46,13 +46,18 @@ static func accumulate(units: Array, frame: int) -> void:
 	# SoldierFlock.compute_extent, so computing it here -- rather than per pair inside the
 	# O(regiments^2) friendly broadphase below -- keeps large stacks (past ~30 friendly
 	# regiments/side) off a recompute-and-allocate-per-pair cliff. Keyed by Unit so the
-	# broadphase looks both endpoints up in O(1).
+	# broadphase looks both endpoints up in O(1). half_extents/angles are the per-axis
+	# counterpart _overlaps_friendly uses to tighten the circumradius pre-filter below.
 	var extents := {}
+	var half_extents := {}
+	var angles := {}
 	for o in sorted_units:
 		var ue: Unit = o as Unit
 		if ue == null or ue.state == Unit.State.DEAD:
 			continue
 		extents[ue] = ue.soldier_block_extent()
+		half_extents[ue] = ue.soldier_block_half_extents()
+		angles[ue] = ue.soldier_block_world_angle()
 
 	# Gather steering bodies into parallel arrays, already in global-id order.
 	var spos := PackedVector2Array()
@@ -70,7 +75,7 @@ static func accumulate(units: Array, frame: int) -> void:
 			continue
 		var r: float = u.soldier_body_radius()
 		var idxs: PackedInt32Array
-		if _overlaps_friendly(u, sorted_units, extents):
+		if _overlaps_friendly(u, sorted_units, extents, half_extents, angles):
 			idxs = PackedInt32Array()
 			idxs.resize(nb)
 			for i in range(nb):
@@ -117,7 +122,15 @@ static func accumulate(units: Array, frame: int) -> void:
 			steer[a] += push * shares.x
 			steer[b] -= push * shares.y
 	for k in range(n):
-		sowners[k]._sim_steer[sslots[k]] = steer[k]
+		# Bounded acceleration (SoldierBodies.step's move_toward) already stops any SINGLE
+		# tick's push from snapping a body's velocity, but the summed push itself has no
+		# ceiling -- under sustained extreme crowding (many neighbors converging on one
+		# soldier, tick after tick) the accumulated steer vector, and so the target
+		# velocity it feeds forward, could climb toward an unrealistic asymptote. Cap the
+		# FINAL accumulated magnitude at one pair's own full-overlap push -- a maximally
+		# compressed body doesn't escape any faster just because more neighbors are
+		# pressing on it; friction/rigidity bound its yield rate regardless of headcount.
+		sowners[k]._sim_steer[sslots[k]] = steer[k].limit_length(STEER_STRENGTH)
 
 
 ## Whether `u`'s block overlaps any living FRIENDLY regiment's block (a cheap deterministic
@@ -125,7 +138,19 @@ static func accumulate(units: Array, frame: int) -> void:
 ## friendly-contact tier so an uncrowded line costs the same as before. `extents` holds each
 ## living regiment's `soldier_block_extent()` precomputed once for the tick, so the scan reads
 ## both endpoints' reach from the cache instead of recomputing (and reallocating) per pair.
-static func _overlaps_friendly(u: Unit, sorted_units: Array, extents: Dictionary) -> bool:
+##
+## The circumradius sum (`extents[u] + extents[v]`) bounds each block's reach in EVERY
+## direction at once, i.e. out to its farthest corner -- correct as a broadphase REJECT test
+## (if even that overestimate doesn't reach, the blocks truly can't overlap), but a loose
+## ACCEPT test for a wide-but-shallow block (LOOSE order): two same-width regiments standing
+## shoulder to shoulder can have circumradii that sum past their true gap while their actual
+## near edges -- what could really crowd a soldier -- are nowhere close, promoting every body
+## in both regiments to the expensive friendly-contact tier for nothing. So an apparent
+## circle overlap is only a CANDIDATE; `_oriented_overlap` confirms it by projecting each
+## block's half-extents onto the direction connecting the two centers instead of using the
+## same reach in every direction, and only THAT tighter check decides the promotion.
+static func _overlaps_friendly(u: Unit, sorted_units: Array, extents: Dictionary,
+		half_extents: Dictionary, angles: Dictionary) -> bool:
 	# `extents` is populated for every living unit in the same pass that calls this, so the
 	# lookups here and at extents[v] below always hit. Assert the invariant rather than let a
 	# future partial-dict caller fall through to a cryptic null-as-float mismatch downstream.
@@ -135,9 +160,38 @@ static func _overlaps_friendly(u: Unit, sorted_units: Array, extents: Dictionary
 		var v: Unit = o as Unit
 		if v == null or v == u or v.state == Unit.State.DEAD or v.team != u.team:
 			continue
-		if u.position.distance_to(v.position) < reach_u + extents[v]:
+		var delta: Vector2 = v.position - u.position
+		var d: float = delta.length()
+		if d >= reach_u + extents[v]:
+			continue   # cheap circumradius reject -- the blocks can't possibly overlap
+		if _oriented_overlap(delta, d, half_extents[u], angles[u], half_extents[v], angles[v]):
 			return true
 	return false
+
+
+## Tighter confirm step for a circumradius candidate: whether `u`'s and `v`'s blocks overlap
+## along the SPECIFIC direction connecting their centers (`delta`, `d = delta.length()`),
+## via the standard axis-aligned-rectangle support formula (`_support` below) instead of the
+## circumradius' same-reach-everywhere bound. `d < 0.001` (co-located regiments) has no
+## defined direction to project onto and can't be clear along any of them, so it overlaps
+## trivially -- matching what the circumradius pre-filter already concluded to reach here.
+static func _oriented_overlap(delta: Vector2, d: float, he_u: Vector2, ang_u: float,
+		he_v: Vector2, ang_v: float) -> bool:
+	if d < 0.001:
+		return true
+	var dir: Vector2 = delta / d
+	return d < _support(he_u, ang_u, dir) + _support(he_v, ang_v, -dir)
+
+
+## A block's reach along world direction `dir`, given its local-frame half-extents `he`
+## (soldier_block_half_extents() -- already padded by mark radius + margin) and its current
+## world rotation `ang` (soldier_block_world_angle()). Rotates `dir` into the block's own
+## local frame, then applies the support-function formula for an axis-aligned rectangle:
+## `hw*|dx| + hd*|dy|` for local direction (dx,dy) -- exact for a rectangle's own local axes,
+## and always <= the circumradius (equal only exactly along the diagonal).
+static func _support(he: Vector2, ang: float, dir: Vector2) -> float:
+	var local_dir: Vector2 = dir.rotated(-ang)
+	return he.x * absf(local_dir.x) + he.y * absf(local_dir.y)
 
 
 ## Per-soldier shares of a friendly pair's separation push (sum to 1). Even (0.5/0.5)

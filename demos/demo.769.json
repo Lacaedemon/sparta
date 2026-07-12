@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Non-visual performance fix: SoldierSteering._overlaps_friendly() now confirms a whole-block circumradius overlap against a tighter along-axis reach before promoting a regiment to the expensive friendly-contact tier. It changes how many soldier bodies get gathered for the steering pass, not any combat/movement/formation output a recorded battle would show -- every existing behavior test (steering, formations, combat) is unchanged."
+}

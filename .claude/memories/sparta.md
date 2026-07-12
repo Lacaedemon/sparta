@@ -1150,3 +1150,72 @@ exact visual tool you need. Only skip once you've confirmed no such visual exist
 verify locally with `dump-state.sh` before claiming the scenario demonstrates the fix, per this
 file's other verification-before-claiming entries -- don't just trust that the render will show
 what you intend.) (`Lacaedemon/sparta` PR #760, 2026-07-11.)
+
+## Bbox-settling checks alone miss a mid-march swirl -- check FACING across the whole clip, not just position at a few sample ticks
+
+`dump-state.sh` verification (per the entries above) checks whether a unit reaches its
+target STATE/position by the end of a clip. That's not enough on its own: a unit can
+legitimately arrive `IDLE` at the right final position while its `facing` swung through
+100+ degrees getting there, which reads as a spinning/broken formation on screen even
+though the position-only check reports "settled fine."
+
+**Concrete case:** #458's `demos/demo.458.json` (PR #772, merged) was verified this way --
+position/state at the final sampled ticks looked settled, so the PR shipped. A closer look
+(prompted by a user report that #772's own demo shows swirling with zero combat) found
+`facing` swinging 90 deg -> 53 deg -> ... -> -144 deg for two of the three units mid-march,
+and rendered frames confirmed a REAL visible rotation (the soldier block visibly diagonal,
+two units' blocks visually intermixed) -- not just a `facing`-field bookkeeping artifact.
+Filed as #774 (distinct from #724's melee-lock swirl -- see below).
+
+**How to apply:** when verifying any demo/test involving a MARCH (not just combat), dump
+`facing` at dense intervals across the WHOLE clip, not just a few widely-spaced ticks, and
+watch for large or non-monotonic swings even if the unit still arrives correctly. A live
+frame-capture spot-check (`SPARTA_DEMO_INPUT=... xvfb-run -a godot --rendering-driver
+opengl3 --write-movie <path>.png --fixed-fps 30 --quit-after N ...`, then `Read` a mid-clip
+frame) is the fastest way to confirm whether a facing swing is a real visible rotation or
+inert bookkeeping.
+
+## Two DISTINCT root causes behind "formation visibly spins" -- don't assume it's one bug
+
+There are at least two separate mechanisms that each independently make a regiment's
+soldier block visibly rotate, discovered investigating #724 and #774 in the same session.
+Both ultimately show up as `facing` and the soldier block's world orientation drifting, but
+they're driven by different subsystems and (so far) resist the same fixes:
+
+- **#724 (melee-lock swirl):** two units in PROLONGED, roughly matched melee slowly and
+  continuously rotate around their clash point, accelerating over hundreds of ticks (a
+  300-tick trace looks like it's settling; extending to 700 ticks shows it's actually a
+  continuous, still-accelerating rotation that eventually sweeps 200+ degrees). Instrumented
+  `Battle._on_soldier_tick()`'s three soldier-layer stages with a net-torque-proxy (sum of
+  `cross(r_i, delta_v_i)` relative to each unit's own centroid, accumulated cumulatively
+  across ticks): `SoldierEnemyContact.accumulate` is the dominant, persistently-biased
+  (one-signed, ~+18750 cumulative by tick 700) source; `step_all_sim_soldiers` partially but
+  not fully cancels it. Two plausible fixes were tried and BOTH had zero measurable effect:
+  (a) a frame-start position snapshot for `_face_for_action`/`_press_into`/`_separate`'s
+  cross-unit position reads (to rule out Gauss-Seidel processing-order bias -- ruled out: a
+  "swap which team spawns first" test that seemed to confirm order-dependence was
+  MISINTERPRETED, the direction actually correlates with TEAM identity, not processing
+  order); (b) reverting the #749 coupling gain (`MAX_FOLLOW_SPEED` 300->80, to test a
+  feedback-resonance hypothesis -- also no effect). Root cause not yet found; likely lives
+  inside `SoldierEnemyContact`'s per-soldier contact-pair geometry itself (WHICH soldiers
+  end up in contact, not the impulse formula, which IS Newton's-third-law symmetric per pair).
+- **#774 (march swirl, no combat):** a unit's facing swings wildly while MARCHING near other
+  units, with zero enemies and zero contact -- reproduces in #458's plain drag-to-form-up
+  scenario. The SAME torque-proxy instrumentation, applied to this scenario, found BOTH
+  `SoldierEnemyContact` (no enemies, so 0 as expected) AND `SoldierSteering` (friendly
+  avoidance -- also 0, ruling out steering as the source despite the units spawning close
+  together) contribute NOTHING; the entire signal comes from `step_all_sim_soldiers` (bodies
+  chasing their formation-slot targets), oscillating hugely (-147k to +103k over the march).
+  Since slot targets are a pure function of `facing`/`_formation_angle`, this points
+  upstream, to whatever computes the march's target HEADING each tick, not to a soldier-body
+  contact/steering force at all. Not yet root-caused. Curiously, only 2 of 3 units in the
+  #458 reproduction swirl -- the third (shortest lateral repositioning) stays perfectly
+  stable, and all three are `disciplined: true` (ruled out as a disciplined/undisciplined
+  difference).
+
+**How to apply:** don't assume a "formation spins" report is the same bug as a previously
+diagnosed one just because the symptom looks similar. Reproduce fresh with the SAME
+cumulative-torque-instrumentation technique (temporary `print()`s in
+`Battle._on_soldier_tick()`, one running total per stage, printed every N ticks -- always
+revert before committing) to find which specific subsystem is the source for THIS
+reproduction before assuming a fix that didn't work for one case will work for the other.
