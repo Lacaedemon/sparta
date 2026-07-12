@@ -182,7 +182,7 @@ func test_engaged_friendly_holds_and_newcomer_yields() -> void:
 	assert_gt(newcomer._sim_steer[0].length(), 0.0, "the newcomer yields fully and flows around it")
 
 
-# --- friendly-contact tier gate: circumradius pre-filter + oriented tightening (#769) ---
+# --- friendly-contact tier gate: circumradius pre-filter + oriented tightening ---
 
 ## A real, wide multi-soldier IDLE regiment at `pos` (facing DOWN, the `_make_unit` default)
 ## with its soldier bodies seeded from the actual formation grid -- unlike the single-soldier
@@ -216,7 +216,7 @@ func test_overlaps_friendly_rejects_a_wide_blocks_circumradius_false_positive() 
 	# the connecting axis IS their width axis): circumradius sum is ~145.9 world units, but
 	# the tighter along-axis reach sums to only ~130.0. At a gap the circumradius alone would
 	# flag as overlapping (138 world units apart) their actual near edges sit well clear of
-	# each other -- the exact whole-block-extent-overlap false positive #769 describes.
+	# each other -- a whole-block-extent-overlap false positive.
 	var a := _wide_idle_unit(0, 0, 100, Vector2(0.0, 0.0))
 	var b := _wide_idle_unit(1, 0, 100, Vector2(138.0, 0.0))
 	var dicts: Array = _friendly_dicts([a, b])
