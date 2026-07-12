@@ -1245,13 +1245,18 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				var move_vec: Vector2 = point - u.position
 				var side_step: bool = not cmd.has("face") \
 						and UnitManeuver.is_sidestep(u.facing, move_vec)
-				if side_step:
+				# A short rear-sector move reads as a nudge, not a repositioning march --
+				# it holds facing and shuffles backward, the same as a side-step, rather
+				# than about-facing for a move that barely covers any ground.
+				var back_step: bool = not cmd.has("face") and not side_step \
+						and UnitManeuver.is_backstep(u.facing, move_vec)
+				if side_step or back_step:
 					u.ordered_facing = u.facing
-				# A move into the rear sector about-faces (conversio) in place, then marches
-				# to the destination facing it -- rather than pivoting the whole block 180°
-				# about its centre. A form-up, a side-step, and a fighting unit (conversio is
-				# blocked in melee) all keep the normal march.
-				var rear_move: bool = not cmd.has("face") and not side_step \
+				# A longer move into the rear sector about-faces (conversio) in place, then
+				# marches to the destination facing it -- rather than pivoting the whole
+				# block 180° about its centre. A form-up, a side-step, a back-step, and a
+				# fighting unit (conversio is blocked in melee) all keep the normal march.
+				var rear_move: bool = not cmd.has("face") and not side_step and not back_step \
 						and u.state != UnitRef.State.FIGHTING \
 						and UnitManeuver.is_rear_move(u.facing, move_vec)
 				# Drag-to-form-up: apply frontage/facing immediately so soldiers begin
