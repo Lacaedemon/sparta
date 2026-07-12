@@ -146,10 +146,11 @@ static func accumulate(units: Array, frame: int) -> void:
 	#
 	# Fix: apply the SAME scale to both of a pair's impulses -- the smaller of the two bodies'
 	# own scale factors, so neither body ever ends up over-trimmed relative to what it alone
-	# would allow. This keeps every pair's contribution exactly action/reaction (still zero net
-	# system momentum and zero net system torque from this pass), at the cost of sometimes
-	# trimming a body's total delta a bit more conservatively than its own isolated cap strictly
-	# requires -- an acceptable trade since physical correctness (no phantom torque) matters more
+	# would allow. This keeps every pair's contribution exactly action/reaction (near-zero net
+	# system momentum and torque from this pass -- see the final safety-net clamp below for the
+	# one case that can still reintroduce a small asymmetry), at the cost of sometimes trimming
+	# a body's total delta a bit more conservatively than its own isolated cap strictly requires
+	# -- an acceptable trade since physical correctness (far less phantom torque) matters more
 	# here than extracting the absolute maximum knockback per body.
 	var body_scale := PackedFloat32Array()
 	body_scale.resize(n)
@@ -166,7 +167,14 @@ static func accumulate(units: Array, frame: int) -> void:
 		scaled_delta_v[ib] += pair_impulse_b[p] * s
 
 	# Final safety-net clamp: pair-level trimming with mismatched per-body scale factors can
-	# still leave a body's summed, rescaled delta a hair over its own isolated cap.
+	# still leave a body's summed, rescaled delta over its own isolated cap -- e.g. when a
+	# body's raw delta benefited from partial cancellation between two roughly-opposing pairs,
+	# and one of those pairs then gets trimmed hard by a heavily-loaded partner, destroying that
+	# cancellation. This clamp is itself a per-body-independent operation (the same shape the
+	# pair-level trim above exists to avoid), so on that specific geometry it can reintroduce a
+	# bounded asymmetry -- consistent with this fix's own measured residual (-0.169 net torque
+	# over a 700-tick clash, not exactly zero) rather than contradicting the claim above: a
+	# large, genuine reduction (~100,000x), not an exact conservation guarantee.
 	for k in range(n):
 		if scaled_delta_v[k] != Vector2.ZERO:
 			var owner: Unit = sowners[k]
