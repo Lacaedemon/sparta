@@ -2573,6 +2573,41 @@ func test_engaged_soldier_indices_recomputes_when_reap_shrinks_the_array_same_ti
 		assert_lt(i, shrunk, "every index is valid for the post-reap (shrunk) array, not the stale one")
 
 
+func test_engaged_soldier_indices_use_cache_false_bypasses_a_populated_cache() -> void:
+	# SoldierBodies.couple() calls engaged_soldier_indices(n, false) specifically because it
+	# runs AFTER SoldierBodies.step() has already integrated this tick's positions, while every
+	# other caller (SoldierMelee.resolve, SoldierSteering.accumulate,
+	# SoldierEnemyContact.accumulate, step()'s own internal call) runs against the frozen
+	# PRE-step snapshot and shares the cache. A use_cache=false call must never read (or
+	# pollute) that cache, so it always reflects whatever _sim_soldier_pos holds at call time --
+	# otherwise, on a no-casualty tick, couple() would silently reuse a stale pre-step
+	# selection instead of recomputing against the just-integrated positions.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	var pre_step: PackedInt32Array = u.engaged_soldier_indices(n)   # populates the cache
+	# Simulate step()'s position integration without needing a real physics tick: swap a
+	# genuinely-front soldier's live position with a genuinely-rear one, the same technique
+	# test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indices uses.
+	var files: int = u.formation_files(n)
+	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	assert_true(cutoff < n, "sanity: there's a genuine rear soldier to swap in")
+	var front_idx: int = 0
+	var rear_idx: int = n - 1
+	var tmp: Vector2 = u._sim_soldier_pos[front_idx]
+	u._sim_soldier_pos[front_idx] = u._sim_soldier_pos[rear_idx]
+	u._sim_soldier_pos[rear_idx] = tmp
+	var cached_call: PackedInt32Array = u.engaged_soldier_indices(n)   # same (frame, count) -- cache hit
+	assert_eq(cached_call, pre_step,
+		"sanity: the cached call reuses the stale pre-swap selection")
+	var bypassed: PackedInt32Array = u.engaged_soldier_indices(n, false)
+	assert_true(bypassed.has(rear_idx),
+		"the bypass call sees the swapped (post-\"step\") position, not the stale cache")
+	assert_false(bypassed.has(front_idx))
+
+
 func test_face_for_action_is_a_no_op_when_squared() -> void:
 	# An omnidirectional formation presents no weak facing, so it never turns the whole
 	# grid to bear on one attacker -- a rear/flank charger would otherwise drag the block's
