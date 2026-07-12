@@ -155,6 +155,8 @@ func test_overlapping_idle_friendlies_steer_apart() -> void:
 	SoldierSteering.accumulate([a, b], 1)
 	assert_lt(a._sim_steer[0].x, 0.0, "the idle left body steers away even though neither side is engaged")
 	assert_gt(b._sim_steer[0].x, 0.0, "and the idle right body steers the other way")
+	assert_lt(a._sim_steer[0].length(), SoldierSteering.STEER_STRENGTH,
+		"a single overlapping neighbor stays well under the crowding cap -- it doesn't clip the ordinary case")
 
 
 func test_mover_through_idle_friendly_is_exempt() -> void:
@@ -180,6 +182,26 @@ func test_engaged_friendly_holds_and_newcomer_yields() -> void:
 	SoldierSteering.accumulate([fighter, newcomer], 1)
 	assert_almost_eq(fighter._sim_steer[0].length(), 0.0, 1e-4, "the fighting regiment holds the line")
 	assert_gt(newcomer._sim_steer[0].length(), 0.0, "the newcomer yields fully and flows around it")
+
+
+# --- crowding steering magnitude cap: no ceiling on the accumulated push otherwise ---
+
+func test_extreme_crowding_caps_the_accumulated_steer_magnitude() -> void:
+	# One central soldier body pinched by eight friendly neighbors, all co-located with
+	# each other and deeply overlapping the center FROM THE SAME SIDE -- their pushes on
+	# the center sum constructively (same direction, not partially canceling), so the
+	# uncapped total is nearly 8x a single pair's own full-overlap push, far beyond any
+	# one body's physically-motivated escape rate under crowd pressure.
+	var center := _idle_block(0, 0)
+	center._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	var units: Array = [center]
+	for i in range(8):
+		var neighbor := _idle_block(i + 1, 0)
+		neighbor._sim_soldier_pos[0] = Vector2(0.5, 0.0)   # same spot -- deep overlap, same direction
+		units.append(neighbor)
+	SoldierSteering.accumulate(units, 1)
+	assert_almost_eq(center._sim_steer[0].length(), SoldierSteering.STEER_STRENGTH, 1e-3,
+		"eight neighbors converging from one side still cap at one pair's own full-overlap push")
 
 
 # --- friendly-contact tier gate: circumradius pre-filter + oriented tightening ---

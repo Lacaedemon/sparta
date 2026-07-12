@@ -122,7 +122,15 @@ static func accumulate(units: Array, frame: int) -> void:
 			steer[a] += push * shares.x
 			steer[b] -= push * shares.y
 	for k in range(n):
-		sowners[k]._sim_steer[sslots[k]] = steer[k]
+		# Bounded acceleration (SoldierBodies.step's move_toward) already stops any SINGLE
+		# tick's push from snapping a body's velocity, but the summed push itself has no
+		# ceiling -- under sustained extreme crowding (many neighbors converging on one
+		# soldier, tick after tick) the accumulated steer vector, and so the target
+		# velocity it feeds forward, could climb toward an unrealistic asymptote. Cap the
+		# FINAL accumulated magnitude at one pair's own full-overlap push -- a maximally
+		# compressed body doesn't escape any faster just because more neighbors are
+		# pressing on it; friction/rigidity bound its yield rate regardless of headcount.
+		sowners[k]._sim_steer[sslots[k]] = steer[k].limit_length(STEER_STRENGTH)
 
 
 ## Whether `u`'s block overlaps any living FRIENDLY regiment's block (a cheap deterministic
