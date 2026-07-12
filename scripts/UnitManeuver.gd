@@ -9,8 +9,8 @@ class_name UnitManeuver
 ## BACK-STEP: a SHORT rear-sector move holds facing and shuffles backward,
 ## rather than about-facing for what would only be a nudge.
 ## File-march pivots and an about-face + flank-pivot (wheel) composite for
-## large turns (#786) are tracked as follow-ups and will add their own
-## classifiers here.
+## large turns are tracked as follow-ups and will add their own classifiers
+## here.
 
 # A move counts as a side-step when its lateral offset (perpendicular to the
 # unit's current facing) dominates its forward offset AND the whole move is
