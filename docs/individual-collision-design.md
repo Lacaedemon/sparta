@@ -15,8 +15,11 @@ is soldier-level (phase 5 slice 1).
 `soldiers` and trim arbitrary rear bodies, not arrow-targeted), morale (a regiment scalar,
 not derived from soldier state), and **enemy** soldier-vs-soldier collision + retiring the
 regiment circle — the last is deferred to **#201** (stopping a charge needs momentum/mass;
-see the phase-5 note below and #296). Posture/graded bracing and the rearward domino
-cascade are also deferred. The design decisions are settled (see "Decisions" below).
+see the phase-5 note below and #296). #201's momentum physics landed (#749), but a live
+empirical test (#296) found it does NOT yet arrest a charge on its own — see #783 for the
+root cause. Retiring the regiment circle stays blocked on #783. Posture/graded bracing and
+the rearward domino cascade are also deferred. The design decisions are settled (see
+"Decisions" below).
 
 Tracks [#164](https://github.com/Lacaedemon/sparta/issues/164) (collision at the
 individual level, not the unit level) and
@@ -155,18 +158,21 @@ verified before the next phase builds on it.
      layer up; the enemy front-rank closeup and the spear-vs-cavalry hard block are
      unchanged. Soldiers separate substantially (not yet to a perfect zero-overlap; the last
      residual is a later tuning refinement).
-   - **Enemy collision — deferred to #201 (see #296).** The next slice (move the
-     not-both-engaged enemy separation + the spear-vs-cavalry hard block to the soldier
-     level) hit a wall: the regiment's `_move_to` advances the charge (~170 u/s)
+   - **Enemy collision — deferred to #201, still blocked (see #296, #783).** The next slice
+     (move the not-both-engaged enemy separation + the spear-vs-cavalry hard block to the
+     soldier level) hit a wall: the regiment's `_move_to` advances the charge (~170 u/s)
      independently of the soldier layer, and a velocity-only soldier push + the bounded
      body->regiment coupling cannot counteract it — a charging cavalry rides clean through
      a spear line even at extreme tuning. Stopping a charge on a braced line is a
      **momentum/mass** problem, which is exactly what **#201** layers onto the soldier
-     bodies. So enemy collision (and then retiring the regiment circle entirely, plus the
-     `_push_share` / intermixing helpers it still uses) moves with #201, not as a
-     kinematic slice. Until
-     then the regiment circle keeps resolving enemy collision (the `_front_depth` closeup
-     and the hard block), unchanged. Friendly collision stays soldier-level (slice 1).
+     bodies (landed as #749). **#749 alone is not sufficient, though: a live-battle test
+     (#296) found the charge still rides through — see #783 for the root cause
+     (`SoldierBodies.couple()` averages drift over every soldier, diluting the resisted
+     front rank's signal against the unengaged bulk).** So enemy collision (and then
+     retiring the regiment circle entirely, plus the `_push_share` / intermixing helpers it
+     still uses) stays blocked on #783, not just #201/#749. Until then the regiment circle
+     keeps resolving enemy collision (the `_front_depth` closeup and the hard block),
+     unchanged. Friendly collision stays soldier-level (slice 1).
 
 ## Decisions (resolved)
 
