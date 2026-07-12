@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/live-front-selection-under-casualties.json",
+  "caption": "Engaged-soldier highlight (Settings.show_engaged_highlight, dev/debug visual) on a NORMAL-formation line melee: two matched 40-soldier Infantry regiments grind through prolonged combat while casualties compact each side's per-soldier arrays (SoldierMelee.reap()). The highlighted (amber-tinted) subset -- visible as team 0's olive-green front rank against its own plain-blue rear -- keeps tracking the LIVE front-facing soldiers throughout, per UnitFormation.live_front_indices, rather than drifting toward whichever array indices happen to remain low after compaction (the naive first-N-indices bug this PR fixes).",
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 15,
+  "width": 720
+}

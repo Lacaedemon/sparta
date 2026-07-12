@@ -7,8 +7,13 @@ class_name SoldierEnemyContact
 ## so a charging body's momentum is resisted by physical contact the instant it touches a
 ## braced line -- not only on the next landed blow, and not via the regiment-circle's flat
 ## "hard block" rule (Unit._push_share == 0/1 for spear vs cavalry). Retiring that rule (and
-## the regiment circle's enemy-collision branch generally) is a follow-up once this soldier-
-## level physics is proven out; see docs/individual-collision-design.md phase 5.
+## the regiment circle's enemy-collision branch generally) was meant to be a follow-up once
+## this soldier-level physics was proven out -- but a live-battle test found it is NOT yet
+## sufficient on its own: the regiment's kinematic advance still rides through a braced line,
+## because SoldierBodies.couple() averages drift over every soldier body, not just the ones
+## this pass actually resists. See docs/individual-collision-design.md phase 5 for the root
+## cause and status. The regiment-circle enemy-collision branch stays in place alongside this
+## pass until that's fixed and re-verified.
 ##
 ## Determinism: regiments are processed in uid order and each regiment's engaged soldiers in
 ## ascending index, so the gathered arrays are already global-soldier-id sorted; the

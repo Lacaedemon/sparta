@@ -133,6 +133,11 @@ var selected: bool = false
 # ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
+# Monotonic macro-group id counter for enqueue_macro() -- an instance field (not a static),
+# so two units' ids don't collide and a fresh test fixture always starts at 0 with no
+# global-state test-isolation hazard (see the reset()-requiring static-cache lesson this
+# codebase has already hit elsewhere).
+var _next_macro_id: int = 0
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
@@ -945,6 +950,35 @@ func append_order(order: Order) -> void:
 	orders.append(order)
 	if current_order == null:
 		current_order = orders[0]
+
+
+## Enqueue a combo -- a sequence of primitive orders that chain into one another (a future
+## 90-degree-turn -> explicatio, say) -- as one atomic group: every step gets the same fresh
+## macro id (docs/orders-queue-design.md, "Macro expansion"), then each is appended in turn
+## via append_order, so the existing queue/promotion machinery runs them exactly like any
+## other queued sequence. Returns the macro id so the caller can cancel_macro() it later.
+func enqueue_macro(steps: Array[Order]) -> int:
+	var id: int = _next_macro_id
+	_next_macro_id += 1
+	for step in steps:
+		step.macro_id = id
+		append_order(step)
+	return id
+
+
+## Drop a macro's not-yet-executed remainder from the queue -- every queued (not current)
+## order still carrying `macro_id`, wherever it sits behind the head. The currently-executing
+## order is left alone even if it belongs to this macro (it is not "not-yet-executed"); use
+## set_current_order()/clear_orders() to interrupt something already in flight. No-op for an
+## id that matches nothing (already fully consumed, already cancelled, or -1).
+func cancel_macro(macro_id: int) -> void:
+	if macro_id < 0 or orders.is_empty():
+		return
+	var kept: Array[Order] = [orders[0]]
+	for i in range(1, orders.size()):
+		if orders[i].macro_id != macro_id:
+			kept.append(orders[i])
+	orders = kept
 
 
 ## Drop the queue head (it finished, or was interrupted) and promote the next queued order, if
@@ -2982,12 +3016,18 @@ func soldier_brace() -> float:
 	return BRACE_SET if (is_engaged() and order_mode != ORDER_SKIRMISH) else 0.0
 
 
-## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks of an engaged
-## regiment, or none when it isn't engaged. The formation grid is rank-major
-## (rank = index / files, rank 0 = front), so the front ranks are exactly the
-## first files*ENGAGED_RANKS indices -- using `files` FROM THE SAME GRID the
-## regiment is actually laid out on (formation_files), not the wide-line
-## frontage() a SQUARE unit no longer uses.
+## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks' worth of an engaged
+## regiment, or none when it isn't engaged. `files*ENGAGED_RANKS` (using `files` FROM
+## THE SAME GRID the regiment is actually laid out on -- formation_files, not the
+## wide-line frontage() a SQUARE unit no longer uses) sizes the selection, but WHICH
+## soldiers fill it is read from LIVE positions (UnitFormation.live_front_indices), not
+## the first files*ENGAGED_RANKS array indices: the formation grid is rank-major at
+## SPAWN (rank = index / files, rank 0 = front), but `SoldierMelee.reap()` splices dead
+## soldiers out of the per-soldier arrays as casualties mount, shifting every later
+## index down -- so "index i is rank i/files" goes stale the moment the first soldier
+## dies, the same staleness `live_perimeter_indices` below documents for the SQUARE
+## case. Selecting by live forward-projection instead keeps the chosen soldiers the
+## ones actually closest to the enemy, regardless of how compacted the array has become.
 ##
 ## An omnidirectional formation (in_square()) has no single front to speak of --
 ## _face_for_action never turns it to bear on one attacker, since every side already
@@ -3014,7 +3054,47 @@ func soldier_brace() -> float:
 ## and deterministic -- `_sim_soldier_pos`/`_sim_soldier_hp` are this tick's
 ## frozen snapshot, and SoldierEnemyProximity's rebuild reads the same
 ## snapshot from every unit in the scene tree, no RNG, no wall-clock.
-func engaged_soldier_indices(count: int) -> PackedInt32Array:
+## Memoized per physics tick: this is called from seven places (SoldierMelee.resolve for
+## both attacker and defender, SoldierSteering.accumulate, SoldierEnemyContact.accumulate,
+## SoldierBodies.step, SoldierBodies.couple, and the engaged-highlight debug draw), all of
+## which can run within the same tick. Keyed by (Engine.get_physics_frames(), count) rather
+## than the frame alone: every caller always passes a freshly-read `_sim_soldier_pos.size()`,
+## so if SoldierMelee.reap() splices a soldier out mid-tick (this unit was the DEFENDER in
+## some other unit's strike, resolved earlier in this same tick's _physics_process pass), the
+## next caller's `count` no longer matches the cached call's `count` and the cache misses --
+## recomputing against the current (post-reap) array rather than returning stale indices. No
+## explicit reap() invalidation hook needed.
+##
+## The (frame, count) key is NOT enough on its own to cover every caller, though:
+## SoldierBodies.step() calls this BEFORE it integrates this tick's body positions, while
+## SoldierBodies.couple() (the last soldier-layer sub-step) calls it AFTER every unit's
+## step() has already run -- so on a tick with no casualty (count unchanged), couple()'s call
+## would otherwise hit the cache and silently reuse a selection computed from pre-integration
+## positions instead of the just-integrated ones the unmemoized code always read. Every other
+## caller (both SoldierMelee.resolve() calls, SoldierSteering.accumulate,
+## SoldierEnemyContact.accumulate, and step()'s own internal call) genuinely shares one
+## frozen snapshot -- `_sim_soldier_pos` as it stood at the end of the PREVIOUS tick's
+## soldier-layer pass, since nothing between them writes to it. couple() passes
+## `use_cache = false` to bypass the cache entirely (neither reads nor writes it) and always
+## recompute against whatever `_sim_soldier_pos` holds at its own call time.
+var _engaged_indices_cache: PackedInt32Array = PackedInt32Array()
+var _engaged_indices_cache_frame: int = -1
+var _engaged_indices_cache_count: int = -1
+
+func engaged_soldier_indices(count: int, use_cache: bool = true) -> PackedInt32Array:
+	if not use_cache:
+		return _compute_engaged_soldier_indices(count)
+	var frame: int = Engine.get_physics_frames()
+	if _engaged_indices_cache_frame == frame and _engaged_indices_cache_count == count:
+		return _engaged_indices_cache
+	var result: PackedInt32Array = _compute_engaged_soldier_indices(count)
+	_engaged_indices_cache = result
+	_engaged_indices_cache_frame = frame
+	_engaged_indices_cache_count = count
+	return result
+
+
+func _compute_engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
 		return out
@@ -3037,9 +3117,9 @@ func engaged_soldier_indices(count: int) -> PackedInt32Array:
 				ring_size += 1
 		return UnitFormation.live_perimeter_indices(_sim_soldier_pos, ring_size)
 	var cutoff: int = mini(count, formation_files(count) * ENGAGED_RANKS)
-	for i in range(cutoff):
-		out.push_back(i)
-	return out
+	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
+	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
+	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
 
 
 ## A soldier body's radius for this regiment's type — the drawn mark radius, so

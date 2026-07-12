@@ -67,6 +67,44 @@ func test_couple_is_silent_on_formation() -> void:
 	assert_almost_eq(u.position.y, before.y, 1e-5, "no drift -> no follow (march-silent)")
 
 
+func test_couple_weights_drift_toward_engaged_bodies_while_fighting() -> void:
+	# While engaged, SoldierEnemyContact only resists the engaged front rank -- so coupling
+	# must weight the drift toward those bodies specifically, not dilute it across the whole
+	# regiment (whose unengaged bulk stays glued to its own, still-advancing slot).
+	var u := _make_unit()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)   # arms the engaged-tier latch is_engaged() reads
+	var idxs: PackedInt32Array = u.engaged_soldier_indices(u.soldiers)
+	assert_gt(idxs.size(), 0, "some soldiers are engaged while fighting")
+	assert_lt(idxs.size(), u.soldiers,
+			"and not the whole regiment -- there's an unengaged bulk to dilute against")
+	# Displace ONLY the engaged bodies off their slots by a uniform amount; the unengaged
+	# bulk stays exactly on slot (zero drift), so a whole-regiment average would dilute this
+	# down toward zero as the unengaged count grows.
+	for i in idxs:
+		u._sim_soldier_pos[i] += Vector2(8.0, 0.0)
+	SoldierBodies.couple(u, DELTA)
+	# The engaged-only average drift is exactly (8, 0) regardless of idxs.size() (every
+	# displaced body moved the same amount), so the follow step is drift * FOLLOW_RATE * delta.
+	var expected: float = 8.0 * Unit.FOLLOW_RATE * DELTA
+	assert_almost_eq(u.position.x, expected, 0.01,
+			"coupling follows the engaged-only average, undiluted by the unengaged bulk")
+	assert_almost_eq(u.position.y, 0.0, 1e-5)
+
+
+func test_couple_still_averages_whole_regiment_when_not_engaged() -> void:
+	# The friendly-collision / non-combat path is unchanged: with no engaged soldiers, the
+	# fallback still averages drift over every body, exactly as before this fix.
+	var u := _make_unit()
+	assert_false(u.is_engaged(), "a fresh idle unit is not engaged")
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] += Vector2(8.0, 0.0)
+	SoldierBodies.couple(u, DELTA)
+	var expected: float = 8.0 * Unit.FOLLOW_RATE * DELTA
+	assert_almost_eq(u.position.x, expected, 0.01,
+			"uniform displacement of every body still yields the same whole-regiment average")
+
+
 func test_couple_determinism() -> void:
 	var a := _make_unit()
 	var b := _make_unit()

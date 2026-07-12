@@ -2504,6 +2504,110 @@ func test_engaged_soldier_indices_prefers_real_enemy_proximity_over_centroid_dis
 		"the ring soldier on the far side, with no real enemy nearby, is excluded")
 
 
+func test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indices() -> void:
+	# NORMAL (line) formation, not SQUARE: the front-rank selection here is index-based
+	# ("first files*ENGAGED_RANKS indices"), which SoldierMelee.reap() breaks the moment a
+	# casualty splices the per-soldier arrays -- every index after the removed soldier
+	# shifts down, so "index i is rank i/files" no longer holds. Simulate exactly that
+	# staleness (without needing a real casualty) by swapping a genuinely-front soldier's
+	# LIVE position with a genuinely-rear soldier's: the array index no longer matches
+	# either soldier's actual geometric position, same as after a real reap() compaction.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch
+	var n: int = u._sim_soldier_pos.size()
+	var files: int = u.formation_files(n)
+	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	assert_true(cutoff < n, "sanity: the engaged budget is a genuine subset of the whole block")
+	var front_idx: int = 0        # rank 0, file 0 -- genuinely laid out at the front
+	var rear_idx: int = n - 1     # the last rank's last file -- genuinely laid out at the rear
+	var tmp: Vector2 = u._sim_soldier_pos[front_idx]
+	u._sim_soldier_pos[front_idx] = u._sim_soldier_pos[rear_idx]
+	u._sim_soldier_pos[rear_idx] = tmp
+	var indices := u.engaged_soldier_indices(n)
+	assert_eq(indices.size(), cutoff, "selection size still matches the rank-count budget")
+	assert_true(indices.has(rear_idx),
+		"the soldier now physically at the front (rear_idx's array slot, post-swap) is selected")
+	assert_false(indices.has(front_idx),
+		"the soldier now physically at the rear (front_idx's array slot, post-swap) is excluded")
+
+
+func test_engaged_soldier_indices_memoizes_within_the_same_physics_tick() -> void:
+	# Called from up to six places per tick; the second call with the same
+	# (Engine.get_physics_frames(), count) must reuse the first call's cached result rather
+	# than recomputing, so all same-tick callers see one consistent selection cheaply.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	var first: PackedInt32Array = u.engaged_soldier_indices(n)
+	assert_eq(u._engaged_indices_cache_frame, Engine.get_physics_frames(),
+		"the cache records the frame the first call ran on")
+	assert_eq(u._engaged_indices_cache_count, n, "and the count that call used")
+	var second: PackedInt32Array = u.engaged_soldier_indices(n)
+	assert_eq(second, first, "a same-frame, same-count call returns the identical selection")
+
+
+func test_engaged_soldier_indices_recomputes_when_reap_shrinks_the_array_same_tick() -> void:
+	# SoldierMelee.reap() can splice a soldier out of _sim_soldier_pos mid-tick (this unit was
+	# the DEFENDER in some other unit's strike, resolved earlier in the same tick's
+	# _physics_process pass) -- a bare frame-keyed cache would then hand a LATER same-tick
+	# caller stale indices computed against the pre-reap array, out of bounds for the
+	# post-reap one. Every real caller always passes a freshly-read `_sim_soldier_pos.size()`,
+	# so the (frame, count) cache key must miss and recompute the moment that size changes.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	u.engaged_soldier_indices(n)   # first caller this tick, before the simulated reap
+	# Simulate reap() splicing out a soldier: shrink the array by one, same as a real casualty.
+	u._sim_soldier_pos.remove_at(u._sim_soldier_pos.size() - 1)
+	var shrunk: int = u._sim_soldier_pos.size()
+	var second: PackedInt32Array = u.engaged_soldier_indices(shrunk)
+	assert_eq(u._engaged_indices_cache_count, shrunk,
+		"the cache key updated to the new, smaller count -- it did not reuse the stale entry")
+	for i in second:
+		assert_lt(i, shrunk, "every index is valid for the post-reap (shrunk) array, not the stale one")
+
+
+func test_engaged_soldier_indices_use_cache_false_bypasses_a_populated_cache() -> void:
+	# SoldierBodies.couple() calls engaged_soldier_indices(n, false) specifically because it
+	# runs AFTER SoldierBodies.step() has already integrated this tick's positions, while every
+	# other caller (SoldierMelee.resolve, SoldierSteering.accumulate,
+	# SoldierEnemyContact.accumulate, step()'s own internal call) runs against the frozen
+	# PRE-step snapshot and shares the cache. A use_cache=false call must never read (or
+	# pollute) that cache, so it always reflects whatever _sim_soldier_pos holds at call time --
+	# otherwise, on a no-casualty tick, couple() would silently reuse a stale pre-step
+	# selection instead of recomputing against the just-integrated positions.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	var pre_step: PackedInt32Array = u.engaged_soldier_indices(n)   # populates the cache
+	# Simulate step()'s position integration without needing a real physics tick: swap a
+	# genuinely-front soldier's live position with a genuinely-rear one, the same technique
+	# test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indices uses.
+	var files: int = u.formation_files(n)
+	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	assert_true(cutoff < n, "sanity: there's a genuine rear soldier to swap in")
+	var front_idx: int = 0
+	var rear_idx: int = n - 1
+	var tmp: Vector2 = u._sim_soldier_pos[front_idx]
+	u._sim_soldier_pos[front_idx] = u._sim_soldier_pos[rear_idx]
+	u._sim_soldier_pos[rear_idx] = tmp
+	var cached_call: PackedInt32Array = u.engaged_soldier_indices(n)   # same (frame, count) -- cache hit
+	assert_eq(cached_call, pre_step,
+		"sanity: the cached call reuses the stale pre-swap selection")
+	var bypassed: PackedInt32Array = u.engaged_soldier_indices(n, false)
+	assert_true(bypassed.has(rear_idx),
+		"the bypass call sees the swapped (post-\"step\") position, not the stale cache")
+	assert_false(bypassed.has(front_idx))
+
+
 func test_face_for_action_is_a_no_op_when_squared() -> void:
 	# An omnidirectional formation presents no weak facing, so it never turns the whole
 	# grid to bear on one attacker -- a rear/flank charger would otherwise drag the block's

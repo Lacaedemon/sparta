@@ -61,8 +61,14 @@ func test_accumulate_skips_a_friendly_pair() -> void:
 
 
 func test_accumulate_fans_apart_an_exactly_co_located_enemy_pair() -> void:
-	var a := _make_unit(1, 0, Vector2(2000, 2000))   # far apart except for the forced pair below
-	var b := _make_unit(2, 1, Vector2(-2000, -2000))
+	# Single-soldier units: engaged_soldier_indices' live-position front selection
+	# (UnitFormation.live_front_indices) always includes the whole unit when count == 1
+	# (target_count >= n is the trivial "return everything" case), so the forced soldier
+	# below stays selected regardless of how far the override below moves it from
+	# `position` -- a multi-soldier unit would instead need the forced soldier to also be
+	# the geometrically most-forward one, which isn't what this test is about.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)   # far apart except for the forced pair below
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)
 	# Force one soldier from each side onto the exact same point -- the degenerate
 	# (d <= 0.01) branch, which resolves via a stable id-keyed fan-apart angle instead
 	# of a normal vector division by a (near-)zero distance.
@@ -78,13 +84,20 @@ func test_accumulate_caps_a_soldiers_summed_velocity_across_multiple_simultaneou
 	# a soldier touching several enemy bodies at once (e.g. a Square-perimeter defender pressed
 	# by more than one attacker from the same side) must not have their individually-capped
 	# impulses sum past that cap.
-	var a := _make_unit(1, 0, Vector2(2000, 2000))
-	var b := _make_unit(2, 1, Vector2(-2000, -2000))
+	# Sized to exactly the soldiers this test forces (a: 1, b: 2): engaged_soldier_indices'
+	# live-position front selection always includes the whole unit when count <= its engaged
+	# budget (the trivial "return everything" case in UnitFormation.live_front_indices), so
+	# every forced soldier below stays selected regardless of how far the overrides move them
+	# from `position` -- see the co-located-pair test above for the same pattern.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 2)
 	# Two of b's soldiers overlap the SAME defender soldier from the SAME direction, so their
 	# impulses stack instead of partially canceling -- the worst case for the write-back clamp.
 	a._sim_soldier_pos[0] = Vector2.ZERO
 	b._sim_soldier_pos[0] = Vector2(5, 0)
 	b._sim_soldier_pos[1] = Vector2(5, 0)
 	SoldierEnemyContact.accumulate([a, b], 90006)
+	assert_true(a._sim_body_vel[0].length() > 0.0,
+		"sanity: the forced overlap actually produced an impulse, not a vacuous pass below")
 	assert_true(a._sim_body_vel[0].length() <= SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
 		"a soldier's summed contact impulse across multiple simultaneous enemies stays capped, not additive")
