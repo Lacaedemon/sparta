@@ -2766,24 +2766,29 @@ func _finish_order_turn() -> void:
 ## rank and a reform would only churn every man through the block for zero shape change.
 ## Returns true when a reform actually starts.
 ##
-## The ±PI case (an about-face fold, the only fold this composite's rear-move actually
-## produces) arms _formation_mirror_x rather than just dropping the fold: a plain rotation by
-## the post-reform ang is a POINT reflection of the pre-reform grid (it would swap every
-## soldier to the OPPOSITE FLANK, not just trade rank order -- see soldier_world_slots and the
-## field doc), so the ±PI case needs the depth-only reflection that flag arms instead. Any
-## other fold (not ±PI -- unreachable via the rear-move composite today, but the general
-## primitive is defensive here) keeps the old plain drop: nothing but a rear-move's about-face
-## produces the point-reflection hazard the flag exists for.
+## The ±PI case (an about-face fold) arms _formation_mirror_x rather than just dropping the
+## fold: a plain rotation by the post-reform ang is a POINT reflection of the pre-reform grid
+## (it would swap every soldier to the OPPOSITE FLANK, not just trade rank order -- see
+## soldier_world_slots and the field doc), so the ±PI case needs the depth-only reflection
+## that flag arms instead. Any other fold (a quarter-turn, e.g. a lateral-pivot move's TURN
+## phase) keeps the plain drop: nothing but an about-face produces the point-reflection
+## hazard the flag exists for.
+##
+## The single-rank early-return above is scoped to the ±PI case specifically: a half-turn of
+## a single centred rank really is a no-op (it's still the same row, just read backwards), but
+## a QUARTER-turn is not -- the grid axis is genuinely rotated relative to facing even with
+## only one rank, so it still needs _formation_angle dropped to re-square the line.
 func reform_ranks() -> bool:
 	var angle: float = wrapf(_formation_angle, -PI, PI)
 	if absf(angle) < 0.01:
 		return false
 	var files: int = maxi(1, formation_files(soldiers))
-	# A single rank has no rear to tuck a gap into (its one rank IS the fullest), and a
-	# half-turn of it is just a lateral mirror of the same centred row.
-	if UnitFormation.ranks_for(soldiers, files) <= 1:
-		return false
 	var is_about_face_fold: bool = absf(absf(angle) - PI) < 0.01
+	# A single rank has no rear to tuck a gap into under a HALF-turn (its one rank IS the
+	# fullest, and a half-turn of it is just a lateral mirror of the same centred row) --
+	# but that's only true for the ±PI fold; any other fold still needs squaring below.
+	if is_about_face_fold and UnitFormation.ranks_for(soldiers, files) <= 1:
+		return false
 	if is_about_face_fold and soldiers % files == 0:
 		return false
 	_formation_angle = 0.0

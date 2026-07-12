@@ -142,6 +142,46 @@ func test_lateral_pivot_marches_toward_the_destination_after_reforming() -> void
 		"the unit advances toward the lateral destination (its x decreases toward -200)")
 
 
+func test_single_rank_unit_still_re_squares_after_a_lateral_pivot() -> void:
+	# Regression: reform_ranks()'s single-rank early return used to fire for ANY fold angle,
+	# not just the about-face (PI) case it was designed for -- a single-rank unit (reachable
+	# in normal play by dragging frontage to max_soldiers via the form-up resize handle, or a
+	# unit depleted down to one rank) would arm the quarter-turn, then never fold
+	# _formation_angle back to 0 on reform, marching off as a deep single-file column instead
+	# of a wide line.
+	# A small soldier count keeps the reform's own settle time (and this test) fast, while
+	# still exercising the exact bug: any single-rank line hits reform_ranks()'s early return,
+	# regardless of file count.
+	var u := UnitScript.new()
+	u.max_soldiers = 8
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = FACING_DOWN
+	u.frontage_override = 8   # force exactly one rank
+	u.seed_sim_soldiers()
+	var dest := Vector2(-200, 0)
+	var o := _arm_lateral_pivot(u, dest)
+
+	for _i in range(120):
+		u._think(0.016)
+		if not u.is_order_turning():
+			break
+	assert_false(u.is_order_turning(), "the quarter-turn completes even for a single-rank line")
+	assert_eq(o.phase, Order.Phase.REFORM,
+		"a single-rank unit's lateral pivot still enters the reform phase -- the grid axis is genuinely rotated")
+
+	# _reform_timeout()'s own safety-bound formula caps at a few hundred ticks for a unit
+	# this small (crossing distance / slowest back-pace * 2 + 1s); 500 ticks comfortably
+	# exceeds it, so a still-unparked march past this point is a genuine stuck reform.
+	for _i in range(500):
+		u._think(0.016)
+		if u.has_move_target:
+			break
+	assert_true(u.has_move_target, "the parked march eventually commits")
+	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.01,
+		"the single-rank grid re-squared to the new heading instead of marching off as a deep column")
+
+
 # --- Battle-level integration ------------------------------------------------
 
 func _unit(uid: int, pos: Vector2) -> Unit:

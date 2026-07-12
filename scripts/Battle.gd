@@ -1300,7 +1300,10 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				elif lateral_pivot:
 					# Same handoff as a rear move, but a quarter-turn toward the
 					# destination's side instead of a full reversal. begin_pivot refuses
-					# the same way begin_about_face does -- fall back to a plain march.
+					# the same way begin_about_face does (fighting, or bodies not seeded
+					# yet) -- but unlike rear_move, order.reform is already forced true
+					# above regardless of whether the turn armed, so the fallback here is
+					# the reform-hold below, not an immediate march.
 					u.has_move_target = false
 					var turn_angle: float = PI * 0.5 * UnitManeuver.lateral_pivot_dir(u.facing, move_vec)
 					turn_armed = u.begin_pivot(order, turn_angle)
