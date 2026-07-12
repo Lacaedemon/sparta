@@ -33,6 +33,14 @@ const BattleRef = preload("res://scripts/Battle.gd")
 ## flank threat reacts to it before any square/relief call, and a unit forming square
 ## doesn't also request relief the same tick (a fresh order replaces the current one, so
 ## only the highest-priority decision should apply this tick).
+##
+## Phase 2 (docs/battle-ai-design.md) adds an optional `directive` parameter -- a plain
+## Dictionary from Subcommander.decide_group, or {} for "no directive this tick". A
+## directive only ever reshapes the fallback branch (4, above): it is strictly
+## lower-priority than every one of a unit's own immediate reactions (1-3), because a
+## subcommander's group-level intent should never override a unit's own self-preservation.
+## Only the bottom level actuates -- decide() still returns the same order-command shape
+## either way, so a directive-driven decision goes through the exact same apply path.
 
 
 ## Morale floor below which a unit in contact calls for relief.
@@ -48,10 +56,13 @@ const FLANK_DOT_THRESHOLD := 0.35
 
 ## Decide this unit's action for the current AI tick. `all_units` is every live node in
 ## the "units" group (the caller's perception source -- see the class doc: omniscient
-## today, fogged in phase 5 without this signature changing). Returns an
-## enqueue_order/_apply_order_cmd-shaped Dictionary, or {} for "no change this tick"
-## (Battle skips applying anything, leaving whatever order is already running).
-static func decide(u: Unit, all_units: Array) -> Dictionary:
+## today, fogged in phase 5 without this signature changing). `directive` is this unit's
+## subcommander directive for the tick (Subcommander.decide_group's output for this uid),
+## or {} when the unit has none -- existing callers that never pass one see the unchanged
+## phase-1 behaviour. Returns an enqueue_order/_apply_order_cmd-shaped Dictionary, or {} for
+## "no change this tick" (Battle skips applying anything, leaving whatever order is already
+## running).
+static func decide(u: Unit, all_units: Array, directive: Dictionary = {}) -> Dictionary:
 	if u.state == Unit.State.DEAD or u.state == Unit.State.ROUTING:
 		return {}
 
@@ -68,22 +79,42 @@ static func decide(u: Unit, all_units: Array) -> Dictionary:
 			return _relief_cmd(reliever, u)
 
 	# Fallback: advance/attack the nearest living enemy, subsuming the old
-	# direct-target-write behaviour. Skip units already committed to a fight --
-	# their own _think loop chases/engages target_enemy without a fresh order --
-	# and skip a unit already executing a RELIEF order: it's mid-swap with a
-	# tired ally (UnitRelief.begin sets target_enemy but not state, so it isn't
-	# FIGHTING yet), and a fresh ATTACK order here would silently clobber the
-	# RELIEF order and its relief_partner link. Mirrors the same exclusion in
-	# _relief_candidate, which stops OTHER units from calling this one away.
+	# direct-target-write behaviour -- OR, when this unit's subcommander issued a
+	# directive this tick, follow that instead (see the class doc's phase-2 note).
+	# Skip units already committed to a fight -- their own _think loop
+	# chases/engages target_enemy without a fresh order -- and skip a unit
+	# already executing a RELIEF order: it's mid-swap with a tired ally
+	# (UnitRelief.begin sets target_enemy but not state, so it isn't FIGHTING
+	# yet), and a fresh order here would silently clobber the RELIEF order and
+	# its relief_partner link. Mirrors the same exclusion in _relief_candidate,
+	# which stops OTHER units from calling this one away.
 	var already_relieving: bool = u.current_order != null \
 		and u.current_order.type == Order.Type.RELIEF
 	if u.state != Unit.State.FIGHTING and not already_relieving:
+		# A directive is strictly lower-priority than a unit's own live pursuit of a real
+		# threat, same as flank-threat/square/relief above: a unit already chasing a
+		# target that's still alive and able to fight back must be left to close and
+		# fight, not pulled off mid-chase into a group-level directive. This is the one
+		# case priorities 1-3 above don't already cover -- a unit not yet in contact, so
+		# _flank_threat's contact-only check doesn't see the closing enemy either.
+		if not directive.is_empty() and not is_chasing_live_target(u):
+			return _directive_cmd(u, directive)
 		# include_routing=true: press the advantage and chase down a fleeing enemy too.
 		var nearest: Unit = UnitTargeting.nearest_enemy_to(u, u.position, INF, true)
 		if nearest != null and u.target_enemy != nearest:
 			return _attack_cmd(u, nearest)
 
 	return {}
+
+
+## Whether `u` already has a live ATTACK order chasing a target that is still alive and
+## able to fight back (not DEAD, not ROUTING). Shared by decide()'s own directive guard
+## above and by Subcommander (which also skips such a unit as a directive candidate in the
+## first place) -- see decide()'s comment for why this case needs guarding at all.
+static func is_chasing_live_target(u: Unit) -> bool:
+	return u.current_order != null and u.current_order.type == Order.Type.ATTACK \
+		and u.target_enemy != null and u.target_enemy.state != Unit.State.DEAD \
+		and u.target_enemy.state != Unit.State.ROUTING
 
 
 ## A living enemy already in contact (attack range) that is closing from this unit's
@@ -173,6 +204,59 @@ static func _relief_cmd(reliever: Unit, tired: Unit) -> Dictionary:
 		"x": 0.0,
 		"y": 0.0,
 		"target": tired.uid,
+	}
+
+
+## Phase 2 entry point: translate this unit's subcommander directive
+## (Subcommander.decide_group's output for this uid) into an order-command, or {} when the
+## unit is already doing what the directive asks -- the same idempotency the ordinary
+## nearest-enemy fallback already has (see decide()'s "already targeting the nearest enemy"
+## check), so a subcommander re-issuing the same intent every AI tick doesn't restart the
+## unit's march each time. An unrecognised directive type is treated as "no directive",
+## defensively -- Subcommander never actually emits one.
+static func _directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
+	match String(directive.get("type", "")):
+		Subcommander.DIRECTIVE_SUPPORT:
+			return _support_directive_cmd(u, directive)
+		Subcommander.DIRECTIVE_HOLD_LINE, Subcommander.DIRECTIVE_COVER_FLANK:
+			return _move_directive_cmd(u, directive)
+		_:
+			return {}
+
+
+## A SUPPORT directive: guard the named ward, same shape the friendly-target SUPPORT branch
+## of _apply_order_cmd resolves (mode == SUPPORT, target a friendly outside `units`).
+## Idempotent: a unit already guarding that exact ward gets no fresh order.
+static func _support_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
+	var ward_uid: int = int(directive.get("ward_uid", -1))
+	if ward_uid < 0 or (u.support_target != null and u.support_target.uid == ward_uid):
+		return {}
+	return {
+		"units": [u.uid],
+		"x": 0.0,
+		"y": 0.0,
+		"target": ward_uid,
+		"mode": BattleRef.OrderMode.SUPPORT,
+	}
+
+
+## A HOLD_LINE or COVER_FLANK directive: both just move the unit to a directed point and
+## stop chasing -- the only difference between them is which Subcommander behaviour picked
+## the point, so they share one apply path. Idempotent within Subcommander.POINT_EPSILON of
+## the directed point (whether already arrived, or already marching there with no live
+## target_enemy) so a directive re-issued every AI tick doesn't restart the march.
+static func _move_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
+	var point := Vector2(float(directive.get("x", u.position.x)), float(directive.get("y", u.position.y)))
+	var already_going_there: bool = u.target_enemy == null and (
+		(u.has_move_target and u.move_target.distance_to(point) < Subcommander.POINT_EPSILON)
+		or (not u.has_move_target and u.position.distance_to(point) < Subcommander.POINT_EPSILON))
+	if already_going_there:
+		return {}
+	return {
+		"units": [u.uid],
+		"x": point.x,
+		"y": point.y,
+		"target": -1,
 	}
 
 

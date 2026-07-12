@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/subcommander-mutual-support.json",
+  "caption": "Battle AI phase 2 (#585): subcommanders. Team 1 now has a subcommander coordinating it -- Subcommander.decide_group computes group-level directives (line integrity, mutual support, flank coverage) once per AI tick and hands them to each unit's UnitLeader, which folds a directive into its own fallback decision at the lowest priority: never overriding a unit's own flank-threat, anti-cavalry-square, or relief reactions, and (per this review round's fix) never interrupting a unit already chasing a live, still-fighting target either. This clip shows mutual support in the one case that stays reachable under that guard: the Infantry (uid 2) engages a full-strength foe and stays locked in a long fight, while the Cavalry (uid 3) is paired against a token 1-soldier unit that dies almost immediately, freeing it up while its neighbor is still fighting. Subcommander sends it a SUPPORT directive guarding the Infantry -- confirmed by state dump as a real order (current_order reads SUPPORT by tick 120), the same order type and apply path (Battle._apply_order_cmd) a player's own support command uses -- and the Cavalry then closes the distance and joins the melee directly. No new order types, no direct unit-state writes -- every subcommander decision still arrives as a queue-visible order.",
+  "fixed_fps": 60,
+  "max_frames": 480,
+  "fps": 30,
+  "width": 640
+}

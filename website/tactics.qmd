@@ -498,6 +498,42 @@ re-targets and turns to face a second player unit that closes on its flank
 instead of fighting on with its back exposed.
 :::
 
+## Enemy coordination
+
+The enemy's regiments don't fight in isolation --- a subcommander watches the
+whole group and hands each unit leader a standing directive on top of its own
+battlefield instincts. Three behaviours come out of this:
+
+- **Line integrity** --- a unit that races far ahead of its neighbors gets
+  held back near the group's own depth instead of closing on the enemy alone.
+- **Mutual support** --- an unengaged neighbor gets sent to guard an ally
+  that's already fighting, rather than standing idle nearby.
+- **Flank coverage** --- a unit repositions to cover a group flank an enemy is
+  bearing down on, before casualties or a maneuver leave it open.
+
+A directive never overrides a unit's own immediate reactions --- turning to
+face a flank threat, forming anti-cavalry square, and calling for relief all
+still come first. It only shapes what an otherwise-idle unit does next, so
+the enemy line holds together without losing the individual judgement it
+already had.
+
+::: {#fig-subcommander-mutual-support .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/subcommander_mutual_support.jpg">
+  <source src="media/subcommander_mutual_support.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Mutual support: one enemy unit stays locked in a long fight while its
+neighbor's own foe dies fast, freeing it up. The subcommander sends the
+freed unit to guard its still-fighting neighbor, and it closes the distance
+to join the melee directly.
+:::
+
 ## Weapon reach
 
 Each weapon has an **effective reach** --- how close two units must get before they

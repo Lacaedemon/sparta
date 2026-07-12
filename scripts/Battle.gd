@@ -1448,18 +1448,25 @@ func _tick_tier_transitions() -> void:
 			TierTransition.demote(u)
 
 
-## Battle AI phase 1 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets a
-## unit leader (UnitLeader.decide) that reads the current sim state -- the omniscient
+## Battle AI phases 1-2 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets
+## a unit leader (UnitLeader.decide) that reads the current sim state -- the omniscient
 ## placeholder perception phase 1 uses -- and returns at most one order-command Dictionary,
 ## which is applied through _apply_order_cmd, the SAME single apply site a player order
-## goes through. No unit state is written directly here or in UnitLeader -- closing the
-## backdoor the old direct `u.target_enemy = nearest` write left open (see the design doc's
-## "Today's AI is a backdoor" section). Deterministic: a pure function of already-serialized
-## unit state, decided in uid order, so live play and replay reach identical decisions.
+## goes through. No unit state is written directly here, in UnitLeader, or in Subcommander --
+## closing the backdoor the old direct `u.target_enemy = nearest` write left open (see the
+## design doc's "Today's AI is a backdoor" section). Phase 2 adds one subcommander per team,
+## computed once per AI tick over the whole team-1 group (docs/battle-ai-design.md phase 2's
+## "start static" group assignment -- see Subcommander's own class doc); its directives are
+## handed to each unit leader alongside the same perception, never applied on their own.
+## Deterministic: a pure function of already-serialized unit state, decided in uid order, so
+## live play and replay reach identical decisions.
 func _run_enemy_ai() -> void:
 	var all_units: Array = get_tree().get_nodes_in_group("units")
-	for u in _team_units(1):
-		var cmd: Dictionary = UnitLeader.decide(u, all_units)
+	var team1: Array = _team_units(1)
+	var directives: Dictionary = Subcommander.decide_group(team1, all_units)
+	for u in team1:
+		var directive: Dictionary = directives.get(u.uid, {})
+		var cmd: Dictionary = UnitLeader.decide(u, all_units, directive)
 		if not cmd.is_empty():
 			_apply_order_cmd(cmd)
 
