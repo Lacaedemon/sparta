@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/multi-unit-form-up-modes.json",
+  "caption": "Three regiments of different size -- Spearmen (Tight), Infantry (Normal), Archers (Loose) -- box-selected and dragged into a flank line under the new default form-up mode: equal depth (space basis). Every regiment forms up to the same PHYSICAL depth rather than the same rank count; Tight and Normal share the same spacing, but the loosely-spread Archers split the line differently from both, splitting on density rather than just soldier count. See how-to-play.qmd for the other three selectable modes (☰ Menu → Form-up, or the Y key to cycle).",
+  "fixed_fps": 30,
+  "max_frames": 400,
+  "fps": 15,
+  "width": 720
+}

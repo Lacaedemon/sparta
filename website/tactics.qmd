@@ -288,14 +288,17 @@ you read its losses as a shrinking depth, not a fraying line.
 
 **Deploy a whole battle line at once.** Select several regiments and drag one flank
 line (right-click and drag): the line splits among them. By default it splits to **equal
-depth**, so every regiment forms up the same number of ranks --- a uniform front where
-bigger units just take a wider slice. That keeps your whole line's staying power even, with
-no thin spot for the enemy to punch through. Press <kbd>Y</kbd> (or <kbd>Shift</kbd> +
-<kbd>Y</kbd> to cycle the other way) to switch to **equal width**
-when you'd rather every unit cover the same frontage (small units stack deeper). They sort
-left-to-right by where they already stand, so nobody crosses the field to reach a slot ---
-a fast way to dress a ragged group into one clean front before the enemy closes. Hold Shift
-to place them in selection order instead when you want a specific regiment on a specific flank.
+depth (space)**, so every regiment forms up to the same physical depth --- a uniform front
+where bigger (or denser) units just take a wider slice. That keeps your whole line's staying
+power even, with no thin spot for the enemy to punch through. Press <kbd>Y</kbd> (or
+<kbd>Shift</kbd> + <kbd>Y</kbd> to cycle the other way) to switch modes --- **equal width**
+when you'd rather every unit cover the same frontage (small units stack deeper), or one of
+the count-based variants when you want density differences ignored entirely (see
+**Deploy several units at once** in [How to Play](how-to-play.qmd) for what each of the four
+modes holds equal). They sort left-to-right by where they already stand, so nobody crosses
+the field to reach a slot --- a fast way to dress a ragged group into one clean front before
+the enemy closes. Hold Shift to place them in selection order instead when you want a
+specific regiment on a specific flank.
 
 Use **☰ Menu → Form-up** to configure the split: the upper radio buttons set the mode
 each battle starts in; the lower checkboxes ("Y-key cycles through…") control which modes

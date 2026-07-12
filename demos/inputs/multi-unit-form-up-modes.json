@@ -1,0 +1,15 @@
+{
+  "_comment": "Box-select three regiments of different size (Spearmen spawn TIGHT, Infantry NORMAL, Archers LOOSE by default) and drag a flank line to split them under the new default mode -- equal depth, space basis: every regiment forms up to the same PHYSICAL depth. Tight and Normal share the same spacing_scale (1.0), so their split still tracks the space/count distinction; the loosely-spread Archers (spacing_scale 2.0) end up with a visibly different file count for a genuinely density-driven reason. A custom no-enemy scenario isolates the split mechanic from any combat.",
+  "seed": "77213",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 450, "y": 300},
+    {"team": 0, "type": "Infantry", "x": 620, "y": 300},
+    {"team": 0, "type": "Archers", "x": 800, "y": 300}
+  ],
+  "camera": [ { "tick": 0, "x": 650, "y": 500, "zoom": 1.15 } ],
+  "steps": [
+    { "tick": 4,  "box": { "from": [400, 260], "to": [860, 340] } },
+    { "tick": 30, "rmb_drag": { "from": [900, 380], "to": [400, 380] } }
+  ]
+}

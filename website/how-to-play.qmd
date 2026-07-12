@@ -643,15 +643,50 @@ still a plain move.
 
 **Deploy several units at once.** Select multiple units first, then drag the same
 flank line: it's split into one contiguous slice per unit, with a small gap between them.
-By default the line splits to **equal depth** --- every regiment forms up the same number
-of ranks, so a bigger unit simply takes a wider slice and the whole front is a uniform
-wall. Press <kbd>Y</kbd> to switch to **equal width** (every unit the same frontage, so a
-small unit just stacks deeper) and back; the choice you make in **☰ Menu → Form-up** is the
-default each battle starts with. By default the units fill the line **left-to-right by where
+The split can hold either **depth** (front-to-back ranks) or **width** (frontage) equal
+across the units, and can measure "equal" either by **space** (physical world units,
+accounting for each unit's own density) or by **count** (a plain rank/file number, blind to
+density) --- four combinations in all:
+
+- **Equal depth (space)** --- the default. Every regiment forms up to the same *physical*
+  depth: a tightly-packed unit fits more ranks into that depth than a loosely-spread one,
+  so the whole front reads as one uniform wall front-to-back.
+- **Equal depth (count)** --- every regiment gets the same *number* of ranks regardless of
+  density, so a loosely-spread unit ends up physically deeper than a tightly-packed one at
+  the same rank count.
+- **Equal width (space)** --- every unit takes the same physical frontage; a smaller unit
+  just stacks deeper to fit its slice.
+- **Equal width (count)** --- every unit gets the same file count (soldiers per rank), so
+  physical frontage differs when density does.
+
+For a same-density group (every selected unit in the same stance) the space and count
+variants of a given dimension produce identical results --- the distinction only matters
+when you drag a mixed group (e.g. a Tight unit alongside a Loose one). Press <kbd>Y</kbd> to
+cycle through the enabled modes and <kbd>Shift</kbd>+<kbd>Y</kbd> to cycle backward; the
+choice you make in **☰ Menu → Form-up** sets the default each battle starts with, and which
+modes the Y-key cycles through. By default the units fill the line **left-to-right by where
 they already stand**, so each marches to the nearest slice without crossing a neighbour;
 hold **Shift** while you drag to place them in **selection order** instead (the first unit
 you picked takes the left flank). The preview shows every unit's slice, file count, and the
 active split mode before you release.
+
+::: {#fig-form-up-modes .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/form_up_modes.jpg">
+  <source src="media/form_up_modes.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Three regiments of different size --- Spearmen (Tight), Infantry (Normal),
+Archers (Loose) --- box-selected and dragged into a flank line under the
+default equal-depth (space) split: each forms up to the same physical depth.
+Tight and Normal share the same spacing, but the loosely-spread Archers split
+the line differently from both for a genuinely density-driven reason.
+:::
 
 **Survey all orders (hold Space).** Holding <kbd>Space</kbd> overlays every unit's
 current order on the battlefield: a dashed green line to each move destination, a red
