@@ -91,8 +91,8 @@ static func accumulate(units: Array, frame: int) -> void:
 	# can rescale each pair's OWN two impulses together -- see that pass for why.
 	var pair_a: PackedInt32Array = PackedInt32Array()
 	var pair_b: PackedInt32Array = PackedInt32Array()
-	var pair_impulse_a: Array = []
-	var pair_impulse_b: Array = []
+	var pair_impulse_a: PackedVector2Array = PackedVector2Array()
+	var pair_impulse_b: PackedVector2Array = PackedVector2Array()
 	for a in range(n):
 		for b in SoldierSpatialHash.query(spos[a]):
 			if sgids[b] <= sgids[a]:
@@ -139,9 +139,10 @@ static func accumulate(units: Array, frame: int) -> void:
 	# scales a's share of THIS pair by one factor and b's share by a different one, so the pair's
 	# net contribution to total system momentum is no longer zero. Summed over an entire contact
 	# line, that leftover per-pair residual is a real net force with no opposing reaction anywhere
-	# in the system -- and a net force applied off-center is a net TORQUE, which is exactly the
-	# undamped rotational drift #724 traces to (root-caused via the torque-proxy instrumentation
-	# documented in .claude/memories/sparta.md).
+	# in the system -- and a net force applied off-center is a net TORQUE. Applied every tick two
+	# prolonged, roughly-matched regiments grind against each other, that undamped torque
+	# accumulates into a slow, continuous rotation of both regiments around their clash point
+	# (root-caused via the torque-proxy instrumentation documented in .claude/memories/sparta.md).
 	#
 	# Fix: apply the SAME scale to both of a pair's impulses -- the smaller of the two bodies'
 	# own scale factors, so neither body ever ends up over-trimmed relative to what it alone
@@ -161,8 +162,8 @@ static func accumulate(units: Array, frame: int) -> void:
 		var ia: int = pair_a[p]
 		var ib: int = pair_b[p]
 		var s: float = minf(body_scale[ia], body_scale[ib])
-		scaled_delta_v[ia] += (pair_impulse_a[p] as Vector2) * s
-		scaled_delta_v[ib] += (pair_impulse_b[p] as Vector2) * s
+		scaled_delta_v[ia] += pair_impulse_a[p] * s
+		scaled_delta_v[ib] += pair_impulse_b[p] * s
 
 	# Final safety-net clamp: pair-level trimming with mismatched per-body scale factors can
 	# still leave a body's summed, rescaled delta a hair over its own isolated cap.

@@ -80,8 +80,8 @@ func test_accumulate_fans_apart_an_exactly_co_located_enemy_pair() -> void:
 
 
 func test_accumulate_conserves_total_momentum_when_one_body_needs_trimming_and_its_partners_dont() -> void:
-	# Regression for the melee-lock swirl (#724): D (a single-soldier defender) is pressed by
-	# FIVE attacker soldiers from the same unit, all overlapping the exact same point, so their
+	# Regression for the melee-lock swirl: D (a single-soldier defender) is pressed by FIVE
+	# attacker soldiers from the same unit, all overlapping the exact same point, so their
 	# impulses stack instead of partially canceling -- the same "worst case" geometry as
 	# test_accumulate_caps_a_soldiers_summed_velocity_across_multiple_simultaneous_enemies above,
 	# just with enough attackers that D's raw summed delta clears its own isolated cap by a wide
