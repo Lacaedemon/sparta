@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/backstep.json",
+  "caption": "A short backward mouse move now back-steps -- holds facing and shuffles backward -- instead of about-facing (conversio) in place and marching forward on the new heading (#468). The lone Spearmen unit is ordered a ~30-unit step straight behind itself, well under UnitManeuver.SIDESTEP_MAX_DISTANCE (40.0): the clip shows the line staying south-facing throughout, shuffling backward without ever turning around, mirroring the arrow-key back-step (#396). Verified by state dump: facing holds at (0, 1) for the whole clip.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 640
+}
