@@ -49,7 +49,7 @@ jobs:
     if: github.repository == 'Lacaedemon/sparta'
     runs-on: ubuntu-latest
     continue-on-error: true
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -74,9 +74,12 @@ jobs:
           sudo apt-get install -y xvfb ffmpeg
 
       - name: Record demo clips
-        # Tighter guard than the job backstop: headless Godot/Xvfb can deadlock on
-        # driver init before --quit-after takes effect. Recording is seconds each.
-        timeout-minutes: 12
+        # Matches website-demo-diff.yml's budget for the same full, unfiltered
+        # record-demos.sh run -- the DEMOS array has grown to 40+ entries (each
+        # feature PR appends its own clip), so the per-run wall time has grown
+        # with it; a tighter guard here would just be a stale leftover from when
+        # the array was much smaller.
+        timeout-minutes: 45
         run: website/tools/record-demos.sh "$GITHUB_WORKSPACE/website/media"
 
       - name: Upload demo media
