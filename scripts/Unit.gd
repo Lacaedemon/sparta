@@ -3123,6 +3123,22 @@ var _engaged_indices_cache: PackedInt32Array = PackedInt32Array()
 var _engaged_indices_cache_frame: int = -1
 var _engaged_indices_cache_count: int = -1
 
+## Persists SoldierBodies.step()'s engaged-body <-> canonical-target-slot PAIRING across
+## ticks, so an engaged body's steering target stays fixed for a real reaction cadence
+## (SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS) instead of being recomputed fresh every
+## physics tick. #797 fixed the target itself from being a stale post-casualty array index;
+## #799/#802 found the target could still relocate by tens of world units tick to tick, as
+## engaged_soldier_indices()'s live-position selection jostled by a soldier-width -- a body
+## then chases the new target smoothly under bounded accel (no snap in the body's OWN
+## motion), but a few ticks of otherwise-correct pursuit toward a discontinuously-relocated
+## goal still reads as a sudden launch. Index-aligned to `_sim_soldier_pos` as of the tick
+## this was last (re)computed; SoldierBodies.step() forces an early recompute the moment the
+## soldier count changes (a casualty spliced the arrays, so the cached pairing's indices no
+## longer mean the same bodies) rather than waiting out the interval.
+var _engaged_target_slots: PackedVector2Array = PackedVector2Array()
+var _engaged_target_reassign_frame: int = -1
+var _engaged_target_soldier_count: int = -1
+
 func engaged_soldier_indices(count: int, use_cache: bool = true) -> PackedInt32Array:
 	if not use_cache:
 		return _compute_engaged_soldier_indices(count)

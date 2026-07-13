@@ -175,6 +175,71 @@ func test_soldier_bodies_step_still_pairs_correctly_when_already_in_lateral_orde
 				"body %d is already on its own slot -- no arrival pull" % i)
 
 
+# --- rate-limited engaged-target reassignment (#799/#802) ----------------------------------
+# #797's canonical-slot fix stopped a live-engaged body's target from being a stale
+# post-casualty array index, but the PAIRING itself was still recomputed fresh every tick --
+# so a body's target could still relocate by tens of world units the instant
+# engaged_soldier_indices()'s live-position selection jostled by a soldier-width. These pin
+# that the pairing is now held fixed for SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS instead
+# of being recomputed every tick, except when a casualty invalidates it early.
+
+func test_engaged_target_pairing_holds_fixed_within_the_reassignment_interval() -> void:
+	var u := _make_unit(6)
+	u.get_parent().remove_child(u)   # detach: no _physics_process interference while we await
+	# physics frames below to advance Engine.get_physics_frames() -- SoldierBodies.step() is
+	# driven by hand, exactly like every other test in this file.
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)
+	assert_eq(u.engaged_soldier_indices(6).size(), 6, "sanity: all 6 are engaged")
+	SoldierBodies.step(u, DELTA)
+	var first_pairing: PackedVector2Array = u._engaged_target_slots.duplicate()
+	assert_eq(first_pairing.size(), 6, "the first call computes and records a pairing")
+	# Swap two live body positions -- if the pairing were recomputed fresh every tick, this
+	# would change which canonical slot each swapped body pairs with.
+	var tmp: Vector2 = u._sim_soldier_pos[0]
+	u._sim_soldier_pos[0] = u._sim_soldier_pos[5]
+	u._sim_soldier_pos[5] = tmp
+	for _s in range(SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS - 5):
+		await get_tree().physics_frame
+		SoldierBodies.step(u, DELTA)
+		assert_eq(u._engaged_target_slots, first_pairing,
+			"the pairing stays fixed within the reassignment interval, even as live positions moved")
+
+
+func test_engaged_target_pairing_recomputes_once_the_interval_elapses() -> void:
+	var u := _make_unit(6)
+	u.get_parent().remove_child(u)
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)
+	SoldierBodies.step(u, DELTA)
+	var first_pairing: PackedVector2Array = u._engaged_target_slots.duplicate()
+	var tmp: Vector2 = u._sim_soldier_pos[0]
+	u._sim_soldier_pos[0] = u._sim_soldier_pos[5]
+	u._sim_soldier_pos[5] = tmp
+	for _s in range(SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS + 2):
+		await get_tree().physics_frame
+		SoldierBodies.step(u, DELTA)
+	assert_ne(u._engaged_target_slots, first_pairing,
+		"once the interval elapses, the pairing recomputes and reflects the swapped positions")
+
+
+func test_engaged_target_pairing_recomputes_immediately_after_a_casualty() -> void:
+	# A casualty splices the per-soldier arrays (SoldierMelee.reap), so a cached pairing's
+	# indices no longer mean the same bodies -- must recompute right away, not wait out the
+	# interval, regardless of how recently the pairing was (re)computed.
+	var u := _make_unit(6)
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)
+	SoldierBodies.step(u, DELTA)
+	assert_eq(u._engaged_target_slots.size(), 6, "sanity: the first pairing covers all 6 bodies")
+	u._sim_soldier_hp[0] = 0.0
+	SoldierMelee.reap(u, u)
+	assert_eq(u.soldiers, 5, "sanity: one soldier fell")
+	SoldierBodies.step(u, DELTA)   # same physics frame -- no await needed
+	assert_eq(u._engaged_target_slots.size(), 5,
+		"the pairing recomputes immediately against the post-casualty count, not on the old cache")
+
+
 # --- integration: friendly regiments separate from the soldier layer ----------
 
 func _block(uid: int, team: int, n: int, pos: Vector2) -> Unit:

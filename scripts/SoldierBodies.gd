@@ -31,6 +31,16 @@ const MIN_DIST: float = 1e-6
 # Below this body speed (px/s) the render treats a body as at rest and the unit's marks
 # can skip their per-frame MultiMesh rewrite — far under what the eye resolves at 60 fps.
 const REST_SPEED: float = 0.5
+# How long an engaged body's assigned canonical target slot is held fixed before the
+# engaged-body <-> slot PAIRING (not the underlying canonical-slot fix itself) is
+# recomputed, in physics ticks (60/s). A real soldier in a formation doesn't instantly
+# re-decide which gap to fill the moment a neighbor's live position jostles across the
+# engaged-selection boundary; this bounds how often that re-decision happens so a body's
+# steering target stays stable for a real reaction cadence instead of potentially
+# relocating every tick (#799/#802). ~0.5s: long enough to damp per-tick jostle, short
+# enough that a genuine casualty or reform still resolves within a fraction of a second
+# (and a casualty forces an immediate recompute regardless -- see Unit._engaged_target_*).
+const ENGAGED_TARGET_REASSIGN_TICKS: int = 30
 
 
 ## Seed a unit's bodies onto its current formation slots, at rest (zero velocity) and
@@ -179,13 +189,39 @@ static func step(unit: Unit, delta: float) -> void:
 	# `target_slots` starts as a copy of `slots` (every unengaged body's target is just its own
 	# slot) and only the engaged entries get overwritten below -- a packed array instead of a
 	# Dictionary keyed by array index + a `.has()`/fallback branch per soldier (#799).
-	var target_slots: PackedVector2Array = slots.duplicate()
-	if not engaged_indices.is_empty():
-		var canonical: PackedInt32Array = unit.canonical_target_slot_indices(slots, engaged_indices.size())
-		var sorted_engaged: PackedInt32Array = unit.pairing_sort_indices(engaged_indices, unit._sim_soldier_pos)
-		var sorted_canonical: PackedInt32Array = unit.pairing_sort_indices(canonical, slots)
-		for k in range(mini(sorted_engaged.size(), sorted_canonical.size())):
-			target_slots[sorted_engaged[k]] = slots[sorted_canonical[k]]
+	#
+	# The PAIRING itself (which engaged body gets which canonical slot) is rate-limited
+	# (ENGAGED_TARGET_REASSIGN_TICKS): recomputing it fresh every tick lets a body's target
+	# relocate by tens of world units the instant engaged_soldier_indices()'s live-position
+	# selection jostles by a soldier-width, which the body then chases smoothly but still
+	# reads as a snap since the GOAL moved (#799/#802). Reused unchanged from the unit's own
+	# cache while within the interval; forced to recompute early the moment the soldier count
+	# changes (a casualty spliced the arrays, so the cached indices no longer mean the same
+	# bodies) or there is no prior pairing yet (fresh engagement).
+	var target_slots: PackedVector2Array
+	if engaged_indices.is_empty():
+		target_slots = slots
+		unit._engaged_target_slots = PackedVector2Array()
+		unit._engaged_target_reassign_frame = -1
+		unit._engaged_target_soldier_count = n
+	else:
+		var frame: int = Engine.get_physics_frames()
+		var due_for_reassign: bool = unit._engaged_target_soldier_count != n \
+				or unit._engaged_target_slots.size() != n \
+				or unit._engaged_target_reassign_frame < 0 \
+				or frame - unit._engaged_target_reassign_frame >= ENGAGED_TARGET_REASSIGN_TICKS
+		if due_for_reassign:
+			target_slots = slots.duplicate()
+			var canonical: PackedInt32Array = unit.canonical_target_slot_indices(slots, engaged_indices.size())
+			var sorted_engaged: PackedInt32Array = unit.pairing_sort_indices(engaged_indices, unit._sim_soldier_pos)
+			var sorted_canonical: PackedInt32Array = unit.pairing_sort_indices(canonical, slots)
+			for k in range(mini(sorted_engaged.size(), sorted_canonical.size())):
+				target_slots[sorted_engaged[k]] = slots[sorted_canonical[k]]
+			unit._engaged_target_slots = target_slots
+			unit._engaged_target_reassign_frame = frame
+			unit._engaged_target_soldier_count = n
+		else:
+			target_slots = unit._engaged_target_slots
 	# No body ever teleports: every body steers toward a desired velocity under bounded
 	# acceleration and integrates its own velocity (fixed delta), so position only ever
 	# changes by velocity * delta.
