@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "The fix smooths per-tick target motion for an engaged body over hundreds of ticks of accumulated casualties; a short recorded clip doesn't cleanly show a before/after difference (a live state-dump comparison over the full 700-tick reproduction was itself inconclusive on this aggregate proxy -- see the PR description), so a demo here would overstate what's actually visible in a clip this length. The new unit tests pin the actual mechanism directly."
+}

@@ -31,6 +31,16 @@ const MIN_DIST: float = 1e-6
 # Below this body speed (px/s) the render treats a body as at rest and the unit's marks
 # can skip their per-frame MultiMesh rewrite — far under what the eye resolves at 60 fps.
 const REST_SPEED: float = 0.5
+# How long an engaged body's assigned canonical target slot is held fixed before the
+# engaged-body <-> slot PAIRING (not the underlying canonical-slot fix itself) is
+# recomputed, in physics ticks (60/s). A real soldier in a formation doesn't instantly
+# re-decide which gap to fill the moment a neighbor's live position jostles across the
+# engaged-selection boundary; this bounds how often that re-decision happens so a body's
+# steering target stays stable for a real reaction cadence instead of potentially
+# relocating every tick. ~0.5s: long enough to damp per-tick jostle, short
+# enough that a genuine casualty or reform still resolves within a fraction of a second
+# (and a casualty forces an immediate recompute regardless -- see Unit._engaged_target_*).
+const ENGAGED_TARGET_REASSIGN_TICKS: int = 30
 
 
 ## Seed a unit's bodies onto its current formation slots, at rest (zero velocity) and
@@ -176,16 +186,45 @@ static func step(unit: Unit, delta: float) -> void:
 	# at one end of the live front rank a target slot at the opposite end. Sort both sides by
 	# actual lateral position first (Unit.pairing_sort_indices) so the k-th live-selected body
 	# arrives at the k-th canonical slot NEAREST ITS OWN POSITION, not just its k-th array rank.
-	# `target_slots` starts as a copy of `slots` (every unengaged body's target is just its own
-	# slot) and only the engaged entries get overwritten below -- a packed array instead of a
 	# Dictionary keyed by array index + a `.has()`/fallback branch per soldier.
+	#
+	# The PAIRING itself (which engaged body gets which canonical slot) is rate-limited
+	# (ENGAGED_TARGET_REASSIGN_TICKS): recomputing it fresh every tick lets a body's target
+	# relocate by tens of world units the instant engaged_soldier_indices()'s live-position
+	# selection jostles by a soldier-width, which the body then chases smoothly but still
+	# reads as a snap since the GOAL moved. Only the ASSIGNMENT (which body index maps to
+	# which canonical slot INDEX) is cached and reused within the interval -- `target_slots`
+	# itself is rebuilt fresh from `slots` every tick, so an unengaged body (and an engaged
+	# body's actual target POSITION, via `slots[sorted_canonical[k]]`) always tracks this
+	# tick's live formation slots. Caching resolved positions instead of indices would freeze
+	# every unengaged body's target too, since `slots` shifts continuously as the unit
+	# marches/turns/gets pushed by SoldierBodies.couple() -- the exact snap this is meant to
+	# fix, just for the unengaged majority.
 	var target_slots: PackedVector2Array = slots.duplicate()
 	if not engaged_indices.is_empty():
-		var canonical: PackedInt32Array = unit.canonical_target_slot_indices(slots, engaged_indices.size())
-		var sorted_engaged: PackedInt32Array = unit.pairing_sort_indices(engaged_indices, unit._sim_soldier_pos)
-		var sorted_canonical: PackedInt32Array = unit.pairing_sort_indices(canonical, slots)
+		var frame: int = Engine.get_physics_frames()
+		var due_for_reassign: bool = unit._engaged_target_soldier_count != n \
+				or unit._engaged_target_pairing_engaged.is_empty() \
+				or unit._engaged_target_reassign_frame < 0 \
+				or frame - unit._engaged_target_reassign_frame >= ENGAGED_TARGET_REASSIGN_TICKS
+		var sorted_engaged: PackedInt32Array
+		var sorted_canonical: PackedInt32Array
+		if due_for_reassign:
+			var canonical: PackedInt32Array = unit.canonical_target_slot_indices(slots, engaged_indices.size())
+			sorted_engaged = unit.pairing_sort_indices(engaged_indices, unit._sim_soldier_pos)
+			sorted_canonical = unit.pairing_sort_indices(canonical, slots)
+			unit._engaged_target_pairing_engaged = sorted_engaged
+			unit._engaged_target_pairing_canonical = sorted_canonical
+			unit._engaged_target_reassign_frame = frame
+			unit._engaged_target_soldier_count = n
+		else:
+			sorted_engaged = unit._engaged_target_pairing_engaged
+			sorted_canonical = unit._engaged_target_pairing_canonical
 		for k in range(mini(sorted_engaged.size(), sorted_canonical.size())):
-			target_slots[sorted_engaged[k]] = slots[sorted_canonical[k]]
+			var engaged_idx: int = sorted_engaged[k]
+			var canonical_idx: int = sorted_canonical[k]
+			if engaged_idx < target_slots.size() and canonical_idx < slots.size():
+				target_slots[engaged_idx] = slots[canonical_idx]
 	# No body ever teleports: every body steers toward a desired velocity under bounded
 	# acceleration and integrates its own velocity (fixed delta), so position only ever
 	# changes by velocity * delta.

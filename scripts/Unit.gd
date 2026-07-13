@@ -3123,6 +3123,34 @@ var _engaged_indices_cache: PackedInt32Array = PackedInt32Array()
 var _engaged_indices_cache_frame: int = -1
 var _engaged_indices_cache_count: int = -1
 
+## Persists SoldierBodies.step()'s engaged-body <-> canonical-target-slot PAIRING across
+## ticks, so an engaged body's steering target stays fixed for a real reaction cadence
+## (SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS) instead of being recomputed fresh every
+## physics tick. An earlier fix stopped the target itself from being a stale post-casualty
+## array index, but the target could still relocate by tens of world units tick to tick, as
+## engaged_soldier_indices()'s live-position selection jostled by a soldier-width -- a body
+## then chases the new target smoothly under bounded accel (no snap in the body's OWN
+## motion), but a few ticks of otherwise-correct pursuit toward a discontinuously-relocated
+## goal still reads as a sudden launch.
+##
+## Caches the ASSIGNMENT only -- parallel arrays of (engaged body index, canonical slot
+## index) pairs -- not resolved positions. `SoldierBodies.step()` rebuilds its `target_slots`
+## array fresh from the current tick's `slots` every tick regardless, so an unengaged body's
+## target (and an engaged body's actual target POSITION, via `slots[canonical_idx]`) always
+## tracks live formation state; only WHICH slot index a given engaged body is paired with
+## is held fixed. Caching resolved positions here instead would freeze every unengaged
+## body's target too, since `slots` shifts continuously as the unit marches, turns, or gets
+## pushed by SoldierBodies.couple()'s own position-following.
+##
+## Index-aligned to `_sim_soldier_pos` as of the tick this was last (re)computed;
+## SoldierBodies.step() forces an early recompute the moment the soldier count changes (a
+## casualty spliced the arrays, so the cached indices no longer mean the same bodies) rather
+## than waiting out the interval.
+var _engaged_target_pairing_engaged: PackedInt32Array = PackedInt32Array()
+var _engaged_target_pairing_canonical: PackedInt32Array = PackedInt32Array()
+var _engaged_target_reassign_frame: int = -1
+var _engaged_target_soldier_count: int = -1
+
 func engaged_soldier_indices(count: int, use_cache: bool = true) -> PackedInt32Array:
 	if not use_cache:
 		return _compute_engaged_soldier_indices(count)
