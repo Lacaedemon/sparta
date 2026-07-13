@@ -1281,21 +1281,20 @@ func _think(delta: float) -> void:
 				state = State.IDLE
 				# Use the hold to centre-pivot in place toward the pending destination, so
 				# the ranks are already coming onto their heading before the first step. A
-				# form-up instead pivots toward its COMMANDED facing (deploy_facing) -- the
-				# drag line dictates that, not the destination bearing -- so the block is
-				# already correctly oriented before it ever steps off, and ordered_facing
-				# (set to deploy_facing for a form-up, see Battle._apply_order_cmd) then holds
-				# that same facing fixed for the whole march. A plain side-step/back-step also
-				# sets ordered_facing (to its OWN current facing) with no deploy_facing, so it
-				# still holds and skips pivoting here, unchanged. An undisciplined unit (or a
-				# disciplined one marching in haste) skips the formed pivot here too, mirroring
-				# _move_to's pivot_as_formation gate -- otherwise it would still visibly turn as
-				# one formed body during the hold, even though the march that follows won't.
+				# form-up instead SNAPS to its COMMANDED facing (deploy_facing) on the very
+				# first hold tick -- not a gradual pivot like a plain move's -- because a
+				# form-up ALSO reshapes the frontage (Battle._apply_order_cmd's set_frontage,
+				# applied synchronously at order time): soldier_world_slots' grid depends on
+				# BOTH facing and frontage, so gradually rotating facing while the frontage is
+				# already fixed at its new shape makes the bodies chase a target that's
+				# simultaneously resizing AND rotating every tick -- a visible swirl. _face_dir's
+				# _formation_angle absorption means the snap itself is invisible (bodies don't
+				# jump; only the facing/grid-angle bookkeeping changes), so nothing is lost by
+				# not animating this turn. A plain side-step/back-step sets ordered_facing (to
+				# its OWN current facing) with no deploy_facing, so it still holds and skips
+				# this branch, unchanged.
 				if deploy_facing != Vector2.ZERO:
-					if disciplined and not _is_move_order_in_haste():
-						_rotate_facing_toward(deploy_facing, delta)
-					else:
-						_face_dir(deploy_facing)
+					_face_dir(deploy_facing)
 				elif ordered_facing == Vector2.ZERO:
 					var reform_dir: Vector2 = _reform_target - position
 					if disciplined and not _is_move_order_in_haste():

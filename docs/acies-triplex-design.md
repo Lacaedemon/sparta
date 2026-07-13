@@ -106,8 +106,33 @@ two pre-existing bugs in *every* multi-unit form-up (not checkerboard-specific
 Verified via `dump-state.sh` + frame capture on
 `demos/inputs/checkerboard-form-up.json`: before the fix, mid-march frames
 showed soldiers strung out along a steep diagonal; after, every frame shows
-tidy rank-and-file rectangles throughout the march. A third idea raised in the
-same discussion — anchoring `Unit.position` on the front rank's midpoint
+tidy rank-and-file rectangles throughout the march.
+
+**A third bug surfaced by the fix above, not by checkerboard itself:**
+extending the reform hold to actually wait for settlement (fix 1) made a
+pre-existing swirl visible during the *hold* itself (previously hidden because
+the flat 0.8s hold ended before it could develop). Pivoting `facing` toward
+`deploy_facing` *gradually* during the hold, while `set_frontage`'s new file
+count is already applied and fixed from the same tick, meant the soldier
+slot grid was simultaneously ROTATING (facing still catching up) and
+RESHAPING (frontage already changed) — bodies chasing a target that's both
+moving and changing shape every tick swirl instead of converging cleanly.
+Fixed by snapping `facing` to `deploy_facing` immediately (`_face_dir`,
+whose `_formation_angle` absorption keeps the snap itself invisible — no
+body jumps, only bookkeeping changes) instead of a gradual
+`_rotate_facing_toward`, so the grid is orientation-stable from the very
+first hold tick and only the (single, fixed) reshape is left to converge.
+
+A fourth idea raised in the same discussion — unifying this reform-hold
+mechanism (currently bare `Unit` fields: `_reform_timer`/`_reform_target`/
+`_reform_until_settled`) onto the `Order.Phase` state machine the rear-move
+composite already uses (`Order.Phase.REFORM` -> `MARCH`) — is a refactor of
+the shared move-order path every unit uses, not form-up-specific, so it's
+tracked separately in
+[#822](https://github.com/Lacaedemon/sparta/issues/822) rather than folded in
+here.
+
+A fifth idea — anchoring `Unit.position` on the front rank's midpoint
 instead of the soldier-body centroid — was tried and reverted (it destabilized
 two hard invariants: quarter-turn and explicatio/duplicatio must not move the
 regiment's centre) and is tracked separately in
