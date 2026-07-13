@@ -1270,3 +1270,74 @@ must wait via a `current_tick()` loop, never a bare single `await physics_frame`
 that passes alone but fails only under the full suite is a strong first hint to check for
 exactly this pattern before suspecting the actual feature code. (`Lacaedemon/sparta` PR #794,
 2026-07-12.)
+
+## Batch-dispatched agents: verify diffs and test runs independently, don't trust completion reports
+
+During a large parallel GIA batch (2026-07-09), several agent-reported "implemented and
+tested" PRs turned out to have real, independently-confirmed problems that the reports never
+mentioned:
+
+- **Empty-claim PRs mistaken for done.** #690 (chase attack, PR #701), #676 (issue-citation
+  lint, PR #706), and #687 (pin-down attack, PR #707) each had a draft PR opened per the
+  `pr-on-claim` convention (an empty commit pushed up front, before implementation) where the
+  actual implementation was never pushed. A draft PR existing and referencing "Closes #N" reads
+  as "someone's on it" -- nothing in the PR list, checks, or title distinguishes
+  mid-implementation from abandoned-before-implementation-ever-started. #706 turned out moot
+  (issue #676 was already independently resolved via merged PR #684 before #706's claim even
+  happened) -- always `gh issue view <N> --json state,closedAt` before re-implementing.
+- **Cross-branch contamination.** Two unrelated features' commits ended up mixed onto the wrong
+  branch: Newton's-laws-collision code (issue #678) landed on `feat/sweep-routers-attack`
+  (issue #693) instead of its own `feat/newtons-laws-collision`, and PIN_DOWN combat logic
+  (issue #687) landed on `feat/roll-the-line` (issue #691) instead of `feat/pin-down-attack` --
+  leaving roll-the-line's own actual mechanic never implemented despite its enum entry existing.
+  Root cause: parallel agents apparently shared a checkout/working-tree at some point, so one
+  agent's commits bled into a sibling's branch. Tell: `gh pr view <N> --json commits` showing
+  commit messages that don't match the PR's own stated feature, or `git diff origin/main
+  origin/<other-branch> -- <file>` turning up a sibling PR's feature. Fix is mechanical once
+  found (the two features were cleanly separable file-by-file in every case observed): checkout
+  the misplaced files from the wrong branch onto the right one, `git rm` them from the wrong one,
+  commit both sides separately.
+- **Real bugs behind a "tests pass" claim**, caught only by an independent re-run on a fresh
+  worktree checkout of the pushed branch (never the agent's own worktree, which can have
+  uncommitted fixes never actually pushed): a GDScript syntax error (`var [a, b] = ...` array
+  destructuring -- GDScript has no such syntax -- in `SoldierMelee.gd`), an undeclared
+  `BattleRef.Gait` preload alias in `Unit.gd` that would fail project import entirely (found
+  by a *different* agent, dispatched only to build a demo, that happened to run
+  `tools/check.sh validate` as a prerequisite step), and a targeting bug where `target_enemy`
+  stayed `null` in all 3 of a feature's own tests (root cause: the test spawned enemies outside
+  `Unit.DETECTION_RANGE`, plus a separate instant-rally bug from calling `_rout()` directly on
+  an undamaged unit with full morale).
+
+**How to apply:** never trust "tests pass" / "ready for review" from a report alone --
+re-run `tools/check.sh validate` and `tools/check.sh test` yourself from a fresh worktree of the
+actual pushed remote branch before treating a batch-dispatched PR as sound. When a file that
+should belong to one feature shows up on a different feature's branch (or a feature's own
+expected symbol is entirely absent from its own branch's diff), suspect cross-branch
+contamination before assuming the feature just wasn't written -- `git diff origin/main
+origin/<branch> | grep -i "<feature-name>"` returning nothing is a fast smoke test. Give each
+dispatched agent its own explicit, freshly-created worktree path in the prompt, and tell it not
+to reuse/assume any pre-existing worktree unless explicitly named -- this is the likely root
+cause of the cross-branch contamination cases. (`Lacaedemon/sparta`, GIA batch cleanup,
+2026-07-09 -- affected PRs #695, #698, #701/#713, #702, #706/#707, #708, #709, #711.)
+
+## A fresh worktree's first `tools/check.sh test` run needs a second `--headless --import` pass
+
+`tools/check.sh test` vendors GUT on demand (clones into `addons/gut`) when a fresh worktree
+doesn't have it yet, but Godot's `class_name` registration only happens during project import
+-- which already ran (or never ran) before GUT's files existed on disk. So the very first
+`tools/check.sh test` call in a brand-new worktree always fails with:
+
+```
+ERROR: Some GUT class_names have not been imported.  Please restart the Editor or run godot --headless --import
+Missing class_names:  ["GutErrorTracker", ... "GutTest", ...]
+```
+
+`== summary == PASS test` / `All checks passed.` still prints -- the script doesn't treat this
+as a failure, so it's easy to miss that no tests actually ran.
+
+**How to apply:** in a fresh worktree, run `<godot> --headless --import` once, then
+`tools/check.sh test` (vendors GUT), then `<godot> --headless --import` a SECOND time (registers
+GUT's newly-vendored `class_name`s), then re-run `tools/check.sh test` for the real result. A
+worktree that already has `addons/gut/` from a prior run only needs the one usual import pass.
+Hit repeatedly across many fresh worktrees during the 2026-07-09/2026-07-13 GIA batch-cleanup
+and independent-verification passes.
