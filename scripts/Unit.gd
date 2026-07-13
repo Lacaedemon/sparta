@@ -3178,9 +3178,15 @@ func _compute_engaged_soldier_indices(count: int) -> PackedInt32Array:
 func canonical_target_slot_indices(slots: PackedVector2Array, count: int) -> PackedInt32Array:
 	if in_square():
 		return UnitFormation.live_perimeter_indices(slots, count)
-	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
-	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
-	return UnitFormation.live_front_indices(slots, count, position, forward)
+	# `slots` is always a fresh rank-major grid (soldier_world_slots), where every slot in
+	# the same rank scores identically along the forward axis and ties break by ascending
+	# index -- so the front `count` slots are always exactly 0..count-1, without needing
+	# live_front_indices' general heap selection (which exists for LIVE, out-of-grid body
+	# positions, not this static snapshot).
+	var out := PackedInt32Array()
+	for i in range(mini(count, slots.size())):
+		out.push_back(i)
+	return out
 
 
 ## A soldier body's radius for this regiment's type — the drawn mark radius, so
