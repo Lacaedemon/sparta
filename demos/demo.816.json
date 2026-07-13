@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "This PR adds an investigation-only demo input script (demos/inputs/all-out-attack-rank-check.json) used to diagnose #811/#817 -- no gameplay or code change. The scenario itself (a chaotic two-100-man-Infantry melee) is exactly the kind of long/heavy battle demos/README.md's own verification-caveat entries warn against trusting for a precise-tick caption, and it exists to feed dump-state.sh for analysis, not to be watched as a clip."
+  "reason": "This PR adds an investigation-only demo input script (demos/inputs/all-out-attack-rank-check.json) used to diagnose #811/#817 -- no gameplay or code change. The scenario itself (a chaotic two-96-man-Infantry melee) is exactly the kind of long/heavy battle demos/README.md's own verification-caveat entries warn against trusting for a precise-tick caption, and it exists to feed dump-state.sh for analysis, not to be watched as a clip."
 }
