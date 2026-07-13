@@ -273,6 +273,36 @@ func test_engaged_target_pairing_recomputes_immediately_after_a_casualty() -> vo
 		"the pairing recomputes immediately against the post-casualty count, not on the old cache")
 
 
+func test_engaged_target_pairing_resets_on_full_disengage_then_recomputes_on_re_engage() -> void:
+	# A disengage must invalidate the cached pairing -- otherwise a re-engagement within the
+	# reassignment interval (no casualty in between to force a recompute) would reuse a pairing
+	# built for a completely different set of engaged bodies from the prior clash, mismatching
+	# which bodies get a canonical-slot target vs. their own slot.
+	var u := _make_unit(6)
+	u.get_parent().remove_child(u)   # detach: no _physics_process interference while we await
+	# physics frames below -- also required so engaged_soldier_indices()'s own per-(frame,
+	# count) cache doesn't serve a stale engaged/unengaged read across same-frame step() calls.
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)
+	SoldierBodies.step(u, DELTA)   # engage: computes and caches the pairing
+	assert_eq(u._engaged_target_pairing_engaged.size(), 6, "sanity: the first pairing covers all 6 bodies")
+	# Fully disengage.
+	u._engaged_linger = 0.0
+	assert_false(u.is_engaged(), "sanity: the unit is no longer engaged")
+	await get_tree().physics_frame
+	SoldierBodies.step(u, DELTA)   # unengaged tick
+	assert_true(u._engaged_target_pairing_engaged.is_empty(),
+		"disengaging clears the cached pairing rather than leaving it stale")
+	# Re-engage immediately -- same reassignment interval, no casualty in between.
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)
+	await get_tree().physics_frame
+	SoldierBodies.step(u, DELTA)
+	assert_eq(u._engaged_target_pairing_engaged.size(), 6,
+		"re-engaging forces a fresh pairing instead of reusing the stale cache from the prior" +
+		" engagement")
+
+
 func test_unengaged_targets_track_the_units_own_movement_even_while_pairing_is_cached() -> void:
 	# Regression guard: the target-slot cache must hold only the engaged-body <-> canonical-
 	# slot PAIRING, not a whole resolved target_slots array -- otherwise every unengaged

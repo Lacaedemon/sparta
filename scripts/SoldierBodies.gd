@@ -225,6 +225,16 @@ static func step(unit: Unit, delta: float) -> void:
 			var canonical_idx: int = sorted_canonical[k]
 			if engaged_idx < target_slots.size() and canonical_idx < slots.size():
 				target_slots[engaged_idx] = slots[canonical_idx]
+	else:
+		# A full disengage must invalidate the cached pairing, not just leave it stale --
+		# otherwise a re-engagement within the reassignment interval (with no casualty to
+		# change `n` in between) would reuse a pairing built for an entirely different set
+		# of engaged bodies (e.g. left-flank soldiers from a prior clash), mismatching which
+		# bodies get a canonical-slot target for up to ENGAGED_TARGET_REASSIGN_TICKS.
+		unit._engaged_target_pairing_engaged = PackedInt32Array()
+		unit._engaged_target_pairing_canonical = PackedInt32Array()
+		unit._engaged_target_reassign_frame = -1
+		unit._engaged_target_soldier_count = -1
 	# No body ever teleports: every body steers toward a desired velocity under bounded
 	# acceleration and integrates its own velocity (fixed delta), so position only ever
 	# changes by velocity * delta.
