@@ -225,12 +225,13 @@ func test_hasty_rear_move_marches_at_once_and_reforms_on_arrival() -> void:
 func test_interrupted_about_face_drops_the_parked_reform_with_the_march() -> void:
 	var u := _make_partial_unit()
 	var o := _arm_rear_move(u, Vector2(0, -200), true)
+	var turn_leaf := o.active_leaf()   # captured before the interrupt settles it
 	# A legacy march starts under the turn (an append-style pre-empt): the turn settles and
 	# the order retires, taking the parked rear march AND its reform choice with it.
 	u.has_move_target = true
 	u.move_target = Vector2(300, 0)
 	u._think(TICK)
-	assert_eq(o.turn_target, Vector2.ZERO, "the interrupting order cancels the about-face")
+	assert_eq(turn_leaf.turn_target, Vector2.ZERO, "the interrupting order cancels the about-face")
 	assert_null(u.current_order, "the turning order retired, dropping its parked march")
 	assert_eq(u._reform_timer, 0.0, "and no reform hold survives it")
 

@@ -191,13 +191,13 @@ func _stage_rear_move(u: Unit, dest: Vector2, reform: bool) -> Order:
 func test_phased_move_order_transitions_turn_to_march_once_the_about_face_hands_off() -> void:
 	var u := _make_unit()
 	var o := _stage_rear_move(u, Vector2(10, 10), false)   # hasty: no reform phase
-	assert_eq(o.phase, Order.Phase.TURN)
+	assert_eq(o.effective_phase_name(), "TURN")
 	assert_true(u.is_order_turning())
 	# The turn completes (mirrors _think()'s order-turn block on arrival).
-	u.facing = o.turn_target
+	u.facing = u.active_leaf().turn_target
 	u._settle_order_turn()
 	u._finish_order_turn()
-	assert_eq(o.phase, Order.Phase.MARCH)
+	assert_eq(o.effective_phase_name(), "MARCH")
 	assert_true(u.has_move_target, "the parked march committed on the handoff")
 	assert_eq(u.move_target, Vector2(10, 10), "toward the destination parked on the order")
 	assert_true(u._reform_on_arrival, "the hasty variant defers its reform to arrival")
@@ -207,7 +207,7 @@ func test_phased_move_order_stays_in_turn_phase_while_the_about_face_is_still_ru
 	var u := _make_unit()
 	var o := _stage_rear_move(u, Vector2(10, 10), false)
 	u._update_current_order()
-	assert_eq(o.phase, Order.Phase.TURN)
+	assert_eq(o.effective_phase_name(), "TURN")
 	assert_not_null(u.current_order)   # not retired mid-turn
 
 
@@ -216,7 +216,7 @@ func test_phased_move_order_enters_reform_when_the_about_face_hands_off_to_the_h
 	# _reform_target while the countermarch brings a full rank forward.
 	var u := _make_unit()
 	var o := _stage_rear_move(u, Vector2(10, 10), true)
-	u.facing = o.turn_target
+	u.facing = u.active_leaf().turn_target
 	u._settle_order_turn()
 	u._finish_order_turn()
 	assert_eq(o.phase, Order.Phase.REFORM)
@@ -230,13 +230,13 @@ func test_phased_move_order_enters_reform_when_the_about_face_hands_off_to_the_h
 func test_phased_move_order_transitions_reform_to_march_once_the_hold_commits() -> void:
 	var u := _make_unit()
 	var o := _stage_rear_move(u, Vector2(10, 10), true)
-	u.facing = o.turn_target
+	u.facing = u.active_leaf().turn_target
 	u._settle_order_turn()
 	u._finish_order_turn()
 	assert_eq(o.phase, Order.Phase.REFORM)
 	# The hold commits the parked march.
 	u._commit_pending_reform()
-	assert_eq(o.phase, Order.Phase.MARCH)
+	assert_eq(o.effective_phase_name(), "MARCH")
 	assert_true(u.has_move_target)
 	assert_not_null(u.current_order)   # marching, not retired
 
@@ -248,11 +248,12 @@ func test_interrupting_a_turning_move_order_drops_the_parked_rear_march() -> voi
 	# fight. The march now lives on the replaced order and dies with it.
 	var u := _make_unit()
 	var o := _stage_rear_move(u, Vector2(10, 10), false)
+	var turn_leaf := o.active_leaf()   # captured before the interrupt settles it
 	u.facing = u.facing.rotated(0.5)   # partway through the reversal
 	u.set_current_order(Order.new_attack(9))
 	u.target_enemy = _make_unit(9)
 	assert_eq(u.current_order.type, Order.Type.ATTACK)
-	assert_eq(o.turn_target, Vector2.ZERO, "the interrupted turn settled")
+	assert_eq(turn_leaf.turn_target, Vector2.ZERO, "the interrupted turn settled")
 	assert_false(u.has_move_target, "no stale rear march survives the replaced order")
 	# The fight resolves; nothing resurrects the old rear destination.
 	u.target_enemy = null

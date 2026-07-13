@@ -347,7 +347,12 @@ func _unit_record(u: Node) -> Dictionary:
 		# including its active phase for a phased order (e.g. a move-to-rear about-face vs its
 		# march). null when the unit is idle (no current order).
 		"current_order": Order.type_name(u.current_order.type) if u.current_order != null else null,
-		"order_phase": Order.phase_name(u.current_order.phase) if u.current_order != null else null,
+		# effective_phase_name(), not a plain phase_name(phase) read: a rear-move/lateral-
+		# pivot composite's TURN/MARCH/RETURN_TURN now lives in which child of the order
+		# tree is active (docs/atomic-order-decomposition-design.md), not in `phase`
+		# itself, so this bridges back to the same reported vocabulary the transcript has
+		# always used.
+		"order_phase": u.current_order.effective_phase_name() if u.current_order != null else null,
 		# The current order's pending terminal condition, e.g. "Hold: until
 		# enemy_in_range" from the design doc becomes order_guard: "ENEMY_IN_RANGE" here --
 		# null when the order carries no guard (or there is no current order at all), so a
