@@ -1,0 +1,21 @@
+{
+  "_comment": "Investigation for #811: which rank gets knocked/yanked backward -- the front (engaged) rank or a rear rank -- under sustained heavy melee. Authored fresh (not a copy of demos/inputs/all-out-attack.json): a different seed, a smaller (96-soldier, 13-file) Infantry line further left on the field, and a different pre-clash hold so the two lines close at a different point. Selects the player unit (uid 0) and arms both the soldier-ID overlay (Settings.show_soldier_ids, via #815's new set_show_soldier_ids_session) and the engaged-soldier highlight (Settings.show_engaged_highlight) so a labeled-but-not-amber soldier that visibly separates toward the rear is the tell. Camera holds a wide establishing frame, then eases into a tight zoom on the clash point once the lines are about to meet (past LOD_ZOOM_IN=1.55, so show_soldier_ids actually renders) -- one hold, one eased move, one long hold, per the no-jerky-camera convention.",
+  "seed": "20260713",
+  "show_soldier_ids": true,
+  "show_engaged_highlight": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 620, "y": 420, "count": 96},
+    {"team": 1, "type": "Infantry", "x": 620, "y": 580, "count": 96}
+  ],
+  "camera": [
+    {"tick": 0, "x": 620.0, "y": 500.0, "zoom": 1.0},
+    {"tick": 50, "x": 620.0, "y": 500.0, "zoom": 1.0},
+    {"tick": 85, "x": 620.0, "y": 460.0, "zoom": 2.5},
+    {"tick": 700, "x": 620.0, "y": 460.0, "zoom": 2.5}
+  ],
+  "steps": [
+    {"tick": 8, "click": [620, 420]},
+    {"tick": 15, "key": "Apostrophe", "ctrl": true}
+  ],
+  "state": [40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 350, 400]
+}
