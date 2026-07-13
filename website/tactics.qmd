@@ -227,6 +227,29 @@ line behind it.
   little on the way out" cost described above --- distributed relief only
   changes how the targets are assigned, not how any one swap behaves.
 
+## Acies triplex
+
+The Roman **acies triplex** deployed infantry in three lines --- hastati,
+principes, triarii --- with gaps between maniples in one line roughly
+matching their own frontage width, and the line behind offset to cover those
+gaps: a checkerboard (quincunx) pattern. Passage of lines (above) builds the
+*tactical* half --- swapping a whole tired line for a fresh one through gaps.
+**Checkerboard form-up** builds the *spatial* half: a fifth multi-unit
+form-up split mode (off by default; enable it in **☰ Menu → Form-up ---
+Checkerboard (quincunx)**, or cycle to it with <kbd>Y</kbd> once enabled) that
+lays your selection out as two staggered rows instead of one straight line.
+See [How to play: Controls](how-to-play.qmd#controls) (the "Deploy several
+units at once" entry) for the drag mechanics.
+
+This is a **one-shot layout**, not a standing formation --- a unit dragged
+into a checkerboard arrangement doesn't remember "I'm line 2" the way it
+remembers its stance or formation mode. Nothing yet models the historical
+system's chief weakness either: a gapped, multi-line formation trades
+frontage flexibility for flank exposure, so a checkerboard-formed army isn't
+currently more vulnerable to flanking than a solid line. See
+`docs/acies-triplex-design.md` in the project repository for the full design
+note and what's tracked as follow-up work.
+
 ## Stamina
 
 Every soldier carries a **stamina pool** that drains through combat and refills at rest.

@@ -1,0 +1,39 @@
+{
+  "_comment": "Checkerboard (quincunx) multi-line form-up (#805, docs/acies-triplex-design.md): four player Infantry units start bunched together just above the drag line (a short march so the formation settles within the clip), get box-selected, then a wide right-drag deploys them with the new CHECKERBOARD distribution mode (form_up_dist=4, a live SelectionManager override -- see DemoInputRecorder.gd's _form_up_dist field) instead of one straight line. The drag runs right-to-left (from's x > to's x) so the perpendicular deploy facing (_form_up_facing) points the same way the units are already marching (south, toward the drag line) -- a left-to-right drag would face them north while they march south, i.e. backward the whole way. _order_units_for_line sorts by field position along the drag direction, so a right-to-left drag puts the 2nd and 4th units (by spawn order) on the front row along the drag line, and the 1st and 3rd BEHIND them, laterally centred on the front row's gaps -- the historical quincunx offset. drill:true (no team 1 at all) since this is a pure maneuver demo with nothing to fight. Camera holds a wide establishing frame, then eases in on the settled formation once the march has had time to finish -- one hold, one eased move, one long hold.",
+  "seed": "805805",
+  "drill": true,
+  "form_up_dist": 4,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 620, "y": 500, "count": 80},
+    {"team": 0, "type": "Infantry", "x": 720, "y": 500, "count": 80},
+    {"team": 0, "type": "Infantry", "x": 820, "y": 500, "count": 80},
+    {"team": 0, "type": "Infantry", "x": 920, "y": 500, "count": 80}
+  ],
+  "camera": [
+    {"tick": 0, "x": 770.0, "y": 550.0, "zoom": 0.9},
+    {"tick": 40, "x": 770.0, "y": 550.0, "zoom": 0.9},
+    {"tick": 43, "x": 769.3, "y": 550.9, "zoom": 0.903},
+    {"tick": 46, "x": 767.2, "y": 553.6, "zoom": 0.912},
+    {"tick": 49, "x": 764.0, "y": 557.7, "zoom": 0.926},
+    {"tick": 52, "x": 759.8, "y": 563.1, "zoom": 0.944},
+    {"tick": 55, "x": 754.9, "y": 569.4, "zoom": 0.965},
+    {"tick": 58, "x": 749.3, "y": 576.6, "zoom": 0.989},
+    {"tick": 61, "x": 743.3, "y": 584.3, "zoom": 1.014},
+    {"tick": 64, "x": 737.1, "y": 592.3, "zoom": 1.041},
+    {"tick": 67, "x": 730.8, "y": 600.4, "zoom": 1.068},
+    {"tick": 70, "x": 724.6, "y": 608.3, "zoom": 1.094},
+    {"tick": 73, "x": 718.8, "y": 615.9, "zoom": 1.120},
+    {"tick": 76, "x": 713.4, "y": 622.8, "zoom": 1.143},
+    {"tick": 79, "x": 708.7, "y": 628.8, "zoom": 1.163},
+    {"tick": 82, "x": 704.8, "y": 633.8, "zoom": 1.179},
+    {"tick": 85, "x": 702.0, "y": 637.5, "zoom": 1.192},
+    {"tick": 88, "x": 700.3, "y": 639.6, "zoom": 1.199},
+    {"tick": 90, "x": 700.0, "y": 640.0, "zoom": 1.2},
+    {"tick": 1180, "x": 700.0, "y": 640.0, "zoom": 1.2}
+  ],
+  "steps": [
+    {"tick": 5, "box": {"from": [550, 450], "to": [970, 550]}},
+    {"tick": 20, "rmb_drag": {"from": [1070, 650], "to": [470, 650]}}
+  ],
+  "state": [10, 40, 120, 240, 360, 480, 600, 750, 900, 1000, 1100]
+}

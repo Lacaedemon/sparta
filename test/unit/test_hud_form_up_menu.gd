@@ -5,6 +5,7 @@ extends GutTest
 
 const HUDScript = preload("res://scripts/HUD.gd")
 const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
+const SettingsScript = preload("res://scripts/Settings.gd")
 
 var _orig_default: int
 var _orig_cycle: Array
@@ -51,6 +52,43 @@ func test_menu_builds_with_the_form_up_radio_items() -> void:
 			"the equal-depth (space) cycle checkbox is present")
 	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_WIDTH_COUNT), 0,
 			"the equal-width (count) cycle checkbox is present")
+
+
+func test_menu_builds_with_the_checkerboard_radio_and_cycle_items() -> void:
+	var hud := _hud()
+	var popup := _popup(hud)
+	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_CHECKERBOARD), 0,
+			"the checkerboard radio item is present")
+	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_CHECKERBOARD), 0,
+			"the checkerboard cycle checkbox is present")
+
+
+func test_checkerboard_cycle_checkbox_starts_unchecked_by_default() -> void:
+	# Checkerboard is deliberately excluded from Settings.form_up_dist_cycle's own DEFAULT
+	# VALUE (docs/acies-triplex-design.md) -- distinct from SelectionManager.FORM_UP_DIST_CYCLE,
+	# the canonical "every mode that exists" list, which DOES include it (see that constant's
+	# own doc comment). A fresh player's menu shouldn't show checkerboard already enrolled in
+	# the Y-key cycle.
+	var s := SettingsScript.new()
+	autofree(s)
+	Settings.form_up_dist_cycle = s.form_up_dist_cycle.duplicate()
+	var hud := _hud()
+	var popup := _popup(hud)
+	assert_false(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_CHECKERBOARD)),
+			"checkerboard's cycle checkbox is unchecked under the fresh-install default cycle")
+
+
+func test_picking_the_checkerboard_radio_sets_and_persists_the_default() -> void:
+	Settings.form_up_dist_default = SelectionManagerScript.FormUpDist.EQUAL_DEPTH
+	var hud := _hud()
+	hud._on_menu_id(HUDScript.MENU_FORMUP_CHECKERBOARD)
+	assert_eq(Settings.form_up_dist_default, SelectionManagerScript.FormUpDist.CHECKERBOARD,
+			"choosing the checkerboard item sets the persisted default")
+	var popup := _popup(hud)
+	assert_true(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_CHECKERBOARD)),
+			"and the radio re-syncs to the new default")
+	assert_true(Settings.form_up_dist_cycle.has(SelectionManagerScript.FormUpDist.CHECKERBOARD),
+			"picking checkerboard as the default also enrolls it in the cycle (default must stay reachable)")
 
 
 func test_radio_reflects_equal_depth_space_as_the_persisted_default() -> void:

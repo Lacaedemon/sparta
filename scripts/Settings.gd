@@ -42,7 +42,11 @@ const FORM_UP_DIST_EQUAL_DEPTH := 0
 const FORM_UP_DIST_EQUAL_WIDTH := 1
 const FORM_UP_DIST_EQUAL_DEPTH_SPACE := 2
 const FORM_UP_DIST_EQUAL_WIDTH_COUNT := 3
-const FORM_UP_DIST_MAX := 3
+# CHECKERBOARD (docs/acies-triplex-design.md) is a different axis from the four above (which
+# historical layout, not which dimension/basis a single line holds equal) but reuses this
+# same append-only int range rather than a parallel setting.
+const FORM_UP_DIST_CHECKERBOARD := 4
+const FORM_UP_DIST_MAX := 4
 # The setter clamps to the valid range so a corrupt/hand-edited cfg (or a stale value after
 # the modes change) can't propagate an out-of-range mode into the game.
 var form_up_dist_default: int = FORM_UP_DIST_EQUAL_DEPTH_SPACE:
@@ -57,7 +61,10 @@ var form_up_dist_default: int = FORM_UP_DIST_EQUAL_DEPTH_SPACE:
 
 # Which distribution modes the Y-key cycles through, in cycle order. An int array of
 # FORM_UP_DIST_* values; modes absent from the list are skipped when cycling. Persisted
-# so players can remove a mode they never use. Default: all modes in canonical order.
+# so players can remove a mode they never use. Default: the original four "single-line"
+# modes in canonical order -- CHECKERBOARD is deliberately left out of the default (it
+# produces a very different two-row layout), so a player opts in via the menu rather than
+# have it silently appear mid-cycle for an existing saved preference.
 # Filter out-of-range values on load (see _load) so a stale cfg doesn't break the cycle.
 var form_up_dist_cycle: Array = [FORM_UP_DIST_EQUAL_DEPTH_SPACE, FORM_UP_DIST_EQUAL_DEPTH,
 		FORM_UP_DIST_EQUAL_WIDTH, FORM_UP_DIST_EQUAL_WIDTH_COUNT]:

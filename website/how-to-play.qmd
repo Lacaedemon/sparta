@@ -763,6 +763,32 @@ Tight and Normal share the same spacing, but the loosely-spread Archers split
 the line differently from both for a genuinely density-driven reason.
 :::
 
+**Checkerboard (quincunx).** A fifth split mode, off by default (enable it in
+**☰ Menu → Form-up**): instead of one straight line, your selection alternates
+into two staggered rows --- the historical Roman *acies triplex* arrangement.
+The 1st, 3rd, 5th, ... units (by field position) form the **front row** along
+the dragged line, with wider gaps between them (roughly each unit's own
+frontage, not the ordinary small seam). The 2nd, 4th, ... units form a **rear
+row**, each centred laterally on one of the front row's gaps and standing a
+short distance behind it. See [tactics: acies triplex](tactics.qmd#acies-triplex)
+for why you'd want this.
+
+::: {#fig-checkerboard-form-up .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/checkerboard_form_up.jpg">
+  <source src="media/checkerboard_form_up.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Four Infantry regiments, box-selected and dragged into a line under the
+checkerboard split: the 2nd and 4th land on the front row, the 1st and 3rd
+land behind them, each centred on a front-row gap.
+:::
+
 **Survey all orders (hold Space).** Holding <kbd>Space</kbd> overlays every unit's
 current order on the battlefield: a dashed green line to each move destination, a red
 line to each attack target, and a teal link for support duties. At the end of each move

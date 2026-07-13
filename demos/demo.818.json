@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/checkerboard-form-up.json",
+  "caption": "Checkerboard (quincunx) multi-line form-up (#805): four bunched-up Infantry units get box-selected, then a wide right-drag deploys them with the new CHECKERBOARD distribution mode instead of one straight line. Watch the 2nd and 4th units land on the front row along the drag line, while the 1st and 3rd land BEHIND them, laterally centred on the front row's gaps -- the historical acies-triplex quincunx offset (docs/acies-triplex-design.md). Also watch the blocks stay tidy rectangles throughout -- a form-up now holds its commanded facing for the whole march (instead of centre-pivoting toward its travel direction and snapping back on arrival), and its reform hold now waits for the ranks to actually settle before stepping off.",
+  "fixed_fps": 60,
+  "max_frames": 1180,
+  "fps": 30,
+  "width": 720
+}
