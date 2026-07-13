@@ -388,3 +388,35 @@ formation, what attack angle(s), what timing best demonstrates the specific beha
 review — then write it fresh. Re-verify its timing empirically via `dump-state.sh` the same
 way any new scenario needs verification, per the sections above. (`Lacaedemon/sparta` PR
 #758, 2026-07-11.)
+
+## A precise-tick caption claim on a LONG battle: verify against CI's own posted transcript, not a local `dump-state.sh` run
+
+The "verify before claiming" convention above (and the demo-state-dump entries in `sparta.md`)
+assumes a local `dump-state.sh` run is an authoritative stand-in for what CI will show. That
+holds for short/simple scenarios, but breaks down for a **long, chaotic** battle (many soldiers
+colliding over 700+ ticks): a local Windows headless run and CI's Linux run of the **identical
+seed** can diverge in their exact tick-by-tick numbers past some point, even though the AI
+decision logic itself and every early tick match exactly.
+
+**Concrete case:** PR #794's reserve-commit demo (`general-doctrine-reserves.json`, a ~900-tick
+battle) needed a caption stating the exact tick a reserve unit first engages. A local
+`dump-state.sh` run and CI's own posted per-tick transcript for the PR agreed byte-for-byte
+through tick 720 (identical morale/soldier counts at every checked 60-tick interval), then
+diverged: by tick 780 the local run already showed the unit `FIGHTING` while CI's transcript
+still showed `MOVING`, with small differences elsewhere (one unit's morale 88.5 vs 89.2). A
+caption written from the local run ("engaged by tick 780") was flagged by review as wrong
+against CI's own transcript (still `MOVING` at 780, `FIGHTING` only by 840) — the local run's
+claim was internally consistent and directly verified, just verified against the wrong source.
+This is very likely floating-point drift compounding over hundreds of ticks of live soldier
+collision physics between platforms/builds, not a bug in the PR's own logic (early-tick
+agreement was exact, and the same-process determinism tests — replay-identical-on-same-seed —
+still pass, since those compare two runs *within the same process*, not across platforms).
+
+**How to apply:** for a demo covering a long/chaotic battle (rule of thumb: several hundred
+ticks of live multi-unit combat, not a short scripted maneuver), don't trust a local
+`dump-state.sh` run alone for a **precise**-tick claim in a caption — cross-check against CI's
+own posted transcript comment for the actual PR/commit before finalizing the wording, or word
+the claim with enough tick-range slack (a 60-tick AI-decision window, e.g. "between tick 780
+and 840") to be robust to this kind of drift. A local run is still fine for a first-pass
+sanity check and for short/simple scenarios where no divergence has ever been observed.
+(`Lacaedemon/sparta` PR #794, 2026-07-12.)
