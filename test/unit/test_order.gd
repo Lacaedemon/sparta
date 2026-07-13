@@ -111,9 +111,9 @@ func test_new_stance_carries_stance_and_rank_relief_toggle() -> void:
 
 
 func test_new_relief_starts_with_no_pass_through_link() -> void:
-	# The swap link (relief_partner) is armed by UnitRelief.begin at the apply site,
+	# The swap link (friendly_target) is armed by UnitRelief.begin at the apply site,
 	# never by the constructor.
-	assert_null(Order.new_relief(3).relief_partner)
+	assert_null(Order.new_relief(3).friendly_target)
 
 
 # --- Phase 4: guard vocabulary -----------------------------------------------

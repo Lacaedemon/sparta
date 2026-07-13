@@ -126,7 +126,8 @@ var selected: bool = false
 # (_interrupt_current_order). As of phase 3 the queue is also authoritative for the ROUTE:
 # a queued waypoint leg IS a queued MOVE order (there is no parallel waypoint list), with
 # move_target/has_move_target kept as the in-flight leg's execution state, and a line
-# relief's swap state lives on the RELIEF order (Order.relief_partner). The in-flight
+# relief's swap state lives on the RELIEF order (Order.friendly_target, a generic
+# pass-through link any order type can arm). The in-flight
 # targeting references (target_enemy / support_target) stay unit fields: the reactive
 # layer (enemy AI, auto-engage) writes target_enemy directly with no order behind it, so
 # they are execution state the queue reads -- _update_current_order retires
@@ -1203,13 +1204,14 @@ func _update_current_order() -> void:
 			# enemy died at that instant); when that happens it instead advances the reliever
 			# onto the tired unit's slot (has_move_target = true), so target_enemy == null alone
 			# doesn't mean the relief is done -- it can also mean "no foe to fight, still walking
-			# into position." A live pass-through link (relief_partner still set) keeps the order
-			# too: the swap itself is the order's work, and the exemption dies with the order, so
-			# retiring mid-pass would shove the interpenetrating pair apart. Only retire once no
-			# target remains to fight, no move is in flight, AND the swap has resolved
-			# (UnitRelief.update clears the link once the pair is apart or the partner is gone).
+			# into position." A live pass-through link (friendly_target still set) keeps the
+			# order too: the swap itself is the order's work, and the exemption dies with the
+			# order, so retiring mid-pass would shove the interpenetrating pair apart. Only
+			# retire once no target remains to fight, no move is in flight, AND the swap has
+			# resolved (UnitRelief.update clears the link once the pair is apart or the
+			# partner is gone).
 			if target_enemy == null and not has_move_target \
-					and current_order.relief_partner == null:
+					and current_order.friendly_target == null:
 				retire_current_order()
 		Order.Type.SUPPORT:
 			if support_target == null:
@@ -3289,9 +3291,9 @@ func order_summary() -> String:
 		# lookup -- the reliever holds the tired unit's foe as target_enemy, which would
 		# otherwise report a plain "Attacking".
 		if current_order != null and current_order.type == Order.Type.RELIEF \
-				and current_order.relief_partner != null \
-				and is_instance_valid(current_order.relief_partner):
-			return "Relieving %s" % current_order.relief_partner.unit_name
+				and current_order.friendly_target != null \
+				and is_instance_valid(current_order.friendly_target):
+			return "Relieving %s" % current_order.friendly_target.unit_name
 		# A routing target still counts (it's still a live, fightable enemy --- see
 		# UnitTargeting.nearest_enemy's include_routing), so the HUD keeps reporting
 		# "Attacking" rather than falling through to "Holding position".
@@ -3352,8 +3354,8 @@ func formation_summary() -> String:
 ## routers (a separate state/group) are never exempt and still get shouldered.
 ## Line relief and merging build on this same exemption.
 func _separation_exempt(other: Unit) -> bool:
-	if _relief_paired_with(other):
-		return true   # the swapping pair interpenetrates during a relief
+	if _friendly_target_paired_with(other):
+		return true   # a live friendly_target link lets the pair interpenetrate (e.g. a relief swap)
 	if other.team != team:
 		return false
 	# FIGHTING and ROUTING are implicitly non-exempt (neither is IDLE/MOVING), so
@@ -3362,18 +3364,19 @@ func _separation_exempt(other: Unit) -> bool:
 		or (state == State.IDLE and other.state == State.MOVING)
 
 
-## True when this unit and `other` are the two sides of a live relief swap. The swap's
-## execution state lives on the reliever's RELIEF order (Order.relief_partner -- phase 3),
-## so the pair link is checked from either side: my live relief names the other, or the
-## other's live relief names me. The tired unit carries no state of its own.
-func _relief_paired_with(other: Unit) -> bool:
-	return _relief_names(self, other) or _relief_names(other, self)
+## True when this unit and `other` are the two sides of a live friendly_target link. The
+## link's execution state lives on whichever order armed it (Order.friendly_target -- a
+## generic hook any order type can set, not just RELIEF), so the pair check reads either
+## side: my current order names the other, or the other's current order names me. The
+## named-but-not-linking side carries no state of its own.
+func _friendly_target_paired_with(other: Unit) -> bool:
+	return _friendly_target_names(self, other) or _friendly_target_names(other, self)
 
 
-## Whether `a`'s current order is a relief whose live pass-through link names `b`.
-static func _relief_names(a: Unit, b: Unit) -> bool:
+## Whether `a`'s current order has a live friendly_target link naming `b`.
+static func _friendly_target_names(a: Unit, b: Unit) -> bool:
 	var o: Order = a.current_order
-	return o != null and o.type == Order.Type.RELIEF and o.relief_partner == b
+	return o != null and o.friendly_target == b
 
 
 ## This unit's share of a separation correction. Normally a pair splits it 50/50

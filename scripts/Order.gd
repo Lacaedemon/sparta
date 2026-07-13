@@ -14,7 +14,7 @@ extends RefCounted
 ##
 ## Phase 3 finishes absorbing the route and the relief swap: a queued waypoint leg IS a
 ## queued MOVE order (the parallel Unit.waypoints list is gone), and a line relief's
-## pass-through execution state lives here (relief_partner) instead of on both units.
+## pass-through execution state lives here (friendly_target) instead of on both units.
 ## The in-flight targeting references (Unit.target_enemy / support_target) stay on the
 ## unit: the reactive layer (enemy AI, auto-engage) writes target_enemy directly with no
 ## order behind it, so they are execution state the queue reads, not queue state.
@@ -196,14 +196,18 @@ var reform: bool = false
 ## (see Battle._apply_order_cmd), leaves it at zero. Set once at issue time, consumed (and
 ## cleared to zero, so it only fires once) by Unit._think's arrival handler.
 var pivot_return_angle: float = 0.0
-## RELIEF only: the tired ally this order is swapping with, while the pass-through
-## exemption is live -- Unit._separation_exempt lets the pair interpenetrate as long as
-## either side's current RELIEF order names the other. UnitRelief.update clears it (the
-## swap has resolved) once the pair is apart or the partner has left the line, and the
-## whole link dies with the order on an interrupt -- the swap's execution state lives
-## here, not on the two units. null when idle or resolved. (target_uid still carries the
-## ally's uid for the transcript; this is the resolved node the exemption compares.)
-var relief_partner: Unit = null
+## A live pass-through link to a friendly unit, settable by ANY order type -- not just
+## RELIEF. While armed, Unit._separation_exempt lets the two units interpenetrate instead
+## of shoving each other apart, and resolve_friendly_target (below) clears the link once
+## the pair is apart or the partner has left the line. The whole link dies with the order
+## on an interrupt, since the pass-through's execution state lives here, not on either
+## unit. null when idle or resolved. RELIEF is the first consumer (UnitRelief.begin arms
+## it, UnitRelief.update resolves it via the shared helper below); a future multi-unit
+## maneuver that needs the same "walk through a named friendly" behavior sets this same
+## field and gets the exemption and resolution for free, with no Unit.gd changes.
+## (target_uid still carries a RELIEF order's ally uid for the transcript; this is the
+## resolved node the exemption compares.)
+var friendly_target: Unit = null
 
 # --- Terminal-condition / guard state (phase 4) -------------------------------
 # The guard itself (which condition, and its parameter) is set once at issue time and never
@@ -243,6 +247,37 @@ func with_guard(guard_kind: int, param: float = 0.0, uid: int = -1) -> Order:
 	guard_param = param
 	guard_uid = uid
 	return self
+
+
+## Resolve `u`'s live friendly_target link on its current order, if any: clears it once
+## the named partner has left the line (gone, dead, or routing) or the two units have
+## moved clear of each other. No-op when there's no live link, so any maneuver's own
+## per-tick update can call this unconditionally.
+##
+## The "clear of each other" distance adds each unit's own soldier_block_extent() (the
+## same reach the render/shadow already size off, a function of soldier count, frontage
+## and formation density -- not a flat per-type radius) on top of the regiments'
+## separation_radius floor. The pass-through exemption this resolves is all-or-nothing
+## across every soldier-body pair between the two regiments (see SoldierSteering), so
+## clearing it on the regiments' bare CENTER distance alone can fire while a wide
+## LOOSE-order block's edge is still well inside the other block -- every overlapping
+## body pair then gets shoved apart on the same tick, a chaotic swirl. Extracted from
+## UnitRelief so any future order type that arms friendly_target reuses this exact
+## distance math instead of re-deriving it (and risking that same bug).
+static func resolve_friendly_target(u: Unit) -> void:
+	var order: Order = u.current_order
+	if order == null or order.friendly_target == null:
+		return
+	var partner: Unit = order.friendly_target
+	var gone: bool = not is_instance_valid(partner) \
+		or partner.state == Unit.State.DEAD \
+		or partner.state == Unit.State.ROUTING
+	var apart: bool = is_instance_valid(partner) \
+		and u.position.distance_to(partner.position) \
+			> u.separation_radius + partner.separation_radius \
+				+ u.soldier_block_extent() + partner.soldier_block_extent()
+	if gone or apart:
+		order.friendly_target = null
 
 
 static func type_name(value: int) -> String:

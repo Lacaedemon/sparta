@@ -383,7 +383,8 @@ the support-ward decision is recorded here.
   *behind* an in-flight rear-move about-face instead of pre-empting the turn.
   `move_target` / `has_move_target` stay as the in-flight leg's execution state.
 - **Relief split, as specced.** The inter-unit swap's execution state lives on
-  the reliever's `RELIEF` order (`Order.relief_partner`): the pass-through
+  the reliever's `RELIEF` order (`Order.friendly_target`, later generalized into a
+  pass-through link any order type can arm): the pass-through
   separation exemption is checked from either side off that one link, the tired
   unit's retreat is a queue-visible `MOVE` order of its own, and the link — so
   the exemption — dies with the order on an interrupt. The order retires only
