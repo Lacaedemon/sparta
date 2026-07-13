@@ -155,9 +155,23 @@ static func step(unit: Unit, delta: float) -> void:
 			unit._sim_soldier_stamina[p] + SoldierCombat.RHO_STAMINA * delta
 				- (SoldierCombat.KAPPA_P if just_rose else 0.0),
 			0.0, maxs)
+	var engaged_indices: PackedInt32Array = unit.engaged_soldier_indices(n)
 	var engaged := {}
-	for idx in unit.engaged_soldier_indices(n):
+	for idx in engaged_indices:
 		engaged[idx] = true
+	# Engaged bodies are chosen by CURRENT POSITION (engaged_soldier_indices' live_front /
+	# live_perimeter selection), so after a casualty compacts the per-soldier arrays they can
+	# land on any array index -- slots[i] for those same i's is then just whatever canonical
+	# grid cell array position i happens to hold post-compaction, not "the front/perimeter of
+	# the formation". Map each live-engaged body to the matching-rank CANONICAL target slot
+	# instead (the k-th live-selected body arrives at the k-th canonical front/perimeter
+	# slot), so an engaged body's own arrival target agrees with what SoldierBodies.couple()
+	# measures it against -- see Unit.canonical_target_slot_indices.
+	var engaged_targets := {}
+	if not engaged_indices.is_empty():
+		var canonical: PackedInt32Array = unit.canonical_target_slot_indices(slots, engaged_indices.size())
+		for k in range(mini(engaged_indices.size(), canonical.size())):
+			engaged_targets[engaged_indices[k]] = slots[canonical[k]]
 	# No body ever teleports: every body steers toward a desired velocity under bounded
 	# acceleration and integrates its own velocity (fixed delta), so position only ever
 	# changes by velocity * delta.
@@ -199,8 +213,9 @@ static func step(unit: Unit, delta: float) -> void:
 		# drill turns and the wheel, read off current_order) AND the engage re-face (a fighting
 		# unit turning its front onto a new enemy) -- see Unit.is_maneuver_turning.
 		var turning: bool = unit.is_maneuver_turning()
+		var own_slot: Vector2 = engaged_targets[i] if engaged_targets.has(i) else slots[i]
 		var to_slot: Vector2 = Vector2.ZERO if turning \
-				else slots[i] - unit._sim_soldier_pos[i]
+				else own_slot - unit._sim_soldier_pos[i]
 		# Arrival: approach the slot at a speed that decelerates to 0 by the time the body
 		# reaches it (v = sqrt(2 a d)), capped at the unit's jog pace, then move the body's
 		# velocity toward that desired velocity at the bounded acceleration. No spring, so no
@@ -380,7 +395,11 @@ static func couple(unit: Unit, delta: float) -> void:
 	if count > 0:
 		for i in indices:
 			body_centroid += unit._sim_soldier_pos[i]
-			slot_centroid += slots[i]
+		var target_indices: PackedInt32Array = unit.canonical_target_slot_indices(slots, count)
+		for j in target_indices:
+			slot_centroid += slots[j]
+		if target_indices.size() != count:
+			count = maxi(1, target_indices.size())
 	else:
 		count = n
 		for i in range(n):

@@ -3162,6 +3162,27 @@ func _compute_engaged_soldier_indices(count: int) -> PackedInt32Array:
 	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
 
 
+## The `count` formation SLOTS (not live bodies) that count as "the front" (or, for
+## Square/Schiltron, "the outer ring") -- the canonical counterpart to
+## `engaged_soldier_indices`, scored with the exact same selection functions but applied to
+## the STATIC `slots` array instead of live `_sim_soldier_pos`. `engaged_soldier_indices`
+## picks bodies by their CURRENT position, so after a casualty compacts the per-soldier
+## arrays (SoldierMelee.reap's remove_at splice), the returned array indices can land
+## anywhere in the grid -- `slots[i]` for those same indices is then just whatever canonical
+## cell array position `i` happens to hold post-compaction, not "the front/perimeter of the
+## formation". This gives SoldierBodies.step()/couple() a like-for-like reference: the
+## live-engaged group's actual bodies vs. where a group that size belongs by the formation's
+## own design, rather than each body vs. its own (possibly scattered) slot. Pure --
+## `slots` is a caller-supplied snapshot, so this has no side effects and is directly
+## unit-testable.
+func canonical_target_slot_indices(slots: PackedVector2Array, count: int) -> PackedInt32Array:
+	if in_square():
+		return UnitFormation.live_perimeter_indices(slots, count)
+	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
+	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
+	return UnitFormation.live_front_indices(slots, count, position, forward)
+
+
 ## A soldier body's radius for this regiment's type — the drawn mark radius, so
 ## cavalry (horses) take more room than foot. The center-to-center floor between
 ## two soldiers is the sum of their radii, mirroring the regiment circle's

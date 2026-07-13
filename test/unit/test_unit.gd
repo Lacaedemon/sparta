@@ -2533,6 +2533,54 @@ func test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indi
 		"the soldier now physically at the rear (front_idx's array slot, post-swap) is excluded")
 
 
+func test_canonical_target_slot_indices_is_the_front_rank_for_a_normal_formation() -> void:
+	# Unlike engaged_soldier_indices (scored on LIVE, possibly casualty-reindexed positions),
+	# canonical_target_slot_indices scores the STATIC slot grid -- so it always recovers the
+	# true canonical front-rank slots (array indices 0..cutoff-1 in a fresh rank-major grid),
+	# regardless of which array indices live position happens to select as "engaged". This is
+	# what lets SoldierBodies.step()/couple() give a live-engaged body a real front-slot
+	# target instead of whatever canonical cell its own (possibly reindexed) array position
+	# happens to hold post-compaction (#792).
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	var files: int = u.formation_files(n)
+	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	assert_true(cutoff < n, "sanity: the engaged budget is a genuine subset of the whole block")
+	var slots: PackedVector2Array = u.soldier_world_slots(n)
+	var target: PackedInt32Array = u.canonical_target_slot_indices(slots, cutoff)
+	assert_eq(target.size(), cutoff, "returns exactly `count` canonical slots")
+	for i in range(cutoff):
+		assert_true(target.has(i),
+			"the canonical front rank(s) are indices 0..cutoff-1 in a fresh rank-major grid (missing %d)" % i)
+
+
+func test_canonical_target_slot_indices_delegates_to_live_perimeter_when_squared() -> void:
+	# Mirrors test_engaged_soldier_indices_is_the_whole_perimeter_when_squared's own delegation
+	# check: UnitFormation.live_perimeter_indices (farthest-from-centroid) is only an
+	# APPROXIMATION of square_is_perimeter's true index-based ring (see that function's own
+	# docstring), so this checks the WIRING -- canonical_target_slot_indices runs the same
+	# live_perimeter_indices selection, just against the static `slots` grid instead of live
+	# body positions -- not an exact match against square_is_perimeter's set.
+	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	var files: int = UnitFormation.square_files(n)
+	var ring_size: int = 0
+	for i in range(n):
+		if UnitFormation.square_is_perimeter(i, n, files):
+			ring_size += 1
+	var slots: PackedVector2Array = u.soldier_world_slots(n)
+	var target: PackedInt32Array = u.canonical_target_slot_indices(slots, ring_size)
+	assert_eq(target, UnitFormation.live_perimeter_indices(slots, ring_size),
+		"canonical_target_slot_indices delegates to the live-position selection for SQUARE")
+
+
 func test_engaged_soldier_indices_memoizes_within_the_same_physics_tick() -> void:
 	# Called from up to six places per tick; the second call with the same
 	# (Engine.get_physics_frames(), count) must reuse the first call's cached result rather
