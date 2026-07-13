@@ -1,13 +1,13 @@
 extends GutTest
-## Regression guard for the residual melee-lock swirl (#792, the gap left after #773's
-## enemy-contact impulse symmetry fix). Two matched Infantry regiments clash head-on and
-## grind for hundreds of ticks; each regiment's `facing` should stay close to its starting
-## heading, not visibly pivot around the clash point. Live-battle, tick by tick, per this
-## repo's own convention of verifying maneuver/collision physics against real body positions
-## rather than eyeballing demo frames -- see .claude/memories/sparta.md.
+## Regression guard for the residual melee-lock swirl left over after the enemy-contact
+## impulse symmetry fix. Two matched Infantry regiments clash head-on and grind for
+## hundreds of ticks; each regiment's `facing` should stay close to its starting heading,
+## not visibly pivot around the clash point. Live-battle, tick by tick, per this repo's own
+## convention of verifying maneuver/collision physics against real body positions rather
+## than eyeballing demo frames -- see .claude/memories/sparta.md.
 ##
 ## Root cause (see the PR for the full instrumentation writeup): `Unit.engaged_soldier_indices()`
-## selects the engaged front rank/perimeter by LIVE POSITION (#780), but after a casualty
+## selects the engaged front rank/perimeter by LIVE POSITION, but after a casualty
 ## compacts the per-soldier arrays (SoldierMelee.reap's remove_at splice), a live-selected
 ## body's own array index no longer maps to a front/perimeter formation slot --
 ## SoldierBodies.step()'s arrival term and SoldierBodies.couple()'s drift measurement were

@@ -2540,7 +2540,7 @@ func test_canonical_target_slot_indices_is_the_front_rank_for_a_normal_formation
 	# regardless of which array indices live position happens to select as "engaged". This is
 	# what lets SoldierBodies.step()/couple() give a live-engaged body a real front-slot
 	# target instead of whatever canonical cell its own (possibly reindexed) array position
-	# happens to hold post-compaction (#792).
+	# happens to hold post-compaction.
 	var u := _make_unit(120)
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING
