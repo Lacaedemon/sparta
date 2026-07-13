@@ -156,9 +156,14 @@ static func step(unit: Unit, delta: float) -> void:
 				- (SoldierCombat.KAPPA_P if just_rose else 0.0),
 			0.0, maxs)
 	var engaged_indices: PackedInt32Array = unit.engaged_soldier_indices(n)
-	var engaged := {}
+	# Membership test for the per-soldier loop below, as a packed bool array instead of a
+	# Dictionary -- every tick, every unit builds one of these (engaged or not), so a
+	# Dictionary's per-entry hashing/boxing overhead here is pure per-tick waste versus a
+	# flat byte lookup.
+	var is_engaged := PackedByteArray()
+	is_engaged.resize(n)
 	for idx in engaged_indices:
-		engaged[idx] = true
+		is_engaged[idx] = 1
 	# Engaged bodies are chosen by CURRENT POSITION (engaged_soldier_indices' live_front /
 	# live_perimeter selection), so after a casualty compacts the per-soldier arrays they can
 	# land on any array index -- slots[i] for those same i's is then just whatever canonical
@@ -171,13 +176,16 @@ static func step(unit: Unit, delta: float) -> void:
 	# at one end of the live front rank a target slot at the opposite end. Sort both sides by
 	# actual lateral position first (Unit.pairing_sort_indices) so the k-th live-selected body
 	# arrives at the k-th canonical slot NEAREST ITS OWN POSITION, not just its k-th array rank.
-	var engaged_targets := {}
+	# `target_slots` starts as a copy of `slots` (every unengaged body's target is just its own
+	# slot) and only the engaged entries get overwritten below -- a packed array instead of a
+	# Dictionary keyed by array index + a `.has()`/fallback branch per soldier.
+	var target_slots: PackedVector2Array = slots.duplicate()
 	if not engaged_indices.is_empty():
 		var canonical: PackedInt32Array = unit.canonical_target_slot_indices(slots, engaged_indices.size())
 		var sorted_engaged: PackedInt32Array = unit.pairing_sort_indices(engaged_indices, unit._sim_soldier_pos)
 		var sorted_canonical: PackedInt32Array = unit.pairing_sort_indices(canonical, slots)
 		for k in range(mini(sorted_engaged.size(), sorted_canonical.size())):
-			engaged_targets[sorted_engaged[k]] = slots[sorted_canonical[k]]
+			target_slots[sorted_engaged[k]] = slots[sorted_canonical[k]]
 	# No body ever teleports: every body steers toward a desired velocity under bounded
 	# acceleration and integrates its own velocity (fixed delta), so position only ever
 	# changes by velocity * delta.
@@ -210,7 +218,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# coupling slides the two apart. _sim_steer is zero for any body not gathered by the
 		# steering pass this tick (it clears all steer first), so this reduces to the plain
 		# march for the uncrowded bulk.
-		var feed_forward: Vector2 = unit._sim_steer[i] if engaged.has(i) \
+		var feed_forward: Vector2 = unit._sim_steer[i] if is_engaged[i] == 1 \
 				else unit._approach_velocity + unit._sim_steer[i]
 		# During an in-place turn the slot targets rotate with unit.facing, which would drag
 		# bodies to intermediate positions and back. Drop the arrival term so bodies aim only at
@@ -219,7 +227,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# drill turns and the wheel, read off current_order) AND the engage re-face (a fighting
 		# unit turning its front onto a new enemy) -- see Unit.is_maneuver_turning.
 		var turning: bool = unit.is_maneuver_turning()
-		var own_slot: Vector2 = engaged_targets[i] if engaged_targets.has(i) else slots[i]
+		var own_slot: Vector2 = target_slots[i]
 		var to_slot: Vector2 = Vector2.ZERO if turning \
 				else own_slot - unit._sim_soldier_pos[i]
 		# Arrival: approach the slot at a speed that decelerates to 0 by the time the body
@@ -401,11 +409,25 @@ static func couple(unit: Unit, delta: float) -> void:
 	if count > 0:
 		for i in indices:
 			body_centroid += unit._sim_soldier_pos[i]
-		var target_indices: PackedInt32Array = unit.canonical_target_slot_indices(slots, count)
-		for j in target_indices:
-			slot_centroid += slots[j]
-		if target_indices.size() != count:
-			count = maxi(1, target_indices.size())
+		# canonical_target_slot_indices' non-Square branch is always the contiguous
+		# 0..target_count-1 (see its own docstring: `slots` is a fresh rank-major grid, so
+		# the front `count` slots are always exactly those indices) -- sum straight over that
+		# range instead of materializing the index array just to walk it right back off
+		# (every engaged unit pays this once per tick in couple(), on top of step()'s own call to
+		# canonical_target_slot_indices()).
+		if unit.in_square():
+			var target_indices: PackedInt32Array = unit.canonical_target_slot_indices(slots, count)
+			for j in target_indices:
+				slot_centroid += slots[j]
+			if target_indices.size() != count:
+				count = maxi(1, target_indices.size())
+		else:
+			# `count` (engaged-soldier indices, a subset of this unit's own `n` bodies) can
+			# never exceed `slots.size()` (== n, guaranteed by the early-return above), so
+			# the sum always runs over exactly `count` slots -- no size-mismatch fallback
+			# needed here, unlike the Square branch's live-perimeter selection above.
+			for j in range(count):
+				slot_centroid += slots[j]
 	else:
 		count = n
 		for i in range(n):
