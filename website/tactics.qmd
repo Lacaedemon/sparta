@@ -247,8 +247,8 @@ remembers its stance or formation mode. Nothing yet models the historical
 system's chief weakness either: a gapped, multi-line formation trades
 frontage flexibility for flank exposure, so a checkerboard-formed army isn't
 currently more vulnerable to flanking than a solid line. See
-[`docs/acies-triplex-design.md`](https://github.com/Lacaedemon/sparta/blob/main/docs/acies-triplex-design.md)
-for the full design note and what's tracked as follow-up work.
+`docs/acies-triplex-design.md` in the project repository for the full design
+note and what's tracked as follow-up work.
 
 ## Stamina
 
