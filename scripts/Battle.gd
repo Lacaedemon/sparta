@@ -86,15 +86,16 @@ enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYC
 ## inside SPRINT_START_DISTANCE (see Unit._move_to).
 enum Gait { WALK, JOG, RUN, SPRINT }
 
-## How a multi-unit attack order distributes its target among the ordered units.
-## Focused (default): every unit attacks the same enemy.
-## Distributed: units spread across nearby enemies sorted by proximity to the
-## clicked target; extra units cycle through the list.
+## How a multi-unit attack or line-relief order distributes its target among the
+## ordered units. Focused (default): every unit attacks the same enemy, or (for a
+## relief) every reliever swaps with the one clicked friendly. Distributed: units
+## spread across nearby enemies (attack) or nearby engaged friendlies (relief),
+## sorted by proximity to the clicked target; extra units cycle through the list.
 enum GroupAttackMode { FOCUSED = 0, DISTRIBUTED = 1 }
 
 const GROUP_ATTACK_MODE_NAMES := {
-	GroupAttackMode.FOCUSED: "Attack: focused",
-	GroupAttackMode.DISTRIBUTED: "Attack: distributed",
+	GroupAttackMode.FOCUSED: "Group order: focused",
+	GroupAttackMode.DISTRIBUTED: "Group order: distributed",
 }
 
 const GAIT_NAMES := {
@@ -1158,6 +1159,30 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			var da: float = a.position.distance_to(ref_pos)
 			var db: float = b.position.distance_to(ref_pos)
 			return da < db if da != db else a.uid < b.uid)
+	# Distributed relief mirrors distributed attack: pre-sort every engaged friendly
+	# near the clicked target so each fresh unit can take over a DIFFERENT tired
+	# unit's fight -- a whole line passing through gaps in the line behind it
+	# (triplex acies), instead of every reliever swapping with the one unit clicked
+	# while the rest just pile onto its fight. The clicked target itself is included
+	# in the scan, so a single reliever (or a candidate pool of exactly one) still
+	# resolves to the plain single-pair swap below. Only engaged (FIGHTING) friendlies
+	# are candidates -- relieving an idle or already-routing unit does not fit the
+	# maneuver. Gated on mode != SUPPORT so a support ward (which shadows one ally,
+	# not a line) is never spread this way.
+	var relief_targets: Array = []
+	if cmd.get("group_attack", GroupAttackMode.FOCUSED) == GroupAttackMode.DISTRIBUTED \
+			and target_unit != null and not is_move and mode != OrderMode.SUPPORT:
+		for node in get_tree().get_nodes_in_group("units"):
+			var candidate: Unit = node as Unit
+			if candidate == null or candidate.team != target_unit.team \
+					or candidate.state != Unit.State.FIGHTING:
+				continue
+			relief_targets.append(candidate)
+		var relief_ref_pos: Vector2 = target_unit.position
+		relief_targets.sort_custom(func(a: Unit, b: Unit) -> bool:
+			var da: float = a.position.distance_to(relief_ref_pos)
+			var db: float = b.position.distance_to(relief_ref_pos)
+			return da < db if da != db else a.uid < b.uid)
 	var relieved: bool = false
 	var relief_foe: Unit = null
 	for uid in cmd["units"]:
@@ -1212,6 +1237,22 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				u.target_enemy = null
 				u.has_move_target = false
 				u.set_current_order(Order.new_support(target_unit.uid))
+			elif relief_targets.size() > 1:
+				# Distributed relief: pair this ordered unit with its own tired target,
+				# via the same proximity-sorted slot scheme distributed attack uses, so a
+				# whole fresh line passes through a whole tired line at once -- each
+				# reliever swaps with a DIFFERENT unit instead of every reliever swapping
+				# with the one clicked. Later relievers wrap around and repeat an earlier
+				# pairing when there are more relievers than tired candidates, the same
+				# wraparound distributed attack already uses.
+				var relief_slot: int = cmd["units"].find(uid)
+				var tired: Unit = relief_targets[relief_slot % relief_targets.size()]
+				var distributed_relief_order := Order.new_relief(tired.uid)
+				u.set_current_order(distributed_relief_order)
+				UnitRelief.begin(u, tired, distributed_relief_order)
+				# Skip the order-response delay -- every distributed reliever needs to
+				# advance immediately or its own tired partner retreats into a gap.
+				continue
 			elif not relieved:
 				# Relief: the first reliever swaps with the tired unit; any others
 				# just advance on the same fight so they don't shove the retreating unit.

@@ -1,0 +1,24 @@
+{
+  "_comment": "Passage of lines (triplex acies): a fresh player reserve line stands behind a thinned player front line already fighting an enemy line. The player box-selects the three fresh units, presses X to switch the group-order mode to Distributed, then right-clicks the CENTER tired unit. Distributed relief pairs each fresh unit with its own nearby engaged tired unit -- sorted by proximity to the CLICKED unit, not to the reliever's own position, so a pairing can cross rather than always matching the nearest fresh unit to the nearest tired one -- instead of every reliever piling onto the single fight clicked. All three tired units get a real retreat order and all three fresh units close on their own partner's fight by the end of the clip.",
+  "seed": "471377",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "count": 40, "x": 600, "y": 370},
+    {"team": 0, "type": "Infantry", "count": 40, "x": 820, "y": 370},
+    {"team": 0, "type": "Infantry", "count": 40, "x": 1040, "y": 370},
+    {"team": 0, "type": "Infantry", "count": 40, "x": 600, "y": 470},
+    {"team": 0, "type": "Infantry", "count": 40, "x": 820, "y": 470},
+    {"team": 0, "type": "Infantry", "count": 40, "x": 1040, "y": 470},
+    {"team": 1, "type": "Infantry", "count": 40, "x": 600, "y": 560},
+    {"team": 1, "type": "Infantry", "count": 40, "x": 820, "y": 560},
+    {"team": 1, "type": "Infantry", "count": 40, "x": 1040, "y": 560}
+  ],
+  "camera": [
+    {"tick": 0, "x": 820.0, "y": 430.0, "zoom": 0.85}
+  ],
+  "steps": [
+    {"tick": 20, "box": {"from": [520, 320], "to": [1120, 420]}},
+    {"tick": 30, "key": "X"},
+    {"tick": 135, "rmb_click": [820, 512]}
+  ],
+  "state": [20, 130, 145, 160, 200, 215]
+}

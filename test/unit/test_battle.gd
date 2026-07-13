@@ -618,6 +618,37 @@ func test_relief_order_skips_response_delay() -> void:
 			"the primary reliever is not delayed — it advances into the gap immediately")
 
 
+func test_focused_relief_swaps_only_the_first_and_piles_the_rest_onto_its_fight() -> void:
+	# Regression guard for the pre-existing FOCUSED behaviour (the default, and every
+	# relief order recorded before distributed relief existed): with several fresh
+	# units ordered onto the SAME tired friendly and no group_attack override (so it
+	# defaults to FOCUSED), only the first swaps with the tired unit; every other
+	# ordered unit just attacks the same foe the primary took over, rather than each
+	# getting its own tired partner.
+	var fresh1 := _unit(1, Vector2.ZERO)
+	fresh1.team = 0
+	var fresh2 := _unit(3, Vector2(10, 0))
+	fresh2.team = 0
+	var tired := _unit(2, Vector2(100, 0))
+	tired.team = 0
+	tired.state = UnitScript.State.FIGHTING
+	var foe := _unit(4, Vector2(150, 0))
+	foe.team = 1
+	tired.target_enemy = foe
+	var b := _battle([fresh1, fresh2, tired, foe])
+	b._apply_order_cmd({"units": [1, 3], "x": 0.0, "y": 0.0, "target": 2})
+	assert_eq(fresh1.current_order.type, Order.Type.RELIEF,
+			"the primary reliever gets the RELIEF order")
+	assert_eq(fresh1.current_order.friendly_target, tired,
+			"and its swap link points at the tired unit")
+	assert_eq(fresh1.target_enemy, foe, "and takes over the tired unit's foe")
+	assert_eq(fresh2.current_order.type, Order.Type.ATTACK,
+			"the second reliever is a plain attacker, not a second swap")
+	assert_eq(fresh2.target_enemy, foe, "piling onto the same fight the primary took over")
+	assert_eq(tired.current_order.type, Order.Type.MOVE,
+			"the tired unit gets exactly one retreat order")
+
+
 func test_append_preserves_a_support_ward() -> void:
 	# An append continues the current order, so — like the stance — it leaves a
 	# unit's support ward intact rather than clearing it.

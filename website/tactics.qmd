@@ -199,6 +199,34 @@ Rotate before the break, not after: a tired regiment fights measurably worse (se
 [Stamina](#stamina)) and routs sooner, and pulling it out while it still holds
 banks a rested unit for the next push.
 
+## Passage of lines
+
+Line relief swaps one pair of regiments at a time by default --- every fresh unit
+you order onto an engaged friendly swaps with (or, past the first, piles onto the
+fight of) that ONE unit you clicked. When a whole tired line needs relieving at
+once, select every fresh unit in your reserve, switch the group-order mode to
+**Distributed** (<kbd>X</kbd>, or the **Spread** button --- see
+[How to play](how-to-play.qmd) for the control), then right-click any one engaged
+unit in the tired line. Each fresh unit pairs with its OWN nearby engaged
+friendly instead of all of them swapping with the single unit clicked, so the
+whole reserve passes through the whole tired line in one order --- Polybius's
+triplex acies, a fresh line relieving a spent one through gaps opened in the
+line behind it.
+
+- **The candidate pool is engaged friendlies only.** A reliever never swaps with
+  an idle or already-routing unit just to keep busy --- if fewer of your tired
+  line are actually fighting than you have fresh units, the extras fall back to
+  piling onto a fight instead of manufacturing a swap.
+- **Pairing is sorted by proximity to the unit you clicked, not to each
+  reliever's own position.** With reserves lined up abreast of a tired line,
+  this usually pairs each fresh unit with roughly the ally in front of it, but
+  it can cross --- the same distribution rule distributed attack already uses
+  for spreading a multi-unit attack across several enemies.
+- **Every pairing is a full line relief**, with the same pass-through
+  exemption, the same real retreat order, and the same "expect to bleed a
+  little on the way out" cost described above --- distributed relief only
+  changes how the targets are assigned, not how any one swap behaves.
+
 ## Stamina
 
 Every soldier carries a **stamina pool** that drains through combat and refills at rest.
