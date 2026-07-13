@@ -45,10 +45,11 @@ line:
 
 - **Front row** (units at even ordinal position: 1st, 3rd, 5th, ...) forms up
   along the dragged `a`->`b` line exactly like the other four modes, except the
-  gap between adjacent front-row units is widened to roughly **that unit's own
-  frontage width** (`CHECKERBOARD_GAP_SCALE * files * FORMATION_SPACING`)
-  instead of the flat `MULTI_FORM_UP_GAP` — the quincunx "gap ≈ own frontage"
-  rule.
+  gap between adjacent front-row units is widened to roughly **the wider
+  neighbour's own frontage width**
+  (`maxf(width_i, width_{i+1}) * CHECKERBOARD_GAP_SCALE + MULTI_FORM_UP_GAP`,
+  where each unit's width is `(files - 1) * FORMATION_SPACING`) instead of the
+  flat `MULTI_FORM_UP_GAP` alone — the quincunx "gap ≈ own frontage" rule.
 - **Rear row** (units at odd ordinal position: 2nd, 4th, ...) is placed at the
   lateral midpoint of each front-row gap, offset backward (away from the
   facing direction) by `CHECKERBOARD_LINE_GAP` world units — enough depth that
