@@ -200,6 +200,19 @@ comments or docstrings.
   `popup.get_item_index(id)`. Using the raw id silently sets the wrong item's
   metadata when ids and indexes differ.
 
+- **`PopupMenu` auto-toggles a check-item's visual state BEFORE `id_pressed`
+  fires.** If your handler early-returns without applying the change (e.g. the
+  last enabled mode in a cycle can't be unchecked), the checkbox still shows
+  the toggled-off visual. Call your sync-toggles helper (e.g.
+  `_sync_setting_toggles()`) before the early-return to restore the correct
+  visual state.
+
+- **`set_deferred()` does not parse colon sub-paths the way `set_indexed()`
+  does.** `set_deferred("position:y", ...)` is a silent no-op — `Object::set()`
+  doesn't understand the colon syntax, only `set_indexed()` (NodePath-based)
+  does. Defer the whole property instead:
+  `set_deferred("position", Vector2(x, new_y))`.
+
 - **Disconnect `Settings.changed` in `_exit_tree()`.** Connections made in
   `_ready()` persist after `reload_current_scene()` and create dangling callbacks.
   Use a named method (not a lambda) so `Signal.disconnect(callable)` can find it.

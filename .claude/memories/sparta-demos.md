@@ -420,3 +420,50 @@ the claim with enough tick-range slack (a 60-tick AI-decision window, e.g. "betw
 and 840") to be robust to this kind of drift. A local run is still fine for a first-pass
 sanity check and for short/simple scenarios where no divergence has ever been observed.
 (`Lacaedemon/sparta` PR #794, 2026-07-12.)
+
+## Footprint-preserving maneuvers are inherently subtle on screen — stage for legibility, verify by per-region pixel-diff
+
+A footprint-preserving maneuver — the conversio/about-face (#394), where the block reverses 180°
+in place, front rank becoming rear, keeping its exact footprint — barely moves the block
+silhouette; only the internal rank order flips. A naive eyeball of a few sampled frames wrongly
+reads it as "static" (exactly what happened on PR #465's first CI clip). Quarter-turns (#371) and
+file-doubling share the trap. This is the *perceptual* counterpart to sparta.md's "Verify
+maneuvers tick by tick" entry (that's about sim correctness): the sim can be perfectly correct
+while the clip still fails the "the demo must SHOW the change" bar.
+
+**Author for legibility.** Stage a **lone unit** (recorder `scenario` field + `"drill": true`, no
+opponent) rather than the default 5v5 line where the pivot is buried; use a **tight camera**
+framed clear of the bottom HUD (~90 px of world); keep the **rear destination close** so both the
+pivot and the ensuing (~15 px/s) march land inside the clip; frame the mid-pivot moment where the
+block is rotated diagonally through its intermediate heading.
+
+**Verify clip motion by per-region inter-frame pixel-diff, not a coarse scan.** Measure the
+**unit region** separately from the **UI region** (HUD/selection ring animate independently and
+can mask/fake motion). The signature of a maneuver landing is the **unit-region change ramping
+up then plateauing** (turn starts → peaks mid-pivot → settles). A flat unit-region diff = not
+visible; a diff confined to the UI region = only chrome moved. Cross-check with a state dump (on
+#465 the dump confirmed facing `[0,1]` → through-west → `[0,-1]` with position holding through the
+pivot, then advancing). Use `SPARTA_DEMO_FRAMES` (PNG, non-headless) for the framed moments and
+`SPARTA_DEMO_STATE` (headless) for the values. Bump website `record-demos.sh` `max_frames` to
+cover the whole sequence (e.g. 180 → 300), not just the pivot.
+
+## A "wait then quit" helper reachable from multiple recorder modes needs a mode-guarded await
+
+The demo-video CI job's state-transcript step (drives `DemoInputRecorder` in state-only mode)
+once hung for the full 5-minute step timeout even though every armed tick's snapshot had already
+been written. Root cause (`tools/demo/DemoInputRecorder.gd`): `_quit_after_captures()`
+unconditionally did `await RenderingServer.frame_post_draw` before `get_tree().quit()` — needed
+so an in-flight FRAME-capture `save_png()` can finish. But a STATE-ONLY dump (`_frame_ticks`
+empty) never captures a frame, and under `--headless` the dummy renderer may never emit
+`frame_post_draw` at all, so the await never resolves. The wall-clock safety-net timer didn't
+rescue it either: it only called `quit()` `if not _all_artifacts_done()` — but all artifacts
+*were* done, so the "safety net" saw nothing to warn about and did nothing.
+
+**Fix (both needed):** (1) `_quit_after_captures()` awaits `frame_post_draw` only `if not
+_frame_ticks.is_empty()` — a state-only dump quits immediately; (2) the timeout handler calls
+`get_tree().quit()` **unconditionally**, only skipping the WARNING when done. General lesson: an
+`await <signal>` used as a "let pending I/O finish" pattern is safe to make unconditional only if
+that signal is guaranteed to fire on every code path reaching the function — here one caller
+(frame capture, real renderer) always fires it, another (state-only, `--headless` dummy
+renderer) doesn't. A shared fallback timer isn't enough if its own logic assumes "done implies no
+work left." (PR #519; `demo` CI job dropped from a 6-min timeout to ~1m20s.)
