@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/all-out-attack.json",
+  "caption": "Further fix for the residual melee-lock swirl (closes #798, the gap #797 left after fixing the canonical-target-slot mismatch). Same scenario as #797's own clip: two matched Infantry regiments (identical stats, 100 soldiers each) clash head-on and grind for hundreds of ticks -- with no player input past the opening click, both regiments' facing should stay near their starting heading, not visibly pivot around the clash point. Root cause: SoldierBodies.step() paired the live-engaged group with its canonical target slots purely by ascending array rank (engaged_indices[k] -> canonical[k]), which tracks casualty-reindexed spawn order rather than a body's actual physical position, so a body standing at one end of the live front rank could be handed a target slot at the opposite end. Fixed by sorting both sides rank-major (depth tier first, then actual lateral position within the tier) before pairing, via Unit.pairing_sort_indices / UnitFormation.sort_indices_by_rank_then_lateral. State-dump verified (same three seeds as #797): by tick 700 the swirl drops further, from 37/37/32 degrees down to about 20/12/10 degrees across seeds 12345/99999/424242 -- another real, seed-independent reduction, not a complete elimination; a few degrees of further reduction over hundreds of ticks is not something this short clip can show visually, so the improvement is documented here by the state-dump numbers rather than by anything visibly different in the recording itself.",
+  "fixed_fps": 30,
+  "max_frames": 375,
+  "fps": 15,
+  "width": 640
+}

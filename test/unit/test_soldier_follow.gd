@@ -118,6 +118,63 @@ func test_couple_determinism() -> void:
 	assert_almost_eq(a.position.y, b.position.y, 1e-6)
 
 
+# --- lateral pairing (SoldierBodies.step's engaged/canonical pairing) --------------------
+# engaged_soldier_indices()/canonical_target_slot_indices() used to pair by raw array rank
+# (the k-th live-selected index against the k-th canonical index), which tracks
+# casualty-reindexed spawn order rather than a body's actual physical position. Fixed by
+# sorting both sides by lateral position (Unit.pairing_sort_indices) before pairing.
+
+func test_soldier_bodies_step_pairs_engaged_bodies_by_lateral_position_not_raw_rank() -> void:
+	# A 3-soldier single-rank unit is small enough that engaged_soldier_indices trivially
+	# selects every soldier in raw ascending-index order ([0, 1, 2], regardless of live
+	# position -- the exact `target_count >= n` early return in live_front_indices). Swap the
+	# live positions of the two end bodies -- body 0 now stands where the canonical grid's
+	# RIGHTMOST file belongs (slots[2]) and body 2 stands where the LEFTMOST file belongs
+	# (slots[0]) -- the same shape a casualty-driven array compaction produces: a body's
+	# array index no longer tracks its physical side of the line.
+	var u := _make_unit(3)
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)
+	var slots: PackedVector2Array = u.soldier_world_slots(3)
+	assert_eq(slots.size(), 3, "sanity: a single rank of 3")
+	assert_eq(u.engaged_soldier_indices(3), PackedInt32Array([0, 1, 2]),
+		"sanity: all 3 soldiers are engaged, selected in raw ascending-index order")
+	u._sim_soldier_pos[0] = slots[2]
+	u._sim_soldier_pos[1] = slots[1]
+	u._sim_soldier_pos[2] = slots[0]
+	# Under the OLD raw-rank pairing this would have been engaged_targets = {0: slots[0],
+	# 1: slots[1], 2: slots[2]} -- handing body 0 (standing at slots[2]) a target on the
+	# OPPOSITE end of the line, and likewise for body 2, so both would accelerate hard toward
+	# the far side every tick. The FIXED pairing sorts by actual lateral position first, so
+	# body 0 (farthest right) pairs with the canonical rightmost slot (slots[2], where it
+	# already stands) and body 2 (farthest left) pairs with slots[0] (ditto) -- both are
+	# already exactly on their own corrected target, so neither should accelerate at all.
+	for _s in range(10):
+		SoldierBodies.step(u, DELTA)
+		assert_lt(u._sim_body_vel[0].length(), 0.5,
+			"body 0 is already on its own (corrected) lateral target -- no arrival pull")
+		assert_lt(u._sim_body_vel[2].length(), 0.5,
+			"body 2 is already on its own (corrected) lateral target -- no arrival pull")
+	assert_almost_eq(u._sim_soldier_pos[0].x, slots[2].x, 0.1,
+		"body 0 held its corrected position rather than being dragged to slots[0]")
+	assert_almost_eq(u._sim_soldier_pos[2].x, slots[0].x, 0.1,
+		"body 2 held its corrected position rather than being dragged to slots[2]")
+
+
+func test_soldier_bodies_step_still_pairs_correctly_when_already_in_lateral_order() -> void:
+	# The well-behaved (no-casualty) case is unaffected: bodies already seeded onto their own
+	# slots stay exactly there, since the sort is a no-op when live order already matches
+	# lateral order (see UnitFormation.sort_indices_by_projection).
+	var u := _make_unit(3)
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)
+	for _s in range(10):
+		SoldierBodies.step(u, DELTA)
+		for i in range(3):
+			assert_lt(u._sim_body_vel[i].length(), 0.5,
+				"body %d is already on its own slot -- no arrival pull" % i)
+
+
 # --- integration: friendly regiments separate from the soldier layer ----------
 
 func _block(uid: int, team: int, n: int, pos: Vector2) -> Unit:

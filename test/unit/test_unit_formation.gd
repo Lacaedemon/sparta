@@ -535,3 +535,82 @@ func test_live_front_indices_degenerate_inputs() -> void:
 	var positions := PackedVector2Array([Vector2(1, 0), Vector2(2, 0)])
 	assert_eq(UnitFormation.live_front_indices(positions, 10, Vector2.ZERO, Vector2.UP).size(), 2,
 		"target_count beyond the array size is clamped to the array size")
+
+
+# --- sort_indices_by_projection / sort_indices_by_angle ----------------------
+# The engaged/canonical pairing sort (SoldierBodies.step, via Unit.pairing_sort_indices):
+# sorts a group of body indices by actual lateral position (file axis) or angular position
+# (the square/schiltron ring) instead of raw array rank.
+
+func test_sort_indices_by_projection_orders_by_lateral_position() -> void:
+	# Three points scored against axis=Vector2.RIGHT=(1,0) from the origin: ascending
+	# projection is ascending x, regardless of the array order the indices are handed in.
+	var positions := PackedVector2Array([
+		Vector2(10, 0),   # 0: rightmost
+		Vector2(-10, 0),  # 1: leftmost
+		Vector2(0, 0),    # 2: middle
+	])
+	var sorted := UnitFormation.sort_indices_by_projection(
+		PackedInt32Array([0, 1, 2]), positions, Vector2.ZERO, Vector2.RIGHT)
+	assert_eq(sorted, PackedInt32Array([1, 2, 0]), "leftmost to rightmost, not by array index")
+
+
+func test_sort_indices_by_projection_is_a_no_op_when_already_lateral_order() -> void:
+	# A group already laid out in ascending-x order (the canonical front-rank slot array,
+	# by construction) sorts to itself -- proves the canonical side never actually reorders.
+	var positions := PackedVector2Array([Vector2(-5, 0), Vector2(0, 0), Vector2(5, 0)])
+	var indices := PackedInt32Array([0, 1, 2])
+	assert_eq(UnitFormation.sort_indices_by_projection(indices, positions, Vector2.ZERO, Vector2.RIGHT),
+		indices, "already-ascending input sorts to itself")
+
+
+func test_sort_indices_by_projection_breaks_ties_by_index() -> void:
+	var positions := PackedVector2Array([Vector2(5, 0), Vector2(5, 3)])
+	assert_eq(UnitFormation.sort_indices_by_projection(
+			PackedInt32Array([1, 0]), positions, Vector2.ZERO, Vector2.RIGHT),
+		PackedInt32Array([0, 1]), "tied projections: lower index wins")
+
+
+func test_sort_indices_by_projection_matches_a_brute_force_full_sort() -> void:
+	# Differential test on an irregular point cloud, mirroring
+	# test_live_perimeter_indices_matches_a_brute_force_full_sort's own coverage rationale --
+	# the insertion sort's shift loop can't hide an off-by-one behind a small/symmetric input.
+	var positions := PackedVector2Array([
+		Vector2(3, 1), Vector2(-2, 4), Vector2(5, -3), Vector2(0, 0), Vector2(-4, -4),
+		Vector2(2, 2), Vector2(7, 0), Vector2(-1, -6), Vector2(1, 1), Vector2(-5, 2),
+	])
+	var indices := PackedInt32Array()
+	for i in range(positions.size()):
+		indices.push_back(i)
+	var axis := Vector2(1.0, 0.0)
+	var reference: Array = range(positions.size())
+	reference.sort_custom(func(a: int, b: int) -> bool:
+		var sa: float = positions[a].dot(axis)
+		var sb: float = positions[b].dot(axis)
+		if sa == sb:
+			return a < b
+		return sa < sb)
+	var expected := PackedInt32Array(reference)
+	assert_eq(UnitFormation.sort_indices_by_projection(indices, positions, Vector2.ZERO, axis), expected,
+		"insertion sort matches the brute-force reference")
+
+
+func test_sort_indices_by_angle_orders_around_the_ring() -> void:
+	# Four ring points at the cardinal directions: angle() runs from -PI (west, exclusive)
+	# through 0 (east) to +PI (west again), so ascending angle order is south, east, north,
+	# west for this exact set -- regardless of the array order the indices are handed in.
+	var positions := PackedVector2Array([
+		Vector2(0, -1),   # 0: north (angle -PI/2)
+		Vector2(1, 0),    # 1: east (angle 0)
+		Vector2(-1, 0),   # 2: west (angle PI)
+		Vector2(0, 1),    # 3: south (angle PI/2)
+	])
+	var sorted := UnitFormation.sort_indices_by_angle(
+		PackedInt32Array([3, 2, 1, 0]), positions, Vector2.ZERO)
+	assert_eq(sorted, PackedInt32Array([0, 1, 3, 2]), "ascending angle: north, east, south, west")
+
+
+func test_sort_indices_by_angle_breaks_ties_by_index() -> void:
+	var positions := PackedVector2Array([Vector2(5, 0), Vector2(10, 0)])
+	assert_eq(UnitFormation.sort_indices_by_angle(PackedInt32Array([1, 0]), positions, Vector2.ZERO),
+		PackedInt32Array([0, 1]), "tied angles: lower index wins")
