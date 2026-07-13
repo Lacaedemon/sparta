@@ -1270,3 +1270,262 @@ must wait via a `current_tick()` loop, never a bare single `await physics_frame`
 that passes alone but fails only under the full suite is a strong first hint to check for
 exactly this pattern before suspecting the actual feature code. (`Lacaedemon/sparta` PR #794,
 2026-07-12.)
+
+## Batch-dispatched agents: verify diffs and test runs independently, don't trust completion reports
+
+During a large parallel GIA batch (2026-07-09), several agent-reported "implemented and
+tested" PRs turned out to have real, independently-confirmed problems that the reports never
+mentioned:
+
+- **Empty-claim PRs mistaken for done.** #690 (chase attack, PR #701), #676 (issue-citation
+  lint, PR #706), and #687 (pin-down attack, PR #707) each had a draft PR opened per the
+  `pr-on-claim` convention (an empty commit pushed up front, before implementation) where the
+  actual implementation was never pushed. A draft PR existing and referencing "Closes #N" reads
+  as "someone's on it" -- nothing in the PR list, checks, or title distinguishes
+  mid-implementation from abandoned-before-implementation-ever-started. #706 turned out moot
+  (issue #676 was already independently resolved via merged PR #684 before #706's claim even
+  happened) -- always `gh issue view <N> --json state,closedAt` before re-implementing.
+- **Cross-branch contamination.** Two unrelated features' commits ended up mixed onto the wrong
+  branch: Newton's-laws-collision code (issue #678) landed on `feat/sweep-routers-attack`
+  (issue #693) instead of its own `feat/newtons-laws-collision`, and PIN_DOWN combat logic
+  (issue #687) landed on `feat/roll-the-line` (issue #691) instead of `feat/pin-down-attack` --
+  leaving roll-the-line's own actual mechanic never implemented despite its enum entry existing.
+  Root cause: parallel agents apparently shared a checkout/working-tree at some point, so one
+  agent's commits bled into a sibling's branch. Tell: `gh pr view <N> --json commits` showing
+  commit messages that don't match the PR's own stated feature, or `git diff origin/main
+  origin/<other-branch> -- <file>` turning up a sibling PR's feature. Fix is mechanical once
+  found (the two features were cleanly separable file-by-file in every case observed): checkout
+  the misplaced files from the wrong branch onto the right one, `git rm` them from the wrong one,
+  commit both sides separately.
+- **Real bugs behind a "tests pass" claim**, caught only by an independent re-run on a fresh
+  worktree checkout of the pushed branch (never the agent's own worktree, which can have
+  uncommitted fixes never actually pushed): a GDScript syntax error (`var [a, b] = ...` array
+  destructuring -- GDScript has no such syntax -- in `SoldierMelee.gd`), an undeclared
+  `BattleRef.Gait` preload alias in `Unit.gd` that would fail project import entirely (found
+  by a *different* agent, dispatched only to build a demo, that happened to run
+  `tools/check.sh validate` as a prerequisite step), and a targeting bug where `target_enemy`
+  stayed `null` in all 3 of a feature's own tests (root cause: the test spawned enemies outside
+  `Unit.DETECTION_RANGE`, plus a separate instant-rally bug from calling `_rout()` directly on
+  an undamaged unit with full morale).
+
+**How to apply:** never trust "tests pass" / "ready for review" from a report alone --
+re-run `tools/check.sh validate` and `tools/check.sh test` yourself from a fresh worktree of the
+actual pushed remote branch before treating a batch-dispatched PR as sound. When a file that
+should belong to one feature shows up on a different feature's branch (or a feature's own
+expected symbol is entirely absent from its own branch's diff), suspect cross-branch
+contamination before assuming the feature just wasn't written -- `git diff origin/main
+origin/<branch> | grep -i "<feature-name>"` returning nothing is a fast smoke test. Give each
+dispatched agent its own explicit, freshly-created worktree path in the prompt, and tell it not
+to reuse/assume any pre-existing worktree unless explicitly named -- this is the likely root
+cause of the cross-branch contamination cases. (`Lacaedemon/sparta`, GIA batch cleanup,
+2026-07-09 -- affected PRs #695, #698, #701/#713, #702, #706/#707, #708, #709, #711.)
+
+## A fresh worktree's first `tools/check.sh test` run needs a second `--headless --import` pass
+
+`tools/check.sh test` vendors GUT on demand (clones into `addons/gut`) when a fresh worktree
+doesn't have it yet, but Godot's `class_name` registration only happens during project import
+-- which already ran (or never ran) before GUT's files existed on disk. So the very first
+`tools/check.sh test` call in a brand-new worktree always fails with:
+
+```
+ERROR: Some GUT class_names have not been imported.  Please restart the Editor or run godot --headless --import
+Missing class_names:  ["GutErrorTracker", ... "GutTest", ...]
+```
+
+`== summary == PASS test` / `All checks passed.` still prints -- the script doesn't treat this
+as a failure, so it's easy to miss that no tests actually ran.
+
+**How to apply:** in a fresh worktree, run `<godot> --headless --import` once, then
+`tools/check.sh test` (vendors GUT), then `<godot> --headless --import` a SECOND time (registers
+GUT's newly-vendored `class_name`s), then re-run `tools/check.sh test` for the real result. A
+worktree that already has `addons/gut/` from a prior run only needs the one usual import pass.
+Hit repeatedly across many fresh worktrees during the 2026-07-09/2026-07-13 GIA batch-cleanup
+and independent-verification passes.
+
+## The Coverage CI job shifts sim timing — read spawn values PRE-tick and budget arcs in real sim ticks
+
+Sparta's non-gating **Coverage** job (`test-coverage.yml`) runs the GUT suite through
+`addons/coverage`, which reloads counter-injected copies of the game scripts. That
+instrumentation slows and shifts sim stepping, so timing-bounded scenario assertions read
+drifted values and flake there while the gating "Validate & test" job passes them. This
+flaked on `main` itself (#508, fixed in PR #511), not tied to any one PR. Two patterns and
+their fixes (both in `test/unit/test_battle_scenario.gd` and `test_rout_rally_demo_scenario.gd`):
+
+- **Spawn/override-value asserts must read PRE-tick.** Reading a unit's `morale`/`facing`
+  after `await get_tree().physics_frame` lets one recovery/rotation tick drift it off the
+  exact spawn value (morale 30.0 read as 30.033; facing -1.0 read as -0.928). `Battle._ready()`
+  runs **synchronously** during `add_child_autofree(battle)` — it calls `_spawn_scenario()`,
+  which registers each unit in the `"units"` group and sets `facing`/`morale` before returning.
+  So delete the `await` and assert spawn values immediately; no tick can fire between
+  `add_child` returning and the group query.
+- **Budget scenario arcs in REAL sim ticks, not await-iterations.** Under instrumentation an
+  `await physics_frame` no longer maps 1:1 onto a sim tick, so a `for i in range(N)` loop's
+  index diverges from the sim's real tick. Bound the loop by `Battle.current_tick()` (incremented
+  once per `_physics_process`) and derive the budget from sim constants with headroom, e.g.
+  `ROUT_ONSET_BUDGET + ceil(Unit.ROUT_TIME * Replay.PHYSICS_TPS) + RALLY_MARGIN`. Prefer the
+  canonical `Replay.PHYSICS_TPS` autoload over a duplicated `:= 60` local. Prefer read-pre-tick
+  / real-tick budgets over loosening tolerances — a wider tolerance still races the clock.
+
+When widening such a budget, also account for OTHER in-flight PRs that shift the same sim
+dynamics (a physics retune moves *when* the block breaks) so the later PR won't re-break the
+test on resync — widen via the named headroom constant, never by weakening an assertion.
+(`Lacaedemon/sparta` #508/PR #511, coordinated with #497.)
+
+## Soldier bodies ARRIVE at their slots under bounded force — not a damped spring
+
+`scripts/SoldierBodies.gd`'s `step()` used to be a near-critically-damped **spring** toward
+each formation slot (`SPRING_STIFFNESS`/`SPRING_DAMPING`), which read as visibly springy/wobbly.
+PR #497 (closes #448) replaced it with **bounded "arrive" steering** tied to each unit's real
+per-type stats (`accel`, `jog_speed`, from #445/#454):
+
+```
+body_accel   = max(unit.accel, BODY_ACCEL_FLOOR=30)                 # wu/s^2
+arrive_speed = min(unit.jog_speed, sqrt(2*body_accel*dist), dist/delta)  # decelerates to 0 AT the slot
+desired_vel  = feed_forward + dir_to_slot * arrive_speed
+vel = vel.move_toward(desired_vel, body_accel*delta)                # bounded accel
+# post-step inbound clamp: bound (vel - feed_forward) to dist/delta so a body carrying
+# residual inbound speed lands EXACTLY on the slot instead of overshooting
+pos += vel*delta                                                    # never teleports
+```
+
+The **anti-spring invariant** is *no overshoot / no oscillation*, pinned by
+`test/unit/test_soldier_persistence.gd`: `test_shoved_body_arrives_without_overshoot` (distance
+to slot decreases monotonically, body never crosses to the far side, checked only while
+`dist > ARRIVE_EPS`) and `test_knockback_recovers_over_a_second_or_two`. Two subtleties that bit
+the port: (1) the `sqrt(2·a·d)` profile steepens near the slot faster than bounded decel can
+follow, so the **post-step inbound clamp** — not the desired-velocity cap — is the real overshoot
+guard; (2) tests asserting the old spring's single-step velocity magnitudes had to be re-derived
+to the multi-tick ramp (a body ramps to top speed over many ticks, not in one step — loop 120–360
+ticks and assert the invariant throughout). Knockback impulses are untouched: a body holds the
+push, then decelerates and returns under bounded force. This is the concrete mechanism behind the
+"no snaps / bottom-up physics" philosophy at the top of this file; later PRs (#742/#743 coasting,
+#749 body→position coupling) build on top of it rather than replacing it. (Physics constants and
+exact function shapes will have moved further by the time you read this — verify against current
+`scripts/SoldierBodies.gd` before relying on specifics; the anti-spring invariant itself is durable.)
+
+## Any live-Battle test that runs a fight must seed `Replay.forced_seed`
+
+A scenario/integration test that instantiates `scenes/Battle.tscn` and lets it run a fight draws
+all combat randomness through `Replay.rng` (SoldierMelee land/wound rolls). If the test does not
+seed the RNG, those rolls draw from whatever `Replay.rng` state the *previously-run tests* left —
+so the outcome varies with suite ordering and the test flakes. This is a latent non-determinism
+bug independent of any one PR; a physics change just **exposes** it by shifting an arc onto a
+decision boundary.
+
+**Concrete case (#497/#465):** `test/unit/test_rout_rally_demo_scenario.gd` began flaking ~50% of
+full-suite runs (passed 100% in isolation) after the spring→arrival physics merged: the routing
+unit **shattered** instead of rallying, tripping `assert_not_null`. A seeded trace
+(`forced_seed=12345`) showed the arc routs ~tick 413 and rallies ~tick 774 — well within budget —
+so the physics was fine; an unlucky casualty streak was grinding the router below
+`SHATTER_STRENGTH_FRAC` or keeping an enemy inside `RALLY_CONTACT_RADIUS` at timer expiry.
+
+**Fix:** seed deterministically in the spawn helper, exactly as the demo it guards does
+(`Replay.forced_seed = 12345` **before** `add_child`; `Battle._ready()` folds it into `rng.seed`
+via `Replay.start_recording()` and resets `forced_seed = -1`, one-shot per spawn). This is a
+distinct failure mode from the coverage-timing budget flake above — that's about *when* an arc
+completes, this is about *whether* it completes the same way each run. When a physics/balance
+change surfaces a scenario-test failure, first ask "is this test deterministic?" — fix the
+determinism, don't widen a budget to mask a boundary-brush. (`Lacaedemon/sparta` #497/#465.)
+
+## Per-soldier sim cost scales SUPER-linearly — the reference battle already sits at the 60fps budget
+
+Measured via #549 (PR #551): `tools/benchmark/run-benchmark.sh` against
+`benchmarks/scenarios/large-battle.json`, scaled by `SPARTA_BENCHMARK_SCALE`
+(`BenchmarkStats.scale_scenario`). Headless, physics-step time only (no render):
+
+| soldiers | mean tick | p95 tick | implied fps |
+| --- | --- | --- | --- |
+| 1,720 (1×, reference) | 16.97 ms | 21.28 ms | 58.9 |
+| 3,440 (2×) | 52.92 ms | 63.79 ms | 18.9 |
+| 6,880 (4×) | 207.82 ms | 235.29 ms | 4.8 |
+
+Cost is **super-linear**: 2× soldiers → ~3.1× tick cost, 4× → ~12× — consistent with PLAN.md's
+O(n²) neighbor-scan note; the per-soldier layer (`_sim_soldier_pos`/`SoldierSpatialHash`) hasn't
+fully escaped that shape. **The reference battle (1,720 soldiers) already sits at the 60fps budget
+(16.67 ms/tick) on mean tick cost, and over budget on p95, before render cost.** So the current
+architecture can't comfortably support a battle much larger than this at 60fps without a further
+algorithmic win beyond the spatial hash. Treat this as a real, measured headroom constraint for
+#550 (Cannae-scale) and any per-entity-granularity decision (per-soldier speed, weapon/shield
+objects, individual orders): before adding another per-soldier array pass, re-run the benchmark and
+check whether it pushes the curve further from linear — that's the signal an O(n) win is needed
+before growing headcount. The exact multipliers drift as the sim evolves; the super-linear *shape*
+is structural. (One-machine local sweep, not the PLAN.md reference-hardware numbers; re-measure
+before citing exact figures.)
+
+## CI workflows render AUTHOR-controlled data — keep it as data, never let it reach a shell as code
+
+`demo-video.yml` and its siblings run against author-controlled input: a PR author writes the demo
+manifest (`demos/demo.<slug>.json`), input scripts (`demos/inputs/*.json`), captions, tick lists.
+On a same-repo PR this runs on a **write-privileged** runner (pushes `demo-media`, comments on the
+PR), so shell injection is a real supply-chain hole. Conventions (follow them in any workflow that
+renders author data — established #506/PR #507, widened #549/PR #551):
+
+1. **Author values reach steps via `env:`, never `${{ }}` interpolation** — `${{ }}` expands into
+   the script text *before* the shell parses it, so `"; rm -rf … #` becomes code. Pass as
+   `env: CAPTION: ${{ … }}` and use `"$CAPTION"`.
+2. **jq programs are fixed string literals; data goes in as `--arg`/file operands** — never build a
+   filter by interpolation (e.g. `jq -r '(.state // .frames // []) | map(tostring) | join(",")' "$SOURCE"`).
+3. **Emit free text via `printf '%s'` with the value as an ARGUMENT**, not `echo`/`eval`; the
+   `GITHUB_OUTPUT` heredoc uses a **random delimiter** (`caption_eof_$(openssl rand -hex 8)`) so
+   author text can't smuggle extra outputs.
+4. **A dynamic `export "${ENVVAR}=…"`** is safe only because `ENVVAR` is from a fixed set
+   (`SPARTA_DEMO_REPLAY`/`SPARTA_DEMO_INPUT`), not author free-text.
+
+**This isn't only about malicious input — it silently breaks your OWN generated values too.** In
+`benchmark.yml` a step built a markdown code span (`` `tools/benchmark/baseline.json` ``) from
+trusted script output, stored it via `GITHUB_OUTPUT`, and a later step spliced it with `${{ }}`
+inside a quoted bash string — the backticks re-entered as live command substitution and the entire
+span silently vanished from the posted comment (nothing errored). Route ANY `steps.*.outputs.*`
+containing shell metacharacters through `env:`, not `${{ }}`-splicing. Also note `$()` strips
+*trailing* newlines, so `BODY="$BODY"$(printf '\n\n')` is a no-op — fold separators into the same
+`printf` format string. Verify comment-body assembly by simulating it in bash and `cat -A`-ing the
+result; a green job doesn't prove the posted message is correct.
+
+## Gating a CI check on "does this posted artifact still match HEAD" needs a live re-read at job completion
+
+A workflow job that posts something derived from `github.event.pull_request.head.sha` (a demo
+comment, a state transcript) uses a SHA fixed at *trigger* time — a push landing after trigger but
+before the job finishes leaves a green job whose artifact cites a stale SHA.
+`concurrency: cancel-in-progress` is the first defense but its propagation isn't instantaneous.
+
+**Pattern (added to `demo-video.yml`, #542/PR #544):** as a final step in the *same* posting job,
+re-read the PR's **live** head SHA from the API (`gh api repos/OWNER/REPO/pulls/$PR --jq .head.sha`)
+— not the event payload — compare to the SHA the job posted against, and `exit 1` on mismatch. This
+makes success self-verifying: green means the artifact was fresh as of the job's own completion.
+Fold it into the posting job itself; a separate cross-check job just reintroduces the race one level
+out. **Retry the lookup separately from the staleness verdict** — under `set -euo pipefail` a
+transient `gh api` failure aborts with a raw error that reads like "stale," so wrap the lookup in a
+small retry loop and emit two distinct messages ("could not read PR head — transient API failure,
+not a staleness verdict" vs. "HEAD moved to X, evidence is for Y, failing as stale"). A bot reviewer
+caught the missing-retry gap in round 1. (General CI pattern, but instantiated here in
+`demo-video.yml`.)
+
+## Battle.gd order dispatch applies every live order exactly once (immediate-apply + tagged tick-drain)
+
+`Battle.gd`'s live order paths (`enqueue_*()`) apply every order TWICE by default — once
+immediately at enqueue time (for zero-latency feedback + paused preview) and again when the
+physics tick drains `_pending_orders`. Harmless for an absolute/idempotent order (formation,
+frontage-resize), but corrupts any order whose effect is RELATIVE to state the first apply
+already set (root cause of #517/#518: a rear-move about-face re-read the conversio the first
+apply armed and fell into the wrong branch).
+
+**Dedup pattern still in force** (`_apply_order_live`/`applied_live`, PR #519):
+- `_apply_order_live(cmd)` applies the order via `_apply_order_cmd(cmd)` AND tags the in-memory
+  dict: `cmd["applied_live"] = true`. Every live enqueue path routes through it instead of
+  calling `_apply_order_cmd` directly.
+- The tick drain still **records** every pending order for replay (unconditionally — the replay
+  stream must be complete) but only **applies** it `if not o.get("applied_live", false)`. An
+  order NOT applied live (e.g. a waypoint append — non-idempotent by nature, tick-authoritative)
+  stays untagged and still drains-applies once, exactly as before.
+- `Replay.record_order` copies EXPLICIT named fields (not the whole dict), so the `applied_live`
+  tag never reaches the recorded stream — a `PLAYBACK` order read via `orders_for_tick` is
+  therefore always untagged and applies once, so the PLAYBACK path is untouched by this pattern
+  and replay determinism carries over automatically.
+
+**Test pattern for a Dictionary-tag dedup:** GDScript Dictionaries are reference types, so tagging
+the SAME object that sits in `_pending_orders` is visible to a drain-mimicking test helper without
+re-fetching — but cross-reference the helper's gate condition to the production drain in a
+comment, or the two silently diverge if the key/logic changes in only one place. Any NEW order
+type added to `Battle.gd` (or an existing one you refactor) that goes through a live-enqueue path
+must route through `_apply_order_live`, not call `_apply_order_cmd` directly, or it reintroduces
+the double-apply bug this pattern exists to prevent. (`Lacaedemon/sparta` #517/#518, PR #519.)
