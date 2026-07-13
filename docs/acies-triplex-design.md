@@ -3,9 +3,11 @@
 Status: **phase 1 landed** — checkerboard (quincunx) spacing as a new multi-unit
 form-up distribution mode (`SelectionManager.FormUpDist.CHECKERBOARD`). Persistent
 line-membership state, cavalry-flank-vulnerability tradeoffs, and century-level
-partial withdrawal are **not yet built** — see "Deferred" below.
+partial withdrawal are **not yet built** — tracked in
+[#819](https://github.com/Lacaedemon/sparta/issues/819), see "Deferred" below.
 
-Tracks [#805](https://github.com/Lacaedemon/sparta/issues/805). Builds on
+Tracks [#805](https://github.com/Lacaedemon/sparta/issues/805) (phase 1, closed) and
+[#819](https://github.com/Lacaedemon/sparta/issues/819) (the remaining phases). Builds on
 [#377](https://github.com/Lacaedemon/sparta/issues/377) (passage of lines,
 merged), which built the *tactical* relief-swap (pairing N fresh units to N
 tired ones in one gesture) but not the *spatial* checkerboard arrangement those
@@ -63,7 +65,7 @@ unit exactly like the other four modes (each unit is still routed as its own
 recorded form-up order), so replays, the orders queue, and every other
 consumer of a form-up command are untouched. No new sim/combat mechanics.
 
-## Deferred (tracked as follow-up, not this phase)
+## Deferred (tracked in [#819](https://github.com/Lacaedemon/sparta/issues/819))
 
 - **Persistent line-membership state.** `General.gd`'s reserve-commit logic
   (#586/PR #794) is an army-composition decision — which units join the fight
