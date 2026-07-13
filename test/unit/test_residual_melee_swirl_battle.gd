@@ -68,11 +68,16 @@ func test_matched_infantry_clash_keeps_facing_close_to_its_start_heading() -> vo
 
 	var turned_a: float = rad_to_deg(absf(a.facing.angle_to(start_facing_a)))
 	var turned_b: float = rad_to_deg(absf(b.facing.angle_to(start_facing_b)))
-	# Pre-fix (this exact scenario/seed, reproduced during the investigation) rotates ~46°
-	# by tick 700; the fix brings it down to ~37°. 42° sits between the two with margin on
-	# both sides, and the mechanism is deterministic (not RNG-driven — verified against
-	# three separate seeds), so this is a real regression guard, not a flaky threshold.
-	assert_lt(turned_a, 42.0,
+	# Pre-canonical-slot-fix this scenario/seed rotates ~46° by tick 700; the canonical-slot
+	# fix (the fix this file was originally written for) brought it down to ~37°. A further
+	# fix -- pairing the engaged group with its canonical target slots rank-major (depth tier
+	# first, then actual lateral position within the tier) instead of by raw array rank --
+	# brings this same seed down to ~20°; the other two seeds used during that investigation
+	# (99999, 424242) dropped to ~12° and ~10° respectively. 28° sits with margin below the
+	# pre-this-fix ~37° and above the measured ~20° worst case across all three seeds, and the
+	# mechanism is deterministic (not RNG-driven), so this is a real regression guard, not a
+	# flaky threshold.
+	assert_lt(turned_a, 28.0,
 		"team 0's regiment does not visibly pivot around the clash point (turned %.1f°)" % turned_a)
-	assert_lt(turned_b, 42.0,
+	assert_lt(turned_b, 28.0,
 		"team 1's regiment does not visibly pivot around the clash point (turned %.1f°)" % turned_b)

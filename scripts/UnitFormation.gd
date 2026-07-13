@@ -345,6 +345,94 @@ static func _heap_sift_down(heap_i: PackedInt32Array, heap_d: PackedFloat32Array
 		pos = worst
 
 
+## Ascending insertion sort of `indices` by a parallel `scores` array (scores[k] is the score
+## for indices[k], NOT an array indexed by the index value itself). Shared core for
+## `sort_indices_by_projection` and `sort_indices_by_angle` below -- both only differ in how
+## the score is computed. Small-k (bounded by an engaged group's size, a handful of bodies),
+## so a plain insertion sort beats a general-purpose comparator's overhead. Ties broken by
+## ascending index, matching the tie convention `_worse` already uses in this file.
+static func _sort_indices_by_score(indices: PackedInt32Array, scores: PackedFloat32Array) -> PackedInt32Array:
+	var out := PackedInt32Array(indices)
+	var s := PackedFloat32Array(scores)
+	for i in range(1, out.size()):
+		var idx: int = out[i]
+		var score: float = s[i]
+		var j: int = i - 1
+		while j >= 0 and (s[j] > score or (s[j] == score and out[j] > idx)):
+			out[j + 1] = out[j]
+			s[j + 1] = s[j]
+			j -= 1
+		out[j + 1] = idx
+		s[j + 1] = score
+	return out
+
+
+## Sort `indices` (each an index into `positions`) ascending by projection onto `axis` from
+## `origin` -- the lateral position along a formation's file axis. `axis` is normally a
+## unit's file axis (perpendicular to its forward -- the same axis
+## `Unit._compute_engaged_soldier_indices`/`Unit._wheel_pivot_point` already use), and
+## `block_slots` lays a single RANK out in ascending file order along that exact axis. Only
+## meaningful within one rank/depth tier at a time -- see `sort_indices_by_rank_then_lateral`
+## below for the multi-rank engaged/canonical pairing this feeds. Pure and deterministic.
+static func sort_indices_by_projection(indices: PackedInt32Array, positions: PackedVector2Array, origin: Vector2, axis: Vector2) -> PackedInt32Array:
+	var scores := PackedFloat32Array()
+	for idx in indices:
+		scores.push_back((positions[idx] - origin).dot(axis))
+	return _sort_indices_by_score(indices, scores)
+
+
+## Sort `indices` into rank-major order -- DEPTH tier first (most-forward first, along
+## `forward`), then LATERAL position within each tier (along `lateral_axis`) -- chunked into
+## groups of `files` (a short final chunk for a partial rank), matching exactly how
+## `block_slots`/`canonical_target_slot_indices` lay the canonical grid out: rank 0's `files`
+## slots in ascending file order, then rank 1's, and so on. Used to pair a live-engaged group
+## with its canonical target slots by ACTUAL POSITION (see Unit.pairing_sort_indices /
+## SoldierBodies.step's engaged/canonical pairing) instead of raw surviving array rank.
+##
+## A single LATERAL-only sort (`sort_indices_by_projection` alone) is not enough here: the
+## engaged budget normally spans several ranks (Unit.ENGAGED_RANKS), and every rank shares the
+## exact same span of file positions, so sorting purely by lateral position interleaves ranks
+## instead of keeping each one together -- a body in rank 0 could end up paired with a rank 1
+## slot just because some other rank's soldier at the same file sorts between them. Bucketing
+## by depth FIRST (approximating which rank tier a live body currently occupies, the same
+## depth axis `engaged_soldier_indices`' own live-position selection uses) keeps that grouping
+## intact, so only genuine LATERAL crossing within a tier gets corrected. Pure and
+## deterministic: for a canonical (already on-grid) array this reproduces the identity order,
+## since each rank's slots are already both depth-tied and lateral-ascending; for a live,
+## casualty-reindexed array it recovers the same rank-major shape from actual positions.
+static func sort_indices_by_rank_then_lateral(indices: PackedInt32Array, positions: PackedVector2Array,
+		origin: Vector2, forward: Vector2, lateral_axis: Vector2, files: int) -> PackedInt32Array:
+	if files <= 0:
+		return sort_indices_by_projection(indices, positions, origin, lateral_axis)
+	var depth_scores := PackedFloat32Array()
+	for idx in indices:
+		depth_scores.push_back(-(positions[idx] - origin).dot(forward))   # ascending = most-forward first
+	var by_depth: PackedInt32Array = _sort_indices_by_score(indices, depth_scores)
+	var out := PackedInt32Array()
+	var i := 0
+	while i < by_depth.size():
+		var end: int = mini(i + files, by_depth.size())
+		var chunk := PackedInt32Array()
+		for j in range(i, end):
+			chunk.push_back(by_depth[j])
+		for idx in sort_indices_by_projection(chunk, positions, origin, lateral_axis):
+			out.push_back(idx)
+		i = end
+	return out
+
+
+## Sort `indices` ascending by angular position around `origin` -- the SQUARE/Schiltron
+## counterpart to `sort_indices_by_projection` above. A hollow-square/orbis ring has no
+## single file axis (it wraps all the way around the block), so pairing an engaged perimeter
+## group with its canonical ring slots by ANGLE instead lines up each live defender with the
+## ring slot nearest its own actual side of the block. Pure and deterministic.
+static func sort_indices_by_angle(indices: PackedInt32Array, positions: PackedVector2Array, origin: Vector2) -> PackedInt32Array:
+	var scores := PackedFloat32Array()
+	for idx in indices:
+		scores.push_back((positions[idx] - origin).angle())
+	return _sort_indices_by_score(indices, scores)
+
+
 ## File count after a 90° in-place turn (quarter-turn, #371): frontage and depth swap,
 ## so the new file count is the old rank count. Transposing twice returns to the original
 ## frontage for a full grid (a partial last rank can shift it by one -- the caller reforms).

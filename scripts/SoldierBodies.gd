@@ -163,15 +163,21 @@ static func step(unit: Unit, delta: float) -> void:
 	# live_perimeter selection), so after a casualty compacts the per-soldier arrays they can
 	# land on any array index -- slots[i] for those same i's is then just whatever canonical
 	# grid cell array position i happens to hold post-compaction, not "the front/perimeter of
-	# the formation". Map each live-engaged body to the matching-rank CANONICAL target slot
-	# instead (the k-th live-selected body arrives at the k-th canonical front/perimeter
-	# slot), so an engaged body's own arrival target agrees with what SoldierBodies.couple()
-	# measures it against -- see Unit.canonical_target_slot_indices.
+	# the formation". Map each live-engaged body to a CANONICAL target slot instead, so an
+	# engaged body's own arrival target agrees with what SoldierBodies.couple() measures it
+	# against -- see Unit.canonical_target_slot_indices. The two arrays are paired by RANK, so
+	# each rank has to mean the same thing on both sides: raw surviving array index tracks
+	# casualty-reindexed spawn order, not current position, so pairing by it can hand a body
+	# at one end of the live front rank a target slot at the opposite end. Sort both sides by
+	# actual lateral position first (Unit.pairing_sort_indices) so the k-th live-selected body
+	# arrives at the k-th canonical slot NEAREST ITS OWN POSITION, not just its k-th array rank.
 	var engaged_targets := {}
 	if not engaged_indices.is_empty():
 		var canonical: PackedInt32Array = unit.canonical_target_slot_indices(slots, engaged_indices.size())
-		for k in range(mini(engaged_indices.size(), canonical.size())):
-			engaged_targets[engaged_indices[k]] = slots[canonical[k]]
+		var sorted_engaged: PackedInt32Array = unit.pairing_sort_indices(engaged_indices, unit._sim_soldier_pos)
+		var sorted_canonical: PackedInt32Array = unit.pairing_sort_indices(canonical, slots)
+		for k in range(mini(sorted_engaged.size(), sorted_canonical.size())):
+			engaged_targets[sorted_engaged[k]] = slots[sorted_canonical[k]]
 	# No body ever teleports: every body steers toward a desired velocity under bounded
 	# acceleration and integrates its own velocity (fixed delta), so position only ever
 	# changes by velocity * delta.

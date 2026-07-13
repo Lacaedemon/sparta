@@ -3191,6 +3191,30 @@ func canonical_target_slot_indices(slots: PackedVector2Array, count: int) -> Pac
 	return out
 
 
+## Sort `indices` (each an index into `positions`) into the order SoldierBodies.step's
+## engaged/canonical pairing should walk them in, so the k-th live-engaged body pairs with
+## the k-th canonical target slot NEAREST ITS OWN ACTUAL POSITION rather than by raw
+## surviving array rank -- a live body's array index tracks casualty-reindexed spawn order,
+## not where it currently stands, so pairing by rank alone can hand a body at one end of the
+## live front rank a target slot at the opposite end. NORMAL/line formations sort rank-major
+## (depth tier first, then lateral position within the tier -- UnitFormation.
+## sort_indices_by_rank_then_lateral): the engaged budget normally spans several ranks
+## (ENGAGED_RANKS), and every rank shares the same span of file positions, so a LATERAL-only
+## sort would interleave ranks instead of keeping each one together. `forward`/`file_axis` are
+## the same axes `_compute_engaged_soldier_indices`/`_wheel_pivot_point` already use.
+## SQUARE/Schiltron has no single file axis (the ring wraps all the way around the block), so
+## it sorts by angular position around the unit's own centre instead. Pure -- a function of
+## (indices, positions, facing, formation_mode, _formation_angle, formation_files) -- so both
+## the live and the canonical call sort by the identical criterion and stay comparable.
+func pairing_sort_indices(indices: PackedInt32Array, positions: PackedVector2Array) -> PackedInt32Array:
+	if in_square():
+		return UnitFormation.sort_indices_by_angle(indices, positions, position)
+	var forward: Vector2 = facing.rotated(_formation_angle)               # slot-grid local -Y direction
+	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
+	var files: int = formation_files(indices.size())
+	return UnitFormation.sort_indices_by_rank_then_lateral(indices, positions, position, forward, file_axis, files)
+
+
 ## A soldier body's radius for this regiment's type — the drawn mark radius, so
 ## cavalry (horses) take more room than foot. The center-to-center floor between
 ## two soldiers is the sum of their radii, mirroring the regiment circle's
