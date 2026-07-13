@@ -163,3 +163,64 @@ func test_distributed_relief_falls_back_to_single_pair_with_only_one_engaged_can
 			"with the only engaged friendly -- the one actually clicked")
 	assert_eq(fresh2.current_order.type, Order.Type.ATTACK,
 			"the second fresh unit piles onto the same fight instead of relieving an idle unit")
+
+
+func test_distributed_relief_excludes_an_ordered_unit_from_being_a_relief_target() -> void:
+	# A box-select that sweeps up a fresh reserve line AND part of the engaged line ahead
+	# of it is an ordinary player action -- nothing stops a box from catching both. Before
+	# the relief_targets scan excluded candidates already among cmd["units"], an
+	# already-FIGHTING unit caught in that same box could be picked as ANOTHER reliever's
+	# tired partner while it was also about to receive its own order later in the same
+	# "for uid in cmd['units']" loop -- whichever write landed last (its own order, or the
+	# retreat UnitRelief.begin() hands it as someone else's target) silently clobbered the
+	# other. Here "already_fighting" and "fresh" are both ordered; "tired_target" is the
+	# clicked friendly outside the selection.
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = true
+	_battle.scenario = [
+		{"team": 0, "type": "Infantry", "count": 20, "x": 300, "y": 200},   # already-fighting, box-selected
+		{"team": 0, "type": "Infantry", "count": 20, "x": 600, "y": 200},   # fresh, box-selected
+		{"team": 0, "type": "Infantry", "count": 20, "x": 600, "y": 600},   # the clicked target
+	]
+	add_child(_battle)
+	await get_tree().physics_frame   # _ready spawns the scenario units
+
+	var found := _units_at(_battle, [
+		Vector2(300, 200), Vector2(600, 200), Vector2(600, 600),
+	])
+	var already_fighting: Unit = found[0]
+	var fresh: Unit = found[1]
+	var tired_target: Unit = found[2]
+	for u in found:
+		assert_not_null(u, "every scenario unit spawned")
+
+	# Both already_fighting and tired_target are genuinely engaged. tired_target needs a
+	# real foe, same as the single-pair test above, so UnitRelief.begin resolves one for
+	# whichever unit ends up relieving it.
+	already_fighting.state = Unit.State.FIGHTING
+	tired_target.state = Unit.State.FIGHTING
+	var foe := Unit.new()
+	add_child_autofree(foe)
+	foe.uid = 999
+	foe.team = 1
+	foe.position = tired_target.position + Vector2(0, 60)
+	tired_target.target_enemy = foe
+
+	_battle._apply_order_cmd({
+		"units": [already_fighting.uid, fresh.uid],
+		"x": tired_target.position.x, "y": tired_target.position.y,
+		"target": tired_target.uid,
+		"mode": BattleScript.OrderMode.NORMAL,
+		"group_attack": BattleScript.GroupAttackMode.DISTRIBUTED,
+	})
+
+	# already_fighting is itself one of the ordered units -- it must keep the order its
+	# OWN turn in the loop gave it (relieving tired_target, as the primary/first
+	# reliever, since it's the only valid relief candidate once itself is excluded from
+	# the pool), never a retreat MOVE order from being picked as fresh's relief target.
+	assert_eq(already_fighting.current_order.type, Order.Type.RELIEF,
+			"the already-fighting ordered unit keeps its own order, not a retreat")
+	assert_eq(already_fighting.current_order.friendly_target, tired_target,
+			"and it relieves the clicked target -- it is never treated as a relief target itself")
+	assert_eq(fresh.current_order.type, Order.Type.ATTACK,
+			"the second ordered unit piles onto the same fight instead of relieving already_fighting")

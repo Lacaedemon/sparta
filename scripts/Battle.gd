@@ -1169,20 +1169,34 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	# are candidates -- relieving an idle or already-routing unit does not fit the
 	# maneuver. Gated on mode != SUPPORT so a support ward (which shadows one ally,
 	# not a line) is never spread this way.
+	#
+	# Also gated on the order actually being relief-shaped (target is a FRIENDLY of
+	# the ordered units, not an enemy) -- checked via the first ordered unit's team,
+	# same way attack_targets above is only ever consumed on the enemy-target branch.
+	# Without this, a distributed ENEMY attack paid for this whole group scan and sort
+	# every time even though relief_targets is never read on that path.
 	var relief_targets: Array = []
 	if cmd.get("group_attack", GroupAttackMode.FOCUSED) == GroupAttackMode.DISTRIBUTED \
 			and target_unit != null and not is_move and mode != OrderMode.SUPPORT:
-		for node in get_tree().get_nodes_in_group("units"):
-			var candidate: Unit = node as Unit
-			if candidate == null or candidate.team != target_unit.team \
-					or candidate.state != Unit.State.FIGHTING:
-				continue
-			relief_targets.append(candidate)
-		var relief_ref_pos: Vector2 = target_unit.position
-		relief_targets.sort_custom(func(a: Unit, b: Unit) -> bool:
-			var da: float = a.position.distance_to(relief_ref_pos)
-			var db: float = b.position.distance_to(relief_ref_pos)
-			return da < db if da != db else a.uid < b.uid)
+		var first_ordered: Unit = _unit_by_uid(int(cmd["units"][0])) if not cmd["units"].is_empty() else null
+		if first_ordered != null and first_ordered.team == target_unit.team:
+			for node in get_tree().get_nodes_in_group("units"):
+				var candidate: Unit = node as Unit
+				# A candidate already among this very order's own units is excluded: it's
+				# about to receive its own order later in the loop below, and picking it as
+				# someone else's tired partner here would have UnitRelief.begin() overwrite
+				# whichever of the two writes -- its own order or the retreat it's handed
+				# as a target -- runs last, silently clobbering the other.
+				if candidate == null or candidate.team != target_unit.team \
+						or candidate.state != Unit.State.FIGHTING \
+						or _uids_contain(cmd["units"], candidate.uid):
+					continue
+				relief_targets.append(candidate)
+			var relief_ref_pos: Vector2 = target_unit.position
+			relief_targets.sort_custom(func(a: Unit, b: Unit) -> bool:
+				var da: float = a.position.distance_to(relief_ref_pos)
+				var db: float = b.position.distance_to(relief_ref_pos)
+				return da < db if da != db else a.uid < b.uid)
 	var relieved: bool = false
 	var relief_foe: Unit = null
 	for uid in cmd["units"]:
