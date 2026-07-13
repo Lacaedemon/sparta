@@ -667,6 +667,34 @@ PRs as part of the GII loop; those belong to their own sessions.
 (The concrete rules here are Sparta-multi-session-specific; the general
 "check for a prior claim before starting" rule lives in ai-config.)
 
+**Post-merge tidy: `git worktree remove` on your OWN currently-active worktree
+can partially succeed and leave an empty, orphaned directory — this is
+harmless, not data loss.** After a PR merges, running `git worktree remove
+.claude/worktrees/<name>` from the main checkout while THIS session is still
+running inside that worktree (its Bash tool cwd pinned there) can fail with
+`Permission denied` at the final `rmdir` step, but only *after* it already
+deleted every file inside — Windows won't let git remove the directory itself
+while some process (the harness's own shell for this session) still holds a
+handle to it. Symptoms: `git worktree list` no longer shows the entry (git's
+`.git/worktrees/<name>` admin metadata IS removed), but
+`Test-Path <dir>`/`ls` on the physical path still returns true because the
+now-empty directory shell lingers. Confirm nothing was lost by checking
+`git branch --list <branch>` (the branch itself is untouched by `worktree
+remove` — delete it separately with `git branch -d` once it no longer shows
+in `git worktree list`) and `git log`/`gh pr view` to confirm the merge
+actually landed on `main` before treating this as anything other than cleanup
+succeeding by 99%. Don't attempt a forced re-remove or `rm -rf` on the
+directory from within the same session — it can't remove its own lock, and
+the leftover empty directory is inert; it'll clean up naturally once the
+session ends. Also: once this happens, do not try to Read/Edit/Write any file
+inside that worktree path again this session — the files are actually gone,
+not just inaccessible; switch every subsequent file operation to the main
+checkout's absolute path instead. (Session `gii-ffdb93`, 2026-07-13: `git
+worktree remove ".claude/worktrees/gii-ffdb93"` for the just-merged PR #824
+emptied the directory but left it registered as `Test-Path`-true; branch
+`design/atomic-order-queue` was still present and cleanly `git branch -d`-able
+afterward.)
+
 When the next AI session reviewing a PR cites a "CLAUDE.md rule" to justify a
 requested change, check that the rule's exact wording actually appears in
 *this repo's* `CLAUDE.md` — not just in the harness's own baseline style
