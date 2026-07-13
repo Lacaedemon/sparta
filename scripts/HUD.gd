@@ -10,14 +10,15 @@ const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
 const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
 const UnitRef = preload("res://scripts/Unit.gd")
 
-# Stable ids for the Menu popup's items (independent of index / separators). The four
-# MENU_FORMUP_EQUAL_* ids set the default multi-unit form-up distribution (radio-checked);
-# the four MENU_FORMUP_CYCLE_* ids toggle Y-key cycle membership (see _FORMUP_ENTRIES below).
+# Stable ids for the Menu popup's items (independent of index / separators). The five
+# MENU_FORMUP_EQUAL_*/MENU_FORMUP_CHECKERBOARD ids set the default multi-unit form-up
+# distribution (radio-checked); the matching MENU_FORMUP_CYCLE_* ids toggle Y-key cycle
+# membership (see _FORMUP_ENTRIES below).
 enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_EQUAL_DEPTH_SPACE, MENU_FORMUP_EQUAL_DEPTH,
-		MENU_FORMUP_EQUAL_WIDTH, MENU_FORMUP_EQUAL_WIDTH_COUNT,
+		MENU_FORMUP_EQUAL_WIDTH, MENU_FORMUP_EQUAL_WIDTH_COUNT, MENU_FORMUP_CHECKERBOARD,
 		MENU_FORMUP_CYCLE_DEPTH_SPACE, MENU_FORMUP_CYCLE_DEPTH,
-		MENU_FORMUP_CYCLE_WIDTH, MENU_FORMUP_CYCLE_WIDTH_COUNT,
+		MENU_FORMUP_CYCLE_WIDTH, MENU_FORMUP_CYCLE_WIDTH_COUNT, MENU_FORMUP_CYCLE_CHECKERBOARD,
 		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
 		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS }
 
@@ -65,7 +66,7 @@ const _STANCE_ENTRIES := [
 	{"id": 13, "mode": BattleRef.OrderMode.KNOCKBACK_FOCUS, "label": "Knockback focus", "slug": "knockback_focus"},
 ]
 
-# The four multi-unit form-up distribution modes, in menu order (the default, EQUAL_DEPTH_SPACE,
+# The multi-unit form-up distribution modes, in menu order (the default, EQUAL_DEPTH_SPACE,
 # first). Each entry drives BOTH the "default" radio item and the "Y-key cycles through" check
 # item for that mode, sharing one label so the two sections read consistently. Adding a mode
 # updates the menu, the sync/dispatch logic, and the labels in one place -- see
@@ -79,6 +80,8 @@ const _FORMUP_ENTRIES := [
 		"default_id": MENU_FORMUP_EQUAL_WIDTH, "cycle_id": MENU_FORMUP_CYCLE_WIDTH},
 	{"mode": SelectionManagerRef.FormUpDist.EQUAL_WIDTH_COUNT, "label": "Equal width (count)",
 		"default_id": MENU_FORMUP_EQUAL_WIDTH_COUNT, "cycle_id": MENU_FORMUP_CYCLE_WIDTH_COUNT},
+	{"mode": SelectionManagerRef.FormUpDist.CHECKERBOARD, "label": "Checkerboard (quincunx)",
+		"default_id": MENU_FORMUP_CHECKERBOARD, "cycle_id": MENU_FORMUP_CYCLE_CHECKERBOARD},
 ]
 
 # Display names and menu order for every formation mode, shared by the button

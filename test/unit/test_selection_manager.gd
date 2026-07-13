@@ -759,6 +759,7 @@ const EQUAL_DEPTH := SelectionManagerScript.FormUpDist.EQUAL_DEPTH
 const EQUAL_WIDTH := SelectionManagerScript.FormUpDist.EQUAL_WIDTH
 const EQUAL_DEPTH_SPACE := SelectionManagerScript.FormUpDist.EQUAL_DEPTH_SPACE
 const EQUAL_WIDTH_COUNT := SelectionManagerScript.FormUpDist.EQUAL_WIDTH_COUNT
+const CHECKERBOARD := SelectionManagerScript.FormUpDist.CHECKERBOARD
 
 
 func test_form_up_equal_depth_gives_units_the_same_rank_depth() -> void:
@@ -928,12 +929,104 @@ func test_form_up_single_unit_slice_fills_the_whole_line() -> void:
 	# used (files_for_halfwidth of the half-width) — in EVERY mode, since holding anything
 	# "equal" is vacuous with only one unit to compare.
 	var want_files: int = UnitFormation.files_for_halfwidth(70.0, 120)
-	for mode in [EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT]:
+	for mode in [EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT, CHECKERBOARD]:
 		var slices: Array = sm._form_up_slices([u], Vector2(400, 500), Vector2(540, 500), mode)
 		assert_eq(slices.size(), 1, "a lone unit is one slice")
 		assert_almost_eq(slices[0]["center"].x, 470.0, 0.001, "centred on the line midpoint")
 		assert_eq(slices[0]["center"].y, 500.0, "on the line")
 		assert_eq(slices[0]["files"], want_files, "fills the line at the original single-unit frontage")
+
+
+# --- checkerboard (quincunx) form-up, docs/acies-triplex-design.md ----------
+
+func test_checkerboard_alternates_units_into_front_and_rear_rows() -> void:
+	# Three units on a straight west-east drag: 1st and 3rd (by ordinal position) form the
+	# front row, 2nd forms the rear row -- one slice per unit either way.
+	var sm := _sm()
+	var u1 := _unit()
+	var u2 := _unit()
+	var u3 := _unit()
+	var slices: Array = sm._form_up_slices([u1, u2, u3], Vector2(0, 0), Vector2(600, 0), CHECKERBOARD)
+	assert_eq(slices.size(), 3, "one slice per unit, front and rear together")
+	var by_unit := {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	assert_almost_eq(by_unit[u1]["center"].y, 0.0, 0.001, "1st unit (front row) stays on the drag line")
+	assert_almost_eq(by_unit[u3]["center"].y, 0.0, 0.001, "3rd unit (front row) stays on the drag line")
+	assert_gt(by_unit[u2]["center"].y, 1.0, "2nd unit (rear row) sits behind the drag line")
+
+
+func test_checkerboard_rear_unit_sits_at_the_lateral_midpoint_of_the_front_gap() -> void:
+	var sm := _sm()
+	var u1 := _unit()
+	var u2 := _unit()
+	var u3 := _unit()
+	var slices: Array = sm._form_up_slices([u1, u2, u3], Vector2(0, 0), Vector2(600, 0), CHECKERBOARD)
+	var by_unit := {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	var midpoint_x: float = (by_unit[u1]["center"].x + by_unit[u3]["center"].x) * 0.5
+	assert_almost_eq(by_unit[u2]["center"].x, midpoint_x, 0.5,
+			"the rear unit centres on the lateral midpoint between its two front neighbours")
+
+
+func test_checkerboard_rear_offset_matches_the_line_gap_constant() -> void:
+	# The drag runs due east (facing perpendicular, i.e. due south in world Y), so the rear
+	# row's offset from the front row is exactly CHECKERBOARD_LINE_GAP along -facing.
+	var sm := _sm()
+	var u1 := _unit()
+	var u2 := _unit()
+	var slices: Array = sm._form_up_slices([u1, u2], Vector2(0, 0), Vector2(400, 0), CHECKERBOARD)
+	var by_unit := {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	assert_almost_eq(by_unit[u2]["center"].y, by_unit[u1]["center"].y
+			+ SelectionManagerScript.CHECKERBOARD_LINE_GAP, 0.5,
+			"rear row sits exactly CHECKERBOARD_LINE_GAP behind the front row")
+
+
+func test_checkerboard_front_row_gap_is_wider_than_the_flat_multi_unit_gap() -> void:
+	# The quincunx "gap ≈ own frontage" rule: two front-row neighbours end up farther apart
+	# than the flat MULTI_FORM_UP_GAP two adjacent same-row units get in every other mode.
+	var sm := _sm()
+	var u1 := _unit()
+	u1.max_soldiers = 120
+	var u2 := _unit()
+	u2.max_soldiers = 120
+	var u3 := _unit()
+	u3.max_soldiers = 120
+	var checkerboard: Array = sm._form_up_slices(
+			[u1, u2, u3], Vector2(0, 0), Vector2(900, 0), CHECKERBOARD)
+	var equal_depth_space: Array = sm._form_up_slices(
+			[u1, u3], Vector2(0, 0), Vector2(900, 0), EQUAL_DEPTH_SPACE)
+	var by_unit := {}
+	for s in checkerboard:
+		by_unit[s["unit"]] = s
+	var checkerboard_gap: float = by_unit[u3]["center"].x - by_unit[u1]["center"].x
+	var flat_gap: float = equal_depth_space[1]["center"].x - equal_depth_space[0]["center"].x
+	assert_gt(checkerboard_gap, flat_gap,
+			"checkerboard's front-row spacing is wider than the same two units get under a flat gap")
+
+
+func test_checkerboard_extra_rear_unit_extends_past_the_last_front_slot() -> void:
+	# Four units: front = [u1, u3] (2 units, 1 internal gap), rear = [u2, u4] (2 units) --
+	# one more rear unit than front has gaps. u4 must land somewhere distinct from u2's
+	# gap-midpoint slot, past the front row's own flank, not stacked on u2.
+	var sm := _sm()
+	var u1 := _unit()
+	var u2 := _unit()
+	var u3 := _unit()
+	var u4 := _unit()
+	var slices: Array = sm._form_up_slices(
+			[u1, u2, u3, u4], Vector2(0, 0), Vector2(800, 0), CHECKERBOARD)
+	assert_eq(slices.size(), 4, "one slice per unit")
+	var by_unit := {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	assert_gt(by_unit[u4]["center"].x, by_unit[u3]["center"].x,
+			"the extra rear unit extends past the last front unit, not back onto an existing slot")
+	assert_almost_eq(by_unit[u4]["center"].y, by_unit[u2]["center"].y, 0.001,
+			"the extra rear unit stays on the same rear-row depth as the other rear unit")
 
 
 func test_order_units_for_line_sorts_by_field_position_by_default() -> void:

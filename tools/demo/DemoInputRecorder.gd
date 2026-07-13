@@ -29,6 +29,13 @@ var _scenario: Array = []              # custom unit matchup (input script "scen
 # from the input script's optional "doctrine" field (a DoctrineRegistry id). Empty string ==
 # "don't override" -- Battle keeps its own default (see Battle.ai_doctrine's own doc comment).
 var _doctrine: String = ""
+# Live SelectionManager override for the multi-unit form-up distribution mode (a
+# SelectionManager.FormUpDist value), from the input script's optional "form_up_dist"
+# field. -1 (default) means "don't override" -- SelectionManager keeps reading
+# Settings.form_up_dist_default as normal. Set directly on the live SelectionManager
+# instance (not via a Settings session setter) since this is a live-battle behavior
+# override, not a HUD/render toggle -- see _start_battle.
+var _form_up_dist: int = -1
 var _frame_ticks: Array = []           # ticks to save a viewport PNG at (frame capture; empty = off)
 var _frame_dir: String = ""            # output dir for captured frames
 var _captured: Dictionary = {}         # tick -> true, so each frame is saved at most once
@@ -83,6 +90,7 @@ func _ready() -> void:
 	_drill = bool(script.get("drill", false))
 	_scenario = script.get("scenario", [])
 	_doctrine = str(script.get("doctrine", ""))
+	_form_up_dist = int(script.get("form_up_dist", -1))
 	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
 	_arm_state_dump(DemoFrames.script_array(script, "state"))
 	print("[demo-input] %d scripted input events over %d ticks%s%s" % [
@@ -102,6 +110,8 @@ func _start_battle() -> void:
 		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
 	add_child(_battle)
 	_sel = _battle.get_node("SelectionManager")
+	if _form_up_dist >= 0:
+		_sel._form_up_dist = _form_up_dist
 	_cam = _battle.get_node("Camera2D")
 	_apply_camera(0)
 	get_tree().physics_frame.connect(_on_physics_frame)

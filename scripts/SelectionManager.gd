@@ -55,20 +55,41 @@ const UNBOUNDED_FILES: int = 1000000
 # TIGHT/LOOSE/NORMAL group. The int values mirror Settings.form_up_dist_default (persisted)
 # and are append-only -- EQUAL_DEPTH/EQUAL_WIDTH keep their original values so an existing
 # player's persisted choice doesn't silently change meaning; new modes are added after them.
-enum FormUpDist { EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT }
+#
+# CHECKERBOARD is a different axis entirely (which of the historical acies-triplex layouts
+# to use, not which dimension/basis a single line holds equal) -- see docs/acies-triplex-
+# design.md. It reuses this same enum/cycle/menu machinery rather than a parallel toggle
+# system, since "how a multi-unit form-up splits the dragged line" is exactly what it does
+# too, just across two offset rows instead of one.
+enum FormUpDist { EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT, CHECKERBOARD }
 const FORM_UP_DIST_NAMES := {
 	FormUpDist.EQUAL_DEPTH: "Equal depth (count)",
 	FormUpDist.EQUAL_WIDTH: "Equal width (space)",
 	FormUpDist.EQUAL_DEPTH_SPACE: "Equal depth (space)",
 	FormUpDist.EQUAL_WIDTH_COUNT: "Equal width (count)",
+	FormUpDist.CHECKERBOARD: "Checkerboard (quincunx)",
 }
-# Canonical mode list — the full set in preferred order (the default first). Used as the
-# fallback when Settings.form_up_dist_cycle is empty (all modes disabled), and as the
-# reference for validating cycle entries loaded from disk. Players configure a subset in
-# ☰ Menu.
+# Canonical mode list — every mode that EXISTS, in preferred order (the default first). This
+# is the full reference set: the fallback when Settings.form_up_dist_cycle is empty (all
+# modes disabled), the enabled-subset filter's iteration order (_cycle_from_settings), and
+# what the "keep the default reachable" self-correction (HUD._sync_setting_toggles) draws
+# from -- so every mode a player can ever select as the default MUST appear here, or that
+# self-correction can never re-add it to Settings.form_up_dist_cycle. CHECKERBOARD is
+# included here (it's a real, selectable mode) but left OUT of Settings.form_up_dist_cycle's
+# own persisted DEFAULT VALUE below -- the two lists serve different purposes: this one is
+# "what's possible", that one is "what's enabled out of the box".
 const FORM_UP_DIST_CYCLE := [FormUpDist.EQUAL_DEPTH_SPACE, FormUpDist.EQUAL_DEPTH,
-		FormUpDist.EQUAL_WIDTH, FormUpDist.EQUAL_WIDTH_COUNT]
+		FormUpDist.EQUAL_WIDTH, FormUpDist.EQUAL_WIDTH_COUNT, FormUpDist.CHECKERBOARD]
 const FORM_UP_DIST_CYCLE_KEY := KEY_Y   # cycles the live distribution mode
+# Checkerboard geometry (docs/acies-triplex-design.md): the front row's inter-unit gap is
+# scaled UP from the normal MULTI_FORM_UP_GAP to roughly that unit's own frontage width (the
+# quincunx "gap ≈ own frontage" rule), and the rear row sits this many world units BEHIND the
+# front row (away from the facing direction) so the two rows read as visually and physically
+# distinct lines. Chosen as a few ranks' worth of FORMATION_SPACING -- deep enough that the
+# rows don't visually merge at typical camera zoom, shallow enough the rear row still reads
+# as "close support" rather than a separate, disconnected battle line.
+const CHECKERBOARD_GAP_SCALE: float = 1.0
+const CHECKERBOARD_LINE_GAP: float = 6.0 * UnitRef.FORMATION_SPACING
 const DEMO_FORMUP_WINDOW: int = 90   # ticks a replayed deploy line lingers (spans the march)
 
 # Group order distribution: when multiple units issue an attack order, Focused sends
@@ -633,6 +654,8 @@ func _order_units_for_line(units: Array, a: Vector2, b: Vector2, by_selection_or
 ## with MULTI_FORM_UP_GAP between them and the whole assembly centred on the drag, so a single
 ## unit still lands on the line midpoint (collapsing to the old single-unit deploy).
 func _form_up_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
+	if mode == FormUpDist.CHECKERBOARD:
+		return _checkerboard_slices(units, a, b)
 	var dir: Vector2 = (b - a).normalized()
 	var total: float = a.distance_to(b)
 	var usable: float = maxf(total - MULTI_FORM_UP_GAP * float(units.size() - 1), 0.0)
@@ -649,6 +672,84 @@ func _form_up_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
 		var center: Vector2 = a + dir * (cursor + w * 0.5)
 		out.append({"unit": units[i], "center": center, "files": int(files_per_unit[i])})
 		cursor += w + MULTI_FORM_UP_GAP
+	return out
+
+
+## Checkerboard (quincunx) layout, docs/acies-triplex-design.md: alternates the ordered
+## `units` into a front row (even ordinal position: 1st, 3rd, ...) and a rear row (odd
+## ordinal: 2nd, 4th, ...). The front row lays out along `a`->`b` like the other modes, but
+## with each gap scaled to roughly the WIDER of its two neighbouring units' own frontage
+## (CHECKERBOARD_GAP_SCALE) instead of the flat MULTI_FORM_UP_GAP -- the historical "gap ≈
+## own frontage" rule. Each rear unit sits at the lateral midpoint of one front-row gap,
+## offset CHECKERBOARD_LINE_GAP world units BACK (away from the facing direction) so the two
+## rows read as distinct lines. Per-unit file counts come from the same EQUAL_DEPTH_SPACE
+## basis the default mode uses, computed once across the whole ordered selection so a
+## front/rear pair drawn from the same drag gets a comparable frontage -- checkerboard only
+## changes ROW/GAP geometry, not per-unit sizing.
+func _checkerboard_slices(units: Array, a: Vector2, b: Vector2) -> Array:
+	var dir: Vector2 = (b - a).normalized()
+	var total: float = a.distance_to(b)
+	var front: Array = []
+	var rear: Array = []
+	for i in range(units.size()):
+		if i % 2 == 0:
+			front.append(units[i])
+		else:
+			rear.append(units[i])
+	var usable: float = maxf(total - MULTI_FORM_UP_GAP * float(units.size() - 1), 0.0)
+	var files_all: Array = _files_for_mode(units, usable, FormUpDist.EQUAL_DEPTH_SPACE)
+	var front_widths: Array = []
+	var front_files: Array = []
+	var rear_widths: Array = []
+	var rear_files: Array = []
+	for i in range(units.size()):
+		var w: float = float(int(files_all[i]) - 1) * UnitRef.FORMATION_SPACING
+		if i % 2 == 0:
+			front_files.append(files_all[i])
+			front_widths.append(w)
+		else:
+			rear_files.append(files_all[i])
+			rear_widths.append(w)
+	# Front-row gaps: one between each adjacent pair, sized off the wider neighbour so a big
+	# unit next to a small one still gets a gap proportional to what it actually needs to clear.
+	var front_gaps: Array = []
+	for i in range(front.size() - 1):
+		front_gaps.append(maxf(front_widths[i], front_widths[i + 1]) * CHECKERBOARD_GAP_SCALE
+				+ MULTI_FORM_UP_GAP)
+	var front_span: float = 0.0
+	for w in front_widths:
+		front_span += w
+	for g in front_gaps:
+		front_span += g
+	var out: Array = []
+	var front_centers: Array = []
+	var cursor: float = (total - front_span) * 0.5
+	for i in range(front.size()):
+		var center: Vector2 = a + dir * (cursor + front_widths[i] * 0.5)
+		front_centers.append(center)
+		out.append({"unit": front[i], "center": center, "files": int(front_files[i])})
+		cursor += front_widths[i]
+		if i < front_gaps.size():
+			cursor += front_gaps[i]
+	var face: float = _form_up_facing(a, b)
+	var back_offset: Vector2 = -Vector2.RIGHT.rotated(face) * CHECKERBOARD_LINE_GAP
+	for i in range(rear.size()):
+		var lateral: Vector2
+		if i < front_centers.size() - 1:
+			# The common case: sit in the gap between front unit i and i+1.
+			lateral = (front_centers[i] + front_centers[i + 1]) * 0.5
+		elif front_centers.size() >= 2:
+			# One rear unit more than front has internal gaps (an even-sized selection):
+			# extend the same lateral pitch past the last front unit instead of stacking it
+			# on an existing slot.
+			var pitch: Vector2 = front_centers[front_centers.size() - 1] \
+					- front_centers[front_centers.size() - 2]
+			lateral = front_centers[front_centers.size() - 1] + pitch * 0.5
+		else:
+			# Only one front unit (no gap exists at all): the sole rear unit sits directly
+			# behind it, laterally centred.
+			lateral = front_centers[0] if not front_centers.is_empty() else (a + b) * 0.5
+		out.append({"unit": rear[i], "center": lateral + back_offset, "files": int(rear_files[i])})
 	return out
 
 
