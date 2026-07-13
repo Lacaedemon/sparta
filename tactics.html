@@ -443,6 +443,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#morale-routing" id="toc-morale-routing" class="nav-link" data-scroll-target="#morale-routing">Morale &amp; routing</a></li>
   <li><a href="#rank-cycling-trained-units" id="toc-rank-cycling-trained-units" class="nav-link" data-scroll-target="#rank-cycling-trained-units">Rank cycling (trained units)</a></li>
   <li><a href="#line-relief" id="toc-line-relief" class="nav-link" data-scroll-target="#line-relief">Line relief</a></li>
+  <li><a href="#passage-of-lines" id="toc-passage-of-lines" class="nav-link" data-scroll-target="#passage-of-lines">Passage of lines</a></li>
   <li><a href="#stamina" id="toc-stamina" class="nav-link" data-scroll-target="#stamina">Stamina</a></li>
   <li><a href="#prone-knockdown" id="toc-prone-knockdown" class="nav-link" data-scroll-target="#prone-knockdown">Prone / knockdown</a></li>
   <li><a href="#line-width-frontage" id="toc-line-width-frontage" class="nav-link" data-scroll-target="#line-width-frontage">Line width (frontage)</a></li>
@@ -628,6 +629,15 @@ Figure&nbsp;4: Routing around terrain: a weak unit breaks and flees straight tow
 <li><strong>Expect to bleed a little on the way out.</strong> The enemy keeps swinging while the retiring ranks are in reach, so pulling out of contact costs a few men — far fewer than staying until the regiment breaks.</li>
 </ul>
 <p>Rotate before the break, not after: a tired regiment fights measurably worse (see <a href="#stamina">Stamina</a>) and routs sooner, and pulling it out while it still holds banks a rested unit for the next push.</p>
+</section>
+<section id="passage-of-lines" class="level2">
+<h2 class="anchored" data-anchor-id="passage-of-lines">Passage of lines</h2>
+<p>Line relief swaps one pair of regiments at a time by default — every fresh unit you order onto an engaged friendly swaps with (or, past the first, piles onto the fight of) that ONE unit you clicked. When a whole tired line needs relieving at once, select every fresh unit in your reserve, switch the group-order mode to <strong>Distributed</strong> (<kbd>X</kbd>, or the <strong>Spread</strong> button — see <a href="./how-to-play.html">How to play</a> for the control), then right-click any one engaged unit in the tired line. Each fresh unit pairs with its OWN nearby engaged friendly instead of all of them swapping with the single unit clicked, so the whole reserve passes through the whole tired line in one order — Polybius’s triplex acies, a fresh line relieving a spent one through gaps opened in the line behind it.</p>
+<ul>
+<li><strong>The candidate pool is engaged friendlies only.</strong> A reliever never swaps with an idle or already-routing unit just to keep busy — if fewer of your tired line are actually fighting than you have fresh units, the extras fall back to piling onto a fight instead of manufacturing a swap.</li>
+<li><strong>Pairing is sorted by proximity to the unit you clicked, not to each reliever’s own position.</strong> With reserves lined up abreast of a tired line, this usually pairs each fresh unit with roughly the ally in front of it, but it can cross — the same distribution rule distributed attack already uses for spreading a multi-unit attack across several enemies.</li>
+<li><strong>Every pairing is a full line relief</strong>, with the same pass-through exemption, the same real retreat order, and the same “expect to bleed a little on the way out” cost described above — distributed relief only changes how the targets are assigned, not how any one swap behaves.</li>
+</ul>
 </section>
 <section id="stamina" class="level2">
 <h2 class="anchored" data-anchor-id="stamina">Stamina</h2>
@@ -1041,10 +1051,10 @@ Figure&nbsp;17: Coasting to a stop: a lone Cavalry regiment wipes out its target
 </section>
 <section id="group-attack-distribution" class="level2">
 <h2 class="anchored" data-anchor-id="group-attack-distribution">Group attack distribution</h2>
-<p>When you have several units selected and right-click an enemy, press <kbd>X</kbd> to cycle between two attack modes:</p>
+<p>When you have several units selected and right-click a target, press <kbd>X</kbd> to cycle between two group-order modes. The same toggle governs both an attack on an enemy and a relief order on a friendly (see <a href="#passage-of-lines">Passage of lines</a>) — which pair of behaviours applies depends only on what you right-click:</p>
 <ul>
-<li><strong>Focused</strong> (default) — every selected unit charges the same target. Use it to overwhelm a single regiment quickly.</li>
-<li><strong>Distributed</strong> — each unit picks a different nearby enemy, sorted by proximity to the clicked target. Extra units cycle through the list if you have more units than enemies. Use it to hold an entire line rather than piling onto one regiment and leaving the rest unengaged.</li>
+<li><strong>Focused</strong> (default) — every selected unit charges the same enemy, or (on a friendly target) every reliever swaps with the one tired unit clicked. Use it to overwhelm a single regiment quickly.</li>
+<li><strong>Distributed</strong> — each unit picks a different nearby enemy, sorted by proximity to the clicked target; on a friendly target, each reliever instead pairs with its own nearby engaged ally the same way. Extra units cycle through the list if you have more units than targets. Use it to hold an entire line rather than piling onto one regiment (or one relief swap) and leaving the rest unengaged.</li>
 </ul>
 <p>The flash message in the top-centre of the screen confirms the active mode. The mode is sticky — it stays set until you press <kbd>X</kbd> again (<kbd>Shift</kbd> + <kbd>X</kbd> cycles the other way).</p>
 <div id="fig-group-attack" class="demo quarto-float quarto-figure quarto-figure-center anchored">
