@@ -444,6 +444,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#rank-cycling-trained-units" id="toc-rank-cycling-trained-units" class="nav-link" data-scroll-target="#rank-cycling-trained-units">Rank cycling (trained units)</a></li>
   <li><a href="#line-relief" id="toc-line-relief" class="nav-link" data-scroll-target="#line-relief">Line relief</a></li>
   <li><a href="#passage-of-lines" id="toc-passage-of-lines" class="nav-link" data-scroll-target="#passage-of-lines">Passage of lines</a></li>
+  <li><a href="#acies-triplex" id="toc-acies-triplex" class="nav-link" data-scroll-target="#acies-triplex">Acies triplex</a></li>
   <li><a href="#stamina" id="toc-stamina" class="nav-link" data-scroll-target="#stamina">Stamina</a></li>
   <li><a href="#prone-knockdown" id="toc-prone-knockdown" class="nav-link" data-scroll-target="#prone-knockdown">Prone / knockdown</a></li>
   <li><a href="#line-width-frontage" id="toc-line-width-frontage" class="nav-link" data-scroll-target="#line-width-frontage">Line width (frontage)</a></li>
@@ -638,6 +639,11 @@ Figure&nbsp;4: Routing around terrain: a weak unit breaks and flees straight tow
 <li><strong>Pairing is sorted by proximity to the unit you clicked, not to each reliever’s own position.</strong> With reserves lined up abreast of a tired line, this usually pairs each fresh unit with roughly the ally in front of it, but it can cross — the same distribution rule distributed attack already uses for spreading a multi-unit attack across several enemies.</li>
 <li><strong>Every pairing is a full line relief</strong>, with the same pass-through exemption, the same real retreat order, and the same “expect to bleed a little on the way out” cost described above — distributed relief only changes how the targets are assigned, not how any one swap behaves.</li>
 </ul>
+</section>
+<section id="acies-triplex" class="level2">
+<h2 class="anchored" data-anchor-id="acies-triplex">Acies triplex</h2>
+<p>The Roman <strong>acies triplex</strong> deployed infantry in three lines — hastati, principes, triarii — with gaps between maniples in one line roughly matching their own frontage width, and the line behind offset to cover those gaps: a checkerboard (quincunx) pattern. Passage of lines (above) builds the <em>tactical</em> half — swapping a whole tired line for a fresh one through gaps. <strong>Checkerboard form-up</strong> builds the <em>spatial</em> half: a fifth multi-unit form-up split mode (off by default; enable it in <strong>☰ Menu → Form-up — Checkerboard (quincunx)</strong>, or cycle to it with <kbd>Y</kbd> once enabled) that lays your selection out as two staggered rows instead of one straight line. See <a href="./how-to-play.html#controls">How to play: Controls</a> (the “Deploy several units at once” entry) for the drag mechanics.</p>
+<p>This is a <strong>one-shot layout</strong>, not a standing formation — a unit dragged into a checkerboard arrangement doesn’t remember “I’m line 2” the way it remembers its stance or formation mode. Nothing yet models the historical system’s chief weakness either: a gapped, multi-line formation trades frontage flexibility for flank exposure, so a checkerboard-formed army isn’t currently more vulnerable to flanking than a solid line. See <code>docs/acies-triplex-design.md</code> in the project repository for the full design note and what’s tracked as follow-up work.</p>
 </section>
 <section id="stamina" class="level2">
 <h2 class="anchored" data-anchor-id="stamina">Stamina</h2>
