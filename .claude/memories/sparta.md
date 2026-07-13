@@ -1640,10 +1640,12 @@ couple()` anchors on a body centroid -- the engaged front-N-ranks' centroid when
 full-block centroid otherwise) -- anchor on the LIVE front rank's own midpoint instead (one rank,
 via `UnitFormation.live_front_indices`), unconditionally. Implemented and reverted: it broke 6
 tests, not superficially -- `test_explicatio_widens_the_line_without_teleporting_bodies` /
-`test_duplicatio_deepens_the_line` / `test_quarter_turn_in_live_battle_has_no_surge` all assert an
-IN-PLACE reshape or turn does NOT move the regiment centre, and it now moved by double-digit world
-units; one AI-determinism test (`test_subcommander_directives_replay_identically_on_the_same_seed`)
-also changed which enemy a unit's distance-based targeting picked.
+`test_duplicatio_deepens_the_line` both assert an in-place reshape does NOT move the regiment
+centre, and it now moved by 13-50 world units; `test_quarter_turn_in_live_battle_has_no_surge`
+(same invariant, an in-place turn) surged 2.94 world units against a <1.0 requirement -- smaller
+in absolute terms, but still a clear violation of the same "stays put" guarantee; one
+AI-determinism test (`test_subcommander_directives_replay_identically_on_the_same_seed`) also
+changed which enemy a unit's distance-based targeting picked.
 
 **Root cause:** the full centroid averages over every body, so it stays smooth even mid-reshape
 (individual bodies moving to new slots partially cancel out in the average). A LIVE "nearest-front
