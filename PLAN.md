@@ -111,6 +111,9 @@ then grow outward.
      then march) and macro **expansion** (a higher-level command expands into a flat sequence of
      primitive orders) — and explicitly rejects a deep nested order-tree/behavior-tree in favor of
      this flat composition, for both legibility and determinism.
+     **Superseded (#822, design in `docs/atomic-order-decomposition-design.md`):** this flat-only
+     position is being revisited in favor of a genuinely nested order tree, for the conceptual-chunking
+     legibility a flat queue can't provide to either a player or the battle AI.
    - **Individual-soldier orders (#547, design, just filed):** replacing block-level monolithic
      layout recomputation with small, individually-addressed per-soldier orders (one-shot reshaping
      instructions, bounded standing orders) that compose into unit-level and formation-level

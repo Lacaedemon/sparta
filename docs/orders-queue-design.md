@@ -161,6 +161,15 @@ conversio mid-turn. Modeled as one phased order, the phases advance once per tic
 deterministically; there is no second dispatch to lose. **Composition inside a
 single queue entry is both the model and the bug fix.**
 
+> **Being revisited, tracked in [#822](https://github.com/Lacaedemon/sparta/issues/822)
+> / [`atomic-order-decomposition-design.md`](atomic-order-decomposition-design.md).**
+> The rear-move and lateral-pivot composites' internal `Order.Phase` state
+> machine is planned to become real nested `children` (genuinely atomic child
+> orders) instead — the #517/#518 fix this section describes still has to
+> hold (advancement must run through the same exactly-once apply path, not a
+> new ad hoc trigger), just expressed as tree traversal rather than a phase
+> enum. See the linked design for why and the regression-test plan.
+
 ### 2. Macro expansion (a thin layer)
 
 A higher-level command expands into a *sequence of primitive orders appended to
@@ -179,12 +188,32 @@ untouched -- interrupt that with `set_current_order()`/`clear_orders()` instead.
 No maneuver expands itself into a macro yet; that is left to whatever combo a
 future command builds on top of `enqueue_macro`.
 
+> **Superseded for the composites this was meant for, tracked in
+> [#822](https://github.com/Lacaedemon/sparta/issues/822) /
+> [`atomic-order-decomposition-design.md`](atomic-order-decomposition-design.md).**
+> The rear-move/lateral-pivot/form-up cases this section anticipated are
+> planned to become real parent/child structure instead of sibling entries
+> sharing a `macro_id` tag. `enqueue_macro`/`cancel_macro` may still be worth
+> keeping for a shallower future case that genuinely is "a few otherwise-
+> unrelated orders that should cancel as one unit" — see the linked design's
+> open questions.
+
 ### 3. No deep order-tree / behavior-tree
 
 Avoid by default. It is more machinery than the domain needs, harder to serialize
 deterministically (it undercuts the "what is it doing now" legibility that
 motivates the whole design), and it cuts against the avoid-nesting default. Adopt
 it only if genuinely hierarchical reactive behavior becomes a real need.
+
+> **Superseded, tracked in [#822](https://github.com/Lacaedemon/sparta/issues/822)
+> / [`atomic-order-decomposition-design.md`](atomic-order-decomposition-design.md).**
+> That genuinely-hierarchical need arrived (a group-level drag-line command
+> decomposing into per-unit commands decomposing into atomic steps). The new
+> design also corrects the "cuts against the avoid-nesting default" reasoning
+> above: `avoid-nesting.md` governs function-call/definition structure, not
+> data-structure shape, so it was never a real objection to a tree-shaped
+> order queue specifically. The other two reasons (more machinery; harder to
+> serialize) are addressed there, not dismissed.
 
 ### Parallel composition is the order/mode split, not nesting
 
