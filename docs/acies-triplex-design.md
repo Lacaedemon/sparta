@@ -65,6 +65,56 @@ unit exactly like the other four modes (each unit is still routed as its own
 recorded form-up order), so replays, the orders queue, and every other
 consumer of a form-up command are untouched. No new sim/combat mechanics.
 
+## A general form-up movement fix, found reviewing this PR's own demo
+
+Checkerboard's rear row needs a large lateral+depth reposition, which exposed
+two pre-existing bugs in *every* multi-unit form-up (not checkerboard-specific
+— any drag-to-form-up a real distance away hit these too, just less visibly):
+
+1. **Reform and march overlapped.** A form-up applied its new frontage
+   (`Unit.set_frontage`) immediately, then held the unit for a FIXED
+   `REFORM_DURATION` (0.8s) before marching — regardless of whether the
+   reshape had actually finished settling. A large frontage change (front vs.
+   rear row can differ substantially) needs much longer than 0.8s for 80+
+   soldiers to walk into their new ranks, so the march started while the
+   reform was still visibly in progress. Fixed by gating the hold on
+   `Unit._reform_bodies_settled()` (the same mechanism a post-about-face
+   reform already used) instead of a flat timer, with a reshape-scaled safety
+   cap (`Unit._reshape_timeout`) rather than the flat duration as a backstop.
+   The settle check itself needed a looser tolerance for a full reshape than
+   the existing about-face case (`REFORM_SETTLE_EPS_RESHAPE`, 4.0 world units
+   vs. 1.0) — empirically, a wholesale frontage change's last body or two
+   hovers a couple of units outside the tight tolerance indefinitely without
+   ever fully closing it, unlike a same-shape angle-fold reform.
+2. **A form-up centre-pivoted toward its OWN TRAVEL DIRECTION while
+   marching, then snapped to its commanded facing on arrival.** `_move_to`'s
+   ordinary "orderly move" behavior re-aims a marching block toward wherever
+   it's currently walking (correct for a plain move, where the final facing
+   *should* match the travel direction) — but a form-up's final facing is
+   dictated by the drag line, not by the march's heading. For a diagonal
+   reposition (checkerboard's rear row: lateral + backward), this rotated the
+   whole formation grid to point along the diagonal travel path for the
+   whole march, then abruptly re-oriented to the commanded facing the
+   instant it arrived — a visible "collapse into a diagonal column, then
+   expand back into a line" artifact. Fixed by holding the form-up's
+   `deploy_facing` fixed for the entire march (the same `ordered_facing`
+   "maneuvering" mechanism a side-step already uses to hold a fixed facing),
+   pivoting toward it during the reform hold rather than toward the
+   destination bearing, so the block is already correctly oriented before it
+   ever steps off and never needs to reorient again.
+
+Verified via `dump-state.sh` + frame capture on
+`demos/inputs/checkerboard-form-up.json`: before the fix, mid-march frames
+showed soldiers strung out along a steep diagonal; after, every frame shows
+tidy rank-and-file rectangles throughout the march. A third idea raised in the
+same discussion — anchoring `Unit.position` on the front rank's midpoint
+instead of the soldier-body centroid — was tried and reverted (it destabilized
+two hard invariants: quarter-turn and explicatio/duplicatio must not move the
+regiment's centre) and is tracked separately in
+[#821](https://github.com/Lacaedemon/sparta/issues/821). A related idea (a
+standard-bearer soldier the unit forms up relative to) is tracked in
+[#820](https://github.com/Lacaedemon/sparta/issues/820).
+
 ## Deferred (tracked in [#819](https://github.com/Lacaedemon/sparta/issues/819))
 
 - **Persistent line-membership state.** `General.gd`'s reserve-commit logic

@@ -1332,10 +1332,21 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 						and UnitManeuver.is_lateral_pivot(u.facing, move_vec)
 				# Drag-to-form-up: apply frontage/facing immediately so soldiers begin
 				# adjusting during the reform phase rather than after the march starts.
+				# Also hold the DEPLOYED facing for the whole march (ordered_facing, the same
+				# "maneuvering" mechanism a side-step uses) instead of letting _move_to's
+				# ordinary centre-pivot re-aim the block at its travel direction: a form-up's
+				# final facing is dictated by the drag line, not by which way the unit happens
+				# to be walking, so re-aiming at travel direction only to snap back to the
+				# commanded facing on arrival is exactly the "reforms while it's still moving"
+				# look this is meant to avoid -- see docs/acies-triplex-design.md's own note.
+				var reshape_timeout: float = 0.0
 				if cmd.has("face"):
+					var old_files: int = UnitFormation.frontage(u)
 					u.deploy_facing = Vector2.from_angle(float(cmd["face"]))
+					u.ordered_facing = u.deploy_facing
 					if cmd.has("frontage"):
 						u.set_frontage(int(cmd["frontage"]))
+					reshape_timeout = u._reshape_timeout(old_files)
 				# Facing is not snapped here: an orderly move centre-pivots gradually toward
 				# its heading in Unit (turning in place during the reform hold and as it
 				# marches), so the ranks come onto the new bearing in good order rather
@@ -1385,7 +1396,19 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# commit immediately.
 				if not turn_armed and order.reform:
 					u._reform_target = point
-					u._reform_timer = UnitRef.REFORM_DURATION
+					# A form-up's reshape (a full frontage/file-count change, not just an
+					# angle fold) can need much longer than the flat REFORM_DURATION to
+					# actually settle -- gate the hold on the bodies genuinely reaching their
+					# new slots (_reform_until_settled/_reform_bodies_settled, the same
+					# mechanism a post-about-face reform already uses), with the reshape-scaled
+					# timeout as a safety cap rather than the fixed duration itself. A plain
+					# move's short in-place turn keeps the flat duration -- it never reshapes.
+					if reshape_timeout > 0.0:
+						u._reform_timer = reshape_timeout
+						u._reform_until_settled = true
+						u._reform_settle_eps = UnitRef.REFORM_SETTLE_EPS_RESHAPE
+					else:
+						u._reform_timer = UnitRef.REFORM_DURATION
 					u.has_move_target = false   # stop any prior march while reforming
 				elif not turn_armed:
 					u.move_target = point

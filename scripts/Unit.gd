@@ -541,6 +541,14 @@ const REFORM_DURATION: float = 0.8
 # reform's "ranks have re-formed" check. Loose enough that couple()'s tiny centre drift
 # can't stall the check, far tighter than a rank gap (FORMATION_SPACING is 9).
 const REFORM_SETTLE_EPS: float = 1.0
+# The same check's tolerance for a full frontage RESHAPE (a form-up's changed file count,
+# not just an angle fold) -- see _reform_settle_eps's own doc comment for why a wholesale
+# reshape needs a looser bound than REFORM_SETTLE_EPS to ever actually trigger. Empirically
+# verified (dump-state.sh on demos/inputs/checkerboard-form-up.json): the last body or two
+# settles to within ~1.2 world units and hovers there rather than crossing under 1.0, so 1.0
+# alone left the hold running out its full multi-second safety timeout every time instead of
+# ending on genuine settlement -- still far tighter than a rank gap (FORMATION_SPACING is 9).
+const REFORM_SETTLE_EPS_RESHAPE: float = 4.0
 # Radius over which a rout shakes friendly morale. Shared by the morale-spread
 # loop and the cosmetic shockwave so the visual matches the actual area of effect.
 const ROUT_SHOCK_RADIUS: float = 140.0
@@ -1267,18 +1275,28 @@ func _think(delta: float) -> void:
 			_commit_pending_reform()
 		else:
 			_reform_timer = maxf(0.0, _reform_timer - delta)
-			if _reform_until_settled and _reform_bodies_settled():
+			if _reform_until_settled and _reform_bodies_settled(_reform_settle_eps):
 				_reform_timer = 0.0   # ranks formed: no need to run out the timeout
 			if _reform_timer > 0.0:
 				state = State.IDLE
 				# Use the hold to centre-pivot in place toward the pending destination, so
 				# the ranks are already coming onto their heading before the first step. A
-				# side-step holds its facing (ordered_facing set), so it doesn't pivot. An
-				# undisciplined unit (or a disciplined one marching in haste) skips the formed
-				# pivot here too, mirroring _move_to's pivot_as_formation gate -- otherwise it
-				# would still visibly turn as one formed body during the hold, even though the
-				# march that follows won't.
-				if ordered_facing == Vector2.ZERO:
+				# form-up instead pivots toward its COMMANDED facing (deploy_facing) -- the
+				# drag line dictates that, not the destination bearing -- so the block is
+				# already correctly oriented before it ever steps off, and ordered_facing
+				# (set to deploy_facing for a form-up, see Battle._apply_order_cmd) then holds
+				# that same facing fixed for the whole march. A plain side-step/back-step also
+				# sets ordered_facing (to its OWN current facing) with no deploy_facing, so it
+				# still holds and skips pivoting here, unchanged. An undisciplined unit (or a
+				# disciplined one marching in haste) skips the formed pivot here too, mirroring
+				# _move_to's pivot_as_formation gate -- otherwise it would still visibly turn as
+				# one formed body during the hold, even though the march that follows won't.
+				if deploy_facing != Vector2.ZERO:
+					if disciplined and not _is_move_order_in_haste():
+						_rotate_facing_toward(deploy_facing, delta)
+					else:
+						_face_dir(deploy_facing)
+				elif ordered_facing == Vector2.ZERO:
 					var reform_dir: Vector2 = _reform_target - position
 					if disciplined and not _is_move_order_in_haste():
 						_rotate_facing_toward(reform_dir, delta)
@@ -2531,6 +2549,15 @@ var _reform_on_arrival: bool = false
 # (_reform_bodies_settled) -- the timer is only the safety timeout. The plain reform-before-move
 # hold keeps its fixed REFORM_DURATION countdown (this stays false for it).
 var _reform_until_settled: bool = false
+# The tolerance _reform_bodies_settled checks against, read alongside _reform_until_settled
+# above. A same-shape angle-fold reform (a post-about-face rank-swap) uses the tight default
+# (REFORM_SETTLE_EPS); a full frontage reshape (a form-up's changed file count) uses a looser
+# one -- see Battle._apply_order_cmd. A wholesale reshape couples with SoldierBodies.couple()'s
+# own continuous position correction in a way a same-shape reform doesn't, so its last body or
+# two can hover a couple of world units outside the tight tolerance indefinitely without ever
+# crossing it -- REFORM_SETTLE_EPS_RESHAPE is still comfortably "looks fully formed" at battle
+# scale, just not bit-for-bit exact.
+var _reform_settle_eps: float = REFORM_SETTLE_EPS
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -2825,11 +2852,11 @@ func reform_ranks() -> bool:
 ## True when every soldier body stands within REFORM_SETTLE_EPS of its formation slot --
 ## the ranks have re-formed. Trivially true before the bodies seed. Deterministic (pure
 ## positions, no RNG), so live play and replay agree tick for tick.
-func _reform_bodies_settled() -> bool:
+func _reform_bodies_settled(eps: float = REFORM_SETTLE_EPS) -> bool:
 	var slots: PackedVector2Array = soldier_world_slots(soldiers)
 	var n: int = mini(slots.size(), _sim_soldier_pos.size())
 	for i in range(n):
-		if _sim_soldier_pos[i].distance_squared_to(slots[i]) > REFORM_SETTLE_EPS * REFORM_SETTLE_EPS:
+		if _sim_soldier_pos[i].distance_squared_to(slots[i]) > eps * eps:
 			return false
 	return true
 
@@ -2845,14 +2872,29 @@ func _reform_bodies_settled() -> bool:
 ## jostled off their slots by a crowding friendly regiment). Derived from the unit's own
 ## shape and pace stats, no tuned magic number.
 func _reform_timeout() -> float:
-	var files: int = maxi(1, formation_files(soldiers))
-	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	return _reshape_timeout(formation_files(soldiers))
+
+
+## Safety timeout for a reshape FROM a different starting file count (a form-up's frontage
+## change, not the ±angle fold _reform_timeout's own callers use): the worst-case body travel
+## is bounded by the OLD shape's own diagonal (a body starting at one extreme of the old grid)
+## PLUS the NEW shape's diagonal (its target slot at the opposite extreme of the new grid), not
+## just the new shape's diagonal alone -- a wholesale frontage change can relocate a body much
+## further than a same-shape rank-swap ever would. Pass the file count captured just BEFORE
+## set_frontage() ran; the current (post-change) shape is read directly off `self`.
+func _reshape_timeout(old_files: int) -> float:
 	var span: float = FORMATION_SPACING * spacing_scale
-	var width: float = float(maxi(0, files - 1)) * span
-	var depth: float = float(maxi(0, ranks - 1)) * span
-	var crossing: float = Vector2(width, depth).length()
+	var new_files: int = maxi(1, formation_files(soldiers))
+	var new_ranks: int = UnitFormation.ranks_for(soldiers, new_files)
+	var new_crossing: float = Vector2(
+			float(maxi(0, new_files - 1)) * span, float(maxi(0, new_ranks - 1)) * span).length()
+	var old_crossing: float = 0.0
+	if old_files != new_files:
+		var old_ranks: int = UnitFormation.ranks_for(soldiers, maxi(1, old_files))
+		old_crossing = Vector2(
+				float(maxi(0, old_files - 1)) * span, float(maxi(0, old_ranks - 1)) * span).length()
 	var slowest: float = maxf(1.0, jog_speed * back_speed_fraction)
-	return crossing / slowest * 2.0 + 1.0
+	return (old_crossing + new_crossing) / slowest * 2.0 + 1.0
 
 
 ## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
@@ -3512,6 +3554,7 @@ func _commit_pending_reform() -> void:
 	has_move_target = true
 	_reform_timer = 0.0
 	_reform_until_settled = false
+	_reform_settle_eps = REFORM_SETTLE_EPS
 	if current_order != null and current_order.phase == Order.Phase.REFORM:
 		current_order.phase = Order.Phase.MARCH
 
@@ -3584,6 +3627,7 @@ func _rout() -> void:
 	clear_orders()
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_reform_until_settled = false
+	_reform_settle_eps = REFORM_SETTLE_EPS
 	_reform_on_arrival = false
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_engage_turn_enemy = null

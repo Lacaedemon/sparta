@@ -3882,6 +3882,60 @@ func test_reform_timer_decrements_during_response_delay() -> void:
 		"the reform timer counts down even while the order-response delay is still running")
 
 
+func test_reform_until_settled_ends_the_hold_early_once_bodies_settle() -> void:
+	# _reform_bodies_settled() is trivially true before any body seeds (_sim_soldier_pos
+	# empty) -- a form-up's settle-gated hold (Battle._apply_order_cmd) should exploit
+	# exactly that to commit right away instead of waiting out a long safety-timeout
+	# timer, mirroring the post-about-face reform's own early-exit.
+	var u := _make_unit()
+	u._reform_target = Vector2(200, 0)
+	u._reform_timer = 500.0   # a deliberately huge safety cap
+	u._reform_until_settled = true
+	u._think(0.01)
+	assert_true(u.has_move_target,
+		"settled bodies commit the pending move immediately, not after the full safety timeout")
+	assert_eq(u.move_target, Vector2(200, 0))
+
+
+func test_reform_without_settled_flag_ignores_early_settlement() -> void:
+	# The counterpart: a plain move's fixed-duration hold (_reform_until_settled left at its
+	# default false) does NOT early-exit even though bodies are trivially "settled" --
+	# only a form-up's reshape opts into the settle-gated behavior.
+	var u := _make_unit()
+	u._reform_target = Vector2(200, 0)
+	u._reform_timer = 500.0
+	u._think(0.01)
+	assert_false(u.has_move_target, "a huge fixed timer holds regardless of body settlement")
+	assert_gt(u._reform_timer, 0.0, "the timer is still counting down, not force-cleared")
+
+
+func test_reshape_timeout_grows_with_the_old_and_new_shapes() -> void:
+	# Pure function: a bigger reshape (either the OLD or the NEW file count implying a wider
+	# block) should never shrink the safety timeout relative to a same-shape reform.
+	var u := _make_unit(120)
+	u.frontage_override = 14
+	var same_shape: float = u._reshape_timeout(14)
+	var from_narrower: float = u._reshape_timeout(4)   # old shape was much narrower/deeper
+	assert_gt(from_narrower, same_shape,
+		"a reshape from a very different old file count budgets more time than a no-op reshape")
+
+
+func test_deploy_facing_pivot_during_reform_hold_targets_the_commanded_facing() -> void:
+	# The reform hold pivots toward deploy_facing (the form-up's COMMANDED facing) when set,
+	# not toward the bearing to _reform_target -- a form-up's final facing is dictated by the
+	# drag line, not by which way the destination happens to sit. Gradual (_rotate_facing_toward,
+	# not a snap), so run enough ticks to actually arrive rather than checking after one step.
+	var u := _make_unit()
+	u.facing = Vector2.UP
+	u.deploy_facing = Vector2.RIGHT
+	u._reform_target = Vector2(0, -500)   # destination bearing is UP -- opposite of deploy_facing
+	u._reform_timer = 10.0   # generous: outlives the pivot itself, well under the timeout
+	for i in range(120):
+		u._think(1.0 / 60.0)
+	assert_almost_eq(u.facing.x, 1.0, 0.01, "facing settles onto the commanded deploy facing (RIGHT)")
+	assert_almost_eq(u.facing.y, 0.0, 0.01, "...not the (opposite) destination bearing (UP)")
+
+
 # --- cycle charge (caracole) -----------------------------------------
 
 func test_cycle_charge_strikes_on_contact_then_flips_to_recharging() -> void:

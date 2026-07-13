@@ -1061,16 +1061,22 @@ func test_a_fresh_order_clears_a_prior_sidestep_hold() -> void:
 	assert_eq(u.ordered_facing, Vector2.ZERO, "the next non-lateral order drops the hold")
 
 
-func test_form_up_order_never_side_steps() -> void:
-	# A form-up commands its own deploy facing, so even a short shift must not be
-	# reinterpreted as a side-step.
+func test_form_up_order_holds_its_deploy_facing_not_the_units_current_one() -> void:
+	# A form-up commands its own deploy facing -- distinct from a side-step (which holds the
+	# unit's CURRENT facing). It still sets ordered_facing (so _move_to's "maneuvering" branch
+	# holds a fixed facing for the whole march instead of centre-pivoting toward travel
+	# direction -- the block would otherwise reorient toward wherever it's walking, then snap
+	# back to the commanded facing on arrival). The distinguishing signal is deploy_facing
+	# itself: ordered_facing equals it, not the unit's own (unrelated) current facing.
 	Settings.reform_before_move = false
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.RIGHT
 	var b := _battle([u])
 	b.enqueue_form_up([1], Vector2(0, 20), 1.0, 20)   # short lateral form-up
-	assert_eq(u.ordered_facing, Vector2.ZERO, "form-up uses deploy_facing, not a side-step hold")
-	assert_ne(u.deploy_facing, Vector2.ZERO, "...and parks its commanded facing instead")
+	assert_ne(u.deploy_facing, Vector2.ZERO, "form-up parks its commanded facing")
+	assert_eq(u.ordered_facing, u.deploy_facing,
+			"...and holds THAT facing for the march, not the unit's pre-order facing")
+	assert_ne(u.ordered_facing, Vector2.RIGHT, "the held facing is the deploy facing, not a side-step's own current facing")
 
 
 # --- per-type backward-walk speed ----------------------------------------
