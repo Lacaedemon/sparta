@@ -159,7 +159,7 @@ static func step(unit: Unit, delta: float) -> void:
 	# Membership test for the per-soldier loop below, as a packed bool array instead of a
 	# Dictionary -- every tick, every unit builds one of these (engaged or not), so a
 	# Dictionary's per-entry hashing/boxing overhead here is pure per-tick waste versus a
-	# flat byte lookup (#799).
+	# flat byte lookup.
 	var is_engaged := PackedByteArray()
 	is_engaged.resize(n)
 	for idx in engaged_indices:
@@ -178,7 +178,7 @@ static func step(unit: Unit, delta: float) -> void:
 	# arrives at the k-th canonical slot NEAREST ITS OWN POSITION, not just its k-th array rank.
 	# `target_slots` starts as a copy of `slots` (every unengaged body's target is just its own
 	# slot) and only the engaged entries get overwritten below -- a packed array instead of a
-	# Dictionary keyed by array index + a `.has()`/fallback branch per soldier (#799).
+	# Dictionary keyed by array index + a `.has()`/fallback branch per soldier.
 	var target_slots: PackedVector2Array = slots.duplicate()
 	if not engaged_indices.is_empty():
 		var canonical: PackedInt32Array = unit.canonical_target_slot_indices(slots, engaged_indices.size())
@@ -413,8 +413,8 @@ static func couple(unit: Unit, delta: float) -> void:
 		# 0..target_count-1 (see its own docstring: `slots` is a fresh rank-major grid, so
 		# the front `count` slots are always exactly those indices) -- sum straight over that
 		# range instead of materializing the index array just to walk it right back off
-		# (every engaged unit pays this once per tick in couple(), on top of step()'s own
-		# call, #799).
+		# (every engaged unit pays this once per tick in couple(), on top of step()'s own call to
+		# canonical_target_slot_indices()).
 		if unit.in_square():
 			var target_indices: PackedInt32Array = unit.canonical_target_slot_indices(slots, count)
 			for j in target_indices:
