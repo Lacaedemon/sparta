@@ -149,6 +149,21 @@ func test_set_sfx_enabled_session_restores_an_in_progress_load_guard() -> void:
 	assert_true(s._loading, "_loading restored to its prior (true) value, not hard-cleared")
 
 
+func test_set_show_soldier_ids_session_flips_value_without_persisting() -> void:
+	# Mirrors test_set_sfx_enabled_session_flips_value_without_persisting above: a demo
+	# investigating a per-soldier bug arms the ID overlay for the recording only, without
+	# rewriting a developer's saved preference.
+	var s := _SaveCountingSettings.new()
+	autofree(s)
+	watch_signals(s)
+	assert_false(s.show_soldier_ids, "soldier IDs default off")
+	s.set_show_soldier_ids_session(true)
+	assert_true(s.show_soldier_ids, "session setter flips the in-memory value")
+	assert_eq(s.save_calls, 0, "...and never calls _save()")
+	assert_signal_not_emitted(s, "changed", "...and emits no `changed`")
+	assert_false(s._loading, "_loading restored to its prior value (false) after the call")
+
+
 func test_reform_before_move_defaults_to_true() -> void:
 	var s := _settings()
 	assert_true(s.reform_before_move, "reform_before_move defaults to true")
