@@ -63,6 +63,11 @@ in places (evaluate during phase 1, per the avoid-nesting default)." PLAN.md's
 compositionality pillar states the same conclusion project-wide: the orders
 queue "explicitly rejects a deep nested order-tree/behavior-tree" in favor of
 flat composition (phasing + macro-expansion) for legibility and determinism.
+(That flat-composition position is being revisited per #822 —
+`docs/atomic-order-decomposition-design.md` — but the tagged-record-over-
+class-hierarchy choice this section is about is a separate decision and is
+unaffected: a genuinely nested `Order` *tree* would still store each node as
+the same single tagged record, not a per-kind subclass.)
 
 Why composition still wins here, beyond what the issue's tree test alone
 would predict:

@@ -7,9 +7,15 @@ existing design" below.
 
 ## The ask
 
-From discussion following #818 (checkerboard form-up, whose reform-hold added
-a *third* bare-field phased mechanism alongside the two `orders-queue-design.md`
-already documents):
+From discussion following #818 (checkerboard form-up, whose reform-hold reuses
+the existing bare-`Unit`-field mechanism — `_reform_timer`/`_reform_target`/
+`_reform_until_settled`/`_reform_settle_eps` — for a second purpose: a plain
+move's reform-before-move hold, and now also a form-up's reshape hold. Issue
+[#822](https://github.com/Lacaedemon/sparta/issues/822) counts **two** parallel
+"hold, then commit" mechanisms in total: (1) this bare-field mechanism, and
+(2) `Order.Phase` (`TURN`/`MARCH`/`REFORM`/`RETURN_TURN`), which
+`orders-queue-design.md` documents. #818 didn't add a third — it just gave
+mechanism (1) a second caller):
 
 1. **Atomic orders.** An order should represent exactly one primitive action —
    march straight forward, step back, turn in place, halt, charge forward,
@@ -75,7 +81,14 @@ this design has to actually address them rather than wave them away:
 # On Order (scripts/Order.gd):
 var children: Array[Order] = []   # nested sub-orders; empty = a genuine leaf/atomic order
 var _active_child: int = 0        # index into children of the currently-executing sub-order
+var parent: Order = null          # back-reference; null for the top-level order (Unit.current_order)
 ```
+
+`parent` is set once, when a composite order builds its `children` array (each
+child's `parent` points back at the composite), so it costs nothing dynamic to
+maintain — it's assigned alongside `children` at construction time, not
+re-derived per tick. It exists purely so completion (below) can walk upward
+without re-walking `current_order` from the top on every leaf completion.
 
 A **leaf** order (`children.is_empty()`) is what "atomic" means concretely: it
 has no further decomposition, and it's the thing that actually drives
@@ -89,9 +102,11 @@ children are e.g. `[in-place-turn, REFORM, MOVE]` (the rear-move composite,
 rebuilt as real children instead of `Order.Phase`), or a `FORM_UP`-flavored
 order at the very top of the tree whose children are one composite order PER
 UNIT in the drag selection (the group-level decomposition
-`SelectionManager._checkerboard_slices` already computes — this design just
-gives its output a home in the tree instead of N independent flat Battle
-commands).
+`SelectionManager._form_up_slices` already computes for any drag-line form-up
+— this design just gives its output a home in the tree instead of N
+independent flat Battle commands; `_checkerboard_slices` is only the
+CHECKERBOARD-mode sub-case `_form_up_slices` dispatches to, not the general
+entry point).
 
 ## The active leaf and advancement
 
@@ -115,13 +130,15 @@ directly for the actual movement/turn logic (mirroring exactly how it reads
 `current_order.phase` today — this is a small, mechanical rewrite of that
 read site, not a new way of thinking about what drives a tick).
 
-**Completing a leaf** advances the cursor at its PARENT: increment
-`parent._active_child`. If that runs past the parent's own `children.size()`,
-the PARENT itself just completed — recurse the same completion one level up
-(increment ITS parent's `_active_child`), cascading until either a parent has
-a next child to start, or the cascade reaches the top (`current_order`
-itself is done, and `Unit.retire_current_order()` runs exactly as it does
-today for a flat queue entry).
+**Completing a leaf** advances the cursor at its PARENT (the `parent` field
+above is what makes this a direct upward step, not a re-walk from
+`current_order`): increment `parent._active_child`. If
+`parent._active_child >= parent.children.size()`, the PARENT itself just
+completed — recurse the same completion one level up (increment
+`parent.parent._active_child`), cascading until either an ancestor has a next
+child to start, or the cascade reaches the top (`parent` is `null`,
+`current_order` itself is done, and `Unit.retire_current_order()` runs
+exactly as it does today for a flat queue entry).
 
 This is the same shape as `retire_current_order`/`_start_promoted_move`
 already use for the FLAT queue — promoting the next entry and re-running
@@ -140,9 +157,9 @@ turn it now is) instead of only ever at `Unit.orders`'s own head.
   `_reform_until_settled`/`_reform_settle_eps`) — become a REFORM leaf order's
   own fields (it needs the same settle-gated-hold data either way; the
   question is just whether that state lives on loose `Unit` fields or on the
-  order node that represents it). This closes the original, narrower #822 gap
-  (three parallel "hold, then commit" mechanisms) the same way as the
-  composites above, not as a fourth mechanism.
+  order node that represents it). This closes the original #822 gap (two
+  parallel "hold, then commit" mechanisms) the same way as the composites
+  above, not as a third mechanism.
 - **`Unit.enqueue_macro`/`cancel_macro`'s `macro_id` tag** — superseded by
   real parent/child structure for anything that needs "these steps belong
   together." `macro_id` may still be worth keeping for the shallow case of "a
