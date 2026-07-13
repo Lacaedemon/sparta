@@ -92,6 +92,36 @@ func test_couple_weights_drift_toward_engaged_bodies_while_fighting() -> void:
 	assert_almost_eq(u.position.y, 0.0, 1e-5)
 
 
+func test_couple_pairs_squared_engaged_bodies_via_canonical_perimeter() -> void:
+	# couple()'s engaged-centroid sum has two branches: the NORMAL-formation shortcut (sums
+	# straight over the contiguous canonical range) and the Square/Schiltron branch (delegates
+	# to canonical_target_slot_indices' live-perimeter selection). Exercise the Square branch
+	# directly so it isn't only covered incidentally by the non-Square tests above.
+	var u := _make_unit(24)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)
+	assert_true(u.in_square(), "sanity: the unit is in Square formation")
+	assert_true(u.is_engaged(), "sanity: the unit is engaged")
+	# Uniformly displace the whole regiment -- regardless of exactly which subset the live-
+	# perimeter selection picks, a uniform shove moves every candidate body by the same
+	# amount, so the resulting follow step is unambiguously in that direction and bounded.
+	var before: Vector2 = u.position
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] += Vector2(8.0, 0.0)
+	SoldierBodies.couple(u, DELTA)
+	var moved: Vector2 = u.position - before
+	assert_gt(moved.x, 0.0, "coupling follows the displaced perimeter bodies -- moves toward +x")
+	# The live-perimeter selection (a heap over farthest-from-centroid, not an exact geometric
+	# ring) isn't perfectly symmetric for every soldier count, so a small cross-axis component
+	# is expected -- assert it stays small relative to the dominant x displacement, not exactly
+	# zero.
+	assert_lt(absf(moved.y), absf(moved.x) * 0.5,
+		"no more than a modest lateral drift from a purely-x displacement")
+	assert_lt(moved.length(), Unit.MAX_FOLLOW_SPEED * DELTA + 1e-4,
+		"still a bounded follow step, never a snap, even through the Square branch")
+
+
 func test_couple_still_averages_whole_regiment_when_not_engaged() -> void:
 	# The friendly-collision / non-combat path is unchanged: with no engaged soldiers, the
 	# fallback still averages drift over every body, exactly as before this fix.
