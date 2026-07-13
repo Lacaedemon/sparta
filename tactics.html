@@ -450,6 +450,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#formation-stances" id="toc-formation-stances" class="nav-link" data-scroll-target="#formation-stances">Formation stances</a></li>
   <li><a href="#form-square-against-cavalry" id="toc-form-square-against-cavalry" class="nav-link" data-scroll-target="#form-square-against-cavalry">Form square against cavalry</a></li>
   <li><a href="#enemy-coordination" id="toc-enemy-coordination" class="nav-link" data-scroll-target="#enemy-coordination">Enemy coordination</a></li>
+  <li><a href="#the-general" id="toc-the-general" class="nav-link" data-scroll-target="#the-general">The general</a></li>
   <li><a href="#weapon-reach" id="toc-weapon-reach" class="nav-link" data-scroll-target="#weapon-reach">Weapon reach</a></li>
   <li><a href="#movement-speed" id="toc-movement-speed" class="nav-link" data-scroll-target="#movement-speed">Movement speed</a></li>
   <li><a href="#pace-modes" id="toc-pace-modes" class="nav-link" data-scroll-target="#pace-modes">Pace modes</a>
@@ -491,7 +492,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-07-12</p>
+      <p class="date">Last updated: 2026-07-13</p>
     </div>
   </div>
   
@@ -799,6 +800,31 @@ Figure&nbsp;10: Mutual support: one enemy unit stays locked in a long fight whil
 </figure>
 </div>
 </section>
+<section id="the-general" class="level2">
+<h2 class="anchored" data-anchor-id="the-general">The general</h2>
+<p>Above the subcommander sits a general, driven by a <strong>doctrine profile</strong> — data, not code, so a non-programmer can author a new one. Each profile sets:</p>
+<ul>
+<li><strong>Which army plans it knows</strong> — an advance-in-line or an envelop split into two wings, picked each AI tick against how the battle actually looks (an envelop needs a real numeric edge over the enemy, not just an even fight).</li>
+<li><strong>A reserve fraction</strong> — how many units start held back instead of joining the active line.</li>
+<li><strong>A reserve-commit threshold</strong> — once the active line’s own weighted-average morale drops below this, the reserves fold in.</li>
+<li><strong>Whether to pursue routers</strong> — an aggressive doctrine chases a broken enemy down; a cautious one holds the line instead.</li>
+</ul>
+<p>Two doctrines reading the identical battle can commit to different plans. A held-back reserve doesn’t just sit inert, either — it still turns to face a flank threat, forms anti-cavalry square, or answers a nearby ally’s call for relief, exactly like any other unit; only its own advance is put on hold.</p>
+<div id="fig-general-doctrine-reserves" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-general-doctrine-reserves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/general_doctrine_reserves.jpg">
+  <source src="media/general_doctrine_reserves.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-general-doctrine-reserves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11: A cautious general holds two full-strength units in reserve while three weaker units alone meet the enemy. As the front line takes losses its morale crosses the doctrine’s threshold, and the general folds the reserves into the fight — they break their stationary hold, march up, and join the melee.
+</figcaption>
+</figure>
+</div>
+</section>
 <section id="weapon-reach" class="level2">
 <h2 class="anchored" data-anchor-id="weapon-reach">Weapon reach</h2>
 <p>Each weapon has an <strong>effective reach</strong> — how close two units must get before they trade blows. A longer weapon reaches that contact distance first, so it lands the opening strikes of a clash while a shorter-weapon enemy is still closing the gap:</p>
@@ -876,7 +902,7 @@ Table&nbsp;2: Movement paces by unit type, in metres per second.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pace-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
+Figure&nbsp;12: Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.
 </figcaption>
 </figure>
 </div>
@@ -895,7 +921,7 @@ Figure&nbsp;11: Pace modes: regiments walk on approach, jog when enemy archers o
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-multi-click-speeds-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Four identical Cavalry regiments sent on the same move, one click apart: Walk, Jog, Run, and Sprint pull apart into four distinct paces instead of moving in lockstep.
+Figure&nbsp;13: Four identical Cavalry regiments sent on the same move, one click apart: Walk, Jog, Run, and Sprint pull apart into four distinct paces instead of moving in lockstep.
 </figcaption>
 </figure>
 </div>
@@ -920,7 +946,7 @@ Figure&nbsp;12: Four identical Cavalry regiments sent on the same move, one clic
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-lateral-pivot-flank-march-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;13: A Spearmen line ordered far to its own right: it quarter-turns toward the destination in place, marches straight there without ever reforming (the wide line stays wide, sliding sideways relative to its own shape), then quarter-turns back to its original facing on arrival.
+Figure&nbsp;14: A Spearmen line ordered far to its own right: it quarter-turns toward the destination in place, marches straight there without ever reforming (the wide line stays wide, sliding sideways relative to its own shape), then quarter-turns back to its original facing on arrival.
 </figcaption>
 </figure>
 </div>
@@ -938,7 +964,7 @@ Figure&nbsp;13: A Spearmen line ordered far to its own right: it quarter-turns t
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;14: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
+Figure&nbsp;15: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
 </figcaption>
 </figure>
 </div>
@@ -963,7 +989,7 @@ Figure&nbsp;14: Per-type backward-walk speed: a Spearmen and an Archers regiment
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;15: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+Figure&nbsp;16: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
 </figcaption>
 </figure>
 </div>
@@ -978,7 +1004,7 @@ Figure&nbsp;15: Braking on arrival: a lone Infantry regiment sprints toward a mo
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-coast-to-stop-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;16: Coasting to a stop: a lone Cavalry regiment wipes out its target mid-charge; with no enemy left to chase and no new order, it keeps sliding forward on its residual charge speed, decelerating, before finally coming to rest.
+Figure&nbsp;17: Coasting to a stop: a lone Cavalry regiment wipes out its target mid-charge; with no enemy left to chase and no new order, it keeps sliding forward on its residual charge speed, decelerating, before finally coming to rest.
 </figcaption>
 </figure>
 </div>
@@ -1031,7 +1057,7 @@ Figure&nbsp;16: Coasting to a stop: a lone Cavalry regiment wipes out its target
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;18: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
