@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure dev-tooling plumbing: adds Settings.set_show_soldier_ids_session(), a session-only setter mirroring the existing set_show_engaged_highlight_session/set_show_unit_speed_session so a demo input script can arm the already-existing soldier-ID overlay without a manual settings.cfg edit-and-restore. No new visual, no gameplay change -- the overlay itself already exists and renders identically whether armed via this setter or the pre-existing settings.cfg workaround, so there's nothing new for a recorded battle to show."
+}

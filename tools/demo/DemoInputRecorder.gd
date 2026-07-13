@@ -61,6 +61,14 @@ func _ready() -> void:
 	# requests it here rather than needing a scripted menu click.
 	if script.get("show_engaged_highlight", false):
 		Settings.set_show_engaged_highlight_session(true)
+	# Same session-only pattern: a demo investigating a per-soldier bug (e.g. which
+	# rank got knocked back) requests the soldier-ID overlay here. Note this alone
+	# isn't enough to render -- the overlay also requires the unit to be `selected`
+	# and the camera at detailed LOD (Unit._draw's `if selected and Settings.show_soldier_ids
+	# and _detailed_lod` gate), so a scenario needing this must also select the unit and
+	# zoom in past LOD_ZOOM_IN.
+	if script.get("show_soldier_ids", false):
+		Settings.set_show_soldier_ids_session(true)
 	# Deterministic seed so the recorded battle is reproducible run to run.
 	Replay.forced_seed = int(str(script.get("seed", "12345")))
 	# camera/frames/state go through script_array so a non-array typo degrades that one
