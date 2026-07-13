@@ -456,11 +456,12 @@ static func couple(unit: Unit, delta: float) -> void:
 			if target_indices.size() != count:
 				count = maxi(1, target_indices.size())
 		else:
-			var target_count: int = mini(count, slots.size())
-			for j in range(target_count):
+			# `count` (engaged-soldier indices, a subset of this unit's own `n` bodies) can
+			# never exceed `slots.size()` (== n, guaranteed by the early-return above), so
+			# the sum always runs over exactly `count` slots -- no size-mismatch fallback
+			# needed here, unlike the Square branch's live-perimeter selection above.
+			for j in range(count):
 				slot_centroid += slots[j]
-			if target_count != count:
-				count = maxi(1, target_count)
 	else:
 		count = n
 		for i in range(n):
