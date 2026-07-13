@@ -179,19 +179,63 @@ with no further UI changes needed — `describe()`'s contract doesn't change).
 
 ## Suggested phasing (still a multi-PR effort)
 
-- **Slice 0:** the `Order.children`/`_active_child`/`active_leaf()` data
-  model itself, with the advancement/cascade logic, proven on a single
-  composite (rear-move) end to end — including the #517/#518 regression test.
-  Nothing else migrates yet.
-- **Slice 1:** lateral-pivot composite onto the same mechanism.
-- **Slice 2:** #818's form-up reform-hold onto a REFORM leaf order, retiring
-  the bare fields.
-- **Slice 3:** the group-level `FORM_UP` composite (checkerboard's per-unit
+- **Slice 0 (revised — see "Implementation investigation notes" below):
+  rear-move AND lateral-pivot together.** Investigating the actual code
+  before writing any (`begin_pivot`, `is_order_turning()`,
+  `_settle_order_turn()`, `_finish_order_turn()`) found the two composites
+  are **not separable** — both are built on the SAME shared in-place-turn
+  primitives, not independent implementations that happen to look similar.
+  Converting one to `children` without the other means either duplicating
+  the shared primitives (one tree-based copy, one `Phase`-based copy) or
+  leaving the shared functions straddling both mechanisms at once — both are
+  worse than converting them together. Original phasing below (rear-move
+  alone first) does not hold up; revise to one slice covering both,
+  including the `Order.children`/`_active_child`/`active_leaf()` data model
+  and the #517/#518 regression test.
+- **Slice 1:** #818's form-up reform-hold onto a REFORM leaf order, retiring
+  the bare fields. (Renumbered from the old Slice 2, now that rear-move and
+  lateral-pivot are one combined slice instead of two.)
+- **Slice 2:** the group-level `FORM_UP` composite (checkerboard's per-unit
   split becomes real tree children instead of N independent `Battle`
   commands) — the piece that actually realizes "hierarchical decomposition
   by group-level AI" for a drag-line order specifically.
-- **Slice 4:** HUD order-tree display — independent, could land first or in
+- **Slice 3:** HUD order-tree display — independent, could land first or in
   parallel with any of the above.
+
+## Implementation investigation notes (read before starting Slice 0)
+
+Scoped out but not yet started, in the same session that produced this
+design. Two things worth a future implementer knowing up front, so they
+aren't rediscovered from scratch:
+
+1. **The shared-primitive coupling above.** `begin_pivot(order, angle)` is
+   the ONE function both `begin_about_face` (rear-move, angle = PI) and the
+   lateral-pivot's own quarter-turn arm through — it's not two similar
+   functions, it's one function two composites call with different angles.
+   `is_order_turning()` (`current_order.turn_target != Vector2.ZERO`),
+   `_settle_order_turn()`, and `_finish_order_turn()` are similarly shared
+   across both composites AND the standalone `ABOUT_FACE`/`QUARTER_TURN`
+   drills. Converting to `children` means these shared functions need to read
+   `active_leaf()` instead of `current_order` directly (or an equivalent),
+   and that change is inherently shared across every caller, not something a
+   partial (rear-move-only) migration can scope down.
+2. **Test surface.** As of this design, 10+ test files exercise this
+   mechanism directly (`test_rear_move_conversio.gd`, `test_reform_battle.gd`,
+   `test_reform_ranks.gd`, `test_orders_queue.gd`, `test_order.gd`,
+   `test_current_maneuver.gd`, `test_lateral_pivot_maneuver.gd`,
+   `test_backstep_maneuver.gd`, `test_soldier_facing.gd`,
+   `test_tier_transitions.gd`, `test_orders_transcript.gd`, `test_wheel.gd`,
+   plus `test_battle.gd`/`test_unit.gd`'s own coverage), several asserting
+   directly on `Order.Phase` values (`current_order.phase ==
+   Order.Phase.REFORM`, etc.) that need rewriting to the tree's own
+   equivalent state even where the underlying behavior doesn't change.
+   Budget for this as real implementation work, not incidental fallout —
+   it's the actual size of "no behavior change intended" for a refactor this
+   foundational.
+
+Given the size, this was intentionally left as design-only for this PR — see
+the issue discussion for why (a session already deep into other work chose
+not to start a foundational refactor with reduced context budget remaining).
 
 ## Open questions
 
