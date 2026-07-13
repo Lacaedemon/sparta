@@ -175,7 +175,7 @@ func test_soldier_bodies_step_still_pairs_correctly_when_already_in_lateral_orde
 				"body %d is already on its own slot -- no arrival pull" % i)
 
 
-# --- rate-limited engaged-target reassignment (#799/#802) ----------------------------------
+# --- rate-limited engaged-target reassignment --------------------------------------------
 # #797's canonical-slot fix stopped a live-engaged body's target from being a stale
 # post-casualty array index, but the PAIRING itself was still recomputed fresh every tick --
 # so a body's target could still relocate by tens of world units the instant

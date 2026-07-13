@@ -37,7 +37,7 @@ const REST_SPEED: float = 0.5
 # re-decide which gap to fill the moment a neighbor's live position jostles across the
 # engaged-selection boundary; this bounds how often that re-decision happens so a body's
 # steering target stays stable for a real reaction cadence instead of potentially
-# relocating every tick (#799/#802). ~0.5s: long enough to damp per-tick jostle, short
+# relocating every tick. ~0.5s: long enough to damp per-tick jostle, short
 # enough that a genuine casualty or reform still resolves within a fraction of a second
 # (and a casualty forces an immediate recompute regardless -- see Unit._engaged_target_*).
 const ENGAGED_TARGET_REASSIGN_TICKS: int = 30
@@ -169,7 +169,7 @@ static func step(unit: Unit, delta: float) -> void:
 	# Membership test for the per-soldier loop below, as a packed bool array instead of a
 	# Dictionary -- every tick, every unit builds one of these (engaged or not), so a
 	# Dictionary's per-entry hashing/boxing overhead here is pure per-tick waste versus a
-	# flat byte lookup (#799).
+	# flat byte lookup.
 	var is_engaged := PackedByteArray()
 	is_engaged.resize(n)
 	for idx in engaged_indices:
@@ -186,18 +186,16 @@ static func step(unit: Unit, delta: float) -> void:
 	# at one end of the live front rank a target slot at the opposite end. Sort both sides by
 	# actual lateral position first (Unit.pairing_sort_indices) so the k-th live-selected body
 	# arrives at the k-th canonical slot NEAREST ITS OWN POSITION, not just its k-th array rank.
-	# `target_slots` starts as a copy of `slots` (every unengaged body's target is just its own
-	# slot) and only the engaged entries get overwritten below -- a packed array instead of a
-	# Dictionary keyed by array index + a `.has()`/fallback branch per soldier (#799).
+	# Dictionary keyed by array index + a `.has()`/fallback branch per soldier.
 	#
 	# The PAIRING itself (which engaged body gets which canonical slot) is rate-limited
 	# (ENGAGED_TARGET_REASSIGN_TICKS): recomputing it fresh every tick lets a body's target
 	# relocate by tens of world units the instant engaged_soldier_indices()'s live-position
 	# selection jostles by a soldier-width, which the body then chases smoothly but still
-	# reads as a snap since the GOAL moved (#799/#802). Reused unchanged from the unit's own
-	# cache while within the interval; forced to recompute early the moment the soldier count
-	# changes (a casualty spliced the arrays, so the cached indices no longer mean the same
-	# bodies) or there is no prior pairing yet (fresh engagement).
+	# reads as a snap since the GOAL moved. Reused unchanged from the unit's own cache while
+	# within the interval; forced to recompute early the moment the soldier count changes (a
+	# casualty spliced the arrays, so the cached indices no longer mean the same bodies) or
+	# there is no prior pairing yet (fresh engagement).
 	var target_slots: PackedVector2Array
 	if engaged_indices.is_empty():
 		target_slots = slots
@@ -449,8 +447,8 @@ static func couple(unit: Unit, delta: float) -> void:
 		# 0..target_count-1 (see its own docstring: `slots` is a fresh rank-major grid, so
 		# the front `count` slots are always exactly those indices) -- sum straight over that
 		# range instead of materializing the index array just to walk it right back off
-		# (every engaged unit pays this once per tick in couple(), on top of step()'s own
-		# call, #799).
+		# (every engaged unit pays this once per tick in couple(), on top of step()'s own call to
+		# canonical_target_slot_indices()).
 		if unit.in_square():
 			var target_indices: PackedInt32Array = unit.canonical_target_slot_indices(slots, count)
 			for j in target_indices:
