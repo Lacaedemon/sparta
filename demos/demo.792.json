@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/all-out-attack.json",
+  "caption": "Fix for the residual melee-lock swirl (#792, the gap #773 left after fixing the dominant SoldierEnemyContact torque source). Two matched Infantry regiments (identical stats, 100 soldiers each) clash head-on and grind for hundreds of ticks -- with no player input past the opening click, both regiments' facing should stay near their starting heading, not visibly pivot around the clash point. Root cause: engaged_soldier_indices() selects the engaged front rank/perimeter by LIVE POSITION (#780), but after a casualty compacts the per-soldier arrays (SoldierMelee.reap's remove_at splice), a live-selected body's own array index no longer maps to a front/perimeter formation slot -- SoldierBodies.step()'s arrival term and SoldierBodies.couple()'s drift measurement both still read slots[i] for that same (possibly reindexed) i, comparing a live-engaged body against a mismatched target. Fixed via Unit.canonical_target_slot_indices(), which scores the static slot grid with the same selection logic so both step() and couple() agree on a like-for-like reference. State-dump verified (same seed 12345 as this clip): by tick 700 the swirl drops from about 46 degrees of spurious rotation to about 37 degrees -- a real, seed-independent reduction (also confirmed on two other seeds), not a complete elimination; the remaining residual is a separate, not-yet-root-caused gap.",
+  "fixed_fps": 30,
+  "max_frames": 375,
+  "fps": 15,
+  "width": 640
+}
