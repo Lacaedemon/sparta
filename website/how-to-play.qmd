@@ -785,7 +785,7 @@ for why you'd want this.
 ```
 
 Four Infantry regiments, box-selected and dragged into a line under the
-checkerboard split: the 1st and 3rd land on the front row, the 2nd and 4th
+checkerboard split: the 2nd and 4th land on the front row, the 1st and 3rd
 land behind them, each centred on a front-row gap.
 :::
 

@@ -1,5 +1,5 @@
 {
-  "_comment": "Checkerboard (quincunx) multi-line form-up (#805, docs/acies-triplex-design.md): four player Infantry units start bunched together just above the drag line (a short march so the formation settles within the clip), get box-selected, then a wide right-drag deploys them with the new CHECKERBOARD distribution mode (form_up_dist=4, a live SelectionManager override -- see DemoInputRecorder.gd's _form_up_dist field) instead of one straight line. Expect the 1st and 3rd units (by field position) to land on the front row along the drag line, and the 2nd and 4th to land BEHIND them, laterally centred on the front row's gaps -- the historical quincunx offset. drill:true (no team 1 at all) since this is a pure maneuver demo with nothing to fight. Camera holds a wide establishing frame, then eases in on the settled formation once the march has had time to finish -- one hold, one eased move, one long hold.",
+  "_comment": "Checkerboard (quincunx) multi-line form-up (#805, docs/acies-triplex-design.md): four player Infantry units start bunched together just above the drag line (a short march so the formation settles within the clip), get box-selected, then a wide right-drag deploys them with the new CHECKERBOARD distribution mode (form_up_dist=4, a live SelectionManager override -- see DemoInputRecorder.gd's _form_up_dist field) instead of one straight line. The drag runs right-to-left (from's x > to's x) so the perpendicular deploy facing (_form_up_facing) points the same way the units are already marching (south, toward the drag line) -- a left-to-right drag would face them north while they march south, i.e. backward the whole way. _order_units_for_line sorts by field position along the drag direction, so a right-to-left drag puts the 2nd and 4th units (by spawn order) on the front row along the drag line, and the 1st and 3rd BEHIND them, laterally centred on the front row's gaps -- the historical quincunx offset. drill:true (no team 1 at all) since this is a pure maneuver demo with nothing to fight. Camera holds a wide establishing frame, then eases in on the settled formation once the march has had time to finish -- one hold, one eased move, one long hold.",
   "seed": "805805",
   "drill": true,
   "form_up_dist": 4,
@@ -10,14 +10,14 @@
     {"team": 0, "type": "Infantry", "x": 920, "y": 500, "count": 80}
   ],
   "camera": [
-    {"tick": 0, "x": 840.0, "y": 550.0, "zoom": 0.9},
-    {"tick": 40, "x": 840.0, "y": 550.0, "zoom": 0.9},
-    {"tick": 90, "x": 840.0, "y": 670.0, "zoom": 1.3},
-    {"tick": 1180, "x": 840.0, "y": 670.0, "zoom": 1.3}
+    {"tick": 0, "x": 770.0, "y": 550.0, "zoom": 0.9},
+    {"tick": 40, "x": 770.0, "y": 550.0, "zoom": 0.9},
+    {"tick": 90, "x": 700.0, "y": 640.0, "zoom": 1.2},
+    {"tick": 1180, "x": 700.0, "y": 640.0, "zoom": 1.2}
   ],
   "steps": [
     {"tick": 5, "box": {"from": [550, 450], "to": [970, 550]}},
-    {"tick": 20, "rmb_drag": {"from": [470, 650], "to": [1070, 650]}}
+    {"tick": 20, "rmb_drag": {"from": [1070, 650], "to": [470, 650]}}
   ],
   "state": [10, 40, 120, 240, 360, 480, 600, 750, 900, 1000, 1100]
 }
