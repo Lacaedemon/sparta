@@ -97,7 +97,7 @@ static func decide(u: Unit, all_units: Array, directive: Dictionary = {},
 	# already executing a RELIEF order: it's mid-swap with a tired ally
 	# (UnitRelief.begin sets target_enemy but not state, so it isn't FIGHTING
 	# yet), and a fresh order here would silently clobber the RELIEF order and
-	# its relief_partner link. Mirrors the same exclusion in _relief_candidate,
+	# its friendly_target link. Mirrors the same exclusion in _relief_candidate,
 	# which stops OTHER units from calling this one away.
 	var already_relieving: bool = u.current_order != null \
 		and u.current_order.type == Order.Type.RELIEF

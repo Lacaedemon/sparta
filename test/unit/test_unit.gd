@@ -1866,7 +1866,7 @@ func test_relief_swaps_the_fight_and_exempts_the_pair() -> void:
 	tired.target_enemy = foe
 	var order := _begin_relief(fresh, tired)
 	assert_eq(fresh.target_enemy, foe, "the reliever takes over the tired unit's fight")
-	assert_eq(order.relief_partner, tired, "the swap link lives on the RELIEF order")
+	assert_eq(order.friendly_target, tired, "the swap link lives on the RELIEF order")
 	assert_null(tired.target_enemy, "the tired unit disengages")
 	assert_true(tired.has_move_target, "the tired unit peels back to the rear")
 	assert_not_null(tired.current_order, "the retreat is a queue-visible order of its own")
@@ -1942,6 +1942,51 @@ func test_relief_exemption_dies_with_a_replaced_order() -> void:
 	assert_false(fresh._separation_exempt(tired),
 		"a replaced relief order drops the exemption")
 	assert_false(tired._separation_exempt(fresh), "on both sides")
+
+
+# --- friendly_target: the generic maneuver hook, independent of RELIEF ------------
+
+func test_friendly_target_exempts_the_pair_regardless_of_order_type() -> void:
+	# The pass-through hook is generic: any order type may arm friendly_target to link
+	# with a friendly unit, not just RELIEF. This proves the hook itself, independent of
+	# RELIEF's own swap behavior -- a future maneuver (passage-of-lines, reinforcement
+	# insertion) gets the same exemption just by setting this field on its own order,
+	# with no Unit.gd changes.
+	var a := _make_unit()
+	var b := _make_unit()
+	a.team = 0
+	b.team = 0
+	var order := Order.new_move(Vector2(50, 0))
+	a.set_current_order(order)
+	assert_false(a._separation_exempt(b), "no exemption before the link is armed")
+	order.friendly_target = b
+	assert_true(a._separation_exempt(b), "a live friendly_target link exempts the pair")
+	assert_true(b._separation_exempt(a), "the exemption is mutual, read from either side")
+	order.friendly_target = null
+	assert_false(a._separation_exempt(b), "clearing the link disarms the exemption")
+
+
+func test_generic_resolver_clears_a_non_relief_friendly_target_once_apart() -> void:
+	# Order.resolve_friendly_target is the extracted, reusable distance check UnitRelief
+	# used to own outright -- prove it resolves a link on an ordinary MOVE order exactly
+	# like it resolves RELIEF's, so a future maneuver's own per-tick update can call it
+	# directly instead of re-deriving the soldier_block_extent-aware math.
+	var a := _make_unit()
+	var b := _make_unit()
+	a.team = 0
+	b.team = 0
+	a.position = Vector2.ZERO
+	b.position = Vector2.ZERO
+	var order := Order.new_move(Vector2(50, 0))
+	order.friendly_target = b
+	a.set_current_order(order)
+	assert_true(a._separation_exempt(b), "linked while the blocks still overlap")
+	var clear_distance: float = a.separation_radius + b.separation_radius \
+		+ a.soldier_block_extent() + b.soldier_block_extent() + 10.0
+	a.position = Vector2(clear_distance, 0.0)
+	Order.resolve_friendly_target(a)
+	assert_null(order.friendly_target, "the generic resolver clears the link once apart")
+	assert_false(a._separation_exempt(b), "and the exemption disarms with it")
 
 
 func test_relief_order_waits_for_the_swap_to_resolve_before_retiring() -> void:

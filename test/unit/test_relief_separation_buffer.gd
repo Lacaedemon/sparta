@@ -5,7 +5,7 @@ extends GutTest
 ## than just the coarse regiment-center distance the old bug hid behind.
 ##
 ## SoldierSteering skips separation for every soldier-body pair between the
-## relieving pair while Order.relief_partner is armed (the swap link), so
+## relieving pair while Order.friendly_target is armed (the swap link), so
 ## the exemption is all-or-nothing across the two whole regiments. If
 ## UnitRelief.update clears that link based only on the regiments' CENTER
 ## distance and each type's flat separation_radius, a wide/loose-order
@@ -74,7 +74,7 @@ func test_relief_exemption_clears_only_once_soldier_bodies_are_actually_clear() 
 	unit_a.set_current_order(relief_order)
 	UnitRelief.begin(unit_a, unit_b, relief_order)
 
-	assert_eq(unit_a.current_order.relief_partner, unit_b, "relief exemption should be armed")
+	assert_eq(unit_a.current_order.friendly_target, unit_b, "relief exemption should be armed")
 	assert_eq(unit_a.target_enemy, foe, "the reliever takes over the tired unit's fight")
 
 	var body_radius_sum: float = unit_a.soldier_body_radius() + unit_b.soldier_body_radius()
@@ -83,7 +83,7 @@ func test_relief_exemption_clears_only_once_soldier_bodies_are_actually_clear() 
 
 	while battle.current_tick() < ceiling:
 		await battle.get_tree().physics_frame
-		if unit_a.current_order == null or unit_a.current_order.relief_partner == null:
+		if unit_a.current_order == null or unit_a.current_order.friendly_target == null:
 			exemption_cleared_at_tick = battle.current_tick()
 			break
 
@@ -117,12 +117,12 @@ func test_relief_interruptible_on_dead() -> void:
 	var relief_order := Order.new_relief(unit_b.uid)
 	unit_a.set_current_order(relief_order)
 	UnitRelief.begin(unit_a, unit_b, relief_order)
-	assert_eq(unit_a.current_order.relief_partner, unit_b, "relief should be armed")
+	assert_eq(unit_a.current_order.friendly_target, unit_b, "relief should be armed")
 
 	unit_b.state = Unit.State.DEAD
 	UnitRelief.update(unit_a)
 
-	assert_null(unit_a.current_order.relief_partner, "exemption should clear when partner dies")
+	assert_null(unit_a.current_order.friendly_target, "exemption should clear when partner dies")
 
 
 func test_self_relief_refused() -> void:
@@ -139,4 +139,4 @@ func test_self_relief_refused() -> void:
 	var relief_order := Order.new_relief(unit_a.uid)
 	UnitRelief.begin(unit_a, unit_a, relief_order)
 
-	assert_null(relief_order.relief_partner, "self-relief should not arm exemption")
+	assert_null(relief_order.friendly_target, "self-relief should not arm exemption")

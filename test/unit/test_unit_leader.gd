@@ -242,7 +242,7 @@ func test_reliever_mid_advance_keeps_its_relief_order_on_a_later_decide() -> voi
 	# advancing toward the swap is NOT yet FIGHTING -- exactly the state the
 	# fallback branch normally issues a fresh ATTACK order for. Without the
 	# RELIEF exclusion, this decide() call would clobber the reliever's own
-	# current_order (and its relief_partner link) with an ATTACK order.
+	# current_order (and its friendly_target link) with an ATTACK order.
 	var reliever := _unit(1, Vector2(0, 0), 1)
 	reliever.set_current_order(Order.new_relief(99))   # already ordered to relieve `tired`
 	var foe := _unit(2, Vector2(400, 0), 0)   # a living enemy the fallback could target

@@ -1,14 +1,16 @@
 class_name UnitRelief
 ## Line-relief swaps for a Unit, extracted from Unit.gd: a fresh regiment takes over an
 ## engaged friendly's fight while the tired one peels back to the rear. The swap's
-## execution state lives on the reliever's RELIEF order (Order.relief_partner): the pair
-## is mutually exempt from separation while the link is live (Unit._separation_exempt
-## checks it from either side), so they pass through each other during the swap, and the
-## exemption clears once they're apart -- or dies with the order on an interrupt, since
-## the order owns it. The tired unit gets a plain MOVE order for its retreat, so both
-## sides of the swap read straight off the queue. Static helpers on the unit --
-## deterministic (positions / state only, no RNG), so live play and replay swap
-## identically.
+## execution state lives on the reliever's RELIEF order (Order.friendly_target, a generic
+## pass-through link any order type can arm): the pair is mutually exempt from separation
+## while the link is live (Unit._separation_exempt checks it from either side), so they
+## pass through each other during the swap, and the exemption clears once they're apart --
+## or dies with the order on an interrupt, since the order owns it. The tired unit gets a
+## plain MOVE order for its retreat, so both sides of the swap read straight off the
+## queue. Static helpers on the unit -- deterministic (positions / state only, no RNG), so
+## live play and replay swap identically. RELIEF is just one consumer of the generic
+## friendly_target link and its Order.resolve_friendly_target helper (see Order.gd); this
+## file only adds the RELIEF-specific swap behavior (targeting takeover + retreat order).
 
 
 ## Begin relieving an engaged friendly: `u` (fresh) takes over `tired`'s fight and
@@ -19,7 +21,7 @@ class_name UnitRelief
 static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	if tired == u:
 		return   # a unit can't relieve itself
-	order.relief_partner = tired
+	order.friendly_target = tired
 	# Take over the tired unit's fight so the front isn't left open. A unit can be
 	# FIGHTING an auto-acquired foe with target_enemy still null, so fall back to its
 	# nearest enemy rather than just walking onto an empty slot.
@@ -50,30 +52,13 @@ static func _rear_point(u: Unit) -> Vector2:
 
 ## Resolve the pass-through link once the partner has left the line (gone, dead, or
 ## routing) or the swapping pair has moved clear of each other. Runs on the reliever's
-## tick only -- the tired side holds no state -- and clears Order.relief_partner, which
+## tick only -- the tired side holds no state. Delegates the actual clearing (and its
+## soldier_block_extent-aware distance check) to Order.resolve_friendly_target, the
+## generic helper any order type carrying a friendly_target link can reuse; clearing it
 ## disarms the separation exemption for both sides and lets the RELIEF order retire
 ## (see Unit._update_current_order).
 static func update(u: Unit) -> void:
 	var order: Order = u.current_order
-	if order == null or order.type != Order.Type.RELIEF or order.relief_partner == null:
+	if order == null or order.type != Order.Type.RELIEF:
 		return
-	var partner: Unit = order.relief_partner
-	var gone: bool = not is_instance_valid(partner) \
-		or partner.state == Unit.State.DEAD \
-		or partner.state == Unit.State.ROUTING
-	# The exemption in SoldierSteering is all-or-nothing for the whole regiment pair (it
-	# skips every soldier-body pair between the two units while relief_partner is armed),
-	# so clearing it too early -- while the blocks still overlap -- turns separation back on
-	# for bodies that are still interpenetrating, and they all get shoved apart on the same
-	# tick: the chaotic swirl. The regiments' CENTER distance has to clear each block's own
-	# half-extent (soldier_block_extent -- the same reach the render/shadow size off, a
-	# function of soldier count, frontage and formation density, not a flat per-type radius)
-	# on top of the regiment separation_radius floor, or the check still fires while a wide
-	# LOOSE-order block's edge is well past where the smaller separation_radius alone would
-	# call it "clear".
-	var apart: bool = is_instance_valid(partner) \
-		and u.position.distance_to(partner.position) \
-			> u.separation_radius + partner.separation_radius \
-				+ u.soldier_block_extent() + partner.soldier_block_extent()
-	if gone or apart:
-		order.relief_partner = null
+	Order.resolve_friendly_target(u)

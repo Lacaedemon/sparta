@@ -48,7 +48,7 @@ const WOUND_SPREAD: float = 0.5
 ## reform hold, or relief swap (those hold in-flight per-soldier context — facings mid-turn,
 ## a parked march leg, an interleaving partner — that the aggregate record cannot carry).
 ## The maneuver and relief context lives on the current Order (turn_target / phase /
-## relief_partner), so those checks read the queue; a relieved unit holds no swap state of
+## friendly_target), so those checks read the queue; a relieved unit holds no swap state of
 ## its own, but it just left melee, so the engaged linger keeps it close-tier through the
 ## pass-through window. A fighting or engaged unit never qualifies; the demote trigger
 ## distance already sits far beyond every combat range, so this mostly guards the linger

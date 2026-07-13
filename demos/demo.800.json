@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Internal maneuver-plumbing refactor only: generalizes UnitRelief's RELIEF-specific pass-through link (Order.relief_partner) into a reusable Order.friendly_target field plus a shared Order.resolve_friendly_target() helper, so a future maneuver order type can arm the same interpenetration exemption without duplicating the distance math. RELIEF's own swap behaviour (UnitRelief.begin's targeting takeover + retreat order, and UnitRelief.update's clearing logic) is unchanged, so a recorded relief demo would look byte-for-byte identical to one recorded before this PR -- there's nothing new for a battle clip to show."
+}
