@@ -1529,3 +1529,130 @@ comment, or the two silently diverge if the key/logic changes in only one place.
 type added to `Battle.gd` (or an existing one you refactor) that goes through a live-enqueue path
 must route through `_apply_order_live`, not call `_apply_order_cmd` directly, or it reintroduces
 the double-apply bug this pattern exists to prevent. (`Lacaedemon/sparta` #517/#518, PR #519.)
+
+## Form-up orders never use the smooth maneuvers — a big reposition needs its own facing/reform handling
+
+`Battle._apply_order_cmd`'s move dispatch explicitly excludes side-step, back-step, rear-move
+(about-face), and lateral-pivot (file-march) from ANY command that carries `cmd.has("face")` --
+and a form-up (`Battle.enqueue_form_up`) always sets `face`, since it commands its own facing
+from the drag line rather than reusing the unit's current one. This is deliberate ("a form-up
+commands its own facing, so it never side-steps"), but it means a form-up ALWAYS falls through
+to the generic move path, no matter how large or oblique the reposition -- unlike a plain move,
+which gets a purpose-built maneuver (file-march, about-face, etc.) for exactly this situation.
+For a short single-line drag this is invisible; for a large, oblique reposition (the checkerboard
+form-up's rear row, #805/PR #818) it surfaced three real bugs, only visible by actually watching
+rendered frames -- numeric position dumps (`dump-state.sh`) looked fine at every tick checked and
+completely missed all three:
+
+1. **Reform and march overlapped.** `set_frontage()` applies the new file count IMMEDIATELY at
+   cmd-apply time, then the unit holds for a FIXED `REFORM_DURATION` (0.8s) before marching --
+   regardless of whether the reshape had actually settled. A big frontage change (front vs. rear
+   row can differ a lot) needs far longer than 0.8s for 80+ soldiers to walk into new ranks, so
+   the march started while the reform was still visibly in progress.
+   **Fix:** gate the hold on `Unit._reform_bodies_settled()` (the same mechanism a
+   post-about-face reform already used, `_reform_until_settled`) instead of the flat timer, with
+   a reshape-scaled safety cap (`Unit._reshape_timeout`, summing the OLD and NEW shape's own
+   diagonals -- a full reshape's worst-case travel isn't bounded by either shape alone) as a
+   backstop rather than the flat duration. The existing `REFORM_SETTLE_EPS` (1.0 world units) was
+   too tight to ever actually trigger for a full reshape -- empirically, the last body or two
+   hovers ~1.2 units outside it indefinitely (a wholesale reshape's own settling dynamics, via
+   `SoldierBodies.couple()`, don't converge as cleanly as a same-shape angle-fold does) -- added a
+   looser `REFORM_SETTLE_EPS_RESHAPE` (4.0) for this case specifically, still far tighter than a
+   rank gap (`FORMATION_SPACING` is 9).
+2. **The block centre-pivoted toward its own TRAVEL DIRECTION while marching, then snapped to
+   its commanded facing on arrival.** `_move_to`'s ordinary "orderly move" behavior re-aims a
+   marching block toward wherever it's currently walking -- correct for a plain move (final
+   facing should match travel direction), wrong for a form-up (final facing is the drag line,
+   not the march heading). For a diagonal reposition this rotated the whole slot grid to point
+   along the travel path for the entire march, then abruptly re-oriented to the commanded facing
+   the instant it arrived -- read as the formation collapsing into a diagonal column mid-march,
+   then expanding back into a line on arrival.
+   **Fix:** hold the form-up's `deploy_facing` fixed for the WHOLE march via `ordered_facing` (the
+   same "maneuvering" mechanism a side-step already uses to hold a fixed facing) instead of
+   letting the march's own centre-pivot take over.
+3. **A swirl during the reform hold itself, exposed BY fix 1** (the flat 0.8s hold used to end
+   before this could develop -- extending it to actually wait for settlement made it fully
+   visible). The hold pivots `facing` toward `deploy_facing` -- but doing that GRADUALLY
+   (`_rotate_facing_toward`) while the frontage is ALREADY fixed at its new shape from tick 1
+   means the soldier slot grid is simultaneously ROTATING (facing still catching up) and FIXED
+   at a new size (reshaping) every tick -- bodies chasing a target that's both moving and
+   already a different shape swirl instead of converging cleanly.
+   **Fix:** snap `facing` to `deploy_facing` immediately via `_face_dir` (its `_formation_angle`
+   absorption keeps the snap itself invisible -- no body jump, only bookkeeping changes) instead
+   of a gradual pivot, so the grid is orientation-stable from the very first hold tick and only
+   the reshape itself needs to converge.
+
+**How to apply:** when a movement/formation fix "looks right" from `dump-state.sh` position
+values alone, that only proves the REGIMENT-level anchor (`Unit.position`) is correct -- it says
+nothing about whether the individual SOLDIER BODIES are cleanly rank-and-file or a smear/swirl
+during the transition. For any fix touching facing, frontage, or the reform hold, also capture
+actual frames (`SPARTA_DEMO_FRAMES`) at several points across the WHOLE transition (not just
+the final settled tick) and look at the rendered soldier blocks directly -- this is the opposite
+lesson from the quarter-turn case below ("verify tick by tick, not by eyeballing GIFs"), because
+that case was about proving the SIM was already correct despite an ambiguous render; this case is
+about a RENDER-level defect (a concurrent-transform swirl) that a correct-looking `position` value
+doesn't reveal at all. Both are real failure modes; use whichever check actually exercises the
+thing you changed. (`Lacaedemon/sparta` #805, PR #818, 2026-07-13.)
+
+## Adding a form-up distribution mode: two parallel lists serve different purposes
+
+`SelectionManager.FormUpDist` is extended by adding a new enum value plus a `FORM_UP_DIST_NAMES`
+entry -- but there are TWO separate list constants that look like the same thing and aren't:
+
+- `SelectionManager.FORM_UP_DIST_CYCLE` -- the CANONICAL list of every mode that exists. Used as
+  the fallback when a player's cycle is empty, as `_cycle_from_settings()`'s iteration order, and
+  critically as what `HUD._sync_setting_toggles`'s "keep the current default reachable"
+  self-correction filters against. A mode NOT in this list can never be reachable via that
+  self-correction, no matter what a player's own `Settings.form_up_dist_cycle` contains.
+- `Settings.form_up_dist_cycle` (and its class-level default array) -- the PERSISTED, player-
+  configurable subset actually enabled by default. A new mode can (and, to avoid silently
+  changing existing players' Y-key cycle, usually should) be left OUT of this one's own literal
+  default array while still being IN the canonical `FORM_UP_DIST_CYCLE` above.
+
+Getting this backwards (leaving the new mode out of BOTH) breaks the "picking the new mode as
+your default keeps it in the cycle" invariant silently -- caught only by a test that sets the
+new mode as the default and asserts it lands back in `Settings.form_up_dist_cycle` afterward, not
+by anything that just checks the menu renders or the mode itself works. (`Lacaedemon/sparta` PR
+#818: `SelectionManager.FORM_UP_DIST_CYCLE` initially omitted `CHECKERBOARD`, silently breaking
+that self-correction for it specifically; `Settings.form_up_dist_cycle`'s own default array
+correctly omitted it the whole time.)
+
+## Demo authoring: a form-up's drag direction must match the intended march direction
+
+`SelectionManager._form_up_facing(a, b)` derives the commanded facing purely from the drag's
+geometry (perpendicular to `a`->`b`, with `a` as the left flank) -- it has no idea which way the
+units are actually about to march. Since a form-up now HOLDS that commanded facing for the whole
+march (see the entry above), a demo/scenario whose drag direction produces a facing pointing
+AWAY from the actual destination (e.g. spawning above the drag line but dragging in the direction
+that computes a facing pointing further away, not toward the line) makes every unit march
+BACKWARD relative to its own facing for the entire clip -- previously invisible, because the old
+(buggy) behavior pivoted toward the travel direction while marching and only snapped to the
+commanded facing on arrival, silently hiding a wrong drag direction. Check this BEFORE finalizing
+a new form-up demo: dump `facing` at an early marching tick and confirm it points toward
+increasing progress along the actual march vector, not away from it. (`Lacaedemon/sparta` PR
+#818: `demos/inputs/checkerboard-form-up.json`'s original left-to-right drag computed a
+north-pointing facing while the units needed to march south; fixed by reversing the drag.)
+
+## Front-rank position anchoring destabilizes in-place reshapes -- tried and reverted
+
+Discussed as a possible improvement to `Unit.position`'s semantics (currently: `SoldierBodies.
+couple()` anchors on a body centroid -- the engaged front-N-ranks' centroid when engaged, the
+full-block centroid otherwise) -- anchor on the LIVE front rank's own midpoint instead (one rank,
+via `UnitFormation.live_front_indices`), unconditionally. Implemented and reverted: it broke 6
+tests, not superficially -- `test_explicatio_widens_the_line_without_teleporting_bodies` /
+`test_duplicatio_deepens_the_line` / `test_quarter_turn_in_live_battle_has_no_surge` all assert an
+IN-PLACE reshape or turn does NOT move the regiment centre, and it now moved by double-digit world
+units; one AI-determinism test (`test_subcommander_directives_replay_identically_on_the_same_seed`)
+also changed which enemy a unit's distance-based targeting picked.
+
+**Root cause:** the full centroid averages over every body, so it stays smooth even mid-reshape
+(individual bodies moving to new slots partially cancel out in the average). A LIVE "nearest-front
+N bodies" selection has no such smoothing -- during a transition (a quarter-turn, a file-count
+change) there is no stable "front" yet, so the anchor itself jumps around before bodies settle,
+exactly where the centroid held still. Anchoring on the CANONICAL target slots' midpoint instead
+of live bodies (or freezing the anchor while a reshape/turn is actively running) are the likely
+real fixes, not yet tried. **How to apply:** before anchoring any per-tick coupling calculation on
+a LIVE, filtered subset of bodies instead of a full-block aggregate, check its behavior specifically
+during an in-place reshape/turn (not just a march) -- a live subset selection can be unstable
+exactly when a full aggregate is most needed to stay smooth. (`Lacaedemon/sparta` PR #818,
+reverted; tracked in issue #821.)
