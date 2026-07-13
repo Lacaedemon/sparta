@@ -222,8 +222,9 @@ func test_engaged_target_pairing_holds_fixed_within_the_reassignment_interval() 
 	u.tick_engaged(DELTA)
 	assert_eq(u.engaged_soldier_indices(6).size(), 6, "sanity: all 6 are engaged")
 	SoldierBodies.step(u, DELTA)
-	var first_pairing: PackedVector2Array = u._engaged_target_slots.duplicate()
-	assert_eq(first_pairing.size(), 6, "the first call computes and records a pairing")
+	var first_engaged: PackedInt32Array = u._engaged_target_pairing_engaged.duplicate()
+	var first_canonical: PackedInt32Array = u._engaged_target_pairing_canonical.duplicate()
+	assert_eq(first_engaged.size(), 6, "the first call computes and records a pairing")
 	# Swap two live body positions -- if the pairing were recomputed fresh every tick, this
 	# would change which canonical slot each swapped body pairs with.
 	var tmp: Vector2 = u._sim_soldier_pos[0]
@@ -232,8 +233,9 @@ func test_engaged_target_pairing_holds_fixed_within_the_reassignment_interval() 
 	for _s in range(SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS - 5):
 		await get_tree().physics_frame
 		SoldierBodies.step(u, DELTA)
-		assert_eq(u._engaged_target_slots, first_pairing,
+		assert_eq(u._engaged_target_pairing_engaged, first_engaged,
 			"the pairing stays fixed within the reassignment interval, even as live positions moved")
+		assert_eq(u._engaged_target_pairing_canonical, first_canonical)
 
 
 func test_engaged_target_pairing_recomputes_once_the_interval_elapses() -> void:
@@ -242,15 +244,16 @@ func test_engaged_target_pairing_recomputes_once_the_interval_elapses() -> void:
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(DELTA)
 	SoldierBodies.step(u, DELTA)
-	var first_pairing: PackedVector2Array = u._engaged_target_slots.duplicate()
+	var first_engaged: PackedInt32Array = u._engaged_target_pairing_engaged.duplicate()
 	var tmp: Vector2 = u._sim_soldier_pos[0]
 	u._sim_soldier_pos[0] = u._sim_soldier_pos[5]
 	u._sim_soldier_pos[5] = tmp
 	for _s in range(SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS + 2):
 		await get_tree().physics_frame
 		SoldierBodies.step(u, DELTA)
-	assert_ne(u._engaged_target_slots, first_pairing,
-		"once the interval elapses, the pairing recomputes and reflects the swapped positions")
+	assert_ne(u._engaged_target_pairing_engaged, first_engaged,
+		"once the interval elapses, the pairing recomputes and reflects the swapped positions'"
+		+ " new lateral order")
 
 
 func test_engaged_target_pairing_recomputes_immediately_after_a_casualty() -> void:
@@ -261,13 +264,49 @@ func test_engaged_target_pairing_recomputes_immediately_after_a_casualty() -> vo
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(DELTA)
 	SoldierBodies.step(u, DELTA)
-	assert_eq(u._engaged_target_slots.size(), 6, "sanity: the first pairing covers all 6 bodies")
+	assert_eq(u._engaged_target_pairing_engaged.size(), 6, "sanity: the first pairing covers all 6 bodies")
 	u._sim_soldier_hp[0] = 0.0
 	SoldierMelee.reap(u, u)
 	assert_eq(u.soldiers, 5, "sanity: one soldier fell")
 	SoldierBodies.step(u, DELTA)   # same physics frame -- no await needed
-	assert_eq(u._engaged_target_slots.size(), 5,
+	assert_eq(u._engaged_target_pairing_engaged.size(), 5,
 		"the pairing recomputes immediately against the post-casualty count, not on the old cache")
+
+
+func test_unengaged_targets_track_the_units_own_movement_even_while_pairing_is_cached() -> void:
+	# Regression guard: the target-slot cache must hold only the engaged-body <-> canonical-
+	# slot PAIRING, not a whole resolved target_slots array -- otherwise every unengaged
+	# body's target freezes at wherever the unit stood on the last reassignment tick, and
+	# stops tracking the unit's own march until the cache refreshes (the exact "snap" this
+	# feature exists to prevent, just for the unengaged majority instead of the engaged rank).
+	var u := _make_unit()   # default 60 -- large enough to leave a genuine unengaged bulk
+	u.get_parent().remove_child(u)
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)
+	var engaged: PackedInt32Array = u.engaged_soldier_indices(u.soldiers)
+	assert_gt(engaged.size(), 0, "sanity: some soldiers are engaged")
+	assert_lt(engaged.size(), u.soldiers, "sanity: an unengaged bulk exists to test against")
+	var unengaged_idx: int = -1
+	for i in range(u.soldiers):
+		if not engaged.has(i):
+			unengaged_idx = i
+			break
+	assert_ne(unengaged_idx, -1, "sanity: found an unengaged body")
+	SoldierBodies.step(u, DELTA)   # first call: computes and caches the engaged pairing
+	assert_lt(u._sim_body_vel[unengaged_idx].length(), 0.5,
+		"sanity: the unengaged body starts at rest on its own slot")
+	# March the unit forward -- its formation slots (soldier_world_slots) translate with it,
+	# but the unengaged body's own live position hasn't moved yet.
+	u.position += Vector2(50.0, 0.0)
+	SoldierBodies.step(u, DELTA)   # still well within the reassignment interval
+	# The arrival velocity is bounded by the body's own acceleration (never a snap, per this
+	# repo's "no top-down gimmicks" design), so a single tick only produces a small nonzero
+	# step -- but a genuinely FROZEN (stale pre-march) target would produce exactly zero, since
+	# the body was sitting exactly on that old slot before the march. Any real pull confirms
+	# the target updated to the post-march slot this tick.
+	assert_gt(u._sim_body_vel[unengaged_idx].x, 0.1,
+		"the unengaged body's target tracked the unit's march THIS tick -- not frozen at the" +
+		" pre-march slot from the last pairing reassignment")
 
 
 # --- integration: friendly regiments separate from the soldier layer ----------
