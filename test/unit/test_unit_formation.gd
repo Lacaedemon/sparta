@@ -597,7 +597,7 @@ func test_sort_indices_by_projection_matches_a_brute_force_full_sort() -> void:
 
 func test_sort_indices_by_angle_orders_around_the_ring() -> void:
 	# Four ring points at the cardinal directions: angle() runs from -PI (west, exclusive)
-	# through 0 (east) to +PI (west again), so ascending angle order is south, east, north,
+	# through 0 (east) to +PI (west again), so ascending angle order is north, east, south,
 	# west for this exact set -- regardless of the array order the indices are handed in.
 	var positions := PackedVector2Array([
 		Vector2(0, -1),   # 0: north (angle -PI/2)
