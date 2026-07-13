@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/passage-of-lines.json",
+  "caption": "Passage of lines (triplex acies, closes #377): three player Infantry units already three fights deep box-select their fresh reserve line, the player presses X to switch the group-order mode to Distributed, then right-clicks the center tired unit. Distributed relief pairs each fresh unit with its own engaged tired partner -- sorted by proximity to the clicked unit, so a pairing can cross rather than always matching the nearest reliever to the nearest tired unit -- instead of every reliever swapping with just the one unit clicked. All three tired lines get a real MOVE (retreat) order and each fresh unit marches on its own partner's fight, verified by state dump: at tick 145 each reliever's current_order is RELIEF with a distinct target_enemy_uid inherited from a different tired unit, and by tick 215 -- near the end of the clip -- the relievers are still closing the last ~77-80px to contact, not yet engaged.",
+  "fixed_fps": 30,
+  "max_frames": 110,
+  "fps": 15,
+  "width": 720
+}

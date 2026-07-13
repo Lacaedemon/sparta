@@ -599,15 +599,18 @@ func _hide_flash(text: String) -> void:
 		_flash_label.visible = false
 
 
-## Reflect the current group-attack distribution mode on the ctrl bar button.
+## Reflect the current group-order distribution mode on the ctrl bar button --
+## spreads a multi-unit attack across nearby enemies, or a multi-unit line-relief
+## across nearby engaged friendlies (Focused sends every ordered unit at the one
+## target clicked either way).
 func update_group_attack_mode(mode: int) -> void:
 	if _ctrl_group_attack_btn == null:
 		return
 	var labels := {
-		BattleRef.GroupAttackMode.FOCUSED: "Focused atk",
-		BattleRef.GroupAttackMode.DISTRIBUTED: "Spread atk",
+		BattleRef.GroupAttackMode.FOCUSED: "Focused",
+		BattleRef.GroupAttackMode.DISTRIBUTED: "Spread",
 	}
-	_ctrl_group_attack_btn.text = labels.get(mode, "Atk mode")
+	_ctrl_group_attack_btn.text = labels.get(mode, "Group mode")
 
 
 func _ctrl_bar_sync_settings() -> void:

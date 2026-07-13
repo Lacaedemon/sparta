@@ -58,6 +58,7 @@ DEMOS=(
   "shielded_stances|demos/inputs/shielded-stance-visuals.json|30|180|640|input"
   "decel_arrival|demos/inputs/decel-arrival.json|30|300|640|input"
   "line_relief|demos/inputs/line-relief-queue.json|30|300|640|input"
+  "passage_of_lines|demos/inputs/passage-of-lines.json|30|110|640|input"
   "stance_order|demos/inputs/stance-order-gesture.json|30|130|640|input"
   "formation_preview_square|demos/inputs/formation-preview-square.json|30|300|640|input"
   "cannae_scale|demos/inputs/cannae-scale.json|60|300|720|input"

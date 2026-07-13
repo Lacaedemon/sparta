@@ -71,11 +71,14 @@ const FORM_UP_DIST_CYCLE := [FormUpDist.EQUAL_DEPTH_SPACE, FormUpDist.EQUAL_DEPT
 const FORM_UP_DIST_CYCLE_KEY := KEY_Y   # cycles the live distribution mode
 const DEMO_FORMUP_WINDOW: int = 90   # ticks a replayed deploy line lingers (spans the march)
 
-# Group attack distribution: when multiple units issue an attack order, Focused sends
-# every unit at the same target; Distributed spreads them across nearby enemies.
+# Group order distribution: when multiple units issue an attack order, Focused sends
+# every unit at the same target; Distributed spreads them across nearby enemies. The
+# same toggle governs a multi-unit line-relief order on an engaged friendly line:
+# Focused swaps every reliever with the one friendly clicked; Distributed pairs each
+# reliever with its own nearby engaged friendly (passage of lines / triplex acies).
 # The enum lives in Battle (so the cmd dict uses the same ints) and is aliased here.
 const GROUP_ATTACK_MODE_CYCLE := [BattleRef.GroupAttackMode.FOCUSED, BattleRef.GroupAttackMode.DISTRIBUTED]
-const GROUP_ATTACK_CYCLE_KEY := KEY_X   # cycles the live group-attack distribution mode
+const GROUP_ATTACK_CYCLE_KEY := KEY_X   # cycles the live group-order distribution mode
 
 # Order-overlay colours (common RTS convention: green = move, red = attack). Teal marks
 # a SUPPORT link — same hue as the SUPPORT order cursor (_order_mode_color).
@@ -490,6 +493,9 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	# only the simulation-affecting order is routed through the recorder.
 	var enemy = _unit_at(world_pos, 1)
 	var target_uid: int = -1
+	# Set when the click resolves to a line-relief target (a friendly, not a SUPPORT
+	# ward) -- distinguishes it from a SUPPORT ward below, which always stays focused.
+	var relief_click: bool = false
 	if enemy != null:
 		target_uid = enemy.uid
 	else:
@@ -502,6 +508,7 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 		if friend != null and not _selected.has(friend) \
 				and (supporting or friend.state == UnitRef.State.FIGHTING):
 			target_uid = friend.uid
+			relief_click = not supporting
 		elif append:
 			# Shift on plain ground queues a waypoint; the sentinel rides the
 			# target field so Battle appends instead of replacing the route. Append
@@ -513,10 +520,13 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 			uids.append(unit.uid)
 	if uids.is_empty():
 		return
-	# Apply group-attack distribution only for multi-unit attacks on enemy units;
-	# friendly targets (support, relief) and ground moves always use focused.
+	# Apply group-attack distribution for multi-unit attacks on enemy units, and for
+	# multi-unit line-relief orders on an engaged friendly line -- the same toggle
+	# spreads a passage-of-lines relief across distinct tired units instead of every
+	# reliever swapping with the one clicked (Polybius's triplex acies). A SUPPORT
+	# ward and a ground move always stay focused.
 	var group_attack: int = BattleRef.GroupAttackMode.FOCUSED
-	if uids.size() > 1 and enemy != null:
+	if uids.size() > 1 and (enemy != null or relief_click):
 		group_attack = _group_attack_mode
 	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode, group_attack, gait,
 			_armed_knockback_indefinite)

@@ -199,6 +199,34 @@ Rotate before the break, not after: a tired regiment fights measurably worse (se
 [Stamina](#stamina)) and routs sooner, and pulling it out while it still holds
 banks a rested unit for the next push.
 
+## Passage of lines
+
+Line relief swaps one pair of regiments at a time by default --- every fresh unit
+you order onto an engaged friendly swaps with (or, past the first, piles onto the
+fight of) that ONE unit you clicked. When a whole tired line needs relieving at
+once, select every fresh unit in your reserve, switch the group-order mode to
+**Distributed** (<kbd>X</kbd>, or the **Spread** button --- see
+[How to play](how-to-play.qmd) for the control), then right-click any one engaged
+unit in the tired line. Each fresh unit pairs with its OWN nearby engaged
+friendly instead of all of them swapping with the single unit clicked, so the
+whole reserve passes through the whole tired line in one order --- Polybius's
+triplex acies, a fresh line relieving a spent one through gaps opened in the
+line behind it.
+
+- **The candidate pool is engaged friendlies only.** A reliever never swaps with
+  an idle or already-routing unit just to keep busy --- if fewer of your tired
+  line are actually fighting than you have fresh units, the extras fall back to
+  piling onto a fight instead of manufacturing a swap.
+- **Pairing is sorted by proximity to the unit you clicked, not to each
+  reliever's own position.** With reserves lined up abreast of a tired line,
+  this usually pairs each fresh unit with roughly the ally in front of it, but
+  it can cross --- the same distribution rule distributed attack already uses
+  for spreading a multi-unit attack across several enemies.
+- **Every pairing is a full line relief**, with the same pass-through
+  exemption, the same real retreat order, and the same "expect to bleed a
+  little on the way out" cost described above --- distributed relief only
+  changes how the targets are assigned, not how any one swap behaves.
+
 ## Stamina
 
 Every soldier carries a **stamina pool** that drains through combat and refills at rest.
@@ -1011,15 +1039,19 @@ the bow.
 
 ## Group attack distribution
 
-When you have several units selected and right-click an enemy, press <kbd>X</kbd> to
-cycle between two attack modes:
+When you have several units selected and right-click a target, press <kbd>X</kbd> to
+cycle between two group-order modes. The same toggle governs both an attack on an
+enemy and a relief order on a friendly (see [Passage of lines](#passage-of-lines)) ---
+which pair of behaviours applies depends only on what you right-click:
 
-- **Focused** (default) --- every selected unit charges the same target.
+- **Focused** (default) --- every selected unit charges the same enemy, or (on a
+  friendly target) every reliever swaps with the one tired unit clicked.
   Use it to overwhelm a single regiment quickly.
 - **Distributed** --- each unit picks a different nearby enemy, sorted by proximity
-  to the clicked target. Extra units cycle through the list if you have more units
-  than enemies. Use it to hold an entire line rather than piling onto one regiment
-  and leaving the rest unengaged.
+  to the clicked target; on a friendly target, each reliever instead pairs with its
+  own nearby engaged ally the same way. Extra units cycle through the list if you
+  have more units than targets. Use it to hold an entire line rather than piling
+  onto one regiment (or one relief swap) and leaving the rest unengaged.
 
 The flash message in the top-centre of the screen confirms the active mode. The mode
 is sticky --- it stays set until you press <kbd>X</kbd> again (<kbd>Shift</kbd> + <kbd>X</kbd>
