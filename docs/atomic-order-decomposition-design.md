@@ -24,6 +24,16 @@ already documents):
    with expand/collapse so a player can unfold a composite command into its
    nested children.
 
+**Why nesting specifically, not just "a way to group related orders":**
+conceptual chunking, for both a human player and the battle AI. Examining a
+unit's order queue should read as a clear conceptual structure ("rear move",
+"form up") with detail available on demand, not a flat stream of atomic
+orders with no visible grouping the reader has to reconstruct by hand. This
+applies as much to `General.gd`/`Subcommander.gd` introspecting a unit's
+current activity at a high level as it does to a player reading the HUD —
+both want "what is this unit conceptually doing" as the default view, with
+the atomic breakdown one expand away, not the only view available.
+
 ## Relationship to the existing design
 
 `orders-queue-design.md`'s "Composability" section explicitly considered and
