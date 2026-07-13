@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Internal performance refactor (Dictionary -> packed-array in SoldierBodies.step()/couple()); the simulation's own output is unchanged (full GUT suite passes with no assertion changes), so there's no visual difference for a recorded battle to show."
+}
