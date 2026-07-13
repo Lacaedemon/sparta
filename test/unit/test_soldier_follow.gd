@@ -176,7 +176,7 @@ func test_soldier_bodies_step_still_pairs_correctly_when_already_in_lateral_orde
 
 
 # --- rate-limited engaged-target reassignment --------------------------------------------
-# #797's canonical-slot fix stopped a live-engaged body's target from being a stale
+# An earlier canonical-slot fix stopped a live-engaged body's target from being a stale
 # post-casualty array index, but the PAIRING itself was still recomputed fresh every tick --
 # so a body's target could still relocate by tens of world units the instant
 # engaged_soldier_indices()'s live-position selection jostled by a soldier-width. These pin

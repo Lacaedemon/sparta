@@ -3126,8 +3126,8 @@ var _engaged_indices_cache_count: int = -1
 ## Persists SoldierBodies.step()'s engaged-body <-> canonical-target-slot PAIRING across
 ## ticks, so an engaged body's steering target stays fixed for a real reaction cadence
 ## (SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS) instead of being recomputed fresh every
-## physics tick. #797 fixed the target itself from being a stale post-casualty array index;
-## Analysis found the target could still relocate by tens of world units tick to tick, as
+## physics tick. An earlier fix stopped the target itself from being a stale post-casualty
+## array index, but the target could still relocate by tens of world units tick to tick, as
 ## engaged_soldier_indices()'s live-position selection jostled by a soldier-width -- a body
 ## then chases the new target smoothly under bounded accel (no snap in the body's OWN
 ## motion), but a few ticks of otherwise-correct pursuit toward a discontinuously-relocated
