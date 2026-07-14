@@ -59,7 +59,7 @@ func test_rear_move_arms_the_about_face_and_parks_the_march() -> void:
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # straight behind
 	assert_true(u.is_order_turning(), "the about-face is armed on the order")
 	assert_eq(u.current_order.type, Order.Type.MOVE)
-	assert_eq(u.current_order.phase, Order.Phase.TURN)
+	assert_eq(u.current_order.effective_phase_name(), "TURN")
 	assert_false(u.has_move_target, "the march is parked, not started, during the turn")
 	assert_eq(u.current_order.target_pos, Vector2(0, -200),
 		"the ordered rear destination is parked on the order for after the about-face")
@@ -108,14 +108,14 @@ func test_enqueue_order_applies_exactly_once_across_the_tick_drain() -> void:
 	b.enqueue_order([1], Vector2(0, -200), -1)   # rear move: applies live, tags the cmd
 	assert_true(u.is_order_turning(), "the about-face armed on the live apply")
 	var order_after_live: Order = u.current_order
-	var turn_after_live: Vector2 = order_after_live.turn_target
+	var turn_after_live: Vector2 = u.active_leaf().turn_target
 	_drain_pending(b)   # the tick drain must be a no-op for this already-applied order
 	assert_eq(u.current_order, order_after_live,
 		"the drain did not re-apply the order and replace the in-flight composite")
-	assert_eq(u.current_order.turn_target, turn_after_live,
+	assert_eq(u.active_leaf().turn_target, turn_after_live,
 		"the running about-face keeps its goal (no restart)")
 	assert_false(u.has_move_target, "no march was started by a phantom second apply")
-	assert_eq(u.current_order.phase, Order.Phase.TURN, "the parked rear march survives the drain")
+	assert_eq(u.current_order.effective_phase_name(), "TURN", "the parked rear march survives the drain")
 	assert_eq(u.current_order.target_pos, Vector2(0, -200), "toward the ordered rear destination")
 
 
@@ -138,10 +138,11 @@ func test_order_once_vs_twice_yields_identical_unit_state() -> void:
 	b2.enqueue_order([2], Vector2(0, -200), -1)
 	_drain_pending(b2)
 
-	assert_eq(live.current_order.turn_target, single.current_order.turn_target,
+	assert_eq(live.active_leaf().turn_target, single.active_leaf().turn_target,
 		"enqueue+drain arms the same about-face as a single apply")
 	assert_eq(live.has_move_target, single.has_move_target, "same march-started flag")
-	assert_eq(live.current_order.phase, single.current_order.phase, "same composite phase")
+	assert_eq(live.current_order.effective_phase_name(), single.current_order.effective_phase_name(),
+		"same composite phase")
 	assert_eq(live.current_order.target_pos, single.current_order.target_pos,
 		"same parked destination")
 
@@ -224,7 +225,7 @@ func test_forward_move_does_not_arm_an_about_face() -> void:
 	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 200.0, "target": -1})   # straight ahead
 	assert_false(u.is_order_turning(), "a forward move does not about-face")
-	assert_eq(u.current_order.phase, Order.Phase.NONE, "the move order is unphased")
+	assert_true(u.current_order.children.is_empty(), "the move order stayed a plain leaf, unphased")
 	assert_true(u.has_move_target, "it marches normally")
 	assert_eq(u.move_target, Vector2(0, 200), "toward the ordered destination")
 
@@ -238,7 +239,7 @@ func test_rear_move_falls_back_to_a_plain_march_when_bodies_unseeded() -> void:
 	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})
 	assert_false(u.is_order_turning(), "no about-face armed without seeded bodies")
-	assert_eq(u.current_order.phase, Order.Phase.NONE, "and nothing is parked in a turn phase")
+	assert_true(u.current_order.children.is_empty(), "and nothing is parked in a turn phase")
 	assert_true(u.has_move_target, "the unit still marches (fallback to a plain move)")
 	assert_eq(u.move_target, Vector2(0, -200), "toward the ordered destination")
 
@@ -259,7 +260,7 @@ func test_rear_move_during_an_in_progress_about_face_preempts_the_drill() -> voi
 	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # rear move
 	assert_eq(u.current_order.type, Order.Type.MOVE, "the fresh order replaced the drill")
-	assert_eq(u.current_order.phase, Order.Phase.TURN, "and runs its own about-face composite")
+	assert_eq(u.current_order.effective_phase_name(), "TURN", "and runs its own about-face composite")
 	assert_false(u.has_move_target, "with the march parked until the turn completes")
 	assert_eq(u.current_order.target_pos, Vector2(0, -200), "toward the ordered destination")
 
@@ -279,7 +280,7 @@ func test_rear_move_during_an_in_progress_wheel_preempts_the_swing() -> void:
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # rear move
 	assert_false(u.is_wheeling(), "the fresh order dropped the wheel where it stood")
 	assert_eq(u.current_order.type, Order.Type.MOVE, "and replaced it on the queue")
-	assert_eq(u.current_order.phase, Order.Phase.TURN, "arming the rear move's own about-face")
+	assert_eq(u.current_order.effective_phase_name(), "TURN", "arming the rear move's own about-face")
 	assert_false(u.has_move_target, "with the march parked until the turn completes")
 	assert_eq(u.current_order.target_pos, Vector2(0, -200), "toward the ordered destination")
 

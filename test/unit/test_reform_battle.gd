@@ -171,7 +171,7 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 		await get_tree().physics_frame
 	assert_lt(u.position.y, start_pos.y - 1.0, "the unit is marching toward the rear destination")
 	if u.current_order != null:
-		assert_eq(u.current_order.phase, Order.Phase.MARCH,
+		assert_eq(u.current_order.effective_phase_name(), "MARCH",
 			"the order transcript advanced REFORM -> MARCH")
 
 

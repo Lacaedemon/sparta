@@ -100,7 +100,7 @@ func test_rear_move_about_faces_then_marches() -> void:
 	assert_true(u.facing.is_equal_approx(-start_facing),
 		"the unit ended facing the reverse of its start heading (about-faced, not pivoted mid-march)")
 	assert_eq(u.move_target, dest, "it marches to the parked rear destination")
-	assert_eq(o.phase, Order.Phase.MARCH, "the composite advanced to its march phase")
+	assert_eq(o.effective_phase_name(), "MARCH", "the composite advanced to its march phase")
 
 
 func test_rear_move_marches_toward_the_destination_not_backward() -> void:
@@ -150,10 +150,11 @@ func test_move_order_cancels_a_pending_rear_march() -> void:
 	# with it.
 	var u := _make_seeded_unit()
 	var o := _arm_rear_move(u, Vector2(0, -200))
+	var turn_leaf := o.active_leaf()   # captured before the interrupt retires the composite
 	# Simulate the append-style pre-empt: has_move_target flips true under the turn.
 	u.has_move_target = true
 	u.move_target = Vector2(300, 0)
 	u._think(0.016)
-	assert_eq(o.turn_target, Vector2.ZERO, "the interrupting march cancels the about-face")
+	assert_eq(turn_leaf.turn_target, Vector2.ZERO, "the interrupting march cancels the about-face")
 	assert_null(u.current_order, "and the turning order retired, dropping its parked march")
 	assert_eq(u.move_target, Vector2(300, 0), "the pre-empting march is untouched")
