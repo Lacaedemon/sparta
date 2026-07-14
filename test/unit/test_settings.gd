@@ -108,6 +108,39 @@ func test_show_soldier_ids_defaults_off_and_round_trips() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
+func test_show_fps_and_corner_default_and_round_trip() -> void:
+	# Default off (opt-in) and top-left (the corner none of the other HUD chrome occupies).
+	var defaults := _settings()
+	assert_false(defaults.show_fps, "frame-rate counter defaults off")
+	assert_eq(defaults.fps_corner, SettingsScript.FPS_CORNER_TOP_LEFT,
+			"frame-rate counter defaults to the top-left corner")
+
+	var a = SettingsScript.new()
+	autofree(a)
+	a._loading = true
+	a.show_fps = true
+	a.fps_corner = SettingsScript.FPS_CORNER_BOTTOM_RIGHT
+	a._save(TEST_PATH)
+
+	var b = SettingsScript.new()
+	autofree(b)
+	b._load(TEST_PATH)
+	assert_true(b.show_fps, "the toggle survives save + load")
+	assert_eq(b.fps_corner, SettingsScript.FPS_CORNER_BOTTOM_RIGHT,
+			"the chosen corner survives save + load")
+
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+
+
+func test_fps_corner_clamps_out_of_range_values() -> void:
+	var s := _settings()
+	s.fps_corner = 99
+	assert_eq(s.fps_corner, SettingsScript.FPS_CORNER_MAX,
+			"an out-of-range corner (e.g. from a hand-edited cfg) clamps to the highest valid one")
+	s.fps_corner = -5
+	assert_eq(s.fps_corner, 0, "...and clamps negative values up to the lowest valid one")
+
+
 # Spy that counts _save() calls; partial_double() generates an invalid double of
 # SettingsScript under Godot 4.7 (GUT's stub codegen breaks on void-returning methods).
 class _SaveCountingSettings:

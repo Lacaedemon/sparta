@@ -20,7 +20,9 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_CYCLE_DEPTH_SPACE, MENU_FORMUP_CYCLE_DEPTH,
 		MENU_FORMUP_CYCLE_WIDTH, MENU_FORMUP_CYCLE_WIDTH_COUNT, MENU_FORMUP_CYCLE_CHECKERBOARD,
 		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
-		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
+		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_SHOW_FPS,
+		MENU_FPS_CORNER_TOP_LEFT, MENU_FPS_CORNER_TOP_RIGHT, MENU_FPS_CORNER_BOTTOM_LEFT,
+		MENU_FPS_CORNER_BOTTOM_RIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
 		MENU_QUIT_TO_MENU }
 
 var _hint: Label
@@ -41,6 +43,13 @@ var _legend_panel: PanelContainer
 var _legend_bar: ColorRect
 var _legend_label: Label
 var _legend_last_zoom: float = -1.0   # forces a first sync; _process re-syncs only on change
+var _fps_label: Label
+# Live-measured physics tick rate (distinct from Engine.physics_ticks_per_second, the
+# configured TARGET): counts physics_frame emissions over a rolling real-time window, so it
+# reads below target if the sim can't keep up with a large battle. See _on_physics_tick.
+var _tick_count: int = 0
+var _tick_rate_window: float = 0.0
+var _live_tick_rate: float = Engine.physics_ticks_per_second   # sane value before the first sample
 const PANEL_MIN := Vector2(240, 90)
 const PANEL_BOTTOM_GAP := 20.0   # clearance between info panel and screen edge
 
@@ -83,6 +92,21 @@ const _FORMUP_ENTRIES := [
 		"default_id": MENU_FORMUP_EQUAL_WIDTH_COUNT, "cycle_id": MENU_FORMUP_CYCLE_WIDTH_COUNT},
 	{"mode": SelectionManagerRef.FormUpDist.CHECKERBOARD, "label": "Checkerboard (quincunx)",
 		"default_id": MENU_FORMUP_CHECKERBOARD, "cycle_id": MENU_FORMUP_CYCLE_CHECKERBOARD},
+]
+
+# Which screen corner the frame-rate counter can render in, radio-picked from the
+# Menu popup. Each entry drives both the menu item and the corner's anchor preset, sharing
+# one table so adding a corner (there won't be a fifth, but see _FORMUP_ENTRIES above for
+# the same reasoning) updates the menu, sync, dispatch, and layout in one place.
+const _FPS_CORNER_ENTRIES := [
+	{"corner": Settings.FPS_CORNER_TOP_LEFT, "label": "Top-left",
+		"id": MENU_FPS_CORNER_TOP_LEFT, "preset": Control.PRESET_TOP_LEFT},
+	{"corner": Settings.FPS_CORNER_TOP_RIGHT, "label": "Top-right",
+		"id": MENU_FPS_CORNER_TOP_RIGHT, "preset": Control.PRESET_TOP_RIGHT},
+	{"corner": Settings.FPS_CORNER_BOTTOM_LEFT, "label": "Bottom-left",
+		"id": MENU_FPS_CORNER_BOTTOM_LEFT, "preset": Control.PRESET_BOTTOM_LEFT},
+	{"corner": Settings.FPS_CORNER_BOTTOM_RIGHT, "label": "Bottom-right",
+		"id": MENU_FPS_CORNER_BOTTOM_RIGHT, "preset": Control.PRESET_BOTTOM_RIGHT},
 ]
 
 # Display names and menu order for every formation mode, shared by the button
@@ -243,6 +267,10 @@ func _ready() -> void:
 	popup.add_check_item("Unit speed labels", MENU_UNIT_SPEED)
 	popup.add_check_item("Soldier IDs (selected unit)", MENU_SOLDIER_IDS)
 	popup.add_check_item("Engaged-soldier highlight", MENU_ENGAGED_HIGHLIGHT)
+	popup.add_check_item("Show frame rate", MENU_SHOW_FPS)
+	popup.add_separator("Frame rate corner…")
+	for entry in _FPS_CORNER_ENTRIES:
+		popup.add_radio_check_item(entry["label"], entry["id"])
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	popup.add_item("Shortcuts… (?)", MENU_SHORTCUTS)
 	popup.add_separator()
@@ -260,6 +288,10 @@ func _ready() -> void:
 	Settings.changed.connect(_refresh_hint)
 	# Keep the stance dropup labels in sync after a rebind (see _ctrl_bar_refresh_stance_popup).
 	Settings.changed.connect(_ctrl_bar_refresh_stance_popup)
+	# Counts physics steps for the frame-rate counter's tick-rate readout. A tree-level
+	# signal, not tied to any one node's process mode, so it keeps counting even while paused
+	# and needs no reference to the live Battle node.
+	get_tree().physics_frame.connect(_on_physics_tick)
 
 	# File picker for choosing a saved replay, plus an error popup for bad files.
 	# Both stay responsive while the tree is paused (end-of-battle overlay).
@@ -336,6 +368,7 @@ func _ready() -> void:
 	_sel_mgr = get_node_or_null("../SelectionManager")
 	_build_ctrl_bar()
 	_build_distance_legend()
+	_build_fps_label()
 
 	# End-of-battle overlay.
 	_overlay = ColorRect.new()
@@ -403,6 +436,8 @@ func _exit_tree() -> void:
 		Settings.changed.disconnect(_refresh_hint)
 	if Settings.changed.is_connected(_ctrl_bar_refresh_stance_popup):
 		Settings.changed.disconnect(_ctrl_bar_refresh_stance_popup)
+	if get_tree() != null and get_tree().physics_frame.is_connected(_on_physics_tick):
+		get_tree().physics_frame.disconnect(_on_physics_tick)
 
 
 func _sync_setting_toggles() -> void:
@@ -450,7 +485,12 @@ func _sync_setting_toggles() -> void:
 			Settings.show_soldier_ids)
 	popup.set_item_checked(popup.get_item_index(MENU_ENGAGED_HIGHLIGHT),
 			Settings.show_engaged_highlight)
+	popup.set_item_checked(popup.get_item_index(MENU_SHOW_FPS), Settings.show_fps)
+	for entry in _FPS_CORNER_ENTRIES:
+		popup.set_item_checked(popup.get_item_index(entry["id"]),
+				Settings.fps_corner == entry["corner"])
 	_sync_distance_legend_visibility()
+	_sync_fps_label()
 	_ctrl_bar_sync_settings()
 
 
@@ -480,6 +520,12 @@ func _on_menu_id(id: int) -> void:
 		if id == entry["cycle_id"]:
 			_toggle_form_up_cycle(entry["mode"])
 			return
+	for entry in _FPS_CORNER_ENTRIES:
+		if id == entry["id"]:
+			# Settings.changed -> _sync_setting_toggles re-checks the radios and repositions
+			# the label via _sync_fps_label.
+			Settings.fps_corner = entry["corner"]
+			return
 	match id:
 		MENU_RESTART:
 			_on_restart()
@@ -508,6 +554,8 @@ func _on_menu_id(id: int) -> void:
 			Settings.show_soldier_ids = not Settings.show_soldier_ids
 		MENU_ENGAGED_HIGHLIGHT:
 			Settings.show_engaged_highlight = not Settings.show_engaged_highlight
+		MENU_SHOW_FPS:
+			Settings.show_fps = not Settings.show_fps
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 		MENU_SHORTCUTS:
@@ -540,8 +588,21 @@ func _toggle_form_up_cycle(mode: int) -> void:
 			func(m) -> bool: return enabled.has(m))
 
 
-func _process(_delta: float) -> void:
+const _TICK_RATE_SAMPLE_SECONDS := 1.0
+
+
+func _process(delta: float) -> void:
 	_update_distance_legend()
+	_tick_rate_window += delta
+	if _tick_rate_window >= _TICK_RATE_SAMPLE_SECONDS:
+		_live_tick_rate = _tick_count / _tick_rate_window
+		_tick_count = 0
+		_tick_rate_window = 0.0
+	_update_fps_label()
+
+
+func _on_physics_tick() -> void:
+	_tick_count += 1
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -866,6 +927,62 @@ func _update_distance_legend() -> void:
 	var metres: float = DistanceLegend.pick_round_metres(mpp)
 	_legend_bar.custom_minimum_size.x = DistanceLegend.bar_width_px(metres, mpp)
 	_legend_label.text = DistanceLegend.label_text(metres)
+
+
+# --- Frame-rate counter -----------------------------------------------------
+# A one-line readout of render FPS (Engine.get_frames_per_second()) and the live-measured
+# physics tick rate (_live_tick_rate, below -- distinct from the target
+# Engine.physics_ticks_per_second, since a large battle can fall behind it), user-placeable
+# in any of the four screen corners (Settings.fps_corner / _FPS_CORNER_ENTRIES above).
+
+const _FPS_MARGIN := Vector2(14.0, 10.0)
+# The always-on controls hint (top-left, single line at y=10, font size 14) runs the full
+# width of the top edge, so a top-anchored FPS label needs to clear it vertically or the
+# two overlap the instant the counter is turned on.
+const _FPS_TOP_MARGIN_Y := 34.0
+
+
+func _build_fps_label() -> void:
+	_fps_label = Label.new()
+	_fps_label.add_theme_font_size_override("font_size", 14)
+	_fps_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
+	_fps_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fps_label)
+	_sync_fps_label()
+
+
+## Show/hide the frame-rate label and (re)anchor it to Settings.fps_corner. Grow direction
+## is set opposite the anchored edge on each axis so the label doesn't drift as its digit
+## count changes ("9" -> "144") -- same reasoning as the distance legend's grow_horizontal/
+## grow_vertical = GROW_DIRECTION_BEGIN for its bottom-right anchor.
+func _sync_fps_label() -> void:
+	if _fps_label == null:
+		return
+	_fps_label.visible = Settings.show_fps
+	if not _fps_label.visible:
+		return
+	var corner: int = Settings.fps_corner
+	var left: bool = (corner == Settings.FPS_CORNER_TOP_LEFT
+			or corner == Settings.FPS_CORNER_BOTTOM_LEFT)
+	var top: bool = (corner == Settings.FPS_CORNER_TOP_LEFT
+			or corner == Settings.FPS_CORNER_TOP_RIGHT)
+	for entry in _FPS_CORNER_ENTRIES:
+		if entry["corner"] == corner:
+			_fps_label.set_anchors_preset(entry["preset"])
+			break
+	_fps_label.grow_horizontal = Control.GROW_DIRECTION_END if left else Control.GROW_DIRECTION_BEGIN
+	_fps_label.grow_vertical = Control.GROW_DIRECTION_END if top else Control.GROW_DIRECTION_BEGIN
+	var top_margin: float = _FPS_TOP_MARGIN_Y if top else _FPS_MARGIN.y
+	_fps_label.position = Vector2(
+			_FPS_MARGIN.x if left else -_FPS_MARGIN.x,
+			top_margin if top else -_FPS_MARGIN.y)
+	_update_fps_label()
+
+
+func _update_fps_label() -> void:
+	if _fps_label == null or not _fps_label.visible:
+		return
+	_fps_label.text = "%d FPS · %d ticks/s" % [Engine.get_frames_per_second(), roundi(_live_tick_rate)]
 
 
 func _ctrl_bar_refresh_stance_popup() -> void:
