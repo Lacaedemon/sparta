@@ -441,6 +441,7 @@ ul.task-list li input[type="checkbox"] {
   <ul>
   <li><a href="#controls" id="toc-controls" class="nav-link active" data-scroll-target="#controls">Controls</a></li>
   <li><a href="#the-battle-loop" id="toc-the-battle-loop" class="nav-link" data-scroll-target="#the-battle-loop">The battle loop</a></li>
+  <li><a href="#parade-ground" id="toc-parade-ground" class="nav-link" data-scroll-target="#parade-ground">Parade Ground</a></li>
   <li><a href="#campaign-map" id="toc-campaign-map" class="nav-link" data-scroll-target="#campaign-map">Campaign Map</a></li>
   <li><a href="#recording-replays" id="toc-recording-replays" class="nav-link" data-scroll-target="#recording-replays">Recording &amp; replays</a></li>
   </ul>
@@ -654,6 +655,10 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 <tr class="even">
 <td>All shortcuts (this list, in-game)</td>
 <td><kbd>?</kbd> (Shift + <kbd>/</kbd>) or <strong>☰ Menu → Shortcuts</strong></td>
+</tr>
+<tr class="odd">
+<td>Quit to Main Menu</td>
+<td><strong>☰ Menu → Quit to Main Menu</strong> leaves the battle immediately and returns to the Main Menu — the only way out of a <a href="#parade-ground">Parade Ground</a> drill, which never auto-ends</td>
 </tr>
 </tbody>
 </table>
@@ -1121,6 +1126,24 @@ Figure&nbsp;28: Cavalry charge: two horse units receive an attack order and acce
 <li><strong>Exploit the break</strong> — when a unit <strong>routs</strong>, it flees (its flag fading) and stops fighting for now. Routs spread to nearby allies, so a single break can cascade. A fugitive that breaks contact can <strong>rally</strong> and reform back under your control at low morale, so chase down a broken enemy to finish it before it recovers — and give your own routers room to escape and rally.</li>
 <li><strong>Win</strong> — destroy the entire enemy army (every unit dead, or fled clear of the map) and a <strong>Victory</strong> overlay appears, with <strong>Fight Again</strong> to restart. A routing enemy isn’t beaten yet: a “broken” one may yet rally, and even a “shattered” one (its nerve gone for good) still has to escape or be run down before it’s actually off the field.</li>
 </ol>
+</section>
+<section id="parade-ground" class="level2">
+<h2 class="anchored" data-anchor-id="parade-ground">Parade Ground</h2>
+<p>Select <strong>Parade Ground</strong> from the Main Menu for a solo drill: your own army deploys as usual, but no enemy spawns and the battle never auto-ends. Use it to freely rehearse formations, maneuvers, and orders without an opponent forcing the pace. Leave with <strong>☰ Menu → Quit to Main Menu</strong> when you’re done — there’s no victory condition to trigger it for you.</p>
+<div id="fig-parade-ground" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-parade-ground-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/parade_ground.jpg">
+  <source src="media/parade_ground.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-parade-ground-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;29: Parade Ground: the standard player line, no enemy on the field, given a group move order and settling into formation.
+</figcaption>
+</figure>
+</div>
 </section>
 <section id="campaign-map" class="level2">
 <h2 class="anchored" data-anchor-id="campaign-map">Campaign Map</h2>
