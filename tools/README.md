@@ -79,9 +79,14 @@ current working tree, not a stale report from a previous diff), diffs against
 per-file breakdown plus the exact missing line numbers — a local
 approximation of what Codecov will report, verified to match its output
 directly (same percentage, same missing lines) on a real PR's diff. Like
-`coverage`, patch coverage never gates the check itself (it always reports
-`PASS` — reading the number and deciding what to do about it is on you, same
-as Codecov's own check never blocking a merge on its own).
+`coverage`, this check never fails purely on the *percentage* it finds — a low
+number is reported for you to read and act on, not treated as a failure by
+the check itself. (It can still report `SKIP`, when there's no resolvable
+diff base, or `FAIL`, if the underlying coverage regeneration itself errors —
+those are tooling states, not a coverage-threshold judgment.) This says
+nothing about whether Codecov's own `codecov/patch` status check is
+configured to block a merge on GitHub — that's a repo/branch-protection
+setting this local tool has no visibility into.
 
 If a diff comes up short, the fix is either genuine new test coverage for the
 newly-added lines, or — when a specific line is structurally hard to cover (a

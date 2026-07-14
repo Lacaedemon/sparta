@@ -371,9 +371,13 @@ check_patch_coverage() {
   # THIS diff adds under scripts/ (recursively -- campaign/ and any other
   # subdirectory included, same as Godot's coverage instrumentation, which
   # walks the whole tree) are covered by the GUT suite. Not in the default set
-  # for the same reason `coverage` is: coverage (patch or otherwise) never
-  # gates a PR on its own -- see .github/workflows/test-coverage.yml's header
-  # comment. Run it explicitly, or via `all`, before pushing a scripts/ change.
+  # for the same reason `coverage` is: this local check itself never fails on
+  # the percentage -- it always exits 0 and leaves the number for you to read
+  # and act on, mirroring test-coverage.yml's own job (see its header comment:
+  # "Coverage *numbers* never gate a PR"). That's this repo's own workflow, not
+  # a claim about Codecov's actual codecov/patch status check or branch
+  # protection settings, which this comment doesn't assert either way. Run it
+  # explicitly, or via `all`, before pushing a scripts/ change.
   #
   # The diff/base checks below run BEFORE the expensive coverage regeneration
   # (not after, as an earlier version of this check did) so a diff with no
@@ -416,17 +420,25 @@ check_patch_coverage() {
     return 0
   fi
 
-  # Only regenerate coverage/lcov.info if `coverage` hasn't already produced a
-  # fresh one earlier in THIS SAME invocation (e.g. `tools/check.sh all`, or
+  # Only regenerate coverage/lcov.info if `coverage` hasn't already RUN
+  # earlier in THIS SAME invocation (e.g. `tools/check.sh all`, or
   # `tools/check.sh coverage patch_coverage`) -- avoids running the ~15-20 min
-  # instrumented suite twice for one invocation. A standalone
-  # `patch_coverage` run (the common case: checking one diff before pushing)
-  # still always regenerates, since there's no earlier run in this invocation
-  # to trust, and a stale report from a previous diff would silently answer
-  # the wrong question.
-  if [ "$(get_result coverage)" != "pass" ]; then
-    check_coverage || return 1
-  fi
+  # instrumented suite twice for one invocation. A standalone `patch_coverage`
+  # run (the common case: checking one diff before pushing) still always
+  # regenerates, since there's no earlier run in this invocation to trust, and
+  # a stale report from a previous diff would silently answer the wrong
+  # question.
+  #
+  # Three cases, not two: an EMPTY result (not attempted this invocation) is
+  # the only one that should trigger a fresh run here. "pass" reuses the
+  # report already on disk. "fail" means `coverage` already ran and failed
+  # this same invocation -- re-running it would just pay the full ~15-20 min
+  # cost again to fail the same way, so fail fast instead.
+  case "$(get_result coverage)" in
+    pass) ;;
+    fail) err "coverage already failed earlier in this run -- not regenerating."; return 1 ;;
+    *)    check_coverage || return 1 ;;
+  esac
 
   # added_lines: "file:line" for every line this diff ADDS under scripts/ (same
   # "+++ b/<path>" / "@@ ... +<start> @@" tracking check_comments uses, minus
