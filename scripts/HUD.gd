@@ -913,33 +913,28 @@ func show_end(text: String) -> void:
 	get_tree().paused = true
 
 
-## Shared prelude for every "leave this battle" transition below: drop the in-progress
-## recording (nothing to save; none of these paths reach a real end state) and unpause, so
-## whichever scene loads next starts clean. Kept separate from the actual transition call so
-## it's testable without triggering a real scene change.
-func _reset_for_scene_transition() -> void:
-	Replay.reset()
-	get_tree().paused = false
-
-
 func _on_restart() -> void:
 	# Fresh battle: drop back to IDLE so Battle._ready starts a new recording.
-	_reset_for_scene_transition()
+	Replay.reset()
+	get_tree().paused = false
 	get_tree().reload_current_scene()
 
 
 func _on_return_to_campaign() -> void:
 	# Hand control back to the campaign map; CampaignBattle still holds the
-	# result, which CampaignMap applies on load.
-	_reset_for_scene_transition()
+	# result, which CampaignMap applies on load. Drop the recording like a restart.
+	Replay.reset()
+	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/Campaign.tscn")
 
 
 func _on_quit_to_menu() -> void:
 	# Bail out of the battle entirely — the only way back to the menu from a drill-mode
-	# rehearsal, which never auto-ends. MainMenu._ready() clears CampaignBattle/ParadeGround
-	# defensively, so no in-flight hand-off is left dangling.
-	_reset_for_scene_transition()
+	# rehearsal, which never auto-ends. Drop the in-progress recording like a restart
+	# (nothing to save; the battle never reached an end state). MainMenu._ready() clears
+	# CampaignBattle/ParadeGround defensively, so no in-flight hand-off is left dangling.
+	Replay.reset()
+	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
