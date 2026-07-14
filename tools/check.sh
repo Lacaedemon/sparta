@@ -19,6 +19,13 @@
 #   coverage  GUT suite instrumented for line coverage; writes coverage/lcov.info.
 #             Mirrors .github/workflows/test-coverage.yml. Slower than `test` and
 #             non-gating, so not in the default set (run it explicitly or via "all").
+#   patch_coverage
+#             Local approximation of Codecov's codecov/patch check: what fraction
+#             of THIS diff's added scripts/*.gd lines are covered. Regenerates
+#             coverage/lcov.info fresh (runs `coverage` as a dependency), so it's
+#             slow — not in the default set. Run it before pushing a scripts/
+#             change rather than discovering a codecov/patch failure after a
+#             ~15-20 min CI round trip.
 #   links     Markdown link-check with lychee, if it's installed. Mirrors
 #             .github/workflows/check-links.yml. Needs network; not in the
 #             default set (run it explicitly or via "all").
@@ -52,6 +59,9 @@
 #                sets this per-event — see check-comment-citations.yml). When no
 #                base can be resolved, the check skips rather than scanning the
 #                whole tree.
+#   SPARTA_CHECK_PATCH_COVERAGE_BASE
+#                Same, for the `patch_coverage` check's diff base (default:
+#                tries origin/main, then main).
 #
 # Exit status is non-zero if any selected check fails, so it drops straight into
 # a pre-push hook or a `&&` chain.
@@ -74,7 +84,7 @@ COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-2700}"
 . "$SCRIPT_DIR/lib/run-bounded.sh"
 
 DEFAULT_CHECKS=(validate test chars comments)
-ALL_CHECKS=(validate test chars comments coverage links)
+ALL_CHECKS=(validate test chars comments coverage patch_coverage links)
 
 # --- pretty output ---------------------------------------------------------
 # Colour only when stdout is a terminal and NO_COLOR isn't set. Per the NO_COLOR
@@ -136,6 +146,7 @@ list_checks() {
   info "  chars      non-standard characters in docs (check-non-standard-chars.yml)"
   info "  comments   issue/PR-number citations in NEW GDScript comment lines (check-comment-citations.yml)"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
+  info "  patch_coverage  local codecov/patch approximation for this diff's scripts/*.gd changes"
   info "  links      Markdown link-check via lychee (check-links.yml)"
   info ""
   info "Default (no args): ${DEFAULT_CHECKS[*]}"
@@ -335,6 +346,191 @@ check_coverage() {
   info "Coverage report written to coverage/lcov.info"
 }
 
+# resolve_patch_coverage_base — same shape as resolve_comments_base (see there
+# for the "why" of each fallback step), kept as its own function/env var rather
+# than shared: the two checks diff against a base for unrelated reasons (new
+# comment lines vs. newly-added executable lines) and a caller may reasonably
+# want to point them at different refs.
+resolve_patch_coverage_base() {
+  local candidate
+  for candidate in "${SPARTA_CHECK_PATCH_COVERAGE_BASE:-}" "origin/main" "main"; do
+    [ -n "$candidate" ] || continue
+    case "$candidate" in
+      0000000000000000000000000000000000000000) continue ;;
+    esac
+    if ( cd "$PROJECT_ROOT" && git rev-parse --verify --quiet "${candidate}^{commit}" >/dev/null 2>&1 ); then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+check_patch_coverage() {
+  # Codecov's codecov/patch check, computed locally: what fraction of the lines
+  # THIS diff adds under scripts/ (recursively -- campaign/ and any other
+  # subdirectory included, same as Godot's coverage instrumentation, which
+  # walks the whole tree) are covered by the GUT suite. Not in the default set
+  # for the same reason `coverage` is: this local check itself never fails on
+  # the percentage -- it always exits 0 and leaves the number for you to read
+  # and act on, mirroring test-coverage.yml's own job (see its header comment:
+  # "Coverage *numbers* never gate a PR"). That's this repo's own workflow, not
+  # a claim about Codecov's actual codecov/patch status check or branch
+  # protection settings, which this comment doesn't assert either way. Run it
+  # explicitly, or via `all`, before pushing a scripts/ change.
+  #
+  # The diff/base checks below run BEFORE the expensive coverage regeneration
+  # (not after, as an earlier version of this check did) so a diff with no
+  # scripts/ changes -- or no resolvable base -- skips instantly instead of
+  # always paying the ~15-20 min instrumented run first only to then discover
+  # there was nothing to check.
+  local base
+  if ! base="$(resolve_patch_coverage_base)"; then
+    warn "No base ref to diff against -- skipping patch coverage."
+    warn "Set SPARTA_CHECK_PATCH_COVERAGE_BASE, or fetch full history (git fetch --unshallow)."
+    set_result patch_coverage skip
+    return 0
+  fi
+
+  local merge_base head
+  merge_base="$(cd "$PROJECT_ROOT" && git merge-base HEAD "$base" 2>/dev/null)"
+  head="$(cd "$PROJECT_ROOT" && git rev-parse HEAD 2>/dev/null)"
+  if [ -z "$merge_base" ]; then
+    warn "No common history with '$base' -- skipping patch coverage."
+    set_result patch_coverage skip
+    return 0
+  fi
+  if [ "$merge_base" = "$head" ]; then
+    info "HEAD is '$base' (or an ancestor of it) -- no new commits to check."
+    return 0
+  fi
+
+  local diff
+  # ':(glob)scripts/**/*.gd': a bare non-magic pathspec like 'scripts/*.gd'
+  # (no ':(glob)' prefix) ALREADY matches every subdirectory too -- this is
+  # NOT the same rule as the ':(glob)' magic word (which DOES set
+  # FNM_PATHNAME, so '*' does NOT cross '/' without an explicit '**'). Per
+  # gitglossary(7)'s own "pathspec" definition (the non-magic case, distinct
+  # from its separate "glob" magic-word entry): "the rest of the pathspec is
+  # a pattern for the remainder of the pathname. Paths ... will be matched
+  # ... using fnmatch(3); in particular, '*' and '?' can match directory
+  # separators", with the example "Documentation/*.jpg will match ...
+  # including Documentation/chapter_1/figure_1.jpg". Also verified directly
+  # against a real scripts/campaign/*.gd-touching commit in this repo's own
+  # history (a 3-way `git diff --stat` comparison: no-pathspec, bare
+  # 'scripts/*.gd', and ':(glob)scripts/*.gd' -- the first two match
+  # identically; the third matches nothing). The explicit ':(glob)' + '**'
+  # form here produces the identical match set to the bare form; it's kept
+  # only because it states the "recurse into every subdirectory" intent
+  # explicitly for a reader who doesn't already know this non-magic-pathspec
+  # quirk, not because the simpler form was ever wrong.
+  diff="$(cd "$PROJECT_ROOT" && git diff --no-color -U0 "$merge_base" HEAD -- ':(glob)scripts/**/*.gd')"
+  if [ -z "$diff" ]; then
+    info "No scripts/**/*.gd changes in this diff."
+    return 0
+  fi
+
+  # Only regenerate coverage/lcov.info if `coverage` hasn't already RUN
+  # earlier in THIS SAME invocation (e.g. `tools/check.sh all`, or
+  # `tools/check.sh coverage patch_coverage`) -- avoids running the ~15-20 min
+  # instrumented suite twice for one invocation. A standalone `patch_coverage`
+  # run (the common case: checking one diff before pushing) still always
+  # regenerates, since there's no earlier run in this invocation to trust, and
+  # a stale report from a previous diff would silently answer the wrong
+  # question.
+  #
+  # Three cases, not two: an EMPTY result (not attempted this invocation) is
+  # the only one that should trigger a fresh run here. "pass" reuses the
+  # report already on disk. "fail" means `coverage` already ran and failed
+  # this same invocation -- re-running it would just pay the full ~15-20 min
+  # cost again to fail the same way, so fail fast instead.
+  case "$(get_result coverage)" in
+    pass) ;;
+    fail) err "coverage already failed earlier in this run -- not regenerating."; return 1 ;;
+    *)    check_coverage || return 1 ;;
+  esac
+
+  # added_lines: "file:line" for every line this diff ADDS under scripts/ (same
+  # "+++ b/<path>" / "@@ ... +<start> @@" tracking check_comments uses, minus
+  # its comment-citation filter -- every added line is a candidate here, not
+  # just comment ones).
+  local added_lines
+  added_lines="$(printf '%s\n' "$diff" | awk '
+      /^\+\+\+ / { file = substr($0, 7); next }
+      /^@@ /     { match($0, /\+[0-9]+/); line = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
+      /^\+/      { print file ":" line; line++; next }
+      { next }
+    ')"
+  if [ -z "$added_lines" ]; then
+    info "No added lines in this diff's scripts/*.gd files (deletions only)."
+    return 0
+  fi
+
+  local lcov="$PROJECT_ROOT/coverage/lcov.info"
+  # Cross-reference added_lines against the lcov DA records: a line present in
+  # lcov is "coverable" (Godot's coverage tool instrumented it); coverable-and-
+  # hit counts as covered. A line absent from lcov entirely (a comment, a blank
+  # line, a declaration the instrumenter skips) is excluded from the
+  # denominator -- matching how Codecov itself treats non-executable lines, so
+  # this number is directly comparable to the codecov/patch check on GitHub.
+  local report
+  report="$(awk -v added="$added_lines" '
+      BEGIN {
+        # arr[file, line] (comma-subscript), not arr[file][line] -- the latter is
+        # a GNU-awk-only true-nested-array extension; the comma form (which awk
+        # folds into one string key via SUBSEP) is POSIX and works on the BSD/mawk
+        # awk macOS ships, matching the no-GNU-extras portability target the rest
+        # of this file targets (see tools/README.md).
+        n = split(added, rows, "\n")
+        for (i = 1; i <= n; i++) {
+          split(rows[i], parts, ":")
+          is_added[parts[1], parts[2]] = 1
+        }
+      }
+      /^SF:/ { file = substr($0, 4); next }
+      /^DA:/ {
+        split(substr($0, 4), parts, ",")
+        ln = parts[1]; count = parts[2]
+        if ((file, ln) in is_added) {
+          coverable[file]++
+          total_coverable++
+          if (count + 0 > 0) {
+            hit[file]++
+            total_hit++
+          } else {
+            missing[file] = missing[file] (missing[file] == "" ? "" : ",") ln
+          }
+        }
+        next
+      }
+      END {
+        for (f in coverable) {
+          printf "%-55s %6d/%-6d  missing: %s\n", f, hit[f]+0, coverable[f], missing[f]
+        }
+        if (total_coverable == 0) {
+          print "NO_COVERABLE_LINES"
+        } else {
+          printf "TOTAL %d/%d %.2f\n", total_hit, total_coverable, (100.0 * total_hit / total_coverable)
+        }
+      }
+    ' "$lcov")"
+
+  if printf '%s' "$report" | grep -q '^NO_COVERABLE_LINES$'; then
+    info "This diff's added lines are all outside what Godot's coverage tool instruments"
+    info "(comments, blank lines, declarations) -- nothing to report."
+    return 0
+  fi
+
+  printf '%s\n' "$report" | grep -v '^TOTAL '
+  local total_line pct
+  total_line="$(printf '%s\n' "$report" | grep '^TOTAL ')"
+  pct="$(printf '%s' "$total_line" | awk '{print $NF}')"
+  info ""
+  info "Patch coverage: $(printf '%s' "$total_line" | awk '{print $2}') = ${pct}%"
+  info "(Codecov's codecov/patch check computes the same metric server-side against this PR's base;"
+  info "this is a local approximation -- see tools/README.md.)"
+}
+
 check_chars() {
   # Flag curly quotes and en/em dashes in the Quarto docs, which are kept
   # plain-ASCII so pandoc's smart typography renders them. The flagged characters
@@ -514,7 +710,7 @@ main() {
       -h|--help) usage; exit 0 ;;
       -l|--list) list_checks; exit 0 ;;
       all)       checks+=("${ALL_CHECKS[@]}") ;;
-      validate|test|chars|comments|coverage|links) checks+=("$arg") ;;
+      validate|test|chars|comments|coverage|patch_coverage|links) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
   done

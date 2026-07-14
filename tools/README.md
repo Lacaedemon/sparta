@@ -23,6 +23,8 @@ tools/check.sh --help          # full usage
 | `test` | Runs the GUT unit suite headlessly (`-gexit`). | `godot-ci.yml` |
 | `chars` | Flags curly quotes and en/em dashes in the Quarto docs (`*.qmd`, `*.R`), which are kept plain-ASCII. | `check-non-standard-chars.yml` |
 | `comments` | Flags issue/PR-number citations (`#123`) added by this diff's GDScript (`*.gd`) comment lines — CLAUDE.md's "no issue-number references" rule (`TODO(#N):`/`FIXME(#N):` excepted). Diff-scoped against `origin/main` (or `SPARTA_CHECK_COMMENTS_BASE`), not a whole-repo scan, so pre-existing citations elsewhere in the tree don't fail the check. | `check-comment-citations.yml` |
+| `coverage` | Runs the GUT suite instrumented for line coverage and writes `coverage/lcov.info` (git-ignored). Slower than `test` (instrumentation overhead) and coverage numbers never gate a PR on their own, so it's **not** in the default set. | `test-coverage.yml` |
+| `patch_coverage` | Local approximation of Codecov's `codecov/patch` check: regenerates `coverage/lcov.info` fresh (runs `coverage` first), then reports what fraction of THIS diff's added `scripts/*.gd` lines are covered — per-file breakdown plus the exact missing line numbers. Diff-scoped against `origin/main` (or `SPARTA_CHECK_PATCH_COVERAGE_BASE`), same as `comments`. Run it before pushing a `scripts/` change to catch a `codecov/patch` shortfall locally instead of after a CI round trip — see "Checking patch coverage before you push" below. **Not** in the default set (inherits `coverage`'s slowness). | `codecov/patch` (GitHub check, driven by `test-coverage.yml`'s upload) |
 | `links` | Markdown link-check via [lychee](https://github.com/lycheeverse/lychee), if installed. Needs network, so it's **not** in the default set. | `check-links.yml` |
 
 Exit status is non-zero if any selected check fails, so it drops straight into a
@@ -58,7 +60,46 @@ tools/check.sh && git push
 | `SPARTA_CHECK_TEST_TIMEOUT` | `1800` | Hard timeout (s) for the `test` Godot run. |
 | `SPARTA_CHECK_COVERAGE_TIMEOUT` | `2700` | Hard timeout (s) for the `coverage` Godot run. |
 | `SPARTA_CHECK_COMMENTS_BASE` | _(unset)_ | Commit-ish the `comments` check diffs `HEAD` against to find new lines to scan. Falls back to `origin/main` then a local `main`; CI sets this per-event (PR base SHA, or the push event's `before`) — see `check-comment-citations.yml`. |
+| `SPARTA_CHECK_PATCH_COVERAGE_BASE` | _(unset)_ | Same, for the `patch_coverage` check's diff base. |
 | `SPARTA_GODOT_PREFLIGHT_LIMIT` | `5` | Warn when more Godot processes than this are already running before the checks start. |
+
+## Checking patch coverage before you push
+
+`codecov/patch` (Codecov's per-diff coverage gate, uploaded from the `coverage`
+CI job) only reports after a push — a ~15–20 min round trip to discover a
+`scripts/` change fell short. Run it locally first:
+
+```sh
+tools/check.sh patch_coverage
+```
+
+This regenerates `coverage/lcov.info` fresh (so the numbers reflect your
+current working tree, not a stale report from a previous diff), diffs against
+`origin/main` to find this diff's added `scripts/*.gd` lines, and reports a
+per-file breakdown plus the exact missing line numbers — a local
+approximation of what Codecov will report, verified to match its output
+directly (same percentage, same missing lines) on a real PR's diff. Like
+`coverage`, this check never fails purely on the *percentage* it finds — a low
+number is reported for you to read and act on, not treated as a failure by
+the check itself. (It can still report `SKIP`, when there's no resolvable
+diff base, or `FAIL`, if the underlying coverage regeneration itself errors —
+those are tooling states, not a coverage-threshold judgment.) This says
+nothing about whether Codecov's own `codecov/patch` status check is
+configured to block a merge on GitHub — that's a repo/branch-protection
+setting this local tool has no visibility into.
+
+If a diff comes up short, the fix is either genuine new test coverage for the
+newly-added lines, or — when a specific line is structurally hard to cover (a
+scene-transition call, an OS/input-dependent path) — accepting that one
+residual line and saying so explicitly in the PR. Extract whatever IS
+testable around it into its own function first, the way `HUD._on_quit_to_menu`
+was split so its reset prelude is covered by
+`test/unit/test_hud_scene_transitions.gd`, leaving only the actual
+`change_scene_to_file(...)` call itself untested — not the whole handler.
+`test/unit/test_main_menu.gd`'s own note explains why that ONE call is never
+exercised directly (it would trigger a real scene swap against the live test
+runner). Padding coverage with tests that don't guard real behavior is worse
+than a documented gap.
 
 ## Orphaned Godot processes: prevention and cleanup
 
