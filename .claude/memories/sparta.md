@@ -648,6 +648,58 @@ each, then `git worktree remove` the stale one and `git fetch` + `git reset
 --hard origin/<branch>` in the survivor so both git's ref and the working tree
 agree again. (Hit on PR #626, 2026-07-03.)
 
+**A third, distinct hazard: the assigned `.claude/worktrees/<name>` directory
+can look like a worktree without actually being one.** The section above
+assumes the session's working directory is a genuine `git worktree` — but a
+harness-assigned path under `.claude/worktrees/` isn't guaranteed to have had
+`git worktree add` actually run for it. Symptom: the directory has **no
+`.git`** file/folder of its own, and it's **absent from `git worktree list`**
+run from the main checkout — every `git` command issued from inside it just
+walks up the directory tree and finds the main checkout's `.git`, so it's
+silently operating on the SAME shared repository as the main checkout and
+every *other* branch checked out there, not an isolated copy.
+
+**Why this is dangerous, concretely:** checking out a second branch from
+inside this fake "worktree" (`git checkout -b other-branch origin/main`)
+switches the ONE shared checkout's active branch — it does not create an
+independent working tree. Any other work in flight on the branch that was
+previously checked out (your own later commands, or a delegated subagent
+mid-task) silently has its working-directory files yanked out from under it.
+The subagent doesn't error — it just ends up running against whatever branch
+is now checked out, which can be a completely different (even pre-refactor)
+version of the code, and the resulting output can look plausible without
+being about the branch it was asked to investigate.
+
+**How to apply:**
+- Before checking out a second branch or delegating a subagent to do file/git
+  work, verify the working directory is real: check for a `.git` entry
+  (`ls -la .git`) and cross-check `git worktree list` from the main checkout
+  path — the assigned directory should appear in that list. If it's absent
+  and has no `.git`, treat it as a plain subdirectory of the main checkout,
+  not an isolated worktree.
+- If it's fake and you need to work on more than one branch concurrently
+  (e.g. driving several PRs at once, or delegating parallel implementation
+  agents), create genuine isolated worktrees yourself:
+  `git worktree add .claude/worktrees/<slug> -b <branch> origin/main` (or
+  point at an existing remote branch instead of `-b` + `origin/main` to
+  continue one). Do this from whichever path IS the real main checkout.
+- Only ever have ONE branch checked out at a time in a fake/shared path. If
+  you must switch, finish and push (or stash) whatever's in flight there
+  first — don't assume "it's just a directory switch" is harmless.
+- A subagent given a directory to work in has no way to know it's fake unless
+  told to check — if you suspect this hazard might be live (concurrent
+  branch work in the same session), tell the subagent explicitly to verify
+  its own working directory is a real worktree before trusting its output, or
+  give it a directory you've already confirmed with `git worktree add`
+  yourself. (Hit on PR #831, 2026-07-13: `.claude/worktrees/gii-ffdb93` — the
+  session's assigned directory — had no `.git` and didn't appear in `git
+  worktree list`; checking out a second branch there for a concurrent PR
+  silently switched the one shared checkout away from PR #831's branch mid-
+  investigation by a delegated subagent, which only caught the problem
+  itself by noticing `scripts/Order.gd` was missing the tree fields it
+  expected and re-pinning its own investigation to an explicit `git worktree
+  add ... 443972a`.)
+
 ## GII / multi-session scope — unclaimed issues, own worktree only
 
 GII (grab issues iteratively) means picking up **unclaimed** open issues — no
