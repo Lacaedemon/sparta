@@ -125,12 +125,12 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 	# Phase 2 -- the reform: the march holds while the countermarch brings a full rank onto
 	# the new front, then commits. The timer is the unit's own depth/pace-derived timeout.
 	assert_false(u.has_move_target, "no march at turn end: the reform phase holds it")
-	assert_gt(u._reform_timer, 0.0, "the reform hold armed on conversio completion")
+	assert_gt(u.active_leaf().reform_timer, 0.0, "the reform hold armed on conversio completion")
 	# The order bookkeeping (_update_current_order) runs at the top of the NEXT _think
 	# tick, so give it one frame before reading the phase.
 	await get_tree().physics_frame
 	if u.current_order != null:
-		assert_eq(u.current_order.phase, Order.Phase.REFORM,
+		assert_eq(u.active_leaf().phase, Order.Phase.REFORM,
 			"the order transcript shows the REFORM phase")
 	var reform_budget: int = int(ceil(u._reform_timeout() * Replay.PHYSICS_TPS)) + 30
 	var start_pos: Vector2 = u.position
@@ -275,7 +275,7 @@ func test_hasty_rear_move_marches_with_the_flipped_grid_and_reforms_on_arrival()
 		if u.has_move_target:
 			break
 	assert_true(u.has_move_target, "a hasty rear move steps off straight from the about-face")
-	assert_eq(u._reform_timer, 0.0, "no reform hold in haste")
+	assert_false(u._reform_holding(), "no reform hold in haste")
 	assert_true(u._reform_on_arrival, "the reform is parked for arrival instead")
 	assert_eq(_front_row_count(u), SPEARMEN_COUNT - PARTIAL_FIRST_INDEX,
 		"in haste the 4-man partial rank leads the transit (the deliberate tradeoff)")

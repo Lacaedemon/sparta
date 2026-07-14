@@ -147,16 +147,17 @@ func test_move_order_stays_current_while_still_marching() -> void:
 
 
 ## Regression for a real bug caught in review: a reform-before-move hold (Battle._apply_order_cmd
-## sets _reform_timer and leaves has_move_target false for its duration) reads identically to
-## "arrived" if the retire check only looks at has_move_target/waypoints/conversio/pending-march
-## -- so an ordinary move order (reform_before_move defaults to true) retired current_order one
-## tick after being issued, before the march it describes had even started.
+## sets a REFORM leaf's reform_timer and leaves has_move_target false for its duration) reads
+## identically to "arrived" if the retire check only looks at has_move_target/waypoints/
+## conversio/pending-march -- so an ordinary move order (reform_before_move defaults to true)
+## retired current_order one tick after being issued, before the march it describes had even
+## started.
 func test_move_order_survives_a_reform_before_move_hold() -> void:
 	var u := _make_unit()
 	u.set_current_order(Order.new_move(Vector2(10, 10)))
 	u.has_move_target = false   # parked: Battle._apply_order_cmd's reform branch, not arrival
-	u._reform_target = Vector2(10, 10)
-	u._reform_timer = 1.0
+	u.current_order.phase = Order.Phase.REFORM
+	u.current_order.reform_timer = 1.0
 	u._update_current_order()
 	assert_not_null(u.current_order)
 	assert_eq(u.current_order.type, Order.Type.MOVE)
@@ -164,8 +165,9 @@ func test_move_order_survives_a_reform_before_move_hold() -> void:
 
 func test_move_order_retires_once_the_reform_hold_expires_and_the_unit_has_arrived() -> void:
 	var u := _make_unit()
+	# A fresh order's leaf never holds to begin with (reform_timer defaults to 0): the hold
+	# has expired and the resulting march has since arrived.
 	u.set_current_order(Order.new_move(Vector2(10, 10)))
-	u._reform_timer = 0.0   # hold expired and the resulting march has since arrived
 	u.has_move_target = false
 	u._update_current_order()
 	assert_null(u.current_order)
@@ -212,16 +214,17 @@ func test_phased_move_order_stays_in_turn_phase_while_the_about_face_is_still_ru
 
 
 func test_phased_move_order_enters_reform_when_the_about_face_hands_off_to_the_hold() -> void:
-	# Mirrors _think()'s reform-before-march handoff: timer armed, march parked in
-	# _reform_target while the countermarch brings a full rank forward.
+	# Mirrors _think()'s reform-before-march handoff: a REFORM leaf is spliced in with its own
+	# timer armed and the march parked right behind it while the countermarch brings a full
+	# rank forward.
 	var u := _make_unit()
 	var o := _stage_rear_move(u, Vector2(10, 10), true)
 	u.facing = u.active_leaf().turn_target
 	u._settle_order_turn()
 	u._finish_order_turn()
-	assert_eq(o.phase, Order.Phase.REFORM)
-	assert_gt(u._reform_timer, 0.0, "the reform hold armed")
-	assert_eq(u._reform_target, Vector2(10, 10), "with the march parked behind it")
+	assert_eq(o.active_leaf().phase, Order.Phase.REFORM)
+	assert_gt(o.active_leaf().reform_timer, 0.0, "the reform hold armed")
+	assert_eq(o.active_leaf().target_pos, Vector2(10, 10), "with the march parked behind it")
 	assert_false(u.has_move_target, "the march holds until the ranks re-form")
 	u._update_current_order()
 	assert_not_null(u.current_order)   # not retired mid-reform
@@ -233,7 +236,7 @@ func test_phased_move_order_transitions_reform_to_march_once_the_hold_commits() 
 	u.facing = u.active_leaf().turn_target
 	u._settle_order_turn()
 	u._finish_order_turn()
-	assert_eq(o.phase, Order.Phase.REFORM)
+	assert_eq(o.active_leaf().phase, Order.Phase.REFORM)
 	# The hold commits the parked march.
 	u._commit_pending_reform()
 	assert_eq(o.effective_phase_name(), "MARCH")

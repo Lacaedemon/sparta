@@ -644,7 +644,7 @@ func test_issue_form_up_routes_a_recorded_order() -> void:
 	b._by_uid[11] = u
 	sm._select(u)
 	sm._issue_form_up(Vector2(400, 500), Vector2(540, 500))   # 140 px wide line
-	assert_eq(u._reform_target, Vector2(470, 500), "deploys at the flank-line midpoint")
+	assert_eq(u.active_leaf().target_pos, Vector2(470, 500), "deploys at the flank-line midpoint")
 	assert_true(b._pending_orders[-1].has("face"), "routed as a recorded form-up order")
 
 
