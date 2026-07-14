@@ -211,6 +211,30 @@ principle CLAUDE.md already states, extended with a concrete failure mode:
 inherited scenario elements that don't actually complete are worse than no
 scenario elements at all. (`Lacaedemon/sparta` PR #623, 2026-07-03.)
 
+## Default new demo scripts to `"drill": true` unless the demo needs an enemy
+
+A demo whose actual subject is a maneuver, formation, order-queue, or UI change has no reason
+to spawn a live opponent — the default 5v5 layout's enemy AI is pure noise for it, and can
+actively confuse verification. `demos/README.md`'s `drill` field docs now state this as the
+default: set `"drill": true` unless the demo is specifically about combat/enemy interaction (a
+clash, a rout, an engagement mechanic, morale under fire).
+
+**Concrete case:** PR #840's `demos/inputs/multi-unit-form-up.json` (a pure order-tree
+refactor with no combat-related change) put one of its three units close enough to the default
+5v5 enemy line that a reviewer's caption claim about march progress needed re-deriving to
+account for engagement/proximity state that had nothing to do with what the PR actually
+changed — three review rounds spent untangling combat noise from a demo that was never about
+combat. A `drill: true` scenario (no enemy at all) would have made that class of confusion
+structurally impossible. (`Lacaedemon/sparta` PR #840, 2026-07-13.)
+
+**How to apply:** when authoring a NEW `demos/inputs/*.json` (per "Author each demo scenario
+fresh" above — don't retrofit this onto an existing, already-verified demo just because it
+lacks `drill`), default to `"drill": true` and a `scenario` array (or the default single-unit
+spawn) containing only the unit(s) the demo needs, unless showing a live opponent is the
+actual point. This composes with "Construct scenarios to isolate the phenomenon in question"
+below — it's the same isolation principle, applied specifically to "does this demo need an
+enemy at all."
+
 ## Construct scenarios to isolate the phenomenon in question
 
 The general form of the lesson above, generalized beyond a single frame-budget

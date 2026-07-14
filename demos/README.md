@@ -117,9 +117,16 @@ script under `demos/inputs/`:
     `how-to-play.qmd`) or `"shift": true` to chord it with Shift (e.g.
     `{"key": "O", "shift": true}` jumps straight to the schiltron stance, sharing
     orbis's O key — see "Square: orbis and schiltron" in `how-to-play.qmd`).
-- `drill` (optional bool) — solo/no-opponent rehearsal: only the player army (team 0)
-  deploys and the battle never auto-ends on "no enemies", so a unit can rehearse a maneuver
-  with no combat. Good for maneuver demos (quarter-turn, conversio, wheeling).
+- `drill` (optional bool, **default it to `true` unless the demo needs an enemy**) — solo/
+  no-opponent rehearsal: only the player army (team 0) deploys and the battle never auto-ends
+  on "no enemies", so a unit can rehearse a maneuver with no combat. Set `"drill": true` for
+  any demo that isn't specifically about combat/enemy interaction (a clash, a rout, an
+  engagement mechanic, morale under fire) — maneuver, formation, order-queue, HUD, and UI
+  demos have no reason to spawn an enemy at all, and a nearby enemy AI can introduce
+  engagement/proximity noise that has nothing to do with what the demo is showing (a reviewer
+  cross-checking a caption against the state transcript then has to account for combat state
+  that's irrelevant to the actual change). Only omit `drill` (or set it `false`) when the demo
+  genuinely needs a live opponent.
 - `doctrine` (optional string) — override team 1's battle-AI doctrine profile (a
   `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` — see `data/doctrines/*.json`
   and `docs/battle-ai-design.md`'s phase-3 section). Set before the battle spawns, like
