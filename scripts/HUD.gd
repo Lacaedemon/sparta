@@ -241,7 +241,7 @@ func _ready() -> void:
 	popup.add_check_item("Distance legend (map scale)", MENU_DISTANCE_LEGEND)
 	popup.add_check_item("Order distance labels", MENU_ORDER_DISTANCE)
 	popup.add_check_item("Unit speed labels", MENU_UNIT_SPEED)
-	popup.add_check_item("Soldier IDs (selected unit)", MENU_SOLDIER_IDS)
+	popup.add_check_item("Soldier IDs (selected unit, zoom in)", MENU_SOLDIER_IDS)
 	popup.add_check_item("Engaged-soldier highlight", MENU_ENGAGED_HIGHLIGHT)
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	popup.add_item("Shortcuts… (?)", MENU_SHORTCUTS)
