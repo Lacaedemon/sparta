@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure text-label rename in the HUD menu (clarifies the existing Soldier IDs toggle requires zoom-in) — no simulation, rendering, or input-handling logic changed, so there's nothing for a battle recording to demonstrate."
+}
