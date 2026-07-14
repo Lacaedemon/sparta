@@ -928,13 +928,20 @@ func _on_return_to_campaign() -> void:
 	get_tree().change_scene_to_file("res://scenes/Campaign.tscn")
 
 
-func _on_quit_to_menu() -> void:
-	# Bail out of the battle entirely — the only way back to the menu from a drill-mode
-	# rehearsal, which never auto-ends. Drop the in-progress recording like a restart
-	# (nothing to save; the battle never reached an end state). MainMenu._ready() clears
-	# CampaignBattle/ParadeGround defensively, so no in-flight hand-off is left dangling.
+## Drop the in-progress recording and unpause, same prelude _on_restart/_on_return_to_campaign
+## use before their own transition -- split out here (rather than inlined like theirs) so it's
+## directly testable without triggering _on_quit_to_menu's real change_scene_to_file, which
+## this codebase deliberately doesn't unit test (see test_main_menu.gd's own note on why).
+func _reset_for_quit_to_menu() -> void:
 	Replay.reset()
 	get_tree().paused = false
+
+
+func _on_quit_to_menu() -> void:
+	# Bail out of the battle entirely — the only way back to the menu from a drill-mode
+	# rehearsal, which never auto-ends. MainMenu._ready() clears CampaignBattle/ParadeGround
+	# defensively, so no in-flight hand-off is left dangling.
+	_reset_for_quit_to_menu()
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
