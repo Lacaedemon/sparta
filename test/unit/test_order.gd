@@ -16,6 +16,7 @@ func test_type_name_maps_every_known_type() -> void:
 	assert_eq(Order.type_name(Order.Type.ABOUT_FACE), "ABOUT_FACE")
 	assert_eq(Order.type_name(Order.Type.QUARTER_TURN), "QUARTER_TURN")
 	assert_eq(Order.type_name(Order.Type.STANCE), "STANCE")
+	assert_eq(Order.type_name(Order.Type.FORM_UP), "FORM_UP")
 
 
 func test_phase_name_maps_every_known_phase() -> void:
@@ -116,6 +117,15 @@ func test_new_relief_starts_with_no_pass_through_link() -> void:
 	assert_null(Order.new_relief(3).friendly_target)
 
 
+func test_new_form_up_starts_with_no_children_and_no_parent() -> void:
+	# Battle._apply_order_cmd appends children as each per-unit order joins the group;
+	# a freshly-built group tag starts empty.
+	var o := Order.new_form_up()
+	assert_eq(o.type, Order.Type.FORM_UP)
+	assert_true(o.children.is_empty())
+	assert_null(o.parent)
+
+
 # --- Phase 4: guard vocabulary -----------------------------------------------
 
 func test_guard_name_maps_every_known_guard() -> void:
@@ -138,11 +148,6 @@ func test_a_fresh_order_carries_no_guard() -> void:
 	assert_eq(o.guard_param, 0.0)
 	assert_eq(o.guard_uid, -1)
 	assert_eq(o._guard_ticks, 0)
-
-
-func test_a_fresh_order_is_not_part_of_a_macro() -> void:
-	var o := Order.new_move(Vector2(1, 1))
-	assert_eq(o.macro_id, -1)
 
 
 func test_with_guard_sets_the_guard_and_returns_the_order() -> void:

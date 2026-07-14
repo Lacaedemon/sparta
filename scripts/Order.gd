@@ -59,6 +59,12 @@ enum Type {
 	              ## and/or the intra-unit rank-relief mode on the unit. Instantaneous, like
 	              ## FORMATION/FRONTAGE. Appended after the phase-2 types so recorded
 	              ## transcripts keep their type values stable.
+	FORM_UP,      ## Group-level drag-line deploy (docs/atomic-order-decomposition-design.md):
+	              ## never a leaf and never any Unit's own current_order -- purely the shared
+	              ## parent tagging a multi-unit form-up's per-unit MOVE orders as one
+	              ## conceptual command (children holds those orders; each child's own
+	              ## `parent` points back here). Appended last so recorded transcripts keep
+	              ## every other type's value stable.
 }
 
 ## An order's internal choreography, for the phased case that already exists: a move into a
@@ -122,6 +128,7 @@ const TYPE_NAMES := {
 	Type.ABOUT_FACE: "ABOUT_FACE",
 	Type.QUARTER_TURN: "QUARTER_TURN",
 	Type.STANCE: "STANCE",
+	Type.FORM_UP: "FORM_UP",
 }
 
 const PHASE_NAMES := {
@@ -145,6 +152,14 @@ var phase: int = Phase.NONE
 # reform_until_settled/reform_settle_eps below are that leaf's own state) -- never on a
 # composite itself. Every order with no children -- the overwhelming majority, including
 # every standalone drill -- is unaffected: active_leaf() just returns the order itself.
+#
+# A second, shallower use of `parent` (no `children` of its own on the parent side, from a
+# per-unit order's point of view): a multi-unit drag-line form-up's per-unit MOVE orders each
+# point `parent` at a shared FORM_UP order tagging them as one group (Battle._apply_order_cmd
+# builds it, keyed by the recorded "form_up_group" id) -- the group order is never installed
+# as any Unit's own current_order, so nothing ever walks INTO it via active_leaf(); it exists
+# purely so a child's own `parent` reference resolves to something, and for a future HUD to
+# read "these orders belong to the same group command" off it.
 
 ## Nested sub-orders; empty (the default) means this order is a genuine leaf/atomic step.
 var children: Array[Order] = []
@@ -303,14 +318,6 @@ var guard_uid: int = -1
 ## count rather than inheriting a stale one.
 var _guard_ticks: int = 0
 
-# --- Macro grouping (Composability §2, "Macro expansion") ---------------------
-
-## The group id every step of one Unit.enqueue_macro() call shares, so Unit.cancel_macro()
-## can find and drop only that combo's own not-yet-executed remainder from the queue --
-## see docs/orders-queue-design.md, "Macro expansion". -1 (the default) means this order
-## was appended on its own, not as part of a combo.
-var macro_id: int = -1
-
 
 ## Attach a guard to this order and return it, for a fluent call at the constructor site
 ## (e.g. `Order.new_move(dest).with_guard(Order.Guard.CONTACT_MADE)`). `param` and `uid`
@@ -461,4 +468,14 @@ static func new_frontage(files: int, anchor_offset: float = 0.0) -> Order:
 	o.type = Type.FRONTAGE
 	o.frontage = files
 	o.frontage_anchor_offset = anchor_offset
+	return o
+
+
+## The shared group-tagging order a multi-unit drag-line form-up builds once (see the
+## "Order tree" note above): never installed as any Unit's current_order, so it needs
+## none of the other constructors' per-kind fields -- callers set `children` themselves as
+## each per-unit order joins the group.
+static func new_form_up() -> Order:
+	var o := Order.new()
+	o.type = Type.FORM_UP
 	return o

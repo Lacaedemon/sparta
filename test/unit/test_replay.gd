@@ -133,3 +133,42 @@ func test_a_centred_frontage_order_omits_anchor_offset_on_round_trip() -> void:
 	assert_eq(due.size(), 1, "the frontage order round-trips")
 	assert_false(due[0].has("anchor_offset"),
 			"a centred resize's order carries no anchor_offset key at all, like a pre-anchor replay")
+
+
+func test_save_load_round_trips_a_multi_unit_form_up_group_id() -> void:
+	# docs/atomic-order-decomposition-design.md: a multi-unit drag-line form-up's shared
+	# group id must survive save/load like any other order field, or a replayed recording
+	# would rebuild every per-unit order as ungrouped (losing the FORM_UP tree structure)
+	# even though the live session grouped them.
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [11], Vector2(10, 20), -1, 0, 0, 4, 0.5, 0, false, 0.0, 2)
+	r.record_order(5, [12], Vector2(30, 20), -1, 0, 0, 4, 0.5, 0, false, 0.0, 2)
+	var path: String = r.save("Test", 5)
+	assert_ne(path, "", "the recording saves")
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 2, "both grouped orders round-trip")
+	assert_eq(int(due[0].get("form_up_group", -1)), 2, "the group id round-trips, not just live")
+	assert_eq(int(due[1].get("form_up_group", -1)), 2,
+			"both units' orders read back tagged with the SAME group id")
+
+
+func test_an_ungrouped_form_up_omits_form_up_group_on_round_trip() -> void:
+	# A single-unit form-up (or any other order) carries no group id at all, matching the
+	# in-memory record_order behaviour for every other optional field -- an old replay
+	# recorded before this field existed still loads with no group id, same as a fresh
+	# single-unit deploy.
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [0], Vector2.ZERO, -1, 0, 0, 4, 0.5)   # a plain (ungrouped) form-up
+	var path: String = r.save("Test", 5)
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1)
+	assert_false(due[0].has("form_up_group"),
+			"an ungrouped order carries no form_up_group key at all, like a pre-grouping replay")
