@@ -1,5 +1,7 @@
 # Sparta
 
+[![codecov](https://codecov.io/gh/Lacaedemon/sparta/graph/badge.svg?token=NDG7G3MRTU)](https://codecov.io/gh/Lacaedemon/sparta)
+
 A prototype that fuses grand strategy with real-time tactical battles. 
 Built in **Godot 4.7** with GDScript.
 
