@@ -53,6 +53,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Stamp the build's commit SHA
+        # Overwrite BuildInfo.gd's checked-in "dev" fallback with the real commit this
+        # checkout is at, so every exported binary bakes in the SHA it was actually built
+        # from (scripts/Replay.gd records it in every saved replay). Runs on the checked-
+        # out working copy only -- this change is never committed back.
+        run: |
+          set -euo pipefail
+          sed -i "s/const COMMIT_SHA := \"dev\"/const COMMIT_SHA := \"${GITHUB_SHA}\"/" scripts/BuildInfo.gd
+          grep -F "${GITHUB_SHA}" scripts/BuildInfo.gd
+
       - name: Set up Godot ${{ env.GODOT_VERSION }}
         uses: chickensoft-games/setup-godot@v2
         with:

@@ -66,6 +66,8 @@ Replay files are small JSON:
   "created": 1781512075.7,
   "result": "Defeat",
   "duration_ticks": 1013,
+  "commit_sha": "a1b2c3d4e5f6...",
+  "git_dirty_status": " M scripts/Unit.gd",
   "orders": [
     { "tick": 84, "units": [0, 1], "x": 740.0, "y": 560.0, "target": -1 },
     { "tick": 132, "units": [3], "x": 0.0, "y": 0.0, "target": 7 }
@@ -113,6 +115,13 @@ on it):
 The seed is stored as a **string** on purpose: JSON
 numbers are float64 and would silently lose precision on a full 64-bit seed,
 desyncing the replay.
+
+`commit_sha` records which commit the game was built from (`scripts/BuildInfo.gd`,
+stamped into an exported build by the release workflow). `start_playback()` warns
+rather than rejects on a mismatch -- most commits don't touch anything replay-affecting,
+unlike a `version`/`physics_tps` mismatch, which does reject. `git_dirty_status` is a
+dev-only, best-effort `git status --porcelain` snapshot, omitted when the checkout was
+clean or the build has no `.git`/`git` to query.
 
 Hand-authored **scenarios** (under `demos/scenarios/`) are just replay files
 written by hand; see [`demos/README.md`](demos/README.md) for the spawn layout,

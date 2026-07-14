@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Adds hidden metadata to the saved replay JSON (commit_sha, git_dirty_status) and a load-time warning dialog for the rare mismatched-build case -- nothing a normal recorded battle clip would visibly show. The dialog itself is a paused menu interaction a replay's orders/camera/pointer track can't reproduce, same reasoning as the save-replay-on-exit prompt."
+}

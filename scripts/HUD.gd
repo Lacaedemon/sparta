@@ -6,6 +6,7 @@ extends CanvasLayer
 ##   - victory/defeat overlay with a restart button
 
 const BattleRef = preload("res://scripts/Battle.gd")
+const BuildInfoRef = preload("res://scripts/BuildInfo.gd")
 const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
 const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
 const UnitRef = preload("res://scripts/Unit.gd")
@@ -278,6 +279,21 @@ func _ready() -> void:
 	# Neutral default; each caller sets a context-specific title before popping it.
 	_error_dialog.title = "Replay"
 	add_child(_error_dialog)
+
+	# A commit-mismatch warning survives reload_current_scene() (Replay is an autoload), so
+	# it's shown here rather than at the call site that triggered playback -- covers every
+	# entry point (Load Replay, Restart Replay, a main-menu picker) in one place, right after
+	# the scene that will actually run the mismatched replay has loaded. One-shot: clear it
+	# immediately so a later restart of the *same* file re-warns (still relevant), but this
+	# particular _ready() doesn't loop back and show it again.
+	if Replay.mode == Replay.Mode.PLAYBACK and Replay.last_load_sha_mismatch != "":
+		var mismatched_sha := Replay.last_load_sha_mismatch
+		Replay.last_load_sha_mismatch = ""
+		_error_dialog.title = "Replay"
+		_error_dialog.dialog_text = ("This replay was recorded on commit %s; this build is %s. " +
+				"It should still play, but a game-logic change between them could cause a desync.") \
+				% [mismatched_sha, BuildInfoRef.COMMIT_SHA]
+		_error_dialog.popup_centered()
 
 	# Rebindable order-mode hotkeys. Its own PROCESS_MODE_ALWAYS dialog so it's
 	# usable while paused, like the other menu dialogs.
