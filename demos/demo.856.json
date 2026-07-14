@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "An opt-in, off-by-default dev/debug overlay (Settings.show_fps). A recorded battle clip wouldn't show it unless the demo also toggled it on via the Menu, and the counter's own content (live render FPS / physics tick rate) isn't meaningfully reproducible frame-for-frame across recording runs anyway."
+}

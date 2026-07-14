@@ -161,6 +161,36 @@ var show_engaged_highlight: bool = false:
 			_save()
 			changed.emit()
 
+# Frame-rate counter: display Engine.get_frames_per_second() in a HUD corner. Handy for
+# spotting perf regressions. Default off -- most players don't want it as permanent clutter.
+var show_fps: bool = false:
+	set(value):
+		if value == show_fps:
+			return
+		show_fps = value
+		if not _loading:
+			_save()
+			changed.emit()
+
+# Which corner the frame-rate counter renders in. Values are append-only (mirrors
+# FORM_UP_DIST_* above) so a persisted choice keeps its meaning if a corner is ever added.
+const FPS_CORNER_TOP_LEFT := 0
+const FPS_CORNER_TOP_RIGHT := 1
+const FPS_CORNER_BOTTOM_LEFT := 2
+const FPS_CORNER_BOTTOM_RIGHT := 3
+const FPS_CORNER_MAX := 3
+# Top-left by default -- the one corner none of the other HUD chrome (menu button
+# top-right, info panel bottom-left, distance legend bottom-right) already occupies.
+var fps_corner: int = FPS_CORNER_TOP_LEFT:
+	set(value):
+		var clamped: int = clampi(value, 0, FPS_CORNER_MAX)
+		if clamped == fps_corner:
+			return
+		fps_corner = clamped
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Order-mode selector hotkeys: stable slug -> physical keycode. Slugs (and the
 # menu order) are owned by Battle.ORDER_MODE_HOTKEYS; these are the factory defaults.
 # Physical keycodes keep the bindings layout-independent (like the camera/pause keys).
@@ -306,6 +336,8 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_unit_speed = bool(cfg.get_value("camera", "show_unit_speed", show_unit_speed))
 	show_soldier_ids = bool(cfg.get_value("camera", "show_soldier_ids", show_soldier_ids))
 	show_engaged_highlight = bool(cfg.get_value("camera", "show_engaged_highlight", show_engaged_highlight))
+	show_fps = bool(cfg.get_value("camera", "show_fps", show_fps))
+	fps_corner = int(cfg.get_value("camera", "fps_corner", fps_corner))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
 	_loading = false
@@ -326,6 +358,8 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "show_unit_speed", show_unit_speed)
 	cfg.set_value("camera", "show_soldier_ids", show_soldier_ids)
 	cfg.set_value("camera", "show_engaged_highlight", show_engaged_highlight)
+	cfg.set_value("camera", "show_fps", show_fps)
+	cfg.set_value("camera", "fps_corner", fps_corner)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
 	cfg.save(path)
