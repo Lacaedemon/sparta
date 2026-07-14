@@ -7,6 +7,7 @@ extends Node2D
 const UnitRef = preload("res://scripts/Unit.gd")
 const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 const ParadeGround = preload("res://scripts/ParadeGround.gd")
+const AllTeamsControl = preload("res://scripts/AllTeamsControl.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
@@ -185,6 +186,14 @@ var _ended: bool = false
 # normal two-army battle.
 var drill_mode: bool = false
 
+# All-teams control (debug/testing): the player commands every team's units
+# directly instead of only team 0, and team 1's AI (_run_enemy_ai) is skipped entirely
+# for the whole battle. Both armies still spawn as normal -- unlike drill_mode, the
+# point is a real clash the tester drives on both sides, not a no-opponent rehearsal.
+# Settable BEFORE the node enters the tree (like drill_mode/scenario above) so a demo/
+# test can force it. Off = the normal team-0-vs-AI battle.
+var all_teams_control: bool = false
+
 # Custom demo matchup (tooling): a list of unit specs the demo recorder can set from an input
 # script's "scenario" field BEFORE the node enters the tree, to stage a specific fight (a weak
 # unit that will rout, an enemy placed off a unit's flank, cavalry vs a target). Empty = the
@@ -287,6 +296,14 @@ func _ready() -> void:
 	# rather than requiring each HUD reload handler to remember to clear the flag itself.
 	if ParadeGround.pending and Replay.mode != Replay.Mode.PLAYBACK:
 		drill_mode = true
+
+	# The main menu's "All-Teams Control" button requests all-teams control across the scene
+	# swap the same way ParadeGround does just above. Same replay-playback exclusion for the
+	# same reason: a playback's recorded orders assume normal team-0-only control, and letting
+	# this re-arm here would relax SelectionManager's team checks against a replay it isn't
+	# actually driving (the player never touches the controls during a Watch Replay).
+	if AllTeamsControl.pending and Replay.mode != Replay.Mode.PLAYBACK:
+		all_teams_control = true
 
 	# Drill mode is a no-opponent rehearsal; a campaign clash always has a defender. They are
 	# mutually exclusive — assert it so a future path that ends a drill battle can't silently
@@ -715,8 +732,10 @@ func _physics_process(_delta: float) -> void:
 	_tick_tier_transitions()
 
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
-	# the same cadence during playback so it reaches the same decisions.
-	if _tick % AI_PERIOD == 0:
+	# the same cadence during playback so it reaches the same decisions. Skipped entirely
+	# under all-teams control -- the player is commanding team 1 directly, so nothing
+	# should also be deciding for it.
+	if _tick % AI_PERIOD == 0 and not all_teams_control:
 		_run_enemy_ai()
 
 	_check_victory()

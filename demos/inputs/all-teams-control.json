@@ -1,0 +1,16 @@
+{
+  "_comment": "All-Teams Control: the main menu's new debug/testing battle option, shown with the real default spawn (all_teams_control:true, no drill/scenario override) so the clip matches exactly what pressing the button produces -- a normal two-army battle where the PLAYER commands both sides (no AI on team 1). Team 0's line (top, seed 12345: uid 0-4) is box-selected and marched forward as a group; then team 1's line (bottom, uid 5-9), which a normal battle would leave to the AI, is box-selected and marched forward too -- proving control isn't restricted to team 0. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "all_teams_control": true,
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 500.0, "zoom": 0.7}
+  ],
+  "steps": [
+    {"tick": 10, "box": {"from": [350, 240], "to": [1220, 360]}},
+    {"tick": 30, "rmb_click": [800, 420]},
+    {"tick": 90, "box": {"from": [350, 640], "to": [1220, 760]}},
+    {"tick": 110, "rmb_click": [800, 580]}
+  ],
+  "frames": [8, 30, 90, 130, 200],
+  "state": [8, 30, 90, 130, 200]
+}
