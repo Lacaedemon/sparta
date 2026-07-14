@@ -972,7 +972,10 @@ to win the campaign.
 ## Recording & replays
 
 Every battle is recorded automatically --- a `● REC` indicator shows top-center. When
-a battle ends it's saved, and you can:
+a battle ends it's saved. Leaving early instead --- **Quit to Main Menu** or **Return
+to Campaign**, including from a never-ending [Parade Ground](#parade-ground) drill ---
+offers a **Save Replay?** prompt first, so a mid-battle recording isn't silently lost.
+Once a battle's saved (either way), you can:
 
 - **Watch Replay** --- re-run the battle you just played (`▶ REPLAY`). You can still
   pan and inspect units during playback, but can't issue new orders.

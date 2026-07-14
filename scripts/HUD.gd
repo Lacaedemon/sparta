@@ -35,6 +35,10 @@ var _flash_label: Label
 var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
+var _save_replay_dialog: ConfirmationDialog
+# Which exit to actually perform once the save-replay prompt resolves (Save or Discard).
+# Set right before popping the dialog; see _confirm_exit_with_unsaved_replay.
+var _pending_exit_action: Callable
 var _keybindings_dialog: AcceptDialog
 var _shortcuts_dialog: AcceptDialog
 var _legend_panel: PanelContainer
@@ -278,6 +282,18 @@ func _ready() -> void:
 	# Neutral default; each caller sets a context-specific title before popping it.
 	_error_dialog.title = "Replay"
 	add_child(_error_dialog)
+
+	# Offered on every exit that would otherwise silently discard an unsaved recording
+	# (Quit to Main Menu, Return to Campaign) -- see _confirm_exit_with_unsaved_replay.
+	_save_replay_dialog = ConfirmationDialog.new()
+	_save_replay_dialog.process_mode = Node.PROCESS_MODE_ALWAYS
+	_save_replay_dialog.title = "Save Replay?"
+	_save_replay_dialog.dialog_text = "This battle hasn't been saved as a replay yet. Save it before leaving?"
+	_save_replay_dialog.ok_button_text = "Save"
+	_save_replay_dialog.add_button("Discard", true, "discard")
+	_save_replay_dialog.confirmed.connect(_on_save_replay_confirmed)
+	_save_replay_dialog.custom_action.connect(_on_save_replay_custom_action)
+	add_child(_save_replay_dialog)
 
 	# Rebindable order-mode hotkeys. Its own PROCESS_MODE_ALWAYS dialog so it's
 	# usable while paused, like the other menu dialogs.
@@ -1081,13 +1097,17 @@ func _on_restart() -> void:
 
 func _on_return_to_campaign() -> void:
 	# Hand control back to the campaign map; CampaignBattle still holds the
-	# result, which CampaignMap applies on load. Drop the recording like a restart.
+	# result, which CampaignMap applies on load.
+	_confirm_exit_with_unsaved_replay(_finish_return_to_campaign)
+
+
+func _finish_return_to_campaign() -> void:
 	Replay.reset()
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/Campaign.tscn")
 
 
-## Drop the in-progress recording and unpause, same prelude _on_restart/_on_return_to_campaign
+## Drop the in-progress recording and unpause, same prelude _on_restart/_finish_return_to_campaign
 ## use before their own transition -- split out here (rather than inlined like theirs) so it's
 ## directly testable without triggering _on_quit_to_menu's real change_scene_to_file, which
 ## this codebase deliberately doesn't unit test (see test_main_menu.gd's own note on why).
@@ -1100,8 +1120,40 @@ func _on_quit_to_menu() -> void:
 	# Bail out of the battle entirely — the only way back to the menu from a drill-mode
 	# rehearsal, which never auto-ends. MainMenu._ready() clears CampaignBattle/ParadeGround
 	# defensively, so no in-flight hand-off is left dangling.
+	_confirm_exit_with_unsaved_replay(_finish_quit_to_menu)
+
+
+func _finish_quit_to_menu() -> void:
 	_reset_for_quit_to_menu()
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+
+
+## Offers to save the in-progress recording before an exit that would otherwise discard it
+## silently. Covers every exit path that doesn't go through Battle._end()'s own auto-save --
+## a mid-battle "Quit to Main Menu"/"Return to Campaign", and (since drill-mode/parade-ground
+## battles never auto-end) that as the *only* way out of one. A battle that already reached
+## its formal end has Replay.last_saved_path already set by that auto-save, so this no-ops
+## straight to on_resolved -- nothing to re-save, no redundant prompt on top of one that
+## already happened.
+func _confirm_exit_with_unsaved_replay(on_resolved: Callable) -> void:
+	if Replay.mode != Replay.Mode.RECORD or Replay.last_saved_path != "":
+		on_resolved.call()
+		return
+	_pending_exit_action = on_resolved
+	_save_replay_dialog.popup_centered()
+
+
+func _on_save_replay_confirmed() -> void:
+	var battle := get_parent() as BattleRef
+	if battle != null:
+		Replay.save("Quit (unfinished)", battle.current_tick())
+	_pending_exit_action.call()
+
+
+func _on_save_replay_custom_action(action: StringName) -> void:
+	if action == "discard":
+		_save_replay_dialog.hide()
+		_pending_exit_action.call()
 
 
 func _on_restart_replay() -> void:
