@@ -211,6 +211,29 @@ principle CLAUDE.md already states, extended with a concrete failure mode:
 inherited scenario elements that don't actually complete are worse than no
 scenario elements at all. (`Lacaedemon/sparta` PR #623, 2026-07-03.)
 
+## Default new demo scripts to `"drill": true` unless the demo needs an enemy
+
+A demo whose actual subject is a maneuver, formation, order-queue, or UI change has no reason
+to spawn a live opponent — the default 5v5 layout's enemy AI is pure noise for it, and can
+actively confuse verification. `demos/README.md`'s `drill` field docs now state this as the
+default: set `"drill": true` unless the demo is specifically about combat/enemy interaction (a
+clash, a rout, an engagement mechanic, morale under fire).
+
+This is a preventive default, not a fix for a specific incident this session hit — no PR's
+review rounds so far have actually traced back to enemy-proximity/engagement noise (checked:
+PR #840's three review rounds were all about caption accuracy on the player's own units'
+frontage/timing values, not enemy interaction). The principle stands on its own: a live
+opponent adds a whole axis of state (detection range, targeting, engagement) a non-combat demo
+has no use for and every reader/reviewer has to mentally rule out.
+
+**How to apply:** when authoring a NEW `demos/inputs/*.json` (per "Author each demo scenario
+fresh" below — don't retrofit this onto an existing, already-verified demo just because it
+lacks `drill`), default to `"drill": true` and a `scenario` array (or the default single-unit
+spawn) containing only the unit(s) the demo needs, unless showing a live opponent is the
+actual point. This composes with "Construct scenarios to isolate the phenomenon in question"
+below — it's the same isolation principle, applied specifically to "does this demo need an
+enemy at all."
+
 ## Construct scenarios to isolate the phenomenon in question
 
 The general form of the lesson above, generalized beyond a single frame-budget
