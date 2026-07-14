@@ -1,0 +1,17 @@
+{
+  "_comment": "Info-panel legibility demo (issue #836): a lone Cavalry troop is staged alone (drill mode, no opponent) at (700,380) facing east. It is selected, then given a Hold order in place, so the bottom-left unit-stats info panel (name/type/commander/soldiers/morale/fatigue/formation/width/order) sits on screen next to the Formation/Stance/Options control bar long enough to read every field, including the Order field changing from its default to 'Hold'. This is the panel HUD.gd's _info Label was failing to render legibly during a headless frame capture -- see _info_panel_raise()/_info_panel_lower() in scripts/HUD.gd for the fix (they were repositioning the panel via `position`, which resolves anchors against whatever the parent size happened to be at the moment it was set, instead of the anchor-relative `offset_top`). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "83601",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 700, "y": 380, "count": 24, "facing": [1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 700.0, "y": 350.0, "zoom": 1.9}
+  ],
+  "steps": [
+    {"tick": 10, "click": [700, 380]},
+    {"tick": 30, "key": "H", "ctrl": true}
+  ],
+  "frames": [0, 10, 40, 80],
+  "state": [0, 10, 40, 80]
+}
