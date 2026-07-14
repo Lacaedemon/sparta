@@ -212,10 +212,25 @@ with no further UI changes needed — `describe()`'s contract doesn't change).
 - **Slice 1:** #818's form-up reform-hold onto a REFORM leaf order, retiring
   the bare fields. (Renumbered from the old Slice 2, now that rear-move and
   lateral-pivot are one combined slice instead of two.)
-- **Slice 2:** the group-level `FORM_UP` composite (checkerboard's per-unit
-  split becomes real tree children instead of N independent `Battle`
-  commands) — the piece that actually realizes "hierarchical decomposition
-  by group-level AI" for a drag-line order specifically.
+- **Slice 2 (done):** the group-level `FORM_UP` composite —
+  `SelectionManager._form_up_slices`'s per-unit decomposition (of which
+  `_checkerboard_slices` is only the CHECKERBOARD-mode sub-case) now tags
+  every per-unit order from the same multi-unit drag-line command with a
+  shared `Order.Type.FORM_UP` parent (`Battle._apply_order_cmd`, keyed by a
+  recorded `form_up_group` id) instead of leaving them N unrelated standalone
+  orders. Each unit's own `current_order` stays its own per-unit order, exactly
+  as before — the group order is never installed as anyone's `current_order`,
+  and its own `children`/`_active_child` describe membership, not sequencing
+  (the group's per-unit orders run concurrently, not one after another). This
+  needed one correctness fix to `Unit._advance_order_tree`: it now stops
+  climbing at `current_order` rather than at a merely-null `parent`, so a
+  grouped composite's own completion can't get mistaken for "the group has a
+  next sibling to promote" and swallow this unit's retirement (see the
+  function's own doc comment). Also removed `Order.macro_id` /
+  `Unit.enqueue_macro()`/`cancel_macro()`: neither this slice's group tag nor
+  Slice 0's rear-move/lateral-pivot composites ever actually routed through
+  it (both build real `children`/`parent` directly), and it had no other
+  caller — see "Open questions" below.
 - **Slice 3:** HUD order-tree display — independent, could land first or in
   parallel with any of the above.
 
@@ -259,10 +274,22 @@ not to start a foundational refactor with reduced context budget remaining).
 - Does `retire_current_order`'s existing MOVE/ATTACK promotion special-casing
   extend cleanly to "promote the next child at whatever ancestor level," or
   does it need a real rewrite (not just a recursive wrapper) once promotion
-  can happen at any tree depth, not just at the flat queue's own head?
+  can happen at any tree depth, not just at the flat queue's own head? Still
+  open after Slice 2: the group-level `FORM_UP` composite's children are each
+  installed directly as their OWN unit's top-level `current_order` (see
+  above), never nested behind a flat-queue promotion, so `retire_current_order`
+  itself needed no changes for it. This question is really about a FUTURE
+  composite whose children are queued (not-yet-current) orders on the SAME
+  unit, which nothing built so far exercises.
 - Is `Order.Phase` fully removable once the two composites currently using it
   are ported, or does something else (transcript format stability for
   existing replays, a test) still expect it to exist?
-- `macro_id`/`cancel_macro`: keep as a separate, shallower mechanism for a
+- ~~`macro_id`/`cancel_macro`: keep as a separate, shallower mechanism for a
   different future case, or remove now that its two real uses (this design's
-  own composites) are moving to genuine children?
+  own composites) are moving to genuine children?~~ **Resolved in Slice 2:
+  removed.** Investigation found neither Slice 0's rear-move/lateral-pivot
+  composites nor Slice 2's own `FORM_UP` group tag ever actually went through
+  `enqueue_macro` — both build `children`/`parent` directly — so the "two real
+  uses" the mechanism was named for never materialized through it in the
+  first place, and it had no caller besides its own dedicated tests. See
+  `docs/orders-queue-design.md`'s "Macro expansion" section.

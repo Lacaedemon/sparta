@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/multi-unit-form-up.json",
+  "caption": "Slice 2 of the nested atomic order queue (#822): a multi-unit drag-line form-up now builds a shared Order.Type.FORM_UP tag for the group instead of N unrelated standalone orders -- an internal representation change only, with NO intended difference in what a form-up looks like. Watch three regiments (Spearmen 140, Infantry 120, Archers 90) get box-selected, then a single right-drag sends each on its OWN march toward a distinct slice of the flank line -- exactly as before this slice: same per-unit destinations, same timing, still three separately visible march paths, not a single merged movement. State-dump verified across the full clip: by tick 300 each unit is still cleanly marching toward its own assigned point along the drag line with no sign of contact yet; the rightmost (Archers) unit is the first to approach the enemy line, which is why the clip ends there rather than showing the whole deploy settle -- this scenario's enemy happens to stand close to the drag line, unrelated to this change. Covered by new GUT tests asserting the shared FORM_UP parent/children wiring and a regression test proving a grouped composite still retires correctly (Unit._advance_order_tree's fixed stop condition).",
+  "fixed_fps": 60,
+  "max_frames": 300,
+  "fps": 20,
+  "width": 720
+}

@@ -1072,6 +1072,57 @@ func test_issue_form_up_routes_one_order_per_selected_unit() -> void:
 	assert_ne(last_two[0]["x"], last_two[1]["x"], "the two units deploy at distinct slice centres")
 
 
+func test_multi_unit_form_up_hangs_every_unit_off_one_shared_form_up_order() -> void:
+	# docs/atomic-order-decomposition-design.md: the group-level decomposition gets a real
+	# home in the order tree -- a FORM_UP order at the top whose children are each unit's
+	# own order -- instead of N unrelated standalone orders.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u1 := _unit()
+	u1.uid = 31
+	u1.max_soldiers = 100
+	u1.position = Vector2(100, 500)
+	var u2 := _unit()
+	u2.uid = 32
+	u2.max_soldiers = 100
+	u2.position = Vector2(900, 500)
+	b._by_uid[31] = u1
+	b._by_uid[32] = u2
+	sm._select(u1)
+	sm._select(u2)
+	sm._issue_form_up(Vector2(0, 500), Vector2(1000, 500))
+	assert_not_null(u1.current_order, "each unit still gets its own installed order")
+	assert_not_null(u2.current_order)
+	assert_not_null(u1.current_order.parent, "a multi-unit deploy tags its order with a group parent")
+	assert_eq(u1.current_order.parent, u2.current_order.parent,
+			"both units' orders point at the SAME shared group order")
+	var group_order: Order = u1.current_order.parent
+	assert_eq(group_order.type, Order.Type.FORM_UP, "the shared parent is FORM_UP-flavored")
+	assert_eq(group_order.children, [u1.current_order, u2.current_order],
+			"the group's children are exactly the two per-unit orders, in slice order")
+	assert_null(group_order.parent, "the group order itself is never installed as any unit's own current_order")
+
+
+func test_single_unit_form_up_is_not_tagged_with_a_group_parent() -> void:
+	# A lone-unit drag-line deploy has nothing to group -- its order stays exactly the
+	# standalone order it always was, unaffected by the multi-unit grouping above.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 33
+	u.max_soldiers = 100
+	u.position = Vector2(0, 500)
+	b._by_uid[33] = u
+	sm._select(u)
+	sm._issue_form_up(Vector2(400, 500), Vector2(540, 500))
+	assert_not_null(u.current_order)
+	assert_null(u.current_order.parent, "a single-unit form-up is never grouped")
+
+
 # --- form-up distribution mode (cycle + settings) -------
 
 func test_form_up_dist_starts_at_the_persisted_default() -> void:

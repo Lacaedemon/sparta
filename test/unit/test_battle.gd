@@ -980,6 +980,40 @@ func test_enqueue_form_up_sets_destination_facing_and_width() -> void:
 	assert_true(b._pending_orders[-1].has("face"), "the order records its deploy facing")
 
 
+func test_enqueue_form_up_with_a_group_id_ties_two_units_orders_to_one_parent() -> void:
+	# docs/atomic-order-decomposition-design.md: two units deployed under the same
+	# form_up_group id (SelectionManager._issue_form_up's own monotonic counter) both end
+	# up as children of the SAME shared Order.Type.FORM_UP tag, built once and reused --
+	# not two independent groups, and not installed as either unit's own current_order.
+	var u1 := _unit(1, Vector2(0, 100))
+	var u2 := _unit(2, Vector2(0, 200))
+	var b := _battle([u1, u2])
+	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20, 0, false, 7)
+	b.enqueue_form_up([2], Vector2(500, 600), 0.0, 20, 0, false, 7)
+	assert_not_null(u1.current_order.parent)
+	assert_eq(u1.current_order.parent, u2.current_order.parent, "same group id -> same shared parent")
+	assert_eq(u1.current_order.parent.type, Order.Type.FORM_UP)
+	assert_eq(u1.current_order.parent.children, [u1.current_order, u2.current_order])
+	assert_null(u1.current_order.parent.parent, "the group tag is never installed as a current_order")
+
+
+func test_enqueue_form_up_without_a_group_id_leaves_the_order_ungrouped() -> void:
+	var u := _unit(1, Vector2(0, 100))
+	var b := _battle([u])
+	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20)   # form_up_group defaults to -1
+	assert_null(u.current_order.parent, "no group id -> no group parent, exactly as before")
+
+
+func test_enqueue_form_up_different_group_ids_get_distinct_parents() -> void:
+	var u1 := _unit(1, Vector2(0, 100))
+	var u2 := _unit(2, Vector2(0, 200))
+	var b := _battle([u1, u2])
+	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20, 0, false, 3)
+	b.enqueue_form_up([2], Vector2(500, 600), 0.0, 20, 0, false, 4)
+	assert_ne(u1.current_order.parent, u2.current_order.parent,
+			"two separate drag-line commands never share a group tag")
+
+
 func test_plain_move_clears_a_stale_deploy_facing() -> void:
 	# A form-up parks a deploy facing; a superseding plain move must clear it so the
 	# unit doesn't pivot to the old heading at the new destination.
