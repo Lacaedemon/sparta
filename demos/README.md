@@ -299,7 +299,7 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `order_mode` | Readable order stance (`Normal`, `Hold`, `Attack flank`, …). |
 | `rank_relief` | Whether the intra-unit rank-relief mode is on (rear ranks rotate forward to relieve their own fighting line; written by a stance order). |
 | `current_order` | The head of the unit's orders queue — readable `Order.Type` name (`MOVE`, `ATTACK`, `RELIEF`, `WHEEL`, …), or `null` when idle. |
-| `order_phase` | The current order's active phase (`NONE`, or `TURN` / `REFORM` / `MARCH` for a phased rear move), or `null` when idle. |
+| `order_phase` | The current order's active phase (`NONE`, or `TURN` / `REFORM` / `MARCH`), or `null` when idle. `REFORM` covers BOTH a phased rear-move/lateral-pivot's interstitial hold and an ordinary move/form-up's reform-before-move pause (`Settings.reform_before_move`, default on) — both hold on a REFORM leaf order and read identically here. |
 | `order_guard` | The current order's pending terminal condition — readable `Order.Guard` name (`ENEMY_IN_RANGE`, `CONTACT_MADE`, `MORALE_BELOW`, `ALLY_EXHAUSTED`, `TICKS_ELAPSED`, `FLANKED`), or `null` when the order carries no guard (or there is no current order). |
 | `queue_tail` | The not-yet-current queued orders behind `current_order`, as an array of `Order.Type` names in queue order — `[]` (not `null`) when nothing is queued. |
 | `target_enemy_uid` | The uid this unit is attacking, or `null`. |
