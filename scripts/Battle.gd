@@ -6,6 +6,7 @@ extends Node2D
 # without the editor-built global-class cache (works headless / first run / CI).
 const UnitRef = preload("res://scripts/Unit.gd")
 const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
+const ParadeGround = preload("res://scripts/ParadeGround.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
@@ -263,6 +264,13 @@ func _ready() -> void:
 			PathField.active.set_speed_rect(patch["rect"], float(patch["speed"]))
 		else:
 			PathField.active.block_rect(patch["rect"])
+
+	# The main menu's "Parade Ground" button requests drill mode across the scene swap the
+	# same way CampaignBattle ferries a clash's config (Godot's change_scene_to_file can't
+	# pass constructor args). Left set — not consumed here — so a later "Restart Battle"
+	# reload (a fresh Battle instance, script defaults reset) still lands in drill mode.
+	if ParadeGround.pending:
+		drill_mode = true
 
 	# Drill mode is a no-opponent rehearsal; a campaign clash always has a defender. They are
 	# mutually exclusive — assert it so a future path that ends a drill battle can't silently

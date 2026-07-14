@@ -20,7 +20,8 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_CYCLE_DEPTH_SPACE, MENU_FORMUP_CYCLE_DEPTH,
 		MENU_FORMUP_CYCLE_WIDTH, MENU_FORMUP_CYCLE_WIDTH_COUNT, MENU_FORMUP_CYCLE_CHECKERBOARD,
 		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
-		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS }
+		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
+		MENU_QUIT_TO_MENU }
 
 var _hint: Label
 var _info: Label
@@ -224,6 +225,10 @@ func _ready() -> void:
 	popup.add_check_item("Engaged-soldier highlight", MENU_ENGAGED_HIGHLIGHT)
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	popup.add_item("Shortcuts… (?)", MENU_SHORTCUTS)
+	popup.add_separator()
+	# The only way back to the main menu from a battle that never auto-ends (drill mode
+	# has no enemy to win against) — also handy as a plain "give up" from any other battle.
+	popup.add_item("Quit to Main Menu", MENU_QUIT_TO_MENU)
 	_sync_setting_toggles()
 	popup.id_pressed.connect(_on_menu_id)
 	# Keep the check items in sync if a setting changes elsewhere. Use a named
@@ -476,6 +481,8 @@ func _on_menu_id(id: int) -> void:
 			_keybindings_dialog.popup_centered()
 		MENU_SHORTCUTS:
 			_shortcuts_dialog.popup_centered()
+		MENU_QUIT_TO_MENU:
+			_on_quit_to_menu()
 
 
 func _toggle_form_up_cycle(mode: int) -> void:
@@ -919,6 +926,16 @@ func _on_return_to_campaign() -> void:
 	Replay.reset()
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/Campaign.tscn")
+
+
+func _on_quit_to_menu() -> void:
+	# Bail out of the battle entirely — the only way back to the menu from a drill-mode
+	# rehearsal, which never auto-ends. Drop the in-progress recording like a restart
+	# (nothing to save; the battle never reached an end state). MainMenu._ready() clears
+	# CampaignBattle/ParadeGround defensively, so no in-flight hand-off is left dangling.
+	Replay.reset()
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
 func _on_restart_replay() -> void:

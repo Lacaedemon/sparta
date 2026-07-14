@@ -6,6 +6,7 @@ extends Control
 
 const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
 const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
+const ParadeGround = preload("res://scripts/ParadeGround.gd")
 
 
 func _ready() -> void:
@@ -14,6 +15,7 @@ func _ready() -> void:
 	# Reaching the main menu ends any campaign->battle hand-off, so a later
 	# standalone "Tactical Battle" isn't mistaken for a campaign clash.
 	CampaignBattle.clear()
+	ParadeGround.clear()
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.11, 0.12, 0.15)
@@ -44,6 +46,14 @@ func _ready() -> void:
 	var battle_btn := _menu_button("Tactical Battle")
 	battle_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Battle.tscn"))
 	box.add_child(battle_btn)
+
+	# Solo maneuver practice: the player's own army, no enemy, no auto-end — see
+	# Battle.drill_mode and ParadeGround.
+	var drill_btn := _menu_button("Parade Ground")
+	drill_btn.pressed.connect(func():
+		ParadeGround.pending = true
+		get_tree().change_scene_to_file("res://scenes/Battle.tscn"))
+	box.add_child(drill_btn)
 
 	# One button per registered campaign: selecting it records the map path,
 	# then opens the shared campaign scene which loads that data file.
