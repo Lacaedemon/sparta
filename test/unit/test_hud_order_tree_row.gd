@@ -127,3 +127,41 @@ func test_on_order_tree_toggle_flips_the_expanded_state() -> void:
 	assert_false(hud._order_tree_expanded["0"], "first toggle collapses the default-expanded root")
 	hud._on_order_tree_toggle("0")
 	assert_true(hud._order_tree_expanded["0"], "second toggle re-expands it")
+
+
+func test_unchanged_rebuild_reuses_the_same_toggle_button_instance() -> void:
+	# SelectionManager._process() calls _refresh_hud() -> show_unit() -> _rebuild_order_tree()
+	# every single frame while a unit is selected, whether or not anything about its order tree
+	# actually changed. _rebuild_order_tree() used to queue_free() and recreate every row
+	# Control -- including the toggle Buttons -- on every one of those calls. That's the
+	# structural invariant a real mouse click depends on: Godot's BaseButton only emits
+	# `pressed` when the mouse-down and mouse-up land on the SAME Button instance, and a real
+	# click's down/up pair spans multiple frames, so a rebuild between them would silently
+	# swap out the button the down click landed on. Two back-to-back rebuilds against the same
+	# unchanged order tree must therefore leave the existing row Controls (and their toggle
+	# Buttons) alone.
+	var hud := _hud()
+	var u := _make_unit()
+	u.set_current_order(_rear_move_composite())
+	hud._rebuild_order_tree(u)
+	var root_row: HBoxContainer = hud._order_tree_box.get_children()[0]
+	var toggle: Button = root_row.get_child(0)
+
+	hud._rebuild_order_tree(u)   # nothing about u.current_order changed since the call above
+
+	var root_row_again: HBoxContainer = hud._order_tree_box.get_children()[0]
+	assert_eq(root_row_again, root_row,
+			"an unchanged tree must not tear down and recreate the row Controls")
+	var toggle_again: Button = root_row_again.get_child(0)
+	assert_eq(toggle_again, toggle,
+			"an unchanged tree must not replace the toggle Button a mid-click frame could land on")
+
+
+# A full end-to-end version driving Viewport.push_input() was tried and reverted: it hung
+# headless (no window/renderer to drive input processing to completion in this test
+# environment), and Control._gui_input is an engine-internal virtual Viewport input routing
+# dispatches to -- not a public method a native Button exposes for a GDScript test to call
+# directly. test_unchanged_rebuild_reuses_the_same_toggle_button_instance above already proves
+# the structural invariant a real click depends on (the same Button instance survives an
+# unchanged rebuild), which is what actually matters: if the instance is stable, whatever
+# engine-internal state correlates a down click with its matching up click is too.

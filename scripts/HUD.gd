@@ -122,6 +122,12 @@ var _order_tree_box: VBoxContainer
 # different unit whose tree happens to share the same shape (e.g. every rear-move composite
 # has the same two-child path layout).
 var _order_tree_expanded: Dictionary = {}
+# Signature of the rows _rebuild_order_tree last actually rendered (see
+# _order_tree_row_signature) -- null means "nothing built yet" (the initial state, which
+# always triggers a real rebuild since a rendered tree's signature is never null). Lets
+# _rebuild_order_tree skip tearing down/recreating the row Controls when nothing changed
+# since the last call; see that function's doc comment for why that matters.
+var _order_tree_last_signature = null
 const _ORDER_TREE_INDENT := 14.0
 const _ORDER_TREE_TOGGLE_WIDTH := 18.0
 # Matches _order_mode_label's amber -- both mark "the order currently in effect".
@@ -640,22 +646,55 @@ func _order_tree_rows(order, expanded: Dictionary, depth: int = 0, path: String 
 	return rows
 
 
-## Rebuilds the order-tree rows from scratch against `u.current_order` -- called every time
-## show_unit()/clear_unit() runs (SelectionManager._refresh_hud() drives that every frame for
-## the selected unit), so the tree always reflects the live _active_child cursor. Rebuilding
-## is cheap (a handful of Controls at the shallow depths this tree actually reaches) and
-## keeps this in lockstep with the existing every-frame _info.text rebuild above rather than
-## adding a second, harder-to-invalidate update path.
+## Snapshot of exactly what a row list would render: for each row, the path (which already
+## encodes the owning unit's instance id -- see the root_path built in _rebuild_order_tree --
+## so a change of selected unit always changes the signature), whether it shows a toggle vs a
+## blank gap, its describe() text, and whether it's highlighted as the active leaf. Two calls
+## that produce equal signatures render identically, so _rebuild_order_tree can skip rebuilding
+## the Controls entirely on the second call. Deliberately NOT keyed on Order instance identity:
+## a leaf order being replaced by a new one that happens to describe() the same (same type,
+## phase, guard) still renders identically, so treating that as "unchanged" is correct, not a
+## missed update.
+func _order_tree_row_signature(rows: Array, leaf) -> Array:
+	var sig: Array = []
+	for row: Dictionary in rows:
+		var order = row["order"]
+		sig.append([row["path"], row["has_children"], order.describe(), order == leaf])
+	return sig
+
+
+## Rebuilds the order-tree rows against `u.current_order` -- called every time show_unit()/
+## clear_unit() runs (SelectionManager._refresh_hud() drives that every frame for the selected
+## unit), so the tree always reflects the live _active_child cursor. Actually tearing down and
+## recreating the row Controls is skipped whenever the rows would render identically to last
+## time (see _order_tree_row_signature): rebuilding on every one of those per-frame calls
+## regardless of whether anything changed would queue_free() and recreate the expand/collapse
+## toggle Buttons even when nothing about the tree changed. Since a real mouse click's
+## press-then-release can straddle more than one frame, and Godot's BaseButton only fires
+## `pressed` when both land on the SAME Button instance, doing that would silently break the
+## toggle: the down click's instance is gone by the time the up click lands on its freshly
+## rebuilt replacement, so `pressed` never fires. Skipping the rebuild when nothing changed
+## keeps the toggle Buttons -- and every other row Control -- alive across those frames.
 func _rebuild_order_tree(u) -> void:
-	for row_node in _order_tree_box.get_children():
-		row_node.queue_free()
 	if u == null or not is_instance_valid(u) or u.current_order == null:
+		if _order_tree_last_signature == null:
+			return   # already empty/hidden from a previous call (or never built) -- nothing to do
+		for row_node in _order_tree_box.get_children():
+			row_node.queue_free()
 		_order_tree_box.visible = false
+		_order_tree_last_signature = null
 		return
-	_order_tree_box.visible = true
 	var leaf = u.active_leaf()
 	var root_path := "%d:0" % u.get_instance_id()
-	for row: Dictionary in _order_tree_rows(u.current_order, _order_tree_expanded, 0, root_path):
+	var rows: Array = _order_tree_rows(u.current_order, _order_tree_expanded, 0, root_path)
+	var signature := _order_tree_row_signature(rows, leaf)
+	if signature == _order_tree_last_signature:
+		return   # would render identically to what's already there -- keep the existing Controls
+	_order_tree_last_signature = signature
+	for row_node in _order_tree_box.get_children():
+		row_node.queue_free()
+	_order_tree_box.visible = true
+	for row: Dictionary in rows:
 		_order_tree_box.add_child(_build_order_tree_row(row, leaf))
 
 
