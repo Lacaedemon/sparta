@@ -142,6 +142,12 @@ var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH_SPACE
 # Live cycle list: the enabled subset of modes the Y-key steps through, in canonical order.
 # Derived from Settings.form_up_dist_cycle; rebuilt whenever that setting changes.
 var _form_up_dist_cycle: Array = FORM_UP_DIST_CYCLE.duplicate()
+# Monotonic id for a multi-unit drag-line form-up's shared FORM_UP group tag (see
+# Battle._form_up_groups / docs/atomic-order-decomposition-design.md) -- an instance field
+# (not a static), so a fresh test fixture always starts at 0 with no global-state
+# test-isolation hazard. Bumped once per multi-unit _issue_form_up call, never for a
+# single-unit deploy (which stays ungrouped, exactly as before this field existed).
+var _next_form_up_group_id: int = 0
 var _group_attack_mode: int = BattleRef.GroupAttackMode.FOCUSED
 # Gameplay-hotkey labels pressed since the last sim tick; Battle drains this each tick
 # (take_keys_this_tick) into the replay's keystroke track for the demo overlay.
@@ -609,16 +615,26 @@ func _can_form_up(a: Vector2, b: Vector2) -> bool:
 ## Deploy the selected units along the dragged flank line: `a` is the left flank, `b` the
 ## right. The line is split into one contiguous slice per unit (by the live distribution
 ## mode — equal depth or equal width), all facing perpendicular (so `a` is on their left).
-## Each unit is routed as its own recorded form-up order, so a single unit fills the whole
-## line exactly as before and a multi-unit deploy replays as the same set of slices.
+## Each unit is still routed as its own recorded form-up order (a single unit fills the
+## whole line exactly as before and a multi-unit deploy replays as the same set of slices),
+## but a genuine multi-unit deploy tags every slice's order with the same fresh group id, so
+## Battle._apply_order_cmd hangs them all off one shared FORM_UP order in the tree (the
+## group-level decomposition docs/atomic-order-decomposition-design.md asks for) instead of
+## N unrelated standalone orders. A single-unit deploy carries no group id at all — nothing
+## to group — so its order is exactly as before this existed.
 func _issue_form_up(a: Vector2, b: Vector2, by_selection_order: bool = false) -> void:
 	var units: Array = _order_units_for_line(_live_selected_units(), a, b, by_selection_order)
 	if units.is_empty():
 		return
 	var face: float = _form_up_facing(a, b)
-	for slice in _form_up_slices(units, a, b, _form_up_dist):
+	var slices: Array = _form_up_slices(units, a, b, _form_up_dist)
+	var group_id: int = -1
+	if slices.size() > 1:
+		group_id = _next_form_up_group_id
+		_next_form_up_group_id += 1
+	for slice in slices:
 		_battle.enqueue_form_up([slice["unit"].uid], slice["center"], face, slice["files"],
-				_armed_mode, _armed_knockback_indefinite)
+				_armed_mode, _armed_knockback_indefinite, group_id)
 	Sfx.play(&"order")
 
 

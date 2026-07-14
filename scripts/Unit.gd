@@ -134,11 +134,6 @@ var selected: bool = false
 # ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
-# Monotonic macro-group id counter for enqueue_macro() -- an instance field (not a static),
-# so two units' ids don't collide and a fresh test fixture always starts at 0 with no
-# global-state test-isolation hazard (see the reset()-requiring static-cache lesson this
-# codebase has already hit elsewhere).
-var _next_macro_id: int = 0
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
@@ -953,35 +948,6 @@ func append_order(order: Order) -> void:
 	orders.append(order)
 	if current_order == null:
 		current_order = orders[0]
-
-
-## Enqueue a combo -- a sequence of primitive orders that chain into one another (a future
-## 90-degree-turn -> explicatio, say) -- as one atomic group: every step gets the same fresh
-## macro id (docs/orders-queue-design.md, "Macro expansion"), then each is appended in turn
-## via append_order, so the existing queue/promotion machinery runs them exactly like any
-## other queued sequence. Returns the macro id so the caller can cancel_macro() it later.
-func enqueue_macro(steps: Array[Order]) -> int:
-	var id: int = _next_macro_id
-	_next_macro_id += 1
-	for step in steps:
-		step.macro_id = id
-		append_order(step)
-	return id
-
-
-## Drop a macro's not-yet-executed remainder from the queue -- every queued (not current)
-## order still carrying `macro_id`, wherever it sits behind the head. The currently-executing
-## order is left alone even if it belongs to this macro (it is not "not-yet-executed"); use
-## set_current_order()/clear_orders() to interrupt something already in flight. No-op for an
-## id that matches nothing (already fully consumed, already cancelled, or -1).
-func cancel_macro(macro_id: int) -> void:
-	if macro_id < 0 or orders.is_empty():
-		return
-	var kept: Array[Order] = [orders[0]]
-	for i in range(1, orders.size()):
-		if orders[i].macro_id != macro_id:
-			kept.append(orders[i])
-	orders = kept
 
 
 ## Drop the queue head (it finished, or was interrupted) and promote the next queued order, if
@@ -2795,17 +2761,28 @@ func _settle_order_turn() -> void:
 ## Advance the order tree's cursor once `leaf` (the turn this tick just completed) is
 ## spent: bump the immediate parent's _active_child to the next sibling, cascading upward
 ## through grandparents whenever a level's own children are exhausted, until either an
-## ancestor still has a next child to start or the cascade reaches the top-level order
-## itself -- which retires exactly like a flat queue entry always has. A leaf with no
-## parent (a standalone drill, or the tree's own top-level order) retires immediately, the
-## same as today. Mirrors retire_current_order/_start_promoted_move's own "promote, then
-## commit the promoted order's first tick" shape, just run one level higher in the tree
-## instead of only ever at the queue's own head -- the caller still does the "commit"
-## half itself, since what that means (arm a march, retire outright) depends on the kind
-## of step being promoted to.
+## ancestor still has a next child to start or the cascade reaches this unit's OWN
+## top-level order -- which retires exactly like a flat queue entry always has. A leaf
+## with no parent (a standalone drill, or the tree's own top-level order) retires
+## immediately, the same as today. Mirrors retire_current_order/_start_promoted_move's own
+## "promote, then commit the promoted order's first tick" shape, just run one level higher
+## in the tree instead of only ever at the queue's own head -- the caller still does the
+## "commit" half itself, since what that means (arm a march, retire outright) depends on
+## the kind of step being promoted to.
+##
+## Stops at `current_order` specifically, not merely at a null `parent`: a per-unit order
+## that belongs to a multi-unit form-up group has its own `parent` pointing at the shared
+## FORM_UP tag (Battle._apply_order_cmd), which this unit never executes and whose
+## `_active_child` means nothing (the group's per-unit orders run concurrently, not in
+## sequence). No current dispatch path can actually reach this case today -- a
+## FORM_UP-grouped order is always a childless plain MOVE, so this function is never
+## called on one (see test_lateral_pivot_maneuver.gd's grouped-parent regression test,
+## which arms the case by hand). This guard hardens the cascade against a hypothetical
+## future composite type that could combine with a group parent, rather than fixing a
+## reachable bug today.
 func _advance_order_tree(leaf: Order) -> void:
 	var node := leaf
-	while node.parent != null:
+	while node != current_order and node.parent != null:
 		var parent: Order = node.parent
 		parent._active_child += 1
 		if parent._active_child < parent.children.size():
