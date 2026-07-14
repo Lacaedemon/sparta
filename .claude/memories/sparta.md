@@ -1765,3 +1765,22 @@ lines Codecov flagged. (`Lacaedemon/sparta` PR #853: 5 lines in `SelectionManage
 gating -- the box-select loop, `_select_same_type`, the conversio/quarter-turn dispatchers, and
 the `_enemy_team()` empty-selection fallback -- were each genuinely untested by any existing test,
 not just newly added by the diff; found and closed this way in one pass.)
+
+## A `blob/main` doc link to a file this same PR adds 404s the link checker until merge
+
+Docs that reference source files by absolute GitHub URL --
+`[`scripts/Foo.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Foo.gd)`, the pattern
+`website/replays.qmd`'s and `REPLAY.md`'s "Where it lives" tables both use for every row -- resolve
+against `main`, not the PR branch. If the PR both adds a new script *and* documents it in one of
+these tables in the same commit, the link 404s (`check / link-checker` fails) because the file
+genuinely doesn't exist on `main` yet -- it only will once the PR merges. This isn't a flaky/
+external-link false positive like the entries already excluded in `lychee.toml`; it's a real,
+if self-resolving, ordering problem specific to referencing your own PR's new files.
+
+Fix: don't hyperlink that one row until the file is actually on `main` -- keep it as plain
+inline code (`` `scripts/Foo.gd` ``) in the PR that adds the file, and turn it into a real
+`blob/main` link in a small follow-up once merged, or just leave it unlinked (every other row's
+link still works fine). Don't add a `lychee.toml` exclusion for this -- the link is only broken
+during the PR's lifetime, and a real exclusion would hide a genuinely broken `blob/main` link in a
+row that *should* always resolve after merge. (`Lacaedemon/sparta` PR #858: `website/replays.qmd`'s
+new `scripts/BuildInfo.gd` row 404'd the link checker on first push; caught in CI, not review.)
