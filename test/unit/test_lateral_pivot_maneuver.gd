@@ -188,6 +188,42 @@ func test_lateral_pivot_turns_back_to_its_original_facing_on_arrival() -> void:
 		"return turn settles")
 
 
+func test_lateral_pivot_retires_correctly_when_grouped_under_a_shared_parent() -> void:
+	# docs/atomic-order-decomposition-design.md: a multi-unit form-up's per-unit order
+	# points `parent` at a shared FORM_UP group tag (Battle._apply_order_cmd). That group
+	# order is never this unit's own current_order and its `_active_child` means nothing
+	# (the group's per-unit orders run concurrently, not in sequence) -- so completing the
+	# WHOLE composite (not just an intra-composite handoff) must still retire this unit's
+	# own current_order to null, the same as an ungrouped lateral pivot does, instead of
+	# the cascade climbing into the group order and silently swallowing the retirement
+	# (see Unit._advance_order_tree's `node != current_order` stop condition).
+	var u := _make_seeded_unit()
+	var dest := Vector2(-200, 0)
+	var o := _arm_lateral_pivot(u, dest)
+	var group := Order.new_form_up()
+	group.children = [o]
+	o.parent = group
+
+	var arrived := false
+	for _i in range(1200):
+		u._think(0.016)
+		if o.effective_phase_name() == "RETURN_TURN":
+			arrived = true
+			break
+	assert_true(arrived, "the march completes and the return leg arms, same as ungrouped")
+
+	var turned_back := false
+	for _i in range(120):
+		u._think(0.016)
+		if not u.is_order_turning():
+			turned_back = true
+			break
+	assert_true(turned_back, "the return turn completes")
+	assert_null(u.current_order,
+			"the whole composite retires exactly as it would with no group parent at all -- " +
+			"the cascade must not get stuck climbing into the shared group order")
+
+
 func test_single_rank_unit_still_completes_a_lateral_pivot() -> void:
 	# A lateral pivot never calls reform_ranks() (the maneuver keeps its footprint the
 	# whole way through -- see test_reform_ranks.gd for that primitive's own single-rank

@@ -58,7 +58,11 @@ var forced_seed: int = -1
 #                   resize every other frontage change already uses),
 #               "face"?: float (deploy facing in radians for a drag-to-form-up move),
 #               "walk_advance"?: bool (omitted when false),
-#               "group_attack"?: int (Battle.GroupAttackMode; omitted when 0 = FOCUSED) }.
+#               "group_attack"?: int (Battle.GroupAttackMode; omitted when 0 = FOCUSED),
+#               "form_up_group"?: int (the shared id every per-unit order from the same
+#                   multi-unit drag-line form-up carries, so Battle._apply_order_cmd can
+#                   rebuild the same Order.Type.FORM_UP grouping on replay as it did live;
+#                   omitted for a single-unit form-up and every other order kind) }.
 var _orders: Array = []
 var _play_index: int = 0
 
@@ -193,6 +197,8 @@ func start_playback(path: String) -> bool:
 			entry["walk_advance"] = bool(o["walk_advance"])
 		if o.has("group_attack"):
 			entry["group_attack"] = int(o["group_attack"])
+		if o.has("form_up_group"):
+			entry["form_up_group"] = int(o["form_up_group"])
 		_orders.append(entry)
 	_play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
@@ -256,7 +262,8 @@ func replays_dir() -> String:
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		order_mode: int = 0, formation: int = 0, frontage: int = 0, face: float = INF,
-		group_attack: int = 0, walk_advance: bool = false, anchor_offset: float = 0.0) -> void:
+		group_attack: int = 0, walk_advance: bool = false, anchor_offset: float = 0.0,
+		form_up_group: int = -1) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
@@ -285,6 +292,11 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# 0 = GroupAttackMode.FOCUSED (the default); omit it so old replays stay valid.
 	if group_attack != 0:
 		entry["group_attack"] = group_attack
+	# -1 = not part of a multi-unit form-up group (a single-unit form-up, or any other
+	# order kind); omit it so old replays -- and every non-grouped order in a new one --
+	# stay exactly as compact.
+	if form_up_group >= 0:
+		entry["form_up_group"] = form_up_group
 	_orders.append(entry)
 
 
