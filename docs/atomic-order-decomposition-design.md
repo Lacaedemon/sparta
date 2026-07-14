@@ -263,6 +263,19 @@ not to start a foundational refactor with reduced context budget remaining).
 - Is `Order.Phase` fully removable once the two composites currently using it
   are ported, or does something else (transcript format stability for
   existing replays, a test) still expect it to exist?
+  **Resolved (Slice 1, #828): not fully removable.** After porting the
+  reform-before-move hold onto a REFORM leaf order (`reform_timer`/
+  `reform_until_settled`/`reform_settle_eps`), `Order.Phase.REFORM` is still
+  live: it's the marker that distinguishes a REFORM leaf (the hold) from an
+  ordinary MOVE leaf (the march), and `effective_phase_name()` still reads it
+  to bridge the transcript's `order_phase` field. TURN/MARCH/RETURN_TURN stay
+  needed too, purely as `effective_phase_name()`'s display vocabulary, even
+  though nothing has written those specific values into an order's own
+  `.phase` field since Slice 0. What Slice 1 DID eliminate: the two
+  Slice-0-era non-test consumers that read `.phase` directly
+  (`TierTransition.can_demote`, `Unit.order_summary`) now both go through the
+  new `Unit._reform_holding()` boolean helper instead, which checks
+  `reform_timer` rather than `phase`.
 - `macro_id`/`cancel_macro`: keep as a separate, shallower mechanism for a
   different future case, or remove now that its two real uses (this design's
   own composites) are moving to genuine children?

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/reform-before-move.json",
+  "caption": "Slice 1 of the nested atomic order queue (#826): the reform-before-move hold (a plain move's pause, and a form-up's reshape hold shown here) is now driven by a REFORM leaf order's own `reform_timer`/`reform_until_settled`/`reform_settle_eps` fields instead of the old bare `Unit._reform_timer`/`_reform_target`/`_reform_until_settled`/`_reform_settle_eps` fields. This is an internal refactor with NO intended behaviour change -- watch the lone Spearmen regiment hold in place for about 5 seconds while it reshapes onto the wider drag-line frontage (state-dump verified: `order_phase` reads REFORM from tick 40 through tick ~335), then release into its march once the ranks settle, arriving at the new line right as this clip ends (`order_phase` reads MARCH from tick ~340, and the regiment reaches its destination by tick ~1400 -- all inside this clip's extended runtime, before combat starts around tick 1450). The plain (non-reshape) reform-before-move hold and the rear-move composite's own interstitial reform (the same mechanism, now shared instead of duplicated) are covered by the GUT suite but aren't shown in this clip.",
+  "fixed_fps": 30,
+  "max_frames": 700,
+  "fps": 12,
+  "width": 640
+}

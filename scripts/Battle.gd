@@ -1083,14 +1083,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			if offset == Vector2.ZERO:
 				continue
 			# Install the order first: set_current_order interrupts any maneuver the old
-			# order had in flight (folding a partial in-place turn), and a rear march --
-			# or a queued route -- parked on that order's queue dies with it.
+			# order had in flight (folding a partial in-place turn), and a rear march -- or
+			# a queued route, or a REFORM leaf hold -- parked on that order's queue dies with it.
 			u.set_current_order(Order.new_nudge(dir))
 			u.target_enemy = null
 			u.support_target = null
 			u.deploy_facing = Vector2.ZERO
-			u._reform_timer = 0.0
-			u._reform_until_settled = false
 			u._reform_on_arrival = false   # a drill step's arrival shouldn't fire a stale reform
 			u.ordered_facing = u.facing   # hold facing: side-step / back-step, no pivot
 			u.move_target = u.position + offset
@@ -1227,13 +1225,11 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# Drop any side-step hold from a prior order; the plain-move branch below
 			# re-sets it when this order is itself a small lateral shift.
 			u.ordered_facing = Vector2.ZERO
-			# A new order always cancels any in-progress reform from the previous one --
-			# the hold, its settle-early mode, and the deferred on-arrival case
-			# (start_order_response squares the grid itself). A reform still parked
-			# behind a rear-move march lives on the old Order and dies when
-			# set_current_order below replaces it.
-			u._reform_timer = 0.0
-			u._reform_until_settled = false
+			# A new order always cancels any in-progress reform from the previous one -- the
+			# hold itself (now a REFORM leaf on the old Order's tree) dies when set_current_order
+			# below replaces current_order outright; only the deferred on-arrival case
+			# (start_order_response squares the grid itself) lives on a bare Unit field and
+			# needs clearing explicitly here.
 			u._reform_on_arrival = false
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			if attack_targets.is_empty():
@@ -1395,20 +1391,29 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# (reform-hold or immediate). Fighting units bypass the hold in _think and
 				# commit immediately.
 				if not turn_armed and order.reform:
-					u._reform_target = point
+					# Split `order` into a REFORM leaf (the hold) followed by the march leg,
+					# same shape a rear-move's own interstitial reform installs (see
+					# Unit._finish_order_turn) -- just with no turn child ahead of it here.
+					var reform_leaf := Order.new_move(point)
+					reform_leaf.phase = Order.Phase.REFORM
+					reform_leaf.parent = order
 					# A form-up's reshape (a full frontage/file-count change, not just an
 					# angle fold) can need much longer than the flat REFORM_DURATION to
 					# actually settle -- gate the hold on the bodies genuinely reaching their
-					# new slots (_reform_until_settled/_reform_bodies_settled, the same
+					# new slots (reform_until_settled/_reform_bodies_settled, the same
 					# mechanism a post-about-face reform already uses), with the reshape-scaled
 					# timeout as a safety cap rather than the fixed duration itself. A plain
 					# move's short in-place turn keeps the flat duration -- it never reshapes.
 					if reshape_timeout > 0.0:
-						u._reform_timer = reshape_timeout
-						u._reform_until_settled = true
-						u._reform_settle_eps = UnitRef.REFORM_SETTLE_EPS_RESHAPE
+						reform_leaf.reform_timer = reshape_timeout
+						reform_leaf.reform_until_settled = true
+						reform_leaf.reform_settle_eps = UnitRef.REFORM_SETTLE_EPS_RESHAPE
 					else:
-						u._reform_timer = UnitRef.REFORM_DURATION
+						reform_leaf.reform_timer = UnitRef.REFORM_DURATION
+					var march_leaf := Order.new_move(point)
+					march_leaf.parent = order
+					order.children = [reform_leaf, march_leaf]
+					order._active_child = 0
 					u.has_move_target = false   # stop any prior march while reforming
 				elif not turn_armed:
 					u.move_target = point
