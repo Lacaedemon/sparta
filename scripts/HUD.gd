@@ -692,6 +692,11 @@ func _rebuild_order_tree(u) -> void:
 		return   # would render identically to what's already there -- keep the existing Controls
 	_order_tree_last_signature = signature
 	for row_node in _order_tree_box.get_children():
+		# remove_child before queue_free, not queue_free alone: queue_free defers removal to
+		# the end of THIS frame, so the old rows would still be in get_children() when the new
+		# ones are add_child'ed two lines down -- a VBoxContainer showing both generations at
+		# once for one frame (e.g. collapsing 3 rows to 1 would transiently render 4).
+		_order_tree_box.remove_child(row_node)
 		row_node.queue_free()
 	_order_tree_box.visible = true
 	for row: Dictionary in rows:
