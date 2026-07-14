@@ -124,6 +124,15 @@ script under `demos/inputs/`:
   `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` — see `data/doctrines/*.json`
   and `docs/battle-ai-design.md`'s phase-3 section). Set before the battle spawns, like
   `drill`/`scenario` above. Omit to use `Battle.ai_doctrine`'s own default.
+- `show_soldier_ids` (optional bool, **default `true`**) — session-only: enables the
+  per-soldier-ID HUD overlay for the recording without touching a developer's saved
+  settings. On by default so scripted-input recordings show this debugging/verification
+  signal for reviewers; set `"show_soldier_ids": false` to opt a script back out. Note
+  this alone isn't enough to render the overlay — it also requires the unit to be
+  `selected` and the camera at detailed LOD (`Unit._draw`'s
+  `if selected and Settings.show_soldier_ids and _detailed_lod` gate), so a demo that
+  doesn't already select a unit and zoom in past `LOD_ZOOM_IN` won't show IDs
+  regardless of this default.
 - `scenario` (optional) — **stage a custom matchup** instead of the default 5v5 lines, so a
   demo can show a *specific* fight the default battle won't produce on its own (a weak unit
   that routs, an enemy placed off a unit's flank, cavalry vs a single target). A list of unit
