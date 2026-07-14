@@ -2779,8 +2779,12 @@ func _settle_order_turn() -> void:
 ## that belongs to a multi-unit form-up group has its own `parent` pointing at the shared
 ## FORM_UP tag (Battle._apply_order_cmd), which this unit never executes and whose
 ## `_active_child` means nothing (the group's per-unit orders run concurrently, not in
-## sequence) -- climbing into it here would silently swallow this unit's own retirement
-## instead of promoting its next queued order.
+## sequence). No current dispatch path can actually reach this case today -- a
+## FORM_UP-grouped order is always a childless plain MOVE, so this function is never
+## called on one (see test_lateral_pivot_maneuver.gd's grouped-parent regression test,
+## which arms the case by hand). This guard hardens the cascade against a hypothetical
+## future composite type that could combine with a group parent, rather than fixing a
+## reachable bug today.
 func _advance_order_tree(leaf: Order) -> void:
 	var node := leaf
 	while node != current_order and node.parent != null:

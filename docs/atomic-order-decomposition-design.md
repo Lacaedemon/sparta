@@ -222,11 +222,16 @@ with no further UI changes needed — `describe()`'s contract doesn't change).
   as before — the group order is never installed as anyone's `current_order`,
   and its own `children`/`_active_child` describe membership, not sequencing
   (the group's per-unit orders run concurrently, not one after another). This
-  needed one correctness fix to `Unit._advance_order_tree`: it now stops
-  climbing at `current_order` rather than at a merely-null `parent`, so a
-  grouped composite's own completion can't get mistaken for "the group has a
-  next sibling to promote" and swallow this unit's retirement (see the
-  function's own doc comment). Also removed `Order.macro_id` /
+  hardened `Unit._advance_order_tree` defensively: it now stops climbing at
+  `current_order` rather than at a merely-null `parent`, so a future composite
+  type that could combine with a group parent can't get its completion
+  mistaken for "the group has a next sibling to promote" and swallow that
+  unit's retirement (see the function's own doc comment). No current dispatch
+  path can actually produce a FORM_UP-grouped order that also carries children
+  today (it's always a childless plain MOVE), so this isn't fixing a reachable
+  bug — it's a forward-looking invariant, proven by a regression test that
+  arms the case by hand rather than through the normal order-dispatch path.
+  Also removed `Order.macro_id` /
   `Unit.enqueue_macro()`/`cancel_macro()`: neither this slice's group tag nor
   Slice 0's rear-move/lateral-pivot composites ever actually routed through
   it (both build real `children`/`parent` directly), and it had no other
