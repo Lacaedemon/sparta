@@ -107,3 +107,4 @@ func test_confirmed_save_writes_a_replay_file_for_a_live_battle() -> void:
 	assert_ne(Replay.last_saved_path, "", "the recording was written to disk")
 	assert_true(FileAccess.file_exists(Replay.last_saved_path), "...and the file is really there")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Replay.last_saved_path))
+	Replay.last_saved_path = ""   # don't leak into a later test
