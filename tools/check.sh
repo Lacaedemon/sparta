@@ -368,16 +368,18 @@ resolve_patch_coverage_base() {
 
 check_patch_coverage() {
   # Codecov's codecov/patch check, computed locally: what fraction of the lines
-  # THIS diff adds under scripts/ are covered by the GUT suite. Regenerates
-  # coverage/lcov.info fresh (via check_coverage) rather than trusting a stale
-  # file from a previous diff -- correctness matters more than the ~15-20 min
-  # instrumented run costs, since a stale report would silently answer the
-  # wrong question. Not in the default set for the same reason `coverage`
-  # isn't: slow, and coverage (patch or otherwise) never gates a PR on its own
-  # -- see .github/workflows/test-coverage.yml's header comment. Run it
-  # explicitly, or via `all`, before pushing a scripts/ change.
-  check_coverage || return 1
-
+  # THIS diff adds under scripts/ (recursively -- campaign/ and any other
+  # subdirectory included, same as Godot's coverage instrumentation, which
+  # walks the whole tree) are covered by the GUT suite. Not in the default set
+  # for the same reason `coverage` is: coverage (patch or otherwise) never
+  # gates a PR on its own -- see .github/workflows/test-coverage.yml's header
+  # comment. Run it explicitly, or via `all`, before pushing a scripts/ change.
+  #
+  # The diff/base checks below run BEFORE the expensive coverage regeneration
+  # (not after, as an earlier version of this check did) so a diff with no
+  # scripts/ changes -- or no resolvable base -- skips instantly instead of
+  # always paying the ~15-20 min instrumented run first only to then discover
+  # there was nothing to check.
   local base
   if ! base="$(resolve_patch_coverage_base)"; then
     warn "No base ref to diff against -- skipping patch coverage."
@@ -400,10 +402,30 @@ check_patch_coverage() {
   fi
 
   local diff
-  diff="$(cd "$PROJECT_ROOT" && git diff --no-color -U0 "$merge_base" HEAD -- 'scripts/*.gd')"
+  # ':(glob)scripts/**/*.gd': a non-magic pathspec like 'scripts/*.gd' ALREADY
+  # matches every subdirectory too (git passes it to fnmatch(3) without
+  # FNM_PATHNAME, so a bare '*' crosses '/' by default -- verified against a
+  # real scripts/campaign/*.gd-touching commit before writing this comment).
+  # The explicit ':(glob)' + '**' form here produces the identical match set;
+  # it's kept only because it states the "recurse into every subdirectory"
+  # intent explicitly for a reader who doesn't already know that non-magic
+  # pathspec quirk, not because the simpler form was ever wrong.
+  diff="$(cd "$PROJECT_ROOT" && git diff --no-color -U0 "$merge_base" HEAD -- ':(glob)scripts/**/*.gd')"
   if [ -z "$diff" ]; then
-    info "No scripts/*.gd changes in this diff."
+    info "No scripts/**/*.gd changes in this diff."
     return 0
+  fi
+
+  # Only regenerate coverage/lcov.info if `coverage` hasn't already produced a
+  # fresh one earlier in THIS SAME invocation (e.g. `tools/check.sh all`, or
+  # `tools/check.sh coverage patch_coverage`) -- avoids running the ~15-20 min
+  # instrumented suite twice for one invocation. A standalone
+  # `patch_coverage` run (the common case: checking one diff before pushing)
+  # still always regenerates, since there's no earlier run in this invocation
+  # to trust, and a stale report from a previous diff would silently answer
+  # the wrong question.
+  if [ "$(get_result coverage)" != "pass" ]; then
+    check_coverage || return 1
   fi
 
   # added_lines: "file:line" for every line this diff ADDS under scripts/ (same

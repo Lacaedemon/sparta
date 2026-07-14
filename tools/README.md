@@ -84,12 +84,17 @@ directly (same percentage, same missing lines) on a real PR's diff. Like
 as Codecov's own check never blocking a merge on its own).
 
 If a diff comes up short, the fix is either genuine new test coverage for the
-newly-added lines, or — when the code is structurally hard to cover (a scene
-transition, an OS/input-dependent path) — accepting the residual and saying
-so explicitly in the PR, the same way `_on_restart`/`_on_quit_to_menu`-style
-handlers are deliberately left untested elsewhere in this codebase (see
-`test/unit/test_main_menu.gd`'s own note on why). Padding coverage with tests
-that don't guard real behavior is worse than a documented gap.
+newly-added lines, or — when a specific line is structurally hard to cover (a
+scene-transition call, an OS/input-dependent path) — accepting that one
+residual line and saying so explicitly in the PR. Extract whatever IS
+testable around it into its own function first, the way `HUD._on_quit_to_menu`
+was split so its reset prelude is covered by
+`test/unit/test_hud_scene_transitions.gd`, leaving only the actual
+`change_scene_to_file(...)` call itself untested — not the whole handler.
+`test/unit/test_main_menu.gd`'s own note explains why that ONE call is never
+exercised directly (it would trigger a real scene swap against the live test
+runner). Padding coverage with tests that don't guard real behavior is worse
+than a documented gap.
 
 ## Orphaned Godot processes: prevention and cleanup
 
