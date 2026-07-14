@@ -219,16 +219,15 @@ actively confuse verification. `demos/README.md`'s `drill` field docs now state 
 default: set `"drill": true` unless the demo is specifically about combat/enemy interaction (a
 clash, a rout, an engagement mechanic, morale under fire).
 
-**Concrete case:** PR #840's `demos/inputs/multi-unit-form-up.json` (a pure order-tree
-refactor with no combat-related change) put one of its three units close enough to the default
-5v5 enemy line that a reviewer's caption claim about march progress needed re-deriving to
-account for engagement/proximity state that had nothing to do with what the PR actually
-changed — three review rounds spent untangling combat noise from a demo that was never about
-combat. A `drill: true` scenario (no enemy at all) would have made that class of confusion
-structurally impossible. (`Lacaedemon/sparta` PR #840, 2026-07-13.)
+This is a preventive default, not a fix for a specific incident this session hit — no PR's
+review rounds so far have actually traced back to enemy-proximity/engagement noise (checked:
+PR #840's three review rounds were all about caption accuracy on the player's own units'
+frontage/timing values, not enemy interaction). The principle stands on its own: a live
+opponent adds a whole axis of state (detection range, targeting, engagement) a non-combat demo
+has no use for and every reader/reviewer has to mentally rule out.
 
 **How to apply:** when authoring a NEW `demos/inputs/*.json` (per "Author each demo scenario
-fresh" above — don't retrofit this onto an existing, already-verified demo just because it
+fresh" below — don't retrofit this onto an existing, already-verified demo just because it
 lacks `drill`), default to `"drill": true` and a `scenario` array (or the default single-unit
 spawn) containing only the unit(s) the demo needs, unless showing a live opponent is the
 actual point. This composes with "Construct scenarios to isolate the phenomenon in question"
