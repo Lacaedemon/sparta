@@ -112,6 +112,20 @@ var _ctrl_reform_btn: Button
 var _ctrl_group_attack_btn: Button
 var _sel_mgr = null
 var _info_panel: PanelContainer
+var _order_tree_box: VBoxContainer
+# Expand/collapse state for the order-tree rows below the info label, keyed by
+# "<unit instance id>:<path>" where `path` is a dot-joined chain of child indices from the
+# root order ("0", "0.1", "0.1.0", ...) -- see _order_tree_rows. A path missing from this
+# dict defaults to expanded, so a freshly-decomposed composite order (a rear-move that just
+# armed its turn+march children) shows its active leaf immediately, with no click needed.
+# Keying by unit instance id keeps one selected unit's collapsed nodes from leaking onto a
+# different unit whose tree happens to share the same shape (e.g. every rear-move composite
+# has the same two-child path layout).
+var _order_tree_expanded: Dictionary = {}
+const _ORDER_TREE_INDENT := 14.0
+const _ORDER_TREE_TOGGLE_WIDTH := 18.0
+# Matches _order_mode_label's amber -- both mark "the order currently in effect".
+const _ORDER_TREE_ACTIVE_COLOR := Color(1.0, 0.78, 0.35)
 
 
 func _ready() -> void:
@@ -267,12 +281,21 @@ func _ready() -> void:
 	# offset is derived from the panel's own min-height + bottom margin (not a
 	# hand-tuned magic number), and grow_vertical = BEGIN lets it expand UPWARD
 	# if a content row or a larger font is added — so it never clips past the
-	# screen's bottom edge.
+	# screen's bottom edge. offset_left/offset_top/offset_bottom are set directly
+	# (not via `position`) since this Control is anchored bottom-left
+	# (anchor_top == anchor_bottom == 1): offset_top/offset_bottom are the true
+	# pixel distances from that anchor line, while `position` resolves anchors
+	# against whatever the parent size happens to be AT THE MOMENT it's set —
+	# see _info_panel_raise()/_info_panel_lower()'s doc comment for how that bit
+	# every later per-frame reposition. offset_bottom is set once, here, and never
+	# touched again so the panel's bottom edge stays pinned at the gap.
 	_info_panel = PanelContainer.new()
 	_info_panel.custom_minimum_size = PANEL_MIN
 	_info_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	_info_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_info_panel.position = Vector2(14.0, -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
+	_info_panel.offset_left = 14.0
+	_info_panel.offset_top = -(PANEL_MIN.y + PANEL_BOTTOM_GAP)
+	_info_panel.offset_bottom = -PANEL_BOTTOM_GAP
 	add_child(_info_panel)
 
 	var margin := MarginContainer.new()
@@ -282,9 +305,20 @@ func _ready() -> void:
 	margin.add_theme_constant_override("margin_bottom", 8)
 	_info_panel.add_child(margin)
 
+	var info_col := VBoxContainer.new()
+	info_col.add_theme_constant_override("separation", 2)
+	margin.add_child(info_col)
+
 	_info = Label.new()
 	_info.text = "No unit selected"
-	margin.add_child(_info)
+	info_col.add_child(_info)
+
+	# Order-tree rows (see _rebuild_order_tree): rebuilt fresh each show_unit() call, right
+	# below the stats block. Empty/hidden until a unit with a current_order is shown.
+	_order_tree_box = VBoxContainer.new()
+	_order_tree_box.add_theme_constant_override("separation", 1)
+	_order_tree_box.visible = false
+	info_col.add_child(_order_tree_box)
 
 	_sel_mgr = get_node_or_null("../SelectionManager")
 	_build_ctrl_bar()
@@ -558,6 +592,7 @@ func show_unit(u, group_count: int) -> void:
 		cohesion_text, training_text, u.formation_summary(), UnitFormation.files_label(UnitFormation.frontage(u)),
 		u.order_summary()
 	]
+	_rebuild_order_tree(u)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = true
 		_info_panel_raise()
@@ -568,9 +603,98 @@ func show_unit(u, group_count: int) -> void:
 
 func clear_unit() -> void:
 	_info.text = "No unit selected"
+	_rebuild_order_tree(null)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = false
 		_info_panel_lower()
+
+
+# --- Order-tree display (docs/atomic-order-decomposition-design.md, "HUD: the tree
+# renders naturally") ---------------------------------------------------------------
+# The stats panel's plain "Order: <order_summary()>" line above stays exactly as it was --
+# it's the human-readable one-liner ("Attacking X", "Wheeling", ...) and doesn't touch Order
+# state directly. This section renders the actual order tree underneath it: current_order's
+# own describe() as the top row, its children (if any) indented recursively, the leaf
+# Unit._think is actually driving highlighted, and a collapse toggle on any composite node.
+# A leaf-only current_order (no children -- the common case today) is just that one row, with
+# no toggle and no indentation: the tree adds nothing visible beyond the single top row until
+# an order actually decomposes.
+
+## Flattens the order tree rooted at `order` into display rows, depth-first pre-order: each
+## row is {"order": Order, "depth": int, "path": String, "has_children": bool}. `path` is a
+## dot-joined chain of child indices from the root ("0", "0.1", "0.1.0", ...) -- a stable key
+## into `expanded` that survives the per-frame rebuild _rebuild_order_tree does (unlike the
+## transient Order/Control instances). A composite node collapsed in `expanded` stops the
+## walk there -- its children are omitted from the returned rows entirely, not just hidden.
+## Pure and UI-free so it's directly unit-testable against plain Order trees.
+func _order_tree_rows(order, expanded: Dictionary, depth: int = 0, path: String = "0") -> Array:
+	if order == null:
+		return []
+	var has_children: bool = not order.children.is_empty()
+	var rows: Array = [{"order": order, "depth": depth, "path": path, "has_children": has_children}]
+	if has_children and expanded.get(path, true):
+		for i in order.children.size():
+			rows.append_array(_order_tree_rows(order.children[i], expanded, depth + 1, "%s.%d" % [path, i]))
+	return rows
+
+
+## Rebuilds the order-tree rows from scratch against `u.current_order` -- called every time
+## show_unit()/clear_unit() runs (SelectionManager._refresh_hud() drives that every frame for
+## the selected unit), so the tree always reflects the live _active_child cursor. Rebuilding
+## is cheap (a handful of Controls at the shallow depths this tree actually reaches) and
+## keeps this in lockstep with the existing every-frame _info.text rebuild above rather than
+## adding a second, harder-to-invalidate update path.
+func _rebuild_order_tree(u) -> void:
+	for row_node in _order_tree_box.get_children():
+		row_node.queue_free()
+	if u == null or not is_instance_valid(u) or u.current_order == null:
+		_order_tree_box.visible = false
+		return
+	_order_tree_box.visible = true
+	var leaf = u.active_leaf()
+	var root_path := "%d:0" % u.get_instance_id()
+	for row: Dictionary in _order_tree_rows(u.current_order, _order_tree_expanded, 0, root_path):
+		_order_tree_box.add_child(_build_order_tree_row(row, leaf))
+
+
+## One row: depth-indent spacer, an expand/collapse toggle for a composite node (a same-width
+## blank spacer for a leaf, so every row's label lines up in the same column regardless of
+## whether its siblings have children), then the describe() label -- highlighted in the same
+## amber _order_mode_label uses for "the order currently in effect" when `order` is the
+## active leaf Unit._think is actually driving.
+func _build_order_tree_row(row: Dictionary, leaf) -> Control:
+	var order = row["order"]
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 4)
+	if row["depth"] > 0:
+		var indent := Control.new()
+		indent.custom_minimum_size = Vector2(row["depth"] * _ORDER_TREE_INDENT, 0)
+		hbox.add_child(indent)
+	if row["has_children"]:
+		var toggle := Button.new()
+		toggle.flat = true
+		toggle.custom_minimum_size = Vector2(_ORDER_TREE_TOGGLE_WIDTH, 0)
+		toggle.add_theme_font_size_override("font_size", 12)
+		var path: String = row["path"]
+		toggle.text = "▾" if _order_tree_expanded.get(path, true) else "▸"
+		toggle.pressed.connect(_on_order_tree_toggle.bind(path))
+		hbox.add_child(toggle)
+	else:
+		var toggle_gap := Control.new()
+		toggle_gap.custom_minimum_size = Vector2(_ORDER_TREE_TOGGLE_WIDTH, 0)
+		hbox.add_child(toggle_gap)
+	var lbl := Label.new()
+	lbl.add_theme_font_size_override("font_size", 13)
+	var is_active_leaf: bool = order == leaf
+	lbl.text = "▶ %s" % order.describe() if is_active_leaf else order.describe()
+	if is_active_leaf:
+		lbl.add_theme_color_override("font_color", _ORDER_TREE_ACTIVE_COLOR)
+	hbox.add_child(lbl)
+	return hbox
+
+
+func _on_order_tree_toggle(path: String) -> void:
+	_order_tree_expanded[path] = not _order_tree_expanded.get(path, true)
 
 
 ## Show the armed order mode. Empty text hides the indicator (default stance).
@@ -835,13 +959,27 @@ func _info_panel_raise() -> void:
 	if _info_panel == null or _ctrl_bar == null:
 		return
 	var bar_h := _ctrl_bar.get_combined_minimum_size().y
-	_info_panel.set_deferred("position", Vector2(_info_panel.position.x, -(PANEL_MIN.y + PANEL_BOTTOM_GAP + bar_h + 8.0)))
+	# offset_top, not position: _info_panel is anchored bottom-left (anchor_top ==
+	# anchor_bottom == 1), so offset_top/offset_bottom ARE the pixel distances from
+	# that anchor line -- exactly what this raise/lower math wants ("N px above the
+	# bottom edge"). Control.position, in contrast, resolves anchors against the
+	# CURRENT parent size at the moment it's set: called once from _ready() (before
+	# the CanvasLayer's viewport size is established, so anchor*parent_size == 0)
+	# it happens to equal the offset and "just works" -- but _process()'s per-frame
+	# SelectionManager._refresh_hud() -> show_unit()/clear_unit() calls this every
+	# frame, by which point the real viewport size (not 0) is baked into the anchor
+	# math, so `position=` silently shoves the panel hundreds of pixels off the top
+	# of the screen instead of the few pixels intended. offset_top has no such
+	# ambiguity: it's always anchor-relative, keeping the panel on screen at every
+	# call site. offset_bottom is pinned once (in _ready()) and never touched here,
+	# so the panel's bottom edge stays fixed while only the top grows/shrinks.
+	_info_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP + bar_h + 8.0))
 
 
 func _info_panel_lower() -> void:
 	if _info_panel == null:
 		return
-	_info_panel.set_deferred("position", Vector2(_info_panel.position.x, -(PANEL_MIN.y + PANEL_BOTTOM_GAP)))
+	_info_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
 
 
 func _build_ctrl_option_buttons() -> Control:

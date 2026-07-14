@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/about-face.json",
+  "caption": "Unit stats panel now renders the order QUEUE as an indented tree instead of a single line: the rear-move composite (from a move-to-rear order) shows 'MOVE' as the top row with an expand/collapse toggle, its ABOUT_FACE and MOVE children indented underneath, and the currently-active leaf highlighted in amber with a marker (ABOUT_FACE while turning, then MOVE once the composite advances to its march/reform leg -- the top row also picks up ':REFORM' during the reform-before-move hold). A plain leaf order (no children) still renders as the single row it always has -- no extra chrome.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 12,
+  "width": 640
+}

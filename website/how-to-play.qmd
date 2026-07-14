@@ -857,7 +857,11 @@ and accelerate to full speed on contact.
 1. **Select** --- left-click a unit, or drag a box to grab several at once. The info
    panel fills with the selected unit's stats, including a flavor **Commander** rank
    (Centurion, Pilus Prior, Decurion, ...) drawn from the real Roman officer hierarchy
-   --- cosmetic only, it has no effect on combat.
+   --- cosmetic only, it has no effect on combat. The panel's **Order** line shows the
+   unit's current order as a small tree when it's a composite maneuver (a move-to-the-rear's
+   turn-then-march, say): each step is indented under the maneuver it belongs to, the step
+   actually running is highlighted, and a triangle toggle expands or collapses the steps. A
+   simple order with no sub-steps still shows as the single line it always has.
 2. **Order** --- right-click to send them. Move them onto an enemy's flank, or
    right-click the enemy directly to attack. There is a brief **reaction delay**
    (~0.5 s, faster for cavalry) before units execute --- orders aren't instant.
