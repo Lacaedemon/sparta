@@ -267,12 +267,21 @@ func _ready() -> void:
 	# offset is derived from the panel's own min-height + bottom margin (not a
 	# hand-tuned magic number), and grow_vertical = BEGIN lets it expand UPWARD
 	# if a content row or a larger font is added — so it never clips past the
-	# screen's bottom edge.
+	# screen's bottom edge. offset_left/offset_top/offset_bottom are set directly
+	# (not via `position`) since this Control is anchored bottom-left
+	# (anchor_top == anchor_bottom == 1): offset_top/offset_bottom are the true
+	# pixel distances from that anchor line, while `position` resolves anchors
+	# against whatever the parent size happens to be AT THE MOMENT it's set —
+	# see _info_panel_raise()/_info_panel_lower()'s doc comment for how that bit
+	# every later per-frame reposition. offset_bottom is set once, here, and never
+	# touched again so the panel's bottom edge stays pinned at the gap.
 	_info_panel = PanelContainer.new()
 	_info_panel.custom_minimum_size = PANEL_MIN
 	_info_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	_info_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_info_panel.position = Vector2(14.0, -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
+	_info_panel.offset_left = 14.0
+	_info_panel.offset_top = -(PANEL_MIN.y + PANEL_BOTTOM_GAP)
+	_info_panel.offset_bottom = -PANEL_BOTTOM_GAP
 	add_child(_info_panel)
 
 	var margin := MarginContainer.new()
@@ -835,13 +844,27 @@ func _info_panel_raise() -> void:
 	if _info_panel == null or _ctrl_bar == null:
 		return
 	var bar_h := _ctrl_bar.get_combined_minimum_size().y
-	_info_panel.set_deferred("position", Vector2(_info_panel.position.x, -(PANEL_MIN.y + PANEL_BOTTOM_GAP + bar_h + 8.0)))
+	# offset_top, not position: _info_panel is anchored bottom-left (anchor_top ==
+	# anchor_bottom == 1), so offset_top/offset_bottom ARE the pixel distances from
+	# that anchor line -- exactly what this raise/lower math wants ("N px above the
+	# bottom edge"). Control.position, in contrast, resolves anchors against the
+	# CURRENT parent size at the moment it's set: called once from _ready() (before
+	# the CanvasLayer's viewport size is established, so anchor*parent_size == 0)
+	# it happens to equal the offset and "just works" -- but _process()'s per-frame
+	# SelectionManager._refresh_hud() -> show_unit()/clear_unit() calls this every
+	# frame, by which point the real viewport size (not 0) is baked into the anchor
+	# math, so `position=` silently shoves the panel hundreds of pixels off the top
+	# of the screen instead of the few pixels intended. offset_top has no such
+	# ambiguity: it's always anchor-relative, keeping the panel on screen at every
+	# call site. offset_bottom is pinned once (in _ready()) and never touched here,
+	# so the panel's bottom edge stays fixed while only the top grows/shrinks.
+	_info_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP + bar_h + 8.0))
 
 
 func _info_panel_lower() -> void:
 	if _info_panel == null:
 		return
-	_info_panel.set_deferred("position", Vector2(_info_panel.position.x, -(PANEL_MIN.y + PANEL_BOTTOM_GAP)))
+	_info_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
 
 
 func _build_ctrl_option_buttons() -> Control:
