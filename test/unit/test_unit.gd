@@ -25,6 +25,17 @@ func _attacker_at(p: Vector2) -> Unit:
 	return a
 
 
+## Stage a REFORM-leaf hold on `u` (docs/atomic-order-decomposition-design.md, Slice 1): a
+## MOVE order to `dest`, marked as the interstitial reform-before-move pause, with `timer`
+## seconds left before it commits. Mirrors what Battle._apply_order_cmd's reform branch
+## installs -- replaces the old bare _reform_target/_reform_timer pokes these tests used
+## before the hold became a REFORM leaf order's own fields.
+func _stage_reform_hold(u: Unit, dest: Vector2, timer: float) -> void:
+	u.set_current_order(Order.new_move(dest))
+	u.current_order.phase = Order.Phase.REFORM
+	u.current_order.reform_timer = timer
+
+
 # --- hold location ---------------------------------------------------
 
 func test_hold_unit_does_not_chase_a_nearby_enemy() -> void:
@@ -515,9 +526,7 @@ func test_order_summary_reports_a_rear_move_reform_phase_as_reforming() -> void:
 	# "Holding position" between "About-facing" and the march, as if the order
 	# had been dropped mid-composite.
 	var u := _make_unit()
-	var o := Order.new_move(Vector2(0, -200))
-	o.phase = Order.Phase.REFORM
-	u.set_current_order(o)
+	_stage_reform_hold(u, Vector2(0, -200), Unit.REFORM_DURATION)
 	assert_eq(u.order_summary(), "Re-forming",
 		"a rear move's reform phase reads as the counter-march it is running")
 
@@ -1157,8 +1166,7 @@ func test_unit_pivots_in_place_during_the_reform_hold() -> void:
 	var u := _make_unit()
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
-	u._reform_target = Vector2(0, 1000)            # destination straight down
-	u._reform_timer = Unit.REFORM_DURATION
+	_stage_reform_hold(u, Vector2(0, 1000), Unit.REFORM_DURATION)   # destination straight down
 	u._think(0.1)
 	assert_gt(u.facing.y, 0.0, "the unit begins centre-pivoting toward the destination during the hold")
 	assert_lt(u.facing.y, 0.95, "...gradually, not snapping")
@@ -1176,8 +1184,7 @@ func test_undisciplined_unit_snaps_facing_instead_of_pivoting_during_the_reform_
 	u.disciplined = false
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
-	u._reform_target = Vector2(0, 1000)            # destination straight down
-	u._reform_timer = Unit.REFORM_DURATION
+	_stage_reform_hold(u, Vector2(0, 1000), Unit.REFORM_DURATION)   # destination straight down
 	u._think(0.1)
 	assert_almost_eq(u.facing.x, 0.0, 0.001,
 		"an undisciplined unit snaps facing onto the destination during the reform hold (x)")
@@ -1194,8 +1201,8 @@ func test_in_haste_move_snaps_facing_during_the_reform_hold_even_for_a_disciplin
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
 	u.set_current_order(Order.new_move(Vector2(0, 1000), 0, Unit.GAIT_RUN, true))
-	u._reform_target = Vector2(0, 1000)
-	u._reform_timer = Unit.REFORM_DURATION
+	u.current_order.phase = Order.Phase.REFORM
+	u.current_order.reform_timer = Unit.REFORM_DURATION
 	u._think(0.1)
 	assert_almost_eq(u.facing.x, 0.0, 0.001,
 		"an in-haste order snaps facing during the reform hold even for a disciplined unit (x)")
@@ -3837,8 +3844,7 @@ func test_no_deploy_facing_keeps_march_facing() -> void:
 
 func test_reform_timer_holds_unit_idle() -> void:
 	var u := _make_unit()
-	u._reform_target = Vector2(200, 0)
-	u._reform_timer = Unit.REFORM_DURATION
+	_stage_reform_hold(u, Vector2(200, 0), Unit.REFORM_DURATION)
 	u._think(0.01)   # small delta — timer still running after this tick
 	assert_false(u.has_move_target,
 		"while the reform timer is running the unit does not start moving")
@@ -3847,21 +3853,19 @@ func test_reform_timer_holds_unit_idle() -> void:
 
 func test_reform_timer_commits_on_expiry() -> void:
 	var u := _make_unit()
-	u._reform_target = Vector2(200, 0)
-	u._reform_timer = 0.05   # almost expired
+	_stage_reform_hold(u, Vector2(200, 0), 0.05)   # almost expired
 	u._think(0.1)            # delta > remaining: timer hits 0, commit fires
 	assert_true(u.has_move_target,
 		"when the reform timer expires the pending move is committed")
 	assert_eq(u.move_target, Vector2(200, 0), "the stored target becomes the live move target")
-	assert_eq(u._reform_timer, 0.0, "and the timer is cleared")
+	assert_false(u._reform_holding(), "and the timer is cleared")
 
 
 func test_fighting_unit_commits_reform_immediately() -> void:
 	# A unit already engaged in combat bypasses the reform hold.
 	var u := _make_unit()
 	u.state = Unit.State.FIGHTING
-	u._reform_target = Vector2(200, 0)
-	u._reform_timer = Unit.REFORM_DURATION
+	_stage_reform_hold(u, Vector2(200, 0), Unit.REFORM_DURATION)
 	u._think(0.1)
 	assert_true(u.has_move_target,
 		"a fighting unit commits a pending reform immediately without holding")
@@ -3873,11 +3877,10 @@ func test_reform_timer_decrements_during_response_delay() -> void:
 	var u := _make_unit()
 	u.order_response_delay = 0.5
 	u._order_response_timer = 0.5
-	u._reform_target = Vector2(200, 0)
-	u._reform_timer = Unit.REFORM_DURATION
-	var before_reform: float = u._reform_timer
+	_stage_reform_hold(u, Vector2(200, 0), Unit.REFORM_DURATION)
+	var before_reform: float = u.active_leaf().reform_timer
 	u._think(0.1)
-	assert_lt(u._reform_timer, before_reform,
+	assert_lt(u.active_leaf().reform_timer, before_reform,
 		"the reform timer counts down even while the order-response delay is still running")
 
 
@@ -3887,9 +3890,8 @@ func test_reform_until_settled_ends_the_hold_early_once_bodies_settle() -> void:
 	# exactly that to commit right away instead of waiting out a long safety-timeout
 	# timer, mirroring the post-about-face reform's own early-exit.
 	var u := _make_unit()
-	u._reform_target = Vector2(200, 0)
-	u._reform_timer = 500.0   # a deliberately huge safety cap
-	u._reform_until_settled = true
+	_stage_reform_hold(u, Vector2(200, 0), 500.0)   # a deliberately huge safety cap
+	u.current_order.reform_until_settled = true
 	u._think(0.01)
 	assert_true(u.has_move_target,
 		"settled bodies commit the pending move immediately, not after the full safety timeout")
@@ -3897,15 +3899,14 @@ func test_reform_until_settled_ends_the_hold_early_once_bodies_settle() -> void:
 
 
 func test_reform_without_settled_flag_ignores_early_settlement() -> void:
-	# The counterpart: a plain move's fixed-duration hold (_reform_until_settled left at its
+	# The counterpart: a plain move's fixed-duration hold (reform_until_settled left at its
 	# default false) does NOT early-exit even though bodies are trivially "settled" --
 	# only a form-up's reshape opts into the settle-gated behavior.
 	var u := _make_unit()
-	u._reform_target = Vector2(200, 0)
-	u._reform_timer = 500.0
+	_stage_reform_hold(u, Vector2(200, 0), 500.0)
 	u._think(0.01)
 	assert_false(u.has_move_target, "a huge fixed timer holds regardless of body settlement")
-	assert_gt(u._reform_timer, 0.0, "the timer is still counting down, not force-cleared")
+	assert_gt(u.active_leaf().reform_timer, 0.0, "the timer is still counting down, not force-cleared")
 
 
 func test_reshape_timeout_grows_with_the_old_and_new_shapes() -> void:
@@ -3921,14 +3922,16 @@ func test_reshape_timeout_grows_with_the_old_and_new_shapes() -> void:
 
 func test_deploy_facing_pivot_during_reform_hold_targets_the_commanded_facing() -> void:
 	# The reform hold pivots toward deploy_facing (the form-up's COMMANDED facing) when set,
-	# not toward the bearing to _reform_target -- a form-up's final facing is dictated by the
-	# drag line, not by which way the destination happens to sit. Gradual (_rotate_facing_toward,
-	# not a snap), so run enough ticks to actually arrive rather than checking after one step.
+	# not toward the bearing to the held destination -- a form-up's final facing is dictated by
+	# the drag line, not by which way the destination happens to sit. Gradual
+	# (_rotate_facing_toward, not a snap), so run enough ticks to actually arrive rather than
+	# checking after one step.
 	var u := _make_unit()
 	u.facing = Vector2.UP
 	u.deploy_facing = Vector2.RIGHT
-	u._reform_target = Vector2(0, -500)   # destination bearing is UP -- opposite of deploy_facing
-	u._reform_timer = 10.0   # generous: outlives the pivot itself, well under the timeout
+	# destination bearing is UP -- opposite of deploy_facing; generous timer that outlives the
+	# pivot itself, well under the timeout
+	_stage_reform_hold(u, Vector2(0, -500), 10.0)
 	for i in range(120):
 		u._think(1.0 / 60.0)
 	assert_almost_eq(u.facing.x, 1.0, 0.01, "facing settles onto the commanded deploy facing (RIGHT)")

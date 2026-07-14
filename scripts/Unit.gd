@@ -134,11 +134,6 @@ var selected: bool = false
 # ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
-# Monotonic macro-group id counter for enqueue_macro() -- an instance field (not a static),
-# so two units' ids don't collide and a fresh test fixture always starts at 0 with no
-# global-state test-isolation hazard (see the reset()-requiring static-cache lesson this
-# codebase has already hit elsewhere).
-var _next_macro_id: int = 0
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
@@ -542,7 +537,7 @@ const REFORM_DURATION: float = 0.8
 # can't stall the check, far tighter than a rank gap (FORMATION_SPACING is 9).
 const REFORM_SETTLE_EPS: float = 1.0
 # The same check's tolerance for a full frontage RESHAPE (a form-up's changed file count,
-# not just an angle fold) -- see _reform_settle_eps's own doc comment for why a wholesale
+# not just an angle fold) -- see Order.reform_settle_eps's own doc comment for why a wholesale
 # reshape needs a looser bound than REFORM_SETTLE_EPS to ever actually trigger. Empirically
 # verified (dump-state.sh on demos/inputs/checkerboard-form-up.json): the last body or two
 # settles to within ~1.2 world units and hovers there rather than crossing under 1.0, so 1.0
@@ -706,12 +701,6 @@ var _shattered: bool = false
 # (it keeps executing _think() — retargets, disengages, and support orders all
 # take effect immediately regardless of the timer).
 var _order_response_timer: float = 0.0
-# Reform-before-move: when a fresh move order arrives with "reform":true, the
-# destination is stored here and _reform_timer counts down. Until it expires the
-# unit holds position (IDLE); on expiry _commit_pending_reform() sets has_move_target.
-# A subsequent order clears the timer, cancelling the pending reform.
-var _reform_target: Vector2 = Vector2.ZERO
-var _reform_timer: float = 0.0
 var _moved_last_frame: bool = false
 # This unit's actual travel velocity (direction + magnitude, world units/s) — not a
 # combat-only quantity, just historically under-documented as one: the cavalry charge
@@ -901,7 +890,7 @@ func _physics_process(delta: float) -> void:
 	# genuinely idle unit already has _current_speed == 0, so skipping this while frozen
 	# is a no-op for it — this only changes behavior for a unit that was moving.
 	if not _moved_last_frame and state != State.FIGHTING \
-			and _order_response_timer <= 0.0 and _reform_timer <= 0.0:
+			and _order_response_timer <= 0.0 and not _reform_holding():
 		var travel_dir: Vector2 = _approach_velocity.normalized() \
 				if _approach_velocity.length_squared() > 0.0001 else Vector2.ZERO
 		# UnitCombat's "spend the charge" strike-resolution reset can zero
@@ -959,35 +948,6 @@ func append_order(order: Order) -> void:
 	orders.append(order)
 	if current_order == null:
 		current_order = orders[0]
-
-
-## Enqueue a combo -- a sequence of primitive orders that chain into one another (a future
-## 90-degree-turn -> explicatio, say) -- as one atomic group: every step gets the same fresh
-## macro id (docs/orders-queue-design.md, "Macro expansion"), then each is appended in turn
-## via append_order, so the existing queue/promotion machinery runs them exactly like any
-## other queued sequence. Returns the macro id so the caller can cancel_macro() it later.
-func enqueue_macro(steps: Array[Order]) -> int:
-	var id: int = _next_macro_id
-	_next_macro_id += 1
-	for step in steps:
-		step.macro_id = id
-		append_order(step)
-	return id
-
-
-## Drop a macro's not-yet-executed remainder from the queue -- every queued (not current)
-## order still carrying `macro_id`, wherever it sits behind the head. The currently-executing
-## order is left alone even if it belongs to this macro (it is not "not-yet-executed"); use
-## set_current_order()/clear_orders() to interrupt something already in flight. No-op for an
-## id that matches nothing (already fully consumed, already cancelled, or -1).
-func cancel_macro(macro_id: int) -> void:
-	if macro_id < 0 or orders.is_empty():
-		return
-	var kept: Array[Order] = [orders[0]]
-	for i in range(1, orders.size()):
-		if orders[i].macro_id != macro_id:
-			kept.append(orders[i])
-	orders = kept
 
 
 ## Drop the queue head (it finished, or was interrupted) and promote the next queued order, if
@@ -1083,6 +1043,16 @@ func _interrupt_current_order() -> void:
 ## accessor; every other order (no children) reads back as current_order itself.
 func active_leaf() -> Order:
 	return current_order.active_leaf() if current_order != null else null
+
+
+## True while the active leaf is an as-yet-uncommitted REFORM hold: a plain move's
+## reform-before-move pause, a form-up's reshape hold, or a rear-move/lateral-pivot's
+## interstitial re-square between its turn and its march. Ported from the bare
+## `_reform_timer > 0.0` check the same hold used before it became a REFORM leaf order's own
+## field (docs/atomic-order-decomposition-design.md, Slice 1).
+func _reform_holding() -> bool:
+	var leaf := active_leaf()
+	return leaf != null and leaf.reform_timer > 0.0
 
 
 ## True while current_order is running an in-place turn: a rear MOVE's about-face (TURN)
@@ -1198,11 +1168,11 @@ func _update_current_order() -> void:
 			# Retire on arrival (has_move_target cleared, no queued route leg), unless the
 			# order still has work in flight that keeps has_move_target false without meaning
 			# "arrived": an in-place about-face still turning (turn_target set), or a
-			# reform-before-move hold (_reform_timer > 0 -- see _think()'s reform block and
+			# reform-before-move hold (_reform_holding() -- see _think()'s reform block and
 			# Battle._apply_order_cmd's reform branch), both of which park the march.
 			if not has_move_target and not _has_queued_move_leg() \
 					and active_leaf().turn_target == Vector2.ZERO \
-					and _reform_timer <= 0.0:
+					and not _reform_holding():
 				retire_current_order()
 		Order.Type.ABOUT_FACE, Order.Type.QUARTER_TURN, Order.Type.WHEEL:
 			# The drills and the wheel retire at their execution sites the moment they
@@ -1262,29 +1232,31 @@ func _think(delta: float) -> void:
 	# extra frame.
 	if _order_response_timer > 0.0:
 		_order_response_timer = maxf(0.0, _order_response_timer - delta)
-		# Also drain the reform timer concurrently so both run in parallel; the
+		# Also drain the reform hold's own timer concurrently so both run in parallel; the
 		# effective delay before the march is max(order_response_delay, REFORM_DURATION).
 		# Guard on the order timer still being positive: if it expires this very frame
 		# (just hit 0 above), fall through so the reform block below ticks it once —
 		# not twice.
-		if _reform_timer > 0.0 and _order_response_timer > 0.0:
-			_reform_timer = maxf(0.0, _reform_timer - delta)
+		if _reform_holding() and _order_response_timer > 0.0:
+			var response_reform_leaf: Order = active_leaf()
+			response_reform_leaf.reform_timer = maxf(0.0, response_reform_leaf.reform_timer - delta)
 		if _order_response_timer > 0.0 and state != State.FIGHTING:
 			return
 
 	# Reform phase: unit holds position after the order-response delay expires until
-	# reform timer runs out, then commits the pending move. A fighting unit skips the
-	# hold and commits immediately so combat orders are never gated by a reform pause.
-	# A post-about-face reform (_reform_until_settled) instead commits as soon as every
-	# body stands on its re-squared slot -- its timer is only the safety timeout.
-	if _reform_timer > 0.0:
+	# the active leaf's own reform timer runs out, then commits the pending move. A fighting
+	# unit skips the hold and commits immediately so combat orders are never gated by a
+	# reform pause. A post-about-face reform (reform_until_settled) instead commits as soon
+	# as every body stands on its re-squared slot -- its timer is only the safety timeout.
+	if _reform_holding():
 		if state == State.FIGHTING:
 			_commit_pending_reform()
 		else:
-			_reform_timer = maxf(0.0, _reform_timer - delta)
-			if _reform_until_settled and _reform_bodies_settled(_reform_settle_eps):
-				_reform_timer = 0.0   # ranks formed: no need to run out the timeout
-			if _reform_timer > 0.0:
+			var reform_leaf: Order = active_leaf()
+			reform_leaf.reform_timer = maxf(0.0, reform_leaf.reform_timer - delta)
+			if reform_leaf.reform_until_settled and _reform_bodies_settled(reform_leaf.reform_settle_eps):
+				reform_leaf.reform_timer = 0.0   # ranks formed: no need to run out the timeout
+			if reform_leaf.reform_timer > 0.0:
 				state = State.IDLE
 				# Use the hold to centre-pivot in place toward the pending destination, so
 				# the ranks are already coming onto their heading before the first step. A
@@ -1303,7 +1275,7 @@ func _think(delta: float) -> void:
 				if deploy_facing != Vector2.ZERO:
 					_face_dir(deploy_facing)
 				elif ordered_facing == Vector2.ZERO:
-					var reform_dir: Vector2 = _reform_target - position
+					var reform_dir: Vector2 = reform_leaf.target_pos - position
 					if disciplined and not _is_move_order_in_haste():
 						_rotate_facing_toward(reform_dir, delta)
 					else:
@@ -2551,21 +2523,10 @@ const FACING_SNAP_ABSORB_THRESHOLD: float = ENGAGE_TURN_THRESHOLD
 # itself (target_pos / reform -- has_move_target stays false during the turn so _think's
 # march path doesn't pre-empt it), and _finish_order_turn commits them when the about-face
 # completes. _reform_on_arrival carries the hasty variant's deferred reform through the
-# march; cleared by a fresh order, an interrupt, or a rout.
+# march; cleared by a fresh order, an interrupt, or a rout. (The hold itself -- reform_timer/
+# reform_until_settled/reform_settle_eps -- lives on the REFORM leaf order Slice 1 installs;
+# see Order.gd's "REFORM leaf state" and _reform_holding()/_commit_pending_reform() below.)
 var _reform_on_arrival: bool = false
-# While true, the reform hold (_reform_timer) ends EARLY once every body stands on its slot
-# (_reform_bodies_settled) -- the timer is only the safety timeout. The plain reform-before-move
-# hold keeps its fixed REFORM_DURATION countdown (this stays false for it).
-var _reform_until_settled: bool = false
-# The tolerance _reform_bodies_settled checks against, read alongside _reform_until_settled
-# above. A same-shape angle-fold reform (a post-about-face rank-swap) uses the tight default
-# (REFORM_SETTLE_EPS); a full frontage reshape (a form-up's changed file count) uses a looser
-# one -- see Battle._apply_order_cmd. A wholesale reshape couples with SoldierBodies.couple()'s
-# own continuous position correction in a way a same-shape reform doesn't, so its last body or
-# two can hover a couple of world units outside the tight tolerance indefinitely without ever
-# crossing it -- REFORM_SETTLE_EPS_RESHAPE is still comfortably "looks fully formed" at battle
-# scale, just not bit-for-bit exact.
-var _reform_settle_eps: float = REFORM_SETTLE_EPS
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -2699,7 +2660,7 @@ func release_soldier_facing() -> void:
 func _can_drill() -> bool:
 	return state != State.FIGHTING and not _sim_soldier_facing.is_empty() \
 			and not has_move_target and target_enemy == null and support_target == null \
-			and _reform_timer <= 0.0 \
+			and not _reform_holding() \
 			and not is_order_turning() and not is_wheeling()
 
 
@@ -2800,17 +2761,28 @@ func _settle_order_turn() -> void:
 ## Advance the order tree's cursor once `leaf` (the turn this tick just completed) is
 ## spent: bump the immediate parent's _active_child to the next sibling, cascading upward
 ## through grandparents whenever a level's own children are exhausted, until either an
-## ancestor still has a next child to start or the cascade reaches the top-level order
-## itself -- which retires exactly like a flat queue entry always has. A leaf with no
-## parent (a standalone drill, or the tree's own top-level order) retires immediately, the
-## same as today. Mirrors retire_current_order/_start_promoted_move's own "promote, then
-## commit the promoted order's first tick" shape, just run one level higher in the tree
-## instead of only ever at the queue's own head -- the caller still does the "commit"
-## half itself, since what that means (arm a march, retire outright) depends on the kind
-## of step being promoted to.
+## ancestor still has a next child to start or the cascade reaches this unit's OWN
+## top-level order -- which retires exactly like a flat queue entry always has. A leaf
+## with no parent (a standalone drill, or the tree's own top-level order) retires
+## immediately, the same as today. Mirrors retire_current_order/_start_promoted_move's own
+## "promote, then commit the promoted order's first tick" shape, just run one level higher
+## in the tree instead of only ever at the queue's own head -- the caller still does the
+## "commit" half itself, since what that means (arm a march, retire outright) depends on
+## the kind of step being promoted to.
+##
+## Stops at `current_order` specifically, not merely at a null `parent`: a per-unit order
+## that belongs to a multi-unit form-up group has its own `parent` pointing at the shared
+## FORM_UP tag (Battle._apply_order_cmd), which this unit never executes and whose
+## `_active_child` means nothing (the group's per-unit orders run concurrently, not in
+## sequence). No current dispatch path can actually reach this case today -- a
+## FORM_UP-grouped order is always a childless plain MOVE, so this function is never
+## called on one (see test_lateral_pivot_maneuver.gd's grouped-parent regression test,
+## which arms the case by hand). This guard hardens the cascade against a hypothetical
+## future composite type that could combine with a group parent, rather than fixing a
+## reachable bug today.
 func _advance_order_tree(leaf: Order) -> void:
 	var node := leaf
-	while node.parent != null:
+	while node != current_order and node.parent != null:
 		var parent: Order = node.parent
 		parent._active_child += 1
 		if parent._active_child < parent.children.size():
@@ -2820,12 +2792,12 @@ func _advance_order_tree(leaf: Order) -> void:
 
 
 ## Complete the active leaf's in-place turn: hand a rear-move or lateral-pivot composite's
-## OPENING turn (its first child) off to its next step -- reform the ranks square to the
-## new heading first (the drilled default; the countermarch brings a full rank to the new
-## front instead of the old partial rear rank), or step off at once with the flipped grid
-## and reform on arrival (the hasty variant). Either way the block faces travel, so it
-## advances forward, not backward. Any OTHER turn completing -- a lateral pivot's closing
-## return leg (its last child), or a standalone ABOUT_FACE / QUARTER_TURN drill (no
+## OPENING turn (its first child) off to its next step -- insert a REFORM leaf to re-form the
+## ranks square to the new heading first (the drilled default; the countermarch brings a full
+## rank to the new front instead of the old partial rear rank), or step off at once with the
+## flipped grid and reform on arrival (the hasty variant). Either way the block faces travel,
+## so it advances forward, not backward. Any OTHER turn completing -- a lateral pivot's
+## closing return leg (its last child), or a standalone ABOUT_FACE / QUARTER_TURN drill (no
 ## children at all) -- has no further step to hand off to, so the tree just cascades
 ## (retiring the whole composite, or the standalone drill itself).
 func _finish_order_turn() -> void:
@@ -2836,10 +2808,16 @@ func _finish_order_turn() -> void:
 		_advance_order_tree(leaf)
 		return
 	if current_order.reform and reform_ranks():
-		_reform_target = current_order.target_pos
-		_reform_timer = _reform_timeout()
-		_reform_until_settled = true
-		current_order.phase = Order.Phase.REFORM
+		# Splice a REFORM leaf in right after the turn (still at index 0 -- this handoff runs
+		# the instant it completes) and ahead of the march already at index 1, then advance the
+		# cursor onto it the same way any other completed leaf hands off to its next sibling.
+		var reform_leaf := Order.new_move(current_order.target_pos)
+		reform_leaf.phase = Order.Phase.REFORM
+		reform_leaf.parent = current_order
+		reform_leaf.reform_timer = _reform_timeout()
+		reform_leaf.reform_until_settled = true
+		reform_leaf.reform_settle_eps = REFORM_SETTLE_EPS
+		current_order.children.insert(1, reform_leaf)
 		_advance_order_tree(leaf)
 	else:
 		# A lateral pivot (pivot_return_angle != 0) never reforms on arrival either -- it
@@ -3453,11 +3431,11 @@ func order_summary() -> String:
 			if current_order.type == Order.Type.QUARTER_TURN:
 				return "Quarter-turning"
 			return "About-facing"   # the V-key drill, or a rear move's turn phase
-		if current_order != null and current_order.phase == Order.Phase.REFORM:
-			# The rear-move composite's middle phase: the ranks counter-march square to
-			# the new heading before the march steps off. Without this the panel would
-			# say "Holding position" between "About-facing" and the march, reading as
-			# if the order had been dropped mid-composite.
+		if _reform_holding():
+			# A REFORM leaf's hold: a plain move's reform-before-move pause, a form-up's
+			# reshape, or a rear-move composite's middle step (the ranks counter-march square
+			# to the new heading before the march steps off). Without this the panel would
+			# say "Holding position", reading as if the order had been dropped.
 			return "Re-forming"
 		if has_move_target:
 			var dest: String = "Moving to (%d, %d)" % [int(round(move_target.x)), int(round(move_target.y))]
@@ -3595,20 +3573,17 @@ func start_order_response() -> void:
 	_engage_turn_enemy = null
 
 
-## Commit a pending reform-before-move: hand off the stored destination to the
-## normal move machinery. Called when the reform timer expires or a fighting unit
-## receives a move order with reform=true (fights can't be made to hold for reform).
-## A rear-move composite parked in its REFORM phase steps off into its (already-active,
-## per _finish_order_turn) march child here; the REFORM marker itself just clears, since
-## the composite's own march is tracked by the tree now, not by a further phase value.
+## Commit a pending reform-before-move hold: hand the REFORM leaf's stored destination off to
+## the normal move machinery and advance the tree cursor onto that leaf's next sibling (the
+## march this hold was parked in front of) -- the same upward cascade _advance_order_tree
+## already uses for any other completed leaf. Called when the hold's timer expires (or it
+## settles early) or a fighting unit receives a move order with reform=true (fights can't be
+## made to hold for reform).
 func _commit_pending_reform() -> void:
-	move_target = _reform_target
+	var reform_leaf: Order = active_leaf()
+	move_target = reform_leaf.target_pos
 	has_move_target = true
-	_reform_timer = 0.0
-	_reform_until_settled = false
-	_reform_settle_eps = REFORM_SETTLE_EPS
-	if current_order != null and current_order.phase == Order.Phase.REFORM:
-		current_order.phase = Order.Phase.NONE
+	_advance_order_tree(reform_leaf)
 
 
 ## Fold another friendly regiment into this one: pool soldiers, blend the
@@ -3674,12 +3649,9 @@ func _rout() -> void:
 	target_enemy = null
 	has_move_target = false
 	# A rout drops every in-progress maneuver: clear_orders interrupts the current order
-	# (any in-place turn, wheel, or the rear-move march parked on it dies with the queue;
-	# unit.facing stays at its current angle).
+	# (any in-place turn, wheel, or the rear-move march parked on it dies with the queue,
+	# taking any REFORM leaf hold with it; unit.facing stays at its current angle).
 	clear_orders()
-	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
-	_reform_until_settled = false
-	_reform_settle_eps = REFORM_SETTLE_EPS
 	_reform_on_arrival = false
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_engage_turn_enemy = null

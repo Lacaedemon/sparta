@@ -210,6 +210,17 @@ var _by_uid: Dictionary = {}
 var _pending_orders: Array = []
 var _next_uid: int = 0
 
+# form_up_group id -> the shared Order.Type.FORM_UP tag for a multi-unit drag-line form-up
+# (docs/atomic-order-decomposition-design.md): built once per group, the first time
+# _apply_order_cmd sees that id, then reused for every other unit's order in the same
+# group so they all point `parent` at the same node (see the per-unit MOVE branch below).
+# Keyed by the recorded "form_up_group" id (SelectionManager._issue_form_up's own monotonic
+# counter) so live play and playback build the identical grouping from the identical
+# recorded field -- never derived from tick/ordering coincidence. Entries are never evicted
+# (a handful of small Order objects for the battle's lifetime is not worth the bookkeeping
+# to reclaim), and a fresh Battle scene always starts with an empty dict.
+var _form_up_groups: Dictionary = {}
+
 
 func _ready() -> void:
 	# Unit mirrors a few OrderMode values as plain ints (it can't reference our
@@ -660,7 +671,8 @@ func _physics_process(_delta: float) -> void:
 					float(o.get("face", INF)),
 					int(o.get("group_attack", GroupAttackMode.FOCUSED)),
 					bool(o.get("walk_advance", false)),
-					float(o.get("anchor_offset", 0.0)))
+					float(o.get("anchor_offset", 0.0)),
+					int(o.get("form_up_group", -1)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -976,8 +988,15 @@ static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
 ## `face` (radians) with `frontage` files -- the front rank ends up along the
 ## dragged flank line. A plain move order (target -1) carrying the extra face +
 ## frontage, recorded so replays reproduce the deploy.
+##
+## `form_up_group`: the shared id every per-unit order from the SAME multi-unit drag-line
+## command carries (SelectionManager._issue_form_up), so _apply_order_cmd can tag each
+## resulting order's `parent` at the same FORM_UP group node -- see `_form_up_groups`
+## above. -1 (the default) means this deploy isn't part of a group -- a single-unit
+## form-up drag, unaffected by any of this and identical to before this field existed.
 func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
-		order_mode: int = OrderMode.NORMAL, knockback_indefinite: bool = false) -> void:
+		order_mode: int = OrderMode.NORMAL, knockback_indefinite: bool = false,
+		form_up_group: int = -1) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -992,6 +1011,8 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"walk_advance": Settings.walk_advance,
 		"knockback_indefinite": knockback_indefinite,
 	}
+	if form_up_group >= 0:
+		cmd["form_up_group"] = form_up_group
 	_pending_orders.append(cmd)
 	_apply_order_live(cmd)
 
@@ -1083,14 +1104,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			if offset == Vector2.ZERO:
 				continue
 			# Install the order first: set_current_order interrupts any maneuver the old
-			# order had in flight (folding a partial in-place turn), and a rear march --
-			# or a queued route -- parked on that order's queue dies with it.
+			# order had in flight (folding a partial in-place turn), and a rear march -- or
+			# a queued route, or a REFORM leaf hold -- parked on that order's queue dies with it.
 			u.set_current_order(Order.new_nudge(dir))
 			u.target_enemy = null
 			u.support_target = null
 			u.deploy_facing = Vector2.ZERO
-			u._reform_timer = 0.0
-			u._reform_until_settled = false
 			u._reform_on_arrival = false   # a drill step's arrival shouldn't fire a stale reform
 			u.ordered_facing = u.facing   # hold facing: side-step / back-step, no pivot
 			u.move_target = u.position + offset
@@ -1227,13 +1246,11 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# Drop any side-step hold from a prior order; the plain-move branch below
 			# re-sets it when this order is itself a small lateral shift.
 			u.ordered_facing = Vector2.ZERO
-			# A new order always cancels any in-progress reform from the previous one --
-			# the hold, its settle-early mode, and the deferred on-arrival case
-			# (start_order_response squares the grid itself). A reform still parked
-			# behind a rear-move march lives on the old Order and dies when
-			# set_current_order below replaces it.
-			u._reform_timer = 0.0
-			u._reform_until_settled = false
+			# A new order always cancels any in-progress reform from the previous one -- the
+			# hold itself (now a REFORM leaf on the old Order's tree) dies when set_current_order
+			# below replaces current_order outright; only the deferred on-arrival case
+			# (start_order_response squares the grid itself) lives on a bare Unit field and
+			# needs clearing explicitly here.
 			u._reform_on_arrival = false
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			if attack_targets.is_empty():
@@ -1359,6 +1376,20 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# off regardless of what the player's own command requested.
 				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
 				order.reform = bool(cmd.get("reform", false)) and not lateral_pivot
+				# A multi-unit drag-line form-up: tag this order as one member of the shared
+				# group (docs/atomic-order-decomposition-design.md) instead of the standalone
+				# order every other move is. The group node itself is built once per id and
+				# reused for every sibling unit's order -- see `_form_up_groups` above. Absent
+				# for a single-unit form-up (and every non-form-up move), which stays exactly
+				# the standalone order it always was.
+				if cmd.has("form_up_group"):
+					var group_id: int = int(cmd["form_up_group"])
+					var group_order: Order = _form_up_groups.get(group_id)
+					if group_order == null:
+						group_order = Order.new_form_up()
+						_form_up_groups[group_id] = group_order
+					order.parent = group_order
+					group_order.children.append(order)
 				# Install the order first: set_current_order interrupts whatever maneuver
 				# the old order had in flight (a standing drill turn folds and settles; a
 				# wheel stops mid-swing), so a fresh move always starts from consistent
@@ -1395,20 +1426,29 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# (reform-hold or immediate). Fighting units bypass the hold in _think and
 				# commit immediately.
 				if not turn_armed and order.reform:
-					u._reform_target = point
+					# Split `order` into a REFORM leaf (the hold) followed by the march leg,
+					# same shape a rear-move's own interstitial reform installs (see
+					# Unit._finish_order_turn) -- just with no turn child ahead of it here.
+					var reform_leaf := Order.new_move(point)
+					reform_leaf.phase = Order.Phase.REFORM
+					reform_leaf.parent = order
 					# A form-up's reshape (a full frontage/file-count change, not just an
 					# angle fold) can need much longer than the flat REFORM_DURATION to
 					# actually settle -- gate the hold on the bodies genuinely reaching their
-					# new slots (_reform_until_settled/_reform_bodies_settled, the same
+					# new slots (reform_until_settled/_reform_bodies_settled, the same
 					# mechanism a post-about-face reform already uses), with the reshape-scaled
 					# timeout as a safety cap rather than the fixed duration itself. A plain
 					# move's short in-place turn keeps the flat duration -- it never reshapes.
 					if reshape_timeout > 0.0:
-						u._reform_timer = reshape_timeout
-						u._reform_until_settled = true
-						u._reform_settle_eps = UnitRef.REFORM_SETTLE_EPS_RESHAPE
+						reform_leaf.reform_timer = reshape_timeout
+						reform_leaf.reform_until_settled = true
+						reform_leaf.reform_settle_eps = UnitRef.REFORM_SETTLE_EPS_RESHAPE
 					else:
-						u._reform_timer = UnitRef.REFORM_DURATION
+						reform_leaf.reform_timer = UnitRef.REFORM_DURATION
+					var march_leaf := Order.new_move(point)
+					march_leaf.parent = order
+					order.children = [reform_leaf, march_leaf]
+					order._active_child = 0
 					u.has_move_target = false   # stop any prior march while reforming
 				elif not turn_armed:
 					u.move_target = point

@@ -347,7 +347,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
 		# exempt — its bodies need to keep up with moving slots — so the cap only
 		# applies when state == IDLE.
-		if unit._reform_timer > 0.0 or unit.state == Unit.State.IDLE:
+		if unit._reform_holding() or unit.state == Unit.State.IDLE:
 			unit._sim_body_vel[i] = _cap_body_speed(unit, i)
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
 		# Tell the render a body actually moved this tick, so _process can skip the

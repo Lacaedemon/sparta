@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/info-panel-836.json",
+  "caption": "Fix: the bottom-left unit-stats info panel now renders its text -- name, type, commander, soldiers, morale, fatigue, formation, width, and order are all legible next to the Formation/Stance/Options bar. It previously rendered fully off-screen (see HUD.gd's _info_panel_raise()/_info_panel_lower(), which repositioned the panel via `position` instead of the anchor-relative `offset_top`).",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 12,
+  "width": 640
+}

@@ -716,18 +716,18 @@ func test_forest_is_not_blocked() -> void:
 # --- reform-before-move ------------------------------------------------
 
 func test_reform_cmd_starts_reform_timer_not_move_target() -> void:
-	# "reform": true → destination stored in _reform_target, timer started, has_move_target
-	# stays false. Straight ahead of the unit's default (DOWN) facing -- a large lateral
-	# destination is a lateral pivot, which this test isn't about (that maneuver forces
-	# reform off, overriding the cmd, since it never reforms -- see
+	# "reform": true → destination stored on the REFORM leaf's target_pos, timer started,
+	# has_move_target stays false. Straight ahead of the unit's default (DOWN) facing -- a
+	# large lateral destination is a lateral pivot, which this test isn't about (that maneuver
+	# forces reform off, overriding the cmd, since it never reforms -- see
 	# test_lateral_pivot_maneuver.gd).
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1, "reform": true})
 	assert_false(u.has_move_target,
 		"a reform order doesn't set has_move_target until the timer expires")
-	assert_gt(u._reform_timer, 0.0, "the reform timer starts counting")
-	assert_eq(u._reform_target, Vector2(0, 50), "the destination is stored for later commit")
+	assert_gt(u.active_leaf().reform_timer, 0.0, "the reform timer starts counting")
+	assert_eq(u.active_leaf().target_pos, Vector2(0, 50), "the destination is stored for later commit")
 
 
 func test_no_reform_cmd_sets_move_target_directly() -> void:
@@ -739,7 +739,7 @@ func test_no_reform_cmd_sets_move_target_directly() -> void:
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1, "reform": false})
 	assert_true(u.has_move_target, "reform:false sets has_move_target immediately")
 	assert_eq(u.move_target, Vector2(0, 50))
-	assert_eq(u._reform_timer, 0.0, "no reform timer is started")
+	assert_false(u._reform_holding(), "no reform hold is started")
 
 
 func test_reform_cmd_absent_sets_move_target_directly() -> void:
@@ -748,7 +748,7 @@ func test_reform_cmd_absent_sets_move_target_directly() -> void:
 	var b := _battle([u])
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1})
 	assert_true(u.has_move_target, "missing reform key behaves as reform:false")
-	assert_eq(u._reform_timer, 0.0)
+	assert_false(u._reform_holding())
 
 
 func test_fresh_order_cancels_in_progress_reform() -> void:
@@ -756,9 +756,9 @@ func test_fresh_order_cancels_in_progress_reform() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1, "reform": true})
-	assert_gt(u._reform_timer, 0.0, "first reform order starts the timer")
+	assert_gt(u.active_leaf().reform_timer, 0.0, "first reform order starts the timer")
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 200.0, "target": -1, "reform": false})
-	assert_eq(u._reform_timer, 0.0, "a fresh order cancels the pending reform")
+	assert_false(u._reform_holding(), "a fresh order cancels the pending reform")
 	assert_true(u.has_move_target, "and the new destination is committed immediately")
 	assert_eq(u.move_target, Vector2(0, 200))
 
@@ -767,22 +767,22 @@ func test_current_speed_survives_the_reform_hold_while_cruising() -> void:
 	# Companion to the order-response-freeze regression in test_unit.gd: a unit that's
 	# already cruising and gets re-ordered with reform_before_move on is frozen twice in
 	# a row -- first by order_response_delay, then (once that expires) by the
-	# reform-before-move hold itself (_reform_timer, started here via "reform": true).
-	# _move_to() doesn't run during either freeze, so Unit._physics_process's end-of-frame
-	# idle-clear must not mistake the reform hold for genuine idleness and zero the speed
-	# once the order-response timer alone has drained.
+	# reform-before-move hold itself (a REFORM leaf's own reform_timer, started here via
+	# "reform": true). _move_to() doesn't run during either freeze, so
+	# Unit._physics_process's end-of-frame idle-clear must not mistake the reform hold for
+	# genuine idleness and zero the speed once the order-response timer alone has drained.
 	var u := _unit(1, Vector2.ZERO)
 	u._current_speed = u.walk_speed   # as if it was already cruising
 	var b := _battle([u])
 	# Straight ahead of the unit's default (DOWN) facing, so it isn't a lateral pivot
 	# (that maneuver forces reform off unconditionally, which this test isn't about).
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 500.0, "target": -1, "reform": true})
-	assert_gt(u._reform_timer, 0.0, "the reform order starts the reform-hold timer")
+	assert_gt(u.active_leaf().reform_timer, 0.0, "the reform order starts the reform-hold timer")
 	# Drain only the order-response timer (not the longer reform hold) so the unit is
-	# still frozen by _reform_timer alone on the final tick.
+	# still frozen by the reform hold alone on the final tick.
 	while u._order_response_timer > 0.0:
 		u._physics_process(0.016)
-	assert_gt(u._reform_timer, 0.0, "the reform hold is still running (0.8s > 0.5s response delay)")
+	assert_true(u._reform_holding(), "the reform hold is still running (0.8s > 0.5s response delay)")
 	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
 		"speed survives the reform hold too, not just the order-response freeze")
 
@@ -973,11 +973,46 @@ func test_enqueue_form_up_sets_destination_facing_and_width() -> void:
 	u.max_soldiers = 120
 	var b := _battle([u])
 	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20)   # face 0 = facing right
-	assert_eq(u._reform_target, Vector2(500, 500), "the form-up target is queued pending the reform hold")
+	assert_eq(u.active_leaf().target_pos, Vector2(500, 500),
+		"the form-up target is queued pending the reform hold")
 	assert_false(u.has_move_target, "unit waits in reform hold before stepping off")
 	assert_almost_eq(u.deploy_facing.angle(), 0.0, 0.001, "the deploy facing is parked from the order")
 	assert_eq(UnitFormation.frontage(u), 20, "the dragged width becomes the frontage")
 	assert_true(b._pending_orders[-1].has("face"), "the order records its deploy facing")
+
+
+func test_enqueue_form_up_with_a_group_id_ties_two_units_orders_to_one_parent() -> void:
+	# docs/atomic-order-decomposition-design.md: two units deployed under the same
+	# form_up_group id (SelectionManager._issue_form_up's own monotonic counter) both end
+	# up as children of the SAME shared Order.Type.FORM_UP tag, built once and reused --
+	# not two independent groups, and not installed as either unit's own current_order.
+	var u1 := _unit(1, Vector2(0, 100))
+	var u2 := _unit(2, Vector2(0, 200))
+	var b := _battle([u1, u2])
+	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20, 0, false, 7)
+	b.enqueue_form_up([2], Vector2(500, 600), 0.0, 20, 0, false, 7)
+	assert_not_null(u1.current_order.parent)
+	assert_eq(u1.current_order.parent, u2.current_order.parent, "same group id -> same shared parent")
+	assert_eq(u1.current_order.parent.type, Order.Type.FORM_UP)
+	assert_eq(u1.current_order.parent.children, [u1.current_order, u2.current_order])
+	assert_null(u1.current_order.parent.parent, "the group tag is never installed as a current_order")
+
+
+func test_enqueue_form_up_without_a_group_id_leaves_the_order_ungrouped() -> void:
+	var u := _unit(1, Vector2(0, 100))
+	var b := _battle([u])
+	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20)   # form_up_group defaults to -1
+	assert_null(u.current_order.parent, "no group id -> no group parent, exactly as before")
+
+
+func test_enqueue_form_up_different_group_ids_get_distinct_parents() -> void:
+	var u1 := _unit(1, Vector2(0, 100))
+	var u2 := _unit(2, Vector2(0, 200))
+	var b := _battle([u1, u2])
+	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20, 0, false, 3)
+	b.enqueue_form_up([2], Vector2(500, 600), 0.0, 20, 0, false, 4)
+	assert_ne(u1.current_order.parent, u2.current_order.parent,
+			"two separate drag-line commands never share a group tag")
 
 
 func test_plain_move_clears_a_stale_deploy_facing() -> void:
