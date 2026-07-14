@@ -496,7 +496,7 @@
     "href": "how-to-play.html#recording-replays",
     "title": "How to Play",
     "section": "Recording & replays",
-    "text": "Recording & replays\nEvery battle is recorded automatically — a ● REC indicator shows top-center. When a battle ends it’s saved, and you can:\n\nWatch Replay — re-run the battle you just played (▶ REPLAY). You can still pan and inspect units during playback, but can’t issue new orders.\nLoad Replay — open any earlier saved battle from a file picker (top-right, also on the end screen).\nFight Again — start a fresh, newly-recorded battle.\n\nSee Replays for how the deterministic system works and why the logs are tiny.\n\nSource: README.md in the repository.",
+    "text": "Recording & replays\nEvery battle is recorded automatically — a ● REC indicator shows top-center. When a battle ends it’s saved. Leaving early instead — Quit to Main Menu or Return to Campaign, including from a never-ending Parade Ground drill — offers a Save Replay? prompt first, so a mid-battle recording isn’t silently lost. Once a battle’s saved (either way), you can:\n\nWatch Replay — re-run the battle you just played (▶ REPLAY). You can still pan and inspect units during playback, but can’t issue new orders.\nLoad Replay — open any earlier saved battle from a file picker (top-right, also on the end screen).\nFight Again — start a fresh, newly-recorded battle.\n\nSee Replays for how the deterministic system works and why the logs are tiny.\n\nSource: README.md in the repository.",
     "crumbs": [
       "Home",
       "Play",
