@@ -468,6 +468,18 @@
     ]
   },
   {
+    "objectID": "how-to-play.html#all-teams-control",
+    "href": "how-to-play.html#all-teams-control",
+    "title": "How to Play",
+    "section": "All-Teams Control",
+    "text": "All-Teams Control\nSelect All-Teams Control from the Main Menu for a real two-army battle where you command both sides directly — unlike Parade Ground, the enemy army still deploys as normal, but no AI ever issues it orders. Select and command either side’s units the same way you would your own; a right-click targets the OTHER side relative to whatever you currently have selected, so the same controls work switching back and forth between armies. Useful for rehearsing or verifying combat mechanics deterministically, without an opponent’s own AI decisions in the way.\n\n\n\n\n  \n  Your browser can't play this clip --- see the\n  repository to run the game.\n\n\n\nFigure 30: All-Teams Control: both the top (team 0) and bottom (team 1) lines box-selected and marched forward in turn, one commanded directly by the player just like the other.",
+    "crumbs": [
+      "Home",
+      "Play",
+      "How to Play"
+    ]
+  },
+  {
     "objectID": "how-to-play.html#campaign-map",
     "href": "how-to-play.html#campaign-map",
     "title": "How to Play",
