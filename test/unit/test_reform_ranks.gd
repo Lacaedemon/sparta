@@ -163,8 +163,8 @@ func test_rear_move_with_reform_holds_the_march_until_the_ranks_re_form() -> voi
 			break
 	assert_false(u.is_order_turning(), "the about-face completed within its budget")
 	assert_false(u.has_move_target, "no march yet: the reform phase holds it")
-	assert_gt(u._reform_timer, 0.0, "the reform hold armed on conversio completion")
-	assert_true(u._reform_until_settled, "the hold ends on settle, not a fixed countdown")
+	assert_gt(u.active_leaf().reform_timer, 0.0, "the reform hold armed on conversio completion")
+	assert_true(u.active_leaf().reform_until_settled, "the hold ends on settle, not a fixed countdown")
 
 	# Run the reform out: the march commits once every body stands on its re-squared slot,
 	# within the timeout the unit derived from its own depth and pace.
@@ -197,7 +197,7 @@ func test_hasty_rear_move_marches_at_once_and_reforms_on_arrival() -> void:
 		if u.has_move_target:
 			break
 	assert_true(u.has_move_target, "the march starts straight off the about-face")
-	assert_eq(u._reform_timer, 0.0, "no reform hold for a hasty order")
+	assert_false(u._reform_holding(), "no reform hold for a hasty order")
 	assert_true(u._reform_on_arrival, "the reform is parked for arrival instead")
 	assert_eq(_front_row_count(u), 4,
 		"in haste the flipped grid marches as-is: the 4-man partial rank leads the transit")
@@ -233,7 +233,7 @@ func test_interrupted_about_face_drops_the_parked_reform_with_the_march() -> voi
 	u._think(TICK)
 	assert_eq(turn_leaf.turn_target, Vector2.ZERO, "the interrupting order cancels the about-face")
 	assert_null(u.current_order, "the turning order retired, dropping its parked march")
-	assert_eq(u._reform_timer, 0.0, "and no reform hold survives it")
+	assert_false(u._reform_holding(), "and no reform hold survives it")
 
 
 # --- regression: engage-turn / face-snap folds must not disturb an active mirror ------------

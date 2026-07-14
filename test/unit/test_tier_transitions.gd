@@ -54,7 +54,8 @@ func test_cannot_demote_mid_maneuver_or_reform() -> void:
 	# Each in-flight per-soldier context blocks demotion on its own: the aggregate record
 	# cannot carry a half-finished turn, an owned facing set, a reform hold, a parked rear
 	# march, or a relief interleave. The maneuver and relief context lives on the current
-	# Order (turn_target / phase / the RELIEF type), so each case stages a live order.
+	# Order (turn_target / the active leaf's own reform_timer / the RELIEF type), so each case
+	# stages a live order.
 	var u := _make_seeded_unit()
 	var about_face := Order.new_about_face()
 	about_face.turn_target = Vector2.RIGHT
@@ -75,11 +76,26 @@ func test_cannot_demote_mid_maneuver_or_reform() -> void:
 	u._per_soldier_facing = true
 	assert_false(TierTransition.can_demote(u), "maneuver-owned soldier facings block demotion")
 	u._per_soldier_facing = false
-	u._reform_timer = 0.5
+	# A plain reform-before-move hold: current_order IS the REFORM leaf (no turn ahead of it).
+	var reform_hold := Order.new_move(Vector2(0.0, 400.0))
+	reform_hold.phase = Order.Phase.REFORM
+	reform_hold.reform_timer = 0.5
+	u.current_order = reform_hold
 	assert_false(TierTransition.can_demote(u), "a reform hold blocks demotion")
-	u._reform_timer = 0.0
+	u.current_order = null
+	# A phased rear-move parked mid-hold (docs/atomic-order-decomposition-design.md, Slice 1):
+	# the REFORM leaf sits between the (already-settled) turn and the march it parks.
 	var rear_move := Order.new_move(Vector2(0.0, 400.0))
-	rear_move.phase = Order.Phase.REFORM
+	var turn_leaf := Order.new_about_face()
+	turn_leaf.parent = rear_move
+	var reform_leaf := Order.new_move(rear_move.target_pos)
+	reform_leaf.phase = Order.Phase.REFORM
+	reform_leaf.reform_timer = 0.5
+	reform_leaf.parent = rear_move
+	var march_leaf := Order.new_move(rear_move.target_pos)
+	march_leaf.parent = rear_move
+	rear_move.children = [turn_leaf, reform_leaf, march_leaf]
+	rear_move._active_child = 1
 	u.current_order = rear_move
 	assert_false(TierTransition.can_demote(u), "a parked rear-move march blocks demotion")
 	var relief := Order.new_relief(8)
