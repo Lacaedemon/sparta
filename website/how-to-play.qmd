@@ -67,6 +67,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
 | Active pause | <kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>) |
 | All shortcuts (this list, in-game) | <kbd>?</kbd> (Shift + <kbd>/</kbd>) or **☰ Menu → Shortcuts** |
+| Quit to Main Menu | **☰ Menu → Quit to Main Menu** leaves the battle immediately and returns to the Main Menu --- the only way out of a [Parade Ground](#parade-ground) drill, which never auto-ends |
 
 Battle controls: selection, orders, formations, drill maneuvers, and camera.
 :::
@@ -880,6 +881,29 @@ and accelerate to full speed on contact.
    routing enemy isn't beaten yet: a "broken" one may yet rally, and even a
    "shattered" one (its nerve gone for good) still has to escape or be run down
    before it's actually off the field.
+
+## Parade Ground
+
+Select **Parade Ground** from the Main Menu for a solo drill: your own army
+deploys as usual, but no enemy spawns and the battle never auto-ends. Use it to
+freely rehearse formations, maneuvers, and orders without an opponent forcing
+the pace. Leave with **☰ Menu → Quit to Main Menu** when you're done --- there's
+no victory condition to trigger it for you.
+
+::: {#fig-parade-ground .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/parade_ground.jpg">
+  <source src="media/parade_ground.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Parade Ground: the standard player line, no enemy on the field, given a group
+move order and settling into formation.
+:::
 
 ## Campaign Map
 
