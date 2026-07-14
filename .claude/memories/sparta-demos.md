@@ -447,6 +447,37 @@ pivot, then advancing). Use `SPARTA_DEMO_FRAMES` (PNG, non-headless) for the fra
 `SPARTA_DEMO_STATE` (headless) for the values. Bump website `record-demos.sh` `max_frames` to
 cover the whole sequence (e.g. 180 → 300), not just the pivot.
 
+## A delegated implementation task needs the demo-manifest contract stated explicitly, not assumed
+
+Briefing an agent (human or AI) to "implement issue X" does not automatically produce a
+`demos/demo.<slug>.json` for the resulting PR — the demos/README.md "author contract" and its
+required self-check are easy to omit from a task brief that's otherwise thorough (data model,
+tests, regression coverage), because they live in a separate doc the brief never pointed at.
+When no per-PR manifest lands, CI's resolution order (`demos/README.md`'s "Resolution order")
+silently falls back to the legacy shared `demos/demo.json` — which usually holds **another,
+unrelated PR's** input script and caption (it's a perennial stale leftover; see "Shared-checkout
+hazard" above). The posted demo section then looks complete (a GIF renders, a caption reads
+fluently) while describing a different change entirely, with nothing in CI flagging it — this is
+a silent content-accuracy bug, not a build failure.
+
+**Concrete case:** PR #831 (Slice 0 of the atomic order queue, #827) was delegated to an agent
+whose brief covered the code/test/regression scope in detail but never mentioned
+`demos/README.md` or the manifest contract. CI fell back to `demos/demo.json`, which still held
+PR #523's caption ("the info panel now reads the maneuver... reporting 'Wheeling'") and pointed
+at `demos/inputs/wheel.json` — entirely unrelated to the rear-move/lateral-pivot tree conversion
+#831 actually made. The user caught it by eye ("I don't see the info panel in the demo for
+831?"); nothing in CI's green checks surfaced the mismatch.
+
+**How to apply:** when delegating implementation work whose PR will trigger `demo-video.yml`
+(anything touching `scenes/`, `scripts/`, `assets/`, or `project.godot`), explicitly instruct the
+sub-agent to add its own `demos/demo.<slug>.json` per `demos/README.md`'s contract and run the
+"Required demo self-check" (render frames, confirm the change is visible) before considering the
+task done — don't assume a thorough code/test brief implies the demo obligation. When reviewing a
+PR's demo section, check the manifest actually lives in *this* PR's diff (`git show
+<sha>:demos/demo.<slug>.json` or `git diff --stat` against the base) rather than trusting that a
+GIF is present and a caption reads plausibly — a fluent caption describing the wrong PR is not
+self-evidently wrong from the text alone. (`Lacaedemon/sparta` PR #831, 2026-07-13.)
+
 ## A "wait then quit" helper reachable from multiple recorder modes needs a mode-guarded await
 
 The demo-video CI job's state-transcript step (drives `DemoInputRecorder` in state-only mode)
