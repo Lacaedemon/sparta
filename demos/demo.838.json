@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/parade-ground.json",
+  "caption": "The main menu's new \"Parade Ground\" option: a real battle with the player's own default army and zero enemy units (Battle.drill_mode, until now only reachable from demo/test scripting). Watch the whole line get box-selected and marched south as a group to a fresh spot -- ordinary maneuver controls, nothing to fight, and the battle never auto-ends.",
+  "fixed_fps": 60,
+  "max_frames": 1180,
+  "fps": 20,
+  "width": 720
+}

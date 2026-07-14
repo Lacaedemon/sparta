@@ -67,6 +67,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
 | Active pause | <kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>) |
 | All shortcuts (this list, in-game) | <kbd>?</kbd> (Shift + <kbd>/</kbd>) or **☰ Menu → Shortcuts** |
+| Quit to Main Menu | **☰ Menu → Quit to Main Menu** leaves the battle immediately and returns to the Main Menu --- the only way out of a [Parade Ground](#parade-ground) drill, which never auto-ends |
 
 Battle controls: selection, orders, formations, drill maneuvers, and camera.
 :::
@@ -857,7 +858,11 @@ and accelerate to full speed on contact.
 1. **Select** --- left-click a unit, or drag a box to grab several at once. The info
    panel fills with the selected unit's stats, including a flavor **Commander** rank
    (Centurion, Pilus Prior, Decurion, ...) drawn from the real Roman officer hierarchy
-   --- cosmetic only, it has no effect on combat.
+   --- cosmetic only, it has no effect on combat. The panel's **Order** line shows the
+   unit's current order as a small tree when it's a composite maneuver (a move-to-the-rear's
+   turn-then-march, say): each step is indented under the maneuver it belongs to, the step
+   actually running is highlighted, and a triangle toggle expands or collapses the steps. A
+   simple order with no sub-steps still shows as the single line it always has.
 2. **Order** --- right-click to send them. Move them onto an enemy's flank, or
    right-click the enemy directly to attack. There is a brief **reaction delay**
    (~0.5 s, faster for cavalry) before units execute --- orders aren't instant.
@@ -880,6 +885,29 @@ and accelerate to full speed on contact.
    routing enemy isn't beaten yet: a "broken" one may yet rally, and even a
    "shattered" one (its nerve gone for good) still has to escape or be run down
    before it's actually off the field.
+
+## Parade Ground
+
+Select **Parade Ground** from the Main Menu for a solo drill: your own army
+deploys as usual, but no enemy spawns and the battle never auto-ends. Use it to
+freely rehearse formations, maneuvers, and orders without an opponent forcing
+the pace. Leave with **☰ Menu → Quit to Main Menu** when you're done --- there's
+no victory condition to trigger it for you.
+
+::: {#fig-parade-ground .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/parade_ground.jpg">
+  <source src="media/parade_ground.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Parade Ground: the standard player line, no enemy on the field, given a group
+move order and settling into formation.
+:::
 
 ## Campaign Map
 

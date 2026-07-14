@@ -1,0 +1,14 @@
+{
+  "_comment": "Parade Ground: the main menu's new no-enemy battle option, shown with the real default spawn (drill:true, no scenario override) so the clip matches exactly what pressing the button produces -- the standard 5-unit player line (seed 12345: Spearmen/Infantry/Archers/Cavalry/Cavalry, uid 0-4, x 476.75-1123.25, y 300) and zero enemy units. The whole line is box-selected, then ordered forward as a group with a single move click, so it marches south holding formation and settles -- ordinary maneuver controls, free of any opponent, which is the rehearsal space the feature adds. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "drill": true,
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 420.0, "zoom": 0.85}
+  ],
+  "steps": [
+    {"tick": 10, "box": {"from": [370, 250], "to": [1200, 350]}},
+    {"tick": 30, "rmb_click": [800, 500]}
+  ],
+  "frames": [8, 30, 90, 400, 900, 1150],
+  "state": [8, 30, 90, 400, 900, 1150]
+}
