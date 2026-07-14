@@ -1,5 +1,5 @@
 extends GutTest
-## Main menu (#838): the "Parade Ground" button sits alongside "Tactical Battle" and, when
+## Main menu: the "Parade Ground" button sits alongside "Tactical Battle" and, when
 ## pressed, requests a drill-mode battle via ParadeGround (see test_parade_ground.gd and
 ## test_battle_drill.gd for what that flag then does to the battle). The button itself
 ## triggers a real change_scene_to_file, so it isn't pressed here — just checked for

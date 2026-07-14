@@ -2,8 +2,8 @@ extends GutTest
 ## Drill / solo mode (#390): with Battle.drill_mode set before the node enters the tree, only
 ## the player army (team 0) deploys and the battle never auto-ends on "no enemies" — so a unit
 ## can rehearse a maneuver in isolation (what the maneuver demos record). The main menu's
-## "Parade Ground" button (#838) reaches the same drill_mode through ParadeGround.pending,
-## since it can't set the property directly across a change_scene_to_file scene swap.
+## "Parade Ground" button reaches the same drill_mode through ParadeGround.pending, since
+## it can't set the property directly across a change_scene_to_file scene swap.
 
 const ParadeGround = preload("res://scripts/ParadeGround.gd")
 
