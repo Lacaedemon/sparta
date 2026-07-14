@@ -406,14 +406,24 @@ check_patch_coverage() {
   fi
 
   local diff
-  # ':(glob)scripts/**/*.gd': a non-magic pathspec like 'scripts/*.gd' ALREADY
-  # matches every subdirectory too (git passes it to fnmatch(3) without
-  # FNM_PATHNAME, so a bare '*' crosses '/' by default -- verified against a
-  # real scripts/campaign/*.gd-touching commit before writing this comment).
-  # The explicit ':(glob)' + '**' form here produces the identical match set;
-  # it's kept only because it states the "recurse into every subdirectory"
-  # intent explicitly for a reader who doesn't already know that non-magic
-  # pathspec quirk, not because the simpler form was ever wrong.
+  # ':(glob)scripts/**/*.gd': a bare non-magic pathspec like 'scripts/*.gd'
+  # (no ':(glob)' prefix) ALREADY matches every subdirectory too -- this is
+  # NOT the same rule as the ':(glob)' magic word (which DOES set
+  # FNM_PATHNAME, so '*' does NOT cross '/' without an explicit '**'). Per
+  # gitglossary(7)'s own "pathspec" definition (the non-magic case, distinct
+  # from its separate "glob" magic-word entry): "the rest of the pathspec is
+  # a pattern for the remainder of the pathname. Paths ... will be matched
+  # ... using fnmatch(3); in particular, '*' and '?' can match directory
+  # separators", with the example "Documentation/*.jpg will match ...
+  # including Documentation/chapter_1/figure_1.jpg". Also verified directly
+  # against a real scripts/campaign/*.gd-touching commit in this repo's own
+  # history (a 3-way `git diff --stat` comparison: no-pathspec, bare
+  # 'scripts/*.gd', and ':(glob)scripts/*.gd' -- the first two match
+  # identically; the third matches nothing). The explicit ':(glob)' + '**'
+  # form here produces the identical match set to the bare form; it's kept
+  # only because it states the "recurse into every subdirectory" intent
+  # explicitly for a reader who doesn't already know this non-magic-pathspec
+  # quirk, not because the simpler form was ever wrong.
   diff="$(cd "$PROJECT_ROOT" && git diff --no-color -U0 "$merge_base" HEAD -- ':(glob)scripts/**/*.gd')"
   if [ -z "$diff" ]; then
     info "No scripts/**/*.gd changes in this diff."
