@@ -105,7 +105,7 @@ absent from older replays. See [`REPLAY.md`](https://github.com/Lacaedemon/spart
 | File | Role |
 | --- | --- |
 | [`scripts/Replay.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Replay.gd) | Autoload singleton: seeded RNG, record/playback, save/load |
-| [`scripts/BuildInfo.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/BuildInfo.gd) | Commit SHA stamped into a saved replay; dev-only dirty-checkout status |
+| `scripts/BuildInfo.gd` | Commit SHA stamped into a saved replay; dev-only dirty-checkout status |
 | [`scripts/Battle.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Battle.gd) | Tick clock, order queue/apply, AI cadence, saves on battle end |
 | [`scripts/Unit.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Unit.gd) | Draws combat randomness from `Replay.rng`; carries a `uid` |
 | [`scripts/SelectionManager.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/SelectionManager.gd) | Routes right-click orders to `Battle.enqueue_order` |
