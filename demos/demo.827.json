@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/about-face.json",
+  "caption": "Slice 0 of the nested atomic order queue (#826): the rear-move composite (about-face, then march) is now driven by a real `Order.children` tree (`Order.active_leaf()`) instead of the old `Order.Phase` field (TURN/MARCH). This is an internal refactor with NO intended behaviour change -- watch the lone Spearmen regiment reverse 180 degrees in place (front rank becoming rear, footprint held) when ordered to a destination behind it, then march to the new line, exactly as before. The lateral-pivot composite (quarter-turn) is converted the same way but isn't shown in this clip -- both are covered by the GUT suite, including a new live-battle regression test for the #517/#518 double-apply race against the tree-based advancement.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}
