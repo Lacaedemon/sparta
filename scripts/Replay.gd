@@ -23,6 +23,8 @@ extends Node
 ##   - Note: floating-point results are reproducible on the *same build and
 ##     platform*; bit-exact cross-platform replay is out of scope.
 
+const BuildInfoRef = preload("res://scripts/BuildInfo.gd")
+
 enum Mode { IDLE, RECORD, PLAYBACK }
 
 const DIR := "user://replays"
@@ -121,6 +123,12 @@ var loaded_path: String = ""
 # Path of the most recent successful save() this session. Preferred over a fresh
 # directory scan so a failed save can't silently replay a previous battle.
 var last_saved_path: String = ""
+# Set by start_playback() when the just-loaded replay's commit_sha differs from this
+# build's (BuildInfo.COMMIT_SHA) -- "" when they match or the replay predates this field.
+# A player-facing heads-up, not a hard reject like FORMAT_VERSION/PHYSICS_TPS below: most
+# commits don't touch anything replay-affecting, so refusing to play would be too strict.
+# HUD._ready() shows and clears this once per scene load (see there for why).
+var last_load_sha_mismatch: String = ""
 
 
 ## Begin capturing a fresh live battle. Picks a random seed and clears history.
@@ -167,6 +175,14 @@ func start_playback(path: String) -> bool:
 	if int(data.get("physics_tps", 0)) != PHYSICS_TPS:
 		push_warning("Replay physics tick rate mismatch in %s; skipping." % path)
 		return false
+	# A commit mismatch doesn't necessarily desync (most commits touch nothing replay-
+	# affecting), so this is a warning, not a reject -- see last_load_sha_mismatch's doc.
+	var recorded_sha: String = str(data.get("commit_sha", ""))
+	last_load_sha_mismatch = "" if recorded_sha == "" or recorded_sha == BuildInfoRef.COMMIT_SHA \
+			else recorded_sha
+	if last_load_sha_mismatch != "":
+		push_warning("Replay %s was recorded on commit %s; this build is %s." %
+				[path, recorded_sha, BuildInfoRef.COMMIT_SHA])
 
 	# Seed is stored as a string: JSON numbers are float64 and would lose
 	# precision on a full 64-bit seed, silently desyncing the replay.
@@ -515,8 +531,16 @@ func save(result: String, duration_ticks: int) -> String:
 		"created": Time.get_unix_time_from_system(),
 		"result": result,
 		"duration_ticks": duration_ticks,
+		"commit_sha": BuildInfoRef.COMMIT_SHA,
 		"orders": _orders,
 	}
+	# Only emit a dirty-worktree note when the live checkout actually has uncommitted
+	# changes worth flagging -- a dev-only best-effort signal (BuildInfo.git_dirty_status(),
+	# see its own doc comment), omitted on an exported build or a clean tree so the common
+	# case stays byte-for-byte simple.
+	var dirty := BuildInfoRef.git_dirty_status()
+	if not dirty.is_empty():
+		payload["git_dirty_status"] = dirty
 	# Only emit the presentation track when one was captured, so pre-camera-style
 	# recordings (and tooling that never moves the camera) stay byte-for-byte simple.
 	if not _camera_track.is_empty():

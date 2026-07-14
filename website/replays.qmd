@@ -59,10 +59,12 @@ Replay files are small JSON:
   "created": 1781512075.7,
   "result": "Defeat",
   "duration_ticks": 1013,
+  "commit_sha": "a1b2c3d4e5f6...",
   "orders": [
     { "tick": 84,  "units": [0, 1], "x": 740.0, "y": 560.0, "target": -1 },
     { "tick": 132, "units": [3],    "x": 0.0,   "y": 0.0,   "target": 7 }
   ],
+  "git_dirty_status": " M scripts/Unit.gd",
   "camera": [
     { "tick": 0, "x": 800.0, "y": 500.0, "zoom": 0.62 }
   ],
@@ -80,6 +82,12 @@ absent from older replays. See [`REPLAY.md`](https://github.com/Lacaedemon/spart
   on the enemy unit with that `uid`.
 - The seed is stored as a **string** on purpose: JSON numbers are float64 and would
   silently lose precision on a full 64-bit seed, desyncing the replay.
+- `commit_sha` records which commit the game was built from (`scripts/BuildInfo.gd`,
+  stamped into an exported build by the release workflow). Loading a replay whose
+  `commit_sha` differs from the running build's shows a heads-up, not a hard block --
+  most commits don't touch anything replay-affecting. `git_dirty_status` is a dev-only,
+  best-effort `git status --porcelain` snapshot (omitted when the checkout was clean, or
+  on an exported build with no `.git`/`git` to query).
 
 ## Using it in-game
 
@@ -97,6 +105,7 @@ absent from older replays. See [`REPLAY.md`](https://github.com/Lacaedemon/spart
 | File | Role |
 | --- | --- |
 | [`scripts/Replay.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Replay.gd) | Autoload singleton: seeded RNG, record/playback, save/load |
+| `scripts/BuildInfo.gd` | Commit SHA stamped into a saved replay; dev-only dirty-checkout status |
 | [`scripts/Battle.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Battle.gd) | Tick clock, order queue/apply, AI cadence, saves on battle end |
 | [`scripts/Unit.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Unit.gd) | Draws combat randomness from `Replay.rng`; carries a `uid` |
 | [`scripts/SelectionManager.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/SelectionManager.gd) | Routes right-click orders to `Battle.enqueue_order` |
