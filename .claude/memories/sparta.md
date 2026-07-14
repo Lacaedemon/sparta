@@ -1738,3 +1738,30 @@ a LIVE, filtered subset of bodies instead of a full-block aggregate, check its b
 during an in-place reshape/turn (not just a march) -- a live subset selection can be unstable
 exactly when a full aggregate is most needed to stay smooth. (`Lacaedemon/sparta` PR #818,
 reverted; tracked in issue #821.)
+
+## Pinpointing exact lines for a `codecov/patch` gap: intersect lcov's zero-hit `DA:` lines with the diff
+
+`codecov/patch`'s PR comment names the file and a percentage but not which specific lines are
+uncovered. Rather than guessing from the function list, regenerate coverage locally
+(`tools/check.sh coverage`, ~15-20 min for the full suite) and intersect two things directly:
+
+```bash
+# 1. Every zero-hit line in the target file's lcov block
+awk '/^SF:.*SelectionManager\.gd/{f=1} f{print} f&&/end_of_record/{exit}' coverage/lcov.info \
+  | grep "^DA:" | awk -F'[:,]' '{print $2, $3}' | awk '$2==0{print $1}'
+
+# 2. The diff's actual added line numbers (against the merge-base, not main's current tip)
+git diff --no-color -U0 "$(git merge-base HEAD origin/main)" HEAD -- scripts/SelectionManager.gd
+
+# 3. Cross-reference: for each candidate added line, grep its exact DA: entry
+grep "^DA:458," coverage/lcov.info   # DA:458,0 = uncovered; DA:458,2 = covered (2 hits)
+```
+
+The intersection is the exact uncovered line set Codecov is counting -- confirm the count matches
+(Codecov said "5 lines missing"; this technique found exactly 5). Add targeted tests hitting each
+line, re-run `tools/check.sh coverage`, and re-check the same `DA:` lines show a nonzero hit count
+before pushing -- don't just trust that "tests were added" closed the gap; verify the specific
+lines Codecov flagged. (`Lacaedemon/sparta` PR #853: 5 lines in `SelectionManager.gd`'s own-team
+gating -- the box-select loop, `_select_same_type`, the conversio/quarter-turn dispatchers, and
+the `_enemy_team()` empty-selection fallback -- were each genuinely untested by any existing test,
+not just newly added by the diff; found and closed this way in one pass.)

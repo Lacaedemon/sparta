@@ -131,6 +131,12 @@ script under `demos/inputs/`:
   `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` — see `data/doctrines/*.json`
   and `docs/battle-ai-design.md`'s phase-3 section). Set before the battle spawns, like
   `drill`/`scenario` above. Omit to use `Battle.ai_doctrine`'s own default.
+- `all_teams_control` (optional bool, default `false`) — debug/testing mode: the player
+  commands every team's units directly (`SelectionManager`'s team checks are relaxed) and
+  team 1's AI never runs, so a script can select and order BOTH sides of a real clash by
+  hand instead of only team 0 against the AI. Unlike `drill`, both armies still spawn — set
+  before the battle spawns, like `drill`/`scenario`/`doctrine` above. See
+  `scripts/AllTeamsControl.gd` and `demos/inputs/all-teams-control.json`.
 - `show_soldier_ids` (optional bool, **default `true`**) — session-only: enables the
   per-soldier-ID HUD overlay for the recording without touching a developer's saved
   settings. On by default so scripted-input recordings show this debugging/verification

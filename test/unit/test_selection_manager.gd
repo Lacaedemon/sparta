@@ -632,6 +632,136 @@ func test_unit_at_flag_click_respects_team() -> void:
 			"a team-1 query resolves the same flag to the enemy")
 
 
+# --- all-teams control --------------------------------------------------------
+
+func test_is_own_team_defaults_to_team_zero_only() -> void:
+	var sm := _sm()
+	assert_true(sm._is_own_team(0), "team 0 is always the player's own")
+	assert_false(sm._is_own_team(1), "team 1 isn't controllable outside all-teams control")
+
+
+func test_is_own_team_relaxes_under_all_teams_control() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	b.all_teams_control = true
+	sm._battle = b
+	assert_true(sm._is_own_team(1), "every team is controllable once all-teams control is active")
+
+
+func test_unit_at_team_any_own_ignores_team1_outside_all_teams_control() -> void:
+	var sm := _sm()
+	var enemy := _unit()
+	enemy.team = 1
+	enemy.position = Vector2(700, 200)
+	assert_null(sm._unit_at(enemy.global_position, SelectionManagerScript.TEAM_ANY_OWN),
+			"TEAM_ANY_OWN stays team-0-only outside all-teams control")
+
+
+func test_unit_at_team_any_own_selects_across_teams_under_all_teams_control() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	b.all_teams_control = true
+	sm._battle = b
+	var enemy := _unit()
+	enemy.team = 1
+	enemy.position = Vector2(700, 200)
+	assert_eq(sm._unit_at(enemy.global_position, SelectionManagerScript.TEAM_ANY_OWN), enemy,
+			"a non-zero-team unit becomes selectable once all-teams control is active")
+
+
+func test_enemy_team_defaults_to_team1() -> void:
+	var sm := _sm()
+	assert_eq(sm._enemy_team(), 1, "outside all-teams control the enemy is always team 1")
+	assert_eq(sm._friend_team(), 0, "and the friend team is always team 0")
+
+
+func test_enemy_team_flips_relative_to_the_selection_under_all_teams_control() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	b.all_teams_control = true
+	sm._battle = b
+	var t1_unit := _unit()
+	t1_unit.team = 1
+	sm._select(t1_unit)
+	assert_eq(sm._enemy_team(), 0,
+			"a selected team-1 unit's 'enemy' is team 0, so right-click can order it to attack team 0")
+	assert_eq(sm._friend_team(), 1, "and its own team is the 'friend' team for relief/move resolution")
+
+
+func test_enemy_team_falls_back_to_team1_under_all_teams_control_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	b.all_teams_control = true
+	sm._battle = b
+	assert_eq(sm._enemy_team(), 1,
+			"with nothing selected there's no team to flip relative to, so it falls back to team 1")
+
+
+func test_finish_selection_box_select_only_includes_own_team_units() -> void:
+	var sm := _sm()
+	var friend := _unit()
+	friend.team = 0
+	friend.position = Vector2(100, 100)
+	var enemy := _unit()
+	enemy.team = 1
+	enemy.position = Vector2(150, 100)
+	sm._drag_start = Vector2.ZERO
+	sm._drag_cur = Vector2(300, 300)   # box covers both units; well over CLICK_THRESHOLD
+	sm._finish_selection()
+	assert_true(sm._selected.has(friend), "an own-team unit inside the drag box is selected")
+	assert_false(sm._selected.has(enemy),
+			"an enemy unit inside the same drag box is skipped outside all-teams control")
+
+
+func test_select_same_type_only_includes_own_team_units() -> void:
+	var sm := _sm()
+	var proto := _unit()
+	proto.team = 0
+	var same_type_enemy := _unit()
+	same_type_enemy.team = 1
+	sm._select_same_type(proto)
+	assert_true(sm._selected.has(proto), "the prototype's own unit is selected")
+	assert_false(sm._selected.has(same_type_enemy),
+			"a same-type enemy unit is skipped outside all-teams control")
+
+
+func _seeded_unit(team: int) -> Unit:
+	var u := _unit()
+	u.team = team
+	u.max_soldiers = 60
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()   # required by _can_drill() for conversio/quarter_turn
+	return u
+
+
+func test_issue_conversio_only_turns_own_team_units() -> void:
+	var sm := _sm()
+	var friend := _seeded_unit(0)
+	var enemy := _seeded_unit(1)
+	sm._selected = [friend, enemy]
+	sm._issue_conversio()
+	assert_eq(friend.current_order.type, Order.Type.ABOUT_FACE,
+			"the own-team unit received the about-face drill")
+	assert_null(enemy.current_order,
+			"an enemy unit in the selection is skipped outside all-teams control")
+
+
+func test_issue_quarter_turn_only_turns_own_team_units() -> void:
+	var sm := _sm()
+	var friend := _seeded_unit(0)
+	var enemy := _seeded_unit(1)
+	sm._selected = [friend, enemy]
+	sm._issue_quarter_turn(1)
+	assert_eq(friend.current_order.type, Order.Type.QUARTER_TURN,
+			"the own-team unit received the quarter-turn drill")
+	assert_null(enemy.current_order,
+			"an enemy unit in the selection is skipped outside all-teams control")
+
+
 func test_issue_form_up_routes_a_recorded_order() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()

@@ -78,6 +78,7 @@ DEMOS=(
   "disciplined_march|demos/inputs/disciplined-vs-undisciplined-march.json|30|300|720|input"
   "form_up_modes|demos/inputs/multi-unit-form-up-modes.json|30|400|720|input"
   "parade_ground|demos/inputs/parade-ground.json|30|1150|640|input"
+  "all_teams_control|demos/inputs/all-teams-control.json|60|210|720|input"
   "checkerboard_form_up|demos/inputs/checkerboard-form-up.json|30|460|720|input"
   "subcommander_mutual_support|demos/inputs/subcommander-mutual-support.json|60|480|640|input"
   "lateral_pivot_flank_march|demos/inputs/lateral-pivot-flank-march.json|30|400|720|input"

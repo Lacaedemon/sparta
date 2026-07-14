@@ -1,6 +1,7 @@
 extends Node2D
 class_name SelectionManager
-## Mouse control for the player's army (team 0):
+## Mouse control for the player's army (team 0) -- or every army, under Battle.
+## all_teams_control (the debug/testing mode from AllTeamsControl.gd, see _is_own_team):
 ##   Left click        — select one friendly unit (its block or its raised flag)
 ##   Left click + drag — box-select friendly units
 ##   Right click       — move there, or attack the enemy unit clicked (block or flag)
@@ -16,6 +17,10 @@ const CURSOR_SIZE: int = 24   # generated order-mode cursor
 # How far past a unit's RADIUS a click still lands on its block (world px). The body-pick
 # radius is RADIUS + this; a flag click only resolves outside that range (see _unit_at).
 const BODY_PICK_PAD: float = 6.0
+# Sentinel _unit_at team argument: "whichever team(s) the player currently controls" (see
+# _is_own_team) rather than one specific team -- used for plain left-click/box selection,
+# which under all-teams control should hit any team's unit, not just team 0.
+const TEAM_ANY_OWN: int = -1
 # Click tolerance (world px) grown around a unit's raised standard so the flag and its thin
 # pole are comfortably clickable, not just their exact drawn pixels.
 const FLAG_HIT_PAD: float = 4.0
@@ -446,11 +451,11 @@ func _finish_selection() -> void:
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 
 	if rect.size.length() < CLICK_THRESHOLD:
-		_finish_click(_unit_at(_drag_start, 0))
+		_finish_click(_unit_at(_drag_start, TEAM_ANY_OWN))
 	else:
 		for node in get_tree().get_nodes_in_group("units"):
 			var unit = node as UnitRef
-			if unit == null or unit.team != 0 or unit.state == UnitRef.State.DEAD:
+			if unit == null or not _is_own_team(unit.team) or unit.state == UnitRef.State.DEAD:
 				continue
 			if rect.has_point(unit.global_position):
 				_select(unit)
@@ -478,11 +483,12 @@ func _finish_click(u) -> void:
 	_last_click_ms = now
 
 
-## Select every alive friendly (team 0) unit sharing the prototype's type.
+## Select every alive controllable unit (team 0, or every team under all-teams control)
+## sharing the prototype's type.
 func _select_same_type(proto) -> void:
 	for node in get_tree().get_nodes_in_group("units"):
 		var unit = node as UnitRef
-		if unit == null or unit.team != 0 or unit.state == UnitRef.State.DEAD:
+		if unit == null or not _is_own_team(unit.team) or unit.state == UnitRef.State.DEAD:
 			continue
 		if _same_type(unit, proto):
 			_select(unit)
@@ -518,7 +524,7 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	# records it and applies it on the next physics tick (so live and replayed
 	# orders take exactly the same code path). Selection and camera stay live —
 	# only the simulation-affecting order is routed through the recorder.
-	var enemy = _unit_at(world_pos, 1)
+	var enemy = _unit_at(world_pos, _enemy_team())
 	var target_uid: int = -1
 	# Set when the click resolves to a line-relief target (a friendly, not a SUPPORT
 	# ward) -- distinguishes it from a SUPPORT ward below, which always stays focused.
@@ -530,7 +536,7 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 		# line-relief order on an engaged friendly, or — when SUPPORT is armed
 		# — a guard order on any friendly, engaged or not. Plain ground stays
 		# an ordinary move.
-		var friend: UnitRef = _unit_at(world_pos, 0)
+		var friend: UnitRef = _unit_at(world_pos, _friend_team())
 		var supporting: bool = _armed_mode == BattleRef.OrderMode.SUPPORT
 		if friend != null and not _selected.has(friend) \
 				and (supporting or friend.state == UnitRef.State.FIGHTING):
@@ -604,7 +610,7 @@ func _can_form_up(a: Vector2, b: Vector2) -> bool:
 		return false
 	if _armed_mode == BattleRef.OrderMode.SUPPORT:
 		return false
-	if _unit_at(a, 1) != null or _unit_at(b, 1) != null:
+	if _unit_at(a, _enemy_team()) != null or _unit_at(b, _enemy_team()) != null:
 		return false
 	# The inter-unit gaps eat MULTI_FORM_UP_GAP*(n-1) of the drag, so require that much extra
 	# on top of FORM_UP_MIN_WIDTH — otherwise a multi-unit drag could leave zero usable width
@@ -956,7 +962,7 @@ func _issue_conversio() -> void:
 		return
 	var issued: bool = false
 	for unit in _selected:
-		if is_instance_valid(unit) and unit.team == 0:
+		if is_instance_valid(unit) and _is_own_team(unit.team):
 			unit.conversio()
 			issued = true
 	if issued:
@@ -972,7 +978,7 @@ func _issue_quarter_turn(dir: int) -> void:
 		return
 	var issued: bool = false
 	for unit in _selected:
-		if is_instance_valid(unit) and unit.team == 0:
+		if is_instance_valid(unit) and _is_own_team(unit.team):
 			unit.quarter_turn(dir)
 			issued = true
 	if issued:
@@ -989,7 +995,7 @@ func _issue_wheel(dir: int) -> void:
 		return
 	var uids: Array = []
 	for unit in _selected:
-		if is_instance_valid(unit) and unit.team == 0:
+		if is_instance_valid(unit) and _is_own_team(unit.team):
 			uids.append(unit.uid)
 	if uids.is_empty():
 		return
@@ -1279,9 +1285,49 @@ func _selected_uids() -> Array:
 
 # --- helpers ---------------------------------------------------------------
 
+## Whether Battle.all_teams_control is active. Reads _battle's property dynamically
+## (Object.get, which returns null rather than erroring on a missing property) rather than
+## `_battle.all_teams_control` directly -- some unit tests parent a bare SelectionManager
+## under a stub/test node that isn't a real Battle, and a direct property access would throw
+## on those. (`== true` rather than a `bool(...)` cast: GDScript's bool constructor has no
+## overload for the `null` Object.get can return, so casting a missing property would itself
+## error -- a plain equality check treats null as simply "not true".)
+func _all_teams_control_active() -> bool:
+	return _battle != null and _battle.get("all_teams_control") == true
+
+
+## Whether `team` is one the player may directly select/command: normally only team 0
+## (the player's own army); every team when Battle.all_teams_control is active (the
+## debug/testing mode that hands the player both sides -- see AllTeamsControl.gd).
+func _is_own_team(team: int) -> bool:
+	return team == 0 or _all_teams_control_active()
+
+
+## Which team counts as "the enemy" for right-click order-target resolution (attack vs.
+## relief/move), relative to the current selection. Outside all-teams control this is
+## always team 1, since the player only ever controls team 0. Under all-teams control it's
+## whichever team the selection does NOT belong to, so a selected team-1 unit's right-click
+## targets team-0 units and vice versa -- the game only ever has two teams (0 and 1), so
+## "not this unit's team" is unambiguous. Falls back to team 1 with nothing selected (no
+## order can be issued anyway).
+func _enemy_team() -> int:
+	if not _all_teams_control_active():
+		return 1
+	for unit in _selected:
+		if is_instance_valid(unit):
+			return 1 - unit.team
+	return 1
+
+
+## The complementary "friendly" team for order-target resolution -- see _enemy_team().
+func _friend_team() -> int:
+	return 1 - _enemy_team()
+
+
 func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
-	# Nearest unit on `team` under the cursor (callers pass whichever team they
-	# want — the player's own for selection, the enemy's for attack orders).
+	# Nearest unit on `team` under the cursor (callers pass whichever team they want — the
+	# player's own for selection, the enemy's for attack orders — or TEAM_ANY_OWN for "any
+	# team the player currently controls", used by plain click/box selection).
 	var best = null
 	var best_d: float = UnitRef.RADIUS + BODY_PICK_PAD
 	# Fallback: the unit whose raised standard (flag + pole) is under the cursor, so the
@@ -1297,7 +1343,10 @@ func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
 		# control-group recall guards. (A dead unit also draws no flag.)
 		if unit == null or unit.state == UnitRef.State.DEAD:
 			continue
-		if unit.team != team:
+		if team == TEAM_ANY_OWN:
+			if not _is_own_team(unit.team):
+				continue
+		elif unit.team != team:
 			continue
 		var d: float = unit.global_position.distance_to(world_pos)
 		if d < best_d:
@@ -1797,7 +1846,7 @@ func _draw_orders() -> void:
 		# order line — consistent with order_summary()'s DEAD skip.
 		if u == null or not is_instance_valid(u) or u.state == UnitRef.State.DEAD:
 			continue
-		if u.team != 0 and not show_enemy:
+		if not _is_own_team(u.team) and not show_enemy:
 			continue
 		var origin: Vector2 = u.global_position
 		_draw_unit_speed(u, origin)

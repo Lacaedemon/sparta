@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/all-teams-control.json",
+  "caption": "The main menu's new \"All-Teams Control\" option: a real two-army battle (both lines spawn as normal) where the player commands BOTH sides directly -- team 1's AI never runs (Battle.all_teams_control, previously only reachable from demo/test scripting). Team 0's line (top) is box-selected and marched forward first; team 1's line (bottom) -- which a normal battle leaves to the AI -- is then box-selected and marched forward too, proving control isn't restricted to one side.",
+  "fixed_fps": 60,
+  "max_frames": 210,
+  "fps": 20,
+  "width": 720
+}
