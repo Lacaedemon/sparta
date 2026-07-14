@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "A paused confirmation-dialog interaction (Save/Discard/Cancel on Quit to Main Menu / Return to Campaign) triggered by a menu click, not by anything a recorded battle's orders/camera/pointer track can reproduce — there's no dialog-button-click event in the replay format for CI to play back."
+}
