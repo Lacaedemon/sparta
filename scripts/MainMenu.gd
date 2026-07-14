@@ -7,6 +7,7 @@ extends Control
 const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
 const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 const ParadeGround = preload("res://scripts/ParadeGround.gd")
+const AllTeamsControl = preload("res://scripts/AllTeamsControl.gd")
 
 
 func _ready() -> void:
@@ -16,6 +17,7 @@ func _ready() -> void:
 	# standalone "Tactical Battle" isn't mistaken for a campaign clash.
 	CampaignBattle.clear()
 	ParadeGround.clear()
+	AllTeamsControl.clear()
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.11, 0.12, 0.15)
@@ -54,6 +56,15 @@ func _ready() -> void:
 		ParadeGround.pending = true
 		get_tree().change_scene_to_file("res://scenes/Battle.tscn"))
 	box.add_child(drill_btn)
+
+	# Debug/testing: a normal two-army battle, but the player commands BOTH sides (no AI
+	# on team 1) — for rehearsing or verifying combat mechanics deterministically without
+	# an opponent's own decisions in the way. See AllTeamsControl and Battle.all_teams_control.
+	var all_teams_btn := _menu_button("All-Teams Control")
+	all_teams_btn.pressed.connect(func():
+		AllTeamsControl.pending = true
+		get_tree().change_scene_to_file("res://scenes/Battle.tscn"))
+	box.add_child(all_teams_btn)
 
 	# One button per registered campaign: selecting it records the map path,
 	# then opens the shared campaign scene which loads that data file.

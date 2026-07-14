@@ -632,6 +632,65 @@ func test_unit_at_flag_click_respects_team() -> void:
 			"a team-1 query resolves the same flag to the enemy")
 
 
+# --- all-teams control --------------------------------------------------------
+
+func test_is_own_team_defaults_to_team_zero_only() -> void:
+	var sm := _sm()
+	assert_true(sm._is_own_team(0), "team 0 is always the player's own")
+	assert_false(sm._is_own_team(1), "team 1 isn't controllable outside all-teams control")
+
+
+func test_is_own_team_relaxes_under_all_teams_control() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	b.all_teams_control = true
+	sm._battle = b
+	assert_true(sm._is_own_team(1), "every team is controllable once all-teams control is active")
+
+
+func test_unit_at_team_any_own_ignores_team1_outside_all_teams_control() -> void:
+	var sm := _sm()
+	var enemy := _unit()
+	enemy.team = 1
+	enemy.position = Vector2(700, 200)
+	assert_null(sm._unit_at(enemy.global_position, SelectionManagerScript.TEAM_ANY_OWN),
+			"TEAM_ANY_OWN stays team-0-only outside all-teams control")
+
+
+func test_unit_at_team_any_own_selects_across_teams_under_all_teams_control() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	b.all_teams_control = true
+	sm._battle = b
+	var enemy := _unit()
+	enemy.team = 1
+	enemy.position = Vector2(700, 200)
+	assert_eq(sm._unit_at(enemy.global_position, SelectionManagerScript.TEAM_ANY_OWN), enemy,
+			"a non-zero-team unit becomes selectable once all-teams control is active")
+
+
+func test_enemy_team_defaults_to_team1() -> void:
+	var sm := _sm()
+	assert_eq(sm._enemy_team(), 1, "outside all-teams control the enemy is always team 1")
+	assert_eq(sm._friend_team(), 0, "and the friend team is always team 0")
+
+
+func test_enemy_team_flips_relative_to_the_selection_under_all_teams_control() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	b.all_teams_control = true
+	sm._battle = b
+	var t1_unit := _unit()
+	t1_unit.team = 1
+	sm._select(t1_unit)
+	assert_eq(sm._enemy_team(), 0,
+			"a selected team-1 unit's 'enemy' is team 0, so right-click can order it to attack team 0")
+	assert_eq(sm._friend_team(), 1, "and its own team is the 'friend' team for relief/move resolution")
+
+
 func test_issue_form_up_routes_a_recorded_order() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()

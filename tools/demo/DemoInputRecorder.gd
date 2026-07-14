@@ -25,6 +25,10 @@ var _camera_track: Array = []          # keyframes [{tick,x,y,zoom}], interpolat
 var _by_tick: Dictionary = {}          # tick -> Array of expanded input events
 var _drill: bool = false               # solo/no-opponent rehearsal (input script "drill" field)
 var _scenario: Array = []              # custom unit matchup (input script "scenario" field)
+# Debug/testing mode: the player commands every team, and team 1's AI never runs.
+# From the input script's optional "all_teams_control" field. Independent of `_drill` --
+# both armies still spawn; see Battle.all_teams_control's own doc comment.
+var _all_teams_control: bool = false
 # Battle AI phase 3 (docs/battle-ai-design.md): which doctrine profile team 1's General uses,
 # from the input script's optional "doctrine" field (a DoctrineRegistry id). Empty string ==
 # "don't override" -- Battle keeps its own default (see Battle.ai_doctrine's own doc comment).
@@ -92,12 +96,14 @@ func _ready() -> void:
 	_drill = bool(script.get("drill", false))
 	_scenario = script.get("scenario", [])
 	_doctrine = str(script.get("doctrine", ""))
+	_all_teams_control = bool(script.get("all_teams_control", false))
 	_form_up_dist = int(script.get("form_up_dist", -1))
 	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
 	_arm_state_dump(DemoFrames.script_array(script, "state"))
-	print("[demo-input] %d scripted input events over %d ticks%s%s" % [
+	print("[demo-input] %d scripted input events over %d ticks%s%s%s" % [
 		_count_events(), _max_tick(), " (drill mode)" if _drill else "",
-		" (scenario: %d units)" % _scenario.size() if not _scenario.is_empty() else ""])
+		" (scenario: %d units)" % _scenario.size() if not _scenario.is_empty() else "",
+		" (all-teams control)" if _all_teams_control else ""])
 	# Defer so this bootstrap finishes _ready before the battle is added; Movie Maker keeps
 	# recording across the change. The recorder stays the scene root (Battle is a child) so
 	# it persists to inject events every tick.
@@ -108,6 +114,7 @@ func _start_battle() -> void:
 	_battle = load(BATTLE_SCENE).instantiate()
 	_battle.drill_mode = _drill   # set before add_child so Battle._ready reads it (no team-1 spawn)
 	_battle.scenario = _scenario  # likewise: a custom matchup replaces the default line spawn
+	_battle.all_teams_control = _all_teams_control   # likewise: relaxes team checks, no team-1 AI
 	if _doctrine != "":
 		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
 	add_child(_battle)
