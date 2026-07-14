@@ -269,7 +269,12 @@ func _ready() -> void:
 	# same way CampaignBattle ferries a clash's config (Godot's change_scene_to_file can't
 	# pass constructor args). Left set — not consumed here — so a later "Restart Battle"
 	# reload (a fresh Battle instance, script defaults reset) still lands in drill mode.
-	if ParadeGround.pending:
+	# Excluded when reloading into replay PLAYBACK (Load Replay / Watch Replay / Restart
+	# Replay all reload_current_scene() too): a playback's own recorded orders reference
+	# both teams' unit uids, so forcing drill mode here would silently drop team 1's spawn
+	# and desync the replay. Gating on Replay.mode covers every reload path in one place,
+	# rather than requiring each HUD reload handler to remember to clear the flag itself.
+	if ParadeGround.pending and Replay.mode != Replay.Mode.PLAYBACK:
 		drill_mode = true
 
 	# Drill mode is a no-opponent rehearsal; a campaign clash always has a defender. They are
