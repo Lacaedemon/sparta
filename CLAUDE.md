@@ -42,6 +42,12 @@ lychee link-check). It vendors GUT on demand and needs only a Godot 4.7 binary o
 `PATH` (or `GODOT_BIN`). See `tools/README.md`. Prefer it over invoking the
 individual checks by hand so local and CI results stay in sync.
 
+When the diff touches `scripts/`, also run `tools/check.sh patch_coverage`
+before pushing — a local approximation of the `codecov/patch` CI check,
+verified to match Codecov's own numbers. Catching a shortfall locally saves a
+~15–20 min CI round trip; see "Checking patch coverage before you push" in
+`tools/README.md`.
+
 ## Gameplay demos in PRs
 When your change is **user-visible** — it affects how the game looks or plays
 (`scenes/`, `scripts/`, `assets/`, `project.godot`) — help reviewers *see* it:
