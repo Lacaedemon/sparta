@@ -135,6 +135,49 @@ const PHASE_NAMES := {
 var type: int = Type.MOVE
 var phase: int = Phase.NONE
 
+# --- Order tree (docs/atomic-order-decomposition-design.md) -------------------
+# A composite order (the rear-move and lateral-pivot maneuvers, so far) decomposes into a
+# small tree of its own atomic steps instead of cycling `phase` through TURN/MARCH/
+# RETURN_TURN on itself: each step is a genuine child Order, and _active_child names which
+# one is currently driving Unit._think (see active_leaf() below). `phase` still exists and
+# still carries REFORM (the reform-before-move hold hasn't moved onto the tree yet), and
+# every order with no children -- the overwhelming majority, including every standalone
+# drill -- is unaffected: active_leaf() just returns the order itself.
+
+## Nested sub-orders; empty (the default) means this order is a genuine leaf/atomic step.
+var children: Array[Order] = []
+## Index into `children` of the currently-executing sub-order.
+var _active_child: int = 0
+## Back-reference to the composite this order is a child of; null for a top-level order
+## (Unit.current_order) or any other leaf order that was never installed as a child. Set
+## once, alongside `children`, when a composite builds its steps -- never re-derived.
+var parent: Order = null
+
+## The genuinely atomic order actually driving this tick's movement/turn logic: walks
+## children[_active_child] recursively until it finds a leaf (empty children). Called on
+## the top-level order (Unit.current_order); a leaf order -- no children at all, the case
+## for everything except the composites above -- returns itself unchanged.
+func active_leaf() -> Order:
+	var node := self
+	while node != null and not node.children.is_empty():
+		node = node.children[node._active_child]
+	return node
+
+
+## The Phase name this order reads as from the outside (the transcript's `order_phase`
+## field, chiefly): REFORM is still a genuine `phase` value, but TURN/MARCH/RETURN_TURN now
+## live in which child is active rather than in `phase` itself, so a plain `phase_name(phase)`
+## read would go stale for a converted composite. Every other order (no children, or parked
+## in the REFORM hold) has nothing to bridge and just reports `phase` unchanged.
+func effective_phase_name() -> String:
+	if children.is_empty() or phase == Phase.REFORM:
+		return phase_name(phase)
+	match _active_child:
+		0: return phase_name(Phase.TURN)
+		1: return phase_name(Phase.MARCH)
+		_: return phase_name(Phase.RETURN_TURN)
+
+
 ## Movement destination (MOVE/NUDGE); ZERO when unused.
 var target_pos: Vector2 = Vector2.ZERO
 ## Target unit uid (ATTACK/RELIEF/SUPPORT); -1 when unused.

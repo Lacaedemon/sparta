@@ -120,7 +120,7 @@ func test_lateral_pivot_turns_90_degrees_then_marches_keeping_its_shape() -> voi
 	assert_true(turned, "the quarter-turn completes")
 	assert_true(u.facing.is_equal_approx(start_facing.rotated(PI * 0.5)),
 		"the unit ends facing 90 degrees from its start heading, not reversed 180")
-	assert_eq(o.phase, Order.Phase.MARCH,
+	assert_eq(o.effective_phase_name(), "MARCH",
 		"the march starts the instant the turn settles -- no reform hold in between")
 	assert_true(u.has_move_target, "the march is already committed")
 	assert_eq(u.move_target, dest, "it marches straight to the lateral destination")
@@ -162,7 +162,7 @@ func test_lateral_pivot_turns_back_to_its_original_facing_on_arrival() -> void:
 	var arrived := false
 	for _i in range(1200):
 		u._think(0.016)
-		if o.phase == Order.Phase.RETURN_TURN:
+		if o.effective_phase_name() == "RETURN_TURN":
 			arrived = true
 			break
 	assert_true(arrived, "the march completes and the return leg arms")
@@ -210,13 +210,13 @@ func test_single_rank_unit_still_completes_a_lateral_pivot() -> void:
 		if not u.is_order_turning():
 			break
 	assert_false(u.is_order_turning(), "the quarter-turn completes even for a single-rank line")
-	assert_eq(o.phase, Order.Phase.MARCH, "the march starts immediately, same as any other shape")
+	assert_eq(o.effective_phase_name(), "MARCH", "the march starts immediately, same as any other shape")
 
 	for _i in range(600):
 		u._think(0.016)
-		if o.phase == Order.Phase.RETURN_TURN:
+		if o.effective_phase_name() == "RETURN_TURN":
 			break
-	assert_eq(o.phase, Order.Phase.RETURN_TURN, "the single-rank unit still arrives and turns back")
+	assert_eq(o.effective_phase_name(), "RETURN_TURN", "the single-rank unit still arrives and turns back")
 
 	for _i in range(120):
 		u._think(0.016)

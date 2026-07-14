@@ -1077,12 +1077,21 @@ func _interrupt_current_order() -> void:
 		current_order.turn_target = Vector2.ZERO
 
 
+## The genuinely atomic order actually driving this tick's movement/turn logic --
+## current_order.active_leaf(), or null with no current order at all. A rear-move or
+## lateral-pivot composite's turn/march children are only ever reached through this
+## accessor; every other order (no children) reads back as current_order itself.
+func active_leaf() -> Order:
+	return current_order.active_leaf() if current_order != null else null
+
+
 ## True while current_order is running an in-place turn: a rear MOVE's about-face (TURN)
 ## phase, or a standalone ABOUT_FACE / QUARTER_TURN drill.
 func is_order_turning() -> bool:
-	if current_order == null or current_order.type == Order.Type.WHEEL:
+	var leaf := active_leaf()
+	if leaf == null or leaf.type == Order.Type.WHEEL:
 		return false
-	return current_order.turn_target != Vector2.ZERO
+	return leaf.turn_target != Vector2.ZERO
 
 
 ## True while current_order is a WHEEL mid-swing.
@@ -1101,20 +1110,18 @@ func is_maneuver_turning() -> bool:
 	return is_order_turning() or is_wheeling() or _engage_turn_target != Vector2.ZERO
 
 
-## Goal facing of the in-place 180° reversal current_order is running (a rear move's TURN
-## phase or the standalone ABOUT_FACE drill), or ZERO when none. The figure render squashes
-## the marks through a reversal; a quarter-turn (standalone, or a lateral-pivot move's own
-## 90° TURN phase) keeps the ordinary facing render. A MOVE order's TURN phase is not always
-## a reversal -- a lateral-pivot move also arms one, at 90° -- so this checks the actual
-## turned angle (start/target antiparallel) rather than order type/phase alone.
+## Goal facing of the in-place 180° reversal the active leaf is running (a rear move's
+## about-face child, or the standalone ABOUT_FACE drill), or ZERO when none. The figure
+## render squashes the marks through a reversal; a quarter-turn (standalone, or a
+## lateral-pivot's own turn child) keeps the ordinary facing render. begin_pivot builds the
+## turn child as an ABOUT_FACE order only for a full (angle == PI) reversal and a
+## QUARTER_TURN otherwise, so checking the leaf's own type is exact -- no need to re-derive
+## "was this a reversal" from the turned vectors.
 func about_face_goal() -> Vector2:
-	if current_order == null:
+	var leaf := active_leaf()
+	if leaf == null:
 		return Vector2.ZERO
-	var reversing: bool = current_order.type == Order.Type.ABOUT_FACE \
-			or (current_order.type == Order.Type.MOVE
-					and current_order.phase == Order.Phase.TURN
-					and current_order.turn_start_facing.dot(current_order.turn_target) < -0.99)
-	return current_order.turn_target if reversing else Vector2.ZERO
+	return leaf.turn_target if leaf.type == Order.Type.ABOUT_FACE else Vector2.ZERO
 
 
 ## A single readable label for whichever drill/maneuver this unit is currently executing,
@@ -1194,7 +1201,7 @@ func _update_current_order() -> void:
 			# reform-before-move hold (_reform_timer > 0 -- see _think()'s reform block and
 			# Battle._apply_order_cmd's reform branch), both of which park the march.
 			if not has_move_target and not _has_queued_move_leg() \
-					and current_order.turn_target == Vector2.ZERO \
+					and active_leaf().turn_target == Vector2.ZERO \
 					and _reform_timer <= 0.0:
 				retire_current_order()
 		Order.Type.ABOUT_FACE, Order.Type.QUARTER_TURN, Order.Type.WHEEL:
@@ -1306,9 +1313,10 @@ func _think(delta: float) -> void:
 
 	# In-place order turns (a rear MOVE's about-face phase, the standalone about-face /
 	# quarter-turn drills): every soldier turns where they stand, the block does not advance
-	# or pivot as a body. The turn state lives on current_order. Cancelled by engaging in
-	# combat or by a march starting under the order (defensive: a waypoint append now
-	# queues BEHIND the turning order rather than pre-empting it, so has_move_target
+	# or pivot as a body. The turn state lives on the active leaf (current_order itself for
+	# a standalone drill; a rear-move/lateral-pivot composite's own turn child otherwise).
+	# Cancelled by engaging in combat or by a march starting under the order (defensive: a
+	# waypoint append now queues BEHIND the turning order rather than pre-empting it, so has_move_target
 	# stays false through the turn -- if a stray march does start, the partial rotation is
 	# preserved by the settle fold). On arrival (or an interrupt) the settle folds the
 	# turned angle into _formation_angle so the re-engaged arrival sees ~zero error and
@@ -1320,7 +1328,7 @@ func _think(delta: float) -> void:
 			_settle_order_turn()
 			retire_current_order()
 		else:
-			if _advance_turn(current_order.turn_target, delta):
+			if _advance_turn(active_leaf().turn_target, delta):
 				_settle_order_turn()
 				_finish_order_turn()
 			state = State.IDLE
@@ -1574,18 +1582,19 @@ func _think(delta: float) -> void:
 				reform_ranks()
 			# A lateral pivot kept its pre-pivot footprint for the whole march (no reform);
 			# the destination-side close is a turn back to that original facing, not a
-			# reshape -- arm it as a fresh TURN via begin_pivot, then mark the phase
-			# RETURN_TURN so _finish_order_turn retires the order once it completes instead
-			# of routing it through the reform/march handoff a forward TURN would take.
+			# reshape -- arm it as a fresh turn child via begin_pivot, appended after the
+			# turn/march children already spent so _finish_order_turn retires the whole
+			# composite once it completes instead of routing it through the reform/march
+			# handoff the opening turn takes.
 			elif current_order != null and current_order.type == Order.Type.MOVE \
 					and current_order.pivot_return_angle != 0.0:
 				var return_angle: float = current_order.pivot_return_angle
 				current_order.pivot_return_angle = 0.0
-				if begin_pivot(current_order, return_angle):
-					current_order.phase = Order.Phase.RETURN_TURN
-				# else: bodies not seeded, or fighting broke out on arrival -- the order
-				# just retires normally (has_move_target false, turn_target still zero),
-				# leaving the unit facing the pivoted heading instead of turning back.
+				begin_pivot(current_order, return_angle)
+				# If begin_pivot refused (bodies not seeded, or fighting broke out on
+				# arrival) it appended nothing, so the order just retires normally
+				# (has_move_target false, active_leaf().turn_target still zero), leaving
+				# the unit facing the pivoted heading instead of turning back.
 	elif enemy != null and order_mode != ORDER_HOLD:
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
 		# range/contact). If a re-face turn was in progress, settle it first: the unit is
@@ -2734,19 +2743,36 @@ func quarter_turn(dir: int) -> void:
 	set_current_order(order)
 
 
-## Arm the in-place TURN phase of a phased MOVE order, turning `angle` radians (signed,
-## Vector2.rotated's convention) from the current facing: the march to order.target_pos
-## starts when the turn completes (see _finish_order_turn for the reform-vs-hasty
-## handoff). `order` must already be current -- set_current_order has interrupted
-## whatever ran before, so nothing else is turning. Returns false when the unit can't
-## turn in place right now (fighting, or the soldier bodies aren't seeded yet); the
-## caller falls back to a plain march.
+## Arm the in-place turn opening (or, on a second call, closing) a phased MOVE order,
+## turning `angle` radians (signed, Vector2.rotated's convention) from the current facing.
+## The FIRST call on a fresh `order` splits it into a two-child tree -- this turn, and a
+## MARCH leaf carrying order.target_pos -- so _finish_order_turn can hand off to the march
+## by advancing the tree cursor (see _advance_order_tree) instead of overwriting `order`
+## itself. A SECOND call (the lateral pivot's return leg, armed once the march arrives --
+## see the arrival handler above) instead APPENDS a third child and makes it active, since
+## the first two are already spent. Builds an ABOUT_FACE-typed turn child for a full (angle
+## == PI) reversal and a QUARTER_TURN-typed one otherwise, so about_face_goal() can read the
+## child's own type instead of re-deriving "was this a reversal" from the turned vectors.
+## `order` must already be current -- set_current_order has interrupted whatever ran before,
+## so nothing else is turning. Returns false when the unit can't turn in place right now
+## (fighting, or the soldier bodies aren't seeded yet); the caller falls back to a plain
+## march.
 func begin_pivot(order: Order, angle: float) -> bool:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
 		return false
-	order.turn_start_facing = facing
-	order.turn_target = facing.rotated(angle)
-	order.phase = Order.Phase.TURN
+	var turn_leaf: Order = Order.new_about_face() if is_equal_approx(absf(angle), PI) \
+			else Order.new_quarter_turn(int(signf(angle)))
+	turn_leaf.turn_start_facing = facing
+	turn_leaf.turn_target = facing.rotated(angle)
+	turn_leaf.parent = order
+	if order.children.is_empty():
+		var march_leaf := Order.new_move(order.target_pos)
+		march_leaf.parent = order
+		order.children = [turn_leaf, march_leaf]
+		order._active_child = 0
+	else:
+		order.children.append(turn_leaf)
+		order._active_child = order.children.size() - 1
 	return true
 
 
@@ -2757,48 +2783,73 @@ func begin_about_face(order: Order) -> bool:
 	return begin_pivot(order, PI)
 
 
-## Fold the rotation the current order's in-place turn applied (start heading -> current
+## Fold the rotation the active leaf's in-place turn applied (start heading -> current
 ## heading) into _formation_angle, and clear the turn. A completed about-face turns exactly
 ## 180° and a quarter-turn exactly 90°, but this also settles an interrupted partial turn
 ## correctly (whatever angle actually turned), so soldier_world_slots always reproduces each
 ## body's own pre-turn slot and the arrival sees ~zero error either way — no man ever surges
 ## to a different soldier's slot.
 func _settle_order_turn() -> void:
-	var turned: float = angle_difference(current_order.turn_start_facing.angle(), facing.angle())
+	var leaf := active_leaf()
+	var turned: float = angle_difference(leaf.turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
-	current_order.turn_target = Vector2.ZERO
+	leaf.turn_target = Vector2.ZERO
 	_render_dirty = true
 
 
-## Complete the current order's in-place turn: hand a rear MOVE off to its next phase --
-## reform the ranks square to the new heading first (the drilled default; the countermarch
-## brings a full rank to the new front instead of the old partial rear rank), or step off at
-## once with the flipped grid and reform on arrival (the hasty variant). Either way the
-## block faces travel, so it advances forward, not backward. A lateral pivot's RETURN_TURN
-## phase completing (turning back to the pre-pivot facing) has no further phase to hand off
-## to -- the order is simply done. A standalone drill (ABOUT_FACE / QUARTER_TURN) is simply
-## done too, and retires.
+## Advance the order tree's cursor once `leaf` (the turn this tick just completed) is
+## spent: bump the immediate parent's _active_child to the next sibling, cascading upward
+## through grandparents whenever a level's own children are exhausted, until either an
+## ancestor still has a next child to start or the cascade reaches the top-level order
+## itself -- which retires exactly like a flat queue entry always has. A leaf with no
+## parent (a standalone drill, or the tree's own top-level order) retires immediately, the
+## same as today. Mirrors retire_current_order/_start_promoted_move's own "promote, then
+## commit the promoted order's first tick" shape, just run one level higher in the tree
+## instead of only ever at the queue's own head -- the caller still does the "commit"
+## half itself, since what that means (arm a march, retire outright) depends on the kind
+## of step being promoted to.
+func _advance_order_tree(leaf: Order) -> void:
+	var node := leaf
+	while node.parent != null:
+		var parent: Order = node.parent
+		parent._active_child += 1
+		if parent._active_child < parent.children.size():
+			return
+		node = parent
+	retire_current_order()
+
+
+## Complete the active leaf's in-place turn: hand a rear-move or lateral-pivot composite's
+## OPENING turn (its first child) off to its next step -- reform the ranks square to the
+## new heading first (the drilled default; the countermarch brings a full rank to the new
+## front instead of the old partial rear rank), or step off at once with the flipped grid
+## and reform on arrival (the hasty variant). Either way the block faces travel, so it
+## advances forward, not backward. Any OTHER turn completing -- a lateral pivot's closing
+## return leg (its last child), or a standalone ABOUT_FACE / QUARTER_TURN drill (no
+## children at all) -- has no further step to hand off to, so the tree just cascades
+## (retiring the whole composite, or the standalone drill itself).
 func _finish_order_turn() -> void:
-	if current_order.phase == Order.Phase.RETURN_TURN:
-		retire_current_order()
-		return
-	if current_order.type != Order.Type.MOVE:
-		retire_current_order()
+	var leaf := active_leaf()
+	var opening_turn: bool = current_order.type == Order.Type.MOVE \
+			and not current_order.children.is_empty() and current_order._active_child == 0
+	if not opening_turn:
+		_advance_order_tree(leaf)
 		return
 	if current_order.reform and reform_ranks():
 		_reform_target = current_order.target_pos
 		_reform_timer = _reform_timeout()
 		_reform_until_settled = true
 		current_order.phase = Order.Phase.REFORM
+		_advance_order_tree(leaf)
 	else:
 		# A lateral pivot (pivot_return_angle != 0) never reforms on arrival either -- it
 		# keeps its pre-pivot footprint for the whole march and only turns back once it gets
-		# there (the arrival handler below), so _reform_on_arrival stays false for it even
+		# there (the arrival handler above), so _reform_on_arrival stays false for it even
 		# though reform is also false.
 		_reform_on_arrival = not current_order.reform and current_order.pivot_return_angle == 0.0
-		move_target = current_order.target_pos
+		_advance_order_tree(leaf)
+		move_target = active_leaf().target_pos
 		has_move_target = true
-		current_order.phase = Order.Phase.MARCH
 
 
 ## Reform the ranks (a standalone, composable drill phase -- NOT part of the conversio
@@ -3547,7 +3598,9 @@ func start_order_response() -> void:
 ## Commit a pending reform-before-move: hand off the stored destination to the
 ## normal move machinery. Called when the reform timer expires or a fighting unit
 ## receives a move order with reform=true (fights can't be made to hold for reform).
-## A rear-move composite parked in its REFORM phase steps off into MARCH here.
+## A rear-move composite parked in its REFORM phase steps off into its (already-active,
+## per _finish_order_turn) march child here; the REFORM marker itself just clears, since
+## the composite's own march is tracked by the tree now, not by a further phase value.
 func _commit_pending_reform() -> void:
 	move_target = _reform_target
 	has_move_target = true
@@ -3555,7 +3608,7 @@ func _commit_pending_reform() -> void:
 	_reform_until_settled = false
 	_reform_settle_eps = REFORM_SETTLE_EPS
 	if current_order != null and current_order.phase == Order.Phase.REFORM:
-		current_order.phase = Order.Phase.MARCH
+		current_order.phase = Order.Phase.NONE
 
 
 ## Fold another friendly regiment into this one: pool soldiers, blend the

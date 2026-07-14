@@ -503,7 +503,6 @@ func test_order_summary_reports_a_running_maneuver_off_the_queue() -> void:
 func test_order_summary_reports_a_rear_move_turn_phase_as_about_facing() -> void:
 	var u := _make_unit()
 	var o := Order.new_move(Vector2(0, -200))
-	o.phase = Order.Phase.TURN
 	o.turn_start_facing = u.facing
 	o.turn_target = -u.facing
 	u.set_current_order(o)
