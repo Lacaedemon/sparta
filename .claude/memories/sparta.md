@@ -1715,19 +1715,20 @@ north-pointing facing while the units needed to march south; fixed by reversing 
 
 ## Front-rank position anchoring destabilizes in-place reshapes -- fixed on the second attempt
 
-**Update:** the "likely real fixes" below both landed and held, in PR #861 (closes #821,
-2026-07-15). `Unit.near_front_soldier_indices()`/`position_anchor_indices()` anchor
-`SoldierBodies.couple()` on the live near-front ranks ONLY when the regiment is settled and
-non-Square; a new `_position_anchor_unstable()` (`is_maneuver_turning() or _reform_holding()`)
-falls back to the wider `engaged_soldier_indices()` selection during exactly the transitions
-that broke the first attempt. The other fix ingredient the first attempt didn't try: narrowing
-to a single live rank was too small a sample to damp `SoldierEnemyContact`'s per-tick
-contact-torque noise and measurably re-aggravated the `test_residual_melee_swirl_battle.gd`
-regression (~38° pivot vs. its <28° gate); **`ANCHOR_RANKS = 2`** keeps that test's margin
-while still narrowing the anchor. All 6 originally-broken tests pass unmodified (they're all
-unengaged scenarios the change never touches), plus a new test proving the anchor actually
-tracks the front after rear casualties. Kept the section below as-is -- the failure mode and
-root-cause diagnosis it documents are exactly what the successful fix had to satisfy.
+**Update:** fixed in PR #861 (closes #821, 2026-07-15), using ONE of the two "likely real
+fixes" below -- freezing the anchor during a transition -- not both. `_position_anchor_unstable()`
+(`is_maneuver_turning() or _reform_holding()`) falls back to the wider `engaged_soldier_indices()`
+selection during exactly the transitions that broke the first attempt; the shipped
+`near_front_soldier_indices()` still reads LIVE body positions (`UnitFormation.live_front_indices`),
+same as the reverted attempt -- the canonical-target-slots-midpoint alternative was never
+implemented. A second fix ingredient the first attempt didn't try: narrowing to a single live
+rank was too small a sample to damp `SoldierEnemyContact`'s per-tick contact-torque noise and
+measurably re-aggravated the `test_residual_melee_swirl_battle.gd` regression (~38° pivot vs.
+its <28° gate); **`ANCHOR_RANKS = 2`** keeps that test's margin while still narrowing the
+anchor. All 6 originally-broken tests pass unmodified (they're all unengaged scenarios the
+change never touches), plus a new test proving the anchor actually tracks the front after rear
+casualties. Kept the section below as-is -- the failure mode and root-cause diagnosis it
+documents are exactly what the successful fix had to satisfy.
 
 ### First attempt -- tried and reverted
 
