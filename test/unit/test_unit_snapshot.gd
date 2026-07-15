@@ -1,5 +1,5 @@
 extends GutTest
-## Unit.to_snapshot_dict()/apply_snapshot_dict() (issue #763): the per-unit round-trip
+## Unit.to_snapshot_dict()/apply_snapshot_dict(): the per-unit round-trip
 ## Battle.capture_snapshot()/restore_snapshot() relies on. Pure field copies -- no tree
 ## needed, so these run against bare Unit.new() instances like test_order.gd's pure style.
 

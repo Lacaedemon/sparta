@@ -319,7 +319,7 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 ## PLAYBACK: reposition the order-read cursor so the next orders_for_tick(tick) call
 ## returns exactly the orders due at `tick` onward -- neither replaying ones already
 ## consumed before a rewind nor skipping ones a fast-forward jumped past. Used when a
-## derived state-snapshot restore (Battle.restore_snapshot, issue #763) jumps the battle to
+## derived state-snapshot restore (Battle.restore_snapshot) jumps the battle to
 ## a tick other than the one the cursor naturally advanced to. `_orders` is tick-sorted (both
 ## record_order's append order during a live recording and start_playback's load order
 ## preserve it), so a linear scan from the front always lands correctly. No-op outside

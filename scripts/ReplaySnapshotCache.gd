@@ -1,5 +1,5 @@
 class_name ReplaySnapshotCache
-## Derived, in-memory cache of full-state replay snapshots (issue #763), so rewinding or
+## Derived, in-memory cache of full-state replay snapshots, so rewinding or
 ## scrubbing during PLAYBACK doesn't have to resimulate from tick 0 every time. A snapshot
 ## captured at tick T lets Battle.restore_snapshot() resume simulating from T instead of 0 --
 ## the remaining (target - T) ticks still have to run (there is no way to derive a state

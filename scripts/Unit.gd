@@ -4493,7 +4493,7 @@ func _draw() -> void:
 	UnitSprites.flag(self, flag_c, _render_alpha, extent)
 
 
-# --- Derived replay state snapshots (issue #763) ----------------------------------------
+# --- Derived replay state snapshots ----------------------------------------
 # Battle.capture_snapshot()/restore_snapshot() use these to let a replay rewind resume from
 # a cached mid-battle moment instead of resimulating from tick 0. A snapshot is never part
 # of the canonical .replay file -- it's a plain in-memory Dictionary, cached by

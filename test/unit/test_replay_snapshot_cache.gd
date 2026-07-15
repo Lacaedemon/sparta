@@ -1,5 +1,5 @@
 extends GutTest
-## ReplaySnapshotCache (issue #763): pure indexing/eviction logic, no Battle/Unit involved --
+## ReplaySnapshotCache: pure indexing/eviction logic, no Battle/Unit involved --
 ## the payload is just an opaque Dictionary the cache never inspects.
 
 

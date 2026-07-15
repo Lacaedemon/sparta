@@ -1,5 +1,5 @@
 extends GutTest
-## Battle.capture_snapshot()/restore_snapshot()/seek_to_tick() (issue #763) in a LIVE battle:
+## Battle.capture_snapshot()/restore_snapshot()/seek_to_tick() in a LIVE battle:
 ## the derived state-snapshot cache that lets a PLAYBACK rewind resume from a cached
 ## mid-battle moment instead of resimulating from tick 0. Battle._physics_process's own
 ## automatic per-tick capture, ReplaySnapshotCache's density/eviction contract, and

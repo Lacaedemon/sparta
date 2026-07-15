@@ -209,7 +209,7 @@ var all_teams_control: bool = false
 # normal default-loadout spawn, byte-for-byte. See _spawn_scenario and demos/README.md.
 var scenario: Array = []
 
-# Derived replay state-snapshot cache (issue #763): lets a PLAYBACK rewind resume from a
+# Derived replay state-snapshot cache: lets a PLAYBACK rewind resume from a
 # cached mid-battle moment instead of resimulating from tick 0 -- see
 # ReplaySnapshotCache.gd and capture_snapshot/restore_snapshot/seek_to_tick below. Density
 # and memory cap are settable BEFORE the node enters the tree (like drill_mode/scenario
@@ -695,7 +695,7 @@ func _apply_starting_state(u: Unit, starting_state: int) -> void:
 			push_warning("[battle] scenario 'starting_state' %d is not ROUTING or DEAD; leaving the unit IDLE." % starting_state)
 
 
-# --- Derived replay state snapshots (issue #763) ----------------------------------------
+# --- Derived replay state snapshots ----------------------------------------
 # See ReplaySnapshotCache.gd for the cache's own density/eviction contract and
 # Unit.to_snapshot_dict/apply_snapshot_dict for what a per-unit entry carries. Battle owns
 # the actual capture/restore because a snapshot is a whole-battle moment (the tick counter,
@@ -812,7 +812,7 @@ func _physics_process(_delta: float) -> void:
 		return
 
 	# Cache a derived snapshot of the state we're about to simulate FROM this tick, on the
-	# configured density (issue #763) -- captured here, before this tick's own order-
+	# configured density -- captured here, before this tick's own order-
 	# application/AI/unit processing runs, so it reproduces exactly what a fresh restore
 	# needs as its starting point (equivalent to "the world as the previous tick's units
 	# left it"). PLAYBACK only: a live recording is the one true timeline, nothing to

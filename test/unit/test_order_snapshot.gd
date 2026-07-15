@@ -1,5 +1,5 @@
 extends GutTest
-## Order.to_dict()/from_dict() (issue #763): the round-trip a replay state snapshot relies on
+## Order.to_dict()/from_dict(): the round-trip a replay state snapshot relies on
 ## to carry a unit's in-flight orders queue through a capture/restore.
 
 
