@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/wheel-turn-oblique-move.json",
+  "caption": "Issue #786: an oblique rear-sector move order (140.5 deg off facing) now about-faces, THEN flank-pivots (wheels) onto the destination bearing, THEN marches -- instead of about-facing alone and leaving the march's own gradual turn to close a ~40 deg leftover gap. Watch the block reverse in place, then swing (its centre sliding along the hinge arc while one flank holds), then step off already lined up on the destination.",
+  "fixed_fps": 30,
+  "max_frames": 440,
+  "fps": 15,
+  "width": 720
+}

@@ -1407,6 +1407,13 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				var rear_move: bool = not cmd.has("face") and not side_step and not back_step \
 						and u.state != UnitRef.State.FIGHTING \
 						and UnitManeuver.is_rear_move(u.facing, move_vec)
+				# An oblique rear-sector move -- one where the about-face's own 180°
+				# reversal alone would still leave a sizeable misalignment to the
+				# destination -- flank-pivots (wheels) the rest of the way onto the
+				# destination bearing between the about-face and the march, rather than
+				# leaving the march's own gradual centre-pivot to close a large gap while
+				# already under way.
+				var wheel_turn: bool = rear_move and UnitManeuver.is_wheel_turn(u.facing, move_vec)
 				# A longer lateral move quarter-turns toward the destination's side in
 				# place, marches sideways to it keeping its pre-turn footprint, then
 				# quarter-turns back to the original facing on arrival -- a file march,
@@ -1441,9 +1448,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# the composite's reform phase (see Unit._finish_order_turn). A lateral
 				# pivot never reforms -- it keeps its pre-turn footprint for the whole march
 				# by design (the file-march character of the maneuver), so it forces reform
-				# off regardless of what the player's own command requested.
+				# off regardless of what the player's own command requested. A wheel-turn
+				# likewise never reforms between its turn phases and the march -- it reforms
+				# on arrival instead (Unit._finish_wheel), same as a plain rear move's own
+				# un-checked default.
 				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
-				order.reform = bool(cmd.get("reform", false)) and not lateral_pivot
+				order.reform = bool(cmd.get("reform", false)) and not lateral_pivot and not wheel_turn
 				# A multi-unit drag-line form-up: tag this order as one member of the shared
 				# group (docs/atomic-order-decomposition-design.md) instead of the standalone
 				# order every other move is. The group node itself is built once per id and
@@ -1467,10 +1477,15 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				if rear_move:
 					# Park the destination on the order and about-face in place; _think
 					# starts the march when the turn completes. has_move_target stays false
-					# so the turn isn't cancelled. begin_about_face refuses before the
-					# bodies seed (a spawn-tick order) -- fall back to a plain march then.
+					# so the turn isn't cancelled. begin_about_face(_with_wheel) refuses
+					# before the bodies seed (a spawn-tick order) -- fall back to a plain
+					# march then.
 					u.has_move_target = false
-					turn_armed = u.begin_about_face(order)
+					if wheel_turn:
+						var wheel_dir: int = UnitManeuver.wheel_turn_dir(u.facing, move_vec)
+						turn_armed = u.begin_about_face_with_wheel(order, wheel_dir)
+					else:
+						turn_armed = u.begin_about_face(order)
 				elif lateral_pivot:
 					# Same handoff as a rear move, but a quarter-turn toward the
 					# destination's side instead of a full reversal. begin_pivot refuses

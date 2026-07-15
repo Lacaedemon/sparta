@@ -11,8 +11,12 @@ class_name UnitManeuver
 ## LATERAL-PIVOT: a LARGE lateral shift quarter-turns toward the destination's
 ## side in place, widens back into a line facing it, then marches -- rather
 ## than centre-pivoting the whole block onto the new bearing at speed.
-## An about-face + flank-pivot (wheel) composite for large rear/oblique turns
-## is tracked as a follow-up and will add its own classifier here.
+## WHEEL-TURN: a rear-sector move whose destination is oblique enough that a
+## straight about-face (a full 180° reversal) would still leave a sizeable
+## leftover misalignment to correct -- about-faces, then flank-pivots (wheels)
+## the rest of the way onto the destination bearing, THEN marches, rather than
+## letting the march's own gradual centre-pivot close a large gap while
+## already under way (see is_wheel_turn).
 
 # A move counts as a side-step when its lateral offset (perpendicular to the
 # unit's current facing) dominates its forward offset AND the whole move is
@@ -29,6 +33,15 @@ const SIDESTEP_LATERAL_RATIO := 2.0
 # arc) triggers an about-face (conversio) instead of a 180° centre pivot: the block
 # reverses man-for-man where it stands, then marches to the destination facing it.
 const REAR_MOVE_MIN_ANGLE_DEG := 135.0
+
+# A rear-sector move's about-face always reverses facing by exactly 180°, so once it
+# completes, the leftover misalignment between the new heading (-facing) and the actual
+# destination direction ranges from 0° (destination exactly behind, angle_to_facing == 180°)
+# up to 45° (destination at the REAR_MOVE_MIN_ANGLE_DEG boundary, angle_to_facing == 135°).
+# Below this threshold the leftover is small enough that the march's own gradual centre-pivot
+# corrects it fine, same as today; at or above it, a flank pivot (wheel) closes the gap with a
+# drilled turn before marching instead (see is_wheel_turn / Unit.begin_about_face_with_wheel).
+const WHEEL_MIN_RESIDUAL_ANGLE_DEG := 30.0
 
 
 ## Whether a move order from `facing` along `move_vec` should be executed as a
@@ -58,6 +71,42 @@ static func is_rear_move(facing: Vector2, move_vec: Vector2) -> bool:
 		return false
 	var angle := rad_to_deg(absf(facing.angle_to(move_vec)))
 	return angle >= REAR_MOVE_MIN_ANGLE_DEG
+
+
+## The leftover misalignment (degrees) between a rear-sector move's post-about-face heading
+## (-facing, since an about-face always reverses exactly 180°) and the actual destination
+## direction `move_vec`. Zero when `facing`/`move_vec` are degenerate. Callers combine this
+## with is_rear_move to decide whether the about-face alone leaves too much for the march's
+## own gradual re-aim to close cleanly (see is_wheel_turn).
+static func rear_move_wheel_residual_deg(facing: Vector2, move_vec: Vector2) -> float:
+	if facing.length() < 0.01 or move_vec.length() < 0.01:
+		return 0.0
+	return rad_to_deg(absf((-facing).angle_to(move_vec)))
+
+
+## Whether a move order from `facing` along `move_vec` is large enough to about-face, THEN
+## flank-pivot (wheel) toward the destination bearing, THEN march -- rather than just
+## about-face-then-march (is_rear_move's own composite). Only rear-sector moves qualify (a
+## wheel never applies to a forward/lateral move); among those, only the more oblique ones,
+## where the about-face's own 180° reversal leaves at least WHEEL_MIN_RESIDUAL_ANGLE_DEG of
+## misalignment still to close. `facing` is the current heading; `move_vec` is destination
+## minus current position.
+static func is_wheel_turn(facing: Vector2, move_vec: Vector2) -> bool:
+	if not is_rear_move(facing, move_vec):
+		return false
+	return rear_move_wheel_residual_deg(facing, move_vec) >= WHEEL_MIN_RESIDUAL_ANGLE_DEG
+
+
+## The signed flank (Unit.wheel's own `dir` convention: +1 the unit's own right, -1 its own
+## left) a wheel-turn's flank pivot should hinge toward, evaluated against the POST-about-face
+## heading (-facing) since that is the heading actually in effect when the wheel arms (see
+## Unit.begin_about_face_with_wheel) -- mirroring lateral_pivot_dir's own "whichever side the
+## destination falls on" convention, just measured from the reversed heading instead of the
+## pre-turn one.
+static func wheel_turn_dir(facing: Vector2, move_vec: Vector2) -> int:
+	var new_facing: Vector2 = -facing
+	var right: Vector2 = new_facing.rotated(PI * 0.5)
+	return 1 if move_vec.dot(right) >= 0.0 else -1
 
 
 ## Whether a move order from `facing` along `move_vec` is a short reposition into

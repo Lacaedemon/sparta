@@ -1054,7 +1054,7 @@ func _interrupt_current_order() -> void:
 	if is_order_turning():
 		_settle_order_turn()
 	elif is_wheeling():
-		current_order.turn_target = Vector2.ZERO
+		active_leaf().turn_target = Vector2.ZERO
 
 
 ## The genuinely atomic order actually driving this tick's movement/turn logic --
@@ -1084,11 +1084,17 @@ func is_order_turning() -> bool:
 	return leaf.turn_target != Vector2.ZERO
 
 
-## True while current_order is a WHEEL mid-swing.
+## True while the active leaf is a WHEEL mid-swing -- a standalone wheel drill (V/Q/E-style,
+## current_order itself is the WHEEL order), or the flank-pivot phase of an about-face +
+## wheel + march composite (see Unit.begin_about_face_with_wheel), where the WHEEL leaf is a
+## child and current_order is the enclosing MOVE order. Mirrors is_order_turning()'s own
+## active_leaf()-based check rather than reading current_order.type directly, so a wheel
+## nested inside a composite is detected the same way a nested about-face already is.
 func is_wheeling() -> bool:
-	if current_order == null or current_order.type != Order.Type.WHEEL:
+	var leaf := active_leaf()
+	if leaf == null or leaf.type != Order.Type.WHEEL:
 		return false
-	return current_order.turn_target != Vector2.ZERO
+	return leaf.turn_target != Vector2.ZERO
 
 
 ## True while ANY maneuver owns the soldier bodies' arrival: an order-driven in-place turn
@@ -1341,12 +1347,11 @@ func _think(delta: float) -> void:
 	# (position and facing are consistent), so no settle step is needed.
 	if is_wheeling():
 		if state == State.FIGHTING or has_move_target:
-			current_order.turn_target = Vector2.ZERO
+			active_leaf().turn_target = Vector2.ZERO
 			retire_current_order()
 		else:
 			if _advance_wheel(delta):
-				current_order.turn_target = Vector2.ZERO
-				retire_current_order()
+				_finish_wheel()
 			state = State.IDLE
 			return
 
@@ -2771,6 +2776,30 @@ func begin_about_face(order: Order) -> bool:
 	return begin_pivot(order, PI)
 
 
+## Arm the about-face + flank-pivot (wheel) opening of a WHEEL-TURN move order
+## (UnitManeuver.is_wheel_turn -- a rear-sector move oblique enough that the about-face's
+## own 180° reversal alone would leave a sizeable leftover misalignment to the
+## destination): the same in-place reversal begin_about_face arms, with a WHEEL leaf
+## spliced in right after it. The wheel's own swing goal/hinge are NOT set here -- Unit.
+## wheel()'s own doc says the caller captures them "once when the wheel is armed", and this
+## composite's wheel doesn't actually arm until the about-face completes and facing/
+## _formation_angle reflect it (see _finish_order_turn's WHEEL hand-off, which fills them in
+## at that exact moment). `wheel_dir` is the flank it will hinge toward
+## (UnitManeuver.wheel_turn_dir's convention). Like a lateral pivot, this composite never
+## reforms between its turn phases and the march -- it reforms on arrival instead (see
+## _finish_wheel) -- so, unlike a plain about-face-then-march, the player's reform-before-
+## move choice is not consulted here. Returns false (falls back to a plain about-face +
+## march, the same as begin_about_face's own refusal) when the unit can't turn in place
+## right now.
+func begin_about_face_with_wheel(order: Order, wheel_dir: int) -> bool:
+	if not begin_pivot(order, PI):
+		return false
+	var wheel_leaf := Order.new_wheel(wheel_dir)
+	wheel_leaf.parent = order
+	order.children.insert(1, wheel_leaf)
+	return true
+
+
 ## Countermarch (exelismos, Asclepiodotus Ch.10 / Aelian Ch.27-28): reverse which end of the
 ## block faces the enemy by marching FILES through and around each other, rather than the
 ## whole block pivoting in place (that's conversio, above) or on a flank (a wheel). Built as a
@@ -2892,7 +2921,8 @@ func _advance_order_tree(leaf: Order) -> void:
 ## Complete the active leaf's in-place turn: hand a rear-move or lateral-pivot composite's
 ## OPENING turn (its first child) off to its next step -- insert a REFORM leaf to re-form the
 ## ranks square to the new heading first (the drilled default; the countermarch brings a full
-## rank to the new front instead of the old partial rear rank), or step off at once with the
+## rank to the new front instead of the old partial rear rank), arm the flank pivot for a
+## wheel-turn composite (see begin_about_face_with_wheel), or step off at once with the
 ## flipped grid and reform on arrival (the hasty variant). Either way the block faces travel,
 ## so it advances forward, not backward. Any OTHER turn completing -- a lateral pivot's
 ## closing return leg (its last child), or a standalone ABOUT_FACE / QUARTER_TURN drill (no
@@ -2903,6 +2933,20 @@ func _finish_order_turn() -> void:
 	var opening_turn: bool = current_order.type == Order.Type.MOVE \
 			and not current_order.children.is_empty() and current_order._active_child == 0
 	if not opening_turn:
+		_advance_order_tree(leaf)
+		return
+	var next_leaf: Order = current_order.children[current_order._active_child + 1]
+	if next_leaf.type == Order.Type.WHEEL:
+		# Arm the flank pivot NOW -- the instant the about-face has just completed and
+		# facing/_formation_angle already reflect it (Unit.wheel's own doc: "the caller
+		# captures it once when the wheel is armed"). The swing target is the destination
+		# direction itself, straight off the click point -- position hasn't moved during the
+		# about-face, so `current_order.target_pos - position` is exactly the original move
+		# vector -- matching #396's design note: "destination facing ... determined by the
+		# vector between current center position and the destination clicked position."
+		next_leaf.pivot = _wheel_pivot_point(next_leaf.dir)
+		next_leaf.turn_start_facing = facing
+		next_leaf.turn_target = (current_order.target_pos - position).normalized()
 		_advance_order_tree(leaf)
 		return
 	if current_order.reform and reform_ranks():
@@ -3093,8 +3137,9 @@ func wheel(dir: int) -> void:
 ## rotated too, so any residual body motion carries through cleanly rather than snapping
 ## direction.
 func _advance_wheel(delta: float) -> bool:
-	var goal: Vector2 = current_order.turn_target
-	var hinge: Vector2 = current_order.pivot
+	var leaf := active_leaf()
+	var goal: Vector2 = leaf.turn_target
+	var hinge: Vector2 = leaf.pivot
 	var before: float = facing.angle()
 	_rotate_facing_toward(goal, delta, WHEEL_TURN_RATE)
 	var step: float = angle_difference(before, facing.angle())
@@ -3107,6 +3152,29 @@ func _advance_wheel(delta: float) -> bool:
 		facing = goal
 		return true
 	return false
+
+
+## Complete a WHEEL leaf that just finished its swing: clear its turn goal, then hand off.
+## A standalone wheel drill (no parent -- the V/Q/E-style case) just retires outright, the
+## same as before this leaf/active_leaf split existed. A wheel spliced into an about-face +
+## wheel + march composite (Unit.begin_about_face_with_wheel) instead advances the order tree
+## onto the march leaf and commits it immediately -- the same turn-to-march handoff
+## _finish_order_turn's own about-face completion uses, just triggered from the wheel's own
+## completion site since is_order_turning() explicitly excludes WHEEL leaves (a wheel is never
+## routed through _finish_order_turn). Reforms on arrival (like a plain rear move's own
+## default, un-checked case) since the composite's opening about-face leaves the same
+## partial-rank-at-front state a plain rear move does -- the wheel itself is a rigid rotation
+## that doesn't touch which rank leads.
+func _finish_wheel() -> void:
+	var leaf := active_leaf()
+	leaf.turn_target = Vector2.ZERO
+	if leaf.parent == null:
+		retire_current_order()
+		return
+	_reform_on_arrival = true
+	_advance_order_tree(leaf)
+	move_target = active_leaf().target_pos
+	has_move_target = true
 
 
 ## The facing of body `index`; the unit heading for an out-of-range index (so
