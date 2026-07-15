@@ -303,8 +303,8 @@
           "order_mode": "Normal",
           "order_phase": "WHEEL",
           "position": [
-            494.56,
-            449.47
+            502.97,
+            417.07
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -314,8 +314,8 @@
               53.95
             ],
             "centroid": [
-              495.27,
-              448.03
+              503.69,
+              415.64
             ],
             "count": 40,
             "prone_count": 0
@@ -338,8 +338,8 @@
           "current_speed": 7.0,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
@@ -350,19 +350,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            494.41,
-            455.77
+            500.8,
+            405.01
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              74.35,
-              63.4
+              72.24,
+              66.67
             ],
             "centroid": [
-              495.63,
-              457.87
+              502.71,
+              406.55
             ],
             "count": 40,
             "prone_count": 0
@@ -385,8 +385,8 @@
           "current_speed": 17.0,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
@@ -397,19 +397,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            492.88,
-            453.02
+            498.59,
+            403.38
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              76.05,
-              58.82
+              67.54,
+              71.79
             ],
             "centroid": [
-              494.0,
-              454.98
+              500.45,
+              404.89
             ],
             "count": 40,
             "prone_count": 0
@@ -432,8 +432,8 @@
           "current_speed": 22.0,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
@@ -444,19 +444,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            488.43,
-            445.2
+            492.06,
+            398.09
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              75.93,
-              59.06
+              66.02,
+              73.03
             ],
             "centroid": [
-              489.45,
-              446.98
+              493.67,
+              399.39
             ],
             "count": 40,
             "prone_count": 0
@@ -479,8 +479,8 @@
           "current_speed": 22.0,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
@@ -491,19 +491,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            476.47,
-            424.16
+            473.21,
+            382.93
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              75.93,
-              59.06
+              66.16,
+              73.03
             ],
             "centroid": [
-              477.48,
-              425.94
+              474.81,
+              384.21
             ],
             "count": 40,
             "prone_count": 0
@@ -526,8 +526,8 @@
           "current_speed": 22.0,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
@@ -538,19 +538,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            464.51,
-            403.12
+            454.35,
+            367.76
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              75.93,
-              59.06
+              66.16,
+              73.03
             ],
             "centroid": [
-              465.52,
-              404.91
+              455.95,
+              369.05
             ],
             "count": 40,
             "prone_count": 0
@@ -570,11 +570,11 @@
         {
           "countermarch_variant": null,
           "current_order": "MOVE",
-          "current_speed": 22.0,
+          "current_speed": 10.5,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
@@ -585,19 +585,19 @@
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            452.54,
-            382.09
+            437.69,
+            354.36
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              75.93,
-              59.06
+              66.16,
+              73.03
             ],
             "centroid": [
-              453.56,
-              383.87
+              439.37,
+              355.71
             ],
             "count": 40,
             "prone_count": 0
@@ -616,41 +616,41 @@
       "units": [
         {
           "countermarch_variant": null,
-          "current_order": "MOVE",
-          "current_speed": 21.4,
+          "current_order": null,
+          "current_speed": 0.0,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
-          "maneuver": "MARCHING",
+          "maneuver": "IDLE",
           "morale": 100.0,
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
-          "order_phase": "MARCH",
+          "order_phase": null,
           "position": [
-            440.59,
-            361.06
+            437.49,
+            354.2
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              75.93,
-              59.06
+              52.94,
+              62.39
             ],
             "centroid": [
-              441.6,
-              362.85
+              435.04,
+              352.23
             ],
             "count": 40,
             "prone_count": 0
           },
           "soldiers": 40,
-          "state": "MOVING",
+          "state": "IDLE",
           "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
@@ -663,41 +663,41 @@
       "units": [
         {
           "countermarch_variant": null,
-          "current_order": "MOVE",
-          "current_speed": 8.0,
+          "current_order": null,
+          "current_speed": 0.0,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
-          "maneuver": "MARCHING",
+          "maneuver": "IDLE",
           "morale": 100.0,
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
-          "order_phase": "MARCH",
+          "order_phase": null,
           "position": [
-            436.62,
-            354.09
+            434.92,
+            352.13
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              75.93,
-              59.06
+              66.65,
+              73.42
             ],
             "centroid": [
-              437.7,
-              355.99
+              432.81,
+              350.43
             ],
             "count": 40,
             "prone_count": 0
           },
           "soldiers": 40,
-          "state": "MOVING",
+          "state": "IDLE",
           "target_enemy_uid": null,
           "team": 0,
           "tier": "CLOSE",
@@ -714,8 +714,8 @@
           "current_speed": 0.0,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
@@ -726,19 +726,19 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            438.35,
-            357.13
+            433.68,
+            351.14
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              71.22,
-              50.77
+              66.16,
+              73.03
             ],
             "centroid": [
-              437.24,
-              355.18
+              431.93,
+              349.73
             ],
             "count": 40,
             "prone_count": 0
@@ -761,8 +761,8 @@
           "current_speed": 0.0,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
@@ -773,19 +773,19 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            436.53,
-            353.94
+            433.68,
+            351.14
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              69.68,
-              48.07
+              66.16,
+              73.03
             ],
             "centroid": [
-              435.04,
-              351.32
+              431.93,
+              349.73
             ],
             "count": 40,
             "prone_count": 0
@@ -808,8 +808,8 @@
           "current_speed": 0.0,
           "engaged": false,
           "facing": [
-            -0.49,
-            -0.87
+            -0.78,
+            -0.63
           ],
           "formation": "TIGHT",
           "frontage": 9,
@@ -820,19 +820,19 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            435.08,
-            351.38
+            433.68,
+            351.14
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              76.15,
-              59.45
+              66.16,
+              73.03
             ],
             "centroid": [
-              433.73,
-              349.01
+              431.93,
+              349.73
             ],
             "count": 40,
             "prone_count": 0
