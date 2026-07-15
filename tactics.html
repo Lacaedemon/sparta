@@ -48,9 +48,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-e16872440047994247dd28c82fe9c6b4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-9128bc62f050181c68e488bde1b40d26.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-e16872440047994247dd28c82fe9c6b4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-fea1f8a7000236c4f72428a0d62d17d8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-048303977f561516386e8f22b44f17fe.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-fea1f8a7000236c4f72428a0d62d17d8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -698,7 +698,7 @@ Figure&nbsp;4: Routing around terrain: a weak unit breaks and flees straight tow
 </section>
 <section id="cavalry" class="level3 g-col-12 g-col-md-4">
 <h3 class="anchored" data-anchor-id="cavalry">🐎 Cavalry</h3>
-<p><strong>Fast</strong> — they charge at a real gallop (~8.5 m/s, far quicker than any foot unit’s advance) — with a <strong>charge bonus</strong> that grows with closing speed. Devastating into a flank or rear, but blunted when it charges into braced spears.</p>
+<p><strong>Fast</strong> — they charge at a hard canter (~8.5 m/s, far quicker than any foot unit’s advance) — with a <strong>charge bonus</strong> that grows with closing speed. Devastating into a flank or rear, but blunted when it charges into braced spears.</p>
 </section>
 <section id="spearmen" class="level3 g-col-12 g-col-md-4">
 <h3 class="anchored" data-anchor-id="spearmen">🛡️ Spearmen</h3>
@@ -874,6 +874,12 @@ Table&nbsp;2: Movement paces by unit type, in metres per second.
 </figcaption>
 <div aria-describedby="tbl-unit-speeds-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>Type</th>
@@ -905,14 +911,14 @@ Table&nbsp;2: Movement paces by unit type, in metres per second.
 <td>Cavalry</td>
 <td>1.7 m/s (walk gait)</td>
 <td>3.5 m/s (trot)</td>
-<td>8.5 m/s (gallop)</td>
+<td>8.5 m/s (hard canter)</td>
 </tr>
 </tbody>
 </table>
 </div>
 </figure>
 </div>
-<p>Heavier armor and weapons cost proportionally more at a run than at a walk — walking pace barely changes under load, but running form degrades fast, so spearmen’s walk sits close to the lighter types’ while their sprint lags well behind. Cavalry’s three paces map onto the horse’s own real gaits (walk / trot / gallop) rather than a rider-weight-scaled fraction, since a rider’s kit is a small fraction of what the horse itself carries.</p>
+<p>Heavier armor and weapons cost proportionally more at a run than at a walk — walking pace barely changes under load, but running form degrades fast, so spearmen’s walk sits close to the lighter types’ while their sprint lags well behind. Cavalry’s walk and jog map onto the horse’s own real walk/trot gaits rather than a rider-weight-scaled fraction, since a rider’s kit is a small fraction of what the horse itself carries. Its charge pace is deliberately toned down from a true historical gallop (which would close distance faster than the map/camera scale reads well) toward a fast canter — see <code>docs/SPEED_VERIFICATION.md</code> for the historical comparison.</p>
 <p>That sprint gap is a lever: cavalry cross the field and reach an exposed flank far sooner than infantry can re-form to face them, so commit horse decisively and time your foot to be where the charge lands. (The faster the gallop at the moment of contact, the bigger the charge bonus — so a clean run-up hits harder than a standing start.)</p>
 </section>
 <section id="pace-modes" class="level2">
