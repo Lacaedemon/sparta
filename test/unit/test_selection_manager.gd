@@ -773,6 +773,37 @@ func test_issue_countermarch_only_turns_own_team_units() -> void:
 			"an enemy unit in the selection is skipped outside all-teams control")
 
 
+func test_issue_countermarch_noops_during_playback() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 35
+	b._by_uid[35] = u
+	sm._selected = [u]
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm._issue_countermarch(Unit.CountermarchVariant.MACEDONIAN)
+	Replay.mode = prev_mode
+	assert_eq(u.countermarch_variant(), -1, "no countermarch issued during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_issue_countermarch_noops_with_no_own_team_units_selected() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var enemy := _seeded_unit(1)
+	enemy.uid = 36
+	b._by_uid[36] = enemy
+	sm._selected = [enemy]
+	sm._issue_countermarch(Unit.CountermarchVariant.MACEDONIAN)
+	assert_eq(enemy.countermarch_variant(), -1, "an all-enemy selection issues nothing")
+	assert_true(b._pending_orders.is_empty(), "no command queued for an empty own-team uid list")
+
+
 func test_dispatch_key_shift_v_issues_choral_countermarch() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()
