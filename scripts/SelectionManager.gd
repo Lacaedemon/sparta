@@ -1739,11 +1739,21 @@ func _draw_resize_handles() -> void:
 		_draw_resize_preview(_resize_unit)
 
 
+## Half-width (world units) of a resize preview line for `files` files on `u`'s own
+## grid pitch -- `u.spacing_scale`-aware, matching UnitFormation.files_for_halfwidth's
+## inverse mapping (and UnitFormation.slots' actual layout) so a LOOSE unit's preview
+## line spans its real formed-up width instead of the plain NORMAL-order spacing. Pure,
+## so the drag-start "no jump" invariant (matches _resize_handle_positions' extent when
+## `files` hasn't changed yet) is directly testable.
+func _resize_preview_half_width(u, files: int) -> float:
+	return float(files - 1) * 0.5 * UnitRef.FORMATION_SPACING * u.spacing_scale
+
+
 ## Preview the dragged frontage: a line spanning the target width and the file count
 ## as text, so the player sees the new line before releasing.
 func _draw_resize_preview(u) -> void:
 	var right: Vector2 = _file_axis(u)
-	var half: float = float(_resize_files - 1) * 0.5 * UnitRef.FORMATION_SPACING
+	var half: float = _resize_preview_half_width(u, _resize_files)
 	var a: Vector2 = u.global_position - right * half
 	var b: Vector2 = u.global_position + right * half
 	draw_line(a, b, RESIZE_HANDLE_COLOR, 2.0)

@@ -276,6 +276,26 @@ func test_resize_handle_at_grabs_a_grip_and_ignores_empty_space() -> void:
 			"a cursor far from any grip grabs nothing")
 
 
+func test_resize_preview_half_width_scales_with_the_unit_own_spacing() -> void:
+	# Regression test for #863: the drag-resize preview line must span the unit's OWN
+	# formed-up width, not the density-blind NORMAL-order pitch -- otherwise a LOOSE unit's
+	# preview line is narrower than its real footprint (and jumps the instant the drag
+	# starts, since _resize_files begins equal to the unit's own current frontage).
+	var sm := _sm()
+	var u := _unit()
+	u.set_formation(UnitScript.FORMATION_LOOSE)
+	assert_gt(u.spacing_scale, 1.0,
+			"loose order must actually widen spacing for this test to mean anything")
+	var files: int = UnitFormation.frontage(u)
+	var half: float = sm._resize_preview_half_width(u, files)
+	var expected: float = float(files - 1) * 0.5 * UnitScript.FORMATION_SPACING * u.spacing_scale
+	assert_almost_eq(half, expected, 0.01,
+			"the preview half-width scales with the unit's own spacing_scale")
+	var density_blind: float = float(files - 1) * 0.5 * UnitScript.FORMATION_SPACING
+	assert_gt(half, density_blind,
+			"a loose unit's real half-width is wider than the density-blind pitch")
+
+
 func test_resize_frontage_routes_an_absolute_command_to_battle() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()
