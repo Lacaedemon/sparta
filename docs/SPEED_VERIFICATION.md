@@ -101,6 +101,19 @@ above do — flagged as an open question rather than asserted as verified.
   formation density, where history treats it as a rare, temporary stance
   rather than the standing default — worth noting, but a materially different
   (and much smaller) claim than "half the historical minimum."
+  **Resolution (#719):** kept as-is, deliberately, rather than loosened
+  toward pyknosis. Sparta's combat model keeps a regiment in sustained melee
+  contact far more of the time than any historical campaign's march-to-battle
+  ratio, so treating the emergency-tier density as the standing "combat
+  ready" default is an intentional choice for footprint compactness and
+  legibility at this game's camera/map scale, not an oversight. It's also
+  not the only density available: `FORMATION_LOOSE` (`spacing_scale = 2.0`,
+  ~0.9 m/man) already gives the pyknosis close-order figure as a selectable
+  formation — so the issue's "reserve the tight density for a specific
+  stance, loosen the default" proposal is already half-implemented, just
+  with the tiers assigned the other way around (tight is the default, loose
+  is the option). No constant changes in this PR; see the rationale comment
+  on `FORMATION_SPACING` in `scripts/Unit.gd`.
 
 **Unit radii (collision bodies):**
 
