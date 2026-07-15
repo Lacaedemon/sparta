@@ -1,5 +1,5 @@
 extends GutTest
-## Countermarch (exelismos, issue #375): reverses which end of the block faces the enemy by
+## Countermarch (exelismos): reverses which end of the block faces the enemy by
 ## marching files through each other -- built as a rear-move-style composite (about-face, then
 ## reform_ranks() brings a full rank to the new front, then a march) so it reuses that exact,
 ## already-tested machinery (see test_reform_ranks.gd / test_rear_move_conversio.gd). Isolated
@@ -188,3 +188,21 @@ func test_countermarch_march_leg_targets_the_variant_destination() -> void:
 	assert_true(started, "the parked march commits once the about-face and reform complete")
 	assert_true(u.move_target.is_equal_approx(expected),
 		"it marches to the Macedonian variant's computed destination")
+
+
+# --- Battle.enqueue_countermarch: the recorded-order path -------------------
+
+## Unlike conversio/quarter-turn (visual-only, never recorded), a Macedonian/Laconian
+## countermarch moves the regiment, so Battle.enqueue_countermarch must respect the same
+## playback guard every other recorded order (enqueue_wheel, enqueue_order, ...) has.
+func test_enqueue_countermarch_noops_during_playback() -> void:
+	var b = load("res://scripts/Battle.gd").new()
+	autofree(b)
+	var u := _make_partial_unit()
+	u.uid = 77
+	b._by_uid[77] = u
+	var prev_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	b.enqueue_countermarch([77], Unit.CountermarchVariant.MACEDONIAN)
+	Replay.mode = prev_mode
+	assert_null(u.current_order, "a countermarch command issued during playback is dropped")

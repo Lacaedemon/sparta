@@ -750,6 +750,68 @@ func test_issue_conversio_only_turns_own_team_units() -> void:
 			"an enemy unit in the selection is skipped outside all-teams control")
 
 
+## Unlike conversio/quarter-turn (visual-only, unrecorded), a countermarch goes through the
+## recorded Battle.enqueue_countermarch path -- see _issue_countermarch's own doc -- so this
+## needs a real Battle double registering both units by uid, the same setup the dispatch_key
+## resize/explicatio tests above use.
+func test_issue_countermarch_only_turns_own_team_units() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var friend := _seeded_unit(0)
+	friend.uid = 30
+	b._by_uid[30] = friend
+	var enemy := _seeded_unit(1)
+	enemy.uid = 31
+	b._by_uid[31] = enemy
+	sm._selected = [friend, enemy]
+	sm._issue_countermarch(Unit.CountermarchVariant.MACEDONIAN)
+	assert_eq(friend.countermarch_variant(), Unit.CountermarchVariant.MACEDONIAN,
+			"the own-team unit received the countermarch")
+	assert_eq(enemy.countermarch_variant(), -1,
+			"an enemy unit in the selection is skipped outside all-teams control")
+
+
+func test_dispatch_key_shift_v_issues_choral_countermarch() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 32
+	b._by_uid[32] = u
+	sm._select(u)
+	assert_true(sm._dispatch_key(_key_event(KEY_V, false, true)), "Shift+V is a handled hotkey")
+	assert_eq(u.countermarch_variant(), Unit.CountermarchVariant.CHORAL)
+
+
+func test_dispatch_key_ctrl_v_issues_macedonian_countermarch() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 33
+	b._by_uid[33] = u
+	sm._select(u)
+	assert_true(sm._dispatch_key(_key_event(KEY_V, true)), "Ctrl+V is a handled hotkey")
+	assert_eq(u.countermarch_variant(), Unit.CountermarchVariant.MACEDONIAN)
+
+
+func test_dispatch_key_ctrl_shift_v_issues_laconian_countermarch() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 34
+	b._by_uid[34] = u
+	sm._select(u)
+	assert_true(sm._dispatch_key(_key_event(KEY_V, true, true)), "Ctrl+Shift+V is a handled hotkey")
+	assert_eq(u.countermarch_variant(), Unit.CountermarchVariant.LACONIAN)
+
+
 func test_issue_quarter_turn_only_turns_own_team_units() -> void:
 	var sm := _sm()
 	var friend := _seeded_unit(0)
