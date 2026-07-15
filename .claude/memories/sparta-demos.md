@@ -444,6 +444,21 @@ and 840") to be robust to this kind of drift. A local run is still fine for a fi
 sanity check and for short/simple scenarios where no divergence has ever been observed.
 (`Lacaedemon/sparta` PR #794, 2026-07-12.)
 
+**Recurred twice more in one session (PRs #861 and #866, 2026-07-15), both caught by review, not
+by the authoring agent's own pre-push check.** #861's caption claimed the position-anchor marker
+led its centroid "throughout the clash" from a local run's tick-460 numbers; CI's actual
+transcript showed it trailing by 4-6 world units at the two earlier sampled ticks, only pulling
+ahead near the end. #866's caption implied all three countermarch variants finish on-screen; CI's
+transcript showed the Laconian unit still mid-march at the clip's last sampled tick, needing the
+`state` range and `max_frames` extended before it actually settled. Both are the SAME failure
+mode this entry already names, just recurring — worth treating as a standing pre-push check for
+ANY demo carrying a specific numeric or completion claim (not only "long/chaotic battle" ones):
+before finalizing a caption, fetch or generate the transcript for the actual commit that will
+ship, not a local run from an earlier or different commit, and confirm every specific claim
+against it line by line. When delegating demo authorship to a subagent, state this check
+explicitly in the brief up front — both recurrences were from agents who verified locally, wrote
+a confident caption from that, and never diffed it against what CI would actually record.
+
 ## Footprint-preserving maneuvers are inherently subtle on screen — stage for legibility, verify by per-region pixel-diff
 
 A footprint-preserving maneuver — the conversio/about-face (#394), where the block reverses 180°
