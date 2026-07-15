@@ -284,6 +284,13 @@ var reform: bool = false
 ## (see Battle._apply_order_cmd), leaves it at zero. Set once at issue time, consumed (and
 ## cleared to zero, so it only fires once) by Unit._think's arrival handler.
 var pivot_return_angle: float = 0.0
+## MOVE only, Unit.countermarch()'s composite: which exelismos variant (Unit.CountermarchVariant)
+## this order is running, or -1 for every other order (including a plain rear move built the
+## same way -- see begin_about_face). Unit.current_maneuver()/order_summary() read this first,
+## ahead of about_face_goal()/is_order_turning(), since a countermarch's opening phase IS a
+## bare Order.Type.ABOUT_FACE leaf and can't otherwise be told apart from a plain conversio or
+## rear-move turn. Set once at issue time; never mutated afterward.
+var countermarch_variant: int = -1
 ## A live pass-through link to a friendly unit, settable by ANY order type -- not just
 ## RELIEF. While armed, Unit._separation_exempt lets the two units interpenetrate instead
 ## of shoving each other apart, and resolve_friendly_target (below) clears the link once

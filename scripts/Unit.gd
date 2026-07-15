@@ -26,6 +26,26 @@ enum Maneuver {
 	NUDGE_BACKSTEP,
 	NUDGE_FORWARD_STEP,
 	CYCLE_CHARGE,
+	COUNTERMARCH,   # Appended last so recorded/dumped transcripts keep every other value stable.
+}
+
+## The three historical exelismos (countermarch) variants Unit.countermarch() can run --
+## Asclepiodotus Ch.10 / Aelian Ch.27-28. All three reverse which end of the block faces the
+## enemy by marching files through each other (see countermarch()'s own doc); they differ only
+## in the ground the whole regiment ends up on:
+##   MACEDONIAN -- advances onto new ground (toward the direction it now faces).
+##   LACONIAN   -- withdraws onto new ground (away from the direction it now faces).
+##   CHORAL     -- reverses on the very ground it already stands on (aka Persian/Cretan).
+enum CountermarchVariant { MACEDONIAN, LACONIAN, CHORAL }
+
+## Readable name for a CountermarchVariant, for the HUD order summary and the demo/replay
+## transcript. Kept as an explicit table (not a reflected enum) for the same reason
+## DemoState's *_NAMES tables are: stable across an enum reorder, greppable if a value goes
+## unmapped.
+const COUNTERMARCH_VARIANT_NAMES := {
+	CountermarchVariant.MACEDONIAN: "Macedonian",
+	CountermarchVariant.LACONIAN: "Laconian",
+	CountermarchVariant.CHORAL: "Choral",
 }
 
 # Stable per-battle id (assigned by Battle.gd at spawn). Replays reference units
@@ -1108,16 +1128,23 @@ func about_face_goal() -> Vector2:
 ## 1. A frontage change this EXACT tick (FILE_DOUBLE_DEEPEN/WIDEN) -- Order.Type.FRONTAGE
 ##    retires the same tick it's applied, so this is the only place that in-progress state
 ##    could be read; report it first since it's rare and easy to miss otherwise.
-## 2. An in-place turn (about_face_goal() != ZERO -> CONVERSIO, else QUARTER_TURN).
-## 3. A wheel mid-swing (WHEELING).
-## 4. A nudge order still translating (NUDGE_SIDESTEP/BACKSTEP/FORWARD_STEP, keyed by
+## 2. A countermarch composite (COUNTERMARCH) -- reported for the composite's WHOLE
+##    turn/reform/march duration (current_order.countermarch_variant stays set throughout),
+##    ahead of the plain about-face check below: a countermarch's opening phase IS an
+##    Order.Type.ABOUT_FACE leaf, so about_face_goal() alone can't tell it apart from a bare
+##    conversio or a rear-move's turn phase.
+## 3. An in-place turn (about_face_goal() != ZERO -> CONVERSIO, else QUARTER_TURN).
+## 4. A wheel mid-swing (WHEELING).
+## 5. A nudge order still translating (NUDGE_SIDESTEP/BACKSTEP/FORWARD_STEP, keyed by
 ##    current_order.dir).
-## 5. The durable CYCLE_CHARGE stance (order_mode), independent of the above -- can layer
+## 6. The durable CYCLE_CHARGE stance (order_mode), independent of the above -- can layer
 ##    under MOVING or FIGHTING, but nothing above it applies while it's issued.
-## 6. Otherwise the baseline: FIGHTING / MARCHING / IDLE, from `state`.
+## 7. Otherwise the baseline: FIGHTING / MARCHING / IDLE, from `state`.
 func current_maneuver() -> int:
 	if _last_reshape_tick == Engine.get_physics_frames():
 		return Maneuver.FILE_DOUBLE_WIDEN if _last_reshape_widened else Maneuver.FILE_DOUBLE_DEEPEN
+	if current_order != null and current_order.countermarch_variant >= 0:
+		return Maneuver.COUNTERMARCH
 	if is_order_turning():
 		return Maneuver.CONVERSIO if about_face_goal() != Vector2.ZERO else Maneuver.QUARTER_TURN
 	if is_wheeling():
@@ -2744,6 +2771,77 @@ func begin_about_face(order: Order) -> bool:
 	return begin_pivot(order, PI)
 
 
+## Countermarch (exelismos, Asclepiodotus Ch.10 / Aelian Ch.27-28): reverse which end of the
+## block faces the enemy by marching FILES through and around each other, rather than the
+## whole block pivoting in place (that's conversio, above) or on a flank (a wheel). Built as a
+## rear-move-style composite -- an about-face, then reform_ranks() brings a full rank to the
+## new front (see reform_ranks()'s own doc: "a real countermarch... a body keeps its own flank
+## and only trades its rank"), then a march -- so every step reuses that exact, already-tested
+## machinery; `variant` (CountermarchVariant) only changes how far, and which way, the march
+## leg carries the whole regiment. Always reforms BEFORE marching (order.reform = true) so the
+## full rank leads the whole way for every variant, historical timing nuances aside -- a
+## reasonable, stated simplification for this prototype (see the PR description for the design
+## note). A standalone drill queue entry like conversio/quarter_turn/wheel: no-ops (per
+## _can_drill()) unless the unit stands idle. UNLIKE the visual-only conversio/quarter-turn
+## drills, a Macedonian/Laconian countermarch moves the regiment (position, not just facing),
+## which the sim reads -- so, like a wheel, it is issued through the recorded order path
+## (Battle.enqueue_countermarch / ORDER_COUNTERMARCH), not called directly by the input layer.
+func countermarch(variant: int) -> void:
+	if not _can_drill():
+		return
+	var order := Order.new_move(_countermarch_target(variant))
+	order.reform = true
+	order.countermarch_variant = variant
+	# Hold the post-about-face heading through the reform hold and the march -- an ordinary
+	# move's centre-pivot (or the reform hold's own "face the parked destination" fallback)
+	# would otherwise re-aim the block toward wherever it's marching, which for LACONIAN
+	# points BEHIND the new facing and would rotate the about-face right back open. Cleared
+	# automatically on arrival, the same as a side-step's held facing (see _think's arrival
+	# handler). Set before set_current_order/begin_about_face, matching the order Battle.gd's
+	# own side-step/back-step dispatch sets it in -- neither call touches this field, so the
+	# order doesn't matter functionally, but this keeps the convention consistent.
+	ordered_facing = -facing
+	deploy_facing = Vector2.ZERO   # clear any stale form-up facing that would outrank it
+	set_current_order(order)
+	has_move_target = false
+	begin_about_face(order)
+
+
+## The countermarch's march destination for `variant`, computed from the CURRENT facing/
+## position before the about-face turns it -- the about-face always reverses facing exactly,
+## so "the direction the unit is about to face" is simply -facing here. MACEDONIAN advances
+## onto that new-facing ground; LACONIAN withdraws back along the OLD facing instead;
+## CHORAL/PERSIAN stays put (a zero-length "march" resolves as an immediate arrival --
+## _think's arrival check is a plain distance-to-target test, so it needs no special case).
+func _countermarch_target(variant: int) -> Vector2:
+	var depth: float = _countermarch_march_distance()
+	match variant:
+		CountermarchVariant.MACEDONIAN:
+			return position - facing * depth
+		CountermarchVariant.LACONIAN:
+			return position + facing * depth
+		_:
+			return position
+
+
+## How far a countermarch's march leg carries the whole regiment (MACEDONIAN/LACONIAN only --
+## CHORAL never marches): the block's own current front-to-back depth, the ground a file's
+## soldiers actually cover marching past their file-mates, not a flat/tuned constant. Distinct
+## from _front_depth() (half this span, and capped at attack_range * 0.5 for the combat-contact
+## floor) -- the countermarch needs the full, uncapped span.
+func _countermarch_march_distance() -> float:
+	var files: int = maxi(1, formation_files(soldiers))
+	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	return float(maxi(0, ranks - 1)) * FORMATION_SPACING * spacing_scale
+
+
+## The exelismos variant (CountermarchVariant) the current order is executing, or -1 when it
+## isn't a countermarch (no current order, or any other order kind). Mirrors about_face_goal()'s
+## "read straight off current_order" shape.
+func countermarch_variant() -> int:
+	return current_order.countermarch_variant if current_order != null else -1
+
+
 ## Fold the rotation the active leaf's in-place turn applied (start heading -> current
 ## heading) into _formation_angle, and clear the turn. A completed about-face turns exactly
 ## 180° and a quarter-turn exactly 90°, but this also settles an interrupted partial turn
@@ -3425,6 +3523,13 @@ func order_summary() -> String:
 			return "Attacking %s" % target_enemy.unit_name
 		# A maneuver in flight reads straight off the queue (phase 2): the drills and the
 		# wheel used to fall through to "Holding position" here.
+		# A countermarch composite reads first -- its opening phase IS an about-face turn
+		# (Order.Type.ABOUT_FACE), so is_order_turning()'s own "About-facing" text below would
+		# otherwise mask which drill is actually running for the turn/reform/march's whole
+		# duration (current_order.countermarch_variant stays set throughout).
+		if current_order != null and current_order.countermarch_variant >= 0:
+			return "Countermarching (%s)" % COUNTERMARCH_VARIANT_NAMES.get(
+					current_order.countermarch_variant, "?")
 		if is_wheeling():
 			return "Wheeling"
 		if is_order_turning():

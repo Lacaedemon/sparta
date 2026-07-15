@@ -1,0 +1,22 @@
+{
+  "_comment": "Countermarch (exelismos, issue #375, drill mode -- player army only, no enemy, no auto-win): three identical Spearmen regiments spawned side by side, each commanded through a DIFFERENT one of the three historical variants so their distinct ground outcomes are visible side by side in one clip, rather than accumulating on a single unit: select the left unit and press Shift+V for Choral/Persian (reverses facing on the very ground it stands on -- it should NOT move at all); select the middle unit and press Ctrl+V for Macedonian (reverses facing AND advances onto new ground -- it visibly marches north, up-screen); select the right unit and press Ctrl+Shift+V for Laconian (reverses facing AND withdraws -- it visibly marches south, down-screen, the opposite way). All three share the V key with conversio (the existing plain-V about-face drill), since every plain letter hotkey is already claimed. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "58132",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 350, "y": 450, "count": 60, "facing": [0, 1]},
+    {"team": 0, "type": "Spearmen", "x": 550, "y": 450, "count": 60, "facing": [0, 1]},
+    {"team": 0, "type": "Spearmen", "x": 750, "y": 450, "count": 60, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 550.0, "y": 400.0, "zoom": 0.9}
+  ],
+  "steps": [
+    {"tick": 10, "click": [350, 450]},
+    {"tick": 30, "key": "V", "shift": true},
+    {"tick": 220, "click": [550, 450]},
+    {"tick": 240, "key": "V", "ctrl": true},
+    {"tick": 500, "click": [750, 450]},
+    {"tick": 520, "key": "V", "ctrl": true, "shift": true}
+  ],
+  "state": [20, 40, 200, 220, 260, 480, 500, 540, 780]
+}

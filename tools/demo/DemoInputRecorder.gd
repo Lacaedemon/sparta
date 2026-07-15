@@ -347,6 +347,11 @@ func _unit_record(u: Node) -> Dictionary:
 		# order_phase: "TURN" or current_order: "QUARTER_TURN" respectively, so this spares a
 		# reader from reconstructing the distinction by hand. See Unit.current_maneuver().
 		"maneuver": DemoState.maneuver_name(u.current_maneuver()),
+		# Which exelismos variant a "maneuver": "COUNTERMARCH" is running (null otherwise) --
+		# maneuver alone can't distinguish Macedonian/Laconian/Choral. See
+		# Unit.countermarch_variant().
+		"countermarch_variant": DemoState.countermarch_variant_name(u.countermarch_variant()) \
+				if u.countermarch_variant() >= 0 else null,
 		# The formation's simulation tier (docs/large-scale-simulation-design.md): CLOSE runs
 		# the full per-soldier arrays, FAR is the aggregate record with no individual bodies.
 		# Serialized as the readable name via FormationTier's own stable table.

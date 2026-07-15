@@ -139,6 +139,33 @@ func test_reports_file_double_deepen_on_the_exact_tick_only() -> void:
 		"the reshape label is scoped to the tick it applied, not held indefinitely")
 
 
+func test_reports_countermarch_during_the_whole_composite() -> void:
+	var u := _make_unit()
+	u.countermarch(Unit.CountermarchVariant.CHORAL)
+	assert_true(u.is_order_turning(), "sanity: the drill actually armed its about-face phase")
+	assert_eq(u.current_maneuver(), Unit.Maneuver.COUNTERMARCH,
+		"a countermarch's opening about-face must not read as a bare CONVERSIO")
+
+
+func test_countermarch_outranks_the_bare_about_face_label() -> void:
+	# Both build an identical Order.Type.ABOUT_FACE turn leaf under the hood
+	# (about_face_goal() can't tell them apart) -- only current_order.countermarch_variant does.
+	var reversing := _make_unit(1)
+	reversing.conversio()
+	var countermarching := _make_unit(2)
+	countermarching.countermarch(Unit.CountermarchVariant.MACEDONIAN)
+	assert_eq(reversing.current_maneuver(), Unit.Maneuver.CONVERSIO)
+	assert_eq(countermarching.current_maneuver(), Unit.Maneuver.COUNTERMARCH,
+		"a countermarch's own about-face phase must not collapse to the bare conversio label")
+
+
+func test_countermarch_variant_accessor_reads_the_armed_variant() -> void:
+	var u := _make_unit()
+	assert_eq(u.countermarch_variant(), -1, "no current order: not a countermarch")
+	u.countermarch(Unit.CountermarchVariant.LACONIAN)
+	assert_eq(u.countermarch_variant(), Unit.CountermarchVariant.LACONIAN)
+
+
 func test_set_frontage_to_the_same_effective_count_is_not_a_reshape() -> void:
 	# Re-applying the pending FRONTAGE order on the same tick is idempotent by design
 	# (frontage_anchor_offset's own docstring) -- a no-op re-application must not spuriously

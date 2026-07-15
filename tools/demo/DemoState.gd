@@ -36,7 +36,7 @@ const FORMATION_NAMES := {
 
 ## Unit.current_maneuver() int -> readable name. Mirrors `enum Maneuver { IDLE, MARCHING,
 ## FIGHTING, CONVERSIO, QUARTER_TURN, WHEELING, FILE_DOUBLE_DEEPEN, FILE_DOUBLE_WIDEN,
-## NUDGE_SIDESTEP, NUDGE_BACKSTEP, NUDGE_FORWARD_STEP, CYCLE_CHARGE }` on Unit.gd.
+## NUDGE_SIDESTEP, NUDGE_BACKSTEP, NUDGE_FORWARD_STEP, CYCLE_CHARGE, COUNTERMARCH }` on Unit.gd.
 const MANEUVER_NAMES := {
 	0: "IDLE",
 	1: "MARCHING",
@@ -50,6 +50,15 @@ const MANEUVER_NAMES := {
 	9: "NUDGE_BACKSTEP",
 	10: "NUDGE_FORWARD_STEP",
 	11: "CYCLE_CHARGE",
+	12: "COUNTERMARCH",
+}
+
+## Unit.countermarch_variant() int -> readable name. Mirrors `enum CountermarchVariant {
+## MACEDONIAN, LACONIAN, CHORAL }` on Unit.gd.
+const COUNTERMARCH_VARIANT_NAMES := {
+	0: "MACEDONIAN",
+	1: "LACONIAN",
+	2: "CHORAL",
 }
 
 ## The node groups that together hold every combat unit still on the field. A unit lives in
@@ -77,6 +86,10 @@ static func formation_name(value: int) -> String:
 
 static func maneuver_name(value: int) -> String:
 	return name_from(MANEUVER_NAMES, value, "MANEUVER")
+
+
+static func countermarch_variant_name(value: int) -> String:
+	return name_from(COUNTERMARCH_VARIANT_NAMES, value, "COUNTERMARCH_VARIANT")
 
 
 ## An order_mode int -> its readable name using Battle.ORDER_MODE_NAMES (passed in so this
