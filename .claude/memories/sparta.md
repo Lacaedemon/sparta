@@ -1769,13 +1769,14 @@ not just newly added by the diff; found and closed this way in one pass.)
 ## A `blob/main` doc link to a file this same PR adds 404s the link checker until merge
 
 Docs that reference source files by absolute GitHub URL --
-`[`scripts/Foo.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Foo.gd)`, the pattern
-`website/replays.qmd`'s and `REPLAY.md`'s "Where it lives" tables both use for every row -- resolve
-against `main`, not the PR branch. If the PR both adds a new script *and* documents it in one of
-these tables in the same commit, the link 404s (`check / link-checker` fails) because the file
-genuinely doesn't exist on `main` yet -- it only will once the PR merges. This isn't a flaky/
-external-link false positive like the entries already excluded in `lychee.toml`; it's a real,
-if self-resolving, ordering problem specific to referencing your own PR's new files.
+``[`scripts/Foo.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Foo.gd)``, the pattern
+`website/replays.qmd`'s "Where it lives" table uses for every row (`REPLAY.md`'s equivalent table
+lists every file as plain unlinked code, so this doesn't apply there) -- resolve against `main`,
+not the PR branch. If the PR both adds a new script *and* documents it in `replays.qmd`'s table in
+the same commit, the link 404s (`check / link-checker` fails) because the file genuinely doesn't
+exist on `main` yet -- it only will once the PR merges. This isn't a flaky/external-link false
+positive like the entries already excluded in `lychee.toml`; it's a real, if self-resolving,
+ordering problem specific to referencing your own PR's new files.
 
 Fix: don't hyperlink that one row until the file is actually on `main` -- keep it as plain
 inline code (`` `scripts/Foo.gd` ``) in the PR that adds the file, and turn it into a real
