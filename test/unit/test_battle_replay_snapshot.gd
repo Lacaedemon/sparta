@@ -70,8 +70,8 @@ func test_capture_and_restore_round_trips_a_live_battles_state() -> void:
 			"position": u.position, "morale": u.morale, "state": u.state,
 			"soldiers": u.soldiers, "target_enemy_uid": u.target_enemy.uid if u.target_enemy != null else -1,
 		}
-	var snap := battle.capture_snapshot()
-	var tick_at_capture := battle.current_tick()
+	var snap: Dictionary = battle.capture_snapshot()
+	var tick_at_capture: int = battle.current_tick()
 
 	# Keep ticking so the live battle's state diverges from what was captured.
 	while battle.current_tick() < tick_at_capture + 60:
@@ -105,12 +105,12 @@ func test_restore_snapshot_lets_the_battle_keep_ticking_forward_afterward() -> v
 	var battle := _spawn_battle(_clash_scenario())
 	while battle.current_tick() < 40:
 		await get_tree().physics_frame
-	var snap := battle.capture_snapshot()
+	var snap: Dictionary = battle.capture_snapshot()
 	while battle.current_tick() < 80:
 		await get_tree().physics_frame
 
 	battle.restore_snapshot(snap)
-	var resumed_from := battle.current_tick()
+	var resumed_from: int = battle.current_tick()
 	for _i in range(20):
 		await get_tree().physics_frame
 	assert_gt(battle.current_tick(), resumed_from,
@@ -155,7 +155,7 @@ func test_seek_to_tick_is_a_noop_for_a_forward_target() -> void:
 	while battle.current_tick() < 40:
 		await get_tree().physics_frame
 
-	var before := battle.current_tick()
+	var before: int = battle.current_tick()
 	battle.seek_to_tick(before + 500)   # a forward jump: nothing to derive it from
 	assert_eq(battle.current_tick(), before, "a forward target is left untouched")
 
@@ -170,7 +170,7 @@ func test_seek_to_tick_is_a_noop_outside_playback() -> void:
 		await get_tree().physics_frame
 
 	Replay.mode = Replay.Mode.RECORD
-	var before := battle.current_tick()
+	var before: int = battle.current_tick()
 	battle.seek_to_tick(0)
 	assert_eq(battle.current_tick(), before, "outside PLAYBACK, seek_to_tick does nothing")
 
