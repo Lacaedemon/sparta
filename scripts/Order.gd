@@ -87,6 +87,12 @@ enum Phase {
 	             ## grid was never reformed during the march, so nothing but facing needs to
 	             ## move here. Appended after REFORM so recorded transcripts keep their phase
 	             ## values stable.
+	WHEEL,       ## The flank-pivot phase of an about-face + wheel + march composite (see
+	             ## Unit.begin_about_face_with_wheel) -- a WHEEL-typed leaf sitting BETWEEN
+	             ## the opening about-face and the march, so it needs its own label rather
+	             ## than falling into effective_phase_name()'s by-position TURN/RETURN_TURN
+	             ## guess. Appended after RETURN_TURN so recorded transcripts keep their
+	             ## phase values stable.
 }
 
 ## Phase 4's bounded, enumerated guard vocabulary (docs/orders-queue-design.md,
@@ -137,6 +143,7 @@ const PHASE_NAMES := {
 	Phase.MARCH: "MARCH",
 	Phase.REFORM: "REFORM",
 	Phase.RETURN_TURN: "RETURN_TURN",
+	Phase.WHEEL: "WHEEL",
 }
 
 var type: int = Type.MOVE
@@ -220,6 +227,8 @@ func effective_phase_name() -> String:
 		return phase_name(Phase.REFORM)
 	if leaf.type == Type.MOVE:
 		return phase_name(Phase.MARCH)
+	if leaf.type == Type.WHEEL:
+		return phase_name(Phase.WHEEL)
 	return phase_name(Phase.TURN if _active_child == 0 else Phase.RETURN_TURN)
 
 

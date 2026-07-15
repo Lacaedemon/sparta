@@ -1,0 +1,17 @@
+{
+  "_comment": "Wheel-turn demo (issue #786): a single Spearmen regiment is staged alone (drill mode, no opponent) at (500,430) facing SOUTH. It is selected, then given a move order to (436,353) -- 140.5 deg off its facing (a rear-sector move, but oblique enough that the about-face's own 180 deg reversal alone would still leave ~39.5 deg of misalignment to the destination, past UnitManeuver.WHEEL_MIN_RESIDUAL_ANGLE_DEG=30). The regiment about-faces in place (every soldier reverses 180 deg, front rank becoming rear, footprint unchanged), THEN flank-pivots (wheels) the rest of the way onto the destination bearing -- the standing flank holding its ground while the far end sweeps and the block's own centre slides along the hinge arc -- THEN marches to the destination, instead of about-facing alone and leaving the march's own gradual centre-pivot to close the gap. Staged as a lone unit, close destination, and a wide-enough camera so all three phases (turn, pivot, march) land inside one clip. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 500, "y": 430, "count": 40, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 468.0, "y": 392.0, "zoom": 1.8}
+  ],
+  "steps": [
+    {"tick": 12, "click": [500, 430]},
+    {"tick": 24, "rmb_click": [436, 353]}
+  ],
+  "frames": [0, 24, 80, 100, 130, 300, 500, 650, 750],
+  "state": [0, 24, 40, 54, 60, 80, 100, 130, 160, 200, 300, 400, 500, 600, 650, 700, 750, 800]
+}
