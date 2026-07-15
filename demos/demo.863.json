@@ -1,0 +1,8 @@
+{
+	"input": "demos/inputs/loose-resize-preview.json",
+	"caption": "Issue #863: the drag-resize preview line now spans the regiment's REAL formed-up width, loose-order spacing included. A lone LOOSE Archers regiment is selected and its right flank grip dragged outward: the preview line under the cursor matches the block's actual footprint at drag start (before this fix it spanned only half of it, using density-blind NORMAL spacing), then tracks the widening frontage (9 -> 18 files) until release, and the block reforms onto the previewed line.",
+	"fixed_fps": 30,
+	"max_frames": 150,
+	"fps": 15,
+	"width": 720
+}
