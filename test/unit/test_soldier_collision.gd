@@ -367,3 +367,68 @@ func test_enemy_contact_degenerate_mass_returns_zero():
 		Vector2(-20.0, 0.0), Vector2.ZERO, 0.0, 0.0, 1.0, 0.0, Vector2.RIGHT, 0.0)
 	assert_eq(result[0], Vector2.ZERO, "degenerate mass_a guards against div-by-zero")
 	assert_eq(result[1], Vector2.ZERO, "degenerate mass_a guards against div-by-zero")
+
+
+func test_enemy_contact_already_separating_at_the_overlap_target_gets_no_further_push():
+	## Regression: a fully-overlapping pair (overlap_frac 1.0) that ALREADY carries a
+	## separating velocity at (or above) the overlap-correction's own target speed
+	## (ENEMY_CONTACT_OVERLAP_RATE) must get NO further impulse -- the target is a steady
+	## separating speed, not a fresh injection every tick regardless of how much the pair is
+	## already separating. Before the fix, this scenario still added a full fresh impulse every
+	## tick purely from the overlap term (closing_speed truncates to 0 once a pair separates,
+	## but the old formula added the whole ENEMY_CONTACT_OVERLAP_RATE unconditionally), which is
+	## exactly how a whole rank that arrives at melee range still carrying march speed gets
+	## driven to a hard recoil near KNOCKBACK_SPEED_MAX instead of merely being arrested.
+	var rate: float = SoldierCollision.ENEMY_CONTACT_OVERLAP_RATE
+	# A is already moving +X (along +normal) at exactly `rate`, B stationary -- their relative
+	# velocity along normal already equals the overlap-correction's own target.
+	var vel_a := Vector2(rate, 0.0)
+	var vel_b := Vector2.ZERO
+	var result: Array = SoldierCollision.enemy_contact_impulse(
+		vel_a, vel_b, 1.0, 0.0, 1.0, 0.0, Vector2.RIGHT, 1.0)
+	assert_eq(result[0], Vector2.ZERO,
+		"A already separates at the overlap target speed -- no further push needed")
+	assert_eq(result[1], Vector2.ZERO,
+		"B already separates at the overlap target speed -- no further push needed")
+
+
+func test_enemy_contact_partial_separation_only_makes_up_the_shortfall():
+	## A pair already separating at HALF the overlap-correction target speed should only
+	## receive enough impulse to make up the remaining half, not a full fresh target-speed
+	## impulse on top of what it already has.
+	var rate: float = SoldierCollision.ENEMY_CONTACT_OVERLAP_RATE
+	var vel_a := Vector2(rate * 0.5, 0.0)
+	var vel_b := Vector2.ZERO
+	var full_target: Array = SoldierCollision.enemy_contact_impulse(
+		Vector2.ZERO, Vector2.ZERO, 1.0, 0.0, 1.0, 0.0, Vector2.RIGHT, 1.0)
+	var partial: Array = SoldierCollision.enemy_contact_impulse(
+		vel_a, vel_b, 1.0, 0.0, 1.0, 0.0, Vector2.RIGHT, 1.0)
+	assert_lt((partial[0] as Vector2).length(), (full_target[0] as Vector2).length(),
+		"a pair already halfway to the overlap target needs a smaller top-up than one at rest")
+	assert_gt((partial[0] as Vector2).length(), 0.0,
+		"a pair not yet AT the overlap target still receives a (smaller) push")
+
+
+func test_enemy_contact_repeated_ticks_converge_instead_of_compounding():
+	## The multi-tick regression itself: repeatedly resolving a deeply-overlapping pair that
+	## starts with a large closing velocity (mirroring a whole rank arriving at melee range
+	## still at march speed) must converge toward a bounded separating speed, not compound
+	## tick after tick toward KNOCKBACK_SPEED_MAX -- reproducing an observed -58.4 u/s peak
+	## (well above Infantry's 50 u/s jog_speed arrival cap) from a rank that was never in a
+	## one-shot melee strike (SoldierMelee never targeted it directly; only the continuous
+	## contact pass did).
+	var vel_a := Vector2(0.0, 56.0)     # a rank still marching at full speed toward the enemy
+	var vel_b := Vector2(0.0, -56.0)    # the mirrored enemy rank, closing at the same rate
+	var normal := Vector2.UP            # points from B toward A
+	var overlap_frac: float = 1.0       # deeply overlapping from the very first contact tick
+	var peak_speed: float = 0.0
+	for _tick in range(40):
+		var result: Array = SoldierCollision.enemy_contact_impulse(
+			vel_a, vel_b, 1.0, 0.0, 1.0, 0.0, normal, overlap_frac)
+		vel_a += result[0]
+		vel_b += result[1]
+		peak_speed = maxf(peak_speed, maxf(vel_a.length(), vel_b.length()))
+	assert_lt(peak_speed, SoldierCombat.KNOCKBACK_SPEED_MAX,
+		"repeated contact resolution must converge, never ratchet a body's speed up to the cap")
+	assert_lt(peak_speed, 40.0,
+		"the pair should settle near a bounded separating speed, nowhere close to the old runaway (~58 u/s)")
