@@ -60,10 +60,17 @@ sprint: 80 world-units/s (4.0 m/s).
   true gallop averages 40–48 km/h, nearly 1.5× faster. 8.5 m/s instead falls
   **between the canter and gallop ranges** (faster than a 16–27 km/h canter,
   well short of a 40–48 km/h gallop) — closer to a fast canter than to any
-  gait actually called a gallop. Whether that's the right in-game value is a
-  gameplay-balance question (a full 40+ km/h charge might be unplayable at
-  this map/camera scale) rather than a factual one — but the earlier
-  "verdict" claim was wrong and is corrected here.
+  gait actually called a gallop.
+
+  **Resolution:** this is kept as an intentional design choice, not raised
+  toward a literal 40+ km/h gallop. `Battle.gd::_default_loadout()` now
+  documents the reasoning directly next to the `sprint_mps` values: a full
+  historical gallop would close distance faster than this map/camera scale
+  reads well, and cavalry speed ripples into relative-unit-speed balance
+  across the whole roster, so raising it needs its own playtesting pass
+  rather than a documentation-driven bump. Read `sprint_mps` for cavalry as
+  a deliberate fast-canter charge pace, not an attempted (and undershot)
+  gallop.
 
 ### Acceleration/deceleration
 
@@ -101,6 +108,19 @@ above do — flagged as an open question rather than asserted as verified.
   formation density, where history treats it as a rare, temporary stance
   rather than the standing default — worth noting, but a materially different
   (and much smaller) claim than "half the historical minimum."
+  **Resolution (#719):** kept as-is, deliberately, rather than loosened
+  toward pyknosis. Sparta's combat model keeps a regiment in sustained melee
+  contact far more of the time than any historical campaign's march-to-battle
+  ratio, so treating the emergency-tier density as the standing "combat
+  ready" default is an intentional choice for footprint compactness and
+  legibility at this game's camera/map scale, not an oversight. It's also
+  not the only density available: `FORMATION_LOOSE` (`spacing_scale = 2.0`,
+  ~0.9 m/man) already gives the pyknosis close-order figure as a selectable
+  formation — so the issue's "reserve the tight density for a specific
+  stance, loosen the default" proposal is already half-implemented, just
+  with the tiers assigned the other way around (tight is the default, loose
+  is the option). No constant changes in this PR; see the rationale comment
+  on `FORMATION_SPACING` in `scripts/Unit.gd`.
 
 **Unit radii (collision bodies):**
 
@@ -143,15 +163,17 @@ correctly; the other is a real, citable discrepancy:
 2. **Cavalry charge speed (8.5 m/s / 30.6 km/h) sits between a canter and a
    true gallop** — faster than the 16–27 km/h canter range, well short of
    the 40–48 km/h gallop range. The earlier draft of this document asserted
-   it was "the upper end of the gallop range"; corrected here.
+   it was "the upper end of the gallop range"; corrected here. Resolved as
+   an intentional design choice (see "Mounted cavalry" above) rather than a
+   value to raise.
 
-Neither is fixed in this PR: changing either value is a gameplay-balance
-change (formation width/spacing math, unit collision spacing, and relative
-unit speeds all ripple from these constants) that needs its own playtesting
-pass, not a drive-by edit alongside a verification writeup. See the tracked
-follow-up issues below. The third original concern — cavalry visual size —
-is a rendering question this document's physics-radius check can't settle
-either way; also tracked separately.
+The formation-spacing question is not fixed in this PR: changing it is a
+gameplay-balance change (formation width/spacing math and unit collision
+spacing ripple from that constant) that needs its own playtesting pass, not
+a drive-by edit alongside a verification writeup. See the tracked follow-up
+issue below. The third original concern — cavalry visual size — is a
+rendering question this document's physics-radius check can't settle either
+way; also tracked separately.
 
 ### Follow-up issues filed from this verification
 
@@ -160,10 +182,9 @@ either way; also tracked separately.
   rather than the standing close-order tier — consider whether the
   *default* density should loosen toward close order (~0.9 m/man), with
   synaspismos-tight spacing reserved for a specific defensive stance.
-- [#720](https://github.com/Lacaedemon/sparta/issues/720) — cavalry charge
-  speed sits between a canter and a true gallop — reconsider `sprint_mps`
-  for cavalry (or document why the slower value is intentional for
-  playability at this scale).
 - [#721](https://github.com/Lacaedemon/sparta/issues/721) — cavalry
   visual/silhouette size vs. collision radius (rendering, not physics) —
   separate from anything this document verifies.
+
+Issue #720 (cavalry charge speed) is resolved by this document's "Mounted
+cavalry" section above — no code change, no open follow-up.
