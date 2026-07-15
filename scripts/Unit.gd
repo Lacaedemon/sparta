@@ -3262,6 +3262,66 @@ func _compute_engaged_soldier_indices(count: int) -> PackedInt32Array:
 	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
 
 
+## True while an in-place reshape or turn is actively changing what "the front" even means:
+## an order-driven turn, a wheel, a reactive engage re-face (all three covered by
+## is_maneuver_turning), or the interstitial reform hold a rear-move/about-face/form-up
+## settles through before it commits. During any of these the live near-front membership has
+## no stable answer yet -- a quarter-turn temporarily scatters bodies relative to the NEW
+## heading, and a reform is, by definition, mid-refill of exactly the ranks a narrowed anchor
+## would read -- so SoldierBodies.couple() falls back to the wider engaged-ranks selection
+## (which averages the churn away) until the unit settles.
+func _position_anchor_unstable() -> bool:
+	return is_maneuver_turning() or _reform_holding()
+
+
+## Depth (in ranks) the position anchor narrows the engaged selection to, once a regiment has
+## settled (see _position_anchor_unstable) -- the ANCHOR_RANKS-worth of soldiers nearest the
+## enemy, out of the full ENGAGED_RANKS depth that fights/steers. Narrower than ENGAGED_RANKS
+## so a casualty-thinned or knocked-back deeper rank pulls `position` around less than before,
+## but deliberately NOT narrowed to a single rank: an earlier attempt at exactly one rank (PR
+## #818, reverted before merge, and re-tried here) measurably re-aggravated the melee-lock
+## swirl regression test_residual_melee_swirl_battle.gd guards against (#724) -- a matched,
+## prolonged infantry clash pivoted ~38 degrees by tick 700, back near its pre-fix baseline,
+## against the test's <28 degree gate. A single live rank is too small a sample for the
+## coupling average to damp the per-tick contact-torque noise SoldierEnemyContact already
+## injects (see sparta.md's "melee-lock swirl" notes); two ranks keeps that test's margin
+## while still excluding the deepest engaged rank from the anchor.
+const ANCHOR_RANKS: int = 2
+
+
+## Indices of the live near-front ranks (ANCHOR_RANKS-worth, narrower than the full engaged
+## selection) -- the position anchor's counterpart to `engaged_soldier_indices` (which
+## selects the whole engaged depth, `ENGAGED_RANKS` ranks, for combat/steering scope). A real
+## formation's position should read off its leading edge, not an average a casualty-thinned or
+## knocked-back deeper rank can pull around -- see `SoldierBodies.couple()`, the only caller.
+## Square/Schiltron has no single front to speak of (the ring wraps the whole block), so it
+## returns empty there; the caller keeps using the existing perimeter-based engaged selection
+## for that formation instead. Live-position selection (UnitFormation.live_front_indices),
+## same as engaged_soldier_indices, for the same reason: a casualty splices the per-soldier
+## arrays, so a fixed-index "first N slots" reading would go stale the moment the array
+## compacts.
+func near_front_soldier_indices(count: int) -> PackedInt32Array:
+	if not is_engaged() or count <= 0 or in_square():
+		return PackedInt32Array()
+	var cutoff: int = mini(count, formation_files(count) * ANCHOR_RANKS)
+	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
+	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
+	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
+
+
+## The soldier-index selection `SoldierBodies.couple()` anchors `position` on: the live
+## near-front ranks (`near_front_soldier_indices`) for a settled, non-Square engaged
+## regiment, or the wider `engaged_soldier_indices` selection otherwise (Square/Schiltron,
+## or any of the three unstable-transition cases `_position_anchor_unstable` names). Empty
+## when not engaged at all -- `couple()` falls back to the whole-block centroid in that case.
+func position_anchor_indices(count: int, use_cache: bool = true) -> PackedInt32Array:
+	if not is_engaged():
+		return PackedInt32Array()
+	if in_square() or _position_anchor_unstable():
+		return engaged_soldier_indices(count, use_cache)
+	return near_front_soldier_indices(count)
+
+
 ## The `count` formation SLOTS (not live bodies) that count as "the front" (or, for
 ## Square/Schiltron, "the outer ring") -- the canonical counterpart to
 ## `engaged_soldier_indices`, scored with the exact same selection functions but applied to

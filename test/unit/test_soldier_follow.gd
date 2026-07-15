@@ -135,6 +135,56 @@ func test_couple_still_averages_whole_regiment_when_not_engaged() -> void:
 			"uniform displacement of every body still yields the same whole-regiment average")
 
 
+func test_couple_position_anchor_reaches_less_deep_than_the_old_selection_after_front_rank_casualties() -> void:
+	# #821: `position` should read off the regiment's leading edge, not an average a
+	# casualty-thinned rear can pull around. A fixed-SIZE engaged budget reaches deeper into
+	# the block once the true front rank is gone -- the same array splice SoldierMelee.reap()
+	# performs on a real casualty -- so the survivors that fill that budget sit farther back
+	# than before. couple() now anchors a settled, engaged, non-Square regiment on
+	# Unit.ANCHOR_RANKS worth of near-front soldiers instead of the wider Unit.ENGAGED_RANKS
+	# depth, so after the front rank falls it reaches less deep into the survivors than the
+	# old, wider selection would -- read directly off the still-existing engaged_soldier_indices
+	# (unchanged, still used elsewhere), not re-implemented, purely to show the contrast.
+	var u := _make_unit(120)
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(DELTA)
+	assert_true(u.is_engaged(), "sanity: the unit is engaged")
+	assert_false(u.in_square(), "sanity: NORMAL formation -- the branch this fix narrows")
+	var files: int = u.formation_files(u.soldiers)
+	# Wipe out the whole front rank (indices 0..files-1 in the at-rest canonical grid) --
+	# remove from the tail of the doomed range down so earlier removals don't shift the
+	# indices still to be removed.
+	for i in range(files - 1, -1, -1):
+		u._sim_soldier_pos.remove_at(i)
+	u.soldiers = u._sim_soldier_pos.size()
+	var n: int = u.soldiers
+	var old_indices: PackedInt32Array = u.engaged_soldier_indices(n, false)
+	var new_indices: PackedInt32Array = u.near_front_soldier_indices(n)
+	assert_gt(old_indices.size(), new_indices.size(),
+			"sanity: the old selection is still the wider of the two")
+	# "How far forward" each selection reaches: the mean of the same forward-projection score
+	# UnitFormation.live_front_indices selects by (higher = closer to the enemy) -- NOT
+	# distance from `position`, which sits at the whole block's geometric CENTRE (block_slots
+	# centres the grid), so it isn't monotonic with depth: a soldier at the block's own
+	# mid-depth can sit closer to `position` than one nearer the true front, understating a
+	# wide selection's reach into the survivors if compared by raw distance instead.
+	var world_angle: float = u.facing.angle() + PI * 0.5 + u._formation_angle
+	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
+	var old_forwardness := 0.0
+	for i in old_indices:
+		old_forwardness += (u._sim_soldier_pos[i] - u.position).dot(forward)
+	old_forwardness /= float(old_indices.size())
+	var new_forwardness := 0.0
+	for i in new_indices:
+		new_forwardness += (u._sim_soldier_pos[i] - u.position).dot(forward)
+	new_forwardness /= float(new_indices.size())
+	assert_gt(new_forwardness, old_forwardness,
+			("the narrowed anchor's selection sits measurably closer to the true front " +
+			"(new %.1f vs old %.1f) once the true front rank is gone -- the old, wider " +
+			"selection is dragged rearward by the deeper rank it has to include") %
+			[new_forwardness, old_forwardness])
+
+
 func test_couple_determinism() -> void:
 	var a := _make_unit()
 	var b := _make_unit()

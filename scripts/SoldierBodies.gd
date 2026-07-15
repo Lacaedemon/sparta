@@ -450,8 +450,12 @@ static func couple(unit: Unit, delta: float) -> void:
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
 	if slots.size() != n:
 		return   # arrays mid-resize this tick; couple next tick when they realign
-	var indices: PackedInt32Array = unit.engaged_soldier_indices(n, false) if unit.is_engaged() \
-			else PackedInt32Array()
+	# position_anchor_indices narrows the engaged-ranks selection down to the live
+	# near-front ranks (Unit.ANCHOR_RANKS) once the unit has settled (see
+	# Unit.position_anchor_indices / _position_anchor_unstable) -- Square/Schiltron and any
+	# in-progress turn or reform keep the wider engaged_soldier_indices selection this
+	# always used to be.
+	var indices: PackedInt32Array = unit.position_anchor_indices(n, false)
 	var body_centroid := Vector2.ZERO
 	var slot_centroid := Vector2.ZERO
 	var count: int = indices.size()
