@@ -146,6 +146,11 @@ script under `demos/inputs/`:
   `if selected and Settings.show_soldier_ids and _detailed_lod` gate), so a demo that
   doesn't already select a unit and zoom in past `LOD_ZOOM_IN` won't show IDs
   regardless of this default.
+- `show_position_anchor` (optional bool, default `false`) — session-only: draws a small dot
+  at each unit's `position` (the regiment's own kinematic anchor, `SoldierBodies.couple()`)
+  for the recording, without touching a developer's saved settings. Off by default; set
+  `"show_position_anchor": true` for a demo specifically about how `position` tracks (or
+  doesn't track) the block.
 - `scenario` (optional) — **stage a custom matchup** instead of the default 5v5 lines, so a
   demo can show a *specific* fight the default battle won't produce on its own (a weak unit
   that routs, an enemy placed off a unit's flank, cavalry vs a single target). A list of unit

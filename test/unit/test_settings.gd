@@ -108,6 +108,24 @@ func test_show_soldier_ids_defaults_off_and_round_trips() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
+func test_show_position_anchor_defaults_off_and_round_trips() -> void:
+	# Default off — the position-anchor marker is a dev/debug visual, opt-in.
+	assert_false(_settings().show_position_anchor, "position-anchor marker defaults off")
+
+	var a = SettingsScript.new()
+	autofree(a)
+	a._loading = true
+	a.show_position_anchor = true
+	a._save(TEST_PATH)
+
+	var b = SettingsScript.new()
+	autofree(b)
+	b._load(TEST_PATH)
+	assert_true(b.show_position_anchor, "the toggle survives save + load")
+
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+
+
 func test_show_fps_and_corner_default_and_round_trip() -> void:
 	# Default off (opt-in) and top-left (the corner none of the other HUD chrome occupies).
 	var defaults := _settings()
@@ -192,6 +210,21 @@ func test_set_show_soldier_ids_session_flips_value_without_persisting() -> void:
 	assert_false(s.show_soldier_ids, "soldier IDs default off")
 	s.set_show_soldier_ids_session(true)
 	assert_true(s.show_soldier_ids, "session setter flips the in-memory value")
+	assert_eq(s.save_calls, 0, "...and never calls _save()")
+	assert_signal_not_emitted(s, "changed", "...and emits no `changed`")
+	assert_false(s._loading, "_loading restored to its prior value (false) after the call")
+
+
+func test_set_show_position_anchor_session_flips_value_without_persisting() -> void:
+	# Mirrors test_set_show_soldier_ids_session_flips_value_without_persisting above: a demo
+	# investigating the position anchor arms the marker for the recording only, without
+	# rewriting a developer's saved preference.
+	var s := _SaveCountingSettings.new()
+	autofree(s)
+	watch_signals(s)
+	assert_false(s.show_position_anchor, "position-anchor marker defaults off")
+	s.set_show_position_anchor_session(true)
+	assert_true(s.show_position_anchor, "session setter flips the in-memory value")
 	assert_eq(s.save_calls, 0, "...and never calls _save()")
 	assert_signal_not_emitted(s, "changed", "...and emits no `changed`")
 	assert_false(s._loading, "_loading restored to its prior value (false) after the call")

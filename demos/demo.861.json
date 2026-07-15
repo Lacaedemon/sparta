@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/position-anchor-tracks-front.json",
+  "caption": "Position anchor: near-front-rank tracking instead of a whole-block centroid (#821). A unit's `position` (SoldierBodies.couple()) is no longer averaged over the full ENGAGED_RANKS=3-rank engaged depth once a regiment has settled into combat -- it now narrows to the ANCHOR_RANKS=2 near-front ranks (Unit.near_front_soldier_indices), so a casualty-thinned or knocked-back deeper rank pulls it around less. The cyan dot (new dev/debug visual, Settings.show_position_anchor, HUD Menu -> Position-anchor marker) marks each unit's `position`, distinct from the block's own soldier-count centroid -- watch the two separate once contact happens. Per the CI-posted state transcript: `position` actually TRAILS the centroid through the clash's violent opening (SoldierBodies.couple()'s bounded-velocity drift-correction lags the sudden centroid jump a charge impact causes, rather than snapping to match it), then pulls slightly ahead once the grind settles -- a real but subtle effect at this scale; the actual proof that the anchor now excludes a knocked-back/casualty-thinned deeper rank is test_couple_position_anchor_reaches_less_deep_than_the_old_selection_after_front_rank_casualties (test/unit/test_soldier_follow.gd), which isolates it from this clip's other confounds. A single rank (the issue's original suggestion) was tried first but measurably re-aggravated the #724 melee-lock swirl regression, so two ranks is the fix -- narrow enough to matter, still damped enough to hold that regression test's margin. Any in-progress turn, wheel, reform, or Square/Schiltron formation keeps the old, wider selection unchanged.",
+  "fixed_fps": 30,
+  "max_frames": 260,
+  "fps": 15,
+  "width": 720
+}

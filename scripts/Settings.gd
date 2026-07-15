@@ -169,6 +169,19 @@ var show_engaged_highlight: bool = false:
 			_save()
 			changed.emit()
 
+# Position-anchor marker: draw a small dot at each unit's `position` -- the regiment's own
+# kinematic anchor point (SoldierBodies.couple()), as distinct from where any individual
+# soldier body sits. Dev/debug visual only, for verifying the anchor tracks the front rank
+# correctly rather than drifting with the block's centroid. Default off.
+var show_position_anchor: bool = false:
+	set(value):
+		if value == show_position_anchor:
+			return
+		show_position_anchor = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Frame-rate counter: display Engine.get_frames_per_second() in a HUD corner. Handy for
 # spotting perf regressions. Default off -- most players don't want it as permanent clutter.
 var show_fps: bool = false:
@@ -280,6 +293,17 @@ func set_show_engaged_highlight_session(value: bool) -> void:
 	_loading = was_loading
 
 
+## Set show_position_anchor for this run only — no persist to disk, no `changed` signal
+## (same _load()-guard trick as set_sfx_enabled_session above). A demo input script can
+## request the position-anchor marker on for its recording without rewriting a developer's
+## saved preference when the recorder is run locally.
+func set_show_position_anchor_session(value: bool) -> void:
+	var was_loading := _loading
+	_loading = true
+	show_position_anchor = value
+	_loading = was_loading
+
+
 ## Set show_soldier_ids for this run only — no persist to disk, no `changed` signal
 ## (same _load()-guard trick as set_sfx_enabled_session above). A demo input script can
 ## request the per-soldier ID overlay on for its recording without rewriting a developer's
@@ -344,6 +368,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_unit_speed = bool(cfg.get_value("camera", "show_unit_speed", show_unit_speed))
 	show_soldier_ids = bool(cfg.get_value("camera", "show_soldier_ids", show_soldier_ids))
 	show_engaged_highlight = bool(cfg.get_value("camera", "show_engaged_highlight", show_engaged_highlight))
+	show_position_anchor = bool(cfg.get_value("camera", "show_position_anchor", show_position_anchor))
 	show_fps = bool(cfg.get_value("camera", "show_fps", show_fps))
 	fps_corner = int(cfg.get_value("camera", "fps_corner", fps_corner))
 	for slug in DEFAULT_ORDER_BINDINGS:
@@ -366,6 +391,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "show_unit_speed", show_unit_speed)
 	cfg.set_value("camera", "show_soldier_ids", show_soldier_ids)
 	cfg.set_value("camera", "show_engaged_highlight", show_engaged_highlight)
+	cfg.set_value("camera", "show_position_anchor", show_position_anchor)
 	cfg.set_value("camera", "show_fps", show_fps)
 	cfg.set_value("camera", "fps_corner", fps_corner)
 	for slug in order_bindings:
