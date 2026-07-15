@@ -1,0 +1,17 @@
+{
+  "_comment": "Position-anchor marker demo (Settings.show_position_anchor) for #821: a fresh scenario authored for THIS demo -- two 100-soldier Infantry lines (~8 ranks deep, so the ANCHOR_RANKS=2 vs the old ENGAGED_RANKS=3 distinction has real depth to work with once casualties start compacting the per-soldier arrays), not a copy of any existing demos/inputs file. Selects team 0's unit and issues an attack-move onto team 1's line (team 0 is stationary by default) so the two blocks close and grind through a prolonged melee. The cyan position-anchor dot (Unit._draw, gated by show_position_anchor) sits ahead of each block's own soldier_summary.centroid throughout the clash -- closer to team 0's own leading edge than the whole-block average, confirmed numerically via dump-state.sh (at tick 460: team 0's position.y=486.94 vs centroid.y=485.76, team 1's position.y=528.22 vs centroid.y=533.33 -- each unit's own anchor sits forward of its centroid along its own facing). Requested via the session-only 'show_position_anchor' script field (Settings.set_show_position_anchor_session, never persisted). Timing verified locally via dump-state.sh: still closing (MOVING) through tick 370, contact and casualties begin by tick 380-400, and the grind continues steadily through tick 900 -- so a single static, moderately-zoomed camera frame covers the whole approach-then-clash arc without needing a pan.",
+  "seed": "482111",
+  "show_position_anchor": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 500, "y": 340, "count": 100},
+    {"team": 1, "type": "Infantry", "x": 500, "y": 660, "count": 100}
+  ],
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 500.0, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 8, "click": [500, 340]},
+    {"tick": 20, "rmb_click": [500, 660]}
+  ],
+  "state": [8, 200, 370, 400, 460, 550]
+}

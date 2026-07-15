@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/position-anchor-tracks-front.json",
+  "caption": "Position anchor: front-rank tracking instead of a whole-block centroid (#821). A unit's `position` (SoldierBodies.couple()) is no longer averaged over the full ENGAGED_RANKS=3-rank engaged depth once a regiment has settled into combat -- it now narrows to the ANCHOR_RANKS=2 near-front ranks (Unit.near_front_soldier_indices), so a casualty-thinned or knocked-back deeper rank pulls it around less. The cyan dot (new dev/debug visual, Settings.show_position_anchor, HUD Menu -> Position-anchor marker) marks each unit's `position`; watch it sit ahead of the block's own soldier-count centroid throughout the clash rather than centering on the whole formation. A single rank (the issue's original suggestion) was tried first but measurably re-aggravated the #724 melee-lock swirl regression, so two ranks is the fix -- narrow enough to matter, still damped enough to hold that regression test's margin. Any in-progress turn, wheel, reform, or Square/Schiltron formation keeps the old, wider selection unchanged.",
+  "fixed_fps": 30,
+  "max_frames": 260,
+  "fps": 15,
+  "width": 720
+}
