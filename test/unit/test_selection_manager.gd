@@ -1072,6 +1072,41 @@ func test_form_up_equal_depth_uses_average_spacing_for_a_mixed_formation_group()
 			"the loose unit's file count is the same regardless of selection order")
 
 
+func test_form_up_slices_use_each_units_own_pitch_so_blocks_cannot_overlap() -> void:
+	# Slice layout must budget each unit's REAL footprint (its own spacing_scale), not the
+	# density-blind NORMAL pitch -- otherwise a loose unit's slice is half its formed-up
+	# width and its block overflows into the neighbour's on deployment.
+	var sm := _sm()
+	var loose := _unit()
+	loose.max_soldiers = 60
+	loose.set_formation(UnitScript.FORMATION_LOOSE)
+	var tight := _unit()
+	tight.max_soldiers = 60
+	tight.set_formation(UnitScript.FORMATION_TIGHT)
+
+	var slices: Array = sm._form_up_slices(
+			[loose, tight], Vector2(0, 0), Vector2(500, 0), EQUAL_DEPTH)
+	# Each slice's claimed edge: centre +/- half its unit's REAL width, computed here from
+	# first principles (NOT via the helper under test) so a density-blind layout can't
+	# also shrink the expectation.
+	var loose_right: float = slices[0]["center"].x + float(int(slices[0]["files"]) - 1) \
+			* 0.5 * UnitScript.FORMATION_SPACING * loose.spacing_scale
+	var tight_left: float = slices[1]["center"].x - float(int(slices[1]["files"]) - 1) \
+			* 0.5 * UnitScript.FORMATION_SPACING * tight.spacing_scale
+	assert_lt(loose_right, tight_left,
+			"adjacent slices leave a real gap between the units' actual formed-up footprints")
+
+
+func test_slice_width_scales_with_the_units_own_spacing() -> void:
+	var sm := _sm()
+	var u := _unit()
+	u.set_formation(UnitScript.FORMATION_LOOSE)
+	var files: int = 9
+	assert_almost_eq(sm._slice_width(u, files),
+			float(files - 1) * UnitScript.FORMATION_SPACING * u.spacing_scale, 0.01,
+			"a slice budgets the unit's real grid pitch, spacing_scale included")
+
+
 func test_form_up_equal_width_gives_units_the_same_frontage() -> void:
 	# Equal-width (space basis): same files for equal-line-share regardless of size, so a big
 	# and a small unit get the same frontage (the small one just ends up deeper).

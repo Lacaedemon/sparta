@@ -507,8 +507,10 @@ func form_ups_for_tick(tick: int, window: int) -> Array:
 		if ot > tick:
 			break
 		if o.has("face") and tick - ot <= window:
+			var uids: Array = o.get("units", [])
 			out.append({"x": float(o["x"]), "y": float(o["y"]), "face": float(o["face"]),
-					"frontage": int(o.get("frontage", 1)), "age": tick - ot})
+					"frontage": int(o.get("frontage", 1)), "age": tick - ot,
+					"uid": int(uids[0]) if not uids.is_empty() else -1})
 	return out
 
 
