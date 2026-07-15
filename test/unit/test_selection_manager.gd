@@ -277,7 +277,7 @@ func test_resize_handle_at_grabs_a_grip_and_ignores_empty_space() -> void:
 
 
 func test_resize_preview_half_width_scales_with_the_unit_own_spacing() -> void:
-	# Regression test for #863: the drag-resize preview line must span the unit's OWN
+	# The drag-resize preview line must span the unit's OWN
 	# formed-up width, not the density-blind NORMAL-order pitch -- otherwise a LOOSE unit's
 	# preview line is narrower than its real footprint (and jumps the instant the drag
 	# starts, since _resize_files begins equal to the unit's own current frontage).
