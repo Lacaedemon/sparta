@@ -209,6 +209,17 @@ var all_teams_control: bool = false
 # normal default-loadout spawn, byte-for-byte. See _spawn_scenario and demos/README.md.
 var scenario: Array = []
 
+# Derived replay state-snapshot cache: lets a PLAYBACK rewind resume from a
+# cached mid-battle moment instead of resimulating from tick 0 -- see
+# ReplaySnapshotCache.gd and capture_snapshot/restore_snapshot/seek_to_tick below. Density
+# and memory cap are settable BEFORE the node enters the tree (like drill_mode/scenario
+# above), so tooling (a dev console, a future scrub UI) can trade finer rewind resolution
+# for memory/CPU while debugging a specific window; a normal battle leaves both at
+# ReplaySnapshotCache's own coarse defaults.
+var replay_snapshot_interval_ticks: int = ReplaySnapshotCache.DEFAULT_INTERVAL_TICKS
+var replay_snapshot_max: int = ReplaySnapshotCache.DEFAULT_MAX_SNAPSHOTS
+var _snapshot_cache: ReplaySnapshotCache = null
+
 # Battle AI phase 3 (docs/battle-ai-design.md): which doctrine profile (DoctrineRegistry id,
 # a filename stem under data/doctrines/) team 1's General uses this battle. Settable BEFORE
 # the node enters the tree (like drill_mode/scenario above) so a demo/test can force a
@@ -265,6 +276,11 @@ func _ready() -> void:
 			and UnitRef.NUDGE_BACK == NudgeDir.BACK \
 			and UnitRef.NUDGE_FORWARD == NudgeDir.FORWARD,
 			"Unit nudge-direction mirror constants are out of sync with Battle.NudgeDir")
+
+	# Fresh per-battle snapshot cache (never reused across a scene reload -- a stale cache
+	# from a previous instance would key snapshots to freed Unit nodes). Built from
+	# whatever replay_snapshot_interval_ticks/replay_snapshot_max a caller set above.
+	_snapshot_cache = ReplaySnapshotCache.new(replay_snapshot_interval_ticks, replay_snapshot_max)
 
 	# Start a fresh recording for every live battle (so any battle can be
 	# replayed for debugging). During playback the recorder is already armed by
@@ -679,11 +695,141 @@ func _apply_starting_state(u: Unit, starting_state: int) -> void:
 			push_warning("[battle] scenario 'starting_state' %d is not ROUTING or DEAD; leaving the unit IDLE." % starting_state)
 
 
+# --- Derived replay state snapshots ----------------------------------------
+# See ReplaySnapshotCache.gd for the cache's own density/eviction contract and
+# Unit.to_snapshot_dict/apply_snapshot_dict for what a per-unit entry carries. Battle owns
+# the actual capture/restore because a snapshot is a whole-battle moment (the tick counter,
+# Replay's RNG stream position and order-read cursor, and every live unit), not something
+# any single Unit can serialize on its own.
+
+## Every live unit ("units" + "routers" -- a unit that has died and left play is in
+## neither, so it's correctly excluded, matching how a rewind to before its death
+## should look) plus the whole-battle bookkeeping (tick, RNG stream position, the next
+## fresh uid) needed to resume simulating from this exact moment. Opaque to callers other
+## than restore_snapshot; never written to the canonical .replay file.
+func capture_snapshot() -> Dictionary:
+	var units: Array = []
+	for group in ["units", "routers"]:
+		for node in get_tree().get_nodes_in_group(group):
+			var u := node as UnitRef
+			if u != null:
+				units.append(u.to_snapshot_dict())
+	return {
+		"tick": _tick,
+		"rng_state": Replay.rng.state,
+		"next_uid": _next_uid,
+		"units": units,
+	}
+
+
+## Rebuilds the battle to exactly the moment `snap` was captured at: frees every current
+## unit and respawns fresh ones from the snapshot's per-unit data, rather than mutating a
+## live, already-ticking unit in place. A fresh node naturally starts every per-tick /
+## frame-keyed cache (spatial hash, engaged-soldier selection, ...) at its normal "just
+## spawned" default, self-healing on the first tick exactly like an ordinary spawn already
+## does -- see .claude/memories/sparta.md's frame-keyed-cache hazards this sidesteps.
+## Restores the tick counter, the RNG stream position (so subsequent combat rolls draw
+## exactly where the original run would have), and Replay's own order-read cursor.
+func restore_snapshot(snap: Dictionary) -> void:
+	for group in ["units", "routers"]:
+		for node in get_tree().get_nodes_in_group(group):
+			var u := node as UnitRef
+			if u != null:
+				# Immediate group removal, not just queue_free(): queue_free() defers to end
+				# of frame, so a get_nodes_in_group() call later THIS frame (the respawn loop
+				# right below, or anything the current physics frame still has to run) would
+				# otherwise see both the outgoing and incoming units at once.
+				u.remove_from_group("units")
+				u.remove_from_group("routers")
+				u.queue_free()
+
+	var by_uid: Dictionary = {}
+	for ud in snap["units"]:
+		var u := _spawn_from_snapshot(ud)
+		by_uid[u.uid] = u
+	_by_uid = by_uid
+	_next_uid = int(snap.get("next_uid", _next_uid))
+
+	# Second pass: resolve the uid-based references every unit dict carried instead of a
+	# live Unit ref -- see Unit.to_snapshot_dict()'s doc.
+	for ud in snap["units"]:
+		var u: Unit = by_uid.get(int(ud["uid"]))
+		if u == null:
+			continue
+		u.target_enemy = by_uid.get(int(ud.get("target_enemy_uid", -1)))
+		u.support_target = by_uid.get(int(ud.get("support_target_uid", -1)))
+		u._engage_turn_enemy = by_uid.get(int(ud.get("engage_turn_enemy_uid", -1)))
+
+	_tick = int(snap["tick"])
+	Replay.rng.state = int(snap["rng_state"])
+	Replay.rewind_cursor_to_tick(_tick)
+
+	# A completed replay has _ended set and the tree paused behind the end overlay
+	# (_check_victory runs during PLAYBACK too), and both _physics_process and
+	# _on_soldier_tick early-return in that state -- so without this, rewinding a
+	# finished battle restores the units and then freezes forever. The snapshot was
+	# captured mid-battle, where neither held.
+	if _ended:
+		_ended = false
+		if _hud != null:
+			_hud.hide_end()
+
+
+## Builds one Unit from a captured per-unit dict, mirroring _spawn_unit's own two-phase
+## field application: the spawn-time identity fields are set before add_child() so
+## Unit._ready() (which derives separation_radius etc. from them) sees the right values,
+## then apply_snapshot_dict() overwrites everything -- including what _ready() just set --
+## with the exact recorded runtime state.
+func _spawn_from_snapshot(ud: Dictionary) -> Unit:
+	var u := UnitRef.new()
+	u.uid = int(ud["uid"])
+	u.team = int(ud["team"])
+	u.is_cavalry = bool(ud["is_cavalry"])
+	u.facing = ud["facing"]
+	u.position = ud["position"]
+	_units.add_child(u)
+	u.apply_snapshot_dict(ud)
+	if int(ud["state"]) == UnitRef.State.ROUTING:
+		u.remove_from_group("units")
+		u.add_to_group("routers")
+	return u
+
+
+## Jump playback toward `target_tick` by restoring the nearest cached snapshot at or
+## before it, skipping resimulation of every tick before that snapshot. Landing on a
+## snapshot still leaves (target_tick - snapshot tick) ticks of real simulation to run to
+## actually reach target_tick -- the caller (a dev tool driving physics_frame, or a future
+## scrub UI) advances the rest exactly as it already does for ordinary forward playback;
+## this only shortens how far back that has to start from. A forward jump (target_tick >=
+## the current tick) gets no help here -- there's nothing to derive it from short of
+## simulating forward -- and is a no-op, matching the issue's own scope ("this only helps
+## rewind/backward-scrub, not fast-forward-skip"). No-op outside PLAYBACK, and when
+## nothing is cached early enough (the caller falls back to a full restart from tick 0,
+## unchanged from today).
+func seek_to_tick(target_tick: int) -> void:
+	if Replay.mode != Replay.Mode.PLAYBACK or target_tick >= _tick:
+		return
+	var snap: Dictionary = _snapshot_cache.nearest_at_or_before(target_tick)
+	if snap.is_empty():
+		return
+	restore_snapshot(snap)
+
+
 func _physics_process(_delta: float) -> void:
 	# Runs before the Units' own _physics_process (parent precedes children in
 	# tree order), so orders and AI for this tick are applied before units act.
 	if _ended:
 		return
+
+	# Cache a derived snapshot of the state we're about to simulate FROM this tick, on the
+	# configured density -- captured here, before this tick's own order-
+	# application/AI/unit processing runs, so it reproduces exactly what a fresh restore
+	# needs as its starting point (equivalent to "the world as the previous tick's units
+	# left it"). PLAYBACK only: a live recording is the one true timeline, nothing to
+	# rewind to yet.
+	if Replay.mode == Replay.Mode.PLAYBACK and _snapshot_cache.should_snapshot(_tick) \
+			and not _snapshot_cache.has(_tick):
+		_snapshot_cache.store(_tick, capture_snapshot())
 
 	# Rebuild the shared spatial hash once per tick, before the Units process, so
 	# every unit's _separate() this frame queries a current grid (O(n) bucketing
@@ -1414,6 +1560,13 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				var rear_move: bool = not cmd.has("face") and not side_step and not back_step \
 						and u.state != UnitRef.State.FIGHTING \
 						and UnitManeuver.is_rear_move(u.facing, move_vec)
+				# An oblique rear-sector move -- one where the about-face's own 180°
+				# reversal alone would still leave a sizeable misalignment to the
+				# destination -- flank-pivots (wheels) the rest of the way onto the
+				# destination bearing between the about-face and the march, rather than
+				# leaving the march's own gradual centre-pivot to close a large gap while
+				# already under way.
+				var wheel_turn: bool = rear_move and UnitManeuver.is_wheel_turn(u.facing, move_vec)
 				# A longer lateral move quarter-turns toward the destination's side in
 				# place, marches sideways to it keeping its pre-turn footprint, then
 				# quarter-turns back to the original facing on arrival -- a file march,
@@ -1448,9 +1601,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# the composite's reform phase (see Unit._finish_order_turn). A lateral
 				# pivot never reforms -- it keeps its pre-turn footprint for the whole march
 				# by design (the file-march character of the maneuver), so it forces reform
-				# off regardless of what the player's own command requested.
+				# off regardless of what the player's own command requested. A wheel-turn
+				# likewise never reforms between its turn phases and the march -- it reforms
+				# on arrival instead (Unit._finish_wheel), same as a plain rear move's own
+				# un-checked default.
 				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
-				order.reform = bool(cmd.get("reform", false)) and not lateral_pivot
+				order.reform = bool(cmd.get("reform", false)) and not lateral_pivot and not wheel_turn
 				# A multi-unit drag-line form-up: tag this order as one member of the shared
 				# group (docs/atomic-order-decomposition-design.md) instead of the standalone
 				# order every other move is. The group node itself is built once per id and
@@ -1474,10 +1630,15 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				if rear_move:
 					# Park the destination on the order and about-face in place; _think
 					# starts the march when the turn completes. has_move_target stays false
-					# so the turn isn't cancelled. begin_about_face refuses before the
-					# bodies seed (a spawn-tick order) -- fall back to a plain march then.
+					# so the turn isn't cancelled. begin_about_face(_with_wheel) refuses
+					# before the bodies seed (a spawn-tick order) -- fall back to a plain
+					# march then.
 					u.has_move_target = false
-					turn_armed = u.begin_about_face(order)
+					if wheel_turn:
+						var wheel_dir: int = UnitManeuver.wheel_turn_dir(u.facing, move_vec)
+						turn_armed = u.begin_about_face_with_wheel(order, wheel_dir)
+					else:
+						turn_armed = u.begin_about_face(order)
 				elif lateral_pivot:
 					# Same handoff as a rear move, but a quarter-turn toward the
 					# destination's side instead of a full reversal. begin_pivot refuses

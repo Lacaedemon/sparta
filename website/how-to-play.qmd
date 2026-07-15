@@ -252,6 +252,32 @@ the under-strength rank counter-marching back to the rear --- and then marches o
 facing the destination.
 :::
 
+**Move to the rear, oblique (about-face, flank pivot, then march).** When that
+rear-sector destination is oblique enough --- more than about 30° off the reversed
+heading --- the about-face's own 180° reversal alone would still leave a sizeable
+turn uncorrected. For a move that oblique, the regiment adds one more standing step
+before it marches: once the about-face completes, it **flank-pivots** (wheels) the
+rest of the way onto the destination's bearing --- the same hinge swing as the
+<kbd>Z</kbd>/<kbd>C</kbd> drill below, just chained in automatically --- and only
+then steps off, already lined up on its destination instead of leaving the last of
+the turn to the march's own gradual centre pivot.
+
+::: {#fig-wheel-turn .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/wheel_turn.jpg">
+  <source src="media/wheel_turn.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Oblique move to the rear: the regiment about-faces in place, flank-pivots
+(wheels) the rest of the way onto the destination's bearing, then marches off
+already lined up on it.
+:::
+
 **Lateral pivot (quarter-turn, file march, quarter-turn back).** A longer move
 order to one **side** --- too far to side-step, but not far enough off-facing to
 count as behind the unit --- is a **file march**: the regiment **quarter-turns**

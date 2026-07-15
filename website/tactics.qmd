@@ -1037,6 +1037,14 @@ to march an arc, a wheel takes time and covers ground: order it before contact, 
 grinding melee, and give the swinging flank room to travel. A fighting unit ignores the
 order --- you can't hinge a line that's locked in combat.
 
+The same hinge swing also fires **automatically** as part of a large oblique move to the
+rear: if a rear-sector destination is oblique enough that the about-face's own 180°
+reversal alone would still leave a sizeable turn to close, the regiment about-faces, THEN
+wheels the rest of the way onto the destination's bearing, THEN marches --- so a unit
+sent far to the rear on an angle steps off already lined up on its destination instead of
+correcting the last of the turn mid-march. You don't order this one; it's the drilled
+default for that shape of move (see [how-to-play](how-to-play.qmd#fig-wheel-turn)).
+
 ## Order stances
 
 Each order can carry a *stance*, armed with a hotkey before you click (a coloured
