@@ -99,6 +99,29 @@ func test_transcript_distinguishes_a_rear_move_about_face_from_a_plain_march() -
 		"the two reads are distinguishable from the transcript alone")
 
 
+# --- Countermarch: maneuver + countermarch_variant fields ---------------------------------
+
+func test_transcript_reports_the_countermarch_variant_and_null_otherwise() -> void:
+	_spawn_battle_with_recorder([{"team": 0, "type": "Infantry", "x": 500, "y": 500}])
+	await get_tree().physics_frame
+	var mine: Unit = _team_unit(0)
+	assert_not_null(mine)
+	if mine == null:
+		return
+
+	# Idle: no countermarch running, so the field reads null even though "maneuver" is set.
+	var idle_rec: Dictionary = _record_for(mine.uid)
+	assert_eq(idle_rec["maneuver"], "IDLE")
+	assert_null(idle_rec["countermarch_variant"])
+
+	mine.seed_sim_soldiers()
+	mine.countermarch(Unit.CountermarchVariant.LACONIAN)
+	var running_rec: Dictionary = _record_for(mine.uid)
+	assert_eq(running_rec["maneuver"], "COUNTERMARCH",
+		"a countermarch's opening about-face must not read as the bare CONVERSIO maneuver")
+	assert_eq(running_rec["countermarch_variant"], "LACONIAN")
+
+
 # --- Phase 4 fields: order_guard -----------------------------------------------------------
 
 func test_transcript_reports_null_order_guard_for_an_unguarded_order() -> void:

@@ -901,6 +901,17 @@ before the unit steps off --- order the retreat with a margin. With it off, the
 unit marches at once and reforms on arrival, buying speed at the price of leading
 the whole march with its thinnest rank.
 
+This same file-countermarch mechanism is also available as its own standalone
+drill --- see [How to play: Controls](how-to-play.qmd#controls) for the
+Countermarch (exelismos) hotkeys.
+A rear-move order reforms *incidentally*, as a side effect of turning to march
+somewhere; the standalone drill runs it *deliberately*, always bringing a full
+rank forward, and offers a choice of where the whole regiment ends up
+afterward: the same ground (Choral/Persian), advanced (Macedonian), or
+withdrawn (Laconian).
+Use it instead of a rear-move order when you want the full-rank reform without
+also committing to a specific destination.
+
 ## The centre pivot
 
 A larger turn is a **centre pivot**: the unit rotates about its own centre onto its

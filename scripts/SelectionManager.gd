@@ -332,6 +332,20 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_I:
 		_toggle_rank_relief()   # I: toggle the intra-unit rank-relief (discipline) mode
 		return true
+	elif event.keycode == KEY_V and event.ctrl_pressed and event.shift_pressed:
+		# Ctrl+Shift+V: countermarch, Laconian (withdraw onto new ground). V is already
+		# claimed by conversio and every plain letter key is already spoken for elsewhere
+		# (see HUD.gd/SelectionManager.gd's own key map), so the countermarch's three
+		# variants share V with modifiers -- the same "reuse the key, since every plain
+		# letter is claimed" convention Shift+O already uses for the schiltron stance.
+		_issue_countermarch(UnitRef.CountermarchVariant.LACONIAN)
+		return true
+	elif event.keycode == KEY_V and event.ctrl_pressed:
+		_issue_countermarch(UnitRef.CountermarchVariant.MACEDONIAN)   # Ctrl+V: advance onto new ground
+		return true
+	elif event.keycode == KEY_V and event.shift_pressed:
+		_issue_countermarch(UnitRef.CountermarchVariant.CHORAL)   # Shift+V: reverse on the same ground
+		return true
 	elif event.keycode == KEY_V:
 		_issue_conversio()   # conversio: every soldier reverses 180° in place
 		return true
@@ -1058,6 +1072,26 @@ func _issue_wheel(dir: int) -> void:
 	if uids.is_empty():
 		return
 	_battle.enqueue_wheel(uids, dir)
+	Sfx.play(&"order")
+
+
+## Countermarch (exelismos): each selected friendly unit reverses which end of its block
+## faces the enemy by marching files through each other (`variant` = Unit.CountermarchVariant).
+## UNLIKE the conversio/quarter-turn drills -- which touch only per-soldier facing and stay out
+## of the replay stream -- a Macedonian/Laconian countermarch moves the regiment (position and
+## facing), which the sim reads, so it goes through the recorded order path
+## (Battle.enqueue_countermarch), the same as a wheel. Blocked during replay playback;
+## combat-engaged or already-maneuvering units ignore it in Unit.countermarch() (_can_drill()).
+func _issue_countermarch(variant: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and _is_own_team(unit.team):
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_countermarch(uids, variant)
 	Sfx.play(&"order")
 
 

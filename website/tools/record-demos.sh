@@ -84,6 +84,7 @@ DEMOS=(
   "lateral_pivot_flank_march|demos/inputs/lateral-pivot-flank-march.json|30|400|720|input"
   "general_doctrine_reserves|demos/inputs/general-doctrine-reserves.json|60|900|640|input"
   "echelon_form_up|demos/inputs/echelon-oblique-form-up.json|30|650|720|input"
+  "countermarch|demos/inputs/countermarch-exelismos.json|30|560|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a

@@ -53,6 +53,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | File-doubling | <kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) · <kbd>Shift+B</kbd> / <kbd>Ctrl+B</kbd> anchored explicatio (right / left flank held fixed) |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
+| Countermarch (exelismos) | <kbd>Shift+V</kbd> Choral/Persian (same ground) · <kbd>Ctrl+V</kbd> Macedonian (advance) · <kbd>Ctrl+Shift+V</kbd> Laconian (withdraw) |
 | Wheel (hinge on a flank) | <kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file) |
 | Nudge (small step, holds facing) | <kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↑</kbd> forward-step · <kbd>↓</kbd> back-step (a few metres each) |
 | Merge selected units | <kbd>M</kbd> |
@@ -303,10 +304,46 @@ actually marches an arc, so the line ends up facing a new direction *and* lying 
 new line. Use it to refuse a flank, to swing a wing forward and take an enemy line in the
 side, or to change the front an entire wing presents without breaking its order.
 
-All three drills fire from a standstill only: a unit that is marching, fighting, or
+**Countermarch (exelismos, <kbd>Shift+V</kbd> / <kbd>Ctrl+V</kbd> / <kbd>Ctrl+Shift+V</kbd>).**
+All three variants share the about-face's <kbd>V</kbd> key, the same way <kbd>Shift+O</kbd>
+shares <kbd>O</kbd> with the anti-cavalry square --- every plain letter hotkey is already
+claimed elsewhere. Unlike the conversio (every man turns in place, keeping his own spot) or
+the wheel (a hinge swing on one flank), a countermarch reverses which end of the line faces
+the enemy by marching **files** through and around each other: the files countermarch past
+their own file-mates so a genuine full-strength rank always ends up leading, instead of
+whichever partial or depleted rank happened to be trailing after a plain about-face. The
+three historical variants (Asclepiodotus, *Tactica* 10; Aelian, *Tactica Theoria* 27--28)
+differ only in where the whole regiment ends up:
+
+- <kbd>Shift+V</kbd> **Choral/Persian** --- reverses facing on the very ground the unit
+  already stands on, the in-place counterpart to the conversio.
+- <kbd>Ctrl+V</kbd> **Macedonian** --- reverses facing *and* advances, roughly one file's
+  depth onto new ground. Use it to meet a fresh threat that has appeared behind the line.
+- <kbd>Ctrl+Shift+V</kbd> **Laconian** --- reverses facing *and* withdraws, roughly one
+  file's depth back. A controlled disengagement that cedes ground instead of gaining it.
+
+All four drills fire from a standstill only: a unit that is marching, fighting, or
 already mid-maneuver ignores the key press. While one runs, the info panel reports it
-("About-facing", "Quarter-turning", "Wheeling"), and any fresh order cancels the drill
-where it stands.
+("About-facing", "Quarter-turning", "Wheeling", "Countermarching (Macedonian)"), and any
+fresh order cancels the drill where it stands.
+
+::: {#fig-countermarch .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/countermarch.jpg">
+  <source src="media/countermarch.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Countermarch (exelismos): three identical regiments, each commanded through a
+different variant. Left, Choral/Persian reverses facing on the same ground;
+middle, Macedonian reverses facing and advances; right, Laconian reverses
+facing and withdraws --- the same about-face, but three different outcomes for
+where the line ends up.
+:::
 
 ::: {#fig-wheel .demo}
 

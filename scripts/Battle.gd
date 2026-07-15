@@ -65,6 +65,15 @@ const ORDER_STANCE_ONLY := -7
 # Rank-relief toggle values for a stance order's "frontage" field: LEAVE keeps each
 # unit's current setting; ON/OFF write the durable Unit.rank_relief mode.
 enum RankRelief { LEAVE = 0, ON = 1, OFF = 2 }
+# Sentinel for a countermarch order (exelismos): reverses which end of the block faces the
+# enemy by marching files through and around each other, in one of three historical variants
+# (Unit.CountermarchVariant -- Macedonian/advance, Laconian/withdraw, Choral-Persian/same
+# ground), carried in the "x" field. Unit.countermarch() creates and installs its own composite
+# order (about-face, then reform, then the variant's march) when the unit stands idle, and
+# no-ops otherwise -- the same refusal contract Unit.wheel() already has. UNLIKE the visual-only
+# conversio/quarter-turn drills, a Macedonian/Laconian countermarch moves the regiment (position
+# AND facing), which the sim reads, so it IS recorded and replayed like a move (see ORDER_WHEEL).
+const ORDER_COUNTERMARCH := -8
 # How far a single arrow-key nudge shifts the unit (world units). 30 wu is ~1.5 m
 # (WORLD_UNITS_PER_METER = 20) — a few soldier-widths, and under the side-step
 # distance ceiling (UnitManeuver.SIDESTEP_MAX_DISTANCE) so a lateral nudge always
@@ -996,6 +1005,23 @@ func enqueue_wheel(uids: Array, dir: int) -> void:
 	_apply_order_live(cmd)
 
 
+## Countermarch (exelismos): each selected unit reverses which end of its block faces the
+## enemy by marching files through each other, in `variant` (Unit.CountermarchVariant), which
+## rides in the "x" field. Recorded so replays reproduce it -- see ORDER_COUNTERMARCH.
+func enqueue_countermarch(uids: Array, variant: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var cmd := {
+		"units": uids,
+		"x": float(variant),
+		"y": 0.0,
+		"target": ORDER_COUNTERMARCH,
+		"mode": OrderMode.NORMAL,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
 ## World-space offset for a nudge of `dir` given a unit's `facing`. LEFT / RIGHT
 ## are perpendicular to facing (a side-step); BACK is straight opposite facing (a
 ## back-step); FORWARD is straight along facing (a forward step). Each is
@@ -1158,6 +1184,16 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
 				u.wheel(wheel_dir)
+		return
+	# Countermarch: reverse which end of the block faces the enemy via a file countermarch.
+	# The variant rides in "x". Unit.countermarch() builds its own composite order (about-face,
+	# reform, then the variant's march) when idle, and no-ops otherwise -- see ORDER_COUNTERMARCH.
+	if target_uid == ORDER_COUNTERMARCH:
+		var variant: int = int(round(float(cmd["x"])))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null:
+				u.countermarch(variant)
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
