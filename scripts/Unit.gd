@@ -4476,3 +4476,194 @@ func _draw() -> void:
 	# always-opaque alpha above.
 	var flag_c := Color(team_color.r, team_color.g, team_color.b, _render_alpha)
 	UnitSprites.flag(self, flag_c, _render_alpha, extent)
+
+
+# --- Derived replay state snapshots (issue #763) ----------------------------------------
+# Battle.capture_snapshot()/restore_snapshot() use these to let a replay rewind resume from
+# a cached mid-battle moment instead of resimulating from tick 0. A snapshot is never part
+# of the canonical .replay file -- it's a plain in-memory Dictionary, cached by
+# ReplaySnapshotCache for the life of one Battle instance only.
+#
+# What's captured: every field that feeds `_think`/movement/combat decisions -- the spawn-
+# time stats (a restore respawns a fresh node rather than mutating a live one, so these
+# travel with it instead of being re-derived from a loadout table), the mutable runtime
+# state, the orders queue, and the per-soldier body arrays (position/velocity/hp/prone/
+# stamina/facing -- the "bottom-up physics" state the block's on-screen shape actually
+# depends on; skipping these would restore a visually-snapped-to-a-fresh-grid block instead
+# of the true mid-fight positions).
+#
+# What's deliberately NOT captured: purely cosmetic/render-cache fields (_render_dirty, the
+# MultiMesh/mesh handles, _flock_color) and frame-keyed lookup caches
+# (_engaged_indices_cache and friends, keyed by Engine.get_physics_frames()) -- both
+# regenerate on the next tick/draw exactly as they already do for a freshly spawned unit
+# that hasn't ticked or drawn yet, so restoring into a fresh node needs no special handling
+# for them. Order.friendly_target is also not captured -- see Order.to_dict()'s doc.
+
+## Everything needed to resume simulating this unit from this exact moment. Unit references
+## (target_enemy, support_target, _engage_turn_enemy) are written as bare uids -- the caller
+## (Battle.restore_snapshot) resolves them to live Unit refs in a second pass, once every
+## unit in the snapshot has been respawned.
+func to_snapshot_dict() -> Dictionary:
+	return {
+		# Spawn-time identity/stats.
+		"uid": uid, "unit_name": unit_name, "team": team,
+		"anti_cavalry": anti_cavalry, "is_cavalry": is_cavalry, "is_ranged": is_ranged,
+		"max_soldiers": max_soldiers, "attack": attack, "defense": defense,
+		"move_speed": move_speed, "walk_speed": walk_speed, "jog_speed": jog_speed,
+		"back_speed_fraction": back_speed_fraction, "accel": accel, "decel": decel,
+		"attack_range": attack_range,
+		"weapon_type_id": weapon_type_id, "shield_type_id": shield_type_id,
+		"order_response_delay": order_response_delay,
+		"training": training, "disciplined": disciplined,
+		"field_bounds": field_bounds, "retreat_bounds": retreat_bounds,
+		"separation_radius": separation_radius,
+		"base_separation_radius": _base_separation_radius,
+		"spacing_scale": spacing_scale, "team_color": team_color,
+
+		# Mutable runtime state.
+		"soldiers": soldiers, "morale": morale, "fatigue": fatigue, "cohesion": cohesion,
+		"state": state, "facing": facing, "position": position,
+		"move_target": move_target, "has_move_target": has_move_target,
+		"order_mode": order_mode, "knockback_push_indefinite": knockback_push_indefinite,
+		"formation_mode": formation_mode, "rank_relief": rank_relief,
+		"engage_reshape_mode": engage_reshape_mode, "tier": tier,
+		"frontage_override": frontage_override,
+		"frontage_anchor_offset": frontage_anchor_offset,
+		"last_reshape_tick": _last_reshape_tick,
+		"last_reshape_widened": _last_reshape_widened,
+		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
+		"formation_mirror_x": _formation_mirror_x,
+		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
+		"walk_advance": walk_advance, "under_fire": _under_fire,
+		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
+		"rout_timer": _rout_timer, "shattered": _shattered,
+		"order_response_timer": _order_response_timer,
+		"moved_last_frame": _moved_last_frame,
+		"approach_velocity": _approach_velocity, "current_speed": _current_speed,
+		"body_follow_vel": _body_follow_vel, "cycle_recharging": _cycle_recharging,
+		"combat_intermixing": _combat_intermixing,
+		"per_soldier_facing": _per_soldier_facing,
+		"engage_turn_target": _engage_turn_target,
+		"engage_turn_start_facing": _engage_turn_start_facing,
+		"engage_turn_old_files": _engage_turn_old_files,
+		"reform_on_arrival": _reform_on_arrival,
+
+		# Unit references, resolved by uid after every unit in the snapshot is restored.
+		"target_enemy_uid": target_enemy.uid if is_instance_valid(target_enemy) else -1,
+		"support_target_uid": support_target.uid if is_instance_valid(support_target) else -1,
+		"engage_turn_enemy_uid":
+				_engage_turn_enemy.uid if is_instance_valid(_engage_turn_enemy) else -1,
+
+		# Orders queue (Order is a plain RefCounted; see Order.to_dict()). current_order is
+		# always orders[0] (or null) -- see set_current_order -- so it isn't captured twice.
+		"orders": orders.map(func(o: Order) -> Dictionary: return o.to_dict()),
+
+		# Per-soldier bodies, duplicated so a later live mutation of this unit's own arrays
+		# can never alias (and silently corrupt) a cached snapshot.
+		"sim_soldier_pos": _sim_soldier_pos.duplicate(),
+		"sim_body_vel": _sim_body_vel.duplicate(),
+		"sim_steer": _sim_steer.duplicate(),
+		"sim_soldier_hp": _sim_soldier_hp.duplicate(),
+		"sim_soldier_weapon_id": _sim_soldier_weapon_id.duplicate(),
+		"sim_soldier_shield_id": _sim_soldier_shield_id.duplicate(),
+		"sim_soldier_shield_hold_angle": _sim_soldier_shield_hold_angle.duplicate(),
+		"sim_prone": _sim_prone.duplicate(),
+		"sim_soldier_stamina": _sim_soldier_stamina.duplicate(),
+		"sim_soldier_facing": _sim_soldier_facing.duplicate(),
+	}
+
+
+## Applies a to_snapshot_dict() payload onto this unit. Intended to be called once, right
+## after spawning a fresh node with its spawn-time identity fields already set and added to
+## the tree (mirrors Battle._spawn_unit's own two-phase field application) -- see
+## Battle.restore_snapshot. Leaves target_enemy/support_target/_engage_turn_enemy at their
+## defaults; the caller resolves those uids once every unit in the snapshot exists.
+func apply_snapshot_dict(d: Dictionary) -> void:
+	uid = int(d["uid"])
+	unit_name = String(d["unit_name"])
+	team = int(d["team"])
+	anti_cavalry = bool(d["anti_cavalry"])
+	is_cavalry = bool(d["is_cavalry"])
+	is_ranged = bool(d["is_ranged"])
+	max_soldiers = int(d["max_soldiers"])
+	attack = int(d["attack"])
+	defense = int(d["defense"])
+	move_speed = float(d["move_speed"])
+	walk_speed = float(d["walk_speed"])
+	jog_speed = float(d["jog_speed"])
+	back_speed_fraction = float(d["back_speed_fraction"])
+	accel = float(d["accel"])
+	decel = float(d["decel"])
+	attack_range = float(d["attack_range"])
+	weapon_type_id = int(d["weapon_type_id"])
+	shield_type_id = int(d["shield_type_id"])
+	order_response_delay = float(d["order_response_delay"])
+	training = float(d["training"])
+	disciplined = bool(d["disciplined"])
+	field_bounds = d["field_bounds"]
+	retreat_bounds = d["retreat_bounds"]
+	separation_radius = float(d["separation_radius"])
+	_base_separation_radius = float(d["base_separation_radius"])
+	spacing_scale = float(d["spacing_scale"])
+	team_color = d["team_color"]
+
+	soldiers = int(d["soldiers"])
+	morale = float(d["morale"])
+	fatigue = float(d["fatigue"])
+	cohesion = float(d["cohesion"])
+	state = int(d["state"])
+	facing = d["facing"]
+	position = d["position"]
+	move_target = d["move_target"]
+	has_move_target = bool(d["has_move_target"])
+	order_mode = int(d["order_mode"])
+	knockback_push_indefinite = bool(d["knockback_push_indefinite"])
+	formation_mode = int(d["formation_mode"])
+	rank_relief = bool(d["rank_relief"])
+	engage_reshape_mode = int(d["engage_reshape_mode"])
+	tier = int(d["tier"])
+	frontage_override = int(d["frontage_override"])
+	frontage_anchor_offset = float(d["frontage_anchor_offset"])
+	_last_reshape_tick = int(d["last_reshape_tick"])
+	_last_reshape_widened = bool(d["last_reshape_widened"])
+	_ranks_closed = bool(d["ranks_closed"])
+	_formation_angle = float(d["formation_angle"])
+	_formation_mirror_x = bool(d["formation_mirror_x"])
+	deploy_facing = d["deploy_facing"]
+	ordered_facing = d["ordered_facing"]
+	walk_advance = bool(d["walk_advance"])
+	_under_fire = bool(d["under_fire"])
+	_attack_cd = float(d["attack_cd"])
+	_pin_down_exposure_cd = float(d["pin_down_exposure_cd"])
+	_rout_timer = float(d["rout_timer"])
+	_shattered = bool(d["shattered"])
+	_order_response_timer = float(d["order_response_timer"])
+	_moved_last_frame = bool(d["moved_last_frame"])
+	_approach_velocity = d["approach_velocity"]
+	_current_speed = float(d["current_speed"])
+	_body_follow_vel = d["body_follow_vel"]
+	_cycle_recharging = bool(d["cycle_recharging"])
+	_combat_intermixing = float(d["combat_intermixing"])
+	_per_soldier_facing = bool(d["per_soldier_facing"])
+	_engage_turn_target = d["engage_turn_target"]
+	_engage_turn_start_facing = d["engage_turn_start_facing"]
+	_engage_turn_old_files = int(d["engage_turn_old_files"])
+	_reform_on_arrival = bool(d["reform_on_arrival"])
+
+	var restored: Array[Order] = []
+	for od in d.get("orders", []):
+		restored.append(Order.from_dict(od))
+	orders = restored
+	current_order = orders[0] if not orders.is_empty() else null
+
+	_sim_soldier_pos = (d["sim_soldier_pos"] as PackedVector2Array).duplicate()
+	_sim_body_vel = (d["sim_body_vel"] as PackedVector2Array).duplicate()
+	_sim_steer = (d["sim_steer"] as PackedVector2Array).duplicate()
+	_sim_soldier_hp = (d["sim_soldier_hp"] as PackedFloat32Array).duplicate()
+	_sim_soldier_weapon_id = (d["sim_soldier_weapon_id"] as PackedInt32Array).duplicate()
+	_sim_soldier_shield_id = (d["sim_soldier_shield_id"] as PackedInt32Array).duplicate()
+	_sim_soldier_shield_hold_angle = \
+			(d["sim_soldier_shield_hold_angle"] as PackedFloat32Array).duplicate()
+	_sim_prone = (d["sim_prone"] as PackedFloat32Array).duplicate()
+	_sim_soldier_stamina = (d["sim_soldier_stamina"] as PackedFloat32Array).duplicate()
+	_sim_soldier_facing = (d["sim_soldier_facing"] as PackedVector2Array).duplicate()

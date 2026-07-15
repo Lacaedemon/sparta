@@ -367,6 +367,91 @@ static func resolve_friendly_target(u: Unit) -> void:
 		order.friendly_target = null
 
 
+## Serializes this order -- and, recursively, its children -- to a plain Dictionary for
+## Replay's derived state-snapshot cache (see ReplaySnapshotCache.gd / Unit.to_snapshot_dict).
+## `friendly_target`, the only Unit reference an Order carries, is deliberately NOT captured:
+## it's a live pass-through link used only to exempt two specific units from separation mid-
+## relief-swap (see the field's own doc comment above), so the rare case of a snapshot landing
+## exactly inside that swap loses the exemption for one tick -- the units shove apart instead
+## of interpenetrating -- rather than resolving into whatever they'd have naturally settled to
+## a moment later either way.
+func to_dict() -> Dictionary:
+	var d := {
+		"type": type,
+		"phase": phase,
+		"active_child": _active_child,
+		"reform_timer": reform_timer,
+		"reform_until_settled": reform_until_settled,
+		"reform_settle_eps": reform_settle_eps,
+		"target_pos": target_pos,
+		"target_uid": target_uid,
+		"formation": formation,
+		"frontage": frontage,
+		"frontage_anchor_offset": frontage_anchor_offset,
+		"dir": dir,
+		"order_mode": order_mode,
+		"gait": gait,
+		"haste": haste,
+		"stance": stance,
+		"rank_relief": rank_relief,
+		"turn_target": turn_target,
+		"turn_start_facing": turn_start_facing,
+		"pivot": pivot,
+		"reform": reform,
+		"pivot_return_angle": pivot_return_angle,
+		"countermarch_variant": countermarch_variant,
+		"guard": guard,
+		"guard_param": guard_param,
+		"guard_uid": guard_uid,
+		"guard_ticks": _guard_ticks,
+		"children": [],
+	}
+	for child in children:
+		d["children"].append(child.to_dict())
+	return d
+
+
+## Rebuilds an order tree from to_dict()'s output (children recursively, each with `parent`
+## re-linked back to its rebuilt parent). See to_dict()'s doc for what's deliberately not
+## round-tripped (friendly_target).
+static func from_dict(d: Dictionary) -> Order:
+	var o := Order.new()
+	o.type = int(d.get("type", Type.MOVE))
+	o.phase = int(d.get("phase", Phase.NONE))
+	o._active_child = int(d.get("active_child", 0))
+	o.reform_timer = float(d.get("reform_timer", 0.0))
+	o.reform_until_settled = bool(d.get("reform_until_settled", false))
+	o.reform_settle_eps = float(d.get("reform_settle_eps", 0.0))
+	o.target_pos = d.get("target_pos", Vector2.ZERO)
+	o.target_uid = int(d.get("target_uid", -1))
+	o.formation = int(d.get("formation", -1))
+	o.frontage = int(d.get("frontage", -1))
+	o.frontage_anchor_offset = float(d.get("frontage_anchor_offset", 0.0))
+	o.dir = int(d.get("dir", 0))
+	o.order_mode = int(d.get("order_mode", 0))
+	o.gait = int(d.get("gait", -1))
+	o.haste = bool(d.get("haste", false))
+	o.stance = int(d.get("stance", -1))
+	o.rank_relief = int(d.get("rank_relief", 0))
+	o.turn_target = d.get("turn_target", Vector2.ZERO)
+	o.turn_start_facing = d.get("turn_start_facing", Vector2.ZERO)
+	o.pivot = d.get("pivot", Vector2.ZERO)
+	o.reform = bool(d.get("reform", false))
+	o.pivot_return_angle = float(d.get("pivot_return_angle", 0.0))
+	o.countermarch_variant = int(d.get("countermarch_variant", -1))
+	o.guard = int(d.get("guard", Guard.NONE))
+	o.guard_param = float(d.get("guard_param", 0.0))
+	o.guard_uid = int(d.get("guard_uid", -1))
+	o._guard_ticks = int(d.get("guard_ticks", 0))
+	var kids: Array[Order] = []
+	for c in d.get("children", []):
+		var child := from_dict(c)
+		child.parent = o
+		kids.append(child)
+	o.children = kids
+	return o
+
+
 static func type_name(value: int) -> String:
 	return TYPE_NAMES.get(value, "TYPE(%d)" % value)
 
