@@ -82,6 +82,10 @@ func _ready() -> void:
 	# regardless of this default.
 	if script.get("show_soldier_ids", true):
 		Settings.set_show_soldier_ids_session(true)
+	# Same session-only pattern: a demo wanting the position-anchor marker (a unit's
+	# `position`, the regiment's own kinematic point) visible requests it here.
+	if script.get("show_position_anchor", false):
+		Settings.set_show_position_anchor_session(true)
 	# Deterministic seed so the recorded battle is reproducible run to run.
 	Replay.forced_seed = int(str(script.get("seed", "12345")))
 	# camera/frames/state go through script_array so a non-array typo degrades that one

@@ -2707,6 +2707,72 @@ func test_engaged_soldier_indices_use_cache_false_bypasses_a_populated_cache() -
 	assert_false(bypassed.has(front_idx))
 
 
+func test_near_front_soldier_indices_is_empty_when_not_engaged() -> void:
+	# #821: near_front_soldier_indices (SoldierBodies.couple()'s narrower anchor selection)
+	# only applies to a settled, engaged, non-Square regiment -- every other case falls back
+	# to the wider engaged_soldier_indices selection (or the whole-block centroid).
+	var u := _make_unit(120)
+	assert_false(u.is_engaged(), "sanity: a fresh idle unit is not engaged")
+	assert_eq(u.near_front_soldier_indices(u.soldiers), PackedInt32Array(),
+			"not engaged -> no near-front selection")
+
+
+func test_near_front_soldier_indices_is_empty_when_squared() -> void:
+	# Square/Schiltron has no single front rank (the ring wraps the whole block) -- the
+	# caller (position_anchor_indices) keeps using the perimeter-based engaged selection
+	# for that formation instead.
+	var u := _make_unit(24)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	assert_true(u.is_engaged(), "sanity: the unit is engaged")
+	assert_true(u.in_square(), "sanity: NORMAL formation is not this unit's mode")
+	assert_eq(u.near_front_soldier_indices(u.soldiers), PackedInt32Array(),
+			"Square/Schiltron -> no near-front selection")
+
+
+func test_near_front_soldier_indices_selects_anchor_ranks_worth_of_live_front_bodies() -> void:
+	# The settled, non-Square, engaged case: ANCHOR_RANKS-worth (narrower than the full
+	# ENGAGED_RANKS depth), by live position, same as engaged_soldier_indices' own mechanism.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u.soldiers
+	var files: int = u.formation_files(n)
+	var expected_cutoff: int = mini(n, files * Unit.ANCHOR_RANKS)
+	var indices: PackedInt32Array = u.near_front_soldier_indices(n)
+	assert_eq(indices.size(), expected_cutoff,
+			"selects exactly ANCHOR_RANKS ranks worth of soldiers")
+	assert_lt(indices.size(), u.engaged_soldier_indices(n, false).size(),
+			"narrower than the full engaged-ranks selection")
+
+
+func test_position_anchor_indices_falls_back_to_engaged_selection_while_unstable() -> void:
+	# _position_anchor_unstable (an in-progress order-turn, wheel, engage re-face, or reform
+	# hold) makes position_anchor_indices use the wider, more-damped engaged_soldier_indices
+	# selection instead of the narrower near_front_soldier_indices -- narrowing the anchor
+	# mid-transition is exactly what destabilized #724's melee-lock swirl regression when
+	# tried unconditionally (see Unit.ANCHOR_RANKS' own docstring). The engage re-face
+	# (_engage_turn_target) is the only one of the three is_maneuver_turning cases reachable
+	# while FIGHTING -- an order-driven drill turn or wheel requires state != FIGHTING
+	# (Unit._can_drill), so it's the representative case to exercise here directly, the same
+	# way test_engage_refacing.gd does.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u.soldiers
+	assert_false(u._position_anchor_unstable(), "sanity: settled, no maneuver/reform active")
+	assert_eq(u.position_anchor_indices(n, false), u.near_front_soldier_indices(n),
+			"settled -> the narrower near-front selection")
+	u._engage_turn_target = Vector2(1.0, 0.0)   # an in-progress engage re-face
+	assert_true(u._position_anchor_unstable(), "sanity: a re-face turn is now in progress")
+	assert_eq(u.position_anchor_indices(n, false), u.engaged_soldier_indices(n, false),
+			"mid-turn -> falls back to the wider engaged selection")
+
+
 func test_face_for_action_is_a_no_op_when_squared() -> void:
 	# An omnidirectional formation presents no weak facing, so it never turns the whole
 	# grid to bear on one attacker -- a rear/flank charger would otherwise drag the block's

@@ -21,7 +21,7 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_CYCLE_DEPTH_SPACE, MENU_FORMUP_CYCLE_DEPTH,
 		MENU_FORMUP_CYCLE_WIDTH, MENU_FORMUP_CYCLE_WIDTH_COUNT, MENU_FORMUP_CYCLE_CHECKERBOARD,
 		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
-		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_SHOW_FPS,
+		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_POSITION_ANCHOR, MENU_SHOW_FPS,
 		MENU_FPS_CORNER_TOP_LEFT, MENU_FPS_CORNER_TOP_RIGHT, MENU_FPS_CORNER_BOTTOM_LEFT,
 		MENU_FPS_CORNER_BOTTOM_RIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
 		MENU_QUIT_TO_MENU }
@@ -272,6 +272,7 @@ func _ready() -> void:
 	popup.add_check_item("Unit speed labels", MENU_UNIT_SPEED)
 	popup.add_check_item("Soldier IDs (selected unit, zoom in)", MENU_SOLDIER_IDS)
 	popup.add_check_item("Engaged-soldier highlight", MENU_ENGAGED_HIGHLIGHT)
+	popup.add_check_item("Position-anchor marker", MENU_POSITION_ANCHOR)
 	popup.add_check_item("Show frame rate", MENU_SHOW_FPS)
 	popup.add_separator("Frame rate corner…")
 	for entry in _FPS_CORNER_ENTRIES:
@@ -517,6 +518,8 @@ func _sync_setting_toggles() -> void:
 			Settings.show_soldier_ids)
 	popup.set_item_checked(popup.get_item_index(MENU_ENGAGED_HIGHLIGHT),
 			Settings.show_engaged_highlight)
+	popup.set_item_checked(popup.get_item_index(MENU_POSITION_ANCHOR),
+			Settings.show_position_anchor)
 	popup.set_item_checked(popup.get_item_index(MENU_SHOW_FPS), Settings.show_fps)
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.set_item_checked(popup.get_item_index(entry["id"]),
@@ -586,6 +589,8 @@ func _on_menu_id(id: int) -> void:
 			Settings.show_soldier_ids = not Settings.show_soldier_ids
 		MENU_ENGAGED_HIGHLIGHT:
 			Settings.show_engaged_highlight = not Settings.show_engaged_highlight
+		MENU_POSITION_ANCHOR:
+			Settings.show_position_anchor = not Settings.show_position_anchor
 		MENU_SHOW_FPS:
 			Settings.show_fps = not Settings.show_fps
 		MENU_KEYBINDINGS:

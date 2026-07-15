@@ -4358,6 +4358,14 @@ func _draw() -> void:
 			draw_string(font, (_sim_soldier_pos[i] - position) + Vector2(-4, -id_mark_r),
 					str(i), HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(1, 1, 1, 0.9))
 
+	# Position-anchor marker (dev/debug visual, any LOD): a small cyan dot at Vector2.ZERO,
+	# this node's own local-space origin -- which IS `position`, the regiment's kinematic
+	# anchor SoldierBodies.couple() slides toward the engaged bodies' centroid. Distinct
+	# from any individual soldier mark, so a reviewer can see the anchor track the front
+	# rank rather than drift with a casualty-thinned or knocked-back rear.
+	if Settings.show_position_anchor:
+		draw_circle(Vector2.ZERO, 4.0, Color(0.2, 0.9, 0.95, alpha))
+
 	# The regimental flag is the one element that fades while routing (a wavering
 	# standard reads as morale faltering); a separate faded color, not the chrome's
 	# always-opaque alpha above.
