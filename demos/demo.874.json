@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure comments/docs change (FORMATION_SPACING rationale in scripts/Unit.gd and docs/SPEED_VERIFICATION.md) -- no constant, logic, or rendering change, so there is nothing a recorded battle could show."
+}
