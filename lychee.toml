@@ -53,4 +53,12 @@ exclude = [
   # false-positive pattern as the two entries above. Linked as a citation
   # from docs/SPEED_VERIFICATION.md.
   "^https://marathonhandbook\\.com",
+  # imperiumromanum.pl is down outright as of 2026-07-15 — lychee sees HTTP
+  # 500 and direct probes time out at the connection level, with no Wayback
+  # snapshot to swap in. Linked as a citation from
+  # docs/acies-triplex-design.md (content verified when that doc was
+  # written). Re-check periodically and remove this exclusion once the site
+  # loads again, or replace the citation with primary sources (Livy VIII.8,
+  # Polybius VI.25).
+  "^https://imperiumromanum\\.pl",
 ]
