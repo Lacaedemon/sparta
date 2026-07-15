@@ -1726,9 +1726,11 @@ rank was too small a sample to damp `SoldierEnemyContact`'s per-tick contact-tor
 measurably re-aggravated the `test_residual_melee_swirl_battle.gd` regression (~38° pivot vs.
 its <28° gate); **`ANCHOR_RANKS = 2`** keeps that test's margin while still narrowing the
 anchor. All 6 originally-broken tests pass unmodified (they're all unengaged scenarios the
-change never touches), plus a new test proving the anchor actually tracks the front after rear
-casualties. Kept the section below as-is -- the failure mode and root-cause diagnosis it
-documents are exactly what the successful fix had to satisfy.
+change never touches), plus a new test (`test_couple_position_anchor_reaches_less_deep_than_the_old_selection_after_front_rank_casualties`)
+proving that once the true front rank is wiped out, the narrower anchor reaches less deep into
+the survivors than the old, wider selection would -- it doesn't get dragged as far back by a
+casualty-thinned block. Kept the section below as-is -- the failure mode and root-cause
+diagnosis it documents are exactly what the successful fix had to satisfy.
 
 ### First attempt -- tried and reverted
 
