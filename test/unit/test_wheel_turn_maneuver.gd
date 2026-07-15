@@ -117,6 +117,19 @@ func _step_until(u: Unit, predicate: Callable, max_ticks: int = 400) -> bool:
 	return false
 
 
+func test_wheel_turn_refuses_when_the_about_face_cannot_arm() -> void:
+	# Unseeded bodies are one of begin_pivot's own refusal conditions; the composite
+	# must propagate that refusal so the caller falls back to a plain march.
+	var u: Unit = UnitScript.new()
+	u.max_soldiers = 60
+	add_child_autofree(u)
+	u.facing = FACING_DOWN
+	var o := Order.new_move(Vector2(200, -200))
+	u.set_current_order(o)
+	assert_false(u.begin_about_face_with_wheel(o, 1),
+		"with no seeded soldier bodies the composite refuses instead of arming")
+
+
 func test_wheel_turn_about_faces_first_holding_position() -> void:
 	var u := _make_seeded_unit()
 	var start_facing: Vector2 = u.facing
@@ -158,6 +171,37 @@ func test_wheel_turn_flank_pivots_after_the_about_face_then_marches() -> void:
 		"the flank pivot swung facing to point directly at the destination")
 	assert_ne(u.position, Vector2.ZERO,
 		"unlike the about-face, the wheel itself displaces the block along its hinge arc")
+
+
+func test_wheel_hinge_sits_on_the_physical_front_after_the_about_face() -> void:
+	# The completed about-face folds _formation_angle to ±PI, spinning the slot grid's
+	# nominal axes 180°. The hinge must still land at the leading man of the standing
+	# flank RELATIVE TO THE NEW FACING -- taking the spun axes raw instead puts it at the
+	# rear corner of the opposite flank, and the whole block visibly wheels BACKWARD
+	# around it (every soldier backpedaling through the swing).
+	var u := _make_seeded_unit()
+	var dest := FACING_DOWN.rotated(deg_to_rad(140.0)) * 200.0
+	var o := _arm_wheel_turn(u, dest)
+	var wheeling := _step_until(u, func(): return u.is_wheeling())
+	assert_true(wheeling, "the flank pivot armed")
+
+	var leaf: Order = u.active_leaf()
+	var hinge_offset: Vector2 = leaf.pivot - u.position
+	assert_gt(hinge_offset.dot(u.facing), 0.0,
+		"the hinge sits AHEAD of the block centre along the post-about-face facing")
+
+	# And the block must swing forward, not backpedal: track the centre through the whole
+	# wheel -- its net displacement projects positively onto the (rotating) facing.
+	var forward_travel: float = 0.0
+	for _i in range(600):
+		var before: Vector2 = u.position
+		u._think(0.016)
+		forward_travel += (u.position - before).dot(u.facing)
+		if not u.is_wheeling():
+			break
+	assert_false(u.is_wheeling(), "the wheel completed within budget")
+	assert_gt(forward_travel, 0.0,
+		"the block's centre advances with facing through the swing -- a forward wheel")
 
 
 func test_wheel_turn_reforms_on_arrival() -> void:

@@ -3100,6 +3100,17 @@ func _wheel_pivot_point(dir: int) -> Vector2:
 	var half_width: float = float(files - 1) * 0.5 * FORMATION_SPACING * spacing_scale
 	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
 	var front_axis: Vector2 = facing.rotated(_formation_angle)             # slot-grid local -Y (toward front)
+	if front_axis.dot(facing) < 0.0:
+		# A completed about-face folds _formation_angle to ±PI, which spins BOTH grid axes
+		# 180°. The rectangular slot lattice is identical under that spin, but "front" and
+		# "left/right" must stay facing-relative here: keeping the spun axes puts the hinge
+		# at the rear corner of the OPPOSITE flank, and the whole block then wheels
+		# backward around it instead of the standing flank's leading man holding ground.
+		# Re-pick the lattice frame's other (facing-aligned) representative. A quarter-turn
+		# fold (±PI/2) leaves this dot at zero, so the tested hinge-against-the-laid-out-grid
+		# behavior for chained quarter turns is untouched.
+		file_axis = -file_axis
+		front_axis = -front_axis
 	var flank: Vector2 = position + file_axis * (half_width * signf(dir))
 	# The front rank sits ahead of the centre along the front axis by the block's front depth, so
 	# the hinge is the leading man of the standing file (a door hinges at its edge post, not its mid).
