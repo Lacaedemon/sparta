@@ -85,10 +85,12 @@ classification is only ever a per-clip conclusion, reached after looking.
 
 **For each clip the comment lists as changed:**
 
-1. Look at the actual footage — download the run's recorded-clips artifact,
-   or re-record the specific clip locally (its `DEMOS` row in
-   `website/tools/record-demos.sh`, or frame-capture its input file per the
-   sections below) — and compare against the published clip on the live site.
+1. Look at the actual footage. The workflow discards its fresh recordings
+   when the job ends (it only ever downloads the baseline artifact; it never
+   uploads its own), so re-record the specific clip locally — its `DEMOS` row
+   in `website/tools/record-demos.sh`, or frame-capture/state-dump its input
+   file per the sections below — and compare against the published clip on
+   the live site.
 2. Classify it: (a) **intended** — the PR's own change, visible as designed;
    (b) **benign nondeterminism** — rendering jitter with no sim-state
    difference (confirm with a state dump when unsure, don't eyeball it);
