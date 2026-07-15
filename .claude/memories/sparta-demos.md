@@ -72,6 +72,37 @@ physical source. When found in a pre-existing mechanism the PR only reuses,
 file it as its own tracked issue (per the review-handling policy) rather than
 growing the PR — but never let it pass unrecorded.
 
+### Every clip the website demo-diff flags gets a manual review, documented in the PR description
+
+`.github/workflows/website-demo-diff.yml` re-records the site's ENTIRE demo
+catalog on any PR touching game-visible code and posts a PR COMMENT listing
+which clips' rendered output changed vs. the last published main build. Its
+own header says a diff means either the PR intentionally changed what a clip
+shows, or it unintentionally regressed something that clip exercises — so a
+changed-clips list is a work item, not an FYI. Do NOT wave the list through
+with a blanket "differences attributable to rendering jitter"; that
+classification is only ever a per-clip conclusion, reached after looking.
+
+**For each clip the comment lists as changed:**
+
+1. Look at the actual footage — download the run's recorded-clips artifact,
+   or re-record the specific clip locally (its `DEMOS` row in
+   `website/tools/record-demos.sh`, or frame-capture its input file per the
+   sections below) — and compare against the published clip on the live site.
+2. Classify it: (a) **intended** — the PR's own change, visible as designed;
+   (b) **benign nondeterminism** — rendering jitter with no sim-state
+   difference (confirm with a state dump when unsure, don't eyeball it);
+   (c) **unintended regression** — stop and fix, or file+link an issue if
+   genuinely out of scope.
+3. Document the nature of each changed clip's change in the PR
+   **description** (a "Website demo diff" subsection): clip name, class, and
+   one line on what actually differs — e.g. "formations_wheel: intended —
+   the block now hinges on the standing flank's front corner". The
+   description is where reviewers look; the diff comment alone scrolls away.
+
+The thoroughness and super-physical rules above apply to each clip reviewed
+this way, exactly as they do to the PR's own demo.
+
 ## Author a scripted-input demo (the standard path)
 
 Sparta PR demos **can** show player-gesture features (multi-unit form-up, orders,
