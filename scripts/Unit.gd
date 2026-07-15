@@ -2944,8 +2944,8 @@ func _finish_order_turn() -> void:
 		# captures it once when the wheel is armed"). The swing target is the destination
 		# direction itself, straight off the click point -- position hasn't moved during the
 		# about-face, so `current_order.target_pos - position` is exactly the original move
-		# vector -- matching #396's design note: "destination facing ... determined by the
-		# vector between current center position and the destination clicked position."
+		# vector -- the destination facing is determined by the vector between the current
+		# centre position and the destination clicked position, per the maneuver's design.
 		next_leaf.pivot = _wheel_pivot_point(next_leaf.dir)
 		next_leaf.turn_start_facing = facing
 		next_leaf.turn_target = (current_order.target_pos - position).normalized()
