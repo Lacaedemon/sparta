@@ -445,6 +445,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#line-relief" id="toc-line-relief" class="nav-link" data-scroll-target="#line-relief">Line relief</a></li>
   <li><a href="#passage-of-lines" id="toc-passage-of-lines" class="nav-link" data-scroll-target="#passage-of-lines">Passage of lines</a></li>
   <li><a href="#acies-triplex" id="toc-acies-triplex" class="nav-link" data-scroll-target="#acies-triplex">Acies triplex</a></li>
+  <li><a href="#echelon-oblique-order" id="toc-echelon-oblique-order" class="nav-link" data-scroll-target="#echelon-oblique-order">Echelon (oblique order)</a></li>
   <li><a href="#stamina" id="toc-stamina" class="nav-link" data-scroll-target="#stamina">Stamina</a></li>
   <li><a href="#prone-knockdown" id="toc-prone-knockdown" class="nav-link" data-scroll-target="#prone-knockdown">Prone / knockdown</a></li>
   <li><a href="#line-width-frontage" id="toc-line-width-frontage" class="nav-link" data-scroll-target="#line-width-frontage">Line width (frontage)</a></li>
@@ -494,7 +495,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-07-14</p>
+      <p class="date">Last updated: 2026-07-15</p>
     </div>
   </div>
   
@@ -644,6 +645,17 @@ Figure&nbsp;4: Routing around terrain: a weak unit breaks and flees straight tow
 <h2 class="anchored" data-anchor-id="acies-triplex">Acies triplex</h2>
 <p>The Roman <strong>acies triplex</strong> deployed infantry in three lines — hastati, principes, triarii — with gaps between maniples in one line roughly matching their own frontage width, and the line behind offset to cover those gaps: a checkerboard (quincunx) pattern. Passage of lines (above) builds the <em>tactical</em> half — swapping a whole tired line for a fresh one through gaps. <strong>Checkerboard form-up</strong> builds the <em>spatial</em> half: a fifth multi-unit form-up split mode (off by default; enable it in <strong>☰ Menu → Form-up — Checkerboard (quincunx)</strong>, or cycle to it with <kbd>Y</kbd> once enabled) that lays your selection out as two staggered rows instead of one straight line. See <a href="./how-to-play.html#controls">How to play: Controls</a> (the “Deploy several units at once” entry) for the drag mechanics.</p>
 <p>This is a <strong>one-shot layout</strong>, not a standing formation — a unit dragged into a checkerboard arrangement doesn’t remember “I’m line 2” the way it remembers its stance or formation mode. Nothing yet models the historical system’s chief weakness either: a gapped, multi-line formation trades frontage flexibility for flank exposure, so a checkerboard-formed army isn’t currently more vulnerable to flanking than a solid line. See <code>docs/acies-triplex-design.md</code> in the project repository for the full design note and what’s tracked as follow-up work.</p>
+</section>
+<section id="echelon-oblique-order" class="level2">
+<h2 class="anchored" data-anchor-id="echelon-oblique-order">Echelon (oblique order)</h2>
+<p>Every form-up split covered so far keeps the whole selection on one straight rank. <strong>Echelon</strong> breaks that on purpose: it staggers your line into a diagonal, one flank stepped forward and the other held back. Caesar deployed this way at times in the Gallic War, and Frederick the Great refined it into his signature <strong>oblique order</strong> at Leuthen — weight one flank, refuse the other, and let the enemy fight an uneven battle instead of a fair one.</p>
+<p>Two more multi-unit form-up split modes carry it, both off by default (enable one in <strong>☰ Menu → Form-up</strong>, or cycle to it with <kbd>Y</kbd> once enabled):</p>
+<ul>
+<li><strong>Echelon (right leads)</strong> — the unit nearest your drag’s right flank advances furthest, the left-flank unit trails furthest back, and everyone in between steps evenly across the gap. Concentrate the leading (right) flank on a weak point in the enemy line while the trailing (left) flank stays out of easy reach.</li>
+<li><strong>Echelon (left leads)</strong> — the mirror image: the left flank leads, the right flank refuses.</li>
+</ul>
+<p>See <a href="./how-to-play.html#controls">How to play: Controls</a> (the “Deploy several units at once” entry) for the drag mechanics — echelon reuses the exact same box-select-then-drag gesture every other split mode does, just with a staggered depth instead of one flat line.</p>
+<p>Like checkerboard, this is a <strong>one-shot layout, not a standing formation</strong>: a unit dragged into an echelon doesn’t remember which flank it led from, so a later reform or reshape doesn’t preserve the stagger. And nothing currently models the tactical risk a real refused flank carries either — the trailing units aren’t rendered any more exposed to being turned than a straight line would be, so the payoff (concentrating force where you choose) isn’t yet balanced by the historical downside (a flank that isn’t in the fight yet is a flank an enemy could exploit before it arrives).</p>
 </section>
 <section id="stamina" class="level2">
 <h2 class="anchored" data-anchor-id="stamina">Stamina</h2>
