@@ -168,12 +168,14 @@ for the identity-tracking checks) across a **dense** tick sequence spanning
 the whole clip, not just the start/end.
 
 1. **Blobbing** — soldiers clump together, losing their commanded rank/file
-   spacing. *Check:* compute the mean nearest-neighbor distance between every
-   pair of `soldiers_full.pos` entries for the unit, per tick. Flag it if the
-   mean drops well below `FORMATION_SPACING` (9.0 world units / 0.45m)
-   *without* an explicit tighter-order (`TIGHT`/`SHIELD_WALL`/`TESTUDO`) active
-   in that tick's `formation` field — those orders intentionally compress
-   spacing, so check `formation` before calling a tight mean a defect.
+   spacing. *Check:* for each soldier, compute the distance to its nearest
+   other soldier in `soldiers_full.pos`, then take the mean of those
+   per-soldier nearest-neighbor distances across the unit, per tick. Flag it
+   if that mean drops well below `FORMATION_SPACING` (9.0 world units /
+   0.45m) *without* an explicit tighter-order (`TIGHT`/`SHIELD_WALL`/`TESTUDO`)
+   active in that tick's `formation` field — those orders intentionally
+   compress spacing, so check `formation` before calling a tight mean a
+   defect.
 
 2. **Pulsing** — a formation's footprint expands and contracts repeatedly
    instead of holding steady or changing smoothly and monotonically. *Check:*
