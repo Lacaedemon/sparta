@@ -4553,6 +4553,7 @@ func to_snapshot_dict() -> Dictionary:
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
 		"order_response_timer": _order_response_timer,
+		"engaged_linger": _engaged_linger,
 		"moved_last_frame": _moved_last_frame,
 		"approach_velocity": _approach_velocity, "current_speed": _current_speed,
 		"body_follow_vel": _body_follow_vel, "cycle_recharging": _cycle_recharging,
@@ -4653,6 +4654,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_rout_timer = float(d["rout_timer"])
 	_shattered = bool(d["shattered"])
 	_order_response_timer = float(d["order_response_timer"])
+	_engaged_linger = float(d["engaged_linger"])
 	_moved_last_frame = bool(d["moved_last_frame"])
 	_approach_velocity = d["approach_velocity"]
 	_current_speed = float(d["current_speed"])

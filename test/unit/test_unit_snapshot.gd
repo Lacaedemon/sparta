@@ -65,6 +65,7 @@ func _sample_unit() -> Unit:
 	u._rout_timer = 3.0
 	u._shattered = true
 	u._order_response_timer = 0.4
+	u._engaged_linger = 0.35
 	u._moved_last_frame = true
 	u._approach_velocity = Vector2(5, -5)
 	u._current_speed = 44.0
@@ -125,6 +126,8 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored._formation_angle, original._formation_angle)
 	assert_eq(restored._shattered, original._shattered)
 	assert_eq(restored._rout_timer, original._rout_timer)
+	assert_eq(restored._engaged_linger, original._engaged_linger,
+		"the engaged afterglow window survives a restore -- is_engaged() must not flip")
 	assert_eq(restored._approach_velocity, original._approach_velocity)
 	assert_eq(restored.current_speed, original.current_speed)
 	assert_eq(restored._engage_turn_target, original._engage_turn_target)

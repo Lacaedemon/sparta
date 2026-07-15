@@ -764,6 +764,16 @@ func restore_snapshot(snap: Dictionary) -> void:
 	Replay.rng.state = int(snap["rng_state"])
 	Replay.rewind_cursor_to_tick(_tick)
 
+	# A completed replay has _ended set and the tree paused behind the end overlay
+	# (_check_victory runs during PLAYBACK too), and both _physics_process and
+	# _on_soldier_tick early-return in that state -- so without this, rewinding a
+	# finished battle restores the units and then freezes forever. The snapshot was
+	# captured mid-battle, where neither held.
+	if _ended:
+		_ended = false
+		if _hud != null:
+			_hud.hide_end()
+
 
 ## Builds one Unit from a captured per-unit dict, mirroring _spawn_unit's own two-phase
 ## field application: the spawn-time identity fields are set before add_child() so

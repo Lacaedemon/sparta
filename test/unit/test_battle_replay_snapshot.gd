@@ -119,6 +119,32 @@ func test_restore_snapshot_lets_the_battle_keep_ticking_forward_afterward() -> v
 	_leave_playback(prev_mode)
 
 
+func test_restore_snapshot_revives_a_battle_that_already_concluded() -> void:
+	# _check_victory runs during PLAYBACK too, so a replay watched to its end has
+	# _ended set and the tree paused behind the end overlay -- both of which gate
+	# every per-tick entry point. Rewinding to a mid-battle snapshot must clear that
+	# terminal state or the restored battle sits frozen forever.
+	var prev_mode := _enter_playback()
+	var battle := _spawn_battle(_clash_scenario())
+	while battle.current_tick() < 40:
+		await get_tree().physics_frame
+	var snap: Dictionary = battle.capture_snapshot()
+
+	battle._end("Victory!")
+	assert_true(get_tree().paused, "the end overlay pauses the tree")
+
+	battle.restore_snapshot(snap)
+	assert_false(battle._ended, "the terminal flag clears on rewind")
+	assert_false(get_tree().paused, "the tree resumes ticking on rewind")
+	var resumed_from: int = battle.current_tick()
+	for _i in range(20):
+		await get_tree().physics_frame
+	assert_gt(battle.current_tick(), resumed_from,
+			"the revived battle actually simulates forward again")
+
+	_leave_playback(prev_mode)
+
+
 func test_automatic_snapshot_capture_happens_at_the_configured_interval() -> void:
 	var prev_mode := _enter_playback()
 	var battle := _spawn_battle([{"team": 0, "type": "Infantry", "x": 500, "y": 500}], 25, 20)
