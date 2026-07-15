@@ -26,7 +26,7 @@ those gaps: a checkerboard (quincunx) pattern. Sources:
 - Vegetius, *De Re Militari* — cited in `REFORM_RESEARCH.md` for rank-closing
   procedures; also documents the acies triplex's discipline advantage (troops
   held formation rather than pursuing recklessly).
-- [imperiumromanum.pl, "Acies Triplex: Roman Triple Formation"](https://imperiumromanum.pl/en/roman-army/military-formations-of-ancient-romans/acies-triplex/amp/) —
+- [imperiumromanum.pl, "Acies Triplex: Roman Triple Formation"](https://imperiumromanum.pl/en/roman-army/military-formations-of-ancient-romans/acies-triplex/) —
   secondary source: maniple size, cavalry deployed on the flanks in ten
   divisions, and a named weakness — **insufficient cavalry was the system's
   greatest vulnerability for protecting the flanks and rear**, since a gapped,
