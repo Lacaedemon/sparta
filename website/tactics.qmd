@@ -250,6 +250,40 @@ currently more vulnerable to flanking than a solid line. See
 `docs/acies-triplex-design.md` in the project repository for the full design
 note and what's tracked as follow-up work.
 
+## Echelon (oblique order)
+
+Every form-up split covered so far keeps the whole selection on one straight
+rank. **Echelon** breaks that on purpose: it staggers your line into a
+diagonal, one flank stepped forward and the other held back. Caesar deployed
+this way at times in the Gallic War, and Frederick the Great refined it into
+his signature **oblique order** at Leuthen --- weight one flank, refuse the
+other, and let the enemy fight an uneven battle instead of a fair one.
+
+Two more multi-unit form-up split modes carry it, both off by default (enable
+one in **☰ Menu → Form-up**, or cycle to it with <kbd>Y</kbd> once enabled):
+
+- **Echelon (right leads)** --- the unit nearest your drag's right flank
+  advances furthest, the left-flank unit trails furthest back, and everyone
+  in between steps evenly across the gap. Concentrate the leading (right)
+  flank on a weak point in the enemy line while the trailing (left) flank
+  stays out of easy reach.
+- **Echelon (left leads)** --- the mirror image: the left flank leads, the
+  right flank refuses.
+
+See [How to play: Controls](how-to-play.qmd#controls) (the "Deploy several
+units at once" entry) for the drag mechanics --- echelon reuses the exact
+same box-select-then-drag gesture every other split mode does, just with a
+staggered depth instead of one flat line.
+
+Like checkerboard, this is a **one-shot layout, not a standing formation**: a
+unit dragged into an echelon doesn't remember which flank it led from, so a
+later reform or reshape doesn't preserve the stagger. And nothing currently
+models the tactical risk a real refused flank carries either --- the
+trailing units aren't rendered any more exposed to being turned than a
+straight line would be, so the payoff (concentrating force where you choose)
+isn't yet balanced by the historical downside (a flank that isn't in the
+fight yet is a flank an enemy could exploit before it arrives).
+
 ## Stamina
 
 Every soldier carries a **stamina pool** that drains through combat and refills at rest.
