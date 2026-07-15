@@ -406,20 +406,22 @@ const ORBIS_MORALE_EROSION_RESIST: float = 0.7
 const SCHILTRON_CHARGE_BACKFIRE: float = 0.75
 const SCHILTRON_CHARGE_FLOOR: float = 0.45
 const SCHILTRON_ATTACK_FACTOR: float = 0.55
-# Both the square (orbis) and the schiltron pack to the same close-order floor as TIGHT
+# Both the square (orbis) and the schiltron pack to the same synaspismos floor as TIGHT
 # (shields locked outward), so they reuse TIGHT_SEPARATION_SCALE and keep spacing_scale
 # at 1.0.
 # Open-order grid-spacing scale. FORMATION_SPACING already sits at the historically
-# attested close-order / locked-shield floor (~0.45 m per man) -- there's no
-# historically grounded room to pack soldiers tighter than that, so TIGHT reuses the
-# same floor (spacing_scale stays 1.0; its bonuses come from
-# TIGHT_MISSILE_DEFENSE/TIGHT_CHARGE_ABSORPTION and the smaller separation_radius
-# above, not from squeezing marks closer than any real formation ever stood). Only
-# LOOSE widens the grid, to ~0.9 m per man -- matching the researched "room to wield
-# a weapon" open-order figure.
+# attested synaspismos / locked-shield floor (~0.45 m per man) -- the *tightest* of the
+# three Hellenistic-phalanx density tiers, not the standing close-order (pyknosis,
+# ~0.9 m/man) one; see FORMATION_SPACING's own comment for why the game keeps that
+# tight density as the default. There's no historically grounded room to pack soldiers
+# tighter than synaspismos, so TIGHT reuses the same floor (spacing_scale stays 1.0;
+# its bonuses come from TIGHT_MISSILE_DEFENSE/TIGHT_CHARGE_ABSORPTION and the smaller
+# separation_radius above, not from squeezing marks closer than any real formation ever
+# stood). Only LOOSE widens the grid, to ~0.9 m per man -- matching the researched
+# pyknosis close-order figure, not true open order (~1.8-2 m/man).
 const LOOSE_SPACING_SCALE: float = 2.0
 # SHIELD_WALL and TESTUDO lock their shields edge-to-edge, so unlike TIGHT/SQUARE
-# (which pack to the historical close-order floor and stop there) they squeeze the
+# (which pack to the synaspismos floor and stop there) they squeeze the
 # grid spacing BELOW that floor -- a real, measurable tightening of the block on top
 # of their combat-multiplier bonuses above, not just a flag. TESTUDO packs tighter
 # than SHIELD_WALL (an overhead-locked roof needs the men closer than a single-rank
@@ -4093,11 +4095,24 @@ func _stop_rout_and_fight() -> void:
 # block of one small mark per living soldier (cosmetic only — never fed back into the
 # sim), packed roughly within the unit's footprint so the on-field size still matches
 # the collision RADIUS. Wider-than-deep, like a real formation.
-# Historically-grounded metric values: close-order per-man frontage is
-# ~0.45 m (Battle.WORLD_UNITS_PER_METER = 20), and a foot soldier's mark is sized
-# to match — shoulder-to-shoulder at close order, no gap and no overlap. Cavalry
+# Historically-grounded metric values: FORMATION_SPACING sits at the synaspismos
+# ("locked shields") per-man frontage, ~0.45 m (Battle.WORLD_UNITS_PER_METER = 20) --
+# the *tightest* of the three attested Hellenistic-phalanx density tiers (open order
+# ~1.8-2 m/man, close order/pyknosis ~0.9-1 m/man, synaspismos ~0.45 m/man), not the
+# standing close-order one. Historically synaspismos was a rare, temporary stance
+# adopted under extreme pressure (a frontal charge, heavy missile fire) rather than a
+# standing default -- Sparta keeps it as the default formation density deliberately,
+# not by oversight: combat here keeps a regiment in sustained melee contact far more
+# of the time than any historical campaign's ratio of march time to battle time, and
+# the tighter block stays compact and legible at the game's camera/map scale.
+# FORMATION_LOOSE already offers the looser ~0.9 m/man pyknosis close-order density as
+# a selectable formation (see LOOSE_SPACING_SCALE / spacing_scale_for_mode), so a
+# player who wants that historically-standard density can select it. See
+# docs/SPEED_VERIFICATION.md for the full historical sourcing and design rationale.
+# A foot soldier's mark is sized to match this floor --
+# shoulder-to-shoulder at synaspismos density, no gap and no overlap. Cavalry
 # marks are sized to a horse's ~1 m body width. World-units, not px.
-const FORMATION_SPACING: float = 9.0    # world units between soldier marks (0.45 m)
+const FORMATION_SPACING: float = 9.0    # world units between soldier marks (0.45 m, synaspismos density)
 const FORMATION_ASPECT: float = 1.7     # files-to-ranks ratio (> 1 = wider than deep)
 const MARK_RADIUS: float = 4.5          # foot soldier mark (0.45 m across)
 const CAV_MARK_RADIUS: float = 10.0     # cavalry marks are larger (1 m horse body)
