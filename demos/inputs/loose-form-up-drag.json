@@ -1,0 +1,17 @@
+{
+  "_comment": "Form-up drag line width in LOOSE order (the issue's own report): a single Archers regiment (loose-order skirmishers) is staged alone (drill mode, no opponent), selected, then deployed with an RMB form-up drag right-to-left below it (start on the right so the computed deploy facing points south, away from the regiment). The preview line drawn during the drag -- and the file-count label over it -- must span the regiment's REAL loose-order width so the line the player draws is where the flank files actually stand once formed up. The drag is 240 wu long (about 14 files at the 18-wu loose pitch); the regiment then marches onto the line and reforms. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "13579",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Archers", "x": 500, "y": 380, "count": 40, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 415.0, "zoom": 1.5}
+  ],
+  "steps": [
+    {"tick": 12, "click": [500, 380]},
+    {"tick": 30, "rmb_drag": {"from": [620, 440], "to": [380, 440]}}
+  ],
+  "state": [0, 12, 28, 36, 44, 52, 60, 90, 130, 180, 240, 300, 360, 440, 520],
+  "frames": [12, 38, 46, 130, 340, 520]
+}

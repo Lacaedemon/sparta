@@ -276,6 +276,44 @@ func test_resize_handle_at_grabs_a_grip_and_ignores_empty_space() -> void:
 			"a cursor far from any grip grabs nothing")
 
 
+func test_resize_preview_half_width_scales_with_the_unit_own_spacing() -> void:
+	# The drag-resize preview line must span the unit's OWN
+	# formed-up width, not the density-blind NORMAL-order pitch -- otherwise a LOOSE unit's
+	# preview line is narrower than its real footprint (and jumps the instant the drag
+	# starts, since _resize_files begins equal to the unit's own current frontage).
+	var sm := _sm()
+	var u := _unit()
+	u.set_formation(UnitScript.FORMATION_LOOSE)
+	assert_gt(u.spacing_scale, 1.0,
+			"loose order must actually widen spacing for this test to mean anything")
+	var files: int = UnitFormation.frontage(u)
+	var half: float = sm._resize_preview_half_width(u, files)
+	var expected: float = float(files - 1) * 0.5 * UnitScript.FORMATION_SPACING * u.spacing_scale
+	assert_almost_eq(half, expected, 0.01,
+			"the preview half-width scales with the unit's own spacing_scale")
+	var density_blind: float = float(files - 1) * 0.5 * UnitScript.FORMATION_SPACING
+	assert_gt(half, density_blind,
+			"a loose unit's real half-width is wider than the density-blind pitch")
+
+
+func test_draw_resize_preview_runs_under_a_real_draw_notification() -> void:
+	# _draw_resize_preview calls draw_line/draw_string, which are only legal inside a
+	# real _draw() notification -- drive it that way (queue_redraw + await twice) rather
+	# than calling it directly, so the spacing_scale-aware half-width call site itself
+	# (not just the pure helper above) is exercised.
+	var sm := _sm()
+	var u := _unit()
+	u.set_formation(UnitScript.FORMATION_LOOSE)
+	sm._selected = [u]   # _draw_resize_handles bails without a single selected unit
+	sm._resizing = true
+	sm._resize_unit = u
+	sm._resize_files = UnitFormation.frontage(u)
+	sm.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	pass_test("_draw_resize_preview ran without error under a real draw notification")
+
+
 func test_resize_frontage_routes_an_absolute_command_to_battle() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()
@@ -1034,6 +1072,41 @@ func test_form_up_equal_depth_uses_average_spacing_for_a_mixed_formation_group()
 			"the loose unit's file count is the same regardless of selection order")
 
 
+func test_form_up_slices_use_each_units_own_pitch_so_blocks_cannot_overlap() -> void:
+	# Slice layout must budget each unit's REAL footprint (its own spacing_scale), not the
+	# density-blind NORMAL pitch -- otherwise a loose unit's slice is half its formed-up
+	# width and its block overflows into the neighbour's on deployment.
+	var sm := _sm()
+	var loose := _unit()
+	loose.max_soldiers = 60
+	loose.set_formation(UnitScript.FORMATION_LOOSE)
+	var tight := _unit()
+	tight.max_soldiers = 60
+	tight.set_formation(UnitScript.FORMATION_TIGHT)
+
+	var slices: Array = sm._form_up_slices(
+			[loose, tight], Vector2(0, 0), Vector2(500, 0), EQUAL_DEPTH)
+	# Each slice's claimed edge: centre +/- half its unit's REAL width, computed here from
+	# first principles (NOT via the helper under test) so a density-blind layout can't
+	# also shrink the expectation.
+	var loose_right: float = slices[0]["center"].x + float(int(slices[0]["files"]) - 1) \
+			* 0.5 * UnitScript.FORMATION_SPACING * loose.spacing_scale
+	var tight_left: float = slices[1]["center"].x - float(int(slices[1]["files"]) - 1) \
+			* 0.5 * UnitScript.FORMATION_SPACING * tight.spacing_scale
+	assert_lt(loose_right, tight_left,
+			"adjacent slices leave a real gap between the units' actual formed-up footprints")
+
+
+func test_slice_width_scales_with_the_units_own_spacing() -> void:
+	var sm := _sm()
+	var u := _unit()
+	u.set_formation(UnitScript.FORMATION_LOOSE)
+	var files: int = 9
+	assert_almost_eq(sm._slice_width(u, files),
+			float(files - 1) * UnitScript.FORMATION_SPACING * u.spacing_scale, 0.01,
+			"a slice budgets the unit's real grid pitch, spacing_scale included")
+
+
 func test_form_up_equal_width_gives_units_the_same_frontage() -> void:
 	# Equal-width (space basis): same files for equal-line-share regardless of size, so a big
 	# and a small unit get the same frontage (the small one just ends up deeper).
@@ -1638,3 +1711,68 @@ func test_draw_formation_preview_renders_for_a_squared_unit_with_a_move_order() 
 	Replay.mode = prev_mode
 	Replay.show_demo_orders = prev_flag
 	assert_true(u.has_move_target, "the move order is still live after the draw pass")
+
+
+func test_draw_form_up_preview_renders_on_the_units_own_pitch_during_a_live_drag() -> void:
+	# Render smoke for the live RMB form-up preview: a selected LOOSE unit mid-drag,
+	# driven under a real draw notification, exercises the slice loop's pitch-aware
+	# preview-line call site.
+	var sm := _sm()
+	var u := _unit()
+	u.set_formation(UnitScript.FORMATION_LOOSE)
+	sm._selected = [u]
+	sm._rmb_dragging = true
+	sm._rmb_start = Vector2(0, 200)
+	sm.set_cursor_override(Vector2(300, 200))   # a 300 wu drag, well past FORM_UP_MIN_WIDTH
+	sm.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	sm.set_cursor_override(null)
+	pass_test("the form-up preview drew a loose unit's slice without error")
+
+
+class _StubBattleWithUnitLookup:
+	extends Node
+	var lookup: Dictionary = {}
+	func pending_append_points_for(_u) -> Array[Vector2]:
+		return []
+	func current_tick() -> int:
+		return 0
+	func unit_by_uid(uid: int):
+		return lookup.get(uid)
+
+
+func test_demo_overlay_redraws_a_recorded_form_up_on_the_units_own_pitch() -> void:
+	# The replay overlay reconstructs a recorded form-up's flank line; it must resolve
+	# the recorded uid to the live unit for its grid pitch (loose vs normal).
+	var battle := _StubBattleWithUnitLookup.new()
+	add_child_autofree(battle)
+	var sm = SelectionManagerScript.new()
+	battle.add_child(sm)
+
+	var u := UnitScript.new()
+	battle.add_child(u)
+	u.add_to_group("units")
+	u.team = 0
+	u.uid = 7
+	u.set_formation(UnitScript.FORMATION_LOOSE)
+	battle.lookup[7] = u
+
+	var prev_mode = Replay.mode
+	var prev_flag := Replay.show_demo_orders
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.show_demo_orders = true
+	Replay._pointer_track.append({"tick": 0, "x": 0.0, "y": 0.0, "drag": false,
+			"sel": [], "mode": 0})
+	Replay._orders.append({"tick": 0, "units": [7], "x": 100.0, "y": 100.0,
+			"target": -1, "face": PI * 0.5, "frontage": 9})
+
+	sm.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	Replay._orders.pop_back()
+	Replay._pointer_track.pop_back()
+	Replay.mode = prev_mode
+	Replay.show_demo_orders = prev_flag
+	pass_test("the overlay resolved the recorded uid and drew the pitch-aware line")

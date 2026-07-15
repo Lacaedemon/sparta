@@ -728,17 +728,27 @@ func _line_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
 	var files_per_unit: Array = _files_for_mode(units, usable, mode)
 	# Lay the slices out from a left edge that centres the whole assembly on the drag, so a
 	# line that doesn't exactly fill the drag (file rounding) still sits symmetric on it.
+	# Each slice's width uses ITS unit's own grid pitch (spacing_scale folded in) -- the
+	# density-blind pitch halved a loose unit's slice, so its real block overflowed into the
+	# neighbouring slice and the deployed formations physically overlapped.
 	var span: float = MULTI_FORM_UP_GAP * float(units.size() - 1)
-	for files in files_per_unit:
-		span += float(int(files) - 1) * UnitRef.FORMATION_SPACING
+	for i in range(units.size()):
+		span += _slice_width(units[i], int(files_per_unit[i]))
 	var out: Array = []
 	var cursor: float = (total - span) * 0.5   # distance along the line to the current slice's left edge
 	for i in range(units.size()):
-		var w: float = float(int(files_per_unit[i]) - 1) * UnitRef.FORMATION_SPACING
+		var w: float = _slice_width(units[i], int(files_per_unit[i]))
 		var center: Vector2 = a + dir * (cursor + w * 0.5)
 		out.append({"unit": units[i], "center": center, "files": int(files_per_unit[i])})
 		cursor += w + MULTI_FORM_UP_GAP
 	return out
+
+
+## Full width (world units) a regiment's block occupies at `files` files on its own grid
+## pitch -- twice _resize_preview_half_width, kept as its own name so slice-layout call
+## sites read as geometry, not preview code.
+func _slice_width(u, files: int) -> float:
+	return _resize_preview_half_width(u, files) * 2.0
 
 
 ## Checkerboard (quincunx) layout, docs/acies-triplex-design.md: alternates the ordered
@@ -769,7 +779,7 @@ func _checkerboard_slices(units: Array, a: Vector2, b: Vector2) -> Array:
 	var rear_widths: Array = []
 	var rear_files: Array = []
 	for i in range(units.size()):
-		var w: float = float(int(files_all[i]) - 1) * UnitRef.FORMATION_SPACING
+		var w: float = _slice_width(units[i], int(files_all[i]))
 		if i % 2 == 0:
 			front_files.append(files_all[i])
 			front_widths.append(w)
@@ -1709,7 +1719,8 @@ func _draw_form_up_preview() -> void:
 	var face: float = _form_up_facing(_rmb_start, end_pos)
 	var font := ThemeDB.fallback_font
 	for slice in _form_up_slices(units, _rmb_start, end_pos, _form_up_dist):
-		_draw_form_up_line(slice["center"], face, slice["files"], FORM_UP_COLOR)
+		_draw_form_up_line(slice["center"], face, slice["files"], FORM_UP_COLOR,
+				slice["unit"].spacing_scale)
 		# Centre the file-count label over the slice (width -1 ignores CENTER alignment, so
 		# offset by half the text width, as the keystroke overlay does).
 		var label: String = UnitFormation.files_label(slice["files"])
@@ -1739,11 +1750,21 @@ func _draw_resize_handles() -> void:
 		_draw_resize_preview(_resize_unit)
 
 
+## Half-width (world units) of a resize preview line for `files` files on `u`'s own
+## grid pitch -- `u.spacing_scale`-aware, matching UnitFormation.files_for_halfwidth's
+## inverse mapping (and UnitFormation.slots' actual layout) so a LOOSE unit's preview
+## line spans its real formed-up width instead of the plain NORMAL-order spacing. Pure,
+## so the drag-start "no jump" invariant (matches _resize_handle_positions' extent when
+## `files` hasn't changed yet) is directly testable.
+func _resize_preview_half_width(u, files: int) -> float:
+	return float(files - 1) * 0.5 * UnitRef.FORMATION_SPACING * u.spacing_scale
+
+
 ## Preview the dragged frontage: a line spanning the target width and the file count
 ## as text, so the player sees the new line before releasing.
 func _draw_resize_preview(u) -> void:
 	var right: Vector2 = _file_axis(u)
-	var half: float = float(_resize_files - 1) * 0.5 * UnitRef.FORMATION_SPACING
+	var half: float = _resize_preview_half_width(u, _resize_files)
 	var a: Vector2 = u.global_position - right * half
 	var b: Vector2 = u.global_position + right * half
 	draw_line(a, b, RESIZE_HANDLE_COLOR, 2.0)
@@ -1857,11 +1878,15 @@ func _draw_demo_pointer() -> void:
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, cursor_color)
 
 	# Form-up drags: replay the dragged flank line + facing arrow, reconstructed from
-	# the recorded order, so the clip shows the deploy gesture.
+	# the recorded order, so the clip shows the deploy gesture. The recorded slice's own
+	# unit supplies the grid pitch; a unit no longer on the field falls back to the
+	# NORMAL-order pitch (chrome only -- nothing downstream reads this line).
 	for fu in Replay.form_ups_for_tick(tick, DEMO_FORMUP_WINDOW):
 		var fade: float = 1.0 - float(int(fu["age"])) / float(DEMO_FORMUP_WINDOW)
+		var fu_unit = _battle.unit_by_uid(int(fu.get("uid", -1)))
+		var fu_pitch: float = fu_unit.spacing_scale if fu_unit != null else 1.0
 		_draw_form_up_line(Vector2(fu["x"], fu["y"]), float(fu["face"]), int(fu["frontage"]),
-				Color(FORM_UP_COLOR, FORM_UP_COLOR.a * fade))
+				Color(FORM_UP_COLOR, FORM_UP_COLOR.a * fade), fu_pitch)
 
 	# Pressed-key chips, stacked by the cursor so the clip shows which keys drove the action.
 	_draw_demo_keys(tick, cursor)
@@ -1869,10 +1894,13 @@ func _draw_demo_pointer() -> void:
 
 ## Draw a form-up's flank line (left dot + line) and forward-facing arrow about its
 ## centre, used both for the live preview and the demo replay. `face` is the deploy
-## facing in radians; the line spans the frontage along the perpendicular file axis.
-func _draw_form_up_line(center: Vector2, face: float, files: int, color: Color) -> void:
+## facing in radians; the line spans the frontage along the perpendicular file axis, on
+## the unit's own grid pitch (`pitch_scale` = its spacing_scale) -- the density-blind
+## pitch drew a loose unit's line at half its real formed-up width.
+func _draw_form_up_line(center: Vector2, face: float, files: int, color: Color,
+		pitch_scale: float = 1.0) -> void:
 	var file_axis: Vector2 = Vector2.from_angle(face + PI * 0.5)   # left -> right along the front
-	var half: float = float(files - 1) * 0.5 * UnitRef.FORMATION_SPACING
+	var half: float = float(files - 1) * 0.5 * UnitRef.FORMATION_SPACING * pitch_scale
 	var a: Vector2 = center - file_axis * half
 	var b: Vector2 = center + file_axis * half
 	draw_line(a, b, color, 2.0)

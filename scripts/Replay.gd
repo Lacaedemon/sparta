@@ -511,9 +511,10 @@ func keys_for_tick(tick: int, window: int) -> Array:
 
 
 ## PLAYBACK: form-up (drag-deploy) orders issued within `window` ticks before `tick`,
-## each as {x, y (centre), face (radians), frontage, age}, so the overlay can replay the
-## dragged flank line. Read-only; [] outside playback. Tick-sorted, so the scan stops at
-## the first future order.
+## each as {x, y (centre), face (radians), frontage, age, uid (the slice's unit, -1 when
+## the order carried none)}, so the overlay can replay the dragged flank line on that
+## unit's own grid pitch. Read-only; [] outside playback. Tick-sorted, so the scan stops
+## at the first future order.
 func form_ups_for_tick(tick: int, window: int) -> Array:
 	if mode != Mode.PLAYBACK:
 		return []
@@ -523,8 +524,10 @@ func form_ups_for_tick(tick: int, window: int) -> Array:
 		if ot > tick:
 			break
 		if o.has("face") and tick - ot <= window:
+			var uids: Array = o.get("units", [])
 			out.append({"x": float(o["x"]), "y": float(o["y"]), "face": float(o["face"]),
-					"frontage": int(o.get("frontage", 1)), "age": tick - ot})
+					"frontage": int(o.get("frontage", 1)), "age": tick - ot,
+					"uid": int(uids[0]) if not uids.is_empty() else -1})
 	return out
 
 

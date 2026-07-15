@@ -1,0 +1,17 @@
+{
+  "_comment": "Drag-resize preview in LOOSE order: a single Archers regiment (loose-order skirmishers) is staged alone (drill mode, no opponent), selected, then has its frontage widened by dragging its right-flank resize grip outward. The preview line drawn during the drag must span the regiment's REAL formed-up width -- loose-order spacing included -- so the line the player sees matches where the flank files will actually stand on release. Grip coordinates are derived from the spawn geometry (position 500,400, facing south): grips sit at position +/- half-width along the file axis. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "24680",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Archers", "x": 500, "y": 400, "count": 40, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 400.0, "zoom": 1.6}
+  ],
+  "steps": [
+    {"tick": 12, "click": [500, 400]},
+    {"tick": 30, "box": {"from": [597, 400], "to": [655, 400]}}
+  ],
+  "state": [0, 12, 28, 34, 40, 46, 60, 90, 120, 150, 200, 250],
+  "frames": [12, 36, 44, 90, 200]
+}
