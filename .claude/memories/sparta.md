@@ -1713,7 +1713,26 @@ increasing progress along the actual march vector, not away from it. (`Lacaedemo
 #818: `demos/inputs/checkerboard-form-up.json`'s original left-to-right drag computed a
 north-pointing facing while the units needed to march south; fixed by reversing the drag.)
 
-## Front-rank position anchoring destabilizes in-place reshapes -- tried and reverted
+## Front-rank position anchoring destabilizes in-place reshapes -- fixed on the second attempt
+
+**Update:** fixed in PR #861 (closes #821, 2026-07-15), using ONE of the two "likely real
+fixes" below -- freezing the anchor during a transition -- not both. `_position_anchor_unstable()`
+(`is_maneuver_turning() or _reform_holding()`) falls back to the wider `engaged_soldier_indices()`
+selection during exactly the transitions that broke the first attempt; the shipped
+`near_front_soldier_indices()` still reads LIVE body positions (`UnitFormation.live_front_indices`),
+same as the reverted attempt -- the canonical-target-slots-midpoint alternative was never
+implemented. A second fix ingredient the first attempt didn't try: narrowing to a single live
+rank was too small a sample to damp `SoldierEnemyContact`'s per-tick contact-torque noise and
+measurably re-aggravated the `test_residual_melee_swirl_battle.gd` regression (~38° pivot vs.
+its <28° gate); **`ANCHOR_RANKS = 2`** keeps that test's margin while still narrowing the
+anchor. All 6 originally-broken tests pass unmodified (they're all unengaged scenarios the
+change never touches), plus a new test (`test_couple_position_anchor_reaches_less_deep_than_the_old_selection_after_front_rank_casualties`)
+proving that once the true front rank is wiped out, the narrower anchor reaches less deep into
+the survivors than the old, wider selection would -- it doesn't get dragged as far back by a
+casualty-thinned block. Kept the section below as-is -- the failure mode and root-cause
+diagnosis it documents are exactly what the successful fix had to satisfy.
+
+### First attempt -- tried and reverted
 
 Discussed as a possible improvement to `Unit.position`'s semantics (currently: `SoldierBodies.
 couple()` anchors on a body centroid -- the engaged front-N-ranks' centroid when engaged, the
@@ -1785,3 +1804,67 @@ link still works fine). Don't add a `lychee.toml` exclusion for this -- the link
 during the PR's lifetime, and a real exclusion would hide a genuinely broken `blob/main` link in a
 row that *should* always resolve after merge. (`Lacaedemon/sparta` PR #858: `website/replays.qmd`'s
 new `scripts/BuildInfo.gd` row 404'd the link checker on first push; caught in CI, not review.)
+
+## A continuous per-tick impulse formula can compound ACROSS TICKS, not just across simultaneous pairs
+
+The existing "multi-pair force accumulation needs a write-back clamp" lesson above covers a
+force compounding across several simultaneous CONTACT PAIRS in one tick. PR #860 (closes #817)
+found the same failure shape on a different axis: compounding across successive TICKS of the
+same pair.
+
+`SoldierCollision.enemy_contact_impulse()`'s overlap-correction term
+(`overlap_frac * ENEMY_CONTACT_OVERLAP_RATE`) re-injected a FULL fresh separating impulse every
+tick a pair stayed deeply overlapping, with no memory of how much separating velocity earlier
+ticks had already imparted. Since position only integrates via `velocity * delta`,
+`overlap_frac` lags several ticks behind a velocity change -- so a rank arriving at melee range
+still at full march speed kept receiving fresh impulses well past "arrested," compounding into a
+hard recoil pinned near `KNOCKBACK_SPEED_MAX` (observed peak -58.4 u/s, above Infantry's 50 u/s
+jog-speed arrival cap) instead of a single bounded correction. Once knocked that far, the rank
+fell out of `engaged_soldier_indices()` and had nothing but ordinary jog-paced arrival steering
+to bring it back -- stranding it 50-75 world units behind the line for ~5 real seconds.
+
+Fix: target a STEADY separating speed instead of re-injecting the full target every tick -- only
+make up the shortfall between the target and whatever separating speed the pair already
+carries (`overlap_needed = max(0, overlap_target - separating_speed)`).
+
+**How to apply:** any per-tick formula that reads a lagging/derived quantity (an overlap
+fraction, a penetration depth, an error term computed from position rather than velocity) to
+decide how much correction to apply THIS tick needs to account for correction already applied
+on PRIOR ticks, or it re-applies past what's needed every tick the lagging quantity stays
+stale. This is the same accumulation-without-a-cap shape as the multi-pair case, just walked
+across time instead of across simultaneous pairs -- when reviewing or writing a new continuous
+(not single-strike) impulse/force calculation, check both axes: does it compound across
+SIMULTANEOUS sources in one tick, and does it compound across SUCCESSIVE ticks of the same
+source. (`Lacaedemon/sparta` PR #860, 2026-07-15.)
+
+## A new maneuver can reuse an existing composite instead of building new per-soldier choreography -- but check for facing side-effects from the reused legs
+
+PR #866 (closes #375) needed the countermarch (exelismos): reverse which end of a unit faces
+the enemy by marching files through each other, with three historical variants (Macedonian
+advances onto new ground, Laconian withdraws, Choral/Persian stays put). Rather than building a
+new per-soldier file-interleaving physics system, it composed three ALREADY-TESTED primitives
+this repo already had: `begin_about_face()` (reverse facing in place), `reform_ranks()` (already
+documented, in its own doc comment, as "a real countermarch" -- it re-slots the grid via a
+depth-only mirror so a full-strength rank leads instead of whichever partial rank the about-face
+happened to flip forward), then an ordinary `MOVE` order whose destination encodes the
+variant (advance/withdraw/stay). Soldiers still walk to their new slots under the existing
+bounded-arrival body steering (`SoldierBodies`) -- nothing new was added to the movement system
+itself, only which slots get assigned and how far the march leg carries the whole regiment.
+
+**The gotcha this surfaced:** the ordinary march's centre-pivot (or the reform hold's own
+"face the parked destination" fallback) re-aims a marching block toward its TRAVEL direction --
+correct for a rear-move (which only ever marches toward its new facing), but for LACONIAN the
+march destination is BEHIND the new facing, so the reused march leg was silently rotating the
+just-completed about-face back open mid-maneuver. Fixed by holding `ordered_facing` at the
+post-about-face heading through the reform + march (the same mechanism a side-step already uses
+to hold a fixed facing), cleared automatically on arrival -- the maneuver-specific piece wasn't
+new geometry, it was suppressing an existing leg's own facing side-effect that happened to be
+wrong for this one variant.
+
+**How to apply:** when composing a new maneuver/order out of existing tested primitives (the
+right default per this repo's own preference for reuse over new machinery), don't just check
+that each leg's OWN documented behavior is individually correct -- check whether any leg carries
+an implicit side effect (a centre-pivot, a fallback facing, a reform-hold assumption) that was
+only ever exercised by the callers it was originally built for, and could point the wrong way
+for a new caller whose geometry differs (here: marching AWAY from the new facing, not toward
+it). (`Lacaedemon/sparta` PR #866, 2026-07-15.)
