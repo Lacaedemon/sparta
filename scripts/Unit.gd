@@ -3278,14 +3278,14 @@ func _position_anchor_unstable() -> bool:
 ## settled (see _position_anchor_unstable) -- the ANCHOR_RANKS-worth of soldiers nearest the
 ## enemy, out of the full ENGAGED_RANKS depth that fights/steers. Narrower than ENGAGED_RANKS
 ## so a casualty-thinned or knocked-back deeper rank pulls `position` around less than before,
-## but deliberately NOT narrowed to a single rank: an earlier attempt at exactly one rank (PR
-## #818, reverted before merge, and re-tried here) measurably re-aggravated the melee-lock
-## swirl regression test_residual_melee_swirl_battle.gd guards against (#724) -- a matched,
-## prolonged infantry clash pivoted ~38 degrees by tick 700, back near its pre-fix baseline,
-## against the test's <28 degree gate. A single live rank is too small a sample for the
-## coupling average to damp the per-tick contact-torque noise SoldierEnemyContact already
-## injects (see sparta.md's "melee-lock swirl" notes); two ranks keeps that test's margin
-## while still excluding the deepest engaged rank from the anchor.
+## but deliberately NOT narrowed to a single rank: an earlier attempt at exactly one rank
+## measurably re-aggravated the melee-lock swirl regression
+## test_residual_melee_swirl_battle.gd guards against -- a matched, prolonged infantry clash
+## pivoted ~38 degrees by tick 700, back near its pre-fix baseline, against the test's <28
+## degree gate. A single live rank is too small a sample for the coupling average to damp the
+## per-tick contact-torque noise SoldierEnemyContact already injects (see sparta.md's
+## "melee-lock swirl" notes); two ranks keeps that test's margin while still excluding the
+## deepest engaged rank from the anchor.
 const ANCHOR_RANKS: int = 2
 
 

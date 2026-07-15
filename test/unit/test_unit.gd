@@ -2708,8 +2708,8 @@ func test_engaged_soldier_indices_use_cache_false_bypasses_a_populated_cache() -
 
 
 func test_near_front_soldier_indices_is_empty_when_not_engaged() -> void:
-	# #821: near_front_soldier_indices (SoldierBodies.couple()'s narrower anchor selection)
-	# only applies to a settled, engaged, non-Square regiment -- every other case falls back
+	# near_front_soldier_indices (SoldierBodies.couple()'s narrower anchor selection) only
+	# applies to a settled, engaged, non-Square regiment -- every other case falls back
 	# to the wider engaged_soldier_indices selection (or the whole-block centroid).
 	var u := _make_unit(120)
 	assert_false(u.is_engaged(), "sanity: a fresh idle unit is not engaged")
@@ -2753,7 +2753,7 @@ func test_position_anchor_indices_falls_back_to_engaged_selection_while_unstable
 	# _position_anchor_unstable (an in-progress order-turn, wheel, engage re-face, or reform
 	# hold) makes position_anchor_indices use the wider, more-damped engaged_soldier_indices
 	# selection instead of the narrower near_front_soldier_indices -- narrowing the anchor
-	# mid-transition is exactly what destabilized #724's melee-lock swirl regression when
+	# mid-transition is exactly what destabilized the melee-lock swirl regression when
 	# tried unconditionally (see Unit.ANCHOR_RANKS' own docstring). The engage re-face
 	# (_engage_turn_target) is the only one of the three is_maneuver_turning cases reachable
 	# while FIGHTING -- an order-driven drill turn or wheel requires state != FIGHTING

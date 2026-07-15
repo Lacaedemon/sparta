@@ -136,7 +136,7 @@ func test_couple_still_averages_whole_regiment_when_not_engaged() -> void:
 
 
 func test_couple_position_anchor_reaches_less_deep_than_the_old_selection_after_front_rank_casualties() -> void:
-	# #821: `position` should read off the regiment's leading edge, not an average a
+	# `position` should read off the regiment's leading edge, not an average a
 	# casualty-thinned rear can pull around. A fixed-SIZE engaged budget reaches deeper into
 	# the block once the true front rank is gone -- the same array splice SoldierMelee.reap()
 	# performs on a real casualty -- so the survivors that fill that budget sit farther back

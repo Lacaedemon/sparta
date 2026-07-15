@@ -1,6 +1,6 @@
 extends GutTest
-## Render smoke test for the position-anchor marker (Unit._draw's position-anchor block,
-## #821): a dev/debug visual gated behind `Settings.show_position_anchor` that draws a small
+## Render smoke test for the position-anchor marker (Unit._draw's position-anchor block):
+## a dev/debug visual gated behind `Settings.show_position_anchor` that draws a small
 ## dot at Vector2.ZERO (this node's own local-draw-space origin, which IS `position`).
 ## Purely cosmetic -- no sim/combat exercised. Drive it the way the engine does (add a live
 ## unit to the tree, request a redraw, let a frame pass) so Unit._draw actually runs under

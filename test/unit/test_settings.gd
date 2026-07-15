@@ -109,7 +109,7 @@ func test_show_soldier_ids_defaults_off_and_round_trips() -> void:
 
 
 func test_show_position_anchor_defaults_off_and_round_trips() -> void:
-	# Default off — the position-anchor marker (#821) is a dev/debug visual, opt-in.
+	# Default off — the position-anchor marker is a dev/debug visual, opt-in.
 	assert_false(_settings().show_position_anchor, "position-anchor marker defaults off")
 
 	var a = SettingsScript.new()
@@ -217,8 +217,8 @@ func test_set_show_soldier_ids_session_flips_value_without_persisting() -> void:
 
 func test_set_show_position_anchor_session_flips_value_without_persisting() -> void:
 	# Mirrors test_set_show_soldier_ids_session_flips_value_without_persisting above: a demo
-	# investigating the position anchor (#821) arms the marker for the recording only,
-	# without rewriting a developer's saved preference.
+	# investigating the position anchor arms the marker for the recording only, without
+	# rewriting a developer's saved preference.
 	var s := _SaveCountingSettings.new()
 	autofree(s)
 	watch_signals(s)
