@@ -1,8 +1,8 @@
 {
-	"input": "demos/inputs/loose-resize-preview.json",
-	"caption": "Issue #863: the drag-resize preview line now spans the regiment's REAL formed-up width, loose-order spacing included. A lone LOOSE Archers regiment is selected and its right flank grip dragged outward: the preview line under the cursor matches the block's actual footprint at drag start (before this fix it spanned only half of it, using density-blind NORMAL spacing), then tracks the widening frontage (9 -> 18 files) until release, and the block reforms onto the previewed line.",
+	"input": "demos/inputs/loose-form-up-drag.json",
+	"caption": "Issue #863: the form-up click-and-drag line now spans the regiment's REAL formed-up width, loose-order spacing included. A lone LOOSE Archers regiment is deployed with an RMB drag: the preview line under the cursor (and its file-count label) matches where the flank files will actually stand -- before this fix it drew at half the real width, and in multi-unit drags the density-blind slice layout could deploy overlapping blocks. The regiment reshapes 9 -> 14 files and marches onto the drawn line, landing exactly spanning it. The flank-grip resize preview got the same fix (see the still in the PR description).",
 	"fixed_fps": 30,
-	"max_frames": 150,
+	"max_frames": 280,
 	"fps": 15,
 	"width": 720
 }
