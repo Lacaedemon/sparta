@@ -1232,6 +1232,13 @@ func show_end(text: String) -> void:
 	get_tree().paused = true
 
 
+## Inverse of show_end, for a replay rewind that jumps back before the battle's
+## conclusion: the end overlay comes down and the tree resumes ticking.
+func hide_end() -> void:
+	_overlay.visible = false
+	get_tree().paused = false
+
+
 func _on_restart() -> void:
 	# Fresh battle: drop back to IDLE so Battle._ready starts a new recording.
 	Replay.reset()

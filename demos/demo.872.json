@@ -1,0 +1,4 @@
+{
+	"skip": true,
+	"reason": "Replay-playback internals only: snapshot caching changes how fast a rewind resumes (skipping resimulation from tick 0), not anything rendered. A recorded battle looks identical with or without the cache; the behavior is covered by per-tick round-trip assertions in test/unit/test_battle_replay_snapshot.gd instead."
+}
