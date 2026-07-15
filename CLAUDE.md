@@ -89,6 +89,13 @@ the PR page no matter how long the review thread grows).
   original single clip conflated a pre-existing spawn/facing-flip transient with
   the actual formation-change and charge-bracing mechanics being reviewed, reading
   as "physics is broken" until traced with a state dump.)
+- **Check every new demo against the standard defect checklist before calling it
+  verified.** Run the "Standard demo defect checklist" in
+  `.claude/skills/verify-via-state-dump/SKILL.md` (blobbing, pulsing,
+  flank-swapping, rank-swapping, facing whipsaw/rotation/reshape surge) against
+  the demo's state dump — a rendered clip that looks fine can still hide one of
+  these, so this is a standing check, not something to run only when a clip
+  looks off.
 
 ### Static features: images in the PR description
 For changes a still shows better than motion — new **interfaces/menus/HUD**, **new

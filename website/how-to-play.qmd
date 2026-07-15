@@ -792,6 +792,33 @@ checkerboard split: the 2nd and 4th land on the front row, the 1st and 3rd
 land behind them, each centred on a front-row gap.
 :::
 
+**Echelon (oblique order).** Two more split modes, off by default (enable
+**Echelon (right leads)** or **Echelon (left leads)** in **☰ Menu →
+Form-up**): instead of one straight rank, your selection staggers into a
+diagonal, one flank advanced and the other held back. **Right leads** puts
+the unit nearest your drag's right flank furthest forward and the left-flank
+unit furthest back; **left leads** mirrors it. Every unit in between steps
+evenly between the two ends. See
+[tactics: echelon (oblique order)](tactics.qmd#echelon-oblique-order) for
+when you'd want a refused flank instead of a solid line.
+
+::: {#fig-echelon-form-up .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/echelon_form_up.jpg">
+  <source src="media/echelon_form_up.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Three Spearmen regiments, box-selected and dragged into a line under the
+echelon (right leads) split: the unit nearest the right flank advances
+furthest, the unit nearest the left flank trails, and the middle regiment
+splits the difference --- a clean staggered diagonal.
+:::
+
 **Survey all orders (hold Space).** Holding <kbd>Space</kbd> overlays every unit's
 current order on the battlefield: a dashed green line to each move destination, a red
 line to each attack target, and a teal link for support duties. At the end of each move

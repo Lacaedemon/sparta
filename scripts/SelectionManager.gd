@@ -66,25 +66,39 @@ const UNBOUNDED_FILES: int = 1000000
 # design.md. It reuses this same enum/cycle/menu machinery rather than a parallel toggle
 # system, since "how a multi-unit form-up splits the dragged line" is exactly what it does
 # too, just across two offset rows instead of one.
-enum FormUpDist { EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT, CHECKERBOARD }
+#
+# ECHELON_RIGHT/ECHELON_LEFT are a third axis again: stagger the line into a diagonal instead
+# of one straight rank (the four EQUAL_* modes) or an alternate row layout (CHECKERBOARD).
+# Historical precedent: Caesar's oblique deployments (Gallic War) and Frederick the Great's
+# refined oblique order (Leuthen) -- weight or refuse one flank instead of engaging the whole
+# line at once. RIGHT/LEFT name which flank LEADS (advances furthest along the facing
+# direction, toward where the line is deployed to fight); the other flank trails, offset back
+# from it -- an offensive concentration on the leading flank, or equivalently a refused
+# (withheld) trailing flank, depending which end of the same diagonal you read it from. See
+# _echelon_slices for the geometry.
+enum FormUpDist { EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT, CHECKERBOARD,
+		ECHELON_RIGHT, ECHELON_LEFT }
 const FORM_UP_DIST_NAMES := {
 	FormUpDist.EQUAL_DEPTH: "Equal depth (count)",
 	FormUpDist.EQUAL_WIDTH: "Equal width (space)",
 	FormUpDist.EQUAL_DEPTH_SPACE: "Equal depth (space)",
 	FormUpDist.EQUAL_WIDTH_COUNT: "Equal width (count)",
 	FormUpDist.CHECKERBOARD: "Checkerboard (quincunx)",
+	FormUpDist.ECHELON_RIGHT: "Echelon (right leads)",
+	FormUpDist.ECHELON_LEFT: "Echelon (left leads)",
 }
 # Canonical mode list — every mode that EXISTS, in preferred order (the default first). This
 # is the full reference set: the fallback when Settings.form_up_dist_cycle is empty (all
 # modes disabled), the enabled-subset filter's iteration order (_cycle_from_settings), and
 # what the "keep the default reachable" self-correction (HUD._sync_setting_toggles) draws
 # from -- so every mode a player can ever select as the default MUST appear here, or that
-# self-correction can never re-add it to Settings.form_up_dist_cycle. CHECKERBOARD is
-# included here (it's a real, selectable mode) but left OUT of Settings.form_up_dist_cycle's
-# own persisted DEFAULT VALUE below -- the two lists serve different purposes: this one is
-# "what's possible", that one is "what's enabled out of the box".
+# self-correction can never re-add it to Settings.form_up_dist_cycle. CHECKERBOARD and the two
+# ECHELON modes are included here (they're real, selectable modes) but left OUT of
+# Settings.form_up_dist_cycle's own persisted DEFAULT VALUE below -- the two lists serve
+# different purposes: this one is "what's possible", that one is "what's enabled out of the box".
 const FORM_UP_DIST_CYCLE := [FormUpDist.EQUAL_DEPTH_SPACE, FormUpDist.EQUAL_DEPTH,
-		FormUpDist.EQUAL_WIDTH, FormUpDist.EQUAL_WIDTH_COUNT, FormUpDist.CHECKERBOARD]
+		FormUpDist.EQUAL_WIDTH, FormUpDist.EQUAL_WIDTH_COUNT, FormUpDist.CHECKERBOARD,
+		FormUpDist.ECHELON_RIGHT, FormUpDist.ECHELON_LEFT]
 const FORM_UP_DIST_CYCLE_KEY := KEY_Y   # cycles the live distribution mode
 # Checkerboard geometry (docs/acies-triplex-design.md): the front row's inter-unit gap is
 # scaled UP from the normal MULTI_FORM_UP_GAP to roughly that unit's own frontage width (the
@@ -95,6 +109,12 @@ const FORM_UP_DIST_CYCLE_KEY := KEY_Y   # cycles the live distribution mode
 # as "close support" rather than a separate, disconnected battle line.
 const CHECKERBOARD_GAP_SCALE: float = 1.0
 const CHECKERBOARD_LINE_GAP: float = 6.0 * UnitRef.FORMATION_SPACING
+# Echelon stagger: the physical depth offset (world units, along the facing direction) between
+# two adjacent units' slices. A smaller step than CHECKERBOARD_LINE_GAP -- echelon staggers
+# progressively across the WHOLE line rather than folding it into two discrete rows, so a
+# shallower per-unit step still reads as a clear diagonal once it accumulates across several
+# units, without any one pair looking like a disconnected second line.
+const ECHELON_STEP: float = 3.0 * UnitRef.FORMATION_SPACING
 const DEMO_FORMUP_WINDOW: int = 90   # ticks a replayed deploy line lingers (spans the march)
 
 # Group order distribution: when multiple units issue an attack order, Focused sends
@@ -678,6 +698,16 @@ func _order_units_for_line(units: Array, a: Vector2, b: Vector2, by_selection_or
 func _form_up_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
 	if mode == FormUpDist.CHECKERBOARD:
 		return _checkerboard_slices(units, a, b)
+	if mode == FormUpDist.ECHELON_RIGHT or mode == FormUpDist.ECHELON_LEFT:
+		return _echelon_slices(units, a, b, mode)
+	return _line_slices(units, a, b, mode)
+
+
+## The plain single-line layout shared by the four EQUAL_* modes: one contiguous slice per
+## unit along `a`->`b`, per-unit file counts from `mode` (see _files_for_mode), laid out
+## left->right with MULTI_FORM_UP_GAP between slices and the whole assembly centred on the
+## drag. Also the base line _echelon_slices staggers off of.
+func _line_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
 	var dir: Vector2 = (b - a).normalized()
 	var total: float = a.distance_to(b)
 	var usable: float = maxf(total - MULTI_FORM_UP_GAP * float(units.size() - 1), 0.0)
@@ -772,6 +802,34 @@ func _checkerboard_slices(units: Array, a: Vector2, b: Vector2) -> Array:
 			# behind it, laterally centred.
 			lateral = front_centers[0] if not front_centers.is_empty() else (a + b) * 0.5
 		out.append({"unit": rear[i], "center": lateral + back_offset, "files": int(rear_files[i])})
+	return out
+
+
+## Echelon (oblique order): the same lateral slice centres and per-unit file counts a plain
+## line would use (EQUAL_DEPTH_SPACE -- echelon is a stagger axis, independent of the
+## width/depth basis toggle, same reasoning as CHECKERBOARD reusing one basis for its rows),
+## but each slice is additionally offset along the facing direction by a multiple of
+## ECHELON_STEP, one step further per unit as you move toward the leading flank. mode ==
+## ECHELON_RIGHT makes the right flank (the `b` end) lead -- its offsets increase left->right;
+## ECHELON_LEFT mirrors it, the `a` end leading instead. The per-unit offsets are centred
+## around zero (their mean is zero) so the assembly's average depth still sits on the drag
+## line, the same "centred on the drag" invariant _line_slices keeps for its lateral layout --
+## only the flank-to-flank stagger is new, not a net advance or withdrawal of the whole line.
+func _echelon_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
+	var plain: Array = _line_slices(units, a, b, FormUpDist.EQUAL_DEPTH_SPACE)
+	var n: int = plain.size()
+	if n <= 1:
+		return plain
+	var face: float = _form_up_facing(a, b)
+	var forward: Vector2 = Vector2.RIGHT.rotated(face)
+	var lead_is_right: bool = mode == FormUpDist.ECHELON_RIGHT
+	var out: Array = []
+	for i in range(n):
+		var lead_rank: float = float(i) if lead_is_right else float(n - 1 - i)
+		var centered_rank: float = lead_rank - float(n - 1) * 0.5
+		var slice: Dictionary = plain[i].duplicate()
+		slice["center"] = slice["center"] + forward * ECHELON_STEP * centered_rank
+		out.append(slice)
 	return out
 
 

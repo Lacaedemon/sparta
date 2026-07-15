@@ -78,6 +78,46 @@ func test_checkerboard_cycle_checkbox_starts_unchecked_by_default() -> void:
 			"checkerboard's cycle checkbox is unchecked under the fresh-install default cycle")
 
 
+func test_menu_builds_with_the_echelon_radio_and_cycle_items() -> void:
+	var hud := _hud()
+	var popup := _popup(hud)
+	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_ECHELON_RIGHT), 0,
+			"the echelon-right radio item is present")
+	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_ECHELON_LEFT), 0,
+			"the echelon-left radio item is present")
+	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_ECHELON_RIGHT), 0,
+			"the echelon-right cycle checkbox is present")
+	assert_gte(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_ECHELON_LEFT), 0,
+			"the echelon-left cycle checkbox is present")
+
+
+func test_echelon_cycle_checkboxes_start_unchecked_by_default() -> void:
+	# Same reasoning as checkerboard above: echelon is excluded from Settings.form_up_dist_cycle's
+	# own default value, even though it's a real mode in the canonical FORM_UP_DIST_CYCLE list.
+	var s := SettingsScript.new()
+	autofree(s)
+	Settings.form_up_dist_cycle = s.form_up_dist_cycle.duplicate()
+	var hud := _hud()
+	var popup := _popup(hud)
+	assert_false(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_ECHELON_RIGHT)),
+			"echelon-right's cycle checkbox is unchecked under the fresh-install default cycle")
+	assert_false(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_ECHELON_LEFT)),
+			"echelon-left's cycle checkbox is unchecked under the fresh-install default cycle")
+
+
+func test_picking_the_echelon_right_radio_sets_and_persists_the_default() -> void:
+	Settings.form_up_dist_default = SelectionManagerScript.FormUpDist.EQUAL_DEPTH
+	var hud := _hud()
+	hud._on_menu_id(HUDScript.MENU_FORMUP_ECHELON_RIGHT)
+	assert_eq(Settings.form_up_dist_default, SelectionManagerScript.FormUpDist.ECHELON_RIGHT,
+			"choosing the echelon-right item sets the persisted default")
+	var popup := _popup(hud)
+	assert_true(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_ECHELON_RIGHT)),
+			"and the radio re-syncs to the new default")
+	assert_true(Settings.form_up_dist_cycle.has(SelectionManagerScript.FormUpDist.ECHELON_RIGHT),
+			"picking echelon-right as the default also enrolls it in the cycle (default must stay reachable)")
+
+
 func test_picking_the_checkerboard_radio_sets_and_persists_the_default() -> void:
 	Settings.form_up_dist_default = SelectionManagerScript.FormUpDist.EQUAL_DEPTH
 	var hud := _hud()
