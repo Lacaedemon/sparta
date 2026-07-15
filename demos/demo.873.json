@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation-and-comments-only change (issue #720): cavalry sprint_mps stays 8.5 -- no simulation value, scene, or asset changed, so a recorded battle would look identical to any other cavalry-charge clip and wouldn't demonstrate anything about this PR."
+}

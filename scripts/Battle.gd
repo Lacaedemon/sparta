@@ -417,10 +417,15 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# other -- and scaled to each type's panoply weight: heavier kit costs proportionally
 	# more at a run than at a walk (walking pace is fairly load-insensitive; sprint pace
 	# collapses faster under weight), so spearmen's walk sits close to the lighter types'
-	# but their sprint lags well behind. Cavalry's three paces map onto the horse's own
-	# real gaits (walk / trot / gallop) rather than a rider-weight-scaled fraction, since a
-	# rider's kit is a small fraction of what the horse itself carries (tack, barding, and
-	# rider together are still well inside a war-horse's load capacity at these speeds).
+	# but their sprint lags well behind. Cavalry's walk/jog paces map onto the horse's own
+	# real walk/trot gaits rather than a rider-weight-scaled fraction, since a rider's kit
+	# is a small fraction of what the horse itself carries (tack, barding, and rider
+	# together are still well inside a war-horse's load capacity at these speeds). Cavalry's
+	# sprint (8.5 m/s / 30.6 km/h) is deliberately toned down from a true historical gallop
+	# (40-48 km/h) toward a fast-canter pace -- a full-speed charge would close distance
+	# faster than this map/camera scale reads well, and a much faster cavalry would also
+	# unbalance relative unit speeds across the roster. See docs/SPEED_VERIFICATION.md
+	# for the historical comparison and this rationale.
 	# `accel_mps2`/`decel_mps2` are how fast the unit ramps toward/away from a pace, in
 	# metres/second^2. Same panoply-weight reasoning as the pace speeds above: heavier
 	# kit accelerates slower, and decel > accel for foot troops (stopping needs no
@@ -514,9 +519,11 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 ## converted to world units in _spawn_unit. Independent per type -- not a fixed fraction of
 ## each other -- and scaled to each type's panoply weight: heavier kit costs proportionally
 ## more at a run than at a walk, so spearmen's walk sits close to the lighter types' but
-## their sprint lags well behind. Cavalry's three paces map onto the horse's own real gaits
-## (walk / trot / gallop). `accel_mps2`/`decel_mps2` follow the same reasoning: heavier kit
-## accelerates slower, decel > accel for foot troops, cavalry symmetric. See
+## their sprint lags well behind. Cavalry's walk/jog map onto the horse's own real
+## walk/trot gaits; its sprint is a deliberate fast-canter charge pace, toned down from
+## a true historical gallop for playability and roster speed balance (see
+## docs/SPEED_VERIFICATION.md). `accel_mps2`/`decel_mps2` follow the same reasoning:
+## heavier kit accelerates slower, decel > accel for foot troops, cavalry symmetric. See
 ## website/tactics.qmd for the full table.
 ##
 ## `formation` is the type's default density (every unit can still cycle Tight/Normal/Loose

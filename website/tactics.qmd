@@ -403,7 +403,7 @@ something else does the killing.
 
 ::: {.g-col-12 .g-col-md-4}
 ### 🐎 Cavalry
-**Fast** --- they charge at a real gallop (~8.5 m/s, far quicker than any foot
+**Fast** --- they charge at a hard canter (~8.5 m/s, far quicker than any foot
 unit's advance) --- with a **charge bonus** that grows with closing speed.
 Devastating into a flank or rear, but blunted when it charges into braced spears.
 :::
@@ -703,17 +703,19 @@ Units move at **realistic real-world speeds**, measured in metres per second, wi
 | Spearmen (heaviest kit) | 1.1 m/s | 1.8 m/s | 2.8 m/s |
 | Infantry | 1.3 m/s | 2.5 m/s | 4.0 m/s |
 | Archers (lightest kit) | 1.5 m/s | 3.0 m/s | 4.5 m/s |
-| Cavalry | 1.7 m/s (walk gait) | 3.5 m/s (trot) | 8.5 m/s (gallop) |
+| Cavalry | 1.7 m/s (walk gait) | 3.5 m/s (trot) | 8.5 m/s (hard canter) |
 
 Movement paces by unit type, in metres per second.
 :::
 
 Heavier armor and weapons cost proportionally more at a run than at a walk --- walking
 pace barely changes under load, but running form degrades fast, so spearmen's walk
-sits close to the lighter types' while their sprint lags well behind. Cavalry's three
-paces map onto the horse's own real gaits (walk / trot / gallop) rather than a
-rider-weight-scaled fraction, since a rider's kit is a small fraction of what the
-horse itself carries.
+sits close to the lighter types' while their sprint lags well behind. Cavalry's walk
+and jog map onto the horse's own real walk/trot gaits rather than a rider-weight-scaled
+fraction, since a rider's kit is a small fraction of what the horse itself carries.
+Its charge pace is deliberately toned down from a true historical gallop (which would
+close distance faster than the map/camera scale reads well) toward a fast canter ---
+see `docs/SPEED_VERIFICATION.md` for the historical comparison.
 
 That sprint gap is a lever: cavalry cross the field and reach an exposed flank far
 sooner than infantry can re-form to face them, so commit horse decisively and time

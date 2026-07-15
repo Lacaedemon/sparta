@@ -13,6 +13,37 @@ older hand-authored/recorded `replay` path (documented in the main `sparta.md`
 quick reuse of `demos/showcase.json`, but prefer scripted input for anything that
 shows a specific player gesture.
 
+## Standing rule: always check a demo thoroughly for unnatural behavior, not just the claimed feature
+
+Before treating a demo/recording as verified, watch (or dump-state) the **whole
+clip**, not just the tick(s) that prove the specific feature under review. A
+demo that correctly shows the intended mechanic can still contain something
+else unnatural — a facing whipsaw, a swirl, a stray unit drifting off-order, a
+formation intermixing — that a narrow "does the claimed thing happen" check
+walks right past. Several incidents below were each found this way, only
+because someone looked at the full clip rather than the specific claim:
+mid-march facing swings invisible to a bbox-only settle check (#774), a
+melee-lock formation swirl found only by extending a 300-tick trace to 700
+(#724), a reform-hold swirl exposed only once a timing fix made the hold long
+enough to render it, and an inherited combat scenario that never actually
+reached the moment its own caption described (#623, "A stalled approach").
+
+**How to apply:**
+- Watch/dump the full clip end to end (per-tick `facing`, position, and
+  `order_mode`, not just a few widely-spaced sample ticks — see "Bbox-settling
+  checks alone miss a mid-march swirl" in `sparta.md`) and ask "does anything
+  here look wrong," not only "does the claimed thing happen."
+- Extend the trace window if a rotation/drift looks like it might still be
+  accelerating rather than settling — a 300-tick sample can look stable while
+  a 700-tick one reveals a real, still-growing problem (#724).
+- Treat a demo review as covering the **whole battle**, including units and
+  ticks the caption doesn't mention — an unrelated transient elsewhere in the
+  same clip can be mistaken for a bug in the change under review, or a real
+  bug can hide in a part of the clip nobody was told to look at.
+- This is a strengthening of, not a replacement for, the state-dump and
+  frame-capture techniques below — use those tools, just point them at the
+  entire clip rather than only the claimed moment.
+
 ## Author a scripted-input demo (the standard path)
 
 Sparta PR demos **can** show player-gesture features (multi-unit form-up, orders,
