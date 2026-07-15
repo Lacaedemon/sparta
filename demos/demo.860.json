@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/rank-knockback-recovery.json",
+  "caption": "Fixes #817: a whole rank that reached melee range still carrying full march speed used to be driven into a hard backward recoil by SoldierEnemyContact's continuous contact impulse (peaking near KNOCKBACK_SPEED_MAX), stranding it ~50-75 world units behind the line for several hundred ticks. The clash here (soldier-ID + engaged-highlight overlays armed) stays a tight, cohesive block throughout a prolonged press -- no chunk of the highlight detaches and drifts backward, unlike before the fix.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

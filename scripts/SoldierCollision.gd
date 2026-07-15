@@ -168,6 +168,20 @@ static func overcomes_static_friction(
 ## grows the RESOLVED impulse toward, never past, the cap) -- it just means a very fast
 ## charge takes more than one tick's worth of contact to fully stop, not that the shove
 ## itself escalates without bound.
+##
+## The overlap-correction term targets a STEADY separating speed of
+## `overlap_frac * ENEMY_CONTACT_OVERLAP_RATE`, not a fresh injection every tick regardless of
+## how much the pair is already separating: it only makes up the shortfall between that target
+## and whatever separating speed the pair already carries (from this same term on an earlier
+## tick). Position only ever advances by velocity * delta, so overlap_frac lags several ticks
+## behind a velocity change even once the pair is separating fast -- without this deficit
+## check, a deeply-overlapping pair (overlap_frac ~ 1, e.g. a whole rank that arrives at melee
+## range still carrying full march speed the instant it's first classified as engaged) gets a
+## FULL fresh separating impulse every tick for as long as overlap_frac stays high, compounding
+## the pair's relative velocity far past "arrested" into a hard recoil pinned near
+## KNOCKBACK_SPEED_MAX -- not a single strike's momentum, a multi-tick accumulation bug of the
+## same shape as SoldierEnemyContact.accumulate's own multi-pair write-back clamp, just across
+## ticks instead of across simultaneous pairs (see .claude/memories/sparta.md).
 const ENEMY_CONTACT_OVERLAP_RATE: float = 60.0   # matches SoldierSteering.STEER_STRENGTH's scale
 
 static func enemy_contact_impulse(
@@ -180,9 +194,12 @@ static func enemy_contact_impulse(
 	var m_b_eff: float = mass_b * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * brace_b)
 	if m_a_eff < 0.01 or m_b_eff < 0.01:
 		return [Vector2.ZERO, Vector2.ZERO]
-	var closing_speed: float = maxf(0.0, -(vel_a - vel_b).dot(normal))
-	var effective_closing_speed: float = minf(SoldierCombat.KNOCKBACK_SPEED_MAX, closing_speed \
-			+ maxf(0.0, overlap_frac) * ENEMY_CONTACT_OVERLAP_RATE)
+	var rel_along_normal: float = (vel_a - vel_b).dot(normal)
+	var closing_speed: float = maxf(0.0, -rel_along_normal)
+	var separating_speed: float = maxf(0.0, rel_along_normal)
+	var overlap_target: float = maxf(0.0, overlap_frac) * ENEMY_CONTACT_OVERLAP_RATE
+	var overlap_needed: float = maxf(0.0, overlap_target - separating_speed)
+	var effective_closing_speed: float = minf(SoldierCombat.KNOCKBACK_SPEED_MAX, closing_speed + overlap_needed)
 	if effective_closing_speed <= 0.0:
 		return [Vector2.ZERO, Vector2.ZERO]
 	var jn: float = effective_closing_speed / (1.0 / m_a_eff + 1.0 / m_b_eff)
