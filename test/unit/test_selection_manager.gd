@@ -296,6 +296,24 @@ func test_resize_preview_half_width_scales_with_the_unit_own_spacing() -> void:
 			"a loose unit's real half-width is wider than the density-blind pitch")
 
 
+func test_draw_resize_preview_runs_under_a_real_draw_notification() -> void:
+	# _draw_resize_preview calls draw_line/draw_string, which are only legal inside a
+	# real _draw() notification -- drive it that way (queue_redraw + await twice) rather
+	# than calling it directly, so the spacing_scale-aware half-width call site itself
+	# (not just the pure helper above) is exercised.
+	var sm := _sm()
+	var u := _unit()
+	u.set_formation(UnitScript.FORMATION_LOOSE)
+	sm._selected = [u]   # _draw_resize_handles bails without a single selected unit
+	sm._resizing = true
+	sm._resize_unit = u
+	sm._resize_files = UnitFormation.frontage(u)
+	sm.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	pass_test("_draw_resize_preview ran without error under a real draw notification")
+
+
 func test_resize_frontage_routes_an_absolute_command_to_battle() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()
