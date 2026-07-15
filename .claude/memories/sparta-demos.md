@@ -31,8 +31,8 @@ reached the moment its own caption described (#623, "A stalled approach").
 **How to apply:**
 - Watch/dump the full clip end to end (per-tick `facing`, position, and
   `order_mode`, not just a few widely-spaced sample ticks — see "Bbox-settling
-  checks alone miss a mid-march swirl" below) and ask "does anything here look
-  wrong," not only "does the claimed thing happen."
+  checks alone miss a mid-march swirl" in `sparta.md`) and ask "does anything
+  here look wrong," not only "does the claimed thing happen."
 - Extend the trace window if a rotation/drift looks like it might still be
   accelerating rather than settling — a 300-tick sample can look stable while
   a 700-tick one reveals a real, still-growing problem (#724).
