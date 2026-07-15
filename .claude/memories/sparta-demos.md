@@ -44,6 +44,34 @@ reached the moment its own caption described (#623, "A stalled approach").
   frame-capture techniques below — use those tools, just point them at the
   entire clip rather than only the claimed moment.
 
+### Every demo review includes a super-physical check
+
+Whenever reviewing a demo, also check the motion against the units' own
+physical limits — not just whether it "looks right." A maneuver can read as
+smooth and correct on screen while individual soldiers move at speeds their
+own gait can't produce. Concrete case: the wheel maneuver's outer corner man
+held a steady 126 wu/s = 6.3 m/s through the whole swing — 2.25x the
+Spearmen's own `sprint_mps` (2.8) — because the drill capped only the ANGULAR
+rate while linear speed scales with hinge radius (filed as #880; found by
+computing per-soldier speeds from a state dump, invisible to the eye at demo
+zoom).
+
+**How:** dump with `SPARTA_DEMO_STATE_FULL=1` at dense tick intervals across
+the window under review, compute each soldier's per-interval speed
+(displacement between dumps / elapsed time), and compare the fastest against
+the unit type's own `walk_mps`/`jog_mps`/`sprint_mps` (from `Battle.gd`'s
+loadout table) times the 20 wu/m conversion. Also eyeball accelerations: a
+soldier reaching a large velocity in one tick, with no impulse source, breaks
+the `accel_mps2` budget the same way.
+
+**What's exempt:** knockback/contact impulses are real physics and can
+legitimately exceed gait caps for a short recovery window — a transient spike
+that decays under bounded deceleration is fine. The flag is SUSTAINED
+overspeed (holding above sprint for many consecutive ticks) or motion with no
+physical source. When found in a pre-existing mechanism the PR only reuses,
+file it as its own tracked issue (per the review-handling policy) rather than
+growing the PR — but never let it pass unrecorded.
+
 ## Author a scripted-input demo (the standard path)
 
 Sparta PR demos **can** show player-gesture features (multi-unit form-up, orders,
