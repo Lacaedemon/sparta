@@ -2,7 +2,7 @@
   "input": "demos/inputs/countermarch-exelismos.json",
   "caption": "Countermarch (exelismos, #375): three identical Spearmen regiments, each commanded through a different historical variant. Left (Shift+V, Choral/Persian) reverses facing on the very ground it stands on. Middle (Ctrl+V, Macedonian) reverses facing and advances onto new ground. Right (Ctrl+Shift+V, Laconian) reverses facing and withdraws -- the opposite direction from the Macedonian unit. All three end facing the reverse of their start heading; only where the regiment ends up afterward differs.",
   "fixed_fps": 30,
-  "max_frames": 490,
+  "max_frames": 560,
   "fps": 15,
   "width": 640
 }
