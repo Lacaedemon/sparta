@@ -4040,8 +4040,8 @@ func _stop_rout_and_fight() -> void:
 # FORMATION_LOOSE already offers the looser ~0.9 m/man pyknosis close-order density as
 # a selectable formation (see LOOSE_SPACING_SCALE / spacing_scale_for_mode), so a
 # player who wants that historically-standard density can select it. See
-# docs/SPEED_VERIFICATION.md for the full historical sourcing and issue #719 for the
-# design decision. A foot soldier's mark is sized to match this floor --
+# docs/SPEED_VERIFICATION.md for the full historical sourcing and design rationale.
+# A foot soldier's mark is sized to match this floor --
 # shoulder-to-shoulder at synaspismos density, no gap and no overlap. Cavalry
 # marks are sized to a horse's ~1 m body width. World-units, not px.
 const FORMATION_SPACING: float = 9.0    # world units between soldier marks (0.45 m, synaspismos density)
