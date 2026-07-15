@@ -1,0 +1,19 @@
+{
+  "_comment": "Echelon / oblique order form-up (#379): three player Spearmen units start bunched together west of the deploy line, get box-selected, then a vertical (north-to-south) right-drag deploys them with the new ECHELON_RIGHT distribution mode (form_up_dist=5, a live SelectionManager override -- see DemoInputRecorder.gd's _form_up_dist field) instead of one straight rank. A vertical drag (a above b, same x) puts the perpendicular deploy facing due east -- the same direction the units are already west of, so they march straight ahead instead of sideways. Because the drag runs top (a, left flank) to bottom (b, right flank), ECHELON_RIGHT staggers the bottom (southernmost) unit furthest east (leading) and the top (northernmost) unit furthest west (trailing) -- a diagonal line refusing the northern flank while the southern flank presses forward, the oblique-order concentration Caesar and Frederick the Great both used. drill:true (no team 1 at all) since this is a pure maneuver demo with nothing to fight. Camera holds one static wide frame covering both the starting cluster and the deployed diagonal, since the march is short enough not to need a pan.",
+  "seed": "379379",
+  "drill": true,
+  "form_up_dist": 5,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 480, "y": 340, "count": 90},
+    {"team": 0, "type": "Spearmen", "x": 480, "y": 460, "count": 90},
+    {"team": 0, "type": "Spearmen", "x": 480, "y": 580, "count": 90}
+  ],
+  "camera": [
+    {"tick": 0, "x": 600.0, "y": 460.0, "zoom": 1.3}
+  ],
+  "steps": [
+    {"tick": 5, "box": {"from": [380, 280], "to": [620, 640]}},
+    {"tick": 20, "rmb_drag": {"from": [750, 300], "to": [750, 600]}}
+  ],
+  "state": [20, 60, 440, 700, 900, 1100, 1250]
+}

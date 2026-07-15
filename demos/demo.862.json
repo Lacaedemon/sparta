@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/echelon-oblique-form-up.json",
+  "caption": "Echelon / oblique order (closes #379): three player Spearmen units start bunched together, get box-selected, then a right-drag deploys them with the new ECHELON_RIGHT distribution mode instead of one straight rank -- watch the preview at tick 25 label \"Echelon (right leads)\" and step out three widening offsets before the drag is even released. Verified by state dump: by tick 1250 the line has settled into a clean staggered diagonal facing east, each unit exactly ECHELON_STEP (27 world units) further forward than its neighbour to the west -- the southernmost (right-flank) unit at x=776.9, the middle unit at x=749.9, and the northernmost (left-flank, trailing) unit at x=722.9. ECHELON_LEFT mirrors it, refusing the opposite flank instead.",
+  "fixed_fps": 30,
+  "max_frames": 650,
+  "fps": 20,
+  "width": 720
+}

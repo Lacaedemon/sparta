@@ -11,15 +11,17 @@ const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
 const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
 const UnitRef = preload("res://scripts/Unit.gd")
 
-# Stable ids for the Menu popup's items (independent of index / separators). The five
-# MENU_FORMUP_EQUAL_*/MENU_FORMUP_CHECKERBOARD ids set the default multi-unit form-up
-# distribution (radio-checked); the matching MENU_FORMUP_CYCLE_* ids toggle Y-key cycle
-# membership (see _FORMUP_ENTRIES below).
+# Stable ids for the Menu popup's items (independent of index / separators). The seven
+# MENU_FORMUP_EQUAL_*/MENU_FORMUP_CHECKERBOARD/MENU_FORMUP_ECHELON_* ids set the default
+# multi-unit form-up distribution (radio-checked); the matching MENU_FORMUP_CYCLE_* ids
+# toggle Y-key cycle membership (see _FORMUP_ENTRIES below).
 enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_EQUAL_DEPTH_SPACE, MENU_FORMUP_EQUAL_DEPTH,
 		MENU_FORMUP_EQUAL_WIDTH, MENU_FORMUP_EQUAL_WIDTH_COUNT, MENU_FORMUP_CHECKERBOARD,
+		MENU_FORMUP_ECHELON_RIGHT, MENU_FORMUP_ECHELON_LEFT,
 		MENU_FORMUP_CYCLE_DEPTH_SPACE, MENU_FORMUP_CYCLE_DEPTH,
 		MENU_FORMUP_CYCLE_WIDTH, MENU_FORMUP_CYCLE_WIDTH_COUNT, MENU_FORMUP_CYCLE_CHECKERBOARD,
+		MENU_FORMUP_CYCLE_ECHELON_RIGHT, MENU_FORMUP_CYCLE_ECHELON_LEFT,
 		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
 		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_SHOW_FPS,
 		MENU_FPS_CORNER_TOP_LEFT, MENU_FPS_CORNER_TOP_RIGHT, MENU_FPS_CORNER_BOTTOM_LEFT,
@@ -97,6 +99,10 @@ const _FORMUP_ENTRIES := [
 		"default_id": MENU_FORMUP_EQUAL_WIDTH_COUNT, "cycle_id": MENU_FORMUP_CYCLE_WIDTH_COUNT},
 	{"mode": SelectionManagerRef.FormUpDist.CHECKERBOARD, "label": "Checkerboard (quincunx)",
 		"default_id": MENU_FORMUP_CHECKERBOARD, "cycle_id": MENU_FORMUP_CYCLE_CHECKERBOARD},
+	{"mode": SelectionManagerRef.FormUpDist.ECHELON_RIGHT, "label": "Echelon (right leads)",
+		"default_id": MENU_FORMUP_ECHELON_RIGHT, "cycle_id": MENU_FORMUP_CYCLE_ECHELON_RIGHT},
+	{"mode": SelectionManagerRef.FormUpDist.ECHELON_LEFT, "label": "Echelon (left leads)",
+		"default_id": MENU_FORMUP_ECHELON_LEFT, "cycle_id": MENU_FORMUP_CYCLE_ECHELON_LEFT},
 ]
 
 # Which screen corner the frame-rate counter can render in, radio-picked from the

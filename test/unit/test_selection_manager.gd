@@ -890,6 +890,8 @@ const EQUAL_WIDTH := SelectionManagerScript.FormUpDist.EQUAL_WIDTH
 const EQUAL_DEPTH_SPACE := SelectionManagerScript.FormUpDist.EQUAL_DEPTH_SPACE
 const EQUAL_WIDTH_COUNT := SelectionManagerScript.FormUpDist.EQUAL_WIDTH_COUNT
 const CHECKERBOARD := SelectionManagerScript.FormUpDist.CHECKERBOARD
+const ECHELON_RIGHT := SelectionManagerScript.FormUpDist.ECHELON_RIGHT
+const ECHELON_LEFT := SelectionManagerScript.FormUpDist.ECHELON_LEFT
 
 
 func test_form_up_equal_depth_gives_units_the_same_rank_depth() -> void:
@@ -1059,7 +1061,8 @@ func test_form_up_single_unit_slice_fills_the_whole_line() -> void:
 	# used (files_for_halfwidth of the half-width) — in EVERY mode, since holding anything
 	# "equal" is vacuous with only one unit to compare.
 	var want_files: int = UnitFormation.files_for_halfwidth(70.0, 120)
-	for mode in [EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT, CHECKERBOARD]:
+	for mode in [EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT, CHECKERBOARD,
+			ECHELON_RIGHT, ECHELON_LEFT]:
 		var slices: Array = sm._form_up_slices([u], Vector2(400, 500), Vector2(540, 500), mode)
 		assert_eq(slices.size(), 1, "a lone unit is one slice")
 		assert_almost_eq(slices[0]["center"].x, 470.0, 0.001, "centred on the line midpoint")
@@ -1157,6 +1160,109 @@ func test_checkerboard_extra_rear_unit_extends_past_the_last_front_slot() -> voi
 			"the extra rear unit extends past the last front unit, not back onto an existing slot")
 	assert_almost_eq(by_unit[u4]["center"].y, by_unit[u2]["center"].y, 0.001,
 			"the extra rear unit stays on the same rear-row depth as the other rear unit")
+
+
+# --- echelon / oblique order form-up ----------------------------------------
+# Drag runs due east (0,0)->(600,0), same convention the checkerboard tests above use: facing
+# perpendicular to the drag comes out pointing due "north" (negative world Y), so a unit that
+# advances toward the facing direction ends up with a SMALLER (more negative) center.y than
+# one that trails behind.
+
+func test_echelon_right_leads_advances_the_right_flank() -> void:
+	var sm := _sm()
+	var u1 := _unit()
+	var u2 := _unit()
+	var u3 := _unit()
+	var slices: Array = sm._form_up_slices([u1, u2, u3], Vector2(0, 0), Vector2(600, 0), ECHELON_RIGHT)
+	assert_eq(slices.size(), 3, "one slice per unit")
+	var by_unit := {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	assert_lt(by_unit[u1]["center"].x, by_unit[u2]["center"].x, "slice centres run left to right")
+	assert_lt(by_unit[u2]["center"].x, by_unit[u3]["center"].x, "slice centres run left to right")
+	assert_gt(by_unit[u1]["center"].y, by_unit[u2]["center"].y,
+			"the left (trailing) unit sits further back than the middle unit")
+	assert_gt(by_unit[u2]["center"].y, by_unit[u3]["center"].y,
+			"the middle unit sits further back than the right (leading) unit")
+
+
+func test_echelon_left_mirrors_echelon_right() -> void:
+	# ECHELON_LEFT is the same staggered diagonal with the leading flank flipped: whichever
+	# depth offset the right flank got under ECHELON_RIGHT, the left flank gets under
+	# ECHELON_LEFT, and vice versa.
+	var sm := _sm()
+	var u1 := _unit()
+	var u2 := _unit()
+	var u3 := _unit()
+	var right: Array = sm._form_up_slices([u1, u2, u3], Vector2(0, 0), Vector2(600, 0), ECHELON_RIGHT)
+	var left: Array = sm._form_up_slices([u1, u2, u3], Vector2(0, 0), Vector2(600, 0), ECHELON_LEFT)
+	var by_unit_right := {}
+	for s in right:
+		by_unit_right[s["unit"]] = s
+	var by_unit_left := {}
+	for s in left:
+		by_unit_left[s["unit"]] = s
+	assert_almost_eq(by_unit_left[u1]["center"].y, by_unit_right[u3]["center"].y, 0.001,
+			"the left flank's depth under ECHELON_LEFT matches the right flank's under ECHELON_RIGHT")
+	assert_almost_eq(by_unit_left[u3]["center"].y, by_unit_right[u1]["center"].y, 0.001,
+			"the right flank's depth under ECHELON_LEFT matches the left flank's under ECHELON_RIGHT")
+	assert_almost_eq(by_unit_left[u2]["center"].y, by_unit_right[u2]["center"].y, 0.001,
+			"the middle unit's depth is unchanged by which flank leads")
+
+
+func test_echelon_step_matches_the_constant() -> void:
+	# Exactly two units: the whole stagger reduces to a single ECHELON_STEP depth gap between
+	# them, the same "pin the constant directly" pattern as
+	# test_checkerboard_rear_offset_matches_the_line_gap_constant above.
+	var sm := _sm()
+	var u1 := _unit()
+	var u2 := _unit()
+	var slices: Array = sm._form_up_slices([u1, u2], Vector2(0, 0), Vector2(400, 0), ECHELON_RIGHT)
+	var by_unit := {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	assert_almost_eq(by_unit[u1]["center"].y, by_unit[u2]["center"].y
+			+ SelectionManagerScript.ECHELON_STEP, 0.5,
+			"the trailing unit sits exactly ECHELON_STEP behind the leading one")
+
+
+func test_echelon_keeps_the_lateral_layout_and_file_counts_of_a_plain_line() -> void:
+	# Echelon only changes DEPTH: the lateral (along-the-drag) position and file count of each
+	# slice must match the plain EQUAL_DEPTH_SPACE line exactly -- it's the same layout, just
+	# staggered forward/back.
+	var sm := _sm()
+	var big := _unit()
+	big.max_soldiers = 200
+	var small := _unit()
+	small.max_soldiers = 100
+	var plain: Array = sm._form_up_slices(
+			[big, small], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH_SPACE)
+	var echelon: Array = sm._form_up_slices(
+			[big, small], Vector2(0, 0), Vector2(400, 0), ECHELON_RIGHT)
+	for i in range(2):
+		assert_almost_eq(echelon[i]["center"].x, plain[i]["center"].x, 0.001,
+				"echelon keeps the plain line's lateral (x) position")
+		assert_eq(echelon[i]["files"], plain[i]["files"],
+				"echelon keeps the plain line's per-unit file count")
+
+
+func test_echelon_offsets_average_to_zero() -> void:
+	# The stagger is centred on the drag line: it doesn't net advance or withdraw the whole
+	# assembly, only spread it into a diagonal -- so the depth offsets relative to the plain
+	# line must sum to (about) zero.
+	var sm := _sm()
+	var u1 := _unit()
+	var u2 := _unit()
+	var u3 := _unit()
+	var u4 := _unit()
+	var plain: Array = sm._form_up_slices(
+			[u1, u2, u3, u4], Vector2(0, 0), Vector2(800, 0), EQUAL_DEPTH_SPACE)
+	var echelon: Array = sm._form_up_slices(
+			[u1, u2, u3, u4], Vector2(0, 0), Vector2(800, 0), ECHELON_RIGHT)
+	var offset_sum: float = 0.0
+	for i in range(4):
+		offset_sum += echelon[i]["center"].y - plain[i]["center"].y
+	assert_almost_eq(offset_sum, 0.0, 0.01, "the per-unit depth offsets sum to zero")
 
 
 func test_order_units_for_line_sorts_by_field_position_by_default() -> void:
