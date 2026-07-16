@@ -48,9 +48,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-e16872440047994247dd28c82fe9c6b4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-9128bc62f050181c68e488bde1b40d26.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-e16872440047994247dd28c82fe9c6b4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-fea1f8a7000236c4f72428a0d62d17d8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-048303977f561516386e8f22b44f17fe.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-fea1f8a7000236c4f72428a0d62d17d8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -1155,6 +1155,7 @@ Table&nbsp;3: Terrain patches and their movement effects.
 <section id="order-response-delay" class="level2">
 <h2 class="anchored" data-anchor-id="order-response-delay">Order-response delay</h2>
 <p>Units don’t react instantly to orders. There is a brief <strong>reaction delay</strong> before they execute — about <strong>0.5 s</strong> for infantry and spearmen, <strong>0.3 s</strong> for cavalry. A unit already in melee is not slowed by the delay.</p>
+<p>Drill commands (the wheel, about-face, quarter-turn, and countermarch) carry their own, shorter <strong>drill response beat</strong> — about <strong>0.2 s</strong> by default between the command and the men starting the evolution. A drill is a rehearsed, single-evolution response to a direct order, so the beat is quicker than planning a fresh march. It is a per-unit characteristic: an elite regiment can be staged with a snappier beat and a raw levy with a sluggish one, so the same command visibly ripples through a mixed line.</p>
 <p>This models the time for orders to travel down the chain of command. In practice:</p>
 <ul>
 <li><strong>Commit cavalry early.</strong> If you wait until the last moment to redirect horse, they may not reach the flank in time.</li>
