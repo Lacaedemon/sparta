@@ -3736,6 +3736,34 @@ func order_summary() -> String:
 	return "Holding position"
 
 
+## Human-readable gait names for the HUD, keyed by the GAIT_* constants above.
+const GAIT_NAMES := {GAIT_WALK: "Walk", GAIT_JOG: "Jog", GAIT_RUN: "Run", GAIT_SPRINT: "Sprint"}
+
+
+## The explicitly ordered gait for the current MOVE order (a GAIT_* value), or -1
+## when the unit paces itself (no order, a non-move order, or AUTO -- no explicit
+## gait on the move). Display helper for the HUD stat sheet.
+func ordered_gait() -> int:
+	if current_order != null and current_order.type == Order.Type.MOVE and current_order.gait >= 0:
+		return current_order.gait
+	return -1
+
+
+## Nominal top pace (world units/s) this unit's own stats give a gait -- what the
+## gait ORDERS, before the formation/terrain caps and before RUN's close-in
+## switchover (_move_to's pace selection stays authoritative for actual movement;
+## this is a display helper for the HUD stat sheet). The unknown-value fallback
+## mirrors _move_to's own walk fallback.
+func gait_pace(gait: int) -> float:
+	match gait:
+		GAIT_JOG:
+			return jog_speed
+		GAIT_RUN, GAIT_SPRINT:
+			return move_speed
+		_:
+			return walk_speed
+
+
 ## Human-readable formation name for the HUD.
 func formation_summary() -> String:
 	match formation_mode:
