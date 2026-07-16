@@ -11,6 +11,7 @@ extends Node
 ## code. It is the counterpart to DemoRunner.gd, which only plays back a saved replay.
 
 const BATTLE_SCENE := "res://scenes/Battle.tscn"
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 # Ticks a press->release drag is spread over, so the live form-up / box-select preview
 # visibly animates rather than snapping in a single frame.
 const DRAG_TICKS := 16
@@ -327,6 +328,9 @@ func _unit_record(u: Node) -> Dictionary:
 		"name": u.unit_name,
 		"team": u.team,
 		"position": DemoState.vec2_pair(u.position),
+		# Metric mirror of position, per the units convention: dev-facing numbers read in
+		# metres like every user-facing surface already does. The wu field above stays.
+		"position_m": DemoState.vec2_pair_m(u.position, WorldScaleRef.WU_PER_M),
 		"facing": DemoState.vec2_pair(u.facing),
 		"morale": DemoState.round_to(u.morale, 1),
 		"state": DemoState.state_name(u.state),
@@ -338,6 +342,8 @@ func _unit_record(u: Node) -> Dictionary:
 		"frontage": UnitFormation.frontage(u),
 		"soldiers": u.soldiers,
 		"current_speed": DemoState.round_to(u._current_speed, 1),
+		"current_speed_mps": DemoState.mps(u._current_speed, WorldScaleRef.WU_PER_M,
+				_battle.SPEED_SCALE),
 		"order_mode": DemoState.order_mode_name(_battle.ORDER_MODE_NAMES, u.order_mode),
 		# Intra-unit rank-relief mode (phase 3): whether rear ranks rotate forward to
 		# relieve their own fighting line. A durable mode like formation, so a stance
@@ -393,6 +399,8 @@ func _unit_record(u: Node) -> Dictionary:
 	# compact soldier_summary but no soldiers_full arrays).
 	if u.tier != FormationTier.FAR:
 		rec["soldier_summary"] = DemoState.soldier_summary(u._sim_soldier_pos, u._sim_prone)
+		rec["soldier_summary_m"] = DemoState.soldier_summary_m(u._sim_soldier_pos,
+				WorldScaleRef.WU_PER_M)
 		if _state_full:
 			rec["soldiers_full"] = _soldier_arrays(u)
 	return rec
