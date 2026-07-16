@@ -876,6 +876,52 @@ func test_enqueue_frontage_clamps_at_the_extremes() -> void:
 	assert_eq(UnitFormation.frontage(u), 40, "widening can't exceed max_soldiers")
 
 
+func test_enqueue_frontage_anchored_holds_the_named_flank() -> void:
+	# A RIGHT-anchored widen holds the +X edge (standing offset + half-width) fixed,
+	# landing the whole width change on the left flank -- the drag-resize gesture's
+	# far-flank anchoring, riding the same recorded command as the centred resize.
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 60
+	var start: int = UnitFormation.frontage(u)
+	var spacing: float = UnitScript.FORMATION_SPACING * u.spacing_scale
+	var right_edge: float = u.frontage_anchor_offset + float(start - 1) * 0.5 * spacing
+	var b := _battle([u])
+	b.enqueue_frontage([1], 2, UnitFormation.Anchor.RIGHT)
+	assert_eq(UnitFormation.frontage(u), start + 2, "the anchored widen still resizes")
+	assert_almost_eq(u.frontage_anchor_offset + float(start + 1) * 0.5 * spacing,
+			right_edge, 0.001, "the anchored right edge stays put")
+	assert_almost_eq(float(b._pending_orders[-1]["anchor_offset"]), u.frontage_anchor_offset,
+			0.001, "the absolute composed offset rides the recorded command")
+
+
+func test_enqueue_frontage_anchored_composes_with_a_standing_offset() -> void:
+	# Repeated anchored resizes ADD each step's shift to the standing offset --
+	# anchor_shift computes one step from a centred block, so treating it as absolute
+	# would let the held flank drift (the enqueue_file_double contract, shared here).
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 60
+	var b := _battle([u])
+	b.enqueue_frontage([1], 2, UnitFormation.Anchor.LEFT)
+	var off_one: float = u.frontage_anchor_offset
+	assert_ne(off_one, 0.0, "an anchored widen carries a shift")
+	b.enqueue_frontage([1], 2, UnitFormation.Anchor.LEFT)
+	var spacing: float = UnitScript.FORMATION_SPACING * u.spacing_scale
+	assert_almost_eq(u.frontage_anchor_offset, off_one + spacing, 0.001,
+			"the second step adds its own shift on top of the first")
+
+
+func test_enqueue_frontage_centre_recentres_the_block() -> void:
+	# The default (keyboard) resize is centre-anchored and RE-CENTRES the block,
+	# discarding any standing anchor shift -- the pre-existing contract, now pinned.
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 60
+	u.set_frontage(UnitFormation.frontage(u), 13.5)
+	var b := _battle([u])
+	b.enqueue_frontage([1], 1)
+	assert_eq(u.frontage_anchor_offset, 0.0,
+			"a centre-anchored resize clears the standing shift")
+
+
 func test_enqueue_frontage_steps_each_unit_from_its_own_width() -> void:
 	# A mixed selection: each unit resolves its own current frontage, so the same
 	# delta keeps their relative widths (one command emitted per unit).

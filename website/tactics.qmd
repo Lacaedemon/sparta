@@ -322,8 +322,10 @@ can rise.
 ## Line width (frontage)
 
 You set how wide each regiment fights --- <kbd>[</kbd> and <kbd>]</kbd> step the
-width by a file, or drag a selected unit's flank grips. The same soldiers spread
-across a different shape:
+width by a file symmetrically, or drag a selected unit's flank grips (the drag
+anchors the far flank, so the line extends toward the grip you pull --- handy for
+stretching a line toward the flank you need to cover without giving ground on the
+other side). The same soldiers spread across a different shape:
 
 - **Wide and shallow** puts more men in the front rank, so more of them are
   swinging at once --- good for overlapping an enemy's flank or covering ground so a
