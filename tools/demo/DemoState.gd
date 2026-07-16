@@ -268,10 +268,10 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# the full per-soldier arrays, FAR is the aggregate record with no individual bodies.
 		# Serialized as the readable name via FormationTier's own stable table.
 		"tier": FormationTier.tier_name(u.tier),
-		# Phase 1 of the unified orders-queue design (#516): the head of the orders queue --
-		# the single, transcript-visible source of truth for "what is this unit doing right
-		# now," including its active phase for a phased order (e.g. a move-to-rear about-face
-		# vs its march). null when the unit is idle (no current order).
+		# Phase 1 of the unified orders-queue design (docs/orders-queue-design.md): the head
+		# of the orders queue -- the single, transcript-visible source of truth for "what is
+		# this unit doing right now," including its active phase for a phased order (e.g. a
+		# move-to-rear about-face vs its march). null when the unit is idle (no current order).
 		"current_order": Order.type_name(u.current_order.type) if u.current_order != null else null,
 		# effective_phase_name(), not a plain phase_name(phase) read: a rear-move/lateral-
 		# pivot composite's TURN/MARCH/RETURN_TURN now lives in which child of the order
