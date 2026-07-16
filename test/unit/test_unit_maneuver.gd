@@ -59,3 +59,24 @@ func test_sidestep_is_relative_to_facing() -> void:
 		"lateral is perpendicular to facing, whatever the heading")
 	assert_false(Maneuver.is_sidestep(Vector2.DOWN, Vector2(0, 20)),
 		"...and a move along facing is a forward advance")
+
+
+func test_wheel_gait_rate_is_bounded_by_the_outer_file() -> void:
+	# A wide block: the outer man at radius 100 jogging 36 wu/s can sustain only
+	# 0.36 rad/s -- well under the PI/2 drill ceiling, so the gait binds.
+	assert_almost_eq(Maneuver.wheel_gait_rate(PI * 0.5, 36.0, 100.0), 0.36, 0.0001,
+		"a wide block's swing rate is its outer file's jog over its radius")
+
+
+func test_wheel_gait_rate_keeps_the_drill_ceiling_for_a_narrow_block() -> void:
+	# A narrow block: the outer man at radius 10 could jog 3.6 rad/s, but the drill
+	# ceiling (PI/2) governs -- a small block still swings at the stately drill pace.
+	assert_almost_eq(Maneuver.wheel_gait_rate(PI * 0.5, 36.0, 10.0), PI * 0.5, 0.0001,
+		"a narrow block swings at the drill ceiling, not a whip-around")
+
+
+func test_wheel_gait_rate_degenerate_radius_falls_back_to_the_ceiling() -> void:
+	assert_almost_eq(Maneuver.wheel_gait_rate(PI * 0.5, 36.0, 0.0), PI * 0.5, 0.0001,
+		"a lone man standing on the hinge has no pacing file -- the ceiling governs")
+	assert_almost_eq(Maneuver.wheel_gait_rate(PI * 0.5, 36.0, -1.0), PI * 0.5, 0.0001,
+		"a negative radius is degenerate input, not a division")

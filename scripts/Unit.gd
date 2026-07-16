@@ -480,11 +480,15 @@ const TURN_RATE_TAPER_FLOOR: float = 0.4
 # SoldierBodies.step is dropped while the turn runs, so soldiers stay at their grid positions
 # despite the facing change — they rotate without drifting.
 const CONVERSIO_TURN_RATE: float = PI * 2.0
-# Wheel (circumductio) swing rate: a stately quarter-circle over ~1 s. Deliberately slower than
-# the in-place CONVERSIO_TURN_RATE — the far flank actually MARCHES the arc (the whole regiment
-# rotates rigidly about the hinge), so a fast rate would fling the outer files across the field.
-# At this rate even the outermost file covers only a few px per tick, so the line reads as a door
-# swinging on its hinge rather than a whip-around.
+# Wheel (circumductio) swing-rate CEILING: at most a stately quarter-circle over ~1 s.
+# Deliberately slower than the in-place CONVERSIO_TURN_RATE — the far flank actually MARCHES
+# the arc (the whole regiment rotates rigidly about the hinge). This is only the drill
+# ceiling, not the rate every wheel runs at: the outer file's linear pace on the arc is
+# rate x radius, so _advance_wheel derives the effective rate each tick from what the
+# outermost man can actually run (UnitManeuver.wheel_gait_rate, bounded by jog_speed) and a
+# wide or deep block swings proportionally slower — a wheeling line is paced by its outer
+# file. The ceiling still governs a narrow block, whose outer file could otherwise jog the
+# tiny arc into a whip-around.
 const WHEEL_TURN_RATE: float = PI * 0.5
 
 const MELEE_PRESS_FRACTION: float = 0.6
@@ -3159,7 +3163,9 @@ func _advance_wheel(delta: float) -> bool:
 	var goal: Vector2 = leaf.turn_target
 	var hinge: Vector2 = leaf.pivot
 	var before: float = facing.angle()
-	_rotate_facing_toward(goal, delta, WHEEL_TURN_RATE)
+	var rate: float = UnitManeuver.wheel_gait_rate(
+			WHEEL_TURN_RATE, jog_speed, _wheel_outer_radius(hinge))
+	_rotate_facing_toward(goal, delta, rate)
 	var step: float = angle_difference(before, facing.angle())
 	position = hinge + (position - hinge).rotated(step)
 	for i in range(_sim_soldier_pos.size()):
@@ -3170,6 +3176,23 @@ func _advance_wheel(delta: float) -> bool:
 		facing = goal
 		return true
 	return false
+
+
+## The farthest soldier's distance from the wheel's hinge — the radius that paces the whole
+## swing (UnitManeuver.wheel_gait_rate). Read from the LIVE bodies, not the slot grid, so a
+## body still out of place (or a block thinned by casualties mid-swing) paces the wheel by
+## where the men actually stand; under the wheel's own rigid rotation each body's distance to
+## the hinge is invariant, so the value stays steady through the swing. Falls back to the
+## formation slots when the bodies haven't seeded (a bare unit in a headless test).
+func _wheel_outer_radius(hinge: Vector2) -> float:
+	var radius: float = 0.0
+	for p in _sim_soldier_pos:
+		radius = maxf(radius, hinge.distance_to(p))
+	if radius > 0.0:
+		return radius
+	for s in soldier_world_slots(soldiers):
+		radius = maxf(radius, hinge.distance_to(s))
+	return radius
 
 
 ## Complete a WHEEL leaf that just finished its swing: clear its turn goal, then hand off.

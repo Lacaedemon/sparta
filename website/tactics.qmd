@@ -1034,7 +1034,10 @@ line in the **flank** --- the ×1.5 side bonus (or ×2 in the rear) is the whole
 getting around them. Wheel a wing back to **refuse a flank** when the enemy laps around
 your end, presenting a fresh front instead of an exposed side. Because the far flank has
 to march an arc, a wheel takes time and covers ground: order it before contact, not in the
-grinding melee, and give the swinging flank room to travel. A fighting unit ignores the
+grinding melee, and give the swinging flank room to travel. The swing is paced by the
+**outer file** --- the corner man farthest from the hinge jogs his arc, and every inner
+file slows proportionally to hold the line straight --- so a wide or deep block wheels
+noticeably slower than a compact one. A fighting unit ignores the
 order --- you can't hinge a line that's locked in combat.
 
 The same hinge swing also fires **automatically** as part of a large oblique move to the

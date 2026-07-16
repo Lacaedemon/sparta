@@ -44,7 +44,7 @@ DEMOS=(
   "back_step|demos/inputs/backstep.json|30|300|640|input"
   "arrow_nudge|demos/inputs/arrow-nudge.json|30|330|640|input"
   "about_face|demos/inputs/about-face.json|30|300|640|input"
-  "wheel|demos/inputs/wheel.json|30|300|640|input"
+  "wheel|demos/inputs/wheel.json|30|340|640|input"
   "square|demos/inputs/anti-cav-square.json|30|300|640|input"
   "schiltron|demos/inputs/schiltron.json|30|300|640|input"
   "order_distance|demos/inputs/order-distance.json|30|120|640|input"
