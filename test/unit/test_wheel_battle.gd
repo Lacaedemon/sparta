@@ -15,6 +15,11 @@ func _max_step(a: PackedVector2Array, b: PackedVector2Array) -> float:
 
 func test_wheel_in_live_battle_hinges_without_surge() -> void:
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	# Drill mode: player line only. The gait-paced swing takes ~270 ticks on this 120-man
+	# block (vs ~60 at the old fixed rate), long enough for the default enemy line to march
+	# into detection range and auto-chase-interrupt the wheel mid-swing — the enemies were
+	# never part of what this test exercises (the hinge under full-scene orchestration).
+	battle.drill_mode = true
 	add_child_autofree(battle)
 	for _k in range(40):                      # spawn the armies and let the bodies settle
 		await get_tree().physics_frame
@@ -51,7 +56,17 @@ func test_wheel_in_live_battle_hinges_without_surge() -> void:
 	target.wheel(1)                           # wheel right (pivot on the right flank file)
 	var prev: PackedVector2Array = target._sim_soldier_pos.duplicate()
 	var worst_step := 0.0
-	for _i in range(120):                     # the ~0.25 s swing + settle
+	# Poll for the swing's real end rather than a fixed frame count: the wheel is paced by
+	# the outer file's jog (UnitManeuver.wheel_gait_rate), so this 120-man block takes
+	# ~270 ticks to come 90° around, plus a short settle tail for the bodies.
+	var swing_ticks := 0
+	while target.is_wheeling() and swing_ticks < 450:
+		await get_tree().physics_frame
+		worst_step = maxf(worst_step, _max_step(prev, target._sim_soldier_pos))
+		prev = target._sim_soldier_pos.duplicate()
+		swing_ticks += 1
+	assert_false(target.is_wheeling(), "the gait-paced wheel completed within budget")
+	for _i in range(30):                      # settle tail
 		await get_tree().physics_frame
 		worst_step = maxf(worst_step, _max_step(prev, target._sim_soldier_pos))
 		prev = target._sim_soldier_pos.duplicate()
@@ -69,16 +84,18 @@ func test_wheel_in_live_battle_hinges_without_surge() -> void:
 	assert_gt(far_travel, 30.0, "the far end swept a real arc")
 
 
-## Ticks past the demo script's last scripted key (Z at tick 150) before it's meaningful to
+## Ticks past the demo script's last scripted key (Z at tick 320) before it's meaningful to
 ## start polling for the second wheel's completion — polling any earlier could catch the unit
 ## between the two scripted wheels (idle, not yet wheeling) and exit the settle loop before
-## the second wheel has even started. A little past 150 is enough; the settle loop below
+## the second wheel has even started. A little past 320 is enough; the settle loop below
 ## supplies its own generous cap for however long the actual swing takes.
-const _LAST_SCRIPTED_KEY_TICK := 150
-# Generous cap on top of the last scripted key: covers the ~60-tick swing plus headroom for
-# any per-tick scheduling variance between runners, so the poll loop -- not a fixed frame
-# count -- is what decides when the wheel has actually finished.
-const _SETTLE_TICK_CAP := 200
+const _LAST_SCRIPTED_KEY_TICK := 320
+# Generous cap on top of the last scripted key: covers the ~270-tick gait-paced swing (the
+# outer file jogs the arc, so this 120-man block's 90° wheel takes ~4.5 s — see
+# UnitManeuver.wheel_gait_rate) plus headroom for any per-tick scheduling variance between
+# runners, so the poll loop -- not a fixed frame count -- is what decides when the wheel has
+# actually finished.
+const _SETTLE_TICK_CAP := 450
 
 
 ## The committed wheel demo drives the real controls end to end: load the scripted-input

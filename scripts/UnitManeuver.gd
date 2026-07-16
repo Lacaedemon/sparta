@@ -151,3 +151,19 @@ static func is_lateral_pivot(facing: Vector2, move_vec: Vector2) -> bool:
 static func lateral_pivot_dir(facing: Vector2, move_vec: Vector2) -> int:
 	var right: Vector2 = facing.rotated(PI * 0.5)
 	return 1 if move_vec.dot(right) >= 0.0 else -1
+
+
+## The angular rate (rad/s) a wheel can sustain without its OUTERMOST man exceeding the
+## unit's own gait. A wheel rotates the block rigidly about a fixed hinge, so a soldier at
+## `outer_radius` from the hinge covers rate x radius of arc per second -- a fixed angular
+## rate makes the outer corner man run arbitrarily fast as the line widens. Historically a
+## wheeling line is paced by its outer file: the whole swing slows as the line widens, with
+## the outer file stepping at most double-time (`gait_speed`, the unit's jog) while every
+## inner file paces down proportionally. `rate_cap` is the drill ceiling (Unit.WHEEL_TURN_RATE):
+## a narrow block whose outer file could jog the arc faster than the stately drill rate still
+## swings no faster than the drill allows. A non-positive radius (a degenerate one-man block
+## standing on the hinge) has no pacing file, so the ceiling alone governs.
+static func wheel_gait_rate(rate_cap: float, gait_speed: float, outer_radius: float) -> float:
+	if outer_radius <= 0.0:
+		return rate_cap
+	return minf(rate_cap, gait_speed / outer_radius)

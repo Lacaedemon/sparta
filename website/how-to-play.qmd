@@ -327,8 +327,11 @@ the standing flank file --- holds its ground while the rest of the block swings 
 like a door on a hinge, reorienting the whole line 90° while every man keeps his place in
 the ranks. Unlike the quarter-turn, this is not a standing facing change: the far flank
 actually marches an arc, so the line ends up facing a new direction *and* lying along a
-new line. Use it to refuse a flank, to swing a wing forward and take an enemy line in the
-side, or to change the front an entire wing presents without breaking its order.
+new line. The swing is paced by the outer file --- the corner man farthest from the hinge
+jogs his arc while the inner files slow proportionally --- so a wide or deep block takes
+correspondingly longer to come around. Use it to refuse a flank, to swing a wing forward
+and take an enemy line in the side, or to change the front an entire wing presents without
+breaking its order.
 
 **Countermarch (exelismos, <kbd>Shift+V</kbd> / <kbd>Ctrl+V</kbd> / <kbd>Ctrl+Shift+V</kbd>).**
 All three variants share the about-face's <kbd>V</kbd> key, the same way <kbd>Shift+O</kbd>

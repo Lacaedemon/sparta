@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/wheel-gait-pacing.json",
+  "caption": "Issue #880: a wheel is now paced by its OUTER file's own gait instead of a fixed angular rate. This wide 80-man spearmen block takes ~5 s to come 90 degrees around -- the corner man farthest from the hinge jogs his arc (~1.8 m/s) while every inner file slows proportionally, so the line stays dressed through the whole swing. Before the fix the same corner man swept at over twice his own sprint speed, and a wider line made it proportionally worse.",
+  "fixed_fps": 30,
+  "max_frames": 200,
+  "fps": 15,
+  "width": 720
+}
