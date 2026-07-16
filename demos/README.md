@@ -298,6 +298,15 @@ set, the two lists are merged (an empty env value falls back to the script's lis
 merge rule as `frames`). Dumping is **env-gated**: with the env var unset — the CI movie-recording
 path — it never arms, so normal recording and the frame-capture path are both unchanged.
 
+**Replay playback dumps state the same way.** A `SPARTA_DEMO_REPLAY` run
+(`tools/demo/DemoRunner.tscn`) honors the same `SPARTA_DEMO_STATE` /
+`SPARTA_DEMO_STATE_DIR` / `SPARTA_DEMO_STATE_FULL` env vars via
+`tools/demo/DemoStateSink.gd` — a root-level node that survives the runner's scene swap
+and writes the identical snapshot shape (both paths share `DemoState.build_snapshot`).
+The one difference: a replay file carries no `"state"` array, so the tick list comes from
+the env var alone. This is what lets the website demo-diff workflow transcript-sweep the
+catalog's `type=replay` rows, not just the scripted-input ones.
+
 Unlike frame capture, the dump reads **sim state, not the drawn frame**, so it runs under
 `--headless` (no real renderer needed) — faster, and no window opens.
 

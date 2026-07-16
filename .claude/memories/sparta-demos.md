@@ -74,33 +74,40 @@ growing the PR — but never let it pass unrecorded.
 
 ### Every clip the website demo-diff flags gets a manual review, documented in the PR description
 
-`.github/workflows/website-demo-diff.yml` re-records the site's ENTIRE demo
-catalog on any PR touching game-visible code and posts a PR COMMENT listing
-which clips' rendered output changed vs. the last published main build. Its
-own header says a diff means either the PR intentionally changed what a clip
-shows, or it unintentionally regressed something that clip exercises — so a
-changed-clips list is a work item, not an FYI. Do NOT wave the list through
-with a blanket "differences attributable to rendering jitter"; that
-classification is only ever a per-clip conclusion, reached after looking.
+`.github/workflows/website-demo-diff.yml` dumps per-tick SIM STATE TRANSCRIPTS
+for the site's ENTIRE demo catalog (`website/tools/demo-catalog.sh`) on any PR
+touching game-visible code — for both the PR head and its merge-base, generated
+in-job — and posts a PR COMMENT naming exactly which clips' sim content
+changed, with the first divergent tick and the fields that differ there.
+Transcripts are deterministic (verified byte-identical across same-commit
+runs), so every listed clip is a REAL behavioral change: either the PR's
+intended effect or an unintended regression. A listed clip is a work item, not
+an FYI.
+
+(The workflow previously compared the RENDERED clips by byte hash/size; the
+encode is not byte-deterministic, so it flagged ~every clip on ~every PR and
+the list carried no signal — replaced in #905/PR #906. Two consequences: an
+EMPTY changed list is now a genuinely meaningful all-clear, and "benign
+rendering jitter" is no longer a classification that exists — the transcript
+diff never sees the render layer at all. The flip side: render-only
+regressions — chrome, LOD, draw order — are outside this net; the PR's own
+demo review and frame captures remain the check for those.)
 
 **For each clip the comment lists as changed:**
 
-1. Look at the actual footage. The workflow discards its fresh recordings
-   when the job ends (it only ever downloads the baseline artifact; it never
-   uploads its own), so re-record the specific clip locally — its `DEMOS` row
-   in `website/tools/record-demos.sh`, or frame-capture/state-dump its input
-   file per the sections below — and compare against the published clip on
-   the live site.
-2. Classify it: (a) **intended** — the PR's own change, visible as designed;
-   (b) **benign nondeterminism** — rendering jitter with no sim-state
-   difference (confirm with a state dump when unsure, don't eyeball it);
-   (c) **unintended regression** — stop and fix, or file+link an issue if
-   genuinely out of scope.
-3. Document the nature of each changed clip's change in the PR
-   **description** (a "Website demo diff" subsection): clip name, class, and
-   one line on what actually differs — e.g. "formations_wheel: intended —
-   the block now hinges on the standing flank's front corner". The
-   description is where reviewers look; the diff comment alone scrolls away.
+1. Understand the divergence: the comment names the first differing tick and
+   fields; regenerate the transcript locally when more detail is needed
+   (`website/tools/dump-demo-states.sh`, or `tools/demo/dump-state.sh` on the
+   clip's own source file with chosen ticks) and, for anything visual,
+   re-record the clip's footage (its row in `website/tools/demo-catalog.sh`).
+2. Classify it: (a) **intended** — the PR's own change, playing out as
+   designed; (b) **unintended regression** — stop and fix, or file+link an
+   issue if genuinely out of scope.
+3. Document each changed clip in the PR **description** (a "Website demo
+   diff" subsection): clip name, class, and one line on what actually differs
+   — e.g. "formations_wheel: intended — the block now hinges on the standing
+   flank's front corner". The description is where reviewers look; the diff
+   comment alone scrolls away.
 
 The thoroughness and super-physical rules above apply to each clip reviewed
 this way, exactly as they do to the PR's own demo.
