@@ -86,6 +86,24 @@ func test_show_unit_splits_the_header_stats_onto_own_lines() -> void:
 	assert_string_contains(text, "\nOrder: ", "the order gets its own line")
 
 
+func test_cohesion_and_training_get_their_own_conditional_lines() -> void:
+	# Both lines only appear when meaningful (cohesion below full, any training),
+	# and each sits alone on its line like every other stat.
+	var hud := _hud()
+	var u := _unit()
+	u.cohesion = 0.7
+	u.training = 0.5
+	hud.show_unit(u, 1)
+	assert_string_contains(hud._info.text, "\nCohesion: 70%\n",
+			"a degraded cohesion shows on its own line")
+	assert_string_contains(hud._info.text, "\nTraining: 50%\n",
+			"a trained unit's training shows on its own line")
+	var fresh := _unit()
+	hud.show_unit(fresh, 1)
+	assert_false(hud._info.text.contains("Cohesion:"),
+			"full cohesion stays hidden, as before the split")
+
+
 func test_stat_sheet_reads_auto_gait_without_a_move_order() -> void:
 	var hud := _hud()
 	var u := _unit()
