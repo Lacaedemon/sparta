@@ -359,6 +359,21 @@ going in the same worktree; the "rerun" reported the pre-edit coverage
 number, and a later full-suite run failed one unrelated test until the
 scrambled `settings.cfg` was deleted.)
 
+**A branch SWITCH counts as a second writer too: never `git checkout` in a
+worktree while a Godot job is still running there.** The suite (and the
+coverage/patch_coverage runs especially) reloads scripts from disk as it
+goes, so checking out a different branch mid-run swaps the source out from
+under the running process — the results are silently a mix of two trees and
+must be discarded, even though nothing errors. Treat a running background
+check as locking the CHECKOUT, not just the Godot binary: no branch
+switches, no file edits in that tree, until the task completes or is
+killed. When multi-PR work makes this bite (a long coverage run on PR A
+while PR B needs implementing), rely on CI's own Coverage/codecov-patch for
+PR A instead of a local run, or kill and rerun the local job after the
+switch. (GII session, 2026-07-16: switched the worktree to the next issue's
+branch while patch_coverage for the prior PR was still running; the run had
+to be killed and CI's checks used as the authority instead.)
+
 ## An axis computed by folding `_formation_angle` must re-pick the facing-aligned frame after a conversio
 
 `_wheel_pivot_point` folds `_formation_angle` into the slot-grid axes so a
