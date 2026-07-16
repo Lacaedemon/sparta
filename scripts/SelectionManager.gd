@@ -5,7 +5,8 @@ class_name SelectionManager
 ##   Left click        — select one friendly unit (its block or its raised flag)
 ##   Left click + drag — box-select friendly units
 ##   Right click       — move there, or attack the enemy unit clicked (block or flag)
-##   Drag a flank grip — resize a single selected unit's frontage (line width)
+##   Drag a flank grip — resize a single selected unit's frontage (line width);
+##                       the far flank stays anchored, so only the dragged edge moves
 ##   [ / ]             — narrow / widen the selected units by one file
 
 const UnitRef = preload("res://scripts/Unit.gd")  # avoid global-class-cache dependency
@@ -150,9 +151,14 @@ var _drag_start: Vector2 = Vector2.ZERO
 var _drag_cur: Vector2 = Vector2.ZERO
 # Frontage drag-resize: active while a flank grip of a single selected unit is held.
 # _resize_files is the live target file count (drives the preview and the commit).
+# _resize_anchor is the flank held FIXED through the drag (UnitFormation.Anchor.LEFT/
+# RIGHT): the side opposite the grabbed grip, so the drag moves only the grabbed
+# flank's edge -- like resizing a window by its edge. CENTRE while no drag is live;
+# the keyboard [ / ] resize stays centre-anchored and never sets it.
 var _resizing: bool = false
 var _resize_unit = null
 var _resize_files: int = 0
+var _resize_anchor: int = UnitFormation.Anchor.CENTRE
 # Snapshot of the grip geometry's inputs as of the last redraw request, so _process
 # can spot the selected unit moving out from under its grips (see _track_grip_motion).
 var _grip_state: Array = []
@@ -275,7 +281,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				# anywhere else begins the usual box-select drag.
 				var grip = _resize_handle_at(_cursor_world())
 				if grip != null:
-					_begin_resize(grip)
+					_begin_resize(grip["unit"], int(grip["side"]))
 				else:
 					_dragging = true
 					_drag_start = _cursor_world()
@@ -1307,51 +1313,78 @@ func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTR
 
 
 ## Begin a drag-resize from a flank grip: seed the live target with the unit's
-## current frontage so a click without movement is a no-op.
-func _begin_resize(u) -> void:
+## current frontage so a click without movement is a no-op. `grab_side` is the
+## grabbed grip's own flank (UnitFormation.Anchor.LEFT/RIGHT); the OPPOSITE flank
+## becomes the drag's anchor, so only the grabbed edge moves.
+func _begin_resize(u, grab_side: int) -> void:
 	_resizing = true
 	_resize_unit = u
 	_resize_files = UnitFormation.frontage(u)
+	_resize_anchor = -grab_side   # Anchor.LEFT/RIGHT are -1/+1, so the far flank is the negation
 	queue_redraw()
 
 
-## Update the live resize target as the cursor drags: project the cursor onto the
-## unit's file axis for a half-width, then map it to a file count (shared helper).
+## Update the live resize target as the cursor drags: measure from the ANCHORED
+## flank's fixed edge to the cursor along the file axis for the new full width, then
+## map it to a file count (shared helper). Measuring from the far edge rather than
+## the centre is what makes the drag one-sided: the anchored edge never moves, so
+## the whole width change lands on the dragged flank.
 func _update_resize(world_pos: Vector2) -> void:
 	if not is_instance_valid(_resize_unit):
 		_resizing = false
 		return
-	var offset: Vector2 = world_pos - _resize_unit.global_position
-	var half_width: float = absf(offset.dot(_file_axis(_resize_unit)))
-	_resize_files = UnitFormation.files_for_halfwidth(half_width, _resize_unit.max_soldiers,
+	var cursor_x: float = (world_pos - _resize_unit.global_position).dot(_file_axis(_resize_unit))
+	var edge_x: float = _resize_anchored_edge_x(_resize_unit, _resize_anchor)
+	# Signed distance from the fixed edge toward the dragged flank, floored at zero
+	# when the cursor crosses behind the anchor (a line can't have negative width).
+	var width: float = maxf(0.0, (cursor_x - edge_x) * -float(_resize_anchor))
+	_resize_files = UnitFormation.files_for_halfwidth(width * 0.5, _resize_unit.max_soldiers,
 			UnitRef.FORMATION_SPACING * _resize_unit.spacing_scale)
 
 
 ## Commit a drag-resize on release: enqueue the delta from the unit's current
 ## frontage to the previewed target, sharing the recorded path with the keyboard
-## resize. A zero delta (no real change) issues nothing.
+## resize -- but anchored on the far flank, so the change extends one-sided toward
+## the dragged grip. A zero delta (no real change) issues nothing.
 func _finish_resize() -> void:
 	var u = _resize_unit
+	var anchor: int = _resize_anchor
 	_resizing = false
 	_resize_unit = null
+	_resize_anchor = UnitFormation.Anchor.CENTRE
 	if not is_instance_valid(u) or Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var delta: int = _resize_files - UnitFormation.frontage(u)
 	if delta != 0:
-		_battle.enqueue_frontage([u.uid], delta)
+		_battle.enqueue_frontage([u.uid], delta, anchor)
 		Sfx.play(&"order")
 	_refresh_hud()
 
 
-## The selected unit whose flank resize-grip is under `world_pos`, or null.
+## The flank grip under `world_pos` on the selected unit, as {"unit": u, "side":
+## UnitFormation.Anchor.LEFT/RIGHT} naming the grabbed grip's own flank in the
+## unit's local frame -- or null when no grip is there.
 func _resize_handle_at(world_pos: Vector2):
 	var u = _single_selected_unit()
 	if u == null:
 		return null
-	for hp in _resize_handle_positions(u):
-		if world_pos.distance_to(hp) <= RESIZE_HANDLE_HIT:
-			return u
+	var hs: Array = _resize_handle_positions(u)
+	for i in range(hs.size()):
+		if world_pos.distance_to(hs[i]) <= RESIZE_HANDLE_HIT:
+			# hs[0] sits out along +file-axis -- the block's local +X flank
+			# (Anchor.RIGHT); hs[1] is its mirror (Anchor.LEFT).
+			var side: int = UnitFormation.Anchor.RIGHT if i == 0 else UnitFormation.Anchor.LEFT
+			return {"unit": u, "side": side}
 	return null
+
+
+## Local-X (file-axis) coordinate of a flank's edge at the unit's CURRENT committed
+## shape: its standing anchor offset plus the signed half-width. This is the edge an
+## anchored drag holds fixed -- the dragged width and the preview line both measure
+## from it. Pure, so the drag-start "no jump" invariant is directly testable.
+func _resize_anchored_edge_x(u, anchor: int) -> float:
+	return u.frontage_anchor_offset \
+			+ float(anchor) * _resize_preview_half_width(u, UnitFormation.frontage(u))
 
 
 ## The sole live selected unit, or null when the selection isn't exactly one (or a
@@ -1790,12 +1823,15 @@ func _resize_preview_half_width(u, files: int) -> float:
 
 
 ## Preview the dragged frontage: a line spanning the target width and the file count
-## as text, so the player sees the new line before releasing.
+## as text, so the player sees the new line before releasing. The line grows ONE-SIDED
+## from the anchored flank's fixed edge -- matching what the commit does -- so the
+## player sees exactly which flank will move; the file-count label rides the moving
+## (dragged) end.
 func _draw_resize_preview(u) -> void:
 	var right: Vector2 = _file_axis(u)
-	var half: float = _resize_preview_half_width(u, _resize_files)
-	var a: Vector2 = u.global_position - right * half
-	var b: Vector2 = u.global_position + right * half
+	var width: float = _resize_preview_half_width(u, _resize_files) * 2.0
+	var a: Vector2 = u.global_position + right * _resize_anchored_edge_x(u, _resize_anchor)
+	var b: Vector2 = a + right * width * -float(_resize_anchor)
 	draw_line(a, b, RESIZE_HANDLE_COLOR, 2.0)
 	draw_string(ThemeDB.fallback_font, b + Vector2(8.0, -6.0), UnitFormation.files_label(_resize_files),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, RESIZE_HANDLE_COLOR)
