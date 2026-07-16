@@ -438,6 +438,38 @@ any other scripted key. (`Lacaedemon/sparta` PR #749, 2026-07-11: `{"key": "H"}`
 `order_mode` reading `Normal` through the whole recording, letting a `HOLD`-intended
 defender auto-chase the approaching charger — fixed by adding `"ctrl": true`.)
 
+## A `box` step spans DRAG_TICKS (16) ticks — a key that depends on the selection must wait for the release
+
+`DemoInputRecorder._drag` spreads a scripted `box` (and `rmb_drag`) over `DRAG_TICKS := 16`
+ticks — press at the step's tick, interpolated motion, release (which is what commits the
+box-selection) at `tick + 16`. A key scripted inside that window fires mid-drag with NOTHING
+selected, and it no-ops silently: the recording completes, no error, the state dump just
+shows the drill/order never happening. This presents identically to a wrong keycode or a
+wrong hotkey, so it's easy to misdiagnose — the tell is that swapping the `box` for a
+single `click` (selection commits immediately) makes the same key work.
+
+**How to apply:** schedule any key that acts on a box-selection at
+`box_tick + DRAG_TICKS + margin` (a few ticks); when a scripted key silently does nothing,
+check the selection-commit timing before suspecting the key name or the dispatch code.
+(`Lacaedemon/sparta` PR #899, 2026-07-15: `drill-response-beat.json` scripted `Q` at tick 24
+after a `box` at tick 10 — the release lands at tick 26, so the command hit an empty
+selection; moved to tick 40.)
+
+## A timing-difference demo needs a large-motion maneuver, not an in-place turn
+
+When a demo's point is that two units START the same evolution at different times (e.g. a
+per-unit response-delay characteristic), pick a maneuver whose progress is unmistakable in
+motion — a wheel's sweeping arc — rather than an in-place turn. A quarter-turn/conversio
+preserves the block's footprint (that's the point of those drills — see "Footprint-preserving
+maneuvers are inherently subtle" above), so two blocks staggered by half a second read as
+"nothing happening twice": neither silhouette changes, and at mark LOD the only signal is a
+few-pixel glyph rotation. The same stagger staged on a wheel reads instantly — one block
+visibly swinging while the other still stands square. (`Lacaedemon/sparta` PR #899,
+2026-07-15: the response-beat demo was authored twice as a quarter-turn — first at figure
+LOD, then at mark LOD per the footprint-preserving recipe — and both stills read as
+identical blocks; rewritten as a wheel, where the tick-80 frame shows the veteran mid-swing
+beside a still-square levy.)
+
 ## Movie Maker's `fixed_fps` sets the VIDEO frame rate, not the physics tick rate — don't assume 1:1
 
 Physics runs at a fixed 60 ticks/sec regardless of a recording's `--fixed-fps` value
