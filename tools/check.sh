@@ -727,11 +727,20 @@ check_units() {
   # lint pins boundary topology, review pins placement within the file.)
   local allow='^(scripts/(WorldScale|Battle|DistanceLegend)\.gd|test/)'
 
+  # The stray-conversion rule must judge CODE, not prose: a trailing comment
+  # that merely mentions the constant ("do not scale by * WU_PER_M") is a
+  # legitimate -- even encouraged -- thing to write. Strip everything from the
+  # first '#' in the content portion before matching. (A '#' inside a GDScript
+  # string literal would be over-stripped; sim code doesn't hit that in
+  # practice, and over-stripping only makes the rule more lenient.)
+  local code_only
+  code_only="$(printf '%s\n' "$added" | sed 's/#.*$//')"
+
   local stray
-  stray="$(printf '%s\n' "$added" \
+  stray="$(printf '%s\n' "$code_only" \
     | grep -E '\*\s*(WorldScaleRef\.WU_PER_M|WorldScale\.WU_PER_M|WU_PER_M|WORLD_UNITS_PER_METER)\b|(WU_PER_M|WORLD_UNITS_PER_METER)\s*\*' \
     | grep -vE "$allow" \
-    | grep -vE '^[^:]+:[0-9]+:\s*(const\s|#|##)')"
+    | grep -vE '^[^:]+:[0-9]+:\s*const\s')"
   if [ -n "$stray" ]; then
     err "Runtime metric->world conversion outside the allowed boundaries"
     err "(docs/units-convention.md: conversions live in const initializers, or in"
@@ -740,9 +749,13 @@ check_units() {
     return 1
   fi
 
+  # Tightly anchored to the documented legacy style (`9.0  # 0.45 m`): the
+  # comment must consist of exactly a metric figure and end there, so prose
+  # that merely mentions a metric quantity ("spans the 80 m x 50 m field")
+  # next to an unrelated float never gates the build.
   local legacy
   legacy="$(printf '%s\n' "$added" \
-    | grep -E ':?=\s*-?[0-9]+\.[0-9]+\s*#[^#]*\b[0-9][0-9.]*\s*m(/s2?)?\b' \
+    | grep -E ':?=\s*-?[0-9]+\.[0-9]+\s*#\s*~?[0-9][0-9.]*\s*m(/s2?)?\s*$' \
     | grep -vE 'WU_PER_M|WORLD_UNITS_PER_METER|# tuned in wu')"
   if [ -n "$legacy" ]; then
     err "Bare world-unit literal documented by a metric comment (the pre-migration"

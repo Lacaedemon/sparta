@@ -14,11 +14,20 @@ value. At 20 wu/m, the 1600x1000 field is an 80 m x 50 m engagement frontage.
 
 1. **Physically-derived constants are authored in metres and folded at parse
    time.** A length/speed constant whose value has real physical provenance is
-   written as a metric expression:
+   written as a metric expression. `WorldScaleRef` is a script-local preload
+   alias — declare it once near the script's other preloads (the repo's
+   preload-over-`class_name` convention, per `Battle.gd`'s header: it works
+   headless without the editor's global-class cache):
 
    ```gdscript
+   const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
    const FORMATION_SPACING: float = 0.45 * WorldScaleRef.WU_PER_M  # synaspismos density
    ```
+
+   (The global `WorldScale.WU_PER_M` form also works once the class cache
+   exists, and the lint accepts both — but new scripts should use the preload
+   alias for the headless/CI robustness the convention exists for.)
 
    GDScript folds const expressions at script load — zero runtime cost, and
    the metric figure in the source *is* the documentation. Never the legacy
