@@ -445,7 +445,7 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # RANGED_RANGE (jog_speed, under fire), and sprints (move_speed) once within
 # SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
 # mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
-const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed charge
+const SPRINT_START_DISTANCE: float = 200.0   # tuned in wu: gameplay pacing distance from target to start the full-speed charge
 # Below this current speed a unit counts as stopped for arrival purposes -- small enough
 # not to read as motion (every pace/gait is well above it), but nonzero so a unit that has
 # braked all the way down its arrival envelope finalizes its order instead of forever
@@ -491,7 +491,7 @@ const MELEE_PRESS_FRACTION: float = 0.6
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
-const SKIRMISH_KITE_DISTANCE: float = 100.0
+const SKIRMISH_KITE_DISTANCE: float = 100.0   # tuned in wu, between melee contact and RANGED_RANGE
 # Cycle charge (caracole): a melee unit charges its target, lands the impact strike,
 # then peels back to CYCLE_CHARGE_STANDOFF away to re-form before charging again — so
 # it keeps trading momentum-scaled charge hits instead of grinding in a static melee
@@ -508,8 +508,8 @@ const CYCLE_CHARGE_STANDOFF: float = 280.0
 # holding station SUPPORT_FOLLOW_DISTANCE off so it doesn't pile onto it. The guard
 # radius is near DETECTION_RANGE (190) so it meets threats about as far as it would
 # normally spot them; the follow distance sits just past two footprints (~36).
-const SUPPORT_GUARD_RADIUS: float = 180.0
-const SUPPORT_FOLLOW_DISTANCE: float = 80.0
+const SUPPORT_GUARD_RADIUS: float = 180.0   # tuned in wu, near DETECTION_RANGE
+const SUPPORT_FOLLOW_DISTANCE: float = 80.0   # tuned in wu, just past two footprints
 # The friendly unit a SUPPORT order tells this one to guard (set by Battle from the
 # order's target). Cleared when it dies/routs, reverting this unit to NORMAL.
 # Pace mode: when true the unit always walks (walk_speed), overriding the

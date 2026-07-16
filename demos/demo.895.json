@@ -1,0 +1,4 @@
+{
+	"skip": true,
+	"reason": "Value-identical refactor: the converted cell size folds back to the exact bits of its old literal (pinned), the borderline distances keep their literals with explicit tuned-in-wu markers, and a full per-soldier state dump is byte-identical to main. Nothing rendered or simulated changes."
+}
