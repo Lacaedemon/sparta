@@ -16,6 +16,11 @@
 #             Scoped to this diff's own added lines, not a whole-tree grep, so
 #             pre-existing citations elsewhere in the repo don't fail every
 #             future run. Mirrors .github/workflows/check-comment-citations.yml.
+#   units     Units-convention lint (docs/units-convention.md): no runtime
+#             metric->world conversions outside the allowed boundaries, no new
+#             bare wu literals documented by metric comments. Diff-scoped to
+#             added lines like `comments`, sharing its base resolution. Mirrors
+#             the units step in check-comment-citations.yml.
 #   coverage  GUT suite instrumented for line coverage; writes coverage/lcov.info.
 #             Mirrors .github/workflows/test-coverage.yml. Slower than `test` and
 #             non-gating, so not in the default set (run it explicitly or via "all").
@@ -31,7 +36,7 @@
 #             default set (run it explicitly or via "all").
 #
 # Usage:
-#   tools/check.sh                 # default set: validate, test, chars, comments
+#   tools/check.sh                 # default set: validate, test, chars, comments, units
 #   tools/check.sh test chars      # only the named checks, in the given order
 #   tools/check.sh all             # every check (links included if lychee is present)
 #   tools/check.sh -l | --list     # list the available checks
@@ -54,7 +59,7 @@
 #                running before the checks start (default 5) — the early signal
 #                of an orphan leak building up.
 #   SPARTA_CHECK_COMMENTS_BASE
-#                Commit-ish the `comments` check diffs HEAD against to find
+#                Commit-ish the `comments` and `units` checks diff HEAD against to find
 #                *new* lines to scan (default: tries origin/main, then main; CI
 #                sets this per-event — see check-comment-citations.yml). When no
 #                base can be resolved, the check skips rather than scanning the
@@ -83,8 +88,8 @@ COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-2700}"
 # shellcheck source=lib/run-bounded.sh
 . "$SCRIPT_DIR/lib/run-bounded.sh"
 
-DEFAULT_CHECKS=(validate test chars comments)
-ALL_CHECKS=(validate test chars comments coverage patch_coverage links)
+DEFAULT_CHECKS=(validate test chars comments units)
+ALL_CHECKS=(validate test chars comments units coverage patch_coverage links)
 
 # --- pretty output ---------------------------------------------------------
 # Colour only when stdout is a terminal and NO_COLOR isn't set. Per the NO_COLOR
@@ -145,6 +150,7 @@ list_checks() {
   info "  test       GUT unit suite (godot-ci.yml)"
   info "  chars      non-standard characters in docs (check-non-standard-chars.yml)"
   info "  comments   issue/PR-number citations in NEW GDScript comment lines (check-comment-citations.yml)"
+  info "  units      units-convention lint on NEW GDScript lines (docs/units-convention.md)"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  patch_coverage  local codecov/patch approximation for this diff's scripts/*.gd changes"
   info "  links      Markdown link-check via lychee (check-links.yml)"
@@ -660,6 +666,119 @@ check_comments() {
   info "No new issue/PR-number citations found in this diff's GDScript comments."
 }
 
+check_units() {
+  # Units-convention lint (docs/units-convention.md): sim geometry is authored
+  # in metres and stored in world units, converted ONLY inside const
+  # initializers or the few allowlisted boundary files. Diff-scoped like
+  # check_comments -- fires only on lines this change ADDS, never legacy code,
+  # so a repo-wide backlog cannot fail it. Reuses the same base resolution (and
+  # SPARTA_CHECK_COMMENTS_BASE override) so local and CI agree.
+  #
+  # Three rules on added *.gd lines:
+  #  1. FAIL  -- multiplying by WU_PER_M / WORLD_UNITS_PER_METER anywhere but a
+  #     const initializer, outside the allowlisted boundary files: a stray
+  #     runtime conversion is either a hot-loop cost or a unit-mixing bug.
+  #  2. FAIL  -- the legacy "bare wu literal + metric comment" style
+  #     (e.g. `= 9.0  # 0.45 m`): promote the comment to a metric expression
+  #     (`0.45 * WorldScaleRef.WU_PER_M`) or mark the value `# tuned in wu`.
+  #  3. WARN  -- a new length/speed-named const with a bare literal and neither
+  #     a WU_PER_M expression nor a `# tuned in wu` marker. Warning-level only:
+  #     the name heuristic has false positives, so it nudges review rather than
+  #     gating.
+  local base
+  if ! base="$(resolve_comments_base)"; then
+    warn "No base ref to diff against -- skipping the units-convention check."
+    warn "Set SPARTA_CHECK_COMMENTS_BASE, or fetch full history."
+    set_result units skip
+    return 0
+  fi
+
+  local merge_base head
+  merge_base="$(cd "$PROJECT_ROOT" && git merge-base HEAD "$base" 2>/dev/null)"
+  head="$(cd "$PROJECT_ROOT" && git rev-parse HEAD 2>/dev/null)"
+  if [ -z "$merge_base" ]; then
+    warn "No common history with '$base' -- skipping the units-convention check."
+    set_result units skip
+    return 0
+  fi
+  if [ "$merge_base" = "$head" ]; then
+    info "HEAD is '$base' (or an ancestor of it) -- no new commits to check."
+    return 0
+  fi
+
+  local diff
+  diff="$(cd "$PROJECT_ROOT" && git diff --no-color -U0 "$merge_base" HEAD -- "*.gd")"
+  if [ -z "$diff" ]; then
+    info "No GDScript changes in this diff."
+    return 0
+  fi
+
+  # "file:line:content" rows for ADDED lines only (same awk as check_comments).
+  local added
+  added="$(printf '%s\n' "$diff" | awk '
+      /^\+\+\+ / { file = substr($0, 7); next }
+      /^@@ /     { match($0, /\+[0-9]+/); line = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
+      /^\+/      { print file ":" line ":" substr($0, 2); line++; next }
+      { next }
+    ')"
+
+  # Boundary files where runtime use of the scale constant is the whole point.
+  # (Battle.gd is allowlisted file-level for its spawn/loadout conversion; the
+  # lint pins boundary topology, review pins placement within the file.)
+  local allow='^(scripts/(WorldScale|Battle|DistanceLegend)\.gd|test/)'
+
+  # The stray-conversion rule must judge CODE, not prose: a trailing comment
+  # that merely mentions the constant ("do not scale by * WU_PER_M") is a
+  # legitimate -- even encouraged -- thing to write. Strip everything from the
+  # first '#' in the content portion before matching. (A '#' inside a GDScript
+  # string literal would be over-stripped; sim code doesn't hit that in
+  # practice, and over-stripping only makes the rule more lenient.)
+  local code_only
+  code_only="$(printf '%s\n' "$added" | sed 's/#.*$//')"
+
+  local stray
+  stray="$(printf '%s\n' "$code_only" \
+    | grep -E '\*\s*(WorldScaleRef\.WU_PER_M|WorldScale\.WU_PER_M|WU_PER_M|WORLD_UNITS_PER_METER)\b|(WU_PER_M|WORLD_UNITS_PER_METER)\s*\*' \
+    | grep -vE "$allow" \
+    | grep -vE '^[^:]+:[0-9]+:\s*const\s')"
+  if [ -n "$stray" ]; then
+    err "Runtime metric->world conversion outside the allowed boundaries"
+    err "(docs/units-convention.md: conversions live in const initializers, or in"
+    err "WorldScale.gd / Battle.gd loadout spawn / DistanceLegend.gd / test/):"
+    printf '%s\n' "$stray" >&2
+    return 1
+  fi
+
+  # Tightly anchored to the documented legacy style (`9.0  # 0.45 m`): the
+  # comment must consist of exactly a metric figure and end there, so prose
+  # that merely mentions a metric quantity ("spans the 80 m x 50 m field")
+  # next to an unrelated float never gates the build.
+  local legacy
+  legacy="$(printf '%s\n' "$added" \
+    | grep -E ':?=\s*-?[0-9]+\.[0-9]+\s*#\s*~?[0-9][0-9.]*\s*m(/s2?)?\s*$' \
+    | grep -vE 'WU_PER_M|WORLD_UNITS_PER_METER|# tuned in wu')"
+  if [ -n "$legacy" ]; then
+    err "Bare world-unit literal documented by a metric comment (the pre-migration"
+    err "style). Promote the comment to the value: <metres> * WorldScaleRef.WU_PER_M"
+    err "-- or mark a deliberately unit-tuned knob with '# tuned in wu':"
+    printf '%s\n' "$legacy" >&2
+    return 1
+  fi
+
+  local nudge
+  nudge="$(printf '%s\n' "$added" \
+    | grep -E 'const\s+[A-Z0-9_]*(_RADIUS|_RANGE|_DIST|_DISTANCE|_SPACING|_SPEED)[A-Z0-9_]*(\s*:\s*float)?\s*:?=\s*-?[0-9]' \
+    | grep -vE 'WU_PER_M|WORLD_UNITS_PER_METER|# tuned in wu')"
+  if [ -n "$nudge" ]; then
+    warn "New length/speed-named const(s) with a bare literal -- consider authoring"
+    warn "in metres (<metres> * WorldScaleRef.WU_PER_M) or marking '# tuned in wu'"
+    warn "(review nudge only, not a failure):"
+    printf '%s\n' "$nudge" >&2
+  fi
+  info "No units-convention violations in this diff's added GDScript lines."
+}
+
+
 check_links() {
   if ! have lychee; then
     warn "lychee not installed — skipping link check."
@@ -710,7 +829,7 @@ main() {
       -h|--help) usage; exit 0 ;;
       -l|--list) list_checks; exit 0 ;;
       all)       checks+=("${ALL_CHECKS[@]}") ;;
-      validate|test|chars|comments|coverage|patch_coverage|links) checks+=("$arg") ;;
+      validate|test|chars|comments|units|coverage|patch_coverage|links) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
   done

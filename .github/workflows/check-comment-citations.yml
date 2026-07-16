@@ -38,3 +38,11 @@ jobs:
           # applies (e.g. workflow_dispatch).
           SPARTA_CHECK_COMMENTS_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: tools/check.sh comments
+
+      - name: Check units convention in GDScript changes
+        # Same diff-scoped shape (and the same base override) as the comments
+        # check above -- see docs/units-convention.md for the rules this
+        # enforces. Kept as its own step so a failure names the right rule.
+        env:
+          SPARTA_CHECK_COMMENTS_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: tools/check.sh units

@@ -203,6 +203,21 @@ belong in commit messages, PR descriptions, and `TODO`/`FIXME` comments (where a
 `TODO(#123):` link to outstanding work is useful) — not in ordinary explanatory
 comments or docstrings.
 
+### Units: author in metres, store in world units, display in metric
+See `docs/units-convention.md` for the full rules; `tools/check.sh units`
+lints each diff's added lines. In short: a physically-derived length/speed
+constant is written as `<metres> * WorldScaleRef.WU_PER_M` (parse-time-folded,
+bit-exact-pinned by a test; `WorldScaleRef` is the script's own
+`preload("res://scripts/WorldScale.gd")` alias — declare it with the other
+preloads), runtime state stays world units end to end (no
+conversions in hot loops), and any user-facing length/distance/speed renders
+through `DistanceLegend`'s wu→metric helpers — a raw world-unit number is
+never shown to the player. Deliberately unit-tuned knobs and solver epsilons
+keep their wu literal, marked `# tuned in wu`. In review, treat as standard
+findings: a new metric-looking bare literal, a runtime `WU_PER_M`
+multiplication outside the boundary files, or a player-visible number not
+routed through `DistanceLegend`.
+
 ### GDScript / Godot 4 quirks
 
 - **`about_to_popup` fires before the layout pass.** `popup.size` is `(0, 0)` on
