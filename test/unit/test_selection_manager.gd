@@ -271,9 +271,27 @@ func test_resize_handle_at_grabs_a_grip_and_ignores_empty_space() -> void:
 	u.position = Vector2(50, 50)
 	sm._select(u)
 	var grip: Vector2 = sm._resize_handle_positions(u)[0]
-	assert_eq(sm._resize_handle_at(grip), u, "a cursor on a grip grabs that unit for resizing")
+	var hit = sm._resize_handle_at(grip)
+	assert_not_null(hit, "a cursor on a grip grabs that unit for resizing")
+	assert_eq(hit["unit"], u, "the grabbed grip names its unit")
 	assert_null(sm._resize_handle_at(u.global_position + Vector2(9999, 0)),
 			"a cursor far from any grip grabs nothing")
+
+
+func test_resize_handle_at_reports_the_grabbed_flank() -> void:
+	# The grip list is [+file-axis, -file-axis]; the first is the block's local +X
+	# flank (Anchor.RIGHT), the second its mirror. The drag anchors the OPPOSITE
+	# side, so misreporting the side would flip which flank stays put.
+	var sm := _sm()
+	var u := _unit()
+	u.facing = Vector2.UP   # file axis = world +X, so "right flank" reads naturally
+	u.position = Vector2(50, 50)
+	sm._select(u)
+	var hs: Array = sm._resize_handle_positions(u)
+	assert_eq(int(sm._resize_handle_at(hs[0])["side"]), UnitFormation.Anchor.RIGHT,
+			"the +file-axis grip is the local right flank")
+	assert_eq(int(sm._resize_handle_at(hs[1])["side"]), UnitFormation.Anchor.LEFT,
+			"the -file-axis grip is the local left flank")
 
 
 func test_track_grip_motion_redraws_when_the_selected_unit_moves() -> void:
@@ -350,6 +368,7 @@ func test_draw_resize_preview_runs_under_a_real_draw_notification() -> void:
 	sm._resizing = true
 	sm._resize_unit = u
 	sm._resize_files = UnitFormation.frontage(u)
+	sm._resize_anchor = UnitFormation.Anchor.LEFT   # a live drag always has a flank anchored
 	sm.queue_redraw()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -371,6 +390,90 @@ func test_resize_frontage_routes_an_absolute_command_to_battle() -> void:
 	assert_eq(UnitFormation.frontage(u), start + 1, "the keyboard widen steps the line out one file")
 	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_FRONTAGE_ONLY,
 			"routed as a recorded frontage command")
+
+
+func test_drag_resize_holds_the_far_flank_edge_fixed() -> void:
+	# Dragging the right grip extends/narrows the line rightward only: the left (far)
+	# flank's edge -- standing offset minus half-width, in the unit's local X -- must
+	# read identical before and after the commit, so the whole width change lands on
+	# the dragged flank, like resizing a window by its edge.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 21
+	u.max_soldiers = 80
+	u.facing = Vector2.UP   # file axis = world +X, so local right is screen right
+	u.position = Vector2(300, 300)
+	b._by_uid[21] = u
+	sm._select(u)
+	var spacing: float = UnitScript.FORMATION_SPACING * u.spacing_scale
+	var start: int = UnitFormation.frontage(u)
+	var left_edge: float = u.frontage_anchor_offset - float(start - 1) * 0.5 * spacing
+	sm._begin_resize(u, UnitFormation.Anchor.RIGHT)
+	assert_eq(sm._resize_anchor, UnitFormation.Anchor.LEFT,
+			"grabbing the right grip anchors the far (left) flank")
+	# Pull the cursor two files' width past the block's current right edge.
+	var right_edge: float = -left_edge
+	sm._update_resize(u.global_position + Vector2(right_edge + 2.0 * spacing, 0.0))
+	assert_eq(sm._resize_files, start + 2, "the previewed width follows the dragged edge")
+	sm._finish_resize()
+	assert_eq(UnitFormation.frontage(u), start + 2, "the commit applies the previewed width")
+	var new_left_edge: float = u.frontage_anchor_offset - float(start + 1) * 0.5 * spacing
+	assert_almost_eq(new_left_edge, left_edge, 0.001,
+			"the anchored left edge stays put -- the width change is one-sided")
+	assert_eq(sm._resize_anchor, UnitFormation.Anchor.CENTRE,
+			"the anchor resets once the drag commits")
+
+
+func test_drag_resize_composes_with_a_standing_anchor_offset() -> void:
+	# A unit already carrying an anchor shift (a prior anchored resize or asymmetric
+	# explicatio) must keep its held edge where it ACTUALLY is now: the drag's new
+	# shift adds to the standing offset rather than recomputing from a centred block.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 22
+	u.max_soldiers = 80
+	u.facing = Vector2.UP
+	u.position = Vector2(300, 300)
+	b._by_uid[22] = u
+	sm._select(u)
+	var spacing: float = UnitScript.FORMATION_SPACING * u.spacing_scale
+	var start: int = UnitFormation.frontage(u)
+	u.set_frontage(start, 2.0 * spacing)   # a standing shift from an earlier anchored op
+	var left_edge: float = u.frontage_anchor_offset - float(start - 1) * 0.5 * spacing
+	sm._begin_resize(u, UnitFormation.Anchor.RIGHT)
+	var right_edge: float = u.frontage_anchor_offset + float(start - 1) * 0.5 * spacing
+	sm._update_resize(u.global_position + Vector2(right_edge + spacing, 0.0))
+	assert_eq(sm._resize_files, start + 1, "the drag measures from the SHIFTED fixed edge")
+	sm._finish_resize()
+	var new_left_edge: float = u.frontage_anchor_offset \
+			- float(UnitFormation.frontage(u) - 1) * 0.5 * spacing
+	assert_almost_eq(new_left_edge, left_edge, 0.001,
+			"the held edge stays at its actual (shifted) place, not a recomputed centre")
+
+
+func test_keyboard_resize_recentres_a_standing_anchor_offset() -> void:
+	# The [ / ] keyboard resize stays centre-anchored: it re-centres the block and
+	# discards any standing anchor shift -- the pre-existing contract the drag's new
+	# anchoring must not disturb.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 23
+	u.max_soldiers = 80
+	b._by_uid[23] = u
+	sm._select(u)
+	u.set_frontage(UnitFormation.frontage(u), 27.0)
+	sm._resize_frontage(1)
+	assert_eq(u.frontage_anchor_offset, 0.0,
+			"a keyboard resize re-centres the block, clearing the standing shift")
 
 
 # --- keystroke overlay capture --------------------------

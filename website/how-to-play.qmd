@@ -726,7 +726,26 @@ reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more me
 fighting at the front) or <kbd>[</kbd> to narrow it (deeper, fewer up front but more
 staying power). With a single unit selected, two small grips appear on its flanks ---
 **drag** a grip in or out to set the width directly, with a live preview of the new
-file count. The width holds as the unit takes casualties, and shows in the info panel.
+file count. The drag anchors the **far** flank: only the dragged edge moves, like
+resizing a window by its edge, so you can extend a line toward the flank you care
+about while the other edge holds its ground (the <kbd>[</kbd> / <kbd>]</kbd> keys
+stay symmetric about the centre). The width holds as the unit takes casualties, and
+shows in the info panel.
+
+::: {#fig-resize-anchor .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/resize_flank_anchor.jpg">
+  <source src="media/resize_flank_anchor.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Flank-anchored drag-resize: pulling the east grip outward extends the line east
+only, the west flank's edge holding its ground while the new files form up.
+:::
 
 **File-doubling (explicatio and duplicatio).** Where <kbd>[</kbd> / <kbd>]</kbd> nudge the
 width one file at a time, these two drill maneuvers reshape it by a whole factor at once.
