@@ -1,0 +1,4 @@
+{
+	"skip": true,
+	"reason": "Value-identical refactor: every converted constant folds back to the exact bits of its old world-unit literal (pre-committed exact-equality pins prove it per constant, and a full per-soldier state dump of the about-face demo is byte-identical between this branch and main). Nothing rendered or simulated changes."
+}

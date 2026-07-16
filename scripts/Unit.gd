@@ -7,6 +7,8 @@ class_name Unit
 ## detailed figure silhouettes (a standing soldier, a mounted rider) when the
 ## camera zooms in past LOD_ZOOM_IN — see _update_lod / UnitMeshes.figure_mesh.
 
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
 enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }
 
 ## Readable label for current_maneuver(): distinguishes the in-progress drill/turn a plain
@@ -528,8 +530,8 @@ var field_bounds: Rect2 = Rect2(-100000, -100000, 200000, 200000)
 # don't need to set it.
 var retreat_bounds: Rect2 = Rect2(-100000, -100000, 200000, 200000)
 
-const RADIUS: float = 18.0
-const DETECTION_RANGE: float = 190.0
+const RADIUS: float = 0.9 * WorldScaleRef.WU_PER_M
+const DETECTION_RANGE: float = 9.5 * WorldScaleRef.WU_PER_M
 # How often a melee unit applies a damage tick. This is the regiment's *aggregate*
 # cadence — one tick stands for the whole front rank trading blows over that span,
 # not a single soldier's swing — so it's tuned for battle pace, not literal sword
@@ -568,13 +570,12 @@ const REFORM_SETTLE_EPS: float = 1.0
 const REFORM_SETTLE_EPS_RESHAPE: float = 4.0
 # Radius over which a rout shakes friendly morale. Shared by the morale-spread
 # loop and the cosmetic shockwave so the visual matches the actual area of effect.
-const ROUT_SHOCK_RADIUS: float = 140.0
+const ROUT_SHOCK_RADIUS: float = 7.0 * WorldScaleRef.WU_PER_M
 # Rout recovery: when a unit's rout timer runs out it RALLIES — recovers to your
 # control — if it has broken contact (no living enemy within RALLY_CONTACT_RADIUS) and
 # still fields enough men (>= SHATTER_STRENGTH_FRAC of its max). Otherwise it SHATTERS:
 # run down or gutted past reforming, it leaves play for good. A rallied unit comes back
 # at RALLY_MORALE, kept low so it stays fragile and can break again.
-const RALLY_CONTACT_RADIUS: float = 160.0   # = RANGED_RANGE: in archer reach = not broken contact
 const RALLY_MORALE: float = 30.0
 const SHATTER_STRENGTH_FRAC: float = 0.15
 # While routing, a shaken regiment's nerve slowly steadies: morale ticks UP toward
@@ -593,7 +594,11 @@ const RALLY_MORALE_THRESHOLD: float = 35.0
 # ~62px contact, so archers skirmish from safety. RANGED_RANGE stays below
 # DETECTION_RANGE so an auto-acquired target is always in detection too. Volleys
 # fire on their own (slower) cadence and hit a touch softer per shot than melee.
-const RANGED_RANGE: float = 160.0
+const RANGED_RANGE: float = 8.0 * WorldScaleRef.WU_PER_M
+# A router in archer reach has not broken contact: the rally check reuses the ranged
+# reach outright, so retuning RANGED_RANGE moves the rally radius with it (the identity
+# the old literal only asserted in a comment, made structural).
+const RALLY_CONTACT_RADIUS: float = RANGED_RANGE
 const RANGED_INTERVAL: float = 1.0
 const RANGED_DAMAGE_FACTOR: float = 0.7
 
@@ -670,15 +675,15 @@ const COHESION_RECOVER_PER_SEC: float = 0.1
 # instead of bouncing apart. Cavalry are bulkier; spearmen a touch wider than
 # infantry. (Spears reach far past their footprint; the foot-sword baseline,
 # floor 36 < contact 62, is the tightest melee case.)
-const SEPARATION_RADIUS_INFANTRY: float = 18.0
-const SEPARATION_RADIUS_SPEARMEN: float = 20.0
-const SEPARATION_RADIUS_CAVALRY: float = 24.0
+const SEPARATION_RADIUS_INFANTRY: float = 0.9 * WorldScaleRef.WU_PER_M
+const SEPARATION_RADIUS_SPEARMEN: float = 1.0 * WorldScaleRef.WU_PER_M
+const SEPARATION_RADIUS_CAVALRY: float = 1.2 * WorldScaleRef.WU_PER_M
 # Hard ceiling on a footprint (merging widens it). Two maxed units floor at
 # 2*28 = 56, still under the melee reaches of the foot/horse types (sword
 # contact 62, spear far more), so even merged mega-units keep pressing into
 # contact. (Archers carry a short sidearm by design and fight at range, so the
 # pathological case of two maxed archer blobs is not a melee concern.)
-const SEPARATION_RADIUS_MAX: float = 28.0
+const SEPARATION_RADIUS_MAX: float = 1.4 * WorldScaleRef.WU_PER_M
 
 # Cavalry charge: a physics-based bonus, not a one-shot token. The damage
 # multiplier scales with the rider's IMPACT VELOCITY at the moment of contact — the
@@ -689,15 +694,14 @@ const SEPARATION_RADIUS_MAX: float = 28.0
 # down to nothing. Deterministic (positions + move_speed only) so replays stay exact.
 const CHARGE_BONUS_AT_REF_SPEED: float = 0.8
 # Reference closing speed at which a head-on charge yields the full bonus above. An
-# independent balance knob, NOT a hard link to Battle: it's set near a typical cavalry
-# gallop (~170 = the loadout's 8.5 m/s * Battle.WORLD_UNITS_PER_METER 20) so a full
-# charge ~matches the intended x1.8, but it's a plain literal on purpose — deriving it
-# from Battle's constants would reintroduce the Unit<->Battle preload cycle this file
-# avoids elsewhere. Changing cavalry speed just rescales the charge (faster hits harder,
-# by design); nothing breaks. The bonus always scales with the unit's own gallop
+# independent balance knob, NOT a hard link to the loadout table: it sits at a typical
+# cavalry gallop (8.5 m/s), deliberately not multiplied by Battle.SPEED_SCALE and not
+# derived from the loadout's actual cavalry speed, so a full charge ~matches the
+# intended x1.8 while changing cavalry speed just rescales the charge (faster hits
+# harder, by design); nothing breaks. The bonus always scales with the unit's own gallop
 # (speed_toward <= move_speed): a cavalry at the reference speed peaks at the reference
 # x1.8, and a faster one exceeds it on purpose — intended scaling, not a cap (no assert).
-const CHARGE_REFERENCE_SPEED: float = 170.0
+const CHARGE_REFERENCE_SPEED: float = 8.5 * WorldScaleRef.WU_PER_M
 # Anti-cavalry spearmen brace and turn the charge against the rider: the momentum
 # becomes a speed-scaled PENALTY (impaling yourself at a gallop hurts) instead of a
 # bonus, floored so even a full charge into spears never drops below the old x0.6.
@@ -4124,10 +4128,10 @@ func _stop_rout_and_fight() -> void:
 # A foot soldier's mark is sized to match this floor --
 # shoulder-to-shoulder at synaspismos density, no gap and no overlap. Cavalry
 # marks are sized to a horse's ~1 m body width. World-units, not px.
-const FORMATION_SPACING: float = 9.0    # world units between soldier marks (0.45 m, synaspismos density)
+const FORMATION_SPACING: float = 0.45 * WorldScaleRef.WU_PER_M   # metres between soldier marks (synaspismos density)
 const FORMATION_ASPECT: float = 1.7     # files-to-ranks ratio (> 1 = wider than deep)
-const MARK_RADIUS: float = 4.5          # foot soldier mark (0.45 m across)
-const CAV_MARK_RADIUS: float = 10.0     # cavalry marks are larger (1 m horse body)
+const MARK_RADIUS: float = 0.225 * WorldScaleRef.WU_PER_M   # foot soldier mark (0.45 m across)
+const CAV_MARK_RADIUS: float = 0.5 * WorldScaleRef.WU_PER_M   # cavalry marks are larger (1 m horse body)
 
 # Zoom level-of-detail. Zoomed out, each soldier is a flat geometric mark (a
 # disc / rect / diamond) — cheap and legible at a glance. Zoomed in past

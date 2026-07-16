@@ -9,6 +9,8 @@ class_name SoldierCombat
 ## Condition factors q(h), g(sigma) (health x stamina) enter through the cond_a /
 ## cond_d parameters; callers pass 1 where a factor isn't modelled yet.
 
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
 # Land contest (opposed roll): p_land = clip(L(beta*(A - D)), p_min, p_max), where
 #   A = s_A * cond_A + mu * c                  (attacker offence + charge-to-hit)
 #   D = phi_D * (s_D + lambda * b_D) * cond_D   (defender active defence, facing-gated)
@@ -27,7 +29,7 @@ const DAMAGE_SCALE: float = 34.0
 # Reference gallop speed (world units/sec) the charge term normalises against, so
 # c ~ 1 at a full charge. Mirrors Unit.CHARGE_REFERENCE_SPEED (the regiment-level
 # charge), kept here too so the per-soldier model is self-contained.
-const CHARGE_REFERENCE_SPEED: float = 170.0
+const CHARGE_REFERENCE_SPEED: float = 8.5 * WorldScaleRef.WU_PER_M
 
 # Floor of the health condition factor q(h): a near-dead soldier still fights, at this
 # fraction of full effectiveness. q scales both offence and active defence.
@@ -54,7 +56,7 @@ const ETA_DEFENDED: float = 0.35              # eta for a defended (not landed) 
 # recovery halts it -- a shove of body-lengths, never a flight. The UNCAPPED impulse still
 # drives the prone roll, so a monster hit's felling power is unchanged; only the velocity
 # the body carries away is bounded.
-const KNOCKBACK_SPEED_MAX: float = 60.0
+const KNOCKBACK_SPEED_MAX: float = 3.0 * WorldScaleRef.WU_PER_M
 
 # Knockback focus (UnitCombat.KNOCKBACK_FOCUS_DAMAGE_MULT's counterpart): the stance trades
 # damage for a much bigger, more probable shove. Scales the raw impulse BEFORE the speed cap
@@ -71,7 +73,7 @@ const KNOCKBACK_FOCUS_IMPULSE_MULT: float = 2.5
 # SoldierBodies.BODY_ACCEL_FLOOR's arrival recovery takes several times longer to arrest it,
 # so the shove clearly outruns the "just clear the line" variant's clear_line_speed_cap.
 # 3.3x KNOCKBACK_SPEED_MAX (so ~11x the coast distance, since distance scales with v^2).
-const KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP: float = 200.0
+const KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP: float = 10.0 * WorldScaleRef.WU_PER_M
 
 # Going prone (docs/combat-model.md "Going prone and getting up"): a knockback impulse J
 # large enough to clear a mass- and bracing-raised threshold can fell the defender.
@@ -269,7 +271,7 @@ const KINETIC_FRICTION_DAMPING: float = 0.08  # decay rate per second
 # treated as nearly-stationary and receive extra friction (damping), while bodies at or
 # above this speed experience the base kinetic friction. Simulates the transition from
 # static to kinetic friction regimes.
-const KINETIC_FRICTION_VELOCITY_REFERENCE: float = 50.0  # ~jog speed (wu/s)
+const KINETIC_FRICTION_VELOCITY_REFERENCE: float = 2.5 * WorldScaleRef.WU_PER_M  # ~jog speed
 
 # Stationary boost: extra friction damping added to slow-moving bodies (v < v_ref).
 # A body slowing from a knockback will decelerate faster than a body at sustained speed.
