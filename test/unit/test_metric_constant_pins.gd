@@ -46,3 +46,14 @@ func test_charge_reference_speed_copies_never_diverge() -> void:
 func test_rally_contact_radius_equals_ranged_range() -> void:
 	assert_eq(UnitScript.RALLY_CONTACT_RADIUS, UnitScript.RANGED_RANGE,
 		"a router in archer reach has not broken contact -- the identity its comment asserts, made structural")
+
+
+func test_spatial_hash_cell_size_holds_its_exact_world_unit_value() -> void:
+	assert_eq(SoldierSpatialHash.CELL_SIZE, 24.0)
+
+
+func test_spatial_hash_cell_covers_the_widest_separation_floor() -> void:
+	# The 3x3 neighborhood around a soldier is a guaranteed superset of everyone
+	# within separation distance ONLY while a cell exceeds two cavalry bodies --
+	# the margin the cell size's comment states, held as an executable invariant.
+	assert_gt(SoldierSpatialHash.CELL_SIZE, 2.0 * UnitScript.CAV_MARK_RADIUS)
