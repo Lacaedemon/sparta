@@ -64,6 +64,12 @@ jobs:
             echo "::error::Godot reported script/resource errors during import"
             exit 1
           fi
+          # The import pass compiles only what the imported resources reach, so a
+          # parse error in a script nothing references at import time can sail past
+          # it and only surface at runtime. Sweep-load every .gd to force full
+          # compilation; the sweep exits non-zero on any failure. Mirrors
+          # tools/check.sh's check_validate.
+          godot --headless -s tools/ci/compile_all_scripts.gd
 
       - name: Run unit tests (GUT)
         # gut_cmdln runs without enabling the editor plugin; -gexit sets a
