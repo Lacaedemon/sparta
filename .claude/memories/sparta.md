@@ -343,6 +343,44 @@ exact tick its own `Ctrl+,` should have armed `Sweep routers`, traced to a
 `settings.cfg` on disk holding scrambled keybinding values from a concurrent
 test run in a sibling worktree.)
 
+**The same collision fires WITHIN one worktree too: never launch a second
+Godot suite (test/coverage) anywhere while one is still running.** Two
+background `tools/check.sh` runs in the SAME worktree share not just
+`settings.cfg` but the `.godot` import cache and the single
+`coverage/lcov.info` output path — the second run's results are garbage
+without erroring (a coverage report that silently reflects a stale test set,
+a spurious single-test failure elsewhere in the suite). The contamination
+tell in `settings.cfg` is keybinding overrides holding scrambled values
+(e.g. `chase=65`/'A', `sweep_routers=87`/'W'); delete the file and rerun
+alone before believing any failure. One Godot process at a time, machine-wide
+— treat a running background check task as a lock. (GII batch endgame,
+2026-07-15: launched a patch_coverage rerun while the prior one was still
+going in the same worktree; the "rerun" reported the pre-edit coverage
+number, and a later full-suite run failed one unrelated test until the
+scrambled `settings.cfg` was deleted.)
+
+## An axis computed by folding `_formation_angle` must re-pick the facing-aligned frame after a conversio
+
+`_wheel_pivot_point` folds `_formation_angle` into the slot-grid axes so a
+wheel hinges against the grid as physically laid out — required for chained
+quarter turns (±PI/2 folds). But a completed conversio folds
+`_formation_angle` to ±PI, which spins BOTH axes 180°: "front" points at the
+physical rear and the `signf(dir)` flank flips, so the hinge lands at the
+rear corner of the WRONG flank and the whole block wheels BACKWARD around it
+(every soldier backpedaling, cos(facing) = -0.99 across the swing). The
+rectangular lattice is identical under a 180° spin, so the fix is to re-pick
+the other representative when the folded front axis opposes facing — and the
+threshold must be `dot < -0.5`, NOT `< 0.0`: a quarter-turn fold's dot is
+zero only mathematically, and in 32-bit float the sign is noise, so a bare
+sign check mirrors the tested chained-quarter-turn hinge at random (the full
+suite caught exactly that on the first attempt; the file's own 16 wheel tests
+all passed over the backward wheel because none asserted hinge POSITION).
+Watching the recorded demo caught what the tests missed — the user asked why
+soldier 8 was backpedaling. Any new consumer that folds `_formation_angle`
+into a direction calculation needs the same ±PI re-pick, a hinge/anchor
+POSITION assertion in its tests, and edge-case runs at both fold values.
+(`Lacaedemon/sparta` PR #871, 2026-07-15.)
+
 ## MultiMesh instance transforms don't read back in headless tests
 
 `MultiMesh.set_instance_transform_2d(i, t)` followed immediately by
