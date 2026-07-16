@@ -21,4 +21,4 @@ func test_battle_re_export_matches_world_scale_exactly() -> void:
 
 func test_inverse_round_trips_exactly() -> void:
 	assert_eq(WorldScaleRef.WU_PER_M * WorldScaleRef.M_PER_WU, 1.0,
-		"20.0 and 1/20.0 are both exactly representable, so the round trip is exact")
+		"the product of 20.0 and fl(1/20.0) rounds back to exactly 1.0 in float64, so the round trip is exact -- pinned so a scale change that breaks this exactness fails loudly")
