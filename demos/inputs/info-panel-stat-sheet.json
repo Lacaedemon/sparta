@@ -1,0 +1,15 @@
+{
+  "_comment": "Info panel full stat sheet (#893): select a lone infantry block and order a march. The panel's new lines show attack/defense/armour, per-man HP (mean, spread, full-health), the ordered gait with its pace, the block's live mean speed climbing as the march winds up, and the weapon/shield types with stats. Drill mode - the sheet is pure HUD, no enemy needed.",
+  "seed": "893",
+  "drill": true,
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 640.0, "y": 330.0, "facing": [0, 1] }
+  ],
+  "camera": [ { "tick": 0, "x": 640.0, "y": 430.0, "zoom": 1.4 } ],
+  "steps": [
+    { "tick": 10, "click": [640, 330] },
+    { "tick": 40, "rmb_click": [640, 600] }
+  ],
+  "frames": [30, 220],
+  "state": [30, 220]
+}
