@@ -1277,10 +1277,10 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.set_current_order(Order.new_formation(fm))
 		return
 	# Frontage-resize-only: set each unit's file count (and anchor shift, for an
-	# asymmetric explicatio/duplicatio -- 0.0 for the plain [ / ] resize) to the
-	# absolute target, leaving movement and order-mode state untouched. Absolute so
-	# re-applying the pending order on the tick is a no-op (idempotent), matching
-	# move/formation.
+	# asymmetric explicatio/duplicatio or a flank-anchored grip drag -- 0.0 for the
+	# plain centred [ / ] resize) to the absolute target, leaving movement and
+	# order-mode state untouched. Absolute so re-applying the pending order on the
+	# tick is a no-op (idempotent), matching move/formation.
 	if target_uid == ORDER_FRONTAGE_ONLY:
 		var files: int = int(cmd.get("frontage", 0))
 		if files > 0:
