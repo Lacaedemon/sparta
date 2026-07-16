@@ -57,7 +57,9 @@ var _fps_label: Label
 var _tick_count: int = 0
 var _tick_rate_window: float = 0.0
 var _live_tick_rate: float = Engine.physics_ticks_per_second   # sane value before the first sample
-const PANEL_MIN := Vector2(240, 90)
+# One semantic item per info line keeps the panel narrow, so the minimum width only
+# needs to cover the widest single stat (a weapon line), not three stats packed abreast.
+const PANEL_MIN := Vector2(150, 90)
 const PANEL_BOTTOM_GAP := 20.0   # clearance between info panel and screen edge
 
 # Single source of truth for the rebindable stance modes shown in the control-bar
@@ -702,15 +704,24 @@ func show_unit(u, group_count: int) -> void:
 		kind = "Archers"
 	else:
 		kind = "Infantry"
-	var cohesion_text: String = "" if u.cohesion >= 1.0 \
-			else "  Cohesion: %d%%" % mini(roundi(u.cohesion * 100.0), 99)
-	var training_text: String = "" if u.training <= 0.0 \
-			else "  Training: %d%%" % clampi(roundi(u.training * 100.0), 1, 100)
-	_info.text = "%s%s\nType: %s  Commander: %s\nSoldiers: %d / %d\nMorale: %d  Fatigue: %d%%%s%s\nFormation: %s  Width: %s  Order: %s\n%s" % [
-		u.unit_name, extra, kind, OfficerRank.title_for(u), u.soldiers, u.max_soldiers, int(u.morale), int(u.fatigue),
-		cohesion_text, training_text, u.formation_summary(), UnitFormation.files_label(UnitFormation.frontage(u)),
-		u.order_summary(), _stat_sheet(u)
-	]
+	# One semantic item per line: the panel reads top-to-bottom as a stat sheet and
+	# stays narrow (the point of the split), instead of packing unrelated stats
+	# abreast and stretching the panel to the widest packed row.
+	var lines: Array = ["%s%s" % [u.unit_name, extra]]
+	lines.append("Type: %s" % kind)
+	lines.append("Commander: %s" % OfficerRank.title_for(u))
+	lines.append("Soldiers: %d / %d" % [u.soldiers, u.max_soldiers])
+	lines.append("Morale: %d" % int(u.morale))
+	lines.append("Fatigue: %d%%" % int(u.fatigue))
+	if u.cohesion < 1.0:
+		lines.append("Cohesion: %d%%" % mini(roundi(u.cohesion * 100.0), 99))
+	if u.training > 0.0:
+		lines.append("Training: %d%%" % clampi(roundi(u.training * 100.0), 1, 100))
+	lines.append("Formation: %s" % u.formation_summary())
+	lines.append("Width: %s" % UnitFormation.files_label(UnitFormation.frontage(u)))
+	lines.append("Order: %s" % u.order_summary())
+	lines.append(_stat_sheet(u))
+	_info.text = "\n".join(lines)
 	_rebuild_order_tree(u)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = true
@@ -743,8 +754,11 @@ var _accel_mps2: float = 0.0
 ## stat lines: attack/defense/armour, per-soldier hit points (mean, spread, and the
 ## type's full-health value), the ordered gait with this unit's own pace for it, the
 ## block's live mean soldier speed and its acceleration, and the weapon/shield types
-## with their stats. Speeds render in metric via DistanceLegend, per the units
-## convention -- no raw world-unit number reaches the player.
+## with their stats. One semantic item per line, matching show_unit()'s own lines, so
+## the panel stays narrow; the weapon/shield rows each stay whole (one ITEM with its
+## attributes, not three unrelated stats packed abreast). Speeds render in metric via
+## DistanceLegend, per the units convention -- no raw world-unit number reaches the
+## player.
 func _stat_sheet(u) -> String:
 	var profile: Dictionary = u.combat_profile()
 	var hp: Vector2 = UnitStats.mean_sd_positive(u._sim_soldier_hp)
@@ -762,13 +776,14 @@ func _stat_sheet(u) -> String:
 	var weapon: Weapon = LoadoutRegistry.weapon(u.weapon_type_id)
 	var shield: Shield = LoadoutRegistry.shield(u.shield_type_id)
 	return "\n".join([
-		"Attack: %d  Defense: %d  Armour: %d%%" % [u.attack, u.defense,
-				roundi(profile["armour"] * 100.0)],
+		"Attack: %d" % u.attack,
+		"Defense: %d" % u.defense,
+		"Armour: %d%%" % roundi(profile["armour"] * 100.0),
 		"HP per man: %.0f ±%.0f of %.0f" % [hp.x, hp.y, profile["max_health"]],
-		"Gait: %s  Speed: %s  Accel: %+.1f m/s²" % [gait_text,
-				DistanceLegend.speed_label_text(mean_mps),
-				# Snap sub-display-precision values to zero so the readout can't show "-0.0".
-				0.0 if absf(_accel_mps2) < 0.05 else _accel_mps2],
+		"Gait: %s" % gait_text,
+		"Speed: %s" % DistanceLegend.speed_label_text(mean_mps),
+		# Snap sub-display-precision values to zero so the readout can't show "-0.0".
+		"Accel: %+.1f m/s²" % (0.0 if absf(_accel_mps2) < 0.05 else _accel_mps2),
 		"%s: reach %.1f m, lethality %.2f" % [weapon.display_name, weapon.reach_m,
 				weapon.lethality],
 		"%s: block %d%%, arc %d°" % [shield.display_name,
