@@ -157,6 +157,23 @@ func test_armor_protection_matches_the_pre_registry_profile_table() -> void:
 		0.40, "the scale shirt matches the pre-registry cavalry armour literal")
 
 
+func test_make_builds_armor_and_mount_types_field_for_field() -> void:
+	# Direct construction, mirroring what the registry's own static init does —
+	# also guarantees the constructors are exercised regardless of the coverage
+	# instrumentation's script-load order (a registry built before a class is
+	# instrumented would otherwise leave its make() uncounted).
+	var a: Armor = Armor.make(299, "Test panoply", 0.5, 9.0)
+	assert_eq(a.id, 299)
+	assert_eq(a.display_name, "Test panoply")
+	assert_eq(a.protection, 0.5)
+	assert_eq(a.weight_kg, 9.0)
+	var m: Mount = Mount.make(399, "Test mount", 1.2, 7.0)
+	assert_eq(m.id, 399)
+	assert_eq(m.display_name, "Test mount")
+	assert_eq(m.mass_contribution, 1.2)
+	assert_eq(m.top_speed_mps, 7.0)
+
+
 func test_warhorse_mass_composes_to_the_pre_registry_cavalry_mass() -> void:
 	# Body (1.0) + warhorse contribution must equal the cavalry row's pre-registry
 	# 2.5 mass literal exactly — contact physics reads the composed value.
