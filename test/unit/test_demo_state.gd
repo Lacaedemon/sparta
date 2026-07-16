@@ -114,3 +114,23 @@ func test_soldier_summary_shorter_prone_array_is_safe() -> void:
 	var s: Dictionary = DemoState.soldier_summary(pos, prone)
 	assert_eq(s["count"], 3)
 	assert_eq(s["prone_count"], 1, "missing prone entries treated as standing, no out-of-range read")
+
+
+func test_metric_mirrors_convert_via_the_world_scale() -> void:
+	assert_eq(DemoState.vec2_pair_m(Vector2(500.0, 380.0), 20.0), [25.0, 19.0])
+	assert_eq(DemoState.mps(170.0, 20.0, 1.0), 8.5)
+	assert_eq(DemoState.mps(170.0, 20.0, 2.0), 4.25,
+		"speed_scale mirrors the loadout conversion, so the figure reads back as declared m/s")
+
+
+func test_metric_soldier_summary_derives_from_the_same_positions() -> void:
+	var pos := PackedVector2Array([Vector2(0, 0), Vector2(20, 0), Vector2(20, 40)])
+	var m: Dictionary = DemoState.soldier_summary_m(pos, 20.0)
+	assert_eq(m["bbox_m"], [1.0, 2.0])
+	assert_eq(m["centroid_m"], [0.667, 0.667])
+
+
+func test_metric_soldier_summary_zeroes_for_an_empty_body_list() -> void:
+	var m: Dictionary = DemoState.soldier_summary_m(PackedVector2Array(), 20.0)
+	assert_eq(m["centroid_m"], [0.0, 0.0])
+	assert_eq(m["bbox_m"], [0.0, 0.0])

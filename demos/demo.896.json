@@ -1,0 +1,4 @@
+{
+	"skip": true,
+	"reason": "Docs sweep plus dev-facing state-dump metric mirrors: the dump JSON gains position_m / current_speed_mps / soldier_summary_m fields (additive; every wu field unchanged). Nothing rendered in a battle changes."
+}

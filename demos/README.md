@@ -308,12 +308,14 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | --- | --- |
 | `uid`, `name`, `team` | Stable unit id, display name, side (0 player / 1 enemy). |
 | `position`, `facing` | World-space `[x, y]` pairs (rounded). |
+| `position_m` | `position` mirrored in metres (`WorldScale.WU_PER_M`), so a reviewer reads real distances without dividing by the world scale by hand. |
 | `morale` | Current morale (100 = fresh; a rout triggers at 0). |
 | `state` | Readable `State` name — `IDLE` / `MOVING` / `FIGHTING` / `ROUTING` / `DEAD`. |
 | `formation` | Readable formation — `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE` / `SHIELD_WALL` / `TESTUDO` / `SCHILTRON`. |
 | `frontage` | Current file count — the durable width a `FRONTAGE` order last wrote, or the type-derived default when none has. |
 | `soldiers` | Living soldier count (drops as the unit takes casualties). |
 | `current_speed` | Current movement speed (world units/s). |
+| `current_speed_mps` | The same speed in m/s (folding in `Battle.SPEED_SCALE`, so it reads back as the loadout's declared figure). |
 | `order_mode` | Readable order stance (`Normal`, `Hold`, `Attack flank`, …). |
 | `rank_relief` | Whether the intra-unit rank-relief mode is on (rear ranks rotate forward to relieve their own fighting line; written by a stance order). |
 | `current_order` | The head of the unit's orders queue — readable `Order.Type` name (`MOVE`, `ATTACK`, `RELIEF`, `WHEEL`, …), or `null` when idle. |
@@ -326,6 +328,7 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `countermarch_variant` | Which exelismos variant a `maneuver: "COUNTERMARCH"` is running — `MACEDONIAN` / `LACONIAN` / `CHORAL`, or `null` when the unit isn't countermarching (`maneuver` alone can't distinguish the three). See `Unit.countermarch_variant()`. |
 | `tier` | The formation's **simulation tier** — `CLOSE` (full per-soldier arrays) or `FAR` (aggregate record, no individual bodies). See `docs/large-scale-simulation-design.md`. |
 | `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count}` — a compact digest, **not** the full per-soldier arrays. **Close-tier units only.** |
+| `soldier_summary_m` | The summary's `{centroid_m, bbox_m}` mirrored in metres, derived from the same positions so the two can never disagree. Close-tier only, like its wu sibling. |
 
 A `tier: "FAR"` record carries **no per-soldier payload at all** — no `soldier_summary`, no
 `soldiers_full` — because a far-tier formation has no individual bodies to derive them from.

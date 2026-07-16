@@ -154,3 +154,44 @@ static func soldier_summary(positions: PackedVector2Array, prone: PackedFloat32A
 		"bbox": [round_to(max_p.x - min_p.x), round_to(max_p.y - min_p.y)],
 		"prone_count": prone_count,
 	}
+
+
+## Metric mirrors for the dev-facing dump: every user-facing number already displays in
+## metric (DistanceLegend), and these carry the same convention onto the state dump so a
+## reviewer reads metres/m-per-s without dividing by the world scale by hand. Additive --
+## the wu fields stay exactly as they were, so existing tooling and tests keep reading
+## them. Positions round to 3 places (millimetres); conversions reuse DistanceLegend's
+## own pure statics rather than re-deriving them.
+static func vec2_pair_m(v: Vector2, wu_per_m: float) -> Array:
+	return [round_to(DistanceLegend.metres_for_world(v.x, wu_per_m), 3),
+			round_to(DistanceLegend.metres_for_world(v.y, wu_per_m), 3)]
+
+
+## Speed in m/s for a world-units/sec value, rounded for the dump. `speed_scale` mirrors
+## the loadout conversion (Battle.SPEED_SCALE) so the figure reads back in the same m/s
+## the loadout declared.
+static func mps(world_speed: float, wu_per_m: float, speed_scale: float = 1.0) -> float:
+	return round_to(DistanceLegend.mps_for_world_speed(world_speed, wu_per_m, speed_scale), 3)
+
+
+## The metric companion of soldier_summary(): centroid and bbox in metres, derived from
+## the SAME positions so the two summaries can never disagree. Count fields aren't
+## repeated -- they're unitless and live in the wu summary.
+static func soldier_summary_m(positions: PackedVector2Array, wu_per_m: float) -> Dictionary:
+	var count: int = positions.size()
+	if count == 0:
+		return {"centroid_m": [0.0, 0.0], "bbox_m": [0.0, 0.0]}
+	var sum: Vector2 = Vector2.ZERO
+	var min_p: Vector2 = positions[0]
+	var max_p: Vector2 = positions[0]
+	for p in positions:
+		sum += p
+		min_p.x = minf(min_p.x, p.x)
+		min_p.y = minf(min_p.y, p.y)
+		max_p.x = maxf(max_p.x, p.x)
+		max_p.y = maxf(max_p.y, p.y)
+	return {
+		"centroid_m": vec2_pair_m(sum / float(count), wu_per_m),
+		"bbox_m": [round_to(DistanceLegend.metres_for_world(max_p.x - min_p.x, wu_per_m), 3),
+				round_to(DistanceLegend.metres_for_world(max_p.y - min_p.y, wu_per_m), 3)],
+	}
