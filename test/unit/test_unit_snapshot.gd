@@ -25,6 +25,7 @@ func _sample_unit() -> Unit:
 	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
 	u.shield_type_id = LoadoutRegistry.SHIELD_SCUTUM
 	u.order_response_delay = 0.5
+	u.atomic_response_delay = 0.35
 	u.training = 0.75
 	u.disciplined = true
 	u.field_bounds = Rect2(0, 0, 1600, 1000)
@@ -109,6 +110,9 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.max_soldiers, original.max_soldiers)
 	assert_eq(restored.attack_range, original.attack_range)
 	assert_eq(restored.weapon_type_id, original.weapon_type_id)
+	assert_almost_eq(restored.order_response_delay, original.order_response_delay, 0.001)
+	assert_almost_eq(restored.atomic_response_delay, original.atomic_response_delay, 0.001,
+		"a spawn-customized drill beat survives a replay-seek snapshot restore")
 	assert_eq(restored.disciplined, original.disciplined)
 	assert_eq(restored.field_bounds, original.field_bounds)
 	assert_eq(restored.retreat_bounds, original.retreat_bounds)

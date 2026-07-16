@@ -4659,6 +4659,7 @@ func to_snapshot_dict() -> Dictionary:
 		"attack_range": attack_range,
 		"weapon_type_id": weapon_type_id, "shield_type_id": shield_type_id,
 		"order_response_delay": order_response_delay,
+		"atomic_response_delay": atomic_response_delay,
 		"training": training, "disciplined": disciplined,
 		"field_bounds": field_bounds, "retreat_bounds": retreat_bounds,
 		"separation_radius": separation_radius,
@@ -4744,6 +4745,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	weapon_type_id = int(d["weapon_type_id"])
 	shield_type_id = int(d["shield_type_id"])
 	order_response_delay = float(d["order_response_delay"])
+	atomic_response_delay = float(d["atomic_response_delay"])
 	training = float(d["training"])
 	disciplined = bool(d["disciplined"])
 	field_bounds = d["field_bounds"]
