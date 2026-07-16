@@ -15,14 +15,16 @@ extends RefCounted
 ## insertion order is id order, and query()'s fixed 3x3 traversal then visits
 ## candidates in a reproducible order — the property replays rely on.
 
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
 # Cell size must exceed the widest soldier separation floor (two cavalry bodies,
 # 2 * Unit.CAV_MARK_RADIUS, currently 20.0) so the 3x3 block around a soldier is a
 # guaranteed superset of every soldier within separation distance. The grid is
 # rebuilt from the exact positions the pass then separates (no movement between
-# rebuild and query), so that one bound is all that's required; 24.0 clears the
-# current 20.0 while keeping per-cell candidate counts low. Re-check this margin
-# if CAV_MARK_RADIUS changes.
-const CELL_SIZE := 24.0
+# rebuild and query), so that one bound is all that's required; 1.2 m clears the
+# 1 m cavalry body while keeping per-cell candidate counts low. The margin is
+# held as an executable invariant in test_metric_constant_pins.gd.
+const CELL_SIZE := 1.2 * WorldScaleRef.WU_PER_M
 
 static var _frame: int = -1
 static var _cells: Dictionary = {}
