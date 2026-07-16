@@ -133,8 +133,9 @@ architecture, and CI changes are exempt.
   creates strategic decisions (terrain types, order delay, unit interactions, etc.).
 - Other pages (`website/index.qmd`, `website/roadmap.qmd`) when the change is
   milestone-level.
-- `website/tools/record-demos.sh` — the `DEMOS` list controls which website
-  video clips get recorded at deploy time. When your PR adds a mechanic or
+- `website/tools/demo-catalog.sh` — the `DEMOS` list controls which website
+  video clips get recorded at deploy time (via `record-demos.sh`) and which
+  clips the per-PR state-transcript diff sweeps. When your PR adds a mechanic or
   visual that isn't visible in any existing scenario, append a row to `DEMOS`
   and a matching `<video>` embed on the page that covers that mechanic (follow
   the pattern in `website/how-to-play.qmd` or `website/index.qmd`).

@@ -11,7 +11,6 @@ extends Node
 ## code. It is the counterpart to DemoRunner.gd, which only plays back a saved replay.
 
 const BATTLE_SCENE := "res://scenes/Battle.tscn"
-const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 # Ticks a press->release drag is spread over, so the live form-up / box-select preview
 # visibly animates rather than snapping in a single frame.
 const DRAG_TICKS := 16
@@ -288,10 +287,10 @@ func _arm_state_dump(script_state: Array) -> void:
 	get_tree().create_timer(CAPTURE_TIMEOUT_SEC).timeout.connect(_on_capture_timeout)
 
 
-## Write a readable JSON snapshot of the authoritative game state at `tick`. Walks every combat
-## unit still on the field, pulls each unit's fields, and hands the per-soldier arrays to
-## DemoState.soldier_summary for a compact summary. No await / renderer needed — this reads sim
-## state, not the drawn frame, so it works even under --headless.
+## Write a readable JSON snapshot of the authoritative game state at `tick`. The snapshot
+## content comes from DemoState.build_snapshot — shared with the replay path's DemoStateSink,
+## so both dump paths' transcripts are identical in shape. No await / renderer needed — this
+## reads sim state, not the drawn frame, so it works even under --headless.
 func _dump_state(tick: int) -> void:
 	var snapshot: Dictionary = _build_snapshot(tick)
 	var path: String = "%s/state_%05d.json" % [_state_dir.trim_suffix("/"), tick]
@@ -304,144 +303,20 @@ func _dump_state(tick: int) -> void:
 	print("[demo-input] dumped state at tick %d -> %s (%d units)" % [tick, path, snapshot["units"].size()])
 
 
-## Build the snapshot Dictionary for `tick`: battle-level tick plus a per-unit record. Walks the
-## "units" + "routers" union (DemoState.COMBAT_GROUPS) so a ROUTING unit — which has left "units"
-## for "routers" and may yet rally — still appears in every snapshot with its state, morale, and
-## position; its record is distinguished by `state: "ROUTING"`. Records are sorted by uid so the
-## order stays stable while units change groups mid-rout/rally. Separated from the file write so
-## it's directly inspectable; the recorder is the only caller.
+## Build the snapshot Dictionary for `tick`. Thin wrapper over the shared
+## DemoState.build_snapshot (see there for the walk/sort semantics), feeding it this
+## battle's own name tables and the recorder's full-arrays flag. Kept as its own method so
+## it stays directly inspectable from tests, as before the extraction.
 func _build_snapshot(tick: int) -> Dictionary:
-	var units_out: Array = []
-	for group in DemoState.COMBAT_GROUPS:
-		for u in get_tree().get_nodes_in_group(group):
-			units_out.append(_unit_record(u))
-	return {"tick": tick, "units": DemoState.sort_records_by_uid(units_out)}
+	return DemoState.build_snapshot(get_tree(), tick, _battle.ORDER_MODE_NAMES,
+			_battle.SPEED_SCALE, _state_full)
 
 
-## One unit's readable record. Reads Unit fields directly and maps the enum ints to names via
-## DemoState (State/formation) and Battle.ORDER_MODE_NAMES (order_mode). target_enemy is dumped
-## as its uid (or null) so a snapshot references units by the same stable id, not a node path.
+## One unit's readable record: the shared DemoState.unit_record, fed this battle's own
+## name tables and the recorder's full-arrays flag. Kept as a method so tests can build a
+## single unit's record directly, as before the extraction.
 func _unit_record(u: Node) -> Dictionary:
-	var target_uid = u.target_enemy.uid if u.target_enemy != null and is_instance_valid(u.target_enemy) else null
-	var rec: Dictionary = {
-		"uid": u.uid,
-		"name": u.unit_name,
-		"team": u.team,
-		"position": DemoState.vec2_pair(u.position),
-		# Metric mirror of position, per the units convention: dev-facing numbers read in
-		# metres like every user-facing surface already does. The wu field above stays.
-		"position_m": DemoState.vec2_pair_m(u.position, WorldScaleRef.WU_PER_M),
-		"facing": DemoState.vec2_pair(u.facing),
-		"morale": DemoState.round_to(u.morale, 1),
-		"state": DemoState.state_name(u.state),
-		"formation": DemoState.formation_name(u.formation_mode),
-		# Durable frontage (phase 5): the file count a FRONTAGE order last wrote (or the
-		# type-derived default when none has). Like formation/order_mode/rank_relief, this is
-		# mode-layer state a completed order writes and that then persists as queryable Unit
-		# state -- UnitFormation.frontage is the same pure lookup the sim itself uses.
-		"frontage": UnitFormation.frontage(u),
-		"soldiers": u.soldiers,
-		"current_speed": DemoState.round_to(u._current_speed, 1),
-		"current_speed_mps": DemoState.mps(u._current_speed, WorldScaleRef.WU_PER_M,
-				_battle.SPEED_SCALE),
-		"order_mode": DemoState.order_mode_name(_battle.ORDER_MODE_NAMES, u.order_mode),
-		# Intra-unit rank-relief mode (phase 3): whether rear ranks rotate forward to
-		# relieve their own fighting line. A durable mode like formation, so a stance
-		# order's write is verifiable straight off the transcript.
-		"rank_relief": u.rank_relief,
-		"target_enemy_uid": target_uid,
-		"engaged": u.is_engaged(),
-		# A single readable label for the in-progress drill/maneuver, consolidating
-		# current_order/order_phase/order_mode into one field a verifier can read directly --
-		# e.g. a conversio and a centre-pivot both otherwise read as current_order: "MOVE"/
-		# order_phase: "TURN" or current_order: "QUARTER_TURN" respectively, so this spares a
-		# reader from reconstructing the distinction by hand. See Unit.current_maneuver().
-		"maneuver": DemoState.maneuver_name(u.current_maneuver()),
-		# Which exelismos variant a "maneuver": "COUNTERMARCH" is running (null otherwise) --
-		# maneuver alone can't distinguish Macedonian/Laconian/Choral. See
-		# Unit.countermarch_variant().
-		"countermarch_variant": DemoState.countermarch_variant_name(u.countermarch_variant()) \
-				if u.countermarch_variant() >= 0 else null,
-		# The formation's simulation tier (docs/large-scale-simulation-design.md): CLOSE runs
-		# the full per-soldier arrays, FAR is the aggregate record with no individual bodies.
-		# Serialized as the readable name via FormationTier's own stable table.
-		"tier": FormationTier.tier_name(u.tier),
-		# Phase 1 of the unified orders-queue design (#516): the head of the orders queue -- the
-		# single, transcript-visible source of truth for "what is this unit doing right now,"
-		# including its active phase for a phased order (e.g. a move-to-rear about-face vs its
-		# march). null when the unit is idle (no current order).
-		"current_order": Order.type_name(u.current_order.type) if u.current_order != null else null,
-		# effective_phase_name(), not a plain phase_name(phase) read: a rear-move/lateral-
-		# pivot composite's TURN/MARCH/RETURN_TURN now lives in which child of the order
-		# tree is active (docs/atomic-order-decomposition-design.md), not in `phase`
-		# itself, so this bridges back to the same reported vocabulary the transcript has
-		# always used.
-		"order_phase": u.current_order.effective_phase_name() if u.current_order != null else null,
-		# The current order's pending terminal condition, e.g. "Hold: until
-		# enemy_in_range" from the design doc becomes order_guard: "ENEMY_IN_RANGE" here --
-		# null when the order carries no guard (or there is no current order at all), so a
-		# reader can tell "unconditional order" apart from "guard not yet satisfied."
-		"order_guard": Order.guard_name(u.current_order.guard) \
-				if u.current_order != null and u.current_order.guard != Order.Guard.NONE else null,
-		# Phase 5: the not-yet-current queued orders behind current_order, for full
-		# plan legibility (the design doc's "optionally the queue tail"). Each entry is just
-		# the order's type name -- current_order/order_phase/order_guard already cover the
-		# one that's actually executing, so the tail only needs to answer "and then what."
-		# Empty (not null) when nothing is queued, so a reader doesn't have to special-case
-		# "no current order" (current_order null) vs "current order, nothing queued behind
-		# it" (queue_tail []).
-		"queue_tail": _queue_tail(u),
-	}
-	# A far-tier formation has no individual bodies, so its record carries NO per-soldier
-	# payload at all -- not even a zeroed summary. The explicit `tier` field above is what
-	# lets a reader tell "no soldiers to summarize" (FAR) apart from "per-soldier detail not
-	# requested" (a close-tier dump without SPARTA_DEMO_STATE_FULL, which still gets the
-	# compact soldier_summary but no soldiers_full arrays).
-	if u.tier != FormationTier.FAR:
-		rec["soldier_summary"] = DemoState.soldier_summary(u._sim_soldier_pos, u._sim_prone)
-		rec["soldier_summary_m"] = DemoState.soldier_summary_m(u._sim_soldier_pos,
-				WorldScaleRef.WU_PER_M)
-		if _state_full:
-			rec["soldiers_full"] = _soldier_arrays(u)
-	return rec
-
-
-## Type names of the queued orders BEHIND u.current_order, in queue order (u.orders[0] is
-## current_order itself, already reported separately -- see DemoState.sort_records_by_uid's
-## sibling note on why records stay stable: orders[1:] is a plain array slice, no group
-## reshuffling to guard against here). Mirrors Unit.queued_move_points' "everything after
-## the head" shape but reports every order kind, not just MOVE legs.
-func _queue_tail(u: Node) -> Array:
-	var tail: Array = []
-	for i in range(1, u.orders.size()):
-		tail.append(Order.type_name(u.orders[i].type))
-	return tail
-
-
-## The raw per-soldier arrays for one unit, for --full deep debugging. Positions and facings are
-## world-space Vector2s flattened to [x, y] pairs; hp/prone/stamina are index-aligned floats.
-func _soldier_arrays(u: Node) -> Dictionary:
-	var positions: Array = []
-	for p in u._sim_soldier_pos:
-		positions.append(DemoState.vec2_pair(p))
-	var facings: Array = []
-	for fdir in u._sim_soldier_facing:
-		facings.append(DemoState.vec2_pair(fdir))
-	return {
-		"pos": positions,
-		"facing": facings,
-		"hp": _floats(u._sim_soldier_hp),
-		"prone": _floats(u._sim_prone),
-		"stamina": _floats(u._sim_soldier_stamina),
-	}
-
-
-## A PackedFloat32Array -> a plain Array of rounded floats, for JSON.
-func _floats(arr: PackedFloat32Array) -> Array:
-	var out: Array = []
-	for v in arr:
-		out.append(DemoState.round_to(v, 2))
-	return out
+	return DemoState.unit_record(u, _battle.ORDER_MODE_NAMES, _battle.SPEED_SCALE, _state_full)
 
 
 # --- input injection -------------------------------------------------------

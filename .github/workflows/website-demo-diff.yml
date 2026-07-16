@@ -1,52 +1,54 @@
-# Regenerates the FULL website demo-clip set (website/tools/record-demos.sh's
-# DEMOS array — every clip embedded on the docs site, not just one) on every PR
-# that changes game-visible code, and posts a PR comment summarizing which
-# clips' rendered output changed compared to the last successfully published
-# main-branch build. This is a "snapshot testing" check: a
-# deterministic replay recorded on the same pipeline should otherwise
-# reproduce byte-for-byte, so a hash/size diff is a real signal that either
-# (a) the PR intentionally changed what a clip shows (worth describing in the
-# PR), or (b) it unintentionally regressed something the clip happens to
-# exercise.
+# Dumps a per-tick SIM STATE TRANSCRIPT for the FULL website demo-clip set
+# (website/tools/demo-catalog.sh — every clip embedded on the docs site) on every PR that
+# changes game-visible code, for both the PR head and its merge-base, and posts a PR
+# comment naming exactly which clips' sim content changed. This is genuine snapshot
+# testing: the sim is deterministic for these scripted clips, so a transcript diff flags
+# only real behavioral changes — the clip either intentionally changed (worth describing
+# in the PR) or unintentionally regressed.
 #
-# Distinct from demo-video.yml: that workflow records ONE PR-tailored clip
-# (chosen by the author via demos/demo.<slug>.json) and inlines it into the PR
-# DESCRIPTION as the primary "look at my change" artifact. This workflow
-# instead runs the site's ENTIRE demo catalog and reports what changed as a PR
-# COMMENT — it's a broad regression net over content the author didn't
-# necessarily touch directly, not a per-PR showcase.
+# This replaced a byte-hash comparison of the RENDERED clips: the encode is not
+# byte-deterministic (two same-commit recordings differ), so hash/size diffs flagged
+# ~every clip on ~every PR and carried no reviewable signal (#905). Comparing transcripts
+# against the PR's own merge-base (generated in-job) also removes the old baseline's
+# artifact-expiry and staleness problems — the answer is now "did THIS PR change any
+# clip's behavior", not "does this branch differ from whatever was last deployed".
+# Render-layer-only regressions (chrome, LOD, draw order) are outside this net; a
+# perceptual frame check could cover them as a follow-up.
 #
-# Deliberately INFORMATIONAL, not a blocking gate (per the issue's own framing
-# that a hash/size diff can false-positive on rendering nondeterminism):
-# the whole job is continue-on-error and posts a plain comment, never a
-# check-run failure. Recording ~28 clips is much heavier than demo-video.yml's
-# single clip, so this also isn't a required check for turnaround-time reasons
-# — see the timeout-minutes budget below.
+# Distinct from demo-video.yml: that workflow records ONE PR-tailored clip (chosen by the
+# author via demos/demo.<slug>.json) and inlines it into the PR DESCRIPTION as the primary
+# "look at my change" artifact. This workflow instead sweeps the site's ENTIRE demo
+# catalog and reports what changed as a PR COMMENT — a broad regression net over content
+# the author didn't necessarily touch directly, not a per-PR showcase.
+#
+# Deliberately INFORMATIONAL, not a blocking gate: a content change can be the PR's whole
+# point, so the verdict on each changed clip belongs to a human. The job is
+# continue-on-error and posts a plain comment, never a check-run failure.
 
 name: Website demo diff
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    # Mirrors demo-video.yml's path filter (game-visible code), plus the demo
-    # catalog script itself — a change to which clips get recorded, or how,
-    # should also re-run the diff.
+    # Mirrors demo-video.yml's path filter (game-visible code), plus the demo catalog and
+    # dump tooling themselves — a change to which clips get dumped, or how, should also
+    # re-run the diff.
     paths:
       - 'scenes/**'
       - 'scripts/**'
       - 'assets/**'
       - 'project.godot'
-      - 'website/tools/record-demos.sh'
+      - 'website/tools/demo-catalog.sh'
+      - 'website/tools/dump-demo-states.sh'
+      - 'tools/ci/website-demo-state-diff.sh'
 
-# One diff run per PR; a newer push cancels an in-flight one rather than
-# queuing behind it (this job can take tens of minutes for the full catalog).
+# One diff run per PR; a newer push cancels an in-flight one rather than queuing behind it.
 concurrency:
   group: website-demo-diff-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  actions: read        # list/download the baseline artifact from publish-site.yml
   pull-requests: write # post/update the diff summary comment
 
 env:
@@ -56,18 +58,21 @@ env:
 
 jobs:
   demo-diff:
-    # Same-repo only: a fork PR's GITHUB_TOKEN can't read this repo's Actions
-    # artifacts for the baseline download below (same constraint demo-video.yml
-    # documents for its media-branch push).
+    # Same-repo only: a fork PR's GITHUB_TOKEN can't post the summary comment (the same
+    # constraint demo-video.yml documents for its media-branch push).
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     # Never blocks a merge — this check is informational only (see file header).
     continue-on-error: true
-    # The full DEMOS set is much larger than demo-video.yml's one clip; budget
-    # generously so a slow-but-healthy run doesn't get killed mid-recording.
-    timeout-minutes: 60
+    # Two full headless catalog sweeps (PR + merge-base); --fixed-fps detaches the sim
+    # from the wall clock, so each sweep is CPU-bound, not clip-duration-bound.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The PR's actual merge-base with the base branch is computed below; fetch
+          # enough history for merge-base to resolve.
+          fetch-depth: 0
 
       - name: Set up Godot ${{ env.GODOT_VERSION }}
         uses: chickensoft-games/setup-godot@v2
@@ -75,66 +80,50 @@ jobs:
           version: ${{ env.GODOT_VERSION }}
           use-dotnet: false
 
-      - name: Install GUT ${{ env.GUT_VERSION }}
-        # The project's test files extend GutTest, so GUT must be present or the
-        # import step inside record-demos.sh fails to resolve that class.
+      - name: Check out the merge-base tree
+        run: |
+          set -euo pipefail
+          BASE_SHA=$(git merge-base "origin/${{ github.event.pull_request.base.ref }}" HEAD)
+          echo "Merge-base: $BASE_SHA"
+          git worktree add /tmp/base-tree "$BASE_SHA"
+
+      - name: Install GUT ${{ env.GUT_VERSION }} (both trees)
+        # The project's test files extend GutTest, so GUT must be present or the import
+        # step inside dump-demo-states.sh fails to resolve that class.
         run: |
           git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
-          mkdir -p addons
-          rm -rf addons/gut
-          cp -r /tmp/gut/addons/gut addons/gut
+          for tree in "$GITHUB_WORKSPACE" /tmp/base-tree; do
+            mkdir -p "$tree/addons"
+            rm -rf "$tree/addons/gut"
+            cp -r /tmp/gut/addons/gut "$tree/addons/gut"
+          done
 
-      - name: Install Xvfb + ffmpeg
+      - name: Dump state transcripts (this PR)
+        timeout-minutes: 18
         run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb ffmpeg
+          GODOT_BIN=godot website/tools/dump-demo-states.sh /tmp/transcripts-pr "$GITHUB_WORKSPACE"
 
-      - name: Record full website demo set (this PR)
-        timeout-minutes: 45
-        run: website/tools/record-demos.sh "$GITHUB_WORKSPACE/website/media-pr"
-
-      - name: Download last-published baseline (best effort)
-        id: baseline
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Dump state transcripts (merge-base)
+        timeout-minutes: 18
+        # The PR's own dumper script runs against the merge-base TREE, so the diff never
+        # depends on the base revision already containing the script (or agreeing on the
+        # tick cadence).
         run: |
-          set -uo pipefail
-          mkdir -p website/media-baseline
-          RUN_ID=$(gh run list --repo "${{ github.repository }}" \
-            --workflow publish-site.yml --branch main --status success \
-            --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null)
-          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
-            echo "No prior successful publish-site.yml run on main found — no baseline (first run)."
-            echo "has_baseline=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "Baseline candidate: publish-site.yml run $RUN_ID on main."
-          if gh run download "$RUN_ID" --repo "${{ github.repository }}" \
-               -n demo-media -D website/media-baseline; then
-            echo "has_baseline=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::could not download demo-media artifact from run $RUN_ID (expired, or the run predates this workflow) — no baseline."
-            echo "has_baseline=false" >> "$GITHUB_OUTPUT"
-          fi
+          GODOT_BIN=godot website/tools/dump-demo-states.sh /tmp/transcripts-base /tmp/base-tree
 
       - name: Build diff summary
         run: |
-          tools/ci/website-demo-diff-summary.sh \
-            website/media-baseline website/media-pr /tmp/website-demo-diff.md
+          tools/ci/website-demo-state-diff.sh \
+            /tmp/transcripts-base /tmp/transcripts-pr /tmp/website-demo-diff.md
 
       - name: Post PR comment
         env:
           GH_TOKEN: ${{ github.token }}
-          HAS_BASELINE: ${{ steps.baseline.outputs.has_baseline }}
         run: |
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
           MARKER="<!-- sparta-website-demo-diff -->"
-          if [ "$HAS_BASELINE" = "true" ]; then
-            INTRO="Compared against the last published \`main\` build (the most recent successful \`publish-site.yml\` run's \`demo-media\` artifact)."
-          else
-            INTRO="**No baseline available** (first run, or the prior build's artifact already expired) — showing this PR's freshly recorded clips only; nothing to diff against yet."
-          fi
-          BODY=$(printf '%s\n\n### 🎞️ Website demo snapshot diff\n\n%s\n\n%s\n\n<sub>Informational only — not a blocking gate (rendering can vary run to run, so a hash/size diff flags a change worth a human look, not necessarily a regression). See [#532](https://github.com/Lacaedemon/sparta/issues/532).</sub>' \
+          INTRO="Per-tick sim state transcripts for every website demo clip, this PR's head vs its merge-base. A listed clip's sim content genuinely changed — either this PR's intended effect (worth a line in the description) or an unintended regression. Rendering-only changes are outside this net."
+          BODY=$(printf '%s\n\n### 🎞️ Website demo snapshot diff\n\n%s\n\n%s\n\n<sub>Informational only — not a blocking gate. Transcript diffs are deterministic sim content, unlike the old rendered-clip byte hashes. See [#905](https://github.com/Lacaedemon/sparta/issues/905).</sub>' \
             "$MARKER" "$INTRO" "$(cat /tmp/website-demo-diff.md)")
           tools/ci/upsert-pr-comment.sh "${{ github.repository }}" "$PR" "$MARKER" "$BODY" "website demo diff comment"

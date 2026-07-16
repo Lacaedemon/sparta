@@ -32,6 +32,14 @@ func _ready() -> void:
 	# process-wide kill timer in the test run.
 	if get_parent() == get_tree().root:
 		get_tree().root.add_child.call_deferred(RunWatchdog.create("replay recording"))
+		# Env-gated state dumping (SPARTA_DEMO_STATE), the replay path's counterpart to
+		# DemoInputRecorder's dump: this scene is freed when the battle replaces it, so the
+		# sink node lives under the root, where it survives the swap. Same root-only guard
+		# as the watchdog: a GUT test instantiating the runner as a child must not install
+		# a tree-quitting node into the test run.
+		var sink := DemoStateSink.arm_from_env("replay")
+		if sink != null:
+			get_tree().root.add_child.call_deferred(sink)
 
 	var replay_path := OS.get_environment("SPARTA_DEMO_REPLAY")
 	if replay_path != "":
