@@ -19,7 +19,7 @@ tools/check.sh --help          # full usage
 
 | Check | What it does | Mirrors |
 |---|---|---|
-| `validate` | `godot --headless --import` loads the whole project (autoloads, `class_name` globals, cross-script refs) and fails on any script/parse error. | `godot-ci.yml` |
+| `validate` | `godot --headless --import` loads the whole project (autoloads, `class_name` globals, cross-script refs) and fails on any script/parse error, then a compile sweep (`tools/ci/compile_all_scripts.gd`) force-loads every `.gd` — catching parse errors in scripts nothing references at import time, which the import pass alone misses. | `godot-ci.yml` |
 | `test` | Runs the GUT unit suite headlessly (`-gexit`). | `godot-ci.yml` |
 | `chars` | Flags curly quotes and en/em dashes in the Quarto docs (`*.qmd`, `*.R`), which are kept plain-ASCII. | `check-non-standard-chars.yml` |
 | `comments` | Flags issue/PR-number citations (`#123`) added by this diff's GDScript (`*.gd`) comment lines — CLAUDE.md's "no issue-number references" rule (`TODO(#N):`/`FIXME(#N):` excepted). Diff-scoped against `origin/main` (or `SPARTA_CHECK_COMMENTS_BASE`), not a whole-repo scan, so pre-existing citations elsewhere in the tree don't fail the check. | `check-comment-citations.yml` |

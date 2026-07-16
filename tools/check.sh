@@ -284,6 +284,22 @@ check_validate() {
   fi
   rm -f "$log"
   info "Project imported with no script/parse errors."
+  # The import pass compiles only what the imported resources reach, so a parse error
+  # in a script nothing references at import time (a tools/ helper, a scene-swapped
+  # runner's dependency) sails past it and only surfaces at runtime. Sweep-load every
+  # .gd to force full compilation; the sweep exits non-zero on any failure (and prints
+  # which scripts broke).
+  rc=0
+  ( cd "$PROJECT_ROOT" && run_bounded "$VALIDATE_TIMEOUT" \
+      "$GODOT_BIN" --headless -s tools/ci/compile_all_scripts.gd ) 2>&1 || rc=$?
+  if run_bounded_timed_out "$rc"; then
+    err "Script compile sweep timed out after ${VALIDATE_TIMEOUT}s and was killed (no orphan left behind)."
+    return 1
+  fi
+  if [ "$rc" -ne 0 ]; then
+    err "One or more scripts failed to compile (see the compile-sweep lines above)."
+    return 1
+  fi
 }
 
 check_test() {
