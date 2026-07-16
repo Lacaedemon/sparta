@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/resize-grips-follow.json",
+  "caption": "Resize grips follow the selected unit (#886): the flank grips on a selected unit used to freeze at the spot of the last input-driven redraw while the unit marched away under its order. They now track the unit's live position, facing, and block width for the whole march.",
+  "fixed_fps": 30,
+  "max_frames": 170,
+  "fps": 15,
+  "width": 720
+}

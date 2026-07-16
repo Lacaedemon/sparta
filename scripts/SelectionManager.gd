@@ -153,6 +153,9 @@ var _drag_cur: Vector2 = Vector2.ZERO
 var _resizing: bool = false
 var _resize_unit = null
 var _resize_files: int = 0
+# Snapshot of the grip geometry's inputs as of the last redraw request, so _process
+# can spot the selected unit moving out from under its grips (see _track_grip_motion).
+var _grip_state: Array = []
 # Right-mouse drag: a press-hold-drag-release that deploys a single selected unit
 # along the dragged line (left flank -> right flank); a short press is a plain order.
 var _rmb_down: bool = false
@@ -1515,8 +1518,34 @@ func _process(_delta: float) -> void:
 	if showing_orders or _was_showing_orders:
 		queue_redraw()
 	_was_showing_orders = showing_orders
+	_track_grip_motion()
 	if _cursor_sprite.visible:
 		_cursor_sprite.position = get_viewport().get_mouse_position()
+
+
+## Redraw when the selected unit slides out from under its resize grips. The grips are
+## drawn by this node but anchored to the unit's live transform, and a unit keeps moving
+## with no further input (marching an order, body-coupling drift, a reform, casualties
+## shrinking the block) — so watch the inputs the grip geometry reads and redraw whenever
+## any of them changed since the last request. Idle units change nothing, so this stays
+## a cheap comparison outside the frames where something actually moved.
+## Returns whether a redraw was requested, so the motion test can assert on it directly.
+func _track_grip_motion() -> bool:
+	var now := _current_grip_state()
+	if now == _grip_state:
+		return false
+	_grip_state = now
+	queue_redraw()
+	return true
+
+
+## The grip geometry's current inputs: everything _resize_handle_positions reads
+## (position, facing, block extent), or empty when no grips are showing.
+func _current_grip_state() -> Array:
+	var u = _single_selected_unit()
+	if u == null:
+		return []
+	return [u.global_position, u.facing, u.render_block_extent()]
 
 
 # --- control groups --------------------------------------------------------
