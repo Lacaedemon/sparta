@@ -276,6 +276,48 @@ func test_resize_handle_at_grabs_a_grip_and_ignores_empty_space() -> void:
 			"a cursor far from any grip grabs nothing")
 
 
+func test_track_grip_motion_redraws_when_the_selected_unit_moves() -> void:
+	# The grips anchor to the unit's live transform, but a unit marching an order
+	# moves with no further input — _process must notice and request a redraw, or
+	# the grips freeze at the last input-driven draw while the unit walks away.
+	var sm := _sm()
+	var u := _unit()
+	sm._selected = [u]
+	assert_true(sm._track_grip_motion(), "the first look at a selection seeds the snapshot")
+	assert_false(sm._track_grip_motion(), "a still unit requests nothing")
+	u.global_position += Vector2(30, 0)
+	assert_true(sm._track_grip_motion(), "the unit moving out from under its grips redraws")
+	u.facing = u.facing.rotated(PI * 0.25)
+	assert_true(sm._track_grip_motion(), "a facing change swings the grips, so it redraws too")
+	assert_false(sm._track_grip_motion(), "settled again -> quiet again")
+
+
+func test_track_grip_motion_redraws_once_when_the_selection_empties() -> void:
+	# Deselecting drops the grips entirely; that last transition needs one redraw
+	# to wipe them, then an empty selection stays quiet.
+	var sm := _sm()
+	var u := _unit()
+	sm._selected = [u]
+	sm._track_grip_motion()
+	sm._selected = []
+	assert_true(sm._track_grip_motion(), "losing the grips is itself a visible change")
+	assert_false(sm._track_grip_motion(), "no selection, nothing to track")
+
+
+func test_current_grip_state_reads_exactly_what_the_grip_geometry_reads() -> void:
+	# The snapshot must cover every input _resize_handle_positions consumes —
+	# position, facing, and block extent — or a change to the missed one goes stale.
+	var sm := _sm()
+	var u := _unit()
+	sm._selected = [u]
+	var state: Array = sm._current_grip_state()
+	assert_eq(state, [u.global_position, u.facing, u.render_block_extent()],
+			"the snapshot mirrors the grip geometry's inputs")
+	sm._selected = [u, _unit()]
+	assert_eq(sm._current_grip_state(), [],
+			"a multi-selection shows no grips, so there is nothing to snapshot")
+
+
 func test_resize_preview_half_width_scales_with_the_unit_own_spacing() -> void:
 	# The drag-resize preview line must span the unit's OWN
 	# formed-up width, not the density-blind NORMAL-order pitch -- otherwise a LOOSE unit's
