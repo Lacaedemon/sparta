@@ -725,7 +725,7 @@ check_units() {
   # Boundary files where runtime use of the scale constant is the whole point.
   # (Battle.gd is allowlisted file-level for its spawn/loadout conversion; the
   # lint pins boundary topology, review pins placement within the file.)
-  local allow='^b/(scripts/(WorldScale|Battle|DistanceLegend)\.gd|test/)'
+  local allow='^(scripts/(WorldScale|Battle|DistanceLegend).gd|test/)'
 
   local stray
   stray="$(printf '%s\n' "$added" \
