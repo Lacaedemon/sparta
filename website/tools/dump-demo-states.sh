@@ -70,6 +70,14 @@ for spec in "${DEMOS[@]}"; do
     SCENE=res://tools/demo/DemoInputRecorder.tscn
     ENV_KEY=SPARTA_DEMO_INPUT
   else
+    # Replay-type rows need DemoStateSink (DemoRunner is freed on the scene swap, so the
+    # sink carries the dump). A tree that predates it — e.g. the merge-base right after
+    # the sink lands — can't transcript replays; skip rather than fail, and the diff
+    # reports those clips as new on the side that can. Self-resolving after one merge.
+    if [ ! -f "$PROJECT_DIR/tools/demo/DemoStateSink.gd" ]; then
+      echo "== '$NAME': replay-type row but this tree has no DemoStateSink; skipping =="
+      continue
+    fi
     SCENE=res://tools/demo/DemoRunner.tscn
     ENV_KEY=SPARTA_DEMO_REPLAY
   fi
