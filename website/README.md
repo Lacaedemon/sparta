@@ -46,7 +46,8 @@ show their poster / fallback text — the site still builds fine.
 
 To feature a **specific tactic** (a flank charge, a rout), play that battle in-game,
 copy the saved replay from `user://replays/` into `demos/`, and add a row to the
-`DEMOS` list in `website/tools/record-demos.sh`.
+`DEMOS` list in `website/tools/demo-catalog.sh` (shared by `record-demos.sh` and the
+per-PR state-transcript diff, so a new clip joins both automatically).
 
 ## Deployment
 
