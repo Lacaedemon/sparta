@@ -110,6 +110,14 @@ var shield_type_id: int = LoadoutRegistry.SHIELD_SCUTUM
 # lag between a signal and the regiment actually stepping off. Default 0.5 s;
 # faster units (cavalry) can be given a lower value at spawn time.
 @export var order_response_delay: float = 0.5
+# Seconds before the unit starts executing an atomic drill order (wheel, about-face,
+# quarter-turn, countermarch) -- the beat between the drill command and the men actually
+# beginning the evolution. Shorter than order_response_delay: a drill is a rehearsed,
+# single-evolution response to a direct command, not a fresh movement plan. A per-unit
+# characteristic like the move delay above, so an elite regiment can be given a lower
+# value (snappier drill) and a raw levy a higher one; spawn reads an optional
+# `atomic_response_s` loadout/scenario key (see Battle's spawn path).
+@export var atomic_response_delay: float = 0.2
 # Discipline and experience level (0.0 raw recruits → 1.0 veteran legionaries).
 # Well-trained melee units cycle their ranks in combat: fresh files rotate to the
 # front, which reduces fatigue buildup and sustains morale through prolonged fights.
@@ -2726,6 +2734,7 @@ func conversio() -> void:
 	order.turn_start_facing = facing
 	order.turn_target = Vector2(-facing.x, -facing.y)
 	set_current_order(order)
+	_start_atomic_response()
 
 
 ## Quarter-turn (90° in-place turn, Aelian/Asclepiodotus): every soldier pivots a quarter
@@ -2744,6 +2753,7 @@ func quarter_turn(dir: int) -> void:
 	order.turn_start_facing = facing
 	order.turn_target = facing.rotated(signf(dir) * PI * 0.5)
 	set_current_order(order)
+	_start_atomic_response()
 
 
 ## Arm the in-place turn opening (or, on a second call, closing) a phased MOVE order,
@@ -2844,6 +2854,7 @@ func countermarch(variant: int) -> void:
 	set_current_order(order)
 	has_move_target = false
 	begin_about_face(order)
+	_start_atomic_response()
 
 
 ## The countermarch's march destination for `variant`, computed from the CURRENT facing/
@@ -3146,6 +3157,7 @@ func wheel(dir: int) -> void:
 	order.turn_start_facing = facing
 	order.turn_target = facing.rotated(signf(dir) * PI * 0.5)
 	set_current_order(order)
+	_start_atomic_response()
 
 
 ## Advance a wheel one tick: rotate `facing` toward the order's swing goal at the drill rate,
@@ -3845,6 +3857,17 @@ func start_order_response() -> void:
 	_formation_mirror_x = false
 	_engage_turn_target = Vector2.ZERO
 	_engage_turn_enemy = null
+
+
+## Arm the atomic-drill response beat: the unit holds for atomic_response_delay seconds
+## before _think starts advancing the freshly-installed drill order. Reuses the same
+## _order_response_timer freeze move orders count down (start_order_response above), so
+## the two delays compose via max rather than stacking, and the drill inherits the
+## freeze's existing contract (a fighting unit is never gated -- _can_drill refuses
+## drills in combat anyway). Unlike start_order_response this does NOT re-square the
+## grid or drop an engage turn: a drill manages its own geometry.
+func _start_atomic_response() -> void:
+	_order_response_timer = maxf(_order_response_timer, atomic_response_delay)
 
 
 ## Commit a pending reform-before-move hold: hand the REFORM leaf's stored destination off to

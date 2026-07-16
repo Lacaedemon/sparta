@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/drill-response-beat.json",
+  "caption": "Issue #877: atomic drill orders (wheel, about-face, quarter-turn, countermarch) now take a response beat before the men start the evolution -- a configurable per-unit characteristic (Unit.atomic_response_delay, default 0.2 s). Two Infantry blocks get ONE wheel command on the same tick: the veteran (left, 0.05 s) is already swinging while the raw levy (right, 0.6 s) still stands square for over half a second before its own swing begins.",
+  "fixed_fps": 30,
+  "max_frames": 140,
+  "fps": 15,
+  "width": 720
+}

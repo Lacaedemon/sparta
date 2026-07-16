@@ -167,6 +167,10 @@ script under `demos/inputs/`:
     `3` Square, `4` Shield Wall, `5` Testudo). Square is the anti-cavalry ring; the two
     shielded stances plant and barely move but blunt missile fire (testudo from all
     sides, shield wall from the front).
+  - `atomic_response_s` (optional) — seconds the unit holds between a drill command
+    (wheel, about-face, quarter-turn, countermarch) and the men starting the evolution
+    (default 0.2, `Unit.atomic_response_delay`). Lower stages an elite regiment's
+    snappier drill; higher a raw levy's sluggish one.
   - `starting_state` (optional) — force the unit's initial `Unit.State` on spawn, for
     staging a state a normal battle can't otherwise reach: `3` (`ROUTING`) starts the
     unit already fleeing/recovering — routing is normally only reachable as a side

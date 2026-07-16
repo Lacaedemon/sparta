@@ -84,12 +84,12 @@ func test_wheel_in_live_battle_hinges_without_surge() -> void:
 	assert_gt(far_travel, 30.0, "the far end swept a real arc")
 
 
-## Ticks past the demo script's last scripted key (Z at tick 320) before it's meaningful to
+## Ticks past the demo script's last scripted key (Z at tick 340) before it's meaningful to
 ## start polling for the second wheel's completion — polling any earlier could catch the unit
 ## between the two scripted wheels (idle, not yet wheeling) and exit the settle loop before
-## the second wheel has even started. A little past 320 is enough; the settle loop below
+## the second wheel has even started. A little past 340 is enough; the settle loop below
 ## supplies its own generous cap for however long the actual swing takes.
-const _LAST_SCRIPTED_KEY_TICK := 320
+const _LAST_SCRIPTED_KEY_TICK := 340
 # Generous cap on top of the last scripted key: covers the ~270-tick gait-paced swing (the
 # outer file jogs the arc, so this 120-man block's 90° wheel takes ~4.5 s — see
 # UnitManeuver.wheel_gait_rate) plus headroom for any per-tick scheduling variance between
@@ -115,8 +115,8 @@ func test_wheel_demo_input_drives_a_wheel() -> void:
 	# yet on this frame; wait for it before reading its tick.
 	await get_tree().physics_frame
 	var battle: Node = recorder.get_node("Battle")
-	# Step past every scripted input (the last is Z at tick 150) so both wheels have been
-	# issued before we start looking for a target or polling for settle.
+	# Step past every scripted input (the last is Z at _LAST_SCRIPTED_KEY_TICK) so both
+	# wheels have been issued before we start looking for a target or polling for settle.
 	while battle.current_tick() <= _LAST_SCRIPTED_KEY_TICK:
 		await get_tree().physics_frame
 	var target: Unit = null

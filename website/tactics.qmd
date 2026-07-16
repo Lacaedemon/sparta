@@ -1191,6 +1191,13 @@ Units don't react instantly to orders. There is a brief **reaction delay** befor
 execute --- about **0.5 s** for infantry and spearmen, **0.3 s** for cavalry. A unit
 already in melee is not slowed by the delay.
 
+Drill commands (the wheel, about-face, quarter-turn, and countermarch) carry their own,
+shorter **drill response beat** --- about **0.2 s** by default between the command and
+the men starting the evolution. A drill is a rehearsed, single-evolution response to a
+direct order, so the beat is quicker than planning a fresh march. It is a per-unit
+characteristic: an elite regiment can be staged with a snappier beat and a raw levy
+with a sluggish one, so the same command visibly ripples through a mixed line.
+
 This models the time for orders to travel down the chain of command. In practice:
 
 - **Commit cavalry early.** If you wait until the last moment to redirect horse, they

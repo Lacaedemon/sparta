@@ -609,6 +609,12 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	# Cavalry respond faster — more mobile and battle-conditioned.
 	if d["cav"]:
 		u.order_response_delay = 0.3
+	# Optional drill snappiness override (seconds): how long the regiment holds between a
+	# drill command and the men starting the evolution (see Unit.atomic_response_delay).
+	# Lets a loadout or scenario give an elite regiment a bonus (lower) or a raw levy a
+	# malus (higher); a dict without the key keeps the Unit default.
+	if d.has("atomic_response_s"):
+		u.atomic_response_delay = float(d["atomic_response_s"])
 	u.facing = facing
 	u.position = pos
 	u.field_bounds = FIELD   # so a skirmisher kites without backing off the map
@@ -653,6 +659,8 @@ func _spawn_scenario(specs: Array) -> void:
 			d["starting_state"] = int(spec["starting_state"])
 		if spec.has("disciplined"):
 			d["disciplined"] = bool(spec["disciplined"])
+		if spec.has("atomic_response_s"):
+			d["atomic_response_s"] = float(spec["atomic_response_s"])
 		var team := int(spec.get("team", 0))
 		var pos := Vector2(float(spec.get("x", FIELD.size.x * 0.5)), float(spec.get("y", FIELD.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
