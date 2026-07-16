@@ -706,10 +706,10 @@ func show_unit(u, group_count: int) -> void:
 			else "  Cohesion: %d%%" % mini(roundi(u.cohesion * 100.0), 99)
 	var training_text: String = "" if u.training <= 0.0 \
 			else "  Training: %d%%" % clampi(roundi(u.training * 100.0), 1, 100)
-	_info.text = "%s%s\nType: %s  Commander: %s\nSoldiers: %d / %d\nMorale: %d  Fatigue: %d%%%s%s\nFormation: %s  Width: %s  Order: %s" % [
+	_info.text = "%s%s\nType: %s  Commander: %s\nSoldiers: %d / %d\nMorale: %d  Fatigue: %d%%%s%s\nFormation: %s  Width: %s  Order: %s\n%s" % [
 		u.unit_name, extra, kind, OfficerRank.title_for(u), u.soldiers, u.max_soldiers, int(u.morale), int(u.fatigue),
 		cohesion_text, training_text, u.formation_summary(), UnitFormation.files_label(UnitFormation.frontage(u)),
-		u.order_summary()
+		u.order_summary(), _stat_sheet(u)
 	]
 	_rebuild_order_tree(u)
 	if _ctrl_bar != null:
@@ -726,6 +726,73 @@ func clear_unit() -> void:
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = false
 		_info_panel_lower()
+
+
+# Selected-unit acceleration readout: the change per second of the shown unit's mean
+# soldier speed, sampled once per physics tick (so the derivative reads in sim time,
+# holding its last value while the game is paused). Keyed by unit uid so switching
+# the shown unit reseeds instead of differencing across two different regiments.
+# Display-only state -- nothing in the simulation reads it.
+var _accel_uid: int = -1
+var _accel_prev_mps: float = 0.0
+var _accel_prev_frame: int = -1
+var _accel_mps2: float = 0.0
+
+
+## The remaining unit-level characteristics, static and dynamic, below the original
+## stat lines: attack/defense/armour, per-soldier hit points (mean, spread, and the
+## type's full-health value), the ordered gait with this unit's own pace for it, the
+## block's live mean soldier speed and its acceleration, and the weapon/shield types
+## with their stats. Speeds render in metric via DistanceLegend, per the units
+## convention -- no raw world-unit number reaches the player.
+func _stat_sheet(u) -> String:
+	var profile: Dictionary = u.combat_profile()
+	var hp: Vector2 = UnitStats.mean_sd_positive(u._sim_soldier_hp)
+	var mean_mps: float = DistanceLegend.mps_for_world_speed(
+			UnitStats.mean_body_speed(u._sim_body_vel, u._sim_soldier_hp),
+			BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
+	_track_accel(u, mean_mps)
+	var gait: int = u.ordered_gait()
+	var gait_text: String = "Auto"
+	if gait >= 0:
+		var gait_mps: float = DistanceLegend.mps_for_world_speed(
+				u.gait_pace(gait), BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
+		gait_text = "%s (%s)" % [UnitRef.GAIT_NAMES.get(gait, "Auto"),
+				DistanceLegend.speed_label_text(gait_mps)]
+	var weapon: Weapon = LoadoutRegistry.weapon(u.weapon_type_id)
+	var shield: Shield = LoadoutRegistry.shield(u.shield_type_id)
+	return "\n".join([
+		"Attack: %d  Defense: %d  Armour: %d%%" % [u.attack, u.defense,
+				roundi(profile["armour"] * 100.0)],
+		"HP per man: %.0f ±%.0f of %.0f" % [hp.x, hp.y, profile["max_health"]],
+		"Gait: %s  Speed: %s  Accel: %+.1f m/s²" % [gait_text,
+				DistanceLegend.speed_label_text(mean_mps),
+				# Snap sub-display-precision values to zero so the readout can't show "-0.0".
+				0.0 if absf(_accel_mps2) < 0.05 else _accel_mps2],
+		"%s: reach %.1f m, lethality %.2f" % [weapon.display_name, weapon.reach_m,
+				weapon.lethality],
+		"%s: block %d%%, arc %d°" % [shield.display_name,
+				roundi(shield.block_value * 100.0), roundi(shield.arc_deg)],
+	])
+
+
+## Advance the acceleration sample toward this tick's mean speed. Same-tick repeat
+## calls (the HUD refreshes every rendered frame, physics ticks come slower) keep
+## the last derivative; a different unit reseeds it to zero.
+func _track_accel(u, mean_mps: float) -> void:
+	var frame: int = Engine.get_physics_frames()
+	if u.uid != _accel_uid:
+		_accel_uid = u.uid
+		_accel_prev_mps = mean_mps
+		_accel_prev_frame = frame
+		_accel_mps2 = 0.0
+		return
+	if frame == _accel_prev_frame:
+		return
+	var dt: float = float(frame - _accel_prev_frame) / float(Replay.PHYSICS_TPS)
+	_accel_mps2 = (mean_mps - _accel_prev_mps) / dt
+	_accel_prev_mps = mean_mps
+	_accel_prev_frame = frame
 
 
 # --- Order-tree display (docs/atomic-order-decomposition-design.md, "HUD: the tree

@@ -4112,3 +4112,27 @@ func test_cycle_charge_cornered_pull_back_fights_in_place() -> void:
 	u._think(0.1)
 	assert_false(u._cycle_recharging, "a cornered pull-back drops the recharge phase")
 	assert_eq(u.state, Unit.State.FIGHTING, "and the unit fights in place rather than freezing")
+
+
+func test_gait_pace_maps_each_gait_to_this_units_own_stat() -> void:
+	# The pace a gait ORDERS, from this unit's own stat block: walk and the unknown
+	# fallback read walk_speed, jog reads jog_speed, and run/sprint both read the
+	# type's top pace (RUN's close-in switchover lives in _move_to, not here).
+	var u := _make_unit()
+	u.walk_speed = 40.0
+	u.jog_speed = 60.0
+	u.move_speed = 80.0
+	assert_eq(u.gait_pace(Unit.GAIT_WALK), 40.0, "walk reads walk_speed")
+	assert_eq(u.gait_pace(Unit.GAIT_JOG), 60.0, "jog reads jog_speed")
+	assert_eq(u.gait_pace(Unit.GAIT_RUN), 80.0, "run's nominal pace is the top speed")
+	assert_eq(u.gait_pace(Unit.GAIT_SPRINT), 80.0, "sprint reads the top speed")
+	assert_eq(u.gait_pace(-1), 40.0, "an unknown value falls back to walk, like _move_to")
+
+
+func test_ordered_gait_reads_only_an_explicit_move_gait() -> void:
+	var u := _make_unit()
+	assert_eq(u.ordered_gait(), -1, "no order -> the unit paces itself")
+	u.current_order = Order.new_move(Vector2(100, 100))
+	assert_eq(u.ordered_gait(), -1, "a move without an explicit gait stays AUTO")
+	u.current_order = Order.new_move(Vector2(100, 100), 0, Unit.GAIT_SPRINT)
+	assert_eq(u.ordered_gait(), Unit.GAIT_SPRINT, "an explicit move gait reads through")
