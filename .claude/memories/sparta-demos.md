@@ -461,7 +461,7 @@ When a demo's point is that two units START the same evolution at different time
 per-unit response-delay characteristic), pick a maneuver whose progress is unmistakable in
 motion — a wheel's sweeping arc — rather than an in-place turn. A quarter-turn/conversio
 preserves the block's footprint (that's the point of those drills — see "Footprint-preserving
-maneuvers are inherently subtle" above), so two blocks staggered by half a second read as
+maneuvers are inherently subtle" below), so two blocks staggered by half a second read as
 "nothing happening twice": neither silhouette changes, and at mark LOD the only signal is a
 few-pixel glyph rotation. The same stagger staged on a wheel reads instantly — one block
 visibly swinging while the other still stands square. (`Lacaedemon/sparta` PR #899,
