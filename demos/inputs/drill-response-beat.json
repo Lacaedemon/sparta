@@ -1,0 +1,66 @@
+{
+  "_comment": "Drill response-beat demo (issue #877, drill mode -- no enemy): two 40-man Infantry blocks side by side, a veteran (left, atomic_response_s 0.05) and a raw levy (right, atomic_response_s 0.6). Both are box-selected (the drag spans ticks 10-26), then given ONE right-wheel command (C) at tick 40. The veteran's block is already swinging about its hinge while the levy still stands square, bracing for over half a second before its own swing begins -- the new per-unit atomic-order response delay, the beat between a drill command and the men actually starting the evolution. A wheel is used (rather than an in-place turn) because its sweeping arc is unmistakable in motion, so the stagger between the two start times reads clearly. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "87701",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 500,
+      "y": 380,
+      "count": 40,
+      "facing": [
+        0,
+        1
+      ],
+      "atomic_response_s": 0.05
+    },
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 700,
+      "y": 380,
+      "count": 40,
+      "facing": [
+        0,
+        1
+      ],
+      "atomic_response_s": 0.6
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 600.0,
+      "y": 360.0,
+      "zoom": 1.2
+    }
+  ],
+  "steps": [
+    {
+      "tick": 10,
+      "box": {
+        "from": [
+          420,
+          330
+        ],
+        "to": [
+          780,
+          430
+        ]
+      }
+    },
+    {
+      "tick": 40,
+      "key": "C"
+    }
+  ],
+  "state": [
+    42,
+    60,
+    90,
+    150,
+    210,
+    250
+  ]
+}
