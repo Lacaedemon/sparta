@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/cavalry-loadout-panel.json",
+  "caption": "Armor and mount are now typed loadout objects: a selected cavalry regiment's stat sheet names its panoply -- 'Lorica squamata: protection 40%, 13 kg' and 'Warhorse: mass +1.5, pace 8.5 m/s' -- alongside the existing weapon/shield rows, with combat reading protection and contact mass through the same interned registry (values bit-identical to the old hard-coded scalars).",
+  "fixed_fps": 30,
+  "max_frames": 120,
+  "fps": 15,
+  "width": 720
+}

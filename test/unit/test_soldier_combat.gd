@@ -59,6 +59,50 @@ func test_profile_infantry_is_the_default() -> void:
 	assert_almost_eq(p["max_stamina"], 100.0, TOL)
 
 
+func test_profile_typed_panoply_matches_the_legacy_rows_bit_for_bit() -> void:
+	# Every roster type's default armor/mount ids must reproduce the legacy row's
+	# armour and mass EXACTLY — the typed loadout renames the scalars' home, it
+	# must not move combat or contact physics by any amount.
+	var inf: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5,
+			LoadoutRegistry.ARMOR_HAMATA, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(inf["armour"], 0.45, "typed infantry armour == the legacy literal")
+	assert_eq(inf["mass"], 1.0, "typed infantry mass == the legacy literal")
+	var spear: Dictionary = SoldierCombat.profile_for(false, true, false, 0.75,
+			LoadoutRegistry.ARMOR_LINOTHORAX, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(spear["armour"], 0.35, "typed spearman armour == the legacy literal")
+	assert_eq(spear["mass"], 1.0, "typed spearman mass == the legacy literal")
+	var arch: Dictionary = SoldierCombat.profile_for(false, false, true, 0.3,
+			LoadoutRegistry.ARMOR_TUNIC, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(arch["armour"], 0.10, "typed archer armour == the legacy literal")
+	assert_eq(arch["mass"], 0.9, "typed archer mass == the legacy literal (light body)")
+	var cav: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6,
+			LoadoutRegistry.ARMOR_SQUAMATA, LoadoutRegistry.MOUNT_WARHORSE)
+	assert_eq(cav["armour"], 0.40, "typed cavalry armour == the legacy literal")
+	assert_eq(cav["mass"], 2.5, "body 1.0 + warhorse 1.5 == the legacy cavalry mass")
+
+
+func test_profile_zero_ids_keep_the_legacy_fallback() -> void:
+	# A bare profile_for(flags, training) call — and any unknown id — keeps the
+	# hard-coded row values, so old call sites and stray ids can't shift combat.
+	var bare: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6)
+	assert_eq(bare["armour"], 0.40, "no armor id -> the legacy cavalry armour")
+	assert_eq(bare["mass"], 2.5, "no mount id -> the legacy cavalry mass")
+	var unknown: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6, 999, 999)
+	assert_eq(unknown["armour"], 0.40, "an unknown armor id keeps the legacy armour")
+	assert_eq(unknown["mass"], 2.5, "an unknown mount id keeps the legacy mass")
+
+
+func test_profile_typed_panoply_can_diverge_from_the_type_default() -> void:
+	# The point of the typed loadout: a unit can wear a DIFFERENT panoply than its
+	# type's default, and the profile follows the worn type, not the flags.
+	var mailed_archer: Dictionary = SoldierCombat.profile_for(false, false, true, 0.3,
+			LoadoutRegistry.ARMOR_HAMATA, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(mailed_archer["armour"], 0.45, "an archer in mail protects like mail")
+	var mounted_infantry: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5,
+			LoadoutRegistry.ARMOR_HAMATA, LoadoutRegistry.MOUNT_WARHORSE)
+	assert_eq(mounted_infantry["mass"], 2.5, "a mounted foot profile carries the horse's mass")
+
+
 func test_instance_profile_reads_own_flags() -> void:
 	var u: Unit = Unit.new()
 	add_child_autofree(u)            # _ready() sets soldiers + joins groups

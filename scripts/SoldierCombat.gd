@@ -88,23 +88,47 @@ const PRONE_RISE_TIME: float = 1.2         # T_up (seconds) a felled soldier nee
 
 
 ## Per-type combat profile (docs/combat-model.md "Soldier attributes"): skill is the
-## unit's training; armour, mass, and the health/stamina pools are per type. Weapon
-## lethality and the shield's own block value live on the interned types
-## (LoadoutRegistry) and are read at strike time through the per-soldier id arrays.
+## unit's training; the health/stamina pools are per type. Weapon lethality and the
+## shield's own block value live on the interned types (LoadoutRegistry) and are
+## read at strike time through the per-soldier id arrays.
 ## shield_residual is the non-shield remainder of the defensive shield weight b —
 ## stance and training deflection a soldier keeps with no shield in hand (the
 ## spearman's braced anti-cavalry footing, the archer's unshielded dodge) — and the
 ## land contest composes b = shield_residual + Shield.block_value, bit-for-bit the
 ## pre-split per-type weight. Pure and static so it is testable without a live node.
-static func profile_for(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool, p_training: float) -> Dictionary:
+##
+## armour and mass now come from the typed loadout when ids are given: a registered
+## Armor's protection replaces the row's legacy armour scalar, and a registered
+## Mount recomposes mass as the soldier's own body mass plus the mount's
+## contribution (body 1.0 + warhorse 1.5 = the cavalry row's pre-registry 2.5).
+## Zero/unknown ids keep the legacy row values, so a bare
+## profile_for(flags, training) call — and every unit whose ids match its type's
+## default panoply — is bit-identical to the pre-registry table. Registry lookups
+## are interned dictionary reads (no allocation, no RNG), so this stays replay-safe.
+static func profile_for(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool, p_training: float,
+		p_armor_id: int = 0, p_mount_id: int = 0) -> Dictionary:
 	var skill: float = clampf(p_training, 0.0, 1.0)
+	var prof: Dictionary
+	var body_mass: float
 	if p_is_cavalry:
-		return {"skill": skill, "armour": 0.40, "shield_residual": 0.0, "max_health": 140.0, "max_stamina": 120.0, "mass": 2.5}
-	if p_anti_cavalry:
-		return {"skill": skill, "armour": 0.35, "shield_residual": 0.05, "max_health": 100.0, "max_stamina": 100.0, "mass": 1.0}
-	if p_is_ranged:
-		return {"skill": skill, "armour": 0.10, "shield_residual": 0.05, "max_health": 80.0, "max_stamina": 90.0, "mass": 0.9}
-	return {"skill": skill, "armour": 0.45, "shield_residual": 0.0, "max_health": 110.0, "max_stamina": 100.0, "mass": 1.0}
+		prof = {"skill": skill, "armour": 0.40, "shield_residual": 0.0, "max_health": 140.0, "max_stamina": 120.0, "mass": 2.5}
+		body_mass = 1.0
+	elif p_anti_cavalry:
+		prof = {"skill": skill, "armour": 0.35, "shield_residual": 0.05, "max_health": 100.0, "max_stamina": 100.0, "mass": 1.0}
+		body_mass = 1.0
+	elif p_is_ranged:
+		prof = {"skill": skill, "armour": 0.10, "shield_residual": 0.05, "max_health": 80.0, "max_stamina": 90.0, "mass": 0.9}
+		body_mass = 0.9
+	else:
+		prof = {"skill": skill, "armour": 0.45, "shield_residual": 0.0, "max_health": 110.0, "max_stamina": 100.0, "mass": 1.0}
+		body_mass = 1.0
+	var armor: Armor = LoadoutRegistry.armor(p_armor_id)
+	if armor != null:
+		prof["armour"] = armor.protection
+	var mount: Mount = LoadoutRegistry.mount(p_mount_id)
+	if mount != null:
+		prof["mass"] = body_mass + mount.mass_contribution
+	return prof
 
 
 ## The charge factor c from a closing speed (world units/sec) along the strike axis:

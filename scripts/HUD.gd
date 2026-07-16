@@ -775,10 +775,20 @@ func _stat_sheet(u) -> String:
 				DistanceLegend.speed_label_text(gait_mps)]
 	var weapon: Weapon = LoadoutRegistry.weapon(u.weapon_type_id)
 	var shield: Shield = LoadoutRegistry.shield(u.shield_type_id)
-	return "\n".join([
+	var armor: Armor = LoadoutRegistry.armor(u.armor_type_id)
+	var mount: Mount = LoadoutRegistry.mount(u.mount_type_id)
+	# The armor line is the panoply ITEM (name + its stats), like the weapon/shield
+	# rows below — the shown percentage is profile["armour"], the value combat
+	# actually uses, which the registry type resolves. An unknown armor id falls
+	# back to the bare percentage so the effective protection always shows.
+	var armor_line: String = "Armour: %d%%" % roundi(profile["armour"] * 100.0)
+	if armor != null:
+		armor_line = "%s: protection %d%%, %.0f kg" % [armor.display_name,
+				roundi(profile["armour"] * 100.0), armor.weight_kg]
+	var lines: Array = [
 		"Attack: %d" % u.attack,
 		"Defense: %d" % u.defense,
-		"Armour: %d%%" % roundi(profile["armour"] * 100.0),
+		armor_line,
 		"HP per man: %.0f ±%.0f of %.0f" % [hp.x, hp.y, profile["max_health"]],
 		"Gait: %s" % gait_text,
 		"Speed: %s" % DistanceLegend.speed_label_text(mean_mps),
@@ -788,7 +798,13 @@ func _stat_sheet(u) -> String:
 				weapon.lethality],
 		"%s: block %d%%, arc %d°" % [shield.display_name,
 				roundi(shield.block_value * 100.0), roundi(shield.arc_deg)],
-	])
+	]
+	# The mount is a real interned type even on foot (MOUNT_NONE), shown uniformly
+	# like SHIELD_NONE's "Unshielded" row; only an unknown id drops the line.
+	if mount != null:
+		lines.append("%s: mass +%.1f, pace %.1f m/s" % [mount.display_name,
+				mount.mass_contribution, mount.top_speed_mps])
+	return "\n".join(lines)
 
 
 ## Advance the acceleration sample toward this tick's mean speed. Same-tick repeat

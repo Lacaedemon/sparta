@@ -94,6 +94,38 @@ func test_spawned_soldiers_strike_inputs_match_the_old_table() -> void:
 	assert_gt(checked, 0, "the battle spawned roster units to check")
 
 
+## The typed armor/mount split (per-unit ids -> profile_for) must leave every
+## spawned roster unit's armour and contact mass bit-identical to the
+## pre-registry hard-coded rows — the same equivalence bar the weapon/shield
+## split above already meets.
+func test_spawned_units_armour_and_mass_match_the_old_table() -> void:
+	Replay.forced_seed = SEED
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+	var expected: Dictionary = {
+		"Spearmen": {"armour": 0.35, "mass": 1.0},
+		"Infantry": {"armour": 0.45, "mass": 1.0},
+		"Archers": {"armour": 0.10, "mass": 0.9},
+		"Cavalry": {"armour": 0.40, "mass": 2.5},
+	}
+	var checked: int = 0
+	for node in get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u == null:
+			continue
+		var type_name: String = u.unit_name.split(" ")[0]
+		if not expected.has(type_name):
+			continue
+		var prof: Dictionary = u.combat_profile()
+		assert_eq(prof["armour"], float(expected[type_name]["armour"]),
+			"%s spawned armour equals the pre-registry literal" % u.unit_name)
+		assert_eq(prof["mass"], float(expected[type_name]["mass"]),
+			"%s spawned contact mass equals the pre-registry literal" % u.unit_name)
+		checked += 1
+	assert_gt(checked, 0, "the battle spawned roster units to check")
+
+
 # --- helper fallbacks: an out-of-sync read still resolves to real stats ------
 
 func test_out_of_range_index_falls_back_to_the_units_own_type() -> void:
