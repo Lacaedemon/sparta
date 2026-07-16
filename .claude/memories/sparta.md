@@ -1906,3 +1906,22 @@ an implicit side effect (a centre-pivot, a fallback facing, a reform-hold assump
 only ever exercised by the callers it was originally built for, and could point the wrong way
 for a new caller whose geometry differs (here: marching AWAY from the new facing, not toward
 it). (`Lacaedemon/sparta` PR #866, 2026-07-15.)
+
+## Sim-equality proof for a dump-SCHEMA change: strip the additive fields, then demand byte-equality
+
+The plain state-dump byte-diff (branch vs main, same scenario/ticks) is the standard
+zero-sim-change proof -- but it breaks down when the PR itself adds fields to the dump
+JSON (a new mirror field, a new diagnostic), because the dumps then differ by
+construction. The fix: strip exactly the added fields from the branch dumps with jq,
+normalize both sides (`jq -S`), and demand byte-equality of everything that remains --
+
+```bash
+jq -S 'walk(if type == "object" then del(.position_m, .current_speed_mps, .soldier_summary_m) else . end)' branch_dump.json
+```
+
+-- which proves the additions are purely additive (the sim and every pre-existing
+field unchanged) rather than falling back to a weaker eyeball comparison. Delete ONLY
+the fields the diff itself added (list them explicitly from the PR diff; don't pattern-
+match), or the proof silently weakens. Used for the metric dump mirrors (PR #896,
+phase E of the metric-definition migration); the same shape applies to any future
+dump/transcript schema extension.
