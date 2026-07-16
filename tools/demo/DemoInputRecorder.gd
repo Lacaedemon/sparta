@@ -11,7 +11,6 @@ extends Node
 ## code. It is the counterpart to DemoRunner.gd, which only plays back a saved replay.
 
 const BATTLE_SCENE := "res://scenes/Battle.tscn"
-const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 # Ticks a press->release drag is spread over, so the live form-up / box-select preview
 # visibly animates rather than snapping in a single frame.
 const DRAG_TICKS := 16

@@ -36,8 +36,17 @@ TICK_STEP="${SPARTA_STATE_TICK_STEP:-60}"
 
 # shellcheck source=../../tools/lib/run-bounded.sh
 . "$DEFAULT_ROOT/tools/lib/run-bounded.sh"
-# shellcheck source=demo-catalog.sh
-. "$SCRIPT_DIR/demo-catalog.sh"
+# Each tree's OWN catalog decides what it dumps (falling back to this script's sibling
+# for a tree that predates the extraction). This is what makes removed clips real in
+# the diff: a clip the PR drops from the catalog still dumps on the merge-base side,
+# so it reports as removed instead of silently vanishing from both sides.
+if [ -f "$PROJECT_DIR/website/tools/demo-catalog.sh" ]; then
+  # shellcheck source=demo-catalog.sh
+  . "$PROJECT_DIR/website/tools/demo-catalog.sh"
+else
+  # shellcheck source=demo-catalog.sh
+  . "$SCRIPT_DIR/demo-catalog.sh"
+fi
 
 mkdir -p "$OUT_DIR"
 

@@ -77,4 +77,6 @@ func test_dump_writes_a_parseable_snapshot_of_a_live_battle() -> void:
 	assert_eq(parsed["units"].size(), 1, "the staged unit is in the snapshot")
 	assert_eq(parsed["units"][0]["name"], "Infantry 1",
 			"the record carries the shared unit_record fields")
-	DirAccess.remove_absolute(path)
+	# remove_absolute needs a real OS path -- a raw user:// silently fails to delete,
+	# leaving a stray file in the app-data dir after every run.
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
