@@ -1,5 +1,5 @@
 {
-  "_comment": "Group attack distributed mode demo: box-select three player regiments (Spearmen/Infantry/Archers, seed 12345 y=300), press X to switch from focused to distributed attack, then right-click the enemy Spearmen at (407,700). Each selected unit automatically targets a different nearby enemy instead of all piling onto one. The HUD flashes 'Attack: distributed' when X is pressed.",
+  "_comment": "Group attack distributed mode demo: box-select three player regiments (Spearmen/Infantry/Archers, seed 12345 y=300), press X to switch from focused to distributed attack, then right-click the enemy Spearmen at (407,880). Each selected unit automatically targets a different nearby enemy instead of all piling onto one. The HUD flashes 'Attack: distributed' when X is pressed.",
   "seed": "12345",
   "camera": [
     {
@@ -31,7 +31,7 @@
       "tick": 48,
       "rmb_click": [
         407,
-        700
+        880
       ]
     }
   ],
