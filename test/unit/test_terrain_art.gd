@@ -73,3 +73,18 @@ func test_battle_builds_textures_once_and_draws_them() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert_true(is_instance_valid(battle), "the textured draw path ran without error")
+
+
+func test_draw_falls_back_to_flat_rects_without_textures() -> void:
+	# The fallback half of _draw's contract: a battle whose textures never built (or
+	# were dropped) still draws the readable flat-colour field and patches.
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.drill_mode = true
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+	battle._ground_texture = null
+	battle._terrain_textures = []
+	battle.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_true(is_instance_valid(battle), "the flat-rect fallback path draws without error")
