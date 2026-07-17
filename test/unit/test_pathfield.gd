@@ -170,6 +170,109 @@ func test_next_step_fleeing_stays_within_field_bounds_on_open_ground() -> void:
 		"the fleeing step lands within (or right at the edge of) the field, not 1000 units out")
 
 
+func test_sliver_overlap_does_not_block_the_rest_of_the_cell() -> void:
+	# A rect that spills 2 wu into a routing cell used to block the whole 64-wu
+	# cell, inflating the routed footprint by up to 62 wu on a side. Blocking is
+	# exact now: a point (and a straight lane) inside that cell but clear of the
+	# drawn rect stays open.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(126, 64, 68, 128))   # spills 2 wu into the col-1 cells (x 64..128)
+	assert_false(pf.is_blocked(Vector2(100, 90)),
+		"a point in the clipped cell but outside the drawn rect is not blocked")
+	var target := Vector2(100, 600)
+	assert_eq(pf.next_step(Vector2(100, 20), target), target,
+		"a straight lane through the clipped cell, clear of the drawn rect, needs no detour")
+
+
+func test_clearance_grows_the_blocked_footprint_for_wide_units() -> void:
+	# The same lane that a point-sized walker passes straight down must detour for
+	# a unit whose own half-extent overlaps the rect: clearance grows the obstacle
+	# by the querying unit's real geometry, replacing the old incidental cell
+	# inflation with an explicit, per-unit margin.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(126, 64, 68, 128))
+	var clearance := 30.0
+	assert_true(pf.is_blocked(Vector2(100, 90), clearance),
+		"the same point is blocked once grown by the unit's clearance")
+	var from := Vector2(100, 20)
+	var target := Vector2(100, 600)
+	var step: Vector2 = pf.next_step(from, target, clearance)
+	assert_ne(step, target, "the lane detours for a unit whose clearance overlaps the rect")
+	# The waypoint it steers for is genuinely clear at that clearance: every sample
+	# along the segment keeps the unit's margin off the drawn rect.
+	var samples: int = int(ceil(from.distance_to(step) / (PathField.CELL * 0.25)))
+	for i in range(samples + 1):
+		var p: Vector2 = from.lerp(step, float(i) / float(maxi(1, samples)))
+		assert_false(pf.is_blocked(p, clearance),
+			"the chosen waypoint keeps the whole clearance margin clear")
+
+
+func test_start_in_a_sliver_blocked_cell_still_routes() -> void:
+	# A unit can legitimately stand on the clear ground of a cell an obstacle
+	# only clips (footprints are exact; cells block conservatively). A* must
+	# still route around from there -- a blocked START cell is passable to
+	# leave, not a dead end whose empty path makes next_step fall back to a
+	# straight step through the terrain.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(126, 64, 68, 128))   # clips the col-1 cells by 2 wu
+	var from := Vector2(70, 128)   # inside a clipped cell, outside the drawn rect
+	var to := Vector2(260, 128)    # straight line crosses the rect
+	assert_false(pf.is_blocked(from), "the start point itself is clear ground")
+	assert_ne(pf.next_step(from, to, 20.0), to,
+		"a detour is still produced from a sliver-blocked start cell")
+
+
+func test_clearance_caps_at_the_room_actually_available() -> void:
+	# A unit already inside its own margin (spawned or shoved there) must keep
+	# pathing by exact sightlines at the standoff it actually has -- not have
+	# every test fail where it stands, which would degrade steering back to the
+	# per-cell whipsaw the string-pulled lookahead exists to prevent. Likewise a
+	# leg whose DESTINATION sits inside the margin (a commanded move to the
+	# obstacle's edge) is judged at the room the destination leaves, so the unit
+	# can go where it was ordered, hugging as needed.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 200, 64, 64))
+	var near := Vector2(280, 232)   # 20 wu west of the rect, inside a 50-wu margin
+	var far := Vector2(50, 232)
+	assert_eq(pf.next_step(near, far, 50.0), far,
+		"a unit inside its own margin still sees the outward sightline")
+	assert_eq(pf.next_step(far, near, 50.0), near,
+		"a commanded destination inside the margin stays reachable, hugging as needed")
+
+
+func test_string_pull_candidates_must_clear_the_full_margin() -> void:
+	# A string-pull candidate is a synthetic A* cell centre, not a commanded
+	# destination: the room-available cap must NOT apply to it, or every
+	# corner-adjacent sightline silently shrinks to whatever room that cell
+	# centre happens to have -- letting a unit wider than that room steer its
+	# flank into the terrain at corners. Candidates are judged at the FULL
+	# margin (cap_to false); the room cap stays for real endpoints only.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(126, 64, 100, 128))   # east edge lands 30 wu into a cell
+	var from := Vector2(450, 128)             # far outside a 70-wu margin
+	var near_centre := Vector2(288, 128)      # open cell centre, only 62 wu off the rect
+	assert_false(pf._segment_blocked(from, near_centre, 70.0),
+		"judged as a real endpoint, the 62-wu-out point is reachable (room-capped)")
+	assert_true(pf._segment_blocked(from, near_centre, 70.0, false),
+		"judged as a candidate, it must clear the full 70-wu margin -- and cannot")
+
+
+func test_segment_intersects_rect_geometry() -> void:
+	var r := Rect2(100, 100, 50, 50)
+	assert_true(PathField.segment_intersects_rect(Vector2(0, 125), Vector2(300, 125), r),
+		"a segment crossing the rect intersects")
+	assert_true(PathField.segment_intersects_rect(Vector2(125, 125), Vector2(300, 300), r),
+		"a segment starting inside the rect intersects")
+	assert_false(PathField.segment_intersects_rect(Vector2(0, 0), Vector2(300, 0), r),
+		"a parallel segment outside the rect misses")
+	assert_false(PathField.segment_intersects_rect(Vector2(0, 160), Vector2(90, 100), r),
+		"a segment ending short of the rect misses")
+	assert_true(PathField.segment_intersects_rect(Vector2(125, 125), Vector2(125, 125), r),
+		"a degenerate point inside the rect intersects")
+	assert_false(PathField.segment_intersects_rect(Vector2(0, 0), Vector2(0, 0), r),
+		"a degenerate point outside the rect misses")
+
+
 func test_speed_rect_returns_configured_scale() -> void:
 	var pf := PathField.new(FIELD)
 	pf.set_speed_rect(Rect2(200, 200, 128, 128), 0.6)
@@ -192,3 +295,22 @@ func test_speed_zone_does_not_block_movement() -> void:
 	var inside := Vector2(264, 264)
 	assert_false(pf.is_blocked(inside),
 		"a speed zone does not block movement (units can enter)")
+
+
+func test_speed_zone_footprint_is_exact_not_cell_inflated() -> void:
+	# Same footprint exactness as blocking: a zone that clips a routing cell by a
+	# sliver used to slow the whole cell; now only ground inside the drawn rect slows.
+	var pf := PathField.new(FIELD)
+	pf.set_speed_rect(Rect2(126, 64, 68, 128), 0.6)   # spills 2 wu into the col-1 cells
+	assert_almost_eq(pf.speed_at(Vector2(100, 90)), 1.0, 0.001,
+		"a point in the clipped cell but outside the drawn zone keeps full speed")
+	assert_almost_eq(pf.speed_at(Vector2(130, 90)), 0.6, 0.001,
+		"a point inside the drawn zone slows")
+
+
+func test_overlapping_speed_zones_last_registered_wins() -> void:
+	var pf := PathField.new(FIELD)
+	pf.set_speed_rect(Rect2(100, 100, 100, 100), 0.6)
+	pf.set_speed_rect(Rect2(150, 100, 100, 100), 0.8)
+	assert_almost_eq(pf.speed_at(Vector2(175, 150)), 0.8, 0.001,
+		"where zones overlap, the last-registered scale wins")

@@ -1177,6 +1177,30 @@ is a different trade-off: going *around* it costs distance; going *through* it c
 time. Generally it is faster to push cavalry or fast-moving infantry through rather
 than around a narrow forest.
 
+The obstacle a unit routes around is the terrain you see, plus the unit's own
+footprint: each block keeps a margin equal to its corner man's reach from the
+centre, so a small squad slips through a lane that a wide battle line must
+round with a broad swing. A lane that looks clear of the hill *is* clear ---
+for any unit narrow enough to fit through it.
+
+::: {#fig-terrain-exact-footprint .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/terrain_exact_footprint.jpg">
+  <source src="media/terrain_exact_footprint.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A 30-man squad ordered straight down the lane just west of the hill holds its
+lane the whole way --- its flank passes less than a metre off the drawn
+hillside. The routed obstacle is the drawn slope plus the squad's own
+footprint margin, so the narrow lane fits it exactly; a full-width line given
+the same order would swing around instead.
+:::
+
 A [routing](#morale-routing) unit paths around a hill the same way while fleeing ---
 it's no longer a straight sprint toward the back edge. If a router is boxed in with
 every escape direction blocked, it gives up fleeing and stands to fight rather than

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/terrain-exact-footprint-lane.json",
+  "caption": "Exact terrain footprints: a 30-man squad marches dead straight down the lane just west of the impassable hill -- a lane the old routing grid treated as blocked (any 64-wu cell a terrain rect merely clipped blocked whole, inflating the hill's routed footprint up to 62 wu past the drawn slope), which sent units on detours around empty grass. The routed obstacle is now the drawn rect itself plus the unit's own clearance (its corner-man half-diagonal plus a body radius, ~39 wu for this squad), so the squad holds its lane the whole way, its east flank passing less than a metre off the drawn hillside, and settles just north of the hill.",
+  "fixed_fps": 30,
+  "max_frames": 350,
+  "fps": 15,
+  "width": 720
+}

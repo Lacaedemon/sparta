@@ -45,6 +45,7 @@ DEMOS=(
   "wedge_charge|demos/inputs/wedge-charge.json|30|270|720|input"
   "all_out_attack|demos/inputs/all-out-attack.json|30|200|640|input"
   "trapped_routing|demos/inputs/routing-terrain-pathfinding.json|30|260|640|input"
+  "terrain_exact_footprint|demos/inputs/terrain-exact-footprint-lane.json|30|350|640|input"
   "pin_down|demos/inputs/pin-down-attack.json|30|320|640|input"
   "sweep_routers|demos/inputs/sweep-routers.json|30|130|720|input"
   "roll_the_line|demos/inputs/roll-the-line.json|30|270|640|input"

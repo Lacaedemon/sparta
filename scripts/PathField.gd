@@ -1,7 +1,7 @@
 class_name PathField
 extends RefCounted
-## Deterministic grid A* pathfinding layer. Units route around blocked
-## terrain instead of walking straight through it.
+## Deterministic pathfinding layer. Units route around blocked terrain instead
+## of walking straight through it.
 ##
 ## Why not NavigationAgent2D? Its RVO avoidance is non-deterministic (threaded,
 ## time-based) and would break the fixed-step replay simulation, and the issue
@@ -13,9 +13,23 @@ extends RefCounted
 ## Battle builds one over the field and publishes it as PathField.active; Unit
 ## consults it in _move_to() with a straight-line fast path, so with no obstacles
 ## registered (today) movement is unchanged.
+##
+## Two layers of obstacle geometry, serving different jobs:
+## - The EXACT terrain rects decide what is actually blocked: every sightline
+##   test (the straight-line fast path, string-pulling visibility, is_blocked)
+##   runs against the drawn rects themselves, grown by the caller's own
+##   `clearance` — so the routed footprint is the terrain the player sees plus
+##   the querying unit's real half-extent, not a grid artifact. A rect that
+##   overlaps a routing cell by a sliver no longer blocks the whole cell.
+## - The coarse CELL grid only supplies A* with a corridor topology (which way
+##   around an obstacle). Its cells stay conservatively blocked on any overlap,
+##   which is fine for topology: string-pulling against the exact rects is what
+##   picks the waypoint actually steered for, so the walked path hugs the true
+##   terrain edge regardless of where the cell boundaries fall.
 
 # A coarse routing grid — far wider than a unit footprint, since this is for
-# walls/terrain, not unit-vs-unit spacing (that stays in _separate()).
+# corridor topology around walls/terrain, not unit-vs-unit spacing (that stays
+# in _separate()).
 const CELL := 64.0
 
 # Published instance the units consult. null => everyone moves in straight lines.
@@ -25,8 +39,10 @@ var _cell: float
 var _origin: Vector2
 var _cols: int
 var _rows: int
-var _blocked: Dictionary = {}   # Vector2i -> true
-var _speed: Dictionary = {}     # Vector2i -> float (speed scale; absent = 1.0)
+var _blocked: Dictionary = {}            # Vector2i -> true (A* corridor topology only)
+var _block_rects: Array[Rect2] = []      # exact terrain rects; all sightline tests
+var _speed_rects: Array[Rect2] = []      # exact speed-zone rects, registration order
+var _speed_scales: PackedFloat32Array = PackedFloat32Array()
 
 
 func _init(bounds: Rect2, cell: float = CELL) -> void:
@@ -36,8 +52,10 @@ func _init(bounds: Rect2, cell: float = CELL) -> void:
 	_rows = int(ceil(bounds.size.y / cell))
 
 
-## Mark every cell overlapping `rect` (world space) as impassable terrain.
+## Register `rect` (world space) as impassable terrain: stored exactly for the
+## sightline tests, and coarsened onto the A* grid for corridor topology.
 func block_rect(rect: Rect2) -> void:
+	_block_rects.append(rect)
 	var lo := _cell_coord(rect.position)
 	# rect.end is exclusive: nudge inward so a cell-aligned edge maps to the last
 	# overlapped cell, not the next one over (which would block a wider band).
@@ -49,24 +67,31 @@ func block_rect(rect: Rect2) -> void:
 				_blocked[c] = true
 
 
-func is_blocked(world: Vector2) -> bool:
-	return _blocked.has(_cell_coord(world))
+## Whether `world` sits inside impassable terrain, grown by `clearance` on every
+## side. Exact-rect test: a point in the routing cell an obstacle merely clips
+## is NOT blocked.
+func is_blocked(world: Vector2, clearance: float = 0.0) -> bool:
+	for r in _block_rects:
+		if r.grow(clearance).has_point(world):
+			return true
+	return false
 
 
 ## Speed zone (not obstacle): units slow on entry but A* never detours around it — penalty applies on traversal only.
 func set_speed_rect(rect: Rect2, scale: float) -> void:
-	var lo := _cell_coord(rect.position)
-	var hi := _cell_coord(rect.end - Vector2(0.001, 0.001))
-	for cx in range(lo.x, hi.x + 1):
-		for cy in range(lo.y, hi.y + 1):
-			var c := Vector2i(cx, cy)
-			if _in_bounds(c):
-				_speed[c] = scale
+	_speed_rects.append(rect)
+	_speed_scales.append(scale)
 
 
 ## Speed scale at `world` position (1.0 if no speed zone is registered there).
+## Exact-rect test; where zones overlap, the last-registered one wins (the same
+## precedence the old per-cell overwrite gave).
 func speed_at(world: Vector2) -> float:
-	return _speed.get(_cell_coord(world), 1.0)
+	var out: float = 1.0
+	for i in _speed_rects.size():
+		if _speed_rects[i].has_point(world):
+			out = _speed_scales[i]
+	return out
 
 
 ## The next world-space waypoint a unit at `from` should steer toward to reach
@@ -83,13 +108,28 @@ func speed_at(world: Vector2) -> float:
 ## The farthest visible path point IS the corridor's real direction, so steering
 ## by it walks the gentle diagonal a real column would. The adjacent point
 ## remains the fallback when a genuine corner blocks every farther one.
-func next_step(from: Vector2, to: Vector2) -> Vector2:
-	if not _segment_blocked(from, to):
+##
+## `clearance` is the querying unit's own half-extent (see Unit.terrain_clearance):
+## sightlines treat the terrain rects as grown by it, so a wide block rounds an
+## obstacle with its flank — not its centre — skimming the drawn edge.
+func next_step(from: Vector2, to: Vector2, clearance: float = 0.0) -> Vector2:
+	if not _segment_blocked(from, to, clearance):
 		return to
 	var path := find_path(from, to)
 	if path.size() >= 2:
+		# Candidate waypoints are synthetic cell centres, not real destinations,
+		# so the room-available cap must not quietly shrink their sightlines (see
+		# _segment_blocked): prefer the farthest candidate that clears the FULL
+		# margin. Only when no candidate can — the unit's own margin is wider
+		# than the room the A* corridor's cells offer at all (a broad line
+		# rounding this field's obstacles) — fall back to the farthest candidate
+		# at the room actually available, which degrades the margin smoothly
+		# rather than collapsing steering to the adjacent cell's coarse bearing.
 		for i in range(path.size() - 1, 1, -1):
-			if not _segment_blocked(from, path[i]):
+			if not _segment_blocked(from, path[i], clearance, false):
+				return path[i]
+		for i in range(path.size() - 1, 1, -1):
+			if not _segment_blocked(from, path[i], clearance, true):
 				return path[i]
 		return path[1]
 	return to
@@ -100,8 +140,8 @@ func next_step(from: Vector2, to: Vector2) -> Vector2:
 ## Unlike next_step()'s return value, this makes the "no route exists" case
 ## distinguishable from "the straight line is clear" -- both of which make
 ## next_step() fall back to returning `to` verbatim.
-func has_path(from: Vector2, to: Vector2) -> bool:
-	if not _segment_blocked(from, to):
+func has_path(from: Vector2, to: Vector2, clearance: float = 0.0) -> bool:
+	if not _segment_blocked(from, to, clearance):
 		return true
 	return not find_path(from, to).is_empty()
 
@@ -112,8 +152,8 @@ func has_path(from: Vector2, to: Vector2) -> bool:
 ## querying has_path() against a point beyond the grid is meaningless, since
 ## A* can never reach a goal outside `_in_bounds()` regardless of terrain, so
 ## an unclipped far-off target would always read as "no path" on open ground.
-func has_escape_route(from: Vector2, direction: Vector2) -> bool:
-	return has_path(from, _clip_to_bounds(from, direction.normalized()))
+func has_escape_route(from: Vector2, direction: Vector2, clearance: float = 0.0) -> bool:
+	return has_path(from, _clip_to_bounds(from, direction.normalized()), clearance)
 
 
 ## next_step(), but for a fleeing unit with no fixed destination -- just a
@@ -131,12 +171,12 @@ func has_escape_route(from: Vector2, direction: Vector2) -> bool:
 ## out there anyway (this field only ever registers obstacles inside its own
 ## bounds), so fall back to the raw, unclipped target in that case, the same
 ## way next_step() itself falls back with no PathField active at all.
-func next_step_fleeing(from: Vector2, direction: Vector2) -> Vector2:
+func next_step_fleeing(from: Vector2, direction: Vector2, clearance: float = 0.0) -> Vector2:
 	var dir: Vector2 = direction.normalized()
 	var clipped: Vector2 = _clip_to_bounds(from, dir)
 	if from.distance_to(clipped) < _cell:
 		return from + dir * 1000.0
-	return next_step(from, clipped)
+	return next_step(from, clipped, clearance)
 
 
 ## The point where a ray from `from` toward `direction` exits this field's grid,
@@ -160,11 +200,16 @@ func _clip_to_bounds(from: Vector2, direction: Vector2) -> Vector2:
 
 
 ## Full A* route from `from` to `to` as world-space cell centres (empty when the
-## endpoints share a cell, the goal is blocked, or no route exists).
+## endpoints share a cell, the goal is blocked, or no route exists). A blocked
+## START cell is passable to leave: cells block conservatively on any rect
+## overlap while footprints are exact, so a walker can legitimately stand on
+## the clear ground of a cell an obstacle only clips — failing there would
+## silently drop the detour (the caller falls back to a straight step) right
+## next to the terrain, where the detour matters most.
 func find_path(from: Vector2, to: Vector2) -> PackedVector2Array:
 	var start := _cell_coord(from)
 	var goal := _cell_coord(to)
-	if start == goal or _blocked.has(goal) or _blocked.has(start):
+	if start == goal or _blocked.has(goal):
 		return PackedVector2Array()
 
 	var open: Array = [start]
@@ -253,17 +298,77 @@ func _reconstruct(came: Dictionary, current: Vector2i) -> PackedVector2Array:
 	return out
 
 
-## True if the straight segment from..to crosses any blocked cell. Sampled at
-## half-cell steps, which is dense enough to catch a one-cell-thick wall.
-func _segment_blocked(from: Vector2, to: Vector2) -> bool:
-	if _blocked.is_empty():
-		return false
-	var span := to - from
-	var steps: int = int(ceil(span.length() / (_cell * 0.5)))
-	if steps <= 0:
-		return _blocked.has(_cell_coord(to))
-	for i in range(steps + 1):
-		var p := from + span * (float(i) / float(steps))
-		if _blocked.has(_cell_coord(p)):
+# Slack subtracted from the room actually available when capping a sightline's
+# margin below, so a point sitting exactly at its capped margin reads as just
+# outside the grown rect instead of touching it (which would block every
+# sightline from that point at t=0). Purely a float-boundary guard.
+const CLEARANCE_SLACK := 0.5   # tuned in wu
+
+## True if the straight segment from..to crosses any terrain rect, each grown by
+## the sightline's margin on every side. Exact geometry against the drawn rects —
+## not the routing cells — so a line that merely passes through a cell an
+## obstacle clips stays clear, and the only margin is the one the caller's own
+## footprint needs.
+##
+## The margin for each rect is `clearance`, capped at the room actually
+## available at the segment's REAL endpoints: a unit already inside its own
+## margin (spawned or shoved there) keeps sightlines at the standoff it has —
+## it can slide along or away from the obstacle, just never deeper — instead
+## of every test failing where it stands; and a leg whose destination sits
+## inside the margin (a commanded move or attack to the obstacle's very edge)
+## is judged at the room the destination leaves, so orders there remain
+## reachable. Legs between far-off points keep the full margin.
+##
+## `cap_to` marks whether `to` is such a real endpoint. A string-pull CANDIDATE
+## waypoint is not — it's a synthetic A* cell centre, and an open cell adjoining
+## a blocked one sits only half a routing cell from the drawn rect, so capping
+## on it would silently shrink every corner sightline to ~half a cell no matter
+## how wide the querying unit is, letting its flank cut into terrain exactly
+## where routing bends. Candidates must clear the FULL margin (cap_to false);
+## a candidate inside the margin is simply not picked.
+func _segment_blocked(from: Vector2, to: Vector2, clearance: float = 0.0,
+		cap_to: bool = true) -> bool:
+	for r in _block_rects:
+		var room: float = _distance_to_rect(from, r)
+		if cap_to:
+			room = minf(room, _distance_to_rect(to, r))
+		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
+		if segment_intersects_rect(from, to, r.grow(maxf(0.0, eff))):
 			return true
 	return false
+
+
+## Distance from `p` to the nearest point of `r` (0 inside the rect).
+static func _distance_to_rect(p: Vector2, r: Rect2) -> float:
+	return p.distance_to(Vector2(clampf(p.x, r.position.x, r.end.x),
+			clampf(p.y, r.position.y, r.end.y)))
+
+
+## Whether the segment from..to touches `rect` (endpoints inside count). Pure
+## Liang-Barsky slab clip: the segment hits the rect iff the parameter interval
+## where it is inside all four half-planes is non-empty within [0, 1].
+## Deterministic float math, so paths stay replay-reproducible.
+static func segment_intersects_rect(from: Vector2, to: Vector2, rect: Rect2) -> bool:
+	var d := to - from
+	var t_min: float = 0.0
+	var t_max: float = 1.0
+	for axis in 2:
+		var lo: float = rect.position[axis] - from[axis]
+		var hi: float = rect.end[axis] - from[axis]
+		if absf(d[axis]) < 0.000001:
+			# Segment parallel to this axis pair: blocked on it only if the
+			# fixed coordinate already lies inside the slab.
+			if lo > 0.0 or hi < 0.0:
+				return false
+			continue
+		var t0: float = lo / d[axis]
+		var t1: float = hi / d[axis]
+		if t0 > t1:
+			var swap := t0
+			t0 = t1
+			t1 = swap
+		t_min = maxf(t_min, t0)
+		t_max = minf(t_max, t1)
+		if t_min > t_max:
+			return false
+	return true

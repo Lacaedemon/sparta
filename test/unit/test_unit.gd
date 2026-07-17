@@ -1156,6 +1156,19 @@ func test_pivot_radius_is_the_footprint_half_diagonal() -> void:
 	assert_gt(u._pivot_radius(), 0.0, "a real block has a positive pivot arm")
 
 
+func test_terrain_clearance_scales_with_the_live_footprint() -> void:
+	# The margin a block keeps off impassable terrain is its own geometry: the
+	# corner man's half-diagonal plus his body radius, read from the LIVE
+	# formation -- so a bigger block rounds an obstacle wider than a small one.
+	var u := _make_unit()
+	assert_almost_eq(u.terrain_clearance(), u._pivot_radius() + u.soldier_body_radius(),
+		0.0001, "clearance is the footprint half-diagonal plus one body radius")
+	var small := _make_unit()
+	small.soldiers = maxi(10, u.soldiers / 4)
+	assert_lt(small.terrain_clearance(), u.terrain_clearance(),
+		"a smaller block needs less terrain clearance than a bigger one")
+
+
 # --- gradual centre pivot (orderly move orders) ------------------------------
 
 func test_rotate_facing_toward_takes_a_bounded_step() -> void:
