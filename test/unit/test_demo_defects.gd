@@ -22,13 +22,16 @@ func _grid(files: int, ranks: int, spacing: float, origin: Vector2 = Vector2.ZER
 
 
 func _snapshot(tick: int, bodies: Array, slots: Array, engaged: bool = false,
-		state: String = "MOVING", facing: Array = [0.0, 1.0]) -> Dictionary:
+		state: String = "MOVING", facing: Array = [0.0, 1.0],
+		motion_ref: Dictionary = {}) -> Dictionary:
+	var ref: Dictionary = {"formation_spacing": SPACING, "soldier_body_radius": SPACING * 0.5,
+			"walk_speed": 34.0, "jog_speed": 64.0, "move_speed": 126.0,
+			"pivot_radius": 56.0, "turn_rate": PI}
+	ref.merge(motion_ref, true)
 	return {"tick": tick, "units": [{
 		"uid": 1, "engaged": engaged, "state": state, "facing": facing,
 		"soldiers_full": {"pos": bodies, "slots": slots},
-		"motion_ref": {"formation_spacing": SPACING, "walk_speed": 34.0,
-				"jog_speed": 64.0, "move_speed": 126.0, "pivot_radius": 56.0,
-				"turn_rate": PI},
+		"motion_ref": ref,
 	}]}
 
 
@@ -141,18 +144,121 @@ func test_clean_march_passes_every_verdict() -> void:
 		assert_true(bool(v["pass"]), "clean march passes metric '%s'" % v["metric"])
 
 
-func test_sustained_compression_fails_the_blob_verdict_pre_contact_only() -> void:
+func test_sustained_compression_fails_the_blob_verdict_outside_melee() -> void:
 	var slots: Array = _grid(6, 4, SPACING)
-	var blob: Array = _grid(6, 4, SPACING * 0.5)   # everyone at half spacing
+	# For foot, two touching bodies span one spacing (0.45 m pitch, 0.45 m body), so
+	# the blob floor is half that: bodies stacked well INSIDE each other on median.
+	var blob: Array = _grid(6, 4, SPACING * 0.35)
 	var pre: Array = [
 		_snapshot(0, blob, slots), _snapshot(60, blob, slots), _snapshot(120, blob, slots)]
 	assert_false(bool(_verdict(DemoDefects.analyze(pre), "blob")["pass"]),
-			"sustained half-spacing compression pre-contact is a blob")
+			"sustained deep interpenetration outside melee is a blob")
 	var engaged: Array = [
 		_snapshot(0, blob, slots, true), _snapshot(60, blob, slots, true),
 		_snapshot(120, blob, slots, true)]
 	assert_true(bool(_verdict(DemoDefects.analyze(engaged), "blob")["pass"]),
 			"the same compression during melee press is exempt")
+
+
+func test_blob_floor_comes_from_body_size_not_grid_pitch() -> void:
+	# Cavalry-style anisotropy: a roomy 20-wu min pitch with 10-wu bodies. The old
+	# pitch-derived floor (0.75 * 20 = 15) read ordinary combat press -- horse
+	# bodies packed to a 12-wu median, still mostly apart -- as a blob; the
+	# body-derived floor (half of two touching bodies, 10) does not.
+	var cav_ref: Dictionary = {"formation_spacing": 20.0, "soldier_body_radius": 10.0}
+	var slots: Array = _grid(6, 4, 20.0)
+	var press: Array = _grid(6, 4, 12.0)
+	var press_snaps: Array = [
+		_snapshot(0, press, slots, false, "MOVING", [0.0, 1.0], cav_ref),
+		_snapshot(60, press, slots, false, "MOVING", [0.0, 1.0], cav_ref)]
+	assert_true(bool(_verdict(DemoDefects.analyze(press_snaps), "blob")["pass"]),
+			"combat-press proximity on a roomy grid is not a blob")
+	var stacked: Array = _grid(6, 4, 7.0)
+	var stacked_snaps: Array = [
+		_snapshot(0, stacked, slots, false, "MOVING", [0.0, 1.0], cav_ref),
+		_snapshot(60, stacked, slots, false, "MOVING", [0.0, 1.0], cav_ref)]
+	assert_false(bool(_verdict(DemoDefects.analyze(stacked_snaps), "blob")["pass"]),
+			"mounts genuinely stacked inside each other still read as a blob")
+
+
+func test_blob_floor_keeps_a_pitch_fraction_for_tiny_bodies_on_roomy_grids() -> void:
+	# A hypothetical type with bodies far smaller than its pitch: the pitch-fraction
+	# floor binds, so a genuine collapse on a roomy grid still fires.
+	var ref: Dictionary = {"formation_spacing": 20.0, "soldier_body_radius": 2.0}
+	var slots: Array = _grid(6, 4, 20.0)
+	var collapsed: Array = _grid(6, 4, 4.0)   # under the 20 * 0.25 = 5 pitch floor
+	var snaps: Array = [
+		_snapshot(0, collapsed, slots, false, "MOVING", [0.0, 1.0], ref),
+		_snapshot(60, collapsed, slots, false, "MOVING", [0.0, 1.0], ref)]
+	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "blob")["pass"]),
+			"a collapse past the pitch-fraction floor fires even with tiny bodies")
+
+
+func test_routing_samples_are_exempt_from_grid_checks() -> void:
+	# A fleeing mob is legitimately not on any slot grid: the same geometry that
+	# would fail blob/shape while formed must pass while ROUTING.
+	var slots: Array = _grid(6, 4, SPACING)
+	var mob: Array = _grid(6, 4, SPACING * 0.35)
+	var snaps: Array = [
+		_snapshot(0, mob, slots, false, "ROUTING"),
+		_snapshot(60, mob, slots, false, "ROUTING"),
+		_snapshot(120, mob, slots, false, "ROUTING")]
+	var result: Dictionary = DemoDefects.analyze(snaps)
+	assert_true(bool(_verdict(result, "blob")["pass"]), "a routing mob is not a blob")
+	assert_true(bool(_verdict(result, "shape_residual")["pass"]),
+			"a routing mob has no grid to deviate from")
+
+
+func test_samples_adjacent_to_an_engagement_flip_are_exempt() -> void:
+	# The transition window: a block charging into contact legitimately compresses
+	# in the sampled moment just before `engaged` flips. The same compression far
+	# from any engagement still fails.
+	var slots: Array = _grid(6, 4, SPACING)
+	var press: Array = _grid(6, 4, SPACING * 0.2)   # under the single-sample overlap floor
+	var charging: Array = [
+		_snapshot(0, slots.duplicate(), slots),
+		_snapshot(60, press, slots),               # adjacent to the engaged sample below
+		_snapshot(120, press, slots, true)]
+	assert_true(bool(_verdict(DemoDefects.analyze(charging), "overlap")["pass"]),
+			"compression in the sample bordering first contact is the transition, not a defect")
+	var open_field: Array = [
+		_snapshot(0, slots.duplicate(), slots),
+		_snapshot(60, press, slots),
+		_snapshot(120, press, slots)]
+	assert_false(bool(_verdict(DemoDefects.analyze(open_field), "overlap")["pass"]),
+			"the same compression with no engagement anywhere near still fails")
+
+
+func test_the_sample_after_a_casualty_compaction_is_exempt() -> void:
+	# Casualties compact the body arrays and survivors converge on re-dealt slots:
+	# the first sample after a count drop is a legitimate transient. The compression
+	# persisting into the NEXT sample is judged again.
+	var slots24: Array = _grid(6, 4, SPACING)
+	var slots20: Array = _grid(5, 4, SPACING)
+	var press20: Array = _grid(5, 4, SPACING * 0.2)
+	var transient: Array = [
+		_snapshot(0, slots24.duplicate(), slots24),
+		_snapshot(60, press20, slots20),            # count just dropped 24 -> 20
+		_snapshot(120, slots20.duplicate(), slots20)]
+	assert_true(bool(_verdict(DemoDefects.analyze(transient), "overlap")["pass"]),
+			"re-slot compression right after a casualty drop is a transient")
+	var persisting: Array = [
+		_snapshot(0, slots24.duplicate(), slots24),
+		_snapshot(60, press20, slots20),
+		_snapshot(120, press20, slots20)]
+	assert_false(bool(_verdict(DemoDefects.analyze(persisting), "overlap")["pass"]),
+			"compression that persists past the re-slot sample is judged and fails")
+
+
+func test_a_lone_survivor_is_not_a_blob() -> void:
+	# nnd of a single body reads zero; the spacing verdicts must skip it rather
+	# than report maximal compression forever.
+	var slots: Array = _grid(1, 1, SPACING)
+	var snaps: Array = [
+		_snapshot(0, slots.duplicate(), slots), _snapshot(60, slots.duplicate(), slots)]
+	var result: Dictionary = DemoDefects.analyze(snaps)
+	assert_true(bool(_verdict(result, "blob")["pass"]), "one man cannot blob")
+	assert_true(bool(_verdict(result, "overlap")["pass"]), "or overlap with himself")
 
 
 func test_colocated_soldiers_fail_the_overlap_verdict_on_one_sample() -> void:
@@ -363,3 +469,5 @@ func test_full_dump_carries_slots_and_motion_ref_matching_the_unit() -> void:
 			"spacing is the unit's own, not a hardcoded copy")
 	assert_almost_eq(float(rec["motion_ref"]["pivot_radius"]), u._pivot_radius(), 0.01,
 			"pivot radius is the unit's own")
+	assert_almost_eq(float(rec["motion_ref"]["soldier_body_radius"]), u.soldier_body_radius(),
+			0.001, "the body radius is the unit's own, so contact floors track the type")

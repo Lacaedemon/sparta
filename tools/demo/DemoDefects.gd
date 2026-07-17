@@ -24,17 +24,36 @@ extends RefCounted
 ## reversals while marching), sustained super-physical per-soldier speed vs the unit's
 ## own gait caps, and slot misassignment (soldiers standing on each other's slots).
 ##
-## Thresholds are expressed as fractions of the unit's OWN dumped constants (spacing,
-## gaits), never absolute world-unit literals, so a retune of the sim retunes the
-## verdicts with it. Post-contact samples (`engaged == true`) are exempt from the
-## spacing/shape checks: melee press legitimately compresses and scrambles a block.
+## Thresholds are expressed as fractions of the unit's OWN dumped constants (body
+## radius for the physical-contact floors, grid pitch for the grid-deviation ones,
+## gaits for speed), never absolute world-unit literals, so a retune of the sim
+## retunes the verdicts with it. The grid/spacing checks judge only the samples
+## judged_mask() admits: engaged samples are exempt (melee press legitimately
+## compresses and scrambles a block), as are ROUTING samples, samples adjacent to
+## an engagement flip, the sample right after a casualty compaction, and lone
+## survivors -- see judged_mask's own doc for each rationale.
 
-## Median-neighbour compression below this fraction of formation spacing, sustained for
-## MIN_SUSTAIN consecutive pre-contact samples, is a blob verdict.
-const BLOB_MED_FRAC := 0.75
-## Min-neighbour distance below this fraction of formation spacing pre-contact means two
-## soldiers effectively share ground -- an overlap verdict on any single sample.
-const OVERLAP_MIN_FRAC := 0.25
+## Spacing floors derive from BODY GEOMETRY, not grid pitch: pitch is where the
+## formation posts its slots, the body radius is how close two men can physically
+## stand, and the two only coincide on isotropic foot grids (0.45 m pitch, 0.45 m
+## body). Deriving from pitch scaled the floors up with cavalry's roomy grid and
+## flagged ordinary combat press as defects. `two_bodies` below is the summed
+## radii of a touching pair (2r) read from motion_ref, with a spacing/2-per-radius
+## fallback for transcripts dumped before the field existed (exact for every
+## current type, where min-pitch happens to equal the body diameter).
+##
+## Median-neighbour compression below this fraction of two touching bodies'
+## summed radii, sustained for MIN_SUSTAIN consecutive judged samples, is a blob
+## verdict -- bodies stacked well inside each other on MEDIAN, not merely packed.
+const BLOB_BODY_FRAC := 0.5
+## ...floored at this fraction of the grid pitch, so a genuine collapse on a
+## roomy grid still fires even for hypothetical types with bodies much smaller
+## than their pitch.
+const BLOB_PITCH_FRAC := 0.25
+## Min-neighbour distance below this fraction of two touching bodies' summed
+## radii means two soldiers effectively share ground -- an overlap verdict on
+## any single judged sample.
+const OVERLAP_BODY_FRAC := 0.25
 ## Shape residual (post-fit RMS slot error) above this fraction of formation spacing,
 ## sustained pre-contact, is a scramble/smear verdict.
 const SHAPE_RMS_FRAC := 0.75
@@ -200,7 +219,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 			var uid: int = int(u["uid"])
 			if not series.has(uid):
 				series[uid] = {
-					"ticks": [], "engaged": [], "moving": [], "counts": [],
+					"ticks": [], "engaged": [], "moving": [], "routing": [], "counts": [],
 					"nnd_min": [], "nnd_med": [], "angle": [], "residual": [],
 					"misslotted": [], "facing_angle": [], "pos": [],
 					"motion_ref": u["motion_ref"],
@@ -213,6 +232,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["ticks"].append(int(snap["tick"]))
 			s["engaged"].append(bool(u.get("engaged", false)))
 			s["moving"].append(String(u.get("state", "")) == "MOVING")
+			s["routing"].append(String(u.get("state", "")) == "ROUTING")
 			s["counts"].append(bodies.size())
 			s["nnd_min"].append(nnd["min"])
 			s["nnd_med"].append(nnd["median"])
@@ -239,25 +259,63 @@ static func analyze(snapshots: Array) -> Dictionary:
 	return {"series": series, "verdicts": verdicts}
 
 
+## Which samples the grid/spacing-reference verdicts (blob, overlap, shape,
+## misslot) actually judge. Beyond the engaged exemption those checks always
+## had, a sample is also exempt when:
+## - the unit is ROUTING: a fleeing mob is legitimately not on any slot grid,
+##   so grid-referenced geometry there is noise, not a defect;
+## - it sits NEXT TO an engaged sample in the series (the transition window):
+##   a block charging into or peeling out of contact legitimately compresses
+##   in the sampled moments just before `engaged` flips, and judging one side
+##   of the flip while exempting the other made verdicts a lottery on where
+##   the sample landed relative to first contact;
+## - the soldier count dropped since the previous sample: casualties compact
+##   the arrays and the survivors converge on re-dealt slots, a legitimate
+##   transient the superphysical check already skips for the same reason;
+## - fewer than 2 bodies remain: nnd_stats returns zeros for a lone survivor,
+##   which would read as maximal compression forever.
+static func judged_mask(s: Dictionary) -> Array:
+	var n: int = s["ticks"].size()
+	var mask: Array = []
+	for i in range(n):
+		var ok: bool = not s["engaged"][i] and not s["routing"][i] \
+				and int(s["counts"][i]) >= 2
+		if ok and i > 0 and (s["engaged"][i - 1] or int(s["counts"][i]) < int(s["counts"][i - 1])):
+			ok = false
+		if ok and i + 1 < n and s["engaged"][i + 1]:
+			ok = false
+		mask.append(ok)
+	return mask
+
+
 static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	var out: Array = []
 	var spacing: float = float(s["motion_ref"]["formation_spacing"])
+	# Two touching bodies' summed radii (2r): the physical floor basis. Older
+	# transcripts predate the soldier_body_radius field; spacing/2 per radius is
+	# exact for every current type (min-pitch equals the body diameter), so the
+	# fallback keeps merge-base sides of a defect delta comparable.
+	var two_bodies: float = 2.0 * float(s["motion_ref"].get(
+			"soldier_body_radius", spacing * 0.5))
 	var sprint: float = float(s["motion_ref"]["move_speed"])
 	var n: int = s["ticks"].size()
+	var mask: Array = judged_mask(s)
 
-	# Blob: median-neighbour compression, sustained, pre-contact only.
+	# Blob: median-neighbour compression, sustained -- bodies stacked well inside
+	# each other on median, floored at a pitch fraction for roomy-grid collapse.
 	out.append(_sustained_verdict(uid, "blob", s, "nnd_med",
-			spacing * BLOB_MED_FRAC, true, MIN_SUSTAIN))
-	# Overlap: any single pre-contact sample with two soldiers effectively co-located.
+			maxf(two_bodies * BLOB_BODY_FRAC, spacing * BLOB_PITCH_FRAC), mask, MIN_SUSTAIN))
+	# Overlap: any single judged sample with two soldiers effectively co-located.
 	out.append(_sustained_verdict(uid, "overlap", s, "nnd_min",
-			spacing * OVERLAP_MIN_FRAC, true, 1))
-	# Shape scramble: post-fit residual, sustained, pre-contact only.
+			two_bodies * OVERLAP_BODY_FRAC, mask, 1))
+	# Shape scramble: post-fit residual, sustained. Pitch-based deliberately --
+	# it measures deviation from the ordered grid, where pitch IS the basis.
 	out.append(_sustained_verdict(uid, "shape_residual", s, "residual",
-			spacing * SHAPE_RMS_FRAC, true, MIN_SUSTAIN, true))
+			spacing * SHAPE_RMS_FRAC, mask, MIN_SUSTAIN, true))
 	# Slot misassignment: the fraction of soldiers nearer another man's (fit-aligned)
-	# slot than their own, sustained, pre-contact only.
+	# slot than their own, sustained.
 	out.append(_sustained_verdict(uid, "misslotted", s, "misslotted",
-			MISSLOT_MAX_FRAC, true, MIN_SUSTAIN, true))
+			MISSLOT_MAX_FRAC, mask, MIN_SUSTAIN, true))
 
 	# Facing whipsaw while marching.
 	var moving_angles: Array = []
@@ -293,21 +351,22 @@ const CONVERGING_IMPROVEMENT_FRAC := 0.05
 
 
 ## Shared shape for threshold-over-a-series verdicts. `below` chooses the failing side
-## (true = failing when the value drops BELOW the threshold). Pre-contact gating skips
-## engaged samples; `sustain` consecutive failing samples fail the verdict -- but a
+## (true = failing when the value drops BELOW the threshold). `mask` marks which
+## samples are judged (see judged_mask; an empty mask judges everything);
+## `sustain` consecutive failing samples fail the verdict -- but a
 ## failing sample that meaningfully IMPROVES on its predecessor resets the run rather
 ## than extending it. A legitimate long transition (a drag-widen reshape walking sixty
 ## men onto a new grid, a big commanded turn) reads far out of tolerance for many
 ## samples while steadily converging on it; a genuine defect holds or worsens. The
 ## convergence test is what separates them without any knowledge of maneuvers.
 static func _sustained_verdict(uid: int, metric: String, s: Dictionary, key: String,
-		threshold: float, pre_contact_only: bool, sustain: int, above: bool = false) -> Dictionary:
+		threshold: float, mask: Array, sustain: int, above: bool = false) -> Dictionary:
 	var run := 0
 	var worst_run := 0
 	var worst := INF if not above else 0.0
 	var prev_v := NAN
 	for i in range(s["ticks"].size()):
-		if pre_contact_only and s["engaged"][i]:
+		if not mask.is_empty() and not bool(mask[i]):
 			run = 0
 			prev_v = NAN
 			continue

@@ -358,6 +358,13 @@ static func motion_ref(u: Node) -> Dictionary:
 		"formation_spacing": round_to(minf(u.file_pitch_wu(), u.rank_pitch_wu()), 4),
 		"file_pitch": round_to(u.file_pitch_wu(), 4),
 		"rank_pitch": round_to(u.rank_pitch_wu(), 4),
+		# A soldier body's own radius -- the physical size floor the blob/overlap
+		# verdicts derive from, distinct from the grid pitch above: pitch is where
+		# the formation POSTS its slots, the body radius is how close two men can
+		# physically stand. The two coincide for foot (0.45 m pitch, 0.45 m body)
+		# but diverge on roomy grids (cavalry ranks), which is why the analyzer
+		# must not derive body-contact floors from pitch.
+		"soldier_body_radius": round_to(u.soldier_body_radius(), 4),
 		"walk_speed": round_to(u.walk_speed, 2),
 		"jog_speed": round_to(u.jog_speed, 2),
 		"move_speed": round_to(u.move_speed, 2),
