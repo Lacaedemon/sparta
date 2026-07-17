@@ -1137,6 +1137,21 @@ Table&nbsp;3: Terrain patches and their movement effects.
 </figure>
 </div>
 <p>Units automatically path around impassable terrain when ordered to move. A formed regiment takes the detour in good order: it steers by the corridor’s long-run direction and pivots onto it no faster than its corner man can run, so the block holds rank-and-file around the turn instead of smearing into a crowd. The forest is a different trade-off: going <em>around</em> it costs distance; going <em>through</em> it costs time. Generally it is faster to push cavalry or fast-moving infantry through rather than around a narrow forest.</p>
+<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it.</p>
+<div id="fig-terrain-exact-footprint" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/terrain_exact_footprint.jpg">
+  <source src="media/terrain_exact_footprint.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;19: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
+</figcaption>
+</figure>
+</div>
 <p>A <a href="#morale-routing">routing</a> unit paths around a hill the same way while fleeing — it’s no longer a straight sprint toward the back edge. If a router is boxed in with every escape direction blocked, it gives up fleeing and stands to fight rather than running in place against the obstacle.</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
