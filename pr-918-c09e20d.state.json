@@ -1,0 +1,190 @@
+{
+  "ticks": [
+    {
+      "tick": 12,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 10,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            440.0
+          ],
+          "position_m": [
+            28.0,
+            22.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              162.0,
+              72.0
+            ],
+            "centroid": [
+              560.0,
+              440.0
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.1,
+              3.6
+            ],
+            "centroid_m": [
+              28.0,
+              22.0
+            ]
+          },
+          "soldiers": 50,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 60,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "LOOSE",
+          "frontage": 10,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            560.0,
+            440.0
+          ],
+          "position_m": [
+            28.0,
+            22.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              162.0,
+              72.0
+            ],
+            "centroid": [
+              560.0,
+              440.0
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.1,
+              3.6
+            ],
+            "centroid_m": [
+              28.0,
+              22.0
+            ]
+          },
+          "soldiers": 50,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 150,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 30.0,
+          "current_speed_mps": 1.5,
+          "engaged": false,
+          "facing": [
+            0.86,
+            0.52
+          ],
+          "formation": "LOOSE",
+          "frontage": 10,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            565.86,
+            443.02
+          ],
+          "position_m": [
+            28.293,
+            22.151
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              162.9,
+              104.85
+            ],
+            "centroid": [
+              563.75,
+              441.49
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.145,
+              5.243
+            ],
+            "centroid_m": [
+              28.188,
+              22.075
+            ]
+          },
+          "soldiers": 50,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        }
+      ]
+    }
+  ]
+}
