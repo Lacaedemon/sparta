@@ -329,7 +329,8 @@ func test_current_grip_state_reads_exactly_what_the_grip_geometry_reads() -> voi
 	var u := _unit()
 	sm._selected = [u]
 	var state: Array = sm._current_grip_state()
-	assert_eq(state, [u.global_position, u.facing, u.render_block_extent()],
+	assert_eq(state,
+			[u.global_position, u.facing, u.render_block_extent(), u.block_centre_offset()],
 			"the snapshot mirrors the grip geometry's inputs")
 	sm._selected = [u, _unit()]
 	assert_eq(sm._current_grip_state(), [],
@@ -1921,3 +1922,74 @@ func test_demo_overlay_redraws_a_recorded_form_up_on_the_units_own_pitch() -> vo
 	Replay.mode = prev_mode
 	Replay.show_demo_orders = prev_flag
 	pass_test("the overlay resolved the recorded uid and drew the pitch-aware line")
+
+
+func test_resize_handles_centre_on_the_shifted_block_footprint() -> void:
+	# While a standing anchor offset holds the block off the regiment point, the
+	# grips straddle the block's actual footprint, not the raw point -- without
+	# this the anchored-side grip floats about twice the offset outside the edge.
+	var sm := _sm()
+	var u := _unit()
+	u.facing = Vector2.DOWN
+	u.position = Vector2(100, 100)
+	u.frontage_anchor_offset = -36.0
+	var hs: Array = sm._resize_handle_positions(u)
+	var mid: Vector2 = (hs[0] + hs[1]) * 0.5
+	assert_almost_eq(mid.distance_to(u.global_position + u.block_centre_offset()), 0.0, 0.001,
+			"the grips are centred on the block's footprint centre")
+	assert_gt(mid.distance_to(u.global_position), 1.0,
+			"...which a standing offset moves off the regiment point")
+
+
+func test_flag_pick_tracks_the_shifted_standard() -> void:
+	# The flag is drawn above the block's footprint centre; the hit test must
+	# follow it there and stop answering at the old, unshifted spot.
+	var sm := _sm()
+	var u := _unit()
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	var shifted_box: Rect2 = UnitSprites.standard_bounds(
+			u.render_block_extent(), u.block_centre_offset())
+	var hit_at: Vector2 = u.global_position + shifted_box.get_center()
+	assert_gte(sm._flag_pick_distance(u, hit_at), 0.0,
+			"a click on the shifted standard picks the unit")
+	var old_box: Rect2 = UnitSprites.standard_bounds(u.render_block_extent())
+	var stale_spot: Vector2 = u.global_position + old_box.get_center()
+	assert_eq(sm._flag_pick_distance(u, stale_spot), -1.0,
+			"the old, unshifted spot no longer answers for the flag")
+
+
+func test_demo_overlay_halo_rings_the_shifted_block_footprint() -> void:
+	# The replay-overlay selection halo mirrors the live selection ring, so it too
+	# centres on the block's footprint rather than the raw regiment point. Render
+	# smoke through the real _draw() path with a staged pointer keyframe whose
+	# selection names a unit carrying a standing anchor offset.
+	var battle := _StubBattleWithUnitLookup.new()
+	add_child_autofree(battle)
+	var sm = SelectionManagerScript.new()
+	battle.add_child(sm)
+
+	var u := UnitScript.new()
+	battle.add_child(u)
+	u.add_to_group("units")
+	u.team = 0
+	u.uid = 9
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	battle.lookup[9] = u
+
+	var prev_mode = Replay.mode
+	var prev_flag := Replay.show_demo_orders
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.show_demo_orders = true
+	Replay._pointer_track.append({"tick": 0, "x": 0.0, "y": 0.0, "drag": false,
+			"sel": [9], "mode": 0})
+
+	sm.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	Replay._pointer_track.pop_back()
+	Replay.mode = prev_mode
+	Replay.show_demo_orders = prev_flag
+	pass_test("the overlay halo drew about the shifted block without error")

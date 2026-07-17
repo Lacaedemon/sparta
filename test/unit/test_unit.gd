@@ -4236,3 +4236,106 @@ func test_ordered_gait_reads_only_an_explicit_move_gait() -> void:
 	assert_eq(u.ordered_gait(), -1, "a move without an explicit gait stays AUTO")
 	u.current_order = Order.new_move(Vector2(100, 100), 0, Unit.GAIT_SPRINT)
 	assert_eq(u.ordered_gait(), Unit.GAIT_SPRINT, "an explicit move gait reads through")
+
+
+# --- block centre offset (standing frontage anchor) --------------------------
+
+func test_block_centre_offset_is_zero_for_a_centred_block() -> void:
+	var u := _make_unit()
+	assert_eq(u.block_centre_offset(), Vector2.ZERO,
+			"no standing anchor offset -> chrome centres on the regiment point")
+
+
+func test_block_centre_offset_maps_the_local_shift_through_the_block_frame() -> void:
+	# A down-facing unit's block frame rotates local +X to world -X (the same
+	# mapping soldier_world_slots applies to the slots), so a local -36 shift
+	# lands at world +36 -- the case measured on the anchored-widen demo.
+	var u := _make_unit()
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	var off: Vector2 = u.block_centre_offset()
+	assert_almost_eq(off.x, 36.0, 0.001, "local -36 maps to world +36 for a down-facing block")
+	assert_almost_eq(off.y, 0.0, 0.001, "the shift stays on the file axis")
+
+
+func test_block_centre_offset_swings_with_the_heading() -> void:
+	var u := _make_unit()
+	u.frontage_anchor_offset = 20.0
+	u.facing = Vector2.DOWN
+	var down: Vector2 = u.block_centre_offset()
+	u.facing = Vector2.UP
+	assert_almost_eq((down + u.block_centre_offset()).length(), 0.0, 0.001,
+			"opposite headings put the block centre on opposite sides of the point")
+
+
+func test_block_centre_offset_honours_the_countermarch_mirror() -> void:
+	# soldier_world_slots negates local X while _formation_mirror_x stands, so
+	# the centre must flip the same way or the chrome would frame the wrong flank.
+	var u := _make_unit()
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	var plain: Vector2 = u.block_centre_offset()
+	u._formation_mirror_x = true
+	assert_almost_eq((u.block_centre_offset() + plain).length(), 0.0, 0.001,
+			"the mirror fold flips the centre to the other flank")
+
+
+func test_block_extent_measures_about_the_shifted_centre() -> void:
+	# The chrome extent is offset-invariant: a shifted block's ring is the same
+	# size as the centred block's, not inflated to cover the offset from the
+	# regiment point -- while the default (containment) measurement still grows.
+	var u := _make_unit()
+	var centred: float = SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers))
+	u.frontage_anchor_offset = 40.0
+	var slots: PackedVector2Array = u.formation_slots(u.soldiers)
+	assert_almost_eq(
+			SoldierFlock.compute_extent(u, slots, Vector2(u.frontage_anchor_offset, 0.0)),
+			centred, 0.001,
+			"measured about its own centre, the shifted block is the same size")
+	assert_gt(SoldierFlock.compute_extent(u, slots), centred,
+			"the default from-the-regiment-point measurement still covers the shifted reach")
+
+
+func test_process_replaces_chrome_when_the_offset_stands_or_swings() -> void:
+	# The chrome centre (block_centre_offset) moves when a standing offset is set
+	# and again when the heading turns under one -- _process must notice both and
+	# re-place the shadow (and request a redraw), or the chrome freezes at the
+	# regiment point while the block stands elsewhere.
+	var u := _make_unit()
+	u.selected = true
+	u.state = Unit.State.FIGHTING   # covers the engaged ring's centred arc too
+	await get_tree().process_frame
+	u.frontage_anchor_offset = 30.0
+	await get_tree().process_frame
+	assert_eq(u._render_last_anchor_offset, 30.0,
+			"the chrome tracker syncs to the newly-set offset")
+	assert_almost_eq(u._shadow.position.x, u.block_centre_offset().x, 0.001,
+			"the shadow re-centres on the shifted block")
+	u.facing = Vector2.UP
+	await get_tree().process_frame
+	assert_almost_eq(u._shadow.position.x, u.block_centre_offset().x, 0.001,
+			"a heading turn swings the standing offset, and the shadow follows")
+
+
+func test_block_centre_offset_is_zero_while_squared() -> void:
+	# SQUARE/SCHILTRON grids ignore the standing anchor (formation_slots centres
+	# the ring on `position`) and nothing clears frontage_anchor_offset on entry,
+	# so the chrome must read a squared block as centred -- not follow the stale
+	# offset off to where the block isn't. Leaving the square re-arms it, since
+	# the wide-line grid bakes the offset back in.
+	var u := _make_unit()
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_eq(u.block_centre_offset(), Vector2.ZERO,
+			"a squared block reads as centred despite the stale offset")
+	assert_almost_eq(
+			SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers), u._slot_anchor_centre()),
+			SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers)), 0.001,
+			"the chrome extent measures the square about position, uninflated")
+	u.set_formation(Unit.FORMATION_SCHILTRON)
+	assert_eq(u.block_centre_offset(), Vector2.ZERO,
+			"the schiltron variant reads as centred too")
+	u.set_formation(Unit.FORMATION_NORMAL)
+	assert_gt(u.block_centre_offset().length(), 1.0,
+			"back in a wide-line grid, the standing offset re-arms the chrome centre")
