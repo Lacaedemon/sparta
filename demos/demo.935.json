@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Static ground/terrain art (procedural textured grass, forest canopy, and hill shading) -- a still shows it better than motion, and the ground itself never moves. Before/after screenshots are embedded in the PR description; the website's deploy-time re-record refreshes every catalog clip with the new ground automatically."
+  "input": "demos/inputs/terrain-art-tour.json",
+  "caption": "The battlefield ground is now seeded procedural texture -- mottled grass with worn-earth patches, a forest canopy of individual lit treetops on the west flank, a shaded hill with rock flecks on the east -- generated at battle load from a fixed art seed (no bundled assets, no sim RNG consumed). A lone cavalry troop crosses the open ground between them; unit team colours stay the dominant read against all three textures. Before/after stills are embedded in the PR description.",
+  "fixed_fps": 30,
+  "max_frames": 320,
+  "fps": 15,
+  "width": 720
 }

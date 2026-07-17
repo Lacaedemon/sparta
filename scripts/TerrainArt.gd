@@ -63,9 +63,10 @@ static func forest_image(size_wu: Vector2, seed_value: int, base: Color) -> Imag
 	return img
 
 
-## Hill: a tan mottle with elevation-banded shading (lighter toward the crest, a
-## shadowed south-east fall-off) and sparse darker rock flecks. The impassable read
-## comes from the distinct earthy palette plus the outline the caller still draws.
+## Hill: a tan mottle with elevation shading -- a radial crest, lighter toward the
+## middle and darker toward the rim, bowed organic by low-frequency relief noise --
+## and sparse darker rock flecks. The impassable read comes from the distinct earthy
+## palette plus the outline the caller still draws.
 static func hill_image(size_wu: Vector2, seed_value: int, base: Color) -> Image:
 	var w: int = maxi(2, int(size_wu.x * RESOLUTION_SCALE))
 	var h: int = maxi(2, int(size_wu.y * RESOLUTION_SCALE))
