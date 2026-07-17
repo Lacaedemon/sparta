@@ -390,7 +390,17 @@ super-physical speed). Run it headless over a dump directory:
 Exit `0` = clean, `1` = at least one defect (the verdict lines name the unit, metric, worst
 value, and threshold), `2` = unusable input (e.g. the dump wasn't taken with
 `SPARTA_DEMO_STATE_FULL=1`). Post-contact samples are exempt from the spacing/shape checks —
-melee press legitimately compresses a block.
+melee press legitimately compresses a block — and the sustained checks are
+convergence-aware: a long transition (a reshape, a big commanded turn) that steadily
+improves toward tolerance is read as healthy, while the same magnitude holding flat or
+worsening is a defect. Slot-misassignment only counts once the men are actually standing on
+the grid (identity is noise mid-transit).
+
+CI runs this scan on every PR demo (the demo workflow's "Demo defect scan" step, with the
+script's own `expect` assertions included) and appends the verdict table to the posted
+state-transcript comment; a failing verdict fails the job **after** the GIF and transcript
+publish, so the artifacts you need to debug are always there. Run it pre-push with
+`tools/check.sh demo_defects` — it scans exactly the input scripts your diff adds or edits.
 
 ### The wrapper
 

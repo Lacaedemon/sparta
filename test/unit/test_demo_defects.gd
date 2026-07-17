@@ -215,6 +215,45 @@ func test_whipsaw_verdict_fails_an_oscillating_march() -> void:
 			"a facing that keeps reversing direction while marching is a whipsaw")
 
 
+func test_misslot_is_suppressed_while_the_block_is_in_transit() -> void:
+	# Bodies caught halfway along their walks to reassigned positions (a reshape in
+	# flight): nobody stands ON any slot, identity is noise, and the settled gate must
+	# suppress the fraction -- a uniform offset won't do here, the fit would absorb it.
+	var slots: Array = _grid(6, 4, SPACING)
+	var transit: Array = []
+	for i in range(slots.size()):
+		var a: Array = slots[i]
+		var b: Array = slots[(i * 7 + 3) % slots.size()]
+		transit.append([(float(a[0]) + float(b[0])) * 0.5, (float(a[1]) + float(b[1])) * 0.5])
+	var snaps: Array = [
+		_snapshot(0, transit.duplicate(), slots), _snapshot(60, transit.duplicate(), slots),
+		_snapshot(120, transit.duplicate(), slots)]
+	assert_true(bool(_verdict(DemoDefects.analyze(snaps), "misslotted")["pass"]),
+			"a block in transit between grids is not a rank swap")
+
+
+func test_a_converging_transition_passes_where_a_stuck_defect_fails() -> void:
+	# A legitimate long transition (a reshape walking bodies onto a new grid) reads far
+	# out of tolerance for many samples while steadily improving; a stuck defect holds.
+	# The convergence-aware sustain gate separates them with no maneuver knowledge.
+	# A rigid translation would be absorbed by the fit, so build genuine shape error
+	# with COMPRESSED grids annealing toward the ordered spacing.
+	var slots: Array = _grid(6, 4, SPACING)
+	var far: Array = _grid(6, 4, SPACING * 0.3)
+	var mid: Array = _grid(6, 4, SPACING * 0.55)
+	var near: Array = _grid(6, 4, SPACING * 0.8)
+	var converging: Array = [
+		_snapshot(0, far, slots), _snapshot(60, mid, slots), _snapshot(120, near, slots),
+		_snapshot(180, slots.duplicate(), slots)]
+	assert_true(bool(_verdict(DemoDefects.analyze(converging), "shape_residual")["pass"]),
+			"a steadily improving residual is a transition, not a defect")
+	var stuck: Array = [
+		_snapshot(0, far.duplicate(), slots), _snapshot(60, far.duplicate(), slots),
+		_snapshot(120, far.duplicate(), slots)]
+	assert_false(bool(_verdict(DemoDefects.analyze(stuck), "shape_residual")["pass"]),
+			"the same magnitude holding flat is a defect")
+
+
 # --- declared expectations (intent as data) ------------------------------------------
 
 func test_expect_ticks_collects_scalars_and_range_ends() -> void:
