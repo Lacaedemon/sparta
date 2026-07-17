@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Static ground/terrain art (procedural textured grass, forest canopy, and hill shading) -- a still shows it better than motion, and the ground itself never moves. Before/after screenshots are embedded in the PR description; the website's deploy-time re-record refreshes every catalog clip with the new ground automatically."
+}

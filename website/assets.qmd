@@ -75,7 +75,10 @@ defeat). Per-file sources and licences are recorded in
 ## Currently bundled
 
 - **Audio:** OpenGameArt CC0 set (see the credits file above).
-- **Graphics:** none --- procedural placeholder primitives in `Unit.gd`.
+- **Graphics:** no bundled files. Units draw as procedural placeholder primitives in
+  `Unit.gd`; the battlefield ground, forest, and hill are seeded procedural textures
+  generated at battle load (`TerrainArt.gd`) --- still zero downloaded art, zero
+  licensing surface.
 
 ::: {.callout-note}
 ## Code vs assets
