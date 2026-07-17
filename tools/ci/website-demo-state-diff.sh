@@ -36,7 +36,9 @@ clip_names() {
 changed_fields() {
   local base_file="$1" pr_file="$2"
   jq -n --slurpfile a "$base_file" --slurpfile b "$pr_file" '
-    def recs(s): s[0].units | map({key: (.uid | tostring), value: .}) | from_entries;
+    def recs(s): s[0].units
+      | map(del(.soldiers_full, .motion_ref))
+      | map({key: (.uid | tostring), value: .}) | from_entries;
     (recs($a)) as $ra | (recs($b)) as $rb |
     if ($ra | keys) != ($rb | keys) then "units present"
     else
@@ -49,6 +51,7 @@ changed_fields() {
 }
 
 CHANGED_ROWS=""
+CHANGED_NAMES=""
 UNCHANGED=0
 ADDED=""
 REMOVED=""
@@ -78,7 +81,13 @@ for name in $(clip_names); do
       fields="tick sampled on one side only"
       break
     fi
-    if ! cmp -s <(jq -S . "$bf") <(jq -S . "$pf"); then
+    # Compare the COMPACT projection only: the FULL-dump extras (per-soldier arrays,
+    # ordered slots, motion constants) exist for the defect-delta pass, not the diff --
+    # projecting them out keeps this report's semantics identical to the pre-full-dump
+    # transcripts, and lets a mixed pair (one side's tree predating the full schema)
+    # still compare apples to apples.
+    if ! cmp -s <(jq -S 'del(.units[].soldiers_full, .units[].motion_ref)' "$bf") \
+                <(jq -S 'del(.units[].soldiers_full, .units[].motion_ref)' "$pf"); then
       first_diff_tick="${tick_file//[!0-9]/}"
       fields="$(changed_fields "$bf" "$pf")"
       break
@@ -87,6 +96,8 @@ for name in $(clip_names); do
   if [ -n "$first_diff_tick" ]; then
     CHANGED=$((CHANGED + 1))
     CHANGED_ROWS="$CHANGED_ROWS| \`$name\` | tick $((10#$first_diff_tick)) | $fields |
+"
+    CHANGED_NAMES="$CHANGED_NAMES$name
 "
   else
     UNCHANGED=$((UNCHANGED + 1))
@@ -107,4 +118,8 @@ done
     "$CHANGED" "$UNCHANGED" "$(echo "$ADDED" | wc -w)" "$(echo "$REMOVED" | wc -w)"
 } > "$OUT_MD"
 
-echo "Wrote $OUT_MD"
+# Machine-readable list of the clips classified CHANGED (both-sides rows only), one name
+# per line -- the defect-delta pass iterates exactly these.
+printf '%s' "$CHANGED_NAMES" > "$OUT_MD.changed"
+
+echo "Wrote $OUT_MD (+ .changed list: $CHANGED changed clips)"

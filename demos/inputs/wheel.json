@@ -1,13 +1,41 @@
 {
-  "_comment": "Wheel demo (circumductio, drill mode — player army only, no enemy, no auto-win): zoom on the Infantry block (seed 12345, uid 1 at ~650,300, facing south), select it, press C to wheel it right, then Z to wheel it back left. One flank file plants and holds while the rest of the block swings around it like a door on a hinge, so the line ends up facing a new bearing and lying along a new line with every man still in his rank and file — distinct from the quarter-turn (facing changes in place, block stays put) and the centre pivot (both flanks sweep about the middle). The swing is paced by the OUTER file's own jog gait (rate x radius never exceeds what the corner man can run), so this 120-man block takes ~4.5 s (~270 ticks) per 90 degree wheel; the holds are spaced to let each finish, including the ~0.2 s drill response beat before each swing starts (Unit.atomic_response_delay). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "_comment": "Wheel demo (circumductio, drill mode \u2014 player army only, no enemy, no auto-win): zoom on the Infantry block (seed 12345, uid 1 at ~557,300, facing south), select it, press C to wheel it right, then Z to wheel it back left. One flank file plants and holds while the rest of the block swings around it like a door on a hinge, so the line ends up facing a new bearing and lying along a new line with every man still in his rank and file \u2014 distinct from the quarter-turn (facing changes in place, block stays put) and the centre pivot (both flanks sweep about the middle). The swing is paced by the OUTER file's own jog gait (rate x radius never exceeds what the corner man can run), so this 120-man block takes ~4.5 s (~270 ticks) per 90 degree wheel; the holds are spaced to let each finish, including the ~0.2 s drill response beat before each swing starts (Unit.atomic_response_delay). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "12345",
   "drill": true,
   "camera": [
-    {"tick": 0, "x": 650.0, "y": 300.0, "zoom": 1.1}
+    {
+      "tick": 0,
+      "x": 557.0,
+      "y": 300.0,
+      "zoom": 1.1
+    }
   ],
   "steps": [
-    {"tick": 10, "click": [650, 300]},
-    {"tick": 30, "key": "C"},
-    {"tick": 340, "key": "Z"}
+    {
+      "tick": 10,
+      "click": [
+        557,
+        300
+      ]
+    },
+    {
+      "tick": 30,
+      "key": "C"
+    },
+    {
+      "tick": 340,
+      "key": "Z"
+    }
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "position",
+      "value": [
+        557.0,
+        300.0
+      ]
+    }
   ]
 }

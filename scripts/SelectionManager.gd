@@ -875,7 +875,7 @@ func _files_for_mode(units: Array, usable: float, mode: int) -> Array:
 	if units.size() == 1:
 		var u0: Unit = units[0]
 		return [UnitFormation.files_for_halfwidth(usable * 0.5, u0.max_soldiers,
-				UnitRef.FORMATION_SPACING * u0.spacing_scale)]
+				u0.file_pitch_wu())]
 	match mode:
 		FormUpDist.EQUAL_WIDTH:
 			return _equal_space_width_files(units, usable)
@@ -895,7 +895,7 @@ func _equal_space_width_files(units: Array, usable: float) -> Array:
 	var out: Array = []
 	for u in units:
 		out.append(UnitFormation.files_for_halfwidth(w * 0.5, u.max_soldiers,
-				UnitRef.FORMATION_SPACING * u.spacing_scale))
+				u.file_pitch_wu()))
 	return out
 
 
@@ -909,7 +909,7 @@ func _equal_space_width_files(units: Array, usable: float) -> Array:
 ## diverge for a genuinely mixed group, where physical frontage then differs unit to unit
 ## (a TIGHT unit's files pack narrower than a LOOSE unit's at the same shared count).
 func _equal_count_width_files(units: Array, usable: float) -> Array:
-	var effective_spacing: float = _average_spacing(units)
+	var effective_spacing: float = _average_file_pitch(units)
 	var w: float = usable / float(units.size())
 	var shared_files: int = UnitFormation.files_for_halfwidth(
 			w * 0.5, UNBOUNDED_FILES, effective_spacing)
@@ -932,7 +932,7 @@ func _equal_count_width_files(units: Array, usable: float) -> Array:
 ## LOOSE unit ends up physically deeper than a TIGHT one at that count. See
 ## _equal_space_depth_files for the mode that instead holds PHYSICAL depth equal.
 func _equal_count_depth_files(units: Array, usable: float) -> Array:
-	var effective_spacing: float = _average_spacing(units)
+	var effective_spacing: float = _average_file_pitch(units)
 	var f_target: int = maxi(units.size(), int(round(usable / effective_spacing)) + units.size())
 	var depth: int = _equal_depth_for_target(units, f_target)
 	var out: Array = []
@@ -950,24 +950,38 @@ func _equal_count_depth_files(units: Array, usable: float) -> Array:
 ## group (every unit sharing one formation mode) this produces IDENTICAL results to
 ## _equal_count_depth_files, since the per-unit conversion is then the identity.
 func _equal_space_depth_files(units: Array, usable: float) -> Array:
-	var effective_spacing: float = _average_spacing(units)
-	var f_target: int = maxi(units.size(), int(round(usable / effective_spacing)) + units.size())
-	var ref_depth: int = _equal_space_depth_for_target(units, f_target, effective_spacing)
+	# The frontage target runs along the file axis; the shared-depth search and the
+	# per-unit conversion run along the rank axis. With anisotropic pitch (cavalry)
+	# the two averages genuinely differ, so each leg reads its own axis.
+	var file_pitch_avg: float = _average_file_pitch(units)
+	var rank_pitch_avg: float = _average_rank_pitch(units)
+	var f_target: int = maxi(units.size(), int(round(usable / file_pitch_avg)) + units.size())
+	var ref_depth: int = _equal_space_depth_for_target(units, f_target, rank_pitch_avg)
 	var out: Array = []
 	for u in units:
-		var ranks_u: int = _ranks_at_reference_depth(u, ref_depth, effective_spacing)
+		var ranks_u: int = _ranks_at_reference_depth(u, ref_depth, rank_pitch_avg)
 		out.append(clampi(int(ceil(float(maxi(1, u.max_soldiers)) / float(ranks_u))), 1, maxi(1, u.max_soldiers)))
 	return out
 
 
-## The average FORMATION_SPACING-scaled pitch across `units` -- the shared reference spacing
-## both depth modes' frontage-target math uses (see _equal_count_depth_files' doc comment for
-## why an average rather than any one unit's own spacing).
-func _average_spacing(units: Array) -> float:
-	var spacing_sum: float = 0.0
+## The average file pitch (left-right slot spacing, wu) across `units` -- the shared
+## reference spacing the frontage-target math uses (see _equal_count_depth_files' doc
+## comment for why an average rather than any one unit's own spacing).
+func _average_file_pitch(units: Array) -> float:
+	var pitch_sum: float = 0.0
 	for u in units:
-		spacing_sum += u.spacing_scale
-	return UnitRef.FORMATION_SPACING * (spacing_sum / float(units.size()))
+		pitch_sum += u.file_pitch_wu()
+	return pitch_sum / float(units.size())
+
+
+## The average rank pitch (front-back slot spacing, wu) across `units` -- the shared
+## reference the EQUAL_DEPTH_SPACE physical-depth conversion uses, the depth-axis
+## counterpart to _average_file_pitch.
+func _average_rank_pitch(units: Array) -> float:
+	var pitch_sum: float = 0.0
+	for u in units:
+		pitch_sum += u.rank_pitch_wu()
+	return pitch_sum / float(units.size())
 
 
 ## `u`'s own rank count at a shared REFERENCE depth (a rank count expressed at the group's
@@ -976,8 +990,8 @@ func _average_spacing(units: Array) -> float:
 ## equals the group average (the common same-formation-group case).
 func _ranks_at_reference_depth(u: Unit, ref_depth: int, effective_spacing: float) -> int:
 	var physical_depth: float = float(ref_depth - 1) * effective_spacing
-	var spacing_u: float = UnitRef.FORMATION_SPACING * u.spacing_scale
-	return clampi(int(round(physical_depth / spacing_u)) + 1, 1, maxi(1, u.max_soldiers))
+	var pitch_u: float = u.rank_pitch_wu()
+	return clampi(int(round(physical_depth / pitch_u)) + 1, 1, maxi(1, u.max_soldiers))
 
 
 ## The shallowest shared rank depth whose total files fit within `f_target` (so the deployed
@@ -1339,7 +1353,7 @@ func _update_resize(world_pos: Vector2) -> void:
 	# when the cursor crosses behind the anchor (a line can't have negative width).
 	var width: float = maxf(0.0, (cursor_x - edge_x) * -float(_resize_anchor))
 	_resize_files = UnitFormation.files_for_halfwidth(width * 0.5, _resize_unit.max_soldiers,
-			UnitRef.FORMATION_SPACING * _resize_unit.spacing_scale)
+			_resize_unit.file_pitch_wu())
 
 
 ## Commit a drag-resize on release: enqueue the delta from the unit's current
@@ -1787,7 +1801,7 @@ func _draw_form_up_preview() -> void:
 	var font := ThemeDB.fallback_font
 	for slice in _form_up_slices(units, _rmb_start, end_pos, _form_up_dist):
 		_draw_form_up_line(slice["center"], face, slice["files"], FORM_UP_COLOR,
-				slice["unit"].spacing_scale)
+				slice["unit"].file_pitch_wu())
 		# Centre the file-count label over the slice (width -1 ignores CENTER alignment, so
 		# offset by half the text width, as the keystroke overlay does).
 		var label: String = UnitFormation.files_label(slice["files"])
@@ -1818,13 +1832,13 @@ func _draw_resize_handles() -> void:
 
 
 ## Half-width (world units) of a resize preview line for `files` files on `u`'s own
-## grid pitch -- `u.spacing_scale`-aware, matching UnitFormation.files_for_halfwidth's
+## grid pitch -- `u.file_pitch_wu()`-aware, matching UnitFormation.files_for_halfwidth's
 ## inverse mapping (and UnitFormation.slots' actual layout) so a LOOSE unit's preview
 ## line spans its real formed-up width instead of the plain NORMAL-order spacing. Pure,
 ## so the drag-start "no jump" invariant (matches _resize_handle_positions' extent when
 ## `files` hasn't changed yet) is directly testable.
 func _resize_preview_half_width(u, files: int) -> float:
-	return float(files - 1) * 0.5 * UnitRef.FORMATION_SPACING * u.spacing_scale
+	return float(files - 1) * 0.5 * u.file_pitch_wu()
 
 
 ## Preview the dragged frontage: a line spanning the target width and the file count
@@ -1955,7 +1969,7 @@ func _draw_demo_pointer() -> void:
 	for fu in Replay.form_ups_for_tick(tick, DEMO_FORMUP_WINDOW):
 		var fade: float = 1.0 - float(int(fu["age"])) / float(DEMO_FORMUP_WINDOW)
 		var fu_unit = _battle.unit_by_uid(int(fu.get("uid", -1)))
-		var fu_pitch: float = fu_unit.spacing_scale if fu_unit != null else 1.0
+		var fu_pitch: float = fu_unit.file_pitch_wu() if fu_unit != null else UnitRef.FORMATION_SPACING
 		_draw_form_up_line(Vector2(fu["x"], fu["y"]), float(fu["face"]), int(fu["frontage"]),
 				Color(FORM_UP_COLOR, FORM_UP_COLOR.a * fade), fu_pitch)
 
@@ -1966,12 +1980,12 @@ func _draw_demo_pointer() -> void:
 ## Draw a form-up's flank line (left dot + line) and forward-facing arrow about its
 ## centre, used both for the live preview and the demo replay. `face` is the deploy
 ## facing in radians; the line spans the frontage along the perpendicular file axis, on
-## the unit's own grid pitch (`pitch_scale` = its spacing_scale) -- the density-blind
-## pitch drew a loose unit's line at half its real formed-up width.
+## the unit's own file pitch (`file_pitch` = its file_pitch_wu(), in wu) -- a
+## density-blind pitch drew a loose unit's line at half its real formed-up width.
 func _draw_form_up_line(center: Vector2, face: float, files: int, color: Color,
-		pitch_scale: float = 1.0) -> void:
+		file_pitch: float = UnitRef.FORMATION_SPACING) -> void:
 	var file_axis: Vector2 = Vector2.from_angle(face + PI * 0.5)   # left -> right along the front
-	var half: float = float(files - 1) * 0.5 * UnitRef.FORMATION_SPACING * pitch_scale
+	var half: float = float(files - 1) * 0.5 * file_pitch
 	var a: Vector2 = center - file_axis * half
 	var b: Vector2 = center + file_axis * half
 	draw_line(a, b, color, 2.0)

@@ -34,6 +34,13 @@
 #   links     Markdown link-check with lychee, if it's installed. Mirrors
 #             .github/workflows/check-links.yml. Needs network; not in the
 #             default set (run it explicitly or via "all").
+#   demo_defects
+#             Deterministic defect scan of THIS diff's changed demos/inputs/*.json
+#             scripts: a FULL state dump per script run through DemoDefects (the
+#             formation defect metrics plus the script's own declared `expect`
+#             assertions -- see demos/README.md). Drives a real headless battle
+#             per changed script, so not in the default set. Mirrors the demo
+#             workflow's defect-scan step.
 #
 # Usage:
 #   tools/check.sh                 # default set: validate, test, chars, comments, units
@@ -89,7 +96,7 @@ COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-2700}"
 . "$SCRIPT_DIR/lib/run-bounded.sh"
 
 DEFAULT_CHECKS=(validate test chars comments units)
-ALL_CHECKS=(validate test chars comments units coverage patch_coverage links)
+ALL_CHECKS=(validate test chars comments units coverage patch_coverage links demo_defects)
 
 # --- pretty output ---------------------------------------------------------
 # Colour only when stdout is a terminal and NO_COLOR isn't set. Per the NO_COLOR
@@ -154,6 +161,7 @@ list_checks() {
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  patch_coverage  local codecov/patch approximation for this diff's scripts/*.gd changes"
   info "  links      Markdown link-check via lychee (check-links.yml)"
+  info "  demo_defects  deterministic defect scan of this diff's changed demo input scripts (demo-video.yml)"
   info ""
   info "Default (no args): ${DEFAULT_CHECKS[*]}"
   info "all              : ${ALL_CHECKS[*]}"
@@ -819,6 +827,77 @@ check_links() {
 
 # --- driver ----------------------------------------------------------------
 
+check_demo_defects() {
+  # Deterministic demo defect scan: every scripted-input demo this change adds or
+  # edits gets a FULL state dump and a DemoDefects verdict pass -- the formation
+  # defect metrics plus the script's own declared expectations, exit-code gated
+  # (see tools/demo/analyze_transcript.gd). Diff-scoped like check_units, so
+  # legacy demos never fail it. Each changed script drives a real headless
+  # battle, so budget a few seconds to a minute apiece.
+  require_godot || return 1
+  if ! have jq; then
+    warn "jq not found -- skipping the demo defect scan."
+    set_result demo_defects skip
+    return 0
+  fi
+  local base
+  if ! base="$(resolve_comments_base)"; then
+    warn "No base ref to diff against -- skipping the demo defect scan."
+    warn "Set SPARTA_CHECK_COMMENTS_BASE, or fetch full history."
+    set_result demo_defects skip
+    return 0
+  fi
+  local changed
+  changed="$(cd "$PROJECT_ROOT" && git diff --no-color --name-only "$base" HEAD -- ':(glob)demos/inputs/*.json')"
+  if [ -z "$changed" ]; then
+    info "No changed demo input scripts -- nothing to scan."
+    set_result demo_defects skip
+    return 0
+  fi
+  local failed=0 script ticks dir rc
+  while IFS= read -r script; do
+    [ -f "$PROJECT_ROOT/$script" ] || continue   # deleted in this diff
+    # The scan's tick set is the script's own: its `state` defaults plus every
+    # declared expectation tick (ranges contribute both ends), matching what a
+    # dump run arms. A script declaring neither gets a generic early-to-mid
+    # sampling so the scan still sees the battle develop.
+    ticks="$(jq -r '((.state // []) + ([.expect // [] | .[] | .tick? // empty] | flatten)) | map(tonumber? // empty) | unique | map(tostring) | join(",")' "$PROJECT_ROOT/$script" 2>/dev/null || true)"
+    [ -z "$ticks" ] && ticks="8,60,120,180,240,300"
+    dir="$(mktemp -d)"
+    info "Scanning $script at ticks $ticks"
+    # Same grading as the CI step: a failed dump and an unusable-input analyzer exit
+    # (rc 2) WARN rather than fail -- absence of data is not a defect -- and only a
+    # genuine defect verdict (rc 1) fails, so local and CI verdicts stay in sync.
+    if ! SPARTA_DEMO_STATE_FULL=1 \
+         "$PROJECT_ROOT/tools/demo/dump-state.sh" "$script" "$ticks" "$dir" >/dev/null 2>&1; then
+      warn "State dump failed for $script -- skipping its scan (CI warns the same way)."
+      continue
+    fi
+    # Bash 3.2 (macOS's system bash, a supported target) errors expanding an empty
+    # array under `set -u`, so branch on whether --expect applies instead of
+    # expanding a maybe-empty argument array.
+    rc=0
+    if jq -e '.expect | type == "array" and length > 0' "$PROJECT_ROOT/$script" >/dev/null 2>&1; then
+      "$GODOT_BIN" --headless --path "$PROJECT_ROOT" -s tools/demo/analyze_transcript.gd -- \
+        "$dir" --expect "$PROJECT_ROOT/$script" || rc=$?
+    else
+      "$GODOT_BIN" --headless --path "$PROJECT_ROOT" -s tools/demo/analyze_transcript.gd -- \
+        "$dir" || rc=$?
+    fi
+    if [ "$rc" -eq 1 ]; then
+      err "Defect scan failed for $script"
+      failed=1
+    elif [ "$rc" -ne 0 ]; then
+      warn "Defect scan input unusable for $script (rc=$rc); nothing gated."
+    fi
+  done <<< "$changed"
+  if [ "$failed" -ne 0 ]; then
+    set_result demo_defects fail
+    return 1
+  fi
+  return 0
+}
+
 run_check() {
   local name="$1"
   section "$name"
@@ -845,7 +924,7 @@ main() {
       -h|--help) usage; exit 0 ;;
       -l|--list) list_checks; exit 0 ;;
       all)       checks+=("${ALL_CHECKS[@]}") ;;
-      validate|test|chars|comments|units|coverage|patch_coverage|links) checks+=("$arg") ;;
+      validate|test|chars|comments|units|coverage|patch_coverage|links|demo_defects) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
   done

@@ -90,3 +90,84 @@ func test_dart_front_reach_exceeds_its_half_width() -> void:
 func test_dart_mesh_is_cached() -> void:
 	assert_eq(UnitMeshes.dart_mesh(R), UnitMeshes.dart_mesh(R),
 		"the same radius returns the shared cached mesh")
+
+
+# --- figure shading and contact shadows (vertex colours) ----------------------
+
+func _surface_colors(mesh: ArrayMesh) -> PackedColorArray:
+	var arrays: Array = mesh.surface_get_arrays(0)
+	return arrays[Mesh.ARRAY_COLOR] if arrays[Mesh.ARRAY_COLOR] != null else PackedColorArray()
+
+
+func test_figure_body_meshes_carry_part_shading_as_vertex_colours() -> void:
+	# Body figures bake per-part shading (values around white, multiplying with the
+	# instance team tint) -- so the colour array exists and holds more than one value.
+	for is_cav in [false, true]:
+		var body: ArrayMesh = UnitMeshes.figure_mesh(is_cav, UnitMeshes.FOOT_SPEAR, R, false, false)
+		var colors: PackedColorArray = _surface_colors(body)
+		assert_gt(colors.size(), 0, "body mesh carries vertex colours (cav=%s)" % is_cav)
+		var distinct: Dictionary = {}
+		for c in colors:
+			distinct[c] = true
+		assert_gt(distinct.size(), 2,
+			"shading distinguishes several parts, not one flat value (cav=%s)" % is_cav)
+
+
+func test_figure_body_first_part_is_the_translucent_contact_shadow() -> void:
+	# The shadow ellipse is inserted first so the figure's own parts overdraw it: its
+	# vertices are black with partial alpha, unlike every shading value (opaque, near
+	# white).
+	var body: ArrayMesh = UnitMeshes.figure_mesh(false, UnitMeshes.FOOT_INFANTRY, R, false, false)
+	var colors: PackedColorArray = _surface_colors(body)
+	assert_almost_eq(colors[0].r, 0.0, 0.001, "shadow is black")
+	assert_lt(colors[0].a, 1.0, "and translucent")
+	assert_gt(colors[0].a, 0.0, "but visible")
+
+
+func test_figure_outline_meshes_stay_flat_and_shadowless() -> void:
+	# The outline is a rim: no vertex colours (a scaled shadow copy would ring the
+	# figure, and shading a rim just muddies it).
+	var outline: ArrayMesh = UnitMeshes.figure_mesh(false, UnitMeshes.FOOT_SPEAR, R, true, false)
+	assert_eq(_surface_colors(outline).size(), 0, "outline carries no vertex colours")
+
+
+func test_mark_meshes_stay_flat() -> void:
+	# The zoomed-out marks are unchanged by the figure shading work.
+	assert_eq(_surface_colors(UnitMeshes.pointer_mesh(R)).size(), 0, "pointer stays flat")
+	assert_eq(_surface_colors(UnitMeshes.dart_mesh(R)).size(), 0, "dart stays flat")
+	assert_eq(_surface_colors(UnitMeshes.kite_mesh(R)).size(), 0, "kite stays flat")
+
+
+func test_horse_figure_spans_a_real_warhorse_nose_to_tail() -> void:
+	# The mounted silhouette reads at real warhorse length (2.4-3.0 m) at the actual
+	# cavalry mark radius, rather than the ~1.8 m the raw authored parts span -- the
+	# per-type grid pitch gives the figure the room.
+	var polys: Array = UnitMeshes._horse_figure_polys(Unit.CAV_MARK_RADIUS)
+	var min_x := INF
+	var max_x := -INF
+	for poly in polys:
+		for v in poly:
+			min_x = minf(min_x, v.x)
+			max_x = maxf(max_x, v.x)
+	var span_m: float = (max_x - min_x) / WorldScale.WU_PER_M
+	assert_between(span_m, 2.4, 3.0,
+			"nose-to-tail span %.2f m should sit in the real warhorse range" % span_m)
+
+
+func test_cavalry_contact_shadow_tracks_the_figure_scale() -> void:
+	# The shadow ellipse (first part of the body mesh) must sit under the scaled
+	# figure's hooves, not at the unscaled authored position -- its centroid y equals
+	# the authored 1.3 mark-radii offset lifted by MOUNT_FIGURE_SCALE.
+	var body: ArrayMesh = UnitMeshes.figure_mesh(true, UnitMeshes.FOOT_INFANTRY, R, false, false)
+	var arrays: Array = body.surface_get_arrays(0)
+	var verts: PackedVector2Array = arrays[Mesh.ARRAY_VERTEX]
+	var colors: PackedColorArray = _surface_colors(body)
+	var sum_y := 0.0
+	var n := 0
+	for i in range(verts.size()):
+		if colors[i].r < 0.001 and colors[i].a < 1.0:   # shadow vertices are translucent black
+			sum_y += verts[i].y
+			n += 1
+	assert_gt(n, 0, "found the shadow part's vertices")
+	assert_almost_eq(sum_y / n, 1.3 * R * UnitMeshes.MOUNT_FIGURE_SCALE, 0.05,
+			"shadow centroid rides the scaled hoof line")

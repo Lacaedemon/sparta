@@ -63,4 +63,5 @@ DEMOS=(
   "countermarch|demos/inputs/countermarch-exelismos.json|30|560|640|input"
   "wheel_turn|demos/inputs/wheel-turn-oblique-move.json|30|440|720|input"
   "resize_flank_anchor|demos/inputs/flank-anchored-resize.json|30|160|640|input"
+  "cavalry_grid|demos/inputs/cavalry-spacing.json|30|270|640|input"
 )

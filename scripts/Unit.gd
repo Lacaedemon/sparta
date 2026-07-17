@@ -480,8 +480,14 @@ const BEARING_STEER_FREEZE_RADIUS: float = 8.0
 const ARRIVAL_ENVELOPE_MARGIN: float = 0.8
 # Orderly move orders pivot the block about its centre toward their travel direction at
 # this angular rate (rad/s) rather than snapping, so the ranks turn in good order. A
-# half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Combat chases still snap
-# (they pass orderly = false to _move_to). TURN_RATE is the rate at a stand -- an orderly
+# half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Approach marches (an
+# attack chase closing on a distant target, the auto-advance on a spotted enemy, a
+# support unit's shadow/intercept) pivot the same way via _move_to's formed_turn flag --
+# a disciplined regiment turns onto its bearing in good order even when the march isn't
+# a player move order, so a pathfield detour can't snap the slot grid out from under the
+# soldier bodies (the pre-contact blobbing this replaced). Close-quarters combat cycles
+# (skirmish kiting, the caracole peel-back) still snap: they are tight, already-in-contact
+# loops where the block barely travels and responsiveness wins. TURN_RATE is the rate at a stand -- an orderly
 # march pivot tapers this down as the unit's current speed rises (real turning capacity is
 # bounded by the lateral force a moving body/formation can exert without losing footing or
 # cohesion), never dropping below TURN_RATE_TAPER_FLOOR of the stationary rate. A first-cut
@@ -794,6 +800,15 @@ var _base_separation_radius: float = SEPARATION_RADIUS_INFANTRY
 # UnitFormation.slots() and _front_depth() read it; the files/ranks count itself
 # never changes, only the spacing between them.
 var spacing_scale: float = 1.0
+# Per-type formation grid pitch, in world units: the lateral distance between files and
+# the depth between ranks. Foot troops keep the historical synaspismos floor on both
+# axes (FORMATION_SPACING); a mounted soldier occupies far more ground nose-to-tail
+# than knee-to-knee, so cavalry spawn with a wider file pitch and a much deeper rank
+# pitch (set by Battle from the loadout's file_pitch_m/rank_pitch_m). spacing_scale
+# (the formation-mode density: TIGHT/LOOSE/shield wall) multiplies both axes alike --
+# see file_pitch_wu()/rank_pitch_wu(), the accessors every slot-geometry consumer reads.
+var file_pitch: float = FORMATION_SPACING
+var rank_pitch: float = FORMATION_SPACING
 # Rises while this unit is locked in mutual melee (both FIGHTING, neither HOLD).
 # Scales down the separation push vs. matched enemies so units gradually intermix.
 var _combat_intermixing: float = 0.0
@@ -1562,12 +1577,14 @@ func _think(delta: float) -> void:
 			var goal: Vector2 = enemy.position
 			if order_mode == ORDER_ATTACK_FLANK or order_mode == ORDER_ATTACK_REAR:
 				goal = UnitTargeting.attack_approach_point(self, enemy)
-			_move_to(goal, delta)
+			_move_to(goal, delta, false, true)
 			return
 
 	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
 	# A player move order marches orderly -- it centre-pivots gradually toward its heading
-	# before advancing; combat chases above stay snappy (orderly = false).
+	# before advancing. The combat approach marches above pivot the same way (formed_turn),
+	# without the orderly path's arrival braking -- a charge must carry its speed through
+	# contact.
 	if has_move_target:
 		# Arrival at the FINAL destination requires both a close position AND a near-zero
 		# speed -- not position alone. _move_to's braking ramps _current_speed down along
@@ -1638,7 +1655,7 @@ func _think(delta: float) -> void:
 		# _formation_angle) or the bodies would stay pinned and never keep up with the march.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		_move_to(enemy.position, delta)
+		_move_to(enemy.position, delta, false, true)
 	else:
 		# Idle: no enemy, or a HOLD stance that won't chase — the paths above
 		# still fight/fire whatever reaches a held unit. If the engaged enemy vanished
@@ -1730,7 +1747,7 @@ func _support_tick(delta: float) -> void:
 			# body arrival releases before the march (the turn re-arms on the next contact).
 			if _engage_turn_target != Vector2.ZERO:
 				_settle_engage_turn()
-			_move_to(threat.position, delta)
+			_move_to(threat.position, delta, false, true)
 		return
 	# No threat near the ward: shadow it, holding station a short distance off so
 	# the supporter doesn't crowd the unit it's guarding. If a re-face turn was still
@@ -1739,7 +1756,7 @@ func _support_tick(delta: float) -> void:
 	if _engage_turn_target != Vector2.ZERO:
 		_settle_engage_turn()
 	if position.distance_to(ward.position) > SUPPORT_FOLLOW_DISTANCE:
-		_move_to(ward.position, delta)
+		_move_to(ward.position, delta, false, true)
 	else:
 		state = State.IDLE
 
@@ -1769,7 +1786,7 @@ func _is_move_order_in_haste() -> bool:
 			and current_order.haste
 
 
-func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
+func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
 	var step: Vector2 = point
@@ -1874,22 +1891,48 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		rate = brake
 	_current_speed = move_toward(_current_speed, pace_speed, rate * delta)
 	# Facing. A side-step holds its commanded heading and shuffles sideways. An orderly
-	# move order from a DISCIPLINED unit centre-pivots gradually toward its travel
+	# move order OR a formed_turn approach march (attack chase, auto-advance, support
+	# shadow/intercept) from a DISCIPLINED unit centre-pivots gradually toward its travel
 	# direction (the ranks turn in good order), tapering the pivot rate down as current
 	# speed rises -- real turning capacity is bounded by the lateral force a moving
 	# body/formation can exert without losing footing or cohesion. An undisciplined unit
 	# (a mob/levy) skips that: it turns to face the destination immediately and walks
-	# there directly, same as a combat chase (which must also stay responsive) -- the
-	# soldier bodies' own slot-approach still re-forms them onto the block as they arrive,
-	# so no separate "form up" step is needed. A disciplined unit given an in-haste order
-	# (a triple/quadruple-click RUN/SPRINT gait) temporarily marches the same undisciplined
-	# way -- there's no time to execute a formed turn.
-	var pivot_as_formation: bool = orderly and disciplined and not _is_move_order_in_haste()
+	# there directly, same as a close-quarters combat cycle (kiting, the caracole
+	# peel-back, which must stay responsive) -- the soldier bodies' own slot-approach
+	# still re-forms them onto the block as they arrive, so no separate "form up" step is
+	# needed. A disciplined unit given an in-haste order (a triple/quadruple-click
+	# RUN/SPRINT gait) temporarily marches the same undisciplined way -- there's no time
+	# to execute a formed turn. Without the pivot, a snap under _face_dir's absorb
+	# threshold rotates the whole slot grid in one tick (up to ~75 deg), sweeping flank
+	# slots far faster than any body can run -- the soldiers scramble across the block
+	# and the formation reads as a blob for the next several seconds.
+	var pivot_as_formation: bool = (orderly or formed_turn) and disciplined and not _is_move_order_in_haste()
+	# A formed_turn approach only pivots for bearings under the fold-absorb threshold. At or
+	# past it, the plain snap is already scramble-free by construction: _face_dir folds the
+	# jump into _formation_angle, so the slot grid holds still while the unit answers the
+	# threat -- and a centre pivot would be the wrong drill for a turn that large anyway (a
+	# rear-sector target calls for an about-face + march decomposition, the same way orderly
+	# move orders decompose big turns into drill maneuvers before _move_to ever sees them;
+	# that decomposition for combat approaches is future maneuver work, not this taper).
+	# Strictly-greater-than, matching _face_dir's own fold condition exactly: a bearing at
+	# the exact threshold pivots (the safe path), so no offset can both skip the pivot here
+	# AND miss the fold there.
+	if formed_turn and not orderly and pivot_as_formation \
+			and absf(angle_difference(facing.angle(), steer_dir.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
+		pivot_as_formation = false
 	if maneuvering:
 		_face_dir(ordered_facing)
 	elif pivot_as_formation:
 		var speed_frac: float = clampf(_current_speed / move_speed, 0.0, 1.0)
 		var pivot_rate: float = TURN_RATE * lerpf(1.0, TURN_RATE_TAPER_FLOOR, speed_frac)
+		# A centre pivot rotates the slot grid rigidly about the block's centre, so the
+		# farthest slot (the corner man, at the footprint's half-diagonal) covers
+		# rate x radius of arc per second -- the same outer-file pacing bound the flank
+		# wheel derives (UnitManeuver.wheel_gait_rate). Uncapped, TURN_RATE sweeps a wide
+		# block's corner slots several times faster than any body can run, so the men
+		# scramble after their slots instead of turning in good order and the block reads
+		# as a blob until they catch up. The corner man paces the whole pivot at up to a jog.
+		pivot_rate = UnitManeuver.wheel_gait_rate(pivot_rate, jog_speed, _pivot_radius())
 		_rotate_facing_toward(steer_dir, delta, pivot_rate)
 	else:
 		_face_dir(steer_dir)
@@ -2114,7 +2157,7 @@ func _front_depth() -> float:
 	# measured against that same grid, not the line frontage its soldiers aren't standing on.
 	var files: int = formation_files(soldiers)
 	var ranks: int = int(ceil(float(soldiers) / float(files)))
-	var depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING * spacing_scale
+	var depth: float = float(ranks - 1) * 0.5 * rank_pitch_wu()
 	# Cap the depth used as the engaged-enemy separation floor. A very narrow,
 	# deep player-set frontage would otherwise make the summed floor exceed melee
 	# contact range, pushing fighting lines apart faster than they close and
@@ -2124,6 +2167,30 @@ func _front_depth() -> float:
 	# narrowed columns; short-reach archers can clip it even at auto width, but
 	# that only allows fractionally more overlap and they kite rather than grind.
 	return minf(depth, attack_range * 0.5)
+
+
+## Distance from the block's centre to its farthest formation slot -- the corner man's
+## half-diagonal, in world units. A centre pivot rotates the slot grid rigidly about the
+## centre, so this is the arm that corner man actually walks: the pacing radius
+## _move_to's formed pivot feeds UnitManeuver.wheel_gait_rate, exactly as the flank
+## wheel feeds it the hinge-to-far-flank arm.
+func _pivot_radius() -> float:
+	var files: int = maxi(1, formation_files(soldiers))
+	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	return Vector2(float(maxi(0, files - 1)) * file_pitch_wu(),
+			float(maxi(0, ranks - 1)) * rank_pitch_wu()).length() * 0.5
+
+
+## The formation grid's per-axis pitch in world units: the per-type file/rank spacing
+## scaled by the formation-mode density (TIGHT/LOOSE/shield wall). Every slot-geometry
+## consumer reads these two accessors rather than combining the raw fields, so the
+## density scaling can't be forgotten on one axis.
+func file_pitch_wu() -> float:
+	return file_pitch * spacing_scale
+
+
+func rank_pitch_wu() -> float:
+	return rank_pitch * spacing_scale
 
 
 ## Formation spacing scale for a given formation `mode`, pure and independent of a live
@@ -2653,7 +2720,7 @@ func formation_files(count: int) -> int:
 ## and replay-safe like the callers below.
 func formation_slots(count: int) -> PackedVector2Array:
 	if in_square():
-		return UnitFormation.block_slots(count, formation_files(count), FORMATION_SPACING * spacing_scale)
+		return UnitFormation.block_slots(count, formation_files(count), file_pitch_wu())
 	return UnitFormation.slots(self, count)
 
 
@@ -2671,7 +2738,7 @@ func soldier_world_facings(count: int) -> PackedVector2Array:
 		out.fill(facing)
 		return out
 	var files: int = formation_files(count)
-	var slots := UnitFormation.block_slots(count, files, FORMATION_SPACING * spacing_scale)
+	var slots := UnitFormation.block_slots(count, files, file_pitch_wu())
 	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
 	for i in range(slots.size()):
 		if UnitFormation.square_is_perimeter(i, count, files) and slots[i].length_squared() > 0.0001:
@@ -2896,7 +2963,7 @@ func _countermarch_target(variant: int) -> Vector2:
 func _countermarch_march_distance() -> float:
 	var files: int = maxi(1, formation_files(soldiers))
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
-	return float(maxi(0, ranks - 1)) * FORMATION_SPACING * spacing_scale
+	return float(maxi(0, ranks - 1)) * rank_pitch_wu()
 
 
 ## The exelismos variant (CountermarchVariant) the current order is executing, or -1 when it
@@ -3088,16 +3155,17 @@ func _reform_timeout() -> float:
 ## further than a same-shape rank-swap ever would. Pass the file count captured just BEFORE
 ## set_frontage() ran; the current (post-change) shape is read directly off `self`.
 func _reshape_timeout(old_files: int) -> float:
-	var span: float = FORMATION_SPACING * spacing_scale
 	var new_files: int = maxi(1, formation_files(soldiers))
 	var new_ranks: int = UnitFormation.ranks_for(soldiers, new_files)
 	var new_crossing: float = Vector2(
-			float(maxi(0, new_files - 1)) * span, float(maxi(0, new_ranks - 1)) * span).length()
+			float(maxi(0, new_files - 1)) * file_pitch_wu(),
+			float(maxi(0, new_ranks - 1)) * rank_pitch_wu()).length()
 	var old_crossing: float = 0.0
 	if old_files != new_files:
 		var old_ranks: int = UnitFormation.ranks_for(soldiers, maxi(1, old_files))
 		old_crossing = Vector2(
-				float(maxi(0, old_files - 1)) * span, float(maxi(0, old_ranks - 1)) * span).length()
+				float(maxi(0, old_files - 1)) * file_pitch_wu(),
+				float(maxi(0, old_ranks - 1)) * rank_pitch_wu()).length()
 	var slowest: float = maxf(1.0, jog_speed * back_speed_fraction)
 	return (old_crossing + new_crossing) / slowest * 2.0 + 1.0
 
@@ -3130,7 +3198,7 @@ func _wheel_pivot_point(dir: int) -> Vector2:
 	# The same current-grid file count as _front_depth/engaged_soldier_indices, so a
 	# wheel hinges against the grid the regiment is actually laid out on.
 	var files: int = formation_files(soldiers)
-	var half_width: float = float(files - 1) * 0.5 * FORMATION_SPACING * spacing_scale
+	var half_width: float = float(files - 1) * 0.5 * file_pitch_wu()
 	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
 	var front_axis: Vector2 = facing.rotated(_formation_angle)             # slot-grid local -Y (toward front)
 	if front_axis.dot(facing) < -0.5:
@@ -3149,7 +3217,7 @@ func _wheel_pivot_point(dir: int) -> Vector2:
 	# The front rank sits ahead of the centre along the front axis by the block's front depth, so
 	# the hinge is the leading man of the standing file (a door hinges at its edge post, not its mid).
 	var ranks: int = int(ceil(float(soldiers) / float(maxi(1, files))))
-	var front_depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING * spacing_scale
+	var front_depth: float = float(ranks - 1) * 0.5 * rank_pitch_wu()
 	return flank + front_axis * front_depth
 
 
@@ -4266,6 +4334,8 @@ const LOD_ZOOM_OUT: float = 1.30
 # ARCHER) live in UnitMeshes; _foot_kind maps a unit's type flags onto one of them.
 const FLAG_POLE_BASE_GAP: float = 34.0  # px above the block extent where the pole foot sits
 const FLAG_POLE_HEIGHT: float = 18.0    # pole from above-bar to flag attachment point
+const FLAG_FINIAL_OFFSET: float = 1.5   # brass finial centre above the pole tip
+const FLAG_FINIAL_RADIUS: float = 1.6   # brass finial radius
 const FLAG_WIDTH: float = 12.0          # horizontal extent of the flag rectangle
 const FLAG_HEIGHT: float = 8.0          # vertical extent of the flag rectangle
 # Facing pip size, as a fraction of the mark radius -- small enough to read as
@@ -4759,7 +4829,8 @@ func to_snapshot_dict() -> Dictionary:
 		"field_bounds": field_bounds, "retreat_bounds": retreat_bounds,
 		"separation_radius": separation_radius,
 		"base_separation_radius": _base_separation_radius,
-		"spacing_scale": spacing_scale, "team_color": team_color,
+		"spacing_scale": spacing_scale, "file_pitch": file_pitch, "rank_pitch": rank_pitch,
+		"team_color": team_color,
 
 		# Mutable runtime state.
 		"soldiers": soldiers, "morale": morale, "fatigue": fatigue, "cohesion": cohesion,
@@ -4850,6 +4921,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	separation_radius = float(d["separation_radius"])
 	_base_separation_radius = float(d["base_separation_radius"])
 	spacing_scale = float(d["spacing_scale"])
+	file_pitch = float(d["file_pitch"])
+	rank_pitch = float(d["rank_pitch"])
 	team_color = d["team_color"]
 
 	soldiers = int(d["soldiers"])

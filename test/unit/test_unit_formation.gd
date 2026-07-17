@@ -40,6 +40,33 @@ func test_block_slots_spacing_scales_the_grid() -> void:
 	assert_almost_eq(slots[0].distance_to(slots[1]), 5.0, 0.001, "files are one spacing apart")
 
 
+func test_block_slots_rank_pitch_deepens_only_the_rank_axis() -> void:
+	# An anisotropic grid (cavalry: ranks far deeper than files are wide) keeps the
+	# file axis on `spacing` while the rank axis steps by `rank_pitch`, still centred.
+	var slots := UnitFormation.block_slots(6, 3, 10.0, 30.0)
+	assert_almost_eq(slots[1].x - slots[0].x, 10.0, 0.001, "files stay one file pitch apart")
+	assert_almost_eq(slots[0].y, -15.0, 0.001, "front rank sits half the rank pitch forward")
+	assert_almost_eq(slots[3].y - slots[0].y, 30.0, 0.001, "ranks are one rank pitch apart")
+
+
+func test_block_slots_negative_rank_pitch_falls_back_to_isotropic() -> void:
+	# The default sentinel (-1.0) must reproduce the isotropic grid exactly, so
+	# every pre-existing caller that omits the argument is bit-for-bit unchanged.
+	var plain := UnitFormation.block_slots(40, 8, 5.0)
+	var sentinel := UnitFormation.block_slots(40, 8, 5.0, -1.0)
+	for i in range(plain.size()):
+		assert_eq(sentinel[i], plain[i], "slot %d matches the isotropic grid" % i)
+
+
+func test_anchored_block_slots_carries_rank_pitch() -> void:
+	# The anchored variant threads the same rank pitch through to the grid it lays out.
+	var plain := UnitFormation.block_slots(6, 3, 10.0, 30.0)
+	var anchored := UnitFormation.anchored_block_slots(6, 3, 3, 10.0,
+			UnitFormation.Anchor.CENTRE, 30.0)
+	for i in range(plain.size()):
+		assert_eq(anchored[i], plain[i], "anchored slot %d matches at centre" % i)
+
+
 func test_block_slots_partial_last_rank_stays_laterally_centred() -> void:
 	# 10 soldiers, 4 files -> ranks of 4, 4, 2. Each rank is centred on its own count, so the
 	# short last rank doesn't pull the block sideways: the X-centroid stays on the origin.

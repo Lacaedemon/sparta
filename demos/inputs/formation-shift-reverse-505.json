@@ -1,12 +1,50 @@
 {
-  "_comment": "#505 modifier-key shortcuts: select the Spearmen (seed 12345, ~500,300; spawn formation is Tight), zoomed in close enough to see rank spacing. Press T to cycle Tight -> Loose (visibly wider spacing), then Shift+T to cycle the other way, back to Tight -- the mark spacing at tick 105 should match tick 10 (before T), demonstrating the shift-reverses-the-cycle parallelism the issue asks for.",
+  "_comment": "#505 modifier-key shortcuts: select the Spearmen (seed 12345, ~407,300; spawn formation is Tight), zoomed in close enough to see rank spacing. Press T to cycle Tight -> Loose (visibly wider spacing), then Shift+T to cycle the other way, back to Tight -- the mark spacing at tick 105 should match tick 10 (before T), demonstrating the shift-reverses-the-cycle parallelism the issue asks for.",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 500.0, "y": 300.0, "zoom": 2.2}
+    {
+      "tick": 0,
+      "x": 407.0,
+      "y": 300.0,
+      "zoom": 2.2
+    }
   ],
   "steps": [
-    {"tick": 10, "click": [500, 300]},
-    {"tick": 40, "key": "T"},
-    {"tick": 100, "key": "T", "shift": true}
+    {
+      "tick": 10,
+      "click": [
+        407,
+        300
+      ]
+    },
+    {
+      "tick": 40,
+      "key": "T"
+    },
+    {
+      "tick": 100,
+      "key": "T",
+      "shift": true
+    }
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        407.0,
+        300.0
+      ]
+    },
+    {
+      "tick": [
+        45,
+        95
+      ],
+      "uid": 0,
+      "field": "formation",
+      "value": "LOOSE"
+    }
   ]
 }

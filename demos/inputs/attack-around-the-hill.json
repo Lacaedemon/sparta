@@ -1,0 +1,62 @@
+{
+  "_comment": "Formed attack approach around blocking terrain: a lone player Cavalry regiment (south of the hill, directly in its lane) is ordered to attack an enemy Infantry regiment on the far side of it. The straight lane crosses the impassable hill, so the pathfield routes the charge around the hill's west corner, giving it a formation-width berth (the routing grid blocks whole 64-wu cells, so the routed footprint is a little wider than the drawn rect). The regiment steers by the corridor's long-run direction (string-pulled lookahead) and pivots onto it in good order at the corner-man-paced rate, holding rank-and-file for the whole approach -- this same march used to snap its slot grid to each coarse per-cell path bearing and smear into a blob until the soldiers caught up. Camera holds a static frame over the west corridor and the hill. Deterministic (scenario + seed + scripted input).",
+  "seed": "12345",
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Cavalry",
+      "x": 1180,
+      "y": 690
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 1180,
+      "y": 250,
+      "count": 120
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1115.0,
+      "y": 480.0,
+      "zoom": 1.3
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [
+        1180,
+        690
+      ]
+    },
+    {
+      "tick": 20,
+      "rmb_click": [
+        1180,
+        255
+      ]
+    }
+  ],
+  "state": [
+    8,
+    60,
+    120,
+    180,
+    240,
+    300,
+    360,
+    420,
+    480,
+    540,
+    620
+  ],
+  "expect": [
+    {"tick": 60, "uid": 0, "field": "current_order", "value": "ATTACK"},
+    {"tick": 60, "uid": 0, "field": "target_enemy_uid", "value": 1},
+    {"tick": [480, 620], "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": [480, 620], "uid": 0, "field": "engaged", "value": true}
+  ]
+}

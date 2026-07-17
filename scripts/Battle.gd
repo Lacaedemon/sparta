@@ -31,6 +31,9 @@ const TERRAIN_COLOR := {
 	"forest": Color(0.12, 0.28, 0.10),
 	"hill":   Color(0.55, 0.48, 0.32),
 }
+# Base grass green: the palette anchor for the field's procedural texture, its flat
+# fallback, and the dimmer retreat margin -- one constant so they can't drift apart.
+const FIELD_COLOR := Color(0.34, 0.42, 0.27)
 
 # Sentinel order target: a move order carrying this as its `target` appends
 # its destination to the units' waypoint queue instead of replacing the route.
@@ -191,6 +194,13 @@ const CAMERA_SMOOTHING := 0.15
 # Fixed-step clock driving the whole simulation; also the timeline for replays.
 var _tick: int = 0
 var _ended: bool = false
+# Procedural ground/terrain art (TerrainArt), built once in _ready. Render-only: the
+# textures are a pure function of a fixed art seed and the TERRAIN table, never of any
+# sim/replay RNG, so no battle state or transcript shifts with them. Null until built --
+# _draw falls back to the flat placeholder rects when they aren't (a bare-instanced
+# battle in a test).
+var _ground_texture: ImageTexture = null
+var _terrain_textures: Array = []
 
 # Drill / solo mode: deploy only the player army (team 0) and never auto-end on "no enemies",
 # so a unit can rehearse a maneuver with no combat. Set BEFORE the node enters the tree (the
@@ -313,6 +323,24 @@ func _ready() -> void:
 		else:
 			PathField.active.block_rect(patch["rect"])
 
+	# Build the procedural ground/terrain art (TerrainArt; render-only, fixed art seed --
+	# see the _ground_texture field docs). Built here once; _draw only ever samples them.
+	_ground_texture = ImageTexture.create_from_image(
+			TerrainArt.field_image(FIELD.size, TerrainArt.ART_SEED, FIELD_COLOR))
+	_terrain_textures.clear()
+	for patch in TERRAIN:
+		var col: Color = TERRAIN_COLOR.get(patch["type"], Color(0.4, 0.4, 0.4))
+		var rect: Rect2 = patch["rect"]
+		var img: Image
+		match patch["type"]:
+			"forest":
+				img = TerrainArt.forest_image(rect.size, TerrainArt.ART_SEED, col)
+			"hill":
+				img = TerrainArt.hill_image(rect.size, TerrainArt.ART_SEED, col)
+			_:
+				img = TerrainArt.field_image(rect.size, TerrainArt.ART_SEED, col)
+		_terrain_textures.append(ImageTexture.create_from_image(img))
+
 	# The main menu's "Parade Ground" button requests drill mode across the scene swap the
 	# same way CampaignBattle ferries a clash's config (Godot's change_scene_to_file can't
 	# pass constructor args). Left set — not consumed here — so a later "Restart Battle"
@@ -404,16 +432,28 @@ func _draw() -> void:
 	# The retreat margin (see FIELD_WITH_MARGIN) drawn first, under the field, so it reads
 	# as a dimmer strip of ground beyond the playable edge — where a routing unit may still
 	# be fleeing (and still fightable) before it's gone for good.
-	draw_rect(FIELD_WITH_MARGIN, Color(0.34, 0.42, 0.27).darkened(0.3))
-	# Simple grass field + a center line, so the world is readable before art.
-	draw_rect(FIELD, Color(0.34, 0.42, 0.27))
+	draw_rect(FIELD_WITH_MARGIN, FIELD_COLOR.darkened(0.3))
+	# Textured grass field (seeded procedural art built once in _ready; render-only, so
+	# nothing the sim reads changes). The flat-colour rects remain as the fallback for a
+	# battle whose textures never built (a test poking _draw without a full _ready).
+	if _ground_texture != null:
+		draw_texture_rect(_ground_texture, FIELD, false)
+	else:
+		draw_rect(FIELD, FIELD_COLOR)
 	draw_rect(FIELD, Color(0.2, 0.25, 0.16), false, 4.0)
 	draw_line(Vector2(0, FIELD.size.y * 0.5), Vector2(FIELD.size.x, FIELD.size.y * 0.5),
 		Color(1, 1, 1, 0.08), 2.0)
-	# Terrain patches — drawn over the field, under units (Battle is the parent).
-	for patch in TERRAIN:
+	# Terrain patches — drawn over the field, under units (Battle is the parent). Each
+	# patch keeps its outline so the boundary (the part the sim actually enforces) stays
+	# crisp over the textured fill.
+	for i in range(TERRAIN.size()):
+		var patch: Dictionary = TERRAIN[i]
 		var col: Color = TERRAIN_COLOR.get(patch["type"], Color(0.4, 0.4, 0.4))
-		draw_rect(patch["rect"], col)
+		var tex: ImageTexture = _terrain_textures[i] if i < _terrain_textures.size() else null
+		if tex != null:
+			draw_texture_rect(tex, patch["rect"], false)
+		else:
+			draw_rect(patch["rect"], col)
 		draw_rect(patch["rect"], col.darkened(0.35), false, 2.0)
 
 
@@ -481,7 +521,10 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	var half_widths: Array[float] = []
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
-		var d_spacing: float = Unit.FORMATION_SPACING \
+		# The row's own per-type FILE pitch (metres to wu; cavalry files sit ~1 m apart
+		# vs the 0.45 m foot floor), scaled by the formation-mode density -- so a wide
+		# cavalry block's spawn gap accounts for the ground its horses actually cover.
+		var d_spacing: float = float(d.get("file_pitch_m", 0.45)) * WorldScaleRef.WU_PER_M \
 				* Unit.spacing_scale_for_mode(d.get("formation", Unit.FORMATION_NORMAL))
 		half_widths.append(UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing))
 
@@ -558,8 +601,8 @@ func _default_loadout() -> Array:
 		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
 		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_HAMATA, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
 		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "back_fraction": 0.55, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "armor": LoadoutRegistry.ARMOR_TUNIC, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0},
 	]
 
 
@@ -581,6 +624,12 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.max_soldiers = d["soldiers"]
 	u.attack = d["atk"]
 	u.defense = d["def"]
+	# Per-type formation pitch: real-world metres between files and between ranks ->
+	# world units. Foot troops default to the synaspismos floor on both axes; cavalry
+	# rows carry a wider file pitch and a much deeper rank pitch (a warhorse stands
+	# ~0.7 m wide but ~3 m of ground nose-to-tail).
+	u.file_pitch = float(d.get("file_pitch_m", 0.45)) * WORLD_UNITS_PER_METER
+	u.rank_pitch = float(d.get("rank_pitch_m", 0.45)) * WORLD_UNITS_PER_METER
 	# Real-world m/s -> world units, times the global movement multiplier.
 	u.walk_speed = d["walk_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 	u.jog_speed = d["jog_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
@@ -1084,7 +1133,7 @@ func enqueue_frontage(uids: Array, delta: int,
 		var anchor_offset: float = 0.0
 		if anchor != UnitFormation.Anchor.CENTRE:
 			anchor_offset = u.frontage_anchor_offset + UnitFormation.anchor_shift(
-					current, files, Unit.FORMATION_SPACING * u.spacing_scale, anchor)
+					current, files, u.file_pitch_wu(), anchor)
 		var cmd := {
 			"units": [uid],
 			"x": 0.0,
@@ -1158,7 +1207,7 @@ func enqueue_file_double(uids: Array, direction: int,
 		else:
 			files = UnitFormation.narrowed_files(current)
 		files = clampi(files, 1, maxi(1, u.max_soldiers))
-		var spacing: float = Unit.FORMATION_SPACING * u.spacing_scale
+		var spacing: float = u.file_pitch_wu()
 		var anchor_offset: float
 		if anchor == UnitFormation.Anchor.CENTRE:
 			anchor_offset = 0.0

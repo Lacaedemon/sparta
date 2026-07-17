@@ -1331,12 +1331,14 @@ opengl3 --write-movie <path>.png --fixed-fps 30 --quit-after N ...`, then `Read`
 frame) is the fastest way to confirm whether a facing swing is a real visible rotation or
 inert bookkeeping.
 
-## Two DISTINCT root causes behind "formation visibly spins" -- don't assume it's one bug
+## THREE distinct root causes behind "formation visibly spins" -- don't assume it's one bug
 
-There are at least two separate mechanisms that each independently make a regiment's
-soldier block visibly rotate, discovered investigating #724 and #774 in the same session.
-Both ultimately show up as `facing` and the soldier block's world orientation drifting, but
-they're driven by different subsystems and (so far) resist the same fixes:
+There are at least three separate mechanisms that each independently make a regiment's
+soldier block visibly rotate or smear: two swirls discovered investigating #724 and #774 in
+the same session (both unresolved as of this writing), and a third -- the pre-contact
+approach-march blob -- found and fixed later (#921). All show up as `facing` and the soldier
+block's world orientation drifting, but they're driven by different subsystems and resist
+the same fixes:
 
 - **#724 (melee-lock swirl):** two units in PROLONGED, roughly matched melee slowly and
   continuously rotate around their clash point, accelerating over hundreds of ticks (a
@@ -1385,6 +1387,27 @@ they're driven by different subsystems and (so far) resist the same fixes:
   #458 reproduction swirl -- the third (shortest lateral repositioning) stays perfectly
   stable, and all three are `disciplined: true` (ruled out as a disciplined/undisciplined
   difference).
+
+- **A THIRD, now-fixed mechanism (#921, PR #924 -- pre-contact BLOBBING on a detouring
+  approach march, distinct from both swirls above):** two stacked causes. (a)
+  `PathField.next_step` steered by the ADJACENT A* cell centre, whose bearing jumps in
+  coarse per-cell quanta (a shallow one-cell detour read as a hard ~68 deg turn then a hard
+  counter-turn) -- fixed by string-pulling (return the farthest path point in direct line of
+  sight). (b) A combat chase snapped `facing` to that bearing via `_face_dir`, and any snap
+  UNDER `FACING_SNAP_ABSORB_THRESHOLD` (75 deg) rotates the whole slot grid in one tick with
+  NO `_formation_angle` fold -- flank slots sweep ~10x faster than any body can run, and the
+  soldiers scramble across the block (nnd collapsed 9.0 -> 0.29 wu). Fixed by `_move_to`'s
+  `formed_turn` flag: disciplined approach marches (attack chase, auto-advance, support)
+  centre-pivot gradually, rate paced by the corner man (`UnitManeuver.wheel_gait_rate` on
+  the footprint half-diagonal via `_pivot_radius()`); at/past 75 deg the snap+fold path
+  stays (the fold already holds the grid still, and a turn that large wants an about-face
+  decomposition -- #922's territory). The debugging technique that cracked it: a per-tick
+  trace of `facing`, `_formation_angle`, and the derived grid angle (`facing.angle() + PI/2
+  + _formation_angle`), plus prints on every `_formation_angle` mutation site -- the tell
+  was the grid angle jumping with NO fold print, isolating the sub-threshold `_face_dir`
+  path. That per-tick grid-angle trace is cheaper and more direct than the torque proxy
+  when the symptom is "block rotates/smears while marching" rather than a persistent melee
+  swirl.
 
 **How to apply:** don't assume a "formation spins" report is the same bug as a previously
 diagnosed one just because the symptom looks similar. Reproduce fresh with the SAME

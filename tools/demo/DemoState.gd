@@ -304,6 +304,7 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		rec["soldier_summary_m"] = soldier_summary_m(u._sim_soldier_pos, WorldScaleRef.WU_PER_M)
 		if full:
 			rec["soldiers_full"] = soldier_arrays(u)
+			rec["motion_ref"] = motion_ref(u)
 	return rec
 
 
@@ -319,9 +320,12 @@ static func queue_tail(u: Node) -> Array:
 	return tail
 
 
-## The raw per-soldier arrays for one unit, for --full deep debugging. Positions and facings
-## are world-space Vector2s flattened to [x, y] pairs; hp/prone/stamina are index-aligned
-## floats.
+## The raw per-soldier arrays for one unit, for --full deep debugging. Positions, facings,
+## and ordered slots are world-space Vector2s flattened to [x, y] pairs; hp/prone/stamina
+## are index-aligned floats. `slots` is the unit's CANONICAL slot grid
+## (Unit.soldier_world_slots) at the same tick -- the ordered shape the bodies chase --
+## dumped from the sim's own slot math so an offline analyzer comparing ordered vs actual
+## geometry (DemoDefects) never re-derives it and can't drift from the game.
 static func soldier_arrays(u: Node) -> Dictionary:
 	var positions: Array = []
 	for p in u._sim_soldier_pos:
@@ -329,12 +333,36 @@ static func soldier_arrays(u: Node) -> Dictionary:
 	var facings: Array = []
 	for fdir in u._sim_soldier_facing:
 		facings.append(vec2_pair(fdir))
+	var slots: Array = []
+	for s in u.soldier_world_slots(u.soldiers):
+		slots.append(vec2_pair(s))
 	return {
 		"pos": positions,
 		"facing": facings,
+		"slots": slots,
 		"hp": rounded_floats(u._sim_soldier_hp),
 		"prone": rounded_floats(u._sim_prone),
 		"stamina": rounded_floats(u._sim_soldier_stamina),
+	}
+
+
+## Per-unit motion/geometry constants a defect analyzer derives its thresholds from --
+## dumped alongside the arrays so analysis reads the sim's own tuning instead of
+## hardcoding a copy that would silently drift when the game retunes (the same
+## no-duplicated-ownership rule the units convention states for source files).
+static func motion_ref(u: Node) -> Dictionary:
+	return {
+		# The tighter of the two grid pitches: nnd/misslot thresholds derived from it
+		# stay conservative for an anisotropic grid (cavalry ranks sit far deeper than
+		# its files), and it equals the old single spacing for every isotropic type.
+		"formation_spacing": round_to(minf(u.file_pitch_wu(), u.rank_pitch_wu()), 4),
+		"file_pitch": round_to(u.file_pitch_wu(), 4),
+		"rank_pitch": round_to(u.rank_pitch_wu(), 4),
+		"walk_speed": round_to(u.walk_speed, 2),
+		"jog_speed": round_to(u.jog_speed, 2),
+		"move_speed": round_to(u.move_speed, 2),
+		"pivot_radius": round_to(u._pivot_radius(), 2),
+		"turn_rate": round_to(u.TURN_RATE, 4),
 	}
 
 

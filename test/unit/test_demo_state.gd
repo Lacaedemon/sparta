@@ -134,3 +134,18 @@ func test_metric_soldier_summary_zeroes_for_an_empty_body_list() -> void:
 	var m: Dictionary = DemoState.soldier_summary_m(PackedVector2Array(), 20.0)
 	assert_eq(m["centroid_m"], [0.0, 0.0])
 	assert_eq(m["bbox_m"], [0.0, 0.0])
+
+
+func test_motion_ref_reports_both_grid_pitches_and_their_min() -> void:
+	# The analyzer derives its blob/misslot thresholds from formation_spacing, which
+	# must be the TIGHTER of the two axes so an anisotropic grid (cavalry's deep
+	# ranks) keeps the thresholds conservative rather than triple-wide.
+	var u: Unit = Unit.new()
+	autofree(u)
+	u.file_pitch = 20.0
+	u.rank_pitch = 60.0
+	var ref: Dictionary = DemoState.motion_ref(u)
+	assert_eq(float(ref["file_pitch"]), 20.0, "file pitch dumped as-is")
+	assert_eq(float(ref["rank_pitch"]), 60.0, "rank pitch dumped as-is")
+	assert_eq(float(ref["formation_spacing"]), 20.0,
+			"the threshold base is the tighter axis")
