@@ -826,9 +826,11 @@ var _render_last_alpha: float = 1.0
 var _render_extent_n: int = -1
 var _render_extent_frontage: int = -1
 var _render_extent_mode: int = -1
-# Last anchor offset the chrome was placed for -- a change (set, grow, or clear)
-# re-places the shadow and requests a redraw even when the extent itself is
-# unchanged (the centred extent is offset-independent by construction).
+# Last effective slot-grid centre (local X, _slot_anchor_centre) the chrome was
+# placed for -- a change (an offset set, grown, or cleared, or a square entry/exit
+# dropping/re-arming a standing one) re-places the shadow and requests a redraw
+# even when the extent itself is unchanged (the centred extent is
+# offset-independent by construction).
 var _render_last_anchor_offset: float = 0.0
 var _mm_body: MultiMesh = null
 var _mm_outline: MultiMesh = null
@@ -3281,6 +3283,19 @@ func render_block_extent() -> float:
 	return _block_extent
 
 
+## The slot grid's own centre in the block's LOCAL frame: the standing frontage
+## anchor shift for the wide-line formations, and ZERO for SQUARE/SCHILTRON --
+## formation_slots ignores the anchor there (block_slots centres the ring on
+## `position`) while nothing clears frontage_anchor_offset on entry, so a squared
+## block must read as centred even when a stale offset still stands. Single source
+## for block_centre_offset and the chrome-extent measurements, so the two can't
+## disagree about where the grid actually sits.
+func _slot_anchor_centre() -> Vector2:
+	if frontage_anchor_offset == 0.0 or in_square():
+		return Vector2.ZERO
+	return Vector2(frontage_anchor_offset, 0.0)
+
+
 ## World-aligned offset of the soldier block's footprint centre from `position`: the
 ## standing frontage anchor shift (an asymmetric explicatio/duplicatio, or a
 ## flank-anchored grip resize), expressed through the same local-to-world mapping
@@ -3290,10 +3305,12 @@ func render_block_extent() -> float:
 ## here rather than on `position`, which a standing offset leaves sitting off-centre
 ## inside the block's true footprint.
 func block_centre_offset() -> Vector2:
-	if frontage_anchor_offset == 0.0:
+	var local: Vector2 = _slot_anchor_centre()
+	if local == Vector2.ZERO:
 		return Vector2.ZERO
-	var local_x: float = -frontage_anchor_offset if _formation_mirror_x else frontage_anchor_offset
-	return Vector2(local_x, 0.0).rotated(soldier_block_world_angle())
+	if _formation_mirror_x:
+		local.x = -local.x
+	return local.rotated(soldier_block_world_angle())
 
 
 ## Seed the parallel soldier-body layer from the current formation. Deterministic
@@ -4338,9 +4355,9 @@ func _setup_flock_renderer() -> void:
 	# The render reads _sim_soldier_pos directly; those bodies are seeded on the first
 	# physics tick (Battle._on_soldier_tick -> SoldierBodies.step), so the marks appear
 	# from frame 1. Size the shadow/chrome from the formation extent up front, measured
-	# about the block's own centre so a standing anchor offset can't inflate the ring.
+	# about the slot grid's own centre so a standing anchor offset can't inflate the ring.
 	_block_extent = SoldierFlock.compute_extent(self, formation_slots(soldiers),
-			Vector2(frontage_anchor_offset, 0.0))
+			_slot_anchor_centre())
 	_update_shadow()
 
 
@@ -4433,18 +4450,20 @@ func _process(delta: float) -> void:
 		# Nothing else raises _render_dirty for a far unit (no bodies step), so raise it here.
 		_render_dirty = true
 		var new_extent: float = SoldierFlock.compute_extent(self, formation_slots(soldiers),
-				Vector2(frontage_anchor_offset, 0.0))
+				_slot_anchor_centre())
 		if not is_equal_approx(new_extent, _block_extent):
 			_block_extent = new_extent
 			_update_shadow()
 			queue_redraw()
 	# A standing anchor offset shifts the chrome's centre (block_centre_offset), which
-	# also rotates with the block -- so chrome must re-place when the offset is set or
-	# cleared, and, while one stands, whenever the heading turns. A centred block's
-	# chrome is facing-invariant and skips this entirely.
-	if frontage_anchor_offset != _render_last_anchor_offset \
-			or (frontage_anchor_offset != 0.0 and facing != _render_last_facing):
-		_render_last_anchor_offset = frontage_anchor_offset
+	# also rotates with the block -- so chrome must re-place when the effective centre
+	# changes (an offset set or cleared, or a square entry/exit dropping/re-arming a
+	# standing one) and, while one stands, whenever the heading turns. A centred
+	# block's chrome is facing-invariant and skips this entirely.
+	var anchor_centre_x: float = _slot_anchor_centre().x
+	if anchor_centre_x != _render_last_anchor_offset \
+			or (anchor_centre_x != 0.0 and facing != _render_last_facing):
+		_render_last_anchor_offset = anchor_centre_x
 		_update_shadow()
 		queue_redraw()
 	# Marks mirror the simulated bodies. Refresh only when something visible changed: a body

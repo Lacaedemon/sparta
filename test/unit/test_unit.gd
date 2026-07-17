@@ -4215,3 +4215,27 @@ func test_process_replaces_chrome_when_the_offset_stands_or_swings() -> void:
 	await get_tree().process_frame
 	assert_almost_eq(u._shadow.position.x, u.block_centre_offset().x, 0.001,
 			"a heading turn swings the standing offset, and the shadow follows")
+
+
+func test_block_centre_offset_is_zero_while_squared() -> void:
+	# SQUARE/SCHILTRON grids ignore the standing anchor (formation_slots centres
+	# the ring on `position`) and nothing clears frontage_anchor_offset on entry,
+	# so the chrome must read a squared block as centred -- not follow the stale
+	# offset off to where the block isn't. Leaving the square re-arms it, since
+	# the wide-line grid bakes the offset back in.
+	var u := _make_unit()
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_eq(u.block_centre_offset(), Vector2.ZERO,
+			"a squared block reads as centred despite the stale offset")
+	assert_almost_eq(
+			SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers), u._slot_anchor_centre()),
+			SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers)), 0.001,
+			"the chrome extent measures the square about position, uninflated")
+	u.set_formation(Unit.FORMATION_SCHILTRON)
+	assert_eq(u.block_centre_offset(), Vector2.ZERO,
+			"the schiltron variant reads as centred too")
+	u.set_formation(Unit.FORMATION_NORMAL)
+	assert_gt(u.block_centre_offset().length(), 1.0,
+			"back in a wide-line grid, the standing offset re-arms the chrome centre")
