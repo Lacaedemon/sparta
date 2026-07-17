@@ -1792,7 +1792,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	var step: Vector2 = point
 	var terrain_speed: float = 1.0
 	if PathField.active != null:
-		step = PathField.active.next_step(position, point)
+		step = PathField.active.next_step(position, point, terrain_clearance())
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length() < 1.0:
@@ -2179,6 +2179,16 @@ func _pivot_radius() -> float:
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
 	return Vector2(float(maxi(0, files - 1)) * file_pitch_wu(),
 			float(maxi(0, ranks - 1)) * rank_pitch_wu()).length() * 0.5
+
+
+## Open ground this regiment needs between its centre and impassable terrain: the
+## corner man's half-diagonal plus his body radius, so a route the centre follows
+## keeps every soldier off the drawn rect. Passed to every PathField query —
+## terrain footprints themselves are exact, and the margin around them is the
+## querying unit's real geometry, not a routing-grid artifact: a 10-man squad
+## skims an obstacle a 140-man line must round wide.
+func terrain_clearance() -> float:
+	return _pivot_radius() + soldier_body_radius()
 
 
 ## The formation grid's per-axis pitch in world units: the per-type file/rank spacing
@@ -4142,7 +4152,7 @@ func _process_rout(delta: float) -> void:
 	# can never reach regardless of terrain -- silently defeating this whole detour.
 	var step: Vector2 = position + flee * 1000.0
 	if PathField.active != null:
-		step = PathField.active.next_step_fleeing(position, flee)
+		step = PathField.active.next_step_fleeing(position, flee, terrain_clearance())
 
 	# next_step() returns an absolute world-space point, not a direction -- subtract
 	# position first (as _move_to() does) before normalizing.
@@ -4264,7 +4274,7 @@ func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
 	# isn't asking for a route to an inherently unreachable off-map point.
 	for angle in angles_to_check:
 		var direction: Vector2 = Vector2.from_angle(angle)
-		if PathField.active.has_escape_route(position, direction):
+		if PathField.active.has_escape_route(position, direction, terrain_clearance()):
 			return false
 
 	# All directions blocked: unit is trapped.
