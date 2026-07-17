@@ -302,10 +302,15 @@ static func _sustained_verdict(uid: int, metric: String, s: Dictionary, key: Str
 ## ranges contribute both ends (range expectations are evaluated against whatever
 ## snapshots exist inside the range, so the ends guarantee at least two probes). The
 ## recorder merges these into its state-dump tick set, so declaring an expectation is
-## enough to make the data it checks exist.
+## enough to make the data it checks exist. Malformed entries (a bare number where an
+## object belongs -- the adjacent `state` field's shape, an easy slip) contribute no
+## ticks rather than crashing the live recording; their loud failure is the
+## analyzer's validation, which the recorder cannot reach mid-record.
 static func expect_ticks(expects: Array) -> Array:
 	var out: Array = []
 	for e in expects:
+		if expect_entry_error(e) != "":
+			continue
 		var t = e.get("tick")
 		var ticks: Array = t if t is Array else [t]
 		for v in ticks:

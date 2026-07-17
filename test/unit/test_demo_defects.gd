@@ -227,6 +227,19 @@ func test_expect_ticks_collects_scalars_and_range_ends() -> void:
 			"scalars verbatim, ranges by both ends, deduped and sorted")
 
 
+func test_expect_ticks_skips_malformed_entries_instead_of_crashing_the_recorder() -> void:
+	# A bare number where an entry object belongs -- the adjacent `state` field's own
+	# shape, so an easy authoring slip -- must not abort the live recording; it just
+	# contributes no ticks (the analyzer's validation is where it fails loudly).
+	var expects: Array = [
+		60,
+		{"tick": [480]},
+		{"tick": 120, "uid": 0, "field": "state", "value": "MOVING"},
+	]
+	assert_eq(DemoDefects.expect_ticks(expects), [120],
+			"only the well-formed entry contributes a tick")
+
+
 func test_check_expectations_passes_and_fails_on_field_values() -> void:
 	var snaps: Array = [
 		{"tick": 60, "units": [{"uid": 0, "state": "MOVING", "engaged": false}]},
