@@ -558,7 +558,7 @@ each stamped with the physics `tick` it fires on.
 To get the timing right you need the default battle's layout. A standard 5v5
 (seed `"12345"`, no campaign) spawns these units, by `uid`:
 
-| Unit | Team 0 (player, top, `y=300`) | Team 1 (enemy, bottom, `y=700`) |
+| Unit | Team 0 (player, top, `y=300`) | Team 1 (enemy, bottom, `y=880`) |
 | --- | --- | --- |
 | Spearmen | 0 | 5 |
 | Infantry | 1 | 6 |
@@ -566,8 +566,9 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 3 | 8 |
 | Cavalry | 4 | 9 |
 
-Both lines center on the `1600 × 1000` field, so they start **400 px** apart
-vertically. The horizontal spacing is no longer a flat 150 px per unit (issue
+The field is `1600 × 1200`, and the lines start **580 px** apart vertically —
+the deepest deployment that keeps both armies inside the close-tier band
+(`FormationTier.DEMOTE_RANGE`) from the first tick. The horizontal spacing is no longer a flat 150 px per unit (issue
 #677: a flat spacing let a wide LOOSE-order Archers regiment overlap its
 Infantry neighbour) — each adjacent pair's gap widens to fit their actual
 formation widths, so the standard 5v5's `x` positions are:
@@ -606,9 +607,11 @@ engage **must** issue a move (or attack) order early — for example the tick-12
 order in `demos/scenarios/line-relief.json` and `charge_demo.json`. Forget it and
 the clip records the player line standing still while only the enemy closes.
 
-With both sides closing over the 400 px gap, a head-on meet takes roughly
-`400 / (sum of the two effective speeds)` seconds: about 3.6 s for
-spearmen-vs-spearmen (`56 + 56`), about 1.2 s for cavalry-vs-cavalry (`170 + 170`).
+With both sides closing over the 580 px gap, a head-on meet takes roughly
+`580 / (sum of the two effective speeds)` seconds: about 5.2 s for
+spearmen-vs-spearmen (`56 + 56`), about 1.7 s for cavalry-vs-cavalry (`170 + 170`)
+— and substantially longer when either side only walks (the enemy AI's default
+advance pace), so budget windows from the walk speeds, not the sprint table.
 These are approximations — the enemy AI re-targets only every `AI_PERIOD` (1 s),
 and cavalry carry a 0.3 s order-response delay — so work the timing out on paper
 **before** spending a CI run on it; a mistimed scenario silently records the

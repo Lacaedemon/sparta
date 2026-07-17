@@ -8,7 +8,7 @@ const WU_PER_M := 20.0
 ```
 
 `Battle.WORLD_UNITS_PER_METER` re-exports it, so either name reads the same
-value. At 20 wu/m, the 1600x1000 field is an 80 m x 50 m engagement frontage.
+value. At 20 wu/m, the 1600x1200 field is an 80 m x 60 m engagement frontage.
 
 ## The three rules
 

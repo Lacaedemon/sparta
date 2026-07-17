@@ -10,7 +10,15 @@ const ParadeGround = preload("res://scripts/ParadeGround.gd")
 const AllTeamsControl = preload("res://scripts/AllTeamsControl.gd")
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 
-const FIELD := Rect2(0, 0, 1600, 1000)
+# 80 x 60 m at 20 wu/m. Deep enough that the two default lines deploy with real
+# ground between them (see _spawn_line's y anchors below): the field grew downward
+# from its original 1600x1000, keeping the origin, team 0's line, and the terrain
+# band at their long-standing coordinates so custom scenarios stay valid. The
+# line gap is deliberately capped just inside FormationTier.DEMOTE_RANGE so the
+# default battle still opens at close-tier fidelity; deploying at genuinely
+# historical distances means far-tier openings and a paced advance, a separate
+# design step.
+const FIELD := Rect2(0, 0, 1600, 1200)
 
 # Extra room beyond FIELD that a ROUTING unit may flee into before it's removed from play
 # (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn once
@@ -384,9 +392,12 @@ func _ready() -> void:
 		# Player army (team 0) deploys along the top, facing down.
 		_spawn_line(0, Vector2.DOWN, 300, atk_count)
 		# Enemy army (team 1) deploys along the bottom, facing up — skipped in drill mode,
-		# where the player army rehearses alone.
+		# where the player army rehearses alone. The 580-wu line gap (29 m, ~20 m front
+		# to front with today's block depths) is the deepest deployment that stays
+		# inside FormationTier.DEMOTE_RANGE, so both armies keep individual-soldier
+		# fidelity from the first tick while no longer starting at spitting distance.
 		if not drill_mode:
-			_spawn_line(1, Vector2.UP, 700, dfn_count)
+			_spawn_line(1, Vector2.UP, 880, dfn_count)
 
 	# Drive the parallel individual-soldier layer once per tick. physics_frame
 	# fires AFTER every unit's _physics_process, so the seed reads settled

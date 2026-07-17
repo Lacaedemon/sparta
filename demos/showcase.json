@@ -4,6 +4,57 @@
   "physics_tps": 60,
   "created": 0,
   "result": "",
-  "duration_ticks": 0,
-  "orders": []
+  "duration_ticks": 1400,
+  "orders": [
+    {
+      "tick": 12,
+      "units": [
+        0
+      ],
+      "x": 407.0,
+      "y": 640.0,
+      "target": -1,
+      "mode": 0
+    },
+    {
+      "tick": 12,
+      "units": [
+        1
+      ],
+      "x": 557.0,
+      "y": 640.0,
+      "target": -1,
+      "mode": 0
+    },
+    {
+      "tick": 12,
+      "units": [
+        2
+      ],
+      "x": 737.0,
+      "y": 640.0,
+      "target": -1,
+      "mode": 0
+    },
+    {
+      "tick": 12,
+      "units": [
+        3
+      ],
+      "x": 963.95,
+      "y": 640.0,
+      "target": -1,
+      "mode": 0
+    },
+    {
+      "tick": 12,
+      "units": [
+        4
+      ],
+      "x": 1193.07,
+      "y": 640.0,
+      "target": -1,
+      "mode": 0
+    }
+  ]
 }

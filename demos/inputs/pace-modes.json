@@ -1,11 +1,54 @@
 {
-  "_comment": "Pace modes demo: box-select all five player regiments (seed 12345, y≈300), issue an attack order on the enemy line (y≈700). Units walk on the approach, jog when the enemy archers open fire, and sprint at full speed once within ~200 px of the target — showing all three AUTO pace phases in one clip.",
+  "_comment": "Pace modes demo: the whole foot line is box-selected and given an ATTACK order (the click lands exactly on the enemy Infantry's spawn, before the enemy AI's first advance tick moves it) -- an attack move paces on AUTO, so the advance shows all three phases: walk on approach, jog once the enemy archers' fire reaches the line, and the full sprint inside charge distance of the target. A ground click would instead lock the single-click WALK gait and show no pacing at all.",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 512.0, "y": 512.0, "zoom": 0.7}
+    {
+      "tick": 0,
+      "x": 512.0,
+      "y": 512.0,
+      "zoom": 0.7
+    }
   ],
   "steps": [
-    {"tick": 8,  "box": {"from": [100, 240], "to": [924, 360]}},
-    {"tick": 28, "rmb_click": [512, 700]}
+    {
+      "tick": 8,
+      "box": {
+        "from": [
+          100,
+          240
+        ],
+        "to": [
+          924,
+          360
+        ]
+      }
+    },
+    {
+      "tick": 28,
+      "rmb_click": [
+        557,
+        880
+      ]
+    }
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        407.0,
+        300.0
+      ]
+    },
+    {
+      "tick": [
+        60,
+        200
+      ],
+      "uid": 0,
+      "field": "current_order",
+      "value": "ATTACK"
+    }
   ]
 }
