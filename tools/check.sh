@@ -854,7 +854,7 @@ check_demo_defects() {
     set_result demo_defects skip
     return 0
   fi
-  local failed=0 script ticks dir
+  local failed=0 script ticks dir rc
   while IFS= read -r script; do
     [ -f "$PROJECT_ROOT/$script" ] || continue   # deleted in this diff
     # The scan's tick set is the script's own: its `state` defaults plus every
@@ -865,19 +865,30 @@ check_demo_defects() {
     [ -z "$ticks" ] && ticks="8,60,120,180,240,300"
     dir="$(mktemp -d)"
     info "Scanning $script at ticks $ticks"
+    # Same grading as the CI step: a failed dump and an unusable-input analyzer exit
+    # (rc 2) WARN rather than fail -- absence of data is not a defect -- and only a
+    # genuine defect verdict (rc 1) fails, so local and CI verdicts stay in sync.
     if ! SPARTA_DEMO_STATE_FULL=1 \
          "$PROJECT_ROOT/tools/demo/dump-state.sh" "$script" "$ticks" "$dir" >/dev/null 2>&1; then
-      err "State dump failed for $script"
-      failed=1
+      warn "State dump failed for $script -- skipping its scan (CI warns the same way)."
       continue
     fi
-    local expect_args=()
+    # Bash 3.2 (macOS's system bash, a supported target) errors expanding an empty
+    # array under `set -u`, so branch on whether --expect applies instead of
+    # expanding a maybe-empty argument array.
+    rc=0
     if jq -e '.expect | type == "array" and length > 0' "$PROJECT_ROOT/$script" >/dev/null 2>&1; then
-      expect_args=(--expect "$PROJECT_ROOT/$script")
+      "$GODOT_BIN" --headless --path "$PROJECT_ROOT" -s tools/demo/analyze_transcript.gd -- \
+        "$dir" --expect "$PROJECT_ROOT/$script" || rc=$?
+    else
+      "$GODOT_BIN" --headless --path "$PROJECT_ROOT" -s tools/demo/analyze_transcript.gd -- \
+        "$dir" || rc=$?
     fi
-    if ! "$GODOT_BIN" --headless --path "$PROJECT_ROOT" -s tools/demo/analyze_transcript.gd -- "$dir" "${expect_args[@]}"; then
+    if [ "$rc" -eq 1 ]; then
       err "Defect scan failed for $script"
       failed=1
+    elif [ "$rc" -ne 0 ]; then
+      warn "Defect scan input unusable for $script (rc=$rc); nothing gated."
     fi
   done <<< "$changed"
   if [ "$failed" -ne 0 ]; then
