@@ -45,6 +45,29 @@ func test_routes_around_a_wall_with_a_gap() -> void:
 		assert_false(pf.is_blocked(p), "no waypoint sits inside the wall")
 
 
+func test_next_step_looks_ahead_to_the_farthest_visible_path_point() -> void:
+	# String-pulling: with a detour forced, next_step steers for the FARTHEST route
+	# point still in direct line of sight -- the corridor's real direction -- not the
+	# adjacent cell centre, whose bearing zigzags in coarse per-cell quanta and whipsaws
+	# a formation off its true heading (the pre-contact blobbing of a shallow detour).
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 0, 64, 480))   # vertical wall, gap along the bottom
+	var from := Vector2(50, 50)
+	var step: Vector2 = pf.next_step(from, Vector2(600, 50))
+	assert_gt(from.distance_to(step), PathField.CELL * 1.5,
+		"the returned waypoint reaches beyond the adjacent cell")
+	# The whole from->step segment stays out of the wall (it is genuinely visible).
+	var samples: int = int(ceil(from.distance_to(step) / (PathField.CELL * 0.25)))
+	for i in range(samples + 1):
+		var p: Vector2 = from.lerp(step, float(i) / float(samples))
+		assert_false(pf.is_blocked(p), "the lookahead waypoint is in direct line of sight")
+	# The wall spans the upper field, so the corridor runs down toward the gap: the
+	# lookahead bearing must head down at least as much as it heads right, where the
+	# adjacent-cell bearing from the start cell barely descends at all.
+	var dir: Vector2 = (step - from).normalized()
+	assert_gt(dir.y, 0.5, "the lookahead steers along the corridor toward the gap")
+
+
 func test_path_is_deterministic() -> void:
 	var pf := PathField.new(FIELD)
 	pf.block_rect(Rect2(300, 0, 64, 480))

@@ -1169,7 +1169,10 @@ Two types of terrain patch appear on the battle field:
 Terrain patches and their movement effects.
 :::
 
-Units automatically path around impassable terrain when ordered to move. The forest
+Units automatically path around impassable terrain when ordered to move. A formed
+regiment takes the detour in good order: it steers by the corridor's long-run
+direction and pivots onto it no faster than its corner man can run, so the block
+holds rank-and-file around the turn instead of smearing into a crowd. The forest
 is a different trade-off: going *around* it costs distance; going *through* it costs
 time. Generally it is faster to push cavalry or fast-moving infantry through rather
 than around a narrow forest.

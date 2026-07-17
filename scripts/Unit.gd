@@ -480,8 +480,14 @@ const BEARING_STEER_FREEZE_RADIUS: float = 8.0
 const ARRIVAL_ENVELOPE_MARGIN: float = 0.8
 # Orderly move orders pivot the block about its centre toward their travel direction at
 # this angular rate (rad/s) rather than snapping, so the ranks turn in good order. A
-# half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Combat chases still snap
-# (they pass orderly = false to _move_to). TURN_RATE is the rate at a stand -- an orderly
+# half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Approach marches (an
+# attack chase closing on a distant target, the auto-advance on a spotted enemy, a
+# support unit's shadow/intercept) pivot the same way via _move_to's formed_turn flag --
+# a disciplined regiment turns onto its bearing in good order even when the march isn't
+# a player move order, so a pathfield detour can't snap the slot grid out from under the
+# soldier bodies (the pre-contact blobbing this replaced). Close-quarters combat cycles
+# (skirmish kiting, the caracole peel-back) still snap: they are tight, already-in-contact
+# loops where the block barely travels and responsiveness wins. TURN_RATE is the rate at a stand -- an orderly
 # march pivot tapers this down as the unit's current speed rises (real turning capacity is
 # bounded by the lateral force a moving body/formation can exert without losing footing or
 # cohesion), never dropping below TURN_RATE_TAPER_FLOOR of the stationary rate. A first-cut
@@ -1556,12 +1562,14 @@ func _think(delta: float) -> void:
 			var goal: Vector2 = enemy.position
 			if order_mode == ORDER_ATTACK_FLANK or order_mode == ORDER_ATTACK_REAR:
 				goal = UnitTargeting.attack_approach_point(self, enemy)
-			_move_to(goal, delta)
+			_move_to(goal, delta, false, true)
 			return
 
 	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
 	# A player move order marches orderly -- it centre-pivots gradually toward its heading
-	# before advancing; combat chases above stay snappy (orderly = false).
+	# before advancing. The combat approach marches above pivot the same way (formed_turn),
+	# without the orderly path's arrival braking -- a charge must carry its speed through
+	# contact.
 	if has_move_target:
 		# Arrival at the FINAL destination requires both a close position AND a near-zero
 		# speed -- not position alone. _move_to's braking ramps _current_speed down along
@@ -1632,7 +1640,7 @@ func _think(delta: float) -> void:
 		# _formation_angle) or the bodies would stay pinned and never keep up with the march.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		_move_to(enemy.position, delta)
+		_move_to(enemy.position, delta, false, true)
 	else:
 		# Idle: no enemy, or a HOLD stance that won't chase — the paths above
 		# still fight/fire whatever reaches a held unit. If the engaged enemy vanished
@@ -1724,7 +1732,7 @@ func _support_tick(delta: float) -> void:
 			# body arrival releases before the march (the turn re-arms on the next contact).
 			if _engage_turn_target != Vector2.ZERO:
 				_settle_engage_turn()
-			_move_to(threat.position, delta)
+			_move_to(threat.position, delta, false, true)
 		return
 	# No threat near the ward: shadow it, holding station a short distance off so
 	# the supporter doesn't crowd the unit it's guarding. If a re-face turn was still
@@ -1733,7 +1741,7 @@ func _support_tick(delta: float) -> void:
 	if _engage_turn_target != Vector2.ZERO:
 		_settle_engage_turn()
 	if position.distance_to(ward.position) > SUPPORT_FOLLOW_DISTANCE:
-		_move_to(ward.position, delta)
+		_move_to(ward.position, delta, false, true)
 	else:
 		state = State.IDLE
 
@@ -1763,7 +1771,7 @@ func _is_move_order_in_haste() -> bool:
 			and current_order.haste
 
 
-func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
+func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
 	var step: Vector2 = point
@@ -1868,22 +1876,45 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		rate = brake
 	_current_speed = move_toward(_current_speed, pace_speed, rate * delta)
 	# Facing. A side-step holds its commanded heading and shuffles sideways. An orderly
-	# move order from a DISCIPLINED unit centre-pivots gradually toward its travel
+	# move order OR a formed_turn approach march (attack chase, auto-advance, support
+	# shadow/intercept) from a DISCIPLINED unit centre-pivots gradually toward its travel
 	# direction (the ranks turn in good order), tapering the pivot rate down as current
 	# speed rises -- real turning capacity is bounded by the lateral force a moving
 	# body/formation can exert without losing footing or cohesion. An undisciplined unit
 	# (a mob/levy) skips that: it turns to face the destination immediately and walks
-	# there directly, same as a combat chase (which must also stay responsive) -- the
-	# soldier bodies' own slot-approach still re-forms them onto the block as they arrive,
-	# so no separate "form up" step is needed. A disciplined unit given an in-haste order
-	# (a triple/quadruple-click RUN/SPRINT gait) temporarily marches the same undisciplined
-	# way -- there's no time to execute a formed turn.
-	var pivot_as_formation: bool = orderly and disciplined and not _is_move_order_in_haste()
+	# there directly, same as a close-quarters combat cycle (kiting, the caracole
+	# peel-back, which must stay responsive) -- the soldier bodies' own slot-approach
+	# still re-forms them onto the block as they arrive, so no separate "form up" step is
+	# needed. A disciplined unit given an in-haste order (a triple/quadruple-click
+	# RUN/SPRINT gait) temporarily marches the same undisciplined way -- there's no time
+	# to execute a formed turn. Without the pivot, a snap under _face_dir's absorb
+	# threshold rotates the whole slot grid in one tick (up to ~75 deg), sweeping flank
+	# slots far faster than any body can run -- the soldiers scramble across the block
+	# and the formation reads as a blob for the next several seconds.
+	var pivot_as_formation: bool = (orderly or formed_turn) and disciplined and not _is_move_order_in_haste()
+	# A formed_turn approach only pivots for bearings under the fold-absorb threshold. At or
+	# past it, the plain snap is already scramble-free by construction: _face_dir folds the
+	# jump into _formation_angle, so the slot grid holds still while the unit answers the
+	# threat -- and a centre pivot would be the wrong drill for a turn that large anyway (a
+	# rear-sector target calls for an about-face + march decomposition, the same way orderly
+	# move orders decompose big turns into drill maneuvers before _move_to ever sees them;
+	# that decomposition for combat approaches is future maneuver work, not this taper).
+	if formed_turn and not orderly and pivot_as_formation \
+			and absf(angle_difference(facing.angle(), steer_dir.angle())) >= FACING_SNAP_ABSORB_THRESHOLD:
+		pivot_as_formation = false
 	if maneuvering:
 		_face_dir(ordered_facing)
 	elif pivot_as_formation:
 		var speed_frac: float = clampf(_current_speed / move_speed, 0.0, 1.0)
 		var pivot_rate: float = TURN_RATE * lerpf(1.0, TURN_RATE_TAPER_FLOOR, speed_frac)
+		# A centre pivot rotates the slot grid rigidly about the block's centre, so the
+		# farthest slot (the corner man, at the footprint's half-diagonal) covers
+		# rate x radius of arc per second -- the same outer-file pacing bound the flank
+		# wheel derives (UnitManeuver.wheel_gait_rate). Uncapped, TURN_RATE sweeps a wide
+		# block's corner slots several times faster than any body can run, so the men
+		# scramble after their slots instead of turning in good order and the block reads
+		# as a blob until they catch up. The corner man paces the whole pivot at up to a jog.
+		pivot_rate = UnitManeuver.wheel_gait_rate(pivot_rate, jog_speed, _pivot_radius())
 		_rotate_facing_toward(steer_dir, delta, pivot_rate)
 	else:
 		_face_dir(steer_dir)
@@ -2118,6 +2149,18 @@ func _front_depth() -> float:
 	# narrowed columns; short-reach archers can clip it even at auto width, but
 	# that only allows fractionally more overlap and they kite rather than grind.
 	return minf(depth, attack_range * 0.5)
+
+
+## Distance from the block's centre to its farthest formation slot -- the corner man's
+## half-diagonal, in world units. A centre pivot rotates the slot grid rigidly about the
+## centre, so this is the arm that corner man actually walks: the pacing radius
+## _move_to's formed pivot feeds UnitManeuver.wheel_gait_rate, exactly as the flank
+## wheel feeds it the hinge-to-far-flank arm.
+func _pivot_radius() -> float:
+	var span: float = FORMATION_SPACING * spacing_scale
+	var files: int = maxi(1, formation_files(soldiers))
+	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	return Vector2(float(maxi(0, files - 1)), float(maxi(0, ranks - 1))).length() * 0.5 * span
 
 
 ## Formation spacing scale for a given formation `mode`, pure and independent of a live
