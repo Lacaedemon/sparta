@@ -662,6 +662,31 @@ just starts at a different one --- spearmen deploy Tight (locked shields against
 charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry
 deploy at the plain Normal combat order.
 
+The grid each density mode scales is itself **per-type**:
+foot regiments stand at close order (about half a metre per man on both axes),
+while a cavalry regiment's grid is far roomier ---
+about a metre between files and three metres between ranks,
+the riding room a horse needs side-to-side and nose-to-tail.
+A mounted regiment therefore occupies several times the ground
+of a foot block with the same headcount,
+and its deep column takes visibly longer to wheel or pivot.
+
+::: {#fig-cavalry-grid .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/cavalry_grid.jpg">
+  <source src="media/cavalry_grid.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An 80-horse Cavalry regiment (right) on its own grid pitch beside a 120-man
+Infantry block (left) at foot close order: the mounted block stands both wider
+and far deeper, and marches as one body on that roomier grid.
+:::
+
 **Square: orbis and schiltron (anti-cavalry rings).** *Square* forms a hollow square:
 the soldiers face spears and shields outward on every side, so the unit has **no weak
 flank or rear** --- an attack from any direction lands as if it were frontal, and a
