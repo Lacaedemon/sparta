@@ -754,9 +754,10 @@ your advantage when committing cavalry or an assault infantry charge.
 </video>
 ```
 
-Pace modes: regiments walk on approach, jog when enemy archers open fire,
-then sprint at full charge speed within ~200 px of the target &mdash; all three
-AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to
+Pace modes: a regiment attack-marches on AUTO pace &mdash; walking on approach,
+jogging through the beaten zone once enemy archery reaches it, then sprinting
+at full charge speed inside charge distance of its target &mdash; all three
+phases as distinct legs of one advance. Toggle Walk advance (☰ Menu) to lock units to
 walk pace throughout.
 :::
 
