@@ -1,11 +1,13 @@
 # Performance benchmark
 
 Sparta's standing performance target ([#549](https://github.com/Lacaedemon/sparta/issues/549)):
-**60fps at a representative large-battle scale, on the reference hardware** — a 2022 MacBook
-Air (Apple M2, 24GB) and the developer's usual PC. See `PLAN.md` for the target statement.
+**60fps at a representative large-battle scale, on the reference hardware** — the developer's
+PC with a discrete GPU (currently an NVIDIA RTX 3060 Ti; the 2022 MacBook Air was dropped as
+a reference machine when the 3D conversion was planned, and a discrete GPU is now a hardware
+requirement). See `PLAN.md` for the target statement.
 
 GitHub Actions runners are **not** that hardware, so a green CI check here never means "60fps
-on the Mac/PC" — it only means "this PR didn't measurably slow the sim down on the CI
+on the reference PC" — it only means "this PR didn't measurably slow the sim down on the CI
 runner." Two complementary pieces cover the gap:
 
 1. **This directory** — a benchmark you run **locally, by hand, on the actual reference
@@ -29,8 +31,8 @@ runner." Two complementary pieces cover the gap:
   battle instance), so it's verified by actually running the benchmark (below).
 - `run-benchmark.sh` — wrapper, mirrors `tools/demo/dump-state.sh`'s shape (`GODOT_BIN` env var,
   headless invocation, human-readable summary printed at the end).
-- `baseline.json` — the CI-runner baseline `benchmark.yml` compares against. **Not** the Mac/PC
-  target — see its header comment.
+- `baseline.json` — the CI-runner baseline `benchmark.yml` compares against. **Not** the
+  reference-PC target — see its header comment.
 - `../../benchmarks/scenarios/large-battle.json` — the reference scenario (see below for why it
   lives outside `demos/`).
 
@@ -82,7 +84,7 @@ Report: /tmp/sparta_benchmark_XXXXXX.json
   60fps budget:       16.667 ms/tick -- WITHIN budget on mean, within budget on p95
 ```
 
-**Run this by hand periodically on the actual reference hardware** (the MacBook Air, the dev
+**Run this by hand periodically on the actual reference hardware** (the discrete-GPU dev
 PC) as per-entity realism grows (more per-soldier state, weapon/shield objects, individual
 orders — the bottom-up-emergence direction in `PLAN.md`) to confirm the real 60fps target still
 holds. CI's regression check (below) is the early warning between these manual runs, not a
@@ -150,7 +152,7 @@ consecutive `physics_frame` signals. This is a deliberate tradeoff:
 - **Follow-up (not built here):** a local-only windowed variant (real `--rendering-driver`,
   measuring full frame time via `RenderingServer.frame_post_draw`, similar to
   `tools/demo/capture-frames.sh`'s renderer requirement) would close this gap for the *local*
-  Mac/PC protocol specifically. Headless CI can't meaningfully measure GPU render cost anyway
+  reference-PC protocol specifically. Headless CI can't meaningfully measure GPU render cost anyway
   (software/dummy rendering, no real GPU on most runners), so this wouldn't help the CI
   regression check — only the local ground-truth check. Not scoped into this PR; file a
   follow-up if the physics-only signal turns out to hide a real render-side regression.

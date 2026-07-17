@@ -19,10 +19,14 @@ then grow outward.
 - **Art:** **CC0 only** — Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
   - ⚠️ **Not** commercial-game mod assets — they are copyrighted, not public domain.
 - **First milestone:** one self-contained tactical battle. No campaign map yet.
-- **Performance target (#549):** **60fps at a representative large-battle scale** (several
-  hundred soldiers across multiple regiments, actively engaged in melee and ranged combat --
-  the biggest battle the game is expected to support), on named reference hardware: a **2022
-  MacBook Air (Apple M2, 24GB)** and the developer's usual PC. This is the standing budget
+- **Performance target (#549, hardware floor revised with #69):** **60fps at a representative
+  large-battle scale** (several hundred soldiers across multiple regiments, actively engaged
+  in melee and ranged combat -- the biggest battle the game is expected to support), on named
+  reference hardware: the **developer's PC with a discrete GPU** (currently an NVIDIA RTX
+  3060 Ti). A **discrete GPU is a hardware requirement**: the 2022 MacBook Air (Apple M2)
+  was dropped as a reference machine when the 3D conversion was planned, and integrated-GPU
+  hardware (Apple silicon included) is no longer a supported performance target. This is the
+  standing budget
   future per-entity-granularity decisions (per-soldier speed, weapon/shield objects,
   individual slot orders -- see the bottom-up-emergence direction below) get measured against,
   not a guess. GitHub Actions CI runners are not this hardware, so CI can only run a

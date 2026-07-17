@@ -21,8 +21,12 @@ Hard requirements, in priority order:
 2. **A rotatable map camera.** Full yaw orbit plus pitch within a clamped
    range, zoom to cursor, pan (keys + edges), a "reset to north" affordance.
    This rules out any 2.5D compromise built on the axis-aligned 2D renderer.
-3. **The 60fps large-battle budget holds** (several hundred soldiers engaged,
-   on the reference M2 MacBook Air and the dev PC — see `PLAN.md`).
+3. **The 60fps large-battle budget holds** (several hundred soldiers engaged)
+   on the reference hardware: the dev PC with a discrete GPU (currently an RTX
+   3060 Ti — see `PLAN.md`). A **discrete GPU is a stated hardware
+   requirement** as of this plan; the M2 MacBook Air was dropped as a
+   reference machine, which raises the rendering headroom and frees the
+   renderer choice.
 4. **CI keeps working headlessly**: GUT suite, state-dump diffs, and Movie
    Maker demo recording under xvfb + the GL Compatibility renderer.
 
@@ -304,7 +308,9 @@ Its pitfalls, adopted as **anti-requirements** for the conversion:
 ## Performance budget
 
 The budget stays `PLAN.md`'s: 60fps at several hundred engaged soldiers on
-the M2 Air. Known numbers going in: VAT MultiMesh crowds report hundreds of
+the reference dev PC — with the hardware floor raised, as part of this plan,
+to a **discrete GPU** (RTX 3060 Ti class; the M2 MacBook Air is no longer a
+reference machine). Known numbers going in: VAT MultiMesh crowds report hundreds of
 fps at 2k instances on all Godot renderers (author-reported; re-measure);
 per-soldier `Skeleton3D` collapses around ~100 under GL and a few thousand
 under Vulkan ([godot#99194](https://github.com/godotengine/godot/issues/99194),
@@ -385,7 +391,10 @@ follow-up issues under #69.
 2. **Terrain plugin choice** (Terrain3D vs HTerrain vs hand-rolled clipmap) —
    deferred to 3D-4; hinges on the GDExtension-in-CI verification.
 3. **Default renderer** (Forward+ with Compatibility floor, or Compatibility
-   everywhere) — decide after the 3D-0 measurements.
+   everywhere) — decide after the 3D-0 measurements. The discrete-GPU
+   hardware requirement tilts this toward Forward+ as the game's default
+   (better lighting, decals, VAT blending), with Compatibility kept working
+   as the CI floor for headless demo recording.
 4. **Camera presentation-track v1 mapping** (replay old 2D camera moves in
    the 3D scene, or keep v1 replays 2D-scene-only until 3D-5) — decide in
    3D-2.
