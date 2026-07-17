@@ -356,6 +356,26 @@ bodies chase — and a `motion_ref` dict rides alongside with the per-unit const
 analyzer derives thresholds from (`formation_spacing`, the three gait speeds, `pivot_radius`,
 `turn_rate`), so analysis reads the sim's own tuning rather than hardcoding a copy.
 
+### Declared expectations (`expect`)
+
+An input script can declare its own intent as data — an optional `expect` list of
+`{"tick": N, "uid": U, "field": F, "value": V}` entries (tick may be a `[lo, hi]` range for
+drift-tolerant claims: the expectation passes when ANY snapshot inside the range matches).
+Fields are the compact per-unit record fields every dump carries (`state`, `current_order`,
+`order_mode`, `formation`, `engaged`, `target_enemy_uid`, ...). On a dump run the recorder
+automatically arms a state snapshot at every expect tick, so declaring an expectation is
+enough to make the data it checks exist; the analyzer evaluates them offline:
+
+```sh
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> \
+    --expect demos/inputs/<name>.json
+```
+
+An expectation that cannot be checked (no snapshot in range, no such unit, no such field)
+FAILS rather than skips — an uncheckable claim is an authoring error. This is how a demo
+that stops demonstrating its own caption (a rebound hotkey arming the wrong stance, a rally
+where a flee was staged) turns into a red exit code instead of an eyeball catch.
+
 ### Algorithmic defect scan
 
 `tools/demo/DemoDefects.gd` turns a FULL dump into deterministic defect verdicts — the

@@ -298,5 +298,71 @@ static func _sustained_verdict(uid: int, metric: String, s: Dictionary, key: Str
 			"worst": worst, "threshold": threshold}
 
 
+## Every tick an `expect` list needs a snapshot at: scalar ticks verbatim, [lo, hi]
+## ranges contribute both ends (range expectations are evaluated against whatever
+## snapshots exist inside the range, so the ends guarantee at least two probes). The
+## recorder merges these into its state-dump tick set, so declaring an expectation is
+## enough to make the data it checks exist.
+static func expect_ticks(expects: Array) -> Array:
+	var out: Array = []
+	for e in expects:
+		var t = e.get("tick")
+		var ticks: Array = t if t is Array else [t]
+		for v in ticks:
+			var tick: int = int(v)
+			if not out.has(tick):
+				out.append(tick)
+	out.sort()
+	return out
+
+
+## Evaluate declared demo intent against a dumped transcript: each expectation is
+## {tick: N or [lo, hi], uid, field, value} and passes when the named unit's dumped
+## record field equals the value at that tick (or at ANY snapshot inside the range --
+## ranges express drift-tolerant claims like "engages between 780 and 840"). Returns
+## one verdict per expectation, shaped like analyze()'s own verdicts so callers gate
+## the same way. A missing snapshot, unit, or field is a failure, not a skip: an
+## expectation that cannot be checked is an authoring error the run must surface.
+static func check_expectations(expects: Array, snapshots: Array) -> Array:
+	var out: Array = []
+	for e in expects:
+		var t = e.get("tick")
+		var lo: int = int(t[0]) if t is Array else int(t)
+		var hi: int = int(t[1]) if t is Array else int(t)
+		var uid: int = int(e.get("uid", -1))
+		var field: String = str(e.get("field", ""))
+		var expected = e.get("value")
+		var probed := false
+		var passed := false
+		var actual = null
+		for snap in snapshots:
+			var tick: int = int(snap.get("tick", -1))
+			if tick < lo or tick > hi:
+				continue
+			for u in snap.get("units", []):
+				if int(u.get("uid", -1)) != uid:
+					continue
+				if not u.has(field):
+					continue
+				probed = true
+				actual = u[field]
+				if _values_match(expected, actual):
+					passed = true
+			if passed:
+				break
+		var when: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
+		out.append({"uid": uid, "metric": "expect:%s@%s" % [field, when],
+				"pass": probed and passed,
+				"worst": actual if actual != null else "(no snapshot/unit/field in range)",
+				"threshold": expected})
+	return out
+
+
+static func _values_match(expected, actual) -> bool:
+	if (expected is float or expected is int) and (actual is float or actual is int):
+		return absf(float(expected) - float(actual)) < 0.001
+	return str(expected) == str(actual)
+
+
 static func _vec(pair) -> Vector2:
 	return Vector2(float(pair[0]), float(pair[1]))

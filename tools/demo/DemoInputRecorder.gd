@@ -103,7 +103,14 @@ func _ready() -> void:
 	_all_teams_control = bool(script.get("all_teams_control", false))
 	_form_up_dist = int(script.get("form_up_dist", -1))
 	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
-	_arm_state_dump(DemoFrames.script_array(script, "state"))
+	# Declared expectations (the `expect` list) are checked offline against dumped
+	# snapshots, so every expect tick joins the state-dump defaults -- declaring an
+	# expectation is enough to make the data it checks exist on a dump run.
+	var state_defaults: Array = DemoFrames.script_array(script, "state")
+	for t in DemoDefects.expect_ticks(script.get("expect", [])):
+		if not state_defaults.has(t):
+			state_defaults.append(t)
+	_arm_state_dump(state_defaults)
 	print("[demo-input] %d scripted input events over %d ticks%s%s%s" % [
 		_count_events(), _max_tick(), " (drill mode)" if _drill else "",
 		" (scenario: %d units)" % _scenario.size() if not _scenario.is_empty() else "",
