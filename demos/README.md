@@ -349,8 +349,28 @@ The explicit `tier` field is what tells that apart from "per-soldier detail not 
 (a close-tier dump without the full flag, which still gets the summary).
 
 Set `SPARTA_DEMO_STATE_FULL=1` to also dump `soldiers_full` — the raw per-soldier arrays
-(`pos`, `facing`, `hp`, `prone`, `stamina`) — for deep debugging. Off by default (the summary is
-what a reviewer needs; the full arrays are ~20x larger).
+(`pos`, `facing`, `slots`, `hp`, `prone`, `stamina`) — for deep debugging. Off by default (the
+summary is what a reviewer needs; the full arrays are ~20x larger). `slots` is the unit's
+canonical slot grid (`Unit.soldier_world_slots`) at the same tick — the *ordered* shape the
+bodies chase — and a `motion_ref` dict rides alongside with the per-unit constants an offline
+analyzer derives thresholds from (`formation_spacing`, the three gait speeds, `pivot_radius`,
+`turn_rate`), so analysis reads the sim's own tuning rather than hardcoding a copy.
+
+### Algorithmic defect scan
+
+`tools/demo/DemoDefects.gd` turns a FULL dump into deterministic defect verdicts — the
+machine-checkable core of the demo-review checklist (blob/compression, soldier overlap,
+shape scramble via an ordered-vs-actual best-fit decomposition, facing whipsaw, sustained
+super-physical speed). Run it headless over a dump directory:
+
+```sh
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json]
+```
+
+Exit `0` = clean, `1` = at least one defect (the verdict lines name the unit, metric, worst
+value, and threshold), `2` = unusable input (e.g. the dump wasn't taken with
+`SPARTA_DEMO_STATE_FULL=1`). Post-contact samples are exempt from the spacing/shape checks —
+melee press legitimately compresses a block.
 
 ### The wrapper
 
