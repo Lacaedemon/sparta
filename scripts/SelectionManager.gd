@@ -1399,11 +1399,13 @@ func _single_selected_unit():
 
 
 ## World positions of a unit's two flank resize grips: out along its file axis, just
-## past the block extent, on each side.
+## past the block extent, on each side -- of the block's actual footprint centre,
+## which a standing anchor offset shifts off the regiment point.
 func _resize_handle_positions(u) -> Array:
 	var right: Vector2 = _file_axis(u)
+	var block_centre: Vector2 = u.global_position + u.block_centre_offset()
 	var reach: float = u.render_block_extent() + RESIZE_HANDLE_GAP
-	return [u.global_position + right * reach, u.global_position - right * reach]
+	return [block_centre + right * reach, block_centre - right * reach]
 
 
 ## Unit vector along a regiment's file (width) axis in world space: its facing turned
@@ -1504,7 +1506,8 @@ func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
 ## centre, so the cursor maps in by a plain translation (no facing rotation).
 func _flag_pick_distance(u, world_pos: Vector2) -> float:
 	var local: Vector2 = world_pos - u.global_position
-	var box: Rect2 = UnitSprites.standard_bounds(u.render_block_extent()).grow(FLAG_HIT_PAD)
+	var box: Rect2 = UnitSprites.standard_bounds(u.render_block_extent(),
+			u.block_centre_offset()).grow(FLAG_HIT_PAD)
 	if box.has_point(local):
 		# grow() preserves the centre, so this tiebreak distance is independent of FLAG_HIT_PAD.
 		return local.distance_to(box.get_center())
@@ -1573,12 +1576,14 @@ func _track_grip_motion() -> bool:
 
 
 ## The grip geometry's current inputs: everything _resize_handle_positions reads
-## (position, facing, block extent), or empty when no grips are showing.
+## (position, facing, block extent, and the block's centre offset -- which moves
+## when an anchored drag commits or a standing offset swings with the heading),
+## or empty when no grips are showing.
 func _current_grip_state() -> Array:
 	var u = _single_selected_unit()
 	if u == null:
 		return []
-	return [u.global_position, u.facing, u.render_block_extent()]
+	return [u.global_position, u.facing, u.render_block_extent(), u.block_centre_offset()]
 
 
 # --- control groups --------------------------------------------------------
@@ -1915,7 +1920,8 @@ func _draw_demo_pointer() -> void:
 	for uid in p["sel"]:
 		var u: UnitRef = _battle.unit_by_uid(int(uid))
 		if u != null and u.state != UnitRef.State.DEAD:
-			draw_arc(u.global_position, u.render_block_extent() + 4.0, 0.0, TAU, 36, DEMO_SELECT_COLOR, 2.0)
+			draw_arc(u.global_position + u.block_centre_offset(),
+					u.render_block_extent() + 4.0, 0.0, TAU, 36, DEMO_SELECT_COLOR, 2.0)
 
 	# Drag-box: the marquee from its recorded start corner to the (gliding) cursor.
 	if bool(p["drag"]):

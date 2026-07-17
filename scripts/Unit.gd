@@ -826,6 +826,10 @@ var _render_last_alpha: float = 1.0
 var _render_extent_n: int = -1
 var _render_extent_frontage: int = -1
 var _render_extent_mode: int = -1
+# Last anchor offset the chrome was placed for -- a change (set, grow, or clear)
+# re-places the shadow and requests a redraw even when the extent itself is
+# unchanged (the centred extent is offset-independent by construction).
+var _render_last_anchor_offset: float = 0.0
 var _mm_body: MultiMesh = null
 var _mm_outline: MultiMesh = null
 var _mmi_body: MultiMeshInstance2D = null
@@ -3277,6 +3281,21 @@ func render_block_extent() -> float:
 	return _block_extent
 
 
+## World-aligned offset of the soldier block's footprint centre from `position`: the
+## standing frontage anchor shift (an asymmetric explicatio/duplicatio, or a
+## flank-anchored grip resize), expressed through the same local-to-world mapping
+## soldier_world_slots applies to the slots themselves (mirror fold, then the block's
+## world rotation). ZERO for a centred block. Chrome that frames the block -- the
+## state ring, selection halo, stat bars, flag, shadow, and resize grips -- centres
+## here rather than on `position`, which a standing offset leaves sitting off-centre
+## inside the block's true footprint.
+func block_centre_offset() -> Vector2:
+	if frontage_anchor_offset == 0.0:
+		return Vector2.ZERO
+	var local_x: float = -frontage_anchor_offset if _formation_mirror_x else frontage_anchor_offset
+	return Vector2(local_x, 0.0).rotated(soldier_block_world_angle())
+
+
 ## Seed the parallel soldier-body layer from the current formation. Deterministic
 ## and side-effect-free beyond `_sim_soldier_pos`. Read by the global separation
 ## pass and the flock render (phase 3), but NOT by gameplay (the regiment circle
@@ -4318,8 +4337,10 @@ func _setup_flock_renderer() -> void:
 
 	# The render reads _sim_soldier_pos directly; those bodies are seeded on the first
 	# physics tick (Battle._on_soldier_tick -> SoldierBodies.step), so the marks appear
-	# from frame 1. Size the shadow/chrome from the formation extent up front.
-	_block_extent = SoldierFlock.compute_extent(self, formation_slots(soldiers))
+	# from frame 1. Size the shadow/chrome from the formation extent up front, measured
+	# about the block's own centre so a standing anchor offset can't inflate the ring.
+	_block_extent = SoldierFlock.compute_extent(self, formation_slots(soldiers),
+			Vector2(frontage_anchor_offset, 0.0))
 	_update_shadow()
 
 
@@ -4411,11 +4432,21 @@ func _process(delta: float) -> void:
 		# (count / frontage / density-mode) must relay the grid marks, not just the chrome.
 		# Nothing else raises _render_dirty for a far unit (no bodies step), so raise it here.
 		_render_dirty = true
-		var new_extent: float = SoldierFlock.compute_extent(self, formation_slots(soldiers))
+		var new_extent: float = SoldierFlock.compute_extent(self, formation_slots(soldiers),
+				Vector2(frontage_anchor_offset, 0.0))
 		if not is_equal_approx(new_extent, _block_extent):
 			_block_extent = new_extent
 			_update_shadow()
 			queue_redraw()
+	# A standing anchor offset shifts the chrome's centre (block_centre_offset), which
+	# also rotates with the block -- so chrome must re-place when the offset is set or
+	# cleared, and, while one stands, whenever the heading turns. A centred block's
+	# chrome is facing-invariant and skips this entirely.
+	if frontage_anchor_offset != _render_last_anchor_offset \
+			or (frontage_anchor_offset != 0.0 and facing != _render_last_facing):
+		_render_last_anchor_offset = frontage_anchor_offset
+		_update_shadow()
+		queue_redraw()
 	# Marks mirror the simulated bodies. Refresh only when something visible changed: a body
 	# moved (SoldierBodies.step raised _render_dirty), the facing turned (mark rotation,
 	# figure mirror and conversio squash all key off it), the unit is fighting (front-rank
@@ -4580,12 +4611,13 @@ func _apply_flock_color() -> void:
 	_mmi_facing_pip.modulate = Color(1.0, 1.0, 1.0, alpha * 0.9)
 
 
-## Size/position the ground shadow ellipse to the current block extent.
+## Size/position the ground shadow ellipse to the current block extent, centred on
+## the block's footprint (which a standing anchor offset shifts off `position`).
 func _update_shadow() -> void:
 	if _shadow == null:
 		return
 	var r: float = _block_extent * 0.95
-	_shadow.position = Vector2(0, _block_extent * 0.45)
+	_shadow.position = block_centre_offset() + Vector2(0, _block_extent * 0.45)
 	_shadow.scale = Vector2(r, r)
 
 
@@ -4599,24 +4631,27 @@ func _draw() -> void:
 	# ground shadow by a Polygon2D — both child nodes layered under this chrome via
 	# z_index. _draw() handles only the screen-relative chrome: state ring, selection
 	# halo and stat bars. `_block_extent` (maintained by _process) sizes
-	# them to the live block rather than the bare collision radius.
+	# them to the live block rather than the bare collision radius, and `centre`
+	# places them on the block's footprint, which a standing anchor offset shifts
+	# off this node's origin (`position`).
 	var extent: float = _block_extent
+	var centre: Vector2 = block_centre_offset()
 
 	# State ring around the block: red = engaged, orange = routing.
 	match state:
 		State.FIGHTING:
-			draw_arc(Vector2.ZERO, extent + 2.0, 0, TAU, 36,
+			draw_arc(centre, extent + 2.0, 0, TAU, 36,
 					Color(0.90, 0.15, 0.15, alpha), 3.0)
 		State.ROUTING:
-			draw_arc(Vector2.ZERO, extent + 2.0, 0, TAU, 36,
+			draw_arc(centre, extent + 2.0, 0, TAU, 36,
 					Color(0.95, 0.50, 0.05, 1.0), 3.5)
 
 	if selected:
-		draw_arc(Vector2.ZERO, extent + 4.0, 0, TAU, 36, Color(0.95, 0.95, 0.3), 2.5)
+		draw_arc(centre, extent + 4.0, 0, TAU, 36, Color(0.95, 0.95, 0.3), 2.5)
 
 	# Strength bar + morale bar stacked above the block.
 	var bw: float = 38.0
-	var by: float = -extent - 16.0
+	var by: float = centre.y - extent - 16.0
 	var frac: float = clampf(float(soldiers) / float(max_soldiers), 0.0, 1.0)
 	var morale_frac: float = clampf(morale / 100.0, 0.0, 1.0)
 	var morale_color: Color
@@ -4628,14 +4663,15 @@ func _draw() -> void:
 		morale_color = Color(0.85, 0.20, 0.10, alpha)
 
 	var font := ThemeDB.fallback_font
-	draw_string(font, Vector2(-bw * 0.5, by - 3.0), str(soldiers),
+	var bx: float = centre.x - bw * 0.5
+	draw_string(font, Vector2(bx, by - 3.0), str(soldiers),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, alpha))
 	# Strength (green).
-	draw_rect(Rect2(-bw * 0.5, by, bw, 5.0), Color(0.15, 0.15, 0.15, alpha))
-	draw_rect(Rect2(-bw * 0.5, by, bw * frac, 5.0), Color(0.30, 0.80, 0.30, alpha))
+	draw_rect(Rect2(bx, by, bw, 5.0), Color(0.15, 0.15, 0.15, alpha))
+	draw_rect(Rect2(bx, by, bw * frac, 5.0), Color(0.30, 0.80, 0.30, alpha))
 	# Morale (green → yellow → red as it degrades).
-	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw, 4.0), Color(0.15, 0.15, 0.15, alpha))
-	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
+	draw_rect(Rect2(bx, by + 7.0, bw, 4.0), Color(0.15, 0.15, 0.15, alpha))
+	draw_rect(Rect2(bx, by + 7.0, bw * morale_frac, 4.0), morale_color)
 
 	# Soldier ID overlay (dev/debug visual, figure-LOD gated, selected unit only).
 	# _sim_soldier_pos is parent-local (like the body MultiMesh above), so convert to this
@@ -4659,7 +4695,7 @@ func _draw() -> void:
 	# standard reads as morale faltering); a separate faded color, not the chrome's
 	# always-opaque alpha above.
 	var flag_c := Color(team_color.r, team_color.g, team_color.b, _render_alpha)
-	UnitSprites.flag(self, flag_c, _render_alpha, extent)
+	UnitSprites.flag(self, flag_c, _render_alpha, extent, centre)
 
 
 # --- Derived replay state snapshots ----------------------------------------

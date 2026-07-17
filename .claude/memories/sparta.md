@@ -772,6 +772,29 @@ PRs as part of the GII loop; those belong to their own sessions.
 (The concrete rules here are Sparta-multi-session-specific; the general
 "check for a prior claim before starting" rule lives in ai-config.)
 
+**Post-merge tidy: never `git checkout main` (or `checkout -B main origin/main`)
+inside a session worktree — the `-B` form silently bypasses git's
+already-checked-out-elsewhere guard and double-checks-out `main` against the
+primary checkout.** The plain `git checkout main` correctly refuses when the
+primary checkout holds `main`, but a scripted fallback like
+`git checkout -q main || git checkout -qB main origin/main` (with stderr
+swallowed) lands on the `-B` path, which re-points the shared `main` ref and
+checks it out here anyway. Both worktrees then claim `[main]` in
+`git worktree list`, and the next `git pull` in the session worktree moves the
+shared ref out from under the primary's working tree — the primary then shows a
+wall of phantom staged diffs (the just-merged PR's changes, reversed), exactly
+the stale-files symptom of the branch-repoint hazard above, with no error
+anywhere. Recovery: move the session worktree onto a new branch
+(`git switch -c <next-branch>`), then in the primary restore ONLY the
+phantom-diff files (`git restore --staged --worktree <files>` — not a blanket
+`reset --hard`, which would clobber unrelated local state like a `.ai-config`
+submodule pointer). Prevention: after a merge, don't "return to main" in a
+session worktree at all — fetch and branch the next task's branch directly off
+`origin/main` (`git switch -c <branch> origin/main`), leaving `main` itself to
+the primary checkout. (Session `gii-ffdb93`, 2026-07-16: post-#919 tidy ran the
+fallback form, double-checked-out `main`, and the primary showed nine phantom
+staged reversals of #919's own files until restored.)
+
 **Post-merge tidy: `git worktree remove` on your OWN currently-active worktree
 can partially succeed and leave an empty, orphaned directory — this is
 harmless, not data loss.** After a PR merges, running `git worktree remove

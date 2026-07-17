@@ -293,12 +293,15 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 	# Replay.rng -- so it has no simulation/replay/determinism impact. Guarded by
 	# is_inside_tree() like the volley trail and rout shockwave.
 	if u.is_inside_tree():
-		var edge: Vector2 = u.global_position
+		# Measure from the block's footprint centre (block_centre_offset), not the raw
+		# regiment point: a standing anchor offset shifts the block, and the extent is
+		# measured about that same centre.
+		var edge: Vector2 = u.global_position + u.block_centre_offset()
 		if is_instance_valid(attacker):
-			# World-space throughout: edge is global_position, so the direction to the
+			# World-space throughout: edge is global-space, so the direction to the
 			# attacker must be a global delta too. Mixing in local `position` would skew the
 			# offset if the units' parent ever had a non-identity transform.
-			var toward: Vector2 = attacker.global_position - u.global_position
+			var toward: Vector2 = attacker.global_position - edge
 			if toward.length() > 0.001:
 				edge += toward.normalized() * u._block_extent
 		# Cavalry leave bigger bodies (matching their larger live marks); foot the default.

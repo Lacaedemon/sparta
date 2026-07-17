@@ -18,11 +18,18 @@ static func lod_should_detail(currently_detailed: bool, zoom: float) -> bool:
 
 ## Block half-size: the farthest slot plus a mark radius, floored at the collision RADIUS.
 ## Sizes the state ring, selection halo, stat bars (in _draw) and the ground shadow.
-static func compute_extent(unit: Unit, slots: PackedVector2Array) -> float:
+## `centre` is the local-frame point the radius is measured about. The ZERO default
+## measures reach from the regiment point (`Unit.position`) -- the containment
+## semantics steering/separation consumers want, where a standing anchor offset
+## genuinely extends the block's reach on one side. Chrome passes the block's own
+## local centre (the anchor shift) instead, so the ring hugs the block's footprint
+## rather than inflating to cover the offset.
+static func compute_extent(unit: Unit, slots: PackedVector2Array,
+		centre: Vector2 = Vector2.ZERO) -> float:
 	var mark_r: float = Unit.CAV_MARK_RADIUS if unit.is_cavalry else Unit.MARK_RADIUS
 	var extent: float = Unit.RADIUS
 	for s in slots:
-		extent = maxf(extent, s.length())
+		extent = maxf(extent, (s - centre).length())
 	return extent + mark_r + 2.0
 
 
