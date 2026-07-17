@@ -66,5 +66,25 @@
     130,
     200,
     260
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        407.0,
+        300.0
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 5,
+      "field": "position",
+      "value": [
+        407.0,
+        880.0
+      ]
+    }
   ]
 }

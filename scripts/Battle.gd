@@ -177,8 +177,8 @@ const SPEED_SCALE := 1.0
 # convert them to the world units the sim runs in. These are WORLD units, not
 # screen pixels: Godot renders the fixed FIELD onto any window via the viewport
 # stretch (canvas_items / expand) and the Camera2D zoom, so the display
-# resolution is independent of this scale. At 20 u/m the 1600x1000 field is an
-# 80 m x 50 m engagement frontage. It's a single named knob, so the world's
+# resolution is independent of this scale. At 20 u/m the 1600x1200 field is an
+# 80 m x 60 m engagement frontage. It's a single named knob, so the world's
 # unit scale can be rebased here without hunting down hard-coded distances --
 # WorldScale.gd is that knob's single home; this name is a re-export so the many
 # existing consumers (HUD, SelectionManager, tests, docs) compile unmodified.

@@ -1,12 +1,12 @@
 {
-  "_comment": "Pace modes demo, staged in isolation under all_teams_control (team 1's battle AI is off, so the enemy stands where posted -- unit-level combat behaviour still runs, so the archers shoot on their own): a lone player Spearmen regiment attack-orders the enemy Infantry parked at the far end of its lane (an attack move paces on AUTO). The enemy Archers hold the lane's shoulder, placed so their beaten zone runs straight into charge distance: the advance shows the three AUTO phases as contiguous plateaus -- walk on approach, jog through the archers' fire (RANGED_RANGE is shorter than the sprint-start distance, so the fire must come from the flank of the lane, not the target line, for a jog leg to exist), then the full sprint to contact. Deterministic (scenario + seed + scripted input).",
+  "_comment": "Pace modes demo, staged in isolation under all_teams_control (team 1's battle AI is off, so the enemy stands where posted -- unit-level combat behaviour still runs, so the archers shoot on their own): a lone player Spearmen regiment attack-orders the enemy Infantry parked at the far end of its lane (an attack move paces on AUTO). The enemy Archers hold the lane's shoulder, placed so their beaten zone runs straight into charge distance: the advance shows the three AUTO phases as contiguous plateaus -- walk on approach, jog through the archers' fire (RANGED_RANGE is shorter than the sprint-start distance, so the fire must come from the flank of the lane, not the target line, for a jog leg to exist), then the full sprint to contact. The lane runs at x=490, east of the forest slow zone (x 200-450), so terrain never adds a fourth speed regime to the three pace plateaus. Deterministic (scenario + seed + scripted input).",
   "seed": "12345",
   "all_teams_control": true,
   "scenario": [
     {
       "team": 0,
       "type": "Spearmen",
-      "x": 400,
+      "x": 490,
       "y": 420,
       "facing": [
         0,
@@ -16,13 +16,13 @@
     {
       "team": 1,
       "type": "Infantry",
-      "x": 400,
+      "x": 490,
       "y": 1050
     },
     {
       "team": 1,
       "type": "Archers",
-      "x": 500,
+      "x": 590,
       "y": 720,
       "count": 60
     }
@@ -30,7 +30,7 @@
   "camera": [
     {
       "tick": 0,
-      "x": 470.0,
+      "x": 560.0,
       "y": 740.0,
       "zoom": 0.85
     }
@@ -39,14 +39,14 @@
     {
       "tick": 8,
       "click": [
-        400,
+        490,
         420
       ]
     },
     {
       "tick": 20,
       "rmb_click": [
-        400,
+        490,
         1050
       ]
     }
@@ -67,7 +67,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        400,
+        490,
         420
       ]
     },
