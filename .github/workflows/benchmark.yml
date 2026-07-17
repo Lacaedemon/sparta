@@ -3,7 +3,7 @@
 # This is a RELATIVE check against a CI-runner-specific baseline (tools/benchmark/baseline.json)
 # -- it answers "did this PR make the reference battle measurably slower on THIS runner," not
 # "is the game fast enough." GitHub Actions runners are not the reference hardware named in
-# PLAN.md (a 2022 MacBook Air M2 24GB and the developer's PC), and absolute numbers here have
+# PLAN.md (the developer's PC with a discrete GPU), and absolute numbers here have
 # no defined relationship to that 60fps target -- CI runner speed varies run to run and across
 # GitHub's fleet. See tools/benchmark/README.md for the local protocol that checks the real
 # target on real hardware; this workflow is only the early-warning between those manual runs.
