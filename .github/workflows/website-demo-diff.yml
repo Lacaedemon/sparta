@@ -23,7 +23,10 @@
 #
 # Deliberately INFORMATIONAL, not a blocking gate: a content change can be the PR's whole
 # point, so the verdict on each changed clip belongs to a human. The job is
-# continue-on-error and posts a plain comment, never a check-run failure.
+# continue-on-error and posts a plain comment, never a check-run failure. The comment
+# does carry a machine assist: a defect-delta table (DemoDefects verdicts on both sides
+# of every changed clip) that auto-labels a defect firing only on the PR side as a
+# candidate regression, so the human classification starts from those rows.
 
 name: Website demo diff
 
@@ -41,6 +44,9 @@ on:
       - 'website/tools/demo-catalog.sh'
       - 'website/tools/dump-demo-states.sh'
       - 'tools/ci/website-demo-state-diff.sh'
+      - 'tools/ci/website-demo-defect-delta.sh'
+      - 'tools/demo/DemoDefects.gd'
+      - 'tools/demo/analyze_transcript.gd'
 
 # One diff run per PR; a newer push cancels an in-flight one rather than queuing behind it.
 concurrency:
@@ -115,6 +121,20 @@ jobs:
         run: |
           tools/ci/website-demo-state-diff.sh \
             /tmp/transcripts-base /tmp/transcripts-pr /tmp/website-demo-diff.md
+
+      - name: Defect delta over changed clips
+        # The deterministic DemoDefects analyzer over BOTH sides' FULL transcripts of
+        # just the changed clips (pure JSON reads -- no battles re-run), appended to the
+        # same comment: a defect firing only on the PR side is auto-labelled a candidate
+        # regression, so reviewer judgment narrows to those rows instead of every clip.
+        run: |
+          set -euo pipefail
+          GODOT_BIN=godot tools/ci/website-demo-defect-delta.sh \
+            /tmp/transcripts-base /tmp/transcripts-pr \
+            /tmp/website-demo-diff.md.changed /tmp/defect-delta.md "$GITHUB_WORKSPACE"
+          if [ -s /tmp/defect-delta.md ]; then
+            cat /tmp/defect-delta.md >> /tmp/website-demo-diff.md
+          fi
 
       - name: Post PR comment
         env:

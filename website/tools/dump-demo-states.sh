@@ -96,9 +96,15 @@ for spec in "${DEMOS[@]}"; do
   mkdir -p "$CLIP_OUT"
   echo "== Dumping '$NAME' ($TYPE: res://$SOURCE) at ticks $TICKS =="
   rc=0
+  # FULL dumps (per-soldier arrays + ordered slots + motion_ref, where the tree's
+  # DemoState supports them): the defect-delta pass reads them, and the diff script
+  # projects them back out before comparing, so the transcript-diff semantics stay
+  # exactly the compact fields they always were. A tree predating the full-dump
+  # schema just emits compact records; the delta pass degrades to "n/a" there.
   run_bounded "$DUMP_TIMEOUT" \
     env "${ENV_KEY}=res://${SOURCE}" \
         SPARTA_DEMO_STATE="$TICKS" SPARTA_DEMO_STATE_DIR="$CLIP_OUT" \
+        SPARTA_DEMO_STATE_FULL=1 \
     "$GODOT_BIN" --headless --fixed-fps 60 --path "$PROJECT_DIR" "$SCENE" || rc=$?
   if run_bounded_timed_out "$rc"; then
     echo "ERROR: dumping '$NAME' timed out after ${DUMP_TIMEOUT}s and was killed (no orphan left behind)." >&2
