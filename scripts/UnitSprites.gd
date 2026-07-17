@@ -39,14 +39,35 @@ static func flag(u: Unit, body_c: Color, alpha: float, extent: float,
 	var pole_base := centre + Vector2(0.0, -extent - Unit.FLAG_POLE_BASE_GAP)
 	var pole_top  := Vector2(pole_base.x, pole_base.y - Unit.FLAG_POLE_HEIGHT)
 	u.draw_line(pole_base, pole_top, Color(0.85, 0.85, 0.85, alpha), 1.5)
-	# Flag rectangle hangs below the pole tip (positive-Y in screen space = downward).
+	# The cloth hangs below the pole tip (positive-Y in screen space = downward): a
+	# swallowtail pennant -- a V-notch cut into the fly edge -- with a darker lower
+	# fold, so the standard reads as hanging cloth rather than a flat chip. Both
+	# polygons take the team colour (the fold via darkened, which preserves alpha, so
+	# the routing fade flows through unchanged); the whole shape nests inside the
+	# FLAG_WIDTH x FLAG_HEIGHT rect standard_bounds already reports.
 	var fx: float = pole_top.x
 	var fy: float = pole_top.y
-	u.draw_rect(Rect2(fx, fy, Unit.FLAG_WIDTH, Unit.FLAG_HEIGHT), body_c)
-	u.draw_rect(Rect2(fx, fy, Unit.FLAG_WIDTH, Unit.FLAG_HEIGHT),
-			Color(1.0, 1.0, 1.0, alpha * 0.5), false, 1.0)
-	# Type emblem centred on the flag: spear = vertical, bow = arc, lance = diagonal, cross = infantry.
-	var fc := Vector2(fx + Unit.FLAG_WIDTH * 0.5, fy + Unit.FLAG_HEIGHT * 0.5)
+	var fw: float = Unit.FLAG_WIDTH
+	var fh: float = Unit.FLAG_HEIGHT
+	var notch: float = fw * 0.28
+	var cloth := PackedVector2Array([
+		Vector2(fx, fy), Vector2(fx + fw, fy),
+		Vector2(fx + fw - notch, fy + fh * 0.5), Vector2(fx + fw, fy + fh),
+		Vector2(fx, fy + fh),
+	])
+	u.draw_colored_polygon(cloth, body_c)
+	u.draw_colored_polygon(PackedVector2Array([
+		Vector2(fx, fy + fh * 0.5), Vector2(fx + fw - notch, fy + fh * 0.5),
+		Vector2(fx + fw, fy + fh), Vector2(fx, fy + fh),
+	]), body_c.darkened(0.18))
+	var rim: PackedVector2Array = cloth.duplicate()
+	rim.push_back(cloth[0])
+	u.draw_polyline(rim, Color(1.0, 1.0, 1.0, alpha * 0.5), 1.0)
+	# Brass finial capping the pole above the attachment.
+	u.draw_circle(pole_top + Vector2(0.0, -1.5), 1.6, Color(0.82, 0.68, 0.28, alpha))
+	# Type emblem on the cloth body (nudged off-centre toward the hoist, clear of the
+	# notch): spear = vertical, bow = arc, lance = diagonal, cross = infantry.
+	var fc := Vector2(fx + fw * 0.42, fy + fh * 0.5)
 	var sym_c := Color(1.0, 1.0, 1.0, alpha)
 	if u.is_cavalry:
 		u.draw_line(fc + Vector2(-3.0, 2.5), fc + Vector2(3.0, -2.5), sym_c, 1.5)
