@@ -10,6 +10,23 @@ weight as the type's stance residual plus the struck soldier's shield
 `block_value` (see phase 1 below). Phases 3-4 (#538-#539) are design-only so
 far.
 
+The registry has since grown two more type families on the same contract
+(interned, immutable, disjoint id ranges): `Armor` (protection — the scalar
+`profile_for()`'s rows used to hard-code — plus a provisional panoply
+`weight_kg`) and `Mount` (a sim-internal relative mass contribution — body
+1.0 + warhorse 1.5 composes the cavalry row's pre-registry 2.5 contact mass
+— plus the animal's real `mass_kg` and a provisional `top_speed_mps`).
+Player-facing mass always reports in absolute kilograms (the mount's
+`mass_kg`, and the per-type `body_mass_kg` in `profile_for()`'s rows), never
+the tuned relative contact scalar — the units convention's "no raw sim
+number reaches the player," applied to mass. Deriving the contact scalars
+from the real kg data is deliberately NOT done yet (it would change combat);
+that derivation belongs to the physics-parameter purge. Unlike
+weapons/shields these types are referenced per UNIT (`Unit.armor_type_id` /
+`Unit.mount_type_id`), not per soldier — nothing varies per soldier for
+them yet; the per-soldier array move is a natural follow-on if a phase ever
+needs mixed panoplies inside one regiment.
+
 ## Motivation
 
 The combat model (`docs/combat-model.md`) already gives each soldier type fixed

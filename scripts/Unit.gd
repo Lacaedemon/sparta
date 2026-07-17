@@ -103,6 +103,14 @@ var uid: int = -1
 # bare test unit spawned without a loadout still resolves to real types.
 var weapon_type_id: int = LoadoutRegistry.WEAPON_GLADIUS
 var shield_type_id: int = LoadoutRegistry.SHIELD_SCUTUM
+# Interned armor and mount type ids (see LoadoutRegistry): unit-level, not
+# per-soldier — nothing varies per soldier for these yet. Battle._spawn_unit sets
+# them per type from the loadout table; combat_profile() reads armour protection
+# and contact mass through them. Defaults are the same infantry baseline as the
+# weapon/shield ids above (mail on foot), so a bare test unit's profile stays
+# bit-identical to the pre-registry infantry row.
+var armor_type_id: int = LoadoutRegistry.ARMOR_HAMATA
+var mount_type_id: int = LoadoutRegistry.MOUNT_NONE
 @export var is_cavalry: bool = false
 @export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
 @export var is_ranged: bool = false   # archers: loose volleys from a distance
@@ -3638,10 +3646,13 @@ static func couple_all_sim_soldiers(units: Array, delta: float) -> void:
 # the wound, the charge term, the facing gate, the per-type profile). Unit just
 # exposes its own profile, reading its type flags and training.
 
-## This regiment's per-soldier combat profile, from its own type flags and training.
-## See SoldierCombat.profile_for / docs/combat-model.md "Soldier attributes".
+## This regiment's per-soldier combat profile, from its own type flags, training,
+## and typed panoply (armour protection and mount mass resolve through the interned
+## armor/mount ids). See SoldierCombat.profile_for / docs/combat-model.md
+## "Soldier attributes".
 func combat_profile() -> Dictionary:
-	return SoldierCombat.profile_for(is_cavalry, anti_cavalry, is_ranged, training)
+	return SoldierCombat.profile_for(is_cavalry, anti_cavalry, is_ranged, training,
+			armor_type_id, mount_type_id)
 
 
 ## The lethality of the weapon soldier `i` carries: the per-soldier weapon id
@@ -4686,6 +4697,7 @@ func to_snapshot_dict() -> Dictionary:
 		"back_speed_fraction": back_speed_fraction, "accel": accel, "decel": decel,
 		"attack_range": attack_range,
 		"weapon_type_id": weapon_type_id, "shield_type_id": shield_type_id,
+		"armor_type_id": armor_type_id, "mount_type_id": mount_type_id,
 		"order_response_delay": order_response_delay,
 		"atomic_response_delay": atomic_response_delay,
 		"training": training, "disciplined": disciplined,
@@ -4772,6 +4784,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	attack_range = float(d["attack_range"])
 	weapon_type_id = int(d["weapon_type_id"])
 	shield_type_id = int(d["shield_type_id"])
+	armor_type_id = int(d["armor_type_id"])
+	mount_type_id = int(d["mount_type_id"])
 	order_response_delay = float(d["order_response_delay"])
 	atomic_response_delay = float(d["atomic_response_delay"])
 	training = float(d["training"])

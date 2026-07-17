@@ -29,14 +29,36 @@ func test_stat_sheet_reports_combat_stats_and_loadout() -> void:
 	u._sim_soldier_hp = PackedFloat32Array([100.0, 80.0])
 	hud.show_unit(u, 1)
 	var text: String = hud._info.text
-	assert_string_contains(text, "Attack: 12\nDefense: 6\nArmour: 45%",
-			"attack, defense, and armour each get their own line (semantic split)")
+	assert_string_contains(text, "Attack: 12\nDefense: 6\nLorica hamata: protection 45%",
+			"attack and defense get their own lines; the armour line is the panoply item")
+	assert_string_contains(text, "Lorica hamata: protection 45%, 11 kg",
+			"the armor type shows with its protection and weight")
 	assert_string_contains(text, "HP per man: 90 ±10 of 110",
 			"mean, spread, and the type's full-health value all show")
 	assert_string_contains(text, "Gladius: reach 1.3 m, lethality 1.00",
 			"the weapon type shows with its stats, whole on one line")
 	assert_string_contains(text, "Scutum: block 60%, arc 120°",
 			"the shield type shows with its stats, whole on one line")
+	assert_string_contains(text, "Body mass: 80 kg",
+			"the soldier's own mass reports in absolute kilograms")
+	assert_string_contains(text, "On foot: 0 kg, pace 0.0 m/s",
+			"the mount row shows uniformly even on foot, like the Unshielded row")
+
+
+func test_stat_sheet_shows_the_cavalry_mount_with_its_stats() -> void:
+	var hud := _hud()
+	var u := _unit()
+	u.is_cavalry = true
+	u.armor_type_id = LoadoutRegistry.ARMOR_SQUAMATA
+	u.mount_type_id = LoadoutRegistry.MOUNT_WARHORSE
+	hud.show_unit(u, 1)
+	var text: String = hud._info.text
+	assert_string_contains(text, "Lorica squamata: protection 40%, 13 kg",
+			"the cavalry scale shirt shows with its stats")
+	assert_string_contains(text, "Body mass: 75 kg",
+			"the rider's own mass reports in absolute kilograms")
+	assert_string_contains(text, "Warhorse: 450 kg, pace 8.5 m/s",
+			"the warhorse reports its real mass in absolute kilograms, not a sim offset")
 
 
 func test_info_lines_hold_one_semantic_item_each() -> void:
