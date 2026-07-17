@@ -50,6 +50,11 @@ const WHIPSAW_MIN_SWING_DEG := 10.0
 ## MIN_SUSTAIN consecutive samples, is super-physical (a single-sample spike is a
 ## legitimate knockback/contact impulse and exempt).
 const SUPERPHYSICAL_SPEED_FRAC := 1.15
+## More than this fraction of a unit's soldiers standing closer to some OTHER soldier's
+## slot than their own (measured against the FIT-ALIGNED grid, so legitimate turn lag --
+## a rigid offset the Kabsch fit removes -- cannot fire it), sustained pre-contact, is a
+## misslot verdict: the men settled on each other's positions (rank/flank swapping).
+const MISSLOT_MAX_FRAC := 0.25
 ## Consecutive-sample count that turns a transient reading into a sustained verdict.
 const MIN_SUSTAIN := 2
 
@@ -106,7 +111,9 @@ static func kabsch_fit(slots: Array, positions: Array) -> Dictionary:
 ## How many soldiers stand strictly closer to some OTHER soldier's slot than to their
 ## own -- the slot-misassignment count behind rank/flank-swap defects. Transiently
 ## nonzero during a legitimate reshape; sustained high counts mean bodies settled on
-## the wrong slots.
+## the wrong slots. Callers that want turning-tolerant counts pass FIT-ALIGNED slots
+## (see aligned_slots), so a rigid rotation/translation the whole block shares cannot
+## read as misassignment -- only identity scramble can.
 static func misslotted_count(slots: Array, positions: Array) -> int:
 	var n: int = mini(slots.size(), positions.size())
 	var count := 0
@@ -119,6 +126,29 @@ static func misslotted_count(slots: Array, positions: Array) -> int:
 				count += 1
 				break
 	return count
+
+
+## The slot grid carried onto the bodies by kabsch_fit's own best rigid transform:
+## rotate about the slot centroid by the fitted angle, then translate the centroid onto
+## the body centroid. Comparing bodies against THESE slots isolates identity questions
+## (who stands where) from the block's overall rotation/translation state.
+static func aligned_slots(slots: Array, positions: Array, fit: Dictionary) -> Array:
+	var n: int = mini(slots.size(), positions.size())
+	if n == 0:
+		return []
+	var slot_c := Vector2.ZERO
+	var pos_c := Vector2.ZERO
+	for i in range(n):
+		slot_c += _vec(slots[i])
+		pos_c += _vec(positions[i])
+	slot_c /= n
+	pos_c /= n
+	var out: Array = []
+	var angle: float = float(fit["angle"])
+	for i in range(n):
+		var p: Vector2 = (_vec(slots[i]) - slot_c).rotated(angle) + pos_c
+		out.append([p.x, p.y])
+	return out
 
 
 ## Direction reversals in a facing-angle series: sign flips between consecutive
@@ -183,7 +213,11 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["nnd_med"].append(nnd["median"])
 			s["angle"].append(fit["angle"])
 			s["residual"].append(fit["residual_rms"])
-			s["misslotted"].append(misslotted_count(slots, bodies))
+			# Misassignment counted against the fit-aligned grid: rigid turn lag is the
+			# fit's to explain; only who-stands-where survives into this series.
+			s["misslotted"].append(
+					misslotted_count(aligned_slots(slots, bodies, fit), bodies)
+					/ maxf(1.0, float(bodies.size())))
 			var fa: Array = u.get("facing", [0.0, 1.0])
 			s["facing_angle"].append(atan2(float(fa[1]), float(fa[0])))
 			s["pos"].append(u["soldiers_full"]["pos"])
@@ -208,6 +242,10 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	# Shape scramble: post-fit residual, sustained, pre-contact only.
 	out.append(_sustained_verdict(uid, "shape_residual", s, "residual",
 			spacing * SHAPE_RMS_FRAC, true, MIN_SUSTAIN, true))
+	# Slot misassignment: the fraction of soldiers nearer another man's (fit-aligned)
+	# slot than their own, sustained, pre-contact only.
+	out.append(_sustained_verdict(uid, "misslotted", s, "misslotted",
+			MISSLOT_MAX_FRAC, true, MIN_SUSTAIN, true))
 
 	# Facing whipsaw while marching.
 	var moving_angles: Array = []

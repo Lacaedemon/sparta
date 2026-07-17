@@ -89,6 +89,20 @@ func test_misslotted_count_zero_on_slots_and_full_on_a_swap() -> void:
 			"a two-man swap misslots exactly those two")
 
 
+func test_aligned_slots_absorb_a_rigid_rotation_so_turn_lag_is_not_misassignment() -> void:
+	# A block physically rotated 40 deg off its ordered grid: against the RAW slots many
+	# soldiers sit nearer a neighbour's slot (turn lag), but against the FIT-ALIGNED
+	# slots every man is back on his own -- only identity scramble survives alignment.
+	var slots: Array = _grid(6, 4, SPACING)
+	var bodies: Array = _grid(6, 4, SPACING, Vector2.ZERO, deg_to_rad(40.0))
+	var fit: Dictionary = DemoDefects.kabsch_fit(slots, bodies)
+	var aligned: Array = DemoDefects.aligned_slots(slots, bodies, fit)
+	assert_eq(DemoDefects.misslotted_count(aligned, bodies), 0,
+			"a rigid rotation leaves nobody misslotted after alignment")
+	assert_gt(DemoDefects.misslotted_count(slots, bodies), 0,
+			"the same rotation against raw slots would have false-positived")
+
+
 # --- facing whipsaw --------------------------------------------------------------
 
 func test_facing_reversals_counts_big_sign_flips_only() -> void:
@@ -164,6 +178,10 @@ func test_scrambled_block_fails_shape_residual_while_a_rotated_one_passes() -> v
 		_snapshot(0, scrambled, slots), _snapshot(60, scrambled, slots)])
 	assert_false(bool(_verdict(scr_result, "shape_residual")["pass"]),
 			"a slot-scattered block is scrambled")
+	assert_false(bool(_verdict(scr_result, "misslotted")["pass"]),
+			"and its soldiers stand on each other's slots")
+	assert_true(bool(_verdict(rot_result, "misslotted")["pass"]),
+			"while a rigidly rotated block's men all keep their own slots")
 
 
 func test_teleporting_soldier_fails_superphysical_only_when_sustained() -> void:
