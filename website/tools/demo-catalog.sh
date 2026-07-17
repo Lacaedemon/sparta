@@ -62,4 +62,5 @@ DEMOS=(
   "echelon_form_up|demos/inputs/echelon-oblique-form-up.json|30|650|720|input"
   "countermarch|demos/inputs/countermarch-exelismos.json|30|560|640|input"
   "wheel_turn|demos/inputs/wheel-turn-oblique-move.json|30|440|720|input"
+  "resize_flank_anchor|demos/inputs/flank-anchored-resize.json|30|160|640|input"
 )

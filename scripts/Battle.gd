@@ -1060,14 +1060,31 @@ func enqueue_stance(uids: Array, stance: int = -1, rank_relief: int = RankRelief
 ## target (so a mixed selection keeps its relative widths), emitting one command per
 ## unit. The absolute (not relative) target is recorded so replays stay exact and
 ## keeps the command safe to re-derive from any starting frontage.
-func enqueue_frontage(uids: Array, delta: int) -> void:
+##
+## `anchor` (UnitFormation.Anchor) picks which flank stays fixed, exactly as on
+## enqueue_file_double: CENTRE (default -- the [ / ] keyboard resize) widens/narrows
+## symmetrically and RE-CENTRES the block, discarding any earlier anchor shift; LEFT/
+## RIGHT hold that edge in place so the whole width change lands on the opposite
+## flank (the grip drag-resize anchors the flank opposite the grabbed grip this way,
+## so dragging a grip moves only that grip's own edge). A LEFT/RIGHT anchor composes
+## anchor_shift on top of the unit's CURRENT offset rather than replacing it, for the
+## same reason enqueue_file_double does -- anchor_shift only ever computes one step
+## from a centred block, so treating it as absolute across repeated anchored resizes
+## would let the held flank drift.
+func enqueue_frontage(uids: Array, delta: int,
+		anchor: int = UnitFormation.Anchor.CENTRE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	for uid in uids:
 		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
 			continue
-		var files: int = clampi(UnitFormation.frontage(u) + delta, 1, maxi(1, u.max_soldiers))
+		var current: int = UnitFormation.frontage(u)
+		var files: int = clampi(current + delta, 1, maxi(1, u.max_soldiers))
+		var anchor_offset: float = 0.0
+		if anchor != UnitFormation.Anchor.CENTRE:
+			anchor_offset = u.frontage_anchor_offset + UnitFormation.anchor_shift(
+					current, files, Unit.FORMATION_SPACING * u.spacing_scale, anchor)
 		var cmd := {
 			"units": [uid],
 			"x": 0.0,
@@ -1075,6 +1092,7 @@ func enqueue_frontage(uids: Array, delta: int) -> void:
 			"target": ORDER_FRONTAGE_ONLY,
 			"mode": OrderMode.NORMAL,
 			"frontage": files,
+			"anchor_offset": anchor_offset,
 		}
 		_pending_orders.append(cmd)
 		_apply_order_live(cmd)
@@ -1267,10 +1285,10 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.set_current_order(Order.new_formation(fm))
 		return
 	# Frontage-resize-only: set each unit's file count (and anchor shift, for an
-	# asymmetric explicatio/duplicatio -- 0.0 for the plain [ / ] resize) to the
-	# absolute target, leaving movement and order-mode state untouched. Absolute so
-	# re-applying the pending order on the tick is a no-op (idempotent), matching
-	# move/formation.
+	# asymmetric explicatio/duplicatio or a flank-anchored grip drag -- 0.0 for the
+	# plain centred [ / ] resize) to the absolute target, leaving movement and
+	# order-mode state untouched. Absolute so re-applying the pending order on the
+	# tick is a no-op (idempotent), matching move/formation.
 	if target_uid == ORDER_FRONTAGE_ONLY:
 		var files: int = int(cmd.get("frontage", 0))
 		if files > 0:
