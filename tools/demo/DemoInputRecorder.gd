@@ -105,9 +105,13 @@ func _ready() -> void:
 	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
 	# Declared expectations (the `expect` list) are checked offline against dumped
 	# snapshots, so every expect tick joins the state-dump defaults -- declaring an
-	# expectation is enough to make the data it checks exist on a dump run.
+	# expectation is enough to make the data it checks exist on a dump run. A
+	# malformed (non-array) `expect` is ignored here rather than crashing the
+	# recorder; the analyzer's own --expect validation is where authoring errors
+	# get their loud failure.
+	var raw_expect = script.get("expect", [])
 	var state_defaults: Array = DemoFrames.script_array(script, "state")
-	for t in DemoDefects.expect_ticks(script.get("expect", [])):
+	for t in DemoDefects.expect_ticks(raw_expect if raw_expect is Array else []):
 		if not state_defaults.has(t):
 			state_defaults.append(t)
 	_arm_state_dump(state_defaults)

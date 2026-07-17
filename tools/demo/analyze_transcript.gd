@@ -36,6 +36,15 @@ func _init() -> void:
 			quit(2)
 			return
 		expects = parsed_script["expect"]
+		# Shape-validate every entry up front: a malformed expectation (a [480] range
+		# missing its upper bound, a missing field) is a usage error under this tool's
+		# own exit-code contract, not a demo defect.
+		for e in expects:
+			var shape_error: String = DemoDefects.expect_entry_error(e)
+			if shape_error != "":
+				push_error("malformed expect entry (%s): %s" % [shape_error, str(e)])
+				quit(2)
+				return
 	var snapshots: Array = _load_snapshots(dir_path)
 	if snapshots.is_empty():
 		push_error("no state_*.json snapshots found in: " + dir_path)

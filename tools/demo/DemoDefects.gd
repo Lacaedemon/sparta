@@ -316,6 +316,29 @@ static func expect_ticks(expects: Array) -> Array:
 	return out
 
 
+## Shape-validate one `expect` entry: returns an empty string when usable, else a
+## message naming what's wrong. Pure, so the CLI can reject a malformed script with
+## the exit-2 usage contract BEFORE evaluation, and check_expectations can stay
+## crash-free on entries that reach it anyway (a [480] range typo must surface as an
+## error, never as an out-of-bounds abort).
+static func expect_entry_error(e) -> String:
+	if not (e is Dictionary):
+		return "entry is not an object"
+	var t = e.get("tick")
+	var tick_ok: bool = (t is float or t is int) \
+			or (t is Array and (t as Array).size() == 2 \
+				and (t[0] is float or t[0] is int) and (t[1] is float or t[1] is int))
+	if not tick_ok:
+		return "tick must be a number or a [lo, hi] pair"
+	if not (e.get("uid") is float or e.get("uid") is int):
+		return "missing numeric uid"
+	if str(e.get("field", "")) == "":
+		return "missing field"
+	if not e.has("value"):
+		return "missing value"
+	return ""
+
+
 ## Evaluate declared demo intent against a dumped transcript: each expectation is
 ## {tick: N or [lo, hi], uid, field, value} and passes when the named unit's dumped
 ## record field equals the value at that tick (or at ANY snapshot inside the range --
@@ -323,9 +346,16 @@ static func expect_ticks(expects: Array) -> Array:
 ## one verdict per expectation, shaped like analyze()'s own verdicts so callers gate
 ## the same way. A missing snapshot, unit, or field is a failure, not a skip: an
 ## expectation that cannot be checked is an authoring error the run must surface.
+## A malformed entry likewise yields a FAILED verdict naming the shape problem (the
+## CLI additionally rejects malformed scripts up front with its usage exit code).
 static func check_expectations(expects: Array, snapshots: Array) -> Array:
 	var out: Array = []
 	for e in expects:
+		var shape_error: String = expect_entry_error(e)
+		if shape_error != "":
+			out.append({"uid": -1, "metric": "expect:(malformed entry)", "pass": false,
+					"worst": shape_error, "threshold": str(e)})
+			continue
 		var t = e.get("tick")
 		var lo: int = int(t[0]) if t is Array else int(t)
 		var hi: int = int(t[1]) if t is Array else int(t)

@@ -253,6 +253,28 @@ func test_check_expectations_range_passes_on_any_snapshot_inside_it() -> void:
 			"a drift-tolerant range claim passes when any snapshot in range matches")
 
 
+func test_malformed_expect_entries_are_named_errors_not_crashes() -> void:
+	# A [480] range typo (missing upper bound) must surface as a shape error under the
+	# tool's own contract -- never an out-of-bounds abort mid-evaluation.
+	assert_ne(DemoDefects.expect_entry_error({"tick": [480], "uid": 0, "field": "state", "value": "X"}),
+			"", "a one-element tick range is malformed")
+	assert_ne(DemoDefects.expect_entry_error({"tick": [], "uid": 0, "field": "state", "value": "X"}),
+			"", "an empty tick range is malformed")
+	assert_ne(DemoDefects.expect_entry_error({"uid": 0, "field": "state", "value": "X"}),
+			"", "a missing tick is malformed")
+	assert_ne(DemoDefects.expect_entry_error({"tick": 60, "field": "state", "value": "X"}),
+			"", "a missing uid is malformed")
+	assert_eq(DemoDefects.expect_entry_error({"tick": [480, 620], "uid": 0, "field": "state", "value": "X"}),
+			"", "a well-formed range entry validates clean")
+	var snaps: Array = [{"tick": 60, "units": [{"uid": 0, "state": "MOVING"}]}]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": [480], "uid": 0, "field": "state", "value": "X"},
+		{"tick": 60, "uid": 0, "field": "state", "value": "MOVING"},
+	], snaps)
+	assert_false(bool(verdicts[0]["pass"]), "the malformed entry yields a failed verdict")
+	assert_true(bool(verdicts[1]["pass"]), "and evaluation continues to the valid entries")
+
+
 func test_check_expectations_fails_when_nothing_probeable_exists() -> void:
 	var snaps: Array = [{"tick": 60, "units": [{"uid": 0, "state": "MOVING"}]}]
 	var verdicts: Array = DemoDefects.check_expectations([
