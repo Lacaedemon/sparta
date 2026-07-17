@@ -298,5 +298,106 @@ static func _sustained_verdict(uid: int, metric: String, s: Dictionary, key: Str
 			"worst": worst, "threshold": threshold}
 
 
+## Every tick an `expect` list needs a snapshot at: scalar ticks verbatim, [lo, hi]
+## ranges contribute both ends (range expectations are evaluated against whatever
+## snapshots exist inside the range, so the ends guarantee at least two probes). The
+## recorder merges these into its state-dump tick set, so declaring an expectation is
+## enough to make the data it checks exist. Malformed entries (a bare number where an
+## object belongs -- the adjacent `state` field's shape, an easy slip) contribute no
+## ticks rather than crashing the live recording; their loud failure is the
+## analyzer's validation, which the recorder cannot reach mid-record.
+static func expect_ticks(expects: Array) -> Array:
+	var out: Array = []
+	for e in expects:
+		if expect_entry_error(e) != "":
+			continue
+		var t = e.get("tick")
+		var ticks: Array = t if t is Array else [t]
+		for v in ticks:
+			var tick: int = int(v)
+			if not out.has(tick):
+				out.append(tick)
+	out.sort()
+	return out
+
+
+## Shape-validate one `expect` entry: returns an empty string when usable, else a
+## message naming what's wrong. Pure, so the CLI can reject a malformed script with
+## the exit-2 usage contract BEFORE evaluation, and check_expectations can stay
+## crash-free on entries that reach it anyway (a [480] range typo must surface as an
+## error, never as an out-of-bounds abort).
+static func expect_entry_error(e) -> String:
+	if not (e is Dictionary):
+		return "entry is not an object"
+	var t = e.get("tick")
+	var tick_ok: bool = (t is float or t is int) \
+			or (t is Array and (t as Array).size() == 2 \
+				and (t[0] is float or t[0] is int) and (t[1] is float or t[1] is int))
+	if not tick_ok:
+		return "tick must be a number or a [lo, hi] pair"
+	if not (e.get("uid") is float or e.get("uid") is int):
+		return "missing numeric uid"
+	if str(e.get("field", "")) == "":
+		return "missing field"
+	if not e.has("value"):
+		return "missing value"
+	return ""
+
+
+## Evaluate declared demo intent against a dumped transcript: each expectation is
+## {tick: N or [lo, hi], uid, field, value} and passes when the named unit's dumped
+## record field equals the value at that tick (or at ANY snapshot inside the range --
+## ranges express drift-tolerant claims like "engages between 780 and 840"). Returns
+## one verdict per expectation, shaped like analyze()'s own verdicts so callers gate
+## the same way. A missing snapshot, unit, or field is a failure, not a skip: an
+## expectation that cannot be checked is an authoring error the run must surface.
+## A malformed entry likewise yields a FAILED verdict naming the shape problem (the
+## CLI additionally rejects malformed scripts up front with its usage exit code).
+static func check_expectations(expects: Array, snapshots: Array) -> Array:
+	var out: Array = []
+	for e in expects:
+		var shape_error: String = expect_entry_error(e)
+		if shape_error != "":
+			out.append({"uid": -1, "metric": "expect:(malformed entry)", "pass": false,
+					"worst": shape_error, "threshold": str(e)})
+			continue
+		var t = e.get("tick")
+		var lo: int = int(t[0]) if t is Array else int(t)
+		var hi: int = int(t[1]) if t is Array else int(t)
+		var uid: int = int(e.get("uid", -1))
+		var field: String = str(e.get("field", ""))
+		var expected = e.get("value")
+		var probed := false
+		var passed := false
+		var actual = null
+		for snap in snapshots:
+			var tick: int = int(snap.get("tick", -1))
+			if tick < lo or tick > hi:
+				continue
+			for u in snap.get("units", []):
+				if int(u.get("uid", -1)) != uid:
+					continue
+				if not u.has(field):
+					continue
+				probed = true
+				actual = u[field]
+				if _values_match(expected, actual):
+					passed = true
+			if passed:
+				break
+		var when: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
+		out.append({"uid": uid, "metric": "expect:%s@%s" % [field, when],
+				"pass": probed and passed,
+				"worst": actual if actual != null else "(no snapshot/unit/field in range)",
+				"threshold": expected})
+	return out
+
+
+static func _values_match(expected, actual) -> bool:
+	if (expected is float or expected is int) and (actual is float or actual is int):
+		return absf(float(expected) - float(actual)) < 0.001
+	return str(expected) == str(actual)
+
+
 static func _vec(pair) -> Vector2:
 	return Vector2(float(pair[0]), float(pair[1]))

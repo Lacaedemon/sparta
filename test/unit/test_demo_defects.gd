@@ -215,6 +215,91 @@ func test_whipsaw_verdict_fails_an_oscillating_march() -> void:
 			"a facing that keeps reversing direction while marching is a whipsaw")
 
 
+# --- declared expectations (intent as data) ------------------------------------------
+
+func test_expect_ticks_collects_scalars_and_range_ends() -> void:
+	var expects: Array = [
+		{"tick": 60, "uid": 0, "field": "state", "value": "MOVING"},
+		{"tick": [480, 620], "uid": 0, "field": "state", "value": "FIGHTING"},
+		{"tick": 60, "uid": 1, "field": "engaged", "value": false},
+	]
+	assert_eq(DemoDefects.expect_ticks(expects), [60, 480, 620],
+			"scalars verbatim, ranges by both ends, deduped and sorted")
+
+
+func test_expect_ticks_skips_malformed_entries_instead_of_crashing_the_recorder() -> void:
+	# A bare number where an entry object belongs -- the adjacent `state` field's own
+	# shape, so an easy authoring slip -- must not abort the live recording; it just
+	# contributes no ticks (the analyzer's validation is where it fails loudly).
+	var expects: Array = [
+		60,
+		{"tick": [480]},
+		{"tick": 120, "uid": 0, "field": "state", "value": "MOVING"},
+	]
+	assert_eq(DemoDefects.expect_ticks(expects), [120],
+			"only the well-formed entry contributes a tick")
+
+
+func test_check_expectations_passes_and_fails_on_field_values() -> void:
+	var snaps: Array = [
+		{"tick": 60, "units": [{"uid": 0, "state": "MOVING", "engaged": false}]},
+		{"tick": 540, "units": [{"uid": 0, "state": "FIGHTING", "engaged": true}]},
+	]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": 60, "uid": 0, "field": "state", "value": "MOVING"},
+		{"tick": 60, "uid": 0, "field": "state", "value": "FIGHTING"},
+	], snaps)
+	assert_true(bool(verdicts[0]["pass"]), "a matching field value passes")
+	assert_false(bool(verdicts[1]["pass"]), "a mismatched field value fails")
+	assert_eq(str(verdicts[1]["worst"]), "MOVING", "the failure reports the actual value")
+
+
+func test_check_expectations_range_passes_on_any_snapshot_inside_it() -> void:
+	var snaps: Array = [
+		{"tick": 480, "units": [{"uid": 0, "state": "MOVING"}]},
+		{"tick": 540, "units": [{"uid": 0, "state": "FIGHTING"}]},
+	]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": [480, 620], "uid": 0, "field": "state", "value": "FIGHTING"},
+	], snaps)
+	assert_true(bool(verdicts[0]["pass"]),
+			"a drift-tolerant range claim passes when any snapshot in range matches")
+
+
+func test_malformed_expect_entries_are_named_errors_not_crashes() -> void:
+	# A [480] range typo (missing upper bound) must surface as a shape error under the
+	# tool's own contract -- never an out-of-bounds abort mid-evaluation.
+	assert_ne(DemoDefects.expect_entry_error({"tick": [480], "uid": 0, "field": "state", "value": "X"}),
+			"", "a one-element tick range is malformed")
+	assert_ne(DemoDefects.expect_entry_error({"tick": [], "uid": 0, "field": "state", "value": "X"}),
+			"", "an empty tick range is malformed")
+	assert_ne(DemoDefects.expect_entry_error({"uid": 0, "field": "state", "value": "X"}),
+			"", "a missing tick is malformed")
+	assert_ne(DemoDefects.expect_entry_error({"tick": 60, "field": "state", "value": "X"}),
+			"", "a missing uid is malformed")
+	assert_eq(DemoDefects.expect_entry_error({"tick": [480, 620], "uid": 0, "field": "state", "value": "X"}),
+			"", "a well-formed range entry validates clean")
+	var snaps: Array = [{"tick": 60, "units": [{"uid": 0, "state": "MOVING"}]}]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": [480], "uid": 0, "field": "state", "value": "X"},
+		{"tick": 60, "uid": 0, "field": "state", "value": "MOVING"},
+	], snaps)
+	assert_false(bool(verdicts[0]["pass"]), "the malformed entry yields a failed verdict")
+	assert_true(bool(verdicts[1]["pass"]), "and evaluation continues to the valid entries")
+
+
+func test_check_expectations_fails_when_nothing_probeable_exists() -> void:
+	var snaps: Array = [{"tick": 60, "units": [{"uid": 0, "state": "MOVING"}]}]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": 300, "uid": 0, "field": "state", "value": "MOVING"},
+		{"tick": 60, "uid": 7, "field": "state", "value": "MOVING"},
+		{"tick": 60, "uid": 0, "field": "no_such_field", "value": 1},
+	], snaps)
+	for v in verdicts:
+		assert_false(bool(v["pass"]),
+				"an uncheckable expectation (%s) is an authoring failure, not a skip" % v["metric"])
+
+
 # --- the dump provides what the analyzer consumes -----------------------------------
 
 func test_full_dump_carries_slots_and_motion_ref_matching_the_unit() -> void:
