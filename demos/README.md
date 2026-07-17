@@ -574,11 +574,19 @@ formation widths, so the standard 5v5's `x` positions are:
 
 | uid | Type | `x` |
 | --- | --- | --- |
-| 0 / 5 | Spearmen | 476.75 |
-| 1 / 6 | Infantry | 626.75 |
-| 2 / 7 | Archers | 806.75 |
-| 3 / 8 | Cavalry | 973.25 |
-| 4 / 9 | Cavalry | 1123.25 |
+| 0 / 5 | Spearmen | 407.0 |
+| 1 / 6 | Infantry | 557.0 |
+| 2 / 7 | Archers | 736.99 |
+| 3 / 8 | Cavalry | 963.95 |
+| 4 / 9 | Cavalry | 1193.07 |
+
+Cavalry rows sit on their own wider grid pitch (1.0 m between files, 3.0 m
+between ranks), so each cavalry block is ~218 px wide and **360 px deep**
+(`y` roughly 120–480 for the player line) — the line re-spaced around those
+wider blocks, which is why every unit's `x` shifted from the pre-pitch values.
+A scripted click aimed at a unit must use the coordinates above; a click at a
+unit's old position can land in dead ground and silently select nothing (see
+the input-script contract's warning about silent no-op gestures).
 
 Each unit's sprint speed is stated
 in the loadout in **metres/second** (`sprint_mps`); effective px/s is
