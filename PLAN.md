@@ -11,7 +11,11 @@ then grow outward.
 
 ## Locked decisions
 - **Engine:** Godot **4.7.x Standard build** (GDScript, *not* the C#/.NET build).
-- **Battles:** 2D top-down sprite tokens (not 3D).
+- **Battles:** 2D top-down today; a conversion to a Total War-style **3D battle
+  view** is planned (#69) — the deterministic sim stays planar and only the
+  presentation/camera/input shell changes. See `docs/3d-conversion-design.md`
+  for the architecture, the Godot-vs-Unity assessment (staying on Godot), and
+  the phased roadmap. The campaign map stays 2D.
 - **Art:** **CC0 only** — Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
   - ⚠️ **Not** commercial-game mod assets — they are copyrighted, not public domain.
 - **First milestone:** one self-contained tactical battle. No campaign map yet.

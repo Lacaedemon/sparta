@@ -30,10 +30,10 @@ pass-through, line relief, unit merging) all shipped --- see
 section for how each landed. With that early backlog cleared, the issue tracker
 itself is the live source of truth for what's prioritized now: browse
 [open issues on `Lacaedemon/sparta`](https://github.com/Lacaedemon/sparta/issues)
-with `P0`--`P3` labels, or the two dominant current threads below.
+with `P0`--`P3` labels, or the dominant current threads below.
 
-Two threads dominate the current `P2` backlog, both feeding the M2/M3 milestones
-above:
+Three threads dominate the current backlog, feeding the M2/M3 milestones above
+and the battle presentation:
 
 - **Campaign layer** --- [phase 1 through phase 7](https://github.com/Lacaedemon/sparta/issues?q=is%3Aissue+is%3Aopen+%22Campaign+phase%22+in%3Atitle)
   build out map/time, army composition, battle-resolution modes, real-geography
@@ -41,8 +41,14 @@ above:
 - **Battle AI** --- [phase 2 through phase 5](https://github.com/Lacaedemon/sparta/issues?q=is%3Aissue+is%3Aopen+%22Battle+AI+phase%22+in%3Atitle)
   build subcommanders, a general layer with doctrine and reserves, player
   delegation to AI subcommanders, and fog-of-war-aware perception.
+- **3D battlefield** --- a planned conversion of the battle view from 2D
+  top-down to a Total War-style 3D presentation with a rotatable camera
+  ([#69](https://github.com/Lacaedemon/sparta/issues/69)); the deterministic
+  simulation stays planar and only the render/camera/input shell changes. See
+  the [design doc](https://github.com/Lacaedemon/sparta/blob/main/docs/3d-conversion-design.md)
+  for the architecture and phased plan.
 
-Independent of those two threads, `P2`/`P3` also carries near-term fixes and
+Independent of those threads, `P2`/`P3` also carries near-term fixes and
 design work (formation/spawn edge cases, the soldier weapon/shield type model,
 a maneuver-queue refactor) --- the tracker's labels and open-issue list are more
 current than any snapshot repeated here.
