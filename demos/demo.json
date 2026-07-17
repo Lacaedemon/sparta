@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Docs-only change: adds the 3D conversion design/plan (docs/3d-conversion-design.md), related-games entries, and a PLAN.md/roadmap sync. No gameplay or visual change exists yet to record."
+  "reason": "CI-instrument-only change: DemoDefects now derives its blob/overlap floors from the dumped soldier body radius instead of grid pitch, and gains judged-sample gating (routing, engagement-transition, casualty-compaction, lone-survivor exemptions). Nothing in gameplay or rendering changes, so there is no interaction to record."
 }

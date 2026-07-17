@@ -353,8 +353,10 @@ Set `SPARTA_DEMO_STATE_FULL=1` to also dump `soldiers_full` — the raw per-sold
 summary is what a reviewer needs; the full arrays are ~20x larger). `slots` is the unit's
 canonical slot grid (`Unit.soldier_world_slots`) at the same tick — the *ordered* shape the
 bodies chase — and a `motion_ref` dict rides alongside with the per-unit constants an offline
-analyzer derives thresholds from (`formation_spacing`, the three gait speeds, `pivot_radius`,
-`turn_rate`), so analysis reads the sim's own tuning rather than hardcoding a copy.
+analyzer derives thresholds from (`formation_spacing`, the per-axis pitches,
+`soldier_body_radius` — the physical-contact basis for the blob/overlap floors, distinct
+from the grid pitch — the three gait speeds, `pivot_radius`, `turn_rate`), so analysis
+reads the sim's own tuning rather than hardcoding a copy.
 
 ### Declared expectations (`expect`)
 
