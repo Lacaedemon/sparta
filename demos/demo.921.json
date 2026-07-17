@@ -1,8 +1,8 @@
 {
   "input": "demos/inputs/attack-around-the-hill.json",
-  "caption": "Attack approach around the hill: the cavalry's detour is steered by the corridor's long-run direction and the block pivots onto it in good order, holding rank-and-file all the way to contact. The same approach used to snap its slot grid to each coarse per-cell path bearing (any jump under the 75-degree fold threshold rotated the grid in one tick) and smear into a blob -- the pre-contact blobbing of the showcase's rightmost unit.",
+  "caption": "Attack approach around the hill: the cavalry spawns directly in the hill's lane, so its charge must detour -- it steers by the corridor's long-run direction (with a formation-width berth around the routed footprint) and pivots onto it in good order, holding rank-and-file all the way to contact. The same approach used to snap its slot grid to each coarse per-cell path bearing (any jump under the 75-degree fold threshold rotated the grid in one tick) and smear into a blob -- the pre-contact blobbing of the showcase's rightmost unit.",
   "fixed_fps": 30,
-  "max_frames": 270,
+  "max_frames": 310,
   "fps": 15,
   "width": 720
 }

@@ -1899,8 +1899,11 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	# rear-sector target calls for an about-face + march decomposition, the same way orderly
 	# move orders decompose big turns into drill maneuvers before _move_to ever sees them;
 	# that decomposition for combat approaches is future maneuver work, not this taper).
+	# Strictly-greater-than, matching _face_dir's own fold condition exactly: a bearing at
+	# the exact threshold pivots (the safe path), so no offset can both skip the pivot here
+	# AND miss the fold there.
 	if formed_turn and not orderly and pivot_as_formation \
-			and absf(angle_difference(facing.angle(), steer_dir.angle())) >= FACING_SNAP_ABSORB_THRESHOLD:
+			and absf(angle_difference(facing.angle(), steer_dir.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
 		pivot_as_formation = false
 	if maneuvering:
 		_face_dir(ordered_facing)
