@@ -842,6 +842,68 @@ func test_move_to_does_not_brake_a_combat_chase() -> void:
 		"a chase holds full pace inside the braking window -- charges don't brake")
 
 
+func test_combat_chase_pivots_gradually_for_a_disciplined_unit() -> void:
+	# An attack-approach march (formed_turn) from a disciplined unit turns onto its
+	# bearing in good order instead of snapping: a bearing under the fold-absorb
+	# threshold used to rotate the whole slot grid in one tick (no fold fires below
+	# it), sweeping flank slots far faster than any body can run -- the men scrambled
+	# across the block and the formation read as a blob for seconds (the showcase's
+	# rightmost cavalry rounding the hill). One tick now turns at most the corner-man
+	# pivot rate; PathField is nulled so the bearing under test reaches _move_to raw.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	var dir: Vector2 = Vector2.DOWN.rotated(deg_to_rad(60.0))
+	u._move_to(dir * 100000.0, 0.1, false, true)
+	var turned: float = absf(angle_difference(Vector2.DOWN.angle(), u.facing.angle()))
+	var max_step: float = minf(Unit.TURN_RATE, u.jog_speed / u._pivot_radius()) * 0.1
+	assert_gt(turned, 0.0, "the pivot has begun")
+	assert_lte(turned, max_step + 0.0001,
+		"the first tick's turn is bounded by the corner-man-paced pivot rate")
+	assert_lt(turned, deg_to_rad(60.0), "one tick does not snap onto the bearing")
+	PathField.active = old_pf
+
+
+func test_combat_chase_past_the_absorb_threshold_snaps_and_holds_the_grid() -> void:
+	# At or past the fold-absorb threshold a formed_turn approach keeps the plain snap:
+	# _face_dir folds the jump into _formation_angle, so the slot grid holds still and
+	# no soldier scrambles -- and the unit answers a rear-sector threat immediately
+	# instead of standing through a multi-second 180-degree centre pivot (the wrong
+	# drill for a turn that large; a proper about-face decomposition is future work).
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	var grid_before: float = u.facing.angle() + PI * 0.5 + u._formation_angle
+	var dir: Vector2 = Vector2.DOWN.rotated(deg_to_rad(120.0))
+	u._move_to(dir * 100000.0, 0.1, false, true)
+	assert_almost_eq(u.facing.x, dir.x, 0.0001, "facing.x snaps onto the bearing")
+	assert_almost_eq(u.facing.y, dir.y, 0.0001, "facing.y snaps onto the bearing")
+	var grid_after: float = u.facing.angle() + PI * 0.5 + u._formation_angle
+	assert_almost_eq(wrapf(grid_after - grid_before, -PI, PI), 0.0, 0.0001,
+		"the fold holds the slot grid still across the snap")
+	PathField.active = old_pf
+
+
+func test_undisciplined_chase_still_snaps_onto_its_bearing() -> void:
+	# The formed pivot is a disciplined-unit behaviour: a mob turns to face its quarry
+	# immediately and walks there directly, exactly as before.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	u.disciplined = false
+	var dir: Vector2 = Vector2.DOWN.rotated(deg_to_rad(60.0))
+	u._move_to(dir * 100000.0, 0.1, false, true)
+	assert_almost_eq(u.facing.x, dir.x, 0.0001, "facing.x snaps onto the bearing")
+	assert_almost_eq(u.facing.y, dir.y, 0.0001, "facing.y snaps onto the bearing")
+	PathField.active = old_pf
+
+
 func test_move_to_does_not_brake_before_an_intermediate_waypoint() -> void:
 	# A queued route rolls through its corners at pace: braking applies only on the
 	# route's LAST leg, so a unit closing on an intermediate waypoint holds its pace.
@@ -1034,16 +1096,22 @@ func test_current_speed_still_ramps_from_zero_for_a_fresh_order_from_idle() -> v
 func test_orderly_pivot_is_slower_at_speed_than_at_a_stand() -> void:
 	# The centre-pivot rate tapers down as the unit's current speed rises (real turning
 	# capacity is bounded by the lateral force a moving body can exert). Compare a pivot
-	# from a stand against an identical pivot already at full speed.
+	# from a stand against an identical pivot already at full speed. The corner-man gait
+	# bound (see test_pivot_rate_is_paced_by_the_corner_man below) would clamp both sides
+	# of a 120-man block to the same rate and mask the taper, so give the fixtures a jog
+	# far above what the pivot arc needs -- this test isolates the taper, the one below
+	# isolates the gait bound.
 	var standing := _make_unit()
 	standing.position = Vector2.ZERO
 	standing.facing = Vector2.RIGHT
+	standing.jog_speed = 100000.0
 	standing._move_to(Vector2(0, 100000), 0.1, true)   # orderly, far target, starts at rest
 	var standing_turn: float = standing.facing.angle()
 
 	var moving := _make_unit()
 	moving.position = Vector2.ZERO
 	moving.facing = Vector2.RIGHT
+	moving.jog_speed = 100000.0
 	# Seeded at full sprint, but the far target selects walk pace, so this first tick's
 	# decel step brings _current_speed to move_speed - decel*delta (~93% of sprint) by
 	# the time the taper reads it -- still strongly tapered, just not exactly 100%.
@@ -1054,6 +1122,38 @@ func test_orderly_pivot_is_slower_at_speed_than_at_a_stand() -> void:
 	assert_gt(standing_turn, moving_turn,
 		"a pivot from a stand turns further in one tick than the same pivot at full speed")
 	assert_gt(moving_turn, 0.0, "the fast-moving unit still turns, just more slowly")
+
+
+func test_pivot_rate_is_paced_by_the_corner_man() -> void:
+	# A centre pivot rotates the slot grid rigidly about the block's centre, so its rate
+	# is bounded by what the corner man (the farthest slot, at the footprint's
+	# half-diagonal) can actually run -- UnitManeuver.wheel_gait_rate with the pivot
+	# radius as the arm, the same outer-file pacing the flank wheel uses. For a real
+	# 120-man block that bound sits well under the stationary TURN_RATE, so the first
+	# tick's turn lands at exactly jog_speed / _pivot_radius() -- not at TURN_RATE.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	var expected_rate: float = u.jog_speed / u._pivot_radius()
+	assert_lt(expected_rate, Unit.TURN_RATE,
+		"the fixture block is wide enough that the corner-man bound governs")
+	u._move_to(Vector2(0, 100000), 0.1, true)
+	assert_almost_eq(u.facing.angle(), expected_rate * 0.1, 0.0001,
+		"the first tick's pivot step is the corner-man-paced rate, not raw TURN_RATE")
+
+
+func test_pivot_radius_is_the_footprint_half_diagonal() -> void:
+	# 120 soldiers in the default line: formation_files gives the file count, ranks
+	# follow, and the radius is half the diagonal of the (files-1) x (ranks-1) slot
+	# grid at formation spacing. Recompute independently and compare.
+	var u := _make_unit()
+	var files: int = u.formation_files(u.soldiers)
+	var ranks: int = UnitFormation.ranks_for(u.soldiers, files)
+	var span: float = Unit.FORMATION_SPACING * u.spacing_scale
+	var expected: float = Vector2(float(files - 1), float(ranks - 1)).length() * 0.5 * span
+	assert_almost_eq(u._pivot_radius(), expected, 0.0001,
+		"pivot radius matches the slot grid's half-diagonal")
+	assert_gt(u._pivot_radius(), 0.0, "a real block has a positive pivot arm")
 
 
 # --- gradual centre pivot (orderly move orders) ------------------------------

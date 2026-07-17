@@ -70,13 +70,27 @@ func speed_at(world: Vector2) -> float:
 
 
 ## The next world-space waypoint a unit at `from` should steer toward to reach
-## `to`. Straight to the target when the line is clear; otherwise the first turn
-## of an A* route around the obstacles (falls back to `to` if nothing is found).
+## `to`. Straight to the target when the line is clear; otherwise the farthest
+## point of an A* route around the obstacles that is still in direct line of
+## sight (falls back to `to` if no route is found).
+##
+## The lookahead (string-pulling) matters for formations: an A* path is an
+## 8-connected polyline of CELL-sized legs, so the bearing to the ADJACENT path
+## point jumps in coarse quanta as the walker crosses cells -- a regiment
+## steering by it whipsaws far off its true corridor direction and back (a
+## shallow one-cell detour reads as a hard ~68 deg turn followed by a hard
+## counter-turn), and the soldier bodies scramble after the swinging slot grid.
+## The farthest visible path point IS the corridor's real direction, so steering
+## by it walks the gentle diagonal a real column would. The adjacent point
+## remains the fallback when a genuine corner blocks every farther one.
 func next_step(from: Vector2, to: Vector2) -> Vector2:
 	if not _segment_blocked(from, to):
 		return to
 	var path := find_path(from, to)
 	if path.size() >= 2:
+		for i in range(path.size() - 1, 1, -1):
+			if not _segment_blocked(from, path[i]):
+				return path[i]
 		return path[1]
 	return to
 

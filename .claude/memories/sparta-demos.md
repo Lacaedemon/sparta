@@ -112,6 +112,31 @@ demo review and frame captures remain the check for those.)
 The thoroughness and super-physical rules above apply to each clip reviewed
 this way, exactly as they do to the PR's own demo.
 
+**Classifying a WIDE diff (20+ clips flagged by one sim change) without a week
+of work** -- the procedure that worked for PR #924's 28-clip diff:
+
+1. The CI job generates both transcript sets in-job and uploads no artifacts,
+   so regenerate the BRANCH side locally for just the flagged clips: source
+   `website/tools/demo-catalog.sh`, filter `DEMOS` to the flagged names, and
+   run each through the same headless dump `dump-demo-states.sh` uses (~30-60 s
+   per clip). No merge-base run yet.
+2. Judge each clip against its OWN documented intent (the input file's
+   `_comment`, the catalog row), not against merge-base numbers: read the
+   final-tick transcript and check the demonstrated outcome still occurs
+   (square still holds, relief swap still runs, router still gets swept). A
+   small analyzer that prints every unit's final state/soldiers/order per clip
+   answers this for the whole set in one pass.
+3. Only for clips whose OUTCOME looks changed or wrong (a unit wiped, a rally
+   missing), dump the MERGE-BASE side too -- a throwaway `git worktree add` at
+   the merge-base SHA, import once, dump just those clips -- and compare
+   outcome trajectories. On PR #924 this reduced 28 clips to 2 needing the
+   base-side run (`cycle_charge`: same wipe both sides, just reordered;
+   `trapped_routing`: identical no-flee behaviour both sides).
+4. A clip whose problem reproduces at the merge-base is PRE-EXISTING drift,
+   not the PR's regression: file it as its own issue (the clip no longer
+   demonstrates its caption -- e.g. #927) and say so in the PR's
+   classification section, rather than absorbing it into the PR.
+
 ## Author a scripted-input demo (the standard path)
 
 Sparta PR demos **can** show player-gesture features (multi-unit form-up, orders,
