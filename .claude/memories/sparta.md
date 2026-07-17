@@ -1416,6 +1416,8 @@ cumulative-torque-instrumentation technique (temporary `print()`s in
 revert before committing) to find which specific subsystem is the source for THIS
 reproduction before assuming a fix that didn't work for one case will work for the other.
 
+## A live-battle GUT test reading `current_order` needs the tick-count wait loop, not a single bare `await physics_frame`
+
 `Battle._physics_process` increments `_tick` AFTER running that tick's `_run_enemy_ai()` (so
 `current_tick()` reads `N` *during* tick `N`'s own processing, then becomes `N+1` right after).
 The established live-battle AI test pattern (`test_battle_ai_leaders.gd`, `_subcommanders.gd`)
