@@ -175,7 +175,7 @@ scripts/
   Unit.gd              Regiment: stats, movement, melee w/ flanking, morale, routing, _draw visuals
   SelectionManager.gd  LMB click + drag-box select; RMB move/attack orders
   CameraController.gd  WASD/arrow/edge pan, mouse-wheel zoom
-  HUD.gd               Hint bar, selected-unit info panel, victory/defeat overlay (built in code)
+  HUD.gd               Selected-unit info panel, victory/defeat overlay (built in code)
 assets/sprites, assets/ui   Empty (.gitkeep) — CC0 art drops here later
 README.md, ASSETS.md   Run instructions + CC0 asset sourcing
 ```

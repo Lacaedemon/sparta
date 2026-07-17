@@ -1,10 +1,9 @@
 extends AcceptDialog
 ## Read-only reference overlay listing every keyboard/mouse shortcut, opened with
 ## <kbd>?</kbd> (Shift+/) or ☰ Menu → Shortcuts. Rebindable order-mode stance keys
-## (hold/flank/rear/skirmish/support) are read live from the Settings autoload, the
-## same way HUD._refresh_hint() renders the top hint bar, so a rebind made via
-## ☰ Menu → Keybindings is reflected here too -- this is purely a display list, not
-## an editor.
+## (hold/flank/rear/skirmish/support) are read live from the Settings autoload, so
+## a rebind made via ☰ Menu → Keybindings is reflected here too -- this is purely
+## a display list, not an editor.
 ##
 ## Everything else here is a fixed, non-rebindable key, so those rows are built once
 ## in _ready() from a plain data table.

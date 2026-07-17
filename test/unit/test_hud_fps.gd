@@ -147,3 +147,27 @@ func test_tick_rate_below_target_shows_the_sim_falling_behind() -> void:
 			"a sim that only completes 20 ticks in a real second measures ~20 ticks/s")
 	assert_lt(hud._live_tick_rate, Engine.physics_ticks_per_second,
 			"...visibly below the configured target")
+
+
+func test_top_right_fps_label_sits_below_the_menu_button() -> void:
+	# The top-right corner is shared with the always-on Menu button: the label
+	# must clear the button's whole rect, not sit inside it. (The removed hint
+	# bar's fixed top clearance covered this incidentally; the clearance is now
+	# derived from the button's own rect.)
+	Settings.show_fps = true
+	Settings.fps_corner = Settings.FPS_CORNER_TOP_RIGHT
+	var hud := _hud()
+	var menu_bottom: float = hud._menu_button.position.y \
+			+ hud._menu_button.get_combined_minimum_size().y
+	assert_gte(hud._fps_label.position.y, menu_bottom,
+			"the top-right label starts below the menu button's bottom edge")
+
+
+func test_top_left_fps_label_uses_the_standard_margin() -> void:
+	# With the hint bar gone, nothing occupies the top-left corner, so the label
+	# uses the same margin as the bottom corners.
+	Settings.show_fps = true
+	Settings.fps_corner = Settings.FPS_CORNER_TOP_LEFT
+	var hud := _hud()
+	assert_eq(hud._fps_label.position.y, HUDScript._FPS_MARGIN.y,
+			"the top-left corner needs no extra clearance")

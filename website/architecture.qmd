@@ -17,7 +17,7 @@ scripts/
   Unit.gd              Regiment: stats, movement, melee, flanking, morale, routing
   SelectionManager.gd  Click + drag-box selection, move/attack orders
   CameraController.gd  WASD / edge pan, wheel zoom
-  HUD.gd               Hint bar, unit info panel, victory/defeat overlay
+  HUD.gd               Unit info panel, victory/defeat overlay
 assets/                CC0 art goes here (see Assets) --- not required to run
 ```
 
@@ -38,7 +38,7 @@ Fewer scene files to corrupt, functionally equivalent.
 | [`Unit.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Unit.gd) | A regiment: stats and the `IDLE→MOVING→FIGHTING→ROUTING/DEAD` state machine, movement, melee with flanking, morale/routing, soft separation, and `_draw()` visuals. |
 | [`SelectionManager.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/SelectionManager.gd) | Left-click + drag-box selection; right-click move/attack order issuing. |
 | [`CameraController.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/CameraController.gd) | WASD / arrow / screen-edge pan, mouse-wheel zoom. |
-| [`HUD.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/HUD.gd) | Hint bar, selected-unit info panel, victory/defeat overlay, active pause, `● REC` indicator. |
+| [`HUD.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/HUD.gd) | Selected-unit info panel, victory/defeat overlay, active pause, `● REC` indicator. |
 | [`Replay.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Replay.gd) | Autoload: the single seeded RNG and the record/playback system (see [Replays](replays.qmd)). |
 
 Each script and its responsibility.

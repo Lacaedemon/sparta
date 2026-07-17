@@ -1,6 +1,5 @@
 extends CanvasLayer
 ## On-screen UI, built in code (no .tscn needed):
-##   - top hint bar
 ##   - top-right Menu button: restart the battle plus global options
 ##   - selected-unit info panel (bottom-left)
 ##   - victory/defeat overlay with a restart button
@@ -28,7 +27,6 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FPS_CORNER_BOTTOM_RIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
 		MENU_QUIT_TO_MENU }
 
-var _hint: Label
 var _info: Label
 # Static unit characteristics (attack/defense/panoply/body mass/weapon/shield/
 # mount): their own label under a fold toggle, COLLAPSED by default -- the
@@ -69,6 +67,7 @@ var _live_tick_rate: float = Engine.physics_ticks_per_second   # sane value befo
 # needs to cover the widest single stat (a weapon line), not three stats packed abreast.
 const PANEL_MIN := Vector2(150, 90)
 const PANEL_BOTTOM_GAP := 20.0   # clearance between info panel and screen edge
+const PANEL_TOP_GAP := 8.0       # clearance between the panel's top and the viewport's top edge
 
 # Single source of truth for the rebindable stance modes shown in the control-bar
 # dropup. Each entry carries the popup item id, the OrderMode it maps to, the
@@ -158,6 +157,12 @@ var _ctrl_reform_btn: Button
 var _ctrl_group_attack_btn: Button
 var _sel_mgr = null
 var _info_panel: PanelContainer
+# The panel's content column sits inside a ScrollContainer so its height can be
+# clamped to the viewport (see _clamp_info_panel); with everything visible the
+# scroll sizes itself to the content exactly and the scrollbar stays hidden.
+var _info_scroll: ScrollContainer
+var _info_col: VBoxContainer
+var _info_margin: MarginContainer
 var _order_tree_box: VBoxContainer
 # Expand/collapse state for the order-tree rows below the info label, keyed by
 # "<unit instance id>:<path>" where `path` is a dot-joined chain of child indices from the
@@ -182,15 +187,6 @@ const _ORDER_TREE_ACTIVE_COLOR := Color(1.0, 0.78, 0.35)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS   # stays responsive when paused
-
-	# Controls hint. The order-mode keys are rendered from the live Settings bindings
-	# so the bar stays accurate after a rebind; _refresh_hint re-renders on change.
-	_hint = Label.new()
-	_hint.position = Vector2(14, 10)
-	_hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
-	_hint.add_theme_font_size_override("font_size", 14)
-	add_child(_hint)
-	_refresh_hint()
 
 	# Recording / replay status (top-center).
 	_status = Label.new()
@@ -306,8 +302,6 @@ func _ready() -> void:
 	# torn down in _exit_tree() — otherwise it would dangle on the persistent
 	# Settings autoload after reload_current_scene() frees this HUD.
 	Settings.changed.connect(_sync_setting_toggles)
-	# Same lifetime concern: keep the hint's order-mode keys in sync after a rebind.
-	Settings.changed.connect(_refresh_hint)
 	# Keep the stance dropup labels in sync after a rebind (see _ctrl_bar_refresh_stance_popup).
 	Settings.changed.connect(_ctrl_bar_refresh_stance_popup)
 	# Counts physics steps for the frame-rate counter's tick-rate readout. A tree-level
@@ -392,20 +386,30 @@ func _ready() -> void:
 	_info_panel.offset_bottom = -PANEL_BOTTOM_GAP
 	add_child(_info_panel)
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	_info_panel.add_child(margin)
+	_info_margin = MarginContainer.new()
+	_info_margin.add_theme_constant_override("margin_left", 10)
+	_info_margin.add_theme_constant_override("margin_right", 10)
+	_info_margin.add_theme_constant_override("margin_top", 8)
+	_info_margin.add_theme_constant_override("margin_bottom", 8)
+	_info_panel.add_child(_info_margin)
 
-	var info_col := VBoxContainer.new()
-	info_col.add_theme_constant_override("separation", 2)
-	margin.add_child(info_col)
+	# The scroll layer between the margin and the content column is the panel's
+	# height guard: _clamp_info_panel sizes it to the content while the content
+	# fits, and pins it to the available viewport height (scrollbar shown) when
+	# a tall stat sheet -- expanded characteristics plus a deep order tree on a
+	# short window -- would otherwise grow the panel off the top of the screen.
+	_info_scroll = ScrollContainer.new()
+	_info_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_info_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_info_margin.add_child(_info_scroll)
+
+	_info_col = VBoxContainer.new()
+	_info_col.add_theme_constant_override("separation", 2)
+	_info_scroll.add_child(_info_col)
 
 	_info = Label.new()
 	_info.text = "No unit selected"
-	info_col.add_child(_info)
+	_info_col.add_child(_info)
 
 	# The static-characteristics fold: a triangle toggle row (the order tree's own
 	# expand/collapse idiom, same glyphs) over the static stat lines, collapsed by
@@ -417,23 +421,24 @@ func _ready() -> void:
 	_chars_toggle.text = "▸ Characteristics"
 	_chars_toggle.visible = false
 	_chars_toggle.pressed.connect(_on_chars_toggle)
-	info_col.add_child(_chars_toggle)
+	_info_col.add_child(_chars_toggle)
 
 	_info_static = Label.new()
 	_info_static.visible = false
-	info_col.add_child(_info_static)
+	_info_col.add_child(_info_static)
 
 	# Order-tree rows (see _rebuild_order_tree): rebuilt fresh each show_unit() call, right
 	# below the stats block. Empty/hidden until a unit with a current_order is shown.
 	_order_tree_box = VBoxContainer.new()
 	_order_tree_box.add_theme_constant_override("separation", 1)
 	_order_tree_box.visible = false
-	info_col.add_child(_order_tree_box)
+	_info_col.add_child(_order_tree_box)
 
 	_sel_mgr = get_node_or_null("../SelectionManager")
 	_build_ctrl_bar()
 	_build_distance_legend()
 	_build_fps_label()
+	_clamp_info_panel()
 
 	# End-of-battle overlay.
 	_overlay = ColorRect.new()
@@ -497,8 +502,6 @@ func _exit_tree() -> void:
 	# outlive this HUD (e.g. across reload_current_scene()).
 	if Settings.changed.is_connected(_sync_setting_toggles):
 		Settings.changed.disconnect(_sync_setting_toggles)
-	if Settings.changed.is_connected(_refresh_hint):
-		Settings.changed.disconnect(_refresh_hint)
 	if Settings.changed.is_connected(_ctrl_bar_refresh_stance_popup):
 		Settings.changed.disconnect(_ctrl_bar_refresh_stance_popup)
 	if get_tree() != null and get_tree().physics_frame.is_connected(_on_physics_tick):
@@ -559,19 +562,6 @@ func _sync_setting_toggles() -> void:
 	_sync_distance_legend_visibility()
 	_sync_fps_label()
 	_ctrl_bar_sync_settings()
-
-
-## Rebuild the controls hint, rendering the order-mode keys from the live Settings
-## bindings so the bar reflects rebinds instead of the hardcoded defaults.
-func _refresh_hint() -> void:
-	if _hint == null:
-		return
-	var keys: String = ""
-	for entry in BattleRef.ORDER_MODE_HOTKEYS:
-		if keys != "":
-			keys += "/"
-		keys += OS.get_keycode_string(Settings.order_binding(entry["slug"]))
-	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Square/Normal)   •   O orbis / Shift+O schiltron   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
 
 
 ## Dispatch a Menu popup selection by its stable item id.
@@ -758,6 +748,7 @@ func show_unit(u, group_count: int) -> void:
 		_ctrl_bar_update_formation(u)
 		_ctrl_bar_update_stance(_sel_mgr.get_armed_mode() if _sel_mgr != null else 0)
 		update_group_attack_mode(_sel_mgr.get_group_attack_mode() if _sel_mgr != null else 0)
+	_clamp_info_panel()
 
 
 func clear_unit() -> void:
@@ -768,6 +759,7 @@ func clear_unit() -> void:
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = false
 		_info_panel_lower()
+	_clamp_info_panel()
 
 
 # Selected-unit acceleration readout: the change per second of the shown unit's mean
@@ -855,6 +847,7 @@ func _static_stats(u) -> String:
 func _on_chars_toggle() -> void:
 	_chars_expanded = not _chars_expanded
 	_sync_chars_fold()
+	_clamp_info_panel()
 
 
 ## Apply the current fold state: the toggle's triangle glyph mirrors the order
@@ -1135,10 +1128,6 @@ func _update_distance_legend() -> void:
 # in any of the four screen corners (Settings.fps_corner / _FPS_CORNER_ENTRIES above).
 
 const _FPS_MARGIN := Vector2(14.0, 10.0)
-# The always-on controls hint (top-left, single line at y=10, font size 14) runs the full
-# width of the top edge, so a top-anchored FPS label needs to clear it vertically or the
-# two overlap the instant the counter is turned on.
-const _FPS_TOP_MARGIN_Y := 34.0
 
 
 func _build_fps_label() -> void:
@@ -1171,7 +1160,14 @@ func _sync_fps_label() -> void:
 			break
 	_fps_label.grow_horizontal = Control.GROW_DIRECTION_END if left else Control.GROW_DIRECTION_BEGIN
 	_fps_label.grow_vertical = Control.GROW_DIRECTION_END if top else Control.GROW_DIRECTION_BEGIN
-	var top_margin: float = _FPS_TOP_MARGIN_Y if top else _FPS_MARGIN.y
+	var top_margin: float = _FPS_MARGIN.y
+	if top and not left and _menu_button != null:
+		# The top-right corner is shared with the always-on ☰ Menu button, so the
+		# label sits just below it instead of inside it. Derived from the button's
+		# own rect rather than a tuned clearance constant, so a menu resize can't
+		# silently reintroduce the overlap.
+		top_margin = _menu_button.position.y \
+				+ _menu_button.get_combined_minimum_size().y + 6.0
 	_fps_label.position = Vector2(
 			_FPS_MARGIN.x if left else -_FPS_MARGIN.x,
 			top_margin if top else -_FPS_MARGIN.y)
@@ -1324,10 +1320,19 @@ func _on_stance_popup_id(id: int) -> void:
 		_sel_mgr.arm_order_mode(mode)
 
 
+## How far above its at-rest position the info panel currently sits: the control
+## bar's height plus a small gap while the bar is shown, zero otherwise. Shared
+## by the raise math and _clamp_info_panel so the two never disagree about where
+## the panel's bottom edge is.
+func _info_panel_raise_amount() -> float:
+	if _ctrl_bar == null or not _ctrl_bar.visible:
+		return 0.0
+	return _ctrl_bar.get_combined_minimum_size().y + 8.0
+
+
 func _info_panel_raise() -> void:
 	if _info_panel == null or _ctrl_bar == null:
 		return
-	var bar_h := _ctrl_bar.get_combined_minimum_size().y
 	# offset_top/offset_bottom, not position: _info_panel is anchored bottom-left
 	# (anchor_top == anchor_bottom == 1), so offset_top/offset_bottom ARE the pixel
 	# distances from that anchor line -- exactly what this raise/lower math wants
@@ -1344,7 +1349,7 @@ func _info_panel_raise() -> void:
 	# are moved by the same raise_amount here so the panel translates as a rigid
 	# rectangle -- clearing the control bar beneath it -- rather than stretching
 	# taller with its bottom edge fixed.
-	var raise_amount := bar_h + 8.0
+	var raise_amount := _info_panel_raise_amount()
 	_info_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP + raise_amount))
 	_info_panel.set_deferred("offset_bottom", -(PANEL_BOTTOM_GAP + raise_amount))
 
@@ -1354,6 +1359,41 @@ func _info_panel_lower() -> void:
 		return
 	_info_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
 	_info_panel.set_deferred("offset_bottom", -PANEL_BOTTOM_GAP)
+
+
+## The tallest the info panel may grow before its top edge would leave the
+## screen: the viewport height minus a small gap above and the panel's own
+## bottom clearance (including any control-bar raise) below.
+func _info_panel_available_height() -> float:
+	var viewport_h: float = _info_panel.get_viewport_rect().size.y
+	var bottom_clearance: float = PANEL_BOTTOM_GAP + _info_panel_raise_amount()
+	return viewport_h - PANEL_TOP_GAP - bottom_clearance
+
+
+## Size the scroll layer so the panel is exactly content-tall while the content
+## fits, and pinned to the available height (content scrolls) when it doesn't --
+## the guard that keeps a tall stat sheet from growing off the top of a short
+## viewport. Runs on every content change (show_unit/clear_unit each HUD
+## refresh, the characteristics toggle), so a viewport resize is picked up by
+## the next refresh.
+func _clamp_info_panel() -> void:
+	if _info_scroll == null or _info_col == null:
+		return
+	var content: Vector2 = _info_col.get_combined_minimum_size()
+	# The panel's fixed vertical overhead around the scroll layer: the panel
+	# style's own borders plus the margin container's constants, read live so a
+	# margin tweak can't silently desync this clamp.
+	var overhead: float = _info_panel.get_theme_stylebox("panel").get_minimum_size().y \
+			+ float(_info_margin.get_theme_constant("margin_top")) \
+			+ float(_info_margin.get_theme_constant("margin_bottom"))
+	var available: float = maxf(_info_panel_available_height() - overhead, 0.0)
+	var clamped: bool = content.y > available
+	var w: float = content.x
+	if clamped:
+		# Leave room for the scrollbar so it doesn't overlap the text (horizontal
+		# scrolling is disabled, so the column is forced to the inside width).
+		w += _info_scroll.get_v_scroll_bar().get_combined_minimum_size().x
+	_info_scroll.custom_minimum_size = Vector2(w, minf(content.y, available))
 
 
 func _build_ctrl_option_buttons() -> Control:
