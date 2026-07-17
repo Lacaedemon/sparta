@@ -161,15 +161,24 @@ etc.) — don't reflexively `skip` them.
 
 **Standard 5v5 (`seed "12345"`):** player uids 0-4 =
 Spearmen(140)/Infantry(120)/Archers(90)/Cavalry(80)/Cavalry(80) at
-x=476.75/626.75/806.75/973.25/1123.25, y=300; enemies 5-9 at y=700 (issue #677:
-the x's are no longer an even 500/650/800/950/1100 -- `Battle._spawn_line` now
-widens each adjacent pair's gap to fit their actual formation widths instead of a
-flat 150 px, so a wide LOOSE-order regiment like Archers can't overlap its
-neighbour; see `demos/README.md` for the per-unit table and the derivation).
-Spawn positions are seed-independent, so clicks land regardless. For a form-up
-facing the enemy (+y/down), drag **right→left** (start point on the right).
-Box-select a horizontal row with e.g. `{from:[450,270], to:[850,330]}` (grabs
-uids 0/1/2 -- still valid since it only needs to bracket the row, not exact x's).
+x=407/557/737/963.95/1193.07, y=300; enemies 5-9 at y=700. The x's re-space
+whenever a type's formation footprint changes -- `Battle._spawn_line` widens
+each adjacent pair's gap to fit their actual formation widths (issue #677), and
+the cavalry grid-pitch change (issue #926) re-spaced the whole line around the
+much wider mounted blocks, which silently broke every input script clicking the
+pre-#926 coordinates (a click in dead ground selects nothing and the gesture
+no-ops with no error). **Don't trust this paragraph's x values either -- treat
+`demos/README.md`'s per-unit table as the source of truth, verify with a
+tick-8 state dump, and pin your script's subject with a
+`{"tick": 8, "uid": N, "field": "position", "value": [x, y]}` expect entry** so
+any future spawn re-spacing fails `tools/check.sh demo_defects` loudly, naming
+the clip, instead of recording a silent no-op (all 13 catalog input scripts
+carry these pins as of PR #938).
+Spawn positions are seed-independent, so clicks land regardless of seed. For a
+form-up facing the enemy (+y/down), drag **right→left** (start point on the
+right). Box-select a horizontal row by bracketing the row generously in y and
+the intended units' current x's -- and re-check the bracket against the current
+spawn table, not an old script's numbers.
 Pick infantry (pointer marks) for facing-maneuver demos — they read cleanly
 under rotation. Demo click coords are **world** coords (cursor override), not
 screen.
