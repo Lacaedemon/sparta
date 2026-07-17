@@ -1,5 +1,5 @@
 {
-  "_comment": "Typed armor/mount loadout in the info panel: a lone Cavalry regiment (drill mode, no opponent) is selected so the stat sheet fills, showing its full typed panoply -- 'Lorica squamata: protection 40%, 13 kg' and 'Warhorse: mass +1.5, pace 8.5 m/s' alongside the existing Spatha/Round shield rows -- then ordered on a short canter east so the dynamic lines tick while the typed rows hold steady. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "_comment": "Typed armor/mount loadout in the info panel: a lone Cavalry regiment (drill mode, no opponent) is selected so the stat sheet fills, showing its full typed panoply -- 'Lorica squamata: protection 40%, 13 kg', 'Body mass: 75 kg', and 'Warhorse: 450 kg, pace 8.5 m/s' (all masses in absolute kilograms) alongside the existing Spatha/Round shield rows -- then ordered on a short canter east so the dynamic lines tick while the typed rows hold steady. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "904",
   "drill": true,
   "scenario": [

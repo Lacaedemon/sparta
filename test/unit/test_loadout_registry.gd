@@ -167,10 +167,11 @@ func test_make_builds_armor_and_mount_types_field_for_field() -> void:
 	assert_eq(a.display_name, "Test panoply")
 	assert_eq(a.protection, 0.5)
 	assert_eq(a.weight_kg, 9.0)
-	var m: Mount = Mount.make(399, "Test mount", 1.2, 7.0)
+	var m: Mount = Mount.make(399, "Test mount", 1.2, 320.0, 7.0)
 	assert_eq(m.id, 399)
 	assert_eq(m.display_name, "Test mount")
 	assert_eq(m.mass_contribution, 1.2)
+	assert_eq(m.mass_kg, 320.0)
 	assert_eq(m.top_speed_mps, 7.0)
 
 
@@ -182,6 +183,11 @@ func test_warhorse_mass_composes_to_the_pre_registry_cavalry_mass() -> void:
 		"body + warhorse composes to the pre-registry cavalry contact mass")
 	assert_eq(LoadoutRegistry.mount(LoadoutRegistry.MOUNT_NONE).mass_contribution, 0.0,
 		"on foot adds no mass")
+	# The real mass is separate DATA (what the HUD reports, in absolute kg) — the
+	# tuned relative contact scalar above is sim-internal and not derived from it.
+	assert_gt(horse.mass_kg, 300.0, "a warhorse weighs like a horse, not a sim scalar")
+	assert_eq(LoadoutRegistry.mount(LoadoutRegistry.MOUNT_NONE).mass_kg, 0.0,
+		"on foot carries no mount mass")
 
 
 # --- the registry carries today's stats, unchanged ----------------------------

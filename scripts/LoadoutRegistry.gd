@@ -87,14 +87,17 @@ static var _armors: Dictionary = {
 # mass_contribution: the horse's own share of a cavalryman's effective contact
 # mass — profile_for composes body (1.0) + warhorse (1.5) to the exact 2.5 the
 # cavalry row carried as a hard-coded literal before the registry existed, so
-# contact physics are unchanged. MOUNT_NONE is a real interned type (zero mass,
-# zero pace), not a null, so call sites stay free of "no mount" special cases —
-# the same choice SHIELD_NONE made. top_speed_mps records the toned-down 8.5 m/s
-# fast-canter the cavalry loadout already uses as its sprint (provisional shape
-# data; movement still reads the loadout table, not this).
+# contact physics are unchanged. mass_kg is the animal's real mass, the figure
+# the HUD reports (an ancient warhorse ran ~350-500 kg; provisional shape data
+# like Armor.weight_kg — the tuned contact scalar is not yet derived from it).
+# MOUNT_NONE is a real interned type (zero mass, zero pace), not a null, so
+# call sites stay free of "no mount" special cases — the same choice
+# SHIELD_NONE made. top_speed_mps records the toned-down 8.5 m/s fast-canter
+# the cavalry loadout already uses as its sprint (provisional shape data;
+# movement still reads the loadout table, not this).
 static var _mounts: Dictionary = {
-	MOUNT_NONE: Mount.make(MOUNT_NONE, "On foot", 0.0, 0.0),
-	MOUNT_WARHORSE: Mount.make(MOUNT_WARHORSE, "Warhorse", 1.5, 8.5),
+	MOUNT_NONE: Mount.make(MOUNT_NONE, "On foot", 0.0, 0.0, 0.0),
+	MOUNT_WARHORSE: Mount.make(MOUNT_WARHORSE, "Warhorse", 1.5, 450.0, 8.5),
 }
 
 

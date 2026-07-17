@@ -110,17 +110,22 @@ static func profile_for(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: b
 	var skill: float = clampf(p_training, 0.0, 1.0)
 	var prof: Dictionary
 	var body_mass: float
+	# body_mass_kg is the soldier's own real body mass in kilograms — the absolute
+	# figure the HUD reports, per the units convention (the relative "mass" scalar
+	# below is a tuned sim quantity and never reaches the player). Provisional
+	# shape data: contact physics still reads the relative scalar, which is not
+	# yet derived from the kg values.
 	if p_is_cavalry:
-		prof = {"skill": skill, "armour": 0.40, "shield_residual": 0.0, "max_health": 140.0, "max_stamina": 120.0, "mass": 2.5}
+		prof = {"skill": skill, "armour": 0.40, "shield_residual": 0.0, "max_health": 140.0, "max_stamina": 120.0, "mass": 2.5, "body_mass_kg": 75.0}
 		body_mass = 1.0
 	elif p_anti_cavalry:
-		prof = {"skill": skill, "armour": 0.35, "shield_residual": 0.05, "max_health": 100.0, "max_stamina": 100.0, "mass": 1.0}
+		prof = {"skill": skill, "armour": 0.35, "shield_residual": 0.05, "max_health": 100.0, "max_stamina": 100.0, "mass": 1.0, "body_mass_kg": 80.0}
 		body_mass = 1.0
 	elif p_is_ranged:
-		prof = {"skill": skill, "armour": 0.10, "shield_residual": 0.05, "max_health": 80.0, "max_stamina": 90.0, "mass": 0.9}
+		prof = {"skill": skill, "armour": 0.10, "shield_residual": 0.05, "max_health": 80.0, "max_stamina": 90.0, "mass": 0.9, "body_mass_kg": 70.0}
 		body_mass = 0.9
 	else:
-		prof = {"skill": skill, "armour": 0.45, "shield_residual": 0.0, "max_health": 110.0, "max_stamina": 100.0, "mass": 1.0}
+		prof = {"skill": skill, "armour": 0.45, "shield_residual": 0.0, "max_health": 110.0, "max_stamina": 100.0, "mass": 1.0, "body_mass_kg": 80.0}
 		body_mass = 1.0
 	var armor: Armor = LoadoutRegistry.armor(p_armor_id)
 	if armor != null:

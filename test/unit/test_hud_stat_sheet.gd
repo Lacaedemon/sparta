@@ -39,7 +39,9 @@ func test_stat_sheet_reports_combat_stats_and_loadout() -> void:
 			"the weapon type shows with its stats, whole on one line")
 	assert_string_contains(text, "Scutum: block 60%, arc 120°",
 			"the shield type shows with its stats, whole on one line")
-	assert_string_contains(text, "On foot: mass +0.0, pace 0.0 m/s",
+	assert_string_contains(text, "Body mass: 80 kg",
+			"the soldier's own mass reports in absolute kilograms")
+	assert_string_contains(text, "On foot: 0 kg, pace 0.0 m/s",
 			"the mount row shows uniformly even on foot, like the Unshielded row")
 
 
@@ -53,8 +55,10 @@ func test_stat_sheet_shows_the_cavalry_mount_with_its_stats() -> void:
 	var text: String = hud._info.text
 	assert_string_contains(text, "Lorica squamata: protection 40%, 13 kg",
 			"the cavalry scale shirt shows with its stats")
-	assert_string_contains(text, "Warhorse: mass +1.5, pace 8.5 m/s",
-			"the warhorse shows its mass contribution and pace")
+	assert_string_contains(text, "Body mass: 75 kg",
+			"the rider's own mass reports in absolute kilograms")
+	assert_string_contains(text, "Warhorse: 450 kg, pace 8.5 m/s",
+			"the warhorse reports its real mass in absolute kilograms, not a sim offset")
 
 
 func test_info_lines_hold_one_semantic_item_each() -> void:

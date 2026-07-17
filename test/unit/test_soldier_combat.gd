@@ -103,6 +103,19 @@ func test_profile_typed_panoply_can_diverge_from_the_type_default() -> void:
 	assert_eq(mounted_infantry["mass"], 2.5, "a mounted foot profile carries the horse's mass")
 
 
+func test_profile_reports_real_body_mass_in_kilograms() -> void:
+	# body_mass_kg is the ABSOLUTE real mass the HUD reports — a separate datum
+	# from the tuned relative "mass" contact scalar, which stays sim-internal.
+	assert_eq(SoldierCombat.profile_for(false, false, false, 0.5)["body_mass_kg"], 80.0,
+		"heavy infantry: 80 kg of man")
+	assert_eq(SoldierCombat.profile_for(false, true, false, 0.75)["body_mass_kg"], 80.0,
+		"spearmen match the heavy-foot body mass")
+	assert_eq(SoldierCombat.profile_for(false, false, true, 0.3)["body_mass_kg"], 70.0,
+		"archers are lighter men, matching their lighter relative scalar")
+	assert_eq(SoldierCombat.profile_for(true, false, false, 0.6)["body_mass_kg"], 75.0,
+		"a cavalry rider's own body, without the horse")
+
+
 func test_instance_profile_reads_own_flags() -> void:
 	var u: Unit = Unit.new()
 	add_child_autofree(u)            # _ready() sets soldiers + joins groups
