@@ -4312,6 +4312,8 @@ const LOD_ZOOM_OUT: float = 1.30
 # ARCHER) live in UnitMeshes; _foot_kind maps a unit's type flags onto one of them.
 const FLAG_POLE_BASE_GAP: float = 34.0  # px above the block extent where the pole foot sits
 const FLAG_POLE_HEIGHT: float = 18.0    # pole from above-bar to flag attachment point
+const FLAG_FINIAL_OFFSET: float = 1.5   # brass finial centre above the pole tip
+const FLAG_FINIAL_RADIUS: float = 1.6   # brass finial radius
 const FLAG_WIDTH: float = 12.0          # horizontal extent of the flag rectangle
 const FLAG_HEIGHT: float = 8.0          # vertical extent of the flag rectangle
 # Facing pip size, as a fraction of the mark radius -- small enough to read as

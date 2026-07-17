@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/banner-standards.json",
+  "caption": "Regimental standards are now proper banners: a swallowtail pennant in the unit's team colour with a darker cloth fold and white rim, capped by a brass pole finial -- replacing the plain rectangle -- with each type's emblem unchanged on the cloth. An infantry regiment marches a short leg while archers stand opposite, so a standard reads above both a moving and a standing block. Render-only; close-up before/after stills are embedded in the PR description.",
+  "fixed_fps": 30,
+  "max_frames": 270,
+  "fps": 15,
+  "width": 720
+}
