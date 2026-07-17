@@ -977,7 +977,8 @@ and accelerate to full speed on contact.
    average, its spread, and the type's full-health value); the ordered gait with the
    unit's own pace for it; the block's live mean speed and how fast that is changing;
    and the weapon and shield types with their reach, lethality, block, and arc.
-   The dynamic lines update live as the unit marches and fights.
+   Every line carries a single stat, so the panel reads as one narrow top-to-bottom
+   column. The dynamic lines update live as the unit marches and fights.
    The panel's **Order** line shows the
    unit's current order as a small tree when it's a composite maneuver (a move-to-the-rear's
    turn-then-march, say): each step is indented under the maneuver it belongs to, the step

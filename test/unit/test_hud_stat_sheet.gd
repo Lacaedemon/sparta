@@ -29,16 +29,61 @@ func test_stat_sheet_reports_combat_stats_and_loadout() -> void:
 	u._sim_soldier_hp = PackedFloat32Array([100.0, 80.0])
 	hud.show_unit(u, 1)
 	var text: String = hud._info.text
-	assert_string_contains(text, "Attack: 12  Defense: 6",
-			"the attack/defense stats show")
-	assert_string_contains(text, "Armour: 45%",
-			"the infantry profile's armour scalar shows as a percentage")
+	assert_string_contains(text, "Attack: 12\nDefense: 6\nArmour: 45%",
+			"attack, defense, and armour each get their own line (semantic split)")
 	assert_string_contains(text, "HP per man: 90 ±10 of 110",
 			"mean, spread, and the type's full-health value all show")
 	assert_string_contains(text, "Gladius: reach 1.3 m, lethality 1.00",
-			"the weapon type shows with its stats")
+			"the weapon type shows with its stats, whole on one line")
 	assert_string_contains(text, "Scutum: block 60%, arc 120°",
-			"the shield type shows with its stats")
+			"the shield type shows with its stats, whole on one line")
+
+
+func test_info_lines_hold_one_semantic_item_each() -> void:
+	# The panel stays NARROW because no line packs two unrelated stats abreast
+	# (the old "Morale: 100  Fatigue: 0%" style). Every line is either the unit
+	# name header or a single "Label: value" item -- the weapon/shield rows count
+	# as one item (an item plus its own attributes). Pin it structurally: no line
+	# may contain a second "Label:" introduced by the old two-space packing.
+	var hud := _hud()
+	var u := _unit()
+	hud.show_unit(u, 1)
+	for line in hud._info.text.split("\n"):
+		assert_false(line.contains("  ") and line.split("  ")[1].contains(": "),
+				"line packs a second labelled stat after a double space: '%s'" % line)
+
+
+func test_show_unit_splits_the_header_stats_onto_own_lines() -> void:
+	# The pre-stat-sheet block splits the same way: type, commander, morale,
+	# fatigue, formation, width, and order each on their own line.
+	var hud := _hud()
+	var u := _unit()
+	hud.show_unit(u, 1)
+	var text: String = hud._info.text
+	assert_string_contains(text, "Type: Infantry\nCommander: ",
+			"type and commander sit on adjacent single-item lines")
+	assert_string_contains(text, "Morale: 100\nFatigue: 0%",
+			"morale and fatigue split onto their own lines")
+	assert_string_contains(text, "\nWidth: ", "the width gets its own line")
+	assert_string_contains(text, "\nOrder: ", "the order gets its own line")
+
+
+func test_cohesion_and_training_get_their_own_conditional_lines() -> void:
+	# Both lines only appear when meaningful (cohesion below full, any training),
+	# and each sits alone on its line like every other stat.
+	var hud := _hud()
+	var u := _unit()
+	u.cohesion = 0.7
+	u.training = 0.5
+	hud.show_unit(u, 1)
+	assert_string_contains(hud._info.text, "\nCohesion: 70%\n",
+			"a degraded cohesion shows on its own line")
+	assert_string_contains(hud._info.text, "\nTraining: 50%\n",
+			"a trained unit's training shows on its own line")
+	var fresh := _unit()
+	hud.show_unit(fresh, 1)
+	assert_false(hud._info.text.contains("Cohesion:"),
+			"full cohesion stays hidden, as before the split")
 
 
 func test_stat_sheet_reads_auto_gait_without_a_move_order() -> void:

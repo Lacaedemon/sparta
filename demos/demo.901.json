@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/info-panel-narrow.json",
+  "caption": "Narrow unit info panel: each stat now sits on its own line, so the panel reads as one slim top-to-bottom column (previously up to three stats packed abreast stretched it wide). The dynamic lines (Speed, Accel) tick live as the selected regiment marches.",
+  "fixed_fps": 30,
+  "max_frames": 120,
+  "fps": 15,
+  "width": 720
+}
