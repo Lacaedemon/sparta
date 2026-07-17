@@ -10,6 +10,12 @@ class_name UnitMeshes
 # The figure outline is a slightly larger copy of the body silhouette, drawn behind it.
 const FIGURE_OUTLINE_SCALE: float = 1.22
 
+# The mounted silhouette authored in _horse_figure_polys spans ~3.62 mark radii nose
+# to tail (~1.8 m at the 0.5 m cavalry mark radius) -- about two-thirds of a real
+# warhorse's 2.4-3.0 m. Scaling the assembled figure by this factor lifts the span to
+# ~2.6 m; the per-type formation grid (1.0 m files, 3.0 m ranks) has the room for it.
+const MOUNT_FIGURE_SCALE: float = 1.44
+
 # Foot-figure render kinds — the per-type held item that keeps foot soldiers distinct
 # up close (and matches each type's flat mark shape). Cavalry ignores it. `Unit._foot_kind`
 # maps a unit's type flags onto one of these.
@@ -151,8 +157,11 @@ static func figure_mesh(is_cav: bool, foot_kind: int, mark_r: float, outline: bo
 		# shadow. The outline stays a flat rim: no shadow (a scaled shadow would ring
 		# the figure) and no shading.
 		shades = _horse_figure_shades() if is_cav else _foot_figure_shades(foot_kind)
-		var shadow_centre := Vector2(0.0, 1.3 * mark_r) if is_cav else Vector2(0.0, 1.62 * mark_r)
-		var shadow_radii := Vector2(1.6, 0.5) * mark_r if is_cav else Vector2(1.05, 0.42) * mark_r
+		# The cavalry shadow tracks the figure's MOUNT_FIGURE_SCALE lift so it stays
+		# under the hooves; the foot figure is unscaled, so its shadow is too.
+		var cav_shadow_r: float = mark_r * MOUNT_FIGURE_SCALE
+		var shadow_centre := Vector2(0.0, 1.3 * cav_shadow_r) if is_cav else Vector2(0.0, 1.62 * mark_r)
+		var shadow_radii := Vector2(1.6, 0.5) * cav_shadow_r if is_cav else Vector2(1.05, 0.42) * mark_r
 		# Cavalry shadows overlap their neighbours at the current formation spacing (the
 		# horse body is wider than the slot pitch), so theirs run much lighter -- stacked
 		# pairs stay a subtle contact shade instead of multiplying into a dark band.
@@ -416,4 +425,6 @@ static func _horse_figure_polys(r: float) -> Array:
 	])
 	parts.push_back(rider_torso)
 	parts.push_back(_disc_poly(Vector2(-0.05 * r, -1.3 * r), 0.42 * r))
-	return parts
+	# Lift the whole assembled figure to real warhorse dimensions in one place, so
+	# the authored part vertices above keep their readable mark-radius proportions.
+	return _scale_polys(parts, MOUNT_FIGURE_SCALE)

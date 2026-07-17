@@ -1,0 +1,82 @@
+{
+  "_comment": "Cavalry figure-size demo: one Cavalry regiment alone, camera close enough for the detailed figure LOD, marched a short leg so the mounts read in motion. The mounted silhouette now spans a real warhorse's ~2.6 m nose to tail (it was ~1.8 m), sitting naturally on the per-type grid pitch (1.0 m files, 3.0 m ranks) with its contact shadow tracking the scaled hooves. Drill: the figure art is the whole subject; an enemy would be noise.",
+  "seed": "721",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Cavalry",
+      "x": 520,
+      "y": 380,
+      "facing": [
+        0,
+        1
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 540,
+      "y": 480,
+      "zoom": 1.6
+    }
+  ],
+  "steps": [
+    {
+      "tick": 10,
+      "click": [
+        520,
+        380
+      ]
+    },
+    {
+      "tick": 30,
+      "rmb_click": [
+        520,
+        470
+      ]
+    }
+  ],
+  "state": [
+    8,
+    120,
+    420
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        520.0,
+        380.0
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "soldiers",
+      "value": 80
+    },
+    {
+      "tick": [
+        60,
+        200
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    },
+    {
+      "tick": [
+        360,
+        420
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    }
+  ],
+  "show_soldier_ids": false
+}
