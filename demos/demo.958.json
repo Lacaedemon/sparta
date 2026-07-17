@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Analyzer-only change: DemoDefects threshold bases (body geometry instead of grid pitch), verdict gating, and one new motion_ref field in the state dump. Nothing about how the game looks or plays changes, so a recorded battle would show nothing -- the change's evidence is the recalibration comparison in the PR body, run over stored transcripts."
+}
