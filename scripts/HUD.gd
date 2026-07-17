@@ -30,6 +30,14 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 
 var _hint: Label
 var _info: Label
+# Static unit characteristics (attack/defense/panoply/body mass/weapon/shield/
+# mount): their own label under a fold toggle, COLLAPSED by default -- the
+# default panel shows only the live state, and the rows that never change
+# mid-battle stay one click away. Transient UI state: a fresh battle (a fresh
+# HUD instance) folds again; nothing persists to Settings.
+var _chars_toggle: Button
+var _info_static: Label
+var _chars_expanded: bool = false
 var _overlay: ColorRect
 var _overlay_label: Label
 var _menu_button: MenuButton
@@ -399,6 +407,22 @@ func _ready() -> void:
 	_info.text = "No unit selected"
 	info_col.add_child(_info)
 
+	# The static-characteristics fold: a triangle toggle row (the order tree's own
+	# expand/collapse idiom, same glyphs) over the static stat lines, collapsed by
+	# default. Hidden entirely while no unit is shown.
+	_chars_toggle = Button.new()
+	_chars_toggle.flat = true
+	_chars_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_chars_toggle.add_theme_font_size_override("font_size", 13)
+	_chars_toggle.text = "▸ Characteristics"
+	_chars_toggle.visible = false
+	_chars_toggle.pressed.connect(_on_chars_toggle)
+	info_col.add_child(_chars_toggle)
+
+	_info_static = Label.new()
+	_info_static.visible = false
+	info_col.add_child(_info_static)
+
 	# Order-tree rows (see _rebuild_order_tree): rebuilt fresh each show_unit() call, right
 	# below the stats block. Empty/hidden until a unit with a current_order is shown.
 	_order_tree_box = VBoxContainer.new()
@@ -720,8 +744,13 @@ func show_unit(u, group_count: int) -> void:
 	lines.append("Formation: %s" % u.formation_summary())
 	lines.append("Width: %s" % UnitFormation.files_label(UnitFormation.frontage(u)))
 	lines.append("Order: %s" % u.order_summary())
-	lines.append(_stat_sheet(u))
+	lines.append(_dynamic_stats(u))
 	_info.text = "\n".join(lines)
+	# The static characteristics live behind the fold; the toggle row appears
+	# whenever a unit is shown, the block itself only while expanded.
+	_info_static.text = _static_stats(u)
+	_chars_toggle.visible = true
+	_sync_chars_fold()
 	_rebuild_order_tree(u)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = true
@@ -733,6 +762,8 @@ func show_unit(u, group_count: int) -> void:
 
 func clear_unit() -> void:
 	_info.text = "No unit selected"
+	_chars_toggle.visible = false
+	_info_static.visible = false
 	_rebuild_order_tree(null)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = false
@@ -750,16 +781,14 @@ var _accel_prev_frame: int = -1
 var _accel_mps2: float = 0.0
 
 
-## The remaining unit-level characteristics, static and dynamic, below the original
-## stat lines: attack/defense/armour, per-soldier hit points (mean, spread, and the
-## type's full-health value), the ordered gait with this unit's own pace for it, the
-## block's live mean soldier speed and its acceleration, and the weapon/shield types
-## with their stats. One semantic item per line, matching show_unit()'s own lines, so
-## the panel stays narrow; the weapon/shield rows each stay whole (one ITEM with its
-## attributes, not three unrelated stats packed abreast). Speeds render in metric via
-## DistanceLegend, per the units convention -- no raw world-unit number reaches the
-## player.
-func _stat_sheet(u) -> String:
+## The LIVE tail of the stat block: per-soldier hit points (mean, spread, and the
+## type's full-health value), the ordered gait with this unit's own pace for it,
+## and the block's live mean soldier speed and its acceleration -- the lines that
+## change as the unit marches and fights, so they stay visible above the
+## characteristics fold. One semantic item per line; speeds render in metric via
+## DistanceLegend, per the units convention -- no raw world-unit number reaches
+## the player.
+func _dynamic_stats(u) -> String:
 	var profile: Dictionary = u.combat_profile()
 	var hp: Vector2 = UnitStats.mean_sd_positive(u._sim_soldier_hp)
 	var mean_mps: float = DistanceLegend.mps_for_world_speed(
@@ -773,6 +802,23 @@ func _stat_sheet(u) -> String:
 				u.gait_pace(gait), BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
 		gait_text = "%s (%s)" % [UnitRef.GAIT_NAMES.get(gait, "Auto"),
 				DistanceLegend.speed_label_text(gait_mps)]
+	return "\n".join([
+		"HP per man: %.0f ±%.0f of %.0f" % [hp.x, hp.y, profile["max_health"]],
+		"Gait: %s" % gait_text,
+		"Speed: %s" % DistanceLegend.speed_label_text(mean_mps),
+		# Snap sub-display-precision values to zero so the readout can't show "-0.0".
+		"Accel: %+.1f m/s²" % (0.0 if absf(_accel_mps2) < 0.05 else _accel_mps2),
+	])
+
+
+## The STATIC unit characteristics -- attack/defense, the panoply item, body mass,
+## and the weapon/shield/mount rows: fixed for the battle's whole lifetime, so they
+## sit behind the collapsed-by-default Characteristics fold. One semantic item per
+## line; the weapon/shield/mount rows each stay whole (one ITEM with its
+## attributes). All masses report in absolute kilograms, never the sim's relative
+## contact scalar -- the units convention applied to mass.
+func _static_stats(u) -> String:
+	var profile: Dictionary = u.combat_profile()
 	var weapon: Weapon = LoadoutRegistry.weapon(u.weapon_type_id)
 	var shield: Shield = LoadoutRegistry.shield(u.shield_type_id)
 	var armor: Armor = LoadoutRegistry.armor(u.armor_type_id)
@@ -789,14 +835,7 @@ func _stat_sheet(u) -> String:
 		"Attack: %d" % u.attack,
 		"Defense: %d" % u.defense,
 		armor_line,
-		"HP per man: %.0f ±%.0f of %.0f" % [hp.x, hp.y, profile["max_health"]],
-		# Real body mass in kilograms — absolute, never the sim's relative
-		# contact-mass scalar, per the units convention.
 		"Body mass: %.0f kg" % profile["body_mass_kg"],
-		"Gait: %s" % gait_text,
-		"Speed: %s" % DistanceLegend.speed_label_text(mean_mps),
-		# Snap sub-display-precision values to zero so the readout can't show "-0.0".
-		"Accel: %+.1f m/s²" % (0.0 if absf(_accel_mps2) < 0.05 else _accel_mps2),
 		"%s: reach %.1f m, lethality %.2f" % [weapon.display_name, weapon.reach_m,
 				weapon.lethality],
 		"%s: block %d%%, arc %d°" % [shield.display_name,
@@ -810,6 +849,20 @@ func _stat_sheet(u) -> String:
 		lines.append("%s: %.0f kg, pace %.1f m/s" % [mount.display_name,
 				mount.mass_kg, mount.top_speed_mps])
 	return "\n".join(lines)
+
+
+## Flip the characteristics fold and reapply it.
+func _on_chars_toggle() -> void:
+	_chars_expanded = not _chars_expanded
+	_sync_chars_fold()
+
+
+## Apply the current fold state: the toggle's triangle glyph mirrors the order
+## tree's expand/collapse idiom, and the static block shows only while expanded
+## AND a unit is on display (the toggle itself is hidden by clear_unit).
+func _sync_chars_fold() -> void:
+	_chars_toggle.text = "▾ Characteristics" if _chars_expanded else "▸ Characteristics"
+	_info_static.visible = _chars_expanded and _chars_toggle.visible
 
 
 ## Advance the acceleration sample toward this tick's mean speed. Same-tick repeat

@@ -972,18 +972,20 @@ and accelerate to full speed on contact.
 1. **Select** --- left-click a unit, or drag a box to grab several at once. The info
    panel fills with the selected unit's stats, including a flavor **Commander** rank
    (Centurion, Pilus Prior, Decurion, ...) drawn from the real Roman officer hierarchy
-   --- cosmetic only, it has no effect on combat. Below the headline stats sits the
-   full stat sheet: attack and defense; the armor type with its protection and
-   weight (a legionary's mail, a spearman's linothorax, an archer's padded tunic,
-   a cavalryman's scale shirt); each man's hit points (the living average, its
-   spread, and the type's full-health value) and body mass in kilograms; the
-   ordered gait with the unit's own pace for it; the block's live mean speed and
-   how fast that is changing; the weapon and shield types with their reach,
-   lethality, block, and arc; and the mount (a cavalry regiment's warhorse, with
-   its own mass in kilograms and its pace --- the horse's bulk behind every
-   charge).
+   --- cosmetic only, it has no effect on combat. Below the headline stats sit the
+   live lines --- each man's hit points (the living average, its spread, and the
+   type's full-health value), the ordered gait with the unit's own pace for it, and
+   the block's live mean speed and how fast that is changing --- updating live as
+   the unit marches and fights. The unit's **static characteristics** sit below
+   them behind a **▸ Characteristics** toggle, folded up by default (click to
+   expand): attack and defense; the armor type with its protection and weight (a
+   legionary's mail, a spearman's linothorax, an archer's padded tunic, a
+   cavalryman's scale shirt); each man's body mass in kilograms; the weapon and
+   shield types with their reach, lethality, block, and arc; and the mount (a
+   cavalry regiment's warhorse, with its own mass in kilograms and its pace ---
+   the horse's bulk behind every charge).
    Every line carries a single stat, so the panel reads as one narrow top-to-bottom
-   column. The dynamic lines update live as the unit marches and fights.
+   column.
    The panel's **Order** line shows the
    unit's current order as a small tree when it's a composite maneuver (a move-to-the-rear's
    turn-then-march, say): each step is indented under the maneuver it belongs to, the step

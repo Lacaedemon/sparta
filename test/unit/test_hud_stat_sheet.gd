@@ -28,13 +28,15 @@ func test_stat_sheet_reports_combat_stats_and_loadout() -> void:
 	u.defense = 6
 	u._sim_soldier_hp = PackedFloat32Array([100.0, 80.0])
 	hud.show_unit(u, 1)
-	var text: String = hud._info.text
-	assert_string_contains(text, "Attack: 12\nDefense: 6\nLorica hamata: protection 45%",
+	# Static rows live in the fold's own label; dynamic rows stay in the main one.
+	var text: String = hud._info.text + "\n" + hud._info_static.text
+	assert_string_contains(hud._info_static.text,
+			"Attack: 12\nDefense: 6\nLorica hamata: protection 45%",
 			"attack and defense get their own lines; the armour line is the panoply item")
 	assert_string_contains(text, "Lorica hamata: protection 45%, 11 kg",
 			"the armor type shows with its protection and weight")
-	assert_string_contains(text, "HP per man: 90 ±10 of 110",
-			"mean, spread, and the type's full-health value all show")
+	assert_string_contains(hud._info.text, "HP per man: 90 ±10 of 110",
+			"the live hit-point line stays in the always-visible block")
 	assert_string_contains(text, "Gladius: reach 1.3 m, lethality 1.00",
 			"the weapon type shows with its stats, whole on one line")
 	assert_string_contains(text, "Scutum: block 60%, arc 120°",
@@ -52,7 +54,7 @@ func test_stat_sheet_shows_the_cavalry_mount_with_its_stats() -> void:
 	u.armor_type_id = LoadoutRegistry.ARMOR_SQUAMATA
 	u.mount_type_id = LoadoutRegistry.MOUNT_WARHORSE
 	hud.show_unit(u, 1)
-	var text: String = hud._info.text
+	var text: String = hud._info_static.text
 	assert_string_contains(text, "Lorica squamata: protection 40%, 13 kg",
 			"the cavalry scale shirt shows with its stats")
 	assert_string_contains(text, "Body mass: 75 kg",
@@ -61,16 +63,51 @@ func test_stat_sheet_shows_the_cavalry_mount_with_its_stats() -> void:
 			"the warhorse reports its real mass in absolute kilograms, not a sim offset")
 
 
+func test_characteristics_fold_defaults_collapsed_and_toggles() -> void:
+	# The static block is COLLAPSED by default: the toggle row shows (folded
+	# glyph), the static label stays hidden, and none of the static rows leak
+	# into the always-visible label. Toggling expands and collapses it again,
+	# and the state survives a re-show of the same or another unit.
+	var hud := _hud()
+	var u := _unit()
+	hud.show_unit(u, 1)
+	assert_true(hud._chars_toggle.visible, "the fold toggle appears with a unit shown")
+	assert_string_contains(hud._chars_toggle.text, "▸", "collapsed glyph by default")
+	assert_false(hud._info_static.visible, "the static block starts folded")
+	assert_false(hud._info.text.contains("Attack:"),
+			"static rows stay out of the always-visible label")
+	hud._on_chars_toggle()
+	assert_true(hud._info_static.visible, "toggling expands the static block")
+	assert_string_contains(hud._chars_toggle.text, "▾", "expanded glyph while open")
+	hud.show_unit(u, 1)
+	assert_true(hud._info_static.visible,
+			"re-showing a unit keeps the player's expand choice within the battle")
+	hud._on_chars_toggle()
+	assert_false(hud._info_static.visible, "toggling again folds it back up")
+
+
+func test_clear_unit_hides_the_fold_entirely() -> void:
+	var hud := _hud()
+	var u := _unit()
+	hud.show_unit(u, 1)
+	hud._on_chars_toggle()   # expand first, so the hide covers the open state
+	hud.clear_unit()
+	assert_false(hud._chars_toggle.visible, "no unit -> no toggle row")
+	assert_false(hud._info_static.visible, "no unit -> no static block")
+
+
 func test_info_lines_hold_one_semantic_item_each() -> void:
 	# The panel stays NARROW because no line packs two unrelated stats abreast
 	# (the old "Morale: 100  Fatigue: 0%" style). Every line is either the unit
 	# name header or a single "Label: value" item -- the weapon/shield rows count
-	# as one item (an item plus its own attributes). Pin it structurally: no line
-	# may contain a second "Label:" introduced by the old two-space packing.
+	# as one item (an item plus its own attributes). Pin it structurally, across
+	# BOTH labels: no line may contain a second "Label:" introduced by the old
+	# two-space packing.
 	var hud := _hud()
 	var u := _unit()
 	hud.show_unit(u, 1)
-	for line in hud._info.text.split("\n"):
+	var both: String = hud._info.text + "\n" + hud._info_static.text
+	for line in both.split("\n"):
 		assert_false(line.contains("  ") and line.split("  ")[1].contains(": "),
 				"line packs a second labelled stat after a double space: '%s'" % line)
 
