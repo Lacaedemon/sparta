@@ -33,6 +33,9 @@ var _all_teams_control: bool = false
 # from the input script's optional "doctrine" field (a DoctrineRegistry id). Empty string ==
 # "don't override" -- Battle keeps its own default (see Battle.ai_doctrine's own doc comment).
 var _doctrine: String = ""
+# Parsed per-demo map overrides (BattleMap.parse's shape) from the input script's
+# optional "map" field. Empty == run on the default map.
+var _map: Dictionary = {}
 # Live SelectionManager override for the multi-unit form-up distribution mode (a
 # SelectionManager.FormUpDist value), from the input script's optional "form_up_dist"
 # field. -1 (default) means "don't override" -- SelectionManager keeps reading
@@ -101,6 +104,16 @@ func _ready() -> void:
 	_scenario = script.get("scenario", [])
 	_doctrine = str(script.get("doctrine", ""))
 	_all_teams_control = bool(script.get("all_teams_control", false))
+	# The optional per-demo map block (field size, terrain patches, spawn lines).
+	# Strict like steps/scenario: map geometry decides WHAT battlefield the demo
+	# simulates, so a malformed block must fail the recording loudly rather than
+	# silently record the wrong battle on the default map.
+	if script.has("map"):
+		_map = BattleMap.parse(script["map"])
+		if _map.has("error"):
+			push_error("[demo-input] bad map block: %s" % _map["error"])
+			get_tree().quit(2)
+			return
 	_form_up_dist = int(script.get("form_up_dist", -1))
 	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
 	# Declared expectations (the `expect` list) are checked offline against dumped
@@ -130,6 +143,13 @@ func _start_battle() -> void:
 	_battle.drill_mode = _drill   # set before add_child so Battle._ready reads it (no team-1 spawn)
 	_battle.scenario = _scenario  # likewise: a custom matchup replaces the default line spawn
 	_battle.all_teams_control = _all_teams_control   # likewise: relaxes team checks, no team-1 AI
+	# Map overrides, likewise before add_child: every map consumer runs in _ready.
+	if _map.has("field"):
+		_battle.field = _map["field"]
+	if _map.has("terrain"):
+		_battle.terrain = _map["terrain"]
+	if _map.has("spawn_lines"):
+		_battle.spawn_line_ys = _map["spawn_lines"]
 	if _doctrine != "":
 		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
 	add_child(_battle)

@@ -196,6 +196,24 @@ current PR when it's in scope, or file a follow-up issue otherwise.
 
 ## Code conventions
 
+### Parameters are caller-configurable; only real physical constants are fixed
+Any parameter value a caller could reasonably want to vary — sizes, counts,
+layouts, spawn geometry, timings, gameplay thresholds — enters through a
+function parameter, a constructor/instance field, or a data file, with
+today's value as the default. Never a bare literal buried in the
+implementation: the battlefield size was hard-coded for months and changing
+it forced a 19-clip demo sweep that per-battle map data would have avoided.
+The exemptions are empirically known physical constants and unit conversions
+(the units convention's territory), true mathematical constants, and solver
+epsilons/convergence tolerances (see the units convention's "deliberately
+NOT metric" list — those aren't gameplay parameters). A const remains the
+right home for the DEFAULT value; the instance/parameter is what the battle
+actually runs on (`Battle.field`/`terrain`/`spawn_line_ys` vs the `FIELD`/
+`TERRAIN`/`SPAWN_LINE_YS` consts is the worked example). In review, a new
+hard-coded tunable in a diff is a standard finding, the same weight as the
+units-convention checks. The migration audit of pre-existing hard-coded
+tunables is tracked in the issue tracker rather than done wholesale.
+
 ### Comments: no issue-number references
 Don't cite issue numbers (`#123`) in code comments. The explanation itself
 should stand on its own; a reader shouldn't need to open a tracker to understand

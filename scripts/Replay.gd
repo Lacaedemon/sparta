@@ -114,6 +114,14 @@ var drive_camera: bool = false
 # Off by default — in-app Watch Replay keeps the orders on the Space-held survey only;
 # the demo recorder (DemoRunner) turns it on. Cosmetic, never touches the sim.
 var show_demo_orders: bool = false
+
+# The battle's MAP block (BattleMap.serialize's shape) when the recorded battle ran on a
+# non-default map: Battle publishes it at record time, save() writes it, start_playback()
+# loads it, and Battle._ready() applies it before rebuilding the battlefield. Empty ==
+# the default map: nothing is written to the file, so default-map replays (and every
+# pre-map replay) keep the exact old shape — an additive field, no version bump, the same
+# back-compatibility pattern as the camera/pointer/key tracks above.
+var map: Dictionary = {}
 # Bumped per save so two battles finishing in the same wall-clock second don't
 # overwrite each other (the timestamp only has second precision).
 var _save_counter: int = 0
@@ -152,6 +160,7 @@ func start_recording() -> void:
 	drive_camera = false
 	show_demo_orders = false
 	_play_index = 0
+	map = {}
 	loaded_path = ""
 	# Drop the previous battle's save path so a failed save() this battle can't
 	# fall back to replaying the wrong one.
@@ -188,6 +197,9 @@ func start_playback(path: String) -> bool:
 	# precision on a full 64-bit seed, silently desyncing the replay.
 	seed_value = int(str(data.get("seed", "0")))
 	rng.seed = seed_value
+	# The optional map block (absent in pre-map and default-map replays, which
+	# then rebuild the default battlefield). Applied by Battle._ready().
+	map = data.get("map", {})
 	_orders.clear()
 	for o in data.get("orders", []):
 		var uids: Array = []
@@ -553,6 +565,10 @@ func save(result: String, duration_ticks: int) -> String:
 		"commit_sha": BuildInfoRef.COMMIT_SHA,
 		"orders": _orders,
 	}
+	# A non-default map rides in the header so playback reconstructs the same
+	# battlefield; absent for default-map battles (see the `map` field's doc).
+	if not map.is_empty():
+		payload["map"] = map
 	# Only emit a dirty-worktree note when the live checkout actually has uncommitted
 	# changes worth flagging -- a dev-only best-effort signal (BuildInfo.git_dirty_status(),
 	# see its own doc comment), omitted on an exported build or a clean tree so the common
