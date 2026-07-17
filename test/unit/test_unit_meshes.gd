@@ -136,3 +136,38 @@ func test_mark_meshes_stay_flat() -> void:
 	assert_eq(_surface_colors(UnitMeshes.pointer_mesh(R)).size(), 0, "pointer stays flat")
 	assert_eq(_surface_colors(UnitMeshes.dart_mesh(R)).size(), 0, "dart stays flat")
 	assert_eq(_surface_colors(UnitMeshes.kite_mesh(R)).size(), 0, "kite stays flat")
+
+
+func test_horse_figure_spans_a_real_warhorse_nose_to_tail() -> void:
+	# The mounted silhouette reads at real warhorse length (2.4-3.0 m) at the actual
+	# cavalry mark radius, rather than the ~1.8 m the raw authored parts span -- the
+	# per-type grid pitch gives the figure the room.
+	var polys: Array = UnitMeshes._horse_figure_polys(Unit.CAV_MARK_RADIUS)
+	var min_x := INF
+	var max_x := -INF
+	for poly in polys:
+		for v in poly:
+			min_x = minf(min_x, v.x)
+			max_x = maxf(max_x, v.x)
+	var span_m: float = (max_x - min_x) / WorldScale.WU_PER_M
+	assert_between(span_m, 2.4, 3.0,
+			"nose-to-tail span %.2f m should sit in the real warhorse range" % span_m)
+
+
+func test_cavalry_contact_shadow_tracks_the_figure_scale() -> void:
+	# The shadow ellipse (first part of the body mesh) must sit under the scaled
+	# figure's hooves, not at the unscaled authored position -- its centroid y equals
+	# the authored 1.3 mark-radii offset lifted by MOUNT_FIGURE_SCALE.
+	var body: ArrayMesh = UnitMeshes.figure_mesh(true, UnitMeshes.FOOT_INFANTRY, R, false, false)
+	var arrays: Array = body.surface_get_arrays(0)
+	var verts: PackedVector2Array = arrays[Mesh.ARRAY_VERTEX]
+	var colors: PackedColorArray = _surface_colors(body)
+	var sum_y := 0.0
+	var n := 0
+	for i in range(verts.size()):
+		if colors[i].r < 0.001 and colors[i].a < 1.0:   # shadow vertices are translucent black
+			sum_y += verts[i].y
+			n += 1
+	assert_gt(n, 0, "found the shadow part's vertices")
+	assert_almost_eq(sum_y / n, 1.3 * R * UnitMeshes.MOUNT_FIGURE_SCALE, 0.05,
+			"shadow centroid rides the scaled hoof line")
