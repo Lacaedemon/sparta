@@ -1160,9 +1160,17 @@ func _sync_fps_label() -> void:
 			break
 	_fps_label.grow_horizontal = Control.GROW_DIRECTION_END if left else Control.GROW_DIRECTION_BEGIN
 	_fps_label.grow_vertical = Control.GROW_DIRECTION_END if top else Control.GROW_DIRECTION_BEGIN
+	var top_margin: float = _FPS_MARGIN.y
+	if top and not left and _menu_button != null:
+		# The top-right corner is shared with the always-on ☰ Menu button, so the
+		# label sits just below it instead of inside it. Derived from the button's
+		# own rect rather than a tuned clearance constant, so a menu resize can't
+		# silently reintroduce the overlap.
+		top_margin = _menu_button.position.y \
+				+ _menu_button.get_combined_minimum_size().y + 6.0
 	_fps_label.position = Vector2(
 			_FPS_MARGIN.x if left else -_FPS_MARGIN.x,
-			_FPS_MARGIN.y if top else -_FPS_MARGIN.y)
+			top_margin if top else -_FPS_MARGIN.y)
 	_update_fps_label()
 
 
