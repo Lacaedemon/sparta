@@ -142,24 +142,89 @@ static func figure_mesh(is_cav: bool, foot_kind: int, mark_r: float, outline: bo
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
 	var polys: Array = _horse_figure_polys(mark_r) if is_cav else _foot_figure_polys(foot_kind, mark_r)
+	var shades: Array = []
+	if not outline:
+		# BODY meshes carry per-part vertex-colour shading (values around white, so the
+		# per-instance team tint still multiplies through and team colour stays the
+		# dominant read) plus a soft contact-shadow ellipse as the FIRST part -- parts
+		# render in index order, so the same figure's body always overdraws its own
+		# shadow. The outline stays a flat rim: no shadow (a scaled shadow would ring
+		# the figure) and no shading.
+		shades = _horse_figure_shades() if is_cav else _foot_figure_shades(foot_kind)
+		var shadow_centre := Vector2(0.0, 1.3 * mark_r) if is_cav else Vector2(0.0, 1.62 * mark_r)
+		var shadow_radii := Vector2(1.6, 0.5) * mark_r if is_cav else Vector2(1.05, 0.42) * mark_r
+		# Cavalry shadows overlap their neighbours at the current formation spacing (the
+		# horse body is wider than the slot pitch), so theirs run much lighter -- stacked
+		# pairs stay a subtle contact shade instead of multiplying into a dark band.
+		var shadow_alpha: float = 0.12 if is_cav else 0.30
+		polys.insert(0, _ellipse_poly(shadow_centre, shadow_radii))
+		shades.insert(0, Color(0, 0, 0, shadow_alpha))
 	if outline:
 		polys = _scale_polys(polys, FIGURE_OUTLINE_SCALE)
 	if flip:
 		polys = _mirror_polys_x(polys)
-	var mesh := _mesh_from_polys(polys)
+	var mesh := _mesh_from_polys(polys, shades)
 	_mesh_cache[key] = mesh
 	return mesh
 
 
+## Per-part shading for _foot_figure_polys, ORDER-MATCHED to its output (torso, left
+## leg, right leg, head, then the kind's held-item parts). _mesh_from_polys asserts
+## the counts agree, so a part added to one side without the other fails loudly.
+static func _foot_figure_shades(kind: int) -> Array:
+	var shades: Array = [_shade(1.0), _shade(0.78), _shade(0.78), _shade(1.18)]
+	match kind:
+		FOOT_SPEAR:
+			shades.append_array([_shade(0.88), _shade(1.18)])   # shaft, spearhead
+		FOOT_ARCHER:
+			for i in range(6):
+				shades.append(_shade(0.9))                       # bow limb arc quads
+			shades.append(_shade(1.05))                          # bowstring
+		_:
+			shades.append(_shade(1.08))                          # shield face
+	return shades
+
+
+## Per-part shading for _horse_figure_polys, ORDER-MATCHED to its output (mount body,
+## neck, head, tail, four legs, rider torso, rider head).
+static func _horse_figure_shades() -> Array:
+	var shades: Array = [_shade(1.0), _shade(1.06), _shade(1.12), _shade(0.9)]
+	for i in range(4):
+		shades.append(_shade(0.76))
+	shades.append_array([_shade(1.06), _shade(1.16)])
+	return shades
+
+
+static func _shade(v: float) -> Color:
+	return Color(v, v, v, 1.0)
+
+
+## A flattened ellipse polygon -- the figure contact shadow.
+static func _ellipse_poly(centre: Vector2, radii: Vector2, segments: int = 12) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in range(segments):
+		var a: float = TAU * float(i) / float(segments)
+		out.push_back(centre + Vector2(cos(a) * radii.x, sin(a) * radii.y))
+	return out
+
+
 ## Combine a list of convex polygons (each a PackedVector2Array) into one ArrayMesh
-## surface, fan-triangulating each from its first vertex.
-static func _mesh_from_polys(polys: Array) -> ArrayMesh:
+## surface, fan-triangulating each from its first vertex. When `shades` is non-empty
+## it must parallel `polys` one Color per part; every vertex of that part carries it
+## as a vertex colour (multiplying with the instance/modulate tint at draw time).
+static func _mesh_from_polys(polys: Array, shades: Array = []) -> ArrayMesh:
+	assert(shades.is_empty() or shades.size() == polys.size(),
+			"shades must parallel polys part for part")
 	var verts := PackedVector2Array()
+	var colors := PackedColorArray()
 	var idx := PackedInt32Array()
-	for poly in polys:
+	for p in range(polys.size()):
+		var poly: PackedVector2Array = polys[p]
 		var base: int = verts.size()
 		for v in poly:
 			verts.push_back(v)
+			if not shades.is_empty():
+				colors.push_back(shades[p])
 		for i in range(1, poly.size() - 1):
 			idx.push_back(base)
 			idx.push_back(base + i)
@@ -167,6 +232,8 @@ static func _mesh_from_polys(polys: Array) -> ArrayMesh:
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
+	if not shades.is_empty():
+		arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_INDEX] = idx
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
