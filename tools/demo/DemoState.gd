@@ -352,7 +352,12 @@ static func soldier_arrays(u: Node) -> Dictionary:
 ## no-duplicated-ownership rule the units convention states for source files).
 static func motion_ref(u: Node) -> Dictionary:
 	return {
-		"formation_spacing": round_to(u.FORMATION_SPACING * u.spacing_scale, 4),
+		# The tighter of the two grid pitches: nnd/misslot thresholds derived from it
+		# stay conservative for an anisotropic grid (cavalry ranks sit far deeper than
+		# its files), and it equals the old single spacing for every isotropic type.
+		"formation_spacing": round_to(minf(u.file_pitch_wu(), u.rank_pitch_wu()), 4),
+		"file_pitch": round_to(u.file_pitch_wu(), 4),
+		"rank_pitch": round_to(u.rank_pitch_wu(), 4),
 		"walk_speed": round_to(u.walk_speed, 2),
 		"jog_speed": round_to(u.jog_speed, 2),
 		"move_speed": round_to(u.move_speed, 2),

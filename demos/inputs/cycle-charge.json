@@ -1,13 +1,73 @@
 {
-  "_comment": "Cycle-charge stance demo (seed 12345): box-select the player's two cavalry regiments (right of the line, ~x 950 and 1100, y 300), press J to arm the Cycle charge stance, then right-click the enemy Infantry regiment at (650,700). The horse charges in, lands its momentum hit, then peels back to a standoff and charges AGAIN -- the caracole loop -- instead of grinding in melee once the charge bonus is spent. The HUD flashes 'Cycle charge' when J is pressed and the order cursor turns violet.",
+  "_comment": "Cycle-charge stance demo (seed 12345): box-select the player's two cavalry regiments (right of the line, ~x 964 and 1193, y 300), press J to arm the Cycle charge stance, then right-click the enemy Infantry regiment at (557,700). The horse charges in, lands its momentum hit, then peels back to a standoff and charges AGAIN -- the caracole loop -- instead of grinding in melee once the charge bonus is spent. The HUD flashes 'Cycle charge' when J is pressed and the order cursor turns violet.",
   "seed": "12345",
   "camera": [
-    {"tick": 0,   "x": 850.0, "y": 520.0, "zoom": 1.05},
-    {"tick": 120, "x": 720.0, "y": 560.0, "zoom": 1.1}
+    {
+      "tick": 0,
+      "x": 900.0,
+      "y": 520.0,
+      "zoom": 1.05
+    },
+    {
+      "tick": 120,
+      "x": 720.0,
+      "y": 560.0,
+      "zoom": 1.1
+    }
   ],
   "steps": [
-    {"tick": 6,  "box": {"from": [880, 260], "to": [1180, 345]}},
-    {"tick": 30, "key": "J"},
-    {"tick": 48, "rmb_click": [650, 700]}
+    {
+      "tick": 6,
+      "box": {
+        "from": [
+          860,
+          260
+        ],
+        "to": [
+          1300,
+          345
+        ]
+      }
+    },
+    {
+      "tick": 30,
+      "key": "J"
+    },
+    {
+      "tick": 48,
+      "rmb_click": [
+        557,
+        700
+      ]
+    }
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 3,
+      "field": "position",
+      "value": [
+        963.95,
+        300.0
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 4,
+      "field": "position",
+      "value": [
+        1193.07,
+        300.0
+      ]
+    },
+    {
+      "tick": [
+        60,
+        400
+      ],
+      "uid": 3,
+      "field": "order_mode",
+      "value": "Cycle charge"
+    }
   ]
 }

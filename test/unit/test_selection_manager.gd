@@ -1363,6 +1363,44 @@ func test_form_up_equal_depth_space_matches_equal_depth_for_a_same_density_group
 			"same-density group: equal-depth and equal-depth-space agree (small unit)")
 
 
+func test_form_up_equal_depth_space_reads_the_rank_axis_for_an_anisotropic_unit() -> void:
+	# A cavalry-pitched unit (ranks three times deeper than a foot unit's) forming up
+	# beside a foot unit under EQUAL_DEPTH_SPACE packs FEWER ranks (so more files)
+	# into the same physical depth -- the conversion must read the rank axis. The
+	# fixture holds the FILE pitch at the foot value to isolate the two axes.
+	var sm := _sm()
+	var foot := _unit()
+	foot.max_soldiers = 100
+	var horse := _unit()
+	horse.max_soldiers = 100
+	horse.rank_pitch = UnitScript.FORMATION_SPACING * 3.0
+	var slices: Array = sm._form_up_slices(
+			[foot, horse], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH_SPACE)
+	var ranks_foot: int = int(ceil(100.0 / float(slices[0]["files"])))
+	var ranks_horse: int = int(ceil(100.0 / float(slices[1]["files"])))
+	assert_gt(ranks_foot, ranks_horse,
+			"the deep-ranked unit fits fewer ranks into the same physical depth")
+	var depth_foot: float = float(ranks_foot - 1) * foot.rank_pitch_wu()
+	var depth_horse: float = float(ranks_horse - 1) * horse.rank_pitch_wu()
+	assert_almost_eq(depth_foot, depth_horse, horse.rank_pitch_wu(),
+			"both units land within one deep rank of the same physical depth")
+
+
+func test_form_up_equal_width_reads_the_file_axis_for_an_anisotropic_unit() -> void:
+	# EQUAL_WIDTH gives each unit the same physical share of the drag; a unit with a
+	# wide file pitch packs FEWER files into that share than a foot unit does.
+	var sm := _sm()
+	var foot := _unit()
+	foot.max_soldiers = 100
+	var horse := _unit()
+	horse.max_soldiers = 100
+	horse.file_pitch = UnitScript.FORMATION_SPACING * 2.0
+	var slices: Array = sm._form_up_slices(
+			[foot, horse], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH)
+	assert_gt(int(slices[0]["files"]), int(slices[1]["files"]),
+			"the wide-filed unit fits fewer files into the same physical share")
+
+
 func test_form_up_single_unit_slice_fills_the_whole_line() -> void:
 	# One unit collapses to the old behaviour: no gap, slice centre at the line midpoint,
 	# regardless of mode.

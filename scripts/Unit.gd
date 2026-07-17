@@ -800,6 +800,15 @@ var _base_separation_radius: float = SEPARATION_RADIUS_INFANTRY
 # UnitFormation.slots() and _front_depth() read it; the files/ranks count itself
 # never changes, only the spacing between them.
 var spacing_scale: float = 1.0
+# Per-type formation grid pitch, in world units: the lateral distance between files and
+# the depth between ranks. Foot troops keep the historical synaspismos floor on both
+# axes (FORMATION_SPACING); a mounted soldier occupies far more ground nose-to-tail
+# than knee-to-knee, so cavalry spawn with a wider file pitch and a much deeper rank
+# pitch (set by Battle from the loadout's file_pitch_m/rank_pitch_m). spacing_scale
+# (the formation-mode density: TIGHT/LOOSE/shield wall) multiplies both axes alike --
+# see file_pitch_wu()/rank_pitch_wu(), the accessors every slot-geometry consumer reads.
+var file_pitch: float = FORMATION_SPACING
+var rank_pitch: float = FORMATION_SPACING
 # Rises while this unit is locked in mutual melee (both FIGHTING, neither HOLD).
 # Scales down the separation push vs. matched enemies so units gradually intermix.
 var _combat_intermixing: float = 0.0
@@ -2148,7 +2157,7 @@ func _front_depth() -> float:
 	# measured against that same grid, not the line frontage its soldiers aren't standing on.
 	var files: int = formation_files(soldiers)
 	var ranks: int = int(ceil(float(soldiers) / float(files)))
-	var depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING * spacing_scale
+	var depth: float = float(ranks - 1) * 0.5 * rank_pitch_wu()
 	# Cap the depth used as the engaged-enemy separation floor. A very narrow,
 	# deep player-set frontage would otherwise make the summed floor exceed melee
 	# contact range, pushing fighting lines apart faster than they close and
@@ -2166,10 +2175,22 @@ func _front_depth() -> float:
 ## _move_to's formed pivot feeds UnitManeuver.wheel_gait_rate, exactly as the flank
 ## wheel feeds it the hinge-to-far-flank arm.
 func _pivot_radius() -> float:
-	var span: float = FORMATION_SPACING * spacing_scale
 	var files: int = maxi(1, formation_files(soldiers))
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
-	return Vector2(float(maxi(0, files - 1)), float(maxi(0, ranks - 1))).length() * 0.5 * span
+	return Vector2(float(maxi(0, files - 1)) * file_pitch_wu(),
+			float(maxi(0, ranks - 1)) * rank_pitch_wu()).length() * 0.5
+
+
+## The formation grid's per-axis pitch in world units: the per-type file/rank spacing
+## scaled by the formation-mode density (TIGHT/LOOSE/shield wall). Every slot-geometry
+## consumer reads these two accessors rather than combining the raw fields, so the
+## density scaling can't be forgotten on one axis.
+func file_pitch_wu() -> float:
+	return file_pitch * spacing_scale
+
+
+func rank_pitch_wu() -> float:
+	return rank_pitch * spacing_scale
 
 
 ## Formation spacing scale for a given formation `mode`, pure and independent of a live
@@ -2699,7 +2720,7 @@ func formation_files(count: int) -> int:
 ## and replay-safe like the callers below.
 func formation_slots(count: int) -> PackedVector2Array:
 	if in_square():
-		return UnitFormation.block_slots(count, formation_files(count), FORMATION_SPACING * spacing_scale)
+		return UnitFormation.block_slots(count, formation_files(count), file_pitch_wu())
 	return UnitFormation.slots(self, count)
 
 
@@ -2717,7 +2738,7 @@ func soldier_world_facings(count: int) -> PackedVector2Array:
 		out.fill(facing)
 		return out
 	var files: int = formation_files(count)
-	var slots := UnitFormation.block_slots(count, files, FORMATION_SPACING * spacing_scale)
+	var slots := UnitFormation.block_slots(count, files, file_pitch_wu())
 	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
 	for i in range(slots.size()):
 		if UnitFormation.square_is_perimeter(i, count, files) and slots[i].length_squared() > 0.0001:
@@ -2942,7 +2963,7 @@ func _countermarch_target(variant: int) -> Vector2:
 func _countermarch_march_distance() -> float:
 	var files: int = maxi(1, formation_files(soldiers))
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
-	return float(maxi(0, ranks - 1)) * FORMATION_SPACING * spacing_scale
+	return float(maxi(0, ranks - 1)) * rank_pitch_wu()
 
 
 ## The exelismos variant (CountermarchVariant) the current order is executing, or -1 when it
@@ -3134,16 +3155,17 @@ func _reform_timeout() -> float:
 ## further than a same-shape rank-swap ever would. Pass the file count captured just BEFORE
 ## set_frontage() ran; the current (post-change) shape is read directly off `self`.
 func _reshape_timeout(old_files: int) -> float:
-	var span: float = FORMATION_SPACING * spacing_scale
 	var new_files: int = maxi(1, formation_files(soldiers))
 	var new_ranks: int = UnitFormation.ranks_for(soldiers, new_files)
 	var new_crossing: float = Vector2(
-			float(maxi(0, new_files - 1)) * span, float(maxi(0, new_ranks - 1)) * span).length()
+			float(maxi(0, new_files - 1)) * file_pitch_wu(),
+			float(maxi(0, new_ranks - 1)) * rank_pitch_wu()).length()
 	var old_crossing: float = 0.0
 	if old_files != new_files:
 		var old_ranks: int = UnitFormation.ranks_for(soldiers, maxi(1, old_files))
 		old_crossing = Vector2(
-				float(maxi(0, old_files - 1)) * span, float(maxi(0, old_ranks - 1)) * span).length()
+				float(maxi(0, old_files - 1)) * file_pitch_wu(),
+				float(maxi(0, old_ranks - 1)) * rank_pitch_wu()).length()
 	var slowest: float = maxf(1.0, jog_speed * back_speed_fraction)
 	return (old_crossing + new_crossing) / slowest * 2.0 + 1.0
 
@@ -3176,7 +3198,7 @@ func _wheel_pivot_point(dir: int) -> Vector2:
 	# The same current-grid file count as _front_depth/engaged_soldier_indices, so a
 	# wheel hinges against the grid the regiment is actually laid out on.
 	var files: int = formation_files(soldiers)
-	var half_width: float = float(files - 1) * 0.5 * FORMATION_SPACING * spacing_scale
+	var half_width: float = float(files - 1) * 0.5 * file_pitch_wu()
 	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
 	var front_axis: Vector2 = facing.rotated(_formation_angle)             # slot-grid local -Y (toward front)
 	if front_axis.dot(facing) < -0.5:
@@ -3195,7 +3217,7 @@ func _wheel_pivot_point(dir: int) -> Vector2:
 	# The front rank sits ahead of the centre along the front axis by the block's front depth, so
 	# the hinge is the leading man of the standing file (a door hinges at its edge post, not its mid).
 	var ranks: int = int(ceil(float(soldiers) / float(maxi(1, files))))
-	var front_depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING * spacing_scale
+	var front_depth: float = float(ranks - 1) * 0.5 * rank_pitch_wu()
 	return flank + front_axis * front_depth
 
 
@@ -4807,7 +4829,8 @@ func to_snapshot_dict() -> Dictionary:
 		"field_bounds": field_bounds, "retreat_bounds": retreat_bounds,
 		"separation_radius": separation_radius,
 		"base_separation_radius": _base_separation_radius,
-		"spacing_scale": spacing_scale, "team_color": team_color,
+		"spacing_scale": spacing_scale, "file_pitch": file_pitch, "rank_pitch": rank_pitch,
+		"team_color": team_color,
 
 		# Mutable runtime state.
 		"soldiers": soldiers, "morale": morale, "fatigue": fatigue, "cohesion": cohesion,
@@ -4898,6 +4921,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	separation_radius = float(d["separation_radius"])
 	_base_separation_radius = float(d["base_separation_radius"])
 	spacing_scale = float(d["spacing_scale"])
+	file_pitch = float(d["file_pitch"])
+	rank_pitch = float(d["rank_pitch"])
 	team_color = d["team_color"]
 
 	soldiers = int(d["soldiers"])

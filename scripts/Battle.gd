@@ -521,7 +521,10 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	var half_widths: Array[float] = []
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
-		var d_spacing: float = Unit.FORMATION_SPACING \
+		# The row's own per-type FILE pitch (metres to wu; cavalry files sit ~1 m apart
+		# vs the 0.45 m foot floor), scaled by the formation-mode density -- so a wide
+		# cavalry block's spawn gap accounts for the ground its horses actually cover.
+		var d_spacing: float = float(d.get("file_pitch_m", 0.45)) * WorldScaleRef.WU_PER_M \
 				* Unit.spacing_scale_for_mode(d.get("formation", Unit.FORMATION_NORMAL))
 		half_widths.append(UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing))
 
@@ -598,8 +601,8 @@ func _default_loadout() -> Array:
 		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
 		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_HAMATA, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
 		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "back_fraction": 0.55, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "armor": LoadoutRegistry.ARMOR_TUNIC, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0},
 	]
 
 
@@ -621,6 +624,12 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.max_soldiers = d["soldiers"]
 	u.attack = d["atk"]
 	u.defense = d["def"]
+	# Per-type formation pitch: real-world metres between files and between ranks ->
+	# world units. Foot troops default to the synaspismos floor on both axes; cavalry
+	# rows carry a wider file pitch and a much deeper rank pitch (a warhorse stands
+	# ~0.7 m wide but ~3 m of ground nose-to-tail).
+	u.file_pitch = float(d.get("file_pitch_m", 0.45)) * WORLD_UNITS_PER_METER
+	u.rank_pitch = float(d.get("rank_pitch_m", 0.45)) * WORLD_UNITS_PER_METER
 	# Real-world m/s -> world units, times the global movement multiplier.
 	u.walk_speed = d["walk_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 	u.jog_speed = d["jog_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
@@ -1124,7 +1133,7 @@ func enqueue_frontage(uids: Array, delta: int,
 		var anchor_offset: float = 0.0
 		if anchor != UnitFormation.Anchor.CENTRE:
 			anchor_offset = u.frontage_anchor_offset + UnitFormation.anchor_shift(
-					current, files, Unit.FORMATION_SPACING * u.spacing_scale, anchor)
+					current, files, u.file_pitch_wu(), anchor)
 		var cmd := {
 			"units": [uid],
 			"x": 0.0,
@@ -1198,7 +1207,7 @@ func enqueue_file_double(uids: Array, direction: int,
 		else:
 			files = UnitFormation.narrowed_files(current)
 		files = clampi(files, 1, maxi(1, u.max_soldiers))
-		var spacing: float = Unit.FORMATION_SPACING * u.spacing_scale
+		var spacing: float = u.file_pitch_wu()
 		var anchor_offset: float
 		if anchor == UnitFormation.Anchor.CENTRE:
 			anchor_offset = 0.0

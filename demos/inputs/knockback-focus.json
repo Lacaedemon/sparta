@@ -2,16 +2,89 @@
   "_comment": "Knockback focus (#688): an attack-order subtype that trades damage for a much bigger, more probable push-back (UnitCombat.KNOCKBACK_FOCUS_DAMAGE_MULT / SoldierCombat.KNOCKBACK_FOCUS_IMPULSE_MULT). Standard 5v5 spawn (no custom scenario override): the player Infantry (uid 1) is selected, given a right-click attack-move order onto its opposite-number enemy Infantry (uid 6), THEN switched to Knockback focus (Ctrl+Equal) -- a fresh move/attack order resets order_mode to NORMAL (Battle._apply_order_cmd's `if not append: u.order_mode = mode`), so the stance has to be applied via a later stance-only order, same as the wedge-charge demo's pattern. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 626.75, "y": 500.0, "zoom": 1.6}
+    {
+      "tick": 0,
+      "x": 557.0,
+      "y": 500.0,
+      "zoom": 1.6
+    }
   ],
   "steps": [
-    {"tick": 5, "click": [626.75, 300]},
-    {"tick": 10, "rmb_click": [626.75, 700]},
-    {"tick": 12, "rmb_click": [626.75, 700]},
-    {"tick": 14, "rmb_click": [626.75, 700]},
-    {"tick": 16, "rmb_click": [626.75, 700]},
-    {"tick": 25, "key": "Equal", "ctrl": true}
+    {
+      "tick": 5,
+      "click": [
+        557,
+        300
+      ]
+    },
+    {
+      "tick": 10,
+      "rmb_click": [
+        557,
+        700
+      ]
+    },
+    {
+      "tick": 12,
+      "rmb_click": [
+        557,
+        700
+      ]
+    },
+    {
+      "tick": 14,
+      "rmb_click": [
+        557,
+        700
+      ]
+    },
+    {
+      "tick": 16,
+      "rmb_click": [
+        557,
+        700
+      ]
+    },
+    {
+      "tick": 25,
+      "key": "Equal",
+      "ctrl": true
+    }
   ],
-  "frames": [10, 100, 160, 220, 280, 340],
-  "state": [10, 100, 160, 220, 280, 340]
+  "frames": [
+    10,
+    100,
+    160,
+    220,
+    280,
+    340
+  ],
+  "state": [
+    10,
+    100,
+    160,
+    220,
+    280,
+    340
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "position",
+      "value": [
+        557.0,
+        300.0
+      ]
+    },
+    {
+      "tick": [
+        30,
+        340
+      ],
+      "uid": 1,
+      "field": "order_mode",
+      "value": "Knockback focus"
+    }
+  ]
 }

@@ -4339,3 +4339,24 @@ func test_block_centre_offset_is_zero_while_squared() -> void:
 	u.set_formation(Unit.FORMATION_NORMAL)
 	assert_gt(u.block_centre_offset().length(), 1.0,
 			"back in a wide-line grid, the standing offset re-arms the chrome centre")
+
+
+func test_grid_pitch_accessors_fold_the_density_scale() -> void:
+	# Every slot-geometry consumer reads the _wu accessors, so the density scale
+	# (TIGHT/LOOSE/shield wall) must be folded there once, not at each call site.
+	var u := _make_unit()
+	u.file_pitch = 20.0
+	u.rank_pitch = 60.0
+	u.spacing_scale = 0.5
+	assert_eq(u.file_pitch_wu(), 10.0, "file pitch folds the density scale")
+	assert_eq(u.rank_pitch_wu(), 30.0, "rank pitch folds the density scale")
+
+
+func test_pivot_radius_grows_with_rank_pitch() -> void:
+	# The corner man's pacing arm is the half-diagonal of the PHYSICAL footprint, so
+	# deepening the rank axis alone must lengthen it (a deep cavalry column pivots
+	# slower than a foot line of the same headcount).
+	var u := _make_unit()
+	var base: float = u._pivot_radius()
+	u.rank_pitch *= 4.0
+	assert_gt(u._pivot_radius(), base, "a deeper grid has a farther corner man to pace")

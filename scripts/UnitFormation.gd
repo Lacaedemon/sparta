@@ -74,8 +74,8 @@ static func frontage(u: Unit) -> int:
 ## formation block -- `_half_width` at the FULL frontage (`_files(soldiers)`), before
 ## any ranks-closed narrowing or player frontage_override apply (both only kick in
 ## after a live Unit has taken casualties or been manually resized). `spacing` is
-## the formation's world-unit spacing (Unit.FORMATION_SPACING scaled by the type's
-## Unit.spacing_scale_for_mode(formation_mode)).
+## the formation's world-unit FILE pitch (the type's own file pitch scaled by
+## Unit.spacing_scale_for_mode(formation_mode)) -- the axis a line's width runs along.
 ##
 ## Pure -- doesn't need a live Unit, so Battle._spawn_line can call it while still
 ## building the loadout, to space a line of units apart by their actual footprint
@@ -90,9 +90,9 @@ static func half_width_for_soldiers(soldiers: int, spacing: float) -> float:
 ## regiment's centre along its file axis. A grid of f files spans (f-1) gaps of
 ## `spacing`, so its half-width is (f-1)/2 * spacing; invert that and round to the
 ## nearest file. `spacing` defaults to the plain FORMATION_SPACING constant, but a
-## live unit's actual grid may be density-scaled (LOOSE order) -- callers with a unit
-## on hand should pass `Unit.FORMATION_SPACING * u.spacing_scale` so the inverse
-## mapping matches what slots() actually laid out. Clamped to [1, max_soldiers]. Pure
+## live unit's actual grid may be density-scaled (LOOSE order) or per-type
+## (cavalry's wider files) -- callers with a unit on hand should pass
+## `u.file_pitch_wu()` so the inverse mapping matches what slots() actually laid out. Clamped to [1, max_soldiers]. Pure
 ## -- unit-testable, and the drag preview and the committed value read the same mapping.
 static func files_for_halfwidth(half_width: float, max_soldiers: int,
 		spacing: float = Unit.FORMATION_SPACING) -> int:
@@ -112,7 +112,7 @@ static func files_label(n: int) -> String:
 ## one flank fixed instead of centring the block; 0.0 is the plain centred behaviour) --
 ## so it's unit-testable; the render adds stable jitter on top.
 static func slots(u: Unit, n: int) -> PackedVector2Array:
-	var out := block_slots(n, frontage(u), Unit.FORMATION_SPACING * u.spacing_scale)
+	var out := block_slots(n, frontage(u), u.file_pitch_wu(), u.rank_pitch_wu())
 	if u.frontage_anchor_offset != 0.0:
 		var shift := Vector2(u.frontage_anchor_offset, 0.0)
 		for i in range(out.size()):
@@ -150,12 +150,20 @@ static func ranks_for(n: int, files: int) -> int:
 ## regular grid -- each survivor sits half a file off the men ahead, closed toward the centre.
 ## `slots()` is the wrapper that feeds it the unit's frontage and the default spacing; grid-ops
 ## feed it reshaped (files, spacing) for the transposed / widened / opened block.
-static func block_slots(n: int, files: int, spacing: float) -> PackedVector2Array:
+##
+## `rank_pitch` makes the grid ANISOTROPIC: `spacing` is the lateral file pitch, and a
+## non-negative `rank_pitch` sets the depth between ranks independently. A mounted
+## soldier occupies far more ground nose-to-tail than knee-to-knee, so a cavalry grid
+## needs ranks several times deeper than its files -- the default (-1.0, meaning "same
+## as spacing") keeps every existing foot-formation caller exactly as it was.
+static func block_slots(n: int, files: int, spacing: float,
+		rank_pitch: float = -1.0) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	if n <= 0 or files <= 0:
 		return out
+	var depth: float = rank_pitch if rank_pitch >= 0.0 else spacing
 	var ranks: int = ranks_for(n, files)
-	var y0: float = -(ranks - 1) * 0.5 * spacing
+	var y0: float = -(ranks - 1) * 0.5 * depth
 	for i in range(n):
 		var file: int = i % files
 		var rank: int = i / files
@@ -165,7 +173,7 @@ static func block_slots(n: int, files: int, spacing: float) -> PackedVector2Arra
 		# rear rank clusters on the middle files while the wings shorten -- and it stays exactly
 		# symmetric about the unit centre, keeping the block's centroid on the axis.
 		var rx0: float = -(rank_count - 1) * 0.5 * spacing
-		out.push_back(Vector2(rx0 + file * spacing, y0 + rank * spacing))
+		out.push_back(Vector2(rx0 + file * spacing, y0 + rank * depth))
 	return out
 
 
@@ -505,9 +513,9 @@ static func anchor_shift(old_files: int, new_files: int, spacing: float, anchor:
 ## reproduces `block_slots(n, new_files, spacing)` exactly (zero shift). Pure and
 ## deterministic -- unit-testable and replay-safe like every other grid-op here.
 static func anchored_block_slots(n: int, old_files: int, new_files: int, spacing: float,
-		anchor: int) -> PackedVector2Array:
+		anchor: int, rank_pitch: float = -1.0) -> PackedVector2Array:
 	var shift: float = anchor_shift(old_files, new_files, spacing, anchor)
-	var out := block_slots(n, new_files, spacing)
+	var out := block_slots(n, new_files, spacing, rank_pitch)
 	if shift != 0.0:
 		for i in range(out.size()):
 			out[i] = out[i] + Vector2(shift, 0.0)
