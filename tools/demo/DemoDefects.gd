@@ -54,7 +54,12 @@ const SUPERPHYSICAL_SPEED_FRAC := 1.15
 ## slot than their own (measured against the FIT-ALIGNED grid, so legitimate turn lag --
 ## a rigid offset the Kabsch fit removes -- cannot fire it), sustained pre-contact, is a
 ## misslot verdict: the men settled on each other's positions (rank/flank swapping).
+## Identity is only meaningful once the men are actually STANDING ON the grid: while a
+## block is in transit (a reshape, a march re-form) every body is between slots and
+## "whose slot is nearest" is noise, so the fraction only counts on samples where the
+## mean nearest-ANY-slot distance is within MISSLOT_SETTLED_FRAC of the spacing.
 const MISSLOT_MAX_FRAC := 0.25
+const MISSLOT_SETTLED_FRAC := 0.25
 ## Consecutive-sample count that turns a transient reading into a sustained verdict.
 const MIN_SUSTAIN := 2
 
@@ -214,10 +219,17 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["angle"].append(fit["angle"])
 			s["residual"].append(fit["residual_rms"])
 			# Misassignment counted against the fit-aligned grid: rigid turn lag is the
-			# fit's to explain; only who-stands-where survives into this series.
+			# fit's to explain; only who-stands-where survives into this series -- and
+			# only on samples where the men are actually standing on the grid (see
+			# MISSLOT_SETTLED_FRAC): a body in transit is between slots, so its nearest
+			# slot's identity is noise, not a swap.
+			var aligned: Array = aligned_slots(slots, bodies, fit)
+			var spacing_now: float = float(u["motion_ref"]["formation_spacing"])
+			var settled: bool = _mean_nearest_slot_distance(aligned, bodies) \
+					<= spacing_now * MISSLOT_SETTLED_FRAC
 			s["misslotted"].append(
-					misslotted_count(aligned_slots(slots, bodies, fit), bodies)
-					/ maxf(1.0, float(bodies.size())))
+					misslotted_count(aligned, bodies) / maxf(1.0, float(bodies.size()))
+					if settled else 0.0)
 			var fa: Array = u.get("facing", [0.0, 1.0])
 			s["facing_angle"].append(atan2(float(fa[1]), float(fa[0])))
 			s["pos"].append(u["soldiers_full"]["pos"])
@@ -275,23 +287,43 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	return out
 
 
+## Fraction of meaningful improvement between consecutive failing samples below which
+## a transition no longer counts as converging (see _sustained_verdict).
+const CONVERGING_IMPROVEMENT_FRAC := 0.05
+
+
 ## Shared shape for threshold-over-a-series verdicts. `below` chooses the failing side
 ## (true = failing when the value drops BELOW the threshold). Pre-contact gating skips
-## engaged samples; `sustain` consecutive failing samples fail the verdict.
+## engaged samples; `sustain` consecutive failing samples fail the verdict -- but a
+## failing sample that meaningfully IMPROVES on its predecessor resets the run rather
+## than extending it. A legitimate long transition (a drag-widen reshape walking sixty
+## men onto a new grid, a big commanded turn) reads far out of tolerance for many
+## samples while steadily converging on it; a genuine defect holds or worsens. The
+## convergence test is what separates them without any knowledge of maneuvers.
 static func _sustained_verdict(uid: int, metric: String, s: Dictionary, key: String,
 		threshold: float, pre_contact_only: bool, sustain: int, above: bool = false) -> Dictionary:
 	var run := 0
 	var worst_run := 0
 	var worst := INF if not above else 0.0
+	var prev_v := NAN
 	for i in range(s["ticks"].size()):
 		if pre_contact_only and s["engaged"][i]:
 			run = 0
+			prev_v = NAN
 			continue
 		var v: float = float(s[key][i])
 		worst = maxf(worst, v) if above else minf(worst, v)
 		var failing: bool = v > threshold if above else v < threshold
-		run = run + 1 if failing else 0
+		if not failing:
+			run = 0
+		else:
+			var improving := false
+			if not is_nan(prev_v):
+				var margin: float = absf(prev_v) * CONVERGING_IMPROVEMENT_FRAC
+				improving = (v < prev_v - margin) if above else (v > prev_v + margin)
+			run = 1 if improving else run + 1
 		worst_run = maxi(worst_run, run)
+		prev_v = v
 	if worst == INF:
 		worst = 0.0
 	return {"uid": uid, "metric": metric, "pass": worst_run < sustain,
@@ -397,6 +429,21 @@ static func _values_match(expected, actual) -> bool:
 	if (expected is float or expected is int) and (actual is float or actual is int):
 		return absf(float(expected) - float(actual)) < 0.001
 	return str(expected) == str(actual)
+
+
+## Mean distance from each body to its nearest slot of ANY identity -- how settled the
+## block is on its grid, independent of who stands where. O(n^2), fine at regiment sizes.
+static func _mean_nearest_slot_distance(slots: Array, positions: Array) -> float:
+	var n: int = mini(slots.size(), positions.size())
+	if n == 0:
+		return 0.0
+	var total := 0.0
+	for i in range(n):
+		var best := INF
+		for j in range(n):
+			best = minf(best, _vec(positions[i]).distance_squared_to(_vec(slots[j])))
+		total += sqrt(best)
+	return total / n
 
 
 static func _vec(pair) -> Vector2:

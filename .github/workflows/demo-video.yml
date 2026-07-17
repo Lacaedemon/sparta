@@ -397,6 +397,53 @@ jobs:
             echo "::warning::transcript artifacts empty; posting the demo without a transcript."
           fi
 
+      - name: Demo defect scan
+        # The algorithmic half of demo review: a FULL state dump of the same input
+        # script, run through the DemoDefects metrics plus the script's own declared
+        # `expect` assertions (see demos/README.md, "Algorithmic defect scan"). This
+        # step only COMPUTES and reports -- the enforcement step after the publish is
+        # what fails the job -- so a defect verdict never blocks the GIF/transcript the
+        # author needs to debug it. Exit 2 (unusable input) degrades to a warning:
+        # absence of data is not a defect.
+        id: defects
+        if: steps.demo.outputs.record == 'true' && steps.demo.outputs.dump_state == 'true'
+        timeout-minutes: 5
+        env:
+          SOURCE: ${{ steps.demo.outputs.source }}
+          STATE_TICKS: ${{ steps.demo.outputs.state_ticks }}
+        run: |
+          set -uo pipefail
+          echo "failed=false" >> "$GITHUB_OUTPUT"
+          FULL_DIR=/tmp/state-full
+          rm -rf "$FULL_DIR"; mkdir -p "$FULL_DIR"
+          if ! SPARTA_DEMO_STATE_FULL=1 \
+               tools/demo/dump-state.sh "$SOURCE" "$STATE_TICKS" "$FULL_DIR"; then
+            echo "::warning::full state dump failed; skipping the defect scan."
+            exit 0
+          fi
+          EXPECT_ARGS=()
+          if jq -e '.expect | type == "array" and length > 0' "$SOURCE" >/dev/null 2>&1; then
+            EXPECT_ARGS=(--expect "$SOURCE")
+          fi
+          rc=0
+          godot --headless --path . -s tools/demo/analyze_transcript.gd -- \
+            "$FULL_DIR" "${EXPECT_ARGS[@]}" | tee /tmp/defects.txt || rc=$?
+          # Fold the verdict table into the transcript comment when one is being posted,
+          # so reviewers see the machine verdicts next to the per-tick tables.
+          if [ -s /tmp/transcript.md ] && [ -s /tmp/defects.txt ]; then
+            {
+              printf '\n**Defect scan** (deterministic verdicts -- see demos/README.md):\n\n```\n'
+              cat /tmp/defects.txt
+              printf '```\n'
+            } >> /tmp/transcript.md
+          fi
+          if [ "$rc" -eq 1 ]; then
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+            echo "::error::demo defect scan found failing verdicts (see the transcript comment / log above)."
+          elif [ "$rc" -ne 0 ]; then
+            echo "::warning::defect scan input unusable (rc=$rc); nothing gated."
+          fi
+
       - name: Publish GIF and update PR description
         if: steps.demo.outputs.record == 'true'
         env:
@@ -534,6 +581,15 @@ jobs:
             tools/ci/upsert-pr-comment.sh \
               "${{ github.repository }}" "$PR" "$TRANSCRIPT_MARKER" "$TRANSCRIPT_BODY" "state transcript comment"
           fi
+
+      - name: Enforce demo defect scan
+        # The gate half of the defect scan above, deliberately AFTER the publish: the
+        # GIF, transcript, and verdict table all post first so the author has the
+        # artifacts to debug, and only then does the job go red on a failing verdict.
+        if: steps.defects.outputs.failed == 'true'
+        run: |
+          echo "::error::demo defect scan failed -- see the state-transcript comment's verdict table."
+          exit 1
 
       - name: Post 'no clip applies' note
         # The author marked this change as not demonstrable by a recorded battle
