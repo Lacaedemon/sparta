@@ -204,8 +204,9 @@ themselves for detail):
   Same pure-static, headless-testable style.
 - `scripts/CameraController.gd` — full rewrite as an orbit RTS camera
   (pan/edge-pan, zoom-to-cursor, **yaw orbit**, pitch clamp, bounds,
-  north-reset). Reference: [GodotRTSCamera3D](https://github.com/alfredbaudisch/GodotRTSCamera3D)
-  (MIT) as a fork/crib source. The replay presentation-track driver flag
+  north-reset). Expect to roll our own (~150 lines is typical), cribbing from
+  [godot-open-rts](https://github.com/lampe-games/godot-open-rts)'s camera
+  (MIT, same engine). The replay presentation-track driver flag
   (`_presentation_driven`) carries over; the camera track format gains a
   version (see *Determinism, replay, and demo pipeline*).
 - `Battle._draw()` ground rendering → ground plane / terrain node.
@@ -409,7 +410,6 @@ Godot techniques: [MultiMesh optimization](https://docs.godotengine.org/en/stabl
 [Skeleton3D scaling](https://github.com/godotengine/godot/issues/99194) ·
 [Terrain3D](https://github.com/TokisanGames/Terrain3D) ([height queries](https://terrain3d.readthedocs.io/en/latest/docs/collision.html)) ·
 [HTerrain](https://github.com/Zylann/godot_heightmap_plugin) ·
-[RTS camera](https://github.com/alfredbaudisch/GodotRTSCamera3D) ·
 [3D drag-select recipe](https://kidscancode.org/godot_recipes/4.x/input/multi_unit_select/index.html) ·
 [godot-open-rts](https://github.com/lampe-games/godot-open-rts).
 TotalWarSimulator: [upstream](https://github.com/MichelangeloConserva/TotalWarSimulator) ·

@@ -44,9 +44,9 @@ and the battle presentation:
 - **3D battlefield** --- a planned conversion of the battle view from 2D
   top-down to a Total War-style 3D presentation with a rotatable camera
   ([#69](https://github.com/Lacaedemon/sparta/issues/69)); the deterministic
-  simulation stays planar and only the render/camera/input shell changes. See
-  the [design doc](https://github.com/Lacaedemon/sparta/blob/main/docs/3d-conversion-design.md)
-  for the architecture and phased plan.
+  simulation stays planar and only the render/camera/input shell changes. The
+  architecture and phased plan live in `docs/3d-conversion-design.md` in the
+  repository.
 
 Independent of those threads, `P2`/`P3` also carries near-term fixes and
 design work (formation/spawn edge cases, the soldier weapon/shield type model,
