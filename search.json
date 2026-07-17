@@ -719,7 +719,7 @@
     "href": "assets.html#currently-bundled",
     "title": "Assets & Licensing",
     "section": "Currently bundled",
-    "text": "Currently bundled\n\nAudio: OpenGameArt CC0 set (see the credits file above).\nGraphics: none — procedural placeholder primitives in Unit.gd.\n\n\n\n\n\n\n\nNoteCode vs assets\n\n\n\nThe project’s code is MIT-licensed. Bundled assets keep their own licences (CC0 / CC-BY), recorded in the receipts. MIT never implies a licence over the third-party art and audio.\n\n\n\nFull running catalog (audio + graphics, including reference-only sources) lives in docs/asset-sources.md; the standing art shortlist is in ASSETS.md.",
+    "text": "Currently bundled\n\nAudio: OpenGameArt CC0 set (see the credits file above).\nGraphics: no bundled files. Units draw as procedural placeholder primitives in Unit.gd; the battlefield ground, forest, and hill are seeded procedural textures generated at battle load (TerrainArt.gd) — still zero downloaded art, zero licensing surface.\n\n\n\n\n\n\n\nNoteCode vs assets\n\n\n\nThe project’s code is MIT-licensed. Bundled assets keep their own licences (CC0 / CC-BY), recorded in the receipts. MIT never implies a licence over the third-party art and audio.\n\n\n\nFull running catalog (audio + graphics, including reference-only sources) lives in docs/asset-sources.md; the standing art shortlist is in ASSETS.md.",
     "crumbs": [
       "Home",
       "Assets & Licensing"
