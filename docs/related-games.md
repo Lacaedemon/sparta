@@ -57,6 +57,8 @@ an automatic yes.
 | [OpenCiv](https://github.com/RyanGrieb/OpenCiv) | Browser turn-based 4X | **MIT** | per-repo (verify) | ✅ | verify | Medium — MIT so code is vendorable, but TypeScript/web, turn-based |
 | [C-evo](https://en.wikipedia.org/wiki/C-evo) (original) | Turn-based 4X | source **public domain** | graphics freeware | ✅ | ⛔ | Medium — pluggable-AI module API; PD source, but Pascal/Delphi |
 | [C-evo: vn971 port](https://github.com/vn971/cevo) | Turn-based 4X | GPL-3.0 | — | ⛔ | — | Same design lessons; this port is GPL + archived (Nov 2024) |
+| [TotalWarSimulator](https://github.com/MichelangeloConserva/TotalWarSimulator) | Formation-battle research sim (Python 2D → Unity 3D) | **MIT** (see caveats below) | bundled third-party packs (varied) | ✅ | ⛔ | **Very high** — a worked 2D→3D conversion of exactly Sparta's battle layer; formation/assignment algorithms |
+| [godot-open-rts](https://github.com/lampe-games/godot-open-rts) | 3D RTS demo in Godot 4 | **MIT** | verify per asset | ✅ | verify | High — reference implementation of 3D selection, movement, and camera in Sparta's own engine |
 | [Divide et Impera](https://divideetimperamod.com/) | Total-overhaul **mod** for Total War: Rome II | proprietary (built on CA/Sega's game) | proprietary | 🚫 | 🚫 | **High for design only** — historical realism, supply/population/reform systems, 2000+ unit rosters |
 | [awesome-paradox](https://github.com/js00070/awesome-paradox) | Curated list of Paradox-related projects | n/a (link list) | n/a | — | — | Pointers to grand-strategy / **dynasty** design and OSS reimplementations |
 
@@ -133,6 +135,48 @@ freeware), so the original source is, uniquely, freely reusable.
   **GPL-3.0** (and archived since Nov 2024) → ⛔; if we ever wanted the code, go to
   the PD original, not the GPL fork. Graphics are freeware → ⛔, never bundle.
 
+### TotalWarSimulator (Michelangelo Conserva)
+
+A solo-authored research project (later "Total War: AI", a QMUL Game AI group
+effort) that tried to reproduce Total War-style formation battles three times
+over: a **Python/pymunk 2D prototype** (`master`), a **Unity 3D port**
+(`unity`, the default branch), and an abandoned **Unity DOTS** spike (`dots`)
+— plus a `cpp` branch. Studied in depth for the 3D conversion; the full
+findings and the ideas adopted are in
+[`3d-conversion-design.md`](3d-conversion-design.md).
+
+- **Design to learn from:** optimal soldier→slot assignment
+  (Hungarian/Jonker-Volgenant) when a formation moves or reshapes, gated by
+  path-turn angle so it doesn't run every frame; arrival-time-normalized
+  wheeling (outside files speed up, inside files slow, everyone stays
+  dressed); unit-carrier-on-a-spline movement with a lag throttle; the
+  drag-out ghost-formation preview gesture; and the architectural proof that
+  a "3D" formation battle keeps a planar sim (its Unity port strips Y from
+  every gameplay computation). Equally instructive as a **cautionary tale**:
+  its combat layer was never finished in Python, was framerate-coupled and
+  hacky in Unity, and the project died of serial rewrites rather than any
+  technical wall.
+- **Licence:** **MIT** (LICENSE added on the `unity` default branch) → ✅
+  vendorable in principle — a rarity in this genre. Two caveats: the vendored
+  LAP/Hungarian solvers carry no license headers and have unclear upstream
+  origins (re-implement, don't copy), and the bundled `Alglib` plugin is
+  GPL/commercial dual-licensed (never copy). Bundled art (medieval weapon and
+  animation packs) is third-party with per-pack terms → ⛔ treat as
+  non-redistributable.
+
+### godot-open-rts (lampe-games)
+
+A complete small 3D RTS built in Godot 4 (MIT, ~1.1k stars): selection,
+movement, construction, fog of war. Not a formation battle game, but the most
+useful **same-engine reference** for the 3D conversion's interaction shell —
+RTS camera, unit picking, and drag-select done idiomatically in Godot 4.
+
+- **Design to learn from:** working, readable implementations of the exact
+  input problems the 3D conversion must solve (ray picking, selection boxes,
+  camera control) in Sparta's own engine and language family.
+- **Licence:** code **MIT** → ✅ vendorable with notice; assets are per-file →
+  verify before reuse.
+
 ### Divide et Impera
 
 Not a standalone game: a **total-overhaul mod for Total War: Rome II** (a
@@ -191,9 +235,11 @@ art:
 - **Code:** the genre is overwhelmingly GPL, and Sparta is MIT, so treat 0 A.D.,
   Freeciv, Wesnoth, OpenRA, Spring, and the `vn971/cevo` port as **design and
   architecture references — read, learn, reimplement clean-room; never copy code
-  in.** The only code we could legitimately vendor is **OpenCiv (MIT)** and the
-  **original C-evo (public-domain source)**, and both are different
-  engines/languages and turn-based, so their design value beats their code value.
+  in.** The legitimately vendorable exceptions: **TotalWarSimulator (MIT)** and
+  **godot-open-rts (MIT)** — both directly relevant to the 3D conversion, the
+  latter even in our own engine — plus **OpenCiv (MIT)** and the **original
+  C-evo (public-domain source)**, which are different engines/languages and
+  turn-based, so their design value beats their code value.
 - **Art:** the best opportunity is **0 A.D.'s CC-BY-SA 3.0 ancient-warfare
   library** — bundle-safe with attribution under the [`asset-sources.md`](asset-sources.md)
   rules, but blocked for now by PLAN.md's CC0-only locked decision. If we ever

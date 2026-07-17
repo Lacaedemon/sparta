@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/wheel.json",
-  "caption": "Orders-queue phase 2 (#523): the movement maneuvers now execute off the Order queue -- the wheel's swing goal and hinge, a rear move's about-face phase and parked march, and the drill turns all live on current_order instead of scattered Unit flags. The clip is the standard wheel drill (select the infantry block, C wheels it right, Z wheels it back left) driven through the real controls: the maneuver itself must look exactly as before (the standing flank plants, the line swings like a door), which is the point -- the migration preserves behaviour. What IS new on screen: the info panel now reads the maneuver straight off the queue, reporting 'Wheeling' while the swing runs where it used to say 'Holding position'. Verified tick-by-tick in the GUT suite: the #517 conversio holds every body frozen through the full turn, and the #521 nudge covers the full NUDGE_DISTANCE, both read from exact game state.",
-  "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
-  "width": 640
+  "skip": true,
+  "reason": "Docs-only change: adds the 3D conversion design/plan (docs/3d-conversion-design.md), related-games entries, and a PLAN.md/roadmap sync. No gameplay or visual change exists yet to record."
 }

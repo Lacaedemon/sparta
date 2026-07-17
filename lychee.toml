@@ -17,6 +17,10 @@ exclude = [
   "https://localhost.*",
   "http://127.0.0.1.*",
   "https://127.0.0.1.*",
+  # moddb.com blocks automated requests with HTTP 403 (the page works in a
+  # browser) — a false positive for the link checker, so skip it. Linked as a
+  # citation from docs/3d-conversion-design.md (0 A.D. pathfinding article).
+  "^https://www\\.moddb\\.com",
   # pixabay blocks automated requests with HTTP 403 (the page works in a
   # browser) — a false positive for the link checker, so skip it.
   "^https://pixabay\\.com",

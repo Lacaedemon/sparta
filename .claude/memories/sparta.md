@@ -1986,3 +1986,24 @@ the fields the diff itself added (list them explicitly from the PR diff; don't p
 match), or the proof silently weakens. Used for the metric dump mirrors (PR #896,
 phase E of the metric-definition migration); the same shape applies to any future
 dump/transcript schema extension.
+
+## Probe EVERY new external citation URL with lychee's exact UA before pushing
+
+`check / link-checker` runs lychee with the UA pinned in `lychee.toml`; several
+otherwise-fine sites bot-block that UA (403/415/502), and each already-known offender
+has a documented exclusion there. Before pushing a diff that adds citation URLs, probe
+every new URL locally with lychee's exact settings --
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" -L --max-time 20 \
+  -A "Mozilla/5.0 (compatible; Lychee/0.15; +https://github.com/lycheeverse/lychee)" "$url"
+```
+
+-- and check the code against `lychee.toml`'s `accept` list (403 is NOT accepted). A
+bot-blocked-but-fine-in-a-browser site gets a new `lychee.toml` exclusion following the
+existing commented pattern; a genuinely dead link gets fixed or dropped. Probe ALL new
+URLs, GitHub ones included: a repo URL sourced from a search result, a directory
+listing, or another site's link can 404 because the repo was deleted -- the Godot asset
+library's "RTS Camera 3D" page still links `alfredbaudisch/GodotRTSCamera3D`, whose
+GitHub repo is gone. Both failure modes (moddb.com bot-403, the deleted camera repo)
+cost a red link-checker run on PR #929 after a probe pass that skipped GitHub URLs.
