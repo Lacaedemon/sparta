@@ -1,35 +1,65 @@
 {
-  "_comment": "Pace modes demo: the whole foot line is box-selected and given an ATTACK order (the click lands exactly on the enemy Infantry's spawn, before the enemy AI's first advance tick moves it) -- an attack move paces on AUTO, so the advance shows all three phases: walk on approach, jog once the enemy archers' fire reaches the line, and the full sprint inside charge distance of the target. A ground click would instead lock the single-click WALK gait and show no pacing at all.",
+  "_comment": "Pace modes demo, staged in isolation under all_teams_control (team 1's battle AI is off, so the enemy stands where posted -- unit-level combat behaviour still runs, so the archers shoot on their own): a lone player Spearmen regiment attack-orders the enemy Infantry parked at the far end of its lane (an attack move paces on AUTO). The enemy Archers hold the lane's shoulder, placed so their beaten zone runs straight into charge distance: the advance shows the three AUTO phases as contiguous plateaus -- walk on approach, jog through the archers' fire (RANGED_RANGE is shorter than the sprint-start distance, so the fire must come from the flank of the lane, not the target line, for a jog leg to exist), then the full sprint to contact. Deterministic (scenario + seed + scripted input).",
   "seed": "12345",
+  "all_teams_control": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 400,
+      "y": 420,
+      "facing": [
+        0,
+        1
+      ]
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 400,
+      "y": 1050
+    },
+    {
+      "team": 1,
+      "type": "Archers",
+      "x": 500,
+      "y": 720,
+      "count": 60
+    }
+  ],
   "camera": [
     {
       "tick": 0,
-      "x": 512.0,
-      "y": 512.0,
-      "zoom": 0.7
+      "x": 470.0,
+      "y": 740.0,
+      "zoom": 0.85
     }
   ],
   "steps": [
     {
       "tick": 8,
-      "box": {
-        "from": [
-          100,
-          240
-        ],
-        "to": [
-          924,
-          360
-        ]
-      }
+      "click": [
+        400,
+        420
+      ]
     },
     {
-      "tick": 28,
+      "tick": 20,
       "rmb_click": [
-        557,
-        880
+        400,
+        1050
       ]
     }
+  ],
+  "state": [
+    8,
+    60,
+    300,
+    480,
+    720,
+    840,
+    1250,
+    1400
   ],
   "expect": [
     {
@@ -37,18 +67,27 @@
       "uid": 0,
       "field": "position",
       "value": [
-        407.0,
-        300.0
+        400,
+        420
       ]
     },
     {
       "tick": [
         60,
-        200
+        300
       ],
       "uid": 0,
       "field": "current_order",
       "value": "ATTACK"
+    },
+    {
+      "tick": [
+        1250,
+        1400
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "FIGHTING"
     }
   ]
 }

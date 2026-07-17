@@ -63,7 +63,7 @@
     {
       "tick": [
         60,
-        400
+        300
       ],
       "uid": 3,
       "field": "order_mode",
