@@ -20,12 +20,17 @@ class_name UnitSprites
 ## a standing anchor offset shifts the block off the regiment point).
 static func standard_bounds(extent: float, centre: Vector2 = Vector2.ZERO) -> Rect2:
 	# Pole foot sits FLAG_POLE_BASE_GAP above the block; the pole rises FLAG_POLE_HEIGHT to
-	# the flag attachment. Width spans the flag rectangle (the pole sits on its left edge).
+	# the flag attachment, and the brass finial caps it FLAG_FINIAL_OFFSET above the tip
+	# with FLAG_FINIAL_RADIUS reach -- so the bound grows past the pole span by the
+	# finial's own extents (up and left; its right side stays inside the flag's width).
 	# The flag hangs from the pole tip and FLAG_HEIGHT (8) < FLAG_POLE_HEIGHT (18), so it's
-	# fully nested in the pole span — the height needn't add FLAG_HEIGHT. (If the flag were
-	# ever re-anchored below the pole base, this bound would need to grow to cover it.)
-	var top: float = centre.y - extent - Unit.FLAG_POLE_BASE_GAP - Unit.FLAG_POLE_HEIGHT
-	return Rect2(centre.x, top, Unit.FLAG_WIDTH, Unit.FLAG_POLE_HEIGHT)
+	# fully nested in the pole span. (If the flag were ever re-anchored below the pole
+	# base, this bound would need to grow to cover it.)
+	var finial_reach: float = Unit.FLAG_FINIAL_OFFSET + Unit.FLAG_FINIAL_RADIUS
+	var top: float = centre.y - extent - Unit.FLAG_POLE_BASE_GAP - Unit.FLAG_POLE_HEIGHT 			- finial_reach
+	return Rect2(centre.x - Unit.FLAG_FINIAL_RADIUS, top,
+			Unit.FLAG_WIDTH + Unit.FLAG_FINIAL_RADIUS,
+			Unit.FLAG_POLE_HEIGHT + finial_reach)
 
 
 ## A regimental standard: a pole rising above the stat bars with a coloured flag bearing a
@@ -64,7 +69,8 @@ static func flag(u: Unit, body_c: Color, alpha: float, extent: float,
 	rim.push_back(cloth[0])
 	u.draw_polyline(rim, Color(1.0, 1.0, 1.0, alpha * 0.5), 1.0)
 	# Brass finial capping the pole above the attachment.
-	u.draw_circle(pole_top + Vector2(0.0, -1.5), 1.6, Color(0.82, 0.68, 0.28, alpha))
+	u.draw_circle(pole_top + Vector2(0.0, -Unit.FLAG_FINIAL_OFFSET), Unit.FLAG_FINIAL_RADIUS,
+			Color(0.82, 0.68, 0.28, alpha))
 	# Type emblem on the cloth body (nudged off-centre toward the hoist, clear of the
 	# notch): spear = vertical, bow = arc, lance = diagonal, cross = infantry.
 	var fc := Vector2(fx + fw * 0.42, fy + fh * 0.5)
