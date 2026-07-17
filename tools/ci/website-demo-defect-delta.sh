@@ -70,8 +70,17 @@ failing_metrics() {
     printf 'n/a'
     return 0
   fi
-  printf '%s' "$out" | jq -r \
-    '[.verdicts[] | select(.pass | not) | "\(.metric) (uid\(.uid))"] | if length == 0 then "clean" else join(", ") end' \
+  # A compact transcript with a declared `expect` block still yields expect-only
+  # verdicts, so non-empty output alone doesn't prove the physics metrics ran: require
+  # at least one non-expect verdict before treating the side as analyzable, or a data
+  # gap on one side could masquerade as "clean" and mislabel the other side's
+  # pre-existing defect a candidate regression.
+  printf '%s' "$out" | jq -r '
+    if ([.verdicts[] | select(.metric | startswith("expect:") | not)] | length) == 0
+    then "n/a"
+    else [.verdicts[] | select(.pass | not) | "\(.metric) (uid\(.uid))"]
+      | if length == 0 then "clean" else join(", ") end
+    end' \
     2>/dev/null || printf 'n/a'
 }
 
