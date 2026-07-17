@@ -240,6 +240,23 @@ func test_clearance_caps_at_the_room_actually_available() -> void:
 		"a commanded destination inside the margin stays reachable, hugging as needed")
 
 
+func test_string_pull_candidates_must_clear_the_full_margin() -> void:
+	# A string-pull candidate is a synthetic A* cell centre, not a commanded
+	# destination: the room-available cap must NOT apply to it, or every
+	# corner-adjacent sightline silently shrinks to whatever room that cell
+	# centre happens to have -- letting a unit wider than that room steer its
+	# flank into the terrain at corners. Candidates are judged at the FULL
+	# margin (cap_to false); the room cap stays for real endpoints only.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(126, 64, 100, 128))   # east edge lands 30 wu into a cell
+	var from := Vector2(450, 128)             # far outside a 70-wu margin
+	var near_centre := Vector2(288, 128)      # open cell centre, only 62 wu off the rect
+	assert_false(pf._segment_blocked(from, near_centre, 70.0),
+		"judged as a real endpoint, the 62-wu-out point is reachable (room-capped)")
+	assert_true(pf._segment_blocked(from, near_centre, 70.0, false),
+		"judged as a candidate, it must clear the full 70-wu margin -- and cannot")
+
+
 func test_segment_intersects_rect_geometry() -> void:
 	var r := Rect2(100, 100, 50, 50)
 	assert_true(PathField.segment_intersects_rect(Vector2(0, 125), Vector2(300, 125), r),

@@ -117,8 +117,19 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0) -> Vector2:
 		return to
 	var path := find_path(from, to)
 	if path.size() >= 2:
+		# Candidate waypoints are synthetic cell centres, not real destinations,
+		# so the room-available cap must not quietly shrink their sightlines (see
+		# _segment_blocked): prefer the farthest candidate that clears the FULL
+		# margin. Only when no candidate can — the unit's own margin is wider
+		# than the room the A* corridor's cells offer at all (a broad line
+		# rounding this field's obstacles) — fall back to the farthest candidate
+		# at the room actually available, which degrades the margin smoothly
+		# rather than collapsing steering to the adjacent cell's coarse bearing.
 		for i in range(path.size() - 1, 1, -1):
-			if not _segment_blocked(from, path[i], clearance):
+			if not _segment_blocked(from, path[i], clearance, false):
+				return path[i]
+		for i in range(path.size() - 1, 1, -1):
+			if not _segment_blocked(from, path[i], clearance, true):
 				return path[i]
 		return path[1]
 	return to
@@ -300,17 +311,28 @@ const CLEARANCE_SLACK := 0.5   # tuned in wu
 ## footprint needs.
 ##
 ## The margin for each rect is `clearance`, capped at the room actually
-## available at either endpoint: a unit already inside its own margin (spawned
-## or shoved there) keeps sightlines at the standoff it has — it can slide along
-## or away from the obstacle, just never deeper — instead of every test failing
-## where it stands; and a leg whose destination sits inside the margin (a
-## commanded move or attack to the obstacle's very edge) is judged at the room
-## the destination leaves, so orders there remain reachable. Legs between
-## far-off points keep the full margin.
-func _segment_blocked(from: Vector2, to: Vector2, clearance: float = 0.0) -> bool:
+## available at the segment's REAL endpoints: a unit already inside its own
+## margin (spawned or shoved there) keeps sightlines at the standoff it has —
+## it can slide along or away from the obstacle, just never deeper — instead
+## of every test failing where it stands; and a leg whose destination sits
+## inside the margin (a commanded move or attack to the obstacle's very edge)
+## is judged at the room the destination leaves, so orders there remain
+## reachable. Legs between far-off points keep the full margin.
+##
+## `cap_to` marks whether `to` is such a real endpoint. A string-pull CANDIDATE
+## waypoint is not — it's a synthetic A* cell centre, and an open cell adjoining
+## a blocked one sits only half a routing cell from the drawn rect, so capping
+## on it would silently shrink every corner sightline to ~half a cell no matter
+## how wide the querying unit is, letting its flank cut into terrain exactly
+## where routing bends. Candidates must clear the FULL margin (cap_to false);
+## a candidate inside the margin is simply not picked.
+func _segment_blocked(from: Vector2, to: Vector2, clearance: float = 0.0,
+		cap_to: bool = true) -> bool:
 	for r in _block_rects:
-		var eff: float = minf(clearance, minf(
-				_distance_to_rect(from, r), _distance_to_rect(to, r)) - CLEARANCE_SLACK)
+		var room: float = _distance_to_rect(from, r)
+		if cap_to:
+			room = minf(room, _distance_to_rect(to, r))
+		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
 		if segment_intersects_rect(from, to, r.grow(maxf(0.0, eff))):
 			return true
 	return false
