@@ -172,8 +172,10 @@ no-ops with no error). **Don't trust this paragraph's x values either -- treat
 tick-8 state dump, and pin your script's subject with a
 `{"tick": 8, "uid": N, "field": "position", "value": [x, y]}` expect entry** so
 any future spawn re-spacing fails `tools/check.sh demo_defects` loudly, naming
-the clip, instead of recording a silent no-op (all 13 catalog input scripts
-carry these pins as of PR #938).
+the clip, instead of recording a silent no-op. As of PR #938 the pins cover
+only the scripts that PR touched -- the twelve retargeted ones plus
+`parade-ground.json` -- not the whole catalog; older input scripts predate the
+convention, so add the pin whenever you edit one.
 Spawn positions are seed-independent, so clicks land regardless of seed. For a
 form-up facing the enemy (+y/down), drag **right→left** (start point on the
 right). Box-select a horizontal row by bracketing the row generously in y and
