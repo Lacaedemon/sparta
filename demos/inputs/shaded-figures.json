@@ -4,20 +4,84 @@
   "drill": true,
   "show_soldier_ids": false,
   "scenario": [
-    {"team": 0, "type": "Spearmen", "x": 620, "y": 470, "count": 60, "facing": [1, 0]},
-    {"team": 0, "type": "Cavalry", "x": 640, "y": 610, "count": 24, "facing": [1, 0]}
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 620,
+      "y": 470,
+      "count": 60,
+      "facing": [
+        1,
+        0
+      ]
+    },
+    {
+      "team": 0,
+      "type": "Cavalry",
+      "x": 640,
+      "y": 610,
+      "count": 24,
+      "facing": [
+        1,
+        0
+      ]
+    }
   ],
   "camera": [
-    {"tick": 0, "x": 700.0, "y": 530.0, "zoom": 2.0}
+    {
+      "tick": 0,
+      "x": 700.0,
+      "y": 530.0,
+      "zoom": 2.0
+    }
   ],
   "steps": [
-    {"tick": 10, "click": [620, 470]},
-    {"tick": 25, "rmb_click": [800, 470]}
+    {
+      "tick": 10,
+      "click": [
+        620,
+        470
+      ]
+    },
+    {
+      "tick": 25,
+      "rmb_click": [
+        770,
+        470
+      ]
+    }
   ],
-  "state": [8, 150, 400, 560],
+  "state": [
+    8,
+    150,
+    400,
+    500,
+    560
+  ],
   "expect": [
-    {"tick": [80, 250], "uid": 0, "field": "state", "value": "MOVING"},
-    {"tick": [420, 560], "uid": 0, "field": "state", "value": "IDLE"},
-    {"tick": 150, "uid": 1, "field": "state", "value": "IDLE"}
+    {
+      "tick": [
+        80,
+        250
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    },
+    {
+      "tick": [
+        480,
+        560
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": 150,
+      "uid": 1,
+      "field": "state",
+      "value": "IDLE"
+    }
   ]
 }
