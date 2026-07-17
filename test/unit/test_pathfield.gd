@@ -207,6 +207,21 @@ func test_clearance_grows_the_blocked_footprint_for_wide_units() -> void:
 			"the chosen waypoint keeps the whole clearance margin clear")
 
 
+func test_start_in_a_sliver_blocked_cell_still_routes() -> void:
+	# A unit can legitimately stand on the clear ground of a cell an obstacle
+	# only clips (footprints are exact; cells block conservatively). A* must
+	# still route around from there -- a blocked START cell is passable to
+	# leave, not a dead end whose empty path makes next_step fall back to a
+	# straight step through the terrain.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(126, 64, 68, 128))   # clips the col-1 cells by 2 wu
+	var from := Vector2(70, 128)   # inside a clipped cell, outside the drawn rect
+	var to := Vector2(260, 128)    # straight line crosses the rect
+	assert_false(pf.is_blocked(from), "the start point itself is clear ground")
+	assert_ne(pf.next_step(from, to, 20.0), to,
+		"a detour is still produced from a sliver-blocked start cell")
+
+
 func test_clearance_caps_at_the_room_actually_available() -> void:
 	# A unit already inside its own margin (spawned or shoved there) must keep
 	# pathing by exact sightlines at the standoff it actually has -- not have

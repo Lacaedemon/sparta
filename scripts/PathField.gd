@@ -189,11 +189,16 @@ func _clip_to_bounds(from: Vector2, direction: Vector2) -> Vector2:
 
 
 ## Full A* route from `from` to `to` as world-space cell centres (empty when the
-## endpoints share a cell, the goal is blocked, or no route exists).
+## endpoints share a cell, the goal is blocked, or no route exists). A blocked
+## START cell is passable to leave: cells block conservatively on any rect
+## overlap while footprints are exact, so a walker can legitimately stand on
+## the clear ground of a cell an obstacle only clips — failing there would
+## silently drop the detour (the caller falls back to a straight step) right
+## next to the terrain, where the detour matters most.
 func find_path(from: Vector2, to: Vector2) -> PackedVector2Array:
 	var start := _cell_coord(from)
 	var goal := _cell_coord(to)
-	if start == goal or _blocked.has(goal) or _blocked.has(start):
+	if start == goal or _blocked.has(goal):
 		return PackedVector2Array()
 
 	var open: Array = [start]

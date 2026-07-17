@@ -1,0 +1,69 @@
+{
+  "_comment": "Exact terrain footprints: a 30-man Infantry squad is ordered straight down the lane just west of the impassable hill (RUN gait via triple right-click, single far destination so any detour would be the pathfield's own). The routed footprint used to be the hill's 64-wu routing cells -- this lane sat inside the inflated column, so the squad would veer west around empty grass. Footprints are exact now, and the margin is the unit's own corner-man half-diagonal plus a body radius (~39 wu for this squad), which this lane clears: the squad marches dead straight, its east flank passing less than a metre off the drawn hillside. Drill mode (no enemy), static camera on the hill's west lane. Deterministic (scenario + seed + scripted input).",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 1105,
+      "y": 700,
+      "count": 30,
+      "facing": [0, -1]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1200.0,
+      "y": 480.0,
+      "zoom": 1.2
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [
+        1105,
+        700
+      ]
+    },
+    {
+      "tick": 16,
+      "rmb_click": [
+        1105,
+        260
+      ]
+    },
+    {
+      "tick": 22,
+      "rmb_click": [
+        1105,
+        260
+      ]
+    },
+    {
+      "tick": 28,
+      "rmb_click": [
+        1105,
+        260
+      ]
+    }
+  ],
+  "state": [
+    8,
+    60,
+    150,
+    240,
+    330,
+    420,
+    510,
+    570,
+    680
+  ],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [1105, 700]},
+    {"tick": 60, "uid": 0, "field": "current_order", "value": "MOVE"},
+    {"tick": 680, "uid": 0, "field": "state", "value": "IDLE"}
+  ]
+}
