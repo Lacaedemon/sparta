@@ -206,3 +206,71 @@ func test_track_accel_holds_its_value_within_one_tick() -> void:
 	hud._track_accel(u, 99.0)
 	assert_eq(hud._accel_mps2, 0.0,
 			"a same-tick repeat call keeps the last derivative instead of dividing by zero")
+
+
+## The panel's fixed vertical overhead around the scroll layer, mirroring
+## _clamp_info_panel's own computation so the assertions below can reason about
+## the whole panel's height from the scroll size.
+func _panel_overhead(hud) -> float:
+	return hud._info_panel.get_theme_stylebox("panel").get_minimum_size().y \
+			+ float(hud._info_margin.get_theme_constant("margin_top")) \
+			+ float(hud._info_margin.get_theme_constant("margin_bottom"))
+
+
+func test_clamp_before_ready_is_a_safe_no_op() -> void:
+	# _clamp_info_panel can run before the panel exists (nothing built yet):
+	# it must return quietly rather than dereference the missing scroll layer.
+	var hud = autofree(HUDScript.new())
+	hud._clamp_info_panel()
+	assert_null(hud._info_scroll, "precondition: nothing built without _ready()")
+
+
+func test_info_panel_scroll_sizes_to_the_content_while_it_fits() -> void:
+	# A normal (folded) stat sheet fits the default viewport, so the scroll layer
+	# hugs the content exactly -- no clamp, no scrollbar width padding.
+	var hud := _hud()
+	var u := _unit()
+	hud.show_unit(u, 1)
+	var content: Vector2 = hud._info_col.get_combined_minimum_size()
+	assert_true(content.y <= hud._info_panel_available_height() - _panel_overhead(hud),
+			"precondition: the folded sheet fits the test viewport")
+	assert_eq(hud._info_scroll.custom_minimum_size, content,
+			"a fitting sheet sizes the scroll layer to the content exactly")
+
+
+func test_info_panel_clamps_a_tall_sheet_to_the_viewport() -> void:
+	# A sheet taller than the viewport pins the scroll layer to the available
+	# height (content scrolls) instead of growing the panel off the top of the
+	# screen, and widens by the scrollbar so the bar doesn't overlap the text.
+	var hud := _hud()
+	var u := _unit()
+	hud.show_unit(u, 1)
+	var fit_width: float = hud._info_scroll.custom_minimum_size.x
+	# Two hundred one-character lines: plenty of extra height, no extra width, so
+	# the width assertion below isolates the scrollbar reservation.
+	hud._info.text += "\nx".repeat(200)
+	hud._clamp_info_panel()
+	var content: Vector2 = hud._info_col.get_combined_minimum_size()
+	var available: float = hud._info_panel_available_height() - _panel_overhead(hud)
+	assert_true(content.y > available,
+			"precondition: the stuffed sheet overflows the test viewport")
+	assert_eq(hud._info_scroll.custom_minimum_size.y, available,
+			"an overflowing sheet pins the scroll layer to the available height")
+	assert_gt(hud._info_scroll.custom_minimum_size.x, fit_width,
+			"the clamped layer reserves extra width for the scrollbar")
+
+
+func test_info_panel_available_height_accounts_for_gaps_and_raise() -> void:
+	# The height budget spans from just under the viewport's top edge to the
+	# panel's bottom clearance -- which deepens by the control bar's raise while
+	# a unit is shown.
+	var hud := _hud()
+	var viewport_h: float = hud._info_panel.get_viewport_rect().size.y
+	var lowered: float = hud._info_panel_available_height()
+	assert_almost_eq(lowered,
+			viewport_h - hud.PANEL_TOP_GAP - hud.PANEL_BOTTOM_GAP, 0.01,
+			"with no unit shown the budget runs the top gap to the base bottom gap")
+	hud.show_unit(_unit(), 1)
+	assert_almost_eq(hud._info_panel_available_height(),
+			lowered - hud._ctrl_bar.get_combined_minimum_size().y - 8.0, 0.01,
+			"a shown unit's control-bar raise shrinks the budget by the same amount")
