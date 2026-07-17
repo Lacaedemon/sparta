@@ -123,7 +123,7 @@ static func promote(u: Unit, tick: int, battle_seed: int) -> void:
 	var slots: PackedVector2Array = u.soldier_world_slots(n)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = promotion_seed(u.uid, tick, battle_seed)
-	var scatter_r: float = Unit.FORMATION_SPACING * u.spacing_scale * SCATTER_FRACTION
+	var scatter_r: float = minf(u.file_pitch_wu(), u.rank_pitch_wu()) * SCATTER_FRACTION
 	var profile: Dictionary = u.combat_profile()
 	var max_health: float = profile["max_health"]
 	var wound_cap: float = 0.0

@@ -1,0 +1,24 @@
+{
+  "_comment": "Cavalry grid-pitch demo: a Cavalry regiment on its own anisotropic grid (1.0 m between files, 3.0 m between ranks) drawn up beside an Infantry block at foot close order, then both marched a short leg forward. The side-by-side framing makes the pitch change legible at a glance -- the 80-horse block stands wider AND far deeper than the 120-man foot block (220x360 wu vs 126x63 at spawn) -- and the march shows the deep column moving as a body. Drill: the grid itself is the whole subject; an enemy would be noise.",
+  "seed": "926",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 420, "y": 420, "facing": [0, 1]},
+    {"team": 0, "type": "Cavalry", "x": 800, "y": 420, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 620, "y": 470, "zoom": 0.75}
+  ],
+  "steps": [
+    {"tick": 10, "box": {"from": [230, 180], "to": [1020, 660]}},
+    {"tick": 40, "rmb_click": [620, 500]}
+  ],
+  "state": [8, 120, 450, 520],
+  "expect": [
+    {"tick": 8, "uid": 1, "field": "position", "value": [800.0, 420.0]},
+    {"tick": 8, "uid": 1, "field": "state", "value": "IDLE"},
+    {"tick": 8, "uid": 1, "field": "soldiers", "value": 80},
+    {"tick": [400, 520], "uid": 1, "field": "state", "value": "IDLE"},
+    {"tick": [440, 520], "uid": 0, "field": "state", "value": "IDLE"}
+  ]
+}
