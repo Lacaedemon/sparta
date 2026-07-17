@@ -1,0 +1,17 @@
+{
+  "_comment": "Folded-by-default characteristics in the info panel: a lone Archers regiment (drill mode, no opponent) is selected, then walked a short way north-east so the panel's live lines (Speed, Accel) tick. The point under review is the DEFAULT panel state: the static characteristic rows (Attack/Defense, panoply, body mass, weapon/shield/mount) are collapsed behind a '> Characteristics' toggle row, so the visible panel holds only the identity block and the live stats -- markedly shorter than the previous always-expanded sheet. (The expand interaction is a HUD button click, which the scripted-input recorder cannot drive -- it only feeds SelectionManager -- so the expanded state is shown as a still in the PR description instead.) Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "917",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Archers", "x": 560, "y": 440, "count": 50, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 620.0, "y": 470.0, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 12, "click": [560, 440]},
+    {"tick": 50, "rmb_click": [760, 560]}
+  ],
+  "state": [12, 60, 150],
+  "frames": [30, 150]
+}

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/folded-characteristics-panel.json",
+  "caption": "Static unit characteristics now fold up by default: the info panel shows just the identity block and the live lines (HP, Gait, Speed, Accel), with Attack/Defense, the panoply, body mass, and the weapon/shield/mount rows collapsed behind a 'Characteristics' toggle -- roughly seven lines shorter until expanded. The expand click is a HUD button (not scriptable by the input recorder), so the expanded state is shown as a still in the PR description.",
+  "fixed_fps": 30,
+  "max_frames": 120,
+  "fps": 15,
+  "width": 720
+}
