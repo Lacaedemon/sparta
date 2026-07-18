@@ -1104,6 +1104,37 @@ func test_continuing_reorder_keeps_speed_through_the_hold() -> void:
 		"a same-way re-order's hold carries the momentum through unchanged")
 
 
+func test_held_march_direction_falls_back_to_the_move_leaf() -> void:
+	# _held_march_continues_travel's third source: a MOVE order installed but neither
+	# reform-holding nor committed to a move target yet (the response freeze on a
+	# no-reform order path) still yields its leaf's destination, so a same-way re-order
+	# keeps momentum and a reversal brakes, exactly as the committed cases do.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed
+	u.set_current_order(Order.new_move(Vector2(1000, 0)))   # continues the travel
+	u.start_order_response()
+	assert_true(u._held_march_continues_travel(),
+		"a same-way held MOVE leaf carries momentum through the response freeze")
+	u.set_current_order(Order.new_move(Vector2(-1000, 0)))  # reverses the travel
+	u.start_order_response()
+	assert_false(u._held_march_continues_travel(),
+		"a reversing held MOVE leaf brakes instead")
+
+
+func test_held_march_to_the_spot_it_stands_on_keeps_nothing() -> void:
+	# Degenerate destination: ordered to (essentially) where it already stands, there is
+	# no march direction to continue -- the hold brakes rather than carrying speed
+	# toward a point with no bearing.
+	var u := _make_unit()
+	u.position = Vector2(100, 100)
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed
+	u.set_current_order(Order.new_move(Vector2(100.2, 100.2)))
+	u.start_order_response()
+	assert_false(u._held_march_continues_travel(),
+		"a destination under the standing-on-it threshold offers no travel to continue")
+
+
 func test_reform_hold_pivot_is_corner_man_paced() -> void:
 	# The reform hold's centre-pivot toward the pending destination must pace like the
 	# marching pivot (UnitManeuver.wheel_gait_rate): the hold rotates the slot grid
