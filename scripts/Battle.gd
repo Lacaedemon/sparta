@@ -496,8 +496,8 @@ func _draw() -> void:
 	# Terrain patches — drawn over the field, under units (Battle is the parent). Each
 	# patch keeps its outline so the boundary (the part the sim actually enforces) stays
 	# crisp over the textured fill.
-	for i in range(TERRAIN.size()):
-		var patch: Dictionary = TERRAIN[i]
+	for i in range(terrain.size()):
+		var patch: Dictionary = terrain[i]
 		var col: Color = TERRAIN_COLOR.get(patch["type"], Color(0.4, 0.4, 0.4))
 		var tex: ImageTexture = _terrain_textures[i] if i < _terrain_textures.size() else null
 		if tex != null:
