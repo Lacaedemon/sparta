@@ -209,6 +209,27 @@ func test_accumulate_correctly_aggregates_max_reach_across_multiple_units_on_the
 		"must survive being processed before the team's own shorter-reach sword_b")
 
 
+func test_accumulate_still_presses_a_shorter_reach_unit_when_its_own_teams_best_unit_ties_the_enemy() -> void:
+	# Regression for pass 1's early-out gate specifically (_any_team_could_be_outreached):
+	# it must key off each team's MIN engaged reach, not MAX. Team 0 fields BOTH a spear
+	# (48, ties the enemy's own best) AND a sword (26, genuinely outreached) -- team 0's own
+	# MAX reach (48) ties team 1's MAX (48), so a MAX-keyed gate would wrongly conclude
+	# "nobody could be outreached" and skip the whole pass, silently zeroing team 0's sword's
+	# press bias even though it's genuinely outreached by team 1's spear. This is the base
+	# game's normal mixed-army composition (a 5v5 battle fields Spearmen/Infantry/Archers/
+	# Cavalry per side together), not a rare edge case.
+	var spear_0 := _melee_unit(1, 0, Vector2(9000.0, 9000.0), Vector2.DOWN, SPEAR_REACH)   # ties the enemy's max -- far away, geometrically irrelevant
+	var sword_0 := _melee_unit(2, 0, Vector2.ZERO, Vector2.DOWN, SWORD_REACH)               # genuinely outreached by spear_1
+	var spear_1 := _melee_unit(3, 1, Vector2(0.0, 35.0), Vector2.UP, SPEAR_REACH)           # team 1's only engaged unit
+
+	SoldierMeleeStandoff.accumulate([spear_0, sword_0, spear_1], 1)
+
+	assert_almost_eq(sword_0._sim_steer[0].length(), SoldierMeleeStandoff.STANDOFF_STRENGTH, 0.05,
+		"team 0's sword presses toward the enemy spear at full strength -- team 0 fielding a " +
+		"48-reach spear elsewhere must not mask its own 26-reach sword from ever being queried")
+	assert_gt(sword_0._sim_steer[0].y, 0.0, "presses toward spear_1, along +y")
+
+
 # --- soldier_reach() / attack_range wiring -----------------------------------------------
 
 func test_soldier_reach_reflects_the_unit_type_specific_attack_range() -> void:

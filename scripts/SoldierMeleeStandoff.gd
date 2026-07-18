@@ -72,8 +72,8 @@ static func standoff_bias(pos: Vector2, enemy_pos: Vector2, my_reach: float, ene
 ## own doc comment), only a soldier that could plausibly be OUTREACHED by some engaged enemy
 ## needs a nearest-enemy lookup at all -- a soldier whose own unit already has the longest
 ## reach among every opposing engaged unit can never get a nonzero bias, so querying for it
-## would just resolve to zero every time. Pass 1 below computes each team's max reach among
-## its own currently-engaged units (a cheap O(units) scan, no soldier-level work); pass 2
+## would just resolve to zero every time. Pass 1 below computes each team's MIN and MAX reach
+## among its own currently-engaged units (a cheap O(units) scan, no soldier-level work); pass 2
 ## gathers the full engaged tier (both teams) as CANDIDATES -- any of them could be the
 ## nearest enemy a plausibly-outreached soldier finds -- but only marks a unit's soldiers as
 ## QUERIERS (the ones that actually get a lookup + bias write) when that unit's reach is less
@@ -88,6 +88,7 @@ static func standoff_bias(pos: Vector2, enemy_pos: Vector2, my_reach: float, ene
 ## but it's still the geometrically correct "nearest enemy" to evaluate against, so it can't
 ## be excluded from the candidate pool up front. Only the QUERY side is pruned.
 static func accumulate(units: Array, frame: int) -> void:
+	var min_reach_by_team: Dictionary = {}   # team (int) -> min soldier_reach() among its engaged units
 	var max_reach_by_team: Dictionary = {}   # team (int) -> max soldier_reach() among its engaged units
 	for o in units:
 		var u: Unit = o as Unit
@@ -96,10 +97,18 @@ static func accumulate(units: Array, frame: int) -> void:
 		var r: float = u.soldier_reach()
 		if r > max_reach_by_team.get(u.team, -1.0):
 			max_reach_by_team[u.team] = r
+		if not min_reach_by_team.has(u.team) or r < min_reach_by_team[u.team]:
+			min_reach_by_team[u.team] = r
 
-	if not _any_team_could_be_outreached(max_reach_by_team):
-		return   # every engaged team's own max reach already dominates every other's --
-				 # nobody could possibly be outreached this tick
+	if not _any_team_could_be_outreached(min_reach_by_team, max_reach_by_team):
+		return   # every engaged team's own WEAKEST-reach unit already matches or dominates
+				 # every opposing team's best reach -- nobody could possibly be outreached
+				 # this tick. Gating on the team's MAX (a mixed-loadout army's own best
+				 # unit) instead of its MIN would let that best unit's reach mask a
+				 # different, shorter-reach unit on the same team that genuinely needs to
+				 # press -- e.g. a spear+infantry army facing an enemy spear: the team's
+				 # own max (spear, 48) ties the enemy's max (48), but the team's infantry
+				 # (26) is still outreached by that enemy spear and must not be skipped.
 
 	var epos := PackedVector2Array()
 	var eteam := PackedInt32Array()
@@ -145,12 +154,14 @@ static func accumulate(units: Array, frame: int) -> void:
 		owner._sim_steer[eslots[k]] += standoff_bias(epos[k], enemy["position"], ereach[k], enemy["reach"])
 
 
-## True when at least one team's max engaged reach falls short of some OTHER team's max
-## engaged reach -- i.e. some team could plausibly have an outreached soldier this tick. Pure
-## helper for accumulate()'s pass-1 early-out (see its own doc comment).
-static func _any_team_could_be_outreached(max_reach_by_team: Dictionary) -> bool:
-	for team in max_reach_by_team:
-		if max_reach_by_team[team] < _max_opposing_reach(max_reach_by_team, team):
+## True when at least one team's WEAKEST engaged reach falls short of some OTHER team's max
+## engaged reach -- i.e. some team could plausibly have an outreached soldier this tick. MIN,
+## not MAX: a team's own best-reach unit ties/exceeding the enemy's best doesn't mean every
+## unit on that team does -- see accumulate()'s own call site for the concrete mixed-army
+## failure this guards against. Pure helper for accumulate()'s pass-1 early-out.
+static func _any_team_could_be_outreached(min_reach_by_team: Dictionary, max_reach_by_team: Dictionary) -> bool:
+	for team in min_reach_by_team:
+		if min_reach_by_team[team] < _max_opposing_reach(max_reach_by_team, team):
 			return true
 	return false
 
