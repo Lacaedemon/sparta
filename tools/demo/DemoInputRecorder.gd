@@ -50,6 +50,8 @@ var _state_ticks: Array = []           # ticks to dump a JSON game-state snapsho
 var _state_dir: String = ""            # output dir for state snapshots
 var _state_full: bool = false          # also dump the raw per-soldier arrays (deep debugging)
 var _state_dumped: Dictionary = {}     # tick -> true, so each snapshot is written at most once
+var _hash_stream: FileAccess = null    # per-tick state-hash stream (armed with the state dump)
+var _hash_last_tick: int = -1          # last tick hashed, so a frozen tick writes one line only
 
 
 func _ready() -> void:
@@ -170,6 +172,12 @@ func _on_physics_frame() -> void:
 	_apply_camera(tick)
 	for ev in _by_tick.get(tick, []):
 		_fire(ev)
+	# Stream the per-tick state hash (armed with the state dump). The tick guard makes a
+	# frozen tick -- the sim stops advancing once the battle ends -- write one line, not one
+	# per remaining physics frame.
+	if _hash_stream != null and tick != _hash_last_tick:
+		_hash_last_tick = tick
+		DemoStateHash.write_tick(_hash_stream, get_tree(), tick, Replay.rng.state)
 	if _state_ticks.has(tick) and not _state_dumped.has(tick):
 		_state_dumped[tick] = true
 		_dump_state(tick)
@@ -310,6 +318,13 @@ func _arm_state_dump(script_state: Array) -> void:
 	if _state_dir == "":
 		_state_dir = OS.get_temp_dir().path_join("sparta_demo_state")
 	DirAccess.make_dir_recursive_absolute(_state_dir)
+	# An armed dump run also streams the per-tick two-tier state hash (DemoStateHash) into
+	# the same directory -- every tick, not just the snapshot ticks, so two runs of the same
+	# clip can be compared to the exact tick they first diverge.
+	_hash_stream = DemoHashStream.open_stream(_state_dir)
+	if _hash_stream == null:
+		push_warning("[demo-input] could not open hash_stream.jsonl in %s (err %d)"
+				% [_state_dir, FileAccess.get_open_error()])
 	print("[demo-input] state dump armed at ticks %s -> %s%s" % [
 		str(_state_ticks), _state_dir, " (full per-soldier arrays)" if _state_full else ""])
 	# Same safety net as capture: quit after a generous wall time so a tick past the battle's
