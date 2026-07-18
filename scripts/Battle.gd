@@ -1055,10 +1055,11 @@ func _on_soldier_tick() -> void:
 	# Reach-asymmetric melee standoff: ADDS its bias into _sim_steer, so it must run
 	# after SoldierSteering (which clears+rewrites the array with the friendly-avoidance
 	# bias -- this composes on top, it doesn't replace it) and before the enemy-contact/step
-	# passes below read _sim_steer as this tick's feed-forward. Shares `frame` with
-	# SoldierSteering's own call (not a distinct offset key like SoldierEnemyContact below)
-	# so a SQUARE unit's engaged_soldier_indices() call elsewhere this tick can reuse the
-	# same SoldierEnemyProximity rebuild instead of re-scanning.
+	# passes below read _sim_steer as this tick's feed-forward. Gathers only the engaged
+	# tier into its own SoldierEngagedEnemyProximity grid (see that class's doc comment),
+	# distinct from SoldierEnemyProximity's whole-battle-scan grid a SQUARE unit's own
+	# engaged_soldier_indices() call may also rebuild elsewhere this tick -- the two never
+	# share a cache key, so `frame` here doesn't need to match or offset against that one.
 	SoldierMeleeStandoff.accumulate(units, frame)
 	# Distinct (always-negative) cache key: SoldierSpatialHash.rebuild is idempotent per key
 	# within a tick, and this pass gathers a different position set (cross-team engaged

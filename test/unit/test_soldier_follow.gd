@@ -141,7 +141,7 @@ func test_couple_position_anchor_reaches_less_deep_than_the_old_selection_after_
 	# the block once the true front rank is gone -- the same array splice SoldierMelee.reap()
 	# performs on a real casualty -- so the survivors that fill that budget sit farther back
 	# than before. couple() now anchors a settled, engaged, non-Square regiment on
-	# Unit.ANCHOR_RANKS worth of near-front soldiers instead of the wider Unit.ENGAGED_RANKS
+	# Unit.ANCHOR_RANKS worth of near-front soldiers instead of the wider Unit.engaged_ranks()
 	# depth, so after the front rank falls it reaches less deep into the survivors than the
 	# old, wider selection would -- read directly off the still-existing engaged_soldier_indices
 	# (unchanged, still used elsewhere), not re-implemented, purely to show the contrast.

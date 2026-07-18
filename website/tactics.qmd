@@ -680,15 +680,39 @@ resolves **per soldier** by weapon reach: a spearman strikes any enemy within it
 longer reach, while a swordsman beyond its own (shorter) reach cannot strike back.
 
 That opening-strike edge now **holds up once the lines are locked**, not just on the
-approach. Each engaged soldier feels a standing pressure toward its own weapon's reach:
-a spearman backs away the moment a swordsman has closed inside the spear's reach,
-holding the gap open near arm's length rather than letting the press collapse it; a
-swordsman keeps pushing in until it closes inside its *own* reach, since standing just
-outside the spear's edge gains it nothing. Neither side snaps to a fixed spacing --- the
-gap is the live balance of that pressure against everything else already pushing the
-lines together (the formation's own advance, knockback, body contact) --- so a spear
-line facing a sword line settles at a wider gap than two equal-reach lines would, and
-keeps landing hits while the swordsmen struggle to close the last stretch.
+approach. A spearman doesn't back away once a swordsman closes in --- it holds its
+ground and keeps fighting, and its reach advantage keeps landing hits the same way it
+did on the approach. Landed strikes already shove the struck soldier back (see
+"Knockback now pushes both ways" below), so a longer-reach line pushing a shorter-reach
+one back is a real consequence of winning the exchange, not a separate rule bolted on
+top of it. The swordsman, for its part, keeps pressing forward until it closes inside
+its *own* reach --- standing just outside the spear's edge gains it nothing, so it
+closes the gap rather than trading blows it can't answer. A spear line facing a sword
+line therefore holds its position and keeps landing free hits while the swordsmen work
+to close the last stretch, instead of both sides settling to a common distance.
+
+A regiment's front line isn't the only rank that can strike, either: how many ranks
+deep a unit's engaged tier runs scales with its own weapon's reach and how tightly its
+ranks are packed --- a long-reach spear regiment can field several ranks able to strike
+an enemy within their own weapon's reach, while a widely-spaced cavalry regiment (a
+mounted soldier takes far more ground nose to tail) only ever fields its front rank.
+
+::: {#fig-spear-standoff .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/spear_standoff.jpg">
+  <source src="media/spear_standoff.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A Spearmen regiment holds its ground once locked in melee with an Infantry/sword
+regiment --- it doesn't retreat to hold reach distance, and its reach advantage keeps
+landing hits the same way it did on the approach. The sword presses forward to close
+the gap, but keeps taking losses faster than the spear does.
+:::
 
 **Knockback now pushes both ways.** Every blow obeys Newton's third law: the struck
 soldier is shoved back as before, but the striking soldier also recoils along the same

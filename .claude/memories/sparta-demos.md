@@ -829,7 +829,30 @@ PR #981, `demos/inputs/spear-standoff.json`: an initial 50wu-gap two-formation s
 of 30 Infantry soldiers, all at full HP, within the first 10 ticks -- re-staged with a
 200wu gap and no scripted steps, letting the enemy AI march in instead.)
 
-## A per-soldier reach-standoff bias can splay a formation once the enemy scatters into routing stragglers
+## A per-soldier reach-standoff bias can splay a formation once the enemy scatters into routing stragglers -- SUPERSEDED, see below
+
+**Update: this is now resolved as a side effect of a mid-PR design correction, not a
+follow-up fix.** The entry below described the FIRST version of `SoldierMeleeStandoff`
+(backing away for the longer-reach side, whole-living-battle proximity lookup including
+routers). Both premises changed on the same PR before merge: (1) the longer-reach side
+was changed to NEVER bias at all (equal-or-longer reach is unconditionally zero -- the
+existing landed-strike knockback does the push-back instead, per the "no top-down
+gimmicks" philosophy), so the WINNING side described below structurally cannot splay via
+this mechanism anymore, regardless of how scattered the losing side gets; and (2) the
+nearest-enemy lookup was rescoped from a whole-living-battle scan to the ENGAGED tier
+only (a dedicated `SoldierEngagedEnemyProximity` grid, gathered fresh each tick from
+`Unit.engaged_soldier_indices()`) -- a routing unit drops out of the engaged tier
+`ENGAGED_LINGER` (0.5s) after it stops being FIGHTING, so scattered routing stragglers
+stop being valid standoff candidates for ANYONE shortly after they break, not just for
+the (now nonexistent) backing-away branch. Kept here rather than deleted since the
+`shape_residual`-blind-spot lesson (a formation can drift/rotate as a whole away from its
+canonical slots while staying internally coherent, so the demo-defect scan's scramble
+check won't catch it) is still a real, reusable diagnostic technique for any FUTURE
+per-soldier bias that reads live enemy positions -- re-run this same
+`soldiers_full.pos` vs `soldiers_full.slots` per-soldier distance check against any new
+mechanic in this family before assuming a clean `shape_residual` verdict means no drift.
+
+---
 
 `SoldierMeleeStandoff`'s per-soldier bias (#240 phase 2) looks up each engaged soldier's
 OWN nearest living enemy independently (`SoldierEnemyProximity.nearest_enemy`), including a

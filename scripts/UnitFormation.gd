@@ -398,7 +398,7 @@ static func sort_indices_by_projection(indices: PackedInt32Array, positions: Pac
 ## SoldierBodies.step's engaged/canonical pairing) instead of raw surviving array rank.
 ##
 ## A single LATERAL-only sort (`sort_indices_by_projection` alone) is not enough here: the
-## engaged budget normally spans several ranks (Unit.ENGAGED_RANKS), and every rank shares the
+## engaged budget normally spans several ranks (Unit.engaged_ranks()), and every rank shares the
 ## exact same span of file positions, so sorting purely by lateral position interleaves ranks
 ## instead of keeping each one together -- a body in rank 0 could end up paired with a rank 1
 ## slot just because some other rank's soldier at the same file sorts between them. Bucketing
