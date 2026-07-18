@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/spear-standoff.json",
-  "caption": "Sustained reach standoff (#240): a Spearmen regiment (reach 48wu) holds its ground once locked in melee with an Infantry/sword regiment (reach 26wu) -- it does not retreat to hold distance; its reach advantage and the knockback from landed strikes do the work instead. The sword presses forward to close the gap once it's within striking range, but keeps bleeding faster than the spear does (24 sword soldiers down to 19 by tick 180, into single digits past tick 900) once both sides are locked in.",
+  "caption": "Sustained reach standoff (#240): a Spearmen regiment (reach 48wu) holds its ground once locked in melee with an Infantry/sword regiment (reach 26wu) -- it does not retreat to hold distance, and multiple ranks of the block (not just the front rank) can strike within their own weapon's reach. The sword presses forward to close the gap once it's within striking range; both sides trade losses as the fight wears on (24 Infantry down to 19 by tick 180), but the spear's reach and rank-depth advantage tell over the clash -- by tick 740 the spear (12/24 soldiers, morale 58) holds a clear edge over the sword (10/24 soldiers, morale 48), neither side yet routing.",
   "fixed_fps": 30,
   "max_frames": 720,
   "fps": 15,
