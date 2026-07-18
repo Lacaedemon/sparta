@@ -2021,3 +2021,23 @@ listing, or another site's link can 404 because the repo was deleted -- the Godo
 library's "RTS Camera 3D" page still links `alfredbaudisch/GodotRTSCamera3D`, whose
 GitHub repo is gone. Both failure modes (moddb.com bot-403, the deleted camera repo)
 cost a red link-checker run on PR #929 after a probe pass that skipped GitHub URLs.
+
+## Direction reversals are where the marker/body split bites: scalar speed re-aims instantly, bodies carry real momentum
+
+`_current_speed` is a scalar with no direction: any flow that flips a unit's travel
+direction (`_move_to`'s `dir`, a peel goal swapping sides, a reversal re-order) re-aims
+the FULL speed instantly while the soldier bodies still carry their real momentum the old
+way, and `SoldierBodies.couple()` then drags the regiment after the bodies for seconds.
+Two shipped mitigations name the pattern: the cycle-charge peel BRAKES onto its standoff
+(`brake_arrival`, PR #968), and a reversing re-order bleeds speed during its
+response/reform hold (`REORDER_MOMENTUM_DOT_MIN`, PR #970) with the hold's centre-pivot
+paced to the corner man (it was raw TURN_RATE -- the same unpaced-grid-rotation blob class
+the marching pivot already fixed). When adding any new flow that turns a moving unit
+sharply, give it a brake leg (or verify existing braking covers it) rather than letting
+the scalar speed carry through the flip -- and expect a RESIDUAL mid-turn pinch
+regardless: the wide cavalry grid's flank bodies track their sweeping slots with zero
+gait margin, so nnd transiently bottoms at ~1.3-3.2 wu depending on the exact order
+phase. That depth is PHASE-SENSITIVE -- do not write a test floor between those numbers
+(pre/post-fix ranges overlap); anchor regression tests on the brake, the pivot pacing,
+and the overshoot bound instead, which separate cleanly. The residual is the formed-turn
+/ chase deformation family tracked as an open sim investigation.
