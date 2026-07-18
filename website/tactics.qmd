@@ -1083,7 +1083,8 @@ into different tools:
   router narrows. Arm it on a unit you want cleaning up broken formations rather
   than getting drawn into (or staying stuck in) a fresh melee with whoever happens
   to be nearest --- a natural pairing with a flanking cavalry sweep once the enemy
-  line starts to crack.
+  line starts to crack. The pursuit rides at a canter beyond the sprint window, so
+  the sweeper actually gains on a fleeing router instead of strolling after it.
 - **Roll the line** (<kbd>;</kbd>) --- once the current target routs or is
   destroyed, the unit automatically re-targets the next-closest enemy still
   fighting instead of standing idle or chasing a broken foe down. A single
@@ -1105,8 +1106,11 @@ into different tools:
 - **Chase** (<kbd>\\</kbd>) --- relentless pursuit: the unit overrides the normal
   disengage exit a plain move order (or losing steady contact) otherwise gives
   it, so it keeps closing on and re-engaging the same fleeing or repositioning
-  enemy instead of breaking off. Use it to run down a routing foe rather than
-  let it escape to rally and rejoin the fight later.
+  enemy instead of breaking off. It also presses the approach at a canter beyond
+  the sprint window (a plain attack conserves stamina at a walk out there), so
+  "relentless" means it actually closes, not just that it never gives up. Use it
+  to run down a routing foe rather than let it escape to rally and rejoin the
+  fight later (@fig-chase-canter).
 - **Wedge charge** (<kbd>-</kbd>) --- maximizes the approach at the cost of
   defense and stamina: a faster pace toward the target, a lower own defense
   while fighting, and faster fatigue buildup while engaged. Use it to punch a
@@ -1136,6 +1140,23 @@ A caracole against a broken foe: the first impact routs the infantry, which flee
 The cavalry retires at a trot, brakes onto its standoff, wheels about, and canters
 back in to drive a second charge home --- the foe rallies while the horse is out at
 the standoff, and the fresh charge slams into it just the same.
+:::
+
+::: {#fig-chase-canter .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/chase_canter.jpg">
+  <source src="media/chase_canter.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Stern-chase pacing: two identical cavalry pursue the same withdrawing infantry
+from beyond the sprint window. The Chase-armed unit presses at a canter and runs
+the quarry down; the plain attack order keeps the stamina-conserving walk and
+barely gains on a quarry walking away at nearly its own pace.
 :::
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed

@@ -4414,6 +4414,45 @@ func test_cycle_charge_approach_canters_beyond_the_sprint_window() -> void:
 	PathField.active = old_pf
 
 
+func test_chase_approach_canters_beyond_the_sprint_window() -> void:
+	# CHASE ("relentless pursuit") shares the caracole's canter arm: without it, a
+	# pursuit starting beyond SPRINT_START_DISTANCE closed on a fleeing target at
+	# walk-minus-flee pace -- a stern chase that reads as strolling after the quarry.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	u.order_mode = Unit.ORDER_CHASE
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(500, 0)   # well beyond SPRINT_START_DISTANCE
+	u.target_enemy = enemy
+	for i in range(150):
+		u._think(1.0 / 60.0)
+	assert_almost_eq(u._current_speed, u.jog_speed, 2.0,
+		"a CHASE pursuit paces at a canter beyond the sprint window")
+	PathField.active = old_pf
+
+
+func test_sweep_routers_approach_canters_beyond_the_sprint_window() -> void:
+	# SWEEP_ROUTERS is explicitly about running down routing enemies, so it canters
+	# toward its quarry beyond the sprint window like the other pursuit stances.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	u.order_mode = Unit.ORDER_SWEEP_ROUTERS
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(500, 0)   # well beyond SPRINT_START_DISTANCE
+	u.target_enemy = enemy
+	for i in range(150):
+		u._think(1.0 / 60.0)
+	assert_almost_eq(u._current_speed, u.jog_speed, 2.0,
+		"a router sweep paces at a canter beyond the sprint window")
+	PathField.active = old_pf
+
+
 func test_plain_attack_approach_still_walks_beyond_the_sprint_window() -> void:
 	# The canter arm is stance-gated: an ordinary (no-stance) attack approach keeps the
 	# stamina-conserving walk out beyond SPRINT_START_DISTANCE.

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/stern-chase-canter.json",
+  "caption": "Stern-chase pacing: two identical cavalry pursue the same withdrawing infantry from beyond the sprint window. The left unit, armed with the Chase stance, presses at a canter (trot) and runs the quarry down; the right unit, on a plain attack order, keeps the stamina-conserving walk and barely gains on a quarry walking away at nearly its own pace.",
+  "fixed_fps": 30,
+  "max_frames": 260,
+  "fps": 15,
+  "width": 720
+}
