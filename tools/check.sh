@@ -26,7 +26,10 @@
 #             non-gating, so not in the default set (run it explicitly or via "all").
 #   patch_coverage
 #             Local approximation of Codecov's codecov/patch check: what fraction
-#             of THIS diff's added scripts/*.gd lines are covered. Regenerates
+#             of THIS diff's added scripts/*.gd lines are covered. Fails when
+#             that fraction is below the effective target (auto: the project-wide
+#             total, like codecov/patch's own `target: auto`; override with
+#             SPARTA_CHECK_PATCH_COVERAGE_TARGET). Regenerates
 #             coverage/lcov.info fresh (runs `coverage` as a dependency), so it's
 #             slow — not in the default set. Run it before pushing a scripts/
 #             change rather than discovering a codecov/patch failure after a
@@ -74,6 +77,11 @@
 #   SPARTA_CHECK_PATCH_COVERAGE_BASE
 #                Same, for the `patch_coverage` check's diff base (default:
 #                tries origin/main, then main).
+#   SPARTA_CHECK_PATCH_COVERAGE_TARGET
+#                Fixed pass/fail threshold (percent, e.g. 90) for the
+#                `patch_coverage` check. Default: unset, which mirrors
+#                codecov/patch's `target: auto` — the project-wide line
+#                coverage computed from the regenerated coverage/lcov.info.
 #
 # Exit status is non-zero if any selected check fails, so it drops straight into
 # a pre-push hook or a `&&` chain.
@@ -159,7 +167,7 @@ list_checks() {
   info "  comments   issue/PR-number citations in NEW GDScript comment lines (check-comment-citations.yml)"
   info "  units      units-convention lint on NEW GDScript lines (docs/units-convention.md)"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
-  info "  patch_coverage  local codecov/patch approximation for this diff's scripts/*.gd changes"
+  info "  patch_coverage  local codecov/patch gate for this diff's scripts/*.gd changes (fails below the effective target)"
   info "  links      Markdown link-check via lychee (check-links.yml)"
   info "  demo_defects  deterministic defect scan of this diff's changed demo input scripts (demo-video.yml)"
   info ""
@@ -400,14 +408,17 @@ check_patch_coverage() {
   # Codecov's codecov/patch check, computed locally: what fraction of the lines
   # THIS diff adds under scripts/ (recursively -- campaign/ and any other
   # subdirectory included, same as Godot's coverage instrumentation, which
-  # walks the whole tree) are covered by the GUT suite. Not in the default set
-  # for the same reason `coverage` is: this local check itself never fails on
-  # the percentage -- it always exits 0 and leaves the number for you to read
-  # and act on, mirroring test-coverage.yml's own job (see its header comment:
-  # "Coverage *numbers* never gate a PR"). That's this repo's own workflow, not
-  # a claim about Codecov's actual codecov/patch status check or branch
-  # protection settings, which this comment doesn't assert either way. Run it
-  # explicitly, or via `all`, before pushing a scripts/ change.
+  # walks the whole tree) are covered by the GUT suite. FAILS when that
+  # fraction lands below the effective target, mirroring how the codecov/patch
+  # status check itself judges a PR: its default `target: auto` compares patch
+  # coverage against the project-wide total, approximated here from the
+  # regenerated report's own LH:/LF: records (Codecov uses the PR base's
+  # total; the local report is HEAD's -- the closest number available without
+  # a second instrumented run, differing only by this diff's own effect on
+  # the total). SPARTA_CHECK_PATCH_COVERAGE_TARGET overrides the auto target
+  # with a fixed percentage. Not in the default set only because it inherits
+  # `coverage`'s ~15-20 min runtime. Run it explicitly, or via `all`, before
+  # pushing a scripts/ change.
   #
   # The diff/base checks below run BEFORE the expensive coverage regeneration
   # (not after, as an earlier version of this check did) so a diff with no
@@ -552,13 +563,42 @@ check_patch_coverage() {
   fi
 
   printf '%s\n' "$report" | grep -v '^TOTAL '
-  local total_line pct
+  local total_line pct fraction
   total_line="$(printf '%s\n' "$report" | grep '^TOTAL ')"
   pct="$(printf '%s' "$total_line" | awk '{print $NF}')"
+  fraction="$(printf '%s' "$total_line" | awk '{print $2}')"
+
+  # Effective target, mirroring codecov/patch's default `target: auto` (see
+  # the header comment): the project-wide line coverage from the report just
+  # regenerated, unless SPARTA_CHECK_PATCH_COVERAGE_TARGET pins a fixed one.
+  local target target_src
+  if [ -n "${SPARTA_CHECK_PATCH_COVERAGE_TARGET:-}" ]; then
+    case "$SPARTA_CHECK_PATCH_COVERAGE_TARGET" in
+      *[!0-9.]*|'') err "SPARTA_CHECK_PATCH_COVERAGE_TARGET must be a bare percentage number, got '${SPARTA_CHECK_PATCH_COVERAGE_TARGET}'."; return 1 ;;
+    esac
+    target="$SPARTA_CHECK_PATCH_COVERAGE_TARGET"
+    target_src="SPARTA_CHECK_PATCH_COVERAGE_TARGET"
+  else
+    target="$(awk -F: '/^LH:/ { h += $2 } /^LF:/ { f += $2 } END { if (f > 0) printf "%.2f", 100.0 * h / f }' "$lcov")"
+    target_src="auto: project-wide total from coverage/lcov.info"
+  fi
+  if [ -z "$target" ]; then
+    info ""
+    info "Patch coverage: ${fraction} = ${pct}%"
+    warn "Could not compute an auto target (no LH:/LF: records in $lcov) -- not gating."
+    return 0
+  fi
+
   info ""
-  info "Patch coverage: $(printf '%s' "$total_line" | awk '{print $2}') = ${pct}%"
+  info "Patch coverage: ${fraction} = ${pct}%  (target: ${target}% -- ${target_src})"
   info "(Codecov's codecov/patch check computes the same metric server-side against this PR's base;"
   info "this is a local approximation -- see tools/README.md.)"
+  if ! awk -v p="$pct" -v t="$target" 'BEGIN { exit !(p + 0 >= t + 0) }'; then
+    err "Patch coverage ${pct}% is below the target ${target}% -- codecov/patch would fail this diff."
+    err "Cover the missing lines listed above, or see tools/README.md ('Checking patch coverage"
+    err "before you push') for the structurally-hard-to-cover escape hatch."
+    return 1
+  fi
 }
 
 check_chars() {
