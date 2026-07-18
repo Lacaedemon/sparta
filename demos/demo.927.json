@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/routing-terrain-pathfinding.json",
+  "caption": "Re-choreographed trapped_routing (new scenario order_mode staging key + all-teams-control scripting): the brittle infantry HOLDS its ground, breaks in the opening cavalry clash with half the regiment still standing, and the mob visibly detours around the impassable hill -- the westward track along the hill face and the turn north around the west corner -- while the blown cavalry peel off on diverging exits and the unit, still inside their reach when its rout timer expires, shatters and flees for good. Previously the unit auto-advanced out of position, was annihilated at the impact, and no detour ever appeared on screen.",
+  "fixed_fps": 30,
+  "max_frames": 260,
+  "fps": 12,
+  "width": 640
+}

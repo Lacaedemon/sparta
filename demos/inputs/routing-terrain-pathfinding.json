@@ -1,14 +1,24 @@
 {
-  "_comment": "Scenario-staged routing-around-terrain demo: a lone, weak player unit is staged just south of the impassable hill (Battle.TERRAIN, x:1150-1400 y:380-580) and quickly breaks under a strong two-flank cavalry attack. Team 0 always flees toward its own back edge (upward) on rout -- which runs straight into the hill from this position -- and PathField.next_step_fleeing() now routes it around the obstacle instead of walking straight in, the same way an ordered march does. The two cavalry keep pace with the detour and gradually grind the fleeing unit down. This scenario does NOT demonstrate the separate 'stands and fight when genuinely trapped' behavior -- the hill is a single free-standing obstacle nowhere near a field edge, so terrain alone can never fully enclose a unit here; that behavior is covered instead by test_trapped_routing_unit_fights_instead_of_fleeing (test/unit/test_routing_terrain_pathfinding.gd), which stages a real 4-sided cage directly. No player input needed; the scenario + seed make the clash deterministic.",
+  "_comment": "Scenario-staged routing-around-terrain demo, choreographed via all_teams_control (both teams take scripted orders; no AI stance/order overrides). A brittle 70-man infantry HOLDS position (scenario order_mode key -- the stance keeps the bait from auto-advancing out of position) just south of the impassable hill (Battle.TERRAIN, x:1150-1400 y:380-580) while two cavalry charge it from the south (t8 box-select, t24 attack). The near-zero morale breaks the regiment in the opening clash (~35 of 70 still standing when the cavalry release it). The pull-offs are staggered and DIVERGING -- the west cavalry peels south at t96-104, the east one fights on and peels southeast at t148-156 -- because every other release shape hit a tracked sim defect: a move order to a cavalry still mid-approach wedges in its turn/reform phase and the unit creeps into the router while its bodies compress, and a shared retreat destination makes the tired pair loiter beside the fleeing mob with the same compression. Only an order issued to a unit already IN CONTACT disengages cleanly, so each cavalry is released from melee, on its own diverging exit. A routed team-0 unit flees toward its own back edge (upward), which runs straight into the hill from here, and PathField.next_step_fleeing() routes the mob around the obstacle's near (west) corner instead of walking it into the rock -- the westward track along the hill face and the turn north around the corner are the clip's centerpiece (a stamina-drained router flees at walk speed, so the corner-rounding lands late in the clip). The cavalry are still just inside RALLY_CONTACT_RADIUS when the 6 s rout timer expires (~t440), so the unit SHATTERS -- morale recovery frozen, fleeing for good -- rather than rallying mid-clip. This scenario does NOT demonstrate the separate 'stands and fights when genuinely trapped' behavior -- the hill is a single free-standing obstacle nowhere near a field edge, so terrain alone can never fully enclose a unit here; that behavior is covered instead by test_trapped_routing_unit_fights_instead_of_fleeing (test/unit/test_routing_terrain_pathfinding.gd), which stages a real 4-sided cage directly. The scenario + seed + scripted input make the whole sequence deterministic.",
   "seed": "12345",
+  "all_teams_control": true,
   "scenario": [
-    {"team": 0, "type": "Infantry", "x": 1250, "y": 620, "count": 50, "morale": 20.0},
-    {"team": 1, "type": "Cavalry", "x": 1190, "y": 700},
-    {"team": 1, "type": "Cavalry", "x": 1310, "y": 700}
+    {"team": 0, "type": "Infantry", "x": 1185, "y": 612, "count": 70, "morale": 3.0, "order_mode": "Hold"},
+    {"team": 1, "type": "Cavalry", "x": 1155, "y": 680, "count": 24},
+    {"team": 1, "type": "Cavalry", "x": 1215, "y": 682, "count": 24}
   ],
   "camera": [
-    {"tick": 0, "x": 1250.0, "y": 520.0, "zoom": 0.65}
+    {"tick": 0, "x": 1170.0, "y": 600.0, "zoom": 0.6},
+    {"tick": 200, "x": 1140.0, "y": 580.0, "zoom": 0.6},
+    {"tick": 400, "x": 1110.0, "y": 555.0, "zoom": 0.62}
   ],
-  "steps": [],
-  "state": [10, 40, 80, 120, 160, 200]
+  "steps": [
+    {"tick": 8, "box": {"from": [1090, 640], "to": [1290, 760]}},
+    {"tick": 24, "rmb_click": [1185, 612]},
+    {"tick": 96, "box": {"from": [1080, 560], "to": [1165, 705]}},
+    {"tick": 104, "rmb_click": [1150, 860]},
+    {"tick": 148, "box": {"from": [1160, 560], "to": [1310, 760]}},
+    {"tick": 156, "rmb_click": [1300, 800]}
+  ],
+  "state": [10, 60, 85, 100, 110, 130, 160, 200, 240, 280, 320, 360, 400, 430, 445, 460, 480, 520]
 }

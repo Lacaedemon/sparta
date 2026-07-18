@@ -133,14 +133,17 @@ broke, for as long as it's still on the field.
 </video>
 ```
 
-Routing around terrain: a weak unit breaks and flees straight toward the hill,
-but paths around the obstacle instead of walking into it, the same way an
-ordered march does. Two pursuing cavalry keep the pressure on throughout,
-gradually grinding it down instead of letting it put real distance between
-them. A router with no terrain escape route left at all stands and fights
-instead of fleeing in place (see [Terrain](#terrain)) &mdash; the open field
-this clip runs in never actually boxes a unit in, so that specific case isn't
-shown here.
+Routing around terrain: a brittle unit breaks under a two-flank cavalry
+charge and flees straight toward the hill, but paths around the obstacle
+instead of walking into it, the same way an ordered march does &mdash; watch
+the mob track west along the hill face and turn north around the west
+corner. The cavalry, blown from the charge, peel off on diverging exits
+&mdash; but they're still just inside reach when the broken unit's time
+runs out, so it shatters and flees for good instead of rallying. A router
+with no terrain escape route left at all stands and fights instead of
+fleeing in place (see [Terrain](#terrain)) &mdash; the open field this clip
+runs in never actually boxes a unit in, so that specific case isn't shown
+here.
 :::
 
 ## Rank cycling (trained units)

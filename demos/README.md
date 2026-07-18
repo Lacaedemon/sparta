@@ -182,6 +182,14 @@ script under `demos/inputs/`:
     already above the rally threshold and rallies in a single tick, showing no
     recovery at all. See `demos/inputs/morale-recovery.json` (morale `1.0`, so the
     climb back to the ~35 rally threshold is gradual and visible).
+  - `order_mode` (optional) — the unit's starting stance, as the
+    `Battle.ORDER_MODE_NAMES` display name matched case-insensitively with underscores
+    accepted for spaces (`"Hold"`, `"hold"`, `"cycle_charge"`), or the raw
+    `Battle.OrderMode` int. `"Hold"` is the staging workhorse: a held unit stands its
+    ground instead of auto-advancing on a near enemy, so a scenario can bait a charge
+    onto a fixed spot (see `demos/inputs/routing-terrain-pathfinding.json`). Like
+    `starting_state`, an unrecognized value warns and keeps the default stance rather
+    than failing the recording.
 
   Example — stage a lone, low-morale infantry unit against a strong cavalry force so it routs
   (then rallies, if the build has that): `demos/inputs/rout-rally.json`.

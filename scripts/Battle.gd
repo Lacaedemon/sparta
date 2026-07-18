@@ -683,6 +683,11 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	# malus (higher); a dict without the key keeps the Unit default.
 	if d.has("atomic_response_s"):
 		u.atomic_response_delay = float(d["atomic_response_s"])
+	# Optional starting stance (an OrderMode int; _spawn_scenario maps a spec's name
+	# through _order_mode_from_spec). HOLD lets a staged unit stand its ground instead
+	# of auto-advancing on a near enemy, so a demo can bait a charge onto a fixed spot.
+	if d.has("order_mode"):
+		u.order_mode = int(d["order_mode"])
 	u.facing = facing
 	u.position = pos
 	u.field_bounds = FIELD   # so a skirmisher kites without backing off the map
@@ -701,7 +706,8 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 
 
 ## Spawn a custom demo matchup from a scenario list (see demos/README.md, "Scenario
-## staging"). Each spec: {team, type, x, y, facing?, count?, morale?, formation?}. Tooling
+## staging"). Each spec: {team, type, x, y, facing?, count?, morale?, formation?,
+## starting_state?, disciplined?, atomic_response_s?, order_mode?}. Tooling
 ## only — reached solely when DemoInputRecorder sets `scenario` before the battle enters the
 ## tree; a normal battle leaves `scenario` empty and never calls this. `type` names one of
 ## the default-loadout entries (Spearmen / Infantry / Archers / Cavalry).
@@ -729,6 +735,10 @@ func _spawn_scenario(specs: Array) -> void:
 			d["disciplined"] = bool(spec["disciplined"])
 		if spec.has("atomic_response_s"):
 			d["atomic_response_s"] = float(spec["atomic_response_s"])
+		if spec.has("order_mode"):
+			var mode: int = _order_mode_from_spec(spec["order_mode"])
+			if mode >= 0:
+				d["order_mode"] = mode
 		var team := int(spec.get("team", 0))
 		var pos := Vector2(float(spec.get("x", FIELD.size.x * 0.5)), float(spec.get("y", FIELD.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
@@ -752,6 +762,24 @@ func _loadout_for_type(loadout: Array, type_name: String) -> Dictionary:
 		if str(d["name"]) == type_name:
 			return d
 	return {}
+
+
+## An order-mode spec value -> the OrderMode int, or -1 (with a warning) when unknown.
+## Accepts the ORDER_MODE_NAMES display name -- case-insensitively, with underscores
+## accepted for spaces ("Hold", "hold", "attack_flank") -- or a raw OrderMode int, so
+## scenario JSON reads as prose while a test can pass the enum value straight through.
+func _order_mode_from_spec(value: Variant) -> int:
+	if typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT:
+		var mode := int(value)
+		if ORDER_MODE_NAMES.has(mode):
+			return mode
+	elif typeof(value) == TYPE_STRING:
+		var wanted: String = str(value).to_lower().replace("_", " ")
+		for mode: int in ORDER_MODE_NAMES:
+			if String(ORDER_MODE_NAMES[mode]).to_lower() == wanted:
+				return mode
+	push_warning("[battle] scenario 'order_mode' %s is not a known mode; keeping Normal." % [value])
+	return -1
 
 
 ## Apply a starting state to a unit (ROUTING for demos/tests). For demo tooling only;
