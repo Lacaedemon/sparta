@@ -146,6 +146,48 @@ func test_non_default_map_is_published_to_the_replay_and_restored_on_playback() 
 	assert_eq(restored["spawn_lines"], [200.0, 1300.0], "the published spawn lines match")
 
 
+func test_playback_restores_the_recorded_map_before_rebuilding_the_battlefield() -> void:
+	# Arm playback by hand: seed + a recorded map block, no orders. Battle._ready
+	# must apply the map before any consumer (camera, routing grid, spawns) runs.
+	var old_mode: int = Replay.mode
+	var old_map: Dictionary = Replay.map
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.seed_value = 424242
+	Replay.rng.seed = Replay.seed_value
+	Replay.map = BattleMap.serialize(Rect2(0, 0, 700, 900),
+			[{"rect": Rect2(100, 400, 200, 100), "type": "hill", "kind": "block"}],
+			[150.0, 750.0])
+	var scene := load("res://scenes/Battle.tscn") as PackedScene
+	var battle: Node = scene.instantiate()
+	add_child_autofree(battle)
+	assert_eq(battle.field, Rect2(0, 0, 700, 900), "playback rebuilds the recorded field")
+	assert_eq((battle.terrain as Array).size(), 1, "playback rebuilds the recorded terrain")
+	assert_eq(battle.spawn_line_ys, [150.0, 750.0], "playback rebuilds the recorded spawn lines")
+	assert_eq(battle.FIELD_WITH_MARGIN, Rect2(0, 0, 700, 900).grow(battle.ROUT_MARGIN),
+			"the rout margin tracks the restored field")
+	Replay.mode = old_mode
+	Replay.map = old_map
+
+
+func test_playback_with_a_bad_map_block_warns_and_keeps_the_default_map() -> void:
+	# A hand-edited replay with a corrupt map block must not silently run a
+	# plausible-looking battle on the wrong battlefield: it warns and falls back
+	# to the default map (the seed/orders still replay, just on default ground).
+	var old_mode: int = Replay.mode
+	var old_map: Dictionary = Replay.map
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.seed_value = 424242
+	Replay.rng.seed = Replay.seed_value
+	Replay.map = {"field": [0, -5]}
+	var scene := load("res://scenes/Battle.tscn") as PackedScene
+	var battle: Node = scene.instantiate()
+	add_child_autofree(battle)
+	assert_eq(battle.field, battle.FIELD, "a corrupt map block falls back to the default field")
+	assert_eq(battle.terrain, battle.TERRAIN, "and the default terrain")
+	Replay.mode = old_mode
+	Replay.map = old_map
+
+
 func test_default_map_publishes_no_replay_map_block() -> void:
 	var scene := load("res://scenes/Battle.tscn") as PackedScene
 	var battle: Node = scene.instantiate()
