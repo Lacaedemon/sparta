@@ -69,4 +69,5 @@ DEMOS=(
   "reversal_march|demos/inputs/reversal-march.json|30|380|640|input"
   "chase_canter|demos/inputs/stern-chase-canter.json|30|260|640|input"
   "funnel_lanes|demos/inputs/funnel-hug-lanes.json|60|1080|640|input"
+  "spear_standoff|demos/inputs/spear-standoff.json|30|720|720|input"
 )

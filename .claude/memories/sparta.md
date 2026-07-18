@@ -46,6 +46,26 @@ modifier or an instant state switch that ignores it. Concretely:
   from mass/momentum/impulse over a flat "type X beats type Y" bonus. This is the
   standing rationale behind #164/#296 (move collision to the individual soldier level)
   and the long-horizon #550 (individual-level LOD simulation at Cannae scale).
+- **No synthetic force duplicating a physical mechanism that already produces the same
+  outcome.** A DIFFERENT failure mode than a flat type-bonus above: PR #981 (#240,
+  sustained melee standoff) first shipped a longer-reach soldier ACTIVELY BACKING AWAY
+  once a shorter-reach enemy closed in, to hold its reach distance. Caught in review: the
+  push-back this was meant to deliver already exists — every landed strike already
+  applies real, physically-motivated knockback (`SoldierMelee`/`SoldierCombat`), so a
+  longer-reach side's opening-strike advantage (it lands hits before the enemy is even in
+  range) already carries through the sustained case via that existing mechanism. Adding a
+  second, synthetic backing-away force on top was exactly the kind of top-down gimmick
+  this philosophy exists to avoid, just aimed at MOTION instead of a damage/defense
+  multiplier. Corrected to: the longer-reach side holds its ground and gets NO bias at
+  all (equal-or-longer reach is unconditionally zero); only the OUTREACHED side still
+  actively presses in, since closing the gap to negate a real disadvantage isn't
+  redundant with anything else already in the sim. A genuine "fighting retreat" as a
+  deliberate PLAYER-COMMANDED tactic (not the passive default) is still a legitimate
+  mechanic — tracked separately as its own order/stance (#983) rather than folded into
+  the default per-soldier physics. Before adding a new per-soldier bias/force, check
+  whether an existing mechanism (knockback, reach-based hit resolution, contact impulses)
+  already produces the intended outcome as a side effect — if so, the new mechanic should
+  do LESS, not add a parallel force alongside it.
 
 When implementing or reviewing a new mechanic, ask: does this emerge from the
 individual-level physics already in place, or is it a shortcut layered on top? Prefer
@@ -1631,6 +1651,37 @@ before growing headcount. The exact multipliers drift as the sim evolves; the su
 is structural. (One-machine local sweep, not the PLAN.md reference-hardware numbers; re-measure
 before citing exact figures.)
 
+**Concrete regression + fix, PR #981 (#240 melee standoff):** `SoldierMeleeStandoff.accumulate`
+originally called `SoldierEnemyProximity.rebuild(units, frame)` unconditionally every tick — a full
+O(every living soldier in the battle) scan, run for EVERY engaged soldier's nearest-enemy lookup,
+not just the rare SQUARE-mode case that whole-battle grid actually exists for. Reported by CI's
+benchmark comment as +130.2% mean tick time (25.017ms -> 57.6ms on CI hardware); reproduced locally
+at +62.8% (24.36ms -> 39.66ms, same reference scenario). Two independent fixes stacked to fully
+resolve it, ending BELOW the pre-PR baseline (local: 24.36ms -> ~22.5-23.3ms across two runs):
+1. **Scope the candidate/query population to the ENGAGED tier, not the whole battle.** A dedicated
+   `SoldierEngagedEnemyProximity` grid (own file, own frame-keyed cache -- deliberately NOT shared
+   with `SoldierEnemyProximity` or `SoldierSpatialHash`, since a shared frame-keyed cache can only
+   ever serve ONE caller's population per tick) is rebuilt fresh each tick from exactly the units'
+   own `engaged_soldier_indices()` gather, mirroring `SoldierEnemyContact.accumulate`'s existing
+   gather-then-resolve pattern. This alone cut the local regression from +62.8% to roughly +31%.
+2. **Prune the QUERY side using a cheap per-team (not per-unit, not per-soldier) reach comparison.**
+   Once a same-or-longer-reach pairing is unconditionally zero (see the design-correction entry
+   above), a soldier only needs a nearest-enemy lookup at all if its own unit's reach is LESS than
+   the max reach among any OPPOSING team's currently-engaged units -- a single O(units) pre-pass
+   (not O(soldiers)) that, in a battle where every current engagement happens to be same-type-vs-
+   same-type (the common case for a symmetric two-army scenario), skips the ENTIRE per-soldier
+   gather/rebuild/query for that tick. The candidate pool itself still has to include every engaged
+   soldier regardless (a querying soldier's true nearest enemy could turn out to be equal-or-lower
+   reach, resolving to zero per-pair, but it's still the geometrically correct answer to evaluate)
+   -- only which soldiers get to ISSUE a query is pruned, not what's indexed.
+**Lesson for any future per-soldier lookup in this codebase:** before reaching for a shared/whole-
+battle spatial structure, check (a) whether the population can be scoped to just the engaged tier
+(almost always yes, per the existing engaged/unengaged LOD split this whole layer is built on), and
+(b) whether a cheap unit- or team-level pre-filter (not requiring a soldier-level pass at all) can
+rule out entire populations from ever needing the expensive lookup, the way "my own reach already
+dominates the max opposing reach" does here. Measure before adding machinery, per (a) alone often
+being enough — verified here by benchmarking after each stacked fix rather than assuming.
+
 ## CI workflows render AUTHOR-controlled data — keep it as data, never let it reach a shell as code
 
 `demo-video.yml` and its siblings run against author-controlled input: a PR author writes the demo
@@ -2169,3 +2220,36 @@ directly onto "this stance applies to only this unit." (`Lacaedemon/sparta` PR #
 BEFORE issuing the east cavalry's plain attack order, and the dump showed both units
 reading `order_mode: Chase` instead of the intended contrast -- fixed by reordering so
 the plain attack order is issued first and Chase is armed last.)
+
+## Line endings are MIXED across this repo's own files -- a multi-line Edit `old_string` copied from Read's numbered output can silently fail to match
+
+Some `scripts/*.gd` files are CRLF (`Battle.gd`, confirmed via `od -c`), others are LF
+(`test/unit/test_soldier_enemy_proximity.gd`) -- there's no single repo-wide convention,
+likely from different authoring tools over time. `git config core.autocrlf` is `true`,
+so `git diff`/`git status` always normalize and never surface this as noise -- it's
+invisible from git's own tooling.
+
+The Edit tool's `old_string` match is exact-byte, and a multi-line `old_string` typed
+with plain `\n` between lines never matches a CRLF file's actual `\r\n` line endings --
+it fails with a generic "String to replace not found in file" error that gives no hint
+the cause is line endings specifically (indistinguishable from a genuine typo or a
+stale read). This bit repeatedly on `Battle.gd`: even a SINGLE-line `old_string` failed
+at first, traced to accidentally including an extra leading tab (visually
+indistinguishable when reading Read's `NNNN\t<content>` numbered-line output, since
+the line-number/content separator tab and the file's own leading indentation tab look
+identical at a glance).
+
+**How to apply:** if an Edit call fails with "String to replace not found" on a target
+you can SEE in a fresh Read of the exact same file, don't assume it's a stale read or a
+transcription typo first -- check `git show HEAD:<path> | grep -c $'\r'` (or `od -c` on
+the specific line) for CRLF before spending time re-comparing characters by eye. Once
+confirmed CRLF, split the edit into single-line `old_string`/`new_string` pairs (a
+single line never contains an embedded `\n`, so CRLF-vs-LF never matters within it) --
+the `new_string` can still be multi-line; only `old_string` needs to stay within one
+line when the file is CRLF. `sed -n 'N,Mp' <file> | cat -A | sed 's/\^I/[TAB]/g'` is the
+fastest way to confirm exact tab counts before retyping an `old_string` that failed for
+this reason. A pure trailing-content deletion (no replacement text) is safe via
+`head -n N file > tmp && cp tmp file` instead, since it copies raw bytes and never
+needs to match multi-line content at all. (`Lacaedemon/sparta` PR #981, 2026-07-18:
+lost real time on this before isolating the cause via `od -c` and a string of
+single-line control edits.)

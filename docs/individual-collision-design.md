@@ -96,8 +96,9 @@ verified before the next phase builds on it.
 2. **[DONE] Soldier-level separation, engaged tier, within AND across regiments.**
    `_separate()`'s penetration/`_push_share` math is carried down to soldiers via the
    shared `_soldier_pair_push` helper (so the spear-vs-cavalry hard block falls out
-   for free) and run for *engaged* soldiers only (front `ENGAGED_RANKS`, with linger
-   hysteresis). One global, deterministic pass (`Unit.separate_engaged_global`,
+   for free) and run for *engaged* soldiers only (front `Unit.engaged_ranks()` -- a
+   depth scaled to the unit's own weapon reach and rank spacing, not a flat constant --
+   with linger hysteresis). One global, deterministic pass (`Unit.separate_engaged_global`,
    orchestrated by `Battle` on `physics_frame`) gathers engaged soldiers across all
    regiments in soldier-id order, buckets them in the soldier-sized
    `SoldierSpatialHash`, and applies a Jacobi accumulate-then-apply step — so enemy
@@ -229,10 +230,33 @@ don't flap between tiers at the threshold — shipped in phase 2.
 Phases 1-4 are live: the soldiers are simulated, separated across regiments, rendered at
 their simulated positions, and **engaged melee resolves per-soldier and drives regiment
 strength/morale** (the first gameplay change). The per-soldier reach model gives a longer
-weapon the opening-strike advantage on the approach; the fully *sustained* asymmetric
-standoff of #240 (a spear holding a swordsman at bay while locked) still needs enemy
-soldier-level positioning, which stays blocked on #783 (the regiment circle still
-collapses enemy fronts to the separation floor once locked — see the phase-5 note above
-for why #749's momentum physics alone wasn't enough). The next authority slices are
-ranged casualties (kill soldiers in the health pool) and morale-from-soldier-state; enemy
-collision and retiring the regiment circle move once #783 is fixed and re-verified.
+weapon the opening-strike advantage on the approach (#233); the fully *sustained*
+asymmetric standoff of **#240 has now landed too**, via `SoldierMeleeStandoff.gd`: a
+soldier that already outreaches (or matches) its nearest enemy holds its ground and never
+gets a synthetic bias — the existing landed-strike knockback (`SoldierMelee`/
+`SoldierCombat`) is already a real, physically-motivated push-back mechanism, so a longer
+reach's opening-strike advantage carries straight through the sustained case on its own,
+with no extra force layered on top (an earlier version of this pass DID add a
+backing-away bias for the longer-reach side; it was removed as exactly the kind of
+top-down gimmick this design's "no regiment-level kite" stance already argued against).
+The pass instead supplies only the other half: a per-soldier velocity bias, composed
+additively into `_sim_steer` alongside `SoldierSteering`'s friendly-avoidance bias,
+presses a shorter-reach soldier forward until it closes inside ITS OWN reach, so the
+outreached side doesn't just stand and trade free hits for nothing. `Unit._press_into` and
+`Unit._separate()`'s reach-independent front-depth floor are untouched, and the pass
+composes with the existing physics (formation arrival, friendly steering, enemy contact,
+knockback) rather than replacing any of it. The engaged tier's own depth is now also
+reach-scaled (`Unit.engaged_ranks()`, replacing a flat 3-rank constant) — a 48wu-reach
+spear regiment at the historical 9wu rank pitch now fields up to 6 ranks able to strike
+within their own weapon's reach, instead of being capped at 3 regardless of how deep the
+formation actually runs. Measured on a 24 v 24 Spearmen-vs-Infantry demo
+(`demos/inputs/spear-standoff.json`): the spear regiment holds its ground through the
+whole clash rather than retreating, while the infantry/sword regiment keeps bleeding
+faster than the spear does once both sides lock in melee (24 sword soldiers down to 19 by
+tick 180, into single digits by tick 900) — a "give ground to hold reach distance" order,
+as an explicit player-facing stance rather than the passive default, is tracked as a
+follow-up (#983). The next authority slices are ranged casualties (kill soldiers in the
+health pool) and morale-from-soldier-state; retiring the regiment circle's enemy-collision
+branches is unblocked on the momentum/mass side (#783 closed via #784's engaged-weighted
+body coupling — see the phase-5 note above) but still needs its own residual-transient fix
+before that retirement is safe (tracked on #296).

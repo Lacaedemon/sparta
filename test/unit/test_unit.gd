@@ -2764,9 +2764,89 @@ func test_engaged_soldier_indices_prefers_real_enemy_proximity_over_centroid_dis
 		"the ring soldier on the far side, with no real enemy nearby, is excluded")
 
 
+# --- engaged_ranks() (the engaged tier's reach-scaled depth) ----------------------------
+
+func test_engaged_ranks_matches_the_old_flat_default_for_a_bare_units_default_reach() -> void:
+	# A bare Unit.new() defaults to attack_range 26.0 (gladius/sword reach) and the default
+	# rank_pitch (FORMATION_SPACING, 9.0wu): ceil(26/9) = 3, exactly the old flat
+	# ENGAGED_RANKS constant this replaces -- so every test fixture that never overrides
+	# attack_range/rank_pitch keeps its existing engaged-tier depth unchanged.
+	var u := _make_unit(120)
+	assert_eq(u.engaged_ranks(), 3)
+
+
+func test_engaged_ranks_scales_up_for_a_longer_reach_unit() -> void:
+	# A spear (reach 48wu) at the default 9wu rank pitch: ceil(48/9) = 6 -- deep enough that
+	# rank-4/5 spearmen, who previously could never be selected as engaged regardless of
+	# whether they were within their own weapon's reach, are now included.
+	var u := _make_unit(120)
+	u.attack_range = 48.0
+	assert_eq(u.engaged_ranks(), 6)
+
+
+func test_engaged_ranks_scales_down_for_a_short_reach_unit() -> void:
+	# A sidearm (reach 12wu, the Archers' melee backup) at the default 9wu rank pitch:
+	# ceil(12/9) = 2.
+	var u := _make_unit(120)
+	u.attack_range = 12.0
+	assert_eq(u.engaged_ranks(), 2)
+
+
+func test_engaged_ranks_accounts_for_a_wider_rank_pitch() -> void:
+	# Cavalry spawn with a much deeper rank pitch than foot troops (a mounted soldier takes
+	# far more ground nose-to-tail) -- e.g. 30wu reach at a 60wu rank pitch: ceil(30/60) = 1,
+	# so a cavalry regiment only ever fields its front rank, reflecting how far apart its
+	# own ranks actually stand, not a flat constant blind to rank spacing.
+	var u := _make_unit(120)
+	u.attack_range = 30.0
+	u.rank_pitch = 60.0
+	assert_eq(u.engaged_ranks(), 1)
+
+
+func test_engaged_ranks_is_clamped_to_at_least_one() -> void:
+	var u := _make_unit(120)
+	u.attack_range = 0.5   # a near-zero reach would otherwise ceil to 1 anyway, but pin the floor
+	assert_eq(u.engaged_ranks(), 1)
+
+
+func test_engaged_ranks_is_clamped_to_the_cap() -> void:
+	# A hypothetical future long-reach weapon can't blow the engaged tier -- and every
+	# per-tick pass gated on it -- out to dozens of ranks.
+	var u := _make_unit(120)
+	u.attack_range = 1000.0
+	assert_eq(u.engaged_ranks(), Unit.ENGAGED_RANKS_CAP)
+
+
+func test_engaged_soldier_indices_reaches_beyond_the_old_flat_rank_cap_for_a_longer_reach_unit() -> void:
+	# A spear-reach unit (48wu, engaged_ranks()==6) with enough soldiers to actually fill
+	# beyond 3 ranks must have its LIVE selection reach soldiers whose true rank is >= 3 --
+	# beyond what the old flat ENGAGED_RANKS=3 constant could ever select, regardless of how
+	# deep the unit's own formation actually runs. Previously those rank-4/5 soldiers could
+	# never land a strike within their own weapon's reach, no matter how close they
+	# geometrically stood, because they were never even included in the engaged candidate
+	# set SoldierMelee.resolve searches.
+	var u := _make_unit(60)
+	u.attack_range = 48.0
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	var files: int = u.formation_files(n)
+	assert_gt(n, files * 3, "sanity: this formation genuinely runs deeper than the old 3-rank cutoff")
+	var old_cutoff: int = mini(n, files * 3)
+	var indices := u.engaged_soldier_indices(n)
+	assert_eq(indices.size(), mini(n, files * u.engaged_ranks()), "selects up to engaged_ranks() worth of ranks")
+	assert_gt(indices.size(), old_cutoff, "the new selection is strictly larger than the old flat 3-rank one")
+	var deepest_selected_rank: int = 0
+	for i in indices:
+		deepest_selected_rank = maxi(deepest_selected_rank, i / files)
+	assert_gt(deepest_selected_rank, 2,
+		"a real rank-3+ soldier (0-indexed) is included -- beyond the old flat cap of ranks 0-2")
+
+
 func test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indices() -> void:
 	# NORMAL (line) formation, not SQUARE: the front-rank selection here is index-based
-	# ("first files*ENGAGED_RANKS indices"), which SoldierMelee.reap() breaks the moment a
+	# ("first files*engaged_ranks() indices"), which SoldierMelee.reap() breaks the moment a
 	# casualty splices the per-soldier arrays -- every index after the removed soldier
 	# shifts down, so "index i is rank i/files" no longer holds. Simulate exactly that
 	# staleness (without needing a real casualty) by swapping a genuinely-front soldier's
@@ -2778,7 +2858,7 @@ func test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indi
 	u.tick_engaged(0.0)   # arm the engaged latch
 	var n: int = u._sim_soldier_pos.size()
 	var files: int = u.formation_files(n)
-	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	var cutoff: int = mini(n, files * u.engaged_ranks())
 	assert_true(cutoff < n, "sanity: the engaged budget is a genuine subset of the whole block")
 	var front_idx: int = 0        # rank 0, file 0 -- genuinely laid out at the front
 	var rear_idx: int = n - 1     # the last rank's last file -- genuinely laid out at the rear
@@ -2807,7 +2887,7 @@ func test_canonical_target_slot_indices_is_the_front_rank_for_a_normal_formation
 	u.tick_engaged(0.0)
 	var n: int = u._sim_soldier_pos.size()
 	var files: int = u.formation_files(n)
-	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	var cutoff: int = mini(n, files * u.engaged_ranks())
 	assert_true(cutoff < n, "sanity: the engaged budget is a genuine subset of the whole block")
 	var slots: PackedVector2Array = u.soldier_world_slots(n)
 	var target: PackedInt32Array = u.canonical_target_slot_indices(slots, cutoff)
@@ -2900,7 +2980,7 @@ func test_engaged_soldier_indices_use_cache_false_bypasses_a_populated_cache() -
 	# genuinely-front soldier's live position with a genuinely-rear one, the same technique
 	# test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indices uses.
 	var files: int = u.formation_files(n)
-	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	var cutoff: int = mini(n, files * u.engaged_ranks())
 	assert_true(cutoff < n, "sanity: there's a genuine rear soldier to swap in")
 	var front_idx: int = 0
 	var rear_idx: int = n - 1
@@ -2943,7 +3023,7 @@ func test_near_front_soldier_indices_is_empty_when_squared() -> void:
 
 func test_near_front_soldier_indices_selects_anchor_ranks_worth_of_live_front_bodies() -> void:
 	# The settled, non-Square, engaged case: ANCHOR_RANKS-worth (narrower than the full
-	# ENGAGED_RANKS depth), by live position, same as engaged_soldier_indices' own mechanism.
+	# engaged_ranks() depth), by live position, same as engaged_soldier_indices' own mechanism.
 	var u := _make_unit(120)
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING

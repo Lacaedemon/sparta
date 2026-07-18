@@ -1,14 +1,18 @@
 class_name SoldierEnemyProximity
 extends RefCounted
-## Cross-team, cross-unit living-soldier spatial hash for the SQUARE/SCHILTRON
-## engaged-set selection (Unit.engaged_soldier_indices). Distinct from
-## SoldierSpatialHash (which indexes only the soldiers a unit's OWN
-## engaged-set selection already picked, for friendly-avoidance steering and
-## enemy-contact resolution): this class answers the question the selection
-## itself needs answered BEFORE any engaged set exists -- "is a real enemy
-## soldier, within ITS OWN weapon reach, close enough to threaten this
-## position" -- so it has to index every living soldier of every unit, not a
-## pre-filtered subset.
+## Cross-team, cross-unit living-soldier spatial hash, built for the SQUARE/SCHILTRON
+## engaged-set selection (Unit.engaged_soldier_indices). Distinct from SoldierSpatialHash
+## (which indexes only the soldiers a unit's OWN engaged-set selection already picked, for
+## friendly-avoidance steering and enemy-contact resolution): this class answers a question
+## that has to be resolved BEFORE any engaged set exists -- "is a real enemy soldier, within
+## ITS OWN weapon reach, close enough to threaten this position" (has_enemy_within) -- so it
+## has to index every living soldier of every unit, not a pre-filtered subset.
+##
+## A distinct sibling, SoldierEngagedEnemyProximity, answers the analogous nearest-enemy
+## question for SoldierMeleeStandoff's per-tick standoff bias -- but scoped to just the
+## ENGAGED tier (an engaged set already exists by the time that pass runs), not this class's
+## whole-battle scan. See that class's own doc comment for why the two grids are kept
+## separate rather than sharing one.
 ##
 ## Determinism: iterates the gathered nodes in whatever order the scene tree
 ## groups return them (stable within a run), buckets purely by position, and

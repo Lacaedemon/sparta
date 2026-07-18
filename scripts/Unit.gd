@@ -3505,9 +3505,16 @@ func step_sim_soldiers(delta: float) -> void:
 
 # A regiment is "engaged" while FIGHTING and for ENGAGED_LINGER seconds after, so
 # the tier boundary has hysteresis and soldiers don't flap between full-sim and
-# formation-follow at the threshold. ENGAGED_RANKS front ranks run the full pass.
+# formation-follow at the threshold. The front engaged_ranks() worth of ranks run the
+# full pass -- see that function's own doc comment for why it isn't a flat constant.
 const ENGAGED_LINGER: float = 0.5
-const ENGAGED_RANKS: int = 3
+
+# Cap on engaged_ranks()'s reach-derived depth (below), so a hypothetical future
+# long-reach weapon can't blow the engaged tier -- and every per-tick pass gated on it
+# (SoldierSteering, SoldierEnemyContact, SoldierMelee) -- out to dozens of ranks. A spear
+# (reach 48wu) at the historical 9wu rank pitch already computes to 6 ranks, so this cap
+# doesn't bind for any current loadout; it exists purely as a future-proofing ceiling.
+const ENGAGED_RANKS_CAP: int = 6
 
 # Soldier->regiment coupling (phase 5): each tick the regiment center slides a fraction
 # FOLLOW_RATE*delta of the way toward its soldiers' centroid (geometric decay, stable for
@@ -3557,12 +3564,12 @@ func soldier_brace() -> float:
 	return BRACE_SET if (is_engaged() and order_mode != ORDER_SKIRMISH) else 0.0
 
 
-## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks' worth of an engaged
-## regiment, or none when it isn't engaged. `files*ENGAGED_RANKS` (using `files` FROM
+## Indices of the engaged soldiers: the front engaged_ranks() ranks' worth of an engaged
+## regiment, or none when it isn't engaged. `files*engaged_ranks()` (using `files` FROM
 ## THE SAME GRID the regiment is actually laid out on -- formation_files, not the
 ## wide-line frontage() a SQUARE unit no longer uses) sizes the selection, but WHICH
 ## soldiers fill it is read from LIVE positions (UnitFormation.live_front_indices), not
-## the first files*ENGAGED_RANKS array indices: the formation grid is rank-major at
+## the first files*engaged_ranks() array indices: the formation grid is rank-major at
 ## SPAWN (rank = index / files, rank 0 = front), but `SoldierMelee.reap()` splices dead
 ## soldiers out of the per-soldier arrays as casualties mount, shifting every later
 ## index down -- so "index i is rank i/files" goes stale the moment the first soldier
@@ -3685,7 +3692,7 @@ func _compute_engaged_soldier_indices(count: int) -> PackedInt32Array:
 			if UnitFormation.square_is_perimeter(i, count, square_file_count):
 				ring_size += 1
 		return UnitFormation.live_perimeter_indices(_sim_soldier_pos, ring_size)
-	var cutoff: int = mini(count, formation_files(count) * ENGAGED_RANKS)
+	var cutoff: int = mini(count, formation_files(count) * engaged_ranks())
 	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
 	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
 	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
@@ -3705,8 +3712,8 @@ func _position_anchor_unstable() -> bool:
 
 ## Depth (in ranks) the position anchor narrows the engaged selection to, once a regiment has
 ## settled (see _position_anchor_unstable) -- the ANCHOR_RANKS-worth of soldiers nearest the
-## enemy, out of the full ENGAGED_RANKS depth that fights/steers. Narrower than ENGAGED_RANKS
-## so a casualty-thinned or knocked-back deeper rank pulls `position` around less than before,
+## enemy, out of the full engaged_ranks() depth that fights/steers. Narrower than that so
+## a casualty-thinned or knocked-back deeper rank pulls `position` around less than before,
 ## but deliberately NOT narrowed to a single rank: an earlier attempt at exactly one rank
 ## measurably re-aggravated the melee-lock swirl regression
 ## test_residual_melee_swirl_battle.gd guards against -- a matched, prolonged infantry clash
@@ -3720,7 +3727,7 @@ const ANCHOR_RANKS: int = 2
 
 ## Indices of the live near-front ranks (ANCHOR_RANKS-worth, narrower than the full engaged
 ## selection) -- the position anchor's counterpart to `engaged_soldier_indices` (which
-## selects the whole engaged depth, `ENGAGED_RANKS` ranks, for combat/steering scope). A real
+## selects the whole engaged depth, `engaged_ranks()` ranks, for combat/steering scope). A real
 ## formation's position should read off its leading edge, not an average a casualty-thinned or
 ## knocked-back deeper rank can pull around -- see `SoldierBodies.couple()`, the only caller.
 ## Square/Schiltron has no single front to speak of (the ring wraps the whole block), so it
@@ -3786,7 +3793,7 @@ func canonical_target_slot_indices(slots: PackedVector2Array, count: int) -> Pac
 ## live front rank a target slot at the opposite end. NORMAL/line formations sort rank-major
 ## (depth tier first, then lateral position within the tier -- UnitFormation.
 ## sort_indices_by_rank_then_lateral): the engaged budget normally spans several ranks
-## (ENGAGED_RANKS), and every rank shares the same span of file positions, so a LATERAL-only
+## (engaged_ranks()), and every rank shares the same span of file positions, so a LATERAL-only
 ## sort would interleave ranks instead of keeping each one together. `forward`/`file_axis` are
 ## the same axes `_compute_engaged_soldier_indices`/`_wheel_pivot_point` already use.
 ## SQUARE/Schiltron has no single file axis (the ring wraps all the way around the block), so
@@ -3816,6 +3823,22 @@ func soldier_body_radius() -> float:
 ## soldier strike foes who cannot strike back — the spear-vs-sword standoff (#240).
 func soldier_reach() -> float:
 	return attack_range
+
+
+## How many ranks deep this regiment's engaged tier runs, from its OWN weapon reach and
+## rank spacing -- not a flat constant across unit types, since both vary per loadout. A
+## fixed depth (the previous ENGAGED_RANKS=3 constant) left a longer-reach unit's rear
+## ranks unable to ever land a strike within their own weapon's reach: they were never
+## even included in the engaged candidate set SoldierMelee.resolve searches, regardless of
+## whether they were geometrically close enough to reach an enemy. Scaling with
+## soldier_reach()/rank_pitch_wu() instead means a soldier is included in the engaged tier
+## whenever its OWN rank could plausibly strike forward into contact -- e.g. a 48wu-reach,
+## 9wu-rank-pitch spear regiment fields up to ENGAGED_RANKS_CAP ranks, while a 30wu-reach,
+## 60wu-rank-pitch cavalry regiment (a mounted soldier's much deeper rank spacing) fields
+## only its front rank. Clamped to at least 1 (every engaged regiment fields SOME ranks)
+## and at most ENGAGED_RANKS_CAP (see that constant's own doc comment).
+func engaged_ranks() -> int:
+	return clampi(ceili(soldier_reach() / maxf(rank_pitch_wu(), 0.01)), 1, ENGAGED_RANKS_CAP)
 
 
 ## Step every regiment's persistent soldier bodies one fixed tick. Called by Battle each
