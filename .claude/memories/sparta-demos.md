@@ -500,6 +500,63 @@ check the selection-commit timing before suspecting the key name or the dispatch
 after a `box` at tick 10 — the release lands at tick 26, so the command hit an empty
 selection; moved to tick 40.)
 
+## Staging a rout-pursuit demo: the constraint map (four dumped failures)
+
+Retuning the trapped_routing clip surveyed the pursuit-dynamics staging space;
+every rejected staging is a reusable constraint for any future rout/chase demo:
+
+- **A rear charge overshoots onto the flee lane and physically walls it.** The
+  charge carries the attacker THROUGH the contact and past it -- parking it on
+  the router's escape vector. The fleeing mob's bodies push into the pursuer
+  and get knocked back the way they came; the dumped track shows the "fleeing"
+  unit drifting the OPPOSITE direction from its flee vector. Stage breakers
+  from a FLANK: the overshoot then lands beside the flee lane, not on it.
+- **A cavalry pursuer that keeps contact herds and grinds the mob in place**
+  (41 -> 2 men in 100 ticks) -- no flee geometry ever forms. Fast pursuit only
+  reads as "chasing" when the router is faster (a broken CAVALRY unit outruns
+  its pursuers; a foot router cannot break cavalry contact at all).
+- **Archer fire pins a fleeing mob prone into a crawl** (~14 wu/s vs the
+  ~100+ flee pace) -- arrow knockdowns dominate the mob's coupled position, so
+  the "flee" becomes 25 seconds of being carved. Ranged pressure cannot drive
+  a watchable rout arc.
+- **The morale hover band: ~2-8 morale under weak pressure never routs.**
+  Combat morale recovery offsets weak incoming shock, so a unit hovering in
+  that band fights indefinitely (a 100-man unit at morale 8 held morale 2-3
+  against a lone cavalry for 700+ ticks). A staged rout needs starting morale
+  BELOW the band (3 or less works only with real shock incoming) or an
+  overwhelming first strike.
+
+The staging that works for "break, flee, detour around terrain, get run
+down": brittle player CAVALRY (fast router), one enemy cavalry charging from
+the FLANK (overshoot lands clear of the flee lane), terrain dead ahead of the
+flee vector so the clearance detour is the visual centrepiece.
+
+## A pursuing cavalry's own formation disintegrates over a long chase
+
+Any long gallop chase progressively deforms the pursuer's block: monotonic
+shape-residual growth (3 -> 43+ wu RMS over 500 ticks) with nearest-neighbour
+distance collapsing toward genuine body interpenetration, zero casualties
+involved. It is a tracked open sim investigation (data posted from the
+trapped_routing retune); until it resolves, a demo whose declared checks
+sample a mid-gallop pursuer will fail the defect scan on readings the demo
+author cannot stage away. Pin the SUBJECT unit's story beats and the
+engagement moments (engaged samples are exempt), and disclose the sampling
+choice in the script comment rather than burying the signal.
+
+## all_teams_control is the staging tool for a genuinely stationary enemy
+
+The team-1 battle AI regroups its units (archers pull back to screen their
+own line), so no mid-lane enemy firing position survives long enough to
+matter -- and there is no HOLD doctrine. `"all_teams_control": true` turns
+team-1's AI off entirely while unit-level combat behaviour (stop-and-shoot,
+auto-engagement) keeps running: enemies stand where posted and still fight.
+That is what makes flank-fire staging possible at all. Related geometry
+constraint: RANGED_RANGE (160 wu) is SHORTER than SPRINT_START_DISTANCE
+(200 wu), so archers at or behind a march's destination can never produce a
+jog leg (sprint pre-empts the under-fire pace) -- a visible walk/jog/sprint
+sequence needs the fire coming from the LANE'S SHOULDER, far from the
+destination, with the beaten zone ending before charge distance begins.
+
 ## A timing-difference demo needs a large-motion maneuver, not an in-place turn
 
 When a demo's point is that two units START the same evolution at different times (e.g. a
