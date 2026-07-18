@@ -23,6 +23,6 @@
   "expect": [
     {"tick": 8, "uid": 0, "field": "position", "value": [500.0, 600.0]},
     {"tick": [240, 300], "uid": 0, "field": "order_mode", "value": "Cycle charge"},
-    {"tick": [320, 350], "uid": 1, "field": "state", "value": "ROUTING"}
+    {"tick": [300, 330], "uid": 1, "field": "state", "value": "ROUTING"}
   ]
 }
