@@ -772,7 +772,10 @@ func test_current_speed_survives_the_reform_hold_while_cruising() -> void:
 	# Unit._physics_process's end-of-frame idle-clear must not mistake the reform hold for
 	# genuine idleness and zero the speed once the order-response timer alone has drained.
 	var u := _unit(1, Vector2.ZERO)
-	u._current_speed = u.walk_speed   # as if it was already cruising
+	u._current_speed = u.walk_speed   # as if it was already cruising...
+	u._approach_velocity = Vector2(0, u.walk_speed)   # ...toward +y, the same way the
+	# re-order continues (a genuinely cruising unit always carries both; the hold's
+	# momentum exemption is directional -- see Unit.REORDER_MOMENTUM_DOT_MIN).
 	var b := _battle([u])
 	# Straight ahead of the unit's default (DOWN) facing, so it isn't a lateral pivot
 	# (that maneuver forces reform off unconditionally, which this test isn't about).

@@ -135,12 +135,34 @@ right (undisciplined) one snaps its facing immediately and walks there directly.
 
 **Reform before move (default on).** By default, a fresh move order makes a unit hold
 its position briefly (~0.8 s) while its ranks settle into formation before it steps
-off. The unit spends this hold **pivoting in place** toward the destination, so its
-ranks are already coming onto the new heading before the first step.
+off. The unit spends this hold **pivoting in place** toward the destination --- no
+faster than its corner man can run, so the ranks hold their dressing --- and its
+ranks are already coming onto the new heading before the first step. For a unit
+already on the march, the hold is also the **brake leg** of a sharp turn: a fresh
+order that roughly continues the current travel carries the column's momentum
+straight through, while one that turns it sharply back bleeds that speed off during
+the hold, so the block comes about from a stand instead of carrying its pace into
+the turn (@fig-reversal-march).
 To make units move immediately without the pause, uncheck
 **☰ Menu → Reform before move** or click **Reform** in the control bar. The setting is
 baked into each recorded order, so replays reproduce whichever mode was active when
 you issued them.
+
+::: {#fig-reversal-march .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/reversal_march.jpg">
+  <source src="media/reversal_march.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A marching column ordered sharply back the way it came: it brakes during its
+reform hold, comes about no faster than its corner man can run, and steps off on
+the new heading in good order.
+:::
 
 **Side-step (small lateral moves).** A move order that only shifts a unit a short way
 to the side --- less than about its own width --- is carried out as a **side-step**: the

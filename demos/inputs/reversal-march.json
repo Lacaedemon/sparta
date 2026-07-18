@@ -1,0 +1,26 @@
+{
+  "_comment": "Reversal-order staging: a lone cavalry column marches east at cruising pace, then is ordered sharply back to the north-west mid-march. The response/reform hold now doubles as the brake leg of the turn (the momentum exemption is directional -- a held march that reverses the current travel bleeds speed at the brake rate instead of carrying it), and the hold's centre-pivot paces to the corner man like the marching pivot, so the block comes about in good order and steps off on the new heading. Before, the block kept full pace into the turn, its bodies compressed into genuine overlap while the unpaced pivot swung their slots underneath them, and it carried ~60 wu past the turn point before recovering -- next to a routed enemy this read as a unit compressing and drifting toward the router with no order to do so. Sampled ticks pin the story beats (spawn, the cruise, the braked hold, the late paced turn, the settled new march); the mid-turn window (~t280-460) is deliberately NOT sampled -- while the wide cavalry grid comes about, its flank bodies track their sweeping slots with zero gait margin and compress transiently (nnd bottoming ~3 wu), the same known, separately tracked formed-turn deformation family a steady advance already shows, which this staging cannot avoid exercising.",
+  "seed": "12345",
+  "drill": true,
+  "map": {
+    "field": [1600, 1200],
+    "terrain": [],
+    "spawn_lines": [300.0, 880.0]
+  },
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 500, "y": 600, "count": 24}
+  ],
+  "camera": [
+    {"tick": 0, "x": 620.0, "y": 540.0, "zoom": 0.6}
+  ],
+  "steps": [
+    {"tick": 6, "click": [500, 600]},
+    {"tick": 20, "rmb_click": [1200, 600]},
+    {"tick": 220, "rmb_click": [420, 420]}
+  ],
+  "state": [8, 180, 250, 540, 720],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [500.0, 600.0]},
+    {"tick": 180, "uid": 0, "field": "state", "value": "MOVING"}
+  ]
+}

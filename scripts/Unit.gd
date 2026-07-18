@@ -478,6 +478,16 @@ const BEARING_STEER_FREEZE_RADIUS: float = 8.0
 # and the gap grows all the way to the destination. Demanding a decay the shed rate beats
 # by a margin makes the ramp lock onto the envelope from above and hold it exactly.
 const ARRIVAL_ENVELOPE_MARGIN: float = 0.8
+# A re-order's response/reform hold preserves cruising momentum only when the held march
+# CONTINUES within ~60 degrees of the current travel (dot >= 0.5). Carrying speed into a
+# same-way leg is what the hold's momentum exemption is for; a sharper turn must brake
+# during the hold instead -- preserved full-pace `_approach_velocity` otherwise keeps the
+# soldier bodies' feed-forward driving them along the OLD heading for seconds while the
+# hold's centre-pivot swings their slot grid underneath them, compressing the block into
+# genuine body overlap and carrying the whole regiment tens of units past where it was
+# told to turn (the reversal-order wedge: a marching unit ordered back the way it came
+# spent hundreds of ticks scrambled before the new march actually began).
+const REORDER_MOMENTUM_DOT_MIN: float = 0.5   # tuned (cosine of the widest continuing bearing)
 # Orderly move orders pivot the block about its centre toward their travel direction at
 # this angular rate (rad/s) rather than snapping, so the ranks turn in good order. A
 # half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Approach marches (an
@@ -944,20 +954,23 @@ func _physics_process(delta: float) -> void:
 	# coast to a full stop follows one consistent heading rather than losing it after the
 	# first tick.
 	#
-	# Guard on both freeze timers too: a unit that was actively cruising and gets
-	# re-ordered is frozen by start_order_response() for order_response_delay seconds,
-	# and (for a normal move order with the default Settings.reform_before_move) then
-	# held again by the reform-before-move hold for REFORM_DURATION (see _think below)
-	# — _move_to() doesn't run during either freeze, so _moved_last_frame reads false
-	# even though the unit had momentum a moment ago. The two holds run one after the
-	# other (order-response first, then reform), so both must have drained before this
-	# decay is safe to apply. Without this guard, every re-order (a rapid tap sequence,
-	# or any fast order dispatch) would bleed speed away and force the next march to ramp
-	# up from a near-standstill each time instead of carrying momentum through. A
-	# genuinely idle unit already has _current_speed == 0, so skipping this while frozen
-	# is a no-op for it — this only changes behavior for a unit that was moving.
+	# The response/reform freezes are only PARTIALLY exempt: a unit that was actively
+	# cruising and gets re-ordered is frozen by start_order_response() for
+	# order_response_delay seconds, and (for a normal move order with the default
+	# Settings.reform_before_move) then held again by the reform-before-move hold (see
+	# _think below) — _move_to() doesn't run during either freeze, so _moved_last_frame
+	# reads false even though the unit had momentum a moment ago. When the held march
+	# CONTINUES the current travel (bearing within REORDER_MOMENTUM_DOT_MIN), skip the
+	# decay so a rapid same-way re-order (an arrow-key nudge sequence) carries its
+	# momentum through instead of restarting the accel ramp from a standstill. When it
+	# does NOT — a reversal, a sharp side order, or a hold with no march behind it — let
+	# the decay run: the hold IS the brake leg of the turn, and preserving full-pace
+	# `_approach_velocity` through it keeps the soldier bodies' feed-forward flying the
+	# OLD way while the hold pivots their slot grid, scrambling the block into body
+	# overlap (see REORDER_MOMENTUM_DOT_MIN). A genuinely idle unit already has
+	# _current_speed == 0, so the decay is a no-op for it either way.
 	if not _moved_last_frame and state != State.FIGHTING \
-			and _order_response_timer <= 0.0 and not _reform_holding():
+			and not _held_march_continues_travel():
 		var travel_dir: Vector2 = _approach_velocity.normalized() \
 				if _approach_velocity.length_squared() > 0.0001 else Vector2.ZERO
 		# UnitCombat's "spend the charge" strike-resolution reset can zero
@@ -1120,6 +1133,33 @@ func active_leaf() -> Order:
 func _reform_holding() -> bool:
 	var leaf := active_leaf()
 	return leaf != null and leaf.reform_timer > 0.0
+
+
+## True while a response/reform hold is freezing this unit AND the march it is holding
+## for continues the unit's current travel closely enough (REORDER_MOMENTUM_DOT_MIN) to
+## carry cruising momentum through the hold. Everything else -- no hold, no recorded
+## travel, no pending march destination, or a pending march that turns sharply off the
+## current heading -- returns false, letting the idle-momentum decay in _physics_process
+## brake the unit during the hold (the brake leg of the turn it was just ordered into).
+func _held_march_continues_travel() -> bool:
+	if _order_response_timer <= 0.0 and not _reform_holding():
+		return false
+	if _approach_velocity.length_squared() <= 0.0001:
+		return false
+	var dest: Vector2
+	if _reform_holding():
+		dest = active_leaf().target_pos
+	elif has_move_target:
+		dest = move_target
+	else:
+		var leaf := active_leaf()
+		if leaf == null or leaf.type != Order.Type.MOVE:
+			return false
+		dest = leaf.target_pos
+	var to: Vector2 = dest - position
+	if to.length() < 1.0:
+		return false
+	return _approach_velocity.normalized().dot(to.normalized()) >= REORDER_MOMENTUM_DOT_MIN
 
 
 ## True while current_order is running an in-place turn: a rear MOVE's about-face (TURN)
@@ -1357,7 +1397,15 @@ func _think(delta: float) -> void:
 				elif ordered_facing == Vector2.ZERO:
 					var reform_dir: Vector2 = reform_leaf.target_pos - position
 					if disciplined and not _is_move_order_in_haste():
-						_rotate_facing_toward(reform_dir, delta)
+						# Corner-man pacing, exactly as the marching pivot
+						# (_move_to's pivot_as_formation): the hold's pivot rotates
+						# the slot grid rigidly about the block's centre, and raw
+						# TURN_RATE sweeps a wide block's flank slots several times
+						# faster than any body can run -- the men scramble after
+						# their slots and the block compresses into a blob before
+						# the march has even begun.
+						_rotate_facing_toward(reform_dir, delta,
+								UnitManeuver.wheel_gait_rate(TURN_RATE, jog_speed, _pivot_radius()))
 					else:
 						_face_dir(reform_dir)
 				return

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/reversal-march.json",
+  "caption": "A marching cavalry column ordered sharply back the way it came: the response/reform hold now doubles as the brake leg of the turn (a held march that reverses the current travel bleeds speed at the brake rate instead of carrying full pace into the turn), and the hold's centre-pivot paces to the corner man, so the block comes about in good order and steps off on the new heading. Before, the still-flying bodies scrambled into genuine overlap while the unpaced pivot swung their slots underneath them, and the block carried ~60 wu past the turn point -- parked near a routed enemy, that momentum read as the unit compressing and drifting toward the router with no order to do so.",
+  "fixed_fps": 30,
+  "max_frames": 380,
+  "fps": 30,
+  "width": 640
+}
