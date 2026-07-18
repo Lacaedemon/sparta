@@ -435,3 +435,13 @@ func test_segment_rect_entry_orders_rects_along_the_segment() -> void:
 		"a segment that misses the rect has no entry")
 	assert_eq(PathField.segment_rect_entry(Vector2(160, 110), Vector2(600, 125), near), 0.0,
 		"a segment starting inside enters at t=0")
+
+
+func test_funnel_corner_with_no_blocking_rect_returns_inf() -> void:
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 100, 64, 400))
+	# from->to here never touches the registered rect, so _first_blocking_rect_index
+	# finds none: _funnel_corner must take its early-return branch, not walk into a
+	# grown-rect corner computation with no rect to grow.
+	var corner: Vector2 = pf._funnel_corner(Vector2(50, 50), Vector2(200, 50), PackedVector2Array(), 10.0)
+	assert_false(corner.is_finite(), "no blocking rect on this leg -- INF, not a rect-derived corner")
