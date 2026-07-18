@@ -1051,15 +1051,111 @@ func test_current_speed_survives_a_reorder_while_cruising() -> void:
 	# re-order, e.g. arrow-key nudges, to restart the accel ramp from a standstill).
 	var u := _make_unit()
 	u.position = Vector2.ZERO
-	u._current_speed = u.walk_speed   # as if it was already cruising
-	u.has_move_target = true
-	u.move_target = Vector2(0, 100000)   # far target, doesn't matter -- frozen this frame
+	u._current_speed = u.walk_speed   # as if it was already cruising...
+	u._approach_velocity = Vector2(0, u.walk_speed)   # ...toward +y, the same way the
+	u.has_move_target = true                          # re-order continues (a genuinely
+	u.move_target = Vector2(0, 100000)                # cruising unit always carries both)
 	u.start_order_response()             # simulates a fresh re-order arriving
 	assert_gt(u._order_response_timer, 0.0, "the re-order starts the response-delay freeze")
 	u._physics_process(0.016)
 	assert_false(u._moved_last_frame, "frozen by the response delay -- _move_to did not run")
 	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
 		"speed carries over through the freeze instead of hard-resetting to zero")
+
+
+func test_reversing_reorder_brakes_during_the_hold() -> void:
+	# The momentum exemption above is DIRECTIONAL (REORDER_MOMENTUM_DOT_MIN): when the
+	# held march REVERSES the current travel, the hold is the brake leg of the turn, and
+	# speed must bleed at the brake rate during it. Preserving full-pace
+	# _approach_velocity through a reversal's hold kept the soldier bodies' feed-forward
+	# flying the OLD way while the hold pivoted their slot grid underneath them -- the
+	# block compressed into genuine body overlap and overshot the turn point by tens of
+	# units before the new march ever began.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.walk_speed
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed   # cruising east
+	_stage_reform_hold(u, Vector2(-1000, 0), 0.8)         # held march: straight back west
+	u.start_order_response()
+	var before: float = u._current_speed
+	for _i in range(6):
+		u._physics_process(0.016)
+	assert_lt(u._current_speed, before - 0.001,
+		"a reversal's hold bleeds speed instead of carrying it")
+	assert_almost_eq(u._current_speed, before - u.arrival_brake_rate() * 6 * 0.016, 0.5,
+		"...at the arrival brake rate, not a hard reset")
+	assert_almost_eq(u._approach_velocity.length(), u._current_speed, 0.01,
+		"and _approach_velocity's magnitude decays in lockstep")
+
+
+func test_continuing_reorder_keeps_speed_through_the_hold() -> void:
+	# The counterpart: a held march CONTINUING the current travel keeps its momentum
+	# through both freezes -- carrying speed into a same-way leg is what the hold's
+	# momentum exemption is for (a rapid same-way re-order must not restart the ramp).
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.walk_speed
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed
+	_stage_reform_hold(u, Vector2(1000, 0), 0.8)   # held march continues east
+	u.start_order_response()
+	for _i in range(6):
+		u._physics_process(0.016)
+	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
+		"a same-way re-order's hold carries the momentum through unchanged")
+
+
+func test_held_march_direction_falls_back_to_the_move_leaf() -> void:
+	# _held_march_continues_travel's third source: a MOVE order installed but neither
+	# reform-holding nor committed to a move target yet (the response freeze on a
+	# no-reform order path) still yields its leaf's destination, so a same-way re-order
+	# keeps momentum and a reversal brakes, exactly as the committed cases do.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed
+	u.set_current_order(Order.new_move(Vector2(1000, 0)))   # continues the travel
+	u.start_order_response()
+	assert_true(u._held_march_continues_travel(),
+		"a same-way held MOVE leaf carries momentum through the response freeze")
+	u.set_current_order(Order.new_move(Vector2(-1000, 0)))  # reverses the travel
+	u.start_order_response()
+	assert_false(u._held_march_continues_travel(),
+		"a reversing held MOVE leaf brakes instead")
+
+
+func test_held_march_to_the_spot_it_stands_on_keeps_nothing() -> void:
+	# Degenerate destination: ordered to (essentially) where it already stands, there is
+	# no march direction to continue -- the hold brakes rather than carrying speed
+	# toward a point with no bearing.
+	var u := _make_unit()
+	u.position = Vector2(100, 100)
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed
+	u.set_current_order(Order.new_move(Vector2(100.2, 100.2)))
+	u.start_order_response()
+	assert_false(u._held_march_continues_travel(),
+		"a destination under the standing-on-it threshold offers no travel to continue")
+
+
+func test_reform_hold_pivot_is_corner_man_paced() -> void:
+	# The reform hold's centre-pivot toward the pending destination must pace like the
+	# marching pivot (UnitManeuver.wheel_gait_rate): the hold rotates the slot grid
+	# rigidly about the block's centre, and an unpaced TURN_RATE sweeps a wide block's
+	# flank slots faster than any body can run -- the men scramble after their slots and
+	# the block reads as a blob before the march has even begun. A low jog binds the
+	# corner-man cap far below TURN_RATE, so an unpaced pivot would step visibly faster
+	# than the bound this asserts.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u.jog_speed = 10.0
+	_stage_reform_hold(u, Vector2(0, 1000), 0.8)   # pending march is 90 deg off facing
+	var before: float = u.facing.angle()
+	u._think(0.016)
+	var step: float = absf(angle_difference(before, u.facing.angle()))
+	var cap: float = UnitManeuver.wheel_gait_rate(Unit.TURN_RATE, u.jog_speed, u._pivot_radius()) * 0.016
+	assert_lte(step, cap + 0.0001, "the hold pivot steps no faster than the corner-man bound")
+	assert_lt(step, Unit.TURN_RATE * 0.016 * 0.5,
+		"...well below the raw unpaced TURN_RATE step")
+	assert_gt(step, 0.0, "while still actually turning")
 
 
 func test_current_speed_still_ramps_from_zero_for_a_fresh_order_from_idle() -> void:

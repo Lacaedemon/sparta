@@ -66,4 +66,5 @@ DEMOS=(
   "wheel_turn|demos/inputs/wheel-turn-oblique-move.json|30|440|720|input"
   "resize_flank_anchor|demos/inputs/flank-anchored-resize.json|30|160|640|input"
   "cavalry_grid|demos/inputs/cavalry-spacing.json|30|270|640|input"
+  "reversal_march|demos/inputs/reversal-march.json|30|380|640|input"
 )
