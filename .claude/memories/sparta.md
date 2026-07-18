@@ -2124,8 +2124,7 @@ new failure mode appeared. A same-family transfer with comparable or improved to
 magnitude is a real, worth-tracking finding, not automatically a merge blocker for the
 change that surfaced it.
 
-## `tools/demo/analyze_transcript.gd` runs as a bare `SceneTree` with no autoloads --
-## give it dependency-free helper classes
+## `tools/demo/analyze_transcript.gd` runs as a bare `SceneTree` with no autoloads -- give it dependency-free helper classes
 
 `analyze_transcript.gd` is invoked as `godot --headless -s tools/demo/analyze_transcript.gd`
 -- a bare `extends SceneTree` script with no project autoloads and no scene tree beyond
@@ -2150,8 +2149,7 @@ by both the live recorder and `analyze_transcript.gd`) are the same split, added
 #954's sim-state-hash slice after the first cut (one combined class) broke
 `analyze_transcript.gd --compare-hashes` with exactly this compile-error cascade.
 
-## Arming a stance is sticky global session state, not scoped to whichever unit was
-## selected when you armed it -- it applies to EVERY subsequent order, not just one
+## Arming a stance is sticky global session state, not scoped to whichever unit was selected when you armed it -- it applies to EVERY subsequent order, not just one
 
 A stance hotkey without Ctrl (`SelectionManager._set_armed_mode`) sets one shared
 `_armed_mode` field -- not attached to any unit, and never cleared or consumed after an
