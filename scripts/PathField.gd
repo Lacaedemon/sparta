@@ -23,9 +23,11 @@ extends RefCounted
 ##   overlaps a routing cell by a sliver no longer blocks the whole cell.
 ## - The coarse CELL grid only supplies A* with a corridor topology (which way
 ##   around an obstacle). Its cells stay conservatively blocked on any overlap,
-##   which is fine for topology: string-pulling against the exact rects is what
-##   picks the waypoint actually steered for, so the walked path hugs the true
-##   terrain edge regardless of where the cell boundaries fall.
+##   which is fine for topology: the funnel step against the exact rects is what
+##   picks the waypoint actually steered for (the clearance-grown blocking
+##   rect's own corner on the corridor's side — see _funnel_corner), so the
+##   walked path hugs the drawn terrain plus the unit's own margin regardless
+##   of where the cell boundaries fall.
 
 # A coarse routing grid — far wider than a unit footprint, since this is for
 # corridor topology around walls/terrain, not unit-vs-unit spacing (that stays
@@ -95,9 +97,10 @@ func speed_at(world: Vector2) -> float:
 
 
 ## The next world-space waypoint a unit at `from` should steer toward to reach
-## `to`. Straight to the target when the line is clear; otherwise the farthest
-## point of an A* route around the obstacles that is still in direct line of
-## sight (falls back to `to` if no route is found).
+## `to`. Straight to the target when the line is clear; otherwise the funnel
+## corner of the clearance-grown blocking rect on the A* corridor's side -- or,
+## when no corner is cleanly visible, the farthest point of the A* route still
+## in direct line of sight (falls back to `to` if no route is found).
 ##
 ## The lookahead (string-pulling) matters for formations: an A* path is an
 ## 8-connected polyline of CELL-sized legs, so the bearing to the ADJACENT path
@@ -105,9 +108,14 @@ func speed_at(world: Vector2) -> float:
 ## steering by it whipsaws far off its true corridor direction and back (a
 ## shallow one-cell detour reads as a hard ~68 deg turn followed by a hard
 ## counter-turn), and the soldier bodies scramble after the swinging slot grid.
-## The farthest visible path point IS the corridor's real direction, so steering
-## by it walks the gentle diagonal a real column would. The adjacent point
-## remains the fallback when a genuine corner blocks every farther one.
+## The A* lookahead alone still walks the CELL lane, though: mid-detour the
+## farthest visible cell centre sits along the coarse corridor, so units of
+## very different widths all converge onto the same lane, up to about a cell
+## wider than their own clearance requires. The funnel corner is what makes the
+## walked detour tangent the grown rect's corners and run straight along the
+## grown boundary between them -- the drawn terrain plus exactly this unit's
+## own margin. The adjacent path point remains the last fallback when a genuine
+## corner blocks every farther candidate.
 ##
 ## `clearance` is the querying unit's own half-extent (see Unit.terrain_clearance):
 ## sightlines treat the terrain rects as grown by it, so a wide block rounds an
@@ -116,23 +124,45 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0) -> Vector2:
 	if not _segment_blocked(from, to, clearance):
 		return to
 	var path := find_path(from, to)
-	if path.size() >= 2:
-		# Candidate waypoints are synthetic cell centres, not real destinations,
-		# so the room-available cap must not quietly shrink their sightlines (see
-		# _segment_blocked): prefer the farthest candidate that clears the FULL
-		# margin. Only when no candidate can — the unit's own margin is wider
-		# than the room the A* corridor's cells offer at all (a broad line
-		# rounding this field's obstacles) — fall back to the farthest candidate
-		# at the room actually available, which degrades the margin smoothly
-		# rather than collapsing steering to the adjacent cell's coarse bearing.
-		for i in range(path.size() - 1, 1, -1):
-			if not _segment_blocked(from, path[i], clearance, false):
-				return path[i]
+	if path.size() < 2:
+		return to
+	# Corridor candidate: the farthest A* path point in direct line of sight.
+	# Candidate waypoints are synthetic cell centres, not real destinations,
+	# so the room-available cap must not quietly shrink their sightlines (see
+	# _segment_blocked): prefer the farthest candidate that clears the FULL
+	# margin. Only when no candidate can — the unit's own margin is wider
+	# than the room the A* corridor's cells offer at all (a broad line
+	# rounding this field's obstacles) — fall back to the farthest candidate
+	# at the room actually available, which degrades the margin smoothly
+	# rather than collapsing steering to the adjacent cell's coarse bearing.
+	var corridor: Vector2 = path[1]
+	var full_margin_candidate: bool = false
+	for i in range(path.size() - 1, 1, -1):
+		if not _segment_blocked(from, path[i], clearance, false):
+			corridor = path[i]
+			full_margin_candidate = true
+			break
+	if not full_margin_candidate:
 		for i in range(path.size() - 1, 1, -1):
 			if not _segment_blocked(from, path[i], clearance, true):
-				return path[i]
-		return path[1]
-	return to
+				corridor = path[i]
+				break
+	# Funnel refinement: the corridor candidate is a cell centre ON the coarse
+	# A* lane, so mid-detour every unit walks that same lane — up to about a
+	# cell wider than its own clearance requires. Steer instead for the
+	# clearance-grown blocking rect's own corner on the corridor's side, so the
+	# walked detour tangents the grown corner and runs straight along the grown
+	# boundary between corners: the drawn terrain plus exactly this unit's own
+	# margin. The corner is computed from the grown rect's geometry — never from
+	# repeatedly re-capped sightline probes, whose standoff ratchets inward leg
+	# by leg (each re-tangent caps at the current distance and the walker slowly
+	# spirals into the obstacle over a long straightaway). The corridor point
+	# stays the fallback whenever no grown corner is cleanly visible (compound
+	# obstacle geometry, or a walker already shoved inside its own margin).
+	var corner: Vector2 = _funnel_corner(from, to, path, clearance)
+	if corner.is_finite():
+		return corner
+	return corridor
 
 
 ## Whether a route from `from` to `to` actually exists: either the straight line
@@ -304,6 +334,27 @@ func _reconstruct(came: Dictionary, current: Vector2i) -> PackedVector2Array:
 # sightline from that point at t=0). Purely a float-boundary guard.
 const CLEARANCE_SLACK := 0.5   # tuned in wu
 
+# How far outside the clearance-grown boundary a funnel corner waypoint is
+# placed: a segment ENDING exactly on the grown boundary counts as touching it
+# (segment_intersects_rect counts endpoints), so the tangent leg toward a corner
+# sitting right on the margin would read as blocked. Must exceed CLEARANCE_SLACK.
+# A solver epsilon like the slack above, not a gameplay margin.
+const CORNER_STANDOFF := 2.0   # tuned in wu, solver epsilon
+
+# A funnel corner this close to the walker is "reached": steering for it again
+# would aim the unit at (nearly) its own feet and stall the walk at the corner --
+# the NEXT corner along the boundary always loses a straight-line cost comparison
+# to the one underfoot (triangle inequality), so the reached corner must be
+# excluded rather than out-scored. Half a routing cell, because it must dominate
+# a formed REGIMENT's own position wobble: the unit anchor follows its soldier
+# bodies (SoldierBodies.couple), which swings a wide line's position by tens of
+# wu while cornering -- a smaller radius lets the wobble flip the corner in and
+# out of "reached" and the regiment orbits a corner it keeps re-targeting
+# (observed on a 120-man line at a 4.0 radius). When excluding the near corner
+# leaves no visible candidate for a beat, next_step's corridor fallback covers
+# the handoff. Solver epsilon, same family as the two above.
+const CORNER_ARRIVE_EPS := CELL * 0.5   # tuned in wu, solver epsilon
+
 ## True if the straight segment from..to crosses any terrain rect, each grown by
 ## the sightline's margin on every side. Exact geometry against the drawn rects —
 ## not the routing cells — so a line that merely passes through a cell an
@@ -344,11 +395,100 @@ static func _distance_to_rect(p: Vector2, r: Rect2) -> float:
 			clampf(p.y, r.position.y, r.end.y)))
 
 
-## Whether the segment from..to touches `rect` (endpoints inside count). Pure
-## Liang-Barsky slab clip: the segment hits the rect iff the parameter interval
-## where it is inside all four half-planes is non-empty within [0, 1].
+## Index into _block_rects of the FIRST rect the from..to segment enters (each
+## grown by the same room-capped margin _segment_blocked judges real endpoints
+## with), or -1 when none blocks it. The first-entered rect is the one a detour
+## must round first.
+func _first_blocking_rect_index(from: Vector2, to: Vector2, clearance: float) -> int:
+	var best_idx: int = -1
+	var best_t: float = INF
+	for i in _block_rects.size():
+		var r: Rect2 = _block_rects[i]
+		var room: float = minf(_distance_to_rect(from, r), _distance_to_rect(to, r))
+		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
+		var t: float = segment_rect_entry(from, to, r.grow(maxf(0.0, eff)))
+		if t < best_t:
+			best_t = t
+			best_idx = i
+	return best_idx
+
+
+## The next funnel waypoint for a blocked from..to leg: the corner of the
+## clearance-grown first-blocking rect, on the A* corridor's side of the leg,
+## that is cleanly visible at the full margin and cheapest by straight-line
+## detour cost. Returns Vector2.INF when no corner qualifies -- the caller keeps
+## the corridor cell centre instead (compound obstacle geometry where every
+## corner of the first rect is masked by another, or a walker already inside its
+## own margin, whose sightlines the room cap handles on the corridor path).
+##
+## The corner comes from the grown rect's own geometry, deliberately NOT from a
+## re-capped sightline probe: probing "pull the waypoint toward the goal until
+## the sightline just grazes" caps each leg's standoff at the walker's current
+## distance minus slack, and every re-tangent then re-caps from the new,
+## slightly smaller standoff -- ratcheting the margin inward until a long
+## straightaway walks the unit into the obstacle. A geometric corner is the
+## same point every tick regardless of how close the last leg drifted.
+func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, clearance: float) -> Vector2:
+	var idx: int = _first_blocking_rect_index(from, to, clearance)
+	if idx < 0:
+		return Vector2.INF
+	var rect: Rect2 = _block_rects[idx]
+	var grown: Rect2 = rect.grow(clearance + CORNER_STANDOFF)
+	var heading: Vector2 = to - from
+	# Which way around THIS rect: the side of the rect the A* route squeezes
+	# past on -- which can deliberately be the geometrically-longer way, when
+	# other obstacles block the short one. Measured at the route's closest
+	# approach to the rect (where it actually passes the obstacle), about the
+	# rect's own centre and the leg's heading axis. Not the route's deviation
+	# from the from->to chord: on a graze (the chord clipping just the grown
+	# corner, endpoints both already past the rect) the route and the chord sit
+	# on the SAME side of each other while the rounding side is still
+	# well-defined about the rect -- a chord-side reading there flips the
+	# funnel to the far corner and oscillates the walker in place.
+	var centre: Vector2 = rect.get_center()
+	var route_side: float = 0.0
+	var nearest_d: float = INF
+	for p in path:
+		var d: float = _distance_to_rect(p, rect)
+		if d < nearest_d:
+			nearest_d = d
+			route_side = signf(heading.cross(p - centre))
+	var best: Vector2 = Vector2.INF
+	var best_cost: float = INF
+	for c in [grown.position, Vector2(grown.end.x, grown.position.y),
+			grown.end, Vector2(grown.position.x, grown.end.y)]:
+		if from.distance_to(c) < CORNER_ARRIVE_EPS:
+			continue
+		# The corner's side about the same centre/axis: a corner strictly on
+		# the other side of the rect from the route is not a candidate. (For a
+		# diagonal heading the entry/exit corners shared by both roundings land
+		# on either sign -- the filter only excludes the strictly-opposite one.)
+		var side: float = signf(heading.cross(c - centre))
+		if route_side != 0.0 and side != 0.0 and side != route_side:
+			continue
+		if _segment_blocked(from, c, clearance, false):
+			continue
+		var cost: float = from.distance_to(c) + c.distance_to(to)
+		if cost < best_cost:
+			best_cost = cost
+			best = c
+	return best
+
+
+## Whether the segment from..to touches `rect` (endpoints inside count).
 ## Deterministic float math, so paths stay replay-reproducible.
 static func segment_intersects_rect(from: Vector2, to: Vector2, rect: Rect2) -> bool:
+	return is_finite(segment_rect_entry(from, to, rect))
+
+
+## The segment parameter t in [0, 1] where from..to first enters `rect` (0.0 when
+## `from` starts inside), or INF when the segment never touches it. Pure
+## Liang-Barsky slab clip: the segment hits the rect iff the parameter interval
+## where it is inside all four half-planes is non-empty within [0, 1] -- the
+## interval's lower bound is the entry. The funnel uses the entry order to pick
+## WHICH blocking rect a detour must round first; segment_intersects_rect is the
+## boolean view of the same clip.
+static func segment_rect_entry(from: Vector2, to: Vector2, rect: Rect2) -> float:
 	var d := to - from
 	var t_min: float = 0.0
 	var t_max: float = 1.0
@@ -359,7 +499,7 @@ static func segment_intersects_rect(from: Vector2, to: Vector2, rect: Rect2) -> 
 			# Segment parallel to this axis pair: blocked on it only if the
 			# fixed coordinate already lies inside the slab.
 			if lo > 0.0 or hi < 0.0:
-				return false
+				return INF
 			continue
 		var t0: float = lo / d[axis]
 		var t1: float = hi / d[axis]
@@ -370,5 +510,5 @@ static func segment_intersects_rect(from: Vector2, to: Vector2, rect: Rect2) -> 
 		t_min = maxf(t_min, t0)
 		t_max = minf(t_max, t1)
 		if t_min > t_max:
-			return false
-	return true
+			return INF
+	return t_min

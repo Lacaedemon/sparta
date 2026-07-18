@@ -314,3 +314,124 @@ func test_overlapping_speed_zones_last_registered_wins() -> void:
 	pf.set_speed_rect(Rect2(150, 100, 100, 100), 0.8)
 	assert_almost_eq(pf.speed_at(Vector2(175, 150)), 0.8, 0.001,
 		"where zones overlap, the last-registered scale wins")
+
+
+func test_funnel_steers_for_the_grown_corner_not_the_cell_lane() -> void:
+	# Mid-detour beside a long wall, the waypoint is the clearance-grown rect's own
+	# corner -- the drawn terrain plus exactly this unit's margin (plus the tangent
+	# standoff) -- not a coarse A* cell centre on the corridor lane, which sits up to
+	# a cell wider out regardless of the unit's own width.
+	var pf := PathField.new(FIELD)
+	var wall := Rect2(300, 100, 64, 400)
+	pf.block_rect(wall)
+	var clearance := 20.0
+	var step: Vector2 = pf.next_step(Vector2(240, 300), Vector2(450, 600), clearance)
+	assert_eq(step, Vector2(wall.position.x - clearance - PathField.CORNER_STANDOFF,
+			wall.end.y + clearance + PathField.CORNER_STANDOFF),
+		"the waypoint is the grown south-west corner, tangent to this unit's own lane")
+
+
+func test_funnel_lane_scales_with_the_units_own_clearance() -> void:
+	# The issue's exact complaint: units of very different widths used to converge
+	# onto the same cell-corridor lane. Each must round on its OWN grown boundary.
+	var pf := PathField.new(FIELD)
+	var wall := Rect2(300, 100, 64, 400)
+	pf.block_rect(wall)
+	var from := Vector2(240, 300)
+	var to := Vector2(450, 600)
+	var narrow: Vector2 = pf.next_step(from, to, 10.0)
+	var wide: Vector2 = pf.next_step(from, to, 40.0)
+	assert_almost_eq(narrow.x, wall.position.x - 10.0 - PathField.CORNER_STANDOFF, 0.001,
+		"a narrow unit's lane hugs at its own small margin")
+	assert_almost_eq(wide.x, wall.position.x - 40.0 - PathField.CORNER_STANDOFF, 0.001,
+		"a wide unit's lane rounds farther out, at its own larger margin")
+	assert_ne(narrow.x, wide.x, "the two widths walk two different lanes")
+
+
+func test_funnel_walk_hugs_the_boundary_without_ratcheting_inward() -> void:
+	# Walk a whole two-corner detour in small steps, re-querying next_step each leg
+	# like a real mover: over the wall's top-west corner, straight down the west
+	# face, around the bottom corner, and on to the goal (the east side is sealed so
+	# the route genuinely must round the west face). Three properties at once: the
+	# walk arrives, the between-corners leg HUGS the grown boundary (not the old
+	# cell-corridor lane a cell width farther out), and the margin NEVER erodes
+	# below the clearance -- the inward-ratchet spiral a probe-capped tangent
+	# scheme produces on exactly this long straightaway.
+	var pf := PathField.new(FIELD)
+	var wall := Rect2(300, 100, 64, 400)
+	pf.block_rect(wall)
+	pf.block_rect(Rect2(384, 100, 256, 400))   # seals the east side: the corridor goes west
+	var clearance := 20.0
+	var lane_x: float = wall.position.x - clearance - PathField.CORNER_STANDOFF   # 278
+	var to := Vector2(330, 600)
+	var pos := Vector2(330, 40)
+	var beside_face_min_x: float = INF
+	var beside_face_max_x: float = -INF
+	for i in range(300):
+		var step: Vector2 = pf.next_step(pos, to, clearance)
+		pos = pos.move_toward(step, 8.0)
+		var standoff: float = pos.distance_to(Vector2(
+				clampf(pos.x, wall.position.x, wall.end.x),
+				clampf(pos.y, wall.position.y, wall.end.y)))
+		assert_gt(standoff, clearance - 0.5,
+			"the walked margin never erodes below the unit's clearance (no ratchet spiral)")
+		if pos.y > 150.0 and pos.y < 450.0:
+			beside_face_min_x = minf(beside_face_min_x, pos.x)
+			beside_face_max_x = maxf(beside_face_max_x, pos.x)
+		if pos.distance_to(to) < 12.0:
+			break
+	assert_lt(pos.distance_to(to), 12.0, "the walk actually rounds the wall and arrives")
+	assert_almost_eq(beside_face_min_x, lane_x, 2.0,
+		"the between-corners leg walks the grown boundary lane, not the cell lane (~224)")
+	assert_almost_eq(beside_face_max_x, lane_x, 2.0,
+		"and holds that lane the whole way down the face -- no drift out or in")
+
+
+func test_funnel_follows_the_corridors_side_around() -> void:
+	# The corner must round the side the A* corridor chose -- which can be the
+	# geometrically LONGER way when another obstacle blocks the short one -- not
+	# whichever corner a raw distance comparison favors.
+	var pf := PathField.new(FIELD)
+	var wall := Rect2(300, 100, 64, 400)
+	pf.block_rect(wall)
+	pf.block_rect(Rect2(200, 0, 300, 80))   # seals the north gap: the corridor must go south
+	var clearance := 20.0
+	var step: Vector2 = pf.next_step(Vector2(240, 300), Vector2(450, 300), clearance)
+	assert_almost_eq(step.y, wall.end.y + clearance + PathField.CORNER_STANDOFF, 0.001,
+		"with the north gap sealed, the funnel rounds the south corner despite symmetric distance")
+
+
+func test_funnel_from_inside_the_rect_falls_back_to_the_corridor() -> void:
+	# A walker shoved fully inside the drawn rect has no visible grown corner at
+	# all (every corner sightline starts inside the rect); the funnel must yield
+	# INF and next_step keep the A* corridor candidate, the room-capped path that
+	# already handles escaping.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 200, 64, 64))
+	var from := Vector2(330, 230)   # inside the drawn rect
+	var to := Vector2(500, 232)
+	var corner: Vector2 = pf._funnel_corner(from, to, pf.find_path(from, to), 0.0)
+	assert_false(corner.is_finite(), "no grown corner is visible from inside the rect")
+	var step: Vector2 = pf.next_step(from, to, 0.0)
+	assert_ne(step, to, "next_step still detours via the corridor candidate")
+
+
+func test_funnel_corner_is_deterministic() -> void:
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 100, 64, 400))
+	var a: Vector2 = pf.next_step(Vector2(240, 300), Vector2(450, 600), 20.0)
+	var b: Vector2 = pf.next_step(Vector2(240, 300), Vector2(450, 600), 20.0)
+	assert_eq(a, b, "the funnel waypoint is a pure function of its inputs")
+
+
+func test_segment_rect_entry_orders_rects_along_the_segment() -> void:
+	# The entry parameter is what picks WHICH rect a detour rounds first.
+	var near := Rect2(150, 100, 50, 50)
+	var far := Rect2(400, 100, 50, 50)
+	var t_near: float = PathField.segment_rect_entry(Vector2(0, 125), Vector2(600, 125), near)
+	var t_far: float = PathField.segment_rect_entry(Vector2(0, 125), Vector2(600, 125), far)
+	assert_lt(t_near, t_far, "the nearer rect enters at the smaller t")
+	assert_eq(PathField.segment_rect_entry(Vector2(0, 0), Vector2(600, 0), near), INF,
+		"a segment that misses the rect has no entry")
+	assert_eq(PathField.segment_rect_entry(Vector2(160, 110), Vector2(600, 125), near), 0.0,
+		"a segment starting inside enters at t=0")

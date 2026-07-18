@@ -67,4 +67,5 @@ DEMOS=(
   "resize_flank_anchor|demos/inputs/flank-anchored-resize.json|30|160|640|input"
   "cavalry_grid|demos/inputs/cavalry-spacing.json|30|270|640|input"
   "reversal_march|demos/inputs/reversal-march.json|30|380|640|input"
+  "funnel_lanes|demos/inputs/funnel-hug-lanes.json|60|1080|640|input"
 )
