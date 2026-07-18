@@ -416,6 +416,31 @@ state-transcript comment; a failing verdict fails the job **after** the GIF and 
 publish, so the artifacts you need to debug are always there. Run it pre-push with
 `tools/check.sh demo_defects` — it scans exactly the input scripts your diff adds or edits.
 
+### Per-tick hash stream (`hash_stream.jsonl`)
+
+Every armed dump run also streams a per-tick, two-tier hash of the sim state into the
+same directory (`tools/demo/DemoStateHash.gd`, adapted from 0 A.D.'s replay state hash):
+a **cheap** tier every tick (unit + soldier positions, hashed as raw float bits), and a
+**full** tier every 20 ticks (the cheap fields plus facings, morale/state/order fields,
+the per-soldier hp/prone/stamina arrays, and the replay RNG state). Nothing needs arming
+beyond the state dump itself — the stream rides along wherever `SPARTA_DEMO_STATE` is set.
+
+Two streams from different runs of the same clip localize a divergence to the exact tick
+it first appears, replacing an eyeball diff of full field-level dumps:
+
+```sh
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir-a>     --compare-hashes <dump-dir-b>
+```
+
+Exit `0` = the common tick range is hash-identical, `1` = divergent (the output names the
+first divergent tick and tier: a `cheap` divergence is positional, a `full`-only one means
+non-position state — morale, orders, the RNG — moved first), `2` = a stream is missing.
+Compare streams from the SAME dump path (recorder vs recorder, sink vs sink): the two
+paths sample the tick at slightly different points in the frame, so their streams are
+only comparable to themselves across runs. This is the diagnostic for "when did two runs
+of this clip diverge" (local vs CI, headless vs rendered — both known to drift late in
+long battles); it diagnoses drift, it does not fix it.
+
 ### The wrapper
 
 `tools/demo/dump-state.sh` wraps it, mirroring `capture-frames.sh`:

@@ -25,6 +25,8 @@ var _ticks: Array = []
 var _dir: String = ""
 var _full: bool = false
 var _dumped: Dictionary = {}   # tick -> true, so each snapshot is written at most once
+var _hash_stream: FileAccess = null   # per-tick state-hash stream (armed with the dump)
+var _hash_last_tick: int = -1         # last tick hashed, so a frozen tick writes one line only
 
 
 ## Build an armed sink from the environment, or null when SPARTA_DEMO_STATE is unset/empty —
@@ -48,6 +50,12 @@ static func arm_from_env(tag: String) -> DemoStateSink:
 
 func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(_dir)
+	# An armed dump run also streams the per-tick two-tier state hash (DemoStateHash) into
+	# the same directory, exactly like the recorder's dump path.
+	_hash_stream = DemoHashStream.open_stream(_dir)
+	if _hash_stream == null:
+		push_warning("[demo-state] could not open hash_stream.jsonl in %s (err %d)"
+				% [_dir, FileAccess.get_open_error()])
 	print("[demo-state] state dump armed at ticks %s -> %s%s" % [
 		str(_ticks), _dir, " (full per-soldier arrays)" if _full else ""])
 	# Safety net: quit unconditionally when the budget expires, warning only when snapshots
@@ -64,6 +72,11 @@ func _physics_process(_delta: float) -> void:
 	if battle == null or not battle.has_method("current_tick"):
 		return
 	var tick: int = battle.current_tick()
+	# Stream the per-tick state hash. The tick guard makes a frozen tick -- the sim stops
+	# advancing once the battle ends -- write one line, not one per remaining physics frame.
+	if _hash_stream != null and tick != _hash_last_tick:
+		_hash_last_tick = tick
+		DemoStateHash.write_tick(_hash_stream, battle.get_tree(), tick, Replay.rng.state)
 	if _ticks.has(tick) and not _dumped.has(tick):
 		_dumped[tick] = true
 		_dump(battle, tick)
