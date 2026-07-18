@@ -24,7 +24,7 @@ tools/check.sh --help          # full usage
 | `chars` | Flags curly quotes and en/em dashes in the Quarto docs (`*.qmd`, `*.R`), which are kept plain-ASCII. | `check-non-standard-chars.yml` |
 | `comments` | Flags issue/PR-number citations (`#123`) added by this diff's GDScript (`*.gd`) comment lines — CLAUDE.md's "no issue-number references" rule (`TODO(#N):`/`FIXME(#N):` excepted). Diff-scoped against `origin/main` (or `SPARTA_CHECK_COMMENTS_BASE`), not a whole-repo scan, so pre-existing citations elsewhere in the tree don't fail the check. | `check-comment-citations.yml` |
 | `coverage` | Runs the GUT suite instrumented for line coverage and writes `coverage/lcov.info` (git-ignored). Slower than `test` (instrumentation overhead) and coverage numbers never gate a PR on their own, so it's **not** in the default set. | `test-coverage.yml` |
-| `patch_coverage` | Local approximation of Codecov's `codecov/patch` check: regenerates `coverage/lcov.info` fresh (runs `coverage` first), then reports what fraction of THIS diff's added `scripts/*.gd` lines are covered — per-file breakdown plus the exact missing line numbers. Diff-scoped against `origin/main` (or `SPARTA_CHECK_PATCH_COVERAGE_BASE`), same as `comments`. Run it before pushing a `scripts/` change to catch a `codecov/patch` shortfall locally instead of after a CI round trip — see "Checking patch coverage before you push" below. **Not** in the default set (inherits `coverage`'s slowness). | `codecov/patch` (GitHub check, driven by `test-coverage.yml`'s upload) |
+| `patch_coverage` | Local approximation of Codecov's `codecov/patch` check: regenerates `coverage/lcov.info` fresh (runs `coverage` first), then reports what fraction of THIS diff's added `scripts/*.gd` lines are covered — per-file breakdown plus the exact missing line numbers — and **fails when that fraction is below the effective target** (auto: the project-wide total from the regenerated report, mirroring `codecov/patch`'s `target: auto`; override with `SPARTA_CHECK_PATCH_COVERAGE_TARGET`). Diff-scoped against `origin/main` (or `SPARTA_CHECK_PATCH_COVERAGE_BASE`), same as `comments`. Run it before pushing a `scripts/` change to catch a `codecov/patch` shortfall locally instead of after a CI round trip — see "Checking patch coverage before you push" below. **Not** in the default set (inherits `coverage`'s slowness). | `codecov/patch` (GitHub check, driven by `test-coverage.yml`'s upload) |
 | `links` | Markdown link-check via [lychee](https://github.com/lycheeverse/lychee), if installed. Needs network, so it's **not** in the default set. | `check-links.yml` |
 
 Exit status is non-zero if any selected check fails, so it drops straight into a
@@ -61,6 +61,7 @@ tools/check.sh && git push
 | `SPARTA_CHECK_COVERAGE_TIMEOUT` | `2700` | Hard timeout (s) for the `coverage` Godot run. |
 | `SPARTA_CHECK_COMMENTS_BASE` | _(unset)_ | Commit-ish the `comments` check diffs `HEAD` against to find new lines to scan. Falls back to `origin/main` then a local `main`; CI sets this per-event (PR base SHA, or the push event's `before`) — see `check-comment-citations.yml`. |
 | `SPARTA_CHECK_PATCH_COVERAGE_BASE` | _(unset)_ | Same, for the `patch_coverage` check's diff base. |
+| `SPARTA_CHECK_PATCH_COVERAGE_TARGET` | _(unset)_ | Fixed pass/fail threshold (percent) for `patch_coverage`. Unset mirrors `codecov/patch`'s `target: auto`: the project-wide line coverage from the regenerated `coverage/lcov.info`. |
 | `SPARTA_GODOT_PREFLIGHT_LIMIT` | `5` | Warn when more Godot processes than this are already running before the checks start. |
 
 ## Checking patch coverage before you push
@@ -78,15 +79,21 @@ current working tree, not a stale report from a previous diff), diffs against
 `origin/main` to find this diff's added `scripts/*.gd` lines, and reports a
 per-file breakdown plus the exact missing line numbers — a local
 approximation of what Codecov will report, verified to match its output
-directly (same percentage, same missing lines) on a real PR's diff. Like
-`coverage`, this check never fails purely on the *percentage* it finds — a low
-number is reported for you to read and act on, not treated as a failure by
-the check itself. (It can still report `SKIP`, when there's no resolvable
-diff base, or `FAIL`, if the underlying coverage regeneration itself errors —
-those are tooling states, not a coverage-threshold judgment.) This says
-nothing about whether Codecov's own `codecov/patch` status check is
-configured to block a merge on GitHub — that's a repo/branch-protection
-setting this local tool has no visibility into.
+directly (same percentage, same missing lines) on a real PR's diff. The check
+then **gates on the effective target**, the same way the `codecov/patch`
+status check judges a PR: with no explicit Codecov config, `codecov/patch`
+uses `target: auto` — patch coverage must reach the project-wide coverage of
+the PR's base — so this check compares against the project-wide total of the
+report it just regenerated (HEAD's total rather than the base's: the closest
+number available without a second instrumented run, differing only by this
+diff's own effect on the total). The target is printed alongside the
+percentage; a shortfall is a `FAIL`, matching what `codecov/patch` will do in
+CI. Set `SPARTA_CHECK_PATCH_COVERAGE_TARGET` to pin a fixed threshold
+instead (e.g. a deliberate one-off waiver, or reproducing a specific CI
+verdict). It can still report `SKIP`, when there's no resolvable diff base.
+Whether Codecov's own `codecov/patch` status check is configured to block a
+merge on GitHub is a repo/branch-protection setting this local tool has no
+visibility into.
 
 If a diff comes up short, the fix is either genuine new test coverage for the
 newly-added lines, or — when a specific line is structurally hard to cover (a
