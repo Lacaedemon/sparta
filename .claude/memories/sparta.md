@@ -2041,3 +2041,131 @@ phase. That depth is PHASE-SENSITIVE -- do not write a test floor between those 
 (pre/post-fix ranges overlap); anchor regression tests on the brake, the pivot pacing,
 and the overshoot bound instead, which separate cleanly. The residual is the formed-turn
 / chase deformation family tracked as an open sim investigation.
+
+## A simulated multi-leg walk test catches bugs a single-query test can't
+
+When a pathfinding/steering function is meant to be queried repeatedly as a mover
+closes in (`PathField.next_step`, or any "what's my next waypoint" API), write a GUT
+test that actually **walks** it: loop `next_step` -> `move_toward` -> re-query for
+hundreds of legs, asserting invariants (arrival, margin never eroding, a specific lane)
+at every step -- not just a handful of single-shot queries at fixed points. A single
+query only proves the waypoint is correct FOR THAT ONE STATE; a walk proves the
+sequence of waypoints is stable as state evolves, which is where feedback-loop bugs
+live.
+
+**Concrete case (#944, funnel string-pulling in `PathField.gd`):** seven single-query
+tests (exact corner selection, per-clearance lane scaling, corridor-side following,
+determinism) all passed on the first implementation. A simulated 300-leg walk test
+(`test_funnel_walk_hugs_the_boundary_without_ratcheting_inward`) caught two real bugs
+the single-query tests structurally couldn't see:
+
+- **A corner-arrive stall.** `CORNER_ARRIVE_EPS` (the radius at which a waypoint counts
+  as "reached," so the funnel doesn't steer a unit at its own feet) was tuned to 4.0 wu
+  against a single-body query. A FORMED REGIMENT's own anchor position wobbles by tens
+  of wu while cornering (`SoldierBodies.couple()` follows the soldier bodies, not a
+  fixed point), and at 4.0 wu that wobble flipped the near corner in and out of
+  "reached" every few ticks -- the walk test's trace showed the walker frozen in place,
+  its steering target flip-flopping every tick between the near corner and the FAR one
+  on the opposite side of the obstacle (excluding the near one as "reached" left only
+  the far corner as a candidate), with zero net progress for hundreds of ticks. Fixed
+  by widening the epsilon to half a routing cell, large enough to dominate the
+  anchor's own positional noise.
+- **A graze-case side flip.** The funnel initially picked which side of an obstacle to
+  round by comparing the A* route's deviation from the straight from->to chord. That
+  reads correctly for a route that visibly bows around an obstacle, but misreads a
+  GRAZE -- both endpoints already past the obstacle, route and chord essentially
+  coincident -- as "no preferred side," which let the funnel snap to the FAR corner and
+  walk the unit backward into the obstacle it was already past. Fixed by reading the
+  side off the route's closest approach to the obstacle RECT's own centre instead of
+  its deviation from the chord -- a measurement that stays well-defined exactly where
+  the chord-based one degenerates.
+
+**How to apply:** for any steering/pathing function, always pair single-query
+correctness tests with at least one multi-leg walk test that re-queries the function
+every step against realistic MOVING state (not fixed geometry) -- especially before
+trusting a "looks right in isolation" implementation for a formed multi-body mover,
+where feedback between the steering output and the mover's own position noise is
+exactly the failure mode a static query can't exercise.
+
+## Routing a unit tighter around terrain can crowd a neighboring friendly unit's lane
+
+A locally-correct routing/steering improvement (a unit hugging an obstacle's boundary
+more tightly, or taking a faster/more direct detour) can have a real, physically-
+mediated side effect on a DIFFERENT unit that never itself interacts with the
+obstacle: if the improved unit's new lane drifts closer to a neighboring friendly
+unit's own march, real soldier-body contact physics (crowd-pressure, `_separate()`/
+press-into) transfers transient formation deformation from the first unit onto the
+second -- not a bug in the routing math, an emergent interaction between two
+independently-correct behaviors.
+
+**Concrete case (#944's funnel fix, found via the website-demo-diff CI comment on PR
+#977):** the default 5v5 battle's two enemy Cavalry regiments (uid8, uid9) march
+together; uid9 spawns essentially inside the default hill's x-range, so its march
+routes around the hill from tick 1. The funnel fix genuinely improves uid9's own
+routing (peak formation bbox measurably shrinks). But uid9's tighter lane drifts
+closer to uid8's own march, and cross-unit crowd-pressure transferred a comparable
+amount of the SAME transient deformation (the chase/reversal-deformation family
+documented above) onto uid8 instead of eliminating it -- flagged by the demo-diff tool
+as 10 "candidate regression" clips, all showing the identical uid8<->uid9 pattern.
+Confirmed by a direct merge-base-vs-branch full-state dump comparison (not just
+eyeballing the CI table): uid9's bbox improved (417x384 -> 389x297 at a matched tick)
+while uid8's grew in compensation (240x371 -> 316x404, previously stable) -- the total
+system deformation didn't get categorically worse, it moved. Filed as its own tracked
+issue (#979) rather than either blocking the routing fix on it or silently absorbing
+it into that PR.
+
+**How to apply:** when a website-demo-diff (or any transcript-diff) report flags a
+WIDE, systematic pattern of "regressions" that all share the same two units and the
+same defect kind, don't stop at "the analyzer flagged it, revert/block" OR "it's
+probably fine, merge" -- get the actual merge-base-vs-branch numbers for the
+mechanism (bbox/position deltas of the specific units involved) and check whether the
+SAME transient-deformation family just moved to a different unit versus a genuinely
+new failure mode appeared. A same-family transfer with comparable or improved total
+magnitude is a real, worth-tracking finding, not automatically a merge blocker for the
+change that surfaced it.
+
+## `tools/demo/analyze_transcript.gd` runs as a bare `SceneTree` with no autoloads -- give it dependency-free helper classes
+
+`analyze_transcript.gd` is invoked as `godot --headless -s tools/demo/analyze_transcript.gd`
+-- a bare `extends SceneTree` script with no project autoloads and no scene tree beyond
+itself. A `class_name` helper it references transitively through ANY reference chain
+into a real gameplay script (even one line deep -- e.g. a class that calls into `Unit`,
+which itself references the `Settings` autoload) fails to compile under this context
+with `Identifier not found: Settings` and cascading `Failed to compile depended scripts`
+errors on every script in the reference chain, even though the same class compiles and
+runs fine everywhere else (a GUT test, the live game).
+
+**How to apply:** any new helper class meant to be consumed BOTH from live gameplay
+code (a recorder/sink running inside a real Battle) AND from `analyze_transcript.gd`
+directly must have its `analyze_transcript`-facing half kept dependency-free of the
+game's script tree -- split it into two classes if needed: one that reads live Unit/
+Battle state (fine to depend on gameplay scripts, only ever called from inside a real
+scene), and one holding the pure data format / comparison logic `analyze_transcript`
+actually needs (must not reference any gameplay script, even transitively). `DemoDefects.gd`
+already does this (reads snapshots as plain Dictionaries, never a live `Unit`);
+`DemoStateHash.gd` (per-tick hashing, reads live `Unit`/`SceneTree` state) and
+`DemoHashStream.gd` (the `hash_stream.jsonl` format + offline stream comparison, referenced
+by both the live recorder and `analyze_transcript.gd`) are the same split, added for
+#954's sim-state-hash slice after the first cut (one combined class) broke
+`analyze_transcript.gd --compare-hashes` with exactly this compile-error cascade.
+
+## Arming a stance is sticky global session state, not scoped to whichever unit was selected when you armed it -- it applies to EVERY subsequent order, not just one
+
+A stance hotkey without Ctrl (`SelectionManager._set_armed_mode`) sets one shared
+`_armed_mode` field -- not attached to any unit, and never cleared or consumed after an
+order uses it (`_issue_order` reads `_armed_mode` directly and leaves it unchanged).
+Once armed, EVERY order issued afterward -- regardless of which unit is selected, and
+regardless of how many orders come after the arming click -- carries that stance until
+something re-arms `_armed_mode` to a different value (including back to `NORMAL`).
+
+**How to apply:** in a scripted-input demo staging two units with DIFFERENT
+stances/orders for contrast (e.g. one armed with a stance, one on a plain order),
+issue every plain-order unit's order FIRST, and arm a non-default stance LAST, on
+whichever unit needs it -- never arm a stance and then issue a later, unrelated unit's
+order without re-arming (or explicitly re-arming NORMAL) first. Verify with a state
+dump (`order_mode` per uid) rather than assuming the script's click order maps
+directly onto "this stance applies to only this unit." (`Lacaedemon/sparta` PR #974,
+`stern-chase-canter.json`: the first staging attempt armed Chase on the west cavalry
+BEFORE issuing the east cavalry's plain attack order, and the dump showed both units
+reading `order_mode: Chase` instead of the intended contrast -- fixed by reordering so
+the plain attack order is issued first and Chase is armed last.)
