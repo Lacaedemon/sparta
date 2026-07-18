@@ -1225,7 +1225,11 @@ The obstacle a unit routes around is the terrain you see, plus the unit's own
 footprint: each block keeps a margin equal to its corner man's reach from the
 centre, so a small squad slips through a lane that a wide battle line must
 round with a broad swing. A lane that looks clear of the hill *is* clear ---
-for any unit narrow enough to fit through it.
+for any unit narrow enough to fit through it. The walked detour hugs that
+margin the whole way around: straight legs run along the obstacle's own
+grown boundary rather than a wider routing-grid lane, so two blocks of
+different widths round the same hill on two visibly different tracks
+(@fig-funnel-lanes).
 
 ::: {#fig-terrain-exact-footprint .demo}
 
@@ -1243,6 +1247,24 @@ lane the whole way --- its flank passes less than a metre off the drawn
 hillside. The routed obstacle is the drawn slope plus the squad's own
 footprint margin, so the narrow lane fits it exactly; a full-width line given
 the same order would swing around instead.
+:::
+
+::: {#fig-funnel-lanes .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/funnel_lanes.jpg">
+  <source src="media/funnel_lanes.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two widths, two lanes: a wide battle line and a narrow squad round the same
+hillside, and each walks the drawn terrain plus exactly its own footprint
+margin --- the line swinging out around the shoulder, the squad tucking in
+tight along the face --- instead of both converging onto one wide
+routing-grid lane.
 :::
 
 A [routing](#morale-routing) unit paths around a hill the same way while fleeing ---
