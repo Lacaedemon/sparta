@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Developer tooling only: adds a per-tick two-tier state-hash stream to the demo dump path and an offline hash-stream comparison mode (first slice of the sim-state-hash work). Nothing in a recorded battle looks or plays differently, so a clip would show an unrelated scene."
+}
