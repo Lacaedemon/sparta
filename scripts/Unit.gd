@@ -529,6 +529,11 @@ const SKIRMISH_KITE_DISTANCE: float = 100.0   # tuned in wu, between melee conta
 # SPRINT_START_DISTANCE, so a standoff at (or just past) that line would land each cycle
 # at a walk. 280 leaves ~80px of sprint build-up ahead of the ~62px contact.
 const CYCLE_CHARGE_STANDOFF: float = 280.0
+# The pull-back counts as opened once within this remainder of the standoff -- matching
+# _move_to's own ~1 wu standing-on-the-point threshold, so a braking pull-back completes
+# cleanly against a stationary target instead of creeping along the asymptote of its own
+# arrival envelope waiting for the strict `dist >= standoff` crossing.
+const CYCLE_CHARGE_STANDOFF_EPS: float = 1.0   # tuned in wu, solver epsilon
 # Support: a unit ordered to guard a friendly "ward" engages any enemy that
 # closes within SUPPORT_GUARD_RADIUS of the ward, otherwise shadows the ward,
 # holding station SUPPORT_FOLLOW_DISTANCE off so it doesn't pile onto it. The guard
@@ -1676,21 +1681,27 @@ func _think(delta: float) -> void:
 ## the ordinary approach builds _approach_velocity for the charge). Deterministic — pure
 ## geometry plus the shared strike cadence, so live play and replay stay in lockstep.
 func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float) -> bool:
-	# Recharging: peel back to the standoff so the next run rebuilds closing speed.
+	# Recharging: peel back to the standoff so the next run rebuilds closing speed. The
+	# retire BRAKES onto the standoff (brake_arrival) rather than galloping through it:
+	# the standoff is a turn-around point, and a rider cannot reverse a gallop in place --
+	# momentum carried into the flip left the soldier bodies coasting far past the
+	# standoff for seconds, dragging the regiment with them (SoldierBodies.couple) while
+	# a fleeing target opened a lead the walk-pace stern chase could never close. The
+	# trot pace for this leg lives in _move_to's own ladder (the _cycle_recharging arm).
 	if _cycle_recharging:
-		if dist < CYCLE_CHARGE_STANDOFF:
+		if dist < CYCLE_CHARGE_STANDOFF - CYCLE_CHARGE_STANDOFF_EPS:
 			var away: Vector2 = position - enemy.position
 			if away.length() < 0.001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
 			var goal: Vector2 = position + away.normalized() * (CYCLE_CHARGE_STANDOFF - dist)
-			_move_to(UnitTargeting.clamp_to_field(self, goal), delta)
+			_move_to(UnitTargeting.clamp_to_field(self, goal), delta, false, false, true)
 			# Cornered against the field edge with no room to peel off: give up the
 			# retreat and fight in place so the unit isn't frozen.
 			if not _moved_last_frame:
 				_cycle_recharging = false
 				return false
 			return true
-		# Opened past the standoff: end the pull-back and let the normal approach below
+		# Opened to the standoff: end the pull-back and let the normal approach below
 		# drive the next charge run (return false so the caller falls through to it).
 		_cycle_recharging = false
 		return false
@@ -1786,7 +1797,7 @@ func _is_move_order_in_haste() -> bool:
 			and current_order.haste
 
 
-func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: bool = false) -> void:
+func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: bool = false, brake_arrival: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
 	var step: Vector2 = point
@@ -1796,12 +1807,14 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length() < 1.0:
-		# Standing on the point already. An orderly march bleeds any residual speed at the
-		# brake rate here -- and flags itself as still moving so the "no momentum while
-		# stationary" reset can't hard-snap the tail of the ramp to 0 -- so the whole
-		# stop reads as one continuous deceleration. Combat movers keep the old contract:
-		# their callers gate follow-up behaviour on _moved_last_frame staying false.
-		if orderly and _current_speed > 0.0:
+		# Standing on the point already. An orderly (or brake_arrival) march bleeds any
+		# residual speed at the brake rate here -- and flags itself as still moving so the
+		# "no momentum while stationary" reset can't hard-snap the tail of the ramp to 0 --
+		# so the whole stop reads as one continuous deceleration. Other combat movers keep
+		# the old contract: their callers gate follow-up behaviour on _moved_last_frame
+		# staying false (a stopped brake_arrival mover reads the same way once the bleed
+		# finishes, so the caracole's cornered check still fires -- just after the stop).
+		if (orderly or brake_arrival) and _current_speed > 0.0:
 			_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
 			_moved_last_frame = true
 		return
@@ -1845,9 +1858,23 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 				pace_speed = walk_speed  # fallback
 	elif maneuvering or walk_advance:
 		pace_speed = walk_speed
+	elif order_mode == ORDER_CYCLE_CHARGE and _cycle_recharging:
+		# Caracole pull-back: retire at a trot. The peel's re-planted goal always sits
+		# inside SPRINT_START_DISTANCE, so the plain ladder below would read it as a
+		# close destination and gallop AWAY at full sprint -- spending stamina on the
+		# recovery leg and arriving at the turn-around point with the most momentum
+		# exactly where the flip back toward the enemy needs the least.
+		pace_speed = jog_speed
 	elif position.distance_to(point) <= SPRINT_START_DISTANCE:
 		pace_speed = move_speed  # sprint distance beats under-fire: charge through the kill zone at full speed
 	elif _under_fire:
+		pace_speed = jog_speed
+	elif order_mode == ORDER_CYCLE_CHARGE and not orderly:
+		# Caracole approach beyond the sprint window: ride in at a canter. The stance's
+		# whole point is repeated momentum charges, and a walk-pace stern chase never
+		# closes on a quarry fleeing at nearly the same speed -- the re-approach must
+		# outpace a fleeing target to ever line up the next run. An orderly march (a
+		# plain disengage move order) keeps the ordinary walk.
 		pace_speed = jog_speed
 	else:
 		pace_speed = walk_speed
@@ -1866,14 +1893,16 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	# tick. The pace is capped at the (margin-derated) arrival envelope sqrt(2 * a * d) --
 	# the speed from which the unit can still stop exactly at the point -- with a d/delta
 	# ceiling so the target never asks to cross the point in one tick (the same arrive
-	# profile the soldier bodies use for their slots). Only an orderly march on its
-	# route's LAST leg brakes: combat chases and kiting must charge through at full pace
-	# (the strike spends _approach_velocity, so braking would bleed the charge impact),
-	# and intermediate waypoints roll through their corners at pace.
+	# profile the soldier bodies use for their slots). An orderly march brakes on its
+	# route's LAST leg only, and a brake_arrival combat mover (the caracole pull-back,
+	# whose goal is a turn-around point, not a target to hit) brakes too. Other combat
+	# chases and kiting must charge through at full pace (the strike spends
+	# _approach_velocity, so braking would bleed the charge impact), and intermediate
+	# waypoints roll through their corners at pace.
 	var braking_to_stop: bool = false
 	var dist_to_stop: float = 0.0
 	var brake: float = arrival_brake_rate()
-	if orderly and not _has_queued_move_leg() and brake > 0.0 and delta > 0.0:
+	if (orderly or brake_arrival) and not _has_queued_move_leg() and brake > 0.0 and delta > 0.0:
 		dist_to_stop = position.distance_to(point)
 		var envelope: float = minf(
 			sqrt(2.0 * brake * ARRIVAL_ENVELOPE_MARGIN * dist_to_stop),
