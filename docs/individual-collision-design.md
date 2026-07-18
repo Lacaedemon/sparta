@@ -229,10 +229,22 @@ don't flap between tiers at the threshold — shipped in phase 2.
 Phases 1-4 are live: the soldiers are simulated, separated across regiments, rendered at
 their simulated positions, and **engaged melee resolves per-soldier and drives regiment
 strength/morale** (the first gameplay change). The per-soldier reach model gives a longer
-weapon the opening-strike advantage on the approach; the fully *sustained* asymmetric
-standoff of #240 (a spear holding a swordsman at bay while locked) still needs enemy
-soldier-level positioning, which stays blocked on #783 (the regiment circle still
-collapses enemy fronts to the separation floor once locked — see the phase-5 note above
-for why #749's momentum physics alone wasn't enough). The next authority slices are
-ranged casualties (kill soldiers in the health pool) and morale-from-soldier-state; enemy
-collision and retiring the regiment circle move once #783 is fixed and re-verified.
+weapon the opening-strike advantage on the approach (#233); the fully *sustained*
+asymmetric standoff of **#240 has now landed too** (`SoldierMeleeStandoff.gd`,
+`docs/soldier-loadout-design.md`'s sibling combat docs): a per-soldier velocity bias,
+composed additively into `_sim_steer` alongside `SoldierSteering`'s friendly-avoidance
+bias, backs a longer-reach soldier away once its shorter-reach foe has closed inside the
+longer weapon's own reach, and presses a shorter-reach soldier forward until it closes
+inside ITS OWN reach. This holds the gap purely at the soldier level — `Unit._press_into`
+and `Unit._separate()`'s reach-independent front-depth floor are untouched, exactly as the
+design called for (a regiment-level kite was explicitly rejected as risking
+oscillation/jitter) — and composes with the existing physics (formation arrival, friendly
+steering, enemy contact, knockback) rather than replacing any of it. Measured on a 24 v 24
+Spearmen-vs-Infantry demo (`demos/inputs/spear-standoff.json`): soldier-to-soldier distance
+in a sustained clash settles around 20-27 world units (near the shorter weapon's own 26wu
+reach) instead of the ~9wu the pre-fix regiment-level physics collapsed to, and the
+longer-reach side stops taking casualties once the standoff establishes while the
+shorter-reach side keeps bleeding. The next authority slices are ranged casualties (kill
+soldiers in the health pool) and morale-from-soldier-state; enemy collision and retiring
+the regiment circle move once #783 is fixed and re-verified (#783 itself is already
+closed, by #784's engaged-weighted body coupling — see the phase-5 note above).

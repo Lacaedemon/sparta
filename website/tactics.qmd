@@ -676,13 +676,19 @@ opening strikes of a clash while a shorter-weapon enemy is still closing the gap
 
 So a spear line meeting a sword line head-on gets free hits during the approach ---
 another reason to lead with spearmen and let the shorter weapons pin and flank. Combat
-now resolves **per soldier** by weapon reach: a spearman strikes any enemy within its
-longer reach, while a swordsman beyond its own (shorter) reach cannot strike back. The
-*sustained* standoff --- a spear line physically holding swordsmen out at weapon length
---- now emerges from **knockback**: a landed blow shoves the struck soldier back, so a
-spear line keeps knocking swordsmen out past their own reach while staying in its. The
-lines no longer snap apart by a spacing rule; the gap is the live balance of the press
-forward against the knockback, so it breathes as the fight ebbs and flows.
+resolves **per soldier** by weapon reach: a spearman strikes any enemy within its
+longer reach, while a swordsman beyond its own (shorter) reach cannot strike back.
+
+That opening-strike edge now **holds up once the lines are locked**, not just on the
+approach. Each engaged soldier feels a standing pressure toward its own weapon's reach:
+a spearman backs away the moment a swordsman has closed inside the spear's reach,
+holding the gap open near arm's length rather than letting the press collapse it; a
+swordsman keeps pushing in until it closes inside its *own* reach, since standing just
+outside the spear's edge gains it nothing. Neither side snaps to a fixed spacing --- the
+gap is the live balance of that pressure against everything else already pushing the
+lines together (the formation's own advance, knockback, body contact) --- so a spear
+line facing a sword line settles at a wider gap than two equal-reach lines would, and
+keeps landing hits while the swordsmen struggle to close the last stretch.
 
 **Knockback now pushes both ways.** Every blow obeys Newton's third law: the struck
 soldier is shoved back as before, but the striking soldier also recoils along the same

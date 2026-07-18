@@ -1,13 +1,14 @@
 class_name SoldierEnemyProximity
 extends RefCounted
-## Cross-team, cross-unit living-soldier spatial hash for the SQUARE/SCHILTRON
-## engaged-set selection (Unit.engaged_soldier_indices). Distinct from
-## SoldierSpatialHash (which indexes only the soldiers a unit's OWN
-## engaged-set selection already picked, for friendly-avoidance steering and
-## enemy-contact resolution): this class answers the question the selection
-## itself needs answered BEFORE any engaged set exists -- "is a real enemy
-## soldier, within ITS OWN weapon reach, close enough to threaten this
-## position" -- so it has to index every living soldier of every unit, not a
+## Cross-team, cross-unit living-soldier spatial hash, originally built for the
+## SQUARE/SCHILTRON engaged-set selection (Unit.engaged_soldier_indices) and now also the
+## nearest-enemy lookup SoldierMeleeStandoff's per-tick standoff bias uses (#240). Distinct
+## from SoldierSpatialHash (which indexes only the soldiers a unit's OWN engaged-set
+## selection already picked, for friendly-avoidance steering and enemy-contact resolution):
+## this class answers questions that have to be resolved BEFORE any engaged set exists --
+## "is a real enemy soldier, within ITS OWN weapon reach, close enough to threaten this
+## position" (has_enemy_within) and "which living enemy soldier is nearest this position"
+## (nearest_enemy) -- so it has to index every living soldier of every unit, not a
 ## pre-filtered subset.
 ##
 ## Determinism: iterates the gathered nodes in whatever order the scene tree
@@ -103,6 +104,35 @@ static func has_enemy_within(pos: Vector2, team: int, self_radius: float, self_r
 				if pos.distance_squared_to(_pos[idx]) <= contact * contact:
 					return true
 	return false
+
+
+## Nearest living enemy soldier within striking distance of `pos` (same reach-asymmetric
+## contact radius as has_enemy_within), or an empty Dictionary if none. Returns
+## {"position": Vector2, "reach": float} for the closest candidate by squared distance. Ties
+## break on insertion order (the first-encountered candidate wins) -- that order is itself
+## deterministic (see the class doc comment above), so no separate tie-break key is needed.
+static func nearest_enemy(pos: Vector2, team: int, self_radius: float, self_reach: float) -> Dictionary:
+	var c := _key(pos)
+	var best_d2: float = -1.0
+	var best_idx: int = -1
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			var cell: Variant = _cells.get(Vector2i(c.x + dx, c.y + dy))
+			if cell == null:
+				continue
+			for idx in cell:
+				if _team[idx] == team:
+					continue
+				var contact: float = self_radius + _radius[idx] + maxf(self_reach, _reach[idx])
+				var d2: float = pos.distance_squared_to(_pos[idx])
+				if d2 > contact * contact:
+					continue
+				if best_idx == -1 or d2 < best_d2:
+					best_d2 = d2
+					best_idx = idx
+	if best_idx == -1:
+		return {}
+	return {"position": _pos[best_idx], "reach": _reach[best_idx]}
 
 
 ## Forget any built grid so the next rebuild() runs. Used by tests for isolation.

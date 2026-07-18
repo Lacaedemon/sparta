@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/spear-standoff.json",
+  "caption": "Sustained reach standoff (#240): a Spearmen regiment (reach 48wu) holds a wider gap while an Infantry/sword regiment (reach 26wu) marches up and locks in melee. Watch the spear's front rank hold back once the sword closes -- soldier-to-soldier distance settles around 20-27wu (near the sword's own reach) instead of collapsing to the ~9wu the pre-fix regiment-level physics settled at. The spear stops taking casualties by tick 380 while the sword keeps bleeding and eventually routs.",
+  "fixed_fps": 30,
+  "max_frames": 720,
+  "fps": 15,
+  "width": 720
+}

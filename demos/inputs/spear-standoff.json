@@ -1,0 +1,14 @@
+{
+  "_comment": "Sustained reach standoff (#240 phase 2): a stationary Spearmen regiment (reach 48wu) holds ground while an Infantry/sword regiment (reach 26wu) marches up under its own enemy-AI order and locks in melee. Watches whether the spear holds a wider gap and keeps landing hits while the sword's hit rate is suppressed, instead of both sides collapsing to the same distance the way the pre-fix regiment-level physics did.",
+  "seed": "24001",
+  "scenario": [
+    { "team": 0, "type": "Spearmen", "x": 500, "y": 400, "count": 24 },
+    { "team": 1, "type": "Infantry", "x": 500, "y": 600, "count": 24 }
+  ],
+  "camera": [ { "tick": 0, "x": 500, "y": 440, "zoom": 2.1 } ],
+  "state": [60, 120, 180, 220, 260, 300, 340, 380, 420, 460, 500, 560, 620, 680, 740],
+  "fixed_fps": 30,
+  "max_frames": 720,
+  "fps": 15,
+  "width": 720
+}
