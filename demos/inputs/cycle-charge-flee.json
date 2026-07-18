@@ -1,0 +1,28 @@
+{
+  "_comment": "Cycle-charge-vs-fleeing-target staging: a lone 24-horse cavalry is armed with the Cycle charge stance (J) and sent at a brittle 70-man infantry (morale 2) on a FLAT declared map (terrain deliberately empty so pathfinding cannot shape the arc). The first impact routs the infantry, which flees east; the cavalry retires at a trot, brakes onto the 280 wu standoff, wheels about, canters back in, and lands a second charge on the fleeing target around t950-1000 -- the caracole loop re-engaging a broken foe instead of receding after it forever. all_teams_control keeps team 1's battle AI from re-ordering the infantry before the rout. Sampled ticks pin the story beats (spawn, the strike windows, the standoff turn); mid-gallop cosmetic samples of the pursuer are deliberately sparse -- a long chase progressively deforms a cavalry block's formation, a known, separately tracked sim investigation the demo author cannot stage away. The second-strike moment itself is a 1-2 tick FIGHTING window no sampling grid can reliably catch cross-platform, so the durable second-strike guard is the live GUT regression (test_cycle_charge_flee_battle.gd), not a declared expectation here.",
+  "seed": "12345",
+  "all_teams_control": true,
+  "map": {
+    "field": [1600, 1200],
+    "terrain": [],
+    "spawn_lines": [300.0, 880.0]
+  },
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 500, "y": 600, "count": 24},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 600, "count": 70, "morale": 2.0}
+  ],
+  "camera": [
+    {"tick": 0, "x": 775.0, "y": 650.0, "zoom": 0.55}
+  ],
+  "steps": [
+    {"tick": 6, "click": [500, 600]},
+    {"tick": 20, "key": "J"},
+    {"tick": 34, "rmb_click": [800, 600]}
+  ],
+  "state": [8, 240, 300, 360, 420, 480, 540, 720, 900, 960, 1020],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [500.0, 600.0]},
+    {"tick": [240, 300], "uid": 0, "field": "order_mode", "value": "Cycle charge"},
+    {"tick": [330, 450], "uid": 1, "field": "state", "value": "ROUTING"}
+  ]
+}

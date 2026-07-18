@@ -1073,7 +1073,11 @@ into different tools:
   lands its impact hit, then peels back to a standoff and charges again, instead of
   grinding in a static melee where the charge bonus is already spent. The charge
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
-  into braced spears, where a fast charge backfires.
+  into braced spears, where a fast charge backfires. The retire leg rides at a trot
+  and brakes onto the standoff before wheeling about, and the run back in canters
+  until the final sprint --- so the loop also runs down a target that breaks and
+  flees, rather than strolling after it and never catching up
+  (@fig-cycle-charge-flee).
 - **Sweep routers** (<kbd>,</kbd>) --- the unit prioritizes a routing (fleeing) enemy
   over a closer enemy that's still standing and fighting, even as the gap to the
   router narrows. Arm it on a unit you want cleaning up broken formations rather
@@ -1116,6 +1120,22 @@ into different tools:
   back. Use it to break up a packed formation or buy room to maneuver, not to
   win a straight fight --- the softer hits mean it trades its own damage
   output for control of space.
+
+::: {#fig-cycle-charge-flee .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/cycle_charge_flee.jpg">
+  <source src="media/cycle_charge_flee.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A caracole against a broken foe: the first impact routs the infantry, which flees.
+The cavalry retires at a trot, brakes onto its standoff, wheels about, and canters
+back in to land a second charge on the fleeing target.
+:::
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and

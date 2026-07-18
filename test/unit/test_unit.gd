@@ -4227,6 +4227,129 @@ func test_cycle_charge_cornered_pull_back_fights_in_place() -> void:
 	assert_eq(u.state, Unit.State.FIGHTING, "and the unit fights in place rather than freezing")
 
 
+## Shared staging for the caracole pacing tests: a cycle-charge cavalry fixture with
+## explicit gait/accel stats (so the pace assertions are exact, not fixture-default
+## dependent) and a distinct uid per fixture (a bare Unit.new() defaults to uid -1).
+func _make_caracole_unit() -> Unit:
+	var u := _make_unit()
+	u.team = 0
+	u.uid = 1
+	u.is_cavalry = true
+	u.order_mode = Unit.ORDER_CYCLE_CHARGE
+	u.position = Vector2.ZERO
+	u.walk_speed = 34.0
+	u.jog_speed = 70.0
+	u.move_speed = 170.0
+	u.accel = 40.0
+	u.decel = 40.0
+	return u
+
+
+func test_cycle_charge_pull_back_retires_at_a_trot_not_a_sprint() -> void:
+	# The peel's re-planted goal always sits inside SPRINT_START_DISTANCE, so without the
+	# recharging pace arm the plain ladder reads it as a close destination and gallops
+	# AWAY at full sprint -- the recovery leg must ride at a trot (jog) instead.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(50, 0)
+	u.target_enemy = enemy
+	u._cycle_recharging = true
+	var top_speed: float = 0.0
+	for i in range(180):
+		u._think(1.0 / 60.0)
+		top_speed = maxf(top_speed, u._current_speed)
+		if not u._cycle_recharging:
+			break
+	assert_lt(top_speed, u.move_speed - 1.0, "the pull-back must not gallop at sprint pace")
+	assert_almost_eq(top_speed, u.jog_speed, 2.0, "the pull-back rides at a trot (jog pace)")
+	PathField.active = old_pf
+
+
+func test_cycle_charge_pull_back_brakes_onto_the_standoff() -> void:
+	# The standoff is a turn-around point: a pull-back arriving there must have shed its
+	# trot down the arrival envelope (brake_arrival), not hold pace to the wire and carry
+	# it through the flip -- the soldier bodies cannot reverse a moving block in place,
+	# and the coupled regiment used to coast far past the standoff while a fleeing target
+	# opened an uncatchable lead. (Speed the peel STARTS with is a separate matter: the
+	# brake rate is honest bounded physics, so a leg too short to shed a gallop arrives
+	# with the remainder -- this test pins the pace-held-to-the-wire case instead.)
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(60, 0)
+	u.target_enemy = enemy
+	u._cycle_recharging = true
+	var ticks: int = 0
+	while u._cycle_recharging and ticks < 900:
+		u._think(1.0 / 60.0)
+		ticks += 1
+	assert_false(u._cycle_recharging, "the pull-back completes against a stationary target")
+	assert_lt(u._current_speed, 30.0, "and arrives at the standoff braked, not at pace")
+	var dist: float = u.position.distance_to(enemy.position)
+	assert_between(dist, Unit.CYCLE_CHARGE_STANDOFF - 5.0, Unit.CYCLE_CHARGE_STANDOFF + 5.0,
+		"the flip happens at the standoff itself, not far past it")
+	PathField.active = old_pf
+
+
+func test_cycle_charge_approach_canters_beyond_the_sprint_window() -> void:
+	# Between the standoff and SPRINT_START_DISTANCE the re-approach rides at a canter
+	# (jog), not a walk: a walk-pace stern chase never closes on a fleeing target moving
+	# at nearly the same speed, which silently killed the caracole loop the first time a
+	# target routed away mid-cycle.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(500, 0)   # well beyond SPRINT_START_DISTANCE
+	u.target_enemy = enemy
+	for i in range(150):
+		u._think(1.0 / 60.0)
+	assert_almost_eq(u._current_speed, u.jog_speed, 2.0,
+		"the caracole approach paces at a canter beyond the sprint window")
+	PathField.active = old_pf
+
+
+func test_plain_attack_approach_still_walks_beyond_the_sprint_window() -> void:
+	# The canter arm is stance-gated: an ordinary (no-stance) attack approach keeps the
+	# stamina-conserving walk out beyond SPRINT_START_DISTANCE.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	u.order_mode = 0
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(500, 0)
+	u.target_enemy = enemy
+	for i in range(150):
+		u._think(1.0 / 60.0)
+	assert_almost_eq(u._current_speed, u.walk_speed, 2.0,
+		"a plain attack approach still walks beyond the sprint window")
+	PathField.active = old_pf
+
+
+func test_cycle_charge_disengage_move_order_keeps_the_walk() -> void:
+	# The canter applies to the combat approach only: a plain disengage march (an orderly
+	# move order) under the stance paces like any other orderly move.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	for i in range(150):
+		u._move_to(Vector2(600, 0), 1.0 / 60.0, true)
+	assert_almost_eq(u._current_speed, u.walk_speed, 2.0,
+		"an orderly disengage march under the stance keeps the ordinary walk")
+	PathField.active = old_pf
+
+
 func test_gait_pace_maps_each_gait_to_this_units_own_stat() -> void:
 	# The pace a gait ORDERS, from this unit's own stat block: walk and the unknown
 	# fallback read walk_speed, jog reads jog_speed, and run/sprint both read the
