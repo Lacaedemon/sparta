@@ -489,7 +489,7 @@ func _draw() -> void:
 	if _ground_texture != null:
 		draw_texture_rect(_ground_texture, field, false)
 	else:
-		draw_rect(FIELD, FIELD_COLOR)
+		draw_rect(field, FIELD_COLOR)
 	draw_rect(field, Color(0.2, 0.25, 0.16), false, 4.0)
 	draw_line(Vector2(0, field.size.y * 0.5), Vector2(field.size.x, field.size.y * 0.5),
 		Color(1, 1, 1, 0.08), 2.0)
