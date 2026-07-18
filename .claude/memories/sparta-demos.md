@@ -762,3 +762,41 @@ that signal is guaranteed to fire on every code path reaching the function — h
 (frame capture, real renderer) always fires it, another (state-only, `--headless` dummy
 renderer) doesn't. A shared fallback timer isn't enough if its own logic assumes "done implies no
 work left." (PR #519; `demo` CI job dropped from a 6-min timeout to ~1m20s.)
+
+## An expect tick-RANGE's bounds become armed sample ticks -- they can re-trip the defect gate
+
+The defect gate (`tools/check.sh demo_defects`) arms a state snapshot at every tick an
+`expect` entry references -- and for a `[lo, hi]` RANGE entry that means BOTH bounds
+become sampled ticks, in addition to the script's own `state` list. A sampling plan
+carefully tuned to avoid a known-deformed window can be silently un-tuned by an expect
+range whose bounds land inside it: the scan then judges those extra ticks and fails on
+readings the state list deliberately avoided. Anchor expect ranges on ticks that are
+ALREADY in the `state` list (the range's ANY-match semantics still gives drift tolerance
+across the in-list samples), or keep them point ticks. (PR #968's
+`cycle-charge-flee.json`: a `[320, 350]` rout-state range armed ticks 320 and 350, whose
+samples re-created a consecutive shape-residual violation pair the state list had been
+chosen to break up; re-anchored to `[300, 330]` -- both already sampled -- and the gate
+passed.)
+
+## Gate mechanics for sampling design: shape/blob need SUSTAINED violations; overlap fails on a single sample
+
+Empirically (probing the analyzer on snapshot subsets): `shape_residual` and `blob` only
+FAIL when at least two CONSECUTIVE judged samples violate their floors -- a single spiked
+sample passes -- while `overlap` fails on ANY single judged sample below its floor. Two
+consequences for sampling design: never sample two adjacent story beats that both sit in
+a known transient-deformation window (they become a sustained pair), and never sample ANY
+tick where two bodies genuinely interpenetrate below the overlap floor, however briefly.
+The fast way to tune a sampling: dump FULL state at dense candidate ticks once, then run
+`analyze_transcript.gd` on per-tick / per-window SUBSETS of the snapshot files (copied
+into scratch dirs) to get per-tick verdicts without re-running the sim. (PRs #968/#970.)
+
+## Same-machine headless vs rendered runs of one seed diverge late, like cross-platform runs do
+
+The "precise-tick caption claim" entry above warns that local and CI runs diverge past
+some point in long battles. It extends to ONE machine: a `--headless` dump run and a
+real-renderer frame-capture run of the identical input script and seed agreed exactly
+through ~t900, then diverged (different casualty counts at a second strike: 40 vs 49
+survivors). Treat ANY two runs under different renderer configs as potentially divergent
+late-battle, not just Windows-vs-Linux; verify precise-tick caption claims against the CI
+transcript, and don't be alarmed when a local frame capture's late-battle counts differ
+from the local dump that motivated it. (PR #968's second-strike window, 2026-07-17.)
