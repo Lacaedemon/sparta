@@ -809,7 +809,7 @@ stable state), don't spawn the two regiments already overlapping/interpenetratin
 melee range. A vertical gap that's merely smaller than one side's own `attack_range`
 (e.g. 50 world units between block CENTRES for a 48wu-reach spear regiment) can still put
 MOST of both formations' front ranks within reach of each other simultaneously, once each
-side's own formation DEPTH is added on top of the centre-to-centre gap — not just the
+side's own formation DEPTH is added on top of the centre-to-centre gap -- not just the
 front-rank pair. The result: dozens of attackers can all have a handful of defenders in
 reach on the very first tick, delivering enough simultaneous strikes to kill several
 defenders (at full, untouched HP -- no accumulated-wound survivors) before the clip has
