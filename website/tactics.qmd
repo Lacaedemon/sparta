@@ -1075,8 +1075,8 @@ into different tools:
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
   into braced spears, where a fast charge backfires. The retire leg rides at a trot
   and brakes onto the standoff before wheeling about, and the run back in canters
-  until the final sprint --- so the loop also runs down a target that breaks and
-  flees, rather than strolling after it and never catching up
+  until the final sprint --- so the loop keeps after a target that breaks and
+  flees, instead of strolling off behind it and never re-engaging
   (@fig-cycle-charge-flee).
 - **Sweep routers** (<kbd>,</kbd>) --- the unit prioritizes a routing (fleeing) enemy
   over a closer enemy that's still standing and fighting, even as the gap to the
@@ -1134,7 +1134,8 @@ into different tools:
 
 A caracole against a broken foe: the first impact routs the infantry, which flees.
 The cavalry retires at a trot, brakes onto its standoff, wheels about, and canters
-back in to land a second charge on the fleeing target.
+back in to drive a second charge home --- the foe rallies while the horse is out at
+the standoff, and the fresh charge slams into it just the same.
 :::
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed

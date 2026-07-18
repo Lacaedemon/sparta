@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/cycle-charge-flee.json",
-  "caption": "Cycle charge against a target that breaks and flees: the first impact routs the infantry, and the cavalry now retires at a trot, brakes onto the 280 wu standoff instead of galloping through the turn-around with full momentum, then canters back in and lands a second charge on the fleeing target around t950-1000. Previously the pursuer receded away from the router indefinitely -- the peel galloped past the standoff, the soldier bodies dragged the regiment further out, and the walk-pace re-approach could never close on a target fleeing at nearly the same speed.",
+  "caption": "Cycle charge against a target that breaks and flees: the first impact routs the infantry, and the cavalry now retires at a trot, brakes onto the 280 wu standoff instead of galloping through the turn-around with full momentum, wheels about, and canters back in to drive its second charge home around t950-1000. (The broken foe rallies while the horse is out at the standoff -- with no enemy nearby to keep it running -- so the second charge slams into a re-formed line; the re-engagement is the point.) Previously the pursuer receded away from the router indefinitely: the peel galloped past the standoff, the soldier bodies dragged the regiment further out, and the walk-pace re-approach could never close the distance again.",
   "fixed_fps": 30,
   "max_frames": 520,
   "fps": 30,
