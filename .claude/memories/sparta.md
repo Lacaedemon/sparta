@@ -1968,6 +1968,20 @@ only ever exercised by the callers it was originally built for, and could point 
 for a new caller whose geometry differs (here: marching AWAY from the new facing, not toward
 it). (`Lacaedemon/sparta` PR #866, 2026-07-15.)
 
+## Frame-capture catches the render-only const miss no state test sees
+
+When migrating a const to instance data (the caller-configurable-parameters
+convention in CLAUDE.md), the DRAW layer is where a missed substitution hides:
+state dumps, GUT tests, and the transcript diff all read sim state and pass
+while `_draw` still renders from the old const. The per-battle-maps migration
+hit this twice -- terrain textures drawn at the default map's rects (caught by
+the standing mid-clip frame capture), and the no-texture ground fallback
+drawing the default field rect (caught by review in the one branch a frame
+capture never renders, since it only fires when textures failed to build).
+After any const-to-instance migration, grep the file for remaining reads of
+the old const AND frame-capture the feature actually exercising a non-default
+value; the sim-equality proof on defaults says nothing about the render layer.
+
 ## Sim-equality proof for a dump-SCHEMA change: strip the additive fields, then demand byte-equality
 
 The plain state-dump byte-diff (branch vs main, same scenario/ticks) is the standard
