@@ -112,7 +112,7 @@ func test_reset_clears_the_cached_frame() -> void:
 	assert_false(SoldierEnemyProximity.is_current(6), "reset forgets the built grid")
 
 
-# --- nearest_enemy() (#240: SoldierMeleeStandoff's per-soldier lookup) -------------------
+# --- nearest_enemy() (SoldierMeleeStandoff's per-soldier lookup) -------------------------
 
 func test_nearest_enemy_returns_the_closer_of_two_in_range_candidates() -> void:
 	var a := _make_unit(1, 0, Vector2.ZERO)

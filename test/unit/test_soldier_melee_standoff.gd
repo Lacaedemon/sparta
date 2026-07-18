@@ -1,15 +1,15 @@
 extends GutTest
-## SoldierMeleeStandoff: the sustained reach-asymmetric melee standoff (#240 phase 2) that
-## makes a longer-reach weapon's opening-strike advantage (#233) hold up once both sides are
-## locked in melee, instead of collapsing to a common distance once SoldierEnemyContact and
+## SoldierMeleeStandoff: the sustained reach-asymmetric melee standoff that makes a
+## longer-reach weapon's opening-strike advantage hold up once both sides are locked in
+## melee, instead of collapsing to a common distance once SoldierEnemyContact and
 ## Unit._separate()'s reach-independent front-depth floor settle the regiments together.
 ## These pin: a longer-reach soldier backs away once its shorter-reach foe closes inside its
 ## reach (scaling with how far closed), a shorter-reach soldier presses in until it closes
 ## inside its OWN reach, equal reach never biases, the co-located degenerate case doesn't
 ## crash or NaN, and accumulate() writes the bias additively into both sides' `_sim_steer`.
 
-const SPEAR_REACH: float = 48.0   # #233: 2.4 m * 20
-const SWORD_REACH: float = 26.0   # #233: 1.3 m * 20
+const SPEAR_REACH: float = 48.0   # 2.4 m * WORLD_UNITS_PER_METER (20) -- a spear's own weapon reach
+const SWORD_REACH: float = 26.0   # 1.3 m * WORLD_UNITS_PER_METER (20) -- a sword's own weapon reach
 
 
 # --- pure standoff_bias() -------------------------------------------------------------
@@ -148,7 +148,7 @@ func test_accumulate_skips_a_dead_unit() -> void:
 	assert_eq(alive._sim_steer, before, "a DEAD unit contributes no enemy soldiers to bias against")
 
 
-# --- soldier_reach() / attack_range wiring (#233) ----------------------------------------
+# --- soldier_reach() / attack_range wiring -----------------------------------------------
 
 func test_soldier_reach_reflects_the_unit_type_specific_attack_range() -> void:
 	var spear := _melee_unit(1, 0, Vector2.ZERO, Vector2.DOWN, SPEAR_REACH)

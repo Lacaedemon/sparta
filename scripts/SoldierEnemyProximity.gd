@@ -2,7 +2,7 @@ class_name SoldierEnemyProximity
 extends RefCounted
 ## Cross-team, cross-unit living-soldier spatial hash, originally built for the
 ## SQUARE/SCHILTRON engaged-set selection (Unit.engaged_soldier_indices) and now also the
-## nearest-enemy lookup SoldierMeleeStandoff's per-tick standoff bias uses (#240). Distinct
+## nearest-enemy lookup SoldierMeleeStandoff's per-tick standoff bias uses. Distinct
 ## from SoldierSpatialHash (which indexes only the soldiers a unit's OWN engaged-set
 ## selection already picked, for friendly-avoidance steering and enemy-contact resolution):
 ## this class answers questions that have to be resolved BEFORE any engaged set exists --

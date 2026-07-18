@@ -1,5 +1,5 @@
 class_name SoldierMeleeStandoff
-## Sustained reach-asymmetric melee standoff (#240, phase 2). #233/PR #242 already gave a
+## Sustained reach-asymmetric melee standoff. The per-soldier reach model already gives a
 ## longer-reach weapon (e.g. spear, reach 48) the opening-strike advantage on approach over a
 ## shorter-reach weapon (e.g. sword, reach 26) -- the spear lands hits before the sword is in
 ## range at all. What's missing is the SUSTAINED case: once both sides lock in melee,
@@ -11,8 +11,8 @@ class_name SoldierMeleeStandoff
 ## backs a longer-reach soldier away once its shorter-reach foe closes in, and pushes a
 ## shorter-reach soldier forward until it closes inside its OWN reach -- composing with the
 ## existing physics (formation arrival, friendly steering, enemy contact, knockback) rather
-## than a regiment-level kite, which docs/individual-collision-design.md and issue #240 both
-## reject as risking oscillation/jitter at the regiment level.
+## than a regiment-level kite, which the design doc (docs/individual-collision-design.md)
+## explicitly rejects as risking oscillation/jitter at the regiment level.
 ##
 ## Determinism: each engaged soldier's bias is computed independently from the frozen
 ## SoldierEnemyProximity snapshot (itself a pure function of positions already fixed for this
@@ -24,9 +24,9 @@ class_name SoldierMeleeStandoff
 # Bias magnitude (world units/sec) a fully-committed standoff applies -- similar in spirit to
 # SoldierSteering.STEER_STRENGTH (60.0). Started at 40.0 (a bit below the friendly-steering
 # strength, since this composes ON TOP of it and both feed the same bounded-accel arrival) and
-# held there: verified empirically (see the #981 PR description) that it holds a real standoff
-# gap without blowing past sane per-soldier speeds or fighting the arrival/couple physics into
-# oscillation on the reference two-unit demo.
+# held there: verified empirically against a two-unit reference demo (a stationary spear
+# regiment locked against a marching sword regiment) that it holds a real standoff gap without
+# blowing past sane per-soldier speeds or fighting the arrival/couple physics into oscillation.
 const STANDOFF_STRENGTH: float = 40.0
 
 

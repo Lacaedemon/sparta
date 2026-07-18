@@ -800,3 +800,62 @@ survivors). Treat ANY two runs under different renderer configs as potentially d
 late-battle, not just Windows-vs-Linux; verify precise-tick caption claims against the CI
 transcript, and don't be alarmed when a local frame capture's late-battle counts differ
 from the local dump that motivated it. (PR #968's second-strike window, 2026-07-17.)
+
+## A two-unit melee scenario spawned too close together gang-piles casualties before any mechanic gets to matter
+
+When staging a `scenario`-only two-unit clash meant to demonstrate a SUSTAINED effect (a
+standoff, a knockback balance, anything that needs the fight to run for a while at a
+stable state), don't spawn the two regiments already overlapping/interpenetrating at
+melee range. A vertical gap that's merely smaller than one side's own `attack_range`
+(e.g. 50 world units between block CENTRES for a 48wu-reach spear regiment) can still put
+MOST of both formations' front ranks within reach of each other simultaneously, once each
+side's own formation DEPTH is added on top of the centre-to-centre gap — not just the
+front-rank pair. The result: dozens of attackers can all have a handful of defenders in
+reach on the very first tick, delivering enough simultaneous strikes to kill several
+defenders (at full, untouched HP -- no accumulated-wound survivors) before the clip has
+shown anything about the mechanic under test. This reads as instant, unrealistic
+casualties in the first ~10 ticks and swamps whatever slower dynamic (a standoff settling,
+a knockback trading) the demo was staged to show.
+
+**Fix:** spawn the two sides far enough apart that neither is in contact range at tick 0
+(gap > either side's own `attack_range + 2*RADIUS`, not just visually "close"), and let
+the enemy AI's own march (`_run_enemy_ai`, real order commands, no scripted steps needed)
+close the distance naturally. This also avoids needing any scripted `steps` at all for a
+stationary-defender-vs-marching-attacker demo: team 0 stays put by default, and team 1's
+AI walks it into contact on its own. Verify with `dump-state.sh` at an early tick (e.g.
+tick 10) that soldier counts on BOTH sides still match their spawned `count` before trusting
+any later tick's numbers as representative of the sustained mechanic. (`Lacaedemon/sparta`
+PR #981, `demos/inputs/spear-standoff.json`: an initial 50wu-gap two-formation spawn lost 5
+of 30 Infantry soldiers, all at full HP, within the first 10 ticks -- re-staged with a
+200wu gap and no scripted steps, letting the enemy AI march in instead.)
+
+## A per-soldier reach-standoff bias can splay a formation once the enemy scatters into routing stragglers
+
+`SoldierMeleeStandoff`'s per-soldier bias (#240 phase 2) looks up each engaged soldier's
+OWN nearest living enemy independently (`SoldierEnemyProximity.nearest_enemy`), including a
+ROUTING enemy's soldiers (routers stay in the cross-team proximity grid so a Square/Schiltron
+can still treat them as a threat -- see `SoldierEnemyProximity`'s own class doc). Late in a
+lopsided battle, once one side is ground down to a handful of scattered, fleeing stragglers,
+different soldiers on the winning side end up backing away from (or pressing toward)
+DIFFERENT, increasingly far-apart stragglers -- there's no shared regiment-level target, only
+each soldier's own locally-nearest enemy. Over several hundred ticks this measurably splays
+the winning formation's actual body positions well outside its own canonical formation grid
+(observed: a 16-soldier Spearmen block's `soldier_summary.bbox` grew from ~54wu wide (stable
+through the core sustained-standoff window) to ~101wu wide by the time the enemy was reduced
+to 4 survivors and routing -- nearly double, while the CANONICAL slot grid computed from the
+same tick's `position`/`facing` stayed ~54wu the whole time, confirming the bodies were
+genuinely displaced off their own formation, not just a wider intentional reshape).
+`shape_residual` (the demo-defect scan's scramble check) does NOT catch this -- it measures
+internal shape after a best-fit rigid alignment, so a formation that stays internally
+coherent but drifts/rotates as a whole away from its canonical slots reads as near-zero
+residual regardless. A raw `soldiers_full.pos` vs `soldiers_full.slots` per-soldier distance
+check is what actually surfaces it (12-44wu per-soldier deviation from slot at the affected
+tick, in the case observed). Visually this reads as a crescent/encirclement shape around the
+last defenders -- not obviously broken, but a real, measurable formation-integrity cost that
+only manifests once the losing side has scattered, well past the CORE sustained-standoff
+window (#240's issue and design doc; unaffected in the ticks where both sides are still
+substantially intact). Filed as a known limitation rather than fixed in #981 itself: excluding
+routing enemies from the standoff lookup would need `SoldierEnemyProximity` to carry a
+per-soldier owner-state, and its rebuild is cache-shared (by exact `frame` key) with the
+SQUARE/Schiltron engaged-set selection, which DOES want routing enemies treated as threats --
+so a scoped fix isn't a one-line change. (`Lacaedemon/sparta` PR #981, 2026-07-18.)

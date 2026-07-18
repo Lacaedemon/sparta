@@ -1052,7 +1052,7 @@ func _on_soldier_tick() -> void:
 	var delta: float = get_physics_process_delta_time()
 	var frame: int = Engine.get_physics_frames()
 	SoldierSteering.accumulate(units, frame)
-	# Reach-asymmetric melee standoff (#240): ADDS its bias into _sim_steer, so it must run
+	# Reach-asymmetric melee standoff: ADDS its bias into _sim_steer, so it must run
 	# after SoldierSteering (which clears+rewrites the array with the friendly-avoidance
 	# bias -- this composes on top, it doesn't replace it) and before the enemy-contact/step
 	# passes below read _sim_steer as this tick's feed-forward. Shares `frame` with
