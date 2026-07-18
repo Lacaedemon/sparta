@@ -1845,6 +1845,17 @@ func _is_move_order_in_haste() -> bool:
 			and current_order.haste
 
 
+## The pursuit-flavored stances: each exists to close on a (possibly fleeing) enemy --
+## CHASE rides its quarry down, SWEEP_ROUTERS runs down routers, CYCLE_CHARGE re-approaches
+## for the next momentum charge. _move_to's AUTO pace ladder canters (jogs) these toward
+## the target beyond the sprint window instead of the default stamina-conserving walk,
+## since a walk-pace stern chase never closes on a target fleeing at nearly walk pace.
+func _pursuit_stance() -> bool:
+	return order_mode == ORDER_CYCLE_CHARGE \
+			or order_mode == ORDER_CHASE \
+			or order_mode == ORDER_SWEEP_ROUTERS
+
+
 func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: bool = false, brake_arrival: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
@@ -1917,12 +1928,12 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		pace_speed = move_speed  # sprint distance beats under-fire: charge through the kill zone at full speed
 	elif _under_fire:
 		pace_speed = jog_speed
-	elif order_mode == ORDER_CYCLE_CHARGE and not orderly:
-		# Caracole approach beyond the sprint window: ride in at a canter. The stance's
-		# whole point is repeated momentum charges, and a walk-pace stern chase never
-		# closes on a quarry fleeing at nearly the same speed -- the re-approach must
-		# outpace a fleeing target to ever line up the next run. An orderly march (a
-		# plain disengage move order) keeps the ordinary walk.
+	elif _pursuit_stance() and not orderly:
+		# Pursuit approach beyond the sprint window: ride in at a canter (see
+		# _pursuit_stance for which stances and why). An orderly march (a plain
+		# disengage move order) keeps the ordinary walk, and so does a plain no-stance
+		# attack on a fleeing target -- conserving stamina is the default; running a
+		# quarry down is what these stances opt into.
 		pace_speed = jog_speed
 	else:
 		pace_speed = walk_speed
