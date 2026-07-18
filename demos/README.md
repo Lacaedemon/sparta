@@ -117,6 +117,18 @@ script under `demos/inputs/`:
     `how-to-play.qmd`) or `"shift": true` to chord it with Shift (e.g.
     `{"key": "O", "shift": true}` jumps straight to the schiltron stance, sharing
     orbis's O key — see "Square: orbis and schiltron" in `how-to-play.qmd`).
+- `map` (optional) — **declare the demo's own battlefield** instead of the default map:
+  `{"field": [w, h], "terrain": [{"rect": [x, y, w, h], "type": "hill", "kind": "block"},
+  {"rect": [...], "type": "forest", "kind": "slow", "speed": 0.6}], "spawn_lines":
+  [attacker_y, defender_y]}`. Every key is optional — an absent key keeps the default
+  map's value (the `Battle.FIELD`/`TERRAIN`/`SPAWN_LINE_YS` consts). Applied before the
+  battle spawns, like `drill`/`scenario` above, so the camera bounds, routing grid, rout
+  margins, and default-line spawns all rebuild on the declared battlefield. Strict like
+  `steps`/`scenario`: a malformed block fails the recording loudly (map geometry decides
+  WHAT battle runs). Use it to isolate a mechanic on purpose-built terrain rather than
+  contorting a staging around the default map's fixed forest and hill — and note a replay
+  recorded on a custom map carries it in its header, so playback reconstructs the same
+  battlefield (`demos/inputs/custom-map-defile.json` is the worked example).
 - `drill` (optional bool, **default it to `true` unless the demo needs an enemy**) — solo/
   no-opponent rehearsal: only the player army (team 0) deploys and the battle never auto-ends
   on "no enemies", so a unit can rehearse a maneuver with no combat. Set `"drill": true` for

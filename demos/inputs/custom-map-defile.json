@@ -1,0 +1,107 @@
+{
+  "_comment": "Per-battle map definitions demo: this input script declares its own map -- a tall, narrow 800x1000 field (obviously not the default 1600x1200 battlefield) with two custom hill walls forming a 200-wu defile at mid-field. A lone 60-man Infantry regiment is ordered through the gap (RUN gait via triple right-click); the pathfield built from the custom terrain funnels it through the defile with its own clearance margin. Drill mode, default whole-field camera so the clip frames the custom field itself. Deterministic (scenario + seed + scripted input + map).",
+  "seed": "12345",
+  "drill": true,
+  "map": {
+    "field": [
+      800,
+      1000
+    ],
+    "terrain": [
+      {
+        "rect": [
+          0,
+          450,
+          300,
+          200
+        ],
+        "type": "hill",
+        "kind": "block"
+      },
+      {
+        "rect": [
+          500,
+          450,
+          300,
+          200
+        ],
+        "type": "hill",
+        "kind": "block"
+      }
+    ]
+  },
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 400,
+      "y": 250,
+      "count": 60,
+      "facing": [
+        0,
+        1
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [
+        400,
+        250
+      ]
+    },
+    {
+      "tick": 16,
+      "rmb_click": [
+        400,
+        850
+      ]
+    },
+    {
+      "tick": 22,
+      "rmb_click": [
+        400,
+        850
+      ]
+    },
+    {
+      "tick": 28,
+      "rmb_click": [
+        400,
+        850
+      ]
+    }
+  ],
+  "state": [
+    8,
+    120,
+    300,
+    480,
+    660,
+    860
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        400,
+        250
+      ]
+    },
+    {
+      "tick": 120,
+      "uid": 0,
+      "field": "current_order",
+      "value": "MOVE"
+    },
+    {
+      "tick": 860,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    }
+  ]
+}

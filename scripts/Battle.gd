@@ -9,6 +9,7 @@ const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 const ParadeGround = preload("res://scripts/ParadeGround.gd")
 const AllTeamsControl = preload("res://scripts/AllTeamsControl.gd")
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+const BattleMapRef = preload("res://scripts/BattleMap.gd")
 
 # 80 x 60 m at 20 wu/m. Deep enough that the two default lines deploy with real
 # ground between them (see _spawn_line's y anchors below): the field grew downward
@@ -20,9 +21,9 @@ const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 # design step.
 const FIELD := Rect2(0, 0, 1600, 1200)
 
-# Extra room beyond FIELD that a ROUTING unit may flee into before it's removed from play
-# (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn once
-# as a visible margin strip at battle start (see _draw()). Sized to the game's maximum
+# Extra room beyond the field that a ROUTING unit may flee into before it's removed from
+# play (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn
+# once as a visible margin strip at battle start (see _draw()). Sized to the game's maximum
 # visual range — the longest ranged attack (RANGED_RANGE) and the farthest a unit can
 # currently be noticed at (DETECTION_RANGE, the closest existing stand-in for a
 # fog-of-war vision range, which this game doesn't have yet) — so a fleeing unit stays a
@@ -35,6 +36,22 @@ const TERRAIN: Array = [
 	{"rect": Rect2(200,  380, 250, 200), "type": "forest", "kind": "slow", "speed": 0.6},
 	{"rect": Rect2(1150, 380, 250, 200), "type": "hill",   "kind": "block"},
 ]
+# Default spawn-line anchors for the standard two-army battle: team 0's line and team 1's.
+# See _spawn_line's call sites for the deployment-gap reasoning behind the values.
+const SPAWN_LINE_YS: Array = [300.0, 880.0]
+
+# The live per-battle MAP: battlefield rect, terrain patches, and spawn-line anchors, as
+# instance data a caller may override BEFORE the node enters the tree (the same
+# set-before-_ready contract drill_mode/scenario/ai_doctrine already follow). The consts
+# above are the DEFAULT map's values — kept as consts so the many external readers
+# (tests, docs) keep a stable reference — and these fields are what the battle actually
+# runs on: parameters a caller could reasonably want to vary are caller-configurable
+# with today's values as defaults (see CLAUDE.md's code conventions). The demo recorder
+# sets them from an input script's `map` block; a replay restores them from its header
+# (Replay.map) so playback reconstructs the battlefield it was recorded on.
+var field: Rect2 = FIELD
+var terrain: Array = TERRAIN
+var spawn_line_ys: Array = SPAWN_LINE_YS
 const TERRAIN_COLOR := {
 	"forest": Color(0.12, 0.28, 0.10),
 	"hill":   Color(0.55, 0.48, 0.32),
@@ -308,9 +325,31 @@ func _ready() -> void:
 	# the seed loaded from the file, so we leave it alone.
 	if Replay.mode != Replay.Mode.PLAYBACK:
 		Replay.start_recording()
+		# Publish the live map to the recording when it isn't the default one, so
+		# the saved replay can reconstruct the same battlefield on playback. A
+		# default-map battle records no map at all — its replay file stays exactly
+		# the pre-map shape, and old replays keep playing unchanged.
+		if BattleMapRef.differs_from_default(field, terrain, spawn_line_ys,
+				FIELD, TERRAIN, SPAWN_LINE_YS):
+			Replay.map = BattleMapRef.serialize(field, terrain, spawn_line_ys)
+	else:
+		# Playback: restore the recorded map (empty = the default map) BEFORE any
+		# of the map consumers below run, so camera bounds, the routing grid, and
+		# the spawns all rebuild the battlefield the replay was recorded on.
+		if not Replay.map.is_empty():
+			var parsed: Dictionary = BattleMapRef.parse(Replay.map)
+			if parsed.has("error"):
+				push_warning("Replay map block invalid (%s); using the default map." % parsed["error"])
+			else:
+				field = parsed.get("field", field)
+				terrain = parsed.get("terrain", terrain)
+				spawn_line_ys = parsed.get("spawn_lines", spawn_line_ys)
 
-	_camera.bounds = FIELD
-	_camera.position = FIELD.position + FIELD.size * 0.5
+	# The rout margin tracks the live field, not the default const.
+	FIELD_WITH_MARGIN = field.grow(ROUT_MARGIN)
+
+	_camera.bounds = field
+	_camera.position = field.position + field.size * 0.5
 	# When the demo recorder replays a presentation track, start already framed on the
 	# first keyframe so the smoothing below has nothing to glide in from.
 	if Replay.mode == Replay.Mode.PLAYBACK and Replay.drive_camera and Replay.has_camera_track():
@@ -323,8 +362,8 @@ func _ready() -> void:
 	ProjectileField.active = ProjectileField.new()
 
 	# Register terrain patches as PathField obstacles or speed zones; cleared in _exit_tree().
-	PathField.active = PathField.new(FIELD)
-	for patch in TERRAIN:
+	PathField.active = PathField.new(field)
+	for patch in terrain:
 		if patch.get("kind", "block") == "slow":
 			assert(patch.has("speed"), "slow terrain patch missing required 'speed' key")
 			PathField.active.set_speed_rect(patch["rect"], float(patch["speed"]))
@@ -334,9 +373,9 @@ func _ready() -> void:
 	# Build the procedural ground/terrain art (TerrainArt; render-only, fixed art seed --
 	# see the _ground_texture field docs). Built here once; _draw only ever samples them.
 	_ground_texture = ImageTexture.create_from_image(
-			TerrainArt.field_image(FIELD.size, TerrainArt.ART_SEED, FIELD_COLOR))
+			TerrainArt.field_image(field.size, TerrainArt.ART_SEED, FIELD_COLOR))
 	_terrain_textures.clear()
-	for patch in TERRAIN:
+	for patch in terrain:
 		var col: Color = TERRAIN_COLOR.get(patch["type"], Color(0.4, 0.4, 0.4))
 		var rect: Rect2 = patch["rect"]
 		var img: Image
@@ -390,14 +429,14 @@ func _ready() -> void:
 		_spawn_scenario(scenario)
 	else:
 		# Player army (team 0) deploys along the top, facing down.
-		_spawn_line(0, Vector2.DOWN, 300, atk_count)
+		_spawn_line(0, Vector2.DOWN, float(spawn_line_ys[0]), atk_count)
 		# Enemy army (team 1) deploys along the bottom, facing up — skipped in drill mode,
 		# where the player army rehearses alone. The 580-wu line gap (29 m, ~20 m front
 		# to front with today's block depths) is the deepest deployment that stays
 		# inside FormationTier.DEMOTE_RANGE, so both armies keep individual-soldier
 		# fidelity from the first tick while no longer starting at spitting distance.
 		if not drill_mode:
-			_spawn_line(1, Vector2.UP, 880, dfn_count)
+			_spawn_line(1, Vector2.UP, float(spawn_line_ys[1]), dfn_count)
 
 	# Drive the parallel individual-soldier layer once per tick. physics_frame
 	# fires AFTER every unit's _physics_process, so the seed reads settled
@@ -448,17 +487,17 @@ func _draw() -> void:
 	# nothing the sim reads changes). The flat-colour rects remain as the fallback for a
 	# battle whose textures never built (a test poking _draw without a full _ready).
 	if _ground_texture != null:
-		draw_texture_rect(_ground_texture, FIELD, false)
+		draw_texture_rect(_ground_texture, field, false)
 	else:
-		draw_rect(FIELD, FIELD_COLOR)
-	draw_rect(FIELD, Color(0.2, 0.25, 0.16), false, 4.0)
-	draw_line(Vector2(0, FIELD.size.y * 0.5), Vector2(FIELD.size.x, FIELD.size.y * 0.5),
+		draw_rect(field, FIELD_COLOR)
+	draw_rect(field, Color(0.2, 0.25, 0.16), false, 4.0)
+	draw_line(Vector2(0, field.size.y * 0.5), Vector2(field.size.x, field.size.y * 0.5),
 		Color(1, 1, 1, 0.08), 2.0)
 	# Terrain patches — drawn over the field, under units (Battle is the parent). Each
 	# patch keeps its outline so the boundary (the part the sim actually enforces) stays
 	# crisp over the textured fill.
-	for i in range(TERRAIN.size()):
-		var patch: Dictionary = TERRAIN[i]
+	for i in range(terrain.size()):
+		var patch: Dictionary = terrain[i]
 		var col: Color = TERRAIN_COLOR.get(patch["type"], Color(0.4, 0.4, 0.4))
 		var tex: ImageTexture = _terrain_textures[i] if i < _terrain_textures.size() else null
 		if tex != null:
@@ -528,7 +567,7 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# whichever neighbour it cycled next to. Each adjacent pair's minimum gap is instead the
 	# sum of their own half-widths plus a soldier-file's worth of daylight (FORMATION_SPACING),
 	# so no two blocks so much as touch, regardless of composition.
-	var base_spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
+	var base_spacing: float = minf(150.0, (field.size.x - 200.0) / maxf(1.0, count - 1))
 	var half_widths: Array[float] = []
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
@@ -557,7 +596,7 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 				half_widths[i] + half_widths[i + 1] + Unit.FORMATION_SPACING)
 		gaps.append(gap)
 		raw_total_width += gap
-	var field_budget: float = FIELD.size.x - 200.0
+	var field_budget: float = field.size.x - 200.0
 	if raw_total_width > field_budget and raw_total_width > 0.0:
 		var shrink: float = field_budget / raw_total_width
 		for i in range(gaps.size()):
@@ -568,7 +607,7 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	var xs: Array[float] = [0.0]
 	for i in range(count - 1):
 		xs.append(xs[i] + gaps[i])
-	var start_x: float = FIELD.size.x * 0.5 - xs[xs.size() - 1] * 0.5
+	var start_x: float = field.size.x * 0.5 - xs[xs.size() - 1] * 0.5
 
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
@@ -685,7 +724,7 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 		u.atomic_response_delay = float(d["atomic_response_s"])
 	u.facing = facing
 	u.position = pos
-	u.field_bounds = FIELD   # so a skirmisher kites without backing off the map
+	u.field_bounds = field   # so a skirmisher kites without backing off the map
 	u.retreat_bounds = FIELD_WITH_MARGIN   # a router may flee this far before it escapes
 	_units.add_child(u)
 	# Set after add_child() so _ready() has already established the type's base
@@ -730,7 +769,7 @@ func _spawn_scenario(specs: Array) -> void:
 		if spec.has("atomic_response_s"):
 			d["atomic_response_s"] = float(spec["atomic_response_s"])
 		var team := int(spec.get("team", 0))
-		var pos := Vector2(float(spec.get("x", FIELD.size.x * 0.5)), float(spec.get("y", FIELD.size.y * 0.5)))
+		var pos := Vector2(float(spec.get("x", field.size.x * 0.5)), float(spec.get("y", field.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
 		# line spawn, unless the spec pins an explicit non-degenerate facing vector [x, y].
 		var facing := Vector2.DOWN if team == 0 else Vector2.UP
