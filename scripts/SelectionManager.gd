@@ -567,7 +567,7 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	# records it and applies it on the next physics tick (so live and replayed
 	# orders take exactly the same code path). Selection and camera stay live —
 	# only the simulation-affecting order is routed through the recorder.
-	var enemy = _unit_at(world_pos, _enemy_team())
+	var enemy = _unit_at(world_pos, _enemy_team(), true)
 	var target_uid: int = -1
 	# Set when the click resolves to a line-relief target (a friendly, not a SUPPORT
 	# ward) -- distinguishes it from a SUPPORT ward below, which always stays focused.
@@ -653,7 +653,7 @@ func _can_form_up(a: Vector2, b: Vector2) -> bool:
 		return false
 	if _armed_mode == BattleRef.OrderMode.SUPPORT:
 		return false
-	if _unit_at(a, _enemy_team()) != null or _unit_at(b, _enemy_team()) != null:
+	if _unit_at(a, _enemy_team(), true) != null or _unit_at(b, _enemy_team(), true) != null:
 		return false
 	# The inter-unit gaps eat MULTI_FORM_UP_GAP*(n-1) of the drag, so require that much extra
 	# on top of FORM_UP_MIN_WIDTH — otherwise a multi-unit drag could leave zero usable width
@@ -1478,10 +1478,19 @@ func _friend_team() -> int:
 	return 1 - _enemy_team()
 
 
-func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
+# Node groups to scan for _unit_at's `include_routers` argument. A routing unit has left
+# "units" for "routers" (Unit._rout()); scanning both is what lets an attack-order click
+# resolve a fleeing enemy, matching COMBAT_GROUPS' role in the demo state-dump path.
+const _ATTACKABLE_GROUPS := ["units", "routers"]
+
+
+func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> UnitRef:
 	# Nearest unit on `team` under the cursor (callers pass whichever team they want — the
 	# player's own for selection, the enemy's for attack orders — or TEAM_ANY_OWN for "any
-	# team the player currently controls", used by plain click/box selection).
+	# team the player currently controls", used by plain click/box selection). `include_routers`
+	# also scans routing units (see _ATTACKABLE_GROUPS) -- set by callers resolving an ATTACK
+	# click on the enemy team, since routing units are valid combat targets (#638/#654) but a
+	# plain "units"-only scan can't resolve a click on one at all.
 	var best = null
 	var best_d: float = UnitRef.RADIUS + BODY_PICK_PAD
 	# Fallback: the unit whose raised standard (flag + pole) is under the cursor, so the
@@ -1489,27 +1498,29 @@ func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
 	# resolves the click when no block is under the cursor. Nearest flag breaks ties.
 	var flag_best = null
 	var flag_best_d: float = INF
-	for node in get_tree().get_nodes_in_group("units"):
-		var unit = node as UnitRef
-		# A unit that died this frame is still valid and in the group until
-		# queue_free() prunes it; skip it so a click on its last position can't
-		# select/target a dead node — matching box-select, type-select and the
-		# control-group recall guards. (A dead unit also draws no flag.)
-		if unit == null or unit.state == UnitRef.State.DEAD:
-			continue
-		if team == TEAM_ANY_OWN:
-			if not _is_own_team(unit.team):
+	var groups: Array = _ATTACKABLE_GROUPS if include_routers else ["units"]
+	for group in groups:
+		for node in get_tree().get_nodes_in_group(group):
+			var unit = node as UnitRef
+			# A unit that died this frame is still valid and in the group until
+			# queue_free() prunes it; skip it so a click on its last position can't
+			# select/target a dead node — matching box-select, type-select and the
+			# control-group recall guards. (A dead unit also draws no flag.)
+			if unit == null or unit.state == UnitRef.State.DEAD:
 				continue
-		elif unit.team != team:
-			continue
-		var d: float = unit.global_position.distance_to(world_pos)
-		if d < best_d:
-			best_d = d
-			best = unit
-		var fd: float = _flag_pick_distance(unit, world_pos)
-		if fd >= 0.0 and fd < flag_best_d:
-			flag_best_d = fd
-			flag_best = unit
+			if team == TEAM_ANY_OWN:
+				if not _is_own_team(unit.team):
+					continue
+			elif unit.team != team:
+				continue
+			var d: float = unit.global_position.distance_to(world_pos)
+			if d < best_d:
+				best_d = d
+				best = unit
+			var fd: float = _flag_pick_distance(unit, world_pos)
+			if fd >= 0.0 and fd < flag_best_d:
+				flag_best_d = fd
+				flag_best = unit
 	return best if best != null else flag_best
 
 

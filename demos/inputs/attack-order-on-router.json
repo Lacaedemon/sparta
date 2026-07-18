@@ -1,0 +1,22 @@
+{
+  "_comment": "Right-click can attack a routing enemy (#975): a player Cavalry unit right-clicks a lone enemy Infantry that spawns ALREADY routing (scenario starting_state 3, morale pinned low so it doesn't instantly rally -- the standard pattern from morale-recovery.json). Before the fix, SelectionManager._unit_at's enemy-team scan only walked the 'units' group -- which a routing unit has left for 'routers' -- so this exact click silently fell through to a ground move at the click point instead of an attack; target_enemy_uid stayed null and the cavalry marched to empty ground beside the router instead of closing on it. After the fix the click resolves the router, target_enemy_uid locks onto it, and the cavalry runs it down and finishes it off (annihilated between t240-260, per a state dump). drill mode (no other enemy). Deterministic (scenario + seed + scripted input); staging verified by state dump before pushing.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 700, "y": 500, "count": 24},
+    {"team": 1, "type": "Infantry", "x": 900, "y": 500, "count": 40, "morale": 5.0, "starting_state": 3}
+  ],
+  "camera": [
+    {"tick": 0, "x": 850.0, "y": 560.0, "zoom": 1.0}
+  ],
+  "steps": [
+    {"tick": 6, "click": [700, 500]},
+    {"tick": 14, "rmb_click": [900, 500]}
+  ],
+  "state": [8, 20, 60, 200, 220, 260],
+  "expect": [
+    {"tick": 8, "uid": 1, "field": "state", "value": "ROUTING"},
+    {"tick": [20, 60], "uid": 0, "field": "target_enemy_uid", "value": 1},
+    {"tick": [200, 220], "uid": 0, "field": "engaged", "value": true}
+  ]
+}
