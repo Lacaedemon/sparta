@@ -2031,3 +2031,85 @@ func test_demo_overlay_halo_rings_the_shifted_block_footprint() -> void:
 	Replay.mode = prev_mode
 	Replay.show_demo_orders = prev_flag
 	pass_test("the overlay halo drew about the shifted block without error")
+
+
+# --- attack orders on a routing enemy -----------------------------------------
+
+func test_unit_at_ignores_a_routing_enemy_by_default() -> void:
+	# A routing unit has left "units" for "routers" (Unit._rout()); a plain scan
+	# (own-team selection, or an attack-team scan with include_routers left false)
+	# must not resolve it, matching every other _unit_at caller's existing behaviour.
+	var sm := _sm()
+	var router := _unit()
+	router.team = 1
+	router.position = Vector2(700, 200)
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	assert_null(sm._unit_at(router.global_position, 1),
+			"a routing enemy resolves to nothing without include_routers")
+
+
+func test_unit_at_include_routers_resolves_a_routing_enemy() -> void:
+	var sm := _sm()
+	var router := _unit()
+	router.team = 1
+	router.position = Vector2(700, 200)
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	assert_eq(sm._unit_at(router.global_position, 1, true), router,
+			"include_routers resolves a click on a routing enemy")
+
+
+func test_unit_at_include_routers_still_excludes_a_dead_router() -> void:
+	# A DEAD unit is still valid and group-resident until queue_free() prunes it
+	# (the same guard the plain "units" scan already has) -- a click on its last
+	# position must not resolve it just because the router group is now included.
+	var sm := _sm()
+	var dead := _unit()
+	dead.team = 1
+	dead.position = Vector2(700, 200)
+	dead.state = Unit.State.DEAD
+	dead.remove_from_group("units")
+	dead.add_to_group("routers")
+	assert_null(sm._unit_at(dead.global_position, 1, true),
+			"a dead unit in the routers group still resolves to nothing")
+
+
+func test_unit_at_include_routers_respects_team() -> void:
+	var sm := _sm()
+	var router := _unit()
+	router.team = 1
+	router.position = Vector2(700, 200)
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	assert_null(sm._unit_at(router.global_position, 0, true),
+			"include_routers still filters by team -- a team-0 query ignores a team-1 router")
+
+
+func test_unit_at_include_routers_resolves_a_routing_enemys_flag() -> void:
+	var sm := _sm()
+	var router := _unit()
+	router.team = 1
+	router.position = Vector2(700, 200)
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	var flag_world: Vector2 = router.global_position \
+			+ UnitSprites.standard_bounds(router.render_block_extent()).get_center()
+	assert_eq(sm._unit_at(flag_world, 1, true), router,
+			"the flag-click fallback also resolves a routing enemy's flag")
+
+
+func test_can_form_up_treats_a_routing_enemy_endpoint_as_an_attack() -> void:
+	# _can_form_up must not deploy a formation line onto a routing enemy: an attack-team
+	# endpoint check that missed routers used to let a drag ending on a fleeing enemy
+	# read as "no enemy here" and form up on top of it instead of attacking.
+	var sm := _sm()
+	var a := _unit()
+	sm._select(a)
+	var router := _unit()
+	router.team = 1
+	router.position = Vector2(100, 0)
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	assert_false(sm._can_form_up(Vector2.ZERO, router.global_position),
+			"a drag ending on a routing enemy is an attack, not a form-up")

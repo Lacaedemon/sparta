@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/attack-order-on-router.json",
+  "caption": "Right-click can now issue an attack order on a routing enemy. A player Cavalry unit right-clicks an already-fleeing infantry that spawns routing; the click resolves the router (target_enemy_uid locks on), and the cavalry runs it down and finishes it off. Before this fix the click silently fell through to a ground move at the click point instead.",
+  "fixed_fps": 30,
+  "max_frames": 130,
+  "fps": 15,
+  "width": 640
+}
