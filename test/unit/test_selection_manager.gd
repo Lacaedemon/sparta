@@ -2033,7 +2033,7 @@ func test_demo_overlay_halo_rings_the_shifted_block_footprint() -> void:
 	pass_test("the overlay halo drew about the shifted block without error")
 
 
-# --- attack orders on a routing enemy (#975) ----------------------------------
+# --- attack orders on a routing enemy -----------------------------------------
 
 func test_unit_at_ignores_a_routing_enemy_by_default() -> void:
 	# A routing unit has left "units" for "routers" (Unit._rout()); a plain scan

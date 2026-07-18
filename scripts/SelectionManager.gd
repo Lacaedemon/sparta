@@ -1489,8 +1489,8 @@ func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> U
 	# player's own for selection, the enemy's for attack orders — or TEAM_ANY_OWN for "any
 	# team the player currently controls", used by plain click/box selection). `include_routers`
 	# also scans routing units (see _ATTACKABLE_GROUPS) -- set by callers resolving an ATTACK
-	# click on the enemy team, since routing units are valid combat targets (#638/#654) but a
-	# plain "units"-only scan can't resolve a click on one at all.
+	# click on the enemy team, since routing units are valid combat targets but a plain
+	# "units"-only scan can't resolve a click on one at all.
 	var best = null
 	var best_d: float = UnitRef.RADIUS + BODY_PICK_PAD
 	# Fallback: the unit whose raised standard (flag + pole) is under the cursor, so the
