@@ -1,5 +1,5 @@
 {
-  "_comment": "Funnel string-pulling lanes: two units of very different widths round the DEFAULT hill's west side -- the exact geometry the funnel work was measured on, where both used to converge onto the same coarse A*-cell corridor lane (x~1054) regardless of width. A wide 120-man infantry battle line leads and a narrow 30-man squad follows, each ordered south through the hill on a RUN gait (triple right-click, the established scripted-combo pattern); the pathfield bends both around the west face, and each now walks its OWN lane -- the drawn hillside plus exactly its own clearance margin -- the wide line swinging visibly farther out (~x1075) than the squad hugging tight (~x1109). Both are infantry deliberately: same gait pacing keeps the follower from catching the leader, and the tighter pivot radius corners cleanly where a deep cavalry grid's huge turn arc smears its lane (measured on the first staging attempt). The wide leader's dest continues SOUTH-WEST after the rounding (away from the hill) so its exit leg never crosses the narrow follower's tighter lane, and its parked block sits clear of the follower's dest. drill mode (no enemy -- a pathfinding demo needs no opponent), static camera on the west face. Deterministic (scenario + seed + scripted input); lane x values verified by state dump before pushing.",
+  "_comment": "Funnel string-pulling lanes: two units of very different widths round the DEFAULT hill's west side -- the exact geometry the funnel work was measured on, where both used to converge onto the same coarse A*-cell corridor lane (x~1054) regardless of width. A wide 120-man infantry battle line leads and a narrow 30-man squad follows, each ordered south through the hill on a RUN gait (triple right-click, the established scripted-combo pattern); the pathfield bends both around the west face, and each now walks its OWN lane -- the drawn hillside plus exactly its own clearance margin -- the wide line swinging visibly farther out (~x1075) than the squad hugging tight (~x1109). Both are infantry deliberately: same gait pacing keeps the follower from catching the leader, and the tighter pivot radius corners cleanly where a deep cavalry grid's huge turn arc smears its lane (measured on the first staging attempt). The wide leader's dest continues SOUTH-WEST after the rounding (away from the hill) so its exit leg never crosses the narrow follower's tighter lane, and its parked block sits clear of the follower's dest. drill mode (no enemy -- a pathfinding demo needs no opponent), static camera on the west face. Deterministic (scenario + seed + scripted input); lane x values verified by state dump before pushing. Sampling note: the wide line's samples deliberately skip its turn-onto-the-detour window (~t250-500) -- a 120-man line pivoting onto the corridor transiently compresses bodies below the overlap floor, the known formed-turn deformation family, not this clip's subject; the sampled beats bracket it (pre-turn t120, shoulder-clear t540 onward).",
   "seed": "12345",
   "drill": true,
   "scenario": [
@@ -95,8 +95,6 @@
   "state": [
     8,
     120,
-    300,
-    420,
     540,
     700,
     860,
@@ -125,7 +123,7 @@
     {
       "tick": [
         120,
-        300
+        540
       ],
       "uid": 0,
       "field": "current_order",
@@ -134,7 +132,7 @@
     {
       "tick": [
         120,
-        300
+        540
       ],
       "uid": 1,
       "field": "current_order",
