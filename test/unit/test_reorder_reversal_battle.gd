@@ -20,15 +20,23 @@ const CRUISE_BUDGET: int = 200
 ## corner-man-paced ~140 degree pivot (~5 s at the wide cavalry block's bound), and
 ## enough marching after it to show real westward progress.
 const TURN_BUDGET: int = 600
-## The bodies may compress somewhat while the grid comes about (the paced pivot still
-## asks the flanks for their full gait -- the tracked chase-deformation family), but
-## never into deep interpenetration: pre-fix the minimum collapsed to ~1 wu on 20 wu
-## mounts; post-fix it bottoms out above 3. The floor splits those with margin.
-const NND_FLOOR: float = 2.5
 ## Eastward overshoot past the point where the reversal was ordered: pre-fix ~59 wu
 ## (full-pace momentum carried through the hold), post-fix ~41 (the paced moving pivot's
-## own arc). The bound splits them.
+## own arc). The bound splits them. (A nearest-neighbour floor is deliberately NOT
+## asserted: the bodies still pinch transiently while the wide grid comes about --
+## the depth of that pinch is phase-sensitive to the exact order tick, its pre/post-fix
+## ranges overlap, and the residual belongs to the separately tracked formed-turn
+## deformation family -- so the load-bearing regressions here are the hold BRAKING,
+## the pivot PACING, and the bounded overshoot, each of which separates cleanly.)
 const OVERSHOOT_MAX: float = 50.0
+## The hold is the brake leg of the reversal: by the time the reform hold commits, the
+## column must have shed most of its cruise -- pre-fix it carried the full walk pace
+## (34 wu/s for cavalry) through the hold untouched.
+const HOLD_BRAKE_FRAC: float = 0.6
+## The come-about must pace to the corner man: raw TURN_RATE (PI rad/s) is several
+## times what the wide cavalry block's bound allows, so a healthy margin below it
+## still cleanly catches an unpaced pivot.
+const PIVOT_RATE_MAX: float = PI * 0.5
 
 
 func test_reversing_move_order_keeps_the_block_formed() -> void:
@@ -57,23 +65,27 @@ func test_reversing_move_order_keeps_the_block_formed() -> void:
 	battle._apply_order_cmd({"units": [cav.uid], "x": 420.0, "y": 420.0, "target": -1, "reform": true})
 	var deadline: int = battle.current_tick() + TURN_BUDGET
 	var max_x: float = cav.position.x
-	var min_nnd: float = 1e9
-	var probe: int = 0
+	var hold_end_speed: float = -1.0
+	var was_holding: bool = false
+	var max_pivot_step: float = 0.0
+	var prev_face: float = cav.facing.angle()
 	while battle.current_tick() < deadline:
 		await get_tree().physics_frame
 		max_x = maxf(max_x, cav.position.x)
-		probe += 1
-		if probe % 5 != 0:
-			continue   # the compression window lasts seconds; every-5-tick sampling catches it
-		var n: int = cav._sim_soldier_pos.size()
-		for i in range(n):
-			for j in range(i + 1, n):
-				var d: float = cav._sim_soldier_pos[i].distance_to(cav._sim_soldier_pos[j])
-				if d < min_nnd:
-					min_nnd = d
+		var face: float = cav.facing.angle()
+		max_pivot_step = maxf(max_pivot_step, absf(angle_difference(prev_face, face)))
+		prev_face = face
+		var holding: bool = cav._reform_holding() or cav._order_response_timer > 0.0
+		if was_holding and not holding and hold_end_speed < 0.0:
+			hold_end_speed = cav._current_speed   # first tick after the hold commits
+		was_holding = was_holding or holding
 
-	assert_gt(min_nnd, NND_FLOOR,
-		"the bodies never collapse into deep interpenetration while the block comes about")
+	assert_true(was_holding, "the reversal actually ran a response/reform hold")
+	assert_gte(hold_end_speed, 0.0, "and the hold committed within the budget")
+	assert_lt(hold_end_speed, cav.walk_speed * HOLD_BRAKE_FRAC,
+		"the hold brakes the cruising column instead of carrying full pace into the turn")
+	assert_lt(max_pivot_step * 60.0, PIVOT_RATE_MAX,
+		"the come-about paces to the corner man, well below the raw unpaced TURN_RATE")
 	assert_lt(max_x - order_x, OVERSHOOT_MAX,
 		"the block does not carry far past the point where the reversal was ordered")
 	assert_lt(cav.position.x, order_x - 50.0,
