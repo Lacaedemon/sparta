@@ -2825,6 +2825,24 @@ func soldier_id(index: int) -> int:
 ## per-call recomputation, so repeated calls this tick with the same (count, files) are
 ## true no-ops. Reuses the render's slot grid and facing convention, minus the
 ## cosmetic jitter, so the sim layer stays exactly reproducible.
+##
+## Single-use handoff from SoldierBodies.step() to SoldierBodies.couple() within the same
+## physics tick: step() already computes soldier_world_slots(soldiers) to steer bodies onto
+## their targets, and couple() needs the IDENTICAL slot geometry moments later in the same
+## tick (couple_all_sim_soldiers only starts once step_all_sim_soldiers has finished for
+## every unit, so nothing in between can change this unit's position/facing/formation
+## state) to compute its own slot centroid. Without this, both calls independently redo the
+## same O(soldiers) computation every tick for every unit; file_major_reform's own per-call
+## cost (file_major_block_slots does an extra pass over what the historical single-pass
+## block_slots did in one) made that pre-existing redundancy expensive enough to show up as
+## a measured benchmark regression. Cleared immediately after either function reads it, so
+## a stale value from an earlier tick can never be mistaken for this tick's -- and even
+## without the clear, step() always runs before couple() every tick that processes this
+## unit at all (the two are separate full loops over every unit, never interleaved), so a
+## read can only ever see this tick's own fresh value or none.
+var _step_slots_for_couple: PackedVector2Array = PackedVector2Array()
+var _step_slots_for_couple_valid: bool = false
+
 func soldier_world_slots(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	var slots := formation_slots(count)
