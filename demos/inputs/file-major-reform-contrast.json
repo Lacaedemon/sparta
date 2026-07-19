@@ -1,0 +1,16 @@
+{
+  "_comment": "File-major casualty reflow (#878): two identical Spearmen-vs-Infantry standoffs, side by side, staged fresh for this demo (not a copy of spear-standoff.json). The LEFT pair's Spearmen keeps the new default (file_major_reform: true): each soldier holds a persistent file assignment, so a casualty only closes the gap within its own column, leaving the survivors' rear jagged -- some files run deeper than others. The RIGHT pair's Spearmen explicitly opts out (file_major_reform: false, the historical behavior): the whole grid recomputes fresh from the live headcount every tick, so the rear reflows and re-centres uniformly regardless of which files actually took the losses. Both Infantry attackers march in and lock melee under their own enemy-AI order -- no scripted steps needed.",
+  "seed": "878001",
+  "scenario": [
+    { "team": 0, "type": "Spearmen", "x": 350, "y": 400, "count": 24 },
+    { "team": 1, "type": "Infantry", "x": 350, "y": 600, "count": 24 },
+    { "team": 0, "type": "Spearmen", "x": 750, "y": 400, "count": 24, "file_major_reform": false },
+    { "team": 1, "type": "Infantry", "x": 750, "y": 600, "count": 24 }
+  ],
+  "camera": [ { "tick": 0, "x": 550, "y": 460, "zoom": 1.1 } ],
+  "state": [60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720],
+  "fixed_fps": 30,
+  "max_frames": 720,
+  "fps": 15,
+  "width": 720
+}

@@ -1695,7 +1695,7 @@ func toggle_group_attack_mode() -> void:
 	_cycle_group_attack_mode()
 
 
-# --- per-unit settings (walk_advance / reform_before_move) -----------
+# --- per-unit settings (walk_advance / reform_before_move / file_major_reform) -----------
 
 ## Set walk_advance on every currently selected friendly unit (called from the info panel
 ## checkbox). Routed through Battle.enqueue_unit_settings so the toggle itself -- not just
@@ -1722,6 +1722,20 @@ func set_selected_reform_before_move(value: bool) -> void:
 		return
 	var toggle: int = BattleRef.UnitSettingToggle.ON if value else BattleRef.UnitSettingToggle.OFF
 	_battle.enqueue_unit_settings(uids, BattleRef.UnitSettingToggle.LEAVE, toggle)
+	Sfx.play(&"order")
+
+
+## Set file_major_reform on every currently selected friendly unit (called from the info
+## panel checkbox). See set_selected_walk_advance.
+func set_selected_file_major_reform(value: bool) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	var toggle: int = BattleRef.UnitSettingToggle.ON if value else BattleRef.UnitSettingToggle.OFF
+	_battle.enqueue_unit_settings(uids, BattleRef.UnitSettingToggle.LEAVE,
+			BattleRef.UnitSettingToggle.LEAVE, toggle)
 	Sfx.play(&"order")
 
 

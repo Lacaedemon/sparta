@@ -79,6 +79,13 @@ func _melee_unit(uid: int, team: int, pos: Vector2, face: Vector2, reach: float)
 	u.facing = face
 	u.attack_range = reach
 	u.state = Unit.State.FIGHTING
+	# file_major_reform defaults true, and _files()'s aspect-ratio ceiling gives even this
+	# 1-soldier unit more than one file -- under file_major_reform its lone soldier centres
+	# on the FULL (multi-file) frontage rather than exactly at `position`, adding a lateral
+	# offset these standoff-direction tests don't expect. Row-major (the pre-existing
+	# behavior) keeps the fixture's simple, centred single-soldier geometry -- set before
+	# seed_sim_soldiers() so it takes effect at seed time.
+	u.file_major_reform = false
 	u.tick_engaged(0.1)      # latch is_engaged() true
 	u.seed_sim_soldiers()    # seed bodies (_sim_soldier_pos/_sim_steer) + full health
 	return u

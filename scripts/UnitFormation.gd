@@ -113,8 +113,19 @@ static func files_label(n: int) -> String:
 ## so it's unit-testable; the render adds stable jitter on top.
 static func slots(u: Unit, n: int) -> PackedVector2Array:
 	var out := block_slots(n, frontage(u), u.file_pitch_wu(), u.rank_pitch_wu())
-	if u.frontage_anchor_offset != 0.0:
-		var shift := Vector2(u.frontage_anchor_offset, 0.0)
+	return apply_frontage_anchor_offset(out, u.frontage_anchor_offset)
+
+
+## Shift every slot in `out` by `offset` world units along local X -- the
+## frontage_anchor_offset shift `slots()` above applies for an asymmetric explicatio/
+## duplicatio, factored out so Unit.formation_slots' file-major branch
+## (file_major_block_slots) can apply the identical shift without duplicating the loop. A
+## zero offset (the plain centred case) is a no-op. Pure -- mutates and returns the same
+## array reference for convenience; callers already own a fresh array from block_slots/
+## file_major_block_slots, so there is nothing else referencing it to alias.
+static func apply_frontage_anchor_offset(out: PackedVector2Array, offset: float) -> PackedVector2Array:
+	if offset != 0.0:
+		var shift := Vector2(offset, 0.0)
 		for i in range(out.size()):
 			out[i] = out[i] + shift
 	return out
@@ -174,6 +185,61 @@ static func block_slots(n: int, files: int, spacing: float,
 		# symmetric about the unit centre, keeping the block's centroid on the axis.
 		var rx0: float = -(rank_count - 1) * 0.5 * spacing
 		out.push_back(Vector2(rx0 + file * spacing, y0 + rank * depth))
+	return out
+
+
+# --- File-major casualty reflow (#878) ---------------------------------------
+# block_slots above lays soldier i out at (file = i % files, rank = i / files) -- purely a
+# function of the LIVE array index, so any casualty anywhere in the block reflows every
+# later soldier's file AND rank (SoldierMelee.reap() compacts the array, shifting every
+# later index down). file_major_block_slots instead takes each soldier's own PERSISTENT
+# file assignment (Unit._sim_soldier_file, kept in sync with a casualty the same way every
+# other per-soldier array is -- trimmed at the dead soldier's index, never recomputed) and
+# lays each file out as its own independent column: a soldier's rank is how many EARLIER
+# array entries share its same file id, so a casualty only shortens ITS OWN file's rear --
+# every other file's soldiers keep the exact rank (and therefore slot) they already had.
+
+
+## Local-space slot offsets for soldiers laid out FILE-MAJOR: `file_ids[i]` gives soldier
+## i's persistent file assignment (0..files-1), index-aligned with the live soldier array
+## (see Unit._sim_soldier_file / _ensure_file_assignment). Within each file, survivors
+## occupy consecutive ranks from the front -- a soldier's rank is how many EARLIER array
+## entries share its same file id -- so a casualty only shortens its OWN file's rear; other
+## files are untouched. Unlike block_slots (which derives every soldier's cell fresh from a
+## row-major index/files divide, reassigning cells on every casualty), a soldier's file
+## never changes just because a soldier in ANOTHER file died. Files are centred on the FULL
+## frontage (not the live count), so a file's lateral (x) position never moves either --
+## deliberately NOT block_slots' "close toward centre" narrowing for a partial rank, since
+## that narrowing depends on how many OTHER files are currently occupied at the same depth,
+## which is exactly the cross-file coupling file-major mode exists to avoid. The block's
+## depth (y0) centres on whichever file currently has the most survivors, mirroring
+## block_slots' own centred-on-max-depth convention. Out-of-range file ids clamp into
+## [0, files-1] defensively (never crash on a stale/misaligned array). Pure --
+## deterministic in (file_ids, files, spacing, rank_pitch).
+static func file_major_block_slots(file_ids: PackedInt32Array, files: int, spacing: float,
+		rank_pitch: float = -1.0) -> PackedVector2Array:
+	var n: int = file_ids.size()
+	var out := PackedVector2Array()
+	out.resize(n)
+	if n <= 0 or files <= 0:
+		return PackedVector2Array()
+	var depth: float = rank_pitch if rank_pitch >= 0.0 else spacing
+	var rx0: float = -(files - 1) * 0.5 * spacing
+	var rank_counts := PackedInt32Array()
+	rank_counts.resize(files)
+	var ranks := PackedInt32Array()
+	ranks.resize(n)
+	var max_rank: int = 0
+	for i in range(n):
+		var file: int = clampi(file_ids[i], 0, files - 1)
+		var rank: int = rank_counts[file]
+		ranks[i] = rank
+		rank_counts[file] = rank + 1
+		max_rank = maxi(max_rank, rank + 1)
+	var y0: float = -(max_rank - 1) * 0.5 * depth
+	for i in range(n):
+		var file: int = clampi(file_ids[i], 0, files - 1)
+		out[i] = Vector2(rx0 + file * spacing, y0 + ranks[i] * depth)
 	return out
 
 

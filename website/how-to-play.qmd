@@ -39,6 +39,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Form-up split mode | <kbd>Y</kbd> cycles through enabled modes (equal-depth / equal-width); <kbd>Shift</kbd> + <kbd>Y</kbd> cycles the other way; configure which modes cycle and which is the battle default in **☰ Menu** |
 | Reform before move | A checkbox in the **selected-unit info panel**, or the **control bar**, toggles whether the selection pauses to settle its ranks before marching. Each unit type has its own default (on for most types, off for cavalry) |
 | Walk advance | A checkbox in the **selected-unit info panel** keeps the selection at walk speed throughout --- no jog or sprint phase. Required for formed stances (shield wall, pike phalanx) that break on a run; spearmen default it on |
+| File-major reform | A checkbox in the **selected-unit info panel** toggles how the selection's grid reflows after a casualty: a soldier's own file (column) survivors close its gap when on (the default for every type), or the whole block recomputes and re-centres every tick when off (see [Tactics](tactics.qmd#line-width-frontage)) |
 | Attack | **Right-click** an enemy unit |
 | Group-order mode | <kbd>X</kbd> cycles focused ↔ distributed (<kbd>Shift</kbd> + <kbd>X</kbd> cycles the other way) · or **control bar** --- spreads a multi-unit attack across nearby enemies, or a multi-unit relief across nearby engaged friendlies ([passage of lines](tactics.qmd#passage-of-lines)) |
 | Relieve a friendly | **Right-click** an engaged friendly outside the selection --- the fresh unit takes over the fight and the tired one falls back. With several fresh units selected and distributed mode on, each pairs with its own nearby engaged friendly instead of piling onto the one clicked |
@@ -784,6 +785,32 @@ resizing a window by its edge, so you can extend a line toward the flank you car
 about while the other edge holds its ground (the <kbd>[</kbd> / <kbd>]</kbd> keys
 stay symmetric about the centre). The width holds as the unit takes casualties, and
 shows in the info panel.
+
+**File-major reform (default on).** By default, each soldier keeps a persistent file
+(column) assignment: when a file-mate falls, only the survivors deeper in that SAME
+file step forward to close the gap, and every other file stands untouched --- a
+mauled unit's rear reads as jagged (one column can run deeper than its neighbour)
+rather than a single evenly-shrinking rear rank. Uncheck **File-major reform** in the
+info panel to fall back to the historical behavior instead: the whole grid recomputes
+fresh from the live headcount every tick, so survivors close up toward the centre file
+by file and can shuffle sideways between files as the block re-knits itself (see
+[Tactics](tactics.qmd#line-width-frontage)).
+
+::: {#fig-file-major-reform-contrast .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/file_major_reform_contrast.jpg">
+  <source src="media/file_major_reform_contrast.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two identical Spearmen-vs-Infantry standoffs. The left Spearmen keeps file-major
+reform on: its rear ends up jagged, some files deeper than others. The right
+Spearmen has it off: its rear reflows and re-centres uniformly instead.
+:::
 
 ::: {#fig-resize-anchor .demo}
 

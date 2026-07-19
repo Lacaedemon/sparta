@@ -580,6 +580,17 @@ var walk_advance: bool = false
 # (Battle._default_loadout's "reform_before_move_default", true unless a type overrides it),
 # changed only by an explicit player toggle or a replayed toggle event.
 var reform_before_move: bool = true
+# File-major casualty reflow: when true, each soldier keeps a persistent file (column)
+# assignment (_sim_soldier_file); when a file-mate dies, only the survivors deeper in that
+# SAME file step forward to close the gap, and every other file is untouched. When false
+# (the historical behavior), the grid recomputes fresh from the live headcount every tick
+# (UnitFormation.slots/block_slots' row-major index/files divide), which cascades survivors
+# across the WHOLE block on any casualty. Same persistent-per-unit treatment as the two
+# settings above: defaulted per unit type at spawn (Battle._default_loadout's
+# "file_major_reform_default", true for every type today), changed only by an explicit
+# player toggle or a replayed toggle event. Never applies to a squared formation
+# (in_square()) -- see formation_slots().
+var file_major_reform: bool = true
 # Set to true in _think when a ranged enemy is within RANGED_RANGE; drives the
 # AUTO-pace jog escalation. Cleared each frame before the check.
 var _under_fire: bool = false
@@ -2716,6 +2727,21 @@ var _sim_prone: PackedFloat32Array = PackedFloat32Array()
 # reduces both offence and active defence through SoldierCombat.stamina_factor (g(sigma)).
 var _sim_soldier_stamina: PackedFloat32Array = PackedFloat32Array()
 
+# Persistent per-soldier file (column) assignment for file_major_reform, index-aligned with
+# _sim_soldier_pos: _sim_soldier_file[i] is soldier i's file id (0..files-1). Kept in sync
+# through an ordinary casualty by SoldierMelee.reap() removing the dead soldier's entry at
+# the same index as every other per-soldier array -- a survivor's file id therefore never
+# changes just because a soldier in ANOTHER file died. Rebuilt fresh, row-major, only on a
+# genuine reflow event (a size mismatch, or a deliberate frontage change) -- see
+# _ensure_file_assignment(). Unused (left empty) while file_major_reform is false or the unit
+# is squared (in_square()).
+var _sim_soldier_file: PackedInt32Array = PackedInt32Array()
+# The file count _sim_soldier_file was last built against; a mismatch against the CURRENT
+# formation_files(count) means a deliberate reshape happened (set_frontage, explicatio/
+# duplicatio, the automatic ranks-closed narrowing) and the assignment should reflow fresh
+# rather than keep stale file ids from a now-different frontage. -1 = never assigned yet.
+var _file_assignment_files: int = -1
+
 # Per-soldier facing (the drill-maneuver foundation), index-aligned with
 # _sim_soldier_pos. By default every body faces the unit heading (kept synced each
 # tick in SoldierBodies.step). A per-soldier maneuver -- about-face (conversio),
@@ -2791,9 +2817,13 @@ func soldier_id(index: int) -> int:
 
 ## World-space formation slots for `count` soldiers: the local formation grid
 ## (front rank toward the unit's facing) rotated by the facing and offset to the
-## regiment position. Pure of RNG and frame timing — a deterministic function of
-## (count, position, facing) — so it reproduces exactly on replay and is
-## unit-testable. Reuses the render's slot grid and facing convention, minus the
+## regiment position. Deterministic in (count, position, facing) given the unit's own
+## current file-assignment state — reproduces exactly on replay and is unit-testable —
+## but is not side-effect-free: when file_major_reform is on, this lazily rebuilds
+## _sim_soldier_file the first time it goes out of sync with (count, files) (see
+## formation_slots -> _ensure_file_assignment), an idempotent cache fill rather than a
+## per-call recomputation, so repeated calls this tick with the same (count, files) are
+## true no-ops. Reuses the render's slot grid and facing convention, minus the
 ## cosmetic jitter, so the sim layer stays exactly reproducible.
 func soldier_world_slots(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
@@ -2835,15 +2865,54 @@ func formation_files(count: int) -> int:
 ## square variant lays out a real square grid (UnitFormation.square_slots -- files ~=
 ## ranks, bbox aspect ~1) instead of the wide line frontage, so the block's actual
 ## footprint -- and everything sized off it (soldier_world_slots, the render
-## extent/shadow) -- reads as a square, not just a combat-multiplier flag. Every other
-## mode keeps the wide-line grid (UnitFormation.slots), with SHIELD_WALL/TESTUDO already
-## packed tighter via spacing_scale (set in set_formation). Pure -- a function of (count,
-## formation_mode, spacing_scale, the unit's frontage inputs) -- so it stays deterministic
-## and replay-safe like the callers below.
+## extent/shadow) -- reads as a square, not just a combat-multiplier flag. A square/
+## schiltron NEVER uses file_major_reform: formation_files() recomputes its file count
+## continuously as casualties shrink the live count, so there is no stable "file" to
+## preserve -- the hollow-square perimeter already has its own live-position staleness fix
+## (UnitFormation.live_perimeter_indices). Otherwise, file_major_reform on gives each
+## soldier a persistent file assignment (_sim_soldier_file, rebuilt only on a genuine
+## reflow -- see _ensure_file_assignment) laid out by UnitFormation.file_major_block_slots,
+## so a casualty only shortens its OWN file's rear. The historical default (off) keeps the
+## wide-line grid (UnitFormation.slots), which recomputes fresh from the live count every
+## tick (row-major), cascading survivors across the whole block on any casualty --
+## SHIELD_WALL/TESTUDO already pack tighter via spacing_scale (set in set_formation)
+## regardless of which of the two casualty-reflow layouts applies. Pure -- a function of
+## (count, formation_mode, file_major_reform, spacing_scale, the unit's frontage inputs,
+## and -- for the file-major branch -- the unit's own file-assignment state) -- so it stays
+## deterministic and replay-safe like the callers below.
 func formation_slots(count: int) -> PackedVector2Array:
 	if in_square():
 		return UnitFormation.block_slots(count, formation_files(count), file_pitch_wu())
+	if file_major_reform:
+		var files: int = formation_files(count)
+		_ensure_file_assignment(count, files)
+		var out := UnitFormation.file_major_block_slots(
+				_sim_soldier_file, files, file_pitch_wu(), rank_pitch_wu())
+		return UnitFormation.apply_frontage_anchor_offset(out, frontage_anchor_offset)
 	return UnitFormation.slots(self, count)
+
+
+## Rebuild the persistent per-soldier file-major assignment (_sim_soldier_file) FRESH,
+## row-major (index i -> file i % files), whenever it is out of sync with the current live
+## `count`/`files`: either the array size doesn't match `count` (the first-ever call, or a
+## count jump from something other than an ordinary casualty -- e.g. a unit merge) or `files`
+## has changed (a deliberate reshape -- set_frontage, explicatio/duplicatio, the automatic
+## ranks-closed narrowing -- which SHOULD reflow every soldier's file assignment, since those
+## are intentional reform events, not passive casualty gap-filling). An ordinary casualty
+## never triggers a rebuild here: SoldierMelee.reap() already trims _sim_soldier_file at the
+## dead soldier's own index, exactly like every other per-soldier array, so `count` and
+## _sim_soldier_file.size() stay in sync through it and each survivor keeps its own file id.
+## Idempotent and side-effect-free once in sync -- safe to call from every formation_slots()
+## query in a tick, not just the first.
+func _ensure_file_assignment(count: int, files: int) -> void:
+	if _sim_soldier_file.size() == count and _file_assignment_files == files:
+		return
+	_sim_soldier_file = PackedInt32Array()
+	_sim_soldier_file.resize(count)
+	var f: int = maxi(1, files)
+	for i in range(count):
+		_sim_soldier_file[i] = i % f
+	_file_assignment_files = files
 
 
 ## World-space per-soldier facing directions for `count` soldiers, index-aligned with
@@ -4992,6 +5061,8 @@ func to_snapshot_dict() -> Dictionary:
 		"formation_mirror_x": _formation_mirror_x,
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
 		"walk_advance": walk_advance, "reform_before_move": reform_before_move,
+		"file_major_reform": file_major_reform,
+		"file_assignment_files": _file_assignment_files,
 		"under_fire": _under_fire,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
@@ -5029,6 +5100,7 @@ func to_snapshot_dict() -> Dictionary:
 		"sim_prone": _sim_prone.duplicate(),
 		"sim_soldier_stamina": _sim_soldier_stamina.duplicate(),
 		"sim_soldier_facing": _sim_soldier_facing.duplicate(),
+		"sim_soldier_file": _sim_soldier_file.duplicate(),
 	}
 
 
@@ -5097,6 +5169,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	ordered_facing = d["ordered_facing"]
 	walk_advance = bool(d["walk_advance"])
 	reform_before_move = bool(d["reform_before_move"])
+	file_major_reform = bool(d["file_major_reform"])
+	_file_assignment_files = int(d["file_assignment_files"])
 	_under_fire = bool(d["under_fire"])
 	_attack_cd = float(d["attack_cd"])
 	_pin_down_exposure_cd = float(d["pin_down_exposure_cd"])
@@ -5133,3 +5207,4 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_prone = (d["sim_prone"] as PackedFloat32Array).duplicate()
 	_sim_soldier_stamina = (d["sim_soldier_stamina"] as PackedFloat32Array).duplicate()
 	_sim_soldier_facing = (d["sim_soldier_facing"] as PackedVector2Array).duplicate()
+	_sim_soldier_file = (d["sim_soldier_file"] as PackedInt32Array).duplicate()
