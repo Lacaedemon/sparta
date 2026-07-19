@@ -71,4 +71,5 @@ DEMOS=(
   "funnel_lanes|demos/inputs/funnel-hug-lanes.json|60|1080|640|input"
   "spear_standoff|demos/inputs/spear-standoff.json|30|720|720|input"
   "give_ground|demos/inputs/give-ground.json|30|660|640|input"
+  "moving_wheel|demos/inputs/moving-wheel-vs-standing.json|30|330|800|input"
 )
