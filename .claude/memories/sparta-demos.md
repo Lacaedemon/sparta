@@ -882,3 +882,54 @@ routing enemies from the standoff lookup would need `SoldierEnemyProximity` to c
 per-soldier owner-state, and its rebuild is cache-shared (by exact `frame` key) with the
 SQUARE/Schiltron engaged-set selection, which DOES want routing enemies treated as threats --
 so a scoped fix isn't a one-line change. (`Lacaedemon/sparta` PR #981, 2026-07-18.)
+
+## Scripting a shift+right-click waypoint append: there's no direct step type -- use a zero-length `rmb_drag` with `shift: true`
+
+`DemoInputRecorder._schedule` only exposes `click`/`shift_click` (both forced LEFT button),
+`rmb_click` (forced `shift: false`), and `rmb_drag` (the only step type that accepts an
+explicit `shift` field). There is **no `shift_rmb_click`** step -- a `shift_click` step is a
+Shift+LEFT-click (multi-select), not a waypoint append, and using it where an append was
+intended silently does nothing order-related (no error, no queued leg -- the click is consumed
+by selection instead). Confirmed no existing demo in this repo has ever scripted a waypoint
+append before hitting this: every prior `rmb_drag` usage is a genuine multi-hundred-wu form-up
+drag, never an append.
+
+**Fix:** script a **zero-length `rmb_drag`** (`from` == `to`) with `"shift": true`. The
+recorder's `_drag()` still emits press/interpolated-motion/release, but since every
+interpolated position equals `from`, `_rmb_dragging` never flips true (distance never exceeds
+`CLICK_THRESHOLD`), so `_finish_right_button` takes the plain-click branch with the shift flag
+preserved (`_rmb_shift` is captured at PRESS, matching a real Shift+right-click). This exercises
+the exact same `Battle._apply_order_cmd` append path (`ORDER_APPEND_WAYPOINT`) a real
+Shift+right-click does. Like a genuine drag, the release lands `DRAG_TICKS` (16) after the
+scripted tick -- budget for that the same way a `box` step's release does (see the box-step
+entry above).
+
+**Verify the append actually landed** before trusting a scenario's later ticks: dump state a
+few ticks after the drag's release and check `queue_tail` is non-empty (`["MOVE"]`) --
+`current_order`/`queue_tail` staying exactly as they were before the step is the tell that a
+`shift_click` (or any other malformed append attempt) silently no-opped instead of queuing a
+leg. (`Lacaedemon/sparta` PR #1002, `demos/inputs/queued-leg-hold-stance.json`, 2026-07-19: a
+first attempt used `shift_click` for the append and produced a scenario that looked plausible
+end-to-end but never actually queued the second leg at all.)
+
+## `all_teams_control` only silences the STRATEGIC AI (`_run_enemy_ai`) -- each unit's own per-tick auto-advance still runs for every team
+
+The existing "all_teams_control is the staging tool for a genuinely stationary enemy" entry in
+`sparta.md` is only half the story. Turning off team 1's AI this way stops it from receiving
+FRESH orders, but it does **not** touch `Unit._think()`'s own per-tick, per-UNIT
+auto-advance-on-a-detected-enemy branch (`elif enemy != null and order_mode != ORDER_HOLD:
+_move_to(enemy.position, ...)`), which runs identically for every team regardless of
+`all_teams_control`. A freshly-spawned `scenario` unit with no order and the default
+`order_mode` (`Normal`) will happily march itself toward ANY detected enemy within
+`Unit.DETECTION_RANGE` (190 wu) the moment one comes close enough -- including a unit you meant
+to leave passively "stationary" as a backdrop for staging a DIFFERENT unit's behavior.
+
+**How to apply:** if a demo needs a genuinely inert/stationary opposing unit under
+`all_teams_control` (not just "AI won't issue it new orders"), explicitly put THAT unit on Hold
+too (select it, `Ctrl+H`) before the scenario's real action starts -- don't assume spawning it
+passively and never selecting it is enough. Verify by dumping its `position` across the whole
+clip: if it drifts at all despite never being an explicit script target, it auto-advanced on
+its own. (`Lacaedemon/sparta` PR #1002: a first staging attempt left the "stationary" enemy on
+its default Normal stance under `all_teams_control`; it auto-advanced toward the mover and the
+two met in the middle regardless of the mover's own stance, defeating the whole point of the
+demo until the enemy was also explicitly put on Hold.)
