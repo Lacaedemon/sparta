@@ -2424,6 +2424,42 @@ func test_formation_slots_file_major_partial_rank_is_centred_not_edge_biased() -
 			"the partial rank centres on the middle 3 files, not either edge")
 
 
+func test_effective_file_major_reform_auto_resolves_from_disciplined() -> void:
+	# AUTO ties to `disciplined`, not `training` (see Unit.file_major_reform_mode's own doc
+	# comment for why): a disciplined unit reflows file-major, an undisciplined one row-major.
+	var u := _make_unit(120)
+	u.file_major_reform_mode = Unit.ReformMode.AUTO
+	u.disciplined = true
+	assert_true(u._effective_file_major_reform(), "AUTO + disciplined resolves file-major")
+	u.disciplined = false
+	assert_false(u._effective_file_major_reform(), "AUTO + undisciplined resolves row-major")
+
+
+func test_effective_file_major_reform_file_major_and_row_major_ignore_disciplined() -> void:
+	# The explicit modes are unaffected by `disciplined` either way -- only AUTO defers to it.
+	var u := _make_unit(120)
+	u.file_major_reform_mode = Unit.ReformMode.FILE_MAJOR
+	u.disciplined = false
+	assert_true(u._effective_file_major_reform(), "FILE_MAJOR stays file-major even undisciplined")
+	u.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
+	u.disciplined = true
+	assert_false(u._effective_file_major_reform(), "ROW_MAJOR stays row-major even disciplined")
+
+
+func test_file_major_reform_bool_compat_property_maps_onto_the_mode() -> void:
+	# The bool compat property (every pre-AUTO call site) reads true only for FILE_MAJOR --
+	# AUTO reads false, same as ROW_MAJOR, since a plain bool can't represent "it depends".
+	var u := _make_unit(120)
+	u.file_major_reform = true
+	assert_eq(u.file_major_reform_mode, Unit.ReformMode.FILE_MAJOR,
+		"writing true sets FILE_MAJOR")
+	u.file_major_reform = false
+	assert_eq(u.file_major_reform_mode, Unit.ReformMode.ROW_MAJOR,
+		"writing false sets ROW_MAJOR")
+	u.file_major_reform_mode = Unit.ReformMode.AUTO
+	assert_false(u.file_major_reform, "reading through the bool compat property, AUTO is false")
+
+
 # --- frontage (resizable line width) ----------------------------
 
 func test_frontage_defaults_to_auto_from_max_soldiers() -> void:

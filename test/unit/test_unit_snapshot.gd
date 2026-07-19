@@ -63,7 +63,8 @@ func _sample_unit() -> Unit:
 	u.ordered_facing = Vector2(0, 1)
 	u.walk_advance = true
 	u.reform_before_move = false   # non-default (the field defaults true), so the round-trip is provable
-	u.file_major_reform = false    # non-default (the field defaults true), so the round-trip is provable
+	u.file_major_reform_mode = Unit.ReformMode.AUTO   # non-default (defaults FILE_MAJOR); also
+	# proves the round-trip carries the full 3-state mode, not just the bool compat view
 	u._under_fire = true
 	u._attack_cd = 0.2
 	u._pin_down_exposure_cd = 0.1
@@ -136,6 +137,7 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.formation_mode, original.formation_mode)
 	assert_eq(restored.walk_advance, original.walk_advance)
 	assert_eq(restored.reform_before_move, original.reform_before_move)
+	assert_eq(restored.file_major_reform_mode, original.file_major_reform_mode)
 	assert_eq(restored.file_major_reform, original.file_major_reform)
 	assert_eq(restored._file_assignment_files, original._file_assignment_files)
 	assert_eq(restored.frontage_override, original.frontage_override)

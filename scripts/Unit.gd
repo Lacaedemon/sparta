@@ -589,17 +589,37 @@ var walk_advance: bool = false
 # (Battle._default_loadout's "reform_before_move_default", true unless a type overrides it),
 # changed only by an explicit player toggle or a replayed toggle event.
 var reform_before_move: bool = true
-# File-major casualty reflow: when true, each soldier keeps a persistent file (column)
+# File-major casualty reflow: FILE_MAJOR keeps each soldier's persistent file (column)
 # assignment (_sim_soldier_file); when a file-mate dies, only the survivors deeper in that
-# SAME file step forward to close the gap, and every other file is untouched. When false
-# (the historical behavior), the grid recomputes fresh from the live headcount every tick
+# SAME file step forward to close the gap, and every other file is untouched. ROW_MAJOR (the
+# historical behavior) recomputes the grid fresh from the live headcount every tick
 # (UnitFormation.slots/block_slots' row-major index/files divide), which cascades survivors
-# across the WHOLE block on any casualty. Same persistent-per-unit treatment as the two
-# settings above: defaulted per unit type at spawn (Battle._default_loadout's
-# "file_major_reform_default", true for every type today), changed only by an explicit
-# player toggle or a replayed toggle event. Never applies to a squared formation
-# (in_square()) -- see formation_slots().
-var file_major_reform: bool = true
+# across the WHOLE block on any casualty. AUTO defers to this unit's own `disciplined` flag
+# (see _effective_file_major_reform() below): a disciplined, professional regiment reflows
+# file-major (it holds its ranks under loss); an undisciplined mob reflows row-major (it just
+# closes up whatever gap the loss opens) -- the same professional-vs-mob distinction
+# `disciplined` already governs elsewhere. Deliberately tied to `disciplined`, not `training`:
+# see disciplined's own doc comment above for why a `training` threshold would silently flip
+# fixtures/loadouts that never set it.
+#
+# Same persistent-per-unit treatment as the two settings above: defaulted per unit type at
+# spawn (Battle._default_loadout's "file_major_reform_default", FILE_MAJOR for every type
+# today), changed only by an explicit player toggle (a click-to-cycle button, not a checkbox --
+# there are three choices now, not two -- see the info panel) or a replayed toggle event.
+# Never applies to a squared formation (in_square()) -- see formation_slots().
+enum ReformMode { FILE_MAJOR, ROW_MAJOR, AUTO }
+var file_major_reform_mode: int = ReformMode.FILE_MAJOR
+# Backward-compatible bool view of file_major_reform_mode, for every call site that predates
+# the AUTO option and only ever reads/writes a plain on/off (Battle._default_loadout's bool
+# scenario-spec path, most existing tests). Reading is true only for FILE_MAJOR -- AUTO reads
+# false, same as ROW_MAJOR, since a plain bool can't represent "it depends"; code that needs
+# AUTO's actual resolved behavior must call _effective_file_major_reform() instead. Writing
+# maps straight onto FILE_MAJOR/ROW_MAJOR; it can never set AUTO (there is no true/false for it).
+var file_major_reform: bool:
+	get:
+		return file_major_reform_mode == ReformMode.FILE_MAJOR
+	set(value):
+		file_major_reform_mode = ReformMode.FILE_MAJOR if value else ReformMode.ROW_MAJOR
 # Set to true in _think when a ranged enemy is within RANGED_RANGE; drives the
 # AUTO-pace jog escalation. Cleared each frame before the check.
 var _under_fire: bool = false
@@ -2837,9 +2857,9 @@ func soldier_id(index: int) -> int:
 ## (front rank toward the unit's facing) rotated by the facing and offset to the
 ## regiment position. Deterministic in (count, position, facing) given the unit's own
 ## current file-assignment state — reproduces exactly on replay and is unit-testable —
-## but is not side-effect-free: when file_major_reform is on, this lazily rebuilds
-## _sim_soldier_file the first time it goes out of sync with (count, files) (see
-## formation_slots -> _ensure_file_assignment), an idempotent cache fill rather than a
+## but is not side-effect-free: when _effective_file_major_reform() resolves true, this
+## lazily rebuilds _sim_soldier_file the first time it goes out of sync with (count, files)
+## (see formation_slots -> _ensure_file_assignment), an idempotent cache fill rather than a
 ## per-call recomputation, so repeated calls this tick with the same (count, files) are
 ## true no-ops. Reuses the render's slot grid and facing convention, minus the
 ## cosmetic jitter, so the sim layer stays exactly reproducible.
@@ -2850,7 +2870,7 @@ func soldier_id(index: int) -> int:
 ## tick (couple_all_sim_soldiers only starts once step_all_sim_soldiers has finished for
 ## every unit, so nothing in between can change this unit's position/facing/formation
 ## state) to compute its own slot centroid. Without this, both calls independently redo the
-## same O(soldiers) computation every tick for every unit; file_major_reform's own per-call
+## same O(soldiers) computation every tick for every unit; the file-major path's own per-call
 ## cost (file_major_block_slots does an extra pass over what the historical single-pass
 ## block_slots did in one) made that pre-existing redundancy expensive enough to show up as
 ## a measured benchmark regression. Cleared immediately after either function reads it, so
@@ -2897,29 +2917,45 @@ func formation_files(count: int) -> int:
 	return UnitFormation.frontage(self)
 
 
+## Resolves file_major_reform_mode to a plain file-major/row-major choice.
+## FILE_MAJOR/ROW_MAJOR pass straight through; AUTO defers to this unit's own `disciplined`
+## flag (see file_major_reform_mode's own doc comment for why AUTO ties to `disciplined` and
+## not `training`) -- a disciplined regiment reflows file-major, an undisciplined one
+## reflows row-major. Pure -- a function of (file_major_reform_mode, disciplined) -- so
+## formation_slots below stays deterministic and replay-safe.
+func _effective_file_major_reform() -> bool:
+	match file_major_reform_mode:
+		ReformMode.FILE_MAJOR:
+			return true
+		ReformMode.ROW_MAJOR:
+			return false
+		_:   # ReformMode.AUTO
+			return disciplined
+
+
 ## Local-space slot layout for `count` soldiers under the CURRENT formation_mode. Either
 ## square variant lays out a real square grid (UnitFormation.square_slots -- files ~=
 ## ranks, bbox aspect ~1) instead of the wide line frontage, so the block's actual
 ## footprint -- and everything sized off it (soldier_world_slots, the render
 ## extent/shadow) -- reads as a square, not just a combat-multiplier flag. A square/
-## schiltron NEVER uses file_major_reform: formation_files() recomputes its file count
+## schiltron NEVER uses the file-major layout: formation_files() recomputes its file count
 ## continuously as casualties shrink the live count, so there is no stable "file" to
 ## preserve -- the hollow-square perimeter already has its own live-position staleness fix
-## (UnitFormation.live_perimeter_indices). Otherwise, file_major_reform on gives each
-## soldier a persistent file assignment (_sim_soldier_file, rebuilt only on a genuine
-## reflow -- see _ensure_file_assignment) laid out by UnitFormation.file_major_block_slots,
-## so a casualty only shortens its OWN file's rear. The historical default (off) keeps the
-## wide-line grid (UnitFormation.slots), which recomputes fresh from the live count every
-## tick (row-major), cascading survivors across the whole block on any casualty --
-## SHIELD_WALL/TESTUDO already pack tighter via spacing_scale (set in set_formation)
-## regardless of which of the two casualty-reflow layouts applies. Pure -- a function of
-## (count, formation_mode, file_major_reform, spacing_scale, the unit's frontage inputs,
-## and -- for the file-major branch -- the unit's own file-assignment state) -- so it stays
-## deterministic and replay-safe like the callers below.
+## (UnitFormation.live_perimeter_indices). Otherwise, _effective_file_major_reform() true
+## gives each soldier a persistent file assignment (_sim_soldier_file, rebuilt only on a
+## genuine reflow -- see _ensure_file_assignment) laid out by
+## UnitFormation.file_major_block_slots, so a casualty only shortens its OWN file's rear.
+## False keeps the wide-line grid (UnitFormation.slots), which recomputes fresh from the
+## live count every tick (row-major), cascading survivors across the whole block on any
+## casualty -- SHIELD_WALL/TESTUDO already pack tighter via spacing_scale (set in
+## set_formation) regardless of which of the two casualty-reflow layouts applies. Pure --
+## a function of (count, formation_mode, file_major_reform_mode, disciplined, spacing_scale,
+## the unit's frontage inputs, and -- for the file-major branch -- the unit's own
+## file-assignment state) -- so it stays deterministic and replay-safe like the callers below.
 func formation_slots(count: int) -> PackedVector2Array:
 	if in_square():
 		return UnitFormation.block_slots(count, formation_files(count), file_pitch_wu())
-	if file_major_reform:
+	if _effective_file_major_reform():
 		var files: int = formation_files(count)
 		_ensure_file_assignment(count, files)
 		var out := UnitFormation.file_major_block_slots(
@@ -5241,7 +5277,7 @@ func to_snapshot_dict() -> Dictionary:
 		"formation_mirror_x": _formation_mirror_x,
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
 		"walk_advance": walk_advance, "reform_before_move": reform_before_move,
-		"file_major_reform": file_major_reform,
+		"file_major_reform_mode": file_major_reform_mode,
 		"file_assignment_files": _file_assignment_files,
 		"under_fire": _under_fire,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
@@ -5349,7 +5385,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	ordered_facing = d["ordered_facing"]
 	walk_advance = bool(d["walk_advance"])
 	reform_before_move = bool(d["reform_before_move"])
-	file_major_reform = bool(d["file_major_reform"])
+	file_major_reform_mode = int(d["file_major_reform_mode"])
 	_file_assignment_files = int(d["file_assignment_files"])
 	_under_fire = bool(d["under_fire"])
 	_attack_cd = float(d["attack_cd"])

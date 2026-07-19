@@ -1695,7 +1695,7 @@ func toggle_group_attack_mode() -> void:
 	_cycle_group_attack_mode()
 
 
-# --- per-unit settings (walk_advance / reform_before_move / file_major_reform) -----------
+# --- per-unit settings (walk_advance / reform_before_move / file_major_reform_mode) ------
 
 ## Set walk_advance on every currently selected friendly unit (called from the info panel
 ## checkbox). Routed through Battle.enqueue_unit_settings so the toggle itself -- not just
@@ -1725,17 +1725,40 @@ func set_selected_reform_before_move(value: bool) -> void:
 	Sfx.play(&"order")
 
 
-## Set file_major_reform on every currently selected friendly unit (called from the info
-## panel checkbox). See set_selected_walk_advance.
-func set_selected_file_major_reform(value: bool) -> void:
+## The order the info panel's file-major-reform button cycles through on each click
+## (File-major -> Row-major -> Auto -> File-major). Kept as an explicit list, like
+## FORMATION_CYCLE above, so an unrecognized current mode falls back cleanly to the front.
+const REFORM_MODE_CYCLE: Array[int] = [
+	Unit.ReformMode.FILE_MAJOR, Unit.ReformMode.ROW_MAJOR, Unit.ReformMode.AUTO,
+]
+
+
+## The reform mode one step past `current` in REFORM_MODE_CYCLE (wrapping at the end).
+## Static + pure so the cycle order is directly testable, mirroring next_formation above.
+static func next_reform_mode(current: int) -> int:
+	var idx: int = REFORM_MODE_CYCLE.find(current)
+	return REFORM_MODE_CYCLE[(idx + 1) % REFORM_MODE_CYCLE.size()]
+
+
+## Cycle file_major_reform_mode (File-major -> Row-major -> Auto -> File-major) on every
+## currently selected friendly unit -- called from the info panel's cycle button. A 3-value
+## mode doesn't fit the ON/OFF checkbox shape set_selected_walk_advance/
+## set_selected_reform_before_move use (see set_selected_walk_advance), so this instead reads
+## the LEAD selected unit's own current mode and issues the NEXT one in REFORM_MODE_CYCLE for
+## the whole selection, mirroring _cycle_formation's lead-unit-drives-the-step shape. Routed
+## through Battle.enqueue_unit_settings so the cycle step itself -- not just its downstream
+## effect -- rides the replay stream, like the other per-unit settings above.
+func cycle_selected_file_major_reform_mode() -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if _selected.is_empty() or not is_instance_valid(_selected[0]):
 		return
 	var uids: Array = _selected_uids()
 	if uids.is_empty():
 		return
-	var toggle: int = BattleRef.UnitSettingToggle.ON if value else BattleRef.UnitSettingToggle.OFF
+	var next: int = next_reform_mode(_selected[0].file_major_reform_mode)
 	_battle.enqueue_unit_settings(uids, BattleRef.UnitSettingToggle.LEAVE,
-			BattleRef.UnitSettingToggle.LEAVE, toggle)
+			BattleRef.UnitSettingToggle.LEAVE, next)
 	Sfx.play(&"order")
 
 

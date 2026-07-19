@@ -1,10 +1,10 @@
 extends GutTest
-## walk_advance/reform_before_move/file_major_reform are persistent per-unit fields, changed
-## only by an explicit player toggle or a replayed toggle event. A mid-battle toggle
+## walk_advance/reform_before_move/file_major_reform_mode are persistent per-unit fields,
+## changed only by an explicit player toggle or a replayed toggle event. A mid-battle toggle
 ## (SelectionManager.set_selected_walk_advance/set_selected_reform_before_move/
-## set_selected_file_major_reform -> Battle.enqueue_unit_settings) must ride the recorded
-## order stream -- not just take effect live -- or a saved-and-replayed recording would
-## silently diverge from what the live session actually did. Live-record a toggle
+## cycle_selected_file_major_reform_mode -> Battle.enqueue_unit_settings) must ride the
+## recorded order stream -- not just take effect live -- or a saved-and-replayed recording
+## would silently diverge from what the live session actually did. Live-record a toggle
 ## mid-battle, save, then replay the saved file from a fresh Battle instance and confirm the
 ## unit ends up with the same setting.
 
@@ -129,9 +129,10 @@ func test_a_mid_battle_reform_before_move_toggle_replays_identically() -> void:
 		"the mid-battle toggle reproduces identically on replay, not just the spawn default")
 
 
-func test_a_mid_battle_file_major_reform_toggle_replays_identically() -> void:
-	# Every type defaults file_major_reform ON, so toggling it OFF mid-battle is the
-	# provable state change here.
+func test_a_mid_battle_file_major_reform_mode_toggle_replays_identically() -> void:
+	# Every type defaults file_major_reform_mode to FILE_MAJOR, so toggling it to AUTO
+	# mid-battle is the provable state change here -- and proves the full 3-state mode (not
+	# just the old bool's two values) rides the replay stream.
 	var scenario := [
 		{"team": 0, "type": "Infantry", "x": SPAWN.x, "y": SPAWN.y, "count": 20, "facing": [0, 1]},
 	]
@@ -142,19 +143,20 @@ func test_a_mid_battle_file_major_reform_toggle_replays_identically() -> void:
 	assert_not_null(u, "the scenario spawned the lone unit")
 	if u == null:
 		return
-	assert_true(u.file_major_reform, "sanity: every type defaults file_major_reform on")
+	assert_eq(u.file_major_reform_mode, Unit.ReformMode.FILE_MAJOR,
+		"sanity: every type defaults file_major_reform_mode to FILE_MAJOR")
 
 	for _k in range(10):
 		await get_tree().physics_frame
 	live.enqueue_unit_settings([u.uid], BattleScript.UnitSettingToggle.LEAVE,
-			BattleScript.UnitSettingToggle.LEAVE, BattleScript.UnitSettingToggle.OFF)
-	assert_false(u.file_major_reform, "the toggle applies live immediately")
+			BattleScript.UnitSettingToggle.LEAVE, Unit.ReformMode.AUTO)
+	assert_eq(u.file_major_reform_mode, Unit.ReformMode.AUTO, "the toggle applies live immediately")
 	await get_tree().physics_frame
 
 	for _k in range(10):
 		await get_tree().physics_frame
 	var live_final_tick: int = live.current_tick()
-	var live_file_major: bool = u.file_major_reform
+	var live_file_major_mode: int = u.file_major_reform_mode
 
 	var path: String = Replay.save("Test", live_final_tick)
 	assert_ne(path, "", "the recording saves")
@@ -167,10 +169,11 @@ func test_a_mid_battle_file_major_reform_toggle_replays_identically() -> void:
 	assert_not_null(ru, "the replayed scenario spawns the same lone unit")
 	if ru == null:
 		return
-	assert_true(ru.file_major_reform, "sanity: the replayed unit starts at the same spawn default")
+	assert_eq(ru.file_major_reform_mode, Unit.ReformMode.FILE_MAJOR,
+		"sanity: the replayed unit starts at the same spawn default")
 
 	while replayed.current_tick() < live_final_tick:
 		await get_tree().physics_frame
 
-	assert_eq(ru.file_major_reform, live_file_major,
+	assert_eq(ru.file_major_reform_mode, live_file_major_mode,
 		"the mid-battle toggle reproduces identically on replay, not just the spawn default")
