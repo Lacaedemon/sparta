@@ -143,6 +143,12 @@ func test_moving_wheel_hinge_holds_pace_while_outer_file_runs_faster_then_settle
 	assert_lt(post_far_speed, worst_far_speed * 0.6,
 		"the outer file's pace drops back down once the wheel hands off to the plain march " +
 		"(post %.1f vs peak swing %.1f)" % [post_far_speed, worst_far_speed])
+	# And it settles back to a pace comparable to the hinge file's own -- both files
+	# marching the same regiment at the same pace again, not just the outer file's own
+	# peak having dropped in isolation.
+	assert_lt(absf(post_far_speed - post_hinge_speed), cruise_speed * 0.5,
+		"hinge and outer file settle back onto a comparable pace together (hinge %.1f vs far %.1f)"
+			% [post_hinge_speed, post_far_speed])
 
 	# The wheel itself ended up genuinely facing the ordered destination's own bearing --
 	# computed straight from the move vector, not asserted as a fixed 90° turn from the
