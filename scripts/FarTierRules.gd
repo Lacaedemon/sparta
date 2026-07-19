@@ -245,24 +245,27 @@ static func tick_attrition(defender: FarTierFormation, rate: float, delta: float
 
 
 ## Break into rout: the aggregate analog of Unit._rout(). Latches rec.routing and arms the
-## timer at ROUT_TIME. A no-op if already routing, matching Unit._rout()'s own re-entrancy
-## guard. Contagion (morale-shaking nearby friendlies, ROUT_SHOCK_RADIUS) is orchestration
-## across many formations — out of this pair-scoped rule's reach; see tick_rout below for
-## the isolated two-body analog this phase actually implements.
+## timer at rec.rout_time (carried forward from the demoted unit's own caller-configurable
+## rout_time, default Unit.ROUT_TIME). A no-op if already routing, matching Unit._rout()'s
+## own re-entrancy guard. Contagion (morale-shaking nearby friendlies, ROUT_SHOCK_RADIUS) is
+## orchestration across many formations — out of this pair-scoped rule's reach; see tick_rout
+## below for the isolated two-body analog this phase actually implements.
 static func enter_rout(rec: FarTierFormation) -> void:
 	if rec.routing:
 		return
 	rec.routing = true
-	rec.rout_timer = Unit.ROUT_TIME
+	rec.rout_timer = rec.rout_time
 
 
 ## Whether a routing formation recovers rather than shatters: the far-tier analog of
-## Unit._can_rally(). It must still field enough men to reform (>= SHATTER_STRENGTH_FRAC of
-## max_soldiers) and have broken contact with `enemy` — no live enemy within
-## RALLY_CONTACT_RADIUS. The close tier scans every enemy on the field; the far tier's pair
-## model has only the one opposing formation to check, the natural two-body analog.
+## Unit._can_rally(). It must still field enough men to reform (>= rec.shatter_strength_frac
+## of max_soldiers -- carried forward from the demoted unit's own caller-configurable
+## shatter_strength_frac, default Unit.SHATTER_STRENGTH_FRAC) and have broken contact with
+## `enemy` — no live enemy within RALLY_CONTACT_RADIUS. The close tier scans every enemy on
+## the field; the far tier's pair model has only the one opposing formation to check, the
+## natural two-body analog.
 static func can_rally(rec: FarTierFormation, enemy: FarTierFormation) -> bool:
-	if rec.count < int(round(float(rec.max_soldiers) * Unit.SHATTER_STRENGTH_FRAC)):
+	if rec.count < int(round(float(rec.max_soldiers) * rec.shatter_strength_frac)):
 		return false
 	if is_destroyed(enemy):
 		return true
@@ -295,9 +298,11 @@ static func shatter(rec: FarTierFormation) -> void:
 ## fixed "own back edge" to run toward, so fleeing the immediate threat is the natural
 ## two-body substitute) at 1.3x the march pace, matching the close tier's flee multiplier.
 ## Morale steadies toward ROUT_RALLY_BASELINE at a rate proportional to the remaining gap,
-## and the formation rallies the moment it crosses RALLY_MORALE_THRESHOLD with contact
-## broken — it need not run out the timer. Otherwise, when the timer expires, it rallies if
-## it still can (can_rally) or shatters. No-op if the formation isn't routing.
+## and the formation rallies the moment it crosses rec.rally_morale_threshold (carried forward
+## from the demoted unit's own caller-configurable rally_morale_threshold, default
+## Unit.RALLY_MORALE_THRESHOLD) with contact broken — it need not run out the timer.
+## Otherwise, when the timer expires, it rallies if it still can (can_rally) or shatters.
+## No-op if the formation isn't routing.
 static func tick_rout(rec: FarTierFormation, enemy: FarTierFormation, delta: float) -> void:
 	if not rec.routing:
 		return
@@ -307,7 +312,7 @@ static func tick_rout(rec: FarTierFormation, enemy: FarTierFormation, delta: flo
 		rec.position += rec.facing * (effective_speed(rec) * FLEE_SPEED_MULTIPLIER) * delta
 	if rec.morale < Unit.ROUT_RALLY_BASELINE:
 		rec.morale += (Unit.ROUT_RALLY_BASELINE - rec.morale) * Unit.ROUT_MORALE_RECOVER_RATE * delta
-	if rec.morale >= Unit.RALLY_MORALE_THRESHOLD and can_rally(rec, enemy):
+	if rec.morale >= rec.rally_morale_threshold and can_rally(rec, enemy):
 		rally(rec)
 		return
 	rec.rout_timer -= delta

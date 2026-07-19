@@ -656,6 +656,12 @@ const PIN_DOWN_ATTACK_INTERVAL: float = 1.2
 const PIN_DOWN_EXPOSURE_DURATION: float = 0.3
 const PIN_DOWN_DEFENSE_FACTOR: float = 0.7
 const ROUT_TIME: float = 6.0
+# Live rout-timer duration -- a caller-configurable parameter (CLAUDE.md's code
+# conventions) defaulting to ROUT_TIME above. Settable BEFORE the node enters the
+# tree, the same set-before-_ready contract Battle.gd's ai_period/camera_smoothing
+# already follow, so a demo/test/campaign unit can rout for a different duration
+# without touching the default every other unit relies on.
+var rout_time: float = ROUT_TIME
 # How long a non-fighting unit holds position to reform its ranks after a fresh move
 # order is issued with reform_before_move on. Runs concurrently with order_response_delay
 # (both count from zero); the effective delay before the march is max(order_response_delay,
@@ -683,6 +689,9 @@ const ROUT_SHOCK_RADIUS: float = 7.0 * WorldScaleRef.WU_PER_M
 # at RALLY_MORALE, kept low so it stays fragile and can break again.
 const RALLY_MORALE: float = 30.0
 const SHATTER_STRENGTH_FRAC: float = 0.15
+# Live shatter-strength-fraction -- a caller-configurable parameter defaulting to
+# SHATTER_STRENGTH_FRAC above, same set-before-_ready contract as rout_time.
+var shatter_strength_frac: float = SHATTER_STRENGTH_FRAC
 # While routing, a shaken regiment's nerve slowly steadies: morale ticks UP toward
 # ROUT_RALLY_BASELINE at a rate proportional to the remaining gap, so recovery is fast
 # at first and levels off (an asymptotic approach, never quite reaching the baseline).
@@ -693,6 +702,9 @@ const SHATTER_STRENGTH_FRAC: float = 0.15
 const ROUT_RALLY_BASELINE: float = 45.0
 const ROUT_MORALE_RECOVER_RATE: float = 0.25   # fraction of the gap closed per second
 const RALLY_MORALE_THRESHOLD: float = 35.0
+# Live rally-morale threshold -- a caller-configurable parameter defaulting to
+# RALLY_MORALE_THRESHOLD above, same set-before-_ready contract as rout_time.
+var rally_morale_threshold: float = RALLY_MORALE_THRESHOLD
 
 # Ranged combat. A ranged unit looses volleys at any enemy within
 # RANGED_RANGE that isn't already in melee contact — far outreaching melee's
@@ -4542,7 +4554,7 @@ func _rout() -> void:
 	_pin_down_exposure_cd = 0.0        # a rout ends the exposure window instead of freezing it open
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_formation_mirror_x = false
-	_rout_timer = ROUT_TIME
+	_rout_timer = rout_time
 	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
 	# (recoverable) only when it wasn't already permanently shattered by a
 	# prior _stop_rout_and_fight(). That call returns the unit to State.IDLE
@@ -4619,7 +4631,7 @@ func _process_rout(delta: float) -> void:
 	# Note: a unit that enters routing with morale already >= RALLY_MORALE_THRESHOLD rallies
 	# on the first call here (a one-tick rout). In practice routing is triggered by depleted
 	# morale so this is dormant; keep it in mind if non-morale rout triggers are ever added.
-	if morale >= RALLY_MORALE_THRESHOLD and _can_rally():
+	if morale >= rally_morale_threshold and _can_rally():
 		_rally()
 		return
 
@@ -4642,7 +4654,7 @@ func _process_rout(delta: float) -> void:
 ## field enough men to reform (>= SHATTER_STRENGTH_FRAC of its max). Positions + counts
 ## only, so it's deterministic and replay-safe.
 func _can_rally() -> bool:
-	if soldiers < int(round(max_soldiers * SHATTER_STRENGTH_FRAC)):
+	if soldiers < int(round(max_soldiers * shatter_strength_frac)):
 		return false
 	return UnitTargeting.nearest_enemy_to(self, position, RALLY_CONTACT_RADIUS) == null
 
