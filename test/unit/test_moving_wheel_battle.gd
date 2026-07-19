@@ -158,3 +158,55 @@ func test_moving_wheel_hinge_holds_pace_while_outer_file_runs_faster_then_settle
 		"the wheel's own final facing matches the actual bearing to the ordered destination " +
 		"(due east, the direction turn_dest was placed in) -- got (%.4f, %.4f)"
 			% [facing_at_wheel_end.x, facing_at_wheel_end.y])
+
+
+## A genuine >180° sweep in the SAME live-battle context as the test above -- real soldier
+## bodies, real steering/coupling every tick -- rather than only the bare-unit version in
+## test_moving_wheel_maneuver.gd. Calls begin_moving_wheel directly with an explicit 200°
+## turn_angle: as UnitManeuver.moving_wheel_turn_angle's own doc notes, "turn to face a
+## destination" can never itself ask for more than 180° (the shortest angle to any bearing
+## is at most a half-turn), so a genuine >180° sweep is a capability of the primitive
+## itself, not something a plain move order's classification can trigger on its own --
+## exercised directly here, with the real per-tick orchestration (steering, coupling,
+## separation) a bare Unit.new() fixture never runs through.
+func test_moving_wheel_sweeps_past_180_degrees_in_a_live_battle() -> void:
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.drill_mode = true
+	add_child_autofree(battle)
+	for _k in range(40):
+		await get_tree().physics_frame
+
+	var target: Unit = null
+	for u in get_tree().get_nodes_in_group("units"):
+		var unit: Unit = u as Unit
+		if unit != null and unit.team == 0 and unit.is_cavalry \
+				and (target == null or unit.position.x < target.position.x):
+			target = unit
+	assert_not_null(target, "found a team-0 cavalry unit")
+	if target == null:
+		return
+
+	var start_facing: Vector2 = target.facing
+	var turn_angle: float = deg_to_rad(200.0)
+	var o := Order.new_move(target.position + Vector2(100, 100))
+	target.set_current_order(o)
+	target.has_move_target = false
+	assert_true(target.begin_moving_wheel(o, 1, turn_angle),
+		"a >180° moving wheel arms on a real spawned unit")
+	var leaf: Order = target.active_leaf()
+
+	# Confirm it doesn't stop early: after covering at least 180° of the requested 200°,
+	# the sweep must still be running (a goal-vector-proximity check would have already
+	# read this as "arrived" the short way).
+	var ticks := 0
+	while absf(leaf.wheel_turn_remaining) > deg_to_rad(20.0) and ticks < 1200:
+		await get_tree().physics_frame
+		ticks += 1
+	assert_true(target.is_wheeling(), "still mid-swing after 180° of a 200° sweep")
+
+	while target.is_wheeling() and ticks < 1200:
+		await get_tree().physics_frame
+		ticks += 1
+	assert_false(target.is_wheeling(), "the full 200° sweep completed within budget")
+	assert_gt(target.facing.dot(start_facing.rotated(turn_angle)), 0.99,
+		"facing lands on the actual >180° bearing requested, not the short way's complement")
