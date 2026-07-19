@@ -1860,9 +1860,15 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# place, marches sideways to it keeping its pre-turn footprint, then
 				# quarter-turns back to the original facing on arrival -- a file march,
 				# not a repointed unit that ends up permanently facing the new direction.
+				# This is a professional drill maneuver in the same sense _move_to's own
+				# pivot_as_formation gate already treats a centre-pivot: an undisciplined
+				# unit (disciplined == false) skips it and falls straight through to the
+				# plain-march branch below, same as a fighting unit that can't turn in
+				# place -- it just turns to face the destination immediately and walks
+				# there directly.
 				var lateral_pivot: bool = not cmd.has("face") and not side_step \
 						and not back_step and not rear_move and not moving_wheel_turn \
-						and u.state != UnitRef.State.FIGHTING \
+						and u.state != UnitRef.State.FIGHTING and u.disciplined \
 						and UnitManeuver.is_lateral_pivot(u.facing, move_vec)
 				# Drag-to-form-up: apply frontage/facing immediately so soldiers begin
 				# adjusting during the reform phase rather than after the march starts.
