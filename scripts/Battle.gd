@@ -2242,8 +2242,9 @@ func _check_victory() -> void:
 		return
 	# A team is still contesting the battle while it has any body on the field — a
 	# fightable unit or a routing one that might rally. Waiting on routers is bounded:
-	# each rout resolves (rally or shatter) within ROUT_TIME, so a both-sides-only-routers
-	# state can't stall the outcome — it just defers the call until the routers settle.
+	# each rout resolves (rally or shatter) within its own rout_time (default ROUT_TIME), so a
+	# both-sides-only-routers state can't stall the outcome — it just defers the call until
+	# the routers settle.
 	var p_alive: bool = _team_in_play(0)
 	var e_alive: bool = _team_in_play(1)
 	if not p_alive and not e_alive:
