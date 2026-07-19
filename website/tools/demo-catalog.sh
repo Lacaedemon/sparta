@@ -70,4 +70,5 @@ DEMOS=(
   "chase_canter|demos/inputs/stern-chase-canter.json|30|260|640|input"
   "funnel_lanes|demos/inputs/funnel-hug-lanes.json|60|1080|640|input"
   "spear_standoff|demos/inputs/spear-standoff.json|30|720|720|input"
+  "give_ground|demos/inputs/give-ground.json|30|660|640|input"
 )

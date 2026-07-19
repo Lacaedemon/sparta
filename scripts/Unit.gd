@@ -310,6 +310,20 @@ var ordered_facing: Vector2 = Vector2.ZERO
 # It does not change target ACQUISITION (UnitTargeting.current_target/nearest_enemy
 # already let a pursuer keep and re-close on a routing enemy indefinitely); it changes
 # what makes the unit let go of a target once it has one.
+# GIVE_GROUND is an explicit player-facing withdrawal: an engaged unit under this stance
+# actively backs away from its nearest enemy at a constant rate (SoldierMeleeStandoff's
+# give_ground_bias), regardless of reach comparison, while still fighting and taking/
+# dealing damage normally. This is the deliberate opt-in counterpart to the passive
+# reach-asymmetric standoff (SoldierMeleeStandoff.standoff_bias) — that pass deliberately
+# never backs a longer-reach soldier away on its own (see that class's doc comment), so a
+# player who genuinely wants an engaged unit to retreat and hold distance has to command
+# it explicitly with this order instead. It overrides the passive outreached-press bias
+# for the same soldier (see SoldierMeleeStandoff.accumulate) — a give-ground unit that is
+# ALSO outreached backs away rather than pressing in, since the player's explicit order
+# wins that conflict. order_mode is otherwise orthogonal to this stance: no morale/rout
+# exemption is needed (morale erosion and rout thresholds don't key off order_mode or
+# position, so a retreating-while-fighting unit is treated exactly like any other engaged
+# unit for morale purposes).
 const ORDER_HOLD := 1
 const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
@@ -323,6 +337,7 @@ const ORDER_ALL_OUT_ATTACK := 10
 const ORDER_CHASE := 11
 const ORDER_WEDGE_CHARGE := 12
 const ORDER_KNOCKBACK_FOCUS := 13
+const ORDER_GIVE_GROUND := 14
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),

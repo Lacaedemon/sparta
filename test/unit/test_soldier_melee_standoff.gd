@@ -238,3 +238,144 @@ func test_soldier_reach_reflects_the_unit_type_specific_attack_range() -> void:
 	assert_almost_eq(spear.soldier_reach(), SPEAR_REACH, 0.001)
 	assert_almost_eq(sword.soldier_reach(), SWORD_REACH, 0.001)
 	assert_gt(spear.soldier_reach(), sword.soldier_reach(), "the spear genuinely outreaches the sword")
+
+
+# --- pure give_ground_bias() --------------------------------------------------------------
+#
+# GIVE_GROUND is an explicit player-facing withdrawal: unlike standoff_bias, it never gates
+# on reach comparison at all -- it always backs away from the nearest enemy at a constant
+# rate. These tests pin: the direction is always "away from the enemy", the magnitude is
+# always full GIVE_GROUND_STRENGTH (no ramp, no "already far enough" cutoff, no "already
+# outreach them" zero), and the co-located degenerate case can't crash or NaN.
+
+func test_give_ground_bias_backs_away_regardless_of_reach() -> void:
+	# Same three reach pairings standoff_bias treats very differently (outreaching, matching,
+	# outreached) -- give_ground_bias must treat all three identically: back straight away
+	# from the enemy at full strength every time.
+	var cases: Array = [
+		["give-ground outreaches the enemy", SPEAR_REACH, SWORD_REACH],
+		["give-ground matches the enemy's reach", SWORD_REACH, SWORD_REACH],
+		["give-ground is outreached by the enemy", SWORD_REACH, SPEAR_REACH],
+	]
+	for c in cases:
+		# The distance argument to give_ground_bias itself doesn't take a reach parameter --
+		# reach is irrelevant to it entirely -- so these are really just direction/magnitude
+		# checks; the reach values above document the SCENARIOS this must hold across, even
+		# though give_ground_bias's own signature never reads them.
+		var bias: Vector2 = SoldierMeleeStandoff.give_ground_bias(Vector2.ZERO, Vector2(30.0, 0.0))
+		assert_lt(bias.x, 0.0, "%s: backs away from the enemy (enemy at +x, so bias points -x)" % c[0])
+		assert_almost_eq(bias.length(), SoldierMeleeStandoff.GIVE_GROUND_STRENGTH, 0.01,
+			"%s: backing away is always full strength, no ramp" % c[0])
+
+
+func test_give_ground_bias_still_backs_away_even_when_already_far_from_the_enemy() -> void:
+	# standoff_bias's press-in branch zeroes out once the soldier has closed inside its own
+	# reach ("closing further gains nothing") -- give_ground_bias has no such cutoff: the
+	# player ordered a withdrawal, so it keeps backing away regardless of how far apart the
+	# pair already is.
+	var near: Vector2 = SoldierMeleeStandoff.give_ground_bias(Vector2.ZERO, Vector2(5.0, 0.0))
+	var far: Vector2 = SoldierMeleeStandoff.give_ground_bias(Vector2.ZERO, Vector2(500.0, 0.0))
+	assert_almost_eq(near.length(), SoldierMeleeStandoff.GIVE_GROUND_STRENGTH, 0.01,
+		"backs away at full strength even when the enemy is already close")
+	assert_almost_eq(far.length(), SoldierMeleeStandoff.GIVE_GROUND_STRENGTH, 0.01,
+		"backs away at full strength even when the enemy is already far away")
+
+
+func test_give_ground_bias_points_directly_away_from_the_enemy() -> void:
+	var bias: Vector2 = SoldierMeleeStandoff.give_ground_bias(Vector2(10.0, 10.0), Vector2(10.0, 40.0))
+	# Enemy is due +y from pos, so backing away points -y.
+	assert_almost_eq(bias.x, 0.0, 0.01, "no lateral component when the enemy is due +y")
+	assert_lt(bias.y, 0.0, "backs away along -y, directly opposite the enemy")
+
+
+func test_give_ground_bias_colocated_pair_does_not_crash_or_nan() -> void:
+	var bias: Vector2 = SoldierMeleeStandoff.give_ground_bias(Vector2(5.0, 5.0), Vector2(5.0, 5.0))
+	assert_false(is_nan(bias.x) or is_nan(bias.y), "a co-located pair must not NaN")
+	assert_almost_eq(bias.length(), SoldierMeleeStandoff.GIVE_GROUND_STRENGTH, 0.01,
+		"falls back to a fixed direction at full strength rather than dividing by zero")
+
+
+# --- accumulate() integration: GIVE_GROUND overrides standoff_bias, ignores reach --------
+
+func test_accumulate_give_ground_backs_away_even_when_outreaching_the_enemy() -> void:
+	# The spear here would NORMALLY get zero bias (standoff_bias's equal-or-longer-reach
+	# branch) -- give-ground must override that and back it away anyway.
+	var spear := _melee_unit(1, 0, Vector2.ZERO, Vector2.DOWN, SPEAR_REACH)
+	spear.order_mode = Unit.ORDER_GIVE_GROUND
+	var sword := _melee_unit(2, 1, Vector2(40.0, 0.0), Vector2.UP, SWORD_REACH)
+	SoldierMeleeStandoff.accumulate([spear, sword], 1)
+	assert_lt(spear._sim_steer[0].x, 0.0,
+		"the give-ground spear backs away from the sword (at +x), even though it outreaches it")
+	assert_almost_eq(spear._sim_steer[0].length(), SoldierMeleeStandoff.GIVE_GROUND_STRENGTH, 0.01)
+
+
+func test_accumulate_give_ground_backs_away_when_outreached_instead_of_pressing_in() -> void:
+	# The sword here would NORMALLY press toward the spear (standoff_bias's outreached
+	# branch) -- give-ground must override that and back away instead, proving the
+	# explicit order wins the conflict with the passive press-in bias.
+	var spear := _melee_unit(1, 0, Vector2.ZERO, Vector2.DOWN, SPEAR_REACH)
+	var sword := _melee_unit(2, 1, Vector2(40.0, 0.0), Vector2.UP, SWORD_REACH)
+	sword.order_mode = Unit.ORDER_GIVE_GROUND
+	SoldierMeleeStandoff.accumulate([spear, sword], 1)
+	# The sword sits at +x from the spear, so backing AWAY from the spear means moving
+	# further in +x -- the opposite of standoff_bias's press-in result, which would move
+	# the sword toward -x (toward the spear).
+	assert_gt(sword._sim_steer[0].x, 0.0,
+		"the give-ground sword backs away from the spear (further +x), not toward it")
+	assert_almost_eq(sword._sim_steer[0].length(), SoldierMeleeStandoff.GIVE_GROUND_STRENGTH, 0.01,
+		"give-ground overrides the passive outreached-press bias entirely, not just dampens it")
+
+
+func test_accumulate_give_ground_backs_away_at_equal_reach_where_standoff_would_be_zero() -> void:
+	# Equal reach is standoff_bias's other always-zero case -- give-ground must still apply.
+	var a := _melee_unit(1, 0, Vector2.ZERO, Vector2.DOWN, SWORD_REACH)
+	a.order_mode = Unit.ORDER_GIVE_GROUND
+	var b := _melee_unit(2, 1, Vector2(20.0, 0.0), Vector2.UP, SWORD_REACH)
+	SoldierMeleeStandoff.accumulate([a, b], 1)
+	assert_lt(a._sim_steer[0].x, 0.0, "give-ground backs away even at equal reach")
+	assert_almost_eq(a._sim_steer[0].length(), SoldierMeleeStandoff.GIVE_GROUND_STRENGTH, 0.01)
+
+
+func test_accumulate_give_ground_adds_onto_existing_steer_rather_than_overwriting_it() -> void:
+	var spear := _melee_unit(1, 0, Vector2.ZERO, Vector2.DOWN, SPEAR_REACH)
+	spear.order_mode = Unit.ORDER_GIVE_GROUND
+	spear._sim_steer[0] = Vector2(0.0, 7.0)   # pretend SoldierSteering already wrote a bias
+	var sword := _melee_unit(2, 1, Vector2(40.0, 0.0), Vector2.UP, SWORD_REACH)
+	SoldierMeleeStandoff.accumulate([spear, sword], 1)
+	assert_almost_eq(spear._sim_steer[0].y, 7.0, 1e-4, "the pre-existing friendly-steering bias survives untouched")
+	assert_lt(spear._sim_steer[0].x, 0.0, "the give-ground bias composes additively on top of it")
+
+
+# --- accumulate() perf gate: a give-ground unit must never be pruned by the reach-based ---
+# early-out that's correct for standoff_bias alone (regression for the pass-1/pass-2 gates)
+
+func test_accumulate_give_ground_unit_is_not_skipped_by_the_reach_based_early_out_when_it_outreaches() -> void:
+	# Both units have EQUAL reach here (so _any_team_could_be_outreached alone would say
+	# "nobody could possibly be outreached" and, before the give-ground fix, the whole pass
+	# -- including the give-ground unit's own lookup -- would have been skipped by the pass-1
+	# early-out). The give-ground unit's reach is not LESS than the enemy's, so the old
+	# per-unit could_be_outreached gate would also have excluded it from pass 2's queriers.
+	# Both gates must now fire because a give-ground unit is present.
+	var a := _melee_unit(1, 0, Vector2.ZERO, Vector2.DOWN, SPEAR_REACH)
+	a.order_mode = Unit.ORDER_GIVE_GROUND
+	var b := _melee_unit(2, 1, Vector2(30.0, 0.0), Vector2.UP, SPEAR_REACH)   # equal reach, not outreached
+	SoldierMeleeStandoff.accumulate([a, b], 1)
+	assert_almost_eq(a._sim_steer[0].length(), SoldierMeleeStandoff.GIVE_GROUND_STRENGTH, 0.01,
+		"a give-ground unit with reach equal to its enemy's must still get its bias -- " +
+		"the reach-based early-out that's correct for standoff_bias alone must not silently skip it")
+
+
+func test_accumulate_give_ground_unit_is_not_skipped_when_it_outreaches_every_engaged_enemy() -> void:
+	# Stronger version of the above: the give-ground unit has STRICTLY LONGER reach than
+	# every opposing engaged unit -- exactly the case _any_team_could_be_outreached is
+	# designed to prune for standoff_bias's sake (that unit could never be "outreached").
+	# The give-ground fix must override that pruning entirely.
+	var spear := _melee_unit(1, 0, Vector2.ZERO, Vector2.DOWN, SPEAR_REACH)
+	spear.order_mode = Unit.ORDER_GIVE_GROUND
+	var sword := _melee_unit(2, 1, Vector2(20.0, 0.0), Vector2.UP, SWORD_REACH)
+	SoldierMeleeStandoff.accumulate([spear, sword], 1)
+	assert_almost_eq(spear._sim_steer[0].length(), SoldierMeleeStandoff.GIVE_GROUND_STRENGTH, 0.01,
+		"a give-ground unit that outreaches every engaged enemy must still back away -- " +
+		"the team-level pass-1 early-out must not skip the whole tick just because nobody " +
+		"could be OUTREACHED, when somebody is giving ground")
+	assert_lt(spear._sim_steer[0].x, 0.0, "backs away from the sword at +x")

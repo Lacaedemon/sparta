@@ -1,0 +1,25 @@
+{
+  "_comment": "Give ground (#983): an explicit player-facing withdrawal order. Two equal-reach Infantry regiments (both sword reach 26wu) so #981's passive reach-asymmetric standoff never applies to either side (it's unconditionally zero at equal reach) -- any retreat shown here is purely the give-ground order's own effect, not the passive standoff. The player's Infantry (team 0) starts stationary; the enemy Infantry (team 1) auto-advances and locks in melee. Once engaged, the player selects the unit and issues Ctrl+backtick (Give ground) -- the unit then backs away from its nearest enemy at a constant rate while continuing to fight (soldier counts on both sides keep declining). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "seed": "20983",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 500, "y": 500, "count": 40 },
+    { "team": 1, "type": "Infantry", "x": 500, "y": 610, "count": 40 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 500, "y": 500, "zoom": 1.6 }
+  ],
+  "steps": [
+    { "tick": 5, "click": [500, 500] },
+    { "tick": 260, "key": "QuoteLeft", "ctrl": true }
+  ],
+  "frames": [10, 260, 350, 500, 650],
+  "state": [10, 100, 200, 260, 280, 320, 380, 440, 500, 560, 620],
+  "expect": [
+    { "tick": 8, "uid": 0, "field": "position", "value": [500.0, 500.3] },
+    { "tick": [280, 620], "uid": 0, "field": "order_mode", "value": "Give ground" }
+  ],
+  "fixed_fps": 30,
+  "max_frames": 660,
+  "fps": 15,
+  "width": 640
+}
