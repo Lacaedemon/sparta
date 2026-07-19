@@ -17,6 +17,13 @@ class_name UnitManeuver
 ## the rest of the way onto the destination bearing, THEN marches, rather than
 ## letting the march's own gradual centre-pivot close a large gap while
 ## already under way (see is_wheel_turn).
+## MOVING WHEEL: a CAVALRY-only move sharply off the current heading -- forward-
+## oblique, lateral, or rear, any angle -- gallops through a single continuous wheel
+## (hinge translating forward the whole swing) straight into the march, rather than
+## halting first the way the standing composites above do (see is_moving_wheel_turn /
+## Unit.begin_moving_wheel). Supersedes REAR-MOVE/LATERAL-PIVOT/WHEEL-TURN for a
+## cavalry unit's own move, since a mounted unit doesn't need any of those foot-drill
+## halts; a short side-step/back-step nudge is unaffected (there's no turn to avoid).
 
 # A move counts as a side-step when its lateral offset (perpendicular to the
 # unit's current facing) dominates its forward offset AND the whole move is
@@ -42,6 +49,14 @@ const REAR_MOVE_MIN_ANGLE_DEG := 135.0
 # corrects it fine, same as today; at or above it, a flank pivot (wheel) closes the gap with a
 # drilled turn before marching instead (see is_wheel_turn / Unit.begin_about_face_with_wheel).
 const WHEEL_MIN_RESIDUAL_ANGLE_DEG := 30.0
+
+# A cavalry move counts as sharp enough for a MOVING wheel (Unit.begin_moving_wheel) once
+# it is off the current heading by at least this angle -- deliberately looser than
+# REAR_MOVE_MIN_ANGLE_DEG/the lateral-pivot's effective ~63° onset (SIDESTEP_LATERAL_RATIO),
+# since a mounted unit can gallop through a turn a foot regiment would rather halt for. Below
+# it, the ordinary march's own gradual centre-pivot (Unit._move_to's pivot_as_formation) is
+# still a fine fit -- there is no "poor fit" to route around for a modest heading correction.
+const MOVING_WHEEL_MIN_ANGLE_DEG := 45.0
 
 
 ## Whether a move order from `facing` along `move_vec` should be executed as a
@@ -167,3 +182,33 @@ static func wheel_gait_rate(rate_cap: float, gait_speed: float, outer_radius: fl
 	if outer_radius <= 0.0:
 		return rate_cap
 	return minf(rate_cap, gait_speed / outer_radius)
+
+
+## Whether a move order from `facing` along `move_vec` should execute as a MOVING wheel
+## (Unit.begin_moving_wheel) rather than any of the standing composites above (about-face,
+## lateral-pivot, about-face+wheel) or the plain march's own gradual centre-pivot. Cavalry
+## only -- a mounted unit can gallop through an arbitrarily sharp turn without breaking
+## stride, where a foot regiment's drilled halt-first maneuvers are the more efficient
+## choice (see the issue's own design note, restated on Unit.begin_moving_wheel). Applies
+## across the WHOLE heading circle -- forward-oblique, lateral, or rear -- unlike
+## is_wheel_turn, which only ever fires inside the rear sector (is_rear_move gates it).
+## `facing` is the current heading; `move_vec` is destination minus current position.
+static func is_moving_wheel_turn(is_cavalry: bool, facing: Vector2, move_vec: Vector2) -> bool:
+	if not is_cavalry or facing.length() < 0.01 or move_vec.length() < 0.01:
+		return false
+	return rad_to_deg(absf(facing.angle_to(move_vec))) >= MOVING_WHEEL_MIN_ANGLE_DEG
+
+
+## The signed turn (radians, Vector2.rotated's convention -- so `facing.rotated(result)`
+## points exactly at `move_vec`) a moving wheel sweeps from `facing` to face the
+## destination directly: the shortest angle between the two, same magnitude
+## is_moving_wheel_turn checks in degrees. Magnitude is at most PI (no destination needs
+## more than a half-turn to face it directly) -- Unit.begin_moving_wheel's own turn-angle
+## parameter is not itself capped this way, so a caller with a reason to sweep further
+## (a future maneuver wanting to hold a specific hinge flank through a near-reversal,
+## the way begin_about_face_with_wheel's own about-face+residual can already total more
+## than a half-turn) can still ask for it directly. Zero for degenerate input.
+static func moving_wheel_turn_angle(facing: Vector2, move_vec: Vector2) -> float:
+	if facing.length() < 0.01 or move_vec.length() < 0.01:
+		return 0.0
+	return facing.angle_to(move_vec)

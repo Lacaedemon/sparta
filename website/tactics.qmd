@@ -1093,6 +1093,17 @@ sent far to the rear on an angle steps off already lined up on its destination i
 correcting the last of the turn mid-march. You don't order this one; it's the drilled
 default for that shape of move (see [how-to-play](how-to-play.qmd#fig-wheel-turn)).
 
+**Cavalry never has to take that halt.** Send a **cavalry** regiment on any sharply
+off-heading move --- forward-oblique, to a flank, or to the rear, at any angle --- and
+it wheels through the turn in one continuous swing while it keeps advancing, instead
+of stopping to about-face first. That makes a mounted wing meaningfully more
+responsive to redirect mid-battle: reroute it toward a fresh opening the instant one
+appears, without paying the halt-and-about-face cost a foot regiment given the same
+order still pays (see [how-to-play](how-to-play.qmd#fig-moving-wheel)). It's also
+why an AI subcommander leading a cavalry wing can decompose its own directive into a
+wheel-then-march the moment the front shifts, rather than waiting for you to hand it
+a fresh order.
+
 ## Order stances
 
 Each order can carry a *stance*, armed with a hotkey before you click (a coloured

@@ -1803,11 +1803,23 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 						and UnitManeuver.is_backstep(u.facing, move_vec)
 				if side_step or back_step:
 					u.ordered_facing = u.facing
+				# A cavalry unit's move sharply off its current heading -- forward-oblique,
+				# lateral, or rear, any angle, potentially past 180° -- gallops through a
+				# single continuous moving wheel (hinge translating forward the whole swing)
+				# straight into the march, superseding the rear-move/lateral-pivot/wheel-turn
+				# composites below: a mounted unit doesn't need to halt first the way a foot
+				# regiment's drilled maneuvers do. A side-step/back-step nudge is unaffected --
+				# there's no turn to avoid on a move that short.
+				var moving_wheel_turn: bool = not cmd.has("face") and not side_step and not back_step \
+						and u.state != UnitRef.State.FIGHTING \
+						and UnitManeuver.is_moving_wheel_turn(u.is_cavalry, u.facing, move_vec)
 				# A longer move into the rear sector about-faces (conversio) in place, then
 				# marches to the destination facing it -- rather than pivoting the whole
-				# block 180° about its centre. A form-up, a side-step, a back-step, and a
-				# fighting unit (conversio is blocked in melee) all keep the normal march.
+				# block 180° about its centre. A form-up, a side-step, a back-step, a moving-
+				# wheel cavalry turn, and a fighting unit (conversio is blocked in melee) all
+				# keep the normal march.
 				var rear_move: bool = not cmd.has("face") and not side_step and not back_step \
+						and not moving_wheel_turn \
 						and u.state != UnitRef.State.FIGHTING \
 						and UnitManeuver.is_rear_move(u.facing, move_vec)
 				# An oblique rear-sector move -- one where the about-face's own 180°
@@ -1822,7 +1834,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# quarter-turns back to the original facing on arrival -- a file march,
 				# not a repointed unit that ends up permanently facing the new direction.
 				var lateral_pivot: bool = not cmd.has("face") and not side_step \
-						and not back_step and not rear_move \
+						and not back_step and not rear_move and not moving_wheel_turn \
 						and u.state != UnitRef.State.FIGHTING \
 						and UnitManeuver.is_lateral_pivot(u.facing, move_vec)
 				# Drag-to-form-up: apply frontage/facing immediately so soldiers begin
@@ -1855,9 +1867,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# off regardless of the unit's own setting. A wheel-turn likewise never
 				# reforms between its turn phases and the march -- it reforms on arrival
 				# instead (Unit._finish_wheel), same as a plain rear move's own un-checked
-				# default.
+				# default. A moving wheel never reforms at all -- there's no about-face to
+				# leave a partial rank at the front, and a hold before the wheel even starts
+				# would defeat the whole point of a continuous, no-halt maneuver.
 				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
-				order.reform = u.reform_before_move and not lateral_pivot and not wheel_turn
+				order.reform = u.reform_before_move and not lateral_pivot and not wheel_turn \
+						and not moving_wheel_turn
 				# A multi-unit drag-line form-up: tag this order as one member of the shared
 				# group (docs/atomic-order-decomposition-design.md) instead of the standalone
 				# order every other move is. The group node itself is built once per id and
@@ -1878,7 +1893,17 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# ground -- live play and playback take this same path.
 				u.set_current_order(order)
 				var turn_armed: bool = false
-				if rear_move:
+				if moving_wheel_turn:
+					# A single continuous wheel straight from the current facing to the
+					# destination bearing, immediately followed by the march -- no about-face,
+					# no reform hold. begin_moving_wheel refuses the same way begin_pivot does
+					# (fighting, or bodies not seeded yet) -- fall back to a plain march then,
+					# same as every other composite above.
+					u.has_move_target = false
+					var moving_wheel_angle: float = UnitManeuver.moving_wheel_turn_angle(u.facing, move_vec)
+					var moving_wheel_dir: int = 1 if moving_wheel_angle >= 0.0 else -1
+					turn_armed = u.begin_moving_wheel(order, moving_wheel_dir, moving_wheel_angle)
+				elif rear_move:
 					# Park the destination on the order and about-face in place; _think
 					# starts the march when the turn completes. has_move_target stays false
 					# so the turn isn't cancelled. begin_about_face(_with_wheel) refuses

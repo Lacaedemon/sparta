@@ -362,6 +362,39 @@ correspondingly longer to come around. Use it to refuse a flank, to swing a wing
 and take an enemy line in the side, or to change the front an entire wing presents without
 breaking its order.
 
+**Moving wheel (cavalry only).** A mounted regiment doesn't need to halt for any of
+the standing maneuvers above. Give a **cavalry** unit a move order sharply off its
+current heading --- forward-oblique, to a flank, or to the rear, at any angle, even one
+that would otherwise call for a full about-face --- and it gallops through the turn in a
+single continuous wheel: the hinge advances at the unit's own march pace the whole
+swing while the outer files sweep faster to keep the line's shape, then it rides
+straight into the march with no halt at either end. A foot regiment given the
+identical order still takes the standing route above --- an about-face, an about-face
+plus flank pivot, or a lateral pivot, depending on the angle --- since only cavalry is
+fast and maneuverable enough to carve the turn without breaking stride. The same
+choice applies whether the order comes from your own click or from an AI
+subcommander's directive (a "hold this ground" / "cover this flank" order): a
+subcommander leading a cavalry group from the front can decompose its own directive
+into the same moving wheel followed by a forward march.
+
+::: {#fig-moving-wheel .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/moving_wheel.jpg">
+  <source src="media/moving_wheel.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Moving wheel vs. the standing route: a cavalry regiment (left) and an infantry
+regiment (right) are each marching, then given the same sharply off-heading
+destination. The cavalry gallops through a single continuous wheel without ever
+stopping; the infantry halts, about-faces, wheels the remaining residual, then
+marches --- visibly pausing where the cavalry never does.
+:::
+
 **Countermarch (exelismos, <kbd>Shift+V</kbd> / <kbd>Ctrl+V</kbd> / <kbd>Ctrl+Shift+V</kbd>).**
 All three variants share the about-face's <kbd>V</kbd> key, the same way <kbd>Shift+O</kbd>
 shares <kbd>O</kbd> with the anti-cavalry square --- every plain letter hotkey is already

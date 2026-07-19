@@ -59,6 +59,15 @@ func test_reversing_move_order_keeps_the_block_formed() -> void:
 	# (reform_before_move is a per-unit field now, and Cavalry's own spawn default is
 	# false -- override it here so the hold this test exercises still runs).
 	cav.reform_before_move = true
+	# A sharp reversal like this one is now a CAVALRY-only moving wheel
+	# (UnitManeuver.is_moving_wheel_turn / Unit.begin_moving_wheel) -- a single
+	# continuous swing with no about-face and no reform hold at all, which would
+	# bypass every mechanism this test guards. Pin the unit's classification to
+	# non-cavalry (keeping every other Cavalry loadout stat -- soldier count, pace,
+	# spacing -- exactly as spawned) so it still exercises the pre-existing rear-move +
+	# reform-hold + paced-pivot composite this test is actually about, unaffected by
+	# the new cavalry-specific path living alongside it.
+	cav.is_cavalry = false
 
 	battle._apply_order_cmd({"units": [cav.uid], "x": 1200.0, "y": 600.0, "target": -1})
 	while battle.current_tick() < CRUISE_BUDGET:

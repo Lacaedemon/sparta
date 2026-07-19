@@ -537,6 +537,15 @@ const CONVERSIO_TURN_RATE: float = PI * 2.0
 # file. The ceiling still governs a narrow block, whose outer file could otherwise jog the
 # tiny arc into a whip-around.
 const WHEEL_TURN_RATE: float = PI * 0.5
+# MOVING wheel (begin_moving_wheel) swing-rate ceiling: double the standing drill's, since a
+# cavalry unit galloping through a continuous wheel is a meaningfully brisker maneuver than a
+# foot regiment's stately parade-ground pace -- and, like WHEEL_TURN_RATE, only a CEILING:
+# UnitManeuver.wheel_gait_rate still bounds the outer file's actual linear pace at move_speed
+# (not jog_speed -- the moving wheel is a full-tilt cavalry maneuver, so the outer file is
+# expected to run at up to a full sprint, never beyond it), so raising this ceiling only
+# speeds up a NARROW block's swing (few ranks/files, small outer radius) rather than ever
+# letting a wide block's outer file outrun its own sprint.
+const MOVING_WHEEL_TURN_RATE: float = PI
 
 const MELEE_PRESS_FRACTION: float = 0.6
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
@@ -1485,9 +1494,18 @@ func _think(delta: float) -> void:
 			active_leaf().turn_target = Vector2.ZERO
 			retire_current_order()
 		else:
+			# Capture the leaf BEFORE advancing: on the tick the wheel finishes, _advance_wheel
+			# (via _finish_wheel) moves the tree cursor onto the march leaf, so active_leaf()
+			# afterward no longer names the wheel that actually ran this tick.
+			var wheeling_leaf: Order = active_leaf()
 			if _advance_wheel(delta):
 				_finish_wheel()
-			state = State.IDLE
+			# A standing wheel is a drill -- the block doesn't advance as a march, so it reads
+			# IDLE, same as before this maneuver existed. A MOVING wheel keeps advancing the
+			# whole time (that's the entire point), so _advance_moving_wheel already set
+			# state = MOVING itself this tick -- don't stomp it back to IDLE here.
+			if not wheeling_leaf.is_moving_wheel:
+				state = State.IDLE
 			return
 
 	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit is
@@ -3132,6 +3150,50 @@ func begin_about_face_with_wheel(order: Order, wheel_dir: int) -> bool:
 	return true
 
 
+## Arm a MOVING wheel (UnitManeuver.is_moving_wheel_turn): unlike wheel()'s standing drill
+## (a fixed 90° swing from a full standstill, _can_drill()-gated) or
+## begin_about_face_with_wheel's about-face-then-wheel composite (two discrete phases, the
+## unit facing away from its destination throughout the first), this is a SINGLE continuous
+## wheel phase straight from the current facing to the destination bearing -- any signed
+## angle, including one past 180° -- with the hinge itself advancing forward at the unit's
+## own live pace the whole time (see _advance_moving_wheel), immediately followed by a plain
+## MARCH leg once the swing completes. No about-face, no reform hold, no forced halt: a
+## mounted unit already marching (or about to) keeps advancing throughout, matching
+## "wheel while continuing to advance" rather than the foot-drill halt-first composites.
+##
+## `dir` is the flank the wheel hinges toward (Unit.wheel's own convention: +1 the unit's
+## own right, -1 its own left). `turn_angle` is the signed rotation (radians,
+## Vector2.rotated's convention) the swing sweeps through from the CURRENT facing --
+## ordinarily UnitManeuver.moving_wheel_turn_angle's result (magnitude at most PI, since no
+## destination needs more than a half-turn to face it directly), but not itself capped here:
+## a caller with reason to sweep further (holding a specific hinge flank through a
+## near-reversal) can pass a larger magnitude and the swing still completes correctly in one
+## continuous motion (see wheel_turn_remaining's own doc on Order.gd).
+##
+## Builds a two-child tree on `order` (a WHEEL leaf, then a MARCH leaf carrying
+## order.target_pos), mirroring begin_pivot's own tree-splice. Refused (returns false,
+## falling back to a plain march) under the same conditions begin_pivot refuses under:
+## fighting, or the soldier bodies not seeded yet. Cavalry-only is a caller-side
+## classification choice (is_moving_wheel_turn), not enforced here -- like begin_pivot, this
+## primitive itself has no opinion on which units should use it.
+func begin_moving_wheel(order: Order, dir: int, turn_angle: float) -> bool:
+	if dir == 0 or state == State.FIGHTING or _sim_soldier_facing.is_empty():
+		return false
+	var wheel_leaf := Order.new_wheel(dir)
+	wheel_leaf.is_moving_wheel = true
+	wheel_leaf.pivot = _wheel_pivot_point(dir)
+	wheel_leaf.turn_start_facing = facing
+	wheel_leaf.turn_target = facing.rotated(turn_angle)
+	wheel_leaf.wheel_translate_dir = facing   # stable reference: the PRE-wheel heading
+	wheel_leaf.wheel_turn_remaining = turn_angle
+	wheel_leaf.parent = order
+	var march_leaf := Order.new_move(order.target_pos)
+	march_leaf.parent = order
+	order.children = [wheel_leaf, march_leaf]
+	order._active_child = 0
+	return true
+
+
 ## Countermarch (exelismos, Asclepiodotus Ch.10 / Aelian Ch.27-28): reverse which end of the
 ## block faces the enemy by marching FILES through and around each other, rather than the
 ## whole block pivoting in place (that's conversio, above) or on a flank (a wheel). Built as a
@@ -3485,6 +3547,8 @@ func wheel(dir: int) -> void:
 ## direction.
 func _advance_wheel(delta: float) -> bool:
 	var leaf := active_leaf()
+	if leaf.is_moving_wheel:
+		return _advance_moving_wheel(leaf, delta)
 	var goal: Vector2 = leaf.turn_target
 	var hinge: Vector2 = leaf.pivot
 	var before: float = facing.angle()
@@ -3501,6 +3565,79 @@ func _advance_wheel(delta: float) -> bool:
 		facing = goal
 		return true
 	return false
+
+
+## Advance a MOVING wheel one tick (Unit.begin_moving_wheel): the same rigid-rotation
+## kinematics as the standing wheel above -- the block (position + every soldier body)
+## rotates about a hinge while facing tracks the same step -- but the hinge ITSELF
+## translates forward first, at the unit's own live _current_speed along the reference
+## direction captured when the wheel armed (leaf.wheel_translate_dir, the PRE-wheel
+## facing). The offset each body rotates about the OLD hinge position; the rotated result
+## is added onto the NEW (translated) hinge -- so the standing-flank soldier, whose offset
+## from the old hinge is ~zero, ends up simply carried forward by the translation with no
+## rotational contribution ("the pivot person keeps current pace while turning"), while
+## every other file's motion is the vector sum of that same translation plus its own arc
+## term -- automatically faster than the hinge file, with no separate per-file speed
+## formula needed (the issue's own "outer ranks accelerate temporarily").
+##
+## Progress is tracked by leaf.wheel_turn_remaining -- signed radians still left to sweep
+## -- rather than the standing wheel's "how close is facing to the goal vector" check: a
+## goal-vector proximity check cannot tell a sweep that has genuinely completed from one
+## still mid-swing on the long way around (a sweep past 180° can pass close to the goal's
+## own bearing well before it is actually done), where a monotonically-shrinking remaining
+## angle always reaches exactly zero only once the full requested rotation has run.
+##
+## Rate-capped by MOVING_WHEEL_TURN_RATE against the unit's own SPARE pace headroom
+## (move_speed minus the hinge's own live _current_speed), not jog_speed the standing wheel
+## uses (see begin_moving_wheel's doc) -- the moving wheel is a full-tilt cavalry maneuver,
+## so its outer file is expected to run faster than a standing wheel's. The rotational arc
+## term alone is what wheel_gait_rate bounds; a body's TOTAL speed is that arc term plus the
+## hinge's own translation (vector sum -- see the class doc above), and by triangle
+## inequality the sum of two vectors never exceeds the sum of their magnitudes, so capping
+## the arc term at (move_speed - _current_speed) guarantees no body's combined speed ever
+## exceeds move_speed even at the worst-case instant the two happen to align (a real
+## super-physical-check violation would otherwise show up exactly where a wide/cruising
+## block's arc term and hinge translation both point the same way mid-swing). A unit
+## already at (or very near) full sprint when the wheel arms is left very little rotational
+## headroom -- physically apt: a horse already at a full gallop cannot ALSO carve a sharp
+## turn without slowing first, the same reason a real cavalry wheel at speed reads as
+## deliberate, not instantaneous.
+##
+## Keeps the unit reading as MOVING (not IDLE, unlike the standing wheel -- the whole point
+## is that it keeps advancing) and sets _moved_last_frame each tick, the same bookkeeping
+## _move_to itself performs, so the per-tick idle-coast decay in _physics_process never
+## fires mid-swing. _approach_velocity is zeroed, not fed a live travel vector, for a subtle
+## but important reason: SoldierBodies.step() already treats is_maneuver_turning() (which
+## is_wheeling() feeds) as "freeze the arrival term, but still apply _approach_velocity as
+## feed-forward" -- exactly right for the standing wheel and the in-place turns, where
+## _approach_velocity is already ~zero (they only ever arm from a standstill), but this
+## maneuver's translation motion is already fully and exactly applied above via the rigid
+## rotation -- a nonzero _approach_velocity here would double-count that same translation
+## through SoldierBodies.step()'s own feed-forward on the same tick, measurably outrunning
+## the gait cap above despite it being computed correctly.
+func _advance_moving_wheel(leaf: Order, delta: float) -> bool:
+	var rate: float = UnitManeuver.wheel_gait_rate(
+			MOVING_WHEEL_TURN_RATE, maxf(0.0, move_speed - _current_speed),
+			_wheel_outer_radius(leaf.pivot))
+	var max_step: float = rate * delta
+	var step: float = clampf(leaf.wheel_turn_remaining, -max_step, max_step)
+	leaf.wheel_turn_remaining -= step
+	facing = facing.rotated(step)
+	var hinge_old: Vector2 = leaf.pivot
+	var hinge_new: Vector2 = hinge_old + leaf.wheel_translate_dir * (_current_speed * delta)
+	leaf.pivot = hinge_new
+	position = hinge_new + (position - hinge_old).rotated(step)
+	for i in range(_sim_soldier_pos.size()):
+		_sim_soldier_pos[i] = hinge_new + (_sim_soldier_pos[i] - hinge_old).rotated(step)
+		_sim_body_vel[i] = _sim_body_vel[i].rotated(step)
+	state = State.MOVING
+	_moved_last_frame = true
+	_approach_velocity = Vector2.ZERO
+	_render_dirty = true
+	var arrived: bool = absf(leaf.wheel_turn_remaining) < 0.0001
+	if arrived:
+		facing = leaf.turn_target   # snap exactly onto the captured goal, absorbing float drift
+	return arrived
 
 
 ## The farthest soldier's distance from the wheel's hinge — the radius that paces the whole
@@ -3530,14 +3667,17 @@ func _wheel_outer_radius(hinge: Vector2) -> float:
 ## routed through _finish_order_turn). Reforms on arrival (like a plain rear move's own
 ## default, un-checked case) since the composite's opening about-face leaves the same
 ## partial-rank-at-front state a plain rear move does -- the wheel itself is a rigid rotation
-## that doesn't touch which rank leads.
+## that doesn't touch which rank leads. A MOVING wheel (Unit.begin_moving_wheel) has no
+## opening about-face -- no rank was ever flipped to the rear, so there is nothing to bring
+## back to the front -- so it skips the forced reform-on-arrival entirely, marching straight
+## on with no halt at either end of the maneuver.
 func _finish_wheel() -> void:
 	var leaf := active_leaf()
 	leaf.turn_target = Vector2.ZERO
 	if leaf.parent == null:
 		retire_current_order()
 		return
-	_reform_on_arrival = true
+	_reform_on_arrival = not leaf.is_moving_wheel
 	_advance_order_tree(leaf)
 	move_target = active_leaf().target_pos
 	has_move_target = true

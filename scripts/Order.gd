@@ -279,9 +279,35 @@ var turn_target: Vector2 = Vector2.ZERO
 ## fold exactly how far it turned into Unit._formation_angle -- every man then holds his
 ## own slot under the new facing instead of surging to a reorganised grid.
 var turn_start_facing: Vector2 = Vector2.ZERO
-## WHEEL only: the fixed hinge point (parent-local, like Unit._sim_soldier_pos), captured
-## once when the wheel is armed so the arc reproduces exactly on replay.
+## WHEEL only: the hinge point (parent-local, like Unit._sim_soldier_pos). Captured once
+## when a STANDING wheel arms and held fixed for the whole swing; for a MOVING wheel
+## (is_moving_wheel below) it is instead re-derived every tick by Unit._advance_moving_wheel
+## (the hinge translates forward with the unit's own live pace), so replay reproduces it by
+## reproducing that same per-tick derivation, not by replaying a single captured value.
 var pivot: Vector2 = Vector2.ZERO
+## WHEEL only: true for a MOVING wheel (Unit.begin_moving_wheel) -- a single continuous
+## swing straight from the current facing to the destination bearing, hinge translating
+## forward the whole time, immediately followed by a march leg -- as opposed to the
+## default standing wheel (Unit.wheel / the about-face+wheel composite), which swings a
+## fixed 90° from a full standstill. Selects between Unit._advance_wheel's two stepping
+## mechanisms: the standing wheel's goal-vector/shortest-arc rotation, or the moving
+## wheel's signed remaining-angle rotation (wheel_turn_remaining below), which can sweep
+## more than 180° in one continuous motion when a caller asks for it -- a goal-vector
+## check alone cannot tell "arrived the short way" from "still mid-sweep the long way".
+var is_moving_wheel: bool = false
+## MOVING WHEEL only: the stable reference direction the hinge translates along each tick
+## (Unit._advance_moving_wheel) -- the unit's own heading at the instant the wheel armed,
+## captured once so the hinge's path is a straight line regardless of how far facing
+## rotates during the swing. Zero (unused) for a standing wheel.
+var wheel_translate_dir: Vector2 = Vector2.ZERO
+## MOVING WHEEL only: signed radians still left to sweep, decremented toward zero every
+## tick by Unit._advance_moving_wheel (at most rate * delta per tick, so the very last
+## step lands on exactly zero rather than overshooting). This -- not turn_target's goal
+## vector -- is what the moving wheel's own arrival check reads, so a sweep past 180° in
+## one continuous motion completes correctly instead of being mistaken for "arrived" the
+## instant facing first crosses near the goal from the wrong side. Zero (unused) for a
+## standing wheel.
+var wheel_turn_remaining: float = 0.0
 ## MOVE only: the reform-before-move drill choice the issuing command carried (the recorded
 ## "reform" field). For a rear move: true = re-form the ranks square to the new heading
 ## between the about-face and the march; false = step off at once and re-form on arrival.
@@ -406,6 +432,9 @@ func to_dict() -> Dictionary:
 		"turn_target": turn_target,
 		"turn_start_facing": turn_start_facing,
 		"pivot": pivot,
+		"is_moving_wheel": is_moving_wheel,
+		"wheel_translate_dir": wheel_translate_dir,
+		"wheel_turn_remaining": wheel_turn_remaining,
 		"reform": reform,
 		"pivot_return_angle": pivot_return_angle,
 		"countermarch_variant": countermarch_variant,
@@ -445,6 +474,9 @@ static func from_dict(d: Dictionary) -> Order:
 	o.turn_target = d.get("turn_target", Vector2.ZERO)
 	o.turn_start_facing = d.get("turn_start_facing", Vector2.ZERO)
 	o.pivot = d.get("pivot", Vector2.ZERO)
+	o.is_moving_wheel = bool(d.get("is_moving_wheel", false))
+	o.wheel_translate_dir = d.get("wheel_translate_dir", Vector2.ZERO)
+	o.wheel_turn_remaining = float(d.get("wheel_turn_remaining", 0.0))
 	o.reform = bool(d.get("reform", false))
 	o.pivot_return_angle = float(d.get("pivot_return_angle", 0.0))
 	o.countermarch_variant = int(d.get("countermarch_variant", -1))
