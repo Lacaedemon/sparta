@@ -240,7 +240,7 @@ func test_soldier_reach_reflects_the_unit_type_specific_attack_range() -> void:
 	assert_gt(spear.soldier_reach(), sword.soldier_reach(), "the spear genuinely outreaches the sword")
 
 
-# --- pure give_ground_bias(): #983 -------------------------------------------------------
+# --- pure give_ground_bias() --------------------------------------------------------------
 #
 # GIVE_GROUND is an explicit player-facing withdrawal: unlike standoff_bias, it never gates
 # on reach comparison at all -- it always backs away from the nearest enemy at a constant

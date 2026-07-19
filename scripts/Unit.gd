@@ -313,7 +313,7 @@ var ordered_facing: Vector2 = Vector2.ZERO
 # GIVE_GROUND is an explicit player-facing withdrawal: an engaged unit under this stance
 # actively backs away from its nearest enemy at a constant rate (SoldierMeleeStandoff's
 # give_ground_bias), regardless of reach comparison, while still fighting and taking/
-# dealing damage normally. This is the deliberate opt-in counterpart to #240's passive
+# dealing damage normally. This is the deliberate opt-in counterpart to the passive
 # reach-asymmetric standoff (SoldierMeleeStandoff.standoff_bias) — that pass deliberately
 # never backs a longer-reach soldier away on its own (see that class's doc comment), so a
 # player who genuinely wants an engaged unit to retreat and hold distance has to command

@@ -16,7 +16,7 @@ class_name SoldierMeleeStandoff
 ## physically-motivated push-back mechanism; a second, synthetic shove on top of it would be
 ## exactly the kind of top-down gimmick that philosophy exists to avoid.
 ##
-## GIVE_GROUND (#983) is that "separate follow-up": an explicit player-facing order where an
+## GIVE_GROUND is that separate follow-up: an explicit player-facing order where an
 ## engaged unit actively backs away from its nearest enemy at a constant rate, REGARDLESS of
 ## reach comparison -- the player is commanding a deliberate withdrawal, not asking the sim
 ## to find a reach-based equilibrium distance, so give_ground_bias below has none of

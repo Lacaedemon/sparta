@@ -1,6 +1,6 @@
 extends GutTest
-## Give ground (Battle.OrderMode.GIVE_GROUND, #983): an explicit player-facing withdrawal
-## order. Unlike #240/#981's passive reach-asymmetric standoff (SoldierMeleeStandoff.
+## Give ground (Battle.OrderMode.GIVE_GROUND): an explicit player-facing withdrawal
+## order. Unlike the passive reach-asymmetric standoff (SoldierMeleeStandoff.
 ## standoff_bias -- see test_soldier_melee_standoff.gd for the physics-level coverage of
 ## give_ground_bias and accumulate()'s override/perf-gate behavior), this order carries no
 ## per-order parameter of its own (unlike KNOCKBACK_FOCUS's knockback_indefinite) -- it's a
