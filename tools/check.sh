@@ -321,6 +321,35 @@ check_validate() {
 check_test() {
   require_godot || return 1
   ensure_gut || return 1
+  # If `coverage` (or `patch_coverage`, which internally calls check_coverage)
+  # already ran THIS SAME invocation and the GUT suite itself came back clean,
+  # reuse that instead of paying for a second full run -- check_coverage's run is
+  # a strict superset of what `test` checks (same suite, same pass/fail
+  # semantics, plus the identical has_script_errors guard). `main()` reorders the
+  # requested checks so a coverage-shaped one runs before `test` whenever both
+  # are requested, so this reliably fires instead of racing check ordering.
+  #
+  # Tracked via the internal `_suite_health` key, NOT `coverage`'s or
+  # `patch_coverage`'s own overall pass/fail -- those can fail for reasons that
+  # have nothing to do with the suite itself: `patch_coverage` fails when its
+  # coverage PERCENTAGE is below target even on a perfectly clean suite run
+  # (its main, intended failure mode -- not a corner case), and `coverage` fails
+  # if the lcov.info report write itself glitches after a clean run. Either
+  # would wrongly report `test` as failed too if this checked their overall
+  # result directly. See check_coverage's own set_result calls for where
+  # `_suite_health` actually gets recorded. An empty result (neither coverage
+  # nor patch_coverage's internal run reached this invocation) falls through to
+  # the real run below.
+  case "$(get_result _suite_health)" in
+    fail)
+      err "The coverage-instrumented suite already failed earlier in this run -- not re-running test."
+      return 1
+      ;;
+    pass)
+      info "coverage (or patch_coverage) already ran the full suite this invocation -- skipping the redundant plain run."
+      return 0
+      ;;
+  esac
   # gut_cmdln runs the suite without enabling the editor plugin; -gexit makes it
   # exit non-zero if any test fails or errors -- but NOT if a test script fails
   # to parse (see has_script_errors above). Tee the output so the run still
@@ -362,18 +391,48 @@ check_coverage() {
   # and write an lcov report. Mirrors .github/workflows/test-coverage.yml. Not in
   # the default set — instrumentation is slower and coverage never gates. The
   # report lands at coverage/lcov.info (git-ignored); see test/README.md.
+  #
+  # Tee to a log and check has_script_errors, exactly like check_test does: this
+  # run is meant to be a strict superset of `test` (see check_test's own
+  # short-circuit, which skips a redundant plain run when this one already passed
+  # this invocation) -- it has to catch everything `test` would, not just run the
+  # same suite with looser scrutiny.
+  local log; log="$(mktemp)"
   local rc=0
   ( cd "$PROJECT_ROOT" && COVERAGE_LCOV_FILE=res://coverage/lcov.info \
       run_bounded "$COVERAGE_TIMEOUT" \
       "$GODOT_BIN" --headless -s addons/gut/gut_cmdln.gd \
       -gdir=res://test -ginclude_subdirs -gexit \
       -gpre_run_script=res://test/pre_run_hook.gd \
-      -gpost_run_script=res://test/post_run_hook.gd ) || rc=$?
+      -gpost_run_script=res://test/post_run_hook.gd ) 2>&1 | tee "$log"
+  rc="${PIPESTATUS[0]}"
   if run_bounded_timed_out "$rc"; then
     err "Coverage run timed out after ${COVERAGE_TIMEOUT}s and was killed (no orphan left behind)."
+    rm -f "$log"
+    set_result _suite_health fail
     return 1
   fi
-  [ "$rc" -eq 0 ] || return 1
+  if [ "$rc" -ne 0 ]; then
+    rm -f "$log"
+    set_result _suite_health fail
+    return "$rc"
+  fi
+  if has_script_errors "$log"; then
+    err "GUT reported script/parse errors during the coverage run (see above) -- at least"
+    err "one test script failed to load and its tests were silently skipped, even though"
+    err "the suite reported success. Fix the broken script; a passing run must load"
+    err "every test script."
+    rm -f "$log"
+    set_result _suite_health fail
+    return 1
+  fi
+  rm -f "$log"
+  # The GUT run itself is clean at this point -- record that under its own key,
+  # distinct from this function's overall pass/fail below (which also depends on
+  # the lcov write succeeding -- a report-writing glitch there doesn't mean any
+  # test failed, so it must not be conflated with suite health; check_test's own
+  # short-circuit reads _suite_health specifically to avoid exactly that).
+  set_result _suite_health pass
   # The post-run hook reports a failed lcov write with push_error(), which does
   # not make Godot exit non-zero, so a clean exit above doesn't prove the report
   # was written. Confirm the file exists before claiming success.
@@ -985,6 +1044,33 @@ main() {
     [ -z "$seen" ] && deduped+=("$c")
   done
   checks=("${deduped[@]}")
+
+  # If both a plain `test` and a coverage-shaped check (`coverage`/`patch_coverage`)
+  # were requested in this same invocation, run the coverage-shaped one FIRST --
+  # check_test's own short-circuit (see its comment) only has something to reuse if
+  # a coverage-shaped check already ran and recorded a result, and `test` sorts
+  # before both in DEFAULT_CHECKS/ALL_CHECKS, so without this reorder it would
+  # always run first and the short-circuit would never fire for `all` or any
+  # explicit `test coverage`/`test patch_coverage` combination. Reinserts `test`
+  # immediately after the first coverage-shaped check found, preserving every
+  # other check's relative order.
+  local has_test="" has_cov_shaped=""
+  for c in "${checks[@]}"; do
+    [ "$c" = "test" ] && has_test=1
+    { [ "$c" = "coverage" ] || [ "$c" = "patch_coverage" ]; } && has_cov_shaped=1
+  done
+  if [ -n "$has_test" ] && [ -n "$has_cov_shaped" ]; then
+    local reordered=() inserted=""
+    for c in "${checks[@]}"; do
+      [ "$c" = "test" ] && continue
+      reordered+=("$c")
+      if [ -z "$inserted" ] && { [ "$c" = "coverage" ] || [ "$c" = "patch_coverage" ]; }; then
+        reordered+=("test")
+        inserted=1
+      fi
+    done
+    checks=("${reordered[@]}")
+  fi
 
   preflight_godot_count
 

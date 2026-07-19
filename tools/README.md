@@ -74,6 +74,20 @@ CI job) only reports after a push — a ~15–20 min round trip to discover a
 tools/check.sh patch_coverage
 ```
 
+**Run it in the SAME invocation as `test`/the default set, not as a separate
+command** — e.g. `tools/check.sh validate test chars comments units
+patch_coverage` (or just add `patch_coverage` to whatever other checks you're
+already running). `patch_coverage` internally runs `coverage`, which is a
+strict superset of what `test` checks (same suite, same pass/fail semantics,
+plus the same script-parse-error guard) — `main()` reorders a same-invocation
+`test` to run *after* `coverage`/`patch_coverage` and `check_test` then
+reuses that result instead of re-running the whole ~4–5 min GUT suite a
+second time. This dedup only works **within one process invocation**:
+`RESULT_NAMES`/`RESULT_STATUSES` are in-memory bash arrays that don't survive
+between separate `tools/check.sh` calls, so running `tools/check.sh test`
+and then, later, `tools/check.sh patch_coverage` as two separate commands
+still pays for the full suite twice.
+
 This regenerates `coverage/lcov.info` fresh (so the numbers reflect your
 current working tree, not a stale report from a previous diff), diffs against
 `origin/main` to find this diff's added `scripts/*.gd` lines, and reports a
