@@ -312,7 +312,7 @@ couple + combat).
 ## Settings.gd setters persist to the REAL user://settings.cfg in tests
 
 `Settings.gd`'s setter methods (`set_order_binding`, and the property setters
-like `edge_scroll =`, `walk_advance =`, `form_up_dist_default =`) all call
+like `edge_scroll =`, `show_unit_speed =`, `form_up_dist_default =`) all call
 `_save()` internally, which writes the **real** `user://settings.cfg` on whatever
 machine runs the test — GUT tests are not sandboxed. A test that calls a setter
 to trigger `Settings.changed` (e.g. to verify a UI element repaints on a live
@@ -333,7 +333,7 @@ editing `settings.cfg` to restore.
   `test_selection_manager.gd` (`Settings.order_bindings["hold"] = KEY_Z`).
 - After writing/reviewing a GUT test that touches `Settings`, grep the diff for
   any setter-method call (`Settings.set_*(`, or a property assignment like
-  `Settings.walk_advance = ...`) and replace with direct mutation + manual
+  `Settings.show_unit_speed = ...`) and replace with direct mutation + manual
   `changed.emit()` when the test only needs the signal, not persistence.
 - If contamination is suspected, check
   `C:\Users\<user>\AppData\Roaming\Godot\app_userdata\Sparta\settings.cfg`
