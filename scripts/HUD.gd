@@ -90,6 +90,7 @@ const _STANCE_ENTRIES := [
 	{"id": 11, "mode": BattleRef.OrderMode.CHASE, "label": "Chase", "slug": "chase"},
 	{"id": 12, "mode": BattleRef.OrderMode.WEDGE_CHARGE, "label": "Wedge charge", "slug": "wedge_charge"},
 	{"id": 13, "mode": BattleRef.OrderMode.KNOCKBACK_FOCUS, "label": "Knockback focus", "slug": "knockback_focus"},
+	{"id": 14, "mode": BattleRef.OrderMode.GIVE_GROUND, "label": "Give ground", "slug": "give_ground"},
 ]
 
 # The multi-unit form-up distribution modes, in menu order (the default, EQUAL_DEPTH_SPACE,

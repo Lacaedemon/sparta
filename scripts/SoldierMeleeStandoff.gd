@@ -14,9 +14,17 @@ class_name SoldierMeleeStandoff
 ## version of this pass added one, but the "no top-down gimmicks" philosophy (see
 ## .claude/memories/sparta.md) treats existing knockback-from-landed-hits as the real,
 ## physically-motivated push-back mechanism; a second, synthetic shove on top of it would be
-## exactly the kind of top-down gimmick that philosophy exists to avoid. (A "give ground" order
-## -- an explicit player-facing stance that DOES retreat to hold reach distance, as a deliberate
-## tactical choice rather than the passive default -- is tracked as a separate follow-up.)
+## exactly the kind of top-down gimmick that philosophy exists to avoid.
+##
+## GIVE_GROUND (#983) is that "separate follow-up": an explicit player-facing order where an
+## engaged unit actively backs away from its nearest enemy at a constant rate, REGARDLESS of
+## reach comparison -- the player is commanding a deliberate withdrawal, not asking the sim
+## to find a reach-based equilibrium distance, so give_ground_bias below has none of
+## standoff_bias's reach-ramp math. It overrides standoff_bias for the same soldier when both
+## would otherwise apply: a give-ground unit that is ALSO outreached would otherwise want to
+## press in via standoff_bias, but the player's explicit order wins that conflict (see
+## accumulate() below).
+##
 ## Per-individual, built on the individual-soldier collision layer.
 ##
 ## Determinism: each engaged soldier's bias is computed independently from the frozen
@@ -33,6 +41,12 @@ class_name SoldierMeleeStandoff
 # regiment locked against a marching sword regiment) that it holds a real standoff without
 # blowing past sane per-soldier speeds or fighting the arrival/couple physics into oscillation.
 const STANDOFF_STRENGTH: float = 40.0
+
+# GIVE_GROUND's own bias magnitude (world units/sec). Reuses STANDOFF_STRENGTH's own value --
+# it composes on top of the same bounded-accel arrival/friendly-steering physics that value
+# was already tuned against, and there's no reason a deliberate withdrawal should move at a
+# different rate than the passive press-in it can override (see accumulate() below).
+const GIVE_GROUND_STRENGTH: float = STANDOFF_STRENGTH
 
 
 ## The reach-asymmetric standoff bias for one soldier at `pos` (reach `my_reach`) against its
@@ -62,6 +76,27 @@ static func standoff_bias(pos: Vector2, enemy_pos: Vector2, my_reach: float, ene
 	return (offset / maxf(d, 0.01)) * STANDOFF_STRENGTH
 
 
+## GIVE_GROUND's own bias for one soldier at `pos` backing away from its nearest enemy at
+## `enemy_pos` -- a constant-rate withdrawal, unconditional and unramped, unlike
+## standoff_bias's reach-gated math above. Always points directly away from the enemy at full
+## GIVE_GROUND_STRENGTH: the player has explicitly ordered a retreat, so there is no
+## "already inside my reach, no need to move further" cutoff the way pressing-in has --
+## backing away is the whole point regardless of how close the enemy already is.
+##
+## Same co-located-pair fallback convention SoldierSteering._pair_push and
+## SoldierEnemyContact.accumulate already use elsewhere in the soldier layer (and the one the
+## earlier, reach-ramped version of this backing-away math used before it was replaced by
+## standoff_bias's press-only design -- see git history): a co-located pair (d ~ 0) has no
+## defined bearing to back away along, so it falls back to a fixed direction (Vector2.RIGHT)
+## rather than dividing by zero. This is a near-measure-zero case in practice, so the
+## fallback only needs to be stable, not physically meaningful.
+static func give_ground_bias(pos: Vector2, enemy_pos: Vector2) -> Vector2:
+	var offset: Vector2 = pos - enemy_pos
+	var d: float = offset.length()
+	var away_dir: Vector2 = offset / d if d > 0.01 else Vector2.RIGHT
+	return away_dir * GIVE_GROUND_STRENGTH
+
+
 ## Recompute the standoff bias for every engaged soldier this tick, ADDING it into
 ## `_sim_steer` (never overwriting). Must run AFTER SoldierSteering.accumulate (which
 ## clears+rewrites the array with the friendly-avoidance bias -- this composes on top of it,
@@ -72,43 +107,59 @@ static func standoff_bias(pos: Vector2, enemy_pos: Vector2, my_reach: float, ene
 ## own doc comment), only a soldier that could plausibly be OUTREACHED by some engaged enemy
 ## needs a nearest-enemy lookup at all -- a soldier whose own unit already has the longest
 ## reach among every opposing engaged unit can never get a nonzero bias, so querying for it
-## would just resolve to zero every time. Pass 1 below computes each team's MIN and MAX reach
-## among its own currently-engaged units (a cheap O(units) scan, no soldier-level work); pass 2
-## gathers the full engaged tier (both teams) as CANDIDATES -- any of them could be the
-## nearest enemy a plausibly-outreached soldier finds -- but only marks a unit's soldiers as
+## would just resolve to zero every time. GIVE_GROUND breaks that shortcut for its own unit:
+## a give-ground soldier needs a nearest-enemy lookup REGARDLESS of reach (give_ground_bias has
+## no reach gate at all), so both the team-level early-out and the per-unit query gate below
+## must also fire whenever ANY engaged unit is under ORDER_GIVE_GROUND, or a give-ground unit
+## with equal-or-longer reach than its enemy would be silently skipped by the reach-based
+## pruning that's perfectly correct for standoff_bias alone. Pass 1 below computes each team's
+## MIN and MAX reach among its own currently-engaged units (a cheap O(units) scan, no
+## soldier-level work) AND whether any engaged unit anywhere is giving ground; pass 2 gathers
+## the full engaged tier (both teams) as CANDIDATES -- any of them could be the nearest enemy a
+## plausibly-outreached OR give-ground soldier finds -- but only marks a unit's soldiers as
 ## QUERIERS (the ones that actually get a lookup + bias write) when that unit's reach is less
-## than the max reach among the OTHER team(s)' engaged units. In the common case where every
-## currently-engaged pairing shares the same reach (e.g. spear-vs-spear, or any single-type
-## engagement), no team can outreach another and the whole pass skips straight past the
-## per-soldier gather/rebuild/query entirely -- see _any_team_could_be_outreached below.
+## than the max reach among the OTHER team(s)' engaged units, OR the unit itself is giving
+## ground. In the common case where every currently-engaged pairing shares the same reach and
+## nobody is giving ground, no team can outreach another and the whole pass skips straight past
+## the per-soldier gather/rebuild/query entirely -- see _any_team_could_be_outreached below.
 ##
 ## The gathered candidate pool still spans BOTH teams' full engaged tier regardless of which
 ## side is querying -- a querying soldier's true nearest engaged enemy might turn out to have
 ## equal-or-shorter reach (bias resolves to zero for that specific pairing, same as before),
 ## but it's still the geometrically correct "nearest enemy" to evaluate against, so it can't
 ## be excluded from the candidate pool up front. Only the QUERY side is pruned.
+##
+## Resolution picks give_ground_bias over standoff_bias for a GIVE_GROUND owner -- this is
+## the override that makes the player's explicit withdrawal order win over the passive
+## outreached-press bias for the same soldier: a give-ground unit that is ALSO outreached
+## would otherwise resolve to standoff_bias's press-toward-the-enemy result, but the give-ground
+## order takes precedence instead.
 static func accumulate(units: Array, frame: int) -> void:
 	var min_reach_by_team: Dictionary = {}   # team (int) -> min soldier_reach() among its engaged units
 	var max_reach_by_team: Dictionary = {}   # team (int) -> max soldier_reach() among its engaged units
+	var any_give_ground: bool = false
 	for o in units:
 		var u: Unit = o as Unit
 		if u == null or u.state == Unit.State.DEAD or not u.is_engaged():
 			continue
+		if u.order_mode == Unit.ORDER_GIVE_GROUND:
+			any_give_ground = true
 		var r: float = u.soldier_reach()
 		if r > max_reach_by_team.get(u.team, -1.0):
 			max_reach_by_team[u.team] = r
 		if not min_reach_by_team.has(u.team) or r < min_reach_by_team[u.team]:
 			min_reach_by_team[u.team] = r
 
-	if not _any_team_could_be_outreached(min_reach_by_team, max_reach_by_team):
+	if not any_give_ground and not _any_team_could_be_outreached(min_reach_by_team, max_reach_by_team):
 		return   # every engaged team's own WEAKEST-reach unit already matches or dominates
 				 # every opposing team's best reach -- nobody could possibly be outreached
-				 # this tick. Gating on the team's MAX (a mixed-loadout army's own best
-				 # unit) instead of its MIN would let that best unit's reach mask a
-				 # different, shorter-reach unit on the same team that genuinely needs to
-				 # press -- e.g. a spear+infantry army facing an enemy spear: the team's
-				 # own max (spear, 48) ties the enemy's max (48), but the team's infantry
-				 # (26) is still outreached by that enemy spear and must not be skipped.
+				 # this tick -- AND nobody is giving ground either. Gating on the team's MAX
+				 # (a mixed-loadout army's own best unit) instead of its MIN would let that
+				 # best unit's reach mask a different, shorter-reach unit on the same team
+				 # that genuinely needs to press -- e.g. a spear+infantry army facing an
+				 # enemy spear: the team's own max (spear, 48) ties the enemy's max (48), but
+				 # the team's infantry (26) is still outreached by that enemy spear and must
+				 # not be skipped.
 
 	var epos := PackedVector2Array()
 	var eteam := PackedInt32Array()
@@ -129,7 +180,9 @@ static func accumulate(units: Array, frame: int) -> void:
 			continue
 		var r: float = u.soldier_body_radius()
 		var reach: float = u.soldier_reach()
-		var could_be_outreached: bool = reach < _max_opposing_reach(max_reach_by_team, u.team)
+		var give_ground: bool = u.order_mode == Unit.ORDER_GIVE_GROUND
+		var could_be_outreached: bool = give_ground \
+				or reach < _max_opposing_reach(max_reach_by_team, u.team)
 		for i in idxs:
 			if could_be_outreached:
 				queriers.push_back(epos.size())
@@ -151,7 +204,10 @@ static func accumulate(units: Array, frame: int) -> void:
 		if enemy.is_empty():
 			continue
 		var owner: Unit = eowners[k]
-		owner._sim_steer[eslots[k]] += standoff_bias(epos[k], enemy["position"], ereach[k], enemy["reach"])
+		if owner.order_mode == Unit.ORDER_GIVE_GROUND:
+			owner._sim_steer[eslots[k]] += give_ground_bias(epos[k], enemy["position"])
+		else:
+			owner._sim_steer[eslots[k]] += standoff_bias(epos[k], enemy["position"], ereach[k], enemy["reach"])
 
 
 ## True when at least one team's WEAKEST engaged reach falls short of some OTHER team's max

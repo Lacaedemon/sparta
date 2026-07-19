@@ -246,6 +246,11 @@ const DEFAULT_ORDER_BINDINGS := {
 	# unclaimed punctuation-row key. Shift+this key arms/issues the "indefinite" push
 	# variant instead of the default "just clear the line" push (SelectionManager.gd).
 	"knockback_focus": KEY_EQUAL,
+	# Every letter key and the whole punctuation row to the right of the home keys
+	# (comma/semicolon/period/apostrophe/backslash/minus/equals) is already claimed by
+	# an earlier order mode above. Backtick (the key left of "1", unshifted grave
+	# accent) is the next unclaimed key on the keyboard.
+	"give_ground": KEY_QUOTELEFT,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
