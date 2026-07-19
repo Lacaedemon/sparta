@@ -1097,6 +1097,7 @@ func append_order(order: Order) -> void:
 	orders.append(order)
 	if current_order == null:
 		current_order = orders[0]
+		_apply_promoted_stance()
 
 
 ## Drop the queue head (it finished, or was interrupted) and promote the next queued order, if
@@ -1107,8 +1108,21 @@ func retire_current_order() -> void:
 	if not orders.is_empty():
 		orders.pop_front()
 	current_order = orders[0] if not orders.is_empty() else null
+	_apply_promoted_stance()
 	_start_promoted_move()
 	_start_promoted_attack()
+
+
+## A fresh (non-queued) order's stance is written directly by Battle._apply_order_cmd before
+## set_current_order, so this only matters for a QUEUED leg becoming current: a waypoint
+## appended under a different armed mode than whatever was active when it was queued carries
+## its own order_mode (Order.new_move's own "mode" argument, captured at append time) forward,
+## so the stance change takes effect exactly when the queue reaches that leg -- not
+## retroactively on whatever was already running when it was queued. A no-op for every
+## non-MOVE current_order (append_order's only caller only ever queues MOVE legs).
+func _apply_promoted_stance() -> void:
+	if current_order != null and current_order.type == Order.Type.MOVE:
+		order_mode = current_order.order_mode
 
 
 ## Commit the march of a MOVE order just promoted to current, when no march is already in

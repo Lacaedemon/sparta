@@ -435,6 +435,7 @@ func test_enqueue_order_carries_the_mode() -> void:
 
 func test_append_preserves_the_existing_stance() -> void:
 	var u := _unit(1, Vector2.ZERO)
+	u.set_current_order(Order.new_move(Vector2(200, 0)))
 	u.move_target = Vector2(200, 0)
 	u.has_move_target = true
 	u.order_mode = BattleScript.OrderMode.HOLD
@@ -443,6 +444,44 @@ func test_append_preserves_the_existing_stance() -> void:
 		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.NORMAL})
 	assert_eq(u.order_mode, BattleScript.OrderMode.HOLD,
 		"a waypoint append leaves the unit's stance unchanged")
+
+
+func test_appended_leg_applies_its_own_stance_once_promoted() -> void:
+	# A leg appended under a DIFFERENT armed mode than the unit's current stance carries
+	# that mode forward on the Order itself (see test_append_preserves_the_existing_stance
+	# above -- the append does not touch order_mode immediately), and only takes effect
+	# once the queue actually reaches it: this is the "newly queued orders carry their own
+	# stance" half of the order-queue-editing feature.
+	var u := _unit(1, Vector2.ZERO)
+	u.set_current_order(Order.new_move(Vector2(200, 0)))
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	u.order_mode = BattleScript.OrderMode.HOLD
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 400.0, "y": 0.0,
+		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.CHASE})
+	assert_eq(u.order_mode, BattleScript.OrderMode.HOLD,
+		"the appended leg's mode has no effect yet -- the unit is still on its first leg")
+	assert_eq(u.queued_move_points().size(), 1, "sanity: the CHASE leg is queued behind the first")
+	# The first leg finishes and retires; the queued CHASE leg is promoted behind it (the same
+	# retire_current_order -> promotion path _think's own route-leg arrival handler drives).
+	u.retire_current_order()
+	assert_eq(u.current_order.type, Order.Type.MOVE, "the queued leg is promoted")
+	assert_eq(u.order_mode, BattleScript.OrderMode.CHASE,
+		"promoting the queued leg applies the stance it was appended under")
+
+
+func test_append_to_idle_unit_applies_its_own_armed_mode() -> void:
+	# An append to an idle unit promotes immediately (test_append_to_idle_unit_starts_it_marching)
+	# -- that promotion must apply the armed mode too, same as a promotion from the queue.
+	var u := _unit(1, Vector2.ZERO)
+	u.has_move_target = false
+	u.order_mode = BattleScript.OrderMode.HOLD
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 150.0, "y": 0.0,
+		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.SKIRMISH})
+	assert_eq(u.order_mode, BattleScript.OrderMode.SKIRMISH,
+		"the immediately-promoted leg's own armed mode takes effect right away")
 
 
 # --- stance-change-only orders (phase 3) ------------------------------
