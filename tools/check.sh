@@ -321,23 +321,31 @@ check_validate() {
 check_test() {
   require_godot || return 1
   ensure_gut || return 1
-  # If `coverage` (or `patch_coverage`, which itself runs/reuses `coverage`) already
-  # ran THIS SAME invocation, its GUT run is a strict superset of what `test` checks
-  # -- same suite, same -gexit pass/fail semantics, plus check_coverage's own
-  # has_script_errors check below matches this function's own rigor. Re-running the
-  # whole suite a second time just to ask the identical question again would waste
-  # the ~4-5 min a plain run costs. `main()` reorders the requested checks so a
-  # coverage-shaped one runs before `test` whenever both are requested, so this
-  # reliably fires instead of racing check ordering. A `skip`/empty result (coverage
-  # never actually ran this invocation -- no base ref, no scripts/ diff, or simply
-  # not requested) falls through to the real run below, same as `patch_coverage`'s
-  # own analogous check of `coverage`'s result.
-  case "$(get_result coverage)$(get_result patch_coverage)" in
-    *fail*)
-      err "coverage/patch_coverage already failed earlier in this run -- not re-running test."
+  # If `coverage` (or `patch_coverage`, which internally calls check_coverage)
+  # already ran THIS SAME invocation and the GUT suite itself came back clean,
+  # reuse that instead of paying for a second full run -- check_coverage's run is
+  # a strict superset of what `test` checks (same suite, same pass/fail
+  # semantics, plus the identical has_script_errors guard). `main()` reorders the
+  # requested checks so a coverage-shaped one runs before `test` whenever both
+  # are requested, so this reliably fires instead of racing check ordering.
+  #
+  # Tracked via the internal `_suite_health` key, NOT `coverage`'s or
+  # `patch_coverage`'s own overall pass/fail -- those can fail for reasons that
+  # have nothing to do with the suite itself: `patch_coverage` fails when its
+  # coverage PERCENTAGE is below target even on a perfectly clean suite run
+  # (its main, intended failure mode -- not a corner case), and `coverage` fails
+  # if the lcov.info report write itself glitches after a clean run. Either
+  # would wrongly report `test` as failed too if this checked their overall
+  # result directly. See check_coverage's own set_result calls for where
+  # `_suite_health` actually gets recorded. An empty result (neither coverage
+  # nor patch_coverage's internal run reached this invocation) falls through to
+  # the real run below.
+  case "$(get_result _suite_health)" in
+    fail)
+      err "The coverage-instrumented suite already failed earlier in this run -- not re-running test."
       return 1
       ;;
-    *pass*)
+    pass)
       info "coverage (or patch_coverage) already ran the full suite this invocation -- skipping the redundant plain run."
       return 0
       ;;
@@ -401,10 +409,12 @@ check_coverage() {
   if run_bounded_timed_out "$rc"; then
     err "Coverage run timed out after ${COVERAGE_TIMEOUT}s and was killed (no orphan left behind)."
     rm -f "$log"
+    set_result _suite_health fail
     return 1
   fi
   if [ "$rc" -ne 0 ]; then
     rm -f "$log"
+    set_result _suite_health fail
     return "$rc"
   fi
   if has_script_errors "$log"; then
@@ -413,9 +423,16 @@ check_coverage() {
     err "the suite reported success. Fix the broken script; a passing run must load"
     err "every test script."
     rm -f "$log"
+    set_result _suite_health fail
     return 1
   fi
   rm -f "$log"
+  # The GUT run itself is clean at this point -- record that under its own key,
+  # distinct from this function's overall pass/fail below (which also depends on
+  # the lcov write succeeding -- a report-writing glitch there doesn't mean any
+  # test failed, so it must not be conflated with suite health; check_test's own
+  # short-circuit reads _suite_health specifically to avoid exactly that).
+  set_result _suite_health pass
   # The post-run hook reports a failed lcov write with push_error(), which does
   # not make Godot exit non-zero, so a clean exit above doesn't prove the report
   # was written. Confirm the file exists before claiming success.
