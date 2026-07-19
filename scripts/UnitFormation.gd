@@ -188,7 +188,7 @@ static func block_slots(n: int, files: int, spacing: float,
 	return out
 
 
-# --- File-major casualty reflow (#878) ---------------------------------------
+# --- File-major casualty reflow ----------------------------------------------
 # block_slots above lays soldier i out at (file = i % files, rank = i / files) -- purely a
 # function of the LIVE array index, so any casualty anywhere in the block reflows every
 # later soldier's file AND rank (SoldierMelee.reap() compacts the array, shifting every

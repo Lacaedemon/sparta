@@ -1,5 +1,5 @@
 extends GutTest
-## file_major_reform (#878): the per-unit toggle between FILE-MAJOR casualty reflow (a
+## file_major_reform: the per-unit toggle between FILE-MAJOR casualty reflow (a
 ## soldier's file/column assignment is persistent; when a file-mate dies, only that file's
 ## own survivors step forward to close the gap -- every other file is untouched) and the
 ## existing ROW-MAJOR behavior (the whole grid recomputes fresh from the live headcount every

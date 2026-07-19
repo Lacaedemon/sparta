@@ -643,7 +643,7 @@ func test_sort_indices_by_angle_breaks_ties_by_index() -> void:
 		PackedInt32Array([0, 1]), "tied angles: lower index wins")
 
 
-# --- file_major_block_slots: file-major casualty reflow (#878) --------------
+# --- file_major_block_slots: file-major casualty reflow ---------------------
 # Unlike block_slots (soldier i's cell is a pure function of the live array index i, so
 # ANY casualty anywhere reflows the whole grid), file_major_block_slots takes each
 # soldier's own PERSISTENT file assignment and lays each file out as an independent
