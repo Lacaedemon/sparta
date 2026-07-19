@@ -1,0 +1,24 @@
+{
+  "_comment": "Moving wheel (cavalry, closes #922) vs the existing halt-about-face-standing-wheel-march composite (infantry), side by side on the same oblique rear-sector geometry (~140 degrees off facing at the moment the turn is ordered -- matching test_wheel_turn_maneuver.gd's own standard case) so the difference is directly visible in one clip. Both units first march straight ahead to build real cruising speed, then are ordered onto the same sharply-angled destination mid-march. The cavalry (left) gallops through a single continuous wheel while still advancing -- no halt, no about-face; the infantry (right) visibly halts, about-faces in place, standing-wheels the remaining residual, then marches. (The cavalry's own subsequent march keeps gradually re-aiming toward the literal ordered point as its long, ground-covering wheel carries it well off the original line -- verified via dump-state.sh, not asserted as a fixed final bearing -- while the infantry's much smaller wheel residual leaves it settled on close to the original 140 degrees throughout; see sparta-demos.md's 'verify a demo thoroughly' entry.) Fresh scenario authored for this demo -- see .claude/memories/sparta-demos.md's 'author each demo scenario fresh' entry -- not copied from any existing wheel/pivot input script.",
+  "seed": "922",
+  "drill": true,
+  "map": {"terrain": []},
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 350, "y": 500, "count": 40, "reform_before_move": false},
+    {"team": 0, "type": "Infantry", "x": 750, "y": 500, "count": 40, "reform_before_move": false}
+  ],
+  "camera": [
+    {"tick": 0, "x": 575.0, "y": 575.0, "zoom": 0.55}
+  ],
+  "steps": [
+    {"tick": 8,   "box": {"from": [280, 450], "to": [420, 550]}},
+    {"tick": 32,  "rmb_click": [350, 750]},
+    {"tick": 48,  "box": {"from": [680, 450], "to": [820, 550]}},
+    {"tick": 72,  "rmb_click": [750, 750]},
+    {"tick": 170, "box": {"from": [280, 480], "to": [420, 620]}},
+    {"tick": 200, "rmb_click": [100, 250]},
+    {"tick": 210, "box": {"from": [680, 480], "to": [820, 620]}},
+    {"tick": 240, "rmb_click": [1000, 250]}
+  ],
+  "state": [16, 32, 200, 240, 280, 300, 320, 360, 400, 450, 500, 550, 600]
+}
