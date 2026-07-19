@@ -2271,3 +2271,88 @@ this reason. A pure trailing-content deletion (no replacement text) is safe via
 needs to match multi-line content at all. (`Lacaedemon/sparta` PR #981, 2026-07-18:
 lost real time on this before isolating the cause via `od -c` and a string of
 single-line control edits.)
+
+## `tools/check.sh`: a wrapping check needs a dedicated result key to short-circuit its wrapped check safely
+
+A check that internally reuses another check's expensive work (`check_patch_coverage`
+calling `check_coverage` so both don't independently re-run the full GUT suite) creates
+a trap for any THIRD check that wants to reuse the same work: don't key the reuse
+decision off the wrapping check's own overall pass/fail, because "the wrapping check's
+own gate failed" and "the underlying operation it wrapped failed" are different
+questions, and only the second one is safe to propagate.
+
+**Concrete case (PR #990, closes the `test`/`coverage`/`patch_coverage` double-run):**
+`check_test`'s short-circuit originally read `get_result coverage`/`get_result
+patch_coverage` directly to decide whether to skip a redundant `test` run. But
+`patch_coverage`'s PRIMARY, intended failure mode is its own coverage PERCENTAGE
+landing below target -- not a suite problem at all, and the single most common way for
+`patch_coverage` to legitimately fail. Reading its overall `fail` result as "the suite
+must also be broken" wrongly reported `test` as failed on a perfectly clean run --
+exactly the common case, since CLAUDE.md's own recommended invocation runs `test` and
+`patch_coverage` together. `check_coverage`'s own overall result has the same problem
+from a different angle: a clean suite run followed by a failed `coverage/lcov.info`
+write (the post-run hook's `push_error()` doesn't fail the Godot process) still makes
+`check_coverage` return non-zero, again for a reason that says nothing about `test`.
+
+**Fix:** `check_coverage` now records the GUT suite's own health under a dedicated
+internal key (`_suite_health`, never surfaced in the printed summary since that loop
+only iterates the top-level requested `checks` array) at the exact point the suite run
+itself is known clean -- separate from, and set BEFORE, the function's own final
+return value (which still depends on the lcov write succeeding). `check_test` reads
+`_suite_health` instead of `coverage`'s/`patch_coverage`'s own result. This works
+correctly regardless of which top-level check reached `check_coverage` first
+(`run_check` calling it directly for a requested `coverage`, or `check_patch_coverage`
+calling it internally as its own reuse path) since `set_result` always updates the
+same key.
+
+**How to apply:** any time you're tempted to short-circuit check B by reading check A's
+overall pass/fail/skip result, first ask whether A's own gate (a threshold, a
+post-processing step, anything beyond "did the expensive shared operation succeed")
+can fail independently of that operation. If so, the shared operation needs its own
+result key that only the operation's own outcome writes to -- not A's summary result,
+which conflates the operation with A's own additional judgment on top of it.
+
+**Verifying a check.sh logic fix without a full ~18-min Godot re-run:** when a fix is
+purely bash control-flow (case statements, `set_result`/`get_result` calls) with zero
+change to the actual Godot/GUT invocation, extract just `set_result`/`get_result` plus
+the changed case statement into a small standalone throwaway script (no `main "$@"` at
+the bottom to guard against -- check.sh has none, so sourcing it runs the whole thing),
+seed `RESULT_NAMES`/`RESULT_STATUSES` by hand for each relevant scenario, and assert
+the short-circuit's return code. This proves the LOGIC correctly without paying for a
+real suite run every iteration; reserve an actual `tools/check.sh test coverage`
+invocation (or trust CI's own real run on the pushed PR) for confirming the Godot
+invocation itself still behaves once the logic is settled.
+
+## Composite-action CI refactors: `workflow_dispatch` a path-filtered/tag-gated workflow to verify it before merging -- but read its full job list first
+
+A CI-critical refactor (e.g. extracting shared Godot/GUT setup steps into
+`.github/actions/setup-godot-project/action.yml`, PR #989) touches workflow files that
+a normal PR's own CI often can't exercise: `benchmark.yml`/`demo-video.yml` are
+path-filtered to sim/game files (a docs-only or CI-only PR never triggers them),
+`publish-site.yml`/`refresh-benchmark-baseline.yml`/`release.yml` only run on
+`push: branches: [main]`, `schedule`, or `push: tags: v*` respectively (never on a
+plain `pull_request`). `workflow_dispatch` (present on all of them) is the way to
+verify the refactor actually works in real CI before merging, rather than shipping it
+untested and finding out at the next real trigger (a tag push, for `release.yml`, is
+an especially expensive place to discover a broken composite-action call).
+
+**But check what the workflow's LATER jobs do before dispatching -- not every
+workflow with a `workflow_dispatch` trigger is side-effect-free to run manually.**
+`release.yml` is genuinely safe: its own header comment states a dispatch run builds
+every artifact "without touching a release," and its "Publish to the GitHub Release"
+step is explicitly gated `# Only on a version tag` -- confirmed both in prose and in
+the actual `if:` condition before dispatching. `publish-site.yml` is NOT safe the same
+way: its `publish` job (the live GitHub Pages deploy) is gated only by `needs:
+[demos]` + `if: always()` -- no trigger-type condition at all -- so a `workflow_dispatch`
+run deploys to the live site exactly the same as a real `push: branches: [main]` would.
+Dispatching it to spot-check the composite-action call crossed into "modifying public
+content" territory without recognizing it up front; caught mid-run (only the `demos`
+job had started) and cancelled before the `publish` job's turn came up.
+
+**How to apply:** before `gh workflow run`-ing an unfamiliar/rarely-manually-triggered
+workflow to spot-check a change, read its full job list and look specifically for a
+deploy/publish/release job's own gating condition (or lack of one) -- don't infer
+safety from the workflow's general purpose or from one job's own header comment
+without checking the actual `if:`. If a dispatched run's job list shows something that
+could reach a live-effect step with no confirmed gate, cancel it (`gh run cancel`)
+before that job starts and ask before re-dispatching.
