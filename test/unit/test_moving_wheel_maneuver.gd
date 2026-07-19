@@ -203,6 +203,40 @@ func test_moving_wheel_ends_at_the_requested_bearing_then_hands_off_to_the_march
 		"composite's own forced reform-on-arrival")
 
 
+func test_moving_wheel_rate_ceiling_is_looser_than_the_standing_wheels() -> void:
+	# MOVING_WHEEL_TURN_RATE (PI rad/s) is deliberately double WHEEL_TURN_RATE (PI/2) -- a
+	# cavalry unit galloping through a continuous wheel is meaningfully brisker than a foot
+	# drill's stately pace. Pin a single tick's progress directly to the constant: a small
+	# block (tiny outer radius) with the unit standing still (_current_speed=0, so the
+	# gait-rate formula's other input -- move_speed minus that -- is large) makes the RATE
+	# CEILING the binding term, not the radius-derived one, so wheel_turn_remaining should
+	# shrink by very close to MOVING_WHEEL_TURN_RATE * delta in exactly one tick -- roughly
+	# double what the standing wheel's own WHEEL_TURN_RATE would produce for the identical
+	# turn_angle and geometry.
+	var u: Unit = UnitScript.new()
+	u.max_soldiers = 4   # tiny block -- outer radius stays small enough for the rate
+	                      # ceiling (not the gait/radius ratio) to bind
+	add_child_autofree(u)
+	u.is_cavalry = true
+	u.position = Vector2.ZERO
+	u.facing = FACING_DOWN
+	u.seed_sim_soldiers()
+	u._current_speed = 0.0
+	var o := Order.new_move(Vector2(200, 0))
+	u.set_current_order(o)
+	u.has_move_target = false
+	var turn_angle: float = deg_to_rad(90.0)
+	u.begin_moving_wheel(o, 1, turn_angle)
+	var leaf: Order = u.active_leaf()
+	var delta := 1.0 / 60.0
+	u._think(delta)
+	var moving_wheel_step: float = turn_angle - absf(leaf.wheel_turn_remaining)
+	assert_almost_eq(moving_wheel_step, UnitScript.MOVING_WHEEL_TURN_RATE * delta, 0.01,
+		"one tick's progress matches the MOVING_WHEEL_TURN_RATE ceiling directly")
+	assert_almost_eq(UnitScript.MOVING_WHEEL_TURN_RATE, UnitScript.WHEEL_TURN_RATE * 2.0, 0.001,
+		"the moving wheel's own ceiling is exactly double the standing wheel's")
+
+
 func test_moving_wheel_sweeps_past_180_degrees_in_one_continuous_swing() -> void:
 	# The standing wheel (Unit.wheel) can only ever swing a fixed 90°; begin_moving_wheel's
 	# own turn_angle is not capped this way. Sweep 200° -- past what any "turn to face a
