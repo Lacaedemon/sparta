@@ -1865,7 +1865,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# unit (disciplined == false) skips it and falls straight through to the
 				# plain-march branch below, same as a fighting unit that can't turn in
 				# place -- it just turns to face the destination immediately and walks
-				# there directly (#718's original intent for undisciplined movement).
+				# there directly.
 				var lateral_pivot: bool = not cmd.has("face") and not side_step \
 						and not back_step and not rear_move and not moving_wheel_turn \
 						and u.state != UnitRef.State.FIGHTING and u.disciplined \

@@ -332,12 +332,12 @@ func test_fighting_unit_does_not_arm_a_lateral_pivot() -> void:
 
 
 func test_undisciplined_unit_does_not_arm_a_lateral_pivot() -> void:
-	# #994: the lateral-pivot maneuver is a formed drill (quarter-turn, file-march,
-	# quarter-turn back) -- exactly the kind of "professional maneuver" #718 says an
-	# undisciplined unit should skip in favor of turning to face the destination and
-	# walking there directly. Before this fix, is_lateral_pivot's dispatch never read
-	# Unit.disciplined at all, so an undisciplined unit given a large lateral move got
-	# the same formed composite as a disciplined one.
+	# The lateral-pivot maneuver is a formed drill (quarter-turn, file-march, quarter-turn
+	# back) -- exactly the kind of professional maneuver an undisciplined unit should skip
+	# in favor of turning to face the destination and walking there directly. Before this
+	# fix, is_lateral_pivot's dispatch never read Unit.disciplined at all, so an
+	# undisciplined unit given a large lateral move got the same formed composite as a
+	# disciplined one.
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = FACING_DOWN
 	u.disciplined = false
