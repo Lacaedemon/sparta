@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Closes #996: fixes when a queued waypoint leg's own stance (order_mode) takes effect -- previously the leg's recorded mode was captured but never applied to the unit, so it silently inherited whatever stance was already active; now it applies exactly when the queue promotes that leg to current. This is a pure internal-state timing fix with no live visual indicator: checked existing debug overlays first (per the 'check for existing debug-visual precedent' convention) -- HUD's amber 'Order: X' label (HUD.set_order_mode) reflects the ARMED mode at the moment a stance key is pressed, not a selected unit's live order_mode; the recorded-order click-pulse overlay (SelectionManager's demo-order playback draw) likewise tags each click with the armed mode AT THAT CLICK, not whether/when it was later applied to the unit. Neither would visibly differ before vs. after this fix. Verified instead via GUT tests reading Unit.order_mode directly across the append -> promote sequence (test_appended_leg_applies_its_own_stance_once_promoted, test_append_to_idle_unit_applies_its_own_armed_mode)."
+  "input": "demos/inputs/queued-leg-hold-stance.json",
+  "caption": "Closes #996: a queued waypoint leg now applies its own recorded stance once the route promotes it, instead of silently inheriting whatever stance was already active. Both regiments start on Hold. The near (south) regiment's first leg marches under Hold; a second leg is then queued under Hold as well (arming a stance before a Shift+right-click waypoint append stamps that stance onto just the newly queued leg). Once the first leg finishes and the queue promotes the second, the regiment correctly holds at its new position instead of auto-advancing into the stationary far regiment 130 world units away -- before this fix, the appended leg's stance was captured but never applied, so the promoted leg would have silently kept whatever stance was active before it, and the regiment would have marched into a fight neither side was ordered to start.",
+  "fixed_fps": 30,
+  "max_frames": 380,
+  "fps": 15,
+  "width": 720
 }
