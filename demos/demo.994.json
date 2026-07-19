@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/disciplined-vs-undisciplined-march.json",
+  "caption": "Fixes #994: Battle._apply_order_cmd's lateral-pivot dispatch now respects Unit.disciplined. The right (undisciplined) regiment snaps its facing immediately and walks straight to a lateral destination; the left (disciplined) regiment still executes the formed quarter-turn/file-march/quarter-turn-back maneuver. Before this fix both regiments silently took the disciplined path -- state-dump verification confirmed the undisciplined unit's facing now reaches its final heading within a tick or two of the order, instead of ramping gradually over ~16 ticks like its disciplined neighbor.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
