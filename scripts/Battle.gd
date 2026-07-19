@@ -798,6 +798,15 @@ func _spawn_scenario(specs: Array) -> void:
 			d["disciplined"] = bool(spec["disciplined"])
 		if spec.has("atomic_response_s"):
 			d["atomic_response_s"] = float(spec["atomic_response_s"])
+		# Per-unit overrides for the two type-defaulted settings (Battle._default_loadout's
+		# own "walk_advance_default"/"reform_before_move_default" keys) -- a demo/test
+		# scenario that specifically needs a NON-default value on one spawned unit (e.g. to
+		# isolate a different mechanic than the type's own default is about) can request it
+		# here, same shape as "disciplined" above.
+		if spec.has("walk_advance"):
+			d["walk_advance_default"] = bool(spec["walk_advance"])
+		if spec.has("reform_before_move"):
+			d["reform_before_move_default"] = bool(spec["reform_before_move"])
 		var team := int(spec.get("team", 0))
 		var pos := Vector2(float(spec.get("x", field.size.x * 0.5)), float(spec.get("y", field.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the

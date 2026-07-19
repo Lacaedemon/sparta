@@ -595,6 +595,31 @@ func test_unit_settings_order_leave_toggle_keeps_the_current_value() -> void:
 	assert_false(u.reform_before_move, "LEAVE keeps reform_before_move as it was")
 
 
+func test_ai_directive_shaped_move_reads_the_units_own_reform_before_move() -> void:
+	# UnitLeader._move_directive_cmd (a subcommander HOLD_LINE/COVER_FLANK directive) builds
+	# a minimal cmd -- {"units", "x", "y", "target": -1} -- with no "mode"/"reform" key at
+	# all, unlike a player order (enqueue_order/enqueue_form_up). Before this migration,
+	# order.reform read cmd.get("reform", false), which always defaulted false for this
+	# AI-shaped cmd regardless of Settings.reform_before_move -- an AI directive move never
+	# got the reform hold. Now order.reform reads the unit's OWN reform_before_move field
+	# directly, so an AI-controlled unit gets the same reform hold a player-ordered unit
+	# with the same setting would. Deliberate, tested consequence of the per-unit migration,
+	# not an oversight -- see the PR description for the design rationale.
+	var on := _unit(1, Vector2.ZERO)
+	on.reform_before_move = true
+	var b_on := _battle([on])
+	b_on._apply_order_cmd({"units": [1], "x": 0.0, "y": 200.0, "target": -1})   # AI-directive shape
+	assert_true(on.current_order.reform,
+		"an AI-directive move on a unit with reform_before_move=true now arms the reform hold")
+
+	var off := _unit(2, Vector2.ZERO)
+	off.reform_before_move = false
+	var b_off := _battle([off])
+	b_off._apply_order_cmd({"units": [2], "x": 0.0, "y": 200.0, "target": -1})
+	assert_false(off.current_order.reform,
+		"and a unit with reform_before_move=false (e.g. Cavalry's own type default) still skips it")
+
+
 func test_unit_settings_order_can_toggle_just_one_field() -> void:
 	# A mixed selection's untouched setting isn't forced to a single value: only the
 	# named field's toggle needs to be non-LEAVE.
