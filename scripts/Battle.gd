@@ -241,7 +241,16 @@ var ai_period: int = AI_PERIOD
 # target each tick (exponential smoothing). < 1 low-passes any jitter in the
 # recorded presentation track so the clip glides instead of snapping keyframe to
 # keyframe; ~0.15/tick at 60 Hz settles a step in ~0.3 s — smooth but responsive.
+# This is the DEFAULT smoothing -- camera_smoothing below is the live instance
+# field a caller may override (see its own comment).
 const CAMERA_SMOOTHING := 0.15
+
+# Live camera-smoothing factor -- a caller-configurable parameter (CLAUDE.md's code
+# conventions) defaulting to CAMERA_SMOOTHING above. Settable BEFORE the node enters
+# the tree, the same set-before-_ready contract drill_mode/scenario/ai_doctrine/
+# ai_period already follow, so a demo/test can trade a snappier or looser camera
+# without touching the default every other caller relies on.
+var camera_smoothing: float = CAMERA_SMOOTHING
 
 @onready var _units: Node2D = $Units
 @onready var _hud = $HUD
@@ -1053,8 +1062,8 @@ func _physics_process(_delta: float) -> void:
 				# into a smooth glide.
 				var target_pos := Vector2(cam["x"], cam["y"])
 				var target_zoom := Vector2(cam["zoom"], cam["zoom"])
-				_camera.position = _camera.position.lerp(target_pos, CAMERA_SMOOTHING)
-				_camera.zoom = _camera.zoom.lerp(target_zoom, CAMERA_SMOOTHING)
+				_camera.position = _camera.position.lerp(target_pos, camera_smoothing)
+				_camera.zoom = _camera.zoom.lerp(target_zoom, camera_smoothing)
 	else:
 		for o in _pending_orders:
 			Replay.record_order(_tick, o["units"], Vector2(o["x"], o["y"]), o["target"],
