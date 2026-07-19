@@ -165,7 +165,7 @@ Repeated reviewer feedback on PR #232:
   static-camera battle, but a panning/zooming camera looks choppy at 12 fps. Use
   `"fixed_fps": 60, "fps": 30` and bump `max_frames` to keep the duration.
 
-Playback also low-passes the track (`Battle.CAMERA_SMOOTHING`), but that smooths
+Playback also low-passes the track (`Battle.camera_smoothing`, default `CAMERA_SMOOTHING`), but that smooths
 magnitude, not direction — fix the *path*, not just the filter. Verify by logging
 the played-back camera and counting velocity sign-changes and per-tick jerk, not by
 eyeballing one frame. The committed `demos/camera-showcase.json` is baked keyframes
@@ -202,7 +202,7 @@ optional `camera` track) and verifying it locally:
   `order_mode == HOLD` (HOLD only suppresses chasing a *detected* foe, not an
   explicitly-set target). So you can't stage a "held line" the player charges into;
   units meet in the middle. Design demos around the natural clash instead.
-- **Camera playback steps between keyframes, then EMA-smooths** (`Battle.CAMERA_SMOOTHING`).
+- **Camera playback steps between keyframes, then EMA-smooths** (`Battle.camera_smoothing`, default `CAMERA_SMOOTHING`).
   For a smooth pan/zoom, emit *dense* eased keyframes (e.g. every ~3 ticks with a
   smoothstep), not sparse ones.
 - **Record locally on macOS** with `GODOT_BIN` (`/Applications/Godot.app/Contents/MacOS/Godot`):
