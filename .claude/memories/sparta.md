@@ -2328,10 +2328,12 @@ invocation itself still behaves once the logic is settled.
 A CI-critical refactor (e.g. extracting shared Godot/GUT setup steps into
 `.github/actions/setup-godot-project/action.yml`, PR #989) touches workflow files that
 a normal PR's own CI often can't exercise: `benchmark.yml`/`demo-video.yml` are
-path-filtered to sim/game files (a docs-only or CI-only PR never triggers them),
+path-filtered to sim/game files (a docs-only or CI-only PR never triggers them) and have
+**no `workflow_dispatch:` trigger at all** -- a PR that doesn't happen to touch their path
+filters can't spot-check them by any means short of a real trigger.
 `publish-site.yml`/`refresh-benchmark-baseline.yml`/`release.yml` only run on
 `push: branches: [main]`, `schedule`, or `push: tags: v*` respectively (never on a
-plain `pull_request`). `workflow_dispatch` (present on all of them) is the way to
+plain `pull_request`), but all three DO have `workflow_dispatch:` -- that's the way to
 verify the refactor actually works in real CI before merging, rather than shipping it
 untested and finding out at the next real trigger (a tag push, for `release.yml`, is
 an especially expensive place to discover a broken composite-action call).
