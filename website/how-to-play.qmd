@@ -370,7 +370,7 @@ swing while the outer files sweep faster to keep the line's shape, then it rides
 straight into the march with no halt at either end. A foot regiment given the
 identical order still takes the standing route above --- an about-face, an about-face
 plus flank pivot, or a lateral pivot, depending on the angle --- since only cavalry is
-fast and manoeuvrable enough to carve the turn without breaking stride. The same
+fast and maneuverable enough to carve the turn without breaking stride. The same
 choice applies whether the order comes from your own click or from an AI
 subcommander's directive (a "hold this ground" / "cover this flank" order): a
 subcommander leading a cavalry group from the front can decompose its own directive
