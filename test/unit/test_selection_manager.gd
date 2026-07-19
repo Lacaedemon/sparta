@@ -763,6 +763,15 @@ func test_set_selected_walk_advance_does_nothing_with_no_selection() -> void:
 	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
 
 
+func test_set_selected_reform_before_move_does_nothing_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	sm.set_selected_reform_before_move(false)
+	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
+
+
 func test_selected_settings_toggles_are_disabled_during_playback() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()

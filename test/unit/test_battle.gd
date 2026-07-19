@@ -609,6 +609,35 @@ func test_unit_settings_order_can_toggle_just_one_field() -> void:
 	assert_false(u.reform_before_move, "reform_before_move (omitted -> LEAVE) is untouched")
 
 
+func test_unit_settings_order_can_write_the_opposite_pair_of_toggles() -> void:
+	# The companion of test_unit_settings_order_writes_walk_advance_and_reform_in_place:
+	# that test only exercises walk_advance ON / reform_before_move OFF, so this one covers
+	# the other two branches (walk_advance OFF / reform_before_move ON).
+	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = true
+	u.reform_before_move = false
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"walk_advance_toggle": BattleScript.UnitSettingToggle.OFF,
+		"reform_toggle": BattleScript.UnitSettingToggle.ON})
+	assert_false(u.walk_advance, "the OFF toggle writes walk_advance off")
+	assert_true(u.reform_before_move, "the ON toggle writes reform_before_move on")
+
+
+func test_unit_settings_order_skips_an_unresolvable_uid() -> void:
+	# A uid that doesn't resolve to a live unit (e.g. the unit died between the order being
+	# queued and drained) is skipped rather than erroring -- same contract as every other
+	# per-unit order branch (stance-only, formation-only, ...).
+	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = false
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1, 999], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"walk_advance_toggle": BattleScript.UnitSettingToggle.ON})
+	assert_true(u.walk_advance, "the resolvable unit in the same order still gets written")
+
+
 func test_enqueue_unit_settings_records_and_applies_once() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	u.walk_advance = false
@@ -628,6 +657,21 @@ func test_enqueue_unit_settings_with_both_toggles_leave_is_a_no_op() -> void:
 	var b := _battle([u])
 	b.enqueue_unit_settings([1])
 	assert_true(b._pending_orders.is_empty(), "an all-LEAVE call queues no order")
+
+
+func test_enqueue_unit_settings_is_disabled_during_playback() -> void:
+	# Live-play-only, like every other order-issuing enqueue_* function: a replay's
+	# recorded commands drive playback, so a synthesized toggle during Watch Replay must
+	# not queue a second, unrecorded command.
+	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = false
+	var b := _battle([u])
+	var prev_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	b.enqueue_unit_settings([1], BattleScript.UnitSettingToggle.ON)
+	Replay.mode = prev_mode
+	assert_false(u.walk_advance, "no write during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
 
 
 # --- support / defend ------------------------------------------------

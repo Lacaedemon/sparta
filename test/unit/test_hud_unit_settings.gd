@@ -113,3 +113,14 @@ func test_walk_advance_checkbox_toggle_is_a_noop_with_no_selection_manager() -> 
 	hud._on_walk_advance_toggled(true)   # must not error
 	hud._on_reform_before_move_toggled(true)   # must not error
 	assert_null(hud._sel_mgr, "sanity: still no SelectionManager after the no-op toggles")
+
+
+func test_ctrl_bar_update_reform_is_a_noop_with_no_unit() -> void:
+	# Mirrors _ctrl_bar_update_formation's own null-unit guard: called with no unit shown
+	# (e.g. right after _build_ctrl_bar, before any selection), it must leave the button's
+	# state untouched rather than erroring on a null unit.reform_before_move read.
+	var hud := _hud()
+	var before: bool = hud._ctrl_reform_btn.button_pressed
+	hud._ctrl_bar_update_reform(null)
+	assert_eq(hud._ctrl_reform_btn.button_pressed, before,
+		"the quick-toggle button is untouched when no unit is passed")
