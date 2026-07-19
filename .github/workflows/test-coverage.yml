@@ -13,11 +13,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Keep GODOT_VERSION / GUT_VERSION in sync with godot-ci.yml.
-env:
-  GODOT_VERSION: 4.7.0
-  GUT_VERSION: v9.7.0
-
 jobs:
   coverage:
     name: Coverage
@@ -25,31 +20,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Godot ${{ env.GODOT_VERSION }}
-        uses: chickensoft-games/setup-godot@v2
-        with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false   # Standard build, not the .NET/C# build
-
-      - name: Install GUT ${{ env.GUT_VERSION }}
-        # Vendored at run time, matching godot-ci.yml. The coverage addon
-        # (addons/coverage) is committed, so only GUT is fetched here.
-        run: |
-          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
-          mkdir -p addons
-          rm -rf addons/gut
-          cp -r /tmp/gut/addons/gut addons/gut
-
-      - name: Import & validate project
-        # Import so autoloads, class_name globals and cross-script references
-        # resolve before the coverage run instruments and reloads them.
-        run: |
-          set -o pipefail
-          godot --headless --import --verbose 2>&1 | tee import.log
-          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
-            echo "::error::Godot reported script/resource errors during import"
-            exit 1
-          fi
+      # GODOT_VERSION/GUT_VERSION pins now live as the composite action's own
+      # defaults (.github/actions/setup-godot-project/action.yml). The
+      # coverage addon (addons/coverage) is committed, so only GUT is
+      # fetched at run time; import resolves autoloads/class_name globals/
+      # cross-script references before the coverage run instruments and
+      # reloads them.
+      - name: Set up Godot project
+        uses: ./.github/actions/setup-godot-project
 
       - name: Run unit tests with coverage
         # The pre/post-run hooks instrument res://scripts and write lcov.info.
