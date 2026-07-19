@@ -568,9 +568,18 @@ const SUPPORT_GUARD_RADIUS: float = 180.0   # tuned in wu, near DETECTION_RANGE
 const SUPPORT_FOLLOW_DISTANCE: float = 80.0   # tuned in wu, just past two footprints
 # The friendly unit a SUPPORT order tells this one to guard (set by Battle from the
 # order's target). Cleared when it dies/routs, reverting this unit to NORMAL.
-# Pace mode: when true the unit always walks (walk_speed), overriding the
-# AUTO escalation to jog/sprint. Set from the walk_advance setting at order time.
+# Pace mode: when true the unit always walks (walk_speed), overriding the AUTO escalation
+# to jog/sprint. Persistent per-unit state: defaulted per unit type at spawn
+# (Battle._default_loadout's "walk_advance_default"), changed only by an explicit player
+# toggle (the info panel checkbox) or a replayed toggle event -- never overwritten by
+# order-application code.
 var walk_advance: bool = false
+# Reform before move: when true, a fresh move order makes the unit hold its position for
+# REFORM_DURATION before marching, so its ranks settle before it steps off. Same persistent-
+# per-unit treatment as walk_advance above: defaulted per unit type at spawn
+# (Battle._default_loadout's "reform_before_move_default", true unless a type overrides it),
+# changed only by an explicit player toggle or a replayed toggle event.
+var reform_before_move: bool = true
 # Set to true in _think when a ranged enemy is within RANGED_RANGE; drives the
 # AUTO-pace jog escalation. Cleared each frame before the check.
 var _under_fire: bool = false
@@ -976,8 +985,8 @@ func _physics_process(delta: float) -> void:
 	#
 	# The response/reform freezes are only PARTIALLY exempt: a unit that was actively
 	# cruising and gets re-ordered is frozen by start_order_response() for
-	# order_response_delay seconds, and (for a normal move order with the default
-	# Settings.reform_before_move) then held again by the reform-before-move hold (see
+	# order_response_delay seconds, and (for a normal move order with the unit's own
+	# reform_before_move on) then held again by the reform-before-move hold (see
 	# _think below) — _move_to() doesn't run during either freeze, so _moved_last_frame
 	# reads false even though the unit had momentum a moment ago. When the held march
 	# CONTINUES the current travel (bearing within REORDER_MOMENTUM_DOT_MIN), skip the
@@ -4982,7 +4991,8 @@ func to_snapshot_dict() -> Dictionary:
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"formation_mirror_x": _formation_mirror_x,
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
-		"walk_advance": walk_advance, "under_fire": _under_fire,
+		"walk_advance": walk_advance, "reform_before_move": reform_before_move,
+		"under_fire": _under_fire,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
 		"order_response_timer": _order_response_timer,
@@ -5086,6 +5096,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	deploy_facing = d["deploy_facing"]
 	ordered_facing = d["ordered_facing"]
 	walk_advance = bool(d["walk_advance"])
+	reform_before_move = bool(d["reform_before_move"])
 	_under_fire = bool(d["under_fire"])
 	_attack_cd = float(d["attack_cd"])
 	_pin_down_exposure_cd = float(d["pin_down_exposure_cd"])

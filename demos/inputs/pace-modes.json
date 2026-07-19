@@ -1,11 +1,12 @@
 {
-  "_comment": "Pace modes demo, staged in isolation under all_teams_control (team 1's battle AI is off, so the enemy stands where posted -- unit-level combat behaviour still runs, so the archers shoot on their own): a lone player Spearmen regiment attack-orders the enemy Infantry parked at the far end of its lane (an attack move paces on AUTO). The enemy Archers hold the lane's shoulder, placed so their beaten zone runs straight into charge distance: the advance shows the three AUTO phases as contiguous plateaus -- walk on approach, jog through the archers' fire (RANGED_RANGE is shorter than the sprint-start distance, so the fire must come from the flank of the lane, not the target line, for a jog leg to exist), then the full sprint to contact. The lane runs at x=490, east of the forest slow zone (x 200-450), so terrain never adds a fourth speed regime to the three pace plateaus. Deterministic (scenario + seed + scripted input).",
+  "_comment": "Pace modes demo, staged in isolation under all_teams_control (team 1's battle AI is off, so the enemy stands where posted -- unit-level combat behaviour still runs, so the archers shoot on their own): a lone player Spearmen regiment attack-orders the enemy Infantry parked at the far end of its lane (an attack move paces on AUTO). This demo is specifically about the AUTO pace-escalation mechanic itself, not about Spearmen's own type default -- Spearmen now default walk_advance ON (locking to a walk the whole approach, per the per-type spawn defaults), which would hide the jog/sprint phases this demo exists to show, so the scenario explicitly overrides it back to false for this one unit (\"walk_advance\": false below) rather than switching subject unit type and re-tuning the whole staged combat balance. The enemy Archers hold the lane's shoulder, placed so their beaten zone runs straight into charge distance: the advance shows the three AUTO phases as contiguous plateaus -- walk on approach, jog through the archers' fire (RANGED_RANGE is shorter than the sprint-start distance, so the fire must come from the flank of the lane, not the target line, for a jog leg to exist), then the full sprint to contact. The lane runs at x=490, east of the forest slow zone (x 200-450), so terrain never adds a fourth speed regime to the three pace plateaus. Deterministic (scenario + seed + scripted input).",
   "seed": "12345",
   "all_teams_control": true,
   "scenario": [
     {
       "team": 0,
       "type": "Spearmen",
+      "walk_advance": false,
       "x": 490,
       "y": 420,
       "facing": [

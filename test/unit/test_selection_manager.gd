@@ -15,7 +15,6 @@ const BattleScript = preload("res://scripts/Battle.gd")
 var _orig_bindings: Dictionary
 var _orig_form_up_default: int
 var _orig_form_up_cycle: Array
-var _orig_reform_before_move: bool
 var _orig_show_unit_speed: bool
 
 
@@ -23,7 +22,6 @@ func before_each() -> void:
 	_orig_bindings = Settings.order_bindings.duplicate()
 	_orig_form_up_default = Settings.form_up_dist_default
 	_orig_form_up_cycle = Settings.form_up_dist_cycle.duplicate()
-	_orig_reform_before_move = Settings.reform_before_move
 	_orig_show_unit_speed = Settings.show_unit_speed
 	# Pin the default cycle; a developer's persisted cfg can deviate and break these tests locally.
 	Settings.form_up_dist_cycle = [EQUAL_DEPTH, EQUAL_WIDTH]
@@ -33,7 +31,6 @@ func after_each() -> void:
 	Settings.order_bindings = _orig_bindings.duplicate()
 	Settings.form_up_dist_default = _orig_form_up_default
 	Settings.form_up_dist_cycle = _orig_form_up_cycle.duplicate()
-	Settings.reform_before_move = _orig_reform_before_move
 	Settings.show_unit_speed = _orig_show_unit_speed
 
 
@@ -712,6 +709,87 @@ func test_ctrl_stance_key_and_rank_relief_toggle_are_disabled_during_playback() 
 	Replay.mode = prev_mode
 	assert_eq(u.order_mode, BattleScript.OrderMode.NORMAL, "no stance written during playback")
 	assert_true(u.rank_relief, "no rank-relief toggle during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+# --- per-unit settings (walk_advance / reform_before_move) -----------
+
+func test_set_selected_walk_advance_writes_every_selected_unit() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u1 := _unit()
+	u1.uid = 10
+	u1.walk_advance = false
+	var u2 := _unit()
+	u2.uid = 11
+	u2.walk_advance = false
+	b._by_uid[10] = u1
+	b._by_uid[11] = u2
+	sm._select(u1)
+	sm._select(u2)   # _select appends -- both land in the selection
+	sm.set_selected_walk_advance(true)
+	assert_true(u1.walk_advance, "the toggle applies to every selected unit")
+	assert_true(u2.walk_advance, "not just the lead one")
+	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+			"routed as a recorded unit-settings-only command")
+	assert_eq(int(b._pending_orders[-1]["reform_toggle"]), BattleScript.UnitSettingToggle.LEAVE,
+			"the walk_advance-only call never touches reform_before_move")
+
+
+func test_set_selected_reform_before_move_writes_every_selected_unit() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 12
+	u.reform_before_move = true
+	b._by_uid[12] = u
+	sm._select(u)
+	sm.set_selected_reform_before_move(false)
+	assert_false(u.reform_before_move, "the toggle writes reform_before_move off")
+	assert_eq(int(b._pending_orders[-1]["walk_advance_toggle"]), BattleScript.UnitSettingToggle.LEAVE,
+			"the reform-only call never touches walk_advance")
+
+
+func test_set_selected_walk_advance_does_nothing_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	sm.set_selected_walk_advance(true)
+	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
+
+
+func test_set_selected_reform_before_move_does_nothing_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	sm.set_selected_reform_before_move(false)
+	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
+
+
+func test_selected_settings_toggles_are_disabled_during_playback() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 13
+	u.walk_advance = false
+	u.reform_before_move = true
+	b._by_uid[13] = u
+	sm._select(u)
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm.set_selected_walk_advance(true)
+	sm.set_selected_reform_before_move(false)
+	Replay.mode = prev_mode
+	assert_false(u.walk_advance, "no walk_advance write during playback")
+	assert_true(u.reform_before_move, "no reform_before_move write during playback")
 	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
 
 

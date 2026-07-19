@@ -59,12 +59,15 @@ var forced_seed: int = -1
 #                   an asymmetric (anchored) -4 resize; omitted when 0.0 = the plain centred
 #                   resize every other frontage change already uses),
 #               "face"?: float (deploy facing in radians for a drag-to-form-up move),
-#               "walk_advance"?: bool (omitted when false),
 #               "group_attack"?: int (Battle.GroupAttackMode; omitted when 0 = FOCUSED),
 #               "form_up_group"?: int (the shared id every per-unit order from the same
 #                   multi-unit drag-line form-up carries, so Battle._apply_order_cmd can
 #                   rebuild the same Order.Type.FORM_UP grouping on replay as it did live;
-#                   omitted for a single-unit form-up and every other order kind) }.
+#                   omitted for a single-unit form-up and every other order kind),
+#               "walk_advance_toggle"?: int (Battle.UnitSettingToggle; a
+#                   Battle.ORDER_UNIT_SETTINGS_ONLY order's walk_advance write, omitted
+#                   when 0 = LEAVE -- see enqueue_unit_settings),
+#               "reform_toggle"?: int (same shape, for reform_before_move) }.
 var _orders: Array = []
 var _play_index: int = 0
 
@@ -221,12 +224,14 @@ func start_playback(path: String) -> bool:
 			entry["anchor_offset"] = float(o["anchor_offset"])
 		if o.has("face"):
 			entry["face"] = float(o["face"])
-		if o.has("walk_advance"):
-			entry["walk_advance"] = bool(o["walk_advance"])
 		if o.has("group_attack"):
 			entry["group_attack"] = int(o["group_attack"])
 		if o.has("form_up_group"):
 			entry["form_up_group"] = int(o["form_up_group"])
+		if o.has("walk_advance_toggle"):
+			entry["walk_advance_toggle"] = int(o["walk_advance_toggle"])
+		if o.has("reform_toggle"):
+			entry["reform_toggle"] = int(o["reform_toggle"])
 		_orders.append(entry)
 	_play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
@@ -290,8 +295,8 @@ func replays_dir() -> String:
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		order_mode: int = 0, formation: int = 0, frontage: int = 0, face: float = INF,
-		group_attack: int = 0, walk_advance: bool = false, anchor_offset: float = 0.0,
-		form_up_group: int = -1) -> void:
+		group_attack: int = 0, anchor_offset: float = 0.0,
+		form_up_group: int = -1, walk_advance_toggle: int = 0, reform_toggle: int = 0) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
@@ -315,8 +320,6 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# (a plain move), so any real angle -- including 0 -- is recorded.
 	if not is_inf(face):
 		entry["face"] = face
-	if walk_advance:
-		entry["walk_advance"] = true
 	# 0 = GroupAttackMode.FOCUSED (the default); omit it so old replays stay valid.
 	if group_attack != 0:
 		entry["group_attack"] = group_attack
@@ -325,6 +328,13 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# stay exactly as compact.
 	if form_up_group >= 0:
 		entry["form_up_group"] = form_up_group
+	# 0 = Battle.UnitSettingToggle.LEAVE (the default -- no write); a Battle.
+	# ORDER_UNIT_SETTINGS_ONLY order's walk_advance/reform_before_move toggle, omitted
+	# for every other order kind so old replays stay valid.
+	if walk_advance_toggle != 0:
+		entry["walk_advance_toggle"] = walk_advance_toggle
+	if reform_toggle != 0:
+		entry["reform_toggle"] = reform_toggle
 	_orders.append(entry)
 
 

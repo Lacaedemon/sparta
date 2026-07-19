@@ -84,33 +84,13 @@ var form_up_dist_cycle: Array = [FORM_UP_DIST_EQUAL_DEPTH_SPACE, FORM_UP_DIST_EQ
 			_save()
 			changed.emit()
 
-# Walk advance: when true, units approach at their own walk pace rather than the
-# default auto-pace (walk → jog under fire → sprint near contact). Mandatory for
-# formed stances that break on a jog or sprint (shield wall, pike phalanx). Default
-# off. Applied per-order so replays reproduce behavior as recorded, regardless of
-# whether the setting is later changed.
-var walk_advance: bool = false:
-	set(value):
-		if value == walk_advance:
-			return
-		walk_advance = value
-		if not _loading:
-			_save()
-			changed.emit()
-
-# Reform before move: when true, a fresh move order makes the unit hold its position
-# for REFORM_DURATION before marching, so its ranks settle before it steps off.
-# Default on (the historical default for formed infantry). Baked into each order's
-# "reform" field so replays reproduce the behavior as recorded, regardless of whether
-# the setting is later changed.
-var reform_before_move: bool = true:
-	set(value):
-		if value == reform_before_move:
-			return
-		reform_before_move = value
-		if not _loading:
-			_save()
-			changed.emit()
+# walk_advance and reform_before_move used to live here as global, player-facing toggles
+# applied uniformly to every order. They are now genuine per-unit, persistent properties
+# (Unit.walk_advance / Unit.reform_before_move), defaulted per unit type at spawn
+# (Battle._default_loadout's "walk_advance_default"/"reform_before_move_default" keys) and
+# adjustable per-selected-unit via a checkbox in the HUD info panel
+# (SelectionManager.set_selected_walk_advance/set_selected_reform_before_move).
+# No global fallback remains.
 
 # Distance legend: a semi-translucent map-scale bar in a HUD corner, showing the
 # battlefield's real metre scale at the current camera zoom. Cosmetic only. Default on.
@@ -366,8 +346,6 @@ func _load(path: String = SAVE_PATH) -> void:
 	var raw_cycle = cfg.get_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
 	if raw_cycle is Array:
 		form_up_dist_cycle = raw_cycle.filter(func(v) -> bool: return v is int and v >= 0 and v <= FORM_UP_DIST_MAX)
-	walk_advance = bool(cfg.get_value("gameplay", "walk_advance", walk_advance))
-	reform_before_move = bool(cfg.get_value("gameplay", "reform_before_move", reform_before_move))
 	show_distance_legend = bool(cfg.get_value("camera", "show_distance_legend", show_distance_legend))
 	show_order_distance = bool(cfg.get_value("camera", "show_order_distance", show_order_distance))
 	show_unit_speed = bool(cfg.get_value("camera", "show_unit_speed", show_unit_speed))
@@ -389,8 +367,6 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
 	cfg.set_value("gameplay", "form_up_dist_default", form_up_dist_default)
 	cfg.set_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
-	cfg.set_value("gameplay", "walk_advance", walk_advance)
-	cfg.set_value("gameplay", "reform_before_move", reform_before_move)
 	cfg.set_value("camera", "show_distance_legend", show_distance_legend)
 	cfg.set_value("camera", "show_order_distance", show_order_distance)
 	cfg.set_value("camera", "show_unit_speed", show_unit_speed)

@@ -21,7 +21,7 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_CYCLE_DEPTH_SPACE, MENU_FORMUP_CYCLE_DEPTH,
 		MENU_FORMUP_CYCLE_WIDTH, MENU_FORMUP_CYCLE_WIDTH_COUNT, MENU_FORMUP_CYCLE_CHECKERBOARD,
 		MENU_FORMUP_CYCLE_ECHELON_RIGHT, MENU_FORMUP_CYCLE_ECHELON_LEFT,
-		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
+		MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
 		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_POSITION_ANCHOR, MENU_SHOW_FPS,
 		MENU_FPS_CORNER_TOP_LEFT, MENU_FPS_CORNER_TOP_RIGHT, MENU_FPS_CORNER_BOTTOM_LEFT,
 		MENU_FPS_CORNER_BOTTOM_RIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
@@ -36,6 +36,10 @@ var _info: Label
 var _chars_toggle: Button
 var _info_static: Label
 var _chars_expanded: bool = false
+# Per-unit settings checkboxes: walk_advance / reform_before_move for the shown
+# unit, toggleable live -- see show_unit()/clear_unit() and the _on_*_toggled handlers.
+var _walk_advance_check: CheckBox
+var _reform_before_move_check: CheckBox
 var _overlay: ColorRect
 var _overlay_label: Label
 var _menu_button: MenuButton
@@ -278,8 +282,6 @@ func _ready() -> void:
 	for entry in _FORMUP_ENTRIES:
 		popup.add_check_item(entry["label"], entry["cycle_id"])
 	popup.add_separator()
-	popup.add_check_item("Reform before move", MENU_REFORM_BEFORE_MOVE)
-	popup.add_check_item("Walk advance (no jog/sprint)", MENU_WALK_ADVANCE)
 	popup.add_check_item("Distance legend (map scale)", MENU_DISTANCE_LEGEND)
 	popup.add_check_item("Order distance labels", MENU_ORDER_DISTANCE)
 	popup.add_check_item("Unit speed labels", MENU_UNIT_SPEED)
@@ -412,6 +414,25 @@ func _ready() -> void:
 	_info.text = "No unit selected"
 	_info_col.add_child(_info)
 
+	# Per-unit settings checkboxes: walk_advance ("no jog/sprint" -- mandatory for
+	# formed stances that break on a jog or sprint) and reform_before_move (hold to settle
+	# ranks before marching). Hidden until a unit is shown (show_unit()/clear_unit()), and
+	# reflect the FIRST selected unit's own value; toggling applies to every currently
+	# selected unit (SelectionManager.set_selected_walk_advance/
+	# set_selected_reform_before_move) -- the same "shows the lead unit, writes the whole
+	# selection" convention _ctrl_bar_update_formation's quick-toggle buttons already use.
+	_walk_advance_check = CheckBox.new()
+	_walk_advance_check.text = "Walk advance (no jog/sprint)"
+	_walk_advance_check.visible = false
+	_walk_advance_check.toggled.connect(_on_walk_advance_toggled)
+	_info_col.add_child(_walk_advance_check)
+
+	_reform_before_move_check = CheckBox.new()
+	_reform_before_move_check.text = "Reform before move"
+	_reform_before_move_check.visible = false
+	_reform_before_move_check.toggled.connect(_on_reform_before_move_toggled)
+	_info_col.add_child(_reform_before_move_check)
+
 	# The static-characteristics fold: a triangle toggle row (the order tree's own
 	# expand/collapse idiom, same glyphs) over the static stat lines, collapsed by
 	# default. Hidden entirely while no unit is shown.
@@ -540,10 +561,6 @@ func _sync_setting_toggles() -> void:
 		for entry in _FORMUP_ENTRIES:
 			popup.set_item_checked(popup.get_item_index(entry["cycle_id"]),
 					Settings.form_up_dist_cycle.has(entry["mode"]))
-	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
-			Settings.reform_before_move)
-	popup.set_item_checked(popup.get_item_index(MENU_WALK_ADVANCE),
-			Settings.walk_advance)
 	popup.set_item_checked(popup.get_item_index(MENU_DISTANCE_LEGEND),
 			Settings.show_distance_legend)
 	popup.set_item_checked(popup.get_item_index(MENU_ORDER_DISTANCE),
@@ -562,7 +579,6 @@ func _sync_setting_toggles() -> void:
 				Settings.fps_corner == entry["corner"])
 	_sync_distance_legend_visibility()
 	_sync_fps_label()
-	_ctrl_bar_sync_settings()
 
 
 ## Dispatch a Menu popup selection by its stable item id.
@@ -596,10 +612,6 @@ func _on_menu_id(id: int) -> void:
 			Settings.edge_scroll = not Settings.edge_scroll
 		MENU_SFX:
 			Settings.sfx_enabled = not Settings.sfx_enabled
-		MENU_REFORM_BEFORE_MOVE:
-			Settings.reform_before_move = not Settings.reform_before_move
-		MENU_WALK_ADVANCE:
-			Settings.walk_advance = not Settings.walk_advance
 		MENU_DISTANCE_LEGEND:
 			# Settings.changed -> _sync_setting_toggles -> _sync_distance_legend_visibility,
 			# same as every other menu toggle here.
@@ -742,11 +754,21 @@ func show_unit(u, group_count: int) -> void:
 	_info_static.text = _static_stats(u)
 	_chars_toggle.visible = true
 	_sync_chars_fold()
+	# Per-unit settings: reflect the FIRST selected unit's own values (u, per the
+	# group_count/"+N more" convention above); a toggle applies to every selected unit
+	# (see SelectionManager.set_selected_walk_advance/set_selected_reform_before_move).
+	# set_pressed_no_signal avoids re-firing `toggled` (and issuing a redundant order)
+	# just from syncing the display to a newly-shown unit.
+	_walk_advance_check.visible = true
+	_walk_advance_check.set_pressed_no_signal(u.walk_advance)
+	_reform_before_move_check.visible = true
+	_reform_before_move_check.set_pressed_no_signal(u.reform_before_move)
 	_rebuild_order_tree(u)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = true
 		_info_panel_raise()
 		_ctrl_bar_update_formation(u)
+		_ctrl_bar_update_reform(u)
 		_ctrl_bar_update_stance(_sel_mgr.get_armed_mode() if _sel_mgr != null else 0)
 		update_group_attack_mode(_sel_mgr.get_group_attack_mode() if _sel_mgr != null else 0)
 	_clamp_info_panel()
@@ -756,6 +778,8 @@ func clear_unit() -> void:
 	_info.text = "No unit selected"
 	_chars_toggle.visible = false
 	_info_static.visible = false
+	_walk_advance_check.visible = false
+	_reform_before_move_check.visible = false
 	_rebuild_order_tree(null)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = false
@@ -857,6 +881,21 @@ func _on_chars_toggle() -> void:
 func _sync_chars_fold() -> void:
 	_chars_toggle.text = "▾ Characteristics" if _chars_expanded else "▸ Characteristics"
 	_info_static.visible = _chars_expanded and _chars_toggle.visible
+
+
+## Info-panel checkbox handler: write walk_advance on the whole current selection.
+func _on_walk_advance_toggled(pressed: bool) -> void:
+	if _sel_mgr != null:
+		_sel_mgr.set_selected_walk_advance(pressed)
+
+
+## Info-panel checkbox handler: write reform_before_move on the whole current
+## selection, and keep the ctrl bar's own quick-toggle button in sync with it.
+func _on_reform_before_move_toggled(pressed: bool) -> void:
+	if _sel_mgr != null:
+		_sel_mgr.set_selected_reform_before_move(pressed)
+	if _ctrl_reform_btn != null:
+		_ctrl_reform_btn.set_pressed_no_signal(pressed)
 
 
 ## Advance the acceleration sample toward this tick's mean speed. Same-tick repeat
@@ -1047,12 +1086,6 @@ func update_group_attack_mode(mode: int) -> void:
 	_ctrl_group_attack_btn.text = labels.get(mode, "Group mode")
 
 
-func _ctrl_bar_sync_settings() -> void:
-	if _ctrl_reform_btn == null:
-		return
-	_ctrl_reform_btn.button_pressed = Settings.reform_before_move
-
-
 # --- Distance legend (map scale bar, #364) ----------------------------------
 # A small semi-translucent panel in the bottom-right corner showing the battlefield's
 # real metre scale at the current camera zoom (DistanceLegend has the pure math). Bottom-
@@ -1196,6 +1229,16 @@ func _ctrl_bar_update_formation(unit) -> void:
 	_ctrl_formation_btn.text = _FORMATION_NAMES.get(unit.formation_mode, "Formation") + " ▾"
 
 
+## Reflect the shown unit's OWN reform_before_move (no longer a global setting) on
+## the ctrl bar's quick-toggle button, mirroring _ctrl_bar_update_formation above. Uses
+## set_pressed_no_signal so re-syncing after a toggle (or a selection change) doesn't
+## re-fire `toggled` and issue a redundant order.
+func _ctrl_bar_update_reform(unit) -> void:
+	if _ctrl_reform_btn == null or unit == null or not is_instance_valid(unit):
+		return
+	_ctrl_reform_btn.set_pressed_no_signal(unit.reform_before_move)
+
+
 func _ctrl_bar_update_stance(mode: int) -> void:
 	if _ctrl_stance_btn == null:
 		return
@@ -1252,7 +1295,6 @@ func _build_ctrl_bar() -> void:
 	hbox.add_child(VSeparator.new())
 	hbox.add_child(_build_ctrl_section("Options", _build_ctrl_option_buttons()))
 
-	_ctrl_bar_sync_settings()
 	update_group_attack_mode(BattleRef.GroupAttackMode.FOCUSED)
 
 
@@ -1406,8 +1448,16 @@ func _build_ctrl_option_buttons() -> Control:
 	_ctrl_reform_btn.toggle_mode = true
 	_ctrl_reform_btn.custom_minimum_size = Vector2(68, 28)
 	_ctrl_reform_btn.add_theme_font_size_override("font_size", 13)
-	_ctrl_reform_btn.pressed.connect(func():
-		Settings.reform_before_move = not Settings.reform_before_move)
+	# reform_before_move is a per-unit setting now, not a global one -- this quick
+	# toggle applies to the whole current selection, same as the Formation/Stance buttons
+	# beside it (SelectionManager.set_selected_reform_before_move).
+	_ctrl_reform_btn.toggled.connect(func(pressed: bool):
+		if _sel_mgr != null:
+			_sel_mgr.set_selected_reform_before_move(pressed)
+		# Keep the info panel's own checkbox in sync (bidirectional -- either control can
+		# drive the same per-unit setting; set_pressed_no_signal avoids a feedback loop).
+		if _reform_before_move_check != null:
+			_reform_before_move_check.set_pressed_no_signal(pressed))
 	hbox.add_child(_ctrl_reform_btn)
 
 	_ctrl_group_attack_btn = Button.new()
