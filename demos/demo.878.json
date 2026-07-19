@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/file-major-reform-contrast.json",
-  "caption": "Two identical Spearmen-vs-Infantry standoffs, side by side. The left Spearmen keeps the new default file_major_reform: a casualty only closes the gap within its own file, so its rear ends up jagged -- some files run deeper than others. The right Spearmen opts out (file_major_reform: false, the historical behavior): the whole grid recomputes fresh from the live count every tick, so its rear reflows and re-centres uniformly instead.",
+  "caption": "Two identical Spearmen-vs-Infantry standoffs, side by side, both taking comparable losses (24 -> 15 soldiers each by tick 720). The left Spearmen keeps the new default file_major_reform: by tick 720 one file has thinned to a single rank while its neighbors still hold two or three -- a persistent, jagged dent that stayed put from around tick 360 onward. The right Spearmen opts out (file_major_reform: false, the historical behavior): its rear reflows and re-centres every tick instead, so no single file stays shallow for long -- every file sits within one rank of every other the whole clip through.",
   "fixed_fps": 30,
   "max_frames": 720,
   "fps": 15,
