@@ -55,14 +55,18 @@ func test_reversing_move_order_keeps_the_block_formed() -> void:
 	assert_not_null(cav, "the scenario spawns the cavalry")
 	if cav == null:
 		return
+	# This test is specifically about the response/reform hold braking the reversal
+	# (reform_before_move is a per-unit field now, and Cavalry's own spawn default is
+	# false -- override it here so the hold this test exercises still runs).
+	cav.reform_before_move = true
 
-	battle._apply_order_cmd({"units": [cav.uid], "x": 1200.0, "y": 600.0, "target": -1, "reform": true})
+	battle._apply_order_cmd({"units": [cav.uid], "x": 1200.0, "y": 600.0, "target": -1})
 	while battle.current_tick() < CRUISE_BUDGET:
 		await get_tree().physics_frame
 	assert_gt(cav._current_speed, cav.walk_speed * 0.9, "cruising at pace before the reversal")
 
 	var order_x: float = cav.position.x
-	battle._apply_order_cmd({"units": [cav.uid], "x": 420.0, "y": 420.0, "target": -1, "reform": true})
+	battle._apply_order_cmd({"units": [cav.uid], "x": 420.0, "y": 420.0, "target": -1})
 	var deadline: int = battle.current_tick() + TURN_BUDGET
 	var max_x: float = cav.position.x
 	var hold_end_speed: float = -1.0

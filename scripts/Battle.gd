@@ -103,6 +103,18 @@ enum RankRelief { LEAVE = 0, ON = 1, OFF = 2 }
 # conversio/quarter-turn drills, a Macedonian/Laconian countermarch moves the regiment (position
 # AND facing), which the sim reads, so it IS recorded and replayed like a move (see ORDER_WHEEL).
 const ORDER_COUNTERMARCH := -8
+# Sentinel for a unit-settings-only order (no movement, no target): writes the durable
+# per-unit walk_advance and/or reform_before_move flags, leaving all movement/
+# formation/stance state untouched. Mirrors ORDER_STANCE_ONLY's shape, but for the two
+# settings the player toggles per-unit from the info panel checkbox (SelectionManager.
+# set_selected_walk_advance/set_selected_reform_before_move) rather than the order-mode
+# stance -- see enqueue_unit_settings. Each toggle rides its own tri-state
+# UnitSettingToggle field ("walk_advance_toggle"/"reform_toggle"), so a mixed selection's
+# untouched setting isn't silently forced to one value.
+const ORDER_UNIT_SETTINGS_ONLY := -9
+# Tri-state toggle values for a unit-settings order's "walk_advance_toggle"/"reform_toggle"
+# fields, mirroring RankRelief's LEAVE/ON/OFF shape above.
+enum UnitSettingToggle { LEAVE = 0, ON = 1, OFF = 2 }
 # How far a single arrow-key nudge shifts the unit (world units). 30 wu is ~1.5 m
 # (WORLD_UNITS_PER_METER = 20) — a few soldier-widths, and under the side-step
 # distance ceiling (UnitManeuver.SIDESTEP_MAX_DISTANCE) so a lateral nudge always
@@ -649,13 +661,22 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 ## Unit.back_speed_fraction) -- heavier kit backs up proportionally slower, same reasoning
 ## as the pace speeds above. Optional; _spawn_unit falls back to the Unit.gd default (0.5)
 ## for a loadout entry that omits it.
+##
+## `walk_advance_default`/`reform_before_move_default` are this type's starting
+## values for the two per-unit settings a player can later toggle from the info panel
+## checkbox (Unit.walk_advance/Unit.reform_before_move) -- both optional, defaulting to
+## `false`/`true` respectively (the old global settings' own defaults) for a loadout entry
+## that omits them. Spearmen default walk_advance ON: holding the shield-wall/phalanx
+## presentation matters more than closing speed for a formed pike line. Cavalry defaults
+## reform_before_move OFF: a fast, loosely-formed regiment gains more from immediate
+## responsiveness than from settling ranks before it steps off.
 func _default_loadout() -> Array:
 	return [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT, "walk_advance_default": true},
 		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_HAMATA, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
 		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "back_fraction": 0.55, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "armor": LoadoutRegistry.ARMOR_TUNIC, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false},
 	]
 
 
@@ -716,6 +737,12 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 		u.mount_type_id = d["mount"]
 	u.training = d.get("training", 0.0)
 	u.disciplined = d.get("disciplined", true)
+	# Per-type starting values for the two player-togglable settings; a loadout entry
+	# that omits either key keeps the old global settings' own defaults (walk_advance off,
+	# reform_before_move on) -- see _default_loadout's own doc comment for which types
+	# override them and why.
+	u.walk_advance = bool(d.get("walk_advance_default", false))
+	u.reform_before_move = bool(d.get("reform_before_move_default", true))
 	# Cavalry respond faster — more mobile and battle-conditioned.
 	if d["cav"]:
 		u.order_response_delay = 0.3
@@ -983,9 +1010,10 @@ func _physics_process(_delta: float) -> void:
 					int(o.get("frontage", 0)),
 					float(o.get("face", INF)),
 					int(o.get("group_attack", GroupAttackMode.FOCUSED)),
-					bool(o.get("walk_advance", false)),
 					float(o.get("anchor_offset", 0.0)),
-					int(o.get("form_up_group", -1)))
+					int(o.get("form_up_group", -1)),
+					int(o.get("walk_advance_toggle", UnitSettingToggle.LEAVE)),
+					int(o.get("reform_toggle", UnitSettingToggle.LEAVE)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -1110,8 +1138,6 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"y": world_pos.y,
 		"target": target_uid,
 		"mode": order_mode,
-		"reform": Settings.reform_before_move,
-		"walk_advance": Settings.walk_advance,
 		"group_attack": group_attack,
 		"gait": gait,
 		"knockback_indefinite": knockback_indefinite,
@@ -1366,12 +1392,37 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"mode": order_mode,
 		"frontage": frontage,
 		"face": face,
-		"reform": Settings.reform_before_move,
-		"walk_advance": Settings.walk_advance,
 		"knockback_indefinite": knockback_indefinite,
 	}
 	if form_up_group >= 0:
 		cmd["form_up_group"] = form_up_group
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
+## Set the durable per-unit walk_advance and/or reform_before_move flags on a set of units
+## in place -- no movement, no target (mirrors enqueue_stance's shape). Each toggle is a
+## UnitSettingToggle (LEAVE keeps each unit's current value; ON/OFF write it), so a mixed
+## selection's untouched setting isn't forced to one value. Recorded so replays stay exact:
+## unlike the old order-baked "walk_advance"/"reform" cmd fields this replaces, these
+## are genuine persistent unit state a mid-battle toggle can change, so the toggle itself --
+## not just its downstream effect -- has to ride the replay stream, the same way
+## enqueue_stance's rank-relief toggle already does.
+func enqueue_unit_settings(uids: Array, walk_advance_toggle: int = UnitSettingToggle.LEAVE,
+		reform_toggle: int = UnitSettingToggle.LEAVE) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if walk_advance_toggle == UnitSettingToggle.LEAVE and reform_toggle == UnitSettingToggle.LEAVE:
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_UNIT_SETTINGS_ONLY,
+		"mode": OrderMode.NORMAL,
+		"walk_advance_toggle": walk_advance_toggle,
+		"reform_toggle": reform_toggle,
+	}
 	_pending_orders.append(cmd)
 	_apply_order_live(cmd)
 
@@ -1446,6 +1497,27 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				u.rank_relief = false
 			if u.current_order == null:
 				u.set_current_order(Order.new_stance(stance, rank_toggle))
+		return
+	# Unit-settings-only: write the durable walk_advance and/or reform_before_move flags on
+	# each unit, leaving all movement/formation/stance state untouched. Same
+	# instantaneous-write shape as the stance branch above, minus any queue/order-tree
+	# interaction -- these are plain unit fields, not something a replay transcript needs to
+	# show as an order.
+	if target_uid == ORDER_UNIT_SETTINGS_ONLY:
+		var walk_toggle: int = int(cmd.get("walk_advance_toggle", UnitSettingToggle.LEAVE))
+		var reform_toggle: int = int(cmd.get("reform_toggle", UnitSettingToggle.LEAVE))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u == null:
+				continue
+			if walk_toggle == UnitSettingToggle.ON:
+				u.walk_advance = true
+			elif walk_toggle == UnitSettingToggle.OFF:
+				u.walk_advance = false
+			if reform_toggle == UnitSettingToggle.ON:
+				u.reform_before_move = true
+			elif reform_toggle == UnitSettingToggle.OFF:
+				u.reform_before_move = false
 		return
 	# Arrow-key nudge: each unit steps a small fixed distance to its own side/rear,
 	# holding facing (ordered_facing set), leaving stance and formation untouched. A
@@ -1603,7 +1675,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# issuing a move/attack is the normal way to use it).
 			if mode == OrderMode.KNOCKBACK_FOCUS:
 				u.knockback_push_indefinite = bool(cmd.get("knockback_indefinite", false))
-			u.walk_advance = bool(cmd.get("walk_advance", false))
+			# walk_advance is no longer re-injected from the order -- it's the unit's
+			# own persistent field, set at spawn / by an explicit player toggle, and simply
+			# read here (via _move_to's own `walk_advance` check), not overwritten.
 			u.support_target = null
 			# A fresh order restarts the cycle-charge loop in its charging phase, so a
 			# newly-ordered unit drives in rather than resuming a stale pull-back.
@@ -1744,17 +1818,18 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# its heading in Unit (turning in place during the reform hold and as it
 				# marches), so the ranks come onto the new bearing in good order rather
 				# than the whole line flipping its facing at order time.
-				# Reform timing rides the recorded "reform" field on the Order: for a plain
-				# move it arms the reform-before-move hold below; for a rear move it times
-				# the composite's reform phase (see Unit._finish_order_turn). A lateral
+				# Reform timing rides the unit's OWN persistent reform_before_move field
+				# (no longer a per-order cmd flag) via the Order's "reform" copy: for a
+				# plain move it arms the reform-before-move hold below; for a rear move it
+				# times the composite's reform phase (see Unit._finish_order_turn). A lateral
 				# pivot never reforms -- it keeps its pre-turn footprint for the whole march
 				# by design (the file-march character of the maneuver), so it forces reform
-				# off regardless of what the player's own command requested. A wheel-turn
-				# likewise never reforms between its turn phases and the march -- it reforms
-				# on arrival instead (Unit._finish_wheel), same as a plain rear move's own
-				# un-checked default.
+				# off regardless of the unit's own setting. A wheel-turn likewise never
+				# reforms between its turn phases and the march -- it reforms on arrival
+				# instead (Unit._finish_wheel), same as a plain rear move's own un-checked
+				# default.
 				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
-				order.reform = bool(cmd.get("reform", false)) and not lateral_pivot and not wheel_turn
+				order.reform = u.reform_before_move and not lateral_pivot and not wheel_turn
 				# A multi-unit drag-line form-up: tag this order as one member of the shared
 				# group (docs/atomic-order-decomposition-design.md) instead of the standalone
 				# order every other move is. The group node itself is built once per id and

@@ -62,6 +62,7 @@ func _sample_unit() -> Unit:
 	u.deploy_facing = Vector2(1, 0)
 	u.ordered_facing = Vector2(0, 1)
 	u.walk_advance = true
+	u.reform_before_move = false   # non-default (the field defaults true), so the round-trip is provable
 	u._under_fire = true
 	u._attack_cd = 0.2
 	u._pin_down_exposure_cd = 0.1
@@ -130,6 +131,8 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.has_move_target, original.has_move_target)
 	assert_eq(restored.order_mode, original.order_mode)
 	assert_eq(restored.formation_mode, original.formation_mode)
+	assert_eq(restored.walk_advance, original.walk_advance)
+	assert_eq(restored.reform_before_move, original.reform_before_move)
 	assert_eq(restored.frontage_override, original.frontage_override)
 	assert_eq(restored._formation_angle, original._formation_angle)
 	assert_eq(restored._shattered, original._shattered)
