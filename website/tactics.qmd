@@ -1210,7 +1210,7 @@ barely gains on a quarry walking away at nearly its own pace.
 ```
 
 Two equal-reach Infantry regiments lock in melee. Once engaged, the player
-arms Give ground on their own unit --- it backs steadily away from the
+issues Give ground on their own unit --- it backs steadily away from the
 enemy line while the two sides keep trading blows, instead of holding its
 ground the way the passive reach standoff would.
 :::
