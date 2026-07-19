@@ -2358,3 +2358,116 @@ safety from the workflow's general purpose or from one job's own header comment
 without checking the actual `if:`. If a dispatched run's job list shows something that
 could reach a live-effect step with no confirmed gate, cancel it (`gh run cancel`)
 before that job starts and ask before re-dispatching.
+
+## `tools/check.sh`'s comments/units/patch_coverage steps are diff-scoped -- commit before running them, not after
+
+`check_comments`/`check_units`/`check_patch_coverage` all compute
+`git diff --no-color -U0 "$(git merge-base HEAD "$base")" HEAD -- '*.gd'` (or a
+narrower glob) -- a diff against **HEAD**, not the working tree. Running the bundled
+`tools/check.sh validate test chars comments units patch_coverage` invocation against
+**uncommitted** changes (reasoning "verify before I commit") means these three steps
+compare HEAD against itself and find nothing to check -- they silently print a clean
+pass ("No GDScript changes in this diff") without having examined the actual edits at
+all. Only `validate`/`test`/`chars` are disk-based and give real signal in that case.
+
+This cost one delegated agent roughly two hours and ~1M tokens in one session: real,
+working code sat as an uncommitted diff for two full turns while the agent repeatedly
+re-ran the bundled check (each pass ~15-20 min) against it, never noticing three of
+the five requested checks were no-ops. Caught only because the orchestrating session
+noticed the mismatch directly (`git log`/`git status` showed no commits and no
+uncommitted changes despite two turns of claimed work) and asked why.
+
+**How to apply:** commit (even a rough, not-yet-polished draft) before running the
+bundled check, not after -- re-commit/amend once the check's own findings are
+addressed. When briefing a subagent to implement-and-verify a feature in this repo,
+say this explicitly in the brief. If an agent (or you) burns much more wall-clock than
+a diff's size would justify, check `git log`/`git status` directly before trusting
+"still verifying" -- it's a fast, decisive way to catch this class of problem.
+(`Lacaedemon/sparta` PR #999, 2026-07-19.)
+
+## Benchmark check reports PASS regardless of content -- and the baseline goes stale for a whole week after any PR with an accepted cost increase
+
+`benchmark.yml`'s own posted comment can show a real regression (`:warning: Regressed
+beyond the 20% threshold`) while `gh pr checks`/the GitHub check conclusion still
+reports the job as **PASS** -- this is deliberate (the threshold is "a human call, not
+an auto-block"), but it means the check's own green color carries **zero** signal
+about whether there's a real finding to read. Always fetch and read the actual posted
+comment body (`gh api repos/.../issues/<N>/comments --jq '...sparta-benchmark...'`),
+never trust the check conclusion alone, for this specific check.
+
+Separately: `tools/benchmark/baseline.json` is refreshed only by a **weekly schedule**
+(`refresh-benchmark-baseline.yml`), not on every `main` push. When a PR's own cost
+increase is investigated and accepted as a legitimate, deliberate consequence of a new
+feature (not a bug -- e.g. a costlier maneuver firing more often by design), merging it
+does NOT refresh the baseline immediately. Every subsequent PR then shows a **false**
+"regression" against the now-stale, pre-merge baseline until the next weekly refresh
+(or a manual `workflow_dispatch` of that workflow) runs. Before spending time
+investigating a benchmark-regression finding as if it were new/PR-specific, check
+whether `main` gained an accepted cost increase since `baseline.json`'s own header
+comment date -- if so, the "regression" is very likely just baseline staleness, not
+something the current PR's own diff caused. (Sequence observed 2026-07-19: PR #922's
+moving-wheel maneuver accepted a ~38.8% mean-tick-time increase as an intended cost of
+the feature; PRs #995 and #999, merged shortly after, each showed a near-identical
+~35-40% "regression" against the same pre-#922 baseline, attributable to neither PR's
+own code.)
+
+## File-major casualty reflow: verifying "which file stays shallow" needs de-rotation into local frame, and beware odd/even parity between remainder and file count
+
+Two lessons from independently re-verifying PR #995's own file-major-reform demo and
+authoring a follow-up demo for PR #999's AUTO mode, worth keeping in mind for ANY
+future formation-geometry verification via `dump-state.sh`:
+
+1. **Bucketing `soldiers_full.slots` by raw world-space x is unreliable once a unit's
+   facing has rotated even slightly** (an engage-turn, a maneuver in progress) --
+   de-rotate each soldier's position into the unit's own local frame first
+   (`ang = atan2(facing.y, facing.x) + pi/2`, then rotate `(pos - unit.position)` by
+   `-ang`) before bucketing by file. Skipping this makes a perfectly clean 7-file
+   layout look like 13+ noisy buckets once facing drifts even a few degrees off-axis.
+2. **When the live soldier count's remainder (`count mod files`) and the file count
+   itself have OPPOSITE parity (one odd, one even), the partial rank's soldiers sit on
+   HALF-file-spacing offsets, not aligned with the full-frontage grid at all** -- this
+   is `UnitFormation.block_slots`' own documented behavior for a partial rank whose
+   count/frontage parity differs, and it applies to `file_major_block_slots`' fully-
+   populated files as a residual layout artifact too. A naive de-rotated bucket-and-
+   snap-to-nearest-file-spacing analysis can misattribute which column looks
+   "shallow" in this specific case (a genuinely rare accident of exact soldier counts,
+   not a bug) -- if a quick verification script gives a confusing/inconsistent
+   "shallowest file" reading, check the remainder/file-count parity before assuming
+   the underlying feature is broken. The *decisive* proof for this mechanism should
+   always be a dedicated GDScript test asserting on the persistent per-soldier file
+   array directly (`test_file_major_reform_battle.gd`,
+   `test_auto_reform_mode_battle.gd`), not a demo clip eyeballed or bucketed after the
+   fact -- a demo just needs to show the feature existing and applying, and its
+   caption should say so explicitly when a specific seed's counts hit this parity
+   case rather than overclaiming a precise per-file numeric proof it can't actually
+   support. (`Lacaedemon/sparta` PR #995/#999, 2026-07-19.)
+
+## `SoldierBodies.step()` and `couple()` both independently recompute `soldier_world_slots` every tick -- a pre-existing redundancy a costlier code path can expose as a benchmark regression
+
+`Battle`'s per-tick soldier-layer pipeline runs `step_all_sim_soldiers` (calls
+`SoldierBodies.step()` per unit) to completion for every unit, THEN separately runs
+`couple_all_sim_soldiers` (calls `SoldierBodies.couple()` per unit) -- two full passes
+over every unit, and both `step()` and `couple()` independently call
+`unit.soldier_world_slots(unit.soldiers)`, recomputing the exact same result a second
+time with nothing in between that could have changed it (nothing mutates a unit's
+position/facing/formation state between the two passes finishing/starting). This
+redundancy predates any specific feature and applies to BOTH row-major and file-major
+reflow -- but `file_major_reform`'s own per-call cost (an extra O(soldiers) pass in
+`UnitFormation.file_major_block_slots` vs. the historical single-pass `block_slots`)
+made the existing 2x-redundant computation expensive enough to surface as a real,
+measured 45.2% CI benchmark regression on PR #995.
+
+**Fix pattern, not a general cache:** rather than caching `soldier_world_slots`
+broadly (risky -- any OTHER caller that mutates position/facing mid-tick in a way not
+yet audited could read stale data), scope the fix narrowly to the two specific call
+sites: `SoldierBodies.step()` stashes the slots it already computed
+(`Unit._step_slots_for_couple` / `_step_slots_for_couple_valid`), and `couple()`
+consumes-and-clears that single-use handoff instead of recomputing, falling back to a
+fresh computation if the handoff is missing or size-mismatched. Verified this dropped
+the regression from 45.2% to 4.3% against the same CI baseline.
+
+**When a new/costlier code path triggers a benchmark regression, check for a
+pre-existing redundant-computation pattern like this BEFORE assuming the new code
+itself needs optimizing** -- the new code's own cost may be fine in isolation; it's
+often just exposing an existing 2x (or more) waste that was previously too cheap to
+notice. (`Lacaedemon/sparta` PR #995, 2026-07-19.)
