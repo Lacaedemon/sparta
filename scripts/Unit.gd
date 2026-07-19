@@ -2892,16 +2892,29 @@ func formation_slots(count: int) -> PackedVector2Array:
 	return UnitFormation.slots(self, count)
 
 
-## Rebuild the persistent per-soldier file-major assignment (_sim_soldier_file) FRESH,
-## row-major (index i -> file i % files), whenever it is out of sync with the current live
-## `count`/`files`: either the array size doesn't match `count` (the first-ever call, or a
-## count jump from something other than an ordinary casualty -- e.g. a unit merge) or `files`
-## has changed (a deliberate reshape -- set_frontage, explicatio/duplicatio, the automatic
-## ranks-closed narrowing -- which SHOULD reflow every soldier's file assignment, since those
-## are intentional reform events, not passive casualty gap-filling). An ordinary casualty
-## never triggers a rebuild here: SoldierMelee.reap() already trims _sim_soldier_file at the
-## dead soldier's own index, exactly like every other per-soldier array, so `count` and
-## _sim_soldier_file.size() stay in sync through it and each survivor keeps its own file id.
+## Rebuild the persistent per-soldier file-major assignment (_sim_soldier_file) FRESH
+## whenever it is out of sync with the current live `count`/`files`: either the array size
+## doesn't match `count` (the first-ever call, or a count jump from something other than an
+## ordinary casualty -- e.g. a unit merge) or `files` has changed (a deliberate reshape --
+## set_frontage, explicatio/duplicatio, the automatic ranks-closed narrowing -- which SHOULD
+## reflow every soldier's file assignment, since those are intentional reform events, not
+## passive casualty gap-filling). An ordinary casualty never triggers a rebuild here:
+## SoldierMelee.reap() already trims _sim_soldier_file at the dead soldier's own index,
+## exactly like every other per-soldier array, so `count` and _sim_soldier_file.size() stay
+## in sync through it and each survivor keeps its own file id.
+##
+## Fills full ranks first (every file gets one soldier per rank), then -- if `count` isn't an
+## exact multiple of `files` -- assigns the partial last rank to a CENTRED span of files
+## (`extra_start` = the same "(full - partial)/2" centring UnitFormation.block_slots already
+## uses for its own partial rear rank), not raw file index order. Without this, a plain
+## `i % files` divide piles the leftover onto whichever files happen to land first in the
+## row-major count, always the SAME edge of the block -- so a fresh, zero-casualty spawn
+## would read as lopsided (one flank permanently a rank deeper) for any unit whose headcount
+## isn't a clean multiple of its file count, i.e. almost every unit in the game. Centring
+## keeps a fresh spawn visually symmetric, matching what the historical (row-major) grid has
+## always looked like at full strength -- the two modes only diverge once a casualty actually
+## lands.
+##
 ## Idempotent and side-effect-free once in sync -- safe to call from every formation_slots()
 ## query in a tick, not just the first.
 func _ensure_file_assignment(count: int, files: int) -> void:
@@ -2910,8 +2923,17 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 	_sim_soldier_file = PackedInt32Array()
 	_sim_soldier_file.resize(count)
 	var f: int = maxi(1, files)
-	for i in range(count):
-		_sim_soldier_file[i] = i % f
+	var full_ranks: int = count / f
+	var remainder: int = count % f
+	var extra_start: int = (f - remainder) / 2
+	var idx: int = 0
+	for rank in range(full_ranks + (1 if remainder > 0 else 0)):
+		for file in range(f):
+			var has_soldier: bool = rank < full_ranks \
+					or (file >= extra_start and file < extra_start + remainder)
+			if has_soldier:
+				_sim_soldier_file[idx] = file
+				idx += 1
 	_file_assignment_files = files
 
 
