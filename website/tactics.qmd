@@ -1154,6 +1154,15 @@ into different tools:
   back. Use it to break up a packed formation or buy room to maneuver, not to
   win a straight fight --- the softer hits mean it trades its own damage
   output for control of space.
+- **Give ground** (<kbd>`</kbd>) --- a deliberate withdrawal: the unit backs
+  away from its nearest enemy at a steady pace while it keeps fighting,
+  regardless of weapon reach on either side. This is the explicit,
+  player-commanded counterpart to [Weapon reach](#weapon-reach)'s passive
+  standoff above --- that mechanic only ever holds a longer-reach unit's
+  ground or presses a shorter-reach one forward; it never backs a unit away
+  on its own. Arm it when you want to trade space for time --- peeling a
+  spent line back toward reinforcements, or buying a moment for a flank to
+  arrive --- without breaking off the fight entirely.
 
 ::: {#fig-cycle-charge-flee .demo}
 
@@ -1187,6 +1196,23 @@ Stern-chase pacing: two identical cavalry pursue the same withdrawing infantry
 from beyond the sprint window. The Chase-armed unit presses at a canter and runs
 the quarry down; the plain attack order keeps the stamina-conserving walk and
 barely gains on a quarry walking away at nearly its own pace.
+:::
+
+::: {#fig-give-ground .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/give_ground.jpg">
+  <source src="media/give_ground.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two equal-reach Infantry regiments lock in melee. Once engaged, the player
+arms Give ground on their own unit --- it backs steadily away from the
+enemy line while the two sides keep trading blows, instead of holding its
+ground the way the passive reach standoff would.
 :::
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed

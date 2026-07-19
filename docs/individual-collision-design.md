@@ -251,9 +251,10 @@ spear regiment at the historical 9wu rank pitch now fields up to 6 ranks able to
 within their own weapon's reach, instead of being capped at 3 regardless of how deep the
 formation actually runs. Measured on a 24 v 24 Spearmen-vs-Infantry demo
 (`demos/inputs/spear-standoff.json`): the spear regiment holds its ground through the
-whole clash rather than retreating, while the infantry/sword regiment keeps bleeding
-faster than the spear does once both sides lock in melee (24 sword soldiers down to 19 by
-tick 180, into single digits by tick 900). The "give ground to hold reach distance" order
+whole clash rather than retreating; both sides trade losses as the sword presses in to
+close the reach gap, but the spear's reach and rank-depth advantage give it a real edge
+over the course of the clash (by tick 740, the spear holds 12/24 soldiers against the
+sword's 10/24, neither side yet routing). The "give ground to hold reach distance" order
 that follow-up promised has now landed too (#983), as `Unit.ORDER_GIVE_GROUND` /
 `SoldierMeleeStandoff.give_ground_bias`: an explicit player-facing withdrawal, not the
 passive default — an engaged unit under this order backs away from its nearest enemy at a
