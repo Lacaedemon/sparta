@@ -62,9 +62,9 @@ var casualty_carry: float = 0.0
 ## Ordinary combat/movement never sets these directly — only FarTierRules.enter_rout,
 ## tick_rout, rally, and shatter.
 var routing: bool = false
-## Counts down from Unit.ROUT_TIME while routing; when it (or the earlier rally check)
-## resolves, the formation either rallies (routing = false, reduced morale) or shatters
-## (count = 0), matching Unit._process_rout's timer.
+## Counts down from rout_time below (default Unit.ROUT_TIME) while routing; when it (or the
+## earlier rally check) resolves, the formation either rallies (routing = false, reduced
+## morale) or shatters (count = 0), matching Unit._process_rout's timer.
 var rout_timer: float = 0.0
 
 ## The three rout/rally thresholds Unit's own rout arc uses, carried forward from the live

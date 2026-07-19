@@ -684,7 +684,8 @@ const REFORM_SETTLE_EPS_RESHAPE: float = 4.0
 const ROUT_SHOCK_RADIUS: float = 7.0 * WorldScaleRef.WU_PER_M
 # Rout recovery: when a unit's rout timer runs out it RALLIES — recovers to your
 # control — if it has broken contact (no living enemy within RALLY_CONTACT_RADIUS) and
-# still fields enough men (>= SHATTER_STRENGTH_FRAC of its max). Otherwise it SHATTERS:
+# still fields enough men (>= shatter_strength_frac of its max, default SHATTER_STRENGTH_FRAC).
+# Otherwise it SHATTERS:
 # run down or gutted past reforming, it leaves play for good. A rallied unit comes back
 # at RALLY_MORALE, kept low so it stays fragile and can break again.
 const RALLY_MORALE: float = 30.0
@@ -695,8 +696,9 @@ var shatter_strength_frac: float = SHATTER_STRENGTH_FRAC
 # While routing, a shaken regiment's nerve slowly steadies: morale ticks UP toward
 # ROUT_RALLY_BASELINE at a rate proportional to the remaining gap, so recovery is fast
 # at first and levels off (an asymptotic approach, never quite reaching the baseline).
-# A unit that breaks contact and steadies past RALLY_MORALE_THRESHOLD rallies on the spot —
-# it need not run the full ROUT_TIME nor reach the map edge to return to play. The baseline
+# A unit that breaks contact and steadies past rally_morale_threshold (default
+# RALLY_MORALE_THRESHOLD) rallies on the spot — it need not run the full rout_time (default
+# ROUT_TIME) nor reach the map edge to return to play. The baseline
 # sits above the threshold so a clear unit reliably crosses it before the timer runs out.
 # Rates are deterministic (gap-proportional, delta-driven, no RNG), so replays stay exact.
 const ROUT_RALLY_BASELINE: float = 45.0
@@ -4628,7 +4630,7 @@ func _process_rout(delta: float) -> void:
 
 	# Rally the moment morale recovers past the threshold, provided contact is broken and
 	# enough men remain — the unit needn't run out the full timer or reach the edge.
-	# Note: a unit that enters routing with morale already >= RALLY_MORALE_THRESHOLD rallies
+	# Note: a unit that enters routing with morale already >= rally_morale_threshold rallies
 	# on the first call here (a one-tick rout). In practice routing is triggered by depleted
 	# morale so this is dormant; keep it in mind if non-morale rout triggers are ever added.
 	if morale >= rally_morale_threshold and _can_rally():
@@ -4651,7 +4653,7 @@ func _process_rout(delta: float) -> void:
 
 ## Whether a routed unit recovers rather than shatters when its rout times out:
 ## it must have broken contact — no living enemy within RALLY_CONTACT_RADIUS — and still
-## field enough men to reform (>= SHATTER_STRENGTH_FRAC of its max). Positions + counts
+## field enough men to reform (>= shatter_strength_frac of its max). Positions + counts
 ## only, so it's deterministic and replay-safe.
 func _can_rally() -> bool:
 	if soldiers < int(round(max_soldiers * shatter_strength_frac)):
