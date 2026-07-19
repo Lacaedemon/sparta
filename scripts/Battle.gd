@@ -226,7 +226,16 @@ const WORLD_UNITS_PER_METER := WorldScaleRef.WU_PER_M
 
 # Enemy AI re-evaluates on a fixed tick cadence (not a wall-clock timer) so the
 # simulation is deterministic and replayable. 60 ticks == 1 second at 60 Hz.
+# This is the DEFAULT cadence -- ai_period below is the live instance field a
+# caller may override (see its own comment).
 const AI_PERIOD := 60
+
+# Live enemy-AI re-evaluation cadence, in ticks -- a caller-configurable parameter
+# (CLAUDE.md's code conventions) defaulting to AI_PERIOD above. Settable BEFORE the
+# node enters the tree, the same set-before-_ready contract drill_mode/scenario/
+# ai_doctrine already follow, so a demo/test/campaign battle can run its AI on a
+# different cadence without touching the default every other caller relies on.
+var ai_period: int = AI_PERIOD
 
 # Fraction of the remaining distance the demo camera closes toward its recorded
 # target each tick (exponential smoothing). < 1 low-passes any jitter in the
@@ -1091,7 +1100,7 @@ func _physics_process(_delta: float) -> void:
 	# the same cadence during playback so it reaches the same decisions. Skipped entirely
 	# under all-teams control -- the player is commanding team 1 directly, so nothing
 	# should also be deciding for it.
-	if _tick % AI_PERIOD == 0 and not all_teams_control:
+	if _tick % ai_period == 0 and not all_teams_control:
 		_run_enemy_ai()
 
 	_check_victory()

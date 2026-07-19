@@ -651,7 +651,7 @@ With both sides closing over the 580 px gap, a head-on meet takes roughly
 spearmen-vs-spearmen (`56 + 56`), about 1.7 s for cavalry-vs-cavalry (`170 + 170`)
 — and substantially longer when either side only walks (the enemy AI's default
 advance pace), so budget windows from the walk speeds, not the sprint table.
-These are approximations — the enemy AI re-targets only every `AI_PERIOD` (1 s),
+These are approximations — the enemy AI re-targets only every `ai_period` (default 1 s),
 and cavalry carry a 0.3 s order-response delay — so work the timing out on paper
 **before** spending a CI run on it; a mistimed scenario silently records the
 wrong moment.
