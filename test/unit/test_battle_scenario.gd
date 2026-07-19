@@ -12,10 +12,12 @@ extends GutTest
 func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides() -> void:
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.scenario = [
-		# A spearman with every override: count, morale, and an explicit facing that must win
-		# over the team default.
+		# A spearman with every override: count, morale, an explicit facing that must win
+		# over the team default, and walk_advance/reform_before_move overrides that must
+		# win over Spearmen's own type defaults (walk_advance true, reform_before_move true).
 		{"team": 0, "type": "Spearmen", "x": 500, "y": 250, "count": 40, "morale": 30.0,
-			"facing": [1, 0], "disciplined": false},
+			"facing": [1, 0], "disciplined": false,
+			"walk_advance": false, "reform_before_move": false},
 		# A plain enemy cavalry unit: no facing override, so it takes the team-1 default (up),
 		# and no disciplined override, so it takes Unit's own default (true).
 		{"team": 1, "type": "Cavalry", "x": 500, "y": 750},
@@ -58,10 +60,16 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 	assert_almost_eq(spear.facing.x, 1.0, 0.001, "the explicit facing vector wins over the team default (x)")
 	assert_almost_eq(spear.facing.y, 0.0, 0.001, "...and y")
 	assert_false(spear.disciplined, "the disciplined:false override forwards onto the spawned unit")
+	assert_false(spear.walk_advance,
+		"the walk_advance:false override wins over Spearmen's own type default (true)")
+	assert_false(spear.reform_before_move,
+		"the reform_before_move:false override wins over the type default (true)")
 
 	for horse: Unit in team1:
 		assert_true(horse.is_cavalry, "type 'Cavalry' maps onto the cavalry loadout")
 		assert_true(horse.disciplined, "with no override, a spawned unit defaults to disciplined")
+		assert_false(horse.reform_before_move,
+			"with no override, Cavalry's own type default (reform_before_move off) applies")
 		# The first cavalry has no facing override, the second has a MALFORMED one -- both must
 		# fall back to the team-1 default (facing up), and neither may crash on the bad array.
 		assert_almost_eq(horse.facing.y, -1.0, 0.001,

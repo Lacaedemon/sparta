@@ -14,16 +14,9 @@ extends GutTest
 const SPAWN := Vector2(500, 430)
 
 var _battle: Node = null
-var _orig_reform: bool
-
-
-func before_each() -> void:
-	_orig_reform = Settings.reform_before_move
-	Settings.reform_before_move = false   # the hasty variant: no reform hold to step through
 
 
 func after_each() -> void:
-	Settings.reform_before_move = _orig_reform
 	get_tree().paused = false
 	Replay.forced_seed = -1
 	if is_instance_valid(_battle):
@@ -42,6 +35,10 @@ func _stage_lone_unit() -> Unit:
 	add_child(_battle)
 	for u in get_tree().get_nodes_in_group("units"):
 		if u is Unit and u.team == 0:
+			# The hasty variant: no reform hold to step through (reform_before_move is a
+			# per-unit field now; Spearmen's own spawn default is true, so this test's unit
+			# needs an explicit override to keep exercising the no-reform path).
+			u.reform_before_move = false
 			return u
 	return null
 

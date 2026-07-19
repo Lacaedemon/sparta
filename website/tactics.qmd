@@ -763,11 +763,12 @@ when a ranged enemy is firing at them (to spend less time under missiles), and
 sprint at full speed once within about 200 px of the target --- so a charge
 arrives at full momentum without wearing out the troops on the march.
 
-**Toggle Walk advance (☰ Menu → Walk advance)** to lock units to walk pace
-throughout. This is required for formed stances like shield wall or pike phalanx:
-those formations hold their shape only at a walk, and an auto-sprint will
+**Check Walk advance in the selected-unit info panel** to lock the selection to walk
+pace throughout. This is required for formed stances like shield wall or pike
+phalanx: those formations hold their shape only at a walk, and an auto-sprint will
 break them. Keep Walk advance on whenever you are using a tight formation that
-would crumble if the unit broke into a run.
+would crumble if the unit broke into a run --- spearmen start with it on by
+default; every other type starts with it off.
 
 The AUTO sprint-override also matters for charge timing: a unit that enters
 sprint range will accelerate through any missile fire it still faces --- gaining
@@ -788,8 +789,8 @@ your advantage when committing cavalry or an assault infantry charge.
 Pace modes: a regiment attack-marches on AUTO pace &mdash; walking on approach,
 jogging through the beaten zone once enemy archery reaches it, then sprinting
 at full charge speed inside charge distance of its target &mdash; all three
-phases as distinct legs of one advance. Toggle Walk advance (☰ Menu) to lock units to
-walk pace throughout.
+phases as distinct legs of one advance. Check Walk advance in the info panel to
+lock the selection to walk pace throughout.
 :::
 
 ### Choosing a gait by click count
