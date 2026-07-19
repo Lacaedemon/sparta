@@ -27,9 +27,8 @@ permissions:
   pull-requests: write
 
 env:
-  # Keep in sync with benchmark.yml / godot-ci.yml.
-  GODOT_VERSION: 4.7.0
-  GUT_VERSION: v9.7.0
+  # GODOT_VERSION/GUT_VERSION pins now live as the composite action's own
+  # defaults (.github/actions/setup-godot-project/action.yml).
   # Same CI-tuned measurement window benchmark.yml itself uses (not run-benchmark.sh's local
   # 120/600 defaults) -- the whole point is to match the conditions the regression check runs
   # under.
@@ -53,29 +52,8 @@ jobs:
           # in the remote URL (mirrors d-morrison/gha's bump-submodule.yml).
           token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
 
-      - name: Set up Godot ${{ env.GODOT_VERSION }}
-        uses: chickensoft-games/setup-godot@v2
-        with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false
-
-      - name: Install GUT ${{ env.GUT_VERSION }}
-        # The project's test files extend GutTest, so GUT must be present before --import
-        # resolves the whole project (same requirement as benchmark.yml / godot-ci.yml).
-        run: |
-          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
-          mkdir -p addons
-          rm -rf addons/gut
-          cp -r /tmp/gut/addons/gut addons/gut
-
-      - name: Import & validate project
-        run: |
-          set -o pipefail
-          godot --headless --import --verbose 2>&1 | tee import.log
-          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
-            echo "::error::Godot reported script/resource errors during import"
-            exit 1
-          fi
+      - name: Set up Godot project
+        uses: ./.github/actions/setup-godot-project
 
       - name: Run benchmark twice
         env:

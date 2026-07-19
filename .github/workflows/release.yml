@@ -26,9 +26,6 @@ permissions:
   contents: write
 
 env:
-  # Keep in sync with godot-ci.yml / config/features in project.godot. The export
-  # templates downloaded below must match this exact version.
-  GODOT_VERSION: 4.7.0
   # rcodesign (apple-codesign) release used to sign/notarize macOS builds from
   # the Linux runner. Bump this if a newer release is needed; check
   # https://github.com/indygreg/apple-platform-rs/releases for the current tag.
@@ -63,20 +60,29 @@ jobs:
           sed -i "s/const COMMIT_SHA := \"dev\"/const COMMIT_SHA := \"${GITHUB_SHA}\"/" scripts/BuildInfo.gd
           grep -F "${GITHUB_SHA}" scripts/BuildInfo.gd
 
-      - name: Set up Godot ${{ env.GODOT_VERSION }}
-        uses: chickensoft-games/setup-godot@v2
+      # GODOT_VERSION pin now lives as the composite action's own default
+      # (.github/actions/setup-godot-project/action.yml); this job never runs
+      # GUT-based tests, so install-gut is off. Bundles the import (identical
+      # guard to godot-ci.yml: a script/resource error here would ship a
+      # broken build) with the Godot install; "Install export templates"
+      # below has no ordering dependency on the import (it only reads
+      # `godot --version` and downloads/unpacks templates), so it's safe to
+      # run after this combined step instead of between the old separate
+      # "Set up Godot" and "Import project" steps.
+      - name: Set up Godot project
+        uses: ./.github/actions/setup-godot-project
         with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false   # Standard build, not the .NET/C# build
+          install-gut: false
 
       - name: Install export templates
         # setup-godot installs the editor but not the export templates; fetch the
         # matching .tpz and drop the platform templates where Godot looks for them.
-        # Derive the version from the editor itself rather than GODOT_VERSION: Godot's
-        # first stable of a minor reports "4.7.stable" (no ".0") and is tagged
-        # "4.7-stable", while a patch is "4.7.1.stable" / "4.7.1-stable". Parsing
-        # `godot --version` keeps the template tag and install dir matched to whatever
-        # setup-godot resolved, instead of a hard-coded (and 404-prone) "4.7.0-stable".
+        # Derive the version from the editor itself rather than a hard-coded value:
+        # Godot's first stable of a minor reports "4.7.stable" (no ".0") and is
+        # tagged "4.7-stable", while a patch is "4.7.1.stable" / "4.7.1-stable".
+        # Parsing `godot --version` keeps the template tag and install dir matched
+        # to whatever the composite action's setup-godot step resolved, instead of
+        # a hard-coded (and 404-prone) "4.7.0-stable".
         run: |
           set -euo pipefail
           VER="$(godot --version | sed 's/\.official.*//')"   # e.g. 4.7.stable or 4.7.1.stable
@@ -90,18 +96,6 @@ jobs:
           unzip -q "$TPZ" -d tpl
           mv tpl/templates/* "$DEST/"
           rm -rf tpl "$TPZ"
-
-      - name: Import project
-        # Loads autoloads, class_name globals and resources so the export below
-        # resolves everything. A script/resource error here would ship a broken
-        # build, so fail loudly (same guard as godot-ci.yml).
-        run: |
-          set -o pipefail
-          godot --headless --import --verbose 2>&1 | tee import.log
-          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
-            echo "::error::Godot reported script/resource errors during import"
-            exit 1
-          fi
 
       - name: Export per platform
         run: |

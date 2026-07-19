@@ -40,8 +40,8 @@ permissions:
   pull-requests: write   # post the before/after comment
 
 env:
-  GODOT_VERSION: 4.7.0
-  GUT_VERSION: v9.7.0
+  # GODOT_VERSION/GUT_VERSION pins now live as the composite action's own
+  # defaults (.github/actions/setup-godot-project/action.yml).
   # CI-tuned measurement window: shorter than BenchmarkRunner's local defaults (120/600 ticks)
   # so this job stays quick; still long enough (5s of measured ticks after a 1s warmup) for a
   # stable mean/p95 on a fixed reference scenario. See tools/benchmark/README.md for the local,
@@ -62,29 +62,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Godot ${{ env.GODOT_VERSION }}
-        uses: chickensoft-games/setup-godot@v2
-        with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false
-
-      - name: Install GUT ${{ env.GUT_VERSION }}
-        # The project's test files extend GutTest, so GUT must be present before --import
-        # resolves the whole project (same requirement as godot-ci.yml / demo-video.yml).
-        run: |
-          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
-          mkdir -p addons
-          rm -rf addons/gut
-          cp -r /tmp/gut/addons/gut addons/gut
-
-      - name: Import & validate project
-        run: |
-          set -o pipefail
-          godot --headless --import --verbose 2>&1 | tee import.log
-          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
-            echo "::error::Godot reported script/resource errors during import"
-            exit 1
-          fi
+      - name: Set up Godot project
+        uses: ./.github/actions/setup-godot-project
 
       - name: Run benchmark
         id: run

@@ -35,11 +35,6 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
-env:
-  # Pinned versions — keep in sync with .github/workflows/godot-ci.yml.
-  GODOT_VERSION: 4.7.0
-  GUT_VERSION: v9.7.0
-
 jobs:
   # Best-effort: record the demo clips and hand them to the publish job as an
   # artifact. If Godot/Movie Maker flakes (headless GL can deadlock) this job
@@ -53,20 +48,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Godot ${{ env.GODOT_VERSION }}
-        uses: chickensoft-games/setup-godot@v2
+      # GODOT_VERSION/GUT_VERSION pins now live as the composite action's own
+      # defaults (.github/actions/setup-godot-project/action.yml). No
+      # workflow-level import step here: record-demos.sh does its own
+      # `godot --headless --import` before recording.
+      - name: Set up Godot project
+        uses: ./.github/actions/setup-godot-project
         with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false   # Standard build, not the .NET/C# build
-
-      - name: Install GUT ${{ env.GUT_VERSION }}
-        # The project's test files extend GutTest, so GUT must be present or the
-        # import below fails to resolve that class (same as godot-ci.yml).
-        run: |
-          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
-          mkdir -p addons
-          rm -rf addons/gut
-          cp -r /tmp/gut/addons/gut addons/gut
+          run-import: false
 
       - name: Install Xvfb + ffmpeg
         run: |

@@ -66,8 +66,8 @@ permissions:
   pull-requests: write   # update the PR description with the demo section, and post/update the state-transcript comment
 
 env:
-  GODOT_VERSION: 4.7.0
-  GUT_VERSION: v9.7.0
+  # GODOT_VERSION/GUT_VERSION pins now live as the composite action's own
+  # defaults (.github/actions/setup-godot-project/action.yml).
   MEDIA_BRANCH: demo-media
 
 jobs:
@@ -248,22 +248,15 @@ jobs:
             echo "$DELIM"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Set up Godot ${{ env.GODOT_VERSION }}
+      # Set up Godot + GUT + import as one unit (composite action). Reordered
+      # relative to the old inline steps to sit right after "Resolve demo
+      # source": Xvfb/ffmpeg install has no ordering dependency on the Godot
+      # setup/import (headless import needs no display server), so folding
+      # setup-godot/GUT/import into a single call and running Xvfb/ffmpeg
+      # after it is behavior-preserving.
+      - name: Set up Godot project
         if: steps.demo.outputs.record == 'true'
-        uses: chickensoft-games/setup-godot@v2
-        with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false
-
-      - name: Install GUT ${{ env.GUT_VERSION }}
-        # The project's test files extend GutTest, so GUT must be present or the
-        # import below fails to resolve that class (same as godot-ci.yml).
-        if: steps.demo.outputs.record == 'true'
-        run: |
-          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
-          mkdir -p addons
-          rm -rf addons/gut
-          cp -r /tmp/gut/addons/gut addons/gut
+        uses: ./.github/actions/setup-godot-project
 
       - name: Install Xvfb + ffmpeg
         # Movie Maker renders frames (software GL via Xvfb is fine — no GPU needed);
@@ -272,16 +265,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb ffmpeg
-
-      - name: Import & validate project
-        if: steps.demo.outputs.record == 'true'
-        run: |
-          set -o pipefail
-          godot --headless --import --verbose 2>&1 | tee import.log
-          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
-            echo "::error::Godot reported script/resource errors during import"
-            exit 1
-          fi
 
       - name: Record demo
         if: steps.demo.outputs.record == 'true'

@@ -57,11 +57,6 @@ permissions:
   contents: read
   pull-requests: write # post/update the diff summary comment
 
-env:
-  # Keep in sync with publish-site.yml / demo-video.yml / godot-ci.yml.
-  GODOT_VERSION: 4.7.0
-  GUT_VERSION: v9.7.0
-
 jobs:
   demo-diff:
     # Same-repo only: a fork PR's GITHUB_TOKEN can't post the summary comment (the same
@@ -80,11 +75,19 @@ jobs:
           # enough history for merge-base to resolve.
           fetch-depth: 0
 
-      - name: Set up Godot ${{ env.GODOT_VERSION }}
-        uses: chickensoft-games/setup-godot@v2
+      # Only the Godot install is shared via the composite action here: this
+      # workflow needs GUT vendored into TWO trees (this checkout AND the
+      # merge-base worktree below) from one clone, and its import happens
+      # inside dump-demo-states.sh itself (no workflow-level import/grep
+      # step) -- both genuinely differ from the single-tree pattern every
+      # other workflow uses, so they stay inline rather than being forced
+      # into the shared action.
+      - name: Set up Godot project
+        id: setup-godot
+        uses: ./.github/actions/setup-godot-project
         with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false
+          install-gut: false
+          run-import: false
 
       - name: Check out the merge-base tree
         run: |
@@ -93,9 +96,14 @@ jobs:
           echo "Merge-base: $BASE_SHA"
           git worktree add /tmp/base-tree "$BASE_SHA"
 
-      - name: Install GUT ${{ env.GUT_VERSION }} (both trees)
+      - name: Install GUT (both trees)
         # The project's test files extend GutTest, so GUT must be present or the import
-        # step inside dump-demo-states.sh fails to resolve that class.
+        # step inside dump-demo-states.sh fails to resolve that class. GUT_VERSION is
+        # read back from the composite action's own output above (its pin, whether
+        # that's an input override or its default) rather than hand-copied here, so
+        # this genuinely two-tree install still shares one source of truth.
+        env:
+          GUT_VERSION: ${{ steps.setup-godot.outputs.gut-version }}
         run: |
           git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
           for tree in "$GITHUB_WORKSPACE" /tmp/base-tree; do

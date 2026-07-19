@@ -21,13 +21,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-# GODOT_VERSION: keep in sync with config/features in project.godot (Standard /
-# GDScript build — gl_compatibility, no C#/.NET).
-# GUT_VERSION:   pinned GUT release matching the Godot version.
-env:
-  GODOT_VERSION: 4.7.0
-  GUT_VERSION: v9.7.0
-
 jobs:
   test:
     name: Validate & test
@@ -35,41 +28,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Godot ${{ env.GODOT_VERSION }}
-        uses: chickensoft-games/setup-godot@v2
-        with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false   # Standard build, not the .NET/C# build
+      # GODOT_VERSION/GUT_VERSION now live as the composite action's own
+      # defaults (.github/actions/setup-godot-project/action.yml) -- that's
+      # the single place to bump a version, instead of hand-editing the "keep
+      # in sync" env block this workflow used to carry.
+      - name: Set up Godot project
+        uses: ./.github/actions/setup-godot-project
 
-      - name: Install GUT ${{ env.GUT_VERSION }}
-        # Vendored at run time (pinned tag) so the framework isn't committed to
-        # the repo. The project's test files extend GutTest, so GUT must be
-        # present before the import step below or validation would fail to
-        # resolve that class. Local dev installs it the same way (test/README.md).
-        run: |
-          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
-          mkdir -p addons
-          rm -rf addons/gut
-          cp -r /tmp/gut/addons/gut addons/gut
-
-      - name: Import & validate project
-        # `--import` loads the whole project (autoloads, class_name globals and
-        # cross-script references all resolve) and reports compile/import errors.
-        # Godot doesn't reliably exit non-zero on script errors, so we fail the
-        # job if any error marker shows up in the import log.
-        run: |
-          set -o pipefail
-          godot --headless --import --verbose 2>&1 | tee import.log
-          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
-            echo "::error::Godot reported script/resource errors during import"
-            exit 1
-          fi
-          # The import pass compiles only what the imported resources reach, so a
-          # parse error in a script nothing references at import time can sail past
-          # it and only surface at runtime. Sweep-load every .gd to force full
-          # compilation; the sweep exits non-zero on any failure. Mirrors
-          # tools/check.sh's check_validate.
-          godot --headless -s tools/ci/compile_all_scripts.gd
+      - name: Compile-sweep every script
+        # The import pass (inside the composite action above) compiles only
+        # what the imported resources reach, so a parse error in a script
+        # nothing references at import time can sail past it and only
+        # surface at runtime. Sweep-load every .gd to force full compilation;
+        # the sweep exits non-zero on any failure. Mirrors tools/check.sh's
+        # check_validate.
+        run: godot --headless -s tools/ci/compile_all_scripts.gd
 
       - name: Run unit tests (GUT)
         # gut_cmdln runs without enabling the editor plugin; -gexit sets a
