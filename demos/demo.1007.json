@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure non-visual refactor: Battle.gd's AI_PERIOD const becomes a caller-configurable ai_period instance field, defaulting to the same value (60 ticks). At every default-value call site (every existing demo/scenario) the enemy AI runs on the identical cadence -- nothing about a recorded battle looks or plays any differently."
+}
