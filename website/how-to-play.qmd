@@ -515,7 +515,11 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
 Pressing a stance key alone only **arms** it for your next move/attack order ---
 it doesn't touch a unit that's already standing still. To change a selected
 unit's stance right where it stands, with no move needed, hold <kbd>Ctrl</kbd>
-while pressing the stance key; a toast confirms the write. Separately,
+while pressing the stance key; a toast confirms the write. Arming a new stance
+before <kbd>Shift</kbd>+right-clicking to queue a waypoint stamps that stance
+onto just the newly queued leg --- it takes effect once the unit's route
+reaches that leg, without touching whatever stance is already active on the
+leg the unit is currently marching. Separately,
 <kbd>I</kbd> toggles each selected unit's **rank relief** (discipline) mode ---
 the on-by-default knob behind rank cycling (see
 [Tactics](tactics.qmd#rank-cycling-trained-units)) --- with its own confirming
