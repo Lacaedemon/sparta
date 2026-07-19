@@ -85,10 +85,12 @@ jobs:
       - name: Upload demo media
         # One artifact carrying both the clips and their posters; the publish job
         # extracts it into website/media before Quarto renders. Retained 14 days
-        # (not the default/shorter window) so the website demo-diff workflow can
-        # download this same artifact from the latest successful run here as its
-        # PR-diff comparison baseline — a 1-day window would almost always have
-        # already expired by the time a PR's diff check runs.
+        # (not the default/shorter window) as a buffer against this job's own
+        # occasional Movie Maker/headless-GL flake (continue-on-error above): a
+        # longer window gives more room for a fallback to a recent successful
+        # run's artifact if that's ever needed. Not consumed by any other
+        # workflow — website-demo-diff.yml generates its own transcripts via an
+        # in-job git worktree merge-base checkout, not this artifact.
         uses: actions/upload-artifact@v4
         with:
           name: demo-media
