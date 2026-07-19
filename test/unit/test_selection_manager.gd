@@ -712,7 +712,7 @@ func test_ctrl_stance_key_and_rank_relief_toggle_are_disabled_during_playback() 
 	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
 
 
-# --- per-unit settings (walk_advance / reform_before_move) -----------
+# --- per-unit settings (walk_advance / reform_before_move / file_major_reform) -----------
 
 func test_set_selected_walk_advance_writes_every_selected_unit() -> void:
 	var sm := _sm()
@@ -772,6 +772,41 @@ func test_set_selected_reform_before_move_does_nothing_with_no_selection() -> vo
 	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
 
 
+func test_set_selected_file_major_reform_writes_every_selected_unit() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u1 := _unit()
+	u1.uid = 14
+	u1.file_major_reform = true
+	var u2 := _unit()
+	u2.uid = 15
+	u2.file_major_reform = true
+	b._by_uid[14] = u1
+	b._by_uid[15] = u2
+	sm._select(u1)
+	sm._select(u2)
+	sm.set_selected_file_major_reform(false)
+	assert_false(u1.file_major_reform, "the toggle applies to every selected unit")
+	assert_false(u2.file_major_reform, "not just the lead one")
+	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+			"routed as a recorded unit-settings-only command")
+	assert_eq(int(b._pending_orders[-1]["walk_advance_toggle"]), BattleScript.UnitSettingToggle.LEAVE,
+			"the file_major_reform-only call never touches walk_advance")
+	assert_eq(int(b._pending_orders[-1]["reform_toggle"]), BattleScript.UnitSettingToggle.LEAVE,
+			"or reform_before_move")
+
+
+func test_set_selected_file_major_reform_does_nothing_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	sm.set_selected_file_major_reform(false)
+	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
+
+
 func test_selected_settings_toggles_are_disabled_during_playback() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()
@@ -781,15 +816,18 @@ func test_selected_settings_toggles_are_disabled_during_playback() -> void:
 	u.uid = 13
 	u.walk_advance = false
 	u.reform_before_move = true
+	u.file_major_reform = true
 	b._by_uid[13] = u
 	sm._select(u)
 	var prev_mode = Replay.mode
 	Replay.mode = Replay.Mode.PLAYBACK
 	sm.set_selected_walk_advance(true)
 	sm.set_selected_reform_before_move(false)
+	sm.set_selected_file_major_reform(false)
 	Replay.mode = prev_mode
 	assert_false(u.walk_advance, "no walk_advance write during playback")
 	assert_true(u.reform_before_move, "no reform_before_move write during playback")
+	assert_true(u.file_major_reform, "no file_major_reform write during playback")
 	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
 
 

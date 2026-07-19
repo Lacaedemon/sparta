@@ -111,6 +111,9 @@ func test_cannot_demote_mid_maneuver_or_reform() -> void:
 func test_demote_drops_every_per_soldier_array() -> void:
 	var u := _make_seeded_unit()
 	assert_eq(u._sim_soldier_pos.size(), 10, "precondition: the bodies were seeded")
+	assert_eq(u._sim_soldier_file.size(), 10,
+		"precondition: file_major_reform's persistent file assignment was seeded too")
+	assert_ne(u._file_assignment_files, -1, "precondition: the file assignment was built at least once")
 	TierTransition.demote(u)
 	assert_eq(u.tier, FormationTier.FAR)
 	assert_eq(u._sim_soldier_pos.size(), 0)
@@ -124,6 +127,10 @@ func test_demote_drops_every_per_soldier_array() -> void:
 	assert_eq(u._sim_soldier_shield_hold_angle.size(), 0)
 	assert_eq(u._sim_soldier_facing.size(), 0)
 	assert_false(u._per_soldier_facing)
+	assert_eq(u._sim_soldier_file.size(), 0,
+		"file_major_reform's persistent file assignment is dropped like every other per-soldier array")
+	assert_eq(u._file_assignment_files, -1,
+		"the file-assignment cache key resets so promote() rebuilds fresh rather than reusing a stale files count")
 
 
 func test_demote_leaves_the_aggregate_fields_untouched() -> void:
@@ -300,6 +307,14 @@ func test_demote_then_promote_round_trip_is_consistent_with_the_aggregates() -> 
 	TierTransition.demote(u)
 	TierTransition.promote(u, 300, 12345)
 	assert_eq(u._sim_soldier_pos.size(), 8, "the aggregate living count round-trips exactly")
+	# promote()'s own soldier_world_slots() call lazily rebuilds file_major_reform's
+	# persistent file assignment fresh (Unit._ensure_file_assignment), triggered by the
+	# size mismatch demote() left behind -- this proves it actually happens, not just that
+	# demote() resets the fields (see test_demote_drops_every_per_soldier_array).
+	assert_eq(u._sim_soldier_file.size(), 8,
+		"the file assignment rebuilds index-aligned with the promoted body count")
+	assert_ne(u._file_assignment_files, -1,
+		"and the cache key is set, not left at demote()'s -1 sentinel")
 	var centroid := Vector2.ZERO
 	for p in u._sim_soldier_pos:
 		centroid += p

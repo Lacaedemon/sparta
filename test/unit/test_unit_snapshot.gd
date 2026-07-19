@@ -63,6 +63,7 @@ func _sample_unit() -> Unit:
 	u.ordered_facing = Vector2(0, 1)
 	u.walk_advance = true
 	u.reform_before_move = false   # non-default (the field defaults true), so the round-trip is provable
+	u.file_major_reform = false    # non-default (the field defaults true), so the round-trip is provable
 	u._under_fire = true
 	u._attack_cd = 0.2
 	u._pin_down_exposure_cd = 0.1
@@ -92,6 +93,8 @@ func _sample_unit() -> Unit:
 	u._sim_prone = PackedFloat32Array([0.0, 1.5])
 	u._sim_soldier_stamina = PackedFloat32Array([80.0, 60.0])
 	u._sim_soldier_facing = PackedVector2Array([Vector2(0, -1), Vector2(0, -1)])
+	u._sim_soldier_file = PackedInt32Array([0, 1])
+	u._file_assignment_files = 2   # non-default (the field defaults -1), so the round-trip is provable
 
 	var move := Order.new_move(Vector2(700, 300))
 	move.phase = Order.Phase.MARCH
@@ -133,6 +136,8 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.formation_mode, original.formation_mode)
 	assert_eq(restored.walk_advance, original.walk_advance)
 	assert_eq(restored.reform_before_move, original.reform_before_move)
+	assert_eq(restored.file_major_reform, original.file_major_reform)
+	assert_eq(restored._file_assignment_files, original._file_assignment_files)
 	assert_eq(restored.frontage_override, original.frontage_override)
 	assert_eq(restored._formation_angle, original._formation_angle)
 	assert_eq(restored._shattered, original._shattered)
@@ -150,6 +155,7 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(Array(restored._sim_soldier_stamina), Array(original._sim_soldier_stamina))
 	assert_eq(Array(restored._sim_soldier_facing), Array(original._sim_soldier_facing))
 	assert_eq(Array(restored._sim_soldier_weapon_id), Array(original._sim_soldier_weapon_id))
+	assert_eq(Array(restored._sim_soldier_file), Array(original._sim_soldier_file))
 
 	assert_eq(restored.orders.size(), 1)
 	assert_eq(restored.orders[0].type, Order.Type.MOVE)

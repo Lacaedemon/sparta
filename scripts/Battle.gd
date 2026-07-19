@@ -104,16 +104,17 @@ enum RankRelief { LEAVE = 0, ON = 1, OFF = 2 }
 # AND facing), which the sim reads, so it IS recorded and replayed like a move (see ORDER_WHEEL).
 const ORDER_COUNTERMARCH := -8
 # Sentinel for a unit-settings-only order (no movement, no target): writes the durable
-# per-unit walk_advance and/or reform_before_move flags, leaving all movement/
-# formation/stance state untouched. Mirrors ORDER_STANCE_ONLY's shape, but for the two
+# per-unit walk_advance, reform_before_move, and/or file_major_reform flags, leaving all
+# movement/formation/stance state untouched. Mirrors ORDER_STANCE_ONLY's shape, but for the
 # settings the player toggles per-unit from the info panel checkbox (SelectionManager.
-# set_selected_walk_advance/set_selected_reform_before_move) rather than the order-mode
-# stance -- see enqueue_unit_settings. Each toggle rides its own tri-state
-# UnitSettingToggle field ("walk_advance_toggle"/"reform_toggle"), so a mixed selection's
-# untouched setting isn't silently forced to one value.
+# set_selected_walk_advance/set_selected_reform_before_move/set_selected_file_major_reform)
+# rather than the order-mode stance -- see enqueue_unit_settings. Each toggle rides its own
+# tri-state UnitSettingToggle field ("walk_advance_toggle"/"reform_toggle"/
+# "file_major_reform_toggle"), so a mixed selection's untouched setting isn't silently
+# forced to one value.
 const ORDER_UNIT_SETTINGS_ONLY := -9
-# Tri-state toggle values for a unit-settings order's "walk_advance_toggle"/"reform_toggle"
-# fields, mirroring RankRelief's LEAVE/ON/OFF shape above.
+# Tri-state toggle values for a unit-settings order's "walk_advance_toggle"/"reform_toggle"/
+# "file_major_reform_toggle" fields, mirroring RankRelief's LEAVE/ON/OFF shape above.
 enum UnitSettingToggle { LEAVE = 0, ON = 1, OFF = 2 }
 # How far a single arrow-key nudge shifts the unit (world units). 30 wu is ~1.5 m
 # (WORLD_UNITS_PER_METER = 20) — a few soldier-widths, and under the side-step
@@ -670,6 +671,11 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 ## presentation matters more than closing speed for a formed pike line. Cavalry defaults
 ## reform_before_move OFF: a fast, loosely-formed regiment gains more from immediate
 ## responsiveness than from settling ranks before it steps off.
+##
+## `file_major_reform_default` is this type's starting value for Unit.file_major_reform --
+## optional, defaulting to `true` (file-major casualty reflow: a soldier keeps its own file
+## assignment, so a casualty only shortens that file's rear) for a loadout entry that omits
+## it. Every type keeps this default today; no entry below overrides it.
 func _default_loadout() -> Array:
 	return [
 		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT, "walk_advance_default": true},
@@ -737,12 +743,13 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 		u.mount_type_id = d["mount"]
 	u.training = d.get("training", 0.0)
 	u.disciplined = d.get("disciplined", true)
-	# Per-type starting values for the two player-togglable settings; a loadout entry
-	# that omits either key keeps the old global settings' own defaults (walk_advance off,
-	# reform_before_move on) -- see _default_loadout's own doc comment for which types
+	# Per-type starting values for the player-togglable settings; a loadout entry
+	# that omits a key keeps that setting's own default (walk_advance off, reform_before_move
+	# on, file_major_reform on) -- see _default_loadout's own doc comment for which types
 	# override them and why.
 	u.walk_advance = bool(d.get("walk_advance_default", false))
 	u.reform_before_move = bool(d.get("reform_before_move_default", true))
+	u.file_major_reform = bool(d.get("file_major_reform_default", true))
 	# Cavalry respond faster — more mobile and battle-conditioned.
 	if d["cav"]:
 		u.order_response_delay = 0.3
@@ -798,15 +805,17 @@ func _spawn_scenario(specs: Array) -> void:
 			d["disciplined"] = bool(spec["disciplined"])
 		if spec.has("atomic_response_s"):
 			d["atomic_response_s"] = float(spec["atomic_response_s"])
-		# Per-unit overrides for the two type-defaulted settings (Battle._default_loadout's
-		# own "walk_advance_default"/"reform_before_move_default" keys) -- a demo/test
-		# scenario that specifically needs a NON-default value on one spawned unit (e.g. to
-		# isolate a different mechanic than the type's own default is about) can request it
-		# here, same shape as "disciplined" above.
+		# Per-unit overrides for the type-defaulted settings (Battle._default_loadout's own
+		# "walk_advance_default"/"reform_before_move_default"/"file_major_reform_default"
+		# keys) -- a demo/test scenario that specifically needs a NON-default value on one
+		# spawned unit (e.g. to isolate a different mechanic than the type's own default is
+		# about) can request it here, same shape as "disciplined" above.
 		if spec.has("walk_advance"):
 			d["walk_advance_default"] = bool(spec["walk_advance"])
 		if spec.has("reform_before_move"):
 			d["reform_before_move_default"] = bool(spec["reform_before_move"])
+		if spec.has("file_major_reform"):
+			d["file_major_reform_default"] = bool(spec["file_major_reform"])
 		var team := int(spec.get("team", 0))
 		var pos := Vector2(float(spec.get("x", field.size.x * 0.5)), float(spec.get("y", field.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
@@ -1022,7 +1031,8 @@ func _physics_process(_delta: float) -> void:
 					float(o.get("anchor_offset", 0.0)),
 					int(o.get("form_up_group", -1)),
 					int(o.get("walk_advance_toggle", UnitSettingToggle.LEAVE)),
-					int(o.get("reform_toggle", UnitSettingToggle.LEAVE)))
+					int(o.get("reform_toggle", UnitSettingToggle.LEAVE)),
+					int(o.get("file_major_reform_toggle", UnitSettingToggle.LEAVE)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -1409,19 +1419,21 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 	_apply_order_live(cmd)
 
 
-## Set the durable per-unit walk_advance and/or reform_before_move flags on a set of units
-## in place -- no movement, no target (mirrors enqueue_stance's shape). Each toggle is a
-## UnitSettingToggle (LEAVE keeps each unit's current value; ON/OFF write it), so a mixed
-## selection's untouched setting isn't forced to one value. Recorded so replays stay exact:
-## unlike the old order-baked "walk_advance"/"reform" cmd fields this replaces, these
-## are genuine persistent unit state a mid-battle toggle can change, so the toggle itself --
-## not just its downstream effect -- has to ride the replay stream, the same way
-## enqueue_stance's rank-relief toggle already does.
+## Set the durable per-unit walk_advance, reform_before_move, and/or file_major_reform
+## flags on a set of units in place -- no movement, no target (mirrors enqueue_stance's
+## shape). Each toggle is a UnitSettingToggle (LEAVE keeps each unit's current value; ON/OFF
+## write it), so a mixed selection's untouched setting isn't forced to one value. Recorded
+## so replays stay exact: unlike the old order-baked "walk_advance"/"reform" cmd fields this
+## replaces, these are genuine persistent unit state a mid-battle toggle can change, so the
+## toggle itself -- not just its downstream effect -- has to ride the replay stream, the
+## same way enqueue_stance's rank-relief toggle already does.
 func enqueue_unit_settings(uids: Array, walk_advance_toggle: int = UnitSettingToggle.LEAVE,
-		reform_toggle: int = UnitSettingToggle.LEAVE) -> void:
+		reform_toggle: int = UnitSettingToggle.LEAVE,
+		file_major_reform_toggle: int = UnitSettingToggle.LEAVE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
-	if walk_advance_toggle == UnitSettingToggle.LEAVE and reform_toggle == UnitSettingToggle.LEAVE:
+	if walk_advance_toggle == UnitSettingToggle.LEAVE and reform_toggle == UnitSettingToggle.LEAVE \
+			and file_major_reform_toggle == UnitSettingToggle.LEAVE:
 		return
 	var cmd := {
 		"units": uids,
@@ -1431,6 +1443,7 @@ func enqueue_unit_settings(uids: Array, walk_advance_toggle: int = UnitSettingTo
 		"mode": OrderMode.NORMAL,
 		"walk_advance_toggle": walk_advance_toggle,
 		"reform_toggle": reform_toggle,
+		"file_major_reform_toggle": file_major_reform_toggle,
 	}
 	_pending_orders.append(cmd)
 	_apply_order_live(cmd)
@@ -1507,14 +1520,16 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			if u.current_order == null:
 				u.set_current_order(Order.new_stance(stance, rank_toggle))
 		return
-	# Unit-settings-only: write the durable walk_advance and/or reform_before_move flags on
-	# each unit, leaving all movement/formation/stance state untouched. Same
-	# instantaneous-write shape as the stance branch above, minus any queue/order-tree
-	# interaction -- these are plain unit fields, not something a replay transcript needs to
-	# show as an order.
+	# Unit-settings-only: write the durable walk_advance, reform_before_move, and/or
+	# file_major_reform flags on each unit, leaving all movement/formation/stance state
+	# untouched. Same instantaneous-write shape as the stance branch above, minus any
+	# queue/order-tree interaction -- these are plain unit fields, not something a replay
+	# transcript needs to show as an order.
 	if target_uid == ORDER_UNIT_SETTINGS_ONLY:
 		var walk_toggle: int = int(cmd.get("walk_advance_toggle", UnitSettingToggle.LEAVE))
 		var reform_toggle: int = int(cmd.get("reform_toggle", UnitSettingToggle.LEAVE))
+		var file_major_toggle: int = \
+				int(cmd.get("file_major_reform_toggle", UnitSettingToggle.LEAVE))
 		for uid in cmd["units"]:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u == null:
@@ -1527,6 +1542,10 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				u.reform_before_move = true
 			elif reform_toggle == UnitSettingToggle.OFF:
 				u.reform_before_move = false
+			if file_major_toggle == UnitSettingToggle.ON:
+				u.file_major_reform = true
+			elif file_major_toggle == UnitSettingToggle.OFF:
+				u.file_major_reform = false
 		return
 	# Arrow-key nudge: each unit steps a small fixed distance to its own side/rear,
 	# holding facing (ordered_facing set), leaving stance and formation untouched. A

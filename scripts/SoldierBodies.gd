@@ -90,6 +90,10 @@ static func seed(unit: Unit) -> void:
 ## by the fixed physics delta, so it reproduces on replay.
 static func step(unit: Unit, delta: float) -> void:
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
+	# Hand this tick's slots to couple() (see Unit._step_slots_for_couple's own doc) so it
+	# doesn't redo the identical computation moments later in the same tick.
+	unit._step_slots_for_couple = slots
+	unit._step_slots_for_couple_valid = true
 	var n: int = slots.size()
 	var old_n: int = unit._sim_soldier_pos.size()
 	if old_n != n:
@@ -446,8 +450,15 @@ static func couple(unit: Unit, delta: float) -> void:
 	# alone brings the bodies onto the arc, and coupling resumes once the wheel completes.
 	if unit.is_wheeling() or unit.frontage_anchor_offset != 0.0:
 		unit._body_follow_vel = Vector2.ZERO
+		unit._step_slots_for_couple_valid = false   # this tick's handoff goes unused
 		return
-	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
+	var slots: PackedVector2Array
+	if unit._step_slots_for_couple_valid and unit._step_slots_for_couple.size() == n:
+		# step() computed this exact tick's slots already -- reuse instead of recomputing.
+		slots = unit._step_slots_for_couple
+	else:
+		slots = unit.soldier_world_slots(unit.soldiers)
+	unit._step_slots_for_couple_valid = false
 	if slots.size() != n:
 		return   # arrays mid-resize this tick; couple next tick when they realign
 	# position_anchor_indices narrows the engaged-ranks selection down to the live

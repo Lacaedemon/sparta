@@ -251,6 +251,11 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_soldier_shield_id.remove_at(i)
 			if i < unit._sim_soldier_shield_hold_angle.size():
 				unit._sim_soldier_shield_hold_angle.remove_at(i)   # and the hold-angle state
+			if i < unit._sim_soldier_file.size():
+				# Keep file_major_reform's persistent file assignment index-aligned: trimming
+				# at the dead soldier's own index (not recomputing) is what makes a casualty
+				# preserve every OTHER survivor's file identity -- see Unit._ensure_file_assignment.
+				unit._sim_soldier_file.remove_at(i)
 			dead += 1
 	if dead == 0:
 		return

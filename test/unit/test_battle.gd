@@ -663,6 +663,48 @@ func test_unit_settings_order_skips_an_unresolvable_uid() -> void:
 	assert_true(u.walk_advance, "the resolvable unit in the same order still gets written")
 
 
+func test_unit_settings_order_writes_file_major_reform_in_place() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.file_major_reform = false
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"file_major_reform_toggle": BattleScript.UnitSettingToggle.ON})
+	assert_true(u.file_major_reform, "the ON toggle writes file_major_reform")
+	assert_true(u.has_move_target, "movement state is untouched")
+	assert_eq(u.move_target, Vector2(200, 0), "the march continues to the same point")
+
+
+func test_unit_settings_order_writes_file_major_reform_off() -> void:
+	# The companion of the ON case above: covers the OFF branch of the same toggle.
+	var u := _unit(1, Vector2.ZERO)
+	u.file_major_reform = true
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"file_major_reform_toggle": BattleScript.UnitSettingToggle.OFF})
+	assert_false(u.file_major_reform, "the OFF toggle writes file_major_reform off")
+
+
+func test_unit_settings_order_leave_toggle_keeps_file_major_reform_as_it_was() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.file_major_reform = true
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"file_major_reform_toggle": BattleScript.UnitSettingToggle.LEAVE})
+	assert_true(u.file_major_reform, "LEAVE keeps file_major_reform as it was")
+	# An omitted key defaults to LEAVE the same way walk_advance_toggle/reform_toggle do.
+	var u2 := _unit(2, Vector2.ZERO)
+	u2.file_major_reform = false
+	var b2 := _battle([u2])
+	b2._apply_order_cmd({"units": [2], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY})
+	assert_false(u2.file_major_reform, "an omitted file_major_reform_toggle key also defaults to LEAVE")
+
+
 func test_enqueue_unit_settings_records_and_applies_once() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	u.walk_advance = false
@@ -677,11 +719,27 @@ func test_enqueue_unit_settings_records_and_applies_once() -> void:
 
 func test_enqueue_unit_settings_with_both_toggles_leave_is_a_no_op() -> void:
 	# Nothing to write -- SelectionManager only calls this with at least one real toggle,
-	# but a bare double-LEAVE call (both defaults) shouldn't queue an empty order.
+	# but a bare all-LEAVE call (every default) shouldn't queue an empty order.
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
 	b.enqueue_unit_settings([1])
 	assert_true(b._pending_orders.is_empty(), "an all-LEAVE call queues no order")
+
+
+func test_enqueue_unit_settings_writes_file_major_reform_toggle() -> void:
+	# The third toggle (file_major_reform), on its own -- proving a call that only sets
+	# THIS toggle (walk_advance_toggle/reform_toggle left at their LEAVE defaults) is not
+	# swallowed by the all-LEAVE no-op check above.
+	var u := _unit(1, Vector2.ZERO)
+	u.file_major_reform = true
+	var b := _battle([u])
+	b.enqueue_unit_settings([1], BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.UnitSettingToggle.LEAVE, BattleScript.UnitSettingToggle.OFF)
+	assert_false(u.file_major_reform, "applied live")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_UNIT_SETTINGS_ONLY, "queued for recording")
+	assert_eq(int(cmd["file_major_reform_toggle"]), BattleScript.UnitSettingToggle.OFF,
+		"the toggle itself rides the queued command")
 
 
 func test_enqueue_unit_settings_is_disabled_during_playback() -> void:
@@ -1385,6 +1443,7 @@ func test_units_spawn_with_their_type_walk_advance_and_reform_before_move_defaul
 
 	var seen_walk_advance: Dictionary = {}
 	var seen_reform: Dictionary = {}
+	var seen_file_major: Dictionary = {}
 	for u in get_tree().get_nodes_in_group("units"):
 		var unit: Unit = u as Unit
 		if unit == null or unit.team != 0:
@@ -1393,6 +1452,7 @@ func test_units_spawn_with_their_type_walk_advance_and_reform_before_move_defaul
 		if not seen_walk_advance.has(type_name):
 			seen_walk_advance[type_name] = unit.walk_advance
 			seen_reform[type_name] = unit.reform_before_move
+			seen_file_major[type_name] = unit.file_major_reform
 
 	assert_true(seen_walk_advance.get("Spearmen", false),
 		"Spearmen spawn with walk_advance on (holding the phalanx presentation)")
@@ -1411,6 +1471,12 @@ func test_units_spawn_with_their_type_walk_advance_and_reform_before_move_defaul
 		"Infantry keeps the old global default (reform_before_move on)")
 	assert_true(seen_reform.get("Archers", false),
 		"Archers keeps the old global default (reform_before_move on)")
+
+	# file_major_reform has no per-type override today -- every type spawns with it on.
+	assert_true(seen_file_major.get("Spearmen", false), "Spearmen default file_major_reform on")
+	assert_true(seen_file_major.get("Infantry", false), "Infantry default file_major_reform on")
+	assert_true(seen_file_major.get("Archers", false), "Archers default file_major_reform on")
+	assert_true(seen_file_major.get("Cavalry", false), "Cavalry default file_major_reform on")
 
 
 func test_bare_unit_without_loadout_keeps_default_walk_advance_and_reform_before_move() -> void:

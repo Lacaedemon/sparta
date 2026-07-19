@@ -97,6 +97,11 @@ static func demote(u: Unit) -> void:
 	u._sim_soldier_shield_hold_angle = PackedFloat32Array()
 	u._sim_soldier_facing = PackedVector2Array()
 	u._per_soldier_facing = false
+	# file_major_reform's persistent file assignment goes with every other per-soldier
+	# array: dropped here, lazily rebuilt fresh on promotion (Unit._ensure_file_assignment,
+	# triggered by the size mismatch against promote()'s own soldier_world_slots() call).
+	u._sim_soldier_file = PackedInt32Array()
+	u._file_assignment_files = -1
 	u._render_dirty = true   # the render swaps to the aggregate (formation-grid) marks
 
 

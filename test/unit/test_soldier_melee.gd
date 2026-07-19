@@ -18,6 +18,13 @@ func _unit(uid: int, team: int, n: int, pos: Vector2, face: Vector2, spear: bool
 	u.position = pos
 	u.facing = face
 	u.training = 0.5
+	# file_major_reform defaults true, and _files()'s aspect-ratio ceiling gives even a
+	# 1-soldier unit more than one file -- under file_major_reform its lone soldier centres
+	# on the FULL (multi-file) frontage rather than at exactly `position`, adding a lateral
+	# offset these geometry-sensitive tests (reach, wound scale, knockback direction) don't
+	# expect. Row-major (the pre-existing behavior) keeps the fixture's simple, centred
+	# single-soldier geometry -- set before seed_sim_soldiers() so it takes effect at seed time.
+	u.file_major_reform = false
 	if spear:
 		u.anti_cavalry = true        # spearman profile
 		u.attack_range = 48.0        # long reach (#233: 2.4 m * 20)

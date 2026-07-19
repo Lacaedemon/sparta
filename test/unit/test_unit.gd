@@ -2393,6 +2393,37 @@ func test_formation_slots_one_per_soldier() -> void:
 	assert_eq(UnitFormation.slots(u, 0).size(), 0, "no soldiers -> no slots (an empty block)")
 
 
+func test_formation_slots_file_major_partial_rank_is_centred_not_edge_biased() -> void:
+	# 24 soldiers at 7 files: 3 full ranks (21) + a 3-man partial rank. Regression guard: an
+	# early implementation assigned the partial rank via raw `i % files`, which always piled
+	# the leftover onto whichever files a row-major count landed on first -- always the SAME
+	# edge of the block, so a fresh, zero-casualty spawn read as lopsided (one flank
+	# permanently a rank deeper) for any unit whose headcount isn't an exact multiple of its
+	# file count -- i.e. almost every unit in the game. The fix centres the partial rank the
+	# same way UnitFormation.block_slots' own row-major partial-rank centring already does.
+	var u := _make_unit(24)
+	u.frontage_override = 7
+	assert_true(u.file_major_reform, "sanity: file_major_reform defaults on")
+	var slots := u.formation_slots(24)
+	assert_eq(slots.size(), 24)
+	# Bucket soldiers by their local x (file) coordinate; the 3 files carrying the extra
+	# partial-rank member should be the 3 CENTRE files, not the 3 leftmost/rightmost.
+	var counts := {}
+	for s in slots:
+		var x: float = snappedf(s.x, 0.01)
+		counts[x] = counts.get(x, 0) + 1
+	var xs: Array = counts.keys()
+	xs.sort()
+	assert_eq(xs.size(), 7, "7 distinct file positions")
+	var deep_files: Array = []
+	for x in xs:
+		if counts[x] == 4:
+			deep_files.append(x)
+	assert_eq(deep_files.size(), 3, "exactly 3 files carry the extra (partial-rank) soldier")
+	assert_eq(deep_files, [xs[2], xs[3], xs[4]],
+			"the partial rank centres on the middle 3 files, not either edge")
+
+
 # --- frontage (resizable line width) ----------------------------
 
 func test_frontage_defaults_to_auto_from_max_soldiers() -> void:
