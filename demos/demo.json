@@ -1,4 +1,4 @@
 {
-  "skip": true,
-  "reason": "CI-instrument-only change: DemoDefects now derives its blob/overlap floors from the dumped soldier body radius instead of grid pitch, and gains judged-sample gating (routing, engagement-transition, casualty-compaction, lone-survivor exemptions). Nothing in gameplay or rendering changes, so there is no interaction to record."
+  "input": "demos/inputs/sweep-routers.json",
+  "caption": "Sweep routers: the cavalry sweeper holds on the closer Holdout while nothing is routing, switches onto the farther Fleeing infantry the moment it starts routing (~tick 55-85), then reverts to Holdout once Fleeing is run down and annihilated. This PR fixes the demo's own caption and state-dump ticks (previously sampled at ticks that missed the switch entirely) to actually show that middle phase."
 }
