@@ -1231,6 +1231,24 @@ body is sufficient to prevent it. (`Lacaedemon/sparta` PR #758 / issue #752, 202
 #752 was closed at the exact merge timestamp despite both the PR body and an issue comment
 stating it should stay open; reopened with an explanation.)
 
+**A second, independent occurrence narrows the mechanism further.** Issue #296 was
+auto-closed by PR #782's merge (2026-07-12, a real commit-message keyword match, since
+#782's first commit read "...closes #296") and reopened with an explanation. It was
+auto-closed a SECOND time by PR #981's merge (2026-07-18, 23:43:15Z — 2 seconds after the
+merge landed), even though NO commit in #981's entire squash-merge history contains a
+`closes`/`fixes`/`resolves` keyword anywhere near "#296" (checked the full squash commit
+body). `gh api repos/.../issues/296/events` shows this second close event's `commit_id` is
+`null` — unlike the first (keyword-matched) close, which had a real commit SHA attached.
+A null `commit_id` rules out the standard commit-message-keyword auto-close for this
+occurrence specifically, and points instead at something that fires off the PR's own
+DESCRIPTION text: #981's body mentioned "#296" prominently in an "Also found and fixed in
+passing" section — not a closing-keyword sentence, but strong textual proximity to the word
+"fixed". Still not a confirmed mechanism, but strengthens the case that merely naming an
+issue number anywhere in a PR body (not just a commit message, and not just a literal
+closing keyword) can trigger an auto-close on merge. Treat ANY issue-number mention
+anywhere in a PR's commits OR its description as a close risk, not just literal
+`closes #N` phrasing — check the mentioned issue's state immediately after every merge.
+
 ## A new physics-frame-keyed static cache needs an explicit `reset()` in any test that constructs its own fixture data
 
 This generalizes the existing `PathField.active is a global static` entry above beyond
