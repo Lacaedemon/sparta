@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/file-major-reform-contrast.json",
-  "caption": "Two identical Spearmen-vs-Infantry standoffs, side by side, both taking comparable losses (24 -> 15 soldiers each by tick 720). The left Spearmen keeps the new default file_major_reform: by tick 720 one file has thinned to a single rank while its neighbors still hold two or three -- a persistent, jagged dent that stayed put from around tick 360 onward. The right Spearmen opts out (file_major_reform: false, the historical behavior): its rear reflows and re-centres every tick instead, so no single file stays shallow for long -- every file sits within one rank of every other the whole clip through.",
+  "caption": "Two identical Spearmen-vs-Infantry standoffs, side by side, both taking comparable losses (24 -> 15 soldiers each by tick 720). Both regiments end up with about the same spread in file depth -- that's just the geometry of fitting fewer survivors into the same 7 files, either way. The real difference is WHICH file ends up shallowest: the left Spearmen (file_major_reform: true, the new default) settles on a real flank file by tick 600 and holds it through 720, because that's genuinely where more of its men fell. The right Spearmen (file_major_reform: false, the historical behavior) always settles on the dead-centre file instead, from tick 540 on, regardless of which files' soldiers actually died -- the grid keeps re-centring the shortfall onto the middle rather than tracking real losses.",
   "fixed_fps": 30,
   "max_frames": 720,
   "fps": 15,
