@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/auto-reform-mode-contrast.json",
+  "caption": "Auto reform mode (#997): two Spearmen-vs-Infantry standoffs, side by side, both Spearmen set to file_major_reform: \"auto\" -- the unit-level AI picks file-major vs row-major from the regiment's own disciplined flag instead of a fixed player choice. The left Spearmen keeps its default disciplined: true, so auto resolves to file-major (each soldier holds a persistent file assignment; a casualty only closes the gap in its own column). The right Spearmen has disciplined: false (a scenario override simulating a mob/levy), so auto resolves to row-major instead (the grid recomputes fresh from the live headcount every tick). Both regiments take real, comparable losses over the clip. The precise per-file mechanism (which specific column ends up shallow, and why) is proven directly by test_auto_reform_mode_battle.gd rather than by eyeballing this clip -- at these particular casualty counts the two regiments' survivor counts land on a soldier-count/file-count parity that makes a simple visual/geometric read of 'which column is shallowest' ambiguous, so this demo is included to show the AUTO option existing and applying per-regiment, not as the numeric proof of the underlying mechanism (that's PR #995's own file-major-reform-contrast.json, and this PR's own unit tests).",
+  "fixed_fps": 30,
+  "max_frames": 1080,
+  "fps": 12,
+  "width": 720
+}

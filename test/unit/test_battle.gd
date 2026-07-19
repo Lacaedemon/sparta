@@ -663,46 +663,51 @@ func test_unit_settings_order_skips_an_unresolvable_uid() -> void:
 	assert_true(u.walk_advance, "the resolvable unit in the same order still gets written")
 
 
-func test_unit_settings_order_writes_file_major_reform_in_place() -> void:
+func test_unit_settings_order_writes_file_major_reform_mode_in_place() -> void:
 	var u := _unit(1, Vector2.ZERO)
-	u.file_major_reform = false
+	u.file_major_reform_mode = UnitScript.ReformMode.ROW_MAJOR
 	u.move_target = Vector2(200, 0)
 	u.has_move_target = true
 	var b := _battle([u])
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
 		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
-		"file_major_reform_toggle": BattleScript.UnitSettingToggle.ON})
-	assert_true(u.file_major_reform, "the ON toggle writes file_major_reform")
+		"file_major_reform_mode_toggle": UnitScript.ReformMode.FILE_MAJOR})
+	assert_eq(u.file_major_reform_mode, UnitScript.ReformMode.FILE_MAJOR,
+		"the toggle writes file_major_reform_mode")
 	assert_true(u.has_move_target, "movement state is untouched")
 	assert_eq(u.move_target, Vector2(200, 0), "the march continues to the same point")
 
 
-func test_unit_settings_order_writes_file_major_reform_off() -> void:
-	# The companion of the ON case above: covers the OFF branch of the same toggle.
+func test_unit_settings_order_writes_file_major_reform_mode_to_auto() -> void:
+	# The companion of the FILE_MAJOR case above: covers writing AUTO specifically, not just
+	# the two modes the field's old bool shape could already represent.
 	var u := _unit(1, Vector2.ZERO)
-	u.file_major_reform = true
+	u.file_major_reform_mode = UnitScript.ReformMode.FILE_MAJOR
 	var b := _battle([u])
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
 		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
-		"file_major_reform_toggle": BattleScript.UnitSettingToggle.OFF})
-	assert_false(u.file_major_reform, "the OFF toggle writes file_major_reform off")
+		"file_major_reform_mode_toggle": UnitScript.ReformMode.AUTO})
+	assert_eq(u.file_major_reform_mode, UnitScript.ReformMode.AUTO,
+		"the toggle writes file_major_reform_mode to AUTO")
 
 
-func test_unit_settings_order_leave_toggle_keeps_file_major_reform_as_it_was() -> void:
+func test_unit_settings_order_leave_toggle_keeps_file_major_reform_mode_as_it_was() -> void:
 	var u := _unit(1, Vector2.ZERO)
-	u.file_major_reform = true
+	u.file_major_reform_mode = UnitScript.ReformMode.AUTO
 	var b := _battle([u])
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
 		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
-		"file_major_reform_toggle": BattleScript.UnitSettingToggle.LEAVE})
-	assert_true(u.file_major_reform, "LEAVE keeps file_major_reform as it was")
+		"file_major_reform_mode_toggle": BattleScript.REFORM_MODE_TOGGLE_LEAVE})
+	assert_eq(u.file_major_reform_mode, UnitScript.ReformMode.AUTO,
+		"LEAVE keeps file_major_reform_mode as it was")
 	# An omitted key defaults to LEAVE the same way walk_advance_toggle/reform_toggle do.
 	var u2 := _unit(2, Vector2.ZERO)
-	u2.file_major_reform = false
+	u2.file_major_reform_mode = UnitScript.ReformMode.ROW_MAJOR
 	var b2 := _battle([u2])
 	b2._apply_order_cmd({"units": [2], "x": 0.0, "y": 0.0,
 		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY})
-	assert_false(u2.file_major_reform, "an omitted file_major_reform_toggle key also defaults to LEAVE")
+	assert_eq(u2.file_major_reform_mode, UnitScript.ReformMode.ROW_MAJOR,
+		"an omitted file_major_reform_mode_toggle key also defaults to LEAVE")
 
 
 func test_enqueue_unit_settings_records_and_applies_once() -> void:
@@ -726,19 +731,19 @@ func test_enqueue_unit_settings_with_both_toggles_leave_is_a_no_op() -> void:
 	assert_true(b._pending_orders.is_empty(), "an all-LEAVE call queues no order")
 
 
-func test_enqueue_unit_settings_writes_file_major_reform_toggle() -> void:
-	# The third toggle (file_major_reform), on its own -- proving a call that only sets
+func test_enqueue_unit_settings_writes_file_major_reform_mode_toggle() -> void:
+	# The third toggle (file_major_reform_mode), on its own -- proving a call that only sets
 	# THIS toggle (walk_advance_toggle/reform_toggle left at their LEAVE defaults) is not
 	# swallowed by the all-LEAVE no-op check above.
 	var u := _unit(1, Vector2.ZERO)
-	u.file_major_reform = true
+	u.file_major_reform_mode = UnitScript.ReformMode.FILE_MAJOR
 	var b := _battle([u])
 	b.enqueue_unit_settings([1], BattleScript.UnitSettingToggle.LEAVE,
-			BattleScript.UnitSettingToggle.LEAVE, BattleScript.UnitSettingToggle.OFF)
-	assert_false(u.file_major_reform, "applied live")
+			BattleScript.UnitSettingToggle.LEAVE, UnitScript.ReformMode.ROW_MAJOR)
+	assert_eq(u.file_major_reform_mode, UnitScript.ReformMode.ROW_MAJOR, "applied live")
 	var cmd: Dictionary = b._pending_orders[-1]
 	assert_eq(int(cmd["target"]), BattleScript.ORDER_UNIT_SETTINGS_ONLY, "queued for recording")
-	assert_eq(int(cmd["file_major_reform_toggle"]), BattleScript.UnitSettingToggle.OFF,
+	assert_eq(int(cmd["file_major_reform_mode_toggle"]), UnitScript.ReformMode.ROW_MAJOR,
 		"the toggle itself rides the queued command")
 
 

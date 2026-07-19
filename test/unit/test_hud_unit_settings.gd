@@ -1,7 +1,8 @@
 extends GutTest
-## The selected-unit info panel's walk_advance / reform_before_move / file_major_reform
-## checkboxes: hidden with no unit shown, reflecting the FIRST selected unit's own values
-## when one is, and routing a click through SelectionManager to the whole current selection.
+## The selected-unit info panel's walk_advance / reform_before_move checkboxes and
+## file_major_reform_mode cycle button: hidden with no unit shown, reflecting the FIRST
+## selected unit's own values when one is, and routing a click through SelectionManager to
+## the whole current selection.
 
 const HUDScript = preload("res://scripts/HUD.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
@@ -25,7 +26,7 @@ func test_checkboxes_hidden_with_no_unit_selected() -> void:
 	var hud := _hud()
 	assert_false(hud._walk_advance_check.visible, "walk_advance checkbox starts hidden")
 	assert_false(hud._reform_before_move_check.visible, "reform_before_move checkbox starts hidden")
-	assert_false(hud._file_major_reform_check.visible, "file_major_reform checkbox starts hidden")
+	assert_false(hud._file_major_reform_btn.visible, "file_major_reform_mode button starts hidden")
 
 
 func test_show_unit_reveals_and_syncs_the_checkboxes() -> void:
@@ -33,14 +34,15 @@ func test_show_unit_reveals_and_syncs_the_checkboxes() -> void:
 	var u := _unit()
 	u.walk_advance = true
 	u.reform_before_move = false
-	u.file_major_reform = false
+	u.file_major_reform_mode = UnitScript.ReformMode.ROW_MAJOR
 	hud.show_unit(u, 1)
 	assert_true(hud._walk_advance_check.visible, "showing a unit reveals the checkbox")
 	assert_true(hud._reform_before_move_check.visible, "and the other one")
-	assert_true(hud._file_major_reform_check.visible, "and the file_major_reform one")
+	assert_true(hud._file_major_reform_btn.visible, "and the file_major_reform_mode button")
 	assert_true(hud._walk_advance_check.button_pressed, "the checkbox reflects the unit's own value")
 	assert_false(hud._reform_before_move_check.button_pressed, "for both settings")
-	assert_false(hud._file_major_reform_check.button_pressed, "and file_major_reform too")
+	assert_eq(hud._file_major_reform_btn.text, "Reform: Row-major",
+		"the button label reflects the unit's own mode")
 
 
 func test_show_unit_reflects_the_first_selected_units_value() -> void:
@@ -61,7 +63,7 @@ func test_clear_unit_hides_the_checkboxes() -> void:
 	hud.clear_unit()
 	assert_false(hud._walk_advance_check.visible, "clearing the selection hides the checkbox")
 	assert_false(hud._reform_before_move_check.visible, "and the other one")
-	assert_false(hud._file_major_reform_check.visible, "and the file_major_reform one")
+	assert_false(hud._file_major_reform_btn.visible, "and the file_major_reform_mode button")
 
 
 func test_walk_advance_checkbox_toggle_writes_the_whole_selection() -> void:
@@ -109,7 +111,7 @@ func test_reform_before_move_checkbox_toggle_writes_the_whole_selection() -> voi
 	assert_false(u.reform_before_move, "the checkbox toggle writes reform_before_move")
 
 
-func test_file_major_reform_checkbox_toggle_writes_the_whole_selection() -> void:
+func test_file_major_reform_button_press_cycles_the_whole_selection() -> void:
 	var hud := _hud()
 	var sm := SelectionManagerScript.new()
 	autofree(sm)
@@ -119,20 +121,21 @@ func test_file_major_reform_checkbox_toggle_writes_the_whole_selection() -> void
 	var u1 := UnitScript.new()
 	add_child_autofree(u1)
 	u1.uid = 1
-	u1.file_major_reform = true
+	u1.file_major_reform_mode = UnitScript.ReformMode.FILE_MAJOR
 	var u2 := UnitScript.new()
 	add_child_autofree(u2)
 	u2.uid = 2
-	u2.file_major_reform = true
+	u2.file_major_reform_mode = UnitScript.ReformMode.FILE_MAJOR
 	b._by_uid[1] = u1
 	b._by_uid[2] = u2
 	sm._select(u1)
 	sm._select(u2)
 	hud._sel_mgr = sm
 
-	hud._on_file_major_reform_toggled(false)
-	assert_false(u1.file_major_reform, "the checkbox toggle applies to every selected unit")
-	assert_false(u2.file_major_reform, "not just the lead one")
+	hud._on_file_major_reform_pressed()
+	assert_eq(u1.file_major_reform_mode, UnitScript.ReformMode.ROW_MAJOR,
+		"the button press cycles every selected unit one step past the lead's File-major")
+	assert_eq(u2.file_major_reform_mode, UnitScript.ReformMode.ROW_MAJOR, "not just the lead one")
 
 
 func test_walk_advance_checkbox_toggle_is_a_noop_with_no_selection_manager() -> void:
@@ -143,7 +146,7 @@ func test_walk_advance_checkbox_toggle_is_a_noop_with_no_selection_manager() -> 
 	hud._sel_mgr = null
 	hud._on_walk_advance_toggled(true)   # must not error
 	hud._on_reform_before_move_toggled(true)   # must not error
-	hud._on_file_major_reform_toggled(true)   # must not error
+	hud._on_file_major_reform_pressed()   # must not error
 	assert_null(hud._sel_mgr, "sanity: still no SelectionManager after the no-op toggles")
 
 

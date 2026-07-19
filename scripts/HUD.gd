@@ -36,12 +36,13 @@ var _info: Label
 var _chars_toggle: Button
 var _info_static: Label
 var _chars_expanded: bool = false
-# Per-unit settings checkboxes: walk_advance / reform_before_move / file_major_reform for
-# the shown unit, toggleable live -- see show_unit()/clear_unit() and the _on_*_toggled
-# handlers.
+# Per-unit settings: walk_advance / reform_before_move (plain on/off checkboxes) and
+# file_major_reform_mode (a 3-value mode, so a click-to-cycle button instead -- see
+# _REFORM_MODE_NAMES below) for the shown unit, changeable live -- see show_unit()/
+# clear_unit() and the _on_*_toggled/_on_file_major_reform_pressed handlers.
 var _walk_advance_check: CheckBox
 var _reform_before_move_check: CheckBox
-var _file_major_reform_check: CheckBox
+var _file_major_reform_btn: Button
 var _overlay: ColorRect
 var _overlay_label: Label
 var _menu_button: MenuButton
@@ -156,6 +157,14 @@ const _FORMATION_MENU_ORDER := [
 	UnitRef.FORMATION_SHIELD_WALL,
 	UnitRef.FORMATION_TESTUDO,
 ]
+
+# Display names for every file-major-reform mode, shared by the info panel's cycle button
+# label so the button text and Unit.ReformMode never drift apart.
+const _REFORM_MODE_NAMES := {
+	UnitRef.ReformMode.FILE_MAJOR: "File-major",
+	UnitRef.ReformMode.ROW_MAJOR: "Row-major",
+	UnitRef.ReformMode.AUTO: "Auto",
+}
 
 var _ctrl_bar: PanelContainer
 var _ctrl_formation_btn: MenuButton
@@ -417,13 +426,11 @@ func _ready() -> void:
 	_info_col.add_child(_info)
 
 	# Per-unit settings checkboxes: walk_advance ("no jog/sprint" -- mandatory for
-	# formed stances that break on a jog or sprint), reform_before_move (hold to settle
-	# ranks before marching), and file_major_reform (a casualty only closes up its own
-	# file instead of cascading the whole block). Hidden until a unit is shown
-	# (show_unit()/clear_unit()), and reflect the FIRST selected unit's own value;
-	# toggling applies to every currently selected unit (SelectionManager.
-	# set_selected_walk_advance/set_selected_reform_before_move/
-	# set_selected_file_major_reform) -- the same "shows the lead unit, writes the whole
+	# formed stances that break on a jog or sprint) and reform_before_move (hold to settle
+	# ranks before marching). Hidden until a unit is shown (show_unit()/clear_unit()), and
+	# reflect the FIRST selected unit's own value; toggling applies to every currently
+	# selected unit (SelectionManager.set_selected_walk_advance/
+	# set_selected_reform_before_move) -- the same "shows the lead unit, writes the whole
 	# selection" convention _ctrl_bar_update_formation's quick-toggle buttons already use.
 	_walk_advance_check = CheckBox.new()
 	_walk_advance_check.text = "Walk advance (no jog/sprint)"
@@ -437,11 +444,18 @@ func _ready() -> void:
 	_reform_before_move_check.toggled.connect(_on_reform_before_move_toggled)
 	_info_col.add_child(_reform_before_move_check)
 
-	_file_major_reform_check = CheckBox.new()
-	_file_major_reform_check.text = "File-major reform"
-	_file_major_reform_check.visible = false
-	_file_major_reform_check.toggled.connect(_on_file_major_reform_toggled)
-	_info_col.add_child(_file_major_reform_check)
+	# file_major_reform_mode (a casualty only closes up its own file instead of cascading
+	# the whole block, or the historical cascade, or Auto -- deferring to the unit's own
+	# `disciplined` flag) has THREE values, so it doesn't fit a checkbox: a plain Button
+	# that cycles File-major -> Row-major -> Auto -> File-major on each click, mirroring
+	# the control bar's Group-mode/Formation quick-toggle buttons' click-to-cycle shape.
+	# Same "shows the lead unit, writes the whole selection" convention as the two
+	# checkboxes above (SelectionManager.cycle_selected_file_major_reform_mode).
+	_file_major_reform_btn = Button.new()
+	_file_major_reform_btn.text = "Reform: File-major"
+	_file_major_reform_btn.visible = false
+	_file_major_reform_btn.pressed.connect(_on_file_major_reform_pressed)
+	_info_col.add_child(_file_major_reform_btn)
 
 	# The static-characteristics fold: a triangle toggle row (the order tree's own
 	# expand/collapse idiom, same glyphs) over the static stat lines, collapsed by
@@ -765,16 +779,19 @@ func show_unit(u, group_count: int) -> void:
 	_chars_toggle.visible = true
 	_sync_chars_fold()
 	# Per-unit settings: reflect the FIRST selected unit's own values (u, per the
-	# group_count/"+N more" convention above); a toggle applies to every selected unit
+	# group_count/"+N more" convention above); a toggle/click applies to every selected unit
 	# (see SelectionManager.set_selected_walk_advance/set_selected_reform_before_move/
-	# set_selected_file_major_reform). set_pressed_no_signal avoids re-firing `toggled`
-	# (and issuing a redundant order) just from syncing the display to a newly-shown unit.
+	# cycle_selected_file_major_reform_mode). set_pressed_no_signal avoids re-firing
+	# `toggled` (and issuing a redundant order) just from syncing the display to a
+	# newly-shown unit; the cycle button has no such signal to guard since its own label
+	# is just resynced text, not a pressed-state that would echo back an order.
 	_walk_advance_check.visible = true
 	_walk_advance_check.set_pressed_no_signal(u.walk_advance)
 	_reform_before_move_check.visible = true
 	_reform_before_move_check.set_pressed_no_signal(u.reform_before_move)
-	_file_major_reform_check.visible = true
-	_file_major_reform_check.set_pressed_no_signal(u.file_major_reform)
+	_file_major_reform_btn.visible = true
+	_file_major_reform_btn.text = "Reform: %s" \
+			% _REFORM_MODE_NAMES.get(u.file_major_reform_mode, "?")
 	_rebuild_order_tree(u)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = true
@@ -792,7 +809,7 @@ func clear_unit() -> void:
 	_info_static.visible = false
 	_walk_advance_check.visible = false
 	_reform_before_move_check.visible = false
-	_file_major_reform_check.visible = false
+	_file_major_reform_btn.visible = false
 	_rebuild_order_tree(null)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = false
@@ -911,10 +928,14 @@ func _on_reform_before_move_toggled(pressed: bool) -> void:
 		_ctrl_reform_btn.set_pressed_no_signal(pressed)
 
 
-## Info-panel checkbox handler: write file_major_reform on the whole current selection.
-func _on_file_major_reform_toggled(pressed: bool) -> void:
+## Info-panel button handler: cycle file_major_reform_mode (File-major -> Row-major -> Auto
+## -> File-major) on the whole current selection -- a 3-value mode doesn't fit a checkbox,
+## so this button click-to-cycles instead, mirroring the control bar's own quick-toggle
+## buttons. The button's own label is resynced from the live unit every frame by show_unit(),
+## so there's nothing to update here beyond issuing the order.
+func _on_file_major_reform_pressed() -> void:
 	if _sel_mgr != null:
-		_sel_mgr.set_selected_file_major_reform(pressed)
+		_sel_mgr.cycle_selected_file_major_reform_mode()
 
 
 ## Advance the acceleration sample toward this tick's mean speed. Same-tick repeat
