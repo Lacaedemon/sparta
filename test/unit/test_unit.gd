@@ -1265,6 +1265,130 @@ func test_terrain_clearance_scales_with_the_live_footprint() -> void:
 		"a smaller block needs less terrain clearance than a bigger one")
 
 
+# --- funnel-corner routing tie-break (same-team congestion gate, #979) ------
+
+func test_congested_same_team_router_true_when_close_and_aligned() -> void:
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(1000, 1000)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.team = 0
+	b.position = Vector2(1010, 1000)   # a few world units away -- well inside any real clearance
+	b.facing = Vector2.DOWN
+	assert_true(a._has_congested_same_team_router(),
+		"two same-team units close together, heading the same way, are congested")
+
+
+func test_congested_same_team_router_false_when_far_apart() -> void:
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(0, 0)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.team = 0
+	b.position = Vector2(5000, 5000)   # far beyond any realistic terrain_clearance radius
+	b.facing = Vector2.DOWN
+	assert_false(a._has_congested_same_team_router(),
+		"a distant same-team unit doesn't count as congestion")
+
+
+func test_congested_same_team_router_false_across_teams() -> void:
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(1000, 1000)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.team = 1
+	b.position = Vector2(1010, 1000)
+	b.facing = Vector2.DOWN
+	assert_false(a._has_congested_same_team_router(),
+		"an enemy unit isn't a same-team router, however close")
+
+
+func test_congested_same_team_router_false_when_the_other_is_dead() -> void:
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(1000, 1000)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.team = 0
+	b.position = Vector2(1010, 1000)
+	b.facing = Vector2.DOWN
+	b.state = Unit.State.DEAD
+	assert_false(a._has_congested_same_team_router(),
+		"a dead unit can't be crowding anyone")
+
+
+func test_congested_same_team_router_false_when_heading_opposite() -> void:
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(1000, 1000)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.team = 0
+	b.position = Vector2(1010, 1000)
+	b.facing = Vector2.UP   # heading the opposite way -- not converging on the same corner
+	assert_false(a._has_congested_same_team_router(),
+		"a same-team unit heading the opposite way isn't plausibly funneling onto the same corner")
+
+
+func test_funnel_lane_offset_is_zero_with_no_pathfield_active() -> void:
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.position = Vector2(500, 500)
+	assert_eq(u.funnel_lane_offset(Vector2(1500, 500)), 0.0,
+		"no active PathField means no detour is even possible, so no tie-break offset either")
+	PathField.active = old_pf
+
+
+func test_funnel_lane_offset_is_zero_when_the_leg_is_not_blocked() -> void:
+	var old_pf: PathField = PathField.active
+	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no obstacles registered
+	var u := _make_unit()
+	u.position = Vector2(500, 500)
+	assert_eq(u.funnel_lane_offset(Vector2(1500, 500)), 0.0,
+		"a clear straight line never reaches PathField's funnel corner, so no offset applies")
+	PathField.active = old_pf
+
+
+func test_funnel_lane_offset_is_zero_for_a_solo_detouring_unit() -> void:
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
+	pf.block_rect(Rect2(1000, 0, 64, 2000))   # vertical wall the straight line must cross
+	PathField.active = pf
+	var u := _make_unit()
+	u.position = Vector2(500, 500)
+	assert_eq(u.funnel_lane_offset(Vector2(1500, 500)), 0.0,
+		"a unit detouring with no same-team unit anywhere nearby gets its exact corner back")
+	PathField.active = old_pf
+
+
+func test_funnel_lane_offset_is_nonzero_when_a_same_team_unit_is_congested_nearby() -> void:
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
+	pf.block_rect(Rect2(1000, 0, 64, 2000))   # vertical wall both units' straight line must cross
+	PathField.active = pf
+	var a := _make_unit()
+	a.uid = 20
+	a.team = 0
+	a.position = Vector2(500, 500)
+	a.facing = Vector2.RIGHT
+	var b := _make_unit()
+	b.uid = 21
+	b.team = 0
+	b.position = Vector2(520, 500)   # a few world units away -- well inside any real clearance
+	b.facing = Vector2.RIGHT
+	var offset: float = a.funnel_lane_offset(Vector2(1500, 500))
+	var expected_lane: float = float(posmod(a.uid, 2) * 2 - 1)
+	assert_almost_eq(offset,
+		expected_lane * a.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION, 0.0001,
+		"a genuinely congested pair still gets the deterministic per-uid tie-break offset")
+	assert_ne(offset, 0.0, "the offset is genuinely nonzero for a congested pair")
+	PathField.active = old_pf
+
+
 # --- gradual centre pivot (orderly move orders) ------------------------------
 
 func test_rotate_facing_toward_takes_a_bounded_step() -> void:

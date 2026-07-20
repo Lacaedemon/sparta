@@ -86,6 +86,19 @@ func test_blocked_goal_falls_back_to_target() -> void:
 		"an unreachable goal falls back to a straight step")
 
 
+func test_is_leg_blocked_false_on_a_clear_line() -> void:
+	var pf := PathField.new(FIELD)
+	assert_false(pf.is_leg_blocked(Vector2(50, 50), Vector2(600, 50)),
+		"an unobstructed straight line needs no detour")
+
+
+func test_is_leg_blocked_true_when_a_wall_crosses_the_line() -> void:
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 0, 64, 480))
+	assert_true(pf.is_leg_blocked(Vector2(50, 50), Vector2(600, 50)),
+		"a wall crossing the straight line forces a detour")
+
+
 func test_has_path_true_on_a_clear_line() -> void:
 	var pf := PathField.new(FIELD)
 	assert_true(pf.has_path(Vector2(50, 50), Vector2(600, 50)),

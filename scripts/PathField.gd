@@ -174,6 +174,17 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: 
 	return corridor
 
 
+## Whether a from..to leg actually needs a detour -- i.e. the straight line
+## itself is blocked by clearance-grown terrain, so next_step() won't just
+## return `to` verbatim. Exposed so a caller can cheaply gate more expensive
+## per-leg bookkeeping (Unit.funnel_lane_offset's same-team congestion check)
+## on "is this unit actually about to detour" without duplicating
+## _segment_blocked's own rect-margin logic, or paying for that bookkeeping on
+## every straight-line leg a marching unit ever takes.
+func is_leg_blocked(from: Vector2, to: Vector2, clearance: float = 0.0) -> bool:
+	return _segment_blocked(from, to, clearance)
+
+
 ## Whether a route from `from` to `to` actually exists: either the straight line
 ## is clear, or (when it isn't) A* found a real path around the obstacles.
 ## Unlike next_step()'s return value, this makes the "no route exists" case

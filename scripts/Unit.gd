@@ -1972,7 +1972,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	var step: Vector2 = point
 	var terrain_speed: float = 1.0
 	if PathField.active != null:
-		step = PathField.active.next_step(position, point, terrain_clearance(), funnel_lane_offset())
+		step = PathField.active.next_step(position, point, terrain_clearance(), funnel_lane_offset(point))
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length() < 1.0:
@@ -2438,9 +2438,68 @@ const FUNNEL_LANE_SEPARATION_FRACTION := 0.15   # tuned
 ## PathField._funnel_corner), so it never pulls a unit closer to the obstacle
 ## than its own clearance already allows -- the offset corner still has to
 ## pass the same full-margin sightline check as the unaffected one.
-func funnel_lane_offset() -> float:
+##
+## Gated on two things, so a unit that isn't actually contesting a corner with
+## anyone gets its exact, un-nudged geometric corner back instead of a perturbed
+## one: (1) `point` is only reachable through a detour at all (PathField.active
+## .is_leg_blocked) -- a unit on a clear straight line never reaches
+## PathField._funnel_corner regardless, so there is nothing to tie-break; and
+## (2) _has_congested_same_team_router() -- some other living unit on the same
+## team is actually close enough, heading similarly enough, to plausibly be
+## steering for this same corner right now. An earlier version of this fix
+## applied the offset unconditionally to every detouring unit and measurably
+## perturbed routing on demos with no crowding at all (#979's own PR
+## discussion) -- solo terrain-routing is unaffected by either gate.
+func funnel_lane_offset(point: Vector2) -> float:
+	if PathField.active == null or not PathField.active.is_leg_blocked(position, point, terrain_clearance()):
+		return 0.0
+	if not _has_congested_same_team_router():
+		return 0.0
 	var lane: float = float(posmod(uid, 2) * 2 - 1)   # -1 or +1, stable per uid
 	return lane * terrain_clearance() * FUNNEL_LANE_SEPARATION_FRACTION
+
+
+# How far apart two same-team units' own terrain clearances may sum to (as a
+# multiple) and still count as "close enough to plausibly be funneling onto
+# the same corner" -- see _has_congested_same_team_router. Scales with each
+# pair's own footprint (terrain_clearance already does, per-unit) rather than
+# a flat world-unit distance, so a pair of small skirmishers doesn't inherit
+# a cavalry pair's much wider "nearby" radius. A tuned fraction, the same
+# family as FUNNEL_LANE_SEPARATION_FRACTION above: it exists purely to decide
+# when the tie-break is worth paying for, not a gameplay parameter. Verified
+# against the #979 repro (two Cavalry regiments spawned 229 wu apart, each
+# carrying ~219 wu of terrain_clearance -- comfortably inside this radius at
+# every tick of the march) and the site's wider demo catalog.
+const FUNNEL_CONGESTION_RANGE_FACTOR := 1.0   # tuned
+
+## Whether another living same-team unit is close enough, and heading closely
+## enough in the same general direction, that it could plausibly be steering
+## for this same (or a directly conflicting) funnel corner right now -- the
+## condition funnel_lane_offset() gates its tie-break nudge on.
+##
+## Deliberately coarse: proximity plus heading alignment, not "is the other
+## unit also blocked by literally the same rect right now" -- confirming that
+## would need a second PathField query (and the other unit's own current
+## destination, which Unit doesn't expose to a third party) for every
+## candidate, exactly the complexity this check exists to avoid. Two same-team
+## units genuinely converging on the same fixed corner necessarily close
+## distance with each other well before either reaches the obstacle itself --
+## the corner is a static point (PathField never reads position or identity),
+## so marching toward it is marching toward each other too -- so proximity
+## alone reliably fires with room to spare before the pair is anywhere close
+## to actual soldier-body contact.
+func _has_congested_same_team_router() -> bool:
+	for node in get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u == null or u == self or u.team != team or u.state == State.DEAD:
+			continue
+		var nearby_radius: float = (terrain_clearance() + u.terrain_clearance()) * FUNNEL_CONGESTION_RANGE_FACTOR
+		if position.distance_to(u.position) > nearby_radius:
+			continue
+		if facing.dot(u.facing) < 0.0:   # roughly the same general direction, not opposed
+			continue
+		return true
+	return false
 
 
 ## The formation grid's per-axis pitch in world units: the per-type file/rank spacing
