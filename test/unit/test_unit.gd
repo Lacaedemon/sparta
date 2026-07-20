@@ -1265,7 +1265,7 @@ func test_terrain_clearance_scales_with_the_live_footprint() -> void:
 		"a smaller block needs less terrain clearance than a bigger one")
 
 
-# --- funnel-corner routing tie-break (same-team congestion gate, #979) ------
+# --- funnel-corner routing tie-break (same-team congestion gate) -----------
 
 func test_congested_same_team_router_true_when_close_and_aligned() -> void:
 	var a := _make_unit()

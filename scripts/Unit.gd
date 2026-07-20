@@ -2446,10 +2446,9 @@ const FUNNEL_LANE_SEPARATION_FRACTION := 0.15   # tuned
 ## PathField._funnel_corner regardless, so there is nothing to tie-break; and
 ## (2) _has_congested_same_team_router() -- some other living unit on the same
 ## team is actually close enough, heading similarly enough, to plausibly be
-## steering for this same corner right now. An earlier version of this fix
-## applied the offset unconditionally to every detouring unit and measurably
-## perturbed routing on demos with no crowding at all (#979's own PR
-## discussion) -- solo terrain-routing is unaffected by either gate.
+## steering for this same corner right now. Applying the offset unconditionally
+## to every detouring unit measurably perturbs routing on demos with no
+## crowding at all -- solo terrain-routing is unaffected by either gate.
 func funnel_lane_offset(point: Vector2) -> float:
 	if PathField.active == null or not PathField.active.is_leg_blocked(position, point, terrain_clearance()):
 		return 0.0
@@ -2467,9 +2466,9 @@ func funnel_lane_offset(point: Vector2) -> float:
 # a cavalry pair's much wider "nearby" radius. A tuned fraction, the same
 # family as FUNNEL_LANE_SEPARATION_FRACTION above: it exists purely to decide
 # when the tie-break is worth paying for, not a gameplay parameter. Verified
-# against the #979 repro (two Cavalry regiments spawned 229 wu apart, each
-# carrying ~219 wu of terrain_clearance -- comfortably inside this radius at
-# every tick of the march) and the site's wider demo catalog.
+# against a repro of two Cavalry regiments spawned 229 wu apart, each carrying
+# ~219 wu of terrain_clearance -- comfortably inside this radius at every tick
+# of the march -- and the site's wider demo catalog.
 const FUNNEL_CONGESTION_RANGE_FACTOR := 1.0   # tuned
 
 ## Whether another living same-team unit is close enough, and heading closely
