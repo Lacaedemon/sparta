@@ -2411,6 +2411,33 @@ the feature; PRs #995 and #999, merged shortly after, each showed a near-identic
 ~35-40% "regression" against the same pre-#922 baseline, attributable to neither PR's
 own code.)
 
+**A third case, distinct from both above: a genuine same-machine before/after comparison
+settles whether a flagged regression is real, when the change is too small to plausibly
+cause it and the baseline isn't stale.** CI's baseline is CI-runner-relative and can't be
+reproduced locally byte-for-byte, but a LOCAL before/after comparison on the SAME machine,
+SAME seed, SAME scenario sidesteps that -- it doesn't need to match CI's absolute numbers,
+only to show whether the PR branch is faster/slower than its own merge-base:
+```sh
+GODOT_BIN=... SPARTA_BENCHMARK_WARMUP_TICKS=60 SPARTA_BENCHMARK_TICKS=300 \
+  bash tools/benchmark/run-benchmark.sh   # on the PR branch
+git checkout <merge-base-sha>             # detached HEAD; safe when no Godot job is running
+GODOT_BIN=... SPARTA_BENCHMARK_WARMUP_TICKS=60 SPARTA_BENCHMARK_TICKS=300 \
+  bash tools/benchmark/run-benchmark.sh   # same scenario, same seed, same machine
+git checkout <pr-branch>
+```
+(`SPARTA_BENCHMARK_WARMUP_TICKS`/`_TICKS` at 60/300 match `benchmark.yml`'s own CI-tuned
+window, not `BenchmarkRunner`'s local 120/600 defaults -- match CI's window for the
+comparison to mean anything.) On PR #1009 (three float instance-field reads added to
+`Unit.gd`/`FarTierRules.gd` -- no plausible mechanism for a real slowdown), CI reported a
+25.7%/29.2% regression labeled "CI-runner-noisy -- a human call, not an auto-block"; the
+local comparison showed the PR branch **faster** (mean 28.9ms vs merge-base's 32.4ms) on
+identical inputs, conclusively confirming pure runner noise rather than tracking down a
+phantom regression in code that couldn't have caused one. This is the concrete instance of
+`baseline.json`'s own documented ~20% swing between functionally-identical runs (see its
+`_comment`, citing #755) -- when a flagged regression's magnitude is in that same ~20-30%
+band AND the diff has no plausible causal mechanism, suspect noise first and verify this
+way rather than assuming the label is wrong or right without checking.
+
 ## File-major casualty reflow: verifying "which file stays shallow" needs de-rotation into local frame, and beware odd/even parity between remainder and file count
 
 Two lessons from independently re-verifying PR #995's own file-major-reform demo and
