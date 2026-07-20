@@ -1135,6 +1135,21 @@ Figure&nbsp;21: Two equal-reach Infantry regiments lock in melee. Once engaged, 
 </figcaption>
 </figure>
 </div>
+<p><strong>Disengage and step back</strong> (<kbd>Ctrl</kbd> + <kbd>↓</kbd>) is different in kind from the stances above: a one-shot maneuver, not a standing order. Where Give ground keeps fighting while backing away, disengaging breaks the fight off entirely — the unit stops striking back and steps a short, fixed distance to the rear, holding facing. Use it to pull a unit out of a fight that isn’t worth finishing, so it can regroup or be redirected elsewhere, rather than to hold a losing line (that’s what Give ground is for). It costs something too: the enemy’s own attack order doesn’t release just because you stopped fighting back, so it keeps swinging — with the flank/rear bonus — for as long as it can still reach the retreating line.</p>
+<div id="fig-disengage-under-pressure" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-disengage-under-pressure-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/disengage_step_back.jpg">
+  <source src="media/disengage_step_back.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-disengage-under-pressure-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;22: Two evenly-matched Infantry regiments hold a stalemate in melee. The player disengages their own unit — it clears its target and steps back, holding facing, while the enemy (still committed to the fight) keeps pressing after it.
+</figcaption>
+</figure>
+</div>
 <p>A volley is not instant: the arrows fly a real arc and <strong>land where they were aimed a moment later</strong>, so a fast unit can partly outrun a shot loosed at long range, and casualties arrive on the beat the arrows come down rather than the instant they leave the bow.</p>
 </section>
 <section id="group-attack-distribution" class="level2">
@@ -1155,7 +1170,7 @@ Figure&nbsp;21: Two equal-reach Infantry regiments lock in melee. Once engaged, 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;22: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;23: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
@@ -1199,7 +1214,7 @@ Table&nbsp;3: Terrain patches and their movement effects.
 </figure>
 </div>
 <p>Units automatically path around impassable terrain when ordered to move. A formed regiment takes the detour in good order: it steers by the corridor’s long-run direction and pivots onto it no faster than its corner man can run, so the block holds rank-and-file around the turn instead of smearing into a crowd. The forest is a different trade-off: going <em>around</em> it costs distance; going <em>through</em> it costs time. Generally it is faster to push cavalry or fast-moving infantry through rather than around a narrow forest.</p>
-<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;24</a>).</p>
+<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;25</a>).</p>
 <div id="fig-terrain-exact-footprint" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1210,7 +1225,7 @@ Table&nbsp;3: Terrain patches and their movement effects.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;23: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
+Figure&nbsp;24: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
 </figcaption>
 </figure>
 </div>
@@ -1224,7 +1239,7 @@ Figure&nbsp;23: A 30-man squad ordered straight down the lane just west of the h
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-funnel-lanes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;24: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
+Figure&nbsp;25: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
 </figcaption>
 </figure>
 </div>
