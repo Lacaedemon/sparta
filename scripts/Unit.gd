@@ -558,6 +558,12 @@ const SKIRMISH_KITE_DISTANCE: float = 100.0   # tuned in wu, between melee conta
 # outright, but well short of a real kite/retreat distance -- a "controlled withdrawal a
 # short distance to reset spacing," not a flight to ranged safety.
 const DISENGAGE_STEP_DISTANCE: float = 70.0   # tuned in wu, just past melee contact
+# Live disengage-step distance -- a caller-configurable parameter (CLAUDE.md's code
+# conventions) defaulting to DISENGAGE_STEP_DISTANCE above. Settable BEFORE the node
+# enters the tree, the same set-before-_ready contract rout_time/detection_range/etc.
+# already follow, so a demo/test/campaign unit can withdraw a different distance
+# without touching the default every other unit relies on.
+var disengage_step_distance: float = DISENGAGE_STEP_DISTANCE
 # Cycle charge (caracole): a melee unit charges its target, lands the impact strike,
 # then peels back to CYCLE_CHARGE_STANDOFF away to re-form before charging again — so
 # it keeps trading momentum-scaled charge hits instead of grinding in a static melee
@@ -3705,20 +3711,21 @@ func _wheel_pivot_point(dir: int) -> Vector2:
 	return flank + front_axis * front_depth
 
 
-## Pure geometry for disengage()'s backward step: DISENGAGE_STEP_DISTANCE straight
-## opposite `unit_facing`, world space -- the same shape as Battle.nudge_offset's BACK
-## case, kept as its own tiny static so the distance/direction math is directly
-## unit-testable without a live battle (Unit.gd doesn't preload Battle.gd; see the
-## NUDGE_*/ORDER_* mirror-constant comments above for why).
-static func disengage_offset(unit_facing: Vector2) -> Vector2:
+## Pure geometry for disengage()'s backward step: `step_distance` (default
+## DISENGAGE_STEP_DISTANCE) straight opposite `unit_facing`, world space -- the same
+## shape as Battle.nudge_offset's BACK case, kept as its own tiny static so the
+## distance/direction math is directly unit-testable without a live battle (Unit.gd
+## doesn't preload Battle.gd; see the NUDGE_*/ORDER_* mirror-constant comments above
+## for why).
+static func disengage_offset(unit_facing: Vector2, step_distance: float = DISENGAGE_STEP_DISTANCE) -> Vector2:
 	var fwd: Vector2 = unit_facing.normalized() if unit_facing.length() > 0.01 else Vector2.UP
-	return -fwd * DISENGAGE_STEP_DISTANCE
+	return -fwd * step_distance
 
 
 ## Disengage and step back (melee maneuver): a controlled withdrawal a short
 ## distance to reset spacing, distinct from a full retreat/rout. Breaks contact with the
-## unit's current opponent(s) and marches DISENGAGE_STEP_DISTANCE straight back, holding
-## facing the whole way -- the same "shuffle backward, don't pivot to face travel" style an
+## unit's current opponent(s) and marches disengage_step_distance (default
+## DISENGAGE_STEP_DISTANCE) straight back, holding facing the whole way -- the same "shuffle backward, don't pivot to face travel" style an
 ## arrow-key NUDGE back-step already uses (Order.new_nudge/NUDGE_BACK), just reachable from
 ## melee, where Battle._apply_order_cmd's own drill-step nudge deliberately refuses to fire
 ## on a FIGHTING unit ("don't yank a unit out of melee with a drill step"). No-op unless the
@@ -3750,7 +3757,7 @@ func disengage() -> void:
 	deploy_facing = Vector2.ZERO
 	_reform_on_arrival = false
 	ordered_facing = facing   # hold facing: step straight back, no pivot toward travel
-	move_target = position + disengage_offset(facing)
+	move_target = position + disengage_offset(facing, disengage_step_distance)
 	has_move_target = true
 	start_order_response()
 

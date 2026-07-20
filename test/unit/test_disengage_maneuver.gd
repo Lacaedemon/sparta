@@ -105,6 +105,12 @@ func test_disengage_holds_facing_and_marches_backward_over_several_ticks() -> vo
 	# default is free to march it back toward the still-close foe -- real, pre-existing AI
 	# behaviour this maneuver doesn't (and shouldn't) suppress, not something to assert
 	# against here.
+	# PathField.active is a global static that persists across GUT tests within the same
+	# run -- save/restore around any isolated-unit test that reaches _move_to() (per
+	# .claude/memories/sparta.md), so this test's result doesn't depend on whichever
+	# PathField an earlier test in the same suite run happened to leave active.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
 	var u := _make_unit()
 	var enemy := _make_unit()
 	enemy.team = 1
@@ -133,6 +139,7 @@ func test_disengage_holds_facing_and_marches_backward_over_several_ticks() -> vo
 	assert_true(retired, "the disengage order retired (arrived) within budget")
 	assert_gt(farthest_from_enemy, 30.0 + Unit.DISENGAGE_STEP_DISTANCE * 0.5,
 		"the unit actually put real distance between itself and its former opponent")
+	PathField.active = old_pf
 
 
 func test_disengage_uses_a_unique_order_sentinel() -> void:
