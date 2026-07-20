@@ -2498,3 +2498,75 @@ pre-existing redundant-computation pattern like this BEFORE assuming the new cod
 itself needs optimizing** -- the new code's own cost may be fine in isolation; it's
 often just exposing an existing 2x (or more) waste that was previously too cheap to
 notice. (`Lacaedemon/sparta` PR #995, 2026-07-19.)
+
+## Orchestrating multiple Godot-touching agents in parallel worktrees: the shared-process hazard bites BETWEEN agents, not just between manual sessions -- and self-checking via `tasklist` is not by itself sufficient
+
+Sparta tolerates only one Godot process running anywhere on the machine at a time
+(shared `user://settings.cfg`, keyed by project name, not path -- see the "shared
+ACROSS worktrees" entries above). Those entries already document the hazard for a
+single human/session switching contexts; it recurs identically, and more easily,
+when an orchestrating session dispatches SEVERAL background subagents that each
+own their own worktree and each independently run `tools/check.sh`. Worktree
+isolation prevents FILE-level collisions; it does nothing for this PROCESS-level
+one.
+
+**What actually went wrong, concretely (GII session, 2026-07-19/20, two
+subagents -- one fixing #979, one implementing #1014):** the orchestrator
+launched both agents' Godot-heavy verification work without serializing them.
+Two full sets of `check.sh` processes ended up running concurrently for real
+(confirmed via `Get-CimInstance Win32_Process -Filter "Name LIKE '%Godot%'"`
+showing two distinct console+engine PID pairs at two different `CreationDate`
+timestamps). Both runs had to be discarded and redone.
+
+**The self-checking discipline that ultimately worked, after two false
+resolutions:**
+1. A bare `tasklist //FI "IMAGENAME eq ...console.exe"` snapshot is not enough
+   evidence on its own -- it can't distinguish a genuinely separate second agent's
+   process from (a) a parent/child console+engine pair from ONE process (misread as
+   "two"), or (b) a brief gap between SEQUENTIAL Godot sub-invocations within a
+   single `check.sh` script (validate exits, then test/coverage starts fresh a few
+   minutes later -- misread as "the whole script finished" when only one phase
+   did). Both misreads happened in this session, in both directions -- once
+   trusting a stale "cleared" signal too early, once nearly discarding a
+   perfectly good result because of a wrong-time check.
+2. **The decisive tool is `Get-CimInstance Win32_Process -Filter "Name LIKE
+   '%Godot%'" | Select ProcessId, ParentProcessId, CreationDate, CommandLine`**
+   (not plain `tasklist`, not `Get-Process`) -- it gives the parent/child
+   relationship (rules out the console/engine misread) and the exact
+   `CreationDate` (lets you correlate a PID pair against a specific agent's own
+   push/commit timestamp instead of guessing from clustering).
+3. **A subagent that already has a background check running should verify the
+   claim independently before acting on an orchestrator's "it's clear, go
+   ahead" or "it collided, stop" message** -- in both directions. One subagent
+   caught the orchestrator's premature "exited" signal by re-querying itself
+   and correctly kept waiting; another caught a genuinely-overlapping process
+   the orchestrator had missed. Neither blindly trusted the other party's
+   claim, and that's what actually prevented a THIRD contaminated run.
+4. **A run that genuinely overlapped with another process is not automatically
+   worthless** -- check the actual OUTPUT for internal coherence (specific
+   line-numbers/counts tied to files the diff actually touches; a real GDScript
+   parse error or garbled/nonsensical numbers is the actual contamination tell,
+   e.g. scrambled keybinding values) before discarding a result just because
+   the timing was bad. The documented corruption failure mode (shared
+   `settings.cfg` keybinding scramble, a coverage report reflecting a stale
+   test set) is specific and detectable; a coherent, diff-relevant result that
+   merely ran during an overlap window is not automatically suspect.
+5. **Killing a stray/colliding process is a destructive action the harness's
+   own permission classifier blocks** (`Stop-Process`/`taskkill`, from either
+   the orchestrator or a subagent) -- don't try to work around that block.
+   Prevention (serialize launches) is the only real lever available; cleanup
+   after the fact requires waiting the process out, not killing it.
+
+**How to apply, as an orchestrator dispatching 2+ Godot-touching agents:**
+never assume worktree isolation is sufficient and let them self-serialize by
+individually checking `tasklist` -- that's exactly the mechanism that produced
+both misreads above. Instead, actively coordinate turns yourself: hold every
+agent but one, verify with `Get-CimInstance` (not `tasklist`) that the machine
+is genuinely clear, release exactly one agent, wait for ITS OWN completion
+report (not an external process-exit guess, which is unreliable across a
+multi-phase script), then release the next. The lesson from this session
+isn't "check less" -- both agents' own diligence in re-verifying rather than
+blindly trusting a claim is what actually avoided a third wasted run -- it's
+"check with the right tool, at the moment closest to the actual action, and
+let each party verify independently rather than trust-and-proceed."
+(`Lacaedemon/sparta`, GII+mwc session, 2026-07-19/20, PRs #1020/#1024.)
