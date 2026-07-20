@@ -25,9 +25,11 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 # play (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn
 # once as a visible margin strip at battle start (see _draw()). Sized to the game's maximum
 # visual range — the longest ranged attack (RANGED_RANGE) and the farthest a unit can
-# currently be noticed at (DETECTION_RANGE, the closest existing stand-in for a
+# currently be noticed at BY DEFAULT (DETECTION_RANGE, the closest existing stand-in for a
 # fog-of-war vision range, which this game doesn't have yet) — so a fleeing unit stays a
-# plausible target for as long as it's still visible, rather than vanishing early.
+# plausible target for as long as it's still visible, rather than vanishing early. Reads the
+# class constant, not any one unit's own (caller-configurable) detection_range field, since
+# this margin is a single battle-wide strip, not sized per unit.
 var ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
 var FIELD_WITH_MARGIN: Rect2 = FIELD.grow(ROUT_MARGIN)
 
