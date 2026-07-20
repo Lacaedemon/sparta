@@ -2499,9 +2499,7 @@ itself needs optimizing** -- the new code's own cost may be fine in isolation; i
 often just exposing an existing 2x (or more) waste that was previously too cheap to
 notice. (`Lacaedemon/sparta` PR #995, 2026-07-19.)
 
-## Orchestrating multiple Godot-touching agents in parallel worktrees: the shared-process
-hazard bites BETWEEN agents, not just between manual sessions -- and self-checking via
-`tasklist` is not by itself sufficient
+## Orchestrating multiple Godot-touching agents in parallel worktrees: the shared-process hazard bites BETWEEN agents, not just between manual sessions -- and self-checking via `tasklist` is not by itself sufficient
 
 Sparta tolerates only one Godot process running anywhere on the machine at a time
 (shared `user://settings.cfg`, keyed by project name, not path -- see the "shared
