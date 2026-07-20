@@ -131,7 +131,7 @@ const REFORM_MODE_TOGGLE_LEAVE := -1
 # distance ceiling (UnitManeuver.SIDESTEP_MAX_DISTANCE) so a lateral nudge always
 # reads as a shuffle rather than a turn-and-march.
 const NUDGE_DISTANCE := 30.0
-# Sentinel for a disengage-and-step-back order (issue #1014): a melee-engaged unit breaks
+# Sentinel for a disengage-and-step-back order: a melee-engaged unit breaks
 # contact with its current opponent(s) and marches a short, fixed distance straight back,
 # holding facing -- the combat-legal counterpart to the arrow-key NUDGE back-step above,
 # which refuses to fire on a FIGHTING unit (see ORDER_NUDGE's own "don't yank a unit out
@@ -1424,7 +1424,7 @@ func enqueue_countermarch(uids: Array, variant: int) -> void:
 	_apply_order_live(cmd)
 
 
-## Disengage and step back (issue #1014): each selected friendly unit currently in melee
+## Disengage and step back: each selected friendly unit currently in melee
 ## breaks contact and steps back a short, fixed distance, holding facing. Unlike
 ## enqueue_wheel/enqueue_countermarch, no per-unit geometry needs computing here --
 ## Unit.disengage() derives the step entirely from each unit's own live facing, so this

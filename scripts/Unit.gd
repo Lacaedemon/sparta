@@ -552,7 +552,7 @@ const MELEE_PRESS_FRACTION: float = 0.6
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
 const SKIRMISH_KITE_DISTANCE: float = 100.0   # tuned in wu, between melee contact and RANGED_RANGE
-# Disengage and step back (issue #1014): how far a melee-engaged unit marches on the
+# Disengage and step back: how far a melee-engaged unit marches on the
 # combat-legal back-step maneuver (see disengage() below). Past melee contact (~62, same
 # baseline SKIRMISH_KITE_DISTANCE is pinned against) so the common case clears the fight
 # outright, but well short of a real kite/retreat distance -- a "controlled withdrawal a
@@ -3603,7 +3603,7 @@ static func disengage_offset(unit_facing: Vector2) -> Vector2:
 	return -fwd * DISENGAGE_STEP_DISTANCE
 
 
-## Disengage and step back (melee maneuver, issue #1014): a controlled withdrawal a short
+## Disengage and step back (melee maneuver): a controlled withdrawal a short
 ## distance to reset spacing, distinct from a full retreat/rout. Breaks contact with the
 ## unit's current opponent(s) and marches DISENGAGE_STEP_DISTANCE straight back, holding
 ## facing the whole way -- the same "shuffle backward, don't pivot to face travel" style an

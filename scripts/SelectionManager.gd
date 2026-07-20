@@ -1131,7 +1131,7 @@ func _issue_countermarch(variant: int) -> void:
 	Sfx.play(&"order")
 
 
-## Disengage and step back (issue #1014): each selected friendly unit currently in melee
+## Disengage and step back: each selected friendly unit currently in melee
 ## breaks contact and steps back a short, fixed distance, holding facing. Routed through
 ## Battle so it's recorded and replays exactly, like every other order that moves the
 ## regiment (Battle.enqueue_disengage). Unit.disengage() itself no-ops for a unit that

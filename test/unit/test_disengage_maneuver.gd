@@ -1,5 +1,5 @@
 extends GutTest
-## Disengage and step back (melee maneuver, issue #1014): a FIGHTING unit breaks contact
+## Disengage and step back (melee maneuver): a FIGHTING unit breaks contact
 ## and marches DISENGAGE_STEP_DISTANCE straight back, holding facing. Two layers: the pure
 ## Unit.disengage_offset geometry (no SceneTree), and bare-unit _think() calls proving the
 ## combat/order-state transitions (mirrors test_chase_order.gd's pattern -- Unit.disengage()
@@ -146,3 +146,30 @@ func test_disengage_uses_a_unique_order_sentinel() -> void:
 	]
 	assert_false(sentinels.has(BattleScript.ORDER_DISENGAGE),
 		"ORDER_DISENGAGE doesn't collide with any existing order-target sentinel")
+
+
+# --- Battle.enqueue_disengage: the recorded-order path -----------------------
+# Mirrors test_countermarch_maneuver.gd's own "Battle.enqueue_countermarch" section:
+# a disengage moves the regiment (Unit.disengage() sets position/facing state), so it must
+# respect the same playback guard every other recorded order does, called directly here
+# since SelectionManager._issue_disengage()'s own playback check short-circuits before ever
+# reaching Battle.enqueue_disengage.
+
+func test_enqueue_disengage_noops_during_playback() -> void:
+	var b = BattleScript.new()
+	autofree(b)
+	var u := _make_unit()
+	u.uid = 77
+	b._by_uid[77] = u
+	var prev_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	b.enqueue_disengage([77])
+	Replay.mode = prev_mode
+	assert_true(b._pending_orders.is_empty(), "a disengage command issued during playback is dropped")
+
+
+func test_enqueue_disengage_noops_with_no_units() -> void:
+	var b = BattleScript.new()
+	autofree(b)
+	b.enqueue_disengage([])
+	assert_true(b._pending_orders.is_empty(), "an empty uid list queues nothing")

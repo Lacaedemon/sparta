@@ -1,5 +1,5 @@
 extends GutTest
-## Disengage and step back (issue #1014) in a LIVE battle: drive the real committed demo
+## Disengage and step back, in a LIVE battle: drive the real committed demo
 ## (demos/inputs/disengage-step-back.json) through the actual scripted-input recorder --
 ## the same one CI uses -- and confirm the Ctrl+Down hotkey genuinely breaks contact on a
 ## real, currently-FIGHTING regiment. Complements test_disengage_maneuver.gd's bare-unit
