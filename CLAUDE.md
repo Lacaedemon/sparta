@@ -216,9 +216,17 @@ NOT metric" list — those aren't gameplay parameters). A const remains the
 right home for the DEFAULT value; the instance/parameter is what the battle
 actually runs on (`Battle.field`/`terrain`/`spawn_line_ys` vs the `FIELD`/
 `TERRAIN`/`SPAWN_LINE_YS` consts is the worked example). In review, a new
-hard-coded tunable in a diff is a standard finding, the same weight as the
-units-convention checks. The migration audit of pre-existing hard-coded
-tunables is tracked in the issue tracker rather than done wholesale.
+hard-coded tunable in a NEW function/diff is a standard finding, the same
+weight as the units-convention checks — new code externalizes by default,
+unconditionally.
+
+**Existing functions are migrated opportunistically, not via a standing
+audit sweep.** #963 tracked a proactive migrate-incrementally-one-slice-
+per-PR effort; that's paused as of 2026-07-19 (owner directive) — don't
+pick a new slice off #963 just because it's open. Migrate an existing
+hard-coded constant to caller-configurable only when a real task actually
+needs it varied (a demo/test needs a non-default value, a bug fix needs
+per-caller control) — on the fly, driven by need, not swept wholesale.
 
 ### Comments: no issue-number references
 Don't cite issue numbers (`#123`) in code comments. The explanation itself
