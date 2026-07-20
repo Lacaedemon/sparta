@@ -120,7 +120,16 @@ func speed_at(world: Vector2) -> float:
 ## `clearance` is the querying unit's own half-extent (see Unit.terrain_clearance):
 ## sightlines treat the terrain rects as grown by it, so a wide block rounds an
 ## obstacle with its flank — not its centre — skimming the drawn edge.
-func next_step(from: Vector2, to: Vector2, clearance: float = 0.0) -> Vector2:
+##
+## `lane_offset` shifts the funnel corner sideways, along its own tangent
+## direction (see _funnel_corner) — purely a routing-tie-break knob for the
+## caller, not a distance this function measures anything against. Two units
+## of the same type, clearance, and heading resolve to the identical funnel
+## corner otherwise (PathField never reads unit identity or position, only
+## static geometry — see Unit.funnel_lane_offset for why that determinism
+## matters and how the offset is derived). Zero by default, so a solo query
+## still steers for the exact geometric corner.
+func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: float = 0.0) -> Vector2:
 	if not _segment_blocked(from, to, clearance):
 		return to
 	var path := find_path(from, to)
@@ -159,7 +168,7 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0) -> Vector2:
 	# spirals into the obstacle over a long straightaway). The corridor point
 	# stays the fallback whenever no grown corner is cleanly visible (compound
 	# obstacle geometry, or a walker already shoved inside its own margin).
-	var corner: Vector2 = _funnel_corner(from, to, path, clearance)
+	var corner: Vector2 = _funnel_corner(from, to, path, clearance, lane_offset)
 	if corner.is_finite():
 		return corner
 	return corridor
@@ -428,13 +437,24 @@ func _first_blocking_rect_index(from: Vector2, to: Vector2, clearance: float) ->
 ## slightly smaller standoff -- ratcheting the margin inward until a long
 ## straightaway walks the unit into the obstacle. A geometric corner is the
 ## same point every tick regardless of how close the last leg drifted.
-func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, clearance: float) -> Vector2:
+##
+## `lane_offset` nudges each of the (up to 4) candidate corners along the
+## rect's own tangent direction — perpendicular to `heading` — before the
+## visibility and cost checks run, so an offset candidate is only accepted
+## when it still clears the obstacle by the full margin, exactly like the
+## un-offset corner. This still returns the same point every tick for a given
+## `lane_offset` (it's baked into the candidate before any sightline test
+## runs, not derived from one), so it doesn't reopen the ratcheting hazard
+## the paragraph above rules out.
+func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, clearance: float,
+		lane_offset: float = 0.0) -> Vector2:
 	var idx: int = _first_blocking_rect_index(from, to, clearance)
 	if idx < 0:
 		return Vector2.INF
 	var rect: Rect2 = _block_rects[idx]
 	var grown: Rect2 = rect.grow(clearance + CORNER_STANDOFF)
 	var heading: Vector2 = to - from
+	var tangent: Vector2 = heading.orthogonal().normalized() if heading.length() > 0.0 else Vector2.ZERO
 	# Which way around THIS rect: the side of the rect the A* route squeezes
 	# past on -- which can deliberately be the geometrically-longer way, when
 	# other obstacles block the short one. Measured at the route's closest
@@ -455,15 +475,16 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 			route_side = signf(heading.cross(p - centre))
 	var best: Vector2 = Vector2.INF
 	var best_cost: float = INF
-	for c in [grown.position, Vector2(grown.end.x, grown.position.y),
+	for raw_c in [grown.position, Vector2(grown.end.x, grown.position.y),
 			grown.end, Vector2(grown.position.x, grown.end.y)]:
+		var c: Vector2 = raw_c + tangent * lane_offset
 		if from.distance_to(c) < CORNER_ARRIVE_EPS:
 			continue
 		# The corner's side about the same centre/axis: a corner strictly on
 		# the other side of the rect from the route is not a candidate. (For a
 		# diagonal heading the entry/exit corners shared by both roundings land
 		# on either sign -- the filter only excludes the strictly-opposite one.)
-		var side: float = signf(heading.cross(c - centre))
+		var side: float = signf(heading.cross(raw_c - centre))
 		if route_side != 0.0 and side != 0.0 and side != route_side:
 			continue
 		if _segment_blocked(from, c, clearance, false):

@@ -1963,7 +1963,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	var step: Vector2 = point
 	var terrain_speed: float = 1.0
 	if PathField.active != null:
-		step = PathField.active.next_step(position, point, terrain_clearance())
+		step = PathField.active.next_step(position, point, terrain_clearance(), funnel_lane_offset())
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length() < 1.0:
@@ -2378,6 +2378,43 @@ func _pivot_radius() -> float:
 ## skims an obstacle a 140-man line must round wide.
 func terrain_clearance() -> float:
 	return _pivot_radius() + soldier_body_radius()
+
+
+# How far apart two same-type units' funnel corners land, as a fraction of the
+# clearance each already carries around the obstacle. Two units offset in
+# opposite directions end up this many clearances apart, roughly one body's
+# width for a wide regiment -- enough for the soldier bodies to actually pass
+# each other instead of stacking. A tuned fraction, not a gameplay parameter:
+# it exists purely to break a routing tie, the same role CORNER_STANDOFF plays
+# in PathField itself.
+const FUNNEL_LANE_SEPARATION_FRACTION := 0.5   # tuned
+
+## A small, deterministic per-unit lateral offset passed to PathField.next_step's
+## funnel corner, so two units of the same type routing around the same obstacle
+## on the same side don't steer for the literal identical point.
+##
+## PathField deliberately never reads a unit's position or identity -- it's a
+## pure function of the static obstacle set and the querying unit's own
+## clearance, precisely so routing stays deterministic and replay-safe (see
+## PathField's own class doc on why NavigationAgent2D's RVO was rejected). That
+## means two same-type regiments (same terrain_clearance()) rounding the same
+## corner compute the exact same waypoint. Regiment-level _separate() can't
+## break the tie either -- it only pushes ENEMY pairs apart now; a same-team
+## crowd is resolved purely by soldier-body collision, which fights the shared
+## slot-grid target pulling both blocks right back onto each other and can take
+## hundreds of ticks to give way.
+##
+## The fix is to break the tie before the units ever converge, not rely on
+## physics to break it after they're jammed: derive a stable left/right lane
+## from `uid`, the same idiom _separate() already uses for its own co-located
+## push-apart tie-break (uid, not get_instance_id(), so it's replay-stable).
+## The offset is applied along the corner's tangent direction (see
+## PathField._funnel_corner), so it never pulls a unit closer to the obstacle
+## than its own clearance already allows -- the offset corner still has to
+## pass the same full-margin sightline check as the unaffected one.
+func funnel_lane_offset() -> float:
+	var lane: float = float(posmod(uid, 2) * 2 - 1)   # -1 or +1, stable per uid
+	return lane * terrain_clearance() * FUNNEL_LANE_SEPARATION_FRACTION
 
 
 ## The formation grid's per-axis pitch in world units: the per-type file/rank spacing
