@@ -1,0 +1,18 @@
+{
+  "_comment": "Disengage and step back (issue #1014): a fresh scenario -- not a copy of spear-standoff.json's setup, though it borrows that demo's proven staging shape (a moderate spawn gap, letting the enemy's own AI march it into melee under its own order, per .claude/memories/sparta-demos.md's 'spawned too close together gang-piles casualties' lesson). A single player Infantry regiment (500, 400) and a single enemy Infantry regiment (500, 600) start 200wu apart; the enemy AI closes the gap and locks the two in melee on its own -- contact lands ~tick 183; the player unit takes the opening losses first (24/82 by tick 185, while the enemy is still full-strength), the enemy catches up to match by tick ~200, and the fight then holds as an even stalemate (24 vs 24, 82 vs 82 morale) through tick ~290. At tick 300 the player unit is selected and ordered to disengage (Ctrl+Down): target_enemy clears immediately and it steps DISENGAGE_STEP_DISTANCE (70wu) straight back, holding facing. Verified via dump-state.sh: 'engaged' flips false by tick ~340 (contact genuinely broken) and the gap keeps growing afterward. The enemy's own ATTACK order never releases just because we stopped fighting back, though, so it keeps pressing and landing hits (with the flank/rear bonus) for as long as it can still reach the retreating line -- the already-documented cost of disengaging (see Unit.disengage()'s own doc comment) -- so the clip ends once the break is clearly established rather than running into that separate, ongoing pursuit.",
+  "seed": "48213",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 500, "y": 400, "count": 30 },
+    { "team": 1, "type": "Infantry", "x": 500, "y": 600, "count": 30 }
+  ],
+  "camera": [ { "tick": 0, "x": 500, "y": 460, "zoom": 1.6 } ],
+  "steps": [
+    { "tick": 10, "click": [500, 400] },
+    { "tick": 300, "key": "Down", "ctrl": true }
+  ],
+  "state": [10, 185, 200, 290, 300, 310, 340, 380, 420],
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 15,
+  "width": 720
+}

@@ -1134,6 +1134,42 @@ func test_issue_countermarch_noops_with_no_own_team_units_selected() -> void:
 	assert_true(b._pending_orders.is_empty(), "no command queued for an empty own-team uid list")
 
 
+## Same shape as the countermarch guard tests above, for _issue_disengage's own two early
+## returns (SelectionManager's copy of the playback/empty-selection guard every recorded
+## order respects -- Battle.enqueue_disengage's OWN internal copies of the same two guards
+## are covered directly in test_disengage_maneuver.gd, since this method's playback check
+## short-circuits before ever reaching them).
+func test_issue_disengage_noops_during_playback() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 40
+	b._by_uid[40] = u
+	sm._selected = [u]
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm._issue_disengage()
+	Replay.mode = prev_mode
+	assert_null(u.current_order, "no disengage order issued during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_issue_disengage_noops_with_no_own_team_units_selected() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var enemy := _seeded_unit(1)
+	enemy.uid = 41
+	b._by_uid[41] = enemy
+	sm._selected = [enemy]
+	sm._issue_disengage()
+	assert_null(enemy.current_order, "an all-enemy selection issues nothing")
+	assert_true(b._pending_orders.is_empty(), "no command queued for an empty own-team uid list")
+
+
 func test_dispatch_key_shift_v_issues_choral_countermarch() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()

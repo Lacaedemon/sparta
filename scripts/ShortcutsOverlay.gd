@@ -37,6 +37,7 @@ const _ROWS: Array = [
 	["Asymmetric explicatio (hold right / left flank fixed)", "Shift+B / Ctrl+B"],
 	["Form-up split mode", "Y (Shift+Y reverses)"],
 	["Nudge (small drill step, holds facing)", "Arrow keys"],
+	["Disengage and step back (breaks contact, holds facing)", "Ctrl+Down"],
 	["About-face (180° in place)", "V"],
 	["Quarter-turn left / right (90° in place)", "Q / E"],
 	["Wheel left / right (90° hinge on flank)", "Z / C"],

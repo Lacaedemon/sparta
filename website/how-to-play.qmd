@@ -57,6 +57,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Countermarch (exelismos) | <kbd>Shift+V</kbd> Choral/Persian (same ground) · <kbd>Ctrl+V</kbd> Macedonian (advance) · <kbd>Ctrl+Shift+V</kbd> Laconian (withdraw) |
 | Wheel (hinge on a flank) | <kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file) |
 | Nudge (small step, holds facing) | <kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↑</kbd> forward-step · <kbd>↓</kbd> back-step (a few metres each) |
+| Disengage and step back | <kbd>Ctrl</kbd> + <kbd>↓</kbd> on a unit currently in melee: breaks contact and steps back a short distance, holding facing |
 | Merge selected units | <kbd>M</kbd> |
 | Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall |
 | Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (bottom-right, on by default) |
@@ -237,6 +238,31 @@ pans, so you never lose camera control.
 
 Arrow-key nudges: the selected regiment side-steps left, then right, then
 back-steps, then forward-steps --- each a small step that holds its facing.
+:::
+
+**Disengage and step back (<kbd>Ctrl</kbd> + <kbd>↓</kbd>).** The plain back-step nudge
+above refuses to fire on a unit currently in melee --- a drill step shouldn't yank a
+regiment out of a fight by accident. <kbd>Ctrl</kbd> + <kbd>↓</kbd> is the deliberate,
+combat-legal version: it breaks contact and steps the unit back a short distance,
+holding facing the same way. A controlled withdrawal to reset spacing, not a retreat ---
+but it isn't free: the enemy's own attack keeps landing hits (with the flank/rear bonus)
+for as long as it can still reach you, so the fight has to actually be worth walking
+away from.
+
+::: {#fig-disengage-step-back .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/disengage_step_back.jpg">
+  <source src="media/disengage_step_back.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Disengage and step back: a player regiment locked in melee is ordered to
+disengage --- it breaks contact and steps back holding facing, while the
+still-committed enemy keeps pressing after it.
 :::
 
 **Centre pivot (larger turns).** A move order that turns a unit toward a new heading makes

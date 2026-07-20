@@ -1244,6 +1244,32 @@ enemy line while the two sides keep trading blows, instead of holding its
 ground the way the passive reach standoff would.
 :::
 
+**Disengage and step back** (<kbd>Ctrl</kbd> + <kbd>↓</kbd>) is different in kind from
+the stances above: a one-shot maneuver, not a standing order. Where Give ground keeps
+fighting while backing away, disengaging breaks the fight off entirely --- the unit
+stops striking back and steps a short, fixed distance to the rear, holding facing.
+Use it to pull a unit out of a fight that isn't worth finishing, so it can regroup or
+be redirected elsewhere, rather than to hold a losing line (that's what Give ground is
+for). It costs something too: the enemy's own attack order doesn't release just
+because you stopped fighting back, so it keeps swinging --- with the flank/rear bonus
+--- for as long as it can still reach the retreating line.
+
+::: {#fig-disengage-under-pressure .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/disengage_step_back.jpg">
+  <source src="media/disengage_step_back.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two evenly-matched Infantry regiments hold a stalemate in melee. The player
+disengages their own unit --- it clears its target and steps back, holding
+facing, while the enemy (still committed to the fight) keeps pressing after it.
+:::
+
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and
 casualties arrive on the beat the arrows come down rather than the instant they leave
