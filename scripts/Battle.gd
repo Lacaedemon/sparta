@@ -131,6 +131,16 @@ const REFORM_MODE_TOGGLE_LEAVE := -1
 # distance ceiling (UnitManeuver.SIDESTEP_MAX_DISTANCE) so a lateral nudge always
 # reads as a shuffle rather than a turn-and-march.
 const NUDGE_DISTANCE := 30.0
+# Sentinel for a disengage-and-step-back order (issue #1014): a melee-engaged unit breaks
+# contact with its current opponent(s) and marches a short, fixed distance straight back,
+# holding facing -- the combat-legal counterpart to the arrow-key NUDGE back-step above,
+# which refuses to fire on a FIGHTING unit (see ORDER_NUDGE's own "don't yank a unit out
+# of melee with a drill step" guard). Unit.disengage() creates and installs its own order
+# when the unit stands FIGHTING, and no-ops otherwise -- the same refusal contract
+# Unit.wheel()/countermarch() already have, just inverted (idle refuses; engaged
+# requires). Moves the regiment (position), which the sim reads, so it IS recorded and
+# replayed like a move (see ORDER_WHEEL).
+const ORDER_DISENGAGE := -10
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -1414,6 +1424,29 @@ func enqueue_countermarch(uids: Array, variant: int) -> void:
 	_apply_order_live(cmd)
 
 
+## Disengage and step back (issue #1014): each selected friendly unit currently in melee
+## breaks contact and steps back a short, fixed distance, holding facing. Unlike
+## enqueue_wheel/enqueue_countermarch, no per-unit geometry needs computing here --
+## Unit.disengage() derives the step entirely from each unit's own live facing, so this
+## just names which units to try it on. Recorded (same reasoning as ORDER_WHEEL: it moves
+## the regiment, which the sim reads) and applied immediately for zero-latency feedback
+## like every other order.
+func enqueue_disengage(uids: Array) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if uids.is_empty():
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_DISENGAGE,
+		"mode": OrderMode.NORMAL,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
 ## World-space offset for a nudge of `dir` given a unit's `facing`. LEFT / RIGHT
 ## are perpendicular to facing (a side-step); BACK is straight opposite facing (a
 ## back-step); FORWARD is straight along facing (a forward step). Each is
@@ -1642,6 +1675,15 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
 				u.countermarch(variant)
+		return
+	# Disengage and step back: each unit peels off its current fight and steps back a
+	# short distance, holding facing. Unit.disengage() creates its own order and no-ops
+	# unless the unit is actually FIGHTING right now -- see ORDER_DISENGAGE.
+	if target_uid == ORDER_DISENGAGE:
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null:
+				u.disengage()
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the

@@ -379,6 +379,9 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_RIGHT and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.RIGHT)   # side-step right (holds facing)
 		return true
+	elif event.keycode == KEY_DOWN and event.ctrl_pressed:
+		_issue_disengage()   # disengage and step back -- combat-legal even while FIGHTING
+		return true
 	elif event.keycode == KEY_DOWN and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.BACK)    # back-step (holds facing)
 		return true
@@ -1125,6 +1128,24 @@ func _issue_countermarch(variant: int) -> void:
 	if uids.is_empty():
 		return
 	_battle.enqueue_countermarch(uids, variant)
+	Sfx.play(&"order")
+
+
+## Disengage and step back (issue #1014): each selected friendly unit currently in melee
+## breaks contact and steps back a short, fixed distance, holding facing. Routed through
+## Battle so it's recorded and replays exactly, like every other order that moves the
+## regiment (Battle.enqueue_disengage). Unit.disengage() itself no-ops for a unit that
+## isn't actually fighting right now, so this can safely fire on a mixed selection.
+func _issue_disengage() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and _is_own_team(unit.team):
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_disengage(uids)
 	Sfx.play(&"order")
 
 
