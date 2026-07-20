@@ -1978,7 +1978,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	var step: Vector2 = point
 	var terrain_speed: float = 1.0
 	if PathField.active != null:
-		step = PathField.active.next_step(position, point, terrain_clearance())
+		step = PathField.active.next_step(position, point, terrain_clearance(), funnel_lane_offset(point))
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length() < 1.0:
@@ -2393,6 +2393,118 @@ func _pivot_radius() -> float:
 ## skims an obstacle a 140-man line must round wide.
 func terrain_clearance() -> float:
 	return _pivot_radius() + soldier_body_radius()
+
+
+# How far apart two same-type units' funnel corners land, as a fraction of the
+# clearance each already carries around the obstacle. Two units offset in
+# opposite directions end up this many clearances apart -- enough to break
+# the exact-tie deadlock (see funnel_lane_offset's own doc) without forcing
+# either unit into a much more oblique detour than its un-offset corner.
+# A tuned fraction, not a gameplay parameter: it exists purely to break a
+# routing tie, the same role CORNER_STANDOFF plays in PathField itself.
+#
+# Deliberately SMALL, not "as large as the deadlock fix could tolerate": a
+# larger fraction (tried up to 0.85) resolves the deadlock equally well, but
+# forces the funnel-losing unit onto a visibly sharper, more oblique corner
+# geometry that its own soldier bodies negotiate less smoothly -- a transient
+# self-compression (this unit's own bodies packing tightly against each
+# other while it threads the sharper turn), verified via the demo-defect
+# scan's `overlap` check on demos/inputs/hill-cavalry-crowding.json. That
+# relationship is NOT monotonic in the fraction -- 0.5 and 0.85 both produced
+# a worse compression than 0.15 does, with a narrow, fraction-sensitive band
+# around 0.75-0.8 that only barely cleared the check's floor (a margin under
+# 0.05 world units, too thin to trust against any future retune or platform
+# float difference) before getting worse again just above it. 0.15 is the
+# smallest fraction that still reliably breaks the deadlock over a long
+# trace (verified out to tick 1600) while keeping a comfortable margin
+# (>0.4 wu at every checked tick, not a knife's edge) on every demo-defect
+# verdict for both units.
+const FUNNEL_LANE_SEPARATION_FRACTION := 0.15   # tuned
+
+## A small, deterministic per-unit lateral offset passed to PathField.next_step's
+## funnel corner, so two units of the same type routing around the same obstacle
+## on the same side don't steer for the literal identical point.
+##
+## PathField deliberately never reads a unit's position or identity -- it's a
+## pure function of the static obstacle set and the querying unit's own
+## clearance, precisely so routing stays deterministic and replay-safe (see
+## PathField's own class doc on why NavigationAgent2D's RVO was rejected). That
+## means two same-type regiments (same terrain_clearance()) rounding the same
+## corner compute the exact same waypoint. Regiment-level _separate() can't
+## break the tie either -- it only pushes ENEMY pairs apart now; a same-team
+## crowd is resolved purely by soldier-body collision, which fights the shared
+## slot-grid target pulling both blocks right back onto each other and can take
+## hundreds of ticks to give way.
+##
+## The fix is to break the tie before the units ever converge, not rely on
+## physics to break it after they're jammed: derive a stable left/right lane
+## from `uid`, the same idiom _separate() already uses for its own co-located
+## push-apart tie-break (uid, not get_instance_id(), so it's replay-stable).
+## The offset is applied along the corner's tangent direction (see
+## PathField._funnel_corner), so it never pulls a unit closer to the obstacle
+## than its own clearance already allows -- the offset corner still has to
+## pass the same full-margin sightline check as the unaffected one.
+##
+## Gated on two things, so a unit that isn't actually contesting a corner with
+## anyone gets its exact, un-nudged geometric corner back instead of a perturbed
+## one: (1) `point` is only reachable through a detour at all (PathField.active
+## .is_leg_blocked) -- a unit on a clear straight line never reaches
+## PathField._funnel_corner regardless, so there is nothing to tie-break; and
+## (2) _has_congested_same_team_router() -- some other living unit on the same
+## team is actually close enough, heading similarly enough, to plausibly be
+## steering for this same corner right now. Applying the offset unconditionally
+## to every detouring unit measurably perturbs routing on demos with no
+## crowding at all -- solo terrain-routing is unaffected by either gate.
+func funnel_lane_offset(point: Vector2) -> float:
+	if PathField.active == null or not PathField.active.is_leg_blocked(position, point, terrain_clearance()):
+		return 0.0
+	if not _has_congested_same_team_router():
+		return 0.0
+	var lane: float = float(posmod(uid, 2) * 2 - 1)   # -1 or +1, stable per uid
+	return lane * terrain_clearance() * FUNNEL_LANE_SEPARATION_FRACTION
+
+
+# How far apart two same-team units' own terrain clearances may sum to (as a
+# multiple) and still count as "close enough to plausibly be funneling onto
+# the same corner" -- see _has_congested_same_team_router. Scales with each
+# pair's own footprint (terrain_clearance already does, per-unit) rather than
+# a flat world-unit distance, so a pair of small skirmishers doesn't inherit
+# a cavalry pair's much wider "nearby" radius. A tuned fraction, the same
+# family as FUNNEL_LANE_SEPARATION_FRACTION above: it exists purely to decide
+# when the tie-break is worth paying for, not a gameplay parameter. Verified
+# against a repro of two Cavalry regiments spawned 229 wu apart, each carrying
+# ~219 wu of terrain_clearance -- comfortably inside this radius at every tick
+# of the march -- and the site's wider demo catalog.
+const FUNNEL_CONGESTION_RANGE_FACTOR := 1.0   # tuned
+
+## Whether another living same-team unit is close enough, and heading closely
+## enough in the same general direction, that it could plausibly be steering
+## for this same (or a directly conflicting) funnel corner right now -- the
+## condition funnel_lane_offset() gates its tie-break nudge on.
+##
+## Deliberately coarse: proximity plus heading alignment, not "is the other
+## unit also blocked by literally the same rect right now" -- confirming that
+## would need a second PathField query (and the other unit's own current
+## destination, which Unit doesn't expose to a third party) for every
+## candidate, exactly the complexity this check exists to avoid. Two same-team
+## units genuinely converging on the same fixed corner necessarily close
+## distance with each other well before either reaches the obstacle itself --
+## the corner is a static point (PathField never reads position or identity),
+## so marching toward it is marching toward each other too -- so proximity
+## alone reliably fires with room to spare before the pair is anywhere close
+## to actual soldier-body contact.
+func _has_congested_same_team_router() -> bool:
+	for node in get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u == null or u == self or u.team != team or u.state == State.DEAD:
+			continue
+		var nearby_radius: float = (terrain_clearance() + u.terrain_clearance()) * FUNNEL_CONGESTION_RANGE_FACTOR
+		if position.distance_to(u.position) > nearby_radius:
+			continue
+		if facing.dot(u.facing) < 0.0:   # roughly the same general direction, not opposed
+			continue
+		return true
+	return false
 
 
 ## The formation grid's per-axis pitch in world units: the per-type file/rank spacing
