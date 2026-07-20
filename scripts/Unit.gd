@@ -2382,12 +2382,29 @@ func terrain_clearance() -> float:
 
 # How far apart two same-type units' funnel corners land, as a fraction of the
 # clearance each already carries around the obstacle. Two units offset in
-# opposite directions end up this many clearances apart, roughly one body's
-# width for a wide regiment -- enough for the soldier bodies to actually pass
-# each other instead of stacking. A tuned fraction, not a gameplay parameter:
-# it exists purely to break a routing tie, the same role CORNER_STANDOFF plays
-# in PathField itself.
-const FUNNEL_LANE_SEPARATION_FRACTION := 0.5   # tuned
+# opposite directions end up this many clearances apart -- enough to break
+# the exact-tie deadlock (see funnel_lane_offset's own doc) without forcing
+# either unit into a much more oblique detour than its un-offset corner.
+# A tuned fraction, not a gameplay parameter: it exists purely to break a
+# routing tie, the same role CORNER_STANDOFF plays in PathField itself.
+#
+# Deliberately SMALL, not "as large as the deadlock fix could tolerate": a
+# larger fraction (tried up to 0.85) resolves the deadlock equally well, but
+# forces the funnel-losing unit onto a visibly sharper, more oblique corner
+# geometry that its own soldier bodies negotiate less smoothly -- a transient
+# self-compression (this unit's own bodies packing tightly against each
+# other while it threads the sharper turn), verified via the demo-defect
+# scan's `overlap` check on demos/inputs/hill-cavalry-crowding.json. That
+# relationship is NOT monotonic in the fraction -- 0.5 and 0.85 both produced
+# a worse compression than 0.15 does, with a narrow, fraction-sensitive band
+# around 0.75-0.8 that only barely cleared the check's floor (a margin under
+# 0.05 world units, too thin to trust against any future retune or platform
+# float difference) before getting worse again just above it. 0.15 is the
+# smallest fraction that still reliably breaks the deadlock over a long
+# trace (verified out to tick 1600) while keeping a comfortable margin
+# (>0.4 wu at every checked tick, not a knife's edge) on every demo-defect
+# verdict for both units.
+const FUNNEL_LANE_SEPARATION_FRACTION := 0.15   # tuned
 
 ## A small, deterministic per-unit lateral offset passed to PathField.next_step's
 ## funnel corner, so two units of the same type routing around the same obstacle
