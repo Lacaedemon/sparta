@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure non-visual refactor: Unit.gd's DETECTION_RANGE const becomes a caller-configurable instance field (detection_range), defaulting to the same value. UnitTargeting.gd/OrderGuards.gd now read the per-unit field instead of the global const at every auto-acquisition/guard call site. At every default-value call site (every existing demo/scenario) targeting/detection behavior is byte-identical -- nothing about a recorded battle looks or plays any differently."
+}

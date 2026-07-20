@@ -637,6 +637,13 @@ var retreat_bounds: Rect2 = Rect2(-100000, -100000, 200000, 200000)
 
 const RADIUS: float = 0.9 * WorldScaleRef.WU_PER_M
 const DETECTION_RANGE: float = 9.5 * WorldScaleRef.WU_PER_M
+# Live auto-acquisition/detection radius -- a caller-configurable parameter (CLAUDE.md's
+# code conventions) defaulting to DETECTION_RANGE above. Settable BEFORE the node enters
+# the tree, the same set-before-_ready contract Battle.gd's ai_period/camera_smoothing and
+# Unit's own rout_time/shatter_strength_frac/rally_morale_threshold already follow, so a
+# demo/test/campaign unit can see farther or shorter without touching the default every
+# other unit relies on.
+var detection_range: float = DETECTION_RANGE
 # How often a melee unit applies a damage tick. This is the regiment's *aggregate*
 # cadence — one tick stands for the whole front rank trading blows over that span,
 # not a single soldier's swing — so it's tuned for battle pace, not literal sword
@@ -711,8 +718,10 @@ var rally_morale_threshold: float = RALLY_MORALE_THRESHOLD
 # Ranged combat. A ranged unit looses volleys at any enemy within
 # RANGED_RANGE that isn't already in melee contact — far outreaching melee's
 # ~62px contact, so archers skirmish from safety. RANGED_RANGE stays below
-# DETECTION_RANGE so an auto-acquired target is always in detection too. Volleys
-# fire on their own (slower) cadence and hit a touch softer per shot than melee.
+# DETECTION_RANGE so an auto-acquired target is always in detection too, by default
+# (a unit whose own detection_range is shrunk below RANGED_RANGE no longer gets this
+# for free). Volleys fire on their own (slower) cadence and hit a touch softer per
+# shot than melee.
 const RANGED_RANGE: float = 8.0 * WorldScaleRef.WU_PER_M
 # A router in archer reach has not broken contact: the rally check reuses the ranged
 # reach outright, so retuning RANGED_RANGE moves the rally radius with it (the identity

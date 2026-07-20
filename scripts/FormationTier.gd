@@ -21,8 +21,9 @@ const TIER_NAMES := {
 # Promotion/demotion thresholds, in world units — TUNED against the tools/benchmark/
 # measurements (the recorded numbers live in docs/large-scale-simulation-design.md,
 # "Validating tier thresholds"). Two constraints pin PROMOTE_RANGE from both sides:
-# - Floor (correctness): it must exceed auto-acquisition (Unit.DETECTION_RANGE, 190)
-#   plus the charge runway (Unit.SPRINT_START_DISTANCE, 200), so a formation is back at
+# - Floor (correctness): it must exceed auto-acquisition (Unit.DETECTION_RANGE, 190 --
+#   the default a unit's own caller-configurable detection_range field starts at) plus
+#   the charge runway (Unit.SPRINT_START_DISTANCE, 200), so a formation is back at
 #   individual fidelity before it can detect, shoot at, or charge anything.
 # - Ceiling (budget): the benchmark puts the reference engaged front (~1,700 soldiers,
 #   all close-tier) right at the 16.67ms/tick budget on the dev PC, and doubling it
