@@ -1,0 +1,20 @@
+{
+  "_comment": "Fresh scenario for the funnel-routing crowding fix (#979): the default 5v5 battle's two enemy Cavalry regiments (uid8 spawns west of the hill at x=963.95, uid9 spawns inside the hill's own x-range at x=1193.07 -- see demos/README.md's spawn table) both auto-advance north and round the SAME (shorter, west) side of the hill on their way to the player line. No scripted steps -- the enemy AI's own advance produces the crowding on its own; the camera just holds a wide static frame over the hill so both regiments stay in view for the whole march. World coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1060.0,
+      "y": 650.0,
+      "zoom": 0.85
+    }
+  ],
+  "steps": [],
+  "state": [8, 120, 300, 540, 780, 900],
+  "expect": [
+    {"tick": 8, "uid": 8, "field": "state", "value": "IDLE"},
+    {"tick": 8, "uid": 9, "field": "state", "value": "IDLE"},
+    {"tick": [780, 900], "uid": 8, "field": "state", "value": "MOVING"},
+    {"tick": [780, 900], "uid": 9, "field": "state", "value": "MOVING"}
+  ]
+}
