@@ -51,12 +51,15 @@
     420,
     480,
     540,
-    620
+    620,
+    630,
+    700,
+    780
   ],
   "expect": [
     {"tick": 60, "uid": 0, "field": "current_order", "value": "ATTACK"},
     {"tick": 60, "uid": 0, "field": "target_enemy_uid", "value": 1},
-    {"tick": [480, 620], "uid": 0, "field": "state", "value": "FIGHTING"},
-    {"tick": [480, 620], "uid": 0, "field": "engaged", "value": true}
+    {"tick": [630, 780], "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": [630, 780], "uid": 0, "field": "engaged", "value": true}
   ]
 }
