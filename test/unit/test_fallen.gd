@@ -64,3 +64,15 @@ func test_heap_frees_itself_after_its_lifetime() -> void:
 	assert_false(fx.is_queued_for_deletion(), "a fresh heap is still on the field")
 	fx._process(Fallen.LIFETIME)   # age past its lifetime
 	assert_true(fx.is_queued_for_deletion(), "a fully-faded heap frees itself")
+
+
+func test_spawn_accepts_caller_configured_parameters() -> void:
+	var parent := Node2D.new()
+	add_child_autofree(parent)
+	Fallen.spawn(parent, Vector2.ZERO, Color.WHITE, 10, Unit.MARK_RADIUS, 5.0, 12, 15.0, 0.8)
+	var fx: Fallen = parent.get_child(0)
+	assert_eq(fx._lifetime, 5.0, "custom lifetime is set")
+	assert_eq(fx._max_marks, 12, "custom max_marks is set")
+	assert_eq(fx._scatter, 15.0, "custom scatter is set")
+	assert_eq(fx._fade_start, 0.8, "custom fade_start is set")
+	assert_eq(fx._marks.size(), 10, "marks size reflects custom max_marks cap")
