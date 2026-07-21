@@ -231,7 +231,8 @@ const DEFAULT_ORDER_BINDINGS := {
 	# an earlier order mode above. Backtick (the key left of "1", unshifted grave
 	# accent) is the next unclaimed key on the keyboard.
 	"give_ground": KEY_QUOTELEFT,
-	"push": KEY_P,
+	# KEY_P collides with HUD._is_pause_keypress()'s pause toggle; KEY_SLASH is the next unclaimed key.
+	"push": KEY_SLASH,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
