@@ -1149,6 +1149,21 @@ func _issue_disengage() -> void:
 	Sfx.play(&"order")
 
 
+## Disengage with sacrifice (rearguard delay): rearguard detachment stays engaged to delay the foe
+## while the rest of the unit retreats.
+func _issue_disengage_with_sacrifice() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and _is_own_team(unit.team):
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_disengage_with_sacrifice(uids)
+	Sfx.play(&"order")
+
+
 ## Merge the selected friendly regiments into the first-selected one. Encoded
 ## as an order whose target is the primary uid — which IS in `units`, so Battle
 ## tells it apart from a relief (whose target is a friendly outside the selection).
