@@ -1,4 +1,4 @@
 {
-  "input": "demos/inputs/sweep-routers.json",
-  "caption": "Sweep routers: the cavalry sweeper holds on the closer Holdout while nothing is routing, switches onto the farther Fleeing infantry the moment it starts routing (~tick 55-60), then reverts to Holdout once Fleeing is run down and annihilated (~tick 85-90). This PR fixes the demo's own caption and state-dump ticks (previously sampled at ticks that missed the switch entirely) to actually show that middle phase."
+  "skip": true,
+  "reason": "Refactor migrating hard-coded transient visual effect tunables (RoutShockwave, VolleyTrail, Fallen) to caller-configurable parameters with default arguments per #963 (non-visual refactor preserving default visual parameters)."
 }
