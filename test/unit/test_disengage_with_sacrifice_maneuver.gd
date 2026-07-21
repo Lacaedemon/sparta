@@ -81,3 +81,28 @@ func test_enqueue_disengage_with_sacrifice_noops_during_playback() -> void:
 	b.enqueue_disengage_with_sacrifice([88])
 	Replay.mode = prev_mode
 	assert_true(b._pending_orders.is_empty(), "disengage_with_sacrifice during playback is dropped")
+
+
+func test_enqueue_disengage_with_sacrifice_noops_with_no_units() -> void:
+	var b = BattleScript.new()
+	autofree(b)
+	b.enqueue_disengage_with_sacrifice([])
+	assert_true(b._pending_orders.is_empty(), "an empty uid list queues nothing")
+
+
+func test_enqueue_disengage_with_sacrifice_applies_order_to_units() -> void:
+	var b = BattleScript.new()
+	autofree(b)
+	var u := _make_unit(100)
+	u.uid = 99
+	var enemy := _make_unit(100)
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)
+	u.state = Unit.State.FIGHTING
+	u.target_enemy = enemy
+	b._by_uid[99] = u
+
+	b.enqueue_disengage_with_sacrifice([99])
+
+	assert_eq(b._pending_orders.size(), 1, "queues disengage_with_sacrifice command")
+	assert_eq(u.soldiers, 90, "applies disengage_with_sacrifice to unit 99")
