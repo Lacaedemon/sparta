@@ -231,6 +231,7 @@ const DEFAULT_ORDER_BINDINGS := {
 	# an earlier order mode above. Backtick (the key left of "1", unshifted grave
 	# accent) is the next unclaimed key on the keyboard.
 	"give_ground": KEY_QUOTELEFT,
+	"push": KEY_P,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.

@@ -338,6 +338,7 @@ const ORDER_CHASE := 11
 const ORDER_WEDGE_CHARGE := 12
 const ORDER_KNOCKBACK_FOCUS := 13
 const ORDER_GIVE_GROUND := 14
+const ORDER_PUSH := 15
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),

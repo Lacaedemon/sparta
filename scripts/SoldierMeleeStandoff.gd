@@ -48,6 +48,11 @@ const STANDOFF_STRENGTH: float = 40.0
 # different rate than the passive press-in it can override (see accumulate() below).
 const GIVE_GROUND_STRENGTH: float = STANDOFF_STRENGTH
 
+# PUSH's own bias magnitude (world units/sec). Reuses STANDOFF_STRENGTH's own value --
+# an engaged unit pressing forward to drive the opponent backward uses the same strength
+# as standoff_bias's press-in and give_ground_bias's withdrawal.
+const PUSH_STRENGTH: float = STANDOFF_STRENGTH
+
 
 ## The reach-asymmetric standoff bias for one soldier at `pos` (reach `my_reach`) against its
 ## nearest enemy at `enemy_pos` (reach `enemy_reach`).
@@ -97,69 +102,44 @@ static func give_ground_bias(pos: Vector2, enemy_pos: Vector2) -> Vector2:
 	return away_dir * GIVE_GROUND_STRENGTH
 
 
+## PUSH's own bias for one soldier at `pos` pressing toward its nearest enemy at
+## `enemy_pos` -- a constant-rate forward press driving the opponent backward through
+## sustained physical pressure. Always points directly toward the enemy at full PUSH_STRENGTH.
+static func push_bias(pos: Vector2, enemy_pos: Vector2) -> Vector2:
+	var offset: Vector2 = enemy_pos - pos
+	var d: float = offset.length()
+	var towards_dir: Vector2 = offset / d if d > 0.01 else Vector2.RIGHT
+	return towards_dir * PUSH_STRENGTH
+
+
 ## Recompute the standoff bias for every engaged soldier this tick, ADDING it into
 ## `_sim_steer` (never overwriting). Must run AFTER SoldierSteering.accumulate (which
 ## clears+rewrites the array with the friendly-avoidance bias -- this composes on top of it,
 ## it doesn't replace it) and BEFORE UnitRef.step_all_sim_soldiers reads `_sim_steer` as this
 ## tick's feed-forward.
-##
-## Since standoff_bias is now UNCONDITIONALLY zero whenever `my_reach >= enemy_reach` (see its
-## own doc comment), only a soldier that could plausibly be OUTREACHED by some engaged enemy
-## needs a nearest-enemy lookup at all -- a soldier whose own unit already has the longest
-## reach among every opposing engaged unit can never get a nonzero bias, so querying for it
-## would just resolve to zero every time. GIVE_GROUND breaks that shortcut for its own unit:
-## a give-ground soldier needs a nearest-enemy lookup REGARDLESS of reach (give_ground_bias has
-## no reach gate at all), so both the team-level early-out and the per-unit query gate below
-## must also fire whenever ANY engaged unit is under ORDER_GIVE_GROUND, or a give-ground unit
-## with equal-or-longer reach than its enemy would be silently skipped by the reach-based
-## pruning that's perfectly correct for standoff_bias alone. Pass 1 below computes each team's
-## MIN and MAX reach among its own currently-engaged units (a cheap O(units) scan, no
-## soldier-level work) AND whether any engaged unit anywhere is giving ground; pass 2 gathers
-## the full engaged tier (both teams) as CANDIDATES -- any of them could be the nearest enemy a
-## plausibly-outreached OR give-ground soldier finds -- but only marks a unit's soldiers as
-## QUERIERS (the ones that actually get a lookup + bias write) when that unit's reach is less
-## than the max reach among the OTHER team(s)' engaged units, OR the unit itself is giving
-## ground. In the common case where every currently-engaged pairing shares the same reach and
-## nobody is giving ground, no team can outreach another and the whole pass skips straight past
-## the per-soldier gather/rebuild/query entirely -- see _any_team_could_be_outreached below.
-##
-## The gathered candidate pool still spans BOTH teams' full engaged tier regardless of which
-## side is querying -- a querying soldier's true nearest engaged enemy might turn out to have
-## equal-or-shorter reach (bias resolves to zero for that specific pairing, same as before),
-## but it's still the geometrically correct "nearest enemy" to evaluate against, so it can't
-## be excluded from the candidate pool up front. Only the QUERY side is pruned.
-##
-## Resolution picks give_ground_bias over standoff_bias for a GIVE_GROUND owner -- this is
-## the override that makes the player's explicit withdrawal order win over the passive
-## outreached-press bias for the same soldier: a give-ground unit that is ALSO outreached
-## would otherwise resolve to standoff_bias's press-toward-the-enemy result, but the give-ground
-## order takes precedence instead.
 static func accumulate(units: Array, frame: int) -> void:
 	var min_reach_by_team: Dictionary = {}   # team (int) -> min soldier_reach() among its engaged units
 	var max_reach_by_team: Dictionary = {}   # team (int) -> max soldier_reach() among its engaged units
 	var any_give_ground: bool = false
+	var any_push: bool = false
 	for o in units:
 		var u: Unit = o as Unit
 		if u == null or u.state == Unit.State.DEAD or not u.is_engaged():
 			continue
 		if u.order_mode == Unit.ORDER_GIVE_GROUND:
 			any_give_ground = true
+		elif u.order_mode == Unit.ORDER_PUSH:
+			any_push = true
 		var r: float = u.soldier_reach()
 		if r > max_reach_by_team.get(u.team, -1.0):
 			max_reach_by_team[u.team] = r
 		if not min_reach_by_team.has(u.team) or r < min_reach_by_team[u.team]:
 			min_reach_by_team[u.team] = r
 
-	if not any_give_ground and not _any_team_could_be_outreached(min_reach_by_team, max_reach_by_team):
+	if not any_give_ground and not any_push and not _any_team_could_be_outreached(min_reach_by_team, max_reach_by_team):
 		return   # every engaged team's own WEAKEST-reach unit already matches or dominates
 				 # every opposing team's best reach -- nobody could possibly be outreached
-				 # this tick -- AND nobody is giving ground either. Gating on the team's MAX
-				 # (a mixed-loadout army's own best unit) instead of its MIN would let that
-				 # best unit's reach mask a different, shorter-reach unit on the same team
-				 # that genuinely needs to press -- e.g. a spear+infantry army facing an
-				 # enemy spear: the team's own max (spear, 48) ties the enemy's max (48), but
-				 # the team's infantry (26) is still outreached by that enemy spear and must
-				 # not be skipped.
+				 # this tick -- AND nobody is giving ground or pushing either.
 
 	var epos := PackedVector2Array()
 	var eteam := PackedInt32Array()
@@ -181,7 +161,8 @@ static func accumulate(units: Array, frame: int) -> void:
 		var r: float = u.soldier_body_radius()
 		var reach: float = u.soldier_reach()
 		var give_ground: bool = u.order_mode == Unit.ORDER_GIVE_GROUND
-		var could_be_outreached: bool = give_ground \
+		var push: bool = u.order_mode == Unit.ORDER_PUSH
+		var could_be_outreached: bool = give_ground or push \
 				or reach < _max_opposing_reach(max_reach_by_team, u.team)
 		for i in idxs:
 			if could_be_outreached:
@@ -206,6 +187,8 @@ static func accumulate(units: Array, frame: int) -> void:
 		var owner: Unit = eowners[k]
 		if owner.order_mode == Unit.ORDER_GIVE_GROUND:
 			owner._sim_steer[eslots[k]] += give_ground_bias(epos[k], enemy["position"])
+		elif owner.order_mode == Unit.ORDER_PUSH:
+			owner._sim_steer[eslots[k]] += push_bias(epos[k], enemy["position"])
 		else:
 			owner._sim_steer[eslots[k]] += standoff_bias(epos[k], enemy["position"], ereach[k], enemy["reach"])
 
