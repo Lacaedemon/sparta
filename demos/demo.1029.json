@@ -1,0 +1,5 @@
+{
+  "_comment": "Demo skip manifest for Gemini workspace configuration PR",
+  "skip": true,
+  "reason": "AI workspace configuration only; no sim/visual logic changes."
+}
