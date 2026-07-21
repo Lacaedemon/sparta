@@ -1,0 +1,5 @@
+{
+  "_comment": "Demo skip manifest for #1022",
+  "skip": true,
+  "reason": "Test input expectation adjustment only; no sim/visual logic changes."
+}
