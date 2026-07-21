@@ -380,7 +380,10 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		_issue_nudge(BattleRef.NudgeDir.RIGHT)   # side-step right (holds facing)
 		return true
 	elif event.keycode == KEY_DOWN and event.ctrl_pressed:
-		_issue_disengage()   # disengage and step back -- combat-legal even while FIGHTING
+		if event.shift_pressed:
+			_issue_disengage_with_sacrifice()   # Shift+Ctrl+Down: disengage with rearguard sacrifice
+		else:
+			_issue_disengage()   # Ctrl+Down: disengage and step back -- combat-legal even while FIGHTING
 		return true
 	elif event.keycode == KEY_DOWN and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.BACK)    # back-step (holds facing)

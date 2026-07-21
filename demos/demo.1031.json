@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Disengage with sacrifice melee maneuver requires interactive unit melee engagement and Shift+Ctrl+Down input timing best validated by unit GUT test suite in test/unit/test_disengage_with_sacrifice_maneuver.gd"
+}

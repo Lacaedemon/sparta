@@ -569,6 +569,8 @@ var disengage_step_distance: float = DISENGAGE_STEP_DISTANCE
 const REARGUARD_SACRIFICE_FRAC: float = 0.10
 # Default delay duration (seconds) the rearguard sacrifice screens/delays enemy pursuit.
 const REARGUARD_DELAY_SEC: float = 2.0
+# Speed multiplier applied to pursuing enemy units while rearguard delay screens the retreat.
+const REARGUARD_DELAY_PURSUIT_SPEED_FACTOR: float = 0.5
 
 var rearguard_sacrifice_frac: float = REARGUARD_SACRIFICE_FRAC
 var rearguard_delay_sec: float = REARGUARD_DELAY_SEC
@@ -1024,6 +1026,7 @@ func _physics_process(delta: float) -> void:
 
 	_attack_cd = max(0.0, _attack_cd - delta)
 	_pin_down_exposure_cd = max(0.0, _pin_down_exposure_cd - delta)
+	_rearguard_delay_timer = max(0.0, _rearguard_delay_timer - delta)
 	_moved_last_frame = false
 
 	_think(delta)
@@ -2068,6 +2071,8 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		pace_speed = jog_speed
 	else:
 		pace_speed = walk_speed
+	if is_instance_valid(target_enemy) and target_enemy.is_rearguard_delay_active():
+		pace_speed *= REARGUARD_DELAY_PURSUIT_SPEED_FACTOR
 	# A planted close-order stance (shield wall, testudo, or the anti-cav square) caps
 	# its top pace: the men hold a locked ring/wall and only creep, so the target pace
 	# is scaled down before the ramp.
@@ -3783,9 +3788,6 @@ func disengage_with_sacrifice(step_distance: float = disengage_step_distance,
 	sacrifice_count = mini(sacrifice_count, soldiers)
 	soldiers -= sacrifice_count
 	UnitCombat.register_casualties(self, sacrifice_count, null, 1.0)
-	if get_parent() != null:
-		var body_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
-		Fallen.spawn(get_parent(), position, team_color, sacrifice_count, body_r)
 	_rearguard_delay_timer = delay_sec
 	set_current_order(Order.new_nudge(NUDGE_BACK))
 	target_enemy = null
@@ -3796,6 +3798,11 @@ func disengage_with_sacrifice(step_distance: float = disengage_step_distance,
 	move_target = position + disengage_offset(facing, step_distance)
 	has_move_target = true
 	start_order_response()
+
+
+## Returns true if this unit's rearguard detachment is actively screening/delaying enemy pursuit.
+func is_rearguard_delay_active() -> bool:
+	return _rearguard_delay_timer > 0.0
 
 
 ## Wheel (circumductio, Aelian/Asclepiodotus): the block swings about one fixed flank file like a
