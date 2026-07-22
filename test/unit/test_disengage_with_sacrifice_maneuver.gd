@@ -119,6 +119,6 @@ func test_rearguard_delay_slows_pursuing_enemy_pace_speed() -> void:
 	pursuer.target_enemy = target
 	pursuer.order_mode = Unit.ORDER_CHASE
 	pursuer.position = Vector2(0, 300)
-	pursuer._update_movement(0.1)
+	pursuer._physics_process(0.1)
 	assert_lt(pursuer._current_speed, pursuer.jog_speed, "rearguard delay screens and slows pursuing enemy speed")
 

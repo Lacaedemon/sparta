@@ -48,6 +48,8 @@ func test_push_stance_accumulates_push_bias_in_melee_standoff() -> void:
 	enemy.position = Vector2(40.0, 0.0)
 	u.state = Unit.State.FIGHTING
 	enemy.state = Unit.State.FIGHTING
+	u._engaged_linger = 1.0
+	enemy._engaged_linger = 1.0
 	u.target_enemy = enemy
 	enemy.target_enemy = u
 	u.order_mode = Unit.ORDER_PUSH
