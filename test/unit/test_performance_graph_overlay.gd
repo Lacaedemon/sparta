@@ -24,4 +24,4 @@ func test_performance_graph_overlay_sample_and_trim() -> void:
 
 
 func test_settings_show_performance_graph_defaults_off() -> void:
-	assert_false(SettingsScript.show_performance_graph, "show_performance_graph defaults to false")
+	assert_false(Settings.show_performance_graph, "show_performance_graph defaults to false")
