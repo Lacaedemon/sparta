@@ -1,0 +1,21 @@
+{
+  "_comment": "Push stance maneuver (#1017): an explicit melee standoff stance. Two Infantry regiments lock in melee standoff. The player selects Team 0 Infantry and presses Slash to toggle Push stance, driving the front line forward into the enemy.",
+  "seed": "1017",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 500, "y": 500, "count": 40 },
+    { "team": 1, "type": "Infantry", "x": 500, "y": 580, "count": 40 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 500, "y": 540, "zoom": 1.6 }
+  ],
+  "steps": [
+    { "tick": 5, "click": [500, 500] },
+    { "tick": 180, "key": "Slash" }
+  ],
+  "frames": [10, 180, 300, 450],
+  "state": [10, 100, 180, 250, 350, 450],
+  "fixed_fps": 30,
+  "max_frames": 500,
+  "fps": 15,
+  "width": 640
+}

@@ -1,4 +1,4 @@
 {
-  "skip": true,
-  "reason": "Faction definition system and historical naming API is best validated by unit GUT test suite in test/unit/test_faction.gd"
+  "input": "demos/inputs/faction-roster.json",
+  "caption": "Historical factions and formation names (issue #875): faction rosters for Sparta, Rome, Carthage, Macedon, and historical formation display names (acies, synaspismos, agmen quadratum)."
 }

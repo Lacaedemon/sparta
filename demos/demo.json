@@ -1,4 +1,4 @@
 {
-  "skip": true,
-  "reason": "Melee maneuver PUSH stance implementation (#1017)"
+  "input": "demos/inputs/push-stance.json",
+  "caption": "Push stance maneuver (issue #1017): Team 0 Infantry engages Team 1 Infantry in melee standoff. The player selects Team 0 and presses Slash to toggle Push stance, driving the front line forward against enemy pressure."
 }

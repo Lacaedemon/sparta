@@ -1,4 +1,4 @@
 {
-  "skip": true,
-  "reason": "Hideable unit card tray is a HUD UI panel and line-ordering option best validated by unit GUT test suite in test/unit/test_unit_card_tray.gd"
+  "input": "demos/inputs/unit-card-tray.json",
+  "caption": "Multi-row unit card tray (issue #869): hideable tray organizing selected units into tactical lines with 1-click line selection and card navigation."
 }

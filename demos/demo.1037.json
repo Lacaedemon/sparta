@@ -1,4 +1,4 @@
 {
-  "skip": true,
-  "reason": "Prebattle custom battle unit selection screen is a non-battle setup UI best validated by unit GUT test suite in test/unit/test_prebattle_screen.gd"
+  "input": "demos/inputs/custom-battle-prebattle.json",
+  "caption": "Custom battle prebattle screen (issue #876): player selects factions (Sparta vs Rome), configures army rosters, adds/removes units, and launches the custom battle."
 }
