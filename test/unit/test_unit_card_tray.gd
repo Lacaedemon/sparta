@@ -1,5 +1,5 @@
 extends GutTest
-## Multi-row unit card tray unit tests (#869).
+## Multi-row unit card tray unit tests.
 
 const UnitScript = preload("res://scripts/Unit.gd")
 
