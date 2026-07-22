@@ -23,6 +23,7 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_CYCLE_ECHELON_RIGHT, MENU_FORMUP_CYCLE_ECHELON_LEFT,
 		MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
 		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_POSITION_ANCHOR, MENU_SHOW_FPS,
+		MENU_PERFORMANCE_GRAPH,
 		MENU_FPS_CORNER_TOP_LEFT, MENU_FPS_CORNER_TOP_RIGHT, MENU_FPS_CORNER_BOTTOM_LEFT,
 		MENU_FPS_CORNER_BOTTOM_RIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
 		MENU_QUIT_TO_MENU }
@@ -64,6 +65,7 @@ var _legend_bar: ColorRect
 var _legend_label: Label
 var _legend_last_zoom: float = -1.0   # forces a first sync; _process re-syncs only on change
 var _fps_label: Label
+var _perf_graph_overlay: Control
 # Live-measured physics tick rate (distinct from Engine.physics_ticks_per_second, the
 # configured TARGET): counts physics_frame emissions over a rolling real-time window, so it
 # reads below target if the sim can't keep up with a large battle. See _on_physics_tick.
@@ -300,6 +302,7 @@ func _ready() -> void:
 	popup.add_check_item("Engaged-soldier highlight", MENU_ENGAGED_HIGHLIGHT)
 	popup.add_check_item("Position-anchor marker", MENU_POSITION_ANCHOR)
 	popup.add_check_item("Show frame rate", MENU_SHOW_FPS)
+	popup.add_check_item("Performance graph overlay", MENU_PERFORMANCE_GRAPH)
 	popup.add_separator("Frame rate corner…")
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.add_radio_check_item(entry["label"], entry["id"])
@@ -484,6 +487,7 @@ func _ready() -> void:
 	_build_ctrl_bar()
 	_build_distance_legend()
 	_build_fps_label()
+	_build_performance_graph()
 	_clamp_info_panel()
 
 	# End-of-battle overlay.
@@ -598,11 +602,13 @@ func _sync_setting_toggles() -> void:
 	popup.set_item_checked(popup.get_item_index(MENU_POSITION_ANCHOR),
 			Settings.show_position_anchor)
 	popup.set_item_checked(popup.get_item_index(MENU_SHOW_FPS), Settings.show_fps)
+	popup.set_item_checked(popup.get_item_index(MENU_PERFORMANCE_GRAPH), Settings.show_performance_graph)
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.set_item_checked(popup.get_item_index(entry["id"]),
 				Settings.fps_corner == entry["corner"])
 	_sync_distance_legend_visibility()
 	_sync_fps_label()
+	_sync_performance_graph()
 
 
 ## Dispatch a Menu popup selection by its stable item id.
@@ -652,6 +658,8 @@ func _on_menu_id(id: int) -> void:
 			Settings.show_position_anchor = not Settings.show_position_anchor
 		MENU_SHOW_FPS:
 			Settings.show_fps = not Settings.show_fps
+		MENU_PERFORMANCE_GRAPH:
+			Settings.show_performance_graph = not Settings.show_performance_graph
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 		MENU_SHORTCUTS:
@@ -1248,10 +1256,27 @@ func _sync_fps_label() -> void:
 	_update_fps_label()
 
 
-func _update_fps_label() -> void:
-	if _fps_label == null or not _fps_label.visible:
+func _build_performance_graph() -> void:
+	_perf_graph_overlay = PerformanceGraphOverlay.new()
+	_perf_graph_overlay.name = "PerformanceGraphOverlay"
+	_perf_graph_overlay.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_perf_graph_overlay.position = Vector2(14.0, -120.0)
+	_perf_graph_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_perf_graph_overlay)
+	_sync_performance_graph()
+
+
+func _sync_performance_graph() -> void:
+	if _perf_graph_overlay == null:
 		return
-	_fps_label.text = "%d FPS · %d ticks/s" % [Engine.get_frames_per_second(), roundi(_live_tick_rate)]
+	_perf_graph_overlay.visible = Settings.show_performance_graph
+
+
+func _update_fps_label() -> void:
+	if _fps_label != null and _fps_label.visible:
+		_fps_label.text = "%d FPS · %d ticks/s" % [Engine.get_frames_per_second(), roundi(_live_tick_rate)]
+	if _perf_graph_overlay != null and _perf_graph_overlay.visible:
+		_perf_graph_overlay.add_sample(float(Engine.get_frames_per_second()), _live_tick_rate)
 
 
 func _ctrl_bar_refresh_stance_popup() -> void:

@@ -173,6 +173,16 @@ var show_fps: bool = false:
 			_save()
 			changed.emit()
 
+# Live performance graph overlay (rolling FPS and tick-rate history). Default off.
+var show_performance_graph: bool = false:
+	set(value):
+		if value == show_performance_graph:
+			return
+		show_performance_graph = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Which corner the frame-rate counter renders in. Values are append-only (mirrors
 # FORM_UP_DIST_* above) so a persisted choice keeps its meaning if a corner is ever added.
 const FPS_CORNER_TOP_LEFT := 0
@@ -353,6 +363,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_engaged_highlight = bool(cfg.get_value("camera", "show_engaged_highlight", show_engaged_highlight))
 	show_position_anchor = bool(cfg.get_value("camera", "show_position_anchor", show_position_anchor))
 	show_fps = bool(cfg.get_value("camera", "show_fps", show_fps))
+	show_performance_graph = bool(cfg.get_value("camera", "show_performance_graph", show_performance_graph))
 	fps_corner = int(cfg.get_value("camera", "fps_corner", fps_corner))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
@@ -374,6 +385,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "show_engaged_highlight", show_engaged_highlight)
 	cfg.set_value("camera", "show_position_anchor", show_position_anchor)
 	cfg.set_value("camera", "show_fps", show_fps)
+	cfg.set_value("camera", "show_performance_graph", show_performance_graph)
 	cfg.set_value("camera", "fps_corner", fps_corner)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
