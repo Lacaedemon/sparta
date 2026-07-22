@@ -44,7 +44,13 @@ func test_own_team_units_excludes_the_enemy() -> void:
 	var result: Array = hud._own_team_units()
 
 	assert_true(result.has(mine), "the player's own unit is included")
-	assert_false(result.has(theirs), "an enemy unit is excluded (issue #869: the player's own battle lines)")
+	assert_false(result.has(theirs), "an enemy unit is excluded -- the tray is the player's own battle lines")
+
+
+func test_own_team_units_is_empty_with_no_selection_manager_sibling() -> void:
+	var hud := HUDScript.new()
+	add_child_autofree(hud)   # no "../SelectionManager" sibling, so _sel_mgr stays null
+	assert_eq(hud._own_team_units(), [], "no SelectionManager to resolve own-team against")
 
 
 func test_sync_unit_card_tray_visibility_only_shows_own_team_cards() -> void:

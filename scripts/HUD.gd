@@ -1302,9 +1302,9 @@ func _sync_unit_card_tray_visibility() -> void:
 		_unit_card_tray.sync_units(_own_team_units())
 
 
-## Units the tray should ever offer -- the player's own side only (issue #869: "players can
-## arrange THEIR units into rows"), respecting all_teams_control the same way every other
-## own-team check in the game does, so a debug/all-teams session sees every controllable side.
+## Units the tray should ever offer -- the player's own side only, so the tray organizes the
+## player's own battle lines rather than the enemy's, respecting all_teams_control the same
+## way every other own-team check in the game does (a debug/all-teams session controls both).
 func _own_team_units() -> Array:
 	var out: Array = []
 	if _sel_mgr == null:
