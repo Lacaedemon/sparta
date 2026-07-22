@@ -59,7 +59,10 @@ func test_push_stance_accumulates_push_bias_in_melee_standoff() -> void:
 	enemy._sim_soldier_pos = [Vector2(40, 0)]
 	enemy._sim_steer = [Vector2.ZERO]
 
+	var SoldierEngagedEnemyProximityScript = preload("res://scripts/SoldierEngagedEnemyProximity.gd")
+	SoldierEngagedEnemyProximityScript.reset()
+
 	var SoldierMeleeStandoffScript = preload("res://scripts/SoldierMeleeStandoff.gd")
-	SoldierMeleeStandoffScript.accumulate([u, enemy], 1)
+	SoldierMeleeStandoffScript.accumulate([u, enemy], 99999)
 
 	assert_gt(u._sim_steer[0].x, 0.0, "push bias is added to steering vector for engaged unit in PUSH stance")
