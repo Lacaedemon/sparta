@@ -183,6 +183,26 @@ var show_performance_graph: bool = false:
 			_save()
 			changed.emit()
 
+# Multi-row unit card tray in HUD. Default off.
+var show_unit_card_tray: bool = false:
+	set(value):
+		if value == show_unit_card_tray:
+			return
+		show_unit_card_tray = value
+		if not _loading:
+			_save()
+			changed.emit()
+
+# Whether tray row order determines placement when dragging multi-unit form-up lines. Default off.
+var tray_row_order_placement: bool = false:
+	set(value):
+		if value == tray_row_order_placement:
+			return
+		tray_row_order_placement = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Which corner the frame-rate counter renders in. Values are append-only (mirrors
 # FORM_UP_DIST_* above) so a persisted choice keeps its meaning if a corner is ever added.
 const FPS_CORNER_TOP_LEFT := 0
@@ -366,6 +386,8 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_position_anchor = bool(cfg.get_value("camera", "show_position_anchor", show_position_anchor))
 	show_fps = bool(cfg.get_value("camera", "show_fps", show_fps))
 	show_performance_graph = bool(cfg.get_value("camera", "show_performance_graph", show_performance_graph))
+	show_unit_card_tray = bool(cfg.get_value("camera", "show_unit_card_tray", show_unit_card_tray))
+	tray_row_order_placement = bool(cfg.get_value("gameplay", "tray_row_order_placement", tray_row_order_placement))
 	fps_corner = int(cfg.get_value("camera", "fps_corner", fps_corner))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		var val: int = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
@@ -383,6 +405,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
 	cfg.set_value("gameplay", "form_up_dist_default", form_up_dist_default)
 	cfg.set_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
+	cfg.set_value("gameplay", "tray_row_order_placement", tray_row_order_placement)
 	cfg.set_value("camera", "show_distance_legend", show_distance_legend)
 	cfg.set_value("camera", "show_order_distance", show_order_distance)
 	cfg.set_value("camera", "show_unit_speed", show_unit_speed)
@@ -391,6 +414,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "show_position_anchor", show_position_anchor)
 	cfg.set_value("camera", "show_fps", show_fps)
 	cfg.set_value("camera", "show_performance_graph", show_performance_graph)
+	cfg.set_value("camera", "show_unit_card_tray", show_unit_card_tray)
 	cfg.set_value("camera", "fps_corner", fps_corner)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))

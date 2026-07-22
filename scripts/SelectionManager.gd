@@ -712,6 +712,21 @@ func _live_selected_units() -> Array:
 func _order_units_for_line(units: Array, a: Vector2, b: Vector2, by_selection_order: bool) -> Array:
 	if by_selection_order or units.size() < 2:
 		return units
+	if Settings.tray_row_order_placement and _hud != null and _hud.has_method("get_unit_card_tray"):
+		var tray = _hud.get_unit_card_tray()
+		if tray != null:
+			var tray_order: Array = tray.get_units_in_tray_order()
+			if not tray_order.is_empty():
+				var ordered: Array = units.duplicate()
+				var dir_vec: Vector2 = (b - a).normalized()
+				ordered.sort_custom(func(p, q):
+					var idx_p: int = tray_order.find(p)
+					var idx_q: int = tray_order.find(q)
+					if idx_p != -1 and idx_q != -1:
+						return idx_p < idx_q
+					return (p.global_position - a).dot(dir_vec) < (q.global_position - a).dot(dir_vec)
+				)
+				return ordered
 	var dir: Vector2 = (b - a).normalized()
 	var ordered: Array = units.duplicate()
 	ordered.sort_custom(func(p, q): return (p.global_position - a).dot(dir) < (q.global_position - a).dot(dir))
@@ -2012,6 +2027,22 @@ func take_keys_this_tick() -> Array:
 	var k: Array = _keys_this_tick
 	_keys_this_tick = []
 	return k
+
+
+## Replace active selection with `units`.
+func select_units(units: Array) -> void:
+	_clear_selection()
+	for u in units:
+		if u != null and is_instance_valid(u) and _is_own_team(u.team) and u.state != UnitRef.State.DEAD:
+			_select(u)
+	if not _selected.is_empty():
+		Sfx.play(&"select")
+	_refresh_hud()
+
+
+## Return a copy of the currently selected units array.
+func get_selected_units() -> Array:
+	return _selected.duplicate()
 
 
 ## Buffer a pressed-key label for this tick's keystroke recording.
