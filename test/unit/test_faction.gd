@@ -1,5 +1,5 @@
 extends GutTest
-## Faction system unit tests (#875).
+## Faction system unit tests.
 
 const UnitScript = preload("res://scripts/Unit.gd")
 
