@@ -33,10 +33,9 @@ Run `tools/check.sh` to reproduce CI's gating checks locally (Godot import valid
 When the diff touches `scripts/`, also run `patch_coverage` before pushing — a local approximation of the `codecov/patch` CI check, verified to match Codecov's own numbers. Add it to the same `tools/check.sh` invocation (e.g. `tools/check.sh validate test chars comments units patch_coverage`), not a separate command afterward.
 
 ## Gameplay demos in PRs
-When your change is **user-visible** — it affects how the game looks or plays (`scenes/`, `scripts/`, `assets/`, `project.godot`):
-- Commit a **`demos/demo.json`** so CI records a short clip and inserts it into the PR description.
-- Author demos as a scripted-input recording (`demos/inputs/*.json`) with the `input` field.
-- If your change genuinely **can't** be shown by a recorded battle (a paused-overlay interaction, an editor-only tool, a non-visual refactor), commit a `demos/demo.json` with `"skip": true` and a `"reason"`.
+Every PR that changes the user experience (UI elements, HUD overlays, unit cards, battle maneuvers, visual presentation, controls, or settings affecting display) MUST include a recorded gameplay demo:
+- Commit a **`demos/demo.json`** pointing to a scripted-input recording (`demos/inputs/*.json`) with the `input` field so CI records a clip and embeds it in the PR description.
+- Never use `"skip": true` with excuses to avoid authoring demos for user-visible UX changes.
 - Check every new demo against the standard defect checklist in `.gemini/skills/verify-via-state-dump/SKILL.md` (or `.claude/skills/verify-via-state-dump/SKILL.md`).
 
 ## Code conventions
