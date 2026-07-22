@@ -3,8 +3,6 @@ extends PanelContainer
 ## Hideable multi-row unit card tray for organizing player units into battle lines.
 ## Allows adding/removing rows during battle, line-selection clicks, and row-order line placement.
 
-signal selection_requested(units: Array)
-
 const UnitRef = preload("res://scripts/Unit.gd")
 
 var _rows: Array = []   # Array of Array[Unit]
@@ -167,7 +165,6 @@ func _select_row_line(row_idx: int) -> void:
 		if u != null and is_instance_valid(u) and u.state != UnitRef.State.DEAD:
 			line_units.append(u)
 	if not line_units.is_empty():
-		selection_requested.emit(line_units)
 		if _sel_mgr != null and _sel_mgr.has_method("select_units"):
 			_sel_mgr.select_units(line_units)
 
@@ -216,7 +213,6 @@ func _rebuild_ui() -> void:
 			var select_card_btn := Button.new()
 			select_card_btn.text = "%s (%d)" % [u.unit_name, u.soldiers]
 			select_card_btn.pressed.connect(func():
-				selection_requested.emit([u])
 				if _sel_mgr != null and _sel_mgr.has_method("select_units"):
 					_sel_mgr.select_units([u])
 			)

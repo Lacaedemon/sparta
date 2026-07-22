@@ -3783,10 +3783,12 @@ func disengage() -> void:
 func disengage_with_sacrifice(step_distance: float = disengage_step_distance,
 		sacrifice_frac: float = rearguard_sacrifice_frac,
 		delay_sec: float = rearguard_delay_sec) -> void:
-	if state != State.FIGHTING or order_mode == ORDER_CHASE:
+	if state != State.FIGHTING or order_mode == ORDER_CHASE or soldiers <= 1:
 		return
 	var sacrifice_count: int = maxi(1, int(round(float(soldiers) * sacrifice_frac)))
-	sacrifice_count = mini(sacrifice_count, soldiers)
+	# Cap below `soldiers` (not at it): the maneuver's whole point is a surviving main body
+	# stepping back to safety, so the sacrifice must never annihilate the unit itself.
+	sacrifice_count = mini(sacrifice_count, soldiers - 1)
 	soldiers -= sacrifice_count
 	UnitCombat.register_casualties(self, sacrifice_count, null, 1.0)
 	_rearguard_delay_timer = delay_sec

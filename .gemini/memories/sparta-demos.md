@@ -1,3 +1,3 @@
 # Sparta Demos Memory
 
-@.claude/memories/sparta-demos.md
+@../../.claude/memories/sparta-demos.md

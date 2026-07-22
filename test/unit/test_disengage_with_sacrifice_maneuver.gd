@@ -108,6 +108,38 @@ func test_enqueue_disengage_with_sacrifice_applies_order_to_units() -> void:
 	assert_eq(u.soldiers, 90, "applies disengage_with_sacrifice to unit 99")
 
 
+func test_disengage_with_sacrifice_never_annihilates_a_near_wiped_out_unit() -> void:
+	# A unit down to a handful of soldiers still has a "main body" to save -- the sacrifice
+	# must never take the last soldier and trigger _die() (that would defeat the whole point
+	# of the maneuver: a surviving detachment stepping back to safety).
+	var u := _make_unit(3)
+	var enemy := _make_unit(100)
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)
+	u.state = Unit.State.FIGHTING
+	u.target_enemy = enemy
+
+	u.disengage_with_sacrifice()
+
+	assert_gt(u.soldiers, 0, "at least one soldier survives to form the main body")
+	assert_ne(u.state, Unit.State.DEAD, "the unit is not annihilated by its own rearguard sacrifice")
+
+
+func test_disengage_with_sacrifice_is_a_noop_with_only_one_soldier_left() -> void:
+	var u := _make_unit(1)
+	var enemy := _make_unit(100)
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)
+	u.state = Unit.State.FIGHTING
+	u.target_enemy = enemy
+	var before_soldiers := u.soldiers
+
+	u.disengage_with_sacrifice()
+
+	assert_eq(u.soldiers, before_soldiers, "no rearguard to spare with only one soldier left")
+	assert_false(u.has_move_target, "no move target armed; maneuver did nothing")
+
+
 func test_rearguard_delay_slows_pursuing_enemy_pace_speed() -> void:
 	var target := _make_unit(100)
 	var pursuer := _make_unit(100)
