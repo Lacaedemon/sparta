@@ -10,7 +10,7 @@ const DEFAULT_GRAPH_SIZE := Vector2(220.0, 90.0)
 
 var history_size: int = DEFAULT_HISTORY_SIZE:
 	set(v):
-		history_size = maxi(10, v)
+		history_size = maxi(1, v)
 		_trim_history()
 		queue_redraw()
 
