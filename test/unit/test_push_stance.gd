@@ -39,3 +39,25 @@ func test_push_stance_has_a_name_and_a_hotkey_slug() -> void:
 			found_slug = true
 			break
 	assert_true(found_slug, "PUSH stance is registered in ORDER_MODE_HOTKEYS with slug 'push'")
+
+
+func test_push_stance_accumulates_push_bias_in_melee_standoff() -> void:
+	var u := _make_unit(10)
+	var enemy := _make_unit(10)
+	enemy.team = 1
+	enemy.position = Vector2(40.0, 0.0)
+	u.state = Unit.State.FIGHTING
+	enemy.state = Unit.State.FIGHTING
+	u.target_enemy = enemy
+	enemy.target_enemy = u
+	u.order_mode = Unit.ORDER_PUSH
+
+	u._sim_soldier_pos = [Vector2(0, 0)]
+	u._sim_steer = [Vector2.ZERO]
+	enemy._sim_soldier_pos = [Vector2(40, 0)]
+	enemy._sim_steer = [Vector2.ZERO]
+
+	var SoldierMeleeStandoffScript = preload("res://scripts/SoldierMeleeStandoff.gd")
+	SoldierMeleeStandoffScript.tick([u, enemy], 1)
+
+	assert_gt(u._sim_steer[0].x, 0.0, "push bias is added to steering vector for engaged unit in PUSH stance")
