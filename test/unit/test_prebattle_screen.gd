@@ -1,5 +1,5 @@
 extends GutTest
-## Custom battle prebattle unit selection screen tests (#876).
+## Custom battle prebattle unit selection screen tests.
 
 const PrebattleScreenScript = preload("res://scripts/PrebattleScreen.gd")
 const FactionScript = preload("res://scripts/Faction.gd")
