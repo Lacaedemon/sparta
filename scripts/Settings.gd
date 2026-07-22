@@ -357,7 +357,10 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_fps = bool(cfg.get_value("camera", "show_fps", show_fps))
 	fps_corner = int(cfg.get_value("camera", "fps_corner", fps_corner))
 	for slug in DEFAULT_ORDER_BINDINGS:
-		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
+		var val: int = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
+		if slug == "push" and val == KEY_P:
+			val = KEY_SLASH
+		order_bindings[slug] = val
 	_loading = false
 
 
