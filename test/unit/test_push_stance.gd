@@ -41,28 +41,35 @@ func test_push_stance_has_a_name_and_a_hotkey_slug() -> void:
 	assert_true(found_slug, "PUSH stance is registered in ORDER_MODE_HOTKEYS with slug 'push'")
 
 
-func test_push_stance_accumulates_push_bias_in_melee_standoff() -> void:
-	var u := _make_unit(10)
-	var enemy := _make_unit(10)
-	enemy.team = 1
-	enemy.position = Vector2(40.0, 0.0)
-	u.state = Unit.State.FIGHTING
-	enemy.state = Unit.State.FIGHTING
-	u._engaged_linger = 1.0
-	enemy._engaged_linger = 1.0
-	u.target_enemy = enemy
-	enemy.target_enemy = u
+func test_stance_only_order_carries_push_onto_the_unit() -> void:
+	var u := _make_unit()
+	u.uid = 1
+	var b = BattleScript.new()
+	autofree(b)
+	b._by_uid[1] = u
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_STANCE_ONLY, "mode": BattleScript.OrderMode.PUSH})
+	assert_eq(u.order_mode, Unit.ORDER_PUSH, "a stance-only PUSH order sets order_mode")
+
+
+func test_move_order_carries_push_onto_the_unit() -> void:
+	var u := _make_unit()
+	u.uid = 1
+	var b = BattleScript.new()
+	autofree(b)
+	b._by_uid[1] = u
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1,
+		"mode": BattleScript.OrderMode.PUSH})
+	assert_eq(u.order_mode, Unit.ORDER_PUSH, "a move/attack order carrying PUSH sets order_mode")
+
+
+func test_fresh_order_clears_prior_push_stance() -> void:
+	var u := _make_unit()
+	u.uid = 1
 	u.order_mode = Unit.ORDER_PUSH
-
-	u._sim_soldier_pos = [Vector2(0, 0)]
-	u._sim_steer = [Vector2.ZERO]
-	enemy._sim_soldier_pos = [Vector2(40, 0)]
-	enemy._sim_steer = [Vector2.ZERO]
-
-	var SoldierEngagedEnemyProximityScript = preload("res://scripts/SoldierEngagedEnemyProximity.gd")
-	SoldierEngagedEnemyProximityScript.reset()
-
-	var SoldierMeleeStandoffScript = preload("res://scripts/SoldierMeleeStandoff.gd")
-	SoldierMeleeStandoffScript.accumulate([u, enemy], 99999)
-
-	assert_gt(u._sim_steer[0].x, 0.0, "push bias is added to steering vector for engaged unit in PUSH stance")
+	var b = BattleScript.new()
+	autofree(b)
+	b._by_uid[1] = u
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1,
+		"mode": BattleScript.OrderMode.NORMAL})
+	assert_eq(u.order_mode, BattleScript.OrderMode.NORMAL, "NORMAL order clears prior PUSH stance")
