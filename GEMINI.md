@@ -33,9 +33,10 @@ Run `tools/check.sh` to reproduce CI's gating checks locally (Godot import valid
 When the diff touches `scripts/`, also run `patch_coverage` before pushing — a local approximation of the `codecov/patch` CI check, verified to match Codecov's own numbers. Add it to the same `tools/check.sh` invocation (e.g. `tools/check.sh validate test chars comments units patch_coverage`), not a separate command afterward.
 
 ## Gameplay demos in PRs
-Every PR that changes the user experience (UI elements, HUD overlays, unit cards, battle maneuvers, visual presentation, controls, or settings affecting display) MUST include a recorded gameplay demo:
-- Commit a **`demos/demo.json`** pointing to a scripted-input recording (`demos/inputs/*.json`) with the `input` field so CI records a clip and embeds it in the PR description.
-- Never use `"skip": true` with excuses to avoid authoring demos for user-visible UX changes.
+Every PR that changes the user experience (UI elements, HUD overlays, unit cards, battle maneuvers, visual presentation, controls, or settings affecting display) needs proof a reviewer can actually see, not just a claim:
+- When the change is reachable through the scripted-input recorder's step vocabulary (`click`/`box`/`rmb_drag`/`key` — see `demos/README.md`), commit a **`demos/demo.json`** pointing at a scripted-input recording (`demos/inputs/*.json`) with the `input` field so CI records a clip and embeds it in the PR description.
+- **The recorder can only click the battlefield and press keys — it cannot open a ☰-menu popup.** A setting only reachable through a menu checkbox (no bound hotkey) can't be toggled on by a scripted clip; staging one anyway records an ordinary battle with the feature never turned on, which is worse than an honest skip. For a feature the recorder genuinely can't reach (a menu-only toggle, a screen with no entry point yet, a pure-data API with no UI at all), use `"skip": true` with the real reason, and post a hand-captured still image in the PR description instead (`demos/README.md`, "Still images for static features") — don't fabricate a clip that doesn't actually show the change just to avoid `skip: true`.
+- Before trusting any new demo, actually look at a captured frame (or the state dump) and confirm it shows what the caption claims — a clip that runs without erroring is not the same as a clip that demonstrates the feature.
 - Check every new demo against the standard defect checklist in `.gemini/skills/verify-via-state-dump/SKILL.md` (or `.claude/skills/verify-via-state-dump/SKILL.md`).
 
 ## Code conventions
