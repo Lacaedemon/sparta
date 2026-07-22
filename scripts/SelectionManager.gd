@@ -380,7 +380,10 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		_issue_nudge(BattleRef.NudgeDir.RIGHT)   # side-step right (holds facing)
 		return true
 	elif event.keycode == KEY_DOWN and event.ctrl_pressed:
-		_issue_disengage()   # disengage and step back -- combat-legal even while FIGHTING
+		if event.shift_pressed:
+			_issue_disengage_with_sacrifice()   # Shift+Ctrl+Down: disengage with rearguard sacrifice
+		else:
+			_issue_disengage()   # Ctrl+Down: disengage and step back -- combat-legal even while FIGHTING
 		return true
 	elif event.keycode == KEY_DOWN and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.BACK)    # back-step (holds facing)
@@ -1146,6 +1149,21 @@ func _issue_disengage() -> void:
 	if uids.is_empty():
 		return
 	_battle.enqueue_disengage(uids)
+	Sfx.play(&"order")
+
+
+## Disengage with sacrifice (rearguard delay): rearguard detachment stays engaged to delay the foe
+## while the rest of the unit retreats.
+func _issue_disengage_with_sacrifice() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and _is_own_team(unit.team):
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_disengage_with_sacrifice(uids)
 	Sfx.play(&"order")
 
 

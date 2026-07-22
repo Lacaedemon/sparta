@@ -141,6 +141,9 @@ const NUDGE_DISTANCE := 30.0
 # requires). Moves the regiment (position), which the sim reads, so it IS recorded and
 # replayed like a move (see ORDER_WHEEL).
 const ORDER_DISENGAGE := -10
+# Sentinel for a disengage-with-sacrifice order: a rearguard detachment stays engaged
+# to delay the enemy while the rest of the unit retreats.
+const ORDER_DISENGAGE_SACRIFICE := -11
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -1447,6 +1450,24 @@ func enqueue_disengage(uids: Array) -> void:
 	_apply_order_live(cmd)
 
 
+## Disengage with sacrifice: a rearguard detachment stays engaged to delay the enemy
+## while the surviving main body retreats.
+func enqueue_disengage_with_sacrifice(uids: Array) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if uids.is_empty():
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_DISENGAGE_SACRIFICE,
+		"mode": OrderMode.NORMAL,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
 ## World-space offset for a nudge of `dir` given a unit's `facing`. LEFT / RIGHT
 ## are perpendicular to facing (a side-step); BACK is straight opposite facing (a
 ## back-step); FORWARD is straight along facing (a forward step). Each is
@@ -1684,6 +1705,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
 				u.disengage()
+		return
+	if target_uid == ORDER_DISENGAGE_SACRIFICE:
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null:
+				u.disengage_with_sacrifice()
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the

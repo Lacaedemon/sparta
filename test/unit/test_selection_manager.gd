@@ -1170,6 +1170,52 @@ func test_issue_disengage_noops_with_no_own_team_units_selected() -> void:
 	assert_true(b._pending_orders.is_empty(), "no command queued for an empty own-team uid list")
 
 
+func test_issue_disengage_with_sacrifice_noops_during_playback() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 40
+	b._by_uid[40] = u
+	sm._selected = [u]
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm._issue_disengage_with_sacrifice()
+	Replay.mode = prev_mode
+	assert_null(u.current_order, "no disengage_with_sacrifice order issued during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_issue_disengage_with_sacrifice_noops_with_no_own_team_units_selected() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var enemy := _seeded_unit(1)
+	enemy.uid = 41
+	b._by_uid[41] = enemy
+	sm._selected = [enemy]
+	sm._issue_disengage_with_sacrifice()
+	assert_null(enemy.current_order, "an all-enemy selection issues nothing")
+	assert_true(b._pending_orders.is_empty(), "no command queued for an empty own-team uid list")
+
+
+func test_issue_disengage_with_sacrifice_enqueues_command_for_selected_units() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 42
+	u.state = Unit.State.FIGHTING
+	b._by_uid[42] = u
+	sm._selected = [u]
+	sm._issue_disengage_with_sacrifice()
+	assert_eq(b._pending_orders.size(), 1, "queues one command")
+	assert_eq(b._pending_orders[0]["target"], BattleScript.ORDER_DISENGAGE_SACRIFICE)
+
+
 func test_dispatch_key_shift_v_issues_choral_countermarch() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()

@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Refactor migrating hard-coded transient visual effect tunables (RoutShockwave, VolleyTrail, Fallen) to caller-configurable parameters with default arguments per #963 (non-visual refactor preserving default visual parameters)."
+  "reason": "Melee maneuver disengage with sacrifice implementation (#1015)"
 }
