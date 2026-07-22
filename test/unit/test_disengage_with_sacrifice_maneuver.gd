@@ -106,3 +106,19 @@ func test_enqueue_disengage_with_sacrifice_applies_order_to_units() -> void:
 
 	assert_eq(b._pending_orders.size(), 1, "queues disengage_with_sacrifice command")
 	assert_eq(u.soldiers, 90, "applies disengage_with_sacrifice to unit 99")
+
+
+func test_rearguard_delay_slows_pursuing_enemy_pace_speed() -> void:
+	var target := _make_unit(100)
+	var pursuer := _make_unit(100)
+	pursuer.team = 1
+	target.state = Unit.State.FIGHTING
+	target.disengage_with_sacrifice()
+
+	assert_true(target.is_rearguard_delay_active(), "rearguard delay active after maneuver")
+	pursuer.target_enemy = target
+	pursuer.order_mode = Unit.ORDER_CHASE
+	pursuer.position = Vector2(0, 300)
+	pursuer._physics_process(0.1)
+	assert_lt(pursuer._current_speed, pursuer.jog_speed, "rearguard delay screens and slows pursuing enemy speed")
+

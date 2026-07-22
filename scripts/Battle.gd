@@ -151,7 +151,7 @@ const ORDER_DISENGAGE_SACRIFICE := -11
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE, KNOCKBACK_FOCUS, GIVE_GROUND }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE, KNOCKBACK_FOCUS, GIVE_GROUND, PUSH }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
 ## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
@@ -198,6 +198,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.WEDGE_CHARGE: "Wedge charge",
 	OrderMode.KNOCKBACK_FOCUS: "Knockback focus",
 	OrderMode.GIVE_GROUND: "Give ground",
+	OrderMode.PUSH: "Push",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -220,6 +221,7 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.WEDGE_CHARGE, "slug": "wedge_charge"},
 	{"mode": OrderMode.KNOCKBACK_FOCUS, "slug": "knockback_focus"},
 	{"mode": OrderMode.GIVE_GROUND, "slug": "give_ground"},
+	{"mode": OrderMode.PUSH, "slug": "push"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
@@ -363,7 +365,8 @@ func _ready() -> void:
 			and UnitRef.ORDER_CHASE == OrderMode.CHASE \
 			and UnitRef.ORDER_WEDGE_CHARGE == OrderMode.WEDGE_CHARGE \
 			and UnitRef.ORDER_KNOCKBACK_FOCUS == OrderMode.KNOCKBACK_FOCUS \
-			and UnitRef.ORDER_GIVE_GROUND == OrderMode.GIVE_GROUND,
+			and UnitRef.ORDER_GIVE_GROUND == OrderMode.GIVE_GROUND \
+			and UnitRef.ORDER_PUSH == OrderMode.PUSH,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 	# Same mirror-and-assert pattern for Unit's NUDGE_* constants (Battle.NudgeDir).
 	assert(UnitRef.NUDGE_LEFT == NudgeDir.LEFT \

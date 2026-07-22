@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Push stance melee maneuver requires interactive unit melee engagement and continuous push_bias physics evaluation best validated by unit GUT test suite in test/unit/test_push_stance.gd"
+}

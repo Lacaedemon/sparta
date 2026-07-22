@@ -231,6 +231,8 @@ const DEFAULT_ORDER_BINDINGS := {
 	# an earlier order mode above. Backtick (the key left of "1", unshifted grave
 	# accent) is the next unclaimed key on the keyboard.
 	"give_ground": KEY_QUOTELEFT,
+	# KEY_P collides with HUD._is_pause_keypress()'s pause toggle; KEY_SLASH is the next unclaimed key.
+	"push": KEY_SLASH,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
@@ -355,7 +357,10 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_fps = bool(cfg.get_value("camera", "show_fps", show_fps))
 	fps_corner = int(cfg.get_value("camera", "fps_corner", fps_corner))
 	for slug in DEFAULT_ORDER_BINDINGS:
-		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
+		var val: int = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
+		if slug == "push" and val == KEY_P:
+			val = KEY_SLASH
+		order_bindings[slug] = val
 	_loading = false
 
 

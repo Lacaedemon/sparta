@@ -519,6 +519,35 @@ func test_dispatch_key_routes_resize_and_reports_handled() -> void:
 	assert_false(sm._dispatch_key(_key_event(KEY_P)), "an unbound key is not handled")
 
 
+func test_dispatch_key_ctrl_down_disengages_and_shift_ctrl_down_disengages_with_sacrifice() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 12
+	u.state = Unit.State.FIGHTING
+	b._by_uid[12] = u
+	sm._select(u)
+
+	var ctrl_down := InputEventKey.new()
+	ctrl_down.pressed = true
+	ctrl_down.keycode = KEY_DOWN
+	ctrl_down.ctrl_pressed = true
+
+	assert_true(sm._dispatch_key(ctrl_down), "Ctrl+Down is handled")
+	assert_eq(b._pending_orders.size(), 1, "queues plain disengage order")
+
+	var shift_ctrl_down := InputEventKey.new()
+	shift_ctrl_down.pressed = true
+	shift_ctrl_down.keycode = KEY_DOWN
+	shift_ctrl_down.ctrl_pressed = true
+	shift_ctrl_down.shift_pressed = true
+
+	assert_true(sm._dispatch_key(shift_ctrl_down), "Shift+Ctrl+Down is handled")
+	assert_eq(b._pending_orders.size(), 2, "queues disengage with sacrifice order")
+
+
 func test_dispatch_key_shift_b_issues_right_anchored_explicatio() -> void:
 	# Shift+B (asymmetric explicatio): widens like plain B, but with a non-zero
 	# anchor offset that holds the right flank fixed instead of the plain centred
