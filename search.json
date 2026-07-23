@@ -492,6 +492,18 @@
     ]
   },
   {
+    "objectID": "how-to-play.html#custom-battle",
+    "href": "how-to-play.html#custom-battle",
+    "title": "How to Play",
+    "section": "Custom Battle",
+    "text": "Custom Battle\nSelect Custom Battle from the Main Menu to configure exactly which units face off, instead of the default line. Pick each side’s faction (Sparta, Rome, Carthage, or Macedon) from the dropdown — the roster below repopulates with that faction’s own historically-named units. Use + Add Unit to add more of a faction’s units, or the ✕ next to any entry to remove it, then ⚔ Start Custom Battle to deploy exactly that matchup. Each roster entry’s historical name (e.g. “Spartan Hoplites”, “Companion Cavalry”) resolves to one of the game’s four real unit types (Spearmen/Infantry/Archers/Cavalry) for its actual stats — the flavor name is presentation, the resolved type is what fights. Start is disabled while either side’s roster is empty, since a one-sided matchup would end the battle immediately.\n\n\n\n\n\n\nFigure 40: Custom Battle Setup: picking Sparta vs. Rome, with each side’s roster shown alongside its own faction dropdown.",
+    "crumbs": [
+      "Home",
+      "Play",
+      "How to Play"
+    ]
+  },
+  {
     "objectID": "how-to-play.html#campaign-map",
     "href": "how-to-play.html#campaign-map",
     "title": "How to Play",
