@@ -2627,7 +2627,7 @@ but self-checking against it is easy to skip when writing a fix's own
 explanatory comments (especially ones that narrate *why* a bug happened,
 which naturally wants to reference "the issue this fixes"). In one session,
 `tools/check.sh comments` caught this same self-inflicted mistake three
-separate times across three different PRs (#1042, #1053, #1054) -- each
+separate times across three different PRs (#1051, #1053, #1054) -- each
 time costing a full extra `check.sh` cycle (15-20 min for the coverage-
 instrumented suite) purely to re-discover something a 5-second grep would
 have caught immediately after writing the comment.
