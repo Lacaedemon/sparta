@@ -74,6 +74,9 @@ var _unit_card_tray: UnitCardTray
 var _tick_count: int = 0
 var _tick_rate_window: float = 0.0
 var _live_tick_rate: float = Engine.physics_ticks_per_second   # sane value before the first sample
+# Perf graph samples on a fixed real-time cadence (below), independent of render frame rate --
+# see _PERF_GRAPH_SAMPLE_SECONDS.
+var _perf_graph_sample_window: float = 0.0
 # One semantic item per info line keeps the panel narrow, so the minimum width only
 # needs to cover the widest single stat (a weapon line), not three stats packed abreast.
 const PANEL_MIN := Vector2(150, 90)
@@ -718,6 +721,10 @@ func _toggle_form_up_cycle(mode: int) -> void:
 
 
 const _TICK_RATE_SAMPLE_SECONDS := 1.0
+# Fixed real-time cadence for perf-graph samples, decoupled from render frame rate: sampling
+# every _process() call would shrink the graph's effective rolling window to
+# history_size / fps seconds (e.g. ~0.2s at 300 fps) instead of a consistent multi-second span.
+const _PERF_GRAPH_SAMPLE_SECONDS := 0.1
 
 
 func _process(delta: float) -> void:
@@ -731,6 +738,10 @@ func _process(delta: float) -> void:
 		# routs, and reinforcements otherwise only surface when an unrelated Settings toggle fires.
 		_sync_unit_card_tray_visibility()
 	_update_fps_label()
+	_perf_graph_sample_window += delta
+	if _perf_graph_sample_window >= _PERF_GRAPH_SAMPLE_SECONDS:
+		_perf_graph_sample_window = 0.0
+		_sample_performance_graph()
 
 
 func _on_physics_tick() -> void:
@@ -1358,6 +1369,9 @@ func get_unit_card_tray() -> UnitCardTray:
 func _update_fps_label() -> void:
 	if _fps_label != null and _fps_label.visible:
 		_fps_label.text = "%d FPS · %d ticks/s" % [Engine.get_frames_per_second(), roundi(_live_tick_rate)]
+
+
+func _sample_performance_graph() -> void:
 	if _perf_graph_overlay != null and _perf_graph_overlay.visible:
 		_perf_graph_overlay.add_sample(float(Engine.get_frames_per_second()), _live_tick_rate)
 
