@@ -47,6 +47,7 @@ var _file_major_reform_btn: Button
 var _overlay: ColorRect
 var _overlay_label: Label
 var _menu_button: MenuButton
+var _tray_toggle_btn: Button
 var _status: Label
 var _paused_label: Label
 var _order_mode_label: Label
@@ -272,6 +273,21 @@ func _ready() -> void:
 	_menu_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_menu_button.position = Vector2(-menu_width - 6.0, 6)
 	add_child(_menu_button)
+
+	# Persistent tray toggle, beside the Menu button -- the unit card tray was previously
+	# only reachable by digging into the ☰ menu's "Unit card tray" check item (still there,
+	# and stays in sync with this button), with nothing on screen hinting it exists.
+	_tray_toggle_btn = Button.new()
+	_tray_toggle_btn.text = "Tray"
+	_tray_toggle_btn.toggle_mode = true
+	var tray_btn_width := 70.0
+	_tray_toggle_btn.custom_minimum_size = Vector2(tray_btn_width, 0)
+	_tray_toggle_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_tray_toggle_btn.position = Vector2(-menu_width - tray_btn_width - 12.0, 6)
+	_tray_toggle_btn.tooltip_text = "Show/hide the unit card tray"
+	_tray_toggle_btn.toggled.connect(func(pressed: bool):
+		Settings.show_unit_card_tray = pressed)
+	add_child(_tray_toggle_btn)
 
 	var popup := _menu_button.get_popup()
 	popup.process_mode = Node.PROCESS_MODE_ALWAYS   # usable while paused
@@ -608,6 +624,7 @@ func _sync_setting_toggles() -> void:
 	popup.set_item_checked(popup.get_item_index(MENU_SHOW_FPS), Settings.show_fps)
 	popup.set_item_checked(popup.get_item_index(MENU_PERFORMANCE_GRAPH), Settings.show_performance_graph)
 	popup.set_item_checked(popup.get_item_index(MENU_UNIT_CARD_TRAY), Settings.show_unit_card_tray)
+	_tray_toggle_btn.set_pressed_no_signal(Settings.show_unit_card_tray)
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.set_item_checked(popup.get_item_index(entry["id"]),
 				Settings.fps_corner == entry["corner"])
@@ -729,6 +746,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_shortcuts_keypress(event) and not _overlay.visible:
 		_shortcuts_dialog.popup_centered()
 		get_viewport().set_input_as_handled()
+	elif _is_tray_toggle_keypress(event):
+		Settings.show_unit_card_tray = not Settings.show_unit_card_tray
+		get_viewport().set_input_as_handled()
 
 
 ## Shift+/ produces "?" on a standard layout; physical_keycode (the / key) keeps the
@@ -738,6 +758,21 @@ func _is_shortcuts_keypress(event: InputEvent) -> bool:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return false
 	return event.physical_keycode == KEY_SLASH and event.shift_pressed
+
+
+## F1 toggles the unit card tray. NOT Tab: Tab is Godot's own built-in ui_focus_next action,
+## consumed by GUI input handling on whatever Control currently holds keyboard focus (every
+## HUD Button defaults to FOCUS_ALL, so clicking almost any HUD button -- including the Tray
+## button itself -- would leave it focused and hijack the next Tab press for UI navigation
+## instead of _unhandled_input ever seeing it). Every single letter is already a stance/order
+## hotkey or a fixed WASD/arrow camera-pan key (see Settings.gd's own "next unclaimed key"
+## notes for that scarcity), and function keys are otherwise unused in this project, so F1
+## is both free and immune to Godot's built-in UI action bindings. Uses physical_keycode for
+## the same layout-independence as the pause/shortcuts keys above.
+func _is_tray_toggle_keypress(event: InputEvent) -> bool:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return false
+	return event.physical_keycode == KEY_F1
 
 
 func _is_pause_keypress(event: InputEvent) -> bool:
