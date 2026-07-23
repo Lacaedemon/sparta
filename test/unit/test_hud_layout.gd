@@ -1,8 +1,8 @@
 extends GutTest
-## The screen-margins HUD layout (#1049): distance legend top-left, unit info panel
+## The screen-margins HUD layout: distance legend top-left, unit info panel
 ## center-left, unit settings bottom-left, unit card tray bottom-right, menu button +
-## tray toggle top-right (unchanged by this issue -- covered by test_hud_fps.gd and
-## test_hud_unit_card_tray.gd already).
+## tray toggle top-right (unaffected here -- their own anchor logic is covered by
+## test_hud_fps.gd and test_hud_unit_card_tray.gd already).
 
 const HUDScript = preload("res://scripts/HUD.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
@@ -72,9 +72,9 @@ func test_settings_panel_holds_the_walk_advance_and_reform_controls() -> void:
 
 
 func test_info_panel_available_height_is_no_longer_shrunk_by_the_control_bar() -> void:
-	# Before #1049 the info panel shared the bottom-left corner with the control bar's
-	# raise clearance; now it's centered on the left margin, well clear of the control
-	# bar, so showing a unit (and its control bar) must not shrink its height budget.
+	# The info panel used to share the bottom-left corner with the control bar's raise
+	# clearance; now it's centered on the left margin, well clear of the control bar,
+	# so showing a unit (and its control bar) must not shrink its height budget.
 	var hud := _hud()
 	var viewport_h: float = hud._info_panel.get_viewport_rect().size.y
 	var edge_gap: float = maxf(hud.PANEL_TOP_GAP, hud.PANEL_BOTTOM_GAP)

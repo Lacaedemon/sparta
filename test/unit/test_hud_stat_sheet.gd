@@ -261,7 +261,7 @@ func test_info_panel_clamps_a_tall_sheet_to_the_viewport() -> void:
 
 
 # The info panel's available-height budget and its interaction with the (now separate,
-# bottom-left) settings panel's control-bar raise are covered in test_hud_layout.gd
-# (#1049 split the two panels apart, so the info panel no longer shares the control
-# bar's clearance -- see test_info_panel_available_height_is_no_longer_shrunk_by_the_control_bar
-# and test_settings_panel_raises_above_the_control_bar_while_a_unit_is_shown there).
+# bottom-left) settings panel's control-bar raise are covered in test_hud_layout.gd --
+# the info panel no longer shares the control bar's clearance now that the two panels
+# live in different corners -- see test_info_panel_available_height_is_no_longer_shrunk_by_the_control_bar
+# and test_settings_panel_raises_above_the_control_bar_while_a_unit_is_shown there.
