@@ -882,6 +882,32 @@ for merge" report was correct; a first-pass verification that filtered by
 `author.login == "claude"` found only the stale "Needs more work" comment and
 nearly contradicted a true report.)
 
+## `claude-code-review.yml` no longer auto-fires on every PR — Copilot does, Claude review is manual-dispatch only
+
+As of PR #1062 (issue #1061, 2026-07-23), `.github/workflows/claude-code-review.yml` has
+**no `pull_request:` trigger** — it runs only on `workflow_dispatch`. GitHub Copilot code
+review is already enabled repo-wide via the `main` branch ruleset (`copilot_code_review`
+rule, `review_on_push: true`, `review_draft_pull_requests: true`), so every PR still gets
+an automatic review — just from Copilot, not Claude.
+
+**What this changes for ARDI:** a fresh PR no longer gets an automatic `claude[bot]`
+review comment — only a Copilot one. All of this file's and ai-config's stub-review /
+"do the review yourself when @claude doesn't produce a verdict" handling still applies,
+but now to **Copilot's** review output, not Claude's, as the default automatic pass.
+`claude.yml`'s own re-dispatch-after-push mechanism (which targets this same workflow
+file via `workflow_dispatch`) still works, and a manual
+`gh workflow run claude-code-review.yml -f pr_number=<N>` still gets a real Claude review
+on demand — reach for it when Copilot's review looks thin/stubbed, or when the change
+needs the state-transcript-verification rigor Claude's own prompt-addendum asks for
+(inline demo/transcript cross-checking, per this file's own review-quality conventions),
+which Copilot's review doesn't necessarily apply.
+
+**How to apply:** before treating a PR's review status as settled, check for a Copilot
+review the same way this file's other entries check for a `claude[bot]` one — via
+`gh pr view <N> --json reviews` and `gh api repos/<owner>/<repo>/pulls/<N>/comments` (the
+"Re-check for latest review findings" convention applies regardless of which bot
+authored the review). Don't assume "no `claude[bot]` comment yet" means unreviewed.
+
 ## Verify an issue's own stated root cause empirically before implementing its proposed fix
 
 A well-written bug issue with specific code references (line numbers, a named mechanism,
