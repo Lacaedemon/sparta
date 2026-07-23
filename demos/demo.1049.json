@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Purely visual HUD layout rearrangement (distance legend, unit info panel, unit settings panel, unit card tray each moved to a screen margin) -- nothing a recorded battle's motion would show better than a static frame. See the before/after screenshots in the PR description (demos/shots/hud-margin-layout-before.png and -after.png)."
+}

@@ -260,17 +260,7 @@ func test_info_panel_clamps_a_tall_sheet_to_the_viewport() -> void:
 			"the clamped layer reserves extra width for the scrollbar")
 
 
-func test_info_panel_available_height_accounts_for_gaps_and_raise() -> void:
-	# The height budget spans from just under the viewport's top edge to the
-	# panel's bottom clearance -- which deepens by the control bar's raise while
-	# a unit is shown.
-	var hud := _hud()
-	var viewport_h: float = hud._info_panel.get_viewport_rect().size.y
-	var lowered: float = hud._info_panel_available_height()
-	assert_almost_eq(lowered,
-			viewport_h - hud.PANEL_TOP_GAP - hud.PANEL_BOTTOM_GAP, 0.01,
-			"with no unit shown the budget runs the top gap to the base bottom gap")
-	hud.show_unit(_unit(), 1)
-	assert_almost_eq(hud._info_panel_available_height(),
-			lowered - hud._ctrl_bar.get_combined_minimum_size().y - 8.0, 0.01,
-			"a shown unit's control-bar raise shrinks the budget by the same amount")
+# The info panel's available-height budget -- including how it reserves room for the
+# legend and settings panel sharing its left-margin column -- is covered in
+# test_hud_layout.gd (test_info_panel_available_height_reserves_room_for_the_legend_and_settings_panel
+# and test_info_panel_available_height_shrinks_further_once_the_settings_panel_raises).

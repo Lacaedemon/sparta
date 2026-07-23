@@ -1,7 +1,10 @@
 extends CanvasLayer
-## On-screen UI, built in code (no .tscn needed):
-##   - top-right Menu button: restart the battle plus global options
-##   - selected-unit info panel (bottom-left)
+## On-screen UI, built in code (no .tscn needed). Panels sit on the screen margins:
+##   - top-left: distance legend
+##   - top-right: Menu button (restart the battle plus global options) + tray toggle
+##   - center-left: selected-unit info panel (stat sheet, characteristics, order tree)
+##   - bottom-left: selected-unit settings (walk advance / reform before move / file-major reform)
+##   - bottom-right: unit card tray
 ##   - victory/defeat overlay with a restart button
 
 const BattleRef = preload("res://scripts/Battle.gd")
@@ -44,6 +47,9 @@ var _chars_expanded: bool = false
 var _walk_advance_check: CheckBox
 var _reform_before_move_check: CheckBox
 var _file_major_reform_btn: Button
+# Own panel (bottom-left) housing the three controls above -- kept separate from the
+# unit info panel (center-left) per the screen-margins layout; see _build_settings_panel.
+var _settings_panel: PanelContainer
 var _overlay: ColorRect
 var _overlay_label: Label
 var _menu_button: MenuButton
@@ -79,9 +85,13 @@ var _live_tick_rate: float = Engine.physics_ticks_per_second   # sane value befo
 var _perf_graph_sample_window: float = 0.0
 # One semantic item per info line keeps the panel narrow, so the minimum width only
 # needs to cover the widest single stat (a weapon line), not three stats packed abreast.
+# PANEL_MIN also floors the bottom-left settings panel's height; PANEL_BOTTOM_GAP/
+# PANEL_TOP_GAP are the two screen-edge clearances the center-anchored info panel budgets
+# against (see _info_panel_available_height) and PANEL_BOTTOM_GAP alone anchors the
+# settings panel to the bottom edge.
 const PANEL_MIN := Vector2(150, 90)
-const PANEL_BOTTOM_GAP := 20.0   # clearance between info panel and screen edge
-const PANEL_TOP_GAP := 8.0       # clearance between the panel's top and the viewport's top edge
+const PANEL_BOTTOM_GAP := 20.0   # clearance between a panel and the screen's bottom edge
+const PANEL_TOP_GAP := 8.0       # clearance between the info panel and the viewport's top edge
 
 # Single source of truth for the rebindable stance modes shown in the control-bar
 # dropup. Each entry carries the popup item id, the OrderMode it maps to, the
@@ -402,27 +412,25 @@ func _ready() -> void:
 	_shortcuts_dialog = preload("res://scripts/ShortcutsOverlay.gd").new()
 	add_child(_shortcuts_dialog)
 
-	# Selected-unit info panel, pinned above the bottom-left corner. The top
-	# offset is derived from the panel's own min-height + bottom margin (not a
-	# hand-tuned magic number), and grow_vertical = BEGIN lets it expand UPWARD
-	# if a content row or a larger font is added — so it never clips past the
-	# screen's bottom edge. offset_left/offset_top/offset_bottom are set directly
-	# (not via `position`) since this Control is anchored bottom-left
-	# (anchor_top == anchor_bottom == 1): offset_top/offset_bottom are the true
-	# pixel distances from that anchor line, while `position` resolves anchors
-	# against whatever the parent size happens to be AT THE MOMENT it's set —
-	# see _info_panel_raise()/_info_panel_lower()'s doc comment for how that bit
-	# every later per-frame reposition. offset_top/offset_bottom are set once here
-	# to their at-rest values; _info_panel_raise()/_info_panel_lower() move both by
-	# the same amount later so the panel translates as a rigid rectangle instead of
-	# stretching.
+	# Selected-unit info panel, centered on the left margin. The offsets are
+	# derived from the panel's own min-height (not a hand-tuned magic number), and
+	# grow_vertical = BOTH lets it expand symmetrically up and down as content grows
+	# -- so it never clips past either screen edge. offset_left/offset_top/offset_bottom
+	# are set directly (not via `position`) since this Control is anchored center-left
+	# (anchor_top == anchor_bottom == 0.5): offset_top/offset_bottom are the true pixel
+	# distances from that anchor line, while `position` resolves anchors against
+	# whatever the parent size happens to be AT THE MOMENT it's set -- see
+	# _clamp_info_panel()'s doc comment for how that bit every later per-frame
+	# reposition. offset_top/offset_bottom are set once here to their at-rest values;
+	# _clamp_info_panel() recomputes both together (via _info_panel_recenter) so the
+	# panel stays centered on the same point as it grows or shrinks with content.
 	_info_panel = PanelContainer.new()
 	_info_panel.custom_minimum_size = PANEL_MIN
-	_info_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_info_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_info_panel.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	_info_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_info_panel.offset_left = 14.0
-	_info_panel.offset_top = -(PANEL_MIN.y + PANEL_BOTTOM_GAP)
-	_info_panel.offset_bottom = -PANEL_BOTTOM_GAP
+	_info_panel.offset_top = -PANEL_MIN.y * 0.5
+	_info_panel.offset_bottom = PANEL_MIN.y * 0.5
 	add_child(_info_panel)
 
 	_info_margin = MarginContainer.new()
@@ -436,7 +444,7 @@ func _ready() -> void:
 	# height guard: _clamp_info_panel sizes it to the content while the content
 	# fits, and pins it to the available viewport height (scrollbar shown) when
 	# a tall stat sheet -- expanded characteristics plus a deep order tree on a
-	# short window -- would otherwise grow the panel off the top of the screen.
+	# short window -- would otherwise grow the panel off either edge of the screen.
 	_info_scroll = ScrollContainer.new()
 	_info_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_info_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
@@ -450,37 +458,7 @@ func _ready() -> void:
 	_info.text = "No unit selected"
 	_info_col.add_child(_info)
 
-	# Per-unit settings checkboxes: walk_advance ("no jog/sprint" -- mandatory for
-	# formed stances that break on a jog or sprint) and reform_before_move (hold to settle
-	# ranks before marching). Hidden until a unit is shown (show_unit()/clear_unit()), and
-	# reflect the FIRST selected unit's own value; toggling applies to every currently
-	# selected unit (SelectionManager.set_selected_walk_advance/
-	# set_selected_reform_before_move) -- the same "shows the lead unit, writes the whole
-	# selection" convention _ctrl_bar_update_formation's quick-toggle buttons already use.
-	_walk_advance_check = CheckBox.new()
-	_walk_advance_check.text = "Walk advance (no jog/sprint)"
-	_walk_advance_check.visible = false
-	_walk_advance_check.toggled.connect(_on_walk_advance_toggled)
-	_info_col.add_child(_walk_advance_check)
-
-	_reform_before_move_check = CheckBox.new()
-	_reform_before_move_check.text = "Reform before move"
-	_reform_before_move_check.visible = false
-	_reform_before_move_check.toggled.connect(_on_reform_before_move_toggled)
-	_info_col.add_child(_reform_before_move_check)
-
-	# file_major_reform_mode (a casualty only closes up its own file instead of cascading
-	# the whole block, or the historical cascade, or Auto -- deferring to the unit's own
-	# `disciplined` flag) has THREE values, so it doesn't fit a checkbox: a plain Button
-	# that cycles File-major -> Row-major -> Auto -> File-major on each click, mirroring
-	# the control bar's Group-mode/Formation quick-toggle buttons' click-to-cycle shape.
-	# Same "shows the lead unit, writes the whole selection" convention as the two
-	# checkboxes above (SelectionManager.cycle_selected_file_major_reform_mode).
-	_file_major_reform_btn = Button.new()
-	_file_major_reform_btn.text = "Reform: File-major"
-	_file_major_reform_btn.visible = false
-	_file_major_reform_btn.pressed.connect(_on_file_major_reform_pressed)
-	_info_col.add_child(_file_major_reform_btn)
+	_build_settings_panel()
 
 	# The static-characteristics fold: a triangle toggle row (the order tree's own
 	# expand/collapse idiom, same glyphs) over the static stat lines, collapsed by
@@ -860,7 +838,8 @@ func show_unit(u, group_count: int) -> void:
 	_rebuild_order_tree(u)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = true
-		_info_panel_raise()
+		_settings_panel_raise()
+		_tray_raise()
 		_ctrl_bar_update_formation(u)
 		_ctrl_bar_update_reform(u)
 		_ctrl_bar_update_stance(_sel_mgr.get_armed_mode() if _sel_mgr != null else 0)
@@ -878,7 +857,8 @@ func clear_unit() -> void:
 	_rebuild_order_tree(null)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = false
-		_info_panel_lower()
+		_settings_panel_lower()
+		_tray_lower()
 	_clamp_info_panel()
 
 
@@ -1192,10 +1172,8 @@ func update_group_attack_mode(mode: int) -> void:
 
 
 # --- Distance legend (map scale bar, #364) ----------------------------------
-# A small semi-translucent panel in the bottom-right corner showing the battlefield's
-# real metre scale at the current camera zoom (DistanceLegend has the pure math). Bottom-
-# left is the selected-unit info panel and bottom-center is the control bar, so bottom-
-# right is the free corner.
+# A small semi-translucent panel in the top-left corner showing the battlefield's
+# real metre scale at the current camera zoom (DistanceLegend has the pure math).
 
 const _LEGEND_MARGIN := Vector2(14.0, 14.0)
 const _LEGEND_BAR_HEIGHT := 6.0
@@ -1203,10 +1181,10 @@ const _LEGEND_PAD := 10.0
 
 func _build_distance_legend() -> void:
 	_legend_panel = PanelContainer.new()
-	_legend_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_legend_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_legend_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_legend_panel.position = -_LEGEND_MARGIN   # offset off the corner; grows up-and-left from here
+	_legend_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_legend_panel.grow_horizontal = Control.GROW_DIRECTION_END
+	_legend_panel.grow_vertical = Control.GROW_DIRECTION_END
+	_legend_panel.position = _LEGEND_MARGIN   # offset off the corner; grows down-and-right from here
 	_legend_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Semi-translucent panel background (distinct from the opaque default panel style),
 	# per #364's spec -- the battlefield should stay visible through it.
@@ -1281,7 +1259,7 @@ func _build_fps_label() -> void:
 ## Show/hide the frame-rate label and (re)anchor it to Settings.fps_corner. Grow direction
 ## is set opposite the anchored edge on each axis so the label doesn't drift as its digit
 ## count changes ("9" -> "144") -- same reasoning as the distance legend's grow_horizontal/
-## grow_vertical = GROW_DIRECTION_BEGIN for its bottom-right anchor.
+## grow_vertical = GROW_DIRECTION_END for its top-left anchor.
 func _sync_fps_label() -> void:
 	if _fps_label == null:
 		return
@@ -1307,6 +1285,12 @@ func _sync_fps_label() -> void:
 		# silently reintroduce the overlap.
 		top_margin = _menu_button.position.y \
 				+ _menu_button.get_combined_minimum_size().y + 6.0
+	elif top and left and _legend_panel != null and _legend_panel.visible:
+		# The top-left corner is shared with the distance legend (on by default), so
+		# the label sits just below it instead of on top of it -- same reasoning as
+		# the top-right/Menu-button case above, derived from the legend's own rect.
+		top_margin = _legend_panel.position.y \
+				+ _legend_panel.get_combined_minimum_size().y + 6.0
 	_fps_label.position = Vector2(
 			_FPS_MARGIN.x if left else -_FPS_MARGIN.x,
 			top_margin if top else -_FPS_MARGIN.y)
@@ -1332,9 +1316,19 @@ func _sync_performance_graph() -> void:
 func _build_unit_card_tray() -> void:
 	_unit_card_tray = UnitCardTray.new()
 	_unit_card_tray.name = "UnitCardTray"
-	_unit_card_tray.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_unit_card_tray.position = Vector2(-250.0, -180.0)
 	_unit_card_tray.custom_minimum_size = Vector2(500.0, 0)
+	_unit_card_tray.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_unit_card_tray.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_unit_card_tray.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	# offset_left/offset_right, not `position`: with a fixed known width, setting them
+	# explicitly (like the settings/info panels do) keeps the right edge pinned 14px off
+	# the corner regardless of load order -- `position` derives its offsets from whatever
+	# size the Control happened to have at the moment it was set, which for a freshly
+	# constructed node is (0, 0), not the 500px custom_minimum_size assigned right after.
+	_unit_card_tray.offset_right = -14.0
+	_unit_card_tray.offset_left = -(500.0 + 14.0)
+	_unit_card_tray.offset_top = -14.0
+	_unit_card_tray.offset_bottom = -14.0
 	_unit_card_tray.set_selection_manager(_sel_mgr)
 	add_child(_unit_card_tray)
 	_sync_unit_card_tray_visibility()
@@ -1525,20 +1519,84 @@ func _on_stance_popup_id(id: int) -> void:
 		_sel_mgr.arm_order_mode(mode)
 
 
-## How far above its at-rest position the info panel currently sits: the control
-## bar's height plus a small gap while the bar is shown, zero otherwise. Shared
-## by the raise math and _clamp_info_panel so the two never disagree about where
-## the panel's bottom edge is.
-func _info_panel_raise_amount() -> float:
+## Builds the bottom-left settings panel: the walk_advance / reform_before_move
+## checkboxes and the file_major_reform_mode cycle button, split out from the
+## (now center-left) unit info panel so each sits on its own screen margin. Anchored
+## bottom-left with the same "derived at-rest height, grow toward the control bar"
+## pattern the info panel used to use when it lived here -- see _settings_panel_raise()
+## for why this panel (not the info panel) still needs to clear the control bar.
+func _build_settings_panel() -> void:
+	_settings_panel = PanelContainer.new()
+	_settings_panel.custom_minimum_size = PANEL_MIN
+	_settings_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_settings_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_settings_panel.offset_left = 14.0
+	_settings_panel.offset_top = -(PANEL_MIN.y + PANEL_BOTTOM_GAP)
+	_settings_panel.offset_bottom = -PANEL_BOTTOM_GAP
+	add_child(_settings_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	_settings_panel.add_child(margin)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	margin.add_child(col)
+
+	# Per-unit settings checkboxes: walk_advance ("no jog/sprint" -- mandatory for
+	# formed stances that break on a jog or sprint) and reform_before_move (hold to settle
+	# ranks before marching). Hidden until a unit is shown (show_unit()/clear_unit()), and
+	# reflect the FIRST selected unit's own value; toggling applies to every currently
+	# selected unit (SelectionManager.set_selected_walk_advance/
+	# set_selected_reform_before_move) -- the same "shows the lead unit, writes the whole
+	# selection" convention _ctrl_bar_update_formation's quick-toggle buttons already use.
+	_walk_advance_check = CheckBox.new()
+	_walk_advance_check.text = "Walk advance (no jog/sprint)"
+	_walk_advance_check.visible = false
+	_walk_advance_check.toggled.connect(_on_walk_advance_toggled)
+	col.add_child(_walk_advance_check)
+
+	_reform_before_move_check = CheckBox.new()
+	_reform_before_move_check.text = "Reform before move"
+	_reform_before_move_check.visible = false
+	_reform_before_move_check.toggled.connect(_on_reform_before_move_toggled)
+	col.add_child(_reform_before_move_check)
+
+	# file_major_reform_mode (a casualty only closes up its own file instead of cascading
+	# the whole block, or the historical cascade, or Auto -- deferring to the unit's own
+	# `disciplined` flag) has THREE values, so it doesn't fit a checkbox: a plain Button
+	# that cycles File-major -> Row-major -> Auto -> File-major on each click, mirroring
+	# the control bar's Group-mode/Formation quick-toggle buttons' click-to-cycle shape.
+	# Same "shows the lead unit, writes the whole selection" convention as the two
+	# checkboxes above (SelectionManager.cycle_selected_file_major_reform_mode).
+	_file_major_reform_btn = Button.new()
+	_file_major_reform_btn.text = "Reform: File-major"
+	_file_major_reform_btn.visible = false
+	_file_major_reform_btn.pressed.connect(_on_file_major_reform_pressed)
+	col.add_child(_file_major_reform_btn)
+
+
+## How far above its at-rest position a bottom-anchored panel must sit to clear the
+## control bar: its height plus a small gap while the bar is shown, zero otherwise.
+## Shared by every bottom panel's raise math (settings panel, unit card tray) so they
+## never disagree with each other about where the control bar's top edge is. The
+## control bar grows both directions from the screen's horizontal center and can reach
+## a fair way toward either side margin, so BOTH the bottom-left settings panel and the
+## bottom-right unit card tray need this clearance, not just whichever one happens to
+## be closer to center.
+func _ctrl_bar_clearance() -> float:
 	if _ctrl_bar == null or not _ctrl_bar.visible:
 		return 0.0
 	return _ctrl_bar.get_combined_minimum_size().y + 8.0
 
 
-func _info_panel_raise() -> void:
-	if _info_panel == null or _ctrl_bar == null:
+func _settings_panel_raise() -> void:
+	if _settings_panel == null or _ctrl_bar == null:
 		return
-	# offset_top/offset_bottom, not position: _info_panel is anchored bottom-left
+	# offset_top/offset_bottom, not position: _settings_panel is anchored bottom-left
 	# (anchor_top == anchor_bottom == 1), so offset_top/offset_bottom ARE the pixel
 	# distances from that anchor line -- exactly what this raise/lower math wants
 	# ("translate the whole panel N px above the bottom edge"). Control.position, in
@@ -1554,30 +1612,73 @@ func _info_panel_raise() -> void:
 	# are moved by the same raise_amount here so the panel translates as a rigid
 	# rectangle -- clearing the control bar beneath it -- rather than stretching
 	# taller with its bottom edge fixed.
-	var raise_amount := _info_panel_raise_amount()
-	_info_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP + raise_amount))
-	_info_panel.set_deferred("offset_bottom", -(PANEL_BOTTOM_GAP + raise_amount))
+	var raise_amount := _ctrl_bar_clearance()
+	_settings_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP + raise_amount))
+	_settings_panel.set_deferred("offset_bottom", -(PANEL_BOTTOM_GAP + raise_amount))
 
 
-func _info_panel_lower() -> void:
-	if _info_panel == null:
+func _settings_panel_lower() -> void:
+	if _settings_panel == null:
 		return
-	_info_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
-	_info_panel.set_deferred("offset_bottom", -PANEL_BOTTOM_GAP)
+	_settings_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
+	_settings_panel.set_deferred("offset_bottom", -PANEL_BOTTOM_GAP)
 
 
-## The tallest the info panel may grow before its top edge would leave the
-## screen: the viewport height minus a small gap above and the panel's own
-## bottom clearance (including any control-bar raise) below.
+## The unit card tray (bottom-right) sits close enough to the screen's horizontal
+## center, at the default 1280px viewport width, that the control bar's own width can
+## reach into it -- confirmed by a direct screenshot while both were visible. Raise it
+## clear of the control bar the same way the settings panel already does.
+func _tray_raise() -> void:
+	if _unit_card_tray == null or _ctrl_bar == null:
+		return
+	var raise_amount := _ctrl_bar_clearance()
+	_unit_card_tray.set_deferred("offset_top", -(14.0 + raise_amount))
+	_unit_card_tray.set_deferred("offset_bottom", -(14.0 + raise_amount))
+
+
+func _tray_lower() -> void:
+	if _unit_card_tray == null:
+		return
+	_unit_card_tray.set_deferred("offset_top", -14.0)
+	_unit_card_tray.set_deferred("offset_bottom", -14.0)
+
+
+## The tallest the (center-left, symmetrically-growing) info panel may grow before
+## it reaches either the screen edge OR one of the other panels sharing its left-margin
+## column -- the legend above it (top-left) and the settings panel below it
+## (bottom-left). No longer depends on the control bar directly -- that clearance is
+## folded into the settings panel's own reserved footprint (_ctrl_bar_clearance() is
+## what the settings panel itself raises by).
 func _info_panel_available_height() -> float:
 	var viewport_h: float = _info_panel.get_viewport_rect().size.y
-	var bottom_clearance: float = PANEL_BOTTOM_GAP + _info_panel_raise_amount()
-	return viewport_h - PANEL_TOP_GAP - bottom_clearance
+	var top_reserved: float = PANEL_TOP_GAP
+	if _legend_panel != null and _legend_panel.visible:
+		top_reserved = maxf(top_reserved,
+				_legend_panel.position.y + _legend_panel.get_combined_minimum_size().y + PANEL_TOP_GAP)
+	var bottom_reserved: float = PANEL_BOTTOM_GAP
+	if _settings_panel != null:
+		var settings_height: float = maxf(PANEL_MIN.y, _settings_panel.get_combined_minimum_size().y)
+		bottom_reserved = maxf(bottom_reserved,
+				settings_height + PANEL_BOTTOM_GAP + _ctrl_bar_clearance())
+	# The panel grows symmetrically (GROW_DIRECTION_BOTH), so both edges share the
+	# larger of the two reservations -- a smaller one on just one side would still let
+	# the panel's OTHER half grow that far, reaching whichever panel is closer.
+	var edge_gap: float = maxf(top_reserved, bottom_reserved)
+	return viewport_h - 2.0 * edge_gap
+
+
+## Sets offset_top/offset_bottom symmetrically around the panel's anchor line (the
+## viewport's vertical center) so a `total_height`-tall panel stays centered as it
+## grows or shrinks with content, instead of drifting toward one edge.
+func _info_panel_recenter(total_height: float) -> void:
+	var half := maxf(total_height, PANEL_MIN.y) * 0.5
+	_info_panel.set_deferred("offset_top", -half)
+	_info_panel.set_deferred("offset_bottom", half)
 
 
 ## Size the scroll layer so the panel is exactly content-tall while the content
 ## fits, and pinned to the available height (content scrolls) when it doesn't --
-## the guard that keeps a tall stat sheet from growing off the top of a short
+## the guard that keeps a tall stat sheet from growing off either edge of a short
 ## viewport. Runs on every content change (show_unit/clear_unit each HUD
 ## refresh, the characteristics toggle), so a viewport resize is picked up by
 ## the next refresh.
@@ -1598,7 +1699,9 @@ func _clamp_info_panel() -> void:
 		# Leave room for the scrollbar so it doesn't overlap the text (horizontal
 		# scrolling is disabled, so the column is forced to the inside width).
 		w += _info_scroll.get_v_scroll_bar().get_combined_minimum_size().x
-	_info_scroll.custom_minimum_size = Vector2(w, minf(content.y, available))
+	var scroll_h: float = minf(content.y, available)
+	_info_scroll.custom_minimum_size = Vector2(w, scroll_h)
+	_info_panel_recenter(scroll_h + overhead)
 
 
 func _build_ctrl_option_buttons() -> Control:
@@ -1616,7 +1719,7 @@ func _build_ctrl_option_buttons() -> Control:
 	_ctrl_reform_btn.toggled.connect(func(pressed: bool):
 		if _sel_mgr != null:
 			_sel_mgr.set_selected_reform_before_move(pressed)
-		# Keep the info panel's own checkbox in sync (bidirectional -- either control can
+		# Keep the settings panel's own checkbox in sync (bidirectional -- either control can
 		# drive the same per-unit setting; set_pressed_no_signal avoids a feedback loop).
 		if _reform_before_move_check != null:
 			_reform_before_move_check.set_pressed_no_signal(pressed))

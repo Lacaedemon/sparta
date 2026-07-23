@@ -8,16 +8,19 @@ const SettingsScript = preload("res://scripts/Settings.gd")
 
 var _orig_show_fps: bool
 var _orig_corner: int
+var _orig_show_distance_legend: bool
 
 
 func before_each() -> void:
 	_orig_show_fps = Settings.show_fps
 	_orig_corner = Settings.fps_corner
+	_orig_show_distance_legend = Settings.show_distance_legend
 
 
 func after_each() -> void:
 	Settings.show_fps = _orig_show_fps
 	Settings.fps_corner = _orig_corner
+	Settings.show_distance_legend = _orig_show_distance_legend
 
 
 func _hud() -> CanvasLayer:
@@ -163,14 +166,29 @@ func test_top_right_fps_label_sits_below_the_menu_button() -> void:
 			"the top-right label starts below the menu button's bottom edge")
 
 
-func test_top_left_fps_label_uses_the_standard_margin() -> void:
-	# With the hint bar gone, nothing occupies the top-left corner, so the label
-	# uses the same margin as the bottom corners.
+func test_top_left_fps_label_sits_below_the_distance_legend() -> void:
+	# The distance legend (on by default) also lives in the top-left corner: the label
+	# must clear the legend's whole rect, not sit inside it -- same reasoning as the
+	# top-right/Menu-button case above.
+	Settings.show_distance_legend = true
+	Settings.show_fps = true
+	Settings.fps_corner = Settings.FPS_CORNER_TOP_LEFT
+	var hud := _hud()
+	var legend_bottom: float = hud._legend_panel.position.y \
+			+ hud._legend_panel.get_combined_minimum_size().y
+	assert_gte(hud._fps_label.position.y, legend_bottom,
+			"the top-left label starts below the distance legend's bottom edge")
+
+
+func test_top_left_fps_label_uses_the_standard_margin_with_the_legend_hidden() -> void:
+	# With the legend toggled off, nothing else occupies the top-left corner, so the
+	# label falls back to the same margin as the bottom corners.
+	Settings.show_distance_legend = false
 	Settings.show_fps = true
 	Settings.fps_corner = Settings.FPS_CORNER_TOP_LEFT
 	var hud := _hud()
 	assert_eq(hud._fps_label.position.y, HUDScript._FPS_MARGIN.y,
-			"the top-left corner needs no extra clearance")
+			"the top-left corner needs no extra clearance once the legend is hidden")
 
 
 # --- performance graph sampling cadence ---------------------------------------
