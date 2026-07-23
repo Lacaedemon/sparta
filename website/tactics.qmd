@@ -366,7 +366,7 @@ one flank is braced against a hill, a river, or a neighbouring unit that can't s
 The whole widen lands on the free flank instead, so the pinned side never moves and the line
 still gets the extra frontage where there's room for it.
 
-**How a line reforms after losses.** By default (**File-major**, the info panel's
+**How a line reforms after losses.** By default (**File-major**, the unit settings panel's
 File-major reform button), every soldier holds a persistent file (column) assignment: when a
 man falls, only the survivors behind him in his OWN file step forward to close that one gap,
 and every other file is untouched --- nobody switches columns just because a neighbouring
@@ -780,7 +780,7 @@ when a ranged enemy is firing at them (to spend less time under missiles), and
 sprint at full speed once within about 200 px of the target --- so a charge
 arrives at full momentum without wearing out the troops on the march.
 
-**Check Walk advance in the selected-unit info panel** to lock the selection to walk
+**Check Walk advance in the unit settings panel** to lock the selection to walk
 pace throughout. This is required for formed stances like shield wall or pike
 phalanx: those formations hold their shape only at a walk, and an auto-sprint will
 break them. Keep Walk advance on whenever you are using a tight formation that
@@ -806,8 +806,8 @@ your advantage when committing cavalry or an assault infantry charge.
 Pace modes: a regiment attack-marches on AUTO pace &mdash; walking on approach,
 jogging through the beaten zone once enemy archery reaches it, then sprinting
 at full charge speed inside charge distance of its target &mdash; all three
-phases as distinct legs of one advance. Check Walk advance in the info panel to
-lock the selection to walk pace throughout.
+phases as distinct legs of one advance. Check Walk advance in the unit settings
+panel to lock the selection to walk pace throughout.
 :::
 
 ### Choosing a gait by click count

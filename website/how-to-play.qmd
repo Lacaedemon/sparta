@@ -37,9 +37,9 @@ Selecting units and issuing move/attack orders during a battle.
 | Form up | **Right-click and drag** open ground (left flank → right flank); with several units selected, the line is split among them |
 | Form up in selection order | **Shift + right-click and drag** (instead of the default left-to-right field order) |
 | Form-up split mode | <kbd>Y</kbd> cycles through enabled modes (equal-depth / equal-width); <kbd>Shift</kbd> + <kbd>Y</kbd> cycles the other way; configure which modes cycle and which is the battle default in **☰ Menu** |
-| Reform before move | A checkbox in the **selected-unit info panel**, or the **control bar**, toggles whether the selection pauses to settle its ranks before marching. Each unit type has its own default (on for most types, off for cavalry) |
-| Walk advance | A checkbox in the **selected-unit info panel** keeps the selection at walk speed throughout --- no jog or sprint phase. Required for formed stances (shield wall, pike phalanx) that break on a run; spearmen default it on |
-| File-major reform | A button in the **selected-unit info panel** cycles how the selection's grid reflows after a casualty: **File-major** closes the gap with a soldier's own file (column) survivors (the default for every type), **Row-major** recomputes and re-centres the whole block every tick, and **Auto** picks between the two from the unit's own discipline (see [Tactics](tactics.qmd#line-width-frontage)) |
+| Reform before move | A checkbox in the **unit settings panel** (bottom-left), or the **control bar**, toggles whether the selection pauses to settle its ranks before marching. Each unit type has its own default (on for most types, off for cavalry) |
+| Walk advance | A checkbox in the **unit settings panel** (bottom-left) keeps the selection at walk speed throughout --- no jog or sprint phase. Required for formed stances (shield wall, pike phalanx) that break on a run; spearmen default it on |
+| File-major reform | A button in the **unit settings panel** (bottom-left) cycles how the selection's grid reflows after a casualty: **File-major** closes the gap with a soldier's own file (column) survivors (the default for every type), **Row-major** recomputes and re-centres the whole block every tick, and **Auto** picks between the two from the unit's own discipline (see [Tactics](tactics.qmd#line-width-frontage)) |
 | Attack | **Right-click** an enemy unit |
 | Group-order mode | <kbd>X</kbd> cycles focused ↔ distributed (<kbd>Shift</kbd> + <kbd>X</kbd> cycles the other way) · or **control bar** --- spreads a multi-unit attack across nearby enemies, or a multi-unit relief across nearby engaged friendlies ([passage of lines](tactics.qmd#passage-of-lines)) |
 | Relieve a friendly | **Right-click** an engaged friendly outside the selection --- the fresh unit takes over the fight and the tired one falls back. With several fresh units selected and distributed mode on, each pairs with its own nearby engaged friendly instead of piling onto the one clicked |
@@ -60,7 +60,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Disengage and step back | <kbd>Ctrl</kbd> + <kbd>↓</kbd> on a unit currently in melee: breaks contact and steps back a short distance, holding facing |
 | Merge selected units | <kbd>M</kbd> |
 | Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall |
-| Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (bottom-right, on by default) |
+| Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (top-left, on by default) |
 | Order distance labels | **☰ Menu → Order distance labels** toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default) |
 | Unit speed labels | **☰ Menu → Unit speed labels** shows each unit's current speed in metres/second above it in the hold-<kbd>Space</kbd> survey (off by default) |
 | Soldier IDs (selected unit, zoom in) | **☰ Menu → Soldier IDs (selected unit, zoom in)** draws each soldier's per-body index over a selected unit at figure LOD (zoomed in); a developer debug visual (off by default) |
@@ -94,7 +94,7 @@ Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking
   direct keys.
 - **Stance** --- click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).
 - **Reform** --- toggle Reform before move for the selected unit(s) (same as the checkbox
-  in the info panel).
+  in the unit settings panel).
 - **Focused / Spread** --- cycle the group-order mode (same as <kbd>X</kbd>); governs both a
   multi-unit attack and a multi-unit relief.
 
@@ -103,7 +103,7 @@ The bar updates immediately when you select a different unit or change a setting
 **Pace modes (AUTO by default).** Units walk on approach, jog when a ranged enemy is
 within range (under missile fire), and accelerate to full sprint speed once within
 about 200 px of the target --- so a charge arrives at full momentum without wearing
-out the troops on the march. Check **Walk advance** in the selected-unit info panel to
+out the troops on the march. Check **Walk advance** in the unit settings panel to
 lock the selection to walk pace throughout; this is required for formed stances like
 shield wall or pike phalanx that break if the unit breaks into a run. Each unit type
 has its own default --- spearmen start with it on, everyone else off --- and the setting
@@ -150,7 +150,7 @@ momentum straight through, while one that turns it sharply back bleeds that spee
 during the hold, so the block comes about from a stand instead of carrying its pace
 into the turn (@fig-reversal-march).
 To make a unit move immediately without the pause, uncheck **Reform before move** in
-its info panel, or click **Reform** in the control bar --- either applies to every
+its unit settings panel, or click **Reform** in the control bar --- either applies to every
 currently selected unit. Cavalry starts with the setting off (immediate
 responsiveness matters more to a mounted regiment than settling ranks); every other
 type starts with it on. The setting is a persistent property of each unit, and any
@@ -493,7 +493,7 @@ tells you the type, too: a dart for spearmen, a kite for archers, and an arrow-p
 for other foot and cavalry. All three are compact directional glyphs, so a rank reads as
 arrows whichever way it faces rather than smearing into bars.
 
-**Reading distances.** A small semi-translucent scale bar sits in the bottom-right corner,
+**Reading distances.** A small semi-translucent scale bar sits in the top-left corner,
 labelled with the real metre distance it spans (e.g. "50 m") --- it rescales as you zoom,
 so you can always judge range and reach at a glance. Toggle it off in **☰ Menu → Distance
 legend** if you'd rather not see it.
@@ -855,10 +855,10 @@ file (column) assignment: when a file-mate falls, only the survivors deeper in t
 file step forward to close the gap, and every other file stands untouched --- a
 mauled unit's rear reads as jagged (one column can run deeper than its neighbour)
 rather than a single evenly-shrinking rear rank. Click the **File-major reform** button
-in the info panel to cycle to **Row-major**, the historical behavior instead: the whole
-grid recomputes fresh from the live headcount every tick, so survivors close up toward
-the centre file by file and can shuffle sideways between files as the block re-knits
-itself (see [Tactics](tactics.qmd#line-width-frontage)). A third click cycles to
+in the unit settings panel to cycle to **Row-major**, the historical behavior instead: the
+whole grid recomputes fresh from the live headcount every tick, so survivors close up
+toward the centre file by file and can shuffle sideways between files as the block
+re-knits itself (see [Tactics](tactics.qmd#line-width-frontage)). A third click cycles to
 **Auto**, which picks File-major or Row-major for you from the unit's own discipline: a
 disciplined, professional regiment reflows File-major, an undisciplined mob reflows
 Row-major --- useful for a mixed army where you'd otherwise have to set each unit by
