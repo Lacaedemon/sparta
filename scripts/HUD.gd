@@ -839,6 +839,7 @@ func show_unit(u, group_count: int) -> void:
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = true
 		_settings_panel_raise()
+		_tray_raise()
 		_ctrl_bar_update_formation(u)
 		_ctrl_bar_update_reform(u)
 		_ctrl_bar_update_stance(_sel_mgr.get_armed_mode() if _sel_mgr != null else 0)
@@ -857,6 +858,7 @@ func clear_unit() -> void:
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = false
 		_settings_panel_lower()
+		_tray_lower()
 	_clamp_info_panel()
 
 
@@ -1308,11 +1310,19 @@ func _sync_performance_graph() -> void:
 func _build_unit_card_tray() -> void:
 	_unit_card_tray = UnitCardTray.new()
 	_unit_card_tray.name = "UnitCardTray"
+	_unit_card_tray.custom_minimum_size = Vector2(500.0, 0)
 	_unit_card_tray.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_unit_card_tray.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_unit_card_tray.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_unit_card_tray.position = Vector2(-14.0, -14.0)   # offset off the corner; grows up-and-left
-	_unit_card_tray.custom_minimum_size = Vector2(500.0, 0)
+	# offset_left/offset_right, not `position`: with a fixed known width, setting them
+	# explicitly (like the settings/info panels do) keeps the right edge pinned 14px off
+	# the corner regardless of load order -- `position` derives its offsets from whatever
+	# size the Control happened to have at the moment it was set, which for a freshly
+	# constructed node is (0, 0), not the 500px custom_minimum_size assigned right after.
+	_unit_card_tray.offset_right = -14.0
+	_unit_card_tray.offset_left = -(500.0 + 14.0)
+	_unit_card_tray.offset_top = -14.0
+	_unit_card_tray.offset_bottom = -14.0
 	_unit_card_tray.set_selection_manager(_sel_mgr)
 	add_child(_unit_card_tray)
 	_sync_unit_card_tray_visibility()
@@ -1563,11 +1573,15 @@ func _build_settings_panel() -> void:
 	col.add_child(_file_major_reform_btn)
 
 
-## How far above its at-rest position the settings panel currently sits: the control
-## bar's height plus a small gap while the bar is shown, zero otherwise. Shared
-## by the raise math so it never disagrees with itself about where the panel's
-## bottom edge is.
-func _settings_panel_raise_amount() -> float:
+## How far above its at-rest position a bottom-anchored panel must sit to clear the
+## control bar: its height plus a small gap while the bar is shown, zero otherwise.
+## Shared by every bottom panel's raise math (settings panel, unit card tray) so they
+## never disagree with each other about where the control bar's top edge is. The
+## control bar grows both directions from the screen's horizontal center and can reach
+## a fair way toward either side margin, so BOTH the bottom-left settings panel and the
+## bottom-right unit card tray need this clearance, not just whichever one happens to
+## be closer to center.
+func _ctrl_bar_clearance() -> float:
 	if _ctrl_bar == null or not _ctrl_bar.visible:
 		return 0.0
 	return _ctrl_bar.get_combined_minimum_size().y + 8.0
@@ -1592,7 +1606,7 @@ func _settings_panel_raise() -> void:
 	# are moved by the same raise_amount here so the panel translates as a rigid
 	# rectangle -- clearing the control bar beneath it -- rather than stretching
 	# taller with its bottom edge fixed.
-	var raise_amount := _settings_panel_raise_amount()
+	var raise_amount := _ctrl_bar_clearance()
 	_settings_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP + raise_amount))
 	_settings_panel.set_deferred("offset_bottom", -(PANEL_BOTTOM_GAP + raise_amount))
 
@@ -1602,6 +1616,25 @@ func _settings_panel_lower() -> void:
 		return
 	_settings_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
 	_settings_panel.set_deferred("offset_bottom", -PANEL_BOTTOM_GAP)
+
+
+## The unit card tray (bottom-right) sits close enough to the screen's horizontal
+## center, at the default 1280px viewport width, that the control bar's own width can
+## reach into it -- confirmed by a direct screenshot while both were visible. Raise it
+## clear of the control bar the same way the settings panel already does.
+func _tray_raise() -> void:
+	if _unit_card_tray == null or _ctrl_bar == null:
+		return
+	var raise_amount := _ctrl_bar_clearance()
+	_unit_card_tray.set_deferred("offset_top", -(14.0 + raise_amount))
+	_unit_card_tray.set_deferred("offset_bottom", -(14.0 + raise_amount))
+
+
+func _tray_lower() -> void:
+	if _unit_card_tray == null:
+		return
+	_unit_card_tray.set_deferred("offset_top", -14.0)
+	_unit_card_tray.set_deferred("offset_bottom", -14.0)
 
 
 ## The tallest the (center-left, symmetrically-growing) info panel may grow before
