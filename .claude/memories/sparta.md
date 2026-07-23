@@ -2684,7 +2684,8 @@ verification and an explicit `### Verdict`). (`Lacaedemon/sparta` PR #1054,
 
 ## A Control anchored to a corner with a KNOWN fixed size should set explicit offsets, not `.position=`
 
-The existing "`_info_panel_raise()`'s doc comment" entry above documents that
+`scripts/HUD.gd`'s own `_settings_panel_raise()` doc comment (renamed from
+`_info_panel_raise()` by the same PR this entry describes) documents that
 `.position=` on an anchored Control "just works" ONLY because it's set once
 during `_ready()`, before the CanvasLayer's real viewport size is
 established (so `anchor * parent_size == 0` at that moment) — and warns that
@@ -2702,8 +2703,8 @@ bottom-right (#1049), the new build code mirrored the `_ctrl_bar`/
 0)` — and the tray ended up rendering almost entirely OFF the right edge of
 the screen, with only a ~15-20px sliver visible; confirmed via a direct
 screenshot, not caught by any unit test (GUT's headless dummy renderer
-never surfaces a rendered-position bug like this — see "verify by
-screenshot" below). The `_ctrl_bar`/`_legend_panel` precedent this pattern
+never surfaces a rendered-position bug like this — see the "How to apply"
+note below). The `_ctrl_bar`/`_legend_panel` precedent this pattern
 was copied from never sets an explicit `custom_minimum_size` on the
 anchored Control ITSELF (only on a child, or not at all) — they rely
 entirely on the Control's own natural content size, which `.position=`'s
