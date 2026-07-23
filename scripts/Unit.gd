@@ -2957,6 +2957,28 @@ var _sim_soldier_shield_hold_angle: PackedFloat32Array = PackedFloat32Array()
 # (SoldierBodies.step decrements it). Seeded to 0 (everyone standing).
 var _sim_prone: PackedFloat32Array = PackedFloat32Array()
 
+# Per-soldier RENDER-only prone progress (0 = standing, 1 = fully fallen), index-aligned
+# with _sim_prone/_sim_soldier_pos -- _refresh_flock_render eases each soldier's mark toward
+# _sim_prone[i] > 0.0's target every frame (PRONE_EASE_RATE below), the same "ease toward a
+# target, never snap" idiom ROUTING_ALPHA/_render_alpha already uses for the regimental flag.
+# Purely cosmetic: _sim_prone itself (the real gameplay timer -- active defence, striking)
+# is untouched by this and still flips instantly. Lazily resized in _refresh_flock_render
+# (PackedFloat32Array.resize zero-fills new entries, so a growing regiment's new soldiers
+# start standing, not mid-fall).
+var _render_prone_progress: PackedFloat32Array = PackedFloat32Array()
+# Per-second rate _render_prone_progress eases toward its target -- tuned so a fall/rise
+# reads as a quick, visible stumble (a quarter of a second) rather than either an instant
+# snap or a sluggish drift.
+const PRONE_EASE_RATE: float = 4.0
+# Whether ANY soldier's _render_prone_progress is still short of its target -- set by
+# _refresh_flock_render's own loop, read by _process's refresh gate below. Needed because a
+# knocked-down soldier's body velocity settles to rest (clearing _render_dirty) well before
+# the ease finishes, and once combat moves the whole unit out of FIGHTING none of the other
+# gate conditions fire either -- without this flag the ease would freeze mid-transition
+# forever instead of completing, the same "inert number" class of bug already
+# fixed for _current_speed/position.
+var _prone_easing_active: bool = false
+
 # Per-soldier stamina pool (slice D), index-aligned with _sim_soldier_pos: current stamina
 # in [0, max_stamina] where max_stamina is the per-type value from combat_profile(). Drained
 # by every strike thrown (KAPPA_A), by every blow met (KAPPA_D*phi*(1+c)), and by rising from
@@ -5066,15 +5088,24 @@ const ENGAGED_HIGHLIGHT_COLOR: Color = Color(1.0, 0.80, 0.05)
 ## Which color a single soldier's mark should draw in this frame -- prone always wins (a felled
 ## soldier's dark tint is a more important signal than the debug highlight), otherwise the
 ## engaged highlight applies only when the debug toggle is on AND this soldier is actually in
-## the engaged set, else the normal white. Pure -- a function of the three flags only, so it's
-## directly unit-testable without a live MultiMesh (whose instance data isn't synchronously
-## readable back in headless tests -- see the MultiMesh instance-transform gotcha this mirrors).
-static func _soldier_render_color(prone: bool, engaged_highlight_on: bool, is_engaged: bool) -> Color:
-	if prone:
+## the engaged set, else the normal white. `prone_progress` (0 = standing, 1 = fully fallen)
+## LERPS toward PRONE_COLOR rather than switching to it at a threshold, so the tint eases in
+## alongside the pose transform instead of snapping the instant the soldier goes down -- at
+## the exact endpoints (0.0 / 1.0) this returns the identical colors the old boolean form did.
+## Pure -- a function of its three args only, so it's directly unit-testable without a live
+## MultiMesh (whose instance data isn't synchronously readable back in headless tests -- see
+## the MultiMesh instance-transform gotcha this mirrors).
+static func _soldier_render_color(prone_progress: float, engaged_highlight_on: bool, is_engaged: bool) -> Color:
+	var base: Color = ENGAGED_HIGHLIGHT_COLOR if (engaged_highlight_on and is_engaged) else Color.WHITE
+	# Special-cased at the exact endpoints rather than trusting lerp(..., 1.0)/lerp(..., 0.0)
+	# to land bit-exact -- floating-point rounding through the lerp arithmetic can differ from
+	# the literal constant in the last bit, which fails an exact Color equality check even
+	# though the two are visually and numerically identical.
+	if prone_progress >= 1.0:
 		return PRONE_COLOR
-	if engaged_highlight_on and is_engaged:
-		return ENGAGED_HIGHLIGHT_COLOR
-	return Color.WHITE
+	if prone_progress <= 0.0:
+		return base
+	return base.lerp(PRONE_COLOR, prone_progress)
 
 
 # --- Soldier mark rendering ----------------------------------------------
@@ -5250,13 +5281,18 @@ func _process(delta: float) -> void:
 	# Marks mirror the simulated bodies. Refresh only when something visible changed: a body
 	# moved (SoldierBodies.step raised _render_dirty), the facing turned (mark rotation,
 	# figure mirror and conversio squash all key off it), the unit is fighting (front-rank
-	# churn / prone flips), or the instance count drifted from the body count. The routing
-	# fade does NOT belong here -- it never touches the marks (see _apply_flock_color).
+	# churn / prone flips), the instance count drifted from the body count, or a soldier's
+	# prone-progress ease is still mid-transition (_prone_easing_active, set by the refresh
+	# itself below) -- a knocked-down soldier's body velocity settles to rest well before
+	# _render_prone_progress finishes easing, and none of the other conditions fire once
+	# combat moves on, so without this the ease would freeze partway instead of completing
+	# (the exact "inert number" failure class already fixed for _current_speed/position).
+	# The routing fade does NOT belong here -- it never touches the marks (see _apply_flock_color).
 	if _render_dirty or facing != _render_last_facing or state == State.FIGHTING \
-			or _mm_body.instance_count != _render_body_count():
+			or _mm_body.instance_count != _render_body_count() or _prone_easing_active:
 		_render_dirty = false
 		_render_last_facing = facing
-		_refresh_flock_render()
+		_refresh_flock_render(delta)
 
 
 ## Swap the soldier meshes between the flat marks and the detailed figures based on
@@ -5285,7 +5321,7 @@ func _update_lod() -> void:
 ## The facing pip only shows at figure LOD -- the flat mark already rotates to show
 ## facing, so a second indicator there would be redundant. _refresh_flock_render() runs
 ## right after so the pip's transforms are populated the same frame it appears, not a
-## frame late.
+## frame late (delta=0.0 here -- see that call's own comment).
 func _apply_lod_meshes() -> void:
 	if not _detailed_lod:
 		_mm_body.mesh = _mark_body_mesh
@@ -5297,7 +5333,10 @@ func _apply_lod_meshes() -> void:
 		_mm_body.mesh = _figure_body_mesh
 		_mm_outline.mesh = _figure_outline_mesh
 	_mm_facing_pip.instance_count = _render_body_count() if _detailed_lod else 0
-	_refresh_flock_render()
+	# delta=0: this is a one-off re-application triggered by an LOD swap, not a per-frame
+	# animation step -- it just re-renders at whatever prone progress each soldier already
+	# has; the next regular _process tick continues easing it with a real delta.
+	_refresh_flock_render(0.0)
 
 
 ## Number of marks the flock render draws: the simulated bodies at close tier, or the
@@ -5312,7 +5351,7 @@ func _render_body_count() -> int:
 ## transform — MultiMesh 2D can't store a reflected (mirrored) instance transform. At figure
 ## LOD the facing pip carries the exact per-soldier facing instead, since the figure
 ## itself only mirrors left/right.
-func _refresh_flock_render() -> void:
+func _refresh_flock_render(delta: float) -> void:
 	# A far-tier unit has no simulated bodies: draw its marks on the formation grid itself —
 	# a pure function of the unit's aggregate fields (count, facing, formation shape), so this
 	# is presentation only and revives no per-soldier sim state. The grid offsets are local to
@@ -5334,6 +5373,13 @@ func _refresh_flock_render() -> void:
 	if _detailed_lod and _mm_facing_pip.instance_count != n:
 		_mm_facing_pip.instance_count = n
 	var sim_prone_n: int = _sim_prone.size()
+	# Grown/shrunk to match n every call -- PackedFloat32Array.resize() preserves existing
+	# values and zero-fills new entries, so a newly-added soldier starts standing (0.0), never
+	# mid-fall, and a reaped one's slot is simply gone (any transient index-compaction mismatch
+	# this causes is a purely cosmetic, one-frame-ish artifact, the same limitation every other
+	# index-aligned per-soldier array in this file already accepts).
+	if _render_prone_progress.size() != n:
+		_render_prone_progress.resize(n)
 	# Engaged-soldier highlight (Settings.show_engaged_highlight, dev/debug): computed once
 	# per refresh, not per soldier -- a far-tier unit has no simulated bodies to look up
 	# (_render_body_count() reads `soldiers`, not _sim_soldier_pos, for it), so the highlight
@@ -5346,10 +5392,18 @@ func _refresh_flock_render() -> void:
 		for idx in engaged_soldier_indices(n):
 			if idx >= 0 and idx < n:
 				engaged_lookup[idx] = 1
+	var still_easing: bool = false
 	for i in range(n):
-		# Prone: squash/rotate the mark and tint the body dark; outline stays WHITE.
+		# Prone: ease the mark's squash/rotate and dark tint in via _render_prone_progress,
+		# rather than switching at a threshold -- see that field's own doc comment.
 		# (A far-tier unit tracks no prone timers; everyone draws standing.)
 		var prone: bool = i < sim_prone_n and _sim_prone[i] > 0.0
+		var prone_target: float = 1.0 if prone else 0.0
+		_render_prone_progress[i] = move_toward(_render_prone_progress[i],
+				prone_target, PRONE_EASE_RATE * delta)
+		var pp: float = _render_prone_progress[i]
+		if pp != prone_target:
+			still_easing = true
 		var pos: Vector2 = far_locals[i] if far_tier else _sim_soldier_pos[i] - position
 		var sf: Vector2 = facing
 		if far_tier:
@@ -5357,11 +5411,13 @@ func _refresh_flock_render() -> void:
 		elif i < _sim_soldier_facing.size():
 			sf = _sim_soldier_facing[i]
 		var t: Transform2D
-		if prone:
+		if pp > 0.0:
 			if _detailed_lod:
-				t = Transform2D(PI * 0.5, pos)
+				t = Transform2D(lerp(0.0, PI * 0.5, pp), pos)
 			else:
-				t = Transform2D(Vector2(1.3, 0.0), Vector2(0.0, 0.3), pos)
+				var stand_basis := Transform2D(sf.angle(), Vector2.ZERO)
+				t = Transform2D(stand_basis.x.lerp(Vector2(1.3, 0.0), pp),
+						stand_basis.y.lerp(Vector2(0.0, 0.3), pp), pos)
 		elif _detailed_lod and about_face_goal() != Vector2.ZERO:
 			var progress: float = (facing.dot(-about_face_goal()) + 1.0) * 0.5
 			var squash: float = abs(cos(progress * PI))
@@ -5373,23 +5429,28 @@ func _refresh_flock_render() -> void:
 		_mm_body.set_instance_transform_2d(i, t)
 		_mm_outline.set_instance_transform_2d(i, t)
 		var is_engaged: bool = engaged_highlight_on and engaged_lookup[i] == 1
-		_mm_body.set_instance_color(i, _soldier_render_color(prone, engaged_highlight_on, is_engaged))
+		_mm_body.set_instance_color(i, _soldier_render_color(pp, engaged_highlight_on, is_engaged))
 		_mm_outline.set_instance_color(i, Color.WHITE)
 		if _detailed_lod:
-			_mm_facing_pip.set_instance_transform_2d(i, _facing_pip_transform(prone, sf, pos))
+			_mm_facing_pip.set_instance_transform_2d(i, _facing_pip_transform(pp, sf, pos))
+	_prone_easing_active = still_easing
 	_apply_flock_color()
 
 
 ## The facing pip's instance transform for one soldier: points along its exact
-## facing at figure LOD (the figure mesh itself only mirrors left/right). A prone soldier
-## has no meaningful facing to point along, so its pip collapses to zero scale instead of
-## drawing an arrow off a body that's on the ground. Pure -- unit-testable independent of
-## the live MultiMesh (whose instance data isn't synchronously readable back in headless
-## tests).
-static func _facing_pip_transform(prone: bool, sf: Vector2, pos: Vector2) -> Transform2D:
-	if prone:
-		return Transform2D(Vector2.ZERO, Vector2.ZERO, pos)
-	return Transform2D(sf.angle(), pos)
+## facing at figure LOD (the figure mesh itself only mirrors left/right). A fully prone
+## soldier has no meaningful facing to point along, so its pip collapses to zero scale
+## instead of drawing an arrow off a body that's on the ground -- `prone_progress` (0 =
+## standing, 1 = fully fallen) scales the pip down smoothly as the soldier falls, rather
+## than switching to zero scale at a threshold; at the exact endpoints this returns the
+## identical transforms the old boolean form did. Pure -- unit-testable independent of the
+## live MultiMesh (whose instance data isn't synchronously readable back in headless tests).
+static func _facing_pip_transform(prone_progress: float, sf: Vector2, pos: Vector2) -> Transform2D:
+	var t := Transform2D(sf.angle(), pos)
+	var scale: float = 1.0 - prone_progress
+	t.x *= scale
+	t.y *= scale
+	return t
 
 
 
