@@ -1212,6 +1212,28 @@ and marched forward in turn, one commanded directly by the player just like
 the other.
 :::
 
+## Custom Battle
+
+Select **Custom Battle** from the Main Menu to configure exactly which units
+face off, instead of the default line. Pick each side's faction (Sparta, Rome,
+Carthage, or Macedon) from the dropdown --- the roster below repopulates with
+that faction's own historically-named units. Use **+ Add Unit** to add more of
+a faction's units, or the **✕** next to any entry to remove it, then
+**⚔ Start Custom Battle** to deploy exactly that matchup. Each roster entry's
+historical name (e.g. "Spartan Hoplites", "Companion Cavalry") resolves to one
+of the game's four real unit types (Spearmen/Infantry/Archers/Cavalry) for its
+actual stats --- the flavor name is presentation, the resolved type is what
+fights. Start is disabled while either side's roster is empty, since a
+one-sided matchup would end the battle immediately.
+
+::: {#fig-custom-battle .demo}
+
+![](media/custom-battle-setup.png){width="700px"}
+
+Custom Battle Setup: picking Sparta vs. Rome, with each side's roster shown
+alongside its own faction dropdown.
+:::
+
 ## Campaign Map
 
 Sparta includes a turn-based campaign layer on top of its tactical battles.
