@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This PR wires up a menu/UI flow (MainMenu's new 'Custom Battle' button -> the PrebattleScreen roster picker -> a custom-battle spawn), not a recorded-battle mechanic -- the demo recorder drives clicks inside an already-spawned Battle scene and can't reach a main-menu screen at all. Shown instead by a static screenshot of the prebattle screen in the PR description (demos/shots/prebattle-screen.png), plus GUT test coverage (test_custom_matchup.gd, test_prebattle_menu.gd, test_main_menu.gd) proving the roster-to-spawned-unit resolution and the menu wiring."
+}

@@ -170,6 +170,12 @@ func _rebuild_rosters_ui() -> void:
 	for c in _t1_roster_vbox.get_children():
 		c.queue_free()
 
+	# A battle with one side already empty ends on its very first tick (Battle._check_victory
+	# sees that side never had anything in play) -- disable the button rather than let the
+	# player start a battle that instantly declares victory/defeat with no explanation.
+	if _start_btn != null:
+		_start_btn.disabled = team_0_roster.is_empty() or team_1_roster.is_empty()
+
 	for idx in range(team_0_roster.size()):
 		var u_name: String = team_0_roster[idx]
 		var row := HBoxContainer.new()

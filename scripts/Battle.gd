@@ -8,6 +8,8 @@ const UnitRef = preload("res://scripts/Unit.gd")
 const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 const ParadeGround = preload("res://scripts/ParadeGround.gd")
 const AllTeamsControl = preload("res://scripts/AllTeamsControl.gd")
+const CustomMatchup = preload("res://scripts/CustomMatchup.gd")
+const FactionRef = preload("res://scripts/Faction.gd")
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 const BattleMapRef = preload("res://scripts/BattleMap.gd")
 
@@ -487,6 +489,10 @@ func _ready() -> void:
 	# the line spawn entirely rather than layering on top.
 	if not scenario.is_empty():
 		_spawn_scenario(scenario)
+	elif CustomMatchup.pending():
+		# A custom battle configured via PrebattleScreen replaces the default two-line
+		# spawn with the player's own chosen rosters, same as a demo scenario does.
+		_spawn_scenario(_custom_matchup_scenario(CustomMatchup.pending_team_0, CustomMatchup.pending_team_1))
 	else:
 		# Player army (team 0) deploys along the top, facing down.
 		_spawn_line(0, Vector2.DOWN, float(spawn_line_ys[0]), atk_count)
@@ -617,38 +623,50 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# than trotting it backward, so it sits lowest of all. Optional per entry --
 	# _spawn_unit falls back to the Unit.gd default (0.5) when a loadout omits it.
 	var loadout := _default_loadout()
-	# Tighten the BASE spacing as the line grows so even a max stack stays on the field --
-	# but never let it collapse below what keeps a wide neighbour's formation block from
-	# overlapping the unit next to it. A flat per-unit spacing assumed a
-	# roughly-uniform unit width that doesn't hold once soldier counts / formation density
-	# vary per type in the cycling loadout above -- e.g. a 90-soldier LOOSE-order Archers
-	# block (UnitFormation.half_width_for_soldiers, scaled by Unit.spacing_scale_for_mode)
-	# is far wider than a same-count TIGHT block, so the old flat spacing let it overlap
-	# whichever neighbour it cycled next to. Each adjacent pair's minimum gap is instead the
-	# sum of their own half-widths plus a soldier-file's worth of daylight (FORMATION_SPACING),
-	# so no two blocks so much as touch, regardless of composition.
-	var base_spacing: float = minf(150.0, (field.size.x - 200.0) / maxf(1.0, count - 1))
 	var half_widths: Array[float] = []
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
-		# The row's own per-type FILE pitch (metres to wu; cavalry files sit ~1 m apart
-		# vs the 0.45 m foot floor), scaled by the formation-mode density -- so a wide
-		# cavalry block's spawn gap accounts for the ground its horses actually cover.
-		var d_spacing: float = float(d.get("file_pitch_m", 0.45)) * WorldScaleRef.WU_PER_M \
-				* Unit.spacing_scale_for_mode(d.get("formation", Unit.FORMATION_NORMAL))
-		half_widths.append(UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing))
+		half_widths.append(_line_half_width(d))
+	var xs: Array[float] = _line_x_offsets(half_widths, field.size.x)
+	var start_x: float = field.size.x * 0.5 - (xs[xs.size() - 1] * 0.5 if not xs.is_empty() else 0.0)
 
-	# The no-overlap gap above guarantees adjacent blocks never touch, but it makes no
-	# promise about the TOTAL line width -- a max-size campaign stack (CampaignBattle.
-	# MAX_UNITS) cycling several wide LOOSE-order types back to back can need more total
-	# width than FIELD has room for, which would push the outer units off the playable
-	# field entirely (the no-overlap fix's own follow-up finding). So sum the no-overlap
-	# gaps first; if that sum would overflow the same FIELD budget the old flat spacing
-	# always respected, scale every gap down proportionally until the line fits. This
-	# accepts a little unavoidable overlap only in that rare wide/high-count extreme --
-	# normal-size battles (the standard 5v5 demo, and any count whose no-overlap gaps
-	# already fit) are untouched, since the scale factor is 1.0 whenever the raw sum is
-	# already within budget.
+	for i in range(count):
+		var d: Dictionary = loadout[i % loadout.size()]
+		var pos := Vector2(start_x + xs[i], y)
+		_spawn_unit(d, team, facing, pos, "%s %d" % [d["name"], i + 1])
+
+
+## A loadout entry's own half-width in a spawn line: its per-type FILE pitch (metres to wu;
+## cavalry files sit ~1 m apart vs the 0.45 m foot floor) scaled by the formation-mode density,
+## so a wide cavalry block's spawn gap accounts for the ground its horses actually cover.
+## Shared by _spawn_line and a custom matchup's own line-up (_custom_matchup_scenario).
+func _line_half_width(d: Dictionary) -> float:
+	var d_spacing: float = float(d.get("file_pitch_m", 0.45)) * WorldScaleRef.WU_PER_M \
+			* Unit.spacing_scale_for_mode(d.get("formation", Unit.FORMATION_NORMAL))
+	return UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing)
+
+
+## Given each unit's own half-width (already formation-density-scaled, see _line_half_width)
+## in a left-to-right line, returns each unit's x-offset from the line's own left edge (index
+## 0 is always 0.0). Tightens the BASE spacing as the line grows so even a max stack stays on
+## the field, but never lets it collapse below what keeps a wide neighbour's formation block
+## from overlapping the unit next to it -- a flat per-unit spacing assumed a roughly-uniform
+## unit width that doesn't hold once soldier counts / formation density vary per type, so each
+## adjacent pair's minimum gap is instead the sum of their own half-widths plus a soldier-file's
+## worth of daylight (FORMATION_SPACING), so no two blocks so much as touch regardless of
+## composition. That no-overlap gap makes no promise about the TOTAL line width, though -- a
+## max-size stack cycling several wide LOOSE-order types back to back can need more total width
+## than the field has room for, which would push the outer units off the playable field
+## entirely. So the no-overlap gaps are summed first; if that sum would overflow the same field
+## budget the old flat spacing always respected, every gap is uniformly shrunk until the line
+## fits (accepting a little unavoidable overlap only in that rare wide/high-count extreme).
+## Pure -- no Unit/scene access -- so both the default line spawn and a custom matchup
+## (a variable, non-cycling roster) share it and it's directly unit-testable.
+func _line_x_offsets(half_widths: Array[float], field_width: float) -> Array[float]:
+	var count: int = half_widths.size()
+	if count == 0:
+		return []
+	var base_spacing: float = minf(150.0, (field_width - 200.0) / maxf(1.0, count - 1))
 	var gaps: Array[float] = []
 	var raw_total_width: float = 0.0
 	for i in range(count - 1):
@@ -656,23 +674,15 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 				half_widths[i] + half_widths[i + 1] + Unit.FORMATION_SPACING)
 		gaps.append(gap)
 		raw_total_width += gap
-	var field_budget: float = field.size.x - 200.0
+	var field_budget: float = field_width - 200.0
 	if raw_total_width > field_budget and raw_total_width > 0.0:
 		var shrink: float = field_budget / raw_total_width
 		for i in range(gaps.size()):
 			gaps[i] *= shrink
-
-	# xs[i] is unit i's x-offset from the line's own left edge (xs[0] == 0.0); the whole
-	# line is then centred on the field below, same as the old uniform-spacing layout.
 	var xs: Array[float] = [0.0]
 	for i in range(count - 1):
 		xs.append(xs[i] + gaps[i])
-	var start_x: float = field.size.x * 0.5 - xs[xs.size() - 1] * 0.5
-
-	for i in range(count):
-		var d: Dictionary = loadout[i % loadout.size()]
-		var pos := Vector2(start_x + xs[i], y)
-		_spawn_unit(d, team, facing, pos, "%s %d" % [d["name"], i + 1])
+	return xs
 
 
 ## The default battle loadout: spearmen, infantry, archers, cavalry, cavalry. A line
@@ -901,6 +911,44 @@ func _loadout_for_type(loadout: Array, type_name: String) -> Dictionary:
 		if str(d["name"]) == type_name:
 			return d
 	return {}
+
+
+## Builds a `scenario` spec array (see _spawn_scenario) for a custom battle configured via
+## PrebattleScreen: each team's roster (a list of Faction.FACTION_ROSTERS historical names,
+## e.g. "Spartan Hoplites") resolves through Faction.get_unit_type() to its real spawnable
+## loadout type, then lines up along that team's own spawn line using the same half-width-based
+## spacing _spawn_line uses -- generalized here since a custom roster isn't a fixed-composition
+## cycle. A roster name Faction doesn't recognize (get_unit_type returns "") is skipped with a
+## warning rather than spawning something with no known stats.
+func _custom_matchup_scenario(team_0_names: Array, team_1_names: Array) -> Array:
+	var loadout := _default_loadout()
+	var specs: Array = []
+	for team in [0, 1]:
+		var names: Array = team_0_names if team == 0 else team_1_names
+		var facing := Vector2.DOWN if team == 0 else Vector2.UP
+		var y: float = float(spawn_line_ys[team])
+		var dicts: Array[Dictionary] = []
+		for roster_name in names:
+			var type_name: String = FactionRef.get_unit_type(str(roster_name))
+			var d: Dictionary = _loadout_for_type(loadout, type_name)
+			if d.is_empty():
+				push_warning("[battle] custom matchup roster entry '%s' has no known unit type; skipping." % roster_name)
+				continue
+			dicts.append(d)
+		var half_widths: Array[float] = []
+		for d in dicts:
+			half_widths.append(_line_half_width(d))
+		var xs: Array[float] = _line_x_offsets(half_widths, field.size.x)
+		var start_x: float = field.size.x * 0.5 - (xs[xs.size() - 1] * 0.5 if not xs.is_empty() else 0.0)
+		for i in range(dicts.size()):
+			specs.append({
+				"team": team,
+				"type": str(dicts[i]["name"]),
+				"x": start_x + xs[i],
+				"y": y,
+				"facing": [facing.x, facing.y],
+			})
+	return specs
 
 
 ## Apply a starting state to a unit (ROUTING for demos/tests). For demo tooling only;
