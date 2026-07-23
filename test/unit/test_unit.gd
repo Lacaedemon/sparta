@@ -4218,7 +4218,7 @@ func test_marks_track_the_simulated_body_count() -> void:
 	# The render reads _sim_soldier_pos directly: one mark instance per simulated body.
 	var u := _make_unit(40)
 	u.seed_sim_soldiers()
-	u._refresh_flock_render()
+	u._refresh_flock_render(0.0)
 	assert_eq(u._mm_body.instance_count, u._sim_soldier_pos.size(),
 			"one body instance per simulated soldier")
 	assert_eq(u._mm_outline.instance_count, u._sim_soldier_pos.size(),
@@ -4230,12 +4230,83 @@ func test_dead_unit_clears_its_marks() -> void:
 	# the last frame's marks (the _process DEAD guard).
 	var u := _make_unit(40)
 	u.seed_sim_soldiers()
-	u._refresh_flock_render()
+	u._refresh_flock_render(0.0)
 	assert_gt(u._mm_body.instance_count, 0, "a living unit draws its marks")
 	u.state = Unit.State.DEAD
 	u._process(0.0)
 	assert_eq(u._mm_body.instance_count, 0, "a dead unit clears its body marks")
 	assert_eq(u._mm_outline.instance_count, 0, "a dead unit clears its outline marks")
+
+
+func test_falling_prone_eases_over_several_ticks_instead_of_snapping() -> void:
+	# The bug this guards against: a soldier's mark used to switch instantly between the
+	# standing and fully-fallen pose the moment _sim_prone[i] first ticked above 0 -- a
+	# visible "blink" rather than a fall. _render_prone_progress must instead climb toward
+	# 1.0 gradually, at PRONE_EASE_RATE, across successive _refresh_flock_render calls.
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u._refresh_flock_render(0.0)
+	assert_almost_eq(u._render_prone_progress[0], 0.0, 0.0001, "starts standing")
+
+	u._sim_prone[0] = 1.0   # soldier 0 knocked prone, 1s remaining to rise
+	u._refresh_flock_render(0.05)
+	var after_one_tick: float = u._render_prone_progress[0]
+	assert_gt(after_one_tick, 0.0, "progress starts moving toward fully-fallen")
+	assert_lt(after_one_tick, 1.0, "one small tick does not snap straight to fully-fallen")
+
+	for _i in range(50):
+		u._refresh_flock_render(0.05)
+	assert_almost_eq(u._render_prone_progress[0], 1.0, 0.0001,
+		"enough ticks converge on fully-fallen")
+
+
+func test_rising_from_prone_also_eases_instead_of_snapping() -> void:
+	# The reverse direction of the fix above: once _sim_prone decays back to 0 (the
+	# soldier rises), the render progress must ease back down, not snap upright instantly.
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u._sim_prone[0] = 1.0
+	for _i in range(50):
+		u._refresh_flock_render(0.05)
+	assert_almost_eq(u._render_prone_progress[0], 1.0, 0.0001, "fully fallen after enough ticks")
+
+	u._sim_prone[0] = 0.0   # the sim timer decayed to 0 -- soldier is standing back up
+	u._refresh_flock_render(0.05)
+	var after_one_tick: float = u._render_prone_progress[0]
+	assert_lt(after_one_tick, 1.0, "progress starts moving back toward standing")
+	assert_gt(after_one_tick, 0.0, "one small tick does not snap straight back to standing")
+
+
+func test_process_keeps_easing_prone_progress_with_no_other_refresh_trigger_active() -> void:
+	# The bug this guards against: _process only calls _refresh_flock_render when one of
+	# four OTHER conditions holds (_render_dirty from body movement, a facing change,
+	# state == FIGHTING, or an instance-count drift) -- none of which the prone timer's own
+	# decay sets. Once a knocked-down soldier's body settles to rest (clearing _render_dirty)
+	# and the unit isn't FIGHTING, the ease must still complete via _prone_easing_active,
+	# not freeze mid-transition forever (the "inert number" failure class already fixed
+	# for _current_speed/position).
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.IDLE
+	u._process(0.0)   # consume the initial _render_dirty raised by seeding
+	assert_almost_eq(u._render_prone_progress[0], 0.0, 0.0001, "starts standing")
+
+	# Soldier knocked prone. In real play the SAME tick's knockback impulse also moves the
+	# body, which sets _render_dirty and triggers the refresh that starts the ease -- simulate
+	# exactly that one kickoff refresh here, then verify every LATER tick keeps easing with
+	# nothing else to trigger it.
+	u._sim_prone[0] = 1.0
+	u._refresh_flock_render(0.05)
+	assert_gt(u._render_prone_progress[0], 0.0, "the kickoff refresh starts the ease")
+	assert_true(u._prone_easing_active, "still short of the target right after the kickoff")
+
+	assert_false(u._render_dirty, "no body-speed trigger armed -- the body has already settled")
+	assert_ne(u.state, Unit.State.FIGHTING, "not fighting -- that gate condition is not what's covering us")
+	for _i in range(60):
+		u._process(0.05)
+
+	assert_almost_eq(u._render_prone_progress[0], 1.0, 0.0001,
+		"the ease completes via _prone_easing_active even with every other trigger inactive")
 
 
 func test_render_dirty_clears_after_a_refreshing_process_tick() -> void:
@@ -4383,7 +4454,7 @@ func test_facing_pip_transform_matches_soldier_facing() -> void:
 	# up) -- instead of just picking a mesh variant. Pure function, no live MultiMesh
 	# read-back (Godot's MultiMesh instance data isn't synchronously readable in
 	# headless tests, even for the already-working body/outline transforms).
-	var t: Transform2D = Unit._facing_pip_transform(false, Vector2.UP, Vector2(5, 5))
+	var t: Transform2D = Unit._facing_pip_transform(0.0, Vector2.UP, Vector2(5, 5))
 	assert_almost_eq(t.get_rotation(), Vector2.UP.angle(), 0.001,
 		"the pip rotates to the soldier's own facing, not just left/right")
 	assert_eq(t.get_origin(), Vector2(5, 5), "the pip sits at the soldier's position")
@@ -4392,11 +4463,22 @@ func test_facing_pip_transform_matches_soldier_facing() -> void:
 
 
 func test_prone_soldiers_facing_pip_collapses() -> void:
-	# A soldier on the ground has no meaningful facing to point an arrow along --
+	# A fully-fallen soldier has no meaningful facing to point an arrow along --
 	# collapse its pip to a zero-scale (invisible) transform rather than drawing one.
-	var t: Transform2D = Unit._facing_pip_transform(true, Vector2.UP, Vector2(5, 5))
+	var t: Transform2D = Unit._facing_pip_transform(1.0, Vector2.UP, Vector2(5, 5))
 	assert_almost_eq(t.get_scale().length(), 0.0, 0.001,
-		"a prone soldier's facing pip is collapsed to zero scale")
+		"a fully prone soldier's facing pip is collapsed to zero scale")
+
+
+func test_facing_pip_transform_eases_scale_at_intermediate_prone_progress() -> void:
+	# The whole point of tracking progress instead of a boolean: a soldier mid-fall (neither
+	# fully standing nor fully down) gets a partially-collapsed pip, not an instant jump
+	# straight from full scale to zero the moment _sim_prone first ticks nonzero.
+	var t: Transform2D = Unit._facing_pip_transform(0.5, Vector2.UP, Vector2(5, 5))
+	var full_scale: float = Unit._facing_pip_transform(0.0, Vector2.UP, Vector2(5, 5)).get_scale().length()
+	var mid_scale: float = t.get_scale().length()
+	assert_gt(mid_scale, 0.0, "half-fallen is not yet fully collapsed")
+	assert_lt(mid_scale, full_scale, "half-fallen is smaller than fully standing")
 
 
 # --- _soldier_render_color: the engaged-highlight debug visual (Settings.show_engaged_highlight) ----------
@@ -4404,20 +4486,29 @@ func test_prone_soldiers_facing_pip_collapses() -> void:
 
 func test_soldier_render_color_prone_wins_over_engaged_highlight() -> void:
 	# A felled soldier's dark tint is a more important signal than the debug highlight --
-	# prone always wins, even when the highlight is on and this soldier is engaged.
-	assert_eq(Unit._soldier_render_color(true, true, true), Unit.PRONE_COLOR,
-		"prone beats the engaged highlight")
+	# fully prone beats the engaged highlight, even when the highlight is on and this
+	# soldier is engaged.
+	assert_eq(Unit._soldier_render_color(1.0, true, true), Unit.PRONE_COLOR,
+		"fully prone beats the engaged highlight")
 
 
 func test_soldier_render_color_highlight_only_when_toggle_on_and_engaged() -> void:
-	assert_eq(Unit._soldier_render_color(false, true, true), Unit.ENGAGED_HIGHLIGHT_COLOR,
+	assert_eq(Unit._soldier_render_color(0.0, true, true), Unit.ENGAGED_HIGHLIGHT_COLOR,
 		"toggle on + engaged -> highlighted")
-	assert_eq(Unit._soldier_render_color(false, true, false), Color.WHITE,
+	assert_eq(Unit._soldier_render_color(0.0, true, false), Color.WHITE,
 		"toggle on but NOT engaged -> normal white")
-	assert_eq(Unit._soldier_render_color(false, false, true), Color.WHITE,
+	assert_eq(Unit._soldier_render_color(0.0, false, true), Color.WHITE,
 		"engaged but toggle off -> normal white (the debug visual is opt-in)")
-	assert_eq(Unit._soldier_render_color(false, false, false), Color.WHITE,
+	assert_eq(Unit._soldier_render_color(0.0, false, false), Color.WHITE,
 		"neither prone, toggle, nor engaged -> normal white")
+
+
+func test_soldier_render_color_eases_toward_prone_at_intermediate_progress() -> void:
+	# The whole point of tracking progress instead of a boolean: a soldier mid-fall gets a
+	# partially-darkened tint, not an instant switch to PRONE_COLOR.
+	var mid: Color = Unit._soldier_render_color(0.5, false, false)
+	assert_ne(mid, Color.WHITE, "half-fallen isn't still pure white")
+	assert_ne(mid, Unit.PRONE_COLOR, "half-fallen isn't yet the full prone tint")
 
 
 # --- drag-to-form-up: deploy facing on arrival ----------
