@@ -210,8 +210,9 @@ const FPS_CORNER_TOP_RIGHT := 1
 const FPS_CORNER_BOTTOM_LEFT := 2
 const FPS_CORNER_BOTTOM_RIGHT := 3
 const FPS_CORNER_MAX := 3
-# Top-left by default -- the one corner none of the other HUD chrome (menu button
-# top-right, info panel bottom-left, distance legend bottom-right) already occupies.
+# Top-left by default. The distance legend also lives there (on by default), so
+# HUD.gd's _sync_fps_label() offsets the frame-rate label below it -- same idea as
+# the top-right corner offsetting below the always-on Menu button.
 var fps_corner: int = FPS_CORNER_TOP_LEFT:
 	set(value):
 		var clamped: int = clampi(value, 0, FPS_CORNER_MAX)

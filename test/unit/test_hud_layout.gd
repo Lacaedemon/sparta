@@ -71,19 +71,40 @@ func test_settings_panel_holds_the_walk_advance_and_reform_controls() -> void:
 			"...and NOT inside the (now center-left) info panel")
 
 
-func test_info_panel_available_height_is_no_longer_shrunk_by_the_control_bar() -> void:
-	# The info panel used to share the bottom-left corner with the control bar's raise
-	# clearance; now it's centered on the left margin, well clear of the control bar,
-	# so showing a unit (and its control bar) must not shrink its height budget.
+func _expected_info_panel_edge_gap(hud) -> float:
+	var legend_bottom: float = hud._legend_panel.position.y \
+			+ hud._legend_panel.get_combined_minimum_size().y
+	var settings_height: float = maxf(hud.PANEL_MIN.y, hud._settings_panel.get_combined_minimum_size().y)
+	var top_reserved: float = maxf(hud.PANEL_TOP_GAP, legend_bottom + hud.PANEL_TOP_GAP)
+	var bottom_reserved: float = maxf(hud.PANEL_BOTTOM_GAP,
+			settings_height + hud.PANEL_BOTTOM_GAP + hud._ctrl_bar_clearance())
+	return maxf(top_reserved, bottom_reserved)
+
+
+func test_info_panel_available_height_reserves_room_for_the_legend_and_settings_panel() -> void:
+	# The legend (top-left) and settings panel (bottom-left) now share the info panel's
+	# left-margin column, so its symmetric growth budget must stop short of either --
+	# not just the raw screen edges.
 	var hud := _hud()
 	var viewport_h: float = hud._info_panel.get_viewport_rect().size.y
-	var edge_gap: float = maxf(hud.PANEL_TOP_GAP, hud.PANEL_BOTTOM_GAP)
-	var expected: float = viewport_h - 2.0 * edge_gap
+	var expected: float = viewport_h - 2.0 * _expected_info_panel_edge_gap(hud)
 	assert_almost_eq(hud._info_panel_available_height(), expected, 0.01,
-			"the budget spans the viewport minus the larger edge gap, doubled")
+			"the budget reserves the larger of the legend's and settings panel's footprints")
+
+
+func test_info_panel_available_height_shrinks_further_once_the_settings_panel_raises() -> void:
+	# Showing a unit raises the settings panel to clear the control bar (see
+	# test_settings_panel_raises_above_the_control_bar_while_a_unit_is_shown below),
+	# which grows ITS reserved footprint -- and since the info panel budgets against
+	# that same footprint, its own growth budget shrinks too, indirectly.
+	var hud := _hud()
+	var before: float = hud._info_panel_available_height()
 	hud.show_unit(_unit(), 1)
-	assert_almost_eq(hud._info_panel_available_height(), expected, 0.01,
-			"showing a unit (and its control bar) leaves the budget unchanged")
+	assert_lt(hud._info_panel_available_height(), before,
+			"the settings panel's control-bar clearance also narrows the info panel's budget")
+	assert_almost_eq(hud._info_panel_available_height(),
+			hud._info_panel.get_viewport_rect().size.y - 2.0 * _expected_info_panel_edge_gap(hud), 0.01,
+			"...by exactly the amount the settings panel's own reserved footprint grew")
 
 
 func test_info_panel_recenter_keeps_the_panel_centered_as_it_grows() -> void:

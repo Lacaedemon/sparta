@@ -260,8 +260,7 @@ func test_info_panel_clamps_a_tall_sheet_to_the_viewport() -> void:
 			"the clamped layer reserves extra width for the scrollbar")
 
 
-# The info panel's available-height budget and its interaction with the (now separate,
-# bottom-left) settings panel's control-bar raise are covered in test_hud_layout.gd --
-# the info panel no longer shares the control bar's clearance now that the two panels
-# live in different corners -- see test_info_panel_available_height_is_no_longer_shrunk_by_the_control_bar
-# and test_settings_panel_raises_above_the_control_bar_while_a_unit_is_shown there.
+# The info panel's available-height budget -- including how it reserves room for the
+# legend and settings panel sharing its left-margin column -- is covered in
+# test_hud_layout.gd (test_info_panel_available_height_reserves_room_for_the_legend_and_settings_panel
+# and test_info_panel_available_height_shrinks_further_once_the_settings_panel_raises).

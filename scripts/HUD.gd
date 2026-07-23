@@ -1285,6 +1285,12 @@ func _sync_fps_label() -> void:
 		# silently reintroduce the overlap.
 		top_margin = _menu_button.position.y \
 				+ _menu_button.get_combined_minimum_size().y + 6.0
+	elif top and left and _legend_panel != null and _legend_panel.visible:
+		# The top-left corner is shared with the distance legend (on by default), so
+		# the label sits just below it instead of on top of it -- same reasoning as
+		# the top-right/Menu-button case above, derived from the legend's own rect.
+		top_margin = _legend_panel.position.y \
+				+ _legend_panel.get_combined_minimum_size().y + 6.0
 	_fps_label.position = Vector2(
 			_FPS_MARGIN.x if left else -_FPS_MARGIN.x,
 			top_margin if top else -_FPS_MARGIN.y)
@@ -1638,13 +1644,26 @@ func _tray_lower() -> void:
 
 
 ## The tallest the (center-left, symmetrically-growing) info panel may grow before
-## either edge would leave the screen: the viewport height minus the two screen-edge
-## gaps. No longer depends on the control bar -- that panel lives at the bottom-left
-## now (see _settings_panel_raise()); the info panel is anchored to the vertical
-## center, well clear of the bottom edge for any realistically tall stat sheet.
+## it reaches either the screen edge OR one of the other panels sharing its left-margin
+## column -- the legend above it (top-left) and the settings panel below it
+## (bottom-left). No longer depends on the control bar directly -- that clearance is
+## folded into the settings panel's own reserved footprint (_ctrl_bar_clearance() is
+## what the settings panel itself raises by).
 func _info_panel_available_height() -> float:
 	var viewport_h: float = _info_panel.get_viewport_rect().size.y
-	var edge_gap: float = maxf(PANEL_TOP_GAP, PANEL_BOTTOM_GAP)
+	var top_reserved: float = PANEL_TOP_GAP
+	if _legend_panel != null and _legend_panel.visible:
+		top_reserved = maxf(top_reserved,
+				_legend_panel.position.y + _legend_panel.get_combined_minimum_size().y + PANEL_TOP_GAP)
+	var bottom_reserved: float = PANEL_BOTTOM_GAP
+	if _settings_panel != null:
+		var settings_height: float = maxf(PANEL_MIN.y, _settings_panel.get_combined_minimum_size().y)
+		bottom_reserved = maxf(bottom_reserved,
+				settings_height + PANEL_BOTTOM_GAP + _ctrl_bar_clearance())
+	# The panel grows symmetrically (GROW_DIRECTION_BOTH), so both edges share the
+	# larger of the two reservations -- a smaller one on just one side would still let
+	# the panel's OTHER half grow that far, reaching whichever panel is closer.
+	var edge_gap: float = maxf(top_reserved, bottom_reserved)
 	return viewport_h - 2.0 * edge_gap
 
 
