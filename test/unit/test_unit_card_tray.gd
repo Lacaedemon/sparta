@@ -85,12 +85,60 @@ func test_get_drag_card_data_refuses_a_stale_index() -> void:
 	assert_null(tray._get_drag_card_data(Vector2.ZERO, 0, 5), "col_idx past an empty line")
 
 
+func test_get_drag_card_data_refuses_a_dead_unit_at_an_otherwise_valid_index() -> void:
+	var tray := UnitCardTray.new()
+	add_child_autofree(tray)
+	var u := UnitScript.new()
+	add_child_autofree(u)
+	tray.sync_units([u])
+	u.state = UnitScript.State.DEAD
+
+	assert_null(tray._get_drag_card_data(Vector2.ZERO, 0, 0), "a dead unit can't be dragged")
+
+
+func test_drag_preview_label_shows_the_units_name_and_soldier_count() -> void:
+	var tray := UnitCardTray.new()
+	add_child_autofree(tray)
+	var u := UnitScript.new()
+	u.unit_name = "Infantry 1"
+	add_child_autofree(u)   # _ready() sets soldiers = max_soldiers -- override only after this
+	u.soldiers = 40
+
+	var preview: Label = autofree(tray._drag_preview_label(u))
+
+	assert_eq(preview.text, "Infantry 1 (40)")
+
+
 func test_can_drop_card_data_accepts_only_the_trays_own_payload_shape() -> void:
 	var tray := UnitCardTray.new()
 	add_child_autofree(tray)
 	assert_true(tray._can_drop_card_data(Vector2.ZERO, {"row_idx": 0, "col_idx": 0}))
 	assert_false(tray._can_drop_card_data(Vector2.ZERO, "not a drag payload"))
 	assert_false(tray._can_drop_card_data(Vector2.ZERO, {"foo": "bar"}))
+
+
+func test_drop_card_data_ignores_a_non_dictionary_payload() -> void:
+	var tray := UnitCardTray.new()
+	add_child_autofree(tray)
+	var u := UnitScript.new()
+	add_child_autofree(u)
+	tray.sync_units([u])
+
+	tray._drop_card_data(Vector2.ZERO, "not a drag payload", 0, autofree(HBoxContainer.new()))
+
+	assert_eq(tray._rows[0], [u], "no-op: the payload isn't shaped like a drag payload at all")
+
+
+func test_drop_card_data_ignores_a_target_line_that_no_longer_exists() -> void:
+	var tray := UnitCardTray.new()
+	add_child_autofree(tray)
+	var u := UnitScript.new()
+	add_child_autofree(u)
+	tray.sync_units([u])   # only row 0 exists
+
+	tray._drop_card_data(Vector2.ZERO, {"row_idx": 0, "col_idx": 0}, 3, autofree(HBoxContainer.new()))
+
+	assert_eq(tray._rows[0], [u], "no-op: the drop target named a line that no longer exists")
 
 
 ## Three placeholder Controls at x=0/60/120, width 50 (centers at 25/85/145) -- NOT added to
@@ -113,6 +161,17 @@ func test_drop_index_in_row_finds_the_closest_gap() -> void:
 	assert_eq(tray._drop_index_in_row(hbox, -10.0), 0, "before every card's center -> index 0")
 	assert_eq(tray._drop_index_in_row(hbox, 100.0), 2, "between card 1 and 2's centers -> index 2")
 	assert_eq(tray._drop_index_in_row(hbox, 1000.0), 3, "past every card -> appended at the end")
+
+
+func test_drop_index_in_row_skips_a_non_control_child() -> void:
+	var tray := UnitCardTray.new()
+	add_child_autofree(tray)
+	var hbox: HBoxContainer = autofree(_three_card_positions_hbox())
+	# A stray non-Control child (e.g. a bookkeeping Node some other caller left behind) has
+	# no position/size to compare against and must be skipped, not miscounted as a card.
+	hbox.add_child(autofree(Node.new()))
+
+	assert_eq(tray._drop_index_in_row(hbox, -10.0), 0, "still finds the first real card's gap")
 
 
 func test_drop_card_data_moves_a_card_to_a_different_line() -> void:

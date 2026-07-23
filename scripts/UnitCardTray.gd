@@ -160,17 +160,24 @@ func _get_drag_card_data(_at_position: Vector2, row_idx: int, col_idx: int) -> V
 	if row_idx < 0 or row_idx >= _rows.size() or col_idx < 0 or col_idx >= _rows[row_idx].size():
 		return null
 	var u = _rows[row_idx][col_idx]
-	if u == null or not is_instance_valid(u):
+	if u == null or not is_instance_valid(u) or u.state == UnitRef.State.DEAD:
 		return null
 	# set_drag_preview() requires a live Godot drag already in progress (its own precondition,
 	# ERR_FAIL_COND(!gui_is_dragging()) internally) -- guarded so this stays callable directly
 	# (e.g. from a test) without a real drag/drop event driving it.
 	if is_inside_tree() and get_viewport().gui_is_dragging():
-		var preview := Label.new()
-		preview.text = "%s (%d)" % [u.unit_name, u.soldiers]
-		preview.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
-		set_drag_preview(preview)
+		set_drag_preview(_drag_preview_label(u))
 	return {"row_idx": row_idx, "col_idx": col_idx}
+
+
+## The preview Control shown beside the cursor while dragging a card -- a pure function of
+## the unit, kept separate from set_drag_preview() itself so it stays directly testable
+## without a live Godot drag/drop event (set_drag_preview() alone requires one).
+func _drag_preview_label(u) -> Label:
+	var preview := Label.new()
+	preview.text = "%s (%d)" % [u.unit_name, u.soldiers]
+	preview.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	return preview
 
 
 ## Godot drop-target callback: accepts only drag data this tray itself produced.

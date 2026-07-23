@@ -746,6 +746,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_shortcuts_keypress(event) and not _overlay.visible:
 		_shortcuts_dialog.popup_centered()
 		get_viewport().set_input_as_handled()
+	elif _is_tray_toggle_keypress(event):
+		Settings.show_unit_card_tray = not Settings.show_unit_card_tray
+		get_viewport().set_input_as_handled()
 
 
 ## Shift+/ produces "?" on a standard layout; physical_keycode (the / key) keeps the
@@ -755,6 +758,16 @@ func _is_shortcuts_keypress(event: InputEvent) -> bool:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return false
 	return event.physical_keycode == KEY_SLASH and event.shift_pressed
+
+
+## Tab toggles the unit card tray -- a plain, unclaimed key (every other single letter is
+## already a stance/order hotkey or a fixed WASD/arrow camera-pan key; see Settings.gd's own
+## "next unclaimed key" notes for that scarcity). Uses physical_keycode for the same
+## layout-independence as the pause/shortcuts keys above.
+func _is_tray_toggle_keypress(event: InputEvent) -> bool:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return false
+	return event.physical_keycode == KEY_TAB
 
 
 func _is_pause_keypress(event: InputEvent) -> bool:

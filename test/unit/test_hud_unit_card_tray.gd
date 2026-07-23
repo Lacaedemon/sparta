@@ -136,3 +136,43 @@ func test_tray_toggle_button_reflects_the_menu_checkbox_and_vice_versa() -> void
 	var popup := hud._menu_button.get_popup()
 	assert_true(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_UNIT_CARD_TRAY)),
 			"and the menu checkbox reflects the same setting")
+
+
+# --- Tab hotkey -------------------------------------------------------------------------
+
+func _tab_keydown() -> InputEventKey:
+	var ev := InputEventKey.new()
+	ev.physical_keycode = KEY_TAB
+	ev.pressed = true
+	return ev
+
+
+func test_is_tray_toggle_keypress_matches_only_a_fresh_tab_keydown() -> void:
+	var hud := _hud_with_selection_manager()
+	assert_true(hud._is_tray_toggle_keypress(_tab_keydown()), "a plain Tab keydown matches")
+
+	var released := _tab_keydown()
+	released.pressed = false
+	assert_false(hud._is_tray_toggle_keypress(released), "a key-up doesn't toggle it")
+
+	var echoed := _tab_keydown()
+	echoed.echo = true
+	assert_false(hud._is_tray_toggle_keypress(echoed), "an OS key-repeat echo doesn't re-toggle it")
+
+	var other_key := InputEventKey.new()
+	other_key.physical_keycode = KEY_SPACE
+	other_key.pressed = true
+	assert_false(hud._is_tray_toggle_keypress(other_key), "an unrelated key doesn't match")
+
+
+func test_pressing_tab_toggles_the_tray() -> void:
+	var hud := _hud_with_selection_manager()
+	assert_false(hud._unit_card_tray.visible, "starts hidden")
+
+	hud._unhandled_input(_tab_keydown())
+	assert_true(Settings.show_unit_card_tray, "Tab turns the setting on")
+	assert_true(hud._unit_card_tray.visible, "...and the tray becomes visible immediately")
+
+	hud._unhandled_input(_tab_keydown())
+	assert_false(Settings.show_unit_card_tray, "Tab again turns it back off")
+	assert_false(hud._unit_card_tray.visible, "...and the tray hides immediately")
