@@ -1,0 +1,21 @@
+{
+  "_comment": "Disengage-with-sacrifice (rearguard delay): a heavily outnumbered Infantry regiment is selected mid-fight and ordered to sacrifice a rearguard detachment and step back rather than fight to the last man.",
+  "seed": "10441",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 500, "y": 500, "count": 15 },
+    { "team": 1, "type": "Infantry", "x": 500, "y": 600, "count": 60 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 500, "y": 545, "zoom": 1.6 }
+  ],
+  "steps": [
+    { "tick": 5, "click": [500, 500] },
+    { "tick": 180, "key": "Down", "ctrl": true, "shift": true }
+  ],
+  "frames": [90, 175, 182, 200],
+  "state": [90, 175, 180, 182, 190, 200],
+  "fixed_fps": 30,
+  "max_frames": 320,
+  "fps": 15,
+  "width": 640
+}

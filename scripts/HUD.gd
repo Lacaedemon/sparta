@@ -710,6 +710,9 @@ func _process(delta: float) -> void:
 		_live_tick_rate = _tick_count / _tick_rate_window
 		_tick_count = 0
 		_tick_rate_window = 0.0
+		# Piggyback the tray's live-battle refresh on the same once-a-second cadence: casualties,
+		# routs, and reinforcements otherwise only surface when an unrelated Settings toggle fires.
+		_sync_unit_card_tray_visibility()
 	_update_fps_label()
 
 
@@ -1296,7 +1299,21 @@ func _sync_unit_card_tray_visibility() -> void:
 		return
 	_unit_card_tray.visible = Settings.show_unit_card_tray
 	if _unit_card_tray.visible:
-		_unit_card_tray.sync_units(get_tree().get_nodes_in_group("units"))
+		_unit_card_tray.sync_units(_own_team_units())
+
+
+## Units the tray should ever offer -- the player's own side only, so the tray organizes the
+## player's own battle lines rather than the enemy's, respecting all_teams_control the same
+## way every other own-team check in the game does (a debug/all-teams session controls both).
+func _own_team_units() -> Array:
+	var out: Array = []
+	if _sel_mgr == null:
+		return out
+	for node in get_tree().get_nodes_in_group("units"):
+		var u := node as UnitRef
+		if u != null and _sel_mgr._is_own_team(u.team):
+			out.append(u)
+	return out
 
 
 func get_unit_card_tray() -> UnitCardTray:

@@ -20,6 +20,29 @@ const FACTION_ROSTERS := {
 	Type.MACEDON: ["Pezhetairoi Phalanx", "Companion Cavalry", "Hypaspists", "Agrianian Peltasts"],
 }
 
+## Every FACTION_ROSTERS name maps to one of the four spawnable loadout types
+## (Battle._default_loadout()'s "Spearmen"/"Infantry"/"Archers"/"Cavalry") -- the historical
+## name is flavor, this is what actually determines the unit's stats on the field.
+const ROSTER_UNIT_TYPES := {
+	"Spartan Hoplites": "Spearmen",
+	"Skiritai": "Infantry",
+	"Hippeis Cavalry": "Cavalry",
+	"Cretan Archers": "Archers",
+	"Hastati": "Infantry",
+	"Principes": "Infantry",
+	"Triarii": "Spearmen",
+	"Equites Cavalry": "Cavalry",
+	"Velites": "Archers",
+	"Sacred Band": "Spearmen",
+	"Libyan Spearmen": "Spearmen",
+	"Numidian Cavalry": "Cavalry",
+	"Balearic Slingers": "Archers",
+	"Pezhetairoi Phalanx": "Spearmen",
+	"Companion Cavalry": "Cavalry",
+	"Hypaspists": "Infantry",
+	"Agrianian Peltasts": "Archers",
+}
+
 const HISTORICAL_FORMATIONS := {
 	Type.ROME: {
 		UnitRef.FORMATION_NORMAL: "acies",
@@ -48,6 +71,14 @@ static func get_faction_name(faction_id: int) -> String:
 
 static func get_roster(faction_id: int) -> Array:
 	return FACTION_ROSTERS.get(faction_id, [])
+
+
+## The spawnable loadout type (one of Battle.gd's four default-loadout "name" entries) a
+## roster's historical unit name resolves to, or "" if the name isn't a known roster entry --
+## e.g. a caller spawning a custom battle from `get_roster()`'s flavor names needs this to look
+## up the actual stat block, since Battle._loadout_for_type() matches on the plain type name.
+static func get_unit_type(roster_name: String) -> String:
+	return str(ROSTER_UNIT_TYPES.get(roster_name, ""))
 
 
 static func get_formation_display_name(faction_id: int, formation_mode: int, plain_name: String) -> String:

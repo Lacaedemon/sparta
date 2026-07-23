@@ -1,3 +1,3 @@
 # Sparta Project Memory
 
-@.claude/memories/sparta.md
+@../../.claude/memories/sparta.md

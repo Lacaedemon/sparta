@@ -42,7 +42,7 @@ When your change is **user-visible** — it affects how the game looks or plays 
 ## Code conventions
 
 ### Parameters are caller-configurable; only real physical constants are fixed
-Any parameter value a caller could reasonably want to vary — sizes, counts, layouts, spawn geometry, timings, gameplay thresholds — enters through a function parameter, a constructor/instance field, or a data file, with today's value as the default. Never a bare literal buried in the implementation.
+Any parameter value a caller could reasonably want to vary — sizes, counts, layouts, spawn geometry, timings, gameplay thresholds — enters through a function parameter, a constructor/instance field, or a data file, with today's value as the default. Never a bare literal buried in the implementation. This applies unconditionally to new code; an *existing* hard-coded constant is migrated opportunistically (only when a real task needs it varied), not via a standing audit sweep — the earlier proactive #963 effort is paused as of 2026-07-19.
 
 ### Comments: no issue-number references
 Don't cite issue numbers (`#123`) in code comments. The explanation itself should stand on its own. Issue numbers belong in commit messages, PR descriptions, and `TODO`/`FIXME` comments.
