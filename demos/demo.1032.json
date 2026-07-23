@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Push stance melee maneuver requires interactive unit melee engagement and continuous push_bias physics evaluation best validated by unit GUT test suite in test/unit/test_push_stance.gd"
+  "input": "demos/inputs/push-stance.json",
+  "caption": "Push stance maneuver (issue #1017): Team 0 Infantry engages Team 1 Infantry in melee standoff. The player selects Team 0 and presses Ctrl+Slash to issue Push stance, driving the front line forward against enemy pressure.",
+  "fixed_fps": 30,
+  "max_frames": 500,
+  "fps": 15,
+  "width": 640
 }
