@@ -2471,17 +2471,33 @@ const FUNNEL_LANE_SEPARATION_FRACTION := 0.15   # tuned
 ## one: (1) `point` is only reachable through a detour at all (PathField.active
 ## .is_leg_blocked) -- a unit on a clear straight line never reaches
 ## PathField._funnel_corner regardless, so there is nothing to tie-break; and
-## (2) _has_congested_same_team_router() -- some other living unit on the same
-## team is actually close enough, heading similarly enough, to plausibly be
-## steering for this same corner right now. Applying the offset unconditionally
-## to every detouring unit measurably perturbs routing on demos with no
-## crowding at all -- solo terrain-routing is unaffected by either gate.
+## (2) _congested_same_team_router_uids() is non-empty -- some other living unit
+## on the same team is actually close enough, heading similarly enough, to
+## plausibly be steering for this same corner right now. Applying the offset
+## unconditionally to every detouring unit measurably perturbs routing on demos
+## with no crowding at all -- solo terrain-routing is unaffected by either gate.
+##
+## The lane is a stable ORDINAL among every unit currently contesting this
+## corner (self plus every congested neighbor, sorted by uid), not a bare
+## uid-parity split -- two contesters that happen to share uid parity (e.g.
+## uid 0 and uid 2) still land on distinct lanes, unlike a raw
+## `posmod(uid, 2)` scheme, which only ever reliably separates an even/odd
+## pair. Lanes are spaced two units apart (`2*rank - (count-1)`) so a
+## contesting pair reproduces the exact -1/+1 split the original scheme
+## produced (preserving its already-tuned FUNNEL_LANE_SEPARATION_FRACTION
+## geometry), and a 3rd+ contester gets its own additional lane instead of
+## colliding with whichever pair-mate shares its parity.
 func funnel_lane_offset(point: Vector2) -> float:
 	if PathField.active == null or not PathField.active.is_leg_blocked(position, point, terrain_clearance()):
 		return 0.0
-	if not _has_congested_same_team_router():
+	var neighbor_uids: Array[int] = _congested_same_team_router_uids()
+	if neighbor_uids.is_empty():
 		return 0.0
-	var lane: float = float(posmod(uid, 2) * 2 - 1)   # -1 or +1, stable per uid
+	var contesting: Array[int] = neighbor_uids.duplicate()
+	contesting.push_back(uid)
+	contesting.sort()
+	var rank: int = contesting.find(uid)
+	var lane: float = float(2 * rank - (contesting.size() - 1))
 	return lane * terrain_clearance() * FUNNEL_LANE_SEPARATION_FRACTION
 
 
@@ -2515,6 +2531,17 @@ const FUNNEL_CONGESTION_RANGE_FACTOR := 1.0   # tuned
 ## alone reliably fires with room to spare before the pair is anywhere close
 ## to actual soldier-body contact.
 func _has_congested_same_team_router() -> bool:
+	return not _congested_same_team_router_uids().is_empty()
+
+
+## Every living same-team unit's uid that's close enough, and heading closely
+## enough in the same general direction, to plausibly be steering for this
+## same (or a directly conflicting) funnel corner right now -- the full set
+## funnel_lane_offset() ranks itself against to derive a stable per-corner
+## lane ordinal. Same proximity/heading gates as the boolean form above; this
+## just returns who qualified instead of collapsing to a bool.
+func _congested_same_team_router_uids() -> Array[int]:
+	var out: Array[int] = []
 	for node in get_tree().get_nodes_in_group("units"):
 		var u: Unit = node as Unit
 		if u == null or u == self or u.team != team or u.state == State.DEAD:
@@ -2524,8 +2551,8 @@ func _has_congested_same_team_router() -> bool:
 			continue
 		if facing.dot(u.facing) < 0.0:   # roughly the same general direction, not opposed
 			continue
-		return true
-	return false
+		out.push_back(u.uid)
+	return out
 
 
 ## The formation grid's per-axis pitch in world units: the per-type file/rank spacing
