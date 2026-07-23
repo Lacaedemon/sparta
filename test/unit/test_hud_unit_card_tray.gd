@@ -105,6 +105,12 @@ func test_tray_source_units_scopes_to_the_bound_group() -> void:
 	assert_false(result.has(not_in_group), "an own-team unit outside the bound group is excluded")
 
 
+func test_group_changed_handler_is_a_noop_with_no_tray_built_yet() -> void:
+	var hud := HUDScript.new()
+	autofree(hud)   # never add_child'd, so _ready() (and _build_unit_card_tray) never runs
+	hud._on_unit_card_tray_group_changed(0)   # must not crash on the null _unit_card_tray
+
+
 func test_group_changed_signal_resyncs_the_tray_to_the_new_groups_members() -> void:
 	Settings._loading = true
 	Settings.show_unit_card_tray = true
