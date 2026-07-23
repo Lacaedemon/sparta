@@ -56,13 +56,14 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# Nearest LIVING enemy soldier within reach — a longer reach lets us hit foes
 		# who can't hit back (the spear screen).
 		var target: int = -1
-		var best_d: float = reach
+		var best_d_sq: float = reach * reach
 		for di in defenders:
 			if defender._sim_soldier_hp[di] <= 0.0:
 				continue
-			var d: float = apos.distance_to(defender._sim_soldier_pos[di])
-			if d <= best_d:
-				best_d = d
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			var d_sq: float = apos.distance_squared_to(defender._sim_soldier_pos[di])
+			if d_sq <= best_d_sq:
+				best_d_sq = d_sq
 				target = di
 		if target < 0:
 			continue   # nothing in reach this strike — no RNG drawn, so order stays stable
