@@ -2570,3 +2570,114 @@ blindly trusting a claim is what actually avoided a third wasted run -- it's
 "check with the right tool, at the moment closest to the actual action, and
 let each party verify independently rather than trust-and-proceed."
 (`Lacaedemon/sparta`, GII+mwc session, 2026-07-19/20, PRs #1020/#1024.)
+
+## A new per-soldier render-easing value needs its OWN trigger in `_process`'s refresh gate, not just the existing ones
+
+When adding a new eased (never-snap) per-soldier render value -- mirroring the
+existing `_render_alpha`/`ROUTING_ALPHA` idiom -- don't assume the existing
+`Unit._process()` refresh gate (`_render_dirty or facing changed or state ==
+FIGHTING or instance-count drift`) will keep calling `_refresh_flock_render`
+often enough for the NEW value to finish easing. Those four conditions are
+tuned for what they already cover (body movement, turning, combat, casualty
+compaction) and have no reason to correlate with an unrelated timer's own
+decay.
+
+**Concrete case:** the prone-soldier render fix (`_render_prone_progress`,
+easing a soldier's fallen-pose transform/tint instead of snapping) initially
+relied on those four existing conditions alone. `_render_dirty` is set ONLY
+when a soldier body's velocity exceeds `SoldierBodies.REST_SPEED` -- a
+knockback's initial impulse sets it (so the ease correctly *starts*), but the
+body settles to near-zero velocity well before `_render_prone_progress`
+finishes converging, and once the unit's own `state` drops out of `FIGHTING`
+(immediate, no linger) none of the four conditions fire again. Result: the
+ease froze mid-transition -- a soldier permanently stuck half-fallen/half-risen
+-- which is a WORSE visible defect than the original instant-snap bug the fix
+set out to solve. This is the same "inert number" failure class as the
+`_current_speed`/coasting bugs above, just on a different field. Caught by
+`claude-review`, not by the original implementation or its own tests (which
+called `_refresh_flock_render` directly, bypassing `_process`'s gate entirely,
+so the frozen-forever path was never exercised).
+
+**Fix pattern:** add a dedicated boolean (`_prone_easing_active`) set by the
+easing function's OWN per-soldier loop (`still_easing = true` whenever
+`progress != target` for any soldier), read as an additional OR-condition in
+`_process`'s gate. `move_toward` clamps exactly to the target once within
+range, so the flag reliably goes false on convergence -- no risk of getting
+stuck true from float drift.
+
+**Test gotcha this surfaced:** a test that exercises the easing function
+directly (`u._refresh_flock_render(delta)` in a loop) proves the MATH is
+right but does NOT prove `_process` actually keeps calling it -- write a
+second test that drives the fix through `_process` itself with every OTHER
+gate condition deliberately held inactive (state != FIGHTING, `_render_dirty`
+false, no facing change, no instance-count drift), so the new trigger is the
+only thing making it advance. And when staging that test, remember the
+kickoff itself needs a real trigger too: directly setting the underlying sim
+field (`_sim_prone[i] = 1.0`) with no accompanying `_render_dirty`/velocity
+pulse never starts the ease in the first place (in real play, a knockback's
+own velocity always provides that first kick) -- call the easing function
+once directly to simulate that one real-world kickoff tick, THEN loop
+`_process` alone to prove the *continuation* works with nothing else active.
+(`Lacaedemon/sparta` PR #1054, 2026-07-23.)
+
+## Grep your OWN new comments for issue-number citations before every commit, not just after `check.sh` catches it
+
+CLAUDE.md's "Comments: no issue-number references" rule is well-documented,
+but self-checking against it is easy to skip when writing a fix's own
+explanatory comments (especially ones that narrate *why* a bug happened,
+which naturally wants to reference "the issue this fixes"). In one session,
+`tools/check.sh comments` caught this same self-inflicted mistake three
+separate times across three different PRs (#1051, #1053, #1054) -- each
+time costing a full extra `check.sh` cycle (15-20 min for the coverage-
+instrumented suite) purely to re-discover something a 5-second grep would
+have caught immediately after writing the comment.
+
+**How to apply:** after writing any new/edited comment block explaining a
+fix's root cause (the kind of comment most likely to want to say "this is
+what issue #N was about"), grep the diff yourself before committing:
+`git diff --cached | grep -E '^\+.*#[0-9]{2,4}\b'` (or just re-read what you
+wrote with this rule specifically in mind) -- don't rely on `check.sh`'s
+`comments` check to be the first line of defense; treat it as the last-resort
+safety net, not the primary catch.
+
+## `gh pr merge --delete-branch` failing locally with "'main' is already checked out" is benign in a session worktree -- the merge itself still lands
+
+`gh pr merge <N> --squash --delete-branch`, run from a session worktree (not
+the primary checkout), can fail with `failed to run git: fatal: 'main' is
+already checked out at '<primary-checkout-path>'` -- this is `gh`'s own
+post-merge convenience step trying to switch the LOCAL checkout to `main`
+(exactly the hazard this file's own "never checkout main in a worktree"
+entries already warn about), not a failure of the merge itself. The remote
+merge (and `--delete-branch`'s remote branch deletion) completes before that
+local step runs, so it always succeeds regardless of the error message.
+
+**How to apply:** after seeing this error, don't retry or investigate the
+merge -- just verify directly (`gh pr view <N> --json state,mergedAt`, and
+the closing issue's `state`/`stateReason`) and proceed to the normal
+post-merge tidy (`git fetch origin --prune`; don't touch the local `main`
+branch in this worktree at all, matching the existing convention of never
+checking it out here). Hit twice in one session (PRs #1051 and #1054,
+2026-07-23), both simple confirms-and-moves-on once checked.
+
+## A "PR Status Report" review reply can be a stub in disguise -- restating old context instead of independently re-checking the current diff
+
+Adds a specific symptom to the existing stub-review family already
+documented above: a re-review triggered right after a fix push can come back
+formatted as a "PR State / Is Draft / Prior Claude Review" status summary --
+quoting the EARLIER finding and the author's OWN follow-up commit message
+almost verbatim -- rather than an independent line-by-line re-check of
+whether the fix actually resolves the finding. It still carries a
+plausible-looking structure and doesn't obviously read as empty the way
+"Test content line." does, so it's easy to mistake for a genuine re-verdict
+at a glance.
+
+**How to apply:** when a review reply mostly restates PR metadata/history
+you already know (title, description, "yes it was reviewed before, here's
+what happened") rather than tracing the specific code change against the
+specific finding, treat it the same as any other stub: don't accept its
+implicit "looks fine" as a verdict. One manual re-dispatch
+(`gh workflow run claude-code-review.yml -f pr_number=<N>`) is usually
+enough to get a genuine fresh pass that explicitly traces the fix (verified:
+the second dispatch on the same PR produced a real line-by-line
+verification and an explicit `### Verdict`). (`Lacaedemon/sparta` PR #1054,
+2026-07-23.)
