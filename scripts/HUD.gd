@@ -47,6 +47,7 @@ var _file_major_reform_btn: Button
 var _overlay: ColorRect
 var _overlay_label: Label
 var _menu_button: MenuButton
+var _tray_toggle_btn: Button
 var _status: Label
 var _paused_label: Label
 var _order_mode_label: Label
@@ -272,6 +273,21 @@ func _ready() -> void:
 	_menu_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_menu_button.position = Vector2(-menu_width - 6.0, 6)
 	add_child(_menu_button)
+
+	# Persistent tray toggle, beside the Menu button -- the unit card tray was previously
+	# only reachable by digging into the ☰ menu's "Unit card tray" check item (still there,
+	# and stays in sync with this button), with nothing on screen hinting it exists.
+	_tray_toggle_btn = Button.new()
+	_tray_toggle_btn.text = "Tray"
+	_tray_toggle_btn.toggle_mode = true
+	var tray_btn_width := 70.0
+	_tray_toggle_btn.custom_minimum_size = Vector2(tray_btn_width, 0)
+	_tray_toggle_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_tray_toggle_btn.position = Vector2(-menu_width - tray_btn_width - 12.0, 6)
+	_tray_toggle_btn.tooltip_text = "Show/hide the unit card tray"
+	_tray_toggle_btn.toggled.connect(func(pressed: bool):
+		Settings.show_unit_card_tray = pressed)
+	add_child(_tray_toggle_btn)
 
 	var popup := _menu_button.get_popup()
 	popup.process_mode = Node.PROCESS_MODE_ALWAYS   # usable while paused
@@ -608,6 +624,7 @@ func _sync_setting_toggles() -> void:
 	popup.set_item_checked(popup.get_item_index(MENU_SHOW_FPS), Settings.show_fps)
 	popup.set_item_checked(popup.get_item_index(MENU_PERFORMANCE_GRAPH), Settings.show_performance_graph)
 	popup.set_item_checked(popup.get_item_index(MENU_UNIT_CARD_TRAY), Settings.show_unit_card_tray)
+	_tray_toggle_btn.set_pressed_no_signal(Settings.show_unit_card_tray)
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.set_item_checked(popup.get_item_index(entry["id"]),
 				Settings.fps_corner == entry["corner"])

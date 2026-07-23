@@ -87,3 +87,43 @@ func test_process_refreshes_the_tray_once_a_second_during_a_battle() -> void:
 	assert_true(shown.has(reinforcement),
 			"a unit that joins mid-battle appears without any Settings toggle firing")
 	assert_eq(shown.size(), 2, "both the original unit and the reinforcement are shown")
+
+
+# --- persistent tray-toggle button ---------------------------------------------------
+# The tray was previously only reachable via the Menu popup's "Unit card tray"
+# check item -- a persistent button beside Menu gives it an always-visible entry point.
+
+func test_pressing_the_tray_toggle_button_shows_the_tray() -> void:
+	var hud := _hud_with_selection_manager()
+	assert_false(hud._unit_card_tray.visible, "starts hidden (show_unit_card_tray defaults false)")
+
+	hud._tray_toggle_btn.set_pressed_no_signal(true)
+	hud._tray_toggle_btn.toggled.emit(true)
+
+	assert_true(Settings.show_unit_card_tray, "pressing the button turns the setting on")
+	assert_true(hud._unit_card_tray.visible, "...and the tray becomes visible immediately")
+
+
+func test_pressing_the_tray_toggle_button_again_hides_the_tray() -> void:
+	var hud := _hud_with_selection_manager()
+	hud._tray_toggle_btn.set_pressed_no_signal(true)
+	hud._tray_toggle_btn.toggled.emit(true)
+
+	hud._tray_toggle_btn.set_pressed_no_signal(false)
+	hud._tray_toggle_btn.toggled.emit(false)
+
+	assert_false(Settings.show_unit_card_tray, "pressing it again turns the setting back off")
+	assert_false(hud._unit_card_tray.visible, "...and the tray hides immediately")
+
+
+func test_tray_toggle_button_reflects_the_menu_checkbox_and_vice_versa() -> void:
+	var hud := _hud_with_selection_manager()
+
+	# Toggling via the menu's own dispatch path (not the new button) still updates the button.
+	hud._on_menu_id(HUDScript.MENU_UNIT_CARD_TRAY)
+	assert_true(hud._tray_toggle_btn.button_pressed,
+			"the button re-syncs when the tray is toggled from the menu instead")
+
+	var popup := hud._menu_button.get_popup()
+	assert_true(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_UNIT_CARD_TRAY)),
+			"and the menu checkbox reflects the same setting")
