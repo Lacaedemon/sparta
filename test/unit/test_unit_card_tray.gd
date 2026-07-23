@@ -1,50 +1,174 @@
 extends GutTest
-## Multi-row unit card tray unit tests.
+## Unit card tray unit tests: the fixed rows x columns grid, add/remove row/column, cell
+## shifting and drag-and-drop swapping, and sync_units()'s placement rule.
 
 const UnitScript = preload("res://scripts/Unit.gd")
 
 
-func test_unit_card_tray_rows_and_shifting() -> void:
+func _tray() -> UnitCardTray:
 	var tray := UnitCardTray.new()
 	add_child_autofree(tray)
+	return tray
 
-	var u1 := UnitScript.new()
-	u1.unit_name = "Hastati 1"
-	add_child_autofree(u1)
 
-	var u2 := UnitScript.new()
-	u2.unit_name = "Principes 1"
-	add_child_autofree(u2)
+func _named_unit(n: String) -> Unit:
+	var u: Unit = UnitScript.new()
+	u.unit_name = n
+	add_child_autofree(u)
+	return u
+
+
+func test_sync_units_places_new_units_into_the_first_empty_cell_row_major() -> void:
+	var tray := _tray()
+	assert_eq(tray.columns(), UnitCardTray.DEFAULT_COLUMNS, "starts at the default column count")
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Principes 1")
 
 	tray.sync_units([u1, u2])
+
+	assert_eq(tray._grid[0][0], u1, "the first unassigned unit lands in the first cell")
+	assert_eq(tray._grid[0][1], u2, "...and the second in the next empty cell, row-major")
 	assert_eq(tray.get_units_in_tray_order().size(), 2)
 
-	# Add row and move u2 to line 2
+
+func test_sync_units_grows_a_new_row_once_the_grid_is_full() -> void:
+	var tray := _tray()
+	var units: Array = []
+	for i in range(UnitCardTray.DEFAULT_COLUMNS + 1):
+		units.append(_named_unit("Unit %d" % i))
+
+	tray.sync_units(units)
+
+	assert_eq(tray._grid.size(), 2, "one row filled exactly, so the overflow unit grows a new row")
+	assert_eq(tray._grid[1][0], units[UnitCardTray.DEFAULT_COLUMNS],
+			"the overflow unit lands in the first cell of the new row")
+
+
+func test_add_row_and_remove_row_reflow_displaced_units() -> void:
+	var tray := _tray()
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Principes 1")
+	tray.sync_units([u1, u2])
+
 	tray.add_row()
-	tray.move_unit_down(0, 1)
+	tray.move_unit(0, 1, 1, 0)   # u2 moves to line 2
+	assert_eq(tray._grid[1][0], u2, "precondition: u2 sits alone on line 2")
 
-	var ordered: Array = tray.get_units_in_tray_order()
-	assert_eq(ordered.size(), 2)
-	assert_eq(ordered[0], u1)
-	assert_eq(ordered[1], u2)
+	tray.remove_row()   # line 2 removed; u2 must reflow, not vanish
+	assert_eq(tray.get_units_in_tray_order().size(), 2, "both units survive the removal")
+	assert_eq(tray._grid[0][1], u2, "u2 reflows into the first empty cell of the remaining grid")
 
-	# Remove row restores u2 to row 0
+
+func test_remove_row_refuses_to_go_below_one_row() -> void:
+	var tray := _tray()
+	assert_eq(tray._grid.size(), 1)
 	tray.remove_row()
-	assert_eq(tray.get_units_in_tray_order().size(), 2)
+	assert_eq(tray._grid.size(), 1, "the last line can't be removed")
 
 
-## Regression test: cards_scroll (the ScrollContainer holding a line's unit cards) used to
-## have no size_flags_horizontal, so an HBoxContainer parent never granted it more than its
-## own 0-width minimum -- every card was permanently invisible (0 width), regardless of how
-## many layout passes ran. Caught only by an actual screenshot, not by any prior test, since
-## every existing test asserted on _rows (logical state) rather than real rendered size.
+func test_add_column_widens_every_row() -> void:
+	var tray := _tray()
+	tray.add_row()
+	var starting_cols: int = tray.columns()
+
+	tray.add_column()
+
+	for r in tray._grid:
+		assert_eq(r.size(), starting_cols + 1, "every existing row gains the new column")
+
+
+func test_remove_column_reflows_displaced_units_and_refuses_below_one() -> void:
+	var tray := _tray()
+	var units: Array = []
+	for i in range(tray.columns()):
+		units.append(_named_unit("Unit %d" % i))
+	tray.sync_units(units)   # fills every cell in row 0
+
+	var last_col: int = tray.columns() - 1
+	var displaced: Unit = tray._grid[0][last_col]
+	tray.remove_column()
+
+	assert_eq(tray.columns(), units.size() - 1, "the grid is one column narrower")
+	assert_true(tray.get_units_in_tray_order().has(displaced),
+			"the unit that was in the removed column survives, reflowed elsewhere")
+
+	while tray.columns() > 1:
+		tray.remove_column()
+	tray.remove_column()
+	assert_eq(tray.columns(), 1, "the last column can't be removed")
+
+
+func test_shift_unit_right_moves_a_lone_unit_into_an_empty_neighbor_cell() -> void:
+	# A lone unit used to have no neighbor to swap with under the old variable-length-row
+	# model. On a fixed-width grid it always does (as long as the grid is wider than 1
+	# column), even with every other cell empty.
+	var tray := _tray()
+	var u := _named_unit("Cavalry 1")
+	tray.sync_units([u])
+	assert_null(tray._grid[0][1], "precondition: the neighbor cell starts empty")
+
+	tray.shift_unit_right(0, 0)
+
+	assert_null(tray._grid[0][0], "the unit's old cell is now empty")
+	assert_eq(tray._grid[0][1], u, "...and the unit occupies the (previously empty) neighbor")
+
+
+func test_shift_unit_left_at_column_zero_is_a_noop() -> void:
+	var tray := _tray()
+	var u := _named_unit("Cavalry 1")
+	tray.sync_units([u])
+
+	tray.shift_unit_left(0, 0)
+
+	assert_eq(tray._grid[0][0], u, "no cell to the left of column 0 -- the unit doesn't move")
+
+
+func test_shift_unit_down_at_the_last_row_is_a_noop() -> void:
+	var tray := _tray()
+	var u := _named_unit("Cavalry 1")
+	tray.sync_units([u])
+
+	tray.shift_unit_down(0, 0)
+
+	assert_eq(tray._grid[0][0], u, "no row below the last one -- the unit doesn't move")
+
+
+func test_move_unit_swaps_two_occupied_cells() -> void:
+	var tray := _tray()
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Principes 1")
+	tray.sync_units([u1, u2])   # u1 at (0,0), u2 at (0,1)
+
+	tray.move_unit(0, 0, 0, 1)
+
+	assert_eq(tray._grid[0][0], u2, "the two units trade places")
+	assert_eq(tray._grid[0][1], u1)
+
+
+func test_move_unit_ignores_a_stale_endpoint() -> void:
+	var tray := _tray()
+	var u := _named_unit("Cavalry 1")
+	tray.sync_units([u])
+
+	tray.move_unit(0, 0, 5, 0)   # row 5 doesn't exist
+
+	assert_eq(tray._grid[0][0], u, "no-op: the target cell is outside the current grid")
+
+
+func test_settings_tray_row_order_placement_defaults_off() -> void:
+	assert_false(Settings.show_unit_card_tray, "show_unit_card_tray defaults to false")
+	assert_false(Settings.tray_row_order_placement, "tray_row_order_placement defaults to false")
+
+
+## Regression test: cards_scroll (the ScrollContainer holding a line's cells) used to have
+## no size_flags_horizontal, so an HBoxContainer parent never granted it more than its own
+## 0-width minimum -- every card was permanently invisible (0 width), regardless of how many
+## layout passes ran. Caught only by an actual screenshot, not by any prior test, since every
+## existing test asserted on _grid (logical state) rather than real rendered size.
 func test_cards_scroll_expands_to_fill_the_row_so_cards_are_actually_visible() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
+	var tray := _tray()
 	tray.custom_minimum_size = Vector2(500, 0)   # matches HUD._build_unit_card_tray's own width
-	var u := UnitScript.new()
-	u.unit_name = "Infantry 1"
-	add_child_autofree(u)
+	var u := _named_unit("Infantry 1")
 	tray.sync_units([u])
 
 	for i in range(5):
@@ -56,21 +180,16 @@ func test_cards_scroll_expands_to_fill_the_row_so_cards_are_actually_visible() -
 			"the cards area claims real width instead of collapsing to its 0-width minimum")
 
 
-func test_settings_tray_row_order_placement_defaults_off() -> void:
-	assert_false(Settings.show_unit_card_tray, "show_unit_card_tray defaults to false")
-	assert_false(Settings.tray_row_order_placement, "tray_row_order_placement defaults to false")
-
-
-# --- drag-and-drop card reordering -----------------------------------------------------
+# --- drag-and-drop cell swapping ---------------------------------------------------------
 # The Godot drag-source/drop-target callbacks (_get_drag_card_data/_can_drop_card_data/
 # _drop_card_data) are pure functions wired via set_drag_forwarding() rather than relying
 # on Godot's own DND machinery -- exercised directly here, with no real drag/drop event.
+# Every cell (occupied or empty) is its own drop target now, so there's no insertion-index
+# geometry to test -- a drop always resolves to a single move_unit() swap.
 
-func test_get_drag_card_data_returns_the_dragged_cards_indices() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var u := UnitScript.new()
-	add_child_autofree(u)
+func test_get_drag_card_data_returns_the_dragged_cells_indices() -> void:
+	var tray := _tray()
+	var u := _named_unit("Infantry 1")
 	tray.sync_units([u])
 
 	var data = tray._get_drag_card_data(Vector2.ZERO, 0, 0)
@@ -79,17 +198,19 @@ func test_get_drag_card_data_returns_the_dragged_cards_indices() -> void:
 
 
 func test_get_drag_card_data_refuses_a_stale_index() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
+	var tray := _tray()
 	assert_null(tray._get_drag_card_data(Vector2.ZERO, 5, 0), "row_idx past the last line")
-	assert_null(tray._get_drag_card_data(Vector2.ZERO, 0, 5), "col_idx past an empty line")
+	assert_null(tray._get_drag_card_data(Vector2.ZERO, 0, 99), "col_idx past the grid's width")
+
+
+func test_get_drag_card_data_refuses_an_empty_cell() -> void:
+	var tray := _tray()
+	assert_null(tray._get_drag_card_data(Vector2.ZERO, 0, 0), "nothing to drag from an empty cell")
 
 
 func test_get_drag_card_data_refuses_a_dead_unit_at_an_otherwise_valid_index() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var u := UnitScript.new()
-	add_child_autofree(u)
+	var tray := _tray()
+	var u := _named_unit("Infantry 1")
 	tray.sync_units([u])
 	u.state = UnitScript.State.DEAD
 
@@ -97,12 +218,9 @@ func test_get_drag_card_data_refuses_a_dead_unit_at_an_otherwise_valid_index() -
 
 
 func test_drag_preview_label_shows_the_units_name_and_soldier_count() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var u := UnitScript.new()
-	u.unit_name = "Infantry 1"
-	add_child_autofree(u)   # _ready() sets soldiers = max_soldiers -- override only after this
-	u.soldiers = 40
+	var tray := _tray()
+	var u := _named_unit("Infantry 1")
+	u.soldiers = 40   # after _ready() (which sets soldiers = max_soldiers) so the override sticks
 
 	var preview: Label = autofree(tray._drag_preview_label(u))
 
@@ -110,130 +228,60 @@ func test_drag_preview_label_shows_the_units_name_and_soldier_count() -> void:
 
 
 func test_can_drop_card_data_accepts_only_the_trays_own_payload_shape() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
+	var tray := _tray()
 	assert_true(tray._can_drop_card_data(Vector2.ZERO, {"row_idx": 0, "col_idx": 0}))
 	assert_false(tray._can_drop_card_data(Vector2.ZERO, "not a drag payload"))
 	assert_false(tray._can_drop_card_data(Vector2.ZERO, {"foo": "bar"}))
 
 
 func test_drop_card_data_ignores_a_non_dictionary_payload() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var u := UnitScript.new()
-	add_child_autofree(u)
+	var tray := _tray()
+	var u := _named_unit("Infantry 1")
 	tray.sync_units([u])
 
-	tray._drop_card_data(Vector2.ZERO, "not a drag payload", 0, autofree(HBoxContainer.new()))
+	tray._drop_card_data(Vector2.ZERO, "not a drag payload", 0, 1)
 
-	assert_eq(tray._rows[0], [u], "no-op: the payload isn't shaped like a drag payload at all")
-
-
-func test_drop_card_data_ignores_a_target_line_that_no_longer_exists() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var u := UnitScript.new()
-	add_child_autofree(u)
-	tray.sync_units([u])   # only row 0 exists
-
-	tray._drop_card_data(Vector2.ZERO, {"row_idx": 0, "col_idx": 0}, 3, autofree(HBoxContainer.new()))
-
-	assert_eq(tray._rows[0], [u], "no-op: the drop target named a line that no longer exists")
+	assert_eq(tray._grid[0][0], u, "no-op: the payload isn't shaped like a drag payload at all")
 
 
-## Three placeholder Controls at x=0/60/120, width 50 (centers at 25/85/145) -- NOT added to
-## the scene tree, so nothing auto-repositions them; purely for exercising the geometry math.
-func _three_card_positions_hbox() -> HBoxContainer:
-	var hbox := HBoxContainer.new()
-	for i in range(3):
-		var c := Control.new()
-		c.position = Vector2(i * 60, 0)
-		c.size = Vector2(50, 40)
-		hbox.add_child(c)
-	return hbox
+func test_drop_card_data_moves_a_card_to_an_empty_cell() -> void:
+	var tray := _tray()
+	var u := _named_unit("Infantry 1")
+	tray.sync_units([u])   # u lands at (0, 0)
+
+	tray._drop_card_data(Vector2.ZERO, {"row_idx": 0, "col_idx": 0}, 0, 2)
+
+	assert_null(tray._grid[0][0], "the source cell is now empty")
+	assert_eq(tray._grid[0][2], u, "...and the unit landed in the drop target cell")
 
 
-func test_drop_index_in_row_finds_the_closest_gap() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var hbox: HBoxContainer = autofree(_three_card_positions_hbox())
+func test_drop_card_data_onto_an_occupied_cell_swaps_the_two_units() -> void:
+	var tray := _tray()
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Principes 1")
+	tray.sync_units([u1, u2])   # u1 at (0,0), u2 at (0,1)
 
-	assert_eq(tray._drop_index_in_row(hbox, -10.0), 0, "before every card's center -> index 0")
-	assert_eq(tray._drop_index_in_row(hbox, 100.0), 2, "between card 1 and 2's centers -> index 2")
-	assert_eq(tray._drop_index_in_row(hbox, 1000.0), 3, "past every card -> appended at the end")
+	tray._drop_card_data(Vector2.ZERO, {"row_idx": 0, "col_idx": 0}, 0, 1)
 
-
-func test_drop_index_in_row_skips_a_non_control_child() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var hbox: HBoxContainer = autofree(_three_card_positions_hbox())
-	# A stray non-Control child (e.g. a bookkeeping Node some other caller left behind) has
-	# no position/size to compare against and must be skipped, not miscounted as a card.
-	hbox.add_child(autofree(Node.new()))
-
-	assert_eq(tray._drop_index_in_row(hbox, -10.0), 0, "still finds the first real card's gap")
+	assert_eq(tray._grid[0][0], u2, "dropping u1 onto u2's cell swaps them")
+	assert_eq(tray._grid[0][1], u1)
 
 
-func test_drop_card_data_moves_a_card_to_a_different_line() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var u1 := UnitScript.new()
-	add_child_autofree(u1)
-	var u2 := UnitScript.new()
-	add_child_autofree(u2)
-	tray.sync_units([u1, u2])   # both land in row 0
-	tray.add_row()              # row 1 now exists, empty
+func test_drop_card_data_ignores_a_target_that_no_longer_exists() -> void:
+	var tray := _tray()
+	var u := _named_unit("Infantry 1")
+	tray.sync_units([u])
 
-	tray._drop_card_data(Vector2.ZERO, {"row_idx": 0, "col_idx": 0}, 1, autofree(HBoxContainer.new()))
+	tray._drop_card_data(Vector2.ZERO, {"row_idx": 0, "col_idx": 0}, 9, 0)
 
-	assert_eq(tray._rows[0], [u2], "u1 left row 0")
-	assert_eq(tray._rows[1], [u1], "...and landed in row 1")
+	assert_eq(tray._grid[0][0], u, "no-op: the drop target named a row that doesn't exist")
 
 
-func test_drop_card_data_reorders_within_the_same_line() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var u1 := UnitScript.new()
-	add_child_autofree(u1)
-	var u2 := UnitScript.new()
-	add_child_autofree(u2)
-	var u3 := UnitScript.new()
-	add_child_autofree(u3)
-	tray.sync_units([u1, u2, u3])   # row 0: [u1, u2, u3]
-	var hbox: HBoxContainer = autofree(_three_card_positions_hbox())
+func test_drop_card_data_ignores_a_payload_from_a_stale_cell() -> void:
+	var tray := _tray()
+	var u := _named_unit("Infantry 1")
+	tray.sync_units([u])
 
-	# Drag u3 (col 2) to drop near card 0's position -> lands at the front of its own line.
-	tray._drop_card_data(Vector2(-10.0, 0), {"row_idx": 0, "col_idx": 2}, 0, hbox)
+	tray._drop_card_data(Vector2.ZERO, {"row_idx": 9, "col_idx": 0}, 0, 1)
 
-	assert_eq(tray._rows[0], [u3, u1, u2], "u3 moved to the front of its own line")
-
-
-func test_drop_card_data_shifts_the_target_index_when_dragging_forward_in_the_same_line() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var u1 := UnitScript.new()
-	add_child_autofree(u1)
-	var u2 := UnitScript.new()
-	add_child_autofree(u2)
-	var u3 := UnitScript.new()
-	add_child_autofree(u3)
-	tray.sync_units([u1, u2, u3])   # row 0: [u1, u2, u3]
-	var hbox: HBoxContainer = autofree(_three_card_positions_hbox())
-
-	# Drag u1 (col 0) to drop near card 2's position (index 2 in the PRE-removal layout) --
-	# removing col 0 first shifts that target back by one, landing u1 just before u3.
-	tray._drop_card_data(Vector2(100.0, 0), {"row_idx": 0, "col_idx": 0}, 0, hbox)
-
-	assert_eq(tray._rows[0], [u2, u1, u3], "u1 moved forward, ending up just before u3")
-
-
-func test_drop_card_data_ignores_a_payload_from_a_stale_line() -> void:
-	var tray := UnitCardTray.new()
-	add_child_autofree(tray)
-	var u := UnitScript.new()
-	add_child_autofree(u)
-	tray.sync_units([u])   # only row 0 exists
-
-	tray._drop_card_data(Vector2.ZERO, {"row_idx": 3, "col_idx": 0}, 0, autofree(HBoxContainer.new()))
-
-	assert_eq(tray._rows[0], [u], "no-op: the drag payload named a line that no longer exists")
+	assert_eq(tray._grid[0][0], u, "no-op: the drag payload named a cell that doesn't exist")
