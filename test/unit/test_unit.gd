@@ -1371,21 +1371,83 @@ func test_funnel_lane_offset_is_nonzero_when_a_same_team_unit_is_congested_nearb
 	pf.block_rect(Rect2(1000, 0, 64, 2000))   # vertical wall both units' straight line must cross
 	PathField.active = pf
 	var a := _make_unit()
+	a.uid = 8
+	a.team = 0
+	a.position = Vector2(500, 500)
+	a.facing = Vector2.RIGHT
+	var b := _make_unit()
+	b.uid = 9
+	b.team = 0
+	b.position = Vector2(520, 500)   # a few world units away -- well inside any real clearance
+	b.facing = Vector2.RIGHT
+	var offset_a: float = a.funnel_lane_offset(Vector2(1500, 500))
+	var offset_b: float = b.funnel_lane_offset(Vector2(1500, 500))
+	# uid 8 and uid 9 (the standard demo catalog's own contesting cavalry pair) land in the
+	# outermost buckets of the fixed FUNNEL_LANE_COUNT split, reproducing the original
+	# scheme's full -1/+1 magnitude for this specific pair.
+	var expected_a: float = (2.0 * float(posmod(a.uid, Unit.FUNNEL_LANE_COUNT)) / float(Unit.FUNNEL_LANE_COUNT - 1)) - 1.0
+	var expected_b: float = (2.0 * float(posmod(b.uid, Unit.FUNNEL_LANE_COUNT)) / float(Unit.FUNNEL_LANE_COUNT - 1)) - 1.0
+	assert_almost_eq(offset_a, expected_a * a.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
+		0.0001, "a genuinely congested pair still gets the deterministic per-uid tie-break offset")
+	assert_almost_eq(offset_b, expected_b * b.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
+		0.0001, "a genuinely congested pair still gets the deterministic per-uid tie-break offset")
+	assert_ne(offset_a, offset_b, "a genuinely congested pair never shares a lane")
+	PathField.active = old_pf
+
+
+func test_funnel_lane_offset_separates_same_parity_uids() -> void:
+	# A raw posmod(uid, 2) split gave uid 20 and uid 22 (both even) the identical lane --
+	# a wider fixed modulus resolves this specific pair without making the lane depend on
+	# which other units happen to be nearby right now.
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
+	pf.block_rect(Rect2(1000, 0, 64, 2000))
+	PathField.active = pf
+	var a := _make_unit()
 	a.uid = 20
 	a.team = 0
 	a.position = Vector2(500, 500)
 	a.facing = Vector2.RIGHT
 	var b := _make_unit()
-	b.uid = 21
+	b.uid = 22
 	b.team = 0
-	b.position = Vector2(520, 500)   # a few world units away -- well inside any real clearance
+	b.position = Vector2(520, 500)
 	b.facing = Vector2.RIGHT
-	var offset: float = a.funnel_lane_offset(Vector2(1500, 500))
-	var expected_lane: float = float(posmod(a.uid, 2) * 2 - 1)
-	assert_almost_eq(offset,
-		expected_lane * a.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION, 0.0001,
-		"a genuinely congested pair still gets the deterministic per-uid tie-break offset")
-	assert_ne(offset, 0.0, "the offset is genuinely nonzero for a congested pair")
+	var offset_a: float = a.funnel_lane_offset(Vector2(1500, 500))
+	var offset_b: float = b.funnel_lane_offset(Vector2(1500, 500))
+	assert_ne(offset_a, offset_b,
+		"two same-parity contesters must not collide on the same lane")
+	PathField.active = old_pf
+
+
+func test_funnel_lane_offset_is_a_pure_function_of_uid_not_of_who_else_is_nearby() -> void:
+	# A unit's own lane must not change depending on which OTHER same-team units happen to
+	# satisfy the congestion gate at the same instant -- only whether the gate is open or
+	# closed at all. A third unit joining or leaving the area must never shift the first
+	# unit's already-assigned lane value.
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
+	pf.block_rect(Rect2(1000, 0, 64, 2000))
+	PathField.active = pf
+	var a := _make_unit()
+	a.uid = 8
+	a.team = 0
+	a.position = Vector2(500, 500)
+	a.facing = Vector2.RIGHT
+	var b := _make_unit()
+	b.uid = 9
+	b.team = 0
+	b.position = Vector2(520, 500)
+	b.facing = Vector2.RIGHT
+	var offset_pair_only: float = a.funnel_lane_offset(Vector2(1500, 500))
+	var c := _make_unit()
+	c.uid = 100
+	c.team = 0
+	c.position = Vector2(510, 500)
+	c.facing = Vector2.RIGHT
+	var offset_with_third_unit: float = a.funnel_lane_offset(Vector2(1500, 500))
+	assert_almost_eq(offset_pair_only, offset_with_third_unit, 0.0001,
+		"a's lane must be identical whether or not a third congested unit is also nearby")
 	PathField.active = old_pf
 
 

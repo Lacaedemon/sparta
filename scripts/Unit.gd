@@ -2476,12 +2476,35 @@ const FUNNEL_LANE_SEPARATION_FRACTION := 0.15   # tuned
 ## steering for this same corner right now. Applying the offset unconditionally
 ## to every detouring unit measurably perturbs routing on demos with no
 ## crowding at all -- solo terrain-routing is unaffected by either gate.
+##
+## The lane must stay a PURE function of this unit's own uid (never of which
+## other units happen to be nearby right now) -- an earlier version derived it
+## from a rank within the live congestion scan below, and that made the lane
+## fluctuate as which other same-team units transiently satisfied the
+## proximity/heading gate changed tick to tick, even for a genuine, stable
+## two-unit contest (a third unit briefly marching in a similar direction
+## nearby was enough to shift the rank). That showed up as new per-soldier
+## body deformation on the standard demo catalog and was reverted in favor of
+## this fixed-modulus scheme, which keeps the same time-invariance the
+## original two-lane version had.
+##
+## FUNNEL_LANE_COUNT buckets spread evenly across the same [-1, +1] range the
+## original two-lane scheme used (so the tuned FUNNEL_LANE_SEPARATION_FRACTION
+## geometry stays valid), collapsing to the exact original -1/+1 split at
+## FUNNEL_LANE_COUNT == 2. A larger bucket count means two contesters sharing
+## the same uid-parity (e.g. uid 0 and uid 2) usually land in different
+## buckets instead of colliding on the identical lane -- not a guarantee for
+## every possible uid pair (two contesters exactly FUNNEL_LANE_COUNT apart
+## still collide), but a large reduction from the original two-bucket split.
+const FUNNEL_LANE_COUNT := 3   # tuned: see the doc comment above funnel_lane_offset()
+
+
 func funnel_lane_offset(point: Vector2) -> float:
 	if PathField.active == null or not PathField.active.is_leg_blocked(position, point, terrain_clearance()):
 		return 0.0
 	if not _has_congested_same_team_router():
 		return 0.0
-	var lane: float = float(posmod(uid, 2) * 2 - 1)   # -1 or +1, stable per uid
+	var lane: float = (2.0 * float(posmod(uid, FUNNEL_LANE_COUNT)) / float(FUNNEL_LANE_COUNT - 1)) - 1.0
 	return lane * terrain_clearance() * FUNNEL_LANE_SEPARATION_FRACTION
 
 
