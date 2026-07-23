@@ -153,6 +153,71 @@ func move_unit_right(row_idx: int, col_idx: int) -> void:
 	_rebuild_ui()
 
 
+## Godot drag-source callback (via set_drag_forwarding) for a card at (row_idx, col_idx).
+## Returns null (refuses the drag) for a stale index -- e.g. the row shrank between the
+## drag starting and Godot re-querying it -- rather than dragging the wrong unit.
+func _get_drag_card_data(_at_position: Vector2, row_idx: int, col_idx: int) -> Variant:
+	if row_idx < 0 or row_idx >= _rows.size() or col_idx < 0 or col_idx >= _rows[row_idx].size():
+		return null
+	var u = _rows[row_idx][col_idx]
+	if u == null or not is_instance_valid(u):
+		return null
+	# set_drag_preview() requires a live Godot drag already in progress (its own precondition,
+	# ERR_FAIL_COND(!gui_is_dragging()) internally) -- guarded so this stays callable directly
+	# (e.g. from a test) without a real drag/drop event driving it.
+	if is_inside_tree() and get_viewport().gui_is_dragging():
+		var preview := Label.new()
+		preview.text = "%s (%d)" % [u.unit_name, u.soldiers]
+		preview.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+		set_drag_preview(preview)
+	return {"row_idx": row_idx, "col_idx": col_idx}
+
+
+## Godot drop-target callback: accepts only drag data this tray itself produced.
+func _can_drop_card_data(_at_position: Vector2, data: Variant) -> bool:
+	return typeof(data) == TYPE_DICTIONARY and data.has("row_idx") and data.has("col_idx")
+
+
+## Godot drop-target callback for the line at `target_row_idx`'s `cards_hbox`: moves the
+## dragged card to whichever position `at_position.x` lands closest to in that line (a
+## same-line drop reorders in place; a cross-line drop moves it, matching move_unit_up/down).
+func _drop_card_data(at_position: Vector2, data: Variant, target_row_idx: int,
+		cards_hbox: HBoxContainer) -> void:
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	var src_row: int = int(data.get("row_idx", -1))
+	var src_col: int = int(data.get("col_idx", -1))
+	if src_row < 0 or src_row >= _rows.size() or src_col < 0 or src_col >= _rows[src_row].size():
+		return
+	if target_row_idx < 0 or target_row_idx >= _rows.size():
+		return
+	var u = _rows[src_row][src_col]
+	var insert_at := _drop_index_in_row(cards_hbox, at_position.x)
+	_rows[src_row].remove_at(src_col)
+	# Removing the dragged card from earlier in its OWN line shifts every later index down
+	# by one, including the drop target computed against the pre-removal layout.
+	if src_row == target_row_idx and src_col < insert_at:
+		insert_at -= 1
+	_rows[target_row_idx].insert(clampi(insert_at, 0, _rows[target_row_idx].size()), u)
+	_rebuild_ui()
+
+
+## The index a drop at local x `drop_x` within `cards_hbox` lands at: the first existing
+## card whose horizontal center is to the right of `drop_x`, or the line's size if the drop
+## is past every card (append at the end). Pure function of the row's current child layout,
+## unit-testable without a real drag/drop event.
+func _drop_index_in_row(cards_hbox: HBoxContainer, drop_x: float) -> int:
+	var idx := 0
+	for child in cards_hbox.get_children():
+		var c := child as Control
+		if c == null:
+			continue
+		if drop_x < c.position.x + c.size.x * 0.5:
+			return idx
+		idx += 1
+	return idx
+
+
 func _on_placement_toggled(pressed: bool) -> void:
 	Settings.tray_row_order_placement = pressed
 
@@ -190,6 +255,10 @@ func _rebuild_ui() -> void:
 
 		var cards_scroll := ScrollContainer.new()
 		cards_scroll.custom_minimum_size = Vector2(0, 48)
+		# Without SIZE_EXPAND_FILL, an HBoxContainer never grants a child more than its own
+		# minimum size (0 width here) -- cards_scroll (and every card inside it) stayed
+		# permanently clipped to zero width, regardless of how many layout passes ran.
+		cards_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		cards_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		cards_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		row_hbox.add_child(cards_scroll)
@@ -197,6 +266,10 @@ func _rebuild_ui() -> void:
 		var cards_hbox := HBoxContainer.new()
 		cards_hbox.add_theme_constant_override("separation", 4)
 		cards_scroll.add_child(cards_hbox)
+		# Drag-and-drop is an alternative to the per-card arrow-button nav below, not a
+		# replacement -- dropping a card here reorders it within this line or moves it in from
+		# another line, landing at whichever position the drop's x-coordinate lands closest to.
+		cards_hbox.set_drag_forwarding(Callable(), _can_drop_card_data, _drop_card_data.bind(r_idx, cards_hbox))
 
 		for c_idx in range(_rows[r_idx].size()):
 			var u = _rows[r_idx][c_idx]
@@ -205,6 +278,7 @@ func _rebuild_ui() -> void:
 
 			var card_box := PanelContainer.new()
 			cards_hbox.add_child(card_box)
+			card_box.set_drag_forwarding(_get_drag_card_data.bind(r_idx, c_idx), Callable(), Callable())
 
 			var card_vbox := VBoxContainer.new()
 			card_vbox.add_theme_constant_override("separation", 2)
