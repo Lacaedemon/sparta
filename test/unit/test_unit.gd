@@ -1371,30 +1371,34 @@ func test_funnel_lane_offset_is_nonzero_when_a_same_team_unit_is_congested_nearb
 	pf.block_rect(Rect2(1000, 0, 64, 2000))   # vertical wall both units' straight line must cross
 	PathField.active = pf
 	var a := _make_unit()
-	a.uid = 20
+	a.uid = 8
 	a.team = 0
 	a.position = Vector2(500, 500)
 	a.facing = Vector2.RIGHT
 	var b := _make_unit()
-	b.uid = 21
+	b.uid = 9
 	b.team = 0
 	b.position = Vector2(520, 500)   # a few world units away -- well inside any real clearance
 	b.facing = Vector2.RIGHT
 	var offset_a: float = a.funnel_lane_offset(Vector2(1500, 500))
 	var offset_b: float = b.funnel_lane_offset(Vector2(1500, 500))
-	# A two-unit contest still reproduces the original -1/+1 split (lower uid gets -1, higher
-	# gets +1) -- the ordinal formula collapses to the old parity scheme for exactly two.
-	assert_almost_eq(offset_a, -1.0 * a.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
-		0.0001, "the lower-uid contester in a pair lands on lane -1")
-	assert_almost_eq(offset_b, 1.0 * b.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
-		0.0001, "the higher-uid contester in a pair lands on lane +1")
+	# uid 8 and uid 9 (the standard demo catalog's own contesting cavalry pair) land in the
+	# outermost buckets of the fixed FUNNEL_LANE_COUNT split, reproducing the original
+	# scheme's full -1/+1 magnitude for this specific pair.
+	var expected_a: float = (2.0 * float(posmod(a.uid, Unit.FUNNEL_LANE_COUNT)) / float(Unit.FUNNEL_LANE_COUNT - 1)) - 1.0
+	var expected_b: float = (2.0 * float(posmod(b.uid, Unit.FUNNEL_LANE_COUNT)) / float(Unit.FUNNEL_LANE_COUNT - 1)) - 1.0
+	assert_almost_eq(offset_a, expected_a * a.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
+		0.0001, "a genuinely congested pair still gets the deterministic per-uid tie-break offset")
+	assert_almost_eq(offset_b, expected_b * b.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
+		0.0001, "a genuinely congested pair still gets the deterministic per-uid tie-break offset")
 	assert_ne(offset_a, offset_b, "a genuinely congested pair never shares a lane")
 	PathField.active = old_pf
 
 
 func test_funnel_lane_offset_separates_same_parity_uids() -> void:
 	# A raw posmod(uid, 2) split gave uid 20 and uid 22 (both even) the identical lane --
-	# ranking every contester by uid instead of reading parity off just its own uid fixes it.
+	# a wider fixed modulus resolves this specific pair without making the lane depend on
+	# which other units happen to be nearby right now.
 	var old_pf: PathField = PathField.active
 	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
 	pf.block_rect(Rect2(1000, 0, 64, 2000))
@@ -1416,38 +1420,34 @@ func test_funnel_lane_offset_separates_same_parity_uids() -> void:
 	PathField.active = old_pf
 
 
-func test_funnel_lane_offset_gives_a_three_way_contest_three_distinct_lanes() -> void:
+func test_funnel_lane_offset_is_a_pure_function_of_uid_not_of_who_else_is_nearby() -> void:
+	# A unit's own lane must not change depending on which OTHER same-team units happen to
+	# satisfy the congestion gate at the same instant -- only whether the gate is open or
+	# closed at all. A third unit joining or leaving the area must never shift the first
+	# unit's already-assigned lane value.
 	var old_pf: PathField = PathField.active
 	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
 	pf.block_rect(Rect2(1000, 0, 64, 2000))
 	PathField.active = pf
 	var a := _make_unit()
-	a.uid = 5
+	a.uid = 8
 	a.team = 0
 	a.position = Vector2(500, 500)
 	a.facing = Vector2.RIGHT
 	var b := _make_unit()
-	b.uid = 7
+	b.uid = 9
 	b.team = 0
-	b.position = Vector2(510, 500)
+	b.position = Vector2(520, 500)
 	b.facing = Vector2.RIGHT
+	var offset_pair_only: float = a.funnel_lane_offset(Vector2(1500, 500))
 	var c := _make_unit()
-	c.uid = 9
+	c.uid = 100
 	c.team = 0
-	c.position = Vector2(520, 500)
+	c.position = Vector2(510, 500)
 	c.facing = Vector2.RIGHT
-	var offset_a: float = a.funnel_lane_offset(Vector2(1500, 500))
-	var offset_b: float = b.funnel_lane_offset(Vector2(1500, 500))
-	var offset_c: float = c.funnel_lane_offset(Vector2(1500, 500))
-	assert_ne(offset_a, offset_b, "uid 5 and uid 7 land on distinct lanes")
-	assert_ne(offset_b, offset_c, "uid 7 and uid 9 land on distinct lanes")
-	assert_ne(offset_a, offset_c, "uid 5 and uid 9 land on distinct lanes")
-	# The middle-ranked uid (7) sits between the other two -- it takes the unperturbed
-	# centre lane (0), while the lowest/highest ranked uids are pushed to either side.
-	assert_almost_eq(offset_b, 0.0, 0.0001,
-		"the middle-ranked contester in an odd-sized group gets the centre lane")
-	assert_lt(offset_a, 0.0, "the lowest-ranked uid is pushed to the negative lane")
-	assert_gt(offset_c, 0.0, "the highest-ranked uid is pushed to the positive lane")
+	var offset_with_third_unit: float = a.funnel_lane_offset(Vector2(1500, 500))
+	assert_almost_eq(offset_pair_only, offset_with_third_unit, 0.0001,
+		"a's lane must be identical whether or not a third congested unit is also nearby")
 	PathField.active = old_pf
 
 
