@@ -138,24 +138,27 @@ func test_tray_toggle_button_reflects_the_menu_checkbox_and_vice_versa() -> void
 			"and the menu checkbox reflects the same setting")
 
 
-# --- Tab hotkey -------------------------------------------------------------------------
+# --- F1 hotkey --------------------------------------------------------------------------
+# Not Tab: Tab is Godot's own built-in ui_focus_next action, hijacked by GUI focus
+# navigation on whatever Control currently holds keyboard focus (see HUD.gd's own comment
+# on _is_tray_toggle_keypress). F1 is free and immune to Godot's built-in UI bindings.
 
-func _tab_keydown() -> InputEventKey:
+func _f1_keydown() -> InputEventKey:
 	var ev := InputEventKey.new()
-	ev.physical_keycode = KEY_TAB
+	ev.physical_keycode = KEY_F1
 	ev.pressed = true
 	return ev
 
 
-func test_is_tray_toggle_keypress_matches_only_a_fresh_tab_keydown() -> void:
+func test_is_tray_toggle_keypress_matches_only_a_fresh_f1_keydown() -> void:
 	var hud := _hud_with_selection_manager()
-	assert_true(hud._is_tray_toggle_keypress(_tab_keydown()), "a plain Tab keydown matches")
+	assert_true(hud._is_tray_toggle_keypress(_f1_keydown()), "a plain F1 keydown matches")
 
-	var released := _tab_keydown()
+	var released := _f1_keydown()
 	released.pressed = false
 	assert_false(hud._is_tray_toggle_keypress(released), "a key-up doesn't toggle it")
 
-	var echoed := _tab_keydown()
+	var echoed := _f1_keydown()
 	echoed.echo = true
 	assert_false(hud._is_tray_toggle_keypress(echoed), "an OS key-repeat echo doesn't re-toggle it")
 
@@ -164,15 +167,21 @@ func test_is_tray_toggle_keypress_matches_only_a_fresh_tab_keydown() -> void:
 	other_key.pressed = true
 	assert_false(hud._is_tray_toggle_keypress(other_key), "an unrelated key doesn't match")
 
+	var tab_key := InputEventKey.new()
+	tab_key.physical_keycode = KEY_TAB
+	tab_key.pressed = true
+	assert_false(hud._is_tray_toggle_keypress(tab_key),
+			"Tab specifically doesn't match -- it's Godot's own ui_focus_next key")
 
-func test_pressing_tab_toggles_the_tray() -> void:
+
+func test_pressing_f1_toggles_the_tray() -> void:
 	var hud := _hud_with_selection_manager()
 	assert_false(hud._unit_card_tray.visible, "starts hidden")
 
-	hud._unhandled_input(_tab_keydown())
-	assert_true(Settings.show_unit_card_tray, "Tab turns the setting on")
+	hud._unhandled_input(_f1_keydown())
+	assert_true(Settings.show_unit_card_tray, "F1 turns the setting on")
 	assert_true(hud._unit_card_tray.visible, "...and the tray becomes visible immediately")
 
-	hud._unhandled_input(_tab_keydown())
-	assert_false(Settings.show_unit_card_tray, "Tab again turns it back off")
+	hud._unhandled_input(_f1_keydown())
+	assert_false(Settings.show_unit_card_tray, "F1 again turns it back off")
 	assert_false(hud._unit_card_tray.visible, "...and the tray hides immediately")

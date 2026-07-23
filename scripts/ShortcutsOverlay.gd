@@ -52,7 +52,7 @@ const _ROWS: Array = [
 	["Zoom", "Mouse wheel / pinch"],
 	["Show all orders + formation preview", "Hold Space"],
 	["Active pause", "P or Shift+Space"],
-	["Unit card tray (organize units into battle lines)", "Tab"],
+	["Unit card tray (organize units into battle lines)", "F1"],
 	["— Help —", ""],
 	["This shortcuts list", "? (Shift+/)"],
 ]

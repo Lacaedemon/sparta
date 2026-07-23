@@ -760,14 +760,19 @@ func _is_shortcuts_keypress(event: InputEvent) -> bool:
 	return event.physical_keycode == KEY_SLASH and event.shift_pressed
 
 
-## Tab toggles the unit card tray -- a plain, unclaimed key (every other single letter is
-## already a stance/order hotkey or a fixed WASD/arrow camera-pan key; see Settings.gd's own
-## "next unclaimed key" notes for that scarcity). Uses physical_keycode for the same
-## layout-independence as the pause/shortcuts keys above.
+## F1 toggles the unit card tray. NOT Tab: Tab is Godot's own built-in ui_focus_next action,
+## consumed by GUI input handling on whatever Control currently holds keyboard focus (every
+## HUD Button defaults to FOCUS_ALL, so clicking almost any HUD button -- including the Tray
+## button itself -- would leave it focused and hijack the next Tab press for UI navigation
+## instead of _unhandled_input ever seeing it). Every single letter is already a stance/order
+## hotkey or a fixed WASD/arrow camera-pan key (see Settings.gd's own "next unclaimed key"
+## notes for that scarcity), and function keys are otherwise unused in this project, so F1
+## is both free and immune to Godot's built-in UI action bindings. Uses physical_keycode for
+## the same layout-independence as the pause/shortcuts keys above.
 func _is_tray_toggle_keypress(event: InputEvent) -> bool:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return false
-	return event.physical_keycode == KEY_TAB
+	return event.physical_keycode == KEY_F1
 
 
 func _is_pause_keypress(event: InputEvent) -> bool:
