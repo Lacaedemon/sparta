@@ -10,12 +10,8 @@
   ],
   "steps": [
     { "tick": 5, "click": [500, 500] },
-    { "tick": 180, "key": "Slash" }
+    { "tick": 180, "key": "Slash", "ctrl": true }
   ],
   "frames": [10, 180, 300, 450],
-  "state": [10, 100, 180, 250, 350, 450],
-  "fixed_fps": 30,
-  "max_frames": 500,
-  "fps": 15,
-  "width": 640
+  "state": [10, 100, 180, 250, 350, 450]
 }
