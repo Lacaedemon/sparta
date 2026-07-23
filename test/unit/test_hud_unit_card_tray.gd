@@ -13,7 +13,9 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	Settings._loading = true
 	Settings.show_unit_card_tray = _orig_show_tray
+	Settings._loading = false
 
 
 ## Builds a HUD alongside a real SelectionManager sibling named "SelectionManager", matching
@@ -54,7 +56,9 @@ func test_own_team_units_is_empty_with_no_selection_manager_sibling() -> void:
 
 
 func test_sync_unit_card_tray_visibility_only_shows_own_team_cards() -> void:
+	Settings._loading = true
 	Settings.show_unit_card_tray = true
+	Settings._loading = false
 	var hud := _hud_with_selection_manager()
 	var mine := _unit(0)
 	var theirs := _unit(1)
@@ -67,7 +71,9 @@ func test_sync_unit_card_tray_visibility_only_shows_own_team_cards() -> void:
 
 
 func test_process_refreshes_the_tray_once_a_second_during_a_battle() -> void:
+	Settings._loading = true
 	Settings.show_unit_card_tray = true
+	Settings._loading = false
 	var hud := _hud_with_selection_manager()
 	var mine := _unit(0)
 	hud._process(1.0)   # closes the tick-rate window; should also resync the tray
