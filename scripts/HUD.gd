@@ -1330,6 +1330,7 @@ func _build_unit_card_tray() -> void:
 	_unit_card_tray.offset_top = -14.0
 	_unit_card_tray.offset_bottom = -14.0
 	_unit_card_tray.set_selection_manager(_sel_mgr)
+	_unit_card_tray.group_changed.connect(_on_unit_card_tray_group_changed)
 	add_child(_unit_card_tray)
 	_sync_unit_card_tray_visibility()
 
@@ -1339,7 +1340,27 @@ func _sync_unit_card_tray_visibility() -> void:
 		return
 	_unit_card_tray.visible = Settings.show_unit_card_tray
 	if _unit_card_tray.visible:
-		_unit_card_tray.sync_units(_own_team_units())
+		_unit_card_tray.sync_units(_tray_source_units())
+
+
+## The group selector changed -- unlike the periodic/visibility resync above, this discards
+## the tray's current line/grid layout, since a different group's units don't belong in the
+## previous group's arrangement (see UnitCardTray.reset_and_sync).
+func _on_unit_card_tray_group_changed(_n: int) -> void:
+	if _unit_card_tray == null:
+		return
+	_unit_card_tray.reset_and_sync(_tray_source_units())
+
+
+## Units the tray should currently offer. Scopes to the tray's selected control group
+## (Ctrl+0-9, SelectionManager._groups) once that group has ever been bound; falls back to
+## every own-team unit -- today's behavior -- for a player who's never used control groups,
+## so picking up the tray doesn't go blank by default.
+func _tray_source_units() -> Array:
+	if (_sel_mgr != null and _unit_card_tray != null
+			and _sel_mgr.has_group(_unit_card_tray.current_group)):
+		return _sel_mgr.group_members(_unit_card_tray.current_group)
+	return _own_team_units()
 
 
 ## Units the tray should ever offer -- the player's own side only, so the tray organizes the

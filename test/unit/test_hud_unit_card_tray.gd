@@ -79,6 +79,51 @@ func test_sync_unit_card_tray_visibility_only_shows_own_team_cards() -> void:
 	assert_false(shown.has(theirs), "the tray never shows an enemy unit's card")
 
 
+# --- control-group scoping ------------------------------------------------------------
+
+func test_tray_source_units_falls_back_to_all_own_team_when_the_group_is_unbound() -> void:
+	var hud := _hud_with_selection_manager()
+	var mine := _unit(0)
+	var theirs := _unit(1)
+
+	var result: Array = hud._tray_source_units()
+
+	assert_true(result.has(mine), "group 0 was never bound -- falls back to every own-team unit")
+	assert_false(result.has(theirs), "...still never the enemy's")
+
+
+func test_tray_source_units_scopes_to_the_bound_group() -> void:
+	var hud := _hud_with_selection_manager()
+	var in_group := _unit(0)
+	var not_in_group := _unit(0)
+	hud._sel_mgr._select(in_group)
+	hud._sel_mgr._bind_group(hud._unit_card_tray.current_group)
+
+	var result: Array = hud._tray_source_units()
+
+	assert_eq(result, [in_group], "only the bound group's own member is offered")
+	assert_false(result.has(not_in_group), "an own-team unit outside the bound group is excluded")
+
+
+func test_group_changed_signal_resyncs_the_tray_to_the_new_groups_members() -> void:
+	Settings._loading = true
+	Settings.show_unit_card_tray = true
+	Settings._loading = false
+	var hud := _hud_with_selection_manager()
+	var everyone := _unit(0)
+	hud._sync_unit_card_tray_visibility()
+	assert_true(hud._unit_card_tray.get_units_in_tray_order().has(everyone),
+			"precondition: group 0 unbound, so the tray starts showing every own-team unit")
+
+	var grouped := _unit(0)
+	hud._sel_mgr._select(grouped)
+	hud._sel_mgr._bind_group(1)
+	hud._unit_card_tray._on_group_selector_changed(1.0)   # drives the real selector handler
+
+	var shown: Array = hud._unit_card_tray.get_units_in_tray_order()
+	assert_eq(shown, [grouped], "switching to group 1 resyncs the tray to just that group's member")
+
+
 func test_process_refreshes_the_tray_once_a_second_during_a_battle() -> void:
 	Settings._loading = true
 	Settings.show_unit_card_tray = true

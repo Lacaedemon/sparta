@@ -285,3 +285,44 @@ func test_drop_card_data_ignores_a_payload_from_a_stale_cell() -> void:
 	tray._drop_card_data(Vector2.ZERO, {"row_idx": 9, "col_idx": 0}, 0, 1)
 
 	assert_eq(tray._grid[0][0], u, "no-op: the drag payload named a cell that doesn't exist")
+
+
+# --- control-group scoping ----------------------------------------------
+
+func test_group_selector_change_updates_current_group_and_emits_group_changed() -> void:
+	var tray := _tray()
+	watch_signals(tray)
+
+	tray._on_group_selector_changed(3.0)
+
+	assert_eq(tray.current_group, 3, "current_group tracks the selector's new value")
+	assert_signal_emitted_with_parameters(tray, "group_changed", [3])
+
+
+func test_group_selector_change_discards_the_previous_grid_layout() -> void:
+	var tray := _tray()
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Principes 1")
+	tray.sync_units([u1, u2])
+	assert_eq(tray.get_units_in_tray_order().size(), 2, "precondition: two units laid out")
+
+	tray._on_group_selector_changed(1.0)
+
+	assert_eq(tray.get_units_in_tray_order().size(), 0,
+			"a group switch clears the previous group's layout instead of carrying it over")
+
+
+func test_reset_and_sync_replaces_the_grid_instead_of_layering_on_top() -> void:
+	var tray := _tray()
+	var u1 := _named_unit("Hastati 1")
+	tray.sync_units([u1])
+	tray.add_row()
+	tray.move_unit(0, 0, 1, 0)   # u1 now sits alone on line 2
+	assert_eq(tray._grid.size(), 2, "precondition: two rows, from the earlier layout")
+
+	var u2 := _named_unit("Principes 1")
+	tray.reset_and_sync([u2])
+
+	assert_eq(tray._grid.size(), 1, "reset_and_sync starts a fresh single-row grid")
+	assert_eq(tray.get_units_in_tray_order(), [u2],
+			"...populated with the new group's members only -- u1 is gone, not still present")

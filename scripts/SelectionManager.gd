@@ -1701,12 +1701,33 @@ func _recall_group(n: int) -> void:
 	if not _groups.has(n):
 		return
 	_clear_selection()
-	for u in _groups[n]:
-		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
-			_select(u)
+	for u in group_members(n):
+		_select(u)
 	if not _selected.is_empty():
 		Sfx.play(&"select")   # parity with click / box / type-select feedback
 	_refresh_hud()
+
+
+## The live (not dead, still valid) members of control group `n`, or `[]` if
+## unbound (or if every bound member has since died). Shared with
+## _recall_group() above, which used to duplicate this same live-filtering loop.
+func group_members(n: int) -> Array:
+	var out: Array = []
+	if not _groups.has(n):
+		return out
+	for u in _groups[n]:
+		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
+			out.append(u)
+	return out
+
+
+## Whether control group `n` has ever been bound (Ctrl+n) -- distinct from
+## group_members(n) returning `[]`, which is ambiguous between "never bound"
+## and "bound, but every member has since died." A caller that wants to
+## distinguish those two cases (e.g. falling back to "no group selected"
+## behavior only for the former) checks this first.
+func has_group(n: int) -> bool:
+	return _groups.has(n)
 
 
 # --- order modes -----------------------------------------------------

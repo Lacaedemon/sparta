@@ -7,11 +7,18 @@ extends PanelContainer
 ## shift into. Allows adding/removing rows and columns during battle, line-selection
 ## clicks, drag-and-drop cell swapping, and row-order line placement.
 
+## Emitted when the player changes which control group the tray is scoped to
+## (the header's group selector). HUD listens and resyncs immediately with
+## that group's own members, rather than waiting for the periodic refresh.
+signal group_changed(n: int)
+
 const UnitRef = preload("res://scripts/Unit.gd")
 const DEFAULT_COLUMNS := 4
 const _EMPTY_CELL_SIZE := Vector2(90.0, 40.0)
+const MAX_GROUP := 9
 
 var _grid: Array = []   # Array[Array]; _grid[r][c] is a Unit, or null for an empty cell.
+var current_group: int = 0
 var _rows_container: VBoxContainer
 var _header_box: HBoxContainer
 var _tray_toggle_btn: Button
@@ -20,6 +27,7 @@ var _rem_row_btn: Button
 var _add_col_btn: Button
 var _rem_col_btn: Button
 var _row_placement_check: CheckBox
+var _group_selector: SpinBox
 var _sel_mgr = null
 
 
@@ -69,6 +77,22 @@ func _ready() -> void:
 	_row_placement_check.text = "Tray order line placement"
 	_row_placement_check.toggled.connect(_on_placement_toggled)
 	_header_box.add_child(_row_placement_check)
+
+	var group_label := Label.new()
+	group_label.text = "Group:"
+	group_label.add_theme_font_size_override("font_size", 13)
+	_header_box.add_child(group_label)
+
+	_group_selector = SpinBox.new()
+	_group_selector.min_value = 0
+	_group_selector.max_value = MAX_GROUP
+	_group_selector.step = 1
+	_group_selector.value = current_group
+	_group_selector.tooltip_text = (
+			"Scope the tray to one control group (Ctrl+0-9) at a time. " +
+			"A group that's never been bound shows every own-team unit.")
+	_group_selector.value_changed.connect(_on_group_selector_changed)
+	_header_box.add_child(_group_selector)
 
 	_rows_container = VBoxContainer.new()
 	_rows_container.add_theme_constant_override("separation", 4)
@@ -254,6 +278,25 @@ func _drop_card_data(_at_position: Vector2, data: Variant, target_row_idx: int, 
 
 func _on_placement_toggled(pressed: bool) -> void:
 	Settings.tray_row_order_placement = pressed
+
+
+## The selected group changed -- the tray's own line/grid layout doesn't carry over (a
+## different group's units don't belong in the previous group's arrangement), so the grid
+## resets here; group_changed lets HUD immediately push the new group's own member list
+## instead of waiting for the periodic once-a-second refresh.
+func _on_group_selector_changed(value: float) -> void:
+	current_group = int(value)
+	_grid.clear()
+	_rebuild_ui()
+	group_changed.emit(current_group)
+
+
+## Discards the current grid layout and rebuilds fresh from `units` -- used whenever the
+## unit SET the tray should show changes identity (a group switch), as opposed to
+## sync_units()'s incremental prune-dead-then-place-new-arrivals update for the same group.
+func reset_and_sync(units: Array) -> void:
+	_grid.clear()
+	sync_units(units)
 
 
 func _select_row_line(row_idx: int) -> void:

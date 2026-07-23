@@ -73,6 +73,46 @@ func test_recall_unbound_group_is_a_noop() -> void:
 	assert_eq(sm._selected.size(), 1, "recalling an empty slot leaves selection intact")
 
 
+func test_group_members_returns_the_live_bound_units() -> void:
+	var sm := _sm()
+	var a := _unit(false, false)
+	var b := _unit(true, false)
+	sm._select(a)
+	sm._select(b)
+	sm._bind_group(2)
+	assert_eq(sm.group_members(2), [a, b], "group_members returns the units bound to group 2")
+
+
+func test_group_members_is_empty_for_an_unbound_group() -> void:
+	var sm := _sm()
+	assert_eq(sm.group_members(7), [], "group_members([]) for a slot that was never bound")
+
+
+func test_group_members_excludes_a_member_that_has_since_died() -> void:
+	var sm := _sm()
+	var a := _unit(false, false)
+	var dead := _unit(false, false)
+	sm._select(a)
+	sm._select(dead)
+	sm._bind_group(3)
+	dead.state = UnitScript.State.DEAD
+	assert_eq(sm.group_members(3), [a], "a dead bound member drops out of the live list")
+
+
+func test_has_group_distinguishes_unbound_from_bound_but_empty() -> void:
+	var sm := _sm()
+	var a := _unit(false, false)
+	sm._select(a)
+	sm._bind_group(4)
+	assert_true(sm.has_group(4), "group 4 was bound")
+	assert_false(sm.has_group(6), "group 6 was never bound")
+	a.state = UnitScript.State.DEAD
+	assert_true(sm.has_group(4),
+			"a bound group whose members have all since died is still bound -- " +
+			"has_group and group_members answer different questions")
+	assert_eq(sm.group_members(4), [], "...even though group_members is now empty")
+
+
 # --- _unit_at DEAD filter --------------------------------------
 
 func test_unit_at_skips_dead_units() -> void:
