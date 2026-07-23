@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Internal pathfinding tie-break fix: previously, two same-team units contesting a funnel corner whose uids happened to share parity (e.g. uid 0 and uid 2) got the identical routing lane offset and could still converge on the same waypoint. The fix ranks every contesting unit by uid instead of raw parity so 3+ contesters each land on a distinct lane. The effect is a few world-units' difference in which lane a unit's routing corner lands on -- not reliably visually distinguishable in a recorded clip from ordinary crowd-physics jostling, and reproducing the exact same-parity-collision condition needs a contrived multi-unit setup rather than anything a normal battle demonstrates. Covered instead by GUT tests (test_funnel_lane_offset_separates_same_parity_uids, test_funnel_lane_offset_gives_a_three_way_contest_three_distinct_lanes) asserting on the actual lane values."
+}
