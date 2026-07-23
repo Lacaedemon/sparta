@@ -171,3 +171,45 @@ func test_top_left_fps_label_uses_the_standard_margin() -> void:
 	var hud := _hud()
 	assert_eq(hud._fps_label.position.y, HUDScript._FPS_MARGIN.y,
 			"the top-left corner needs no extra clearance")
+
+
+# --- performance graph sampling cadence ---------------------------------------
+# add_sample() must fire on a fixed real-time cadence (_PERF_GRAPH_SAMPLE_SECONDS), not once
+# per _process() call -- otherwise the graph's rolling window shrinks to history_size/fps
+# seconds at high frame rates instead of covering a consistent multi-second span.
+# Sets overlay.visible directly (not Settings.show_performance_graph) to avoid persisting to
+# the real settings.cfg -- see sparta.md, "Settings.gd setters persist to the REAL
+# user://settings.cfg in tests".
+
+func test_perf_graph_samples_once_per_fixed_interval_not_once_per_frame() -> void:
+	var hud := _hud()
+	hud._perf_graph_overlay.visible = true
+	for i in range(50):
+		hud._process(0.001)   # 50 calls at 1ms each = 0.05s real time, under the 0.1s interval
+	assert_true(hud._perf_graph_overlay.fps_history.is_empty(),
+			"no sample yet -- the fixed interval hasn't elapsed")
+
+	hud._process(0.06)   # pushes the accumulator past _PERF_GRAPH_SAMPLE_SECONDS (0.1s)
+	assert_eq(hud._perf_graph_overlay.fps_history.size(), 1,
+			"exactly one sample once the interval elapses, regardless of how many frames it took")
+
+
+func test_perf_graph_window_covers_a_multi_second_span_at_high_frame_rate() -> void:
+	var hud := _hud()
+	hud._perf_graph_overlay.visible = true
+	# Simulate ~300 fps for 3 real seconds -- each frame is far below the sample interval, so a
+	# per-frame sampler would have collapsed the graph's window to a fraction of a second.
+	var frame_dt := 1.0 / 300.0
+	for i in range(roundi(3.0 / frame_dt)):
+		hud._process(frame_dt)
+	var expected_samples: int = roundi(3.0 / HUDScript._PERF_GRAPH_SAMPLE_SECONDS)
+	assert_almost_eq(hud._perf_graph_overlay.fps_history.size(), expected_samples, 1,
+			"3s of high-fps frames fills the graph at the fixed cadence (~30 samples), not once per frame (~900)")
+
+
+func test_perf_graph_does_not_sample_while_hidden() -> void:
+	var hud := _hud()
+	hud._perf_graph_overlay.visible = false
+	hud._process(1.0)
+	assert_true(hud._perf_graph_overlay.fps_history.is_empty(),
+			"a hidden graph is never sampled, matching the fps label's own visibility gate")
