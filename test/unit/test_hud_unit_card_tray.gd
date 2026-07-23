@@ -10,12 +10,21 @@ var _orig_show_tray: bool
 
 func before_each() -> void:
 	_orig_show_tray = Settings.show_unit_card_tray
+	# Force a known starting state (arrange-phase only -- guarded so it never touches disk):
+	# several tests below assume the tray starts hidden, which doesn't hold if a prior run
+	# (in this suite or a real play session) left show_unit_card_tray persisted as true.
+	Settings._loading = true
+	Settings.show_unit_card_tray = false
+	Settings._loading = false
 
 
 func after_each() -> void:
-	Settings._loading = true
+	# Deliberately UNGUARDED: several tests below drive the real setter (via the button's
+	# own toggled handler or the menu dispatch) to verify the live Settings.changed sync
+	# chain, which really does persist to user://settings.cfg mid-test. A guarded restore
+	# here would only fix the in-memory value, leaving that mid-test write on disk -- this
+	# real write is what actually undoes it, regardless of what happened during the test.
 	Settings.show_unit_card_tray = _orig_show_tray
-	Settings._loading = false
 
 
 ## Builds a HUD alongside a real SelectionManager sibling named "SelectionManager", matching
