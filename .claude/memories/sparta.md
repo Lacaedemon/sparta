@@ -2856,3 +2856,39 @@ have set instead (e.g. call `hud._sync_unit_card_tray_visibility()` after
 setting `Settings.show_unit_card_tray` inside `Settings._loading = true` /
 `= false` guards, matching the pattern `test_hud_unit_card_tray.gd`
 already uses to force a known starting state without persisting it).
+
+## A two-pass same-seed determinism test needs the tree PAUSED across `add_child`, or the two passes start one body-step out of phase
+
+A GUT test that instantiates `scenes/Battle.tscn` **twice** with the identical
+seed/scenario (to prove the sim is deterministic — no leaked global static,
+no stray RNG draw) can still see the two passes' per-tick state diverge by a
+sub-pixel amount at the same tick number, even with every known global sim
+static (`PathField.active`, `SoldierEnemyProximity`, etc.) correctly reset
+between passes. The cause isn't a leaked static at all: whether
+`_on_soldier_tick` (which steps the soldier bodies) fires on the SAME frame
+as the first `_physics_process` call (which advances `_tick`) is a startup
+phase race against the engine's own node-ready scheduling — so one pass can
+get a body-step and a tick-increment on the same frame while the other gets
+them a frame apart, leaving the two passes permanently one body-step out of
+sync relative to `_tick` even though both started from byte-identical state.
+
+**Fix:** pause the tree, `add_child(_battle)`, await one `physics_frame` (the
+armies spawn; nothing steps while paused — `_physics_process` doesn't run at
+all under pause, and the soldier tick early-returns), then unpause:
+
+```gdscript
+get_tree().paused = true
+add_child(_battle)
+await get_tree().physics_frame   # spawn the armies; nothing steps while paused
+get_tree().paused = false
+```
+
+This gives both passes a single shared start line — the unpause, not
+whatever frame `add_child` happened to land on — so the tick-increment and
+body-step both begin in lockstep in both passes. Apply this any time a test
+needs two (or more) `Battle` instances, run sequentially or otherwise, to
+produce genuinely comparable per-tick state — not just the lockstep A/B
+sim-hash instrument this was found for, but any future test built the same
+way. (`Lacaedemon/sparta` PR #1068 / issue #1067, 2026-07-24: diagnosed with
+a throwaway per-unit diagnostic comparing body-step counts against `_tick`
+across the two passes, not guessed.)
