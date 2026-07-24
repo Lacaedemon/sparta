@@ -1,0 +1,19 @@
+{
+  "_comment": "Issue #1027 regression demo: a lone Infantry block is marched forward, then reversed twice in a row (up, then back down). The SECOND reversal used to collapse the block into a blob and re-expand over hundreds of ticks (the reported pulsing); with the fix each about-face turns in good order and the ranks hold their spacing. Drill mode, no enemy, so nothing but the two reversals is on screen.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 557, "y": 300, "facing": [0, 1], "count": 120}
+  ],
+  "camera": [{"tick": 0, "x": 557.0, "y": 300.0, "zoom": 1.05}],
+  "steps": [
+    {"tick": 20, "click": [557, 300]},
+    {"tick": 35, "rmb_click": [557, 540]},
+    {"tick": 175, "rmb_click": [557, 80]},
+    {"tick": 360, "rmb_click": [557, 540]}
+  ],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [557, 300]}
+  ],
+  "state": [8, 240, 360, 410, 430, 470, 560]
+}
