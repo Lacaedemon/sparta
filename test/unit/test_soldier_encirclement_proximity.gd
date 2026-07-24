@@ -22,6 +22,22 @@ func test_rebuild_is_idempotent_within_a_frame() -> void:
 	assert_false(SoldierEncirclementProximity.is_current(501), "a different frame is not current")
 
 
+func test_rebuild_is_a_no_op_when_called_again_with_the_same_frame() -> void:
+	# A second rebuild() call for a frame already current must not replace the grid's data --
+	# accumulate() relies on this so a redundant rebuild attempt within one tick is harmless.
+	var pos_a := PackedVector2Array([Vector2(30, 0)])
+	var team_a := PackedInt32Array([1])
+	var radius_a := PackedFloat32Array([4.5])
+	var reach_a := PackedFloat32Array([26.0])
+	SoldierEncirclementProximity.rebuild(pos_a, team_a, radius_a, reach_a, 700)
+	var pos_b := PackedVector2Array([Vector2(9000, 9000)])   # would never be in range of the origin
+	var team_b := PackedInt32Array([1])
+	SoldierEncirclementProximity.rebuild(pos_b, team_b, radius_a, reach_a, 700)   # same frame
+	var enemies: PackedVector2Array = SoldierEncirclementProximity.enemies_within(Vector2.ZERO, 0, 4.5, 26.0)
+	assert_eq(enemies.size(), 1, "the first rebuild's data survives -- the second call was a no-op")
+	assert_almost_eq(enemies[0].x, 30.0, 0.01)
+
+
 func test_enemies_within_returns_every_in_range_candidate_not_just_the_nearest() -> void:
 	# Querier at the origin (team 0); TWO team-1 candidates, both within the querier's own
 	# reach (26) plus both radii (4.5 each) = 35 world units -- unlike a nearest-only query,

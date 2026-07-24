@@ -255,6 +255,62 @@ func test_accumulate_only_considers_the_engaged_tier_not_every_living_soldier() 
 		"the engaged soldier (index 1) is only contacted frontally -- not surrounded")
 
 
+func test_accumulate_skips_a_living_unit_with_zero_soldiers_in_the_gather() -> void:
+	# A living (not DEAD) unit whose soldier arrays are empty (never seeded, or a full wipe
+	# that hasn't been freed yet) must not crash the gather loop -- it simply contributes no
+	# candidates, and the genuinely eligible wall unit still resolves normally alongside it.
+	var wall := _unit(1, 0, Vector2.ZERO, Vector2.DOWN, Unit.FORMATION_SHIELD_WALL)
+	var front := _unit(2, 1, Vector2(0, -20), Vector2.UP, Unit.FORMATION_NORMAL)
+	var rear := _unit(3, 1, Vector2(0, 20), Vector2.DOWN, Unit.FORMATION_NORMAL)
+	var empty_unit: Unit = Unit.new()
+	add_child_autofree(empty_unit)
+	empty_unit.uid = 4
+	empty_unit.team = 1
+	empty_unit.state = Unit.State.FIGHTING
+	empty_unit.tick_engaged(0.1)   # engaged, but seed_sim_soldiers() was never called -- _sim_soldier_pos.size() == 0
+	SoldierEncirclement.accumulate([wall, front, rear, empty_unit], 1)
+	assert_eq(wall._sim_soldier_broken[0], 1,
+		"the zero-soldier unit contributes nothing but doesn't break the pass for anyone else")
+
+
+func test_accumulate_ignores_a_living_but_non_engaged_units_soldiers_from_the_candidate_pool() -> void:
+	# A living unit that simply isn't in the engaged tier (no tick_engaged latch, state IDLE)
+	# must not contribute contacts either -- distinct from the DEAD-unit skip above.
+	var wall := _unit(1, 0, Vector2.ZERO, Vector2.DOWN, Unit.FORMATION_SHIELD_WALL)
+	var front := _unit(2, 1, Vector2(0, -20), Vector2.UP, Unit.FORMATION_NORMAL)
+	var bystander: Unit = Unit.new()
+	add_child_autofree(bystander)
+	bystander.uid = 3
+	bystander.team = 1
+	bystander.position = Vector2(0, 20)
+	bystander.facing = Vector2.DOWN
+	bystander.file_major_reform = false
+	bystander.seed_sim_soldiers()   # state defaults to IDLE -- never engaged, so contributes no candidates
+	SoldierEncirclement.accumulate([wall, front, bystander], 1)
+	assert_eq(wall._sim_soldier_broken[0], 0,
+		"the idle bystander's soldiers never enter the candidate pool -- only the frontal attacker counts")
+
+
+func test_accumulate_skips_an_eligible_unit_that_is_not_itself_currently_engaged() -> void:
+	# any_eligible only needs ONE breaks_under_encirclement unit to be engaged to proceed past
+	# the perf early-out -- a SECOND eligible (SHIELD_WALL) unit that isn't engaged itself must
+	# still be handled without crashing (its own engaged_soldier_indices() is empty).
+	var wall := _unit(1, 0, Vector2.ZERO, Vector2.DOWN, Unit.FORMATION_SHIELD_WALL)
+	var front := _unit(2, 1, Vector2(0, -20), Vector2.UP, Unit.FORMATION_NORMAL)
+	var rear := _unit(3, 1, Vector2(0, 20), Vector2.DOWN, Unit.FORMATION_NORMAL)
+	var idle_wall: Unit = Unit.new()
+	add_child_autofree(idle_wall)
+	idle_wall.uid = 4
+	idle_wall.team = 0
+	idle_wall.position = Vector2(9000, 9000)
+	idle_wall.file_major_reform = false
+	idle_wall.seed_sim_soldiers()
+	idle_wall.set_formation(Unit.FORMATION_SHIELD_WALL)   # eligible, but never engaged
+	SoldierEncirclement.accumulate([wall, front, rear, idle_wall], 1)
+	assert_eq(wall._sim_soldier_broken[0], 1, "the genuinely engaged wall still resolves correctly")
+	assert_eq(idle_wall._sim_soldier_broken[0], 0, "the non-engaged eligible unit is simply skipped, no crash")
+
+
 func test_reap_compacts_the_broken_flag_alongside_other_arrays() -> void:
 	var wall := _unit(1, 0, Vector2.ZERO, Vector2.DOWN, Unit.FORMATION_SHIELD_WALL, 2)
 	wall._sim_soldier_broken[0] = 1

@@ -1,0 +1,14 @@
+{
+  "_comment": "A player Infantry unit stands in Shield Wall between two enemy Infantry units spawned directly ahead and directly behind it. Team 0 stays put by default; both team-1 units march straight at the only enemy they can see, so the wall ends up struck from front and rear at once -- genuine encirclement, not just a flank brush. Watch soldier_summary.broken_count in the state dump: it should read 0 while only one side is in contact, then rise once the second side also closes, as the individually surrounded soldiers give up the wall's frontal bonus and fall back toward the gap between their attackers.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 640, "y": 400, "facing": [0, 1], "count": 30, "formation": 4},
+    {"team": 1, "type": "Infantry", "x": 640, "y": 600, "facing": [0, -1], "count": 20},
+    {"team": 1, "type": "Infantry", "x": 640, "y": 200, "facing": [0, 1], "count": 20}
+  ],
+  "camera": [
+    {"tick": 0, "x": 640.0, "y": 400.0, "zoom": 0.9}
+  ],
+  "steps": [],
+  "state": [60, 120, 180, 210, 240, 270, 300, 330, 360, 420, 480, 540, 600, 660, 720]
+}
