@@ -292,8 +292,10 @@ func _on_group_selector_changed(value: float) -> void:
 	# what was actually applied without re-entering this handler.
 	current_group = clampi(roundi(value), 0, MAX_GROUP)
 	_group_selector.set_value_no_signal(current_group)
-	_grid.clear()
-	_rebuild_ui()
+	# Placeholder empty state via reset_and_sync (not a bare _grid.clear()), so the
+	# tray's one-row invariant holds even if nothing is listening for group_changed --
+	# a connected listener (HUD) immediately follows with the new group's real members.
+	reset_and_sync([])
 	group_changed.emit(current_group)
 
 

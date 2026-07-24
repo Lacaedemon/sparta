@@ -1721,7 +1721,7 @@ func group_members(n: int) -> Array:
 	return out
 
 
-## Whether control group `n` has ever been bound (Ctrl+n) -- distinct from
+## Whether control group `n` has ever been bound (Ctrl+0-9) -- distinct from
 ## group_members(n) returning `[]`, which is ambiguous between "never bound"
 ## and "bound, but every member has since died." A caller that wants to
 ## distinguish those two cases (e.g. falling back to "no group selected"

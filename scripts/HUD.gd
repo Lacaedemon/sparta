@@ -1340,7 +1340,7 @@ func _sync_unit_card_tray_visibility() -> void:
 		return
 	_unit_card_tray.visible = Settings.show_unit_card_tray
 	if _unit_card_tray.visible:
-		_unit_card_tray.sync_units(_tray_source_units())
+		_resync_unit_card_tray()
 
 
 ## The group selector changed -- unlike the periodic/visibility resync above, this discards
@@ -1350,6 +1350,31 @@ func _on_unit_card_tray_group_changed(_n: int) -> void:
 	if _unit_card_tray == null:
 		return
 	_unit_card_tray.reset_and_sync(_tray_source_units())
+
+
+## Pushes the tray's current source-unit set. sync_units() only prunes dead/freed units --
+## it never drops a still-living one that's simply no longer in the list -- so a plain
+## sync_units() call here would leave stale, out-of-scope cards on screen if the desired
+## set narrowed for a reason OTHER than a group switch (the case _on_unit_card_tray_group_
+## changed already handles): binding Ctrl+<n> to a fresh, smaller membership while group
+## `n` is already the tray's selected group, for instance. Detect that and fall back to a
+## full reset_and_sync(); otherwise take the cheap incremental sync_units() path.
+func _resync_unit_card_tray() -> void:
+	var desired: Array = _tray_source_units()
+	if _tray_shows_a_unit_outside(desired):
+		_unit_card_tray.reset_and_sync(desired)
+	else:
+		_unit_card_tray.sync_units(desired)
+
+
+func _tray_shows_a_unit_outside(desired: Array) -> bool:
+	var desired_ids: Dictionary = {}
+	for u in desired:
+		desired_ids[u.get_instance_id()] = true
+	for u in _unit_card_tray.get_units_in_tray_order():
+		if not desired_ids.has(u.get_instance_id()):
+			return true
+	return false
 
 
 ## Units the tray should currently offer. Scopes to the tray's selected control group

@@ -111,6 +111,52 @@ func test_group_changed_handler_is_a_noop_with_no_tray_built_yet() -> void:
 	hud._on_unit_card_tray_group_changed(0)   # must not crash on the null _unit_card_tray
 
 
+func test_periodic_resync_discards_a_unit_that_dropped_out_of_a_rebound_group() -> void:
+	Settings._loading = true
+	Settings.show_unit_card_tray = true
+	Settings._loading = false
+	var hud := _hud_with_selection_manager()
+	var a := _unit(0)
+	var b := _unit(0)
+	hud._sel_mgr._select(a)
+	hud._sel_mgr._select(b)
+	hud._sel_mgr._bind_group(0)
+	hud._sync_unit_card_tray_visibility()
+	assert_eq(hud._unit_card_tray.get_units_in_tray_order(), [a, b],
+			"precondition: group 0 bound to both units")
+
+	# Rebind group 0 to just `a` -- NOT via the tray's own selector (current_group is
+	# already 0, so no group_changed fires), the same way a player's Ctrl+0 keypress
+	# would while group 0 is already the tray's selected group.
+	hud._sel_mgr._clear_selection()
+	hud._sel_mgr._select(a)
+	hud._sel_mgr._bind_group(0)
+	hud._sync_unit_card_tray_visibility()   # the periodic-refresh path, not group_changed
+
+	assert_eq(hud._unit_card_tray.get_units_in_tray_order(), [a],
+			"b dropped out of the rebound group -- sync_units() alone would have left it " +
+			"displayed, since it only prunes DEAD units, not merely out-of-scope ones")
+
+
+func test_periodic_resync_takes_the_cheap_path_when_membership_only_grows() -> void:
+	Settings._loading = true
+	Settings.show_unit_card_tray = true
+	Settings._loading = false
+	var hud := _hud_with_selection_manager()
+	var a := _unit(0)
+	hud._sync_unit_card_tray_visibility()
+	hud._unit_card_tray.add_row()
+	hud._unit_card_tray.move_unit(0, 0, 1, 0)   # a distinctive layout choice to prove it survives
+
+	var reinforcement := _unit(0)
+	hud._sync_unit_card_tray_visibility()
+
+	assert_eq(hud._unit_card_tray._grid[1][0], a,
+			"a's manually-arranged position survives -- no reset happened, just an incremental add")
+	assert_true(hud._unit_card_tray.get_units_in_tray_order().has(reinforcement),
+			"...and the new arrival is still placed")
+
+
 func test_group_changed_signal_resyncs_the_tray_to_the_new_groups_members() -> void:
 	Settings._loading = true
 	Settings.show_unit_card_tray = true
