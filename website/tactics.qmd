@@ -526,7 +526,8 @@ the plan, not a breakdown.
 
 A Shield Wall infantry unit charged from front and rear at once: the tinted (red)
 soldiers have individually broken from the wall and are falling back toward the gap
-between their two attackers.
+between their two attackers, then rejoin the formation once the rear attacker is
+beaten back and only one side remains.
 :::
 
 ## Form square against cavalry

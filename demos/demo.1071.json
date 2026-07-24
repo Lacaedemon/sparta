@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/shield-wall-encirclement.json",
-  "caption": "A Shield Wall infantry unit is charged from both front and rear at once. Individually surrounded soldiers can't be defended by the wall's frontal bonus any more, so they break to fight as unmodified individuals and fall back toward the gap between their attackers -- watch the tinted (red) soldiers detach from the block edges once both enemy units close in.",
+  "caption": "A Shield Wall infantry unit is charged from front and rear at once. Individually surrounded soldiers can't be defended by the wall's frontal bonus any more, so they break to fight as unmodified individuals and fall back toward the gap between their attackers -- watch the tinted (red) soldiers detach from the block edges once both enemy units close in, then rejoin the formation once the rear attacker is beaten back.",
   "fixed_fps": 30,
   "max_frames": 360,
   "fps": 15,
