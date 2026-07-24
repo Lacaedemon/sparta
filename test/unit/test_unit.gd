@@ -4538,6 +4538,67 @@ func test_soldier_render_color_defaults_to_not_broken() -> void:
 	assert_eq(Unit._soldier_render_color(0.0, false, false), Color.WHITE)
 
 
+# --- is_soldier_broken: the shared gate (breaks_under_encirclement() + the raw flag) -----
+# Both SoldierMelee.resolve's per-soldier combat-multiplier override and the render tint
+# (_soldier_is_broken_for_render below) read this one canonical check.
+
+func test_is_soldier_broken_true_for_a_broken_soldier_in_an_eligible_formation() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_true(u.is_soldier_broken(0))
+
+
+func test_is_soldier_broken_ignores_a_stale_flag_after_a_formation_change() -> void:
+	# set_formation() doesn't clear _sim_soldier_broken -- a flag left over from when the unit
+	# was still SHIELD_WALL must not still read as broken once the unit has switched away.
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	u._sim_soldier_broken = PackedByteArray([1])   # stale, from before the formation change below
+	u.set_formation(Unit.FORMATION_NORMAL)
+	assert_false(u.is_soldier_broken(0),
+		"a stale broken flag is ignored the instant the unit leaves an eligible formation")
+
+
+func test_is_soldier_broken_false_for_a_square_unit_even_with_the_flag_set() -> void:
+	# SQUARE/SCHILTRON never legitimately set this flag (SoldierEncirclement excludes them),
+	# but the gate defends against it regardless of how the flag got set.
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_false(u.is_soldier_broken(0))
+
+
+func test_is_soldier_broken_false_when_the_flag_is_zero() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	u._sim_soldier_broken = PackedByteArray([0])
+	assert_false(u.is_soldier_broken(0))
+
+
+func test_is_soldier_broken_false_when_the_array_is_too_short() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	u._sim_soldier_broken = PackedByteArray()   # never seeded -- no out-of-range read
+	assert_false(u.is_soldier_broken(0))
+
+
+# --- _soldier_is_broken_for_render: is_soldier_broken plus the far-tier exclusion --------
+
+func test_soldier_is_broken_for_render_matches_is_soldier_broken_at_close_tier() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_true(u._soldier_is_broken_for_render(0, false))
+
+
+func test_soldier_is_broken_for_render_false_at_far_tier_even_when_eligible_and_broken() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_false(u._soldier_is_broken_for_render(0, true), "far-tier units have no simulated bodies to tint")
+
+
 # --- drag-to-form-up: deploy facing on arrival ----------
 
 func test_deploy_facing_pivots_on_arrival() -> void:

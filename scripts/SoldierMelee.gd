@@ -55,11 +55,11 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		if ai < attacker._sim_prone.size() and attacker._sim_prone[ai] > 0.0:
 			continue   # a felled attacker can't strike (no target search, no RNG — order stays stable)
 		var apos: Vector2 = attacker._sim_soldier_pos[ai]
-		# An individually broken attacker (SoldierEncirclement) fights as an unmodified
-		# individual: it no longer earns (or suffers) its unit's own stance melee-output
-		# modifier -- TESTUDO's "head-down, can barely swing" penalty is exactly the
-		# assumption a surrounded soldier's broken formation can't back up any more.
-		var attacker_broken: bool = ai < attacker._sim_soldier_broken.size() and attacker._sim_soldier_broken[ai] == 1
+		# An individually broken attacker (Unit.is_soldier_broken, driven by SoldierEncirclement)
+		# fights as an unmodified individual: it no longer earns (or suffers) its unit's own
+		# stance melee-output modifier -- TESTUDO's "head-down, can barely swing" penalty is
+		# exactly the assumption a surrounded soldier's broken formation can't back up any more.
+		var attacker_broken: bool = attacker.is_soldier_broken(ai)
 		var atk_melee_scale: float = 1.0 if attacker_broken else attacker.formation_melee_attack_factor()
 		# Nearest LIVING enemy soldier within reach — a longer reach lets us hit foes
 		# who can't hit back (the spear screen).
@@ -79,7 +79,7 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# Same per-soldier override on the defending side: a broken SHIELD_WALL soldier's
 		# frontal melee bonus assumed its shield was still locked with its neighbours, which
 		# is exactly what being surrounded breaks.
-		var defender_broken: bool = target < defender._sim_soldier_broken.size() and defender._sim_soldier_broken[target] == 1
+		var defender_broken: bool = defender.is_soldier_broken(target)
 		var def_defense_scale: float = 1.0 if defender_broken else defender.melee_defense_factor(attacker)
 		var wound_scale: float = atk_formation_scale * atk_melee_scale * def_defense_scale * mods.x / mods.y
 

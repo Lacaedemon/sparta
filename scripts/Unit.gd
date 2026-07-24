@@ -2765,6 +2765,19 @@ func breaks_under_encirclement() -> bool:
 	return formation_mode == FORMATION_SHIELD_WALL or formation_mode == FORMATION_TESTUDO
 
 
+## Whether soldier `i` is CURRENTLY broken from the formation's shield-lock: both that its
+## own _sim_soldier_broken flag is set AND that the unit's present formation can actually
+## break in the first place. The second half matters because _sim_soldier_broken isn't
+## cleared by set_formation() itself -- only by SoldierEncirclement.accumulate()'s own
+## per-tick fill(0), which skips a unit entirely the instant it leaves SHIELD_WALL/TESTUDO
+## (see that class's own doc comment) -- so a flag left over from before a formation change
+## must not still read as broken. The single canonical check shared by both consumers: the
+## per-soldier combat-multiplier override in SoldierMelee.resolve, and the render tint in
+## _soldier_is_broken_for_render.
+func is_soldier_broken(i: int) -> bool:
+	return breaks_under_encirclement() and i < _sim_soldier_broken.size() and _sim_soldier_broken[i] == 1
+
+
 ## Offensive-output scale from the formation stance. Both square variants hunker to
 ## defend on every side, so they hit softer -- schiltron harder still than orbis
 ## (SCHILTRON_ATTACK_FACTOR < SQUARE_ATTACK_FACTOR), trading offence for the stronger
@@ -5391,6 +5404,18 @@ func _render_body_count() -> int:
 	return soldiers if tier == FormationTier.FAR else _sim_soldier_pos.size()
 
 
+## Whether soldier `i` should render the broken-formation tint this frame: is_soldier_broken's
+## own gate (see that method) plus the far-tier exclusion (a far-tier unit has no simulated
+## bodies to tint). `far_tier` is passed in rather than read from `tier` directly so the
+## caller's own far-tier check (already computed once per _refresh_flock_render call) isn't
+## redone per soldier. Extracted as its own method (rather than inlined at the
+## _refresh_flock_render call site) for the same reason _soldier_render_color/
+## _facing_pip_transform are: MultiMesh instance data isn't synchronously readable back in
+## headless tests, so the gating logic needs to be directly testable on its own.
+func _soldier_is_broken_for_render(i: int, far_tier: bool) -> bool:
+	return not far_tier and is_soldier_broken(i)
+
+
 ## Push the current mark positions/colours into the two MultiMeshes (1 instance per mark).
 ## The figures' facing is handled by a mesh swap (see _apply_lod_meshes), not a per-instance
 ## transform — MultiMesh 2D can't store a reflected (mirrored) instance transform. At figure
@@ -5474,7 +5499,7 @@ func _refresh_flock_render(delta: float) -> void:
 		_mm_body.set_instance_transform_2d(i, t)
 		_mm_outline.set_instance_transform_2d(i, t)
 		var is_engaged: bool = engaged_highlight_on and engaged_lookup[i] == 1
-		var is_broken: bool = not far_tier and i < _sim_soldier_broken.size() and _sim_soldier_broken[i] == 1
+		var is_broken: bool = _soldier_is_broken_for_render(i, far_tier)
 		_mm_body.set_instance_color(i, _soldier_render_color(pp, engaged_highlight_on, is_engaged, is_broken))
 		_mm_outline.set_instance_color(i, Color.WHITE)
 		if _detailed_lod:
