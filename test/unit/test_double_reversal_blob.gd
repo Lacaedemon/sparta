@@ -63,11 +63,13 @@ func _mean_nnd(unit: Unit) -> float:
 
 
 ## Order a rear-sector move and wait until the about-face it decomposes into has armed,
-## turned, and fully settled (turning seen, then cleared). Returns the tick it settled on.
+## turned, AND fully settled (turning seen, then cleared) -- asserting it actually reached
+## that settled state within the budget rather than merely starting to turn.
 func _reverse_and_settle(battle: Node, unit: Unit, dest: Vector2) -> void:
 	battle._apply_order_cmd({"units": [unit.uid], "x": dest.x, "y": dest.y, "target": -1})
 	var deadline: int = battle.current_tick() + TURN_SETTLE_BUDGET
 	var turned: bool = false
+	var settled: bool = false
 	while battle.current_tick() < deadline:
 		await get_tree().physics_frame
 		if unit.is_maneuver_turning():
@@ -77,8 +79,10 @@ func _reverse_and_settle(battle: Node, unit: Unit, dest: Vector2) -> void:
 			var settle: int = battle.current_tick() + 30
 			while battle.current_tick() < settle:
 				await get_tree().physics_frame
-			return
+			settled = true
+			break
 	assert_true(turned, "the reverse move ran an about-face within its budget")
+	assert_true(settled, "and the about-face fully settled (turned, then cleared) within it")
 
 
 func test_second_consecutive_reversal_does_not_point_reflect_or_blob() -> void:
