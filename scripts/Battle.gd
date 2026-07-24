@@ -506,7 +506,8 @@ func _ready() -> void:
 
 	# Now that every unit has deployed, stamp (RECORD) or verify (PLAYBACK) the spawn-layout
 	# fingerprint, so a replay can fail loudly if a later build's spawn table no longer matches
-	# the layout its orders were recorded against (issue #926's silent-drift failure mode).
+	# the layout its orders were recorded against (the silent spawn-drift failure mode: a
+	# re-spaced spawn line leaves recorded orders pointing at positions no unit occupies now).
 	var live_fingerprint: String = SpawnFingerprint.of_tree(get_tree())
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		# A stamped replay whose fingerprint no longer matches this build's spawn will desync

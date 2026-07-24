@@ -613,8 +613,8 @@ func save(result: String, duration_ticks: int) -> String:
 	if not map.is_empty():
 		payload["map"] = map
 	# Stamp the spawn-layout fingerprint so playback can fail loudly if a later build's
-	# spawn table no longer matches the layout these orders were recorded against (issue
-	# #926's silent-drift failure mode). Absent when Battle never published one (a battle
+	# spawn table no longer matches the layout these orders were recorded against (the
+	# silent spawn-drift failure mode). Absent when Battle never published one (a battle
 	# that spawned no units, or a caller that didn't set it) -- the load check then skips.
 	if spawn_fingerprint != "":
 		payload["spawn_fingerprint"] = spawn_fingerprint

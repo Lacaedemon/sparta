@@ -46,7 +46,8 @@ var _form_up_dist: int = -1
 # Optional spawn-layout stamp (SpawnFingerprint) from the input script's "spawn_fingerprint"
 # field. "" (default) = unstamped, so the load check is skipped -- the additive-field,
 # opt-in convention every other script field follows. A stamped script that no longer matches
-# this build's spawn layout fails the recording LOUDLY (issue #926's silent-drift failure mode).
+# this build's spawn layout fails the recording LOUDLY (the silent spawn-drift failure mode:
+# a re-spaced spawn line leaves the script's fixed clicks landing on empty ground).
 var _spawn_fingerprint: String = ""
 var _frame_ticks: Array = []           # ticks to save a viewport PNG at (frame capture; empty = off)
 var _frame_dir: String = ""            # output dir for captured frames
@@ -164,7 +165,7 @@ func _start_battle() -> void:
 	# Battle._ready spawns synchronously during add_child, so every unit is on the field now.
 	# Print the layout's fingerprint (so a new script can be stamped by copying it) and, when the
 	# script declared one, fail LOUDLY on a mismatch rather than recording a clip whose scripted
-	# clicks land on empty ground where a unit used to be (issue #926's silent-drift failure mode).
+	# clicks land on empty ground where a unit used to be (the silent spawn-drift failure mode).
 	var live_fingerprint: String = SpawnFingerprint.of_tree(get_tree())
 	print("[demo-input] spawn fingerprint: %s" % live_fingerprint)
 	if _spawn_fingerprint != "" and _spawn_fingerprint != live_fingerprint:

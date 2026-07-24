@@ -1,6 +1,6 @@
 extends GutTest
 ## SpawnFingerprint: the spawn-layout digest that lets a demo/replay artifact fail loudly when
-## the spawn table drifts out from under it (issue #926). digest() is pure data-in/hex-out, so
+## the spawn table drifts out from under it. digest() is pure data-in/hex-out, so
 ## the sensitivity cases need no scene; of_tree/records_of_tree build records from live units in
 ## the "units" group and are exercised with a couple of tree-registered fixtures.
 
@@ -37,7 +37,7 @@ func test_digest_is_deterministic_for_the_same_records() -> void:
 
 func test_a_position_change_changes_the_digest() -> void:
 	var before: String = SpawnFingerprint.digest([_rec(0, 0, "Spearmen", 100, 300)])
-	# The #926 failure mode: a unit re-spaced to a new x. The digest must move so a stamped
+	# The spawn-drift failure mode: a unit re-spaced to a new x. The digest must move so a stamped
 	# artifact stops matching.
 	var after: String = SpawnFingerprint.digest([_rec(0, 0, "Spearmen", 137, 300)])
 	assert_ne(before, after, "a spawn-x change flips the digest")

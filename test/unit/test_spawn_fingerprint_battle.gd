@@ -46,7 +46,7 @@ func test_playback_of_an_unstamped_replay_is_not_gated() -> void:
 
 
 func test_playback_of_a_stale_stamp_flags_a_mismatch() -> void:
-	# A stamp that no longer matches this build's spawn layout (the #926 drift) is a real desync
+	# A stamp that no longer matches this build's spawn layout (a spawn-table drift) is a real desync
 	# signal: the orders were recorded against unit positions this build no longer produces.
 	Replay.mode = Replay.Mode.PLAYBACK
 	Replay.rng.seed = 12345

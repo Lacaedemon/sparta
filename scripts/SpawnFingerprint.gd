@@ -2,8 +2,8 @@ class_name SpawnFingerprint
 ## A short digest of the battle's spawn layout: the type, roster size, and rounded spawn
 ## position of every unit as it deploys, in uid order. Its purpose is to make a demo/replay
 ## artifact self-checking against the spawn layout it was authored for -- a commit that
-## re-spaces or re-composes the spawn line (issue #926 moved every unit's x by tens of world
-## units) changes this digest, so an artifact carrying a now-stale stamp fails LOUDLY at load
+## re-spaces or re-composes the spawn line (one such change once moved every unit's x by tens
+## of world units) changes this digest, so an artifact carrying a now-stale stamp fails LOUDLY at load
 ## instead of silently clicking empty ground where a unit used to be.
 ##
 ## Positions are rounded to whole world units: sub-pixel spawn jitter never moves a click, and
