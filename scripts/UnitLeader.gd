@@ -163,13 +163,15 @@ static func _flank_threat(u: Unit, all_units: Array) -> Unit:
 static func _should_form_square(u: Unit, all_units: Array) -> bool:
 	if not u.anti_cavalry or u.is_cavalry or u.in_square():
 		return false
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt;
+	# the threshold is loop-invariant, so square it once outside the loop.
+	var trigger_range_sq: float = SQUARE_TRIGGER_RANGE * SQUARE_TRIGGER_RANGE
 	for node in all_units:
 		var e := node as Unit
 		if e == null or e.team == u.team or not e.is_cavalry \
 				or e.state == Unit.State.DEAD or e.state == Unit.State.ROUTING:
 			continue
-		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-		if u.position.distance_squared_to(e.position) <= SQUARE_TRIGGER_RANGE * SQUARE_TRIGGER_RANGE:
+		if u.position.distance_squared_to(e.position) <= trigger_range_sq:
 			return true
 	return false
 
