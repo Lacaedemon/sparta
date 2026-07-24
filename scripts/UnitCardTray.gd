@@ -7,11 +7,18 @@ extends PanelContainer
 ## shift into. Allows adding/removing rows and columns during battle, line-selection
 ## clicks, drag-and-drop cell swapping, and row-order line placement.
 
+## Emitted when the player changes which control group the tray is scoped to
+## (the header's group selector). HUD listens and resyncs immediately with
+## that group's own members, rather than waiting for the periodic refresh.
+signal group_changed(n: int)
+
 const UnitRef = preload("res://scripts/Unit.gd")
 const DEFAULT_COLUMNS := 4
 const _EMPTY_CELL_SIZE := Vector2(90.0, 40.0)
+const MAX_GROUP := 9
 
 var _grid: Array = []   # Array[Array]; _grid[r][c] is a Unit, or null for an empty cell.
+var current_group: int = 0
 var _rows_container: VBoxContainer
 var _header_box: HBoxContainer
 var _tray_toggle_btn: Button
@@ -20,6 +27,7 @@ var _rem_row_btn: Button
 var _add_col_btn: Button
 var _rem_col_btn: Button
 var _row_placement_check: CheckBox
+var _group_selector: SpinBox
 var _sel_mgr = null
 
 
@@ -70,6 +78,22 @@ func _ready() -> void:
 	_row_placement_check.toggled.connect(_on_placement_toggled)
 	_header_box.add_child(_row_placement_check)
 
+	var group_label := Label.new()
+	group_label.text = "Group:"
+	group_label.add_theme_font_size_override("font_size", 13)
+	_header_box.add_child(group_label)
+
+	_group_selector = SpinBox.new()
+	_group_selector.min_value = 0
+	_group_selector.max_value = MAX_GROUP
+	_group_selector.step = 1
+	_group_selector.value = current_group
+	_group_selector.tooltip_text = (
+			"Scope the tray to one control group (Ctrl+0-9) at a time. " +
+			"A group that's never been bound shows every own-team unit.")
+	_group_selector.value_changed.connect(_on_group_selector_changed)
+	_header_box.add_child(_group_selector)
+
 	_rows_container = VBoxContainer.new()
 	_rows_container.add_theme_constant_override("separation", 4)
 	main_vbox.add_child(_rows_container)
@@ -89,10 +113,17 @@ func columns() -> int:
 
 
 func add_row() -> void:
+	_append_empty_row()
+	_rebuild_ui()
+
+
+## The row-construction half of add_row(), without its rebuild -- shared with
+## reset_and_sync(), which needs the empty row appended but wants sync_units()'s own
+## rebuild to be the only one, not two back to back.
+func _append_empty_row() -> void:
 	var new_row: Array = []
 	new_row.resize(columns())
 	_grid.append(new_row)
-	_rebuild_ui()
 
 
 func remove_row() -> void:
@@ -254,6 +285,39 @@ func _drop_card_data(_at_position: Vector2, data: Variant, target_row_idx: int, 
 
 func _on_placement_toggled(pressed: bool) -> void:
 	Settings.tray_row_order_placement = pressed
+
+
+## The selected group changed -- the tray's own line/grid layout doesn't carry over (a
+## different group's units don't belong in the previous group's arrangement), so the grid
+## resets here; group_changed lets HUD immediately push the new group's own member list
+## instead of waiting for the periodic once-a-second refresh.
+func _on_group_selector_changed(value: float) -> void:
+	# Round rather than truncate -- a typed (not spin-arrow) value can land off the step
+	# grid (e.g. "1.9"), and int() would silently select the group below the one the
+	# player actually typed. Clamp defensively even though min/max_value already bound
+	# the SpinBox's own UI.
+	var snapped: int = clampi(roundi(value), 0, MAX_GROUP)
+	_group_selector.set_value_no_signal(snapped)   # always resync the display to what applies
+	if snapped == current_group:
+		return   # an off-step edit that rounds back to the group already selected -- no
+		         # real change, so don't discard the current layout for nothing
+	current_group = snapped
+	# Placeholder empty state via reset_and_sync (not a bare _grid.clear()), so the
+	# tray's one-row invariant holds even if nothing is listening for group_changed --
+	# a connected listener (HUD) immediately follows with the new group's real members.
+	reset_and_sync([])
+	group_changed.emit(current_group)
+
+
+## Discards the current grid layout and rebuilds fresh from `units` -- used whenever the
+## unit SET the tray should show changes identity (a group switch), as opposed to
+## sync_units()'s incremental prune-dead-then-place-new-arrivals update for the same group.
+func reset_and_sync(units: Array) -> void:
+	_grid.clear()
+	_append_empty_row()   # keeps the always-at-least-one-row invariant _ready() establishes,
+	                      # even when `units` is empty (a bound group with no live members) --
+	                      # sync_units() below does the (only) rebuild, not a second one here
+	sync_units(units)
 
 
 func _select_row_line(row_idx: int) -> void:

@@ -2411,6 +2411,29 @@ a diff's size would justify, check `git log`/`git status` directly before trusti
 "still verifying" -- it's a fast, decisive way to catch this class of problem.
 (`Lacaedemon/sparta` PR #999, 2026-07-19.)
 
+**A subtler variant of the same mistake: running the check against uncommitted edits
+when a PRIOR commit's diff is already on the branch doesn't fail loudly at all --
+it silently reports against the stale prior commit instead.** The "no GDScript changes
+in this diff" message above only fires when HEAD has no diff against the base AT ALL
+(a brand-new branch with nothing committed yet). Mid-PR, after several review-fix
+rounds, HEAD already has a real diff from earlier commits -- so re-running the bundled
+check against a NEW uncommitted edit (a further review-fix, made without committing
+first) doesn't produce an obvious "nothing to check" signal. It just silently
+evaluates the OLD diff (as of the last commit) and reports plausible-looking but
+WRONG line numbers/coverage percentages for code that no longer matches what's on
+disk -- much harder to notice than the "no changes" case, since nothing looks broken
+at a glance. Caught only by directly reading the file at the reported line number and
+finding it didn't match the reported content. **How to apply:** treat "commit before
+running the bundled check" as absolute, not just for a check's very first run on a
+branch -- re-verify with `git status --short` immediately before EVERY invocation of
+`tools/check.sh comments/units/patch_coverage`, not just the first one in a PR's
+review-iteration loop, especially when working through several rapid review-fix
+rounds where committing can get skipped in the rush to re-verify quickly.
+(`Lacaedemon/sparta` PR #1063, 2026-07-23: a review-fix round for #1047 ran the
+bundled check against an uncommitted `UnitCardTray.gd` edit; the report named a
+"missing" line whose reported content, when checked, was `_on_placement_toggled`'s
+body from the OLD committed diff, not anything in the actual uncommitted edit.)
+
 ## Benchmark check reports PASS regardless of content -- and the baseline goes stale for a whole week after any PR with an accepted cost increase
 
 `benchmark.yml`'s own posted comment can show a real regression (`:warning: Regressed

@@ -79,6 +79,103 @@ func test_sync_unit_card_tray_visibility_only_shows_own_team_cards() -> void:
 	assert_false(shown.has(theirs), "the tray never shows an enemy unit's card")
 
 
+# --- control-group scoping ------------------------------------------------------------
+
+func test_tray_source_units_falls_back_to_all_own_team_when_the_group_is_unbound() -> void:
+	var hud := _hud_with_selection_manager()
+	var mine := _unit(0)
+	var theirs := _unit(1)
+
+	var result: Array = hud._tray_source_units()
+
+	assert_true(result.has(mine), "group 0 was never bound -- falls back to every own-team unit")
+	assert_false(result.has(theirs), "...still never the enemy's")
+
+
+func test_tray_source_units_scopes_to_the_bound_group() -> void:
+	var hud := _hud_with_selection_manager()
+	var in_group := _unit(0)
+	var not_in_group := _unit(0)
+	hud._sel_mgr._select(in_group)
+	hud._sel_mgr._bind_group(hud._unit_card_tray.current_group)
+
+	var result: Array = hud._tray_source_units()
+
+	assert_eq(result, [in_group], "only the bound group's own member is offered")
+	assert_false(result.has(not_in_group), "an own-team unit outside the bound group is excluded")
+
+
+func test_group_changed_handler_is_a_noop_with_no_tray_built_yet() -> void:
+	var hud := HUDScript.new()
+	autofree(hud)   # never add_child'd, so _ready() (and _build_unit_card_tray) never runs
+	hud._on_unit_card_tray_group_changed(0)   # must not crash on the null _unit_card_tray
+
+
+func test_periodic_resync_discards_a_unit_that_dropped_out_of_a_rebound_group() -> void:
+	Settings._loading = true
+	Settings.show_unit_card_tray = true
+	Settings._loading = false
+	var hud := _hud_with_selection_manager()
+	var a := _unit(0)
+	var b := _unit(0)
+	hud._sel_mgr._select(a)
+	hud._sel_mgr._select(b)
+	hud._sel_mgr._bind_group(0)
+	hud._sync_unit_card_tray_visibility()
+	assert_eq(hud._unit_card_tray.get_units_in_tray_order(), [a, b],
+			"precondition: group 0 bound to both units")
+
+	# Rebind group 0 to just `a` -- NOT via the tray's own selector (current_group is
+	# already 0, so no group_changed fires), the same way a player's Ctrl+0 keypress
+	# would while group 0 is already the tray's selected group.
+	hud._sel_mgr._clear_selection()
+	hud._sel_mgr._select(a)
+	hud._sel_mgr._bind_group(0)
+	hud._sync_unit_card_tray_visibility()   # the periodic-refresh path, not group_changed
+
+	assert_eq(hud._unit_card_tray.get_units_in_tray_order(), [a],
+			"b dropped out of the rebound group -- sync_units() alone would have left it " +
+			"displayed, since it only prunes DEAD units, not merely out-of-scope ones")
+
+
+func test_periodic_resync_takes_the_cheap_path_when_membership_only_grows() -> void:
+	Settings._loading = true
+	Settings.show_unit_card_tray = true
+	Settings._loading = false
+	var hud := _hud_with_selection_manager()
+	var a := _unit(0)
+	hud._sync_unit_card_tray_visibility()
+	hud._unit_card_tray.add_row()
+	hud._unit_card_tray.move_unit(0, 0, 1, 0)   # a distinctive layout choice to prove it survives
+
+	var reinforcement := _unit(0)
+	hud._sync_unit_card_tray_visibility()
+
+	assert_eq(hud._unit_card_tray._grid[1][0], a,
+			"a's manually-arranged position survives -- no reset happened, just an incremental add")
+	assert_true(hud._unit_card_tray.get_units_in_tray_order().has(reinforcement),
+			"...and the new arrival is still placed")
+
+
+func test_group_changed_signal_resyncs_the_tray_to_the_new_groups_members() -> void:
+	Settings._loading = true
+	Settings.show_unit_card_tray = true
+	Settings._loading = false
+	var hud := _hud_with_selection_manager()
+	var everyone := _unit(0)
+	hud._sync_unit_card_tray_visibility()
+	assert_true(hud._unit_card_tray.get_units_in_tray_order().has(everyone),
+			"precondition: group 0 unbound, so the tray starts showing every own-team unit")
+
+	var grouped := _unit(0)
+	hud._sel_mgr._select(grouped)
+	hud._sel_mgr._bind_group(1)
+	hud._unit_card_tray._on_group_selector_changed(1.0)   # drives the real selector handler
+
+	var shown: Array = hud._unit_card_tray.get_units_in_tray_order()
+	assert_eq(shown, [grouped], "switching to group 1 resyncs the tray to just that group's member")
+
+
 func test_process_refreshes_the_tray_once_a_second_during_a_battle() -> void:
 	Settings._loading = true
 	Settings.show_unit_card_tray = true
