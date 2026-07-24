@@ -1594,11 +1594,12 @@ func _think(delta: float) -> void:
 	# within RANGED_RANGE of this unit (i.e. could be shooting at us this frame).
 	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
 	# calls see the correct value.
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt in frequent under-fire check loop
 	_under_fire = false
 	for u in get_tree().get_nodes_in_group("units"):
 		if u is Unit and u.team != team and u.is_ranged and u.state != State.DEAD \
 				and u.state != State.ROUTING \
-				and position.distance_to(u.position) <= RANGED_RANGE:
+				and position.distance_squared_to(u.position) <= RANGED_RANGE * RANGED_RANGE:
 			_under_fire = true
 			break
 
