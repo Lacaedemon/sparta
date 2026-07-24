@@ -113,10 +113,17 @@ func columns() -> int:
 
 
 func add_row() -> void:
+	_append_empty_row()
+	_rebuild_ui()
+
+
+## The row-construction half of add_row(), without its rebuild -- shared with
+## reset_and_sync(), which needs the empty row appended but wants sync_units()'s own
+## rebuild to be the only one, not two back to back.
+func _append_empty_row() -> void:
 	var new_row: Array = []
 	new_row.resize(columns())
 	_grid.append(new_row)
-	_rebuild_ui()
 
 
 func remove_row() -> void:
@@ -307,8 +314,9 @@ func _on_group_selector_changed(value: float) -> void:
 ## sync_units()'s incremental prune-dead-then-place-new-arrivals update for the same group.
 func reset_and_sync(units: Array) -> void:
 	_grid.clear()
-	add_row()   # keeps the always-at-least-one-row invariant _ready() establishes, even
-	            # when `units` is empty (a bound group with no live members)
+	_append_empty_row()   # keeps the always-at-least-one-row invariant _ready() establishes,
+	                      # even when `units` is empty (a bound group with no live members) --
+	                      # sync_units() below does the (only) rebuild, not a second one here
 	sync_units(units)
 
 

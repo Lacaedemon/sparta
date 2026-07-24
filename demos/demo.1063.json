@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "New header control on the unit card tray (a group selector SpinBox). The scripted-input recorder's mouse/key steps bypass Godot's GUI input layer entirely and can only drive world-space unit selection/orders (SelectionManager._unhandled_input), never an HUD Control -- see .claude/memories/sparta-demos.md's 'DemoInputRecorder's scripted key/mouse steps only reach SelectionManager' note. A screenshot in the PR description shows the new control instead."
+  "reason": "New header control on the unit card tray (a group selector SpinBox). The scripted-input recorder's mouse/key steps bypass Godot's GUI input layer entirely and can only drive world-space unit selection/orders (SelectionManager._unhandled_input), never a HUD Control -- see .claude/memories/sparta-demos.md's 'DemoInputRecorder's scripted key/mouse steps only reach SelectionManager' note. A screenshot in the PR description shows the new control instead."
 }
