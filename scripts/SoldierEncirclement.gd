@@ -52,6 +52,12 @@ class_name SoldierEncirclement
 ## geometry, so both "breaks" and "rejoins" track the current tick's contacts directly --
 ## matching the issue's own "as soon as" phrasing on both ends.
 ##
+## Ranged (Unit.is_ranged) units never count as a CONTACT (see accumulate()'s gather loop):
+## "surrounded" is a melee-structural concept, and an archer merely shooting from range isn't
+## pressing against anyone physically -- only its actual reach differs from a melee unit's,
+## not its threat model. A ranged unit's own eligibility to break is untouched; it's excluded
+## only from being counted as a threat TO someone else.
+##
 ## Determinism: gathered in unit-uid then ascending-soldier-index order (mirroring
 ## SoldierEnemyContact/SoldierMeleeStandoff), so SoldierEncirclementProximity's cell insertion
 ## order -- and this pass's own per-soldier contact list -- is reproducible; no RNG, no
@@ -180,7 +186,19 @@ static func accumulate(units: Array, frame: int) -> void:
 	var ereach := PackedFloat32Array()
 	for o in sorted_units:
 		var u: Unit = o as Unit
-		if u == null or u.state == Unit.State.DEAD:
+		# A ranged unit's soldiers never count as an encirclement CONTACT: "surrounded" is a
+		# melee-structural concept (no facing could keep the shield locked against every
+		# attacker), and an archer merely standing at ranged distance isn't pressing against
+		# anyone physically -- reusing soldier_reach() (== attack_range, whichever weapon
+		# type) for the contact radius the way SoldierMeleeStandoff/SoldierEnemyContact
+		# already do for their own melee-only passes would otherwise let a far-off archer's
+		# large ranged reach register as "surrounding" a SHIELD_WALL/TESTUDO unit it's only
+		# shooting at, not touching (confirmed empirically: testudo-under-fire.json, a
+		# pure-archer scenario, marked soldiers broken with no melee anywhere in the clip).
+		# A ranged unit's own eligibility to individually break is untouched by this -- it's
+		# excluded only as a CANDIDATE, not from ever being the querying side (a ranged unit
+		# CAN still be meleed and, if somehow also in a breakable stance, break the same way).
+		if u == null or u.state == Unit.State.DEAD or u.is_ranged:
 			continue
 		var n: int = u._sim_soldier_pos.size()
 		if n == 0:

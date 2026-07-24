@@ -220,6 +220,21 @@ func test_accumulate_skips_a_dead_eligible_unit() -> void:
 	assert_eq(wall._sim_soldier_broken, before, "a DEAD unit is never checked for encirclement")
 
 
+func test_accumulate_ignores_a_ranged_units_engaged_soldiers_from_the_candidate_pool() -> void:
+	# Regression: a ranged (archer) unit's large weapon reach must not register as a melee
+	# "contact" from a distance -- "surrounded" is a melee-structural concept, not "an archer
+	# is shooting at me from somewhere". Reproduces the real testudo-under-fire.json defect:
+	# a testudo unit ringed by pure-ranged archers must never show any broken soldiers.
+	var wall := _unit(1, 0, Vector2.ZERO, Vector2.DOWN, Unit.FORMATION_SHIELD_WALL)
+	var front := _unit(2, 1, Vector2(0, -20), Vector2.UP, Unit.FORMATION_NORMAL)
+	var ranged_rear := _unit(3, 1, Vector2(0, 20), Vector2.DOWN, Unit.FORMATION_NORMAL)
+	ranged_rear.is_ranged = true
+	ranged_rear.attack_range = 160.0   # a typical ranged weapon's much longer reach
+	SoldierEncirclement.accumulate([wall, front, ranged_rear], 1)
+	assert_eq(wall._sim_soldier_broken[0], 0,
+		"the ranged unit's soldiers never enter the candidate pool -- only the melee frontal attacker counts")
+
+
 func test_accumulate_ignores_a_dead_units_engaged_soldiers_from_the_candidate_pool() -> void:
 	var wall := _unit(1, 0, Vector2.ZERO, Vector2.DOWN, Unit.FORMATION_SHIELD_WALL)
 	var front := _unit(2, 1, Vector2(0, -20), Vector2.UP, Unit.FORMATION_NORMAL)
