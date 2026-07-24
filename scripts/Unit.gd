@@ -4727,10 +4727,18 @@ func start_order_response() -> void:
 	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
 	# marches as a proper line rather than crabbing sideways. The bodies ease onto the
 	# reformed slots via the arrival dynamics (a future turn-and-widen move maneuver will make
-	# this a deliberate reshape; until then a clean reform is the safe default). Also drop any
-	# in-flight engage re-face turn: the order supersedes it and the reform squares the block.
-	_formation_angle = 0.0
-	_formation_mirror_x = false
+	# this a deliberate reshape; until then a clean reform is the safe default). Re-square via
+	# reform_ranks() -- the same countermarch-aware path _finish_order_turn takes -- NOT a naked
+	# _formation_angle = 0.0: a bare reset point-reflects an about-faced (±PI-folded) block,
+	# swapping every soldier to the OPPOSITE flank AND rank at once. A full centre-symmetric
+	# block rests validly at ±PI after one about-face, so zeroing it there strands every body a
+	# full block-diagonal off its index-matched slot; a second consecutive reversal then blobs
+	# as the bodies all cross the centre back to their slots. reform_ranks() instead leaves a
+	# full block's ±PI fold in place and arms the depth-only mirror for a partial one, so
+	# bodies keep their flank; a quarter-turn fold still drops cleanly to 0.
+	# Also drop any in-flight engage re-face turn: the order supersedes it and the reform
+	# squares the block.
+	reform_ranks()
 	_engage_turn_target = Vector2.ZERO
 	_engage_turn_enemy = null
 

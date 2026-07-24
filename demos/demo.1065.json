@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/double-reversal-1027.json",
+  "caption": "Reversing a march direction twice in a row (#1027). The Infantry block marches forward, is ordered to about-face and march back the way it came, then is ordered to reverse a second time. The SECOND about-face used to collapse the block into a blob that slowly re-expanded over several seconds (the reported \"pulsing\"); now each reversal turns in good order and the ranks hold their spacing throughout.",
+  "fixed_fps": 30,
+  "max_frames": 285,
+  "fps": 15,
+  "width": 720
+}

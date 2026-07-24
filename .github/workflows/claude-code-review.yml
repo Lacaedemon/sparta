@@ -3,15 +3,18 @@
 # explicitly (not via `secrets: inherit`) because the reusable workflow lives
 # in a different account's repo (d-morrison/gha) — `inherit` only forwards
 # secrets to reusable workflows within the SAME owner/org, so across owners it
-# silently passes an empty token and the action aborts. The workflow_dispatch
-# path lets claude.yml re-dispatch a review after an @claude run pushes commits
-# — keep the file named claude-code-review.yml (or set claude.yml's
+# silently passes an empty token and the action aborts.
+#
+# No `pull_request:` trigger — GitHub Copilot code review is already enabled
+# repo-wide via the `main` branch ruleset (`copilot_code_review`,
+# `review_on_push: true`), so an automatic Claude review on every PR push is
+# redundant. This workflow now runs only on manual `workflow_dispatch` — used
+# for an ad-hoc re-review, and by claude.yml's own re-dispatch-after-push
+# mechanism. Keep the file named claude-code-review.yml (or set claude.yml's
 # review-workflow-file to match).
 name: Claude Code Review
 
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -40,7 +43,7 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     with:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
-      # a review on Claude's commits; empty (and ignored) for pull_request runs.
+      # a review on Claude's commits, or so a manual dispatch can target a PR.
       pr-number: ${{ inputs.pr_number }}
       prompt-addendum: |
         **Post line-specific findings as inline review comments** anchored to the

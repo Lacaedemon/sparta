@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Developer tooling only (items 3-4 of the sim-state-hash work): a spawn-layout fingerprint stamped into replay/input-script JSON that fails loudly at load when the spawn table drifts, and a hash-first restructure of the website-demo-diff CI so the cheap per-tick hash streams decide which clips changed before any field-level dump comparison. Nothing in a recorded battle looks or plays differently, so a clip would show an unrelated scene."
+}

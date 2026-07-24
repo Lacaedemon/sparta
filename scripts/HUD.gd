@@ -391,6 +391,12 @@ func _ready() -> void:
 				% [mismatched_sha, BuildInfoRef.COMMIT_SHA]
 		_error_dialog.popup_centered()
 
+	# The spawn-layout mismatch (Replay.last_load_spawn_mismatch) is set by Battle._ready AFTER
+	# it spawns -- which runs after this HUD._ready, since HUD is a child of Battle -- so it
+	# isn't set yet here. Defer the check one idle frame, once Battle._ready has finished.
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		_warn_spawn_layout_mismatch.call_deferred()
+
 	# Offered on every exit that would otherwise silently discard an unsaved recording
 	# (Quit to Main Menu, Return to Campaign) -- see _confirm_exit_with_unsaved_replay.
 	_save_replay_dialog = ConfirmationDialog.new()
@@ -546,6 +552,22 @@ func _ready() -> void:
 		load_saved.custom_minimum_size = Vector2(180, 44)
 		load_saved.pressed.connect(_open_load_dialog)
 		box.add_child(load_saved)
+
+
+## Warn once, after Battle._ready has spawned, when a loaded replay's stamped spawn layout no
+## longer matches this build's -- a genuine desync (orders target unit positions this build no
+## longer produces), the harder counterpart to the commit_sha heads-up above. Deferred from
+## _ready because Battle sets the flag after this HUD's own _ready (HUD is a child of Battle).
+## One-shot: clear the flag so a restart of the same replay re-warns.
+func _warn_spawn_layout_mismatch() -> void:
+	if Replay.last_load_spawn_mismatch == "":
+		return
+	Replay.last_load_spawn_mismatch = ""
+	_error_dialog.title = "Replay"
+	_error_dialog.dialog_text = ("This replay was recorded against a different spawn layout " +
+			"than this build produces (unit types or positions changed since it was recorded). " +
+			"Its orders may target the wrong units, so the battle can desync.")
+	_error_dialog.popup_centered()
 
 
 func _exit_tree() -> void:
@@ -1330,6 +1352,7 @@ func _build_unit_card_tray() -> void:
 	_unit_card_tray.offset_top = -14.0
 	_unit_card_tray.offset_bottom = -14.0
 	_unit_card_tray.set_selection_manager(_sel_mgr)
+	_unit_card_tray.group_changed.connect(_on_unit_card_tray_group_changed)
 	add_child(_unit_card_tray)
 	_sync_unit_card_tray_visibility()
 
@@ -1339,7 +1362,52 @@ func _sync_unit_card_tray_visibility() -> void:
 		return
 	_unit_card_tray.visible = Settings.show_unit_card_tray
 	if _unit_card_tray.visible:
-		_unit_card_tray.sync_units(_own_team_units())
+		_resync_unit_card_tray()
+
+
+## The group selector changed -- unlike the periodic/visibility resync above, this discards
+## the tray's current line/grid layout, since a different group's units don't belong in the
+## previous group's arrangement (see UnitCardTray.reset_and_sync).
+func _on_unit_card_tray_group_changed(_n: int) -> void:
+	if _unit_card_tray == null:
+		return
+	_unit_card_tray.reset_and_sync(_tray_source_units())
+
+
+## Pushes the tray's current source-unit set. sync_units() only prunes dead/freed units --
+## it never drops a still-living one that's simply no longer in the list -- so a plain
+## sync_units() call here would leave stale, out-of-scope cards on screen if the desired
+## set narrowed for a reason OTHER than a group switch (the case _on_unit_card_tray_group_
+## changed already handles): binding Ctrl+<n> to a fresh, smaller membership while group
+## `n` is already the tray's selected group, for instance. Detect that and fall back to a
+## full reset_and_sync(); otherwise take the cheap incremental sync_units() path.
+func _resync_unit_card_tray() -> void:
+	var desired: Array = _tray_source_units()
+	if _tray_shows_a_unit_outside(desired):
+		_unit_card_tray.reset_and_sync(desired)
+	else:
+		_unit_card_tray.sync_units(desired)
+
+
+func _tray_shows_a_unit_outside(desired: Array) -> bool:
+	var desired_ids: Dictionary = {}
+	for u in desired:
+		desired_ids[u.get_instance_id()] = true
+	for u in _unit_card_tray.get_units_in_tray_order():
+		if not desired_ids.has(u.get_instance_id()):
+			return true
+	return false
+
+
+## Units the tray should currently offer. Scopes to the tray's selected control group
+## (Ctrl+0-9, SelectionManager._groups) once that group has ever been bound; falls back to
+## every own-team unit -- today's behavior -- for a player who's never used control groups,
+## so picking up the tray doesn't go blank by default.
+func _tray_source_units() -> Array:
+	if (_sel_mgr != null and _unit_card_tray != null
+			and _sel_mgr.has_group(_unit_card_tray.current_group)):
+		return _sel_mgr.group_members(_unit_card_tray.current_group)
+	return _own_team_units()
 
 
 ## Units the tray should ever offer -- the player's own side only, so the tray organizes the

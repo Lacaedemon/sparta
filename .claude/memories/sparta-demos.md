@@ -223,6 +223,47 @@ horizontal stripes for vertical ones when a packed rank rotates. Distinguish uni
 types by *silhouette* (dart/kite/pointer), keeping team colour pure — a per-type
 colour tint muddies the block's team-colour `modulate`.
 
+## `DemoInputRecorder`'s scripted "key" step only reaches `SelectionManager`, never `HUD` — F1/menu-hotkey steps silently no-op
+
+`tools/demo/DemoInputRecorder.gd`'s per-tick event dispatch calls
+`_sel._unhandled_input(k)` for a `"key"` step — i.e. it invokes
+`_unhandled_input` DIRECTLY on the `SelectionManager` node as a plain
+function call, bypassing Godot's real input-event propagation entirely.
+Any hotkey handled by a DIFFERENT node's `_unhandled_input` (e.g. HUD.gd's
+own F1 tray-toggle handler, `_is_tray_toggle_keypress`) never receives the
+event at all — the scripted step runs with no error, the recording
+completes normally, and the intended effect (the tray becoming visible)
+silently never happens. This is easy to misdiagnose as a bug in the
+FEATURE being demoed rather than a limitation of the recorder itself,
+especially since `OS.find_keycode_from_string("F1")` resolving correctly
+(confirmed: it does, matches `KEY_F1`) makes the key STRING look fine —
+the actual gap is in WHICH NODE receives the synthesized event, not the
+keycode.
+
+The same applies to mouse "click"/"box"/`_sel._unhandled_input(mb)` steps:
+they ALSO bypass Godot's GUI input layer entirely (no `_gui_input`
+routing), so a scripted click can never actually press an HUD `Button` —
+only world-space unit selection/orders, which is what `_sel`'s own
+`_unhandled_input` is built to interpret.
+
+**How to apply:** before scripting an `input.json` step meant to exercise
+ANY HUD-level control (a menu hotkey, a button press, a checkbox toggle,
+drag-and-drop), check whether that control is driven by
+`SelectionManager._unhandled_input` (works via the recorder) or by some
+OTHER node's own input handler / Godot's normal GUI event routing (does
+NOT work via the recorder, no matter how the step is written). For the
+latter, drive the feature directly instead: the **throwaway tool-scene
+screenshot** recipe above, building the HUD (or the specific Control) in
+code and calling its methods / setting its state directly. Extending the
+recorder itself to forward events to other nodes (or route mouse events
+through Godot's real GUI layer) would be a separate, larger change — out
+of scope for a single demo. (`Lacaedemon/sparta` PR #1057, 2026-07-23: an
+`F1` step in a staged screenshot's input script never toggled the tray on;
+PR #1058's tray-grid screenshot was built as a throwaway tool scene
+instead, for the same underlying reason — the grid's own interactions are
+button clicks and drag-and-drop, neither reachable through the recorder at
+all.)
+
 ## Verify a demo by exact game-state values (state dump)
 
 As of PR #501 (#500) a demo can be verified by **reading exact game-state

@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "A unit-tray grid-layout rework driven entirely by UI button clicks and drag-and-drop (add/remove row/column, shift buttons, cell swapping) -- DemoInputRecorder's scripted-input pipeline can only drive world clicks/keys through SelectionManager, not arbitrary HUD button presses or drag-and-drop gestures. See the before/after screenshot in the PR description (demos/shots/unit-tray-grid-gaps.png), captured via a throwaway standalone-tray tool scene exercising the grid API directly."
+}

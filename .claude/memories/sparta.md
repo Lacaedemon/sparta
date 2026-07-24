@@ -882,6 +882,32 @@ for merge" report was correct; a first-pass verification that filtered by
 `author.login == "claude"` found only the stale "Needs more work" comment and
 nearly contradicted a true report.)
 
+## `claude-code-review.yml` no longer auto-fires on every PR — Copilot does, Claude review is manual-dispatch only
+
+As of PR #1062 (issue #1061, 2026-07-23), `.github/workflows/claude-code-review.yml` has
+**no `pull_request:` trigger** — it runs only on `workflow_dispatch`. GitHub Copilot code
+review is already enabled repo-wide via the `main` branch ruleset (`copilot_code_review`
+rule, `review_on_push: true`, `review_draft_pull_requests: true`), so every PR still gets
+an automatic review — just from Copilot, not Claude.
+
+**What this changes for ARDI:** a fresh PR no longer gets an automatic `claude[bot]`
+review comment — only a Copilot one. All of this file's and ai-config's stub-review /
+"do the review yourself when @claude doesn't produce a verdict" handling still applies,
+but now to **Copilot's** review output, not Claude's, as the default automatic pass.
+`claude.yml`'s own re-dispatch-after-push mechanism (which targets this same workflow
+file via `workflow_dispatch`) still works, and a manual
+`gh workflow run claude-code-review.yml -f pr_number=<N>` still gets a real Claude review
+on demand — reach for it when Copilot's review looks thin/stubbed, or when the change
+needs the state-transcript-verification rigor Claude's own prompt-addendum asks for
+(inline demo/transcript cross-checking, per this file's own review-quality conventions),
+which Copilot's review doesn't necessarily apply.
+
+**How to apply:** before treating a PR's review status as settled, check for a Copilot
+review the same way this file's other entries check for a `claude[bot]` one — via
+`gh pr view <N> --json reviews` and `gh api repos/<owner>/<repo>/pulls/<N>/comments` (the
+"Re-check for latest review findings" convention applies regardless of which bot
+authored the review). Don't assume "no `claude[bot]` comment yet" means unreviewed.
+
 ## Verify an issue's own stated root cause empirically before implementing its proposed fix
 
 A well-written bug issue with specific code references (line numbers, a named mechanism,
@@ -2385,6 +2411,29 @@ a diff's size would justify, check `git log`/`git status` directly before trusti
 "still verifying" -- it's a fast, decisive way to catch this class of problem.
 (`Lacaedemon/sparta` PR #999, 2026-07-19.)
 
+**A subtler variant of the same mistake: running the check against uncommitted edits
+when a PRIOR commit's diff is already on the branch doesn't fail loudly at all --
+it silently reports against the stale prior commit instead.** The "no GDScript changes
+in this diff" message above only fires when HEAD has no diff against the base AT ALL
+(a brand-new branch with nothing committed yet). Mid-PR, after several review-fix
+rounds, HEAD already has a real diff from earlier commits -- so re-running the bundled
+check against a NEW uncommitted edit (a further review-fix, made without committing
+first) doesn't produce an obvious "nothing to check" signal. It just silently
+evaluates the OLD diff (as of the last commit) and reports plausible-looking but
+WRONG line numbers/coverage percentages for code that no longer matches what's on
+disk -- much harder to notice than the "no changes" case, since nothing looks broken
+at a glance. Caught only by directly reading the file at the reported line number and
+finding it didn't match the reported content. **How to apply:** treat "commit before
+running the bundled check" as absolute, not just for a check's very first run on a
+branch -- re-verify with `git status --short` immediately before EVERY invocation of
+`tools/check.sh comments/units/patch_coverage`, not just the first one in a PR's
+review-iteration loop, especially when working through several rapid review-fix
+rounds where committing can get skipped in the rush to re-verify quickly.
+(`Lacaedemon/sparta` PR #1063, 2026-07-23: a review-fix round for #1047 ran the
+bundled check against an uncommitted `UnitCardTray.gd` edit; the report named a
+"missing" line whose reported content, when checked, was `_on_placement_toggled`'s
+body from the OLD committed diff, not anything in the actual uncommitted edit.)
+
 ## Benchmark check reports PASS regardless of content -- and the baseline goes stale for a whole week after any PR with an accepted cost increase
 
 `benchmark.yml`'s own posted comment can show a real regression (`:warning: Regressed
@@ -2681,3 +2730,129 @@ enough to get a genuine fresh pass that explicitly traces the fix (verified:
 the second dispatch on the same PR produced a real line-by-line
 verification and an explicit `### Verdict`). (`Lacaedemon/sparta` PR #1054,
 2026-07-23.)
+
+## A Control anchored to a corner with a KNOWN fixed size should set explicit offsets, not `.position=`
+
+`scripts/HUD.gd`'s own `_settings_panel_raise()` doc comment (renamed from
+`_info_panel_raise()` by the same PR this entry describes) documents that
+`.position=` on an anchored Control "just works" ONLY because it's set once
+during `_ready()`, before the CanvasLayer's real viewport size is
+established (so `anchor * parent_size == 0` at that moment) — and warns that
+calling it again later, once the real size is baked in, silently shoves the
+Control far off-screen. There's a SECOND, distinct trap in the same
+territory: setting `.position=` once at `_ready()` time, then ALSO setting
+`custom_minimum_size` on the same Control right after, for a corner anchor
+where BOTH the width and height are already known up front (not
+content-derived).
+
+**Concrete case:** moving the unit card tray from center-bottom to
+bottom-right (#1049), the new build code mirrored the `_ctrl_bar`/
+`_legend_panel` pattern — `set_anchors_preset(PRESET_BOTTOM_RIGHT)`, then
+`.position = Vector2(-14, -14)`, then `custom_minimum_size = Vector2(500,
+0)` — and the tray ended up rendering almost entirely OFF the right edge of
+the screen, with only a ~15-20px sliver visible; confirmed via a direct
+screenshot, not caught by any unit test (GUT's headless dummy renderer
+never surfaces a rendered-position bug like this — see the "How to apply"
+note below). The `_ctrl_bar`/`_legend_panel` precedent this pattern
+was copied from never sets an explicit `custom_minimum_size` on the
+anchored Control ITSELF (only on a child, or not at all) — they rely
+entirely on the Control's own natural content size, which `.position=`'s
+"resolve against size-0-at-_ready()-time" trick tolerates because there's
+no OTHER competing size assignment landing after it.
+
+**Fix:** for a corner-anchored Control whose full size is known up front
+(a fixed-width tray, a fixed-size panel), set `offset_left`/`offset_right`/
+`offset_top`/`offset_bottom` explicitly instead of `.position=` +
+`custom_minimum_size` — exactly the pattern the settings/info panels
+already use elsewhere in `HUD.gd`. Explicit offsets are unambiguous
+regardless of assignment order or when the CanvasLayer's real viewport size
+becomes available; `.position=` is only safe when nothing else touches the
+Control's size afterward.
+
+**How to apply:** before copying the `.position=`-based corner-anchor
+pattern to a NEW Control, check whether that Control also needs an
+explicit `custom_minimum_size` (or any other size-affecting property) set
+after the position — if so, use explicit offsets instead. And always
+confirm a new/moved HUD panel's ACTUAL on-screen position with a real
+screenshot (a throwaway tool scene + `--rendering-driver opengl3`, per
+"Throwaway tool-scene screenshots" in `sparta-demos.md`) before considering
+a layout change done — a GUT test asserting anchor/grow-direction
+properties (as `test_hud_layout.gd` does) proves the CONFIGURATION is
+correct but says nothing about where the Control actually renders.
+(`Lacaedemon/sparta` PR #1057, 2026-07-23.)
+
+## When moving a HUD panel to a new corner, re-check its collision footprint against EVERY other panel, not just the one obvious neighbor
+
+Rearranging where panels sit (#1049: distance legend, info panel, settings
+panel, and unit tray each moved to a different screen margin) can introduce
+TWO independent kinds of new collision that are easy to miss by only
+reasoning about the panel you're actively moving:
+
+- **A panel you moved now shares a corner with something that was already
+  there.** Moving the distance legend to top-left put it directly on top of
+  the frame-rate counter's DEFAULT corner (`Settings.fps_corner` defaults to
+  `FPS_CORNER_TOP_LEFT`, chosen specifically because nothing else lived
+  there — a comment in `Settings.gd` said so explicitly, and went stale the
+  moment the legend moved in without anyone updating it). This wasn't the
+  legend's own move breaking something about ITSELF — it broke a completely
+  different, unrelated feature's implicit assumption about that corner
+  being free.
+- **A panel's own growth/reach calculation doesn't account for a NEW
+  neighbor sharing its column/row.** The info panel's `grow_vertical =
+  GROW_DIRECTION_BOTH` symmetric-growth budget (`_info_panel_available_height()`)
+  was computed purely against the raw screen edges, with no reference to
+  the settings panel (bottom-left) or legend (top-left) now sharing its
+  same `offset_left = 14.0` column. A tall enough stat sheet could grow
+  down into the settings panel or up into the legend — confirmed
+  mathematically (not just eyeballed) by an existing test that already
+  exercised a 200-line stat sheet pinning to the (wrong) 680px ceiling.
+  Fixed by having the growth-budget function actively query each
+  sibling's live footprint (`_legend_panel.position.y +
+  get_combined_minimum_size().y`, `_settings_panel.get_combined_minimum_size().y
+  + _ctrl_bar_clearance()`) rather than a screen-edges-only constant.
+  A similar tray-vs-control-bar collision (the control bar reaches far
+  enough from screen center at the default 1280px width to overlap the
+  bottom-right tray) was ALSO found this same way — by direct screenshot,
+  not by reasoning about the numbers ahead of time.
+
+**How to apply:** after any HUD panel reposition, don't just verify the
+moved panel's own rect looks right — grep the file for every OTHER
+Settings-driven or dynamically-sized element (default corners, growth
+budgets, raise/lower clearances) and ask whether it implicitly assumed the
+old layout. A real before/after screenshot (not just a description of the
+intended positions) is what actually catches these — both collisions in
+this PR were found by a human/reviewer looking at an actual rendered frame,
+not by static code review of the anchor math. (`Lacaedemon/sparta` PR
+#1057, 2026-07-23.)
+
+## A throwaway (non-GUT) Godot process also contaminates the real `settings.cfg` — not just GUT test runs
+
+The existing "Settings.gd setters persist to the REAL user://settings.cfg
+in tests" entry above covers GUT test runs calling a `Settings.*` setter.
+The SAME contamination happens from a throwaway tool-scene script (`godot
+--rendering-driver opengl3 res://tools/demo/_shot_*.tscn`, per the
+screenshot-capture recipe) that directly sets `Settings.show_unit_card_tray
+= true` (or any other setter) to force a UI element visible for a
+screenshot — it's a REAL game process, not a sandboxed test run, so the
+setter's own `_save()` call writes straight to the actual
+`user://settings.cfg` on disk, exactly like a real play session would.
+
+This bit silently: a `show_unit_card_tray defaults to false` GUT test
+started failing in a LATER, unrelated check.sh run, with no connection
+visible in the test's own diff — root-caused only by remembering an
+earlier screenshot-capture step in the SAME session had set that setting
+directly. (`Lacaedemon/sparta` PR #1057, 2026-07-23.)
+
+**How to apply:** after running ANY throwaway tool scene that touches
+`Settings.*` (directly, or indirectly via a UI interaction the scene
+simulates) for a screenshot or manual verification, delete
+`user://settings.cfg` (path is machine-specific — see the "shared ACROSS
+worktrees" entries above for how to find it) before trusting the NEXT
+`tools/check.sh test`/`patch_coverage` run's results, or diff the file's
+`show_*`/`tray_row_order_placement`/etc. values against known defaults
+first. Prefer avoiding the setter path entirely when the scene doesn't
+need real persistence: mutate whichever downstream field the setter would
+have set instead (e.g. call `hud._sync_unit_card_tray_visibility()` after
+setting `Settings.show_unit_card_tray` inside `Settings._loading = true` /
+`= false` guards, matching the pattern `test_hud_unit_card_tray.gd`
+already uses to force a known starting state without persisting it).
