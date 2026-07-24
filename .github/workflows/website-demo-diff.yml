@@ -46,6 +46,8 @@ on:
       - 'tools/ci/website-demo-state-diff.sh'
       - 'tools/ci/website-demo-defect-delta.sh'
       - 'tools/demo/DemoDefects.gd'
+      - 'tools/demo/DemoStateHash.gd'
+      - 'tools/demo/DemoHashStream.gd'
       - 'tools/demo/analyze_transcript.gd'
 
 # One diff run per PR; a newer push cancels an in-flight one rather than queuing behind it.
@@ -125,10 +127,29 @@ jobs:
         run: |
           GODOT_BIN=godot website/tools/dump-demo-states.sh /tmp/transcripts-base /tmp/base-tree
 
+      - name: Hash-first pre-filter
+        # Compare every clip's per-tick hash stream (hash_stream.jsonl, written by the dumps
+        # above -- see DemoStateHash / #954 items 1-2) between the two trees FIRST. The cheap
+        # md5 stream compare says which clips changed and the exact first divergent tick + tier,
+        # so the expensive field-level jq analysis in the next step runs only for the clips the
+        # hash compare flagged. Godot prints its own banner to stdout, so keep only the
+        # HASHCMP-prefixed verdict lines; the mode always exits 0 (the verdict is per-line).
+        run: |
+          set -euo pipefail
+          godot --headless --path "$GITHUB_WORKSPACE" -s tools/demo/analyze_transcript.gd -- \
+            /tmp/transcripts-base --compare-hash-trees /tmp/transcripts-pr \
+            | grep '^HASHCMP' > /tmp/hash-verdict.tsv || true
+          echo "Hash pre-filter verdicts:"
+          cat /tmp/hash-verdict.tsv || true
+
       - name: Build diff summary
+        # The hash verdict lets SAME clips skip the per-tick jq walk entirely and gives each
+        # changed clip its exact first divergent tick + tier; without it every clip would get
+        # the full jq compare (the standalone fallback the script still supports).
         run: |
           tools/ci/website-demo-state-diff.sh \
-            /tmp/transcripts-base /tmp/transcripts-pr /tmp/website-demo-diff.md
+            /tmp/transcripts-base /tmp/transcripts-pr /tmp/website-demo-diff.md \
+            /tmp/hash-verdict.tsv
 
       - name: Defect delta over changed clips
         # The deterministic DemoDefects analyzer over BOTH sides' FULL transcripts of
