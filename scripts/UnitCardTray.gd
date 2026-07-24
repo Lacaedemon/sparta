@@ -288,10 +288,13 @@ func _on_group_selector_changed(value: float) -> void:
 	# Round rather than truncate -- a typed (not spin-arrow) value can land off the step
 	# grid (e.g. "1.9"), and int() would silently select the group below the one the
 	# player actually typed. Clamp defensively even though min/max_value already bound
-	# the SpinBox's own UI. set_value_no_signal keeps the displayed value snapped to
-	# what was actually applied without re-entering this handler.
-	current_group = clampi(roundi(value), 0, MAX_GROUP)
-	_group_selector.set_value_no_signal(current_group)
+	# the SpinBox's own UI.
+	var snapped: int = clampi(roundi(value), 0, MAX_GROUP)
+	_group_selector.set_value_no_signal(snapped)   # always resync the display to what applies
+	if snapped == current_group:
+		return   # an off-step edit that rounds back to the group already selected -- no
+		         # real change, so don't discard the current layout for nothing
+	current_group = snapped
 	# Placeholder empty state via reset_and_sync (not a bare _grid.clear()), so the
 	# tray's one-row invariant holds even if nothing is listening for group_changed --
 	# a connected listener (HUD) immediately follows with the new group's real members.

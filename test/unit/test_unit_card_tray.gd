@@ -308,6 +308,18 @@ func test_group_selector_change_rounds_a_typed_off_step_value() -> void:
 	assert_eq(tray._group_selector.value, 2.0, "the displayed selector value snaps to match")
 
 
+func test_group_selector_change_is_a_noop_when_the_snapped_value_matches_current_group() -> void:
+	var tray := _tray()
+	tray._on_group_selector_changed(2.0)   # -> current_group = 2
+	watch_signals(tray)
+
+	tray._on_group_selector_changed(1.9)   # rounds back to the SAME group (2) -- no real change
+
+	assert_eq(tray.current_group, 2, "still group 2")
+	assert_eq(tray._group_selector.value, 2.0, "the display still snaps even on a no-op edit")
+	assert_signal_not_emitted(tray, "group_changed", "no real group change, so no signal")
+
+
 func test_group_selector_change_clamps_to_the_valid_range() -> void:
 	var tray := _tray()
 
