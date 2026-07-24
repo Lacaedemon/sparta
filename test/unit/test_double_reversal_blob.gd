@@ -1,8 +1,8 @@
 extends GutTest
-## Live-battle regression for issue #1027: a full, centre-symmetric block ordered to
-## reverse direction TWICE in a row (two consecutive about-faces) used to collapse into a
-## blob on the SECOND reversal, then slowly re-expand over hundreds of ticks -- the
-## "pulsing" the report showed.
+## Live-battle regression for the double-reversal blob: a full, centre-symmetric block
+## ordered to reverse direction TWICE in a row (two consecutive about-faces) used to
+## collapse into a blob on the SECOND reversal, then slowly re-expand over hundreds of
+## ticks -- a visible "pulsing" of the block.
 ##
 ## Root cause: after one about-face a full block rests validly with _formation_angle folded
 ## to +/-PI -- a point-reflected but self-consistent grid the bodies already sit on. The

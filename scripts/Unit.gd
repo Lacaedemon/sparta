@@ -4733,9 +4733,9 @@ func start_order_response() -> void:
 	# swapping every soldier to the OPPOSITE flank AND rank at once. A full centre-symmetric
 	# block rests validly at ±PI after one about-face, so zeroing it there strands every body a
 	# full block-diagonal off its index-matched slot; a second consecutive reversal then blobs
-	# as the bodies all cross the centre back to their slots (issue #1027). reform_ranks()
-	# instead leaves a full block's ±PI fold in place and arms the depth-only mirror for a
-	# partial one, so bodies keep their flank; a quarter-turn fold still drops cleanly to 0.
+	# as the bodies all cross the centre back to their slots. reform_ranks() instead leaves a
+	# full block's ±PI fold in place and arms the depth-only mirror for a partial one, so
+	# bodies keep their flank; a quarter-turn fold still drops cleanly to 0.
 	# Also drop any in-flight engage re-face turn: the order supersedes it and the reform
 	# squares the block.
 	reform_ranks()
