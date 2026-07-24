@@ -146,6 +146,22 @@ static func retreat_direction(contacts: PackedVector2Array) -> Vector2:
 ## comment). Must run after SoldierMeleeStandoff (so it can add on top of its bias) and before
 ## UnitRef.step_all_sim_soldiers reads `_sim_steer` as this tick's feed-forward.
 static func accumulate(units: Array, frame: int) -> void:
+	# Clear every breakable, living unit's broken flags FIRST, unconditionally -- before the
+	# perf early-out below, which only guards the expensive gather+grid rebuild, not this. A
+	# unit that just disengaged (ENGAGED_LINGER expired, or its opponents routed/died) must
+	# not keep a stale broken flag forever: nothing else ever clears _sim_soldier_broken (see
+	# that field's own doc comment), and the render tint (Unit._soldier_is_broken_for_render)
+	# reads it every frame with no engagement gate of its own -- a soldier could otherwise
+	# render the broken tint indefinitely after its unit stopped fighting entirely. This pass
+	# is cheap (one array fill per breakable unit, not the per-soldier gather below).
+	for o in units:
+		var u: Unit = o as Unit
+		if u == null or u.state == Unit.State.DEAD or not u.breaks_under_encirclement():
+			continue
+		var n: int = u._sim_soldier_pos.size()
+		if n == u._sim_soldier_broken.size():
+			u._sim_soldier_broken.fill(0)
+
 	var any_eligible: bool = false
 	for o in units:
 		var u: Unit = o as Unit
@@ -153,7 +169,7 @@ static func accumulate(units: Array, frame: int) -> void:
 			any_eligible = true
 			break
 	if not any_eligible:
-		return   # nobody could possibly break this tick -- skip the gather+rebuild entirely
+		return   # nobody could possibly break this tick -- skip the expensive gather+rebuild
 
 	var sorted_units: Array = units.duplicate()
 	sorted_units.sort_custom(func(x: Variant, y: Variant) -> bool: return (x as Unit).uid < (y as Unit).uid)
@@ -188,11 +204,9 @@ static func accumulate(units: Array, frame: int) -> void:
 		var n: int = u._sim_soldier_pos.size()
 		if n == 0 or u._sim_soldier_broken.size() != n or u._sim_steer.size() != n:
 			continue
-		# Clear every soldier's broken flag first, THEN set it for whichever engaged indices
-		# are still genuinely surrounded this tick -- a soldier that fell out of the engaged
-		# tier (retreated far enough, or the unit disengaged entirely) must not be left stuck
-		# on a stale flag from an earlier tick.
-		u._sim_soldier_broken.fill(0)
+		# Every soldier's flag was already cleared to 0 by the unconditional reset pass above
+		# this tick -- only set it back for whichever engaged indices are genuinely surrounded
+		# right now.
 		var idxs: PackedInt32Array = u.engaged_soldier_indices(n)
 		if idxs.is_empty():
 			continue

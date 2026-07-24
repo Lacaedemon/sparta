@@ -192,6 +192,24 @@ func test_accumulate_clears_a_previously_broken_flag_once_no_longer_surrounded()
 	assert_eq(wall._sim_soldier_broken[0], 0, "no longer surrounded -- rejoins immediately, no latch/hysteresis")
 
 
+func test_accumulate_clears_a_stale_broken_flag_even_once_the_unit_fully_disengages() -> void:
+	# Regression: the perf early-out (skip the expensive gather+grid rebuild when nobody is
+	# currently engaged) must not also skip clearing already-set broken flags -- a unit that
+	# stops fighting entirely (ENGAGED_LINGER decays to 0, or its attackers are wiped out)
+	# must not keep rendering a stale broken tint forever, since nothing else ever clears
+	# _sim_soldier_broken and the render path has no engagement gate of its own.
+	var wall := _unit(1, 0, Vector2.ZERO, Vector2.DOWN, Unit.FORMATION_SHIELD_WALL)
+	var front := _unit(2, 1, Vector2(0, -20), Vector2.UP, Unit.FORMATION_NORMAL)
+	var rear := _unit(3, 1, Vector2(0, 20), Vector2.DOWN, Unit.FORMATION_NORMAL)
+	SoldierEncirclement.accumulate([wall, front, rear], 1)
+	assert_eq(wall._sim_soldier_broken[0], 1, "sanity: genuinely surrounded at first")
+
+	wall._engaged_linger = 0.0   # the unit fully disengages -- is_engaged() now false
+	SoldierEncirclement.accumulate([wall, front, rear], 2)   # a new frame -- the perf early-out fires
+	assert_eq(wall._sim_soldier_broken[0], 0,
+		"the stale flag is cleared even though the expensive gather+rebuild was skipped entirely")
+
+
 func test_accumulate_skips_a_dead_eligible_unit() -> void:
 	var wall := _unit(1, 0, Vector2.ZERO, Vector2.DOWN, Unit.FORMATION_SHIELD_WALL)
 	wall.state = Unit.State.DEAD
