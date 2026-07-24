@@ -299,6 +299,25 @@ func test_group_selector_change_updates_current_group_and_emits_group_changed() 
 	assert_signal_emitted_with_parameters(tray, "group_changed", [3])
 
 
+func test_group_selector_change_rounds_a_typed_off_step_value() -> void:
+	var tray := _tray()
+
+	tray._on_group_selector_changed(1.9)
+
+	assert_eq(tray.current_group, 2, "rounds to the nearest group, not int()'s truncate-toward-zero")
+	assert_eq(tray._group_selector.value, 2.0, "the displayed selector value snaps to match")
+
+
+func test_group_selector_change_clamps_to_the_valid_range() -> void:
+	var tray := _tray()
+
+	tray._on_group_selector_changed(-1.0)
+	assert_eq(tray.current_group, 0, "clamps below the valid range")
+
+	tray._on_group_selector_changed(float(UnitCardTray.MAX_GROUP) + 5.0)
+	assert_eq(tray.current_group, UnitCardTray.MAX_GROUP, "clamps above the valid range")
+
+
 func test_group_selector_change_discards_the_previous_grid_layout() -> void:
 	var tray := _tray()
 	var u1 := _named_unit("Hastati 1")
@@ -326,3 +345,14 @@ func test_reset_and_sync_replaces_the_grid_instead_of_layering_on_top() -> void:
 	assert_eq(tray._grid.size(), 1, "reset_and_sync starts a fresh single-row grid")
 	assert_eq(tray.get_units_in_tray_order(), [u2],
 			"...populated with the new group's members only -- u1 is gone, not still present")
+
+
+func test_reset_and_sync_with_no_units_still_leaves_one_empty_row() -> void:
+	var tray := _tray()
+	tray.sync_units([_named_unit("Hastati 1")])
+
+	tray.reset_and_sync([])   # e.g. switching to a bound group whose members have all died
+
+	assert_eq(tray._grid.size(), 1,
+			"reset_and_sync never collapses to zero rows -- same invariant _ready() establishes")
+	assert_eq(tray.get_units_in_tray_order(), [], "...just an empty row, no leftover units")

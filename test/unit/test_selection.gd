@@ -85,7 +85,7 @@ func test_group_members_returns_the_live_bound_units() -> void:
 
 func test_group_members_is_empty_for_an_unbound_group() -> void:
 	var sm := _sm()
-	assert_eq(sm.group_members(7), [], "group_members([]) for a slot that was never bound")
+	assert_eq(sm.group_members(7), [], "returns [] for a slot that was never bound")
 
 
 func test_group_members_excludes_a_member_that_has_since_died() -> void:

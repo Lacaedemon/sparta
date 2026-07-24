@@ -285,7 +285,13 @@ func _on_placement_toggled(pressed: bool) -> void:
 ## resets here; group_changed lets HUD immediately push the new group's own member list
 ## instead of waiting for the periodic once-a-second refresh.
 func _on_group_selector_changed(value: float) -> void:
-	current_group = int(value)
+	# Round rather than truncate -- a typed (not spin-arrow) value can land off the step
+	# grid (e.g. "1.9"), and int() would silently select the group below the one the
+	# player actually typed. Clamp defensively even though min/max_value already bound
+	# the SpinBox's own UI. set_value_no_signal keeps the displayed value snapped to
+	# what was actually applied without re-entering this handler.
+	current_group = clampi(roundi(value), 0, MAX_GROUP)
+	_group_selector.set_value_no_signal(current_group)
 	_grid.clear()
 	_rebuild_ui()
 	group_changed.emit(current_group)
@@ -296,6 +302,8 @@ func _on_group_selector_changed(value: float) -> void:
 ## sync_units()'s incremental prune-dead-then-place-new-arrivals update for the same group.
 func reset_and_sync(units: Array) -> void:
 	_grid.clear()
+	add_row()   # keeps the always-at-least-one-row invariant _ready() establishes, even
+	            # when `units` is empty (a bound group with no live members)
 	sync_units(units)
 
 
