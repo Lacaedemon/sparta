@@ -43,6 +43,11 @@ var _map: Dictionary = {}
 # instance (not via a Settings session setter) since this is a live-battle behavior
 # override, not a HUD/render toggle -- see _start_battle.
 var _form_up_dist: int = -1
+# Optional spawn-layout stamp (SpawnFingerprint) from the input script's "spawn_fingerprint"
+# field. "" (default) = unstamped, so the load check is skipped -- the additive-field,
+# opt-in convention every other script field follows. A stamped script that no longer matches
+# this build's spawn layout fails the recording LOUDLY (issue #926's silent-drift failure mode).
+var _spawn_fingerprint: String = ""
 var _frame_ticks: Array = []           # ticks to save a viewport PNG at (frame capture; empty = off)
 var _frame_dir: String = ""            # output dir for captured frames
 var _captured: Dictionary = {}         # tick -> true, so each frame is saved at most once
@@ -117,6 +122,7 @@ func _ready() -> void:
 			get_tree().quit(2)
 			return
 	_form_up_dist = int(script.get("form_up_dist", -1))
+	_spawn_fingerprint = str(script.get("spawn_fingerprint", ""))
 	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
 	# Declared expectations (the `expect` list) are checked offline against dumped
 	# snapshots, so every expect tick joins the state-dump defaults -- declaring an
@@ -155,6 +161,20 @@ func _start_battle() -> void:
 	if _doctrine != "":
 		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
 	add_child(_battle)
+	# Battle._ready spawns synchronously during add_child, so every unit is on the field now.
+	# Print the layout's fingerprint (so a new script can be stamped by copying it) and, when the
+	# script declared one, fail LOUDLY on a mismatch rather than recording a clip whose scripted
+	# clicks land on empty ground where a unit used to be (issue #926's silent-drift failure mode).
+	var live_fingerprint: String = SpawnFingerprint.of_tree(get_tree())
+	print("[demo-input] spawn fingerprint: %s" % live_fingerprint)
+	if _spawn_fingerprint != "" and _spawn_fingerprint != live_fingerprint:
+		push_error(("[demo-input] spawn-layout mismatch: script declares spawn_fingerprint %s " +
+				"but this build spawns %s. The spawn table changed since this script was authored, " +
+				"so its scripted clicks may no longer land on the intended units. Re-verify the " +
+				"coordinates and update (or drop) the spawn_fingerprint field.") %
+				[_spawn_fingerprint, live_fingerprint])
+		get_tree().quit(4)
+		return
 	_sel = _battle.get_node("SelectionManager")
 	if _form_up_dist >= 0:
 		_sel._form_up_dist = _form_up_dist

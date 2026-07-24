@@ -391,6 +391,12 @@ func _ready() -> void:
 				% [mismatched_sha, BuildInfoRef.COMMIT_SHA]
 		_error_dialog.popup_centered()
 
+	# The spawn-layout mismatch (Replay.last_load_spawn_mismatch) is set by Battle._ready AFTER
+	# it spawns -- which runs after this HUD._ready, since HUD is a child of Battle -- so it
+	# isn't set yet here. Defer the check one idle frame, once Battle._ready has finished.
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		_warn_spawn_layout_mismatch.call_deferred()
+
 	# Offered on every exit that would otherwise silently discard an unsaved recording
 	# (Quit to Main Menu, Return to Campaign) -- see _confirm_exit_with_unsaved_replay.
 	_save_replay_dialog = ConfirmationDialog.new()
@@ -546,6 +552,22 @@ func _ready() -> void:
 		load_saved.custom_minimum_size = Vector2(180, 44)
 		load_saved.pressed.connect(_open_load_dialog)
 		box.add_child(load_saved)
+
+
+## Warn once, after Battle._ready has spawned, when a loaded replay's stamped spawn layout no
+## longer matches this build's -- a genuine desync (orders target unit positions this build no
+## longer produces), the harder counterpart to the commit_sha heads-up above. Deferred from
+## _ready because Battle sets the flag after this HUD's own _ready (HUD is a child of Battle).
+## One-shot: clear the flag so a restart of the same replay re-warns.
+func _warn_spawn_layout_mismatch() -> void:
+	if Replay.last_load_spawn_mismatch == "":
+		return
+	Replay.last_load_spawn_mismatch = ""
+	_error_dialog.title = "Replay"
+	_error_dialog.dialog_text = ("This replay was recorded against a different spawn layout " +
+			"than this build produces (unit types or positions changed since it was recorded). " +
+			"Its orders may target the wrong units, so the battle can desync.")
+	_error_dialog.popup_centered()
 
 
 func _exit_tree() -> void:

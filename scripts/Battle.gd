@@ -504,6 +504,22 @@ func _ready() -> void:
 		if not drill_mode:
 			_spawn_line(1, Vector2.UP, float(spawn_line_ys[1]), dfn_count)
 
+	# Now that every unit has deployed, stamp (RECORD) or verify (PLAYBACK) the spawn-layout
+	# fingerprint, so a replay can fail loudly if a later build's spawn table no longer matches
+	# the layout its orders were recorded against (issue #926's silent-drift failure mode).
+	var live_fingerprint: String = SpawnFingerprint.of_tree(get_tree())
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		# A stamped replay whose fingerprint no longer matches this build's spawn will desync
+		# (orders target unit positions this build no longer produces). Surface it loudly; HUD
+		# shows the flag, and push_warning puts it in the log for a headless replay run too.
+		# Unstamped replays (loaded_spawn_fingerprint == "") skip the check, like pre-map ones.
+		if Replay.loaded_spawn_fingerprint != "" and Replay.loaded_spawn_fingerprint != live_fingerprint:
+			Replay.last_load_spawn_mismatch = Replay.loaded_spawn_fingerprint
+			push_warning("Replay spawn layout mismatch: recorded fingerprint %s, this build spawns %s. Orders may target the wrong units." %
+					[Replay.loaded_spawn_fingerprint, live_fingerprint])
+	else:
+		Replay.spawn_fingerprint = live_fingerprint
+
 	# Drive the parallel individual-soldier layer once per tick. physics_frame
 	# fires AFTER every unit's _physics_process, so the seed reads settled
 	# positions and the global separation runs on this tick's geometry. Connected

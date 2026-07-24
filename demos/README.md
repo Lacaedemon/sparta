@@ -206,6 +206,19 @@ script under `demos/inputs/`:
   at, for AI verification (see [Verifying a demo by state](#verifying-a-demo-by-state-ai-verification)).
   The `SPARTA_DEMO_STATE` env var adds to this list, so a reviewer can dump state from any demo
   without editing its script. Ignored during a normal movie recording.
+- `spawn_fingerprint` (optional string) — a **stale-artifact guard**. A scripted-input demo clicks
+  fixed world coordinates, so a change to the spawn table (issue #926 re-spaced every unit's x by
+  tens of world units) can silently move a unit out from under a click, leaving the gesture a
+  no-op with no error. Stamp the script with the layout's fingerprint (`SpawnFingerprint`, a digest
+  of every unit's type, roster size, and rounded spawn position) and the recorder fails **loudly**
+  (a `push_error` + non-zero exit) when it no longer matches this build's spawn — instead of
+  recording a clip whose clicks land on empty ground. **Opt-in**: an unstamped script isn't gated
+  (existing scripts keep working). To stamp a new script, run it once and copy the
+  `[demo-input] spawn fingerprint: <hex>` line the recorder always prints into a
+  `"spawn_fingerprint": "<hex>"` field. A `scenario`-array script gets its own scenario's
+  fingerprint (self-contained, so it never drifts); a default-spawn script gets the default layout's
+  (which does drift). Replays carry the same stamp automatically (written by `Replay.save`, checked
+  on load — a mismatch warns the player and desyncs are flagged rather than silently mis-targeting).
 
 A malformed `camera`, `frames`, or `state` field (a non-array value, e.g. `"state": "8,60"`)
 **degrades instead of failing** in the recorder, which warns and ignores the field. CI's
@@ -440,6 +453,20 @@ paths sample the tick at slightly different points in the frame, so their stream
 only comparable to themselves across runs. This is the diagnostic for "when did two runs
 of this clip diverge" (local vs CI, headless vs rendered — both known to drift late in
 long battles); it diagnoses drift, it does not fix it.
+
+The **whole-catalog** counterpart drives `website-demo-diff.yml`'s hash-first pre-filter:
+
+```sh
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <base-tree>     --compare-hash-trees <pr-tree>
+```
+
+It prints one `HASHCMP<TAB><clip><TAB>SAME|CHANGED|ADDED|REMOVED|UNKNOWN[<TAB>tick<TAB>tier]`
+line per clip (robust against Godot's banner, and always exits 0 — the verdict is per-line).
+The CI diff runs this first over both transcript trees: because the every-tick hash stream is a
+strict digest, a clip it calls `SAME` is genuinely unchanged and skips the expensive per-tick
+`jq` field-level compare entirely, so the field analysis runs only for the clips the hash flagged
+— each reported with its exact first divergent tick and tier. `UNKNOWN` (a tree lacking a stream,
+e.g. one predating the hashing) falls back to the full `jq` compare.
 
 ### The wrapper
 

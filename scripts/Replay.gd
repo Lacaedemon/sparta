@@ -144,6 +144,20 @@ var last_saved_path: String = ""
 # HUD._ready() shows and clears this once per scene load (see there for why).
 var last_load_sha_mismatch: String = ""
 
+# The spawn-layout fingerprint (SpawnFingerprint.of_tree) of the battle this recording ran
+# on. Battle publishes it after spawning, exactly like `map` above, so save() can stamp the
+# replay with the layout it was recorded against. Empty until Battle sets it (and on a replay
+# that predates this field), in which case nothing is written and the load check is skipped.
+var spawn_fingerprint: String = ""
+# start_playback() loads the recorded replay's stamped fingerprint here; Battle._ready compares
+# it against the freshly-spawned layout after re-spawning. Empty = the replay carried no stamp.
+var loaded_spawn_fingerprint: String = ""
+# Set by Battle._ready (after spawn) when a loaded replay's stamped spawn_fingerprint differs
+# from the layout this build actually spawns -- a genuine desync signal (orders were recorded
+# against unit positions this build no longer produces), unlike the softer commit_sha heads-up.
+# "" when they match or the replay carried no stamp. HUD surfaces and clears it once per load.
+var last_load_spawn_mismatch: String = ""
+
 
 ## Begin capturing a fresh live battle. Picks a random seed and clears history.
 func start_recording() -> void:
@@ -167,6 +181,9 @@ func start_recording() -> void:
 	show_demo_orders = false
 	_play_index = 0
 	map = {}
+	# Cleared for the fresh recording; Battle republishes it after spawning (like `map`).
+	spawn_fingerprint = ""
+	last_load_spawn_mismatch = ""
 	loaded_path = ""
 	# Drop the previous battle's save path so a failed save() this battle can't
 	# fall back to replaying the wrong one.
@@ -206,6 +223,11 @@ func start_playback(path: String) -> bool:
 	# The optional map block (absent in pre-map and default-map replays, which
 	# then rebuild the default battlefield). Applied by Battle._ready().
 	map = data.get("map", {})
+	# The optional spawn-layout stamp (absent in pre-stamp replays, which skip the check).
+	# Battle._ready compares it against the freshly-spawned layout and sets
+	# last_load_spawn_mismatch on a divergence -- cleared here so a re-load re-checks cleanly.
+	loaded_spawn_fingerprint = str(data.get("spawn_fingerprint", ""))
+	last_load_spawn_mismatch = ""
 	_orders.clear()
 	for o in data.get("orders", []):
 		var uids: Array = []
@@ -590,6 +612,12 @@ func save(result: String, duration_ticks: int) -> String:
 	# battlefield; absent for default-map battles (see the `map` field's doc).
 	if not map.is_empty():
 		payload["map"] = map
+	# Stamp the spawn-layout fingerprint so playback can fail loudly if a later build's
+	# spawn table no longer matches the layout these orders were recorded against (issue
+	# #926's silent-drift failure mode). Absent when Battle never published one (a battle
+	# that spawned no units, or a caller that didn't set it) -- the load check then skips.
+	if spawn_fingerprint != "":
+		payload["spawn_fingerprint"] = spawn_fingerprint
 	# Only emit a dirty-worktree note when the live checkout actually has uncommitted
 	# changes worth flagging -- a dev-only best-effort signal (BuildInfo.git_dirty_status(),
 	# see its own doc comment), omitted on an exported build or a clean tree so the common

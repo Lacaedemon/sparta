@@ -6,6 +6,8 @@ extends SceneTree
 ##       [--expect <input-script.json>]
 ##   godot --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> \
 ##       --compare-hashes <other-dump-dir>
+##   godot --headless --path . -s tools/demo/analyze_transcript.gd -- <base-tree> \
+##       --compare-hash-trees <pr-tree>
 ##
 ## --expect additionally evaluates the input script's declared `expect` list (intent as
 ## data: {tick, uid, field, value}) against the same snapshots -- see DemoDefects.
@@ -14,8 +16,14 @@ extends SceneTree
 ## see DemoStateHash / DemoHashStream) and report the FIRST divergent tick and tier, replacing an
 ## eyeball diff of the full field-level dumps when asking "when did two runs of this
 ## clip diverge."
-## Exit code 0 = every verdict passed (or streams identical); 1 = at least one defect
-## (or a divergence); 2 = usage/input error.
+## --compare-hash-trees is the whole-catalog counterpart: each argument is a TREE of
+## per-clip transcript subdirectories (website/tools/dump-demo-states.sh output), and it
+## prints one `HASHCMP<TAB>...` line per clip classifying it SAME / CHANGED / ADDED /
+## REMOVED / UNKNOWN from the hash streams alone. This is website-demo-diff.yml's fast
+## pre-filter: the cheap hash compare says which clips changed (and the exact first
+## divergent tick + tier) so the expensive field-level jq analysis runs only for those.
+## Exit code 0 = every verdict passed (or streams identical, or the tree compare ran);
+## 1 = at least one defect (or a divergence); 2 = usage/input error.
 ## push_error alone can't fail a CI step (it still exits 0 -- see CLAUDE.md), so the
 ## exit code IS the contract; --json additionally prints the machine-readable verdicts
 ## for a CI step to attach to a comment.
@@ -28,6 +36,14 @@ func _init() -> void:
 		quit(2)
 		return
 	var dir_path: String = args[0]
+	var tree_idx: int = args.find("--compare-hash-trees")
+	if tree_idx != -1:
+		if tree_idx + 1 >= args.size():
+			push_error("--compare-hash-trees needs the PR transcript tree to compare against")
+			quit(2)
+			return
+		_compare_hash_trees(dir_path, args[tree_idx + 1])
+		return
 	var cmp_idx: int = args.find("--compare-hashes")
 	if cmp_idx != -1:
 		if cmp_idx + 1 >= args.size():
@@ -117,6 +133,62 @@ func _compare_hashes(dir_a: String, dir_b: String) -> void:
 	print("IDENTICAL over %d common ticks (%d only in first stream, %d only in second)"
 			% [verdict["compared"], verdict["only_a"], verdict["only_b"]])
 	quit(0)
+
+
+## Whole-catalog hash pre-filter: compare every clip's hash stream between the two transcript
+## trees and print one machine-readable line per clip. The verdict is in the lines (a
+## `HASHCMP`-prefixed TSV, robust against Godot's own banner noise on stdout), not the exit
+## code, so this always quits 0 -- website-demo-state-diff.sh consumes the lines to decide
+## which clips need the expensive field-level jq. Per clip:
+##   HASHCMP<TAB><name><TAB>SAME                     -- hash-identical over the common range
+##   HASHCMP<TAB><name><TAB>CHANGED<TAB><tick><TAB><tier>  -- first divergent tick + tier
+##   HASHCMP<TAB><name><TAB>ADDED                    -- clip present only in the PR tree
+##   HASHCMP<TAB><name><TAB>REMOVED                  -- clip present only in the base tree
+##   HASHCMP<TAB><name><TAB>UNKNOWN                  -- a side has no usable hash stream
+##                                                      (a tree predating the stream); the
+##                                                      caller falls back to a full compare
+func _compare_hash_trees(base_dir: String, pr_dir: String) -> void:
+	var base_names: Dictionary = _subdir_set(base_dir)
+	var pr_names: Dictionary = _subdir_set(pr_dir)
+	var all_names: Array = base_names.keys()
+	for n in pr_names:
+		if not base_names.has(n):
+			all_names.append(n)
+	all_names.sort()
+	for name in all_names:
+		var in_base: bool = base_names.has(name)
+		var in_pr: bool = pr_names.has(name)
+		if in_base and not in_pr:
+			print("HASHCMP\t%s\tREMOVED" % name)
+			continue
+		if in_pr and not in_base:
+			print("HASHCMP\t%s\tADDED" % name)
+			continue
+		var base_stream: Array = DemoHashStream.parse_stream(FileAccess.get_file_as_string(
+				String(base_dir).path_join(name).path_join("hash_stream.jsonl")))
+		var pr_stream: Array = DemoHashStream.parse_stream(FileAccess.get_file_as_string(
+				String(pr_dir).path_join(name).path_join("hash_stream.jsonl")))
+		if base_stream.is_empty() or pr_stream.is_empty():
+			print("HASHCMP\t%s\tUNKNOWN" % name)
+			continue
+		var verdict: Dictionary = DemoHashStream.compare_streams(base_stream, pr_stream)
+		if verdict["divergent"]:
+			print("HASHCMP\t%s\tCHANGED\t%d\t%s" % [name, int(verdict["tick"]), str(verdict["tier"])])
+		else:
+			print("HASHCMP\t%s\tSAME" % name)
+	quit(0)
+
+
+## The set (Dictionary used as a set) of immediate subdirectory names under `dir`, or empty
+## when the directory doesn't exist (a tree that dumped no clips on its side).
+func _subdir_set(dir: String) -> Dictionary:
+	var out: Dictionary = {}
+	var d := DirAccess.open(dir)
+	if d == null:
+		return out
+	for sub in d.get_directories():
+		out[sub] = true
+	return out
 
 
 func _load_snapshots(dir_path: String) -> Array:
