@@ -100,7 +100,7 @@ func test_second_consecutive_reversal_does_not_point_reflect_or_blob() -> void:
 	# Let the bodies seed onto their slots before any order.
 	await get_tree().physics_frame
 	await get_tree().physics_frame
-	assert_almost_eq(inf.soldiers % maxi(1, inf.frontage), 0, 0,
+	assert_eq(inf.soldiers % maxi(1, inf.formation_files(inf.soldiers)), 0,
 		"the block is full (centre-symmetric) -- the case that rests at a +/-PI fold")
 
 	# First reversal: face-down block ordered UP. A single about-face from a clean
