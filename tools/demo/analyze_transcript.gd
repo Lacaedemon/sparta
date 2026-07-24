@@ -32,7 +32,7 @@ extends SceneTree
 func _init() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.is_empty():
-		push_error("usage: godot --headless -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json] [--expect <input-script.json>] [--compare-hashes <other-dump-dir>]")
+		push_error("usage: godot --headless -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json] [--expect <input-script.json>] [--compare-hashes <other-dump-dir>] [--compare-hash-trees <pr-tree>]")
 		quit(2)
 		return
 	var dir_path: String = args[0]
