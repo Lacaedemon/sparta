@@ -2754,6 +2754,17 @@ func in_schiltron() -> bool:
 	return formation_mode == FORMATION_SCHILTRON
 
 
+## True for the two formations whose stance bonus depends on the shields staying locked
+## with a soldier's neighbours in one particular direction: SHIELD_WALL's frontal melee/
+## missile defense, and TESTUDO's all-round missile cover and melee-output penalty. A
+## soldier genuinely surrounded in either of these can individually "break" -- see
+## SoldierEncirclement. SQUARE/SCHILTRON are deliberately excluded: their whole point is an
+## all-around stance built to be attacked from every side at once, so being surrounded is
+## the design working as intended, not a breakdown to react to.
+func breaks_under_encirclement() -> bool:
+	return formation_mode == FORMATION_SHIELD_WALL or formation_mode == FORMATION_TESTUDO
+
+
 ## Offensive-output scale from the formation stance. Both square variants hunker to
 ## defend on every side, so they hit softer -- schiltron harder still than orbis
 ## (SCHILTRON_ATTACK_FACTOR < SQUARE_ATTACK_FACTOR), trading offence for the stronger
@@ -2985,6 +2996,19 @@ var _prone_easing_active: bool = false
 # prone (KAPPA_P); restored at RHO_STAMINA per second in SoldierBodies.step. Low stamina
 # reduces both offence and active defence through SoldierCombat.stamina_factor (g(sigma)).
 var _sim_soldier_stamina: PackedFloat32Array = PackedFloat32Array()
+
+# Per-soldier "broken from the shield-lock" flag (1 = broken, 0 = holding), index-aligned
+# with _sim_soldier_pos: recomputed every tick by SoldierEncirclement.accumulate for a
+# SHIELD_WALL/TESTUDO unit's engaged soldiers only (see breaks_under_encirclement() and that
+# class's own doc comment) -- every other formation, and every soldier SoldierEncirclement
+# doesn't currently touch, stays 0. A soldier genuinely contacted by enemies spanning more
+# than a single facing's hemisphere can't be defended by either stance's shield-lock
+# assumption any more, so it fights as an unmodified individual (SoldierMelee.resolve reads
+# this per soldier to drop the stance's attack/defense multiplier for just that one body) and
+# steers toward the widest gap between its attackers instead of holding its formation slot.
+# Cleared the instant the soldier is no longer surrounded -- no latch/hysteresis, so "breaks"
+# and "rejoins" both track the live contact geometry tick to tick.
+var _sim_soldier_broken: PackedByteArray = PackedByteArray()
 
 # Persistent per-soldier file (column) assignment for file_major_reform, index-aligned with
 # _sim_soldier_pos: _sim_soldier_file[i] is soldier i's file id (0..files-1). Kept in sync
@@ -5092,19 +5116,32 @@ const PRONE_COLOR: Color = Color(0.22, 0.22, 0.22, 0.80)   # dark grey, 80% alph
 # hues) so it reads unambiguously at a glance.
 const ENGAGED_HIGHLIGHT_COLOR: Color = Color(1.0, 0.80, 0.05)
 
+# Always-on visual (not a debug toggle -- see _sim_soldier_broken's own doc comment): tints a
+# soldier that has individually broken from its unit's shield-lock under encirclement. A
+# distinct hue from ENGAGED_HIGHLIGHT_COLOR's amber so the two never read as the same thing --
+# a broken soldier is a real gameplay-relevant state change the player should be able to see
+# at a glance, not an opt-in dev overlay.
+const BROKEN_HIGHLIGHT_COLOR: Color = Color(0.85, 0.15, 0.15)
+
 
 ## Which color a single soldier's mark should draw in this frame -- prone always wins (a felled
-## soldier's dark tint is a more important signal than the debug highlight), otherwise the
-## engaged highlight applies only when the debug toggle is on AND this soldier is actually in
-## the engaged set, else the normal white. `prone_progress` (0 = standing, 1 = fully fallen)
-## LERPS toward PRONE_COLOR rather than switching to it at a threshold, so the tint eases in
-## alongside the pose transform instead of snapping the instant the soldier goes down -- at
-## the exact endpoints (0.0 / 1.0) this returns the identical colors the old boolean form did.
-## Pure -- a function of its three args only, so it's directly unit-testable without a live
-## MultiMesh (whose instance data isn't synchronously readable back in headless tests -- see
-## the MultiMesh instance-transform gotcha this mirrors).
-static func _soldier_render_color(prone_progress: float, engaged_highlight_on: bool, is_engaged: bool) -> Color:
-	var base: Color = ENGAGED_HIGHLIGHT_COLOR if (engaged_highlight_on and is_engaged) else Color.WHITE
+## soldier's dark tint is a more important signal than either highlight), then the broken tint
+## (a real gameplay state, always shown), then the engaged debug highlight (opt-in, only when
+## the debug toggle is on AND this soldier is actually in the engaged set), else the normal
+## white. `prone_progress` (0 = standing, 1 = fully fallen) LERPS toward PRONE_COLOR rather than
+## switching to it at a threshold, so the tint eases in alongside the pose transform instead of
+## snapping the instant the soldier goes down -- at the exact endpoints (0.0 / 1.0) this returns
+## the identical colors the old boolean form did. Pure -- a function of its four args only, so
+## it's directly unit-testable without a live MultiMesh (whose instance data isn't
+## synchronously readable back in headless tests -- see the MultiMesh instance-transform
+## gotcha this mirrors).
+static func _soldier_render_color(prone_progress: float, engaged_highlight_on: bool, is_engaged: bool,
+		is_broken: bool = false) -> Color:
+	var base: Color = Color.WHITE
+	if is_broken:
+		base = BROKEN_HIGHLIGHT_COLOR
+	elif engaged_highlight_on and is_engaged:
+		base = ENGAGED_HIGHLIGHT_COLOR
 	# Special-cased at the exact endpoints rather than trusting lerp(..., 1.0)/lerp(..., 0.0)
 	# to land bit-exact -- floating-point rounding through the lerp arithmetic can differ from
 	# the literal constant in the last bit, which fails an exact Color equality check even
@@ -5437,7 +5474,8 @@ func _refresh_flock_render(delta: float) -> void:
 		_mm_body.set_instance_transform_2d(i, t)
 		_mm_outline.set_instance_transform_2d(i, t)
 		var is_engaged: bool = engaged_highlight_on and engaged_lookup[i] == 1
-		_mm_body.set_instance_color(i, _soldier_render_color(pp, engaged_highlight_on, is_engaged))
+		var is_broken: bool = not far_tier and i < _sim_soldier_broken.size() and _sim_soldier_broken[i] == 1
+		_mm_body.set_instance_color(i, _soldier_render_color(pp, engaged_highlight_on, is_engaged, is_broken))
 		_mm_outline.set_instance_color(i, Color.WHITE)
 		if _detailed_lod:
 			_mm_facing_pip.set_instance_transform_2d(i, _facing_pip_transform(pp, sf, pos))

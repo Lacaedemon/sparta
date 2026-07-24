@@ -4511,6 +4511,33 @@ func test_soldier_render_color_eases_toward_prone_at_intermediate_progress() -> 
 	assert_ne(mid, Unit.PRONE_COLOR, "half-fallen isn't yet the full prone tint")
 
 
+# --- _soldier_render_color: the always-on broken-formation highlight (SoldierEncirclement) ----
+
+func test_soldier_render_color_broken_wins_over_the_engaged_debug_highlight() -> void:
+	# A broken soldier is a real gameplay state change, not an opt-in debug overlay -- it
+	# takes precedence over the engaged-highlight toggle even when both would otherwise apply.
+	assert_eq(Unit._soldier_render_color(0.0, true, true, true), Unit.BROKEN_HIGHLIGHT_COLOR,
+		"broken wins over the engaged highlight")
+
+
+func test_soldier_render_color_broken_shows_even_with_the_engaged_toggle_off() -> void:
+	# Unlike the engaged highlight, the broken tint is never gated behind Settings.show_engaged_highlight.
+	assert_eq(Unit._soldier_render_color(0.0, false, false, true), Unit.BROKEN_HIGHLIGHT_COLOR,
+		"broken shows regardless of the debug toggle")
+
+
+func test_soldier_render_color_prone_wins_over_broken() -> void:
+	# A felled soldier's dark tint is a more important signal than either highlight.
+	assert_eq(Unit._soldier_render_color(1.0, false, false, true), Unit.PRONE_COLOR,
+		"fully prone beats the broken highlight too")
+
+
+func test_soldier_render_color_defaults_to_not_broken() -> void:
+	# The is_broken parameter defaults to false, so every pre-existing 3-argument call site
+	# keeps its old behavior unchanged.
+	assert_eq(Unit._soldier_render_color(0.0, false, false), Color.WHITE)
+
+
 # --- drag-to-form-up: deploy facing on arrival ----------
 
 func test_deploy_facing_pivots_on_arrival() -> void:
