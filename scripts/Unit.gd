@@ -3165,6 +3165,27 @@ func live_soldier_centroid() -> Vector2:
 	return sum / float(_sim_soldier_pos.size())
 
 
+## The average LIVE position of the `count` soldiers nearest `local_point` (parent-local,
+## same frame as `position` -- see _sim_soldier_pos's own doc comment), or a non-finite
+## Vector2 when the soldier layer is empty. More representative than live_soldier_centroid()
+## when only a SUBSET of the block is actually near the point of interest: averaging every
+## soldier in the whole regiment can land well outside where anyone specific actually is once
+## the block has spread out (a still-forming battle line with rear ranks not yet engaged,
+## knockback carrying some bodies away from the rest).
+func live_soldiers_near(local_point: Vector2, count: int) -> Vector2:
+	if _sim_soldier_pos.is_empty() or count <= 0:
+		return Vector2(NAN, NAN)
+	var indices: Array = range(_sim_soldier_pos.size())
+	indices.sort_custom(func(a, b):
+		return _sim_soldier_pos[a].distance_squared_to(local_point) \
+			< _sim_soldier_pos[b].distance_squared_to(local_point))
+	var n: int = mini(count, indices.size())
+	var sum: Vector2 = Vector2.ZERO
+	for i in range(n):
+		sum += _sim_soldier_pos[indices[i]]
+	return sum / float(n)
+
+
 func soldier_world_slots(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	var slots := formation_slots(count)

@@ -311,13 +311,19 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 			# every other soldier-layer-to-chrome conversion in this file.
 			edge = u.global_position + (dead_local_centroid - u.position)
 		else:
-			var live_centroid: Vector2 = u.live_soldier_centroid()
+			# No exact per-death data (see this function's own doc comment for when --
+			# most commonly the very first strike after contact, before the engaged-tier
+			# latch sets). Bias toward the soldiers nearest the attacker rather than
+			# averaging the WHOLE block: a still-forming battle line (rear ranks not yet
+			# engaged) or a knockback-spread block can have live bodies scattered far from
+			# where this specific strike actually landed, and a whole-block average lands
+			# in the gap between them, not at either. `attacker.position` is already in the
+			# same parent-local frame as `u`'s own soldier positions (both share the same
+			# Battle parent), so no conversion is needed. Falls back to the whole-block
+			# centroid when there's no attacker to bias toward (e.g. disengage_with_sacrifice).
+			var live_centroid: Vector2 = u.live_soldiers_near(attacker.position, maxi(total, 1)) \
+				if is_instance_valid(attacker) else u.live_soldier_centroid()
 			if live_centroid.is_finite():
-				# No exact per-death data (see this function's own doc comment for when --
-				# most commonly the very first strike after contact, before the engaged-tier
-				# latch sets), but this unit DOES have live soldier bodies: anchor on their
-				# current centroid rather than the idealized formation-slot geometry below,
-				# which can already have scattered away from them.
 				edge = u.global_position + (live_centroid - u.position)
 			else:
 				# No soldier layer at all: fall back to the idealized formation geometry,
