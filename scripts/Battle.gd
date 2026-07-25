@@ -1238,6 +1238,12 @@ func _on_soldier_tick() -> void:
 	# engaged_soldier_indices() call may also rebuild elsewhere this tick -- the two never
 	# share a cache key, so `frame` here doesn't need to match or offset against that one.
 	SoldierMeleeStandoff.accumulate(units, frame)
+	# Per-soldier encirclement (breaks a SHIELD_WALL/TESTUDO soldier to individual melee once
+	# it's genuinely surrounded): ADDS its own retreat bias into `_sim_steer`, same composition
+	# rule as SoldierMeleeStandoff just above -- must run after it and before the enemy-contact/
+	# step passes below read `_sim_steer` as this tick's feed-forward. Own dedicated spatial-hash
+	# cache (SoldierEncirclementProximity), so `frame` here needs no offset against anything else.
+	SoldierEncirclement.accumulate(units, frame)
 	# Distinct (always-negative) cache key: SoldierSpatialHash.rebuild is idempotent per key
 	# within a tick, and this pass gathers a different position set (cross-team engaged
 	# pairs, no friendly-contact-tier expansion) than SoldierSteering's own rebuild above, so

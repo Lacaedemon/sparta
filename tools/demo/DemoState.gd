@@ -128,14 +128,19 @@ static func vec2_pair(v: Vector2, places: int = 2) -> Array:
 
 
 ## Summarize a regiment's per-soldier bodies without dumping the full 44-byte/soldier arrays.
-## Given the world-space soldier positions and the prone timers (index-aligned; prone > 0 means
-## down), returns {count, centroid:[x,y], bbox:[w,h], prone_count}. An empty body list yields a
+## Given the world-space soldier positions, the prone timers (index-aligned; prone > 0 means
+## down), and optionally the encirclement-broken flags (index-aligned; 1 means the soldier has
+## individually broken from a SHIELD_WALL/TESTUDO stance -- see Unit._sim_soldier_broken /
+## SoldierEncirclement), returns {count, centroid:[x,y], bbox:[w,h], prone_count, broken_count}.
+## `broken` defaults to an empty array (every pre-existing 2-argument call site keeps reading
+## broken_count as 0, matching a formation that never breaks). An empty body list yields a
 ## zeroed summary (centroid [0,0], bbox [0,0], counts 0) so a routed/empty unit still serializes.
-## Pure: reads only its two array arguments.
-static func soldier_summary(positions: PackedVector2Array, prone: PackedFloat32Array) -> Dictionary:
+## Pure: reads only its array arguments.
+static func soldier_summary(positions: PackedVector2Array, prone: PackedFloat32Array,
+		broken: PackedByteArray = PackedByteArray()) -> Dictionary:
 	var count: int = positions.size()
 	if count == 0:
-		return {"count": 0, "centroid": [0.0, 0.0], "bbox": [0.0, 0.0], "prone_count": 0}
+		return {"count": 0, "centroid": [0.0, 0.0], "bbox": [0.0, 0.0], "prone_count": 0, "broken_count": 0}
 	var sum: Vector2 = Vector2.ZERO
 	var min_p: Vector2 = positions[0]
 	var max_p: Vector2 = positions[0]
@@ -151,11 +156,17 @@ static func soldier_summary(positions: PackedVector2Array, prone: PackedFloat32A
 	for i in range(count):
 		if i < prone_n and prone[i] > 0.0:
 			prone_count += 1
+	var broken_count: int = 0
+	var broken_n: int = broken.size()
+	for i in range(count):
+		if i < broken_n and broken[i] == 1:
+			broken_count += 1
 	return {
 		"count": count,
 		"centroid": vec2_pair(centroid),
 		"bbox": [round_to(max_p.x - min_p.x), round_to(max_p.y - min_p.y)],
 		"prone_count": prone_count,
+		"broken_count": broken_count,
 	}
 
 
@@ -300,7 +311,7 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 	# requested" (a close-tier dump without SPARTA_DEMO_STATE_FULL, which still gets the
 	# compact soldier_summary but no soldiers_full arrays).
 	if u.tier != FormationTier.FAR:
-		rec["soldier_summary"] = soldier_summary(u._sim_soldier_pos, u._sim_prone)
+		rec["soldier_summary"] = soldier_summary(u._sim_soldier_pos, u._sim_prone, u._sim_soldier_broken)
 		rec["soldier_summary_m"] = soldier_summary_m(u._sim_soldier_pos, WorldScaleRef.WU_PER_M)
 		if full:
 			rec["soldiers_full"] = soldier_arrays(u)
@@ -336,6 +347,9 @@ static func soldier_arrays(u: Node) -> Dictionary:
 	var slots: Array = []
 	for s in u.soldier_world_slots(u.soldiers):
 		slots.append(vec2_pair(s))
+	var broken: Array = []
+	for b in u._sim_soldier_broken:
+		broken.append(int(b))
 	return {
 		"pos": positions,
 		"facing": facings,
@@ -343,6 +357,7 @@ static func soldier_arrays(u: Node) -> Dictionary:
 		"hp": rounded_floats(u._sim_soldier_hp),
 		"prone": rounded_floats(u._sim_prone),
 		"stamina": rounded_floats(u._sim_soldier_stamina),
+		"broken": broken,
 	}
 
 

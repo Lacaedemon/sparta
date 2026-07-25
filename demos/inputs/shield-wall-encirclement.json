@@ -1,0 +1,14 @@
+{
+  "_comment": "A player Infantry unit stands in Shield Wall between two enemy Infantry units spawned directly ahead and directly behind it. Team 0 stays put by default; both team-1 units march straight at the only enemy they can see, so the wall ends up struck from front and rear at once -- genuine encirclement, not just a flank brush. Watch soldier_summary.broken_count in the state dump: verified locally (seed 12345) it reads 0 while only the rear unit is in contact (~tick 210-240), jumps sharply once the front unit also closes and both sides are FIGHTING (~tick 270, over a third of the defenders broken at once), then falls back to 0 once the rear attacker is destroyed and only one side remains -- the individually surrounded soldiers rejoin their formation the instant the encirclement clears, exactly as the mechanic intends. A handful of soldiers occasionally show broken again later even with only one attacking unit left -- real flank/envelopment contact from a single unit's own soldiers wrapping around a defender, not a second attacker.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 640, "y": 400, "facing": [0, 1], "count": 50, "formation": 4},
+    {"team": 1, "type": "Infantry", "x": 640, "y": 600, "facing": [0, -1], "count": 15},
+    {"team": 1, "type": "Infantry", "x": 640, "y": 200, "facing": [0, 1], "count": 15}
+  ],
+  "camera": [
+    {"tick": 0, "x": 640.0, "y": 400.0, "zoom": 0.9}
+  ],
+  "steps": [],
+  "state": [60, 120, 180, 210, 240, 270, 300, 330, 360, 420, 480, 540, 600, 660, 720]
+}

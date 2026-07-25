@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure logic-preserving optimization (distance_to -> distance_squared_to with squared thresholds) in AI targeting/leader scans. No player-visible or sim-state-visible change -- a recorded clip would be byte-for-byte identical to one recorded before this PR."
+}
