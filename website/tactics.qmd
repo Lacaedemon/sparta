@@ -1037,7 +1037,13 @@ fastest from a stand and tightens its turn rate the faster it's already moving
 (down to 40% of the stationary rate at a full sprint), reflecting the real
 lateral force a moving body or formation can exert without losing footing or
 cohesion. So a turn ordered from a standstill snaps around quickest; one
-ordered mid-charge takes noticeably longer to come about.
+ordered mid-charge takes noticeably longer to come about. A second, independent
+cap holds for a wide, fast-cruising formation (cavalry above all): the pivot
+also never asks a soldier's own body to redirect its cruising velocity faster
+than that soldier's own acceleration allows, so a broad block sprinting into a
+sustained course correction turns more deliberately still than the speed taper
+alone would call for --- trading a slower turn for keeping its ranks intact
+instead of smearing out of formation.
 
 Speed itself isn't instant either: a unit **ramps up** to its target pace
 (walk, jog, or sprint) and **ramps down** when slowing or stopping, rather than
