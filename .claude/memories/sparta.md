@@ -940,6 +940,97 @@ a fix that silently does nothing. This is the same "never assume; always verify"
 `preferences.md` states generally, applied specifically to a bug's root-cause narrative,
 not just its resolution status.
 
+## After implementing a fix, verify it actually engages the reported bug's real code path
+
+The entry above ("verify an issue's own stated root cause empirically") covers checking the
+DIAGNOSIS before implementing. This is the companion check AFTER implementing: a fix can be
+logically correct for the code path you touched, compile, pass its own new unit tests, and
+still leave the originally-reported bug completely unfixed — because the real-world scenario
+that triggers the bug turns out to route through a DIFFERENT code path than the one the fix
+covers. Passing tests for the path you fixed proves nothing about whether that's the path
+the bug actually takes.
+
+**Concrete case:** issue #1072 diagnosed the Fallen casualty-heap VFX spawning at a stale
+formation-geometry location instead of the dying soldiers' live position, and named
+`SoldierMelee.reap()`'s per-soldier casualty path as the fix point (PR #1074). The first
+implementation threaded the dying soldiers' exact live centroid through that path, added
+passing unit tests, and looked done. Only building an actual before/after visual proof (the
+same technique the issue's own investigation used — rendering the exact reported reproduction
+script at the exact reported tick, on `main` vs the branch) revealed the two frames were
+**pixel-identical** — the fix had zero effect on the reported scenario. Root cause:
+`SoldierMelee.reap()` is only reached once a unit's engaged-tier latch has set
+(`Unit.is_engaged()`), which requires at least one PRIOR tick of `state == FIGHTING` (the
+latch, `tick_engaged()`, runs after `_think()` in the same physics step) — so the VERY FIRST
+strike after fresh contact always falls through to the regiment-formula fallback path
+instead. Every one of the reported scenario's three casualty events was exactly that first-
+strike case; the per-soldier path the fix touched never fired at all for this bug. Required a
+second fallback tier (anchoring on the unit's own live soldier bodies when exact per-death
+data isn't available, instead of the stale formation geometry) to actually fix the reported
+case — see the follow-up entry below for how even THAT fallback still needed a further round
+of the same lesson, and how the whole mechanism was eventually redesigned away.
+
+**How to apply:** before considering a fix complete, reproduce the ORIGINAL reported scenario
+(not just a hand-built unit-test fixture) and confirm observably that the previously-buggy
+behavior no longer occurs — a real before/after comparison (frame diff, state dump, or
+equivalent), not just "my new tests pass." If a before/after comparison shows NO difference
+at all where a real behavioral change was expected, that's a strong signal the fix's code
+path isn't the one actually exercised by the report — instrument the specific branch/gate
+(`is_engaged()`, a feature flag, an early return) to find out which path really fires before
+assuming the fix needs to be bigger, smaller, or different. A unit test built around your own
+mental model of "how the bug happens" inherits that same blind spot; only a reproduction of
+the ORIGINAL report is immune to it. (`Lacaedemon/sparta` issue #1072, PR #1074, 2026-07-25.)
+
+### Follow-up round: the same lesson recurred, then a design pivot to bottom-up physics
+
+The Fallen-heap saga above didn't end with PR #1074. A separate demo (`spear-standoff.json`,
+from PR #1075, an unrelated attack-cadence change) still showed casualties "appearing out of
+nowhere" after #1074 merged — the user caught this directly by eye. Investigating it surfaced
+TWO further lessons on top of the one above, both worth carrying forward:
+
+1. **The same "verify against the real scenario" lesson bit a SECOND time, on the fallback
+   tier itself.** #1074's second-tier fallback (anchoring on the unit's live soldier bodies
+   when no exact per-death data exists) averaged the WHOLE regiment — a real, provable flaw
+   (a unit test with a deliberately split formation showed the average landing in the gap
+   between two clusters). The obvious fix was to bias that average toward the soldiers
+   nearest the attacker instead. But re-verifying against the ACTUAL `spear-standoff` demo
+   (not just the constructed unit-test case) showed the fix changed NOTHING for that specific
+   scenario — the block wasn't spread into separate clusters at the casualty tick, so the old
+   whole-block average and the new near-attacker-biased average came out nearly identical.
+   The fix was still logically correct and worth keeping (proven by the isolated test), but it
+   was not what was actually causing the visible symptom in the reported case. **How to
+   apply:** even a fix built specifically IN RESPONSE to a "verify the real scenario" lesson
+   still needs that same verification applied to itself — don't let fixing one instance of the
+   lesson exempt the next fix from it.
+2. **What actually explained the demo's symptom was a THIRD, distinct mechanism**: `Fallen.gd`
+   already documented (in its own doc comment) that the heap is deliberately stationary once
+   spawned, "fading into the ground as the fight moves on." A charging formation can advance
+   far enough in under a second to visibly leave a CORRECTLY-spawned heap behind — confirmed
+   by comparing the unit's own `soldier_summary.centroid` at the death tick against 40 ticks
+   later (a ~40-world-unit advance in ~0.6s). This was filed as its own issue (#1076) rather
+   than fixed unilaterally, since "should a cosmetic death-mark track the living formation" is
+   a genuine design question, not a bug — then closed once the user confirmed directly that a
+   fallen soldier's mark should reflect where it died, not follow the survivors afterward
+   (the intended behavior all along, once the OTHER two issues were actually fixed).
+
+**The design pivot.** Asked directly what the "heap" mechanic even was, and on hearing the
+explanation, the user's call (echoing "remember: no top down abstractions") was to eliminate
+the whole "compute one representative point per casualty event, then scatter a synthetic
+pattern of marks around it" design outright — not just keep patching which point gets chosen.
+PR #1078 replaced it: every dying soldier now gets its own mark at its own real live position
+(exact positions from `SoldierMelee.reap()` when available; the real positions of the nearest
+live soldiers to the attacker as a fallback when not). No more averaging, no more golden-angle
+fake scatter. This is a DIRECT instance of this file's own "Standing design philosophy:
+bottom-up physics, no top-down gimmicks" section (above) — previously stated and applied only
+to gameplay/combat mechanics (knockback, collision, morale), but it turned out to apply just
+as cleanly to a purely cosmetic rendering system: an aggregate-and-scatter VFX is the same
+shape of top-down shortcut as a flat combat modifier, just one layer further from gameplay.
+**How to apply:** when a cosmetic/rendering system is accumulating fallback tiers and
+special-case math to approximate "where did this event actually happen," consider whether the
+underlying real per-entity data (already computed, already available) can be shown directly
+instead of being reduced to one synthetic representative point — the direct version is often
+BOTH simpler and more correct than the aggregate one, on this codebase's own terms.
+(`Lacaedemon/sparta` issues #1076/#1077, PRs #1078, 2026-07-25.)
+
 ## A freshly-constructed test Unit defaults to morale 100 — routing tests can auto-rally instantly
 
 `Unit.gd`'s `morale` field defaults to `100.0`. A GUT test that constructs a bare `Unit`
