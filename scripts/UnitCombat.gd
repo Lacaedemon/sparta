@@ -261,8 +261,12 @@ static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
 ## stance, schiltron included. `dead_local_centroid` is the average LIVE `_sim_soldier_pos` of
 ## the soldiers who actually just died (parent-local, same frame as `position` -- see that
 ## field's doc comment), when the caller has a per-soldier layer to read it from
-## (SoldierMelee.reap()); it defaults to a non-finite sentinel when no such data exists (the
-## regiment-formula path, or a caller that reduces `soldiers` directly with no soldier array).
+## (SoldierMelee.reap()); it defaults to a non-finite sentinel when no such data exists. That
+## covers more than "no soldier layer at all": the regiment-formula path (take_casualties) also
+## takes the VERY FIRST strike after a fresh contact, before the engaged-tier latch sets
+## (is_engaged() reads false for one tick -- see Unit.tick_engaged), so even a unit with a full
+## soldier layer can land here with no per-death data for that one hit. The cosmetic Fallen-heap
+## placement below has its own second-tier fallback for exactly that case.
 static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flank: float,
 		dead_local_centroid: Vector2 = Vector2(NAN, NAN)) -> void:
 	var morale_scale: float = 1.0 + REAR_MORALE_EXTRA * (morale_flank - 1.0)
@@ -307,18 +311,26 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 			# every other soldier-layer-to-chrome conversion in this file.
 			edge = u.global_position + (dead_local_centroid - u.position)
 		else:
-			# No live per-soldier data (the regiment-formula path, or a caller that reduces
-			# `soldiers` directly): fall back to the idealized formation geometry, measured
-			# from the block's footprint centre (block_centre_offset) and leaning toward
-			# where the blow came from.
-			edge = u.global_position + u.block_centre_offset()
-			if is_instance_valid(attacker):
-				# World-space throughout: edge is global-space, so the direction to the
-				# attacker must be a global delta too. Mixing in local `position` would skew
-				# the offset if the units' parent ever had a non-identity transform.
-				var toward: Vector2 = attacker.global_position - edge
-				if toward.length() > 0.001:
-					edge += toward.normalized() * u._block_extent
+			var live_centroid: Vector2 = u.live_soldier_centroid()
+			if live_centroid.is_finite():
+				# No exact per-death data (see this function's own doc comment for when --
+				# most commonly the very first strike after contact, before the engaged-tier
+				# latch sets), but this unit DOES have live soldier bodies: anchor on their
+				# current centroid rather than the idealized formation-slot geometry below,
+				# which can already have scattered away from them.
+				edge = u.global_position + (live_centroid - u.position)
+			else:
+				# No soldier layer at all: fall back to the idealized formation geometry,
+				# measured from the block's footprint centre (block_centre_offset) and
+				# leaning toward where the blow came from.
+				edge = u.global_position + u.block_centre_offset()
+				if is_instance_valid(attacker):
+					# World-space throughout: edge is global-space, so the direction to the
+					# attacker must be a global delta too. Mixing in local `position` would
+					# skew the offset if the units' parent ever had a non-identity transform.
+					var toward: Vector2 = attacker.global_position - edge
+					if toward.length() > 0.001:
+						edge += toward.normalized() * u._block_extent
 		# Cavalry leave bigger bodies (matching their larger live marks); foot the default.
 		var body_r: float = Unit.CAV_MARK_RADIUS if u.is_cavalry else Unit.MARK_RADIUS
 		Fallen.spawn(u.get_parent(), edge, u.team_color, total, body_r)

@@ -3139,6 +3139,21 @@ func soldier_id(index: int) -> int:
 var _step_slots_for_couple: PackedVector2Array = PackedVector2Array()
 var _step_slots_for_couple_valid: bool = false
 
+## The average LIVE position of every one of this unit's simulated soldier bodies
+## (parent-local, same frame as `position` -- see _sim_soldier_pos's own doc comment),
+## or a non-finite Vector2 when the soldier layer is empty/unseeded. A cheap, honest
+## stand-in for "where is this regiment's body of men actually standing right now" --
+## unlike the idealized formation-slot geometry, which can already have scattered away
+## from the live bodies (a melee clash, casualties still compacting).
+func live_soldier_centroid() -> Vector2:
+	if _sim_soldier_pos.is_empty():
+		return Vector2(NAN, NAN)
+	var sum: Vector2 = Vector2.ZERO
+	for p in _sim_soldier_pos:
+		sum += p
+	return sum / float(_sim_soldier_pos.size())
+
+
 func soldier_world_slots(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	var slots := formation_slots(count)

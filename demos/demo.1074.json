@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "This fixes where a purely cosmetic Fallen casualty-heap spawns, not what it looks like: the heap now anchors on the dying soldiers' own live position (a few world units, mid-melee) instead of the unit's idealized formation-slot edge. The difference is a small dark blob shifting position by a body-width or two during a chaotic multi-soldier clash -- not legible in a compressed demo clip at normal playback speed. The fix is verified directly: test_reap_anchors_the_fallen_heap_at_the_dying_soldiers_live_position asserts the heap's exact spawn position against the dying soldiers' captured live positions, and test_register_casualties_falls_back_to_formation_geometry_with_no_live_soldier_data pins the unchanged fallback for callers with no soldier layer. The original report (#1072) already did the frame-by-frame video investigation that found this bug; re-showing it in a new clip would not add signal beyond what those tests already pin."
+  "input": "demos/inputs/routing-terrain-pathfinding.json",
+  "caption": "The dying-soldier casualty heap now drops among the ranks where the men actually fell, not floating alone in empty ground. Watch the crowd around 1.8s (first contact): the dark casualty marks appear nestled between the soldier files, not detached at the flanks. Before/after crops in the PR description show the difference clearly at zoom -- this same input script is issue #1072's own reproduction.",
+  "fixed_fps": 60,
+  "max_frames": 200,
+  "fps": 24,
+  "width": 960
 }

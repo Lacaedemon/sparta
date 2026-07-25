@@ -13,6 +13,29 @@ older hand-authored/recorded `replay` path (documented in the main `sparta.md`
 quick reuse of `demos/showcase.json`, but prefer scripted input for anything that
 shows a specific player gesture.
 
+## Standing rule: "not legible in a compressed clip" is never a valid reason to skip
+
+Don't reach for `demos/demo.<slug>.json`'s `skip: true` because the change "isn't
+legible in a compressed clip" or is "too subtle to show at demo scale." That
+excuse doesn't hold up: if a bug was found (or could be found) by zooming into a
+specific frame — exactly how many of the incidents in this file and `sparta.md`
+were actually diagnosed (frame-by-frame video review, cropped/upscaled PNG
+comparisons, `SPARTA_DEMO_FRAMES` captures at precise ticks) — the FIX is provable
+the same way. A compressed auto-recorded GIF at normal playback speed is the
+wrong tool for a subtle positional/cosmetic change; a **before/after crop pair**
+(one frame from `main`, one from the branch, at the exact tick the effect is
+visible, cropped/upscaled to the relevant few dozen pixels, per "Upscale crops to
+verify few-pixel render detail" above) usually is not. Reach for that — embedded
+in the PR description per CLAUDE.md's "Static features: images in the PR
+description" section — before concluding a change genuinely can't be shown.
+
+Reserve `skip: true` for changes with no rendered manifestation at all (an
+internal refactor, a data-model change nothing draws differently, a CI/tooling
+change) — never for "the difference exists on screen but is small." (Corrected
+directly by the user on PR #1074, 2026-07-24: the fix's own bug report was found
+by zooming into a specific video frame; the fix needed the same treatment, not a
+skip.)
+
 ## Standing rule: always check a demo thoroughly for unnatural behavior, not just the claimed feature
 
 Before treating a demo/recording as verified, watch (or dump-state) the **whole
