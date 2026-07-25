@@ -304,7 +304,7 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 			# convert the parent-local centroid to world space the same way
 			# block_centre_offset()'s "world-aligned" local delta is below -- added directly
 			# on top of global_position rather than re-derived through to_global(), matching
-			# every other soldier-layer-to-chrome conversion in this file (#1072).
+			# every other soldier-layer-to-chrome conversion in this file.
 			edge = u.global_position + (dead_local_centroid - u.position)
 		else:
 			# No live per-soldier data (the regiment-formula path, or a caller that reduces

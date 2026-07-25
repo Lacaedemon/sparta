@@ -737,12 +737,12 @@ func test_reformed_block_holds_frontage_and_closes_up_after_casualties() -> void
 			"reformed slot %d stays within the block's frontage" % i)
 
 
-# --- Fallen casualty-heap anchoring (#1072) ---------------------------------------
+# --- Fallen casualty-heap anchoring ------------------------------------------------
 
 func test_reap_anchors_the_fallen_heap_at_the_dying_soldiers_live_position() -> void:
 	# The cosmetic Fallen heap must drop where the dying soldiers actually stood, not at
 	# the unit's idealized formation-slot geometry -- which can already have scattered away
-	# from the live bodies mid-melee (#1072).
+	# from the live bodies mid-melee.
 	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
 	var live_pos := Vector2(500.0, -300.0)
 	for i in range(u._sim_soldier_pos.size()):

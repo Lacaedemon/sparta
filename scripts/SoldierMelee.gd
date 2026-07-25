@@ -250,7 +250,7 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 ## never shifts an index still to be checked. Averages the dying soldiers' own live
 ## `_sim_soldier_pos` (captured before they're spliced out) so the cosmetic Fallen heap
 ## drops where these men actually stood, not at the unit's idealized formation-slot
-## geometry — which can have already scattered away from the live bodies mid-melee (#1072).
+## geometry — which can have already scattered away from the live bodies mid-melee.
 static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 	var dead: int = 0
 	var dead_pos_sum: Vector2 = Vector2.ZERO
