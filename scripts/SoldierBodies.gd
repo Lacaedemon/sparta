@@ -59,6 +59,8 @@ static func seed(unit: Unit) -> void:
 	unit._sim_soldier_stamina = PackedFloat32Array()
 	unit._sim_soldier_stamina.resize(unit._sim_soldier_pos.size())
 	unit._sim_soldier_stamina.fill(unit.combat_profile()["max_stamina"])
+	unit._sim_soldier_broken = PackedByteArray()
+	unit._sim_soldier_broken.resize(unit._sim_soldier_pos.size())   # 0 = holding formation
 	# Loadout type ids: every soldier carries its unit's interned weapon/shield
 	# type (see LoadoutRegistry) — an id into the shared registry, not an object.
 	unit._sim_soldier_weapon_id = PackedInt32Array()
@@ -117,6 +119,8 @@ static func step(unit: Unit, delta: float) -> void:
 			unit._sim_soldier_hp[j] = maxhp
 	if unit._sim_prone.size() != n:
 		unit._sim_prone.resize(n)   # index-aligned; a fresh tail body stands (0)
+	if unit._sim_soldier_broken.size() != n:
+		unit._sim_soldier_broken.resize(n)   # index-aligned; a fresh tail body starts holding formation (0)
 	var maxs: float = unit.combat_profile()["max_stamina"]
 	if unit._sim_soldier_stamina.size() != n:
 		# Keep the stamina pool index-aligned; any newly-added body arrives at full stamina.
