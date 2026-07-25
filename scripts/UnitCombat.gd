@@ -258,8 +258,13 @@ static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
 ## body count, not a double-counted multiplier. Callers pass their flank (1.0 = frontal/melee).
 ## The orbis (FORMATION_SQUARE) last-stand ring further scales down the base erosion via
 ## formation_morale_erosion_factor -- it holds its nerve better under losses than any other
-## stance, schiltron included.
-static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flank: float) -> void:
+## stance, schiltron included. `dead_local_centroid` is the average LIVE `_sim_soldier_pos` of
+## the soldiers who actually just died (parent-local, same frame as `position` -- see that
+## field's doc comment), when the caller has a per-soldier layer to read it from
+## (SoldierMelee.reap()); it defaults to a non-finite sentinel when no such data exists (the
+## regiment-formula path, or a caller that reduces `soldiers` directly with no soldier array).
+static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flank: float,
+		dead_local_centroid: Vector2 = Vector2(NAN, NAN)) -> void:
 	var morale_scale: float = 1.0 + REAR_MORALE_EXTRA * (morale_flank - 1.0)
 	# Fraction-of-force scaled, not a flat per-head amount -- see Unit.MORALE_LOSS_PER_FULL_LOSS.
 	var casualty_frac: float = float(total) / float(u.max_soldiers) if u.max_soldiers > 0 else 0.0
@@ -287,23 +292,33 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 		u._rout()
 		Sfx.play(&"rout")
 
-	# Cosmetic "men fall" markers (Stage C): drop a small fading heap of bodies on the
-	# contact edge where this strike's casualties fell, leaning toward where the blow came
-	# from. Spawned on the deterministic sim tick but render-only -- no sim group, no
-	# Replay.rng -- so it has no simulation/replay/determinism impact. Guarded by
-	# is_inside_tree() like the volley trail and rout shockwave.
+	# Cosmetic "men fall" markers (Stage C): drop a small fading heap of bodies where this
+	# strike's casualties actually fell. Spawned on the deterministic sim tick but
+	# render-only -- no sim group, no Replay.rng -- so it has no simulation/replay/
+	# determinism impact. Guarded by is_inside_tree() like the volley trail and rout
+	# shockwave.
 	if u.is_inside_tree():
-		# Measure from the block's footprint centre (block_centre_offset), not the raw
-		# regiment point: a standing anchor offset shifts the block, and the extent is
-		# measured about that same centre.
-		var edge: Vector2 = u.global_position + u.block_centre_offset()
-		if is_instance_valid(attacker):
-			# World-space throughout: edge is global-space, so the direction to the
-			# attacker must be a global delta too. Mixing in local `position` would skew the
-			# offset if the units' parent ever had a non-identity transform.
-			var toward: Vector2 = attacker.global_position - edge
-			if toward.length() > 0.001:
-				edge += toward.normalized() * u._block_extent
+		var edge: Vector2
+		if dead_local_centroid.is_finite():
+			# The dying soldiers' own live position, known exactly (SoldierMelee.reap()):
+			# convert the parent-local centroid to world space the same way
+			# block_centre_offset()'s "world-aligned" local delta is below -- added directly
+			# on top of global_position rather than re-derived through to_global(), matching
+			# every other soldier-layer-to-chrome conversion in this file (#1072).
+			edge = u.global_position + (dead_local_centroid - u.position)
+		else:
+			# No live per-soldier data (the regiment-formula path, or a caller that reduces
+			# `soldiers` directly): fall back to the idealized formation geometry, measured
+			# from the block's footprint centre (block_centre_offset) and leaning toward
+			# where the blow came from.
+			edge = u.global_position + u.block_centre_offset()
+			if is_instance_valid(attacker):
+				# World-space throughout: edge is global-space, so the direction to the
+				# attacker must be a global delta too. Mixing in local `position` would skew
+				# the offset if the units' parent ever had a non-identity transform.
+				var toward: Vector2 = attacker.global_position - edge
+				if toward.length() > 0.001:
+					edge += toward.normalized() * u._block_extent
 		# Cavalry leave bigger bodies (matching their larger live marks); foot the default.
 		var body_r: float = Unit.CAV_MARK_RADIUS if u.is_cavalry else Unit.MARK_RADIUS
 		Fallen.spawn(u.get_parent(), edge, u.team_color, total, body_r)

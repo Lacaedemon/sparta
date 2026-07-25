@@ -247,11 +247,16 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 ## the melee path leaves it 1.0 (facing is already in the strike rolls), while a ranged
 ## volley passes its regiment-level flank so a shot into the rear routs harder — matching
 ## the regiment-formula path. Deterministic — no RNG; walks high-to-low so a removal
-## never shifts an index still to be checked.
+## never shifts an index still to be checked. Averages the dying soldiers' own live
+## `_sim_soldier_pos` (captured before they're spliced out) so the cosmetic Fallen heap
+## drops where these men actually stood, not at the unit's idealized formation-slot
+## geometry — which can have already scattered away from the live bodies mid-melee (#1072).
 static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 	var dead: int = 0
+	var dead_pos_sum: Vector2 = Vector2.ZERO
 	for i in range(unit._sim_soldier_hp.size() - 1, -1, -1):
 		if unit._sim_soldier_hp[i] <= 0.0:
+			dead_pos_sum += unit._sim_soldier_pos[i]
 			unit._sim_soldier_pos.remove_at(i)
 			unit._sim_body_vel.remove_at(i)
 			unit._sim_soldier_hp.remove_at(i)
@@ -278,7 +283,7 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 	if dead == 0:
 		return
 	unit.soldiers = maxi(0, unit.soldiers - dead)
-	UnitCombat.register_casualties(unit, dead, killer, morale_flank)
+	UnitCombat.register_casualties(unit, dead, killer, morale_flank, dead_pos_sum / float(dead))
 
 
 ## Apply a ranged volley's `casualties` to `target` at the individual level: the men
