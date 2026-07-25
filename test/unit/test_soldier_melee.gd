@@ -735,3 +735,85 @@ func test_reformed_block_holds_frontage_and_closes_up_after_casualties() -> void
 	for i in range(slots.size()):
 		assert_true(absf(slots[i].x) <= front_edge + 0.001,
 			"reformed slot %d stays within the block's frontage" % i)
+
+
+# --- Fallen casualty-heap anchoring ------------------------------------------------
+
+func test_live_soldier_centroid_averages_the_bodies() -> void:
+	var u := _unit(1, 0, 2, Vector2(0, 0), Vector2.DOWN, false)
+	u._sim_soldier_pos[0] = Vector2(10, 0)
+	u._sim_soldier_pos[1] = Vector2(30, 0)
+	assert_almost_eq(u.live_soldier_centroid().distance_to(Vector2(20, 0)), 0.0, 0.001,
+		"the centroid is the plain average of the live body positions")
+
+
+func test_live_soldier_centroid_is_non_finite_with_no_seeded_bodies() -> void:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 4
+	add_child_autofree(u)
+	assert_false(u.live_soldier_centroid().is_finite(),
+		"an unseeded soldier layer has no centroid to report")
+
+
+func test_reap_anchors_the_fallen_heap_at_the_dying_soldiers_live_position() -> void:
+	# The cosmetic Fallen heap must drop where the dying soldiers actually stood, not at
+	# the unit's idealized formation-slot geometry -- which can already have scattered away
+	# from the live bodies mid-melee.
+	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
+	var live_pos := Vector2(500.0, -300.0)
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] = live_pos   # scatter every body far from the formation slot
+	u._sim_soldier_hp[0] = 0.0
+	u._sim_soldier_hp[1] = 0.0
+	SoldierMelee.reap(u, u)
+	assert_eq(u.soldiers, 2, "two men fell")
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	assert_almost_eq(fx.global_position.distance_to(live_pos), 0.0, 0.01,
+		"the heap drops at the dying soldiers' own live position, not the stale formation edge")
+
+
+func test_register_casualties_uses_live_body_centroid_when_no_per_death_data_but_soldiers_exist() -> void:
+	# The regiment-formula path (take_casualties) has no per-death position data -- most
+	# commonly the very first strike after fresh contact, before the engaged-tier latch
+	# sets (is_engaged() reads false for that one tick; see Unit.tick_engaged). This is
+	# NOT a rare edge case: a real bug reproduction hit exactly this path for every one of
+	# its casualty events. The unit still has a live soldier layer, so the
+	# heap must anchor on their current centroid, not the idealized formation-slot edge.
+	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
+	var live_pos := Vector2(500.0, -300.0)
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] = live_pos   # every body scattered to the same live spot
+	UnitCombat.register_casualties(u, 2, null, 1.0)   # no dead_local_centroid: formula path
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	assert_almost_eq(fx.global_position.distance_to(live_pos), 0.0, 0.01,
+		"with no per-death data but a live soldier layer, the heap anchors on the live centroid")
+
+
+func test_register_casualties_falls_back_to_formation_geometry_with_no_soldier_layer_at_all() -> void:
+	# A caller with NO soldier layer at all (an unseeded unit) has no live position of any
+	# kind to anchor on -- the heap keeps using the idealized formation-geometry edge.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 10
+	add_child_autofree(u)
+	u.uid = 3
+	u.team = 0
+	u.position = Vector2(200, 200)
+	u.facing = Vector2.DOWN
+	u.soldiers = 10
+	UnitCombat.register_casualties(u, 3, null, 1.0)
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	var expected_edge: Vector2 = u.global_position + u.block_centre_offset()
+	assert_almost_eq(fx.global_position.distance_to(expected_edge), 0.0, 0.01,
+		"with no live soldier data, the heap still anchors on the formation-geometry edge")
