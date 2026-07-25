@@ -167,6 +167,21 @@ func test_unresolvable_unit_type_falls_back_to_baseline_stats() -> void:
 		"a fully unresolvable shield read blocks nothing")
 
 
+func test_melee_attack_interval_reads_the_units_own_weapon_type() -> void:
+	var u: Unit = _bare_unit(4)
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	assert_eq(u.melee_attack_interval(),
+		LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPEAR).attack_interval_s,
+		"a spear-armed unit's cadence matches its own weapon's attack_interval_s")
+
+
+func test_melee_attack_interval_falls_back_to_the_flat_baseline_when_unresolvable() -> void:
+	var u: Unit = _bare_unit(5)
+	u.weapon_type_id = 999   # nothing resolves: falls back to the flat constant
+	assert_eq(u.melee_attack_interval(), Unit.ATTACK_INTERVAL,
+		"a fully unresolvable weapon type falls back to the flat ATTACK_INTERVAL baseline")
+
+
 func _bare_unit(uid: int) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = 8

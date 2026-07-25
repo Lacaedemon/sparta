@@ -41,6 +41,7 @@ func test_every_roster_weapon_resolves() -> void:
 		assert_ne(w.display_name, "", "the weapon has a display name")
 		assert_gt(w.reach_m, 0.0, "every melee weapon has a positive reach")
 		assert_gt(w.lethality, 0.0, "every weapon can wound")
+		assert_gt(w.attack_interval_s, 0.0, "every weapon has a positive attack cadence")
 
 
 func test_every_roster_shield_resolves() -> void:
@@ -200,6 +201,20 @@ func test_reach_matches_pre_registry_loadout_values() -> void:
 	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_GLADIUS).reach_m, 1.3, 0.0001)
 	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SIDEARM).reach_m, 0.6, 0.0001)
 	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPATHA).reach_m, 1.5, 0.0001)
+
+
+func test_attack_interval_matches_the_decided_per_type_values() -> void:
+	# Every type keeps the flat 0.6s baseline except gladius+scutum (Infantry), whose
+	# slower 1.2s reflects a decided design call (docs/combat-model.md). The other
+	# types' own values are follow-up tuning, not yet done.
+	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPEAR).attack_interval_s,
+		0.6, 0.0001, "spear keeps the flat baseline cadence")
+	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_GLADIUS).attack_interval_s,
+		1.2, 0.0001, "gladius+scutum swings on the slower decided cadence")
+	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SIDEARM).attack_interval_s,
+		0.6, 0.0001, "sidearm keeps the flat baseline cadence")
+	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPATHA).attack_interval_s,
+		0.6, 0.0001, "spatha keeps the flat baseline cadence")
 
 
 func test_lethality_matches_the_pre_registry_combat_table() -> void:
