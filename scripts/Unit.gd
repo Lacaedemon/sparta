@@ -521,6 +521,19 @@ const REORDER_MOMENTUM_DOT_MIN: float = 0.5   # tuned (cosine of the widest cont
 # a dedicated maneuver (the circumductio flank wheel, see wheel()), not this general movement taper.
 const TURN_RATE: float = PI
 const TURN_RATE_TAPER_FLOOR: float = 0.4
+# Share of a body's own acceleration budget a formed march/chase's centre pivot may
+# spend redirecting the REGIMENT's cruising velocity (UnitManeuver.max_turn_rate_for_speed,
+# via _move_to's pivot_as_formation branch). Redirecting a body's own velocity of
+# magnitude V at angular rate omega costs a centripetal acceleration of V * omega --
+# spending the WHOLE body_accel budget on that (a factor of 1.0) leaves nothing over for
+# a soldier's own arrival term to close its individual residual gap to a still-swinging
+# slot, so the two compete for the same budget every tick a pivot and a lagging body
+# coincide. An even split reserves half the budget for each side of that competition --
+# not a further-derived value, just the natural default absent a reason to weight one
+# side over the other. Lower reduces the growing shear a sustained high-speed pivot
+# leaves behind (verified empirically against a long cavalry pursuit); much lower makes
+# the pivot itself look sluggish relative to the drill/wheel ceilings above.
+const TURN_ACCEL_BUDGET_FRACTION: float = 0.5
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
 # rotates toward the opposite heading at this rate (rad/s), taking ~0.5 s for a full 180°.
 # This is NOT a pivot of the block — neither a centre pivot (move orders) nor a flank wheel
@@ -2169,6 +2182,27 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# scramble after their slots instead of turning in good order and the block reads
 		# as a blob until they catch up. The corner man paces the whole pivot at up to a jog.
 		pivot_rate = UnitManeuver.wheel_gait_rate(pivot_rate, jog_speed, _pivot_radius())
+		# wheel_gait_rate alone only bounds the corner man's TANGENTIAL footspeed -- a
+		# purely geometric limit that says nothing about whether a body actually
+		# CRUISING at speed could physically achieve that turn. Redirecting a body's own
+		# (much larger, march-speed) velocity at this angular rate demands a centripetal
+		# acceleration of _current_speed * pivot_rate; past a jog/sprint cruise this can
+		# exceed the unit's own body_accel long before the corner man's footspeed cap
+		# ever binds -- exactly the gap a sustained chase or a routing/terrain-detouring
+		# pursuit keeps re-triggering, since the target's own motion re-aims steer_dir
+		# again before the block has finished turning onto the last one. A pivot that
+		# outpaces what an accelerating body can track doesn't blob outright (the soldier
+		# bodies still arrive under their own bounded force) but the whole formation
+		# lags the swinging slot grid by a growing amount the longer the mismatch
+		# persists -- a real, cumulative shear, not a one-tick artifact. Cap the pivot at
+		# a share (TURN_ACCEL_BUDGET_FRACTION) of that same body_accel floor
+		# SoldierBodies.step() uses for arrival -- so the ANCHOR
+		# never demands a sharper turn than its own bodies could physically hold, and
+		# the remaining share stays free for each soldier's OWN arrival correction to
+		# the (still-swinging) slot, instead of the two competing for the exact same
+		# acceleration every tick.
+		var turn_body_accel: float = maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) * TURN_ACCEL_BUDGET_FRACTION
+		pivot_rate = minf(pivot_rate, UnitManeuver.max_turn_rate_for_speed(turn_body_accel, _current_speed))
 		_rotate_facing_toward(steer_dir, delta, pivot_rate)
 	else:
 		_face_dir(steer_dir)

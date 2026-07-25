@@ -1238,6 +1238,63 @@ func test_pivot_rate_is_paced_by_the_corner_man() -> void:
 		"the first tick's pivot step is the corner-man-paced rate, not raw TURN_RATE")
 
 
+func test_formed_pivot_is_capped_by_the_units_own_turning_acceleration_at_speed() -> void:
+	# Redirecting a body's own velocity of magnitude V at angular rate omega demands a
+	# centripetal acceleration of V * omega -- past a jog/sprint cruise this can exceed
+	# the unit's own body_accel well before the corner-man footspeed bound
+	# (wheel_gait_rate, test_pivot_rate_is_paced_by_the_corner_man above) ever binds.
+	# Give the fixture a huge jog_speed so wheel_gait_rate never binds, isolating this
+	# speed-dependent cap the same way test_orderly_pivot_is_slower_at_speed_than_at_a_stand
+	# isolates the taper.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u.jog_speed = 100000.0
+	u._current_speed = u.move_speed   # cruising at full sprint
+	# An explicit SPRINT gait pins pace_speed to move_speed -- matching _current_speed
+	# already, so the ramp inside _move_to (which would otherwise decel toward the AUTO
+	# ladder's walk pace for a far destination) leaves speed exactly at move_speed for
+	# the pivot-rate computation this test isolates. haste stays false (new_move's
+	# default): this fixture tests _move_to's own cap directly, not Battle.gd's separate
+	# "an explicit RUN/SPRINT gait is haste" order-dispatch policy.
+	u.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_SPRINT)
+	var turn_body_accel: float = maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR) * Unit.TURN_ACCEL_BUDGET_FRACTION
+	var expected_rate: float = UnitManeuver.max_turn_rate_for_speed(turn_body_accel, u._current_speed)
+	assert_lt(expected_rate, Unit.TURN_RATE * Unit.TURN_RATE_TAPER_FLOOR,
+		"the fixture's cruising speed is high enough that this cap governs, not the taper ceiling")
+	u._move_to(Vector2(0, 100000), 0.1, true)
+	assert_almost_eq(u.facing.angle(), expected_rate * 0.1, 0.0001,
+		"the first tick's pivot step is capped by the unit's own turning acceleration, not the taper alone")
+
+
+func test_formed_pivot_turning_cap_loosens_at_a_slower_cruise() -> void:
+	# The same body_accel affords a much sharper turn at a walk than at a sprint
+	# (UnitManeuver.max_turn_rate_for_speed's own inverse relationship), so an identical
+	# pivot started from a slow cruise should turn further in one tick than the same
+	# pivot at full speed.
+	var slow := _make_unit()
+	slow.position = Vector2.ZERO
+	slow.facing = Vector2.RIGHT
+	slow.jog_speed = 100000.0
+	slow._current_speed = slow.walk_speed
+	# An explicit WALK gait pins pace_speed to _current_speed already (no ramp), same
+	# reasoning as the fixture above.
+	slow.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_WALK)
+	slow._move_to(Vector2(0, 100000), 0.1, true)
+
+	var fast := _make_unit()
+	fast.position = Vector2.ZERO
+	fast.facing = Vector2.RIGHT
+	fast.jog_speed = 100000.0
+	fast._current_speed = fast.move_speed
+	fast.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_SPRINT)
+	fast._move_to(Vector2(0, 100000), 0.1, true)
+
+	assert_gt(slow.facing.angle(), fast.facing.angle(),
+		"a slower cruise affords a sharper turn under the same body_accel budget")
+	assert_gt(fast.facing.angle(), 0.0, "the fast-cruising unit still turns, just more slowly")
+
+
 func test_pivot_radius_is_the_footprint_half_diagonal() -> void:
 	# 120 soldiers in the default line: formation_files gives the file count, ranks
 	# follow, and the radius is half the diagonal of the (files-1) x (ranks-1) slot
