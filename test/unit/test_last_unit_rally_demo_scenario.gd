@@ -21,7 +21,12 @@ extends GutTest
 ## outcome each; this one only guards the "battle stays live while routing" invariant for
 ## this specific matchup.
 
-const ROUT_ONSET_BUDGET := 900   # ticks allowed for the block to break and start routing
+## Both sides are Infantry (gladius+scutum); that weapon's melee cadence is now 1.2s
+## (LoadoutRegistry.WEAPON_GLADIUS's attack_interval_s), double the flat 0.6s baseline
+## every other weapon type still uses. Casualties -- and the morale erosion they
+## drive -- accumulate at that same halved strike rate, so onset takes proportionally
+## longer: doubled from the original 900-tick budget, keeping its own built-in margin.
+const ROUT_ONSET_BUDGET := 1800   # ticks allowed for the block to break and start routing
 const STAYS_LIVE_MARGIN := 300   # further ticks to confirm the battle doesn't end while routing
 
 
