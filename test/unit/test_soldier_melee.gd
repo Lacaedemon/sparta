@@ -780,8 +780,8 @@ func test_register_casualties_uses_live_body_centroid_when_no_per_death_data_but
 	# The regiment-formula path (take_casualties) has no per-death position data -- most
 	# commonly the very first strike after fresh contact, before the engaged-tier latch
 	# sets (is_engaged() reads false for that one tick; see Unit.tick_engaged). This is
-	# NOT a rare edge case: it is exactly the path issue #1072's own reproduction hits for
-	# every one of its casualty events. The unit still has a live soldier layer, so the
+	# NOT a rare edge case: a real bug reproduction hit exactly this path for every one of
+	# its casualty events. The unit still has a live soldier layer, so the
 	# heap must anchor on their current centroid, not the idealized formation-slot edge.
 	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
 	var live_pos := Vector2(500.0, -300.0)
