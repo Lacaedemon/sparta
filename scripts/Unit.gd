@@ -1458,12 +1458,22 @@ func _update_current_order() -> void:
 			retire_current_order()
 
 
+## This unit's own melee attack cadence: the equipped weapon's attack_interval_s,
+## falling back to the flat ATTACK_INTERVAL baseline when the weapon id doesn't
+## resolve (defensive; weapon_type_id is always a valid registry key in practice --
+## mirrors soldier_lethality's own fallback). Regiment-level, not per-soldier: every
+## soldier in a unit shares the same weapon_type_id today.
+func melee_attack_interval() -> float:
+	var w: Weapon = LoadoutRegistry.weapon(weapon_type_id)
+	return w.attack_interval_s if w != null else ATTACK_INTERVAL
+
+
 ## Arm the attack cooldown for the swing about to land, picking the interval that
 ## matches the unit's stance: PIN_DOWN swings on the slower PIN_DOWN_ATTACK_INTERVAL
 ## and opens its own exposure window (pin_down_defense_factor); every other stance
-## uses the normal baseline (ATTACK_INTERVAL melee / RANGED_INTERVAL ranged). Called
-## right before UnitCombat.strike()/shoot(), so the exposure window is already open
-## for any riposte that lands later in the same tick.
+## uses the normal baseline (the caller's own melee_attack_interval() or
+## RANGED_INTERVAL). Called right before UnitCombat.strike()/shoot(), so the exposure
+## window is already open for any riposte that lands later in the same tick.
 func _start_attack_cd(baseline_interval: float) -> void:
 	if order_mode == ORDER_PIN_DOWN:
 		_attack_cd = PIN_DOWN_ATTACK_INTERVAL
@@ -1740,7 +1750,7 @@ func _think(delta: float) -> void:
 			# brought to bear — the strike is withheld until then.
 			var faced: bool = _face_for_action(enemy.position, delta, enemy)
 			if faced and _attack_cd <= 0.0:
-				_start_attack_cd(ATTACK_INTERVAL)
+				_start_attack_cd(melee_attack_interval())
 				UnitCombat.strike(self, enemy)
 			# Press into contact: a committed melee unit keeps advancing onto the enemy
 			# while it fights, so the lines close to body contact (separation provides the
@@ -1898,10 +1908,11 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 		# Only peel back once a hit actually lands: flipping to recharging is gated on the
 		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
 		# clears, rather than retreating without having landed the charge. (For current
-		# cavalry speeds the cycle period exceeds ATTACK_INTERVAL, so this rarely bites —
-		# but the gate keeps it correct if speed or the interval is later retuned.)
+		# cavalry speeds the cycle period exceeds cavalry's own melee cadence, so this
+		# rarely bites — but the gate keeps it correct if speed or the cadence is later
+		# retuned.)
 		if _attack_cd <= 0.0:
-			_attack_cd = ATTACK_INTERVAL
+			_attack_cd = melee_attack_interval()
 			UnitCombat.strike(self, enemy)
 			_cycle_recharging = true
 		return true
@@ -1934,7 +1945,7 @@ func _support_tick(delta: float) -> void:
 		elif in_contact:
 			state = State.FIGHTING
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
-				_attack_cd = ATTACK_INTERVAL
+				_attack_cd = melee_attack_interval()
 				UnitCombat.strike(self, threat)
 		else:
 			# Threat out of range: chase it. Settle a dangling re-face first so the frozen

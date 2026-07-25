@@ -56,7 +56,10 @@ to put down --- so wounds and fatigue snowball.
 ## One blow, step by step
 
 When a soldier swings at the enemy in front of them, the game resolves a closing
-speed, a contest, a wound, a stamina cost, and a shove.
+speed, a contest, a wound, a stamina cost, and a shove. How *often* they get to
+swing depends on the weapon: a legionary's gladius lands a blow roughly every 1.2
+seconds, slower than the 0.6-second baseline every other weapon still uses --- a
+short sword-and-shield exchange is a deliberate, telegraphed affair, not a flurry.
 
 The formulas below are sketches: a subscript $A$ or $D$ means the **attacker's** or
 **defender's** value (so $a_D$ is the defender's armour), and a trailing $\cdots$

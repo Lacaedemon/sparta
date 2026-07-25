@@ -43,11 +43,17 @@ const MOUNT_WARHORSE: int = 302
 # feeds Unit.attack_range at spawn; lethality is read at strike time through
 # the attacker's per-soldier weapon id (Unit.soldier_lethality). Same numbers
 # as the pre-registry literals, so combat outcomes are unchanged.
+#
+# attack_interval_s carries the flat Unit.ATTACK_INTERVAL (0.6s) baseline for
+# every type EXCEPT gladius+scutum (Infantry), whose 1.2s reflects a live
+# 2026-07-24/25 discussion (docs/combat-model.md, once cited there) that the flat
+# rate felt unrealistically fast even as a short burst. The other types keep the
+# old baseline until they get their own tuning pass.
 static var _weapons: Dictionary = {
-	WEAPON_SPEAR: Weapon.make(WEAPON_SPEAR, "Spear", 2.4, 0.85),
-	WEAPON_GLADIUS: Weapon.make(WEAPON_GLADIUS, "Gladius", 1.3, 1.0),
-	WEAPON_SIDEARM: Weapon.make(WEAPON_SIDEARM, "Sidearm", 0.6, 0.5),
-	WEAPON_SPATHA: Weapon.make(WEAPON_SPATHA, "Spatha", 1.5, 1.1),
+	WEAPON_SPEAR: Weapon.make(WEAPON_SPEAR, "Spear", 2.4, 0.85, 0.6),
+	WEAPON_GLADIUS: Weapon.make(WEAPON_GLADIUS, "Gladius", 1.3, 1.0, 1.2),
+	WEAPON_SIDEARM: Weapon.make(WEAPON_SIDEARM, "Sidearm", 0.6, 0.5, 0.6),
+	WEAPON_SPATHA: Weapon.make(WEAPON_SPATHA, "Spatha", 1.5, 1.1, 0.6),
 }
 
 # block_value: the shield's OWN contribution to the defensive shield weight.

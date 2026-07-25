@@ -106,6 +106,26 @@ A strike happens when $A$'s soldier has $D$'s within reach $r_A$ on $A$'s attack
 cadence. We resolve it as: a closing term, an **opposed** land contest, a wound to
 health, a stamina cost on both sides, and a knockback impulse.
 
+**Attack cadence** is a per-weapon-type stat, `Weapon.attack_interval_s`: seconds
+between damage ticks, aggregated at the regiment level (one tick stands for the
+whole engaged front rank trading blows over that span, not a literal per-soldier
+swing — see `Unit.ATTACK_INTERVAL`'s own doc comment). Every type keeps the flat
+0.6 s baseline except gladius+scutum (Infantry), tuned to 1.2 s following a
+2026-07-24/25 discussion that the flat rate felt unrealistically fast even as a
+short burst. The gladius value's qualitative grounding is
+[a Roman-Britain educational overview](https://www.romanobritain.org/8-military/mil_roman_soldier_sword.php)
+of legionary gladius technique — not an academic or HEMA source, so treat it as
+illustrative rather than rigorously sourced. It describes a thrust-focused
+"scutum, gladius, scutum, gladius" drill (shield punch, then sword thrust,
+alternating) and claims a thrusting rate as high as four stabs per second against
+one slash every two seconds for a cutting motion. That peak figure is not used
+directly here: even the old flat 0.6 s (100 attacks/minute) already read as
+unsustainably fast as a *sustained* rate, so the source only supports two things —
+differentiating cadence by weapon *mechanic* (thrust vs. slash is a real
+asymmetry), and treating whatever number a type lands on as a sustained baseline,
+with any peak-burst behaviour handled separately rather than folded into the
+default rate. The other types' own values are follow-up tuning, not yet done.
+
 Notation used throughout: a subscript $A$ or $D$ tags the attacker's or defender's
 value (so $s_A$ is the attacker's skill, $a_D$ the defender's armour); a hat marks a
 unit vector ($\hat{u}$, $\hat{n}$); $(x)_+ = \max(x, 0)$ is the **positive part**;
