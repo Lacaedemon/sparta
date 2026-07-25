@@ -737,32 +737,35 @@ func test_reformed_block_holds_frontage_and_closes_up_after_casualties() -> void
 			"reformed slot %d stays within the block's frontage" % i)
 
 
-# --- Fallen casualty-heap anchoring ------------------------------------------------
+# --- Fallen casualty-heap anchoring: one mark per REAL fallen-soldier position ----
 
-func test_live_soldier_centroid_averages_the_bodies() -> void:
-	var u := _unit(1, 0, 2, Vector2(0, 0), Vector2.DOWN, false)
-	u._sim_soldier_pos[0] = Vector2(10, 0)
-	u._sim_soldier_pos[1] = Vector2(30, 0)
-	assert_almost_eq(u.live_soldier_centroid().distance_to(Vector2(20, 0)), 0.0, 0.001,
-		"the centroid is the plain average of the live body positions")
+func test_live_soldiers_near_returns_the_closest_real_positions() -> void:
+	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
+	u._sim_soldier_pos[0] = Vector2(0, 0)
+	u._sim_soldier_pos[1] = Vector2(10, 0)
+	u._sim_soldier_pos[2] = Vector2(1000, 1000)
+	u._sim_soldier_pos[3] = Vector2(-1000, -1000)
+	var near: PackedVector2Array = u.live_soldiers_near(Vector2(5, 0), 2)
+	assert_eq(near.size(), 2, "returns exactly the requested count")
+	assert_true(Vector2(0, 0) in near and Vector2(10, 0) in near,
+		"the two nearest REAL positions, ignoring the two far-flung outliers")
 
 
-func test_live_soldier_centroid_is_non_finite_with_no_seeded_bodies() -> void:
+func test_live_soldiers_near_is_empty_with_no_seeded_bodies() -> void:
 	var u: Unit = Unit.new()
 	u.max_soldiers = 4
 	add_child_autofree(u)
-	assert_false(u.live_soldier_centroid().is_finite(),
-		"an unseeded soldier layer has no centroid to report")
+	assert_true(u.live_soldiers_near(Vector2.ZERO, 2).is_empty(),
+		"an unseeded soldier layer has no nearby bodies to report")
 
 
-func test_reap_anchors_the_fallen_heap_at_the_dying_soldiers_live_position() -> void:
-	# The cosmetic Fallen heap must drop where the dying soldiers actually stood, not at
-	# the unit's idealized formation-slot geometry -- which can already have scattered away
-	# from the live bodies mid-melee.
+func test_reap_anchors_the_fallen_heap_at_each_dying_soldiers_own_real_position() -> void:
+	# The cosmetic Fallen heap must drop one mark per dying soldier, at THAT soldier's own
+	# real live position -- not an averaged point, not the unit's idealized formation-slot
+	# geometry (which can have already scattered away from the live bodies mid-melee).
 	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
-	var live_pos := Vector2(500.0, -300.0)
-	for i in range(u._sim_soldier_pos.size()):
-		u._sim_soldier_pos[i] = live_pos   # scatter every body far from the formation slot
+	u._sim_soldier_pos[0] = Vector2(500.0, -300.0)
+	u._sim_soldier_pos[1] = Vector2(520.0, -280.0)
 	u._sim_soldier_hp[0] = 0.0
 	u._sim_soldier_hp[1] = 0.0
 	SoldierMelee.reap(u, u)
@@ -772,33 +775,66 @@ func test_reap_anchors_the_fallen_heap_at_the_dying_soldiers_live_position() -> 
 		if child is Fallen:
 			fx = child
 	assert_not_null(fx, "a fallen heap was spawned")
-	assert_almost_eq(fx.global_position.distance_to(live_pos), 0.0, 0.01,
-		"the heap drops at the dying soldiers' own live position, not the stale formation edge")
+	assert_eq(fx._marks.size(), 2, "one mark per dying soldier")
+	var found_first := false
+	var found_second := false
+	for m in fx._marks:
+		var world: Vector2 = fx.global_position + m
+		if world.distance_to(Vector2(500.0, -300.0)) < 0.01:
+			found_first = true
+		if world.distance_to(Vector2(520.0, -280.0)) < 0.01:
+			found_second = true
+	assert_true(found_first and found_second,
+		"each mark sits exactly at its own dying soldier's real position, not an average")
 
 
-func test_register_casualties_uses_live_body_centroid_when_no_per_death_data_but_soldiers_exist() -> void:
+func test_register_casualties_uses_real_nearby_positions_when_no_per_death_data_but_soldiers_exist() -> void:
 	# The regiment-formula path (take_casualties) has no per-death position data -- most
 	# commonly the very first strike after fresh contact, before the engaged-tier latch
 	# sets (is_engaged() reads false for that one tick; see Unit.tick_engaged). This is
 	# NOT a rare edge case: a real bug reproduction hit exactly this path for every one of
-	# its casualty events. The unit still has a live soldier layer, so the
-	# heap must anchor on their current centroid, not the idealized formation-slot edge.
+	# its casualty events. The unit still has a live soldier layer, so the heap must anchor
+	# on real live positions, not the idealized formation-slot edge.
 	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
 	var live_pos := Vector2(500.0, -300.0)
 	for i in range(u._sim_soldier_pos.size()):
 		u._sim_soldier_pos[i] = live_pos   # every body scattered to the same live spot
-	UnitCombat.register_casualties(u, 2, null, 1.0)   # no dead_local_centroid: formula path
+	UnitCombat.register_casualties(u, 2, null, 1.0)   # no dead_local_positions: formula path
 	var fx: Fallen = null
 	for child in u.get_parent().get_children():
 		if child is Fallen:
 			fx = child
 	assert_not_null(fx, "a fallen heap was spawned")
 	assert_almost_eq(fx.global_position.distance_to(live_pos), 0.0, 0.01,
-		"with no per-death data but a live soldier layer, the heap anchors on the live centroid")
+		"with no per-death data but a live soldier layer, the heap anchors on real live positions")
+
+
+func test_register_casualties_biases_toward_soldiers_near_the_attacker_when_the_block_has_spread() -> void:
+	# A still-forming battle line (rear ranks not yet engaged) or a knockback-spread block
+	# can have live bodies far from where THIS strike actually landed. Picking real
+	# positions nearest the attacker lands the marks at the actual clash cluster, not
+	# scattered across (or averaged into the gap between) the whole spread-out block.
+	var u := _unit(1, 0, 6, Vector2(0, 0), Vector2.DOWN, false)
+	var near_clash := Vector2(0.0, 100.0)
+	var far_rear := Vector2(0.0, -900.0)
+	for i in range(3):
+		u._sim_soldier_pos[i] = near_clash   # the actual front line, fighting now
+	for i in range(3, 6):
+		u._sim_soldier_pos[i] = far_rear     # rear ranks, nowhere near this strike
+	var attacker := _unit(2, 1, 1, Vector2(0, 120), Vector2.UP, false)
+	UnitCombat.register_casualties(u, 2, attacker, 1.0)
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	for m in fx._marks:
+		assert_almost_eq((fx.global_position + m).distance_to(near_clash), 0.0, 0.01,
+			"every mark lands on the attacker-proximal cluster, not the untouched rear")
 
 
 func test_register_casualties_falls_back_to_formation_geometry_with_no_soldier_layer_at_all() -> void:
-	# A caller with NO soldier layer at all (an unseeded unit) has no live position of any
+	# A caller with NO soldier layer at all (an unseeded unit) has no real position of any
 	# kind to anchor on -- the heap keeps using the idealized formation-geometry edge.
 	var u: Unit = Unit.new()
 	u.max_soldiers = 10
@@ -816,4 +852,4 @@ func test_register_casualties_falls_back_to_formation_geometry_with_no_soldier_l
 	assert_not_null(fx, "a fallen heap was spawned")
 	var expected_edge: Vector2 = u.global_position + u.block_centre_offset()
 	assert_almost_eq(fx.global_position.distance_to(expected_edge), 0.0, 0.01,
-		"with no live soldier data, the heap still anchors on the formation-geometry edge")
+		"with no live soldier data at all, the heap still anchors on the formation-geometry edge")

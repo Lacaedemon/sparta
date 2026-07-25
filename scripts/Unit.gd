@@ -3150,19 +3150,27 @@ func soldier_id(index: int) -> int:
 var _step_slots_for_couple: PackedVector2Array = PackedVector2Array()
 var _step_slots_for_couple_valid: bool = false
 
-## The average LIVE position of every one of this unit's simulated soldier bodies
-## (parent-local, same frame as `position` -- see _sim_soldier_pos's own doc comment),
-## or a non-finite Vector2 when the soldier layer is empty/unseeded. A cheap, honest
-## stand-in for "where is this regiment's body of men actually standing right now" --
-## unlike the idealized formation-slot geometry, which can already have scattered away
-## from the live bodies (a melee clash, casualties still compacting).
-func live_soldier_centroid() -> Vector2:
-	if _sim_soldier_pos.is_empty():
-		return Vector2(NAN, NAN)
-	var sum: Vector2 = Vector2.ZERO
-	for p in _sim_soldier_pos:
-		sum += p
-	return sum / float(_sim_soldier_pos.size())
+## The REAL positions of the `count` live soldiers nearest `local_point` (parent-local,
+## same frame as `position` -- see _sim_soldier_pos's own doc comment), or an empty array
+## when the soldier layer has no bodies. Actual body positions, never an averaged point or
+## a synthetic scatter -- when a caller doesn't know exactly which soldiers died (the
+## regiment-formula path), these stand in as honest positions for "roughly where these men
+## actually are," biased toward whatever `local_point` represents (typically the attacker)
+## rather than the whole regiment, which can be spread far from the point of interest (a
+## still-forming battle line with rear ranks not yet engaged, knockback carrying some
+## bodies away from the rest).
+func live_soldiers_near(local_point: Vector2, count: int) -> PackedVector2Array:
+	if _sim_soldier_pos.is_empty() or count <= 0:
+		return PackedVector2Array()
+	var indices: Array = range(_sim_soldier_pos.size())
+	indices.sort_custom(func(a, b):
+		return _sim_soldier_pos[a].distance_squared_to(local_point) \
+			< _sim_soldier_pos[b].distance_squared_to(local_point))
+	var n: int = mini(count, indices.size())
+	var out := PackedVector2Array()
+	for i in range(n):
+		out.push_back(_sim_soldier_pos[indices[i]])
+	return out
 
 
 func soldier_world_slots(count: int) -> PackedVector2Array:
