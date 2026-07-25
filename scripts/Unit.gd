@@ -523,16 +523,18 @@ const TURN_RATE: float = PI
 const TURN_RATE_TAPER_FLOOR: float = 0.4
 # Share of a body's own acceleration budget a formed march/chase's centre pivot may
 # spend redirecting the REGIMENT's cruising velocity (UnitManeuver.max_turn_rate_for_speed,
-# via _move_to's pivot_as_formation branch). Redirecting a body's own velocity of
-# magnitude V at angular rate omega costs a centripetal acceleration of V * omega --
-# spending the WHOLE body_accel budget on that (a factor of 1.0) leaves nothing over for
-# a soldier's own arrival term to close its individual residual gap to a still-swinging
-# slot, so the two compete for the same budget every tick a pivot and a lagging body
-# coincide. An even split reserves half the budget for each side of that competition --
-# not a further-derived value, just the natural default absent a reason to weight one
-# side over the other. Lower reduces the growing shear a sustained high-speed pivot
-# leaves behind (verified empirically against a long cavalry pursuit); much lower makes
-# the pivot itself look sluggish relative to the drill/wheel ceilings above.
+# via _move_to's pivot_as_formation branch -- only once _current_speed exceeds jog_speed;
+# see that branch's own comment for why it's gated there rather than applied always).
+# Redirecting a body's own velocity of magnitude V at angular rate omega costs a
+# centripetal acceleration of V * omega -- spending the WHOLE body_accel budget on that
+# (a factor of 1.0) leaves nothing over for a soldier's own arrival term to close its
+# individual residual gap to a still-swinging slot, so the two compete for the same
+# budget every tick a pivot and a lagging body coincide. An even split reserves half the
+# budget for each side of that competition -- not a further-derived value, just the
+# natural default absent a reason to weight one side over the other. Lower reduces the
+# growing shear a sustained high-speed pivot leaves behind (verified empirically against
+# a long cavalry pursuit); much lower makes the pivot itself look sluggish relative to
+# the drill/wheel ceilings above.
 const TURN_ACCEL_BUDGET_FRACTION: float = 0.5
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
 # rotates toward the opposite heading at this rate (rad/s), taking ~0.5 s for a full 180°.
@@ -2194,15 +2196,28 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# outpaces what an accelerating body can track doesn't blob outright (the soldier
 		# bodies still arrive under their own bounded force) but the whole formation
 		# lags the swinging slot grid by a growing amount the longer the mismatch
-		# persists -- a real, cumulative shear, not a one-tick artifact. Cap the pivot at
-		# a share (TURN_ACCEL_BUDGET_FRACTION) of that same body_accel floor
-		# SoldierBodies.step() uses for arrival -- so the ANCHOR
-		# never demands a sharper turn than its own bodies could physically hold, and
-		# the remaining share stays free for each soldier's OWN arrival correction to
-		# the (still-swinging) slot, instead of the two competing for the exact same
+		# persists -- a real, cumulative shear, not a one-tick artifact.
+		#
+		# Gated to genuinely SPRINTING (current_speed strictly past this unit's own
+		# jog_speed) -- not applied at walk/jog. At or below jog_speed, wheel_gait_rate's
+		# own pace (jog-bounded by construction) already sits within what the unit's real
+		# body_accel affords for any formation this game spawns, so this cap has nothing
+		# to correct there and would only be an unmotivated extra brake on an ordinary
+		# march. Verified against a default 120-soldier Infantry unit at plain walk pace
+		# (accel 30 wu/s^2, walk_speed 26 wu/s, pivot_radius ~70 wu): the required
+		# centripetal accel for wheel_gait_rate's own rate there is ~18.5 wu/s^2, safely
+		# under the unit's 30 wu/s^2 budget, so this cap must not bind at that speed --
+		# gating on jog_speed guarantees it structurally can't, rather than relying on
+		# TURN_ACCEL_BUDGET_FRACTION alone to happen to come out loose enough. Cap the
+		# pivot, once sprinting, at a share (TURN_ACCEL_BUDGET_FRACTION) of the same
+		# body_accel floor SoldierBodies.step() uses for arrival -- so the ANCHOR never
+		# demands a sharper turn than its own bodies could physically hold, and the
+		# remaining share stays free for each soldier's OWN arrival correction to the
+		# (still-swinging) slot, instead of the two competing for the exact same
 		# acceleration every tick.
-		var turn_body_accel: float = maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) * TURN_ACCEL_BUDGET_FRACTION
-		pivot_rate = minf(pivot_rate, UnitManeuver.max_turn_rate_for_speed(turn_body_accel, _current_speed))
+		if _current_speed > jog_speed:
+			var turn_body_accel: float = maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) * TURN_ACCEL_BUDGET_FRACTION
+			pivot_rate = minf(pivot_rate, UnitManeuver.max_turn_rate_for_speed(turn_body_accel, _current_speed))
 		_rotate_facing_toward(steer_dir, delta, pivot_rate)
 	else:
 		_face_dir(steer_dir)
