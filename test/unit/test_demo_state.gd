@@ -86,7 +86,6 @@ func test_soldier_summary_empty_is_zeroed() -> void:
 	assert_eq(s["centroid"], [0.0, 0.0])
 	assert_eq(s["bbox"], [0.0, 0.0])
 	assert_eq(s["prone_count"], 0, "a routed/empty unit still serializes without error")
-	assert_eq(s["broken_count"], 0)
 
 
 func test_soldier_summary_centroid_and_bbox() -> void:
@@ -115,28 +114,6 @@ func test_soldier_summary_shorter_prone_array_is_safe() -> void:
 	var s: Dictionary = DemoState.soldier_summary(pos, prone)
 	assert_eq(s["count"], 3)
 	assert_eq(s["prone_count"], 1, "missing prone entries treated as standing, no out-of-range read")
-
-
-func test_soldier_summary_defaults_broken_count_to_zero_when_omitted() -> void:
-	# Every pre-existing 2-argument call site keeps reading broken_count as 0.
-	var pos := PackedVector2Array([Vector2(0, 0), Vector2(1, 0)])
-	var s: Dictionary = DemoState.soldier_summary(pos, PackedFloat32Array())
-	assert_eq(s["broken_count"], 0)
-
-
-func test_soldier_summary_counts_broken() -> void:
-	var pos := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(2, 0)])
-	var broken := PackedByteArray([1, 0, 1])
-	var s: Dictionary = DemoState.soldier_summary(pos, PackedFloat32Array(), broken)
-	assert_eq(s["broken_count"], 2, "counts soldiers individually broken from their stance")
-
-
-func test_soldier_summary_shorter_broken_array_is_safe() -> void:
-	var pos := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(2, 0)])
-	var broken := PackedByteArray([1])   # only index 0
-	var s: Dictionary = DemoState.soldier_summary(pos, PackedFloat32Array(), broken)
-	assert_eq(s["count"], 3)
-	assert_eq(s["broken_count"], 1, "missing broken entries treated as holding formation, no out-of-range read")
 
 
 func test_metric_mirrors_convert_via_the_world_scale() -> void:

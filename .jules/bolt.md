@@ -4,3 +4,6 @@
 ## 2024-11-20 - Ensure zip files and .import changes don't get committed
 **Learning:** When downloading headless Godot to run tests, Godot updates auto-generated `.import` files. Those changes, and the Godot zip file/executable, must not be committed.
 **Action:** Always clean up downloaded tools and revert `.import` files modified by the headless engine run before committing.
+## 2024-11-20 - Precompute loop invariants
+**Learning:** Even trivial math like squaring a constant (`RANGED_RANGE * RANGED_RANGE`) should be precomputed before entering a high-frequency loop to squeeze out maximum performance and address review feedback about repeated recomputation.
+**Action:** Always extract invariant math operations (like threshold squares) out of `for` and `while` loops.

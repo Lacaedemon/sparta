@@ -365,7 +365,7 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `maneuver` | A single readable label for the in-progress drill/maneuver — `IDLE` / `MARCHING` / `FIGHTING` / `CONVERSIO` / `QUARTER_TURN` / `WHEELING` / `FILE_DOUBLE_DEEPEN` / `FILE_DOUBLE_WIDEN` / `NUDGE_SIDESTEP` / `NUDGE_BACKSTEP` / `NUDGE_FORWARD_STEP` / `CYCLE_CHARGE` / `COUNTERMARCH`. Consolidates `current_order`/`order_phase`/`order_mode` into one field, so e.g. a conversio and a centre-pivot (both otherwise `MOVE`/`TURN` vs `QUARTER_TURN`) are distinguishable directly. `FILE_DOUBLE_DEEPEN`/`WIDEN` only show on the exact tick the reshape order applied — the order itself retires the same tick. See `Unit.current_maneuver()`. |
 | `countermarch_variant` | Which exelismos variant a `maneuver: "COUNTERMARCH"` is running — `MACEDONIAN` / `LACONIAN` / `CHORAL`, or `null` when the unit isn't countermarching (`maneuver` alone can't distinguish the three). See `Unit.countermarch_variant()`. |
 | `tier` | The formation's **simulation tier** — `CLOSE` (full per-soldier arrays) or `FAR` (aggregate record, no individual bodies). See `docs/large-scale-simulation-design.md`. |
-| `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count, broken_count}` — a compact digest, **not** the full per-soldier arrays. `broken_count` is how many soldiers have individually broken from a SHIELD_WALL/TESTUDO stance under encirclement (`Unit._sim_soldier_broken` / `SoldierEncirclement`) — always 0 for a formation that can't break (`NORMAL`/`TIGHT`/`LOOSE`/`SQUARE`/`SCHILTRON`). **Close-tier units only.** |
+| `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count}` — a compact digest, **not** the full per-soldier arrays. **Close-tier units only.** |
 | `soldier_summary_m` | The summary's `{centroid_m, bbox_m}` mirrored in metres, derived from the same positions so the two can never disagree. Close-tier only, like its wu sibling. |
 
 A `tier: "FAR"` record carries **no per-soldier payload at all** — no `soldier_summary`, no
@@ -374,7 +374,7 @@ The explicit `tier` field is what tells that apart from "per-soldier detail not 
 (a close-tier dump without the full flag, which still gets the summary).
 
 Set `SPARTA_DEMO_STATE_FULL=1` to also dump `soldiers_full` — the raw per-soldier arrays
-(`pos`, `facing`, `slots`, `hp`, `prone`, `stamina`, `broken`) — for deep debugging. Off by default (the
+(`pos`, `facing`, `slots`, `hp`, `prone`, `stamina`) — for deep debugging. Off by default (the
 summary is what a reviewer needs; the full arrays are ~20x larger). `slots` is the unit's
 canonical slot grid (`Unit.soldier_world_slots`) at the same tick — the *ordered* shape the
 bodies chase — and a `motion_ref` dict rides alongside with the per-unit constants an offline

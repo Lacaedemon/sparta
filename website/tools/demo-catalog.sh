@@ -74,5 +74,4 @@ DEMOS=(
   "file_major_reform_contrast|demos/inputs/file-major-reform-contrast.json|30|720|720|input"
   "moving_wheel|demos/inputs/moving-wheel-vs-standing.json|30|330|800|input"
   "disengage_step_back|demos/inputs/disengage-step-back.json|30|220|640|input"
-  "shield_wall_encirclement|demos/inputs/shield-wall-encirclement.json|30|360|640|input"
 )

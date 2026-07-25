@@ -144,8 +144,7 @@ static func _flank_threat(u: Unit, all_units: Array) -> Unit:
 				or e.state == Unit.State.ROUTING:
 			continue
 		var contact: float = u.attack_range + Unit.RADIUS + e.RADIUS
-		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-		if u.position.distance_squared_to(e.position) > contact * contact:
+		if u.position.distance_to(e.position) > contact:
 			continue
 		var to_e: Vector2 = (e.position - u.position).normalized()
 		var d: float = u.facing.dot(to_e)
@@ -163,15 +162,12 @@ static func _flank_threat(u: Unit, all_units: Array) -> Unit:
 static func _should_form_square(u: Unit, all_units: Array) -> bool:
 	if not u.anti_cavalry or u.is_cavalry or u.in_square():
 		return false
-	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt;
-	# the threshold is loop-invariant, so square it once outside the loop.
-	var trigger_range_sq: float = SQUARE_TRIGGER_RANGE * SQUARE_TRIGGER_RANGE
 	for node in all_units:
 		var e := node as Unit
 		if e == null or e.team == u.team or not e.is_cavalry \
 				or e.state == Unit.State.DEAD or e.state == Unit.State.ROUTING:
 			continue
-		if u.position.distance_squared_to(e.position) <= trigger_range_sq:
+		if u.position.distance_to(e.position) <= SQUARE_TRIGGER_RANGE:
 			return true
 	return false
 
@@ -183,7 +179,7 @@ static func _should_form_square(u: Unit, all_units: Array) -> bool:
 ## no ally qualifies, so a wavering unit with no one to call on just keeps fighting.
 static func _relief_candidate(tired: Unit, all_units: Array) -> Unit:
 	var best: Unit = null
-	var best_d_sq: float = RELIEF_CALL_RANGE * RELIEF_CALL_RANGE
+	var best_d: float = RELIEF_CALL_RANGE
 	for node in all_units:
 		var a := node as Unit
 		if a == null or a == tired or a.team != tired.team \
@@ -192,10 +188,9 @@ static func _relief_candidate(tired: Unit, all_units: Array) -> Unit:
 				or a.support_target != null \
 				or (a.current_order != null and a.current_order.type == Order.Type.RELIEF):
 			continue
-		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-		var d_sq: float = tired.position.distance_squared_to(a.position)
-		if d_sq < best_d_sq:
-			best_d_sq = d_sq
+		var d: float = tired.position.distance_to(a.position)
+		if d < best_d:
+			best_d = d
 			best = a
 	return best
 
@@ -264,11 +259,9 @@ static func _support_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary
 ## target_enemy) so a directive re-issued every AI tick doesn't restart the march.
 static func _move_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
 	var point := Vector2(float(directive.get("x", u.position.x)), float(directive.get("y", u.position.y)))
-	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-	var eps_sq: float = Subcommander.POINT_EPSILON * Subcommander.POINT_EPSILON
 	var already_going_there: bool = u.target_enemy == null and (
-		(u.has_move_target and u.move_target.distance_squared_to(point) < eps_sq)
-		or (not u.has_move_target and u.position.distance_squared_to(point) < eps_sq))
+		(u.has_move_target and u.move_target.distance_to(point) < Subcommander.POINT_EPSILON)
+		or (not u.has_move_target and u.position.distance_to(point) < Subcommander.POINT_EPSILON))
 	if already_going_there:
 		return {}
 	return {

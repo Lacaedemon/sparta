@@ -500,38 +500,6 @@ from all four sides, weathers the volleys that its overhead shields blunt from
 every direction.
 :::
 
-Both stances still assume a soldier's shield stays locked with the men either side of
-it, which only holds while the threat comes from one direction. A soldier who is
-actually contacted by enemies on more than one side at once --- attacked from the front
-and the rear together, or enveloped around a flank --- can't be defended by that
-assumption any more, so it individually **breaks**: it fights that cadence as an
-unmodified soldier (no wall bonus, no testudo penalty) and falls back toward the gap in
-the ring of attackers around it, rejoining the moment an opening actually appears. This
-is a per-soldier reaction, not a stance change --- the rest of the unit keeps holding
-Shield Wall or Testudo throughout, and a soldier that breaks rejoins on its own the
-instant the encirclement clears, with no order needed. Square and schiltron never do
-this: their whole design is to face attackers from every side, so being surrounded is
-the plan, not a breakdown.
-
-::: {#fig-shield-wall-encirclement .demo}
-
-```{=html}
-<video class="demo-video" controls muted loop playsinline preload="metadata"
-       poster="media/shield_wall_encirclement.jpg">
-  <source src="media/shield_wall_encirclement.mp4" type="video/mp4">
-  Your browser can't play this clip --- see the
-  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-</video>
-```
-
-A Shield Wall infantry unit charged from front and rear at once: the tinted (red)
-soldiers have individually broken from the wall and are falling back toward the gap
-between their two attackers, then rejoin the formation once the rear attacker is
-beaten back and only one side remains. A few soldiers still flicker broken again
-later in the clip --- ordinary flank pressure from the one remaining attacker, not a
-second encirclement.
-:::
-
 ## Form square against cavalry
 
 When horse threatens a unit's flank or rear and you have no spear screen to spare,
