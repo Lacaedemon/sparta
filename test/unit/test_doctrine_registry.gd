@@ -15,6 +15,7 @@ func _valid_raw() -> Dictionary:
 		"reserve_fraction": 0.25,
 		"reserve_commit_morale_threshold": 50.0,
 		"pursue_routers": true,
+		"subcommander_rank": "Test Rank",
 	}
 
 
@@ -27,6 +28,7 @@ func test_parse_valid_doctrine() -> void:
 	assert_almost_eq(float(d["reserve_fraction"]), 0.25, 0.001)
 	assert_almost_eq(float(d["reserve_commit_morale_threshold"]), 50.0, 0.001)
 	assert_true(d["pursue_routers"])
+	assert_eq(d["subcommander_rank"], "Test Rank")
 
 
 func test_reserve_fraction_is_clamped_to_0_1() -> void:
@@ -89,6 +91,8 @@ func test_the_two_shipped_profiles_have_genuinely_different_parameters() -> void
 	assert_ne(aggressive["reserve_fraction"], cautious["reserve_fraction"])
 	assert_ne(aggressive["reserve_commit_morale_threshold"], cautious["reserve_commit_morale_threshold"])
 	assert_ne(aggressive["pursue_routers"], cautious["pursue_routers"])
+	assert_ne(aggressive["subcommander_rank"], cautious["subcommander_rank"],
+		"phase 4: the two doctrines also flavor their subcommander rank titles differently")
 
 
 func test_doctrine_ids_lists_both_shipped_profiles() -> void:

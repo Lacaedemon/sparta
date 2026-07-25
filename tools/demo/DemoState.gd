@@ -262,6 +262,12 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# relieve their own fighting line. A durable mode like formation, so a stance
 		# order's write is verifiable straight off the transcript.
 		"rank_relief": u.rank_relief,
+		# Battle AI phase 4 (docs/battle-ai-design.md): which AI subcommander group (if any)
+		# this unit is currently delegated to, and the rank title resolved from the player's
+		# own doctrine profile at delegation time. Both null for a non-delegated (ordinary
+		# player-controlled) unit -- see Unit.player_group_id / Unit.subcommander_rank_title.
+		"delegated_group_id": u.player_group_id if u.is_delegated() else null,
+		"subcommander_rank": u.subcommander_rank_title if u.is_delegated() else null,
 		"target_enemy_uid": target_uid,
 		"engaged": u.is_engaged(),
 		# A single readable label for the in-progress drill/maneuver, consolidating

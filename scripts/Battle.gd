@@ -146,6 +146,13 @@ const ORDER_DISENGAGE := -10
 # Sentinel for a disengage-with-sacrifice order: a rearguard detachment stays engaged
 # to delay the enemy while the rest of the unit retreats.
 const ORDER_DISENGAGE_SACRIFICE := -11
+# Sentinel for a player-delegation-only order (no movement, no target): phase 4 of the
+# chain-of-command battle AI (docs/battle-ai-design.md). Writes the durable Unit.
+# player_group_id (and, for a fresh delegation, Unit.subcommander_rank_title) on each unit,
+# leaving all movement/formation/stance state untouched -- mirrors ORDER_STANCE_ONLY's shape.
+# The delegated group id (Unit.UNDELEGATED to revoke, or a player-chosen id >= 0) rides the
+# existing "frontage" field, so the replay format is unchanged (see enqueue_delegation).
+const ORDER_DELEGATION_ONLY := -12
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -325,6 +332,18 @@ var _snapshot_cache: ReplaySnapshotCache = null
 # resolves to {} from DoctrineRegistry, and General.decide_army falls back to phase 2's own
 # single-group/no-reserves/pursue-routers behaviour for an empty doctrine.
 var ai_doctrine: String = "aggressive"
+
+# Battle AI phase 4 (docs/battle-ai-design.md): which doctrine profile (DoctrineRegistry id)
+# flavors a PLAYER-delegated group's subcommander rank title (Unit.subcommander_rank_title,
+# written by _apply_order_cmd's ORDER_DELEGATION_ONLY branch -- see PlayerDelegation.
+# subcommander_rank_title). Unlike ai_doctrine, this never drives an autonomous army-level
+# decision for team 0 (plan selection, reserves) -- the player IS the general for their own
+# delegated groups, per the design doc's phase-4 scope ("give group-level directives as the
+# general" is satisfied by the player choosing which units to delegate, not by a second AI
+# General auto-managing team 0). Settable BEFORE the node enters the tree (like ai_doctrine
+# above), so a demo/test can force a specific rank flavor; the default is a normal, playable
+# choice like ai_doctrine's own default.
+var player_doctrine: String = "aggressive"
 
 # Units deployed per side when this is a campaign-launched battle; used to
 # scale survivors back to campaign army strength when the battle ends.
@@ -1191,9 +1210,14 @@ func _physics_process(_delta: float) -> void:
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
 	# the same cadence during playback so it reaches the same decisions. Skipped entirely
 	# under all-teams control -- the player is commanding team 1 directly, so nothing
-	# should also be deciding for it.
-	if _tick % ai_period == 0 and not all_teams_control:
-		_run_enemy_ai()
+	# should also be deciding for it. Player delegation (phase 4) is orthogonal to
+	# all_teams_control (a team-1-only debug flag) and always runs on the same cadence --
+	# a delegated team-0 group is the player's own choice, not something all_teams_control
+	# governs.
+	if _tick % ai_period == 0:
+		if not all_teams_control:
+			_run_enemy_ai()
+		_run_player_delegated_ai()
 
 	_check_victory()
 	_tick += 1
@@ -1626,10 +1650,58 @@ func enqueue_unit_settings(uids: Array, walk_advance_toggle: int = UnitSettingTo
 	_apply_order_live(cmd)
 
 
-## Apply one order (move or attack) to its units. Shared by live play and
-## playback so both produce identical results.
-func _apply_order_cmd(cmd: Dictionary) -> void:
+## Battle AI phase 4 (docs/battle-ai-design.md): delegate (group_id >= 0) or revoke
+## (Unit.UNDELEGATED) player-controlled units to/from an AI subcommander group. Mirrors
+## enqueue_unit_settings's shape -- a durable per-unit toggle, no movement, no target -- and
+## reuses the existing "frontage" field to carry group_id, so the replay format is unchanged
+## (the same reuse ORDER_STANCE_ONLY/ORDER_NUDGE already make of that field for their own,
+## equally unrelated, per-sentinel-type payload). Recorded (like enqueue_unit_settings) since
+## delegation is genuine persistent unit state a mid-battle toggle changes -- unlike the AI's
+## own resulting orders, which are re-derived on replay and never recorded (see Battle.
+## _run_player_delegated_ai / _apply_order_cmd's own from_player parameter).
+func enqueue_delegation(uids: Array, group_id: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if uids.is_empty():
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_DELEGATION_ONLY,
+		"mode": OrderMode.NORMAL,
+		"frontage": group_id,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
+## Apply one order (move or attack) to its units. Shared by live play and playback so both
+## produce identical results. `from_player` distinguishes a genuine player-issued command (the
+## default -- every enqueue_* call and every recorded order drained from the replay stream)
+## from an AI-issued one (Battle._run_enemy_ai / _run_player_delegated_ai pass false): a
+## player order to a delegated unit always overrides its subcommander's directive (the design
+## doc's phase-4 "take manual control back at any time" contract), but the AI's OWN orders for
+## a unit it was just delegated must not immediately un-delegate it again on the very same
+## tick. See Unit.player_group_id's own doc comment.
+func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	var target_uid: int = int(cmd["target"])
+	if from_player and target_uid != ORDER_DELEGATION_ONLY:
+		_revoke_delegation(cmd["units"])
+	# Player-delegation-only: write each unit's player_group_id (and, for a fresh delegation,
+	# its subcommander_rank_title from the player's own doctrine profile), leaving all
+	# movement/formation/stance state untouched.
+	if target_uid == ORDER_DELEGATION_ONLY:
+		var group_id: int = int(cmd.get("frontage", Unit.UNDELEGATED))
+		var doctrine: Dictionary = DoctrineRegistry.doctrine(player_doctrine)
+		var rank_title: String = PlayerDelegation.subcommander_rank_title(doctrine)
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u == null or u.state == UnitRef.State.DEAD:
+				continue
+			u.player_group_id = group_id
+			u.subcommander_rank_title = rank_title if group_id != Unit.UNDELEGATED else ""
+		return
 	# Formation-change-only: update each unit's formation and separation footprint,
 	# leaving all movement and order-mode state untouched.
 	if target_uid == ORDER_FORMATION_ONLY:
@@ -2165,6 +2237,21 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.start_order_response()
 
 
+## Battle AI phase 4 (docs/battle-ai-design.md): clear player_group_id (and its resolved
+## subcommander_rank_title) for each of `uids` that is currently delegated -- the actuation
+## behind "a manual player order to a delegated unit always overrides the subcommander's
+## directive" (design doc, phase-4 acceptance criteria). Called once, at the top of
+## _apply_order_cmd, only when the incoming command is player-issued (from_player) and isn't
+## itself the delegation toggle (which sets its own final player_group_id right after, making
+## a revoke-then-set here redundant but harmless -- see _apply_order_cmd's own guard).
+func _revoke_delegation(uids: Array) -> void:
+	for uid in uids:
+		var u: Unit = _unit_by_uid(int(uid))
+		if u != null and u.is_delegated():
+			u.player_group_id = Unit.UNDELEGATED
+			u.subcommander_rank_title = ""
+
+
 func _uids_contain(uids: Array, target: int) -> bool:
 	for u in uids:
 		if int(u) == target:
@@ -2319,7 +2406,39 @@ func _run_enemy_ai() -> void:
 		var directive: Dictionary = directives.get(u.uid, {})
 		var cmd: Dictionary = UnitLeader.decide(u, all_units, directive, pursue_routers)
 		if not cmd.is_empty():
-			_apply_order_cmd(cmd)
+			_apply_order_cmd(cmd, false)   # AI-issued: never recorded, never revokes delegation
+
+
+## Battle AI phase 4 (docs/battle-ai-design.md): player delegation. Mirrors _run_enemy_ai's own
+## shape above, pointed at whichever team-0 units the player has delegated to an AI
+## subcommander group (Unit.player_group_id, written only by enqueue_delegation) instead of at
+## team 1's whole roster. A non-delegated team-0 unit is invisible to this function entirely
+## (PlayerDelegation.delegated_groups only returns delegated units), so it keeps behaving
+## exactly as an ordinary player unit always has -- untouched by any AI decision. Every group
+## runs through the SAME Subcommander.decide_group/UnitLeader.decide pipeline team 1 uses, so
+## a delegated group's resulting orders are structurally indistinguishable from hand-issued
+## ones in the transcript (the design doc's own phase-4 acceptance criterion) -- and, like
+## team 1's AI, this runs un-recorded (from_player=false into _apply_order_cmd) and is
+## re-derived on replay from the same recorded delegation toggles, never itself recorded.
+##
+## pursue_routers is hardcoded true here (unlike team 1, which threads it from the doctrine's
+## own rout-exploitation flag): there is no AI General standing up team-0's plan/reserves --
+## the player IS the general for a delegated group, choosing group membership directly (see
+## PlayerDelegation's own class doc) -- so this stays at the phase-1/phase-2 default rather
+## than reading a doctrine-driven decision the design scopes to phase 3's General, which this
+## phase deliberately does not stand up for team 0.
+func _run_player_delegated_ai() -> void:
+	var all_units: Array = get_tree().get_nodes_in_group("units")
+	var team0: Array = _team_units(0)
+	var groups: Dictionary = PlayerDelegation.delegated_groups(team0)
+	for group_id in groups:
+		var group: Array = groups[group_id]
+		var group_directives: Dictionary = Subcommander.decide_group(group, all_units)
+		for u in group:
+			var directive: Dictionary = group_directives.get(u.uid, {})
+			var cmd: Dictionary = UnitLeader.decide(u, all_units, directive, true)
+			if not cmd.is_empty():
+				_apply_order_cmd(cmd, false)   # AI-issued: never recorded, never revokes delegation
 
 
 func _team_units(team: int) -> Array:

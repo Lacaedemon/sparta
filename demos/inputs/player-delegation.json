@@ -1,0 +1,27 @@
+{
+  "_comment": "Battle AI phase 4 (docs/battle-ai-design.md): player delegation. A custom 2-vs-1 scenario (not the default 5v5 line) so the delegated pair and the single enemy read clearly at this zoom. Box-selects both team-0 units, delegates them to AI subcommander group 5 (Ctrl+Shift+5) so they advance and engage the enemy on their own -- no further orders from the player -- then, with the same selection still active, issues an immediate Hold stance (Ctrl+H) to take manual control back, per the design doc's 'a manual player order to a delegated unit always overrides the subcommander's directive'. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 500, "y": 700 },
+    { "team": 0, "type": "Infantry", "x": 600, "y": 700 },
+    { "team": 1, "type": "Infantry", "x": 550, "y": 300 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 550, "y": 500, "zoom": 1.1 }
+  ],
+  "steps": [
+    { "tick": 8, "box": { "from": [430, 650], "to": [670, 750] } },
+    { "tick": 40, "key": "5", "ctrl": true, "shift": true },
+    { "tick": 220, "key": "H", "ctrl": true }
+  ],
+  "state": [8, 42, 100, 180, 222, 260],
+  "expect": [
+    { "tick": 8, "uid": 0, "field": "delegated_group_id", "value": null },
+    { "tick": 42, "uid": 0, "field": "delegated_group_id", "value": 5 },
+    { "tick": 42, "uid": 1, "field": "delegated_group_id", "value": 5 },
+    { "tick": [100, 180], "uid": 0, "field": "current_order", "value": "ATTACK" },
+    { "tick": [100, 180], "uid": 1, "field": "current_order", "value": "ATTACK" },
+    { "tick": 222, "uid": 0, "field": "order_mode", "value": "Hold" },
+    { "tick": 222, "uid": 1, "field": "order_mode", "value": "Hold" }
+  ]
+}

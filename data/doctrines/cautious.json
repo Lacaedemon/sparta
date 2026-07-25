@@ -4,5 +4,6 @@
   "envelop_ratio_threshold": 1.6,
   "reserve_fraction": 0.4,
   "reserve_commit_morale_threshold": 30.0,
-  "pursue_routers": false
+  "pursue_routers": false,
+  "subcommander_rank": "Legate"
 }

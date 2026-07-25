@@ -455,6 +455,16 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == GROUP_ATTACK_CYCLE_KEY:
 		_cycle_group_attack_mode()   # switch focused / distributed attack for multi-unit orders
 		return true
+	# Battle AI phase 4 (docs/battle-ai-design.md): Ctrl+Shift+<0-9> delegates/revokes the
+	# current selection to/from AI subcommander group N. Checked BEFORE _handle_group_key
+	# below, whose own Ctrl+<digit> (bind a UI control group) would otherwise fire first --
+	# every plain letter key is already claimed (see Settings.DEFAULT_ORDER_BINDINGS's own
+	# "letter key exhaustion" note) and Ctrl+<digit>/plain <digit> are already spoken for, so
+	# adding Shift is the smallest free extension of an already-learned convention.
+	var delegate_group: int = _digit_for_keycode(event.keycode)
+	if delegate_group >= 0 and event.ctrl_pressed and event.shift_pressed:
+		_toggle_delegation(delegate_group)
+		return true
 	return _handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
 
 
@@ -1728,6 +1738,33 @@ func group_members(n: int) -> Array:
 ## behavior only for the former) checks this first.
 func has_group(n: int) -> bool:
 	return _groups.has(n)
+
+
+# --- battle AI player delegation (phase 4, docs/battle-ai-design.md) -------
+
+## Ctrl+Shift+<0-9>: delegate the current selection to AI subcommander group `group_id`, or
+## revoke (take manual control back) if every selected friendly unit is already delegated to
+## that exact group -- the same toggle-back-on-the-same-key convention _toggle_square/
+## _toggle_shield_wall/_toggle_testudo already use for a direct-select stance. Routed through
+## Battle.enqueue_delegation so the toggle is recorded and replays exactly; the resulting AI
+## orders themselves are re-derived (never recorded), like every other AI decision.
+func _toggle_delegation(group_id: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	var all_already_this_group := true
+	for u in _selected:
+		if is_instance_valid(u) and u.state != UnitRef.State.DEAD and u.player_group_id != group_id:
+			all_already_this_group = false
+			break
+	var target_group: int = Unit.UNDELEGATED if all_already_this_group else group_id
+	_battle.enqueue_delegation(uids, target_group)
+	if _hud != null:
+		_hud.flash_message("Delegation revoked" if target_group == Unit.UNDELEGATED \
+				else "Delegated to subcommander group %d" % group_id)
+	Sfx.play(&"order")
 
 
 # --- order modes -----------------------------------------------------
