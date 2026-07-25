@@ -158,6 +158,20 @@ func test_armor_protection_matches_the_pre_registry_profile_table() -> void:
 		0.40, "the scale shirt matches the pre-registry cavalry armour literal")
 
 
+func test_make_builds_weapon_type_field_for_field() -> void:
+	# Direct construction, mirroring what the registry's own static init does -- also
+	# guarantees the constructor is exercised regardless of the coverage instrumentation's
+	# script-load order (see test_make_builds_armor_and_mount_types_field_for_field's own
+	# comment for why this matters).
+	var w: Weapon = Weapon.make(99, "Test blade", 1.4, 0.9, 0.8, 0.2)
+	assert_eq(w.id, 99)
+	assert_eq(w.display_name, "Test blade")
+	assert_eq(w.reach_m, 1.4)
+	assert_eq(w.lethality, 0.9)
+	assert_eq(w.attack_interval_s, 0.8)
+	assert_eq(w.default_hold_angle, 0.2)
+
+
 func test_make_builds_armor_and_mount_types_field_for_field() -> void:
 	# Direct construction, mirroring what the registry's own static init does —
 	# also guarantees the constructors are exercised regardless of the coverage
