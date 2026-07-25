@@ -1041,12 +1041,18 @@ ordered mid-charge takes noticeably longer to come about. A second, independent
 cap takes over once a unit is genuinely **sprinting** (past its own jog pace) ---
 below that, the pace/footprint pacing above already keeps every unit turning
 within its own physical means, so this second cap has nothing to add for an
-ordinary walking or jogging march. At a full sprint, though, the pivot also
-never asks a soldier's own body to redirect its cruising velocity faster than
-that soldier's own acceleration allows --- so a broad, fast block (cavalry above
-all) sprinting into a sustained course correction turns more deliberately still
-than the speed taper alone would call for, trading a slower turn for keeping its
-ranks intact instead of smearing out of formation.
+ordinary walking or jogging march. This isn't limited to a deliberate cavalry
+charge: every unit sprints during the last stretch of any approach (closing
+the final ground to a target at full pace), so the cap can engage for any
+unit type caught mid-turn during that final rush, not cavalry alone --- it
+just never has anything to do outside a genuine sprint segment. At a full
+sprint, though, the pivot also never asks a soldier's own body to redirect
+its cruising velocity faster than that soldier's own acceleration allows ---
+so a broad, fast block (cavalry most visibly, since it sprints fastest and
+farthest) sprinting into a sustained course correction turns more
+deliberately still than the speed taper alone would call for, trading a
+slower turn for keeping its ranks intact instead of smearing out of
+formation.
 
 Speed itself isn't instant either: a unit **ramps up** to its target pace
 (walk, jog, or sprint) and **ramps down** when slowing or stopping, rather than
