@@ -145,6 +145,23 @@ func test_cohesion_and_training_get_their_own_conditional_lines() -> void:
 			"full cohesion stays hidden, as before the split")
 
 
+func test_delegation_gets_its_own_conditional_line() -> void:
+	# Battle AI phase 4 (docs/battle-ai-design.md): the delegated-group rank title only
+	# appears when the unit is actually delegated, mirroring Cohesion/Training's own
+	# conditional-line pattern above.
+	var hud := _hud()
+	var u := _unit()
+	u.player_group_id = 5
+	u.subcommander_rank_title = "Tribune"
+	hud.show_unit(u, 1)
+	assert_string_contains(hud._info.text, "\nDelegated to: Tribune (Group 5)",
+			"a delegated unit's resolved subcommander rank shows on its own line")
+	var fresh := _unit()
+	hud.show_unit(fresh, 1)
+	assert_false(hud._info.text.contains("Delegated to:"),
+			"a non-delegated unit shows no delegation line at all")
+
+
 func test_stat_sheet_reads_auto_gait_without_a_move_order() -> void:
 	var hud := _hud()
 	var u := _unit()

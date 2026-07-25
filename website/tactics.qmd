@@ -711,6 +711,46 @@ reserves into the fight --- they break their stationary hold, march up,
 and join the melee.
 :::
 
+## Player delegation
+
+You can hand a group of your own units over to the same subcommander
+machinery the enemy's AI already runs: select the units and press
+<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+*a number key* (0--9) to delegate them
+to AI subcommander group *N*. Press the same combination again on the
+same selection to take them back. A delegated group marches, forms
+square, calls for relief, and supports its neighbors on its own ---
+exactly like an enemy group, right down to the orders it issues showing
+up in the transcript the same way a hand-issued order would.
+
+The delegated group's subcommander carries a period-flavored rank title
+drawn from your own doctrine profile (an aggressive doctrine's
+subcommanders are Tribunes, a cautious doctrine's are Legates) ---
+shown in the selected-unit info panel while a unit is delegated.
+
+You always outrank the AI: giving *any* explicit order to a delegated
+unit --- a move, an attack, a stance, even just re-arming Hold --- takes
+it back under your direct control immediately. There's no suppression
+window and nothing to undo first; the next order you issue to that unit
+is exactly that, an order, not a suggestion competing with a
+subcommander's own directive.
+
+::: {#fig-player-delegation .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/player_delegation.jpg">
+  <source src="media/player_delegation.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two units delegated to subcommander group 5 (a Tribune, under the
+aggressive doctrine) march on and engage the lone enemy with no further
+orders; partway through, reclaiming manual control with Hold
+(<kbd>Ctrl</kbd>+<kbd>H</kbd>) instantly clears the delegation.
+:::
+
 ## Weapon reach
 
 Each weapon has an **effective reach** --- how close two units must get before they

@@ -1653,12 +1653,24 @@ func enqueue_unit_settings(uids: Array, walk_advance_toggle: int = UnitSettingTo
 ## Battle AI phase 4 (docs/battle-ai-design.md): delegate (group_id >= 0) or revoke
 ## (Unit.UNDELEGATED) player-controlled units to/from an AI subcommander group. Mirrors
 ## enqueue_unit_settings's shape -- a durable per-unit toggle, no movement, no target -- and
-## reuses the existing "frontage" field to carry group_id, so the replay format is unchanged
-## (the same reuse ORDER_STANCE_ONLY/ORDER_NUDGE already make of that field for their own,
-## equally unrelated, per-sentinel-type payload). Recorded (like enqueue_unit_settings) since
-## delegation is genuine persistent unit state a mid-battle toggle changes -- unlike the AI's
-## own resulting orders, which are re-derived on replay and never recorded (see Battle.
-## _run_player_delegated_ai / _apply_order_cmd's own from_player parameter).
+## reuses the existing "frontage" field to carry the group id, so the replay format is
+## unchanged (the same reuse ORDER_STANCE_ONLY/ORDER_NUDGE already make of that field for
+## their own, equally unrelated, per-sentinel-type payload). Recorded (like
+## enqueue_unit_settings) since delegation is genuine persistent unit state a mid-battle
+## toggle changes -- unlike the AI's own resulting orders, which are re-derived on replay and
+## never recorded (see Battle._run_player_delegated_ai / _apply_order_cmd's own from_player
+## parameter).
+##
+## Encoded as group_id + 1, NOT the raw group_id: Replay.record_order OMITS "frontage" from
+## the recorded entry whenever the value is exactly 0 (its own "old replays stay compact"
+## convention -- see its doc comment), and a bare 0 group id is a perfectly legitimate
+## delegation target here (Ctrl+Shift+0), not a spare sentinel slot -- the same "0 is a real
+## value, not LEAVE" hazard REFORM_MODE_TOGGLE_LEAVE's own comment names for exactly this
+## reason. Shifting by 1 makes every real group id (0-9) round-trip through record/replay as
+## a nonzero, always-recorded "frontage" (1-10), while UNDELEGATED (-1) shifts to 0 -- which
+## is what an omitted key already decodes back to via _apply_order_cmd's own
+## `cmd.get("frontage", 0)`, so a revoke needs no explicit recorded entry at all. See
+## _apply_order_cmd's ORDER_DELEGATION_ONLY branch for the matching decode.
 func enqueue_delegation(uids: Array, group_id: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
@@ -1670,7 +1682,7 @@ func enqueue_delegation(uids: Array, group_id: int) -> void:
 		"y": 0.0,
 		"target": ORDER_DELEGATION_ONLY,
 		"mode": OrderMode.NORMAL,
-		"frontage": group_id,
+		"frontage": group_id + 1,
 	}
 	_pending_orders.append(cmd)
 	_apply_order_live(cmd)
@@ -1690,9 +1702,11 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		_revoke_delegation(cmd["units"])
 	# Player-delegation-only: write each unit's player_group_id (and, for a fresh delegation,
 	# its subcommander_rank_title from the player's own doctrine profile), leaving all
-	# movement/formation/stance state untouched.
+	# movement/formation/stance state untouched. "frontage" is group_id + 1 (see
+	# enqueue_delegation's own doc comment for why) -- an omitted key (an old/malformed
+	# replay entry) defaults to 0, decoding to UNDELEGATED, the safe fallback.
 	if target_uid == ORDER_DELEGATION_ONLY:
-		var group_id: int = int(cmd.get("frontage", Unit.UNDELEGATED))
+		var group_id: int = int(cmd.get("frontage", 0)) - 1
 		var doctrine: Dictionary = DoctrineRegistry.doctrine(player_doctrine)
 		var rank_title: String = PlayerDelegation.subcommander_rank_title(doctrine)
 		for uid in cmd["units"]:

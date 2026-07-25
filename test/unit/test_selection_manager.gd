@@ -548,6 +548,50 @@ func test_dispatch_key_ctrl_down_disengages_and_shift_ctrl_down_disengages_with_
 	assert_eq(b._pending_orders.size(), 2, "queues disengage with sacrifice order")
 
 
+func test_ctrl_shift_digit_delegates_the_selection_then_toggles_it_back_off() -> void:
+	# Battle AI phase 4 (docs/battle-ai-design.md): Ctrl+Shift+<0-9> delegates the current
+	# selection to AI subcommander group N, and toggles it back off (revokes) when pressed
+	# again on the same, already-delegated selection.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 20
+	b._by_uid[20] = u
+	sm._select(u)
+
+	var delegate_key := InputEventKey.new()
+	delegate_key.pressed = true
+	delegate_key.keycode = KEY_5
+	delegate_key.ctrl_pressed = true
+	delegate_key.shift_pressed = true
+
+	assert_true(sm._dispatch_key(delegate_key), "Ctrl+Shift+5 is handled")
+	assert_eq(u.player_group_id, 5, "delegates the selection to subcommander group 5")
+
+	assert_true(sm._dispatch_key(delegate_key), "the same combo on the same selection toggles")
+	assert_false(u.is_delegated(), "pressing it again revokes delegation")
+
+
+func test_ctrl_digit_without_shift_still_only_binds_a_control_group() -> void:
+	# The pre-existing Ctrl+<0-9> control-group bind must stay unaffected by the new
+	# Ctrl+Shift+<0-9> delegation gesture -- checked BEFORE it in _dispatch_key's own
+	# dispatch order, so plain Ctrl+<digit> must still fall through to _handle_group_key.
+	var sm := _sm()
+	var u := _unit()
+	sm._select(u)
+
+	var ctrl5 := InputEventKey.new()
+	ctrl5.pressed = true
+	ctrl5.keycode = KEY_5
+	ctrl5.ctrl_pressed = true
+
+	assert_true(sm._dispatch_key(ctrl5), "Ctrl+5 is still handled")
+	assert_true(sm.has_group(5), "as the ordinary UI control-group bind")
+	assert_false(u.is_delegated(), "and never touches AI delegation")
+
+
 func test_dispatch_key_shift_b_issues_right_anchored_explicatio() -> void:
 	# Shift+B (asymmetric explicatio): widens like plain B, but with a non-zero
 	# anchor offset that holds the right flank fixed instead of the plain centred
