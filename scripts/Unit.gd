@@ -374,7 +374,24 @@ const ORDER_WEDGE_CHARGE := 12
 const ORDER_KNOCKBACK_FOCUS := 13
 const ORDER_GIVE_GROUND := 14
 const ORDER_PUSH := 15
-const ORDER_MULTIPLE_ENGAGE := 16
+# MARCH_TO_CONTACT: an advance-to-contact stance for a plain move order. NORMAL's
+# existing "plain move order with no explicit target = disengage/push through" rule
+# (see the ranged and melee gates in _think()) lets a marching unit auto-acquire and
+# then walk straight past a hostile it crosses -- correct as the deliberate default,
+# but sometimes the player wants the unit to
+# stop and fight anything it meets along an already-queued route, then continue once
+# the fight is over. MARCH_TO_CONTACT does exactly that: it widens the same two gates'
+# disjunction so an auto-acquired foe (target_enemy == null, not chasing) still triggers
+# fire/melee under a plain move order, instead of only under an explicit attack order or
+# no move order at all. It deliberately does NOT clear has_move_target anywhere, so the
+# queued destination survives the fight untouched -- once the enemy dies, routs out of
+# range, or otherwise leaves contact, the very next tick falls through to the ordinary
+# "obey the move order" branch and the march resumes on its own, exactly the way
+# ORDER_CHASE's held move_target already resumes a march once its quarry is gone. Unlike
+# CHASE, which actively seeks out and relentlessly pursues one target indefinitely,
+# MARCH_TO_CONTACT never chases -- it only stops for whatever is already in range/contact
+# during a move, and lets a foe that breaks contact go rather than following it.
+const ORDER_MARCH_TO_CONTACT := 17
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
@@ -1748,15 +1765,25 @@ func _think(delta: float) -> void:
 		# that hasn't closed to melee — they skirmish at distance instead of charging.
 		# Gated by the same "not disengaging" rule as melee: a plain move order with
 		# no explicit attack target marches them off rather than rooting them to fire.
+		# MARCH_TO_CONTACT is the one exception: it widens this same disjunction so an
+		# auto-acquired foe (target_enemy still null, not chasing) still stops the unit
+		# to fire under a plain move order -- see ORDER_MARCH_TO_CONTACT's own doc comment
+		# for why has_move_target is deliberately left untouched (the march resumes on its
+		# own once the fight ends).
 		if is_ranged and not in_contact and dist_sq <= RANGED_RANGE * RANGED_RANGE \
-				and (target_enemy != null or not has_move_target or chasing):
+				and (target_enemy != null or not has_move_target or chasing \
+					or order_mode == ORDER_MARCH_TO_CONTACT):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe so next tick's current_target() returns it
 			# instead of re-running nearest_enemy() from scratch -- see the melee branch's
 			# matching commit below for why an unpersisted pick thrashes facing, and why
 			# ORDER_HOLD is excluded (the chase branch below has no HOLD guard, since
-			# target_enemy previously only went non-null via an explicit order).
-			if order_mode != ORDER_HOLD:
+			# target_enemy previously only went non-null via an explicit order). MARCH_TO_
+			# CONTACT is excluded for the identical reason: committing here would let the
+			# chase branch below march this unit off after a foe that has broken contact,
+			# instead of letting it go and resuming the queued move (see ORDER_MARCH_TO_
+			# CONTACT's own doc comment).
+			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT:
 				target_enemy = enemy
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
@@ -1769,7 +1796,11 @@ func _think(delta: float) -> void:
 		# the unit break contact. (Pulling out exposes the rear; the enemy chasing
 		# it strikes for the ×2 flank bonus, which is the cost of disengaging.) A
 		# CHASE unit never takes this disengage: it keeps fighting the same foe.
-		if in_contact and (target_enemy != null or not has_move_target or chasing):
+		# MARCH_TO_CONTACT never disengages from a foe it's already in contact with
+		# either -- see ORDER_MARCH_TO_CONTACT's own doc comment for the stop-then-
+		# resume mechanism this shares with the "obey a move order" branch below.
+		if in_contact and (target_enemy != null or not has_move_target or chasing \
+				or order_mode == ORDER_MARCH_TO_CONTACT):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe: current_target() (UnitTargeting.gd) only keeps
 			# returning an already-live target_enemy -- it never writes back the nearest_enemy()
@@ -1795,7 +1826,14 @@ func _think(delta: float) -> void:
 			# preserves the pre-existing contract at the cost of not fixing its own facing-whipsaw
 			# case (an un-squared HOLD unit under a multi-attacker press) -- not a regression,
 			# since that combination was never fixed by this change in the first place.
-			if order_mode != ORDER_HOLD:
+			#
+			# Skip it under ORDER_MARCH_TO_CONTACT for the same reason, but for a different
+			# consequence: MARCH_TO_CONTACT's whole point is to let a foe that breaks contact
+			# go and resume the queued move, rather than following it (unlike CHASE, which
+			# deliberately keeps pursuing). Committing target_enemy here would make the chase
+			# branch below pursue it anyway the instant contact breaks -- exactly the HOLD
+			# failure mode above, just reached via a plain move order instead of a HELD one.
+			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT:
 				target_enemy = enemy
 			# Re-face for action: a large swing off the current fronting turns the men in
 			# place gradually (they hold their ground) before the line strikes; a small
