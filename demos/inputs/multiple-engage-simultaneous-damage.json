@@ -7,7 +7,7 @@
     { "team": 1, "type": "Infantry", "x": 619, "y": 509, "count": 30 }
   ],
   "camera": [
-    { "tick": 0, "x": 610, "y": 510, "zoom": 1.1 }
+    { "tick": 0, "x": 605, "y": 505, "zoom": 0.9 }
   ],
   "steps": [
     { "tick": 5, "click": [600, 500] },
