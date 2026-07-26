@@ -184,6 +184,27 @@ static func wheel_gait_rate(rate_cap: float, gait_speed: float, outer_radius: fl
 	return minf(rate_cap, gait_speed / outer_radius)
 
 
+## The maximum angular rate (rad/s) at which a body travelling at `speed` can turn its
+## OWN velocity DIRECTION under `body_accel` -- the same real constraint that bounds how
+## sharply any accelerating body (a horse, a runner, a cart) can corner: redirecting a
+## velocity of magnitude `speed` at angular rate omega demands a lateral (centripetal)
+## acceleration of speed * omega, so the achievable omega is capped at
+## `body_accel / speed`. `wheel_gait_rate` above already paces a wheel/pivot so its
+## OUTERMOST man's TANGENTIAL speed never exceeds a gait -- a purely geometric bound with
+## no reference to how fast that man could actually accelerate to reach it. At a march's
+## cruising speed (jog or sprint, both far above a walk) that geometric pacing alone can
+## still demand a turn sharper than body_accel affords, so a formed pivot needs BOTH caps,
+## combined by the caller via a plain minf(): this one guards the physically-real turning
+## budget, wheel_gait_rate guards the corner man's footspeed. Returns +inf (no cap) at
+## zero/negative speed -- a body standing still (or moving backward, treated the same way
+## for this purely-magnitude formula) can reorient freely, matching a real unit pivoting
+## on the spot. Pure -- a function of (body_accel, speed) only.
+static func max_turn_rate_for_speed(body_accel: float, speed: float) -> float:
+	if speed <= 0.0:
+		return INF
+	return body_accel / speed
+
+
 ## Whether a move order from `facing` along `move_vec` should execute as a MOVING wheel
 ## (Unit.begin_moving_wheel) rather than any of the standing composites above (about-face,
 ## lateral-pivot, about-face+wheel) or the plain march's own gradual centre-pivot. Cavalry
