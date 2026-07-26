@@ -5,6 +5,11 @@ extends GutTest
 ## every adjacent enemy, so its line can actually reach all of them.
 
 const BattleScript = preload("res://scripts/Battle.gd")
+const SEED: int = 12345
+
+
+func before_each() -> void:
+	Replay.rng.seed = SEED   # deterministic draws for UnitCombat.strike, as test_pin_down_attack.gd does
 
 
 func _make_unit(max_soldiers: int = 120) -> Unit:
@@ -246,3 +251,33 @@ func test_multiple_engage_frontage_reflow_respects_cooldown() -> void:
 	e2.set_frontage(6)
 	u._multiple_engage_reflow([e1, e2])
 	assert_eq(UnitFormation.frontage(u), 10, "still on cooldown: no reshape even though the target differs a lot")
+
+
+# --- End-to-end: a live _think() tick actually drives the reflow ------------
+
+func test_multiple_engage_reflow_fires_from_a_live_think_tick_in_melee_contact() -> void:
+	# Unlike the _multiple_engage_reflow()-called-directly tests above, this drives the whole
+	# call site inside _think()'s "Fight when in contact" branch -- the same pattern
+	# test_pin_down_attack.gd's own _think()-driven tests use (target_enemy set, both units
+	# positioned in contact, then a single u._think(delta) call).
+	var u := _make_unit(60)
+	u.uid = 1
+	u.team = 0
+	u.order_mode = Unit.ORDER_MULTIPLE_ENGAGE
+	u.set_frontage(8)
+	u._last_reshape_tick = -1   # not on cooldown
+	var e1 := _make_unit(120)
+	e1.uid = 2
+	e1.team = 1
+	e1.set_frontage(9)
+	e1.position = Vector2(0.0, u._front_depth() + e1._front_depth() - 2.0)
+	var e2 := _make_unit(120)
+	e2.uid = 3
+	e2.team = 1
+	e2.set_frontage(9)
+	e2.position = Vector2(0.0, u._front_depth() + e2._front_depth() - 4.0)
+	u.target_enemy = e1
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "sanity: the live tick actually entered melee")
+	assert_eq(UnitFormation.frontage(u), 18,
+		"a live _think() tick reflows frontage toward the combined width of both adjacent enemies (9 + 9)")
