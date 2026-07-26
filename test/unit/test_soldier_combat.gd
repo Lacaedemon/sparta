@@ -8,6 +8,31 @@ extends GutTest
 
 const TOL: float = 1e-4
 
+# --- relative_mass_from_kg (the derived contact-mass scalar) ------------------
+
+func test_relative_mass_from_kg_baseline_is_one() -> void:
+	# CONTACT_MASS_BASELINE_KG is exactly the heavy-foot body_mass_kg (80), so a
+	# soldier weighing the baseline gets the sim's canonical relative mass of 1.0.
+	assert_eq(SoldierCombat.relative_mass_from_kg(80.0), 1.0)
+
+
+func test_relative_mass_from_kg_scales_linearly() -> void:
+	assert_almost_eq(SoldierCombat.relative_mass_from_kg(70.0), 0.875, TOL,
+		"a 70 kg archer is 7/8 of the baseline")
+	assert_almost_eq(SoldierCombat.relative_mass_from_kg(450.0), 5.625, TOL,
+		"the warhorse's own real mass, relative to the baseline")
+	assert_eq(SoldierCombat.relative_mass_from_kg(0.0), 0.0, "no mass, no relative mass")
+
+
+func test_relative_mass_from_kg_is_additive_across_components() -> void:
+	# Linear in its input, so summing two components' relative masses equals the
+	# relative mass of their combined real weight (rider + mount composition
+	# relies on exactly this property).
+	var rider: float = SoldierCombat.relative_mass_from_kg(75.0)
+	var horse: float = SoldierCombat.relative_mass_from_kg(450.0)
+	assert_almost_eq(rider + horse, SoldierCombat.relative_mass_from_kg(525.0), TOL)
+
+
 # --- Per-type combat profile (docs/combat-model.md "Soldier attributes") ------
 
 func test_profile_skill_is_training() -> void:
@@ -59,37 +84,73 @@ func test_profile_infantry_is_the_default() -> void:
 	assert_almost_eq(p["max_stamina"], 100.0, TOL)
 
 
-func test_profile_typed_panoply_matches_the_legacy_rows_bit_for_bit() -> void:
-	# Every roster type's default armor/mount ids must reproduce the legacy row's
-	# armour and mass EXACTLY — the typed loadout renames the scalars' home, it
-	# must not move combat or contact physics by any amount.
+func test_profile_typed_panoply_armour_matches_the_legacy_rows_bit_for_bit() -> void:
+	# Every roster type's default armor id must reproduce the legacy row's armour
+	# EXACTLY — the typed loadout renames the scalar's home, it must not move
+	# combat outcomes by any amount. Mass is covered separately below: unlike
+	# armour, it is now DERIVED from real body/mount kilograms rather than a
+	# renamed literal, so most types are unchanged but cavalry and archers are not
+	# (see test_profile_typed_panoply_mass_is_derived_from_real_kilograms).
 	var inf: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5,
 			LoadoutRegistry.ARMOR_HAMATA, LoadoutRegistry.MOUNT_NONE)
 	assert_eq(inf["armour"], 0.45, "typed infantry armour == the legacy literal")
-	assert_eq(inf["mass"], 1.0, "typed infantry mass == the legacy literal")
 	var spear: Dictionary = SoldierCombat.profile_for(false, true, false, 0.75,
 			LoadoutRegistry.ARMOR_LINOTHORAX, LoadoutRegistry.MOUNT_NONE)
 	assert_eq(spear["armour"], 0.35, "typed spearman armour == the legacy literal")
-	assert_eq(spear["mass"], 1.0, "typed spearman mass == the legacy literal")
 	var arch: Dictionary = SoldierCombat.profile_for(false, false, true, 0.3,
 			LoadoutRegistry.ARMOR_TUNIC, LoadoutRegistry.MOUNT_NONE)
 	assert_eq(arch["armour"], 0.10, "typed archer armour == the legacy literal")
-	assert_eq(arch["mass"], 0.9, "typed archer mass == the legacy literal (light body)")
 	var cav: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6,
 			LoadoutRegistry.ARMOR_SQUAMATA, LoadoutRegistry.MOUNT_WARHORSE)
 	assert_eq(cav["armour"], 0.40, "typed cavalry armour == the legacy literal")
-	assert_eq(cav["mass"], 2.5, "body 1.0 + warhorse 1.5 == the legacy cavalry mass")
 
 
-func test_profile_zero_ids_keep_the_legacy_fallback() -> void:
-	# A bare profile_for(flags, training) call — and any unknown id — keeps the
-	# hard-coded row values, so old call sites and stray ids can't shift combat.
+func test_profile_typed_panoply_mass_is_derived_from_real_kilograms() -> void:
+	# Mass is relative_mass_from_kg(body_mass_kg) [+ relative_mass_from_kg(mount.mass_kg)
+	# when mounted] — no separately-tuned relative constant anywhere. Infantry and
+	# spearmen both weigh the 80 kg baseline, so their mass is unchanged at 1.0.
+	# Archers (70 kg) and cavalry (75 kg rider + 450 kg warhorse) genuinely change
+	# from the old tuned literals (0.9 and 2.5) to the values real body/mount
+	# kilograms actually derive.
+	var inf: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5,
+			LoadoutRegistry.ARMOR_HAMATA, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(inf["mass"], 1.0, "80 kg infantry over an 80 kg baseline is unchanged")
+	var spear: Dictionary = SoldierCombat.profile_for(false, true, false, 0.75,
+			LoadoutRegistry.ARMOR_LINOTHORAX, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(spear["mass"], 1.0, "80 kg spearmen over an 80 kg baseline is unchanged")
+	var arch: Dictionary = SoldierCombat.profile_for(false, false, true, 0.3,
+			LoadoutRegistry.ARMOR_TUNIC, LoadoutRegistry.MOUNT_NONE)
+	assert_almost_eq(arch["mass"], 0.875, TOL, "70 kg archers, derived (was the tuned 0.9)")
+	var cav: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6,
+			LoadoutRegistry.ARMOR_SQUAMATA, LoadoutRegistry.MOUNT_WARHORSE)
+	assert_almost_eq(cav["mass"], 6.5625, TOL,
+		"75 kg rider + 450 kg warhorse, derived (was the tuned 2.5)")
+
+
+func test_profile_zero_ids_keep_the_legacy_armour_fallback() -> void:
+	# A bare profile_for(flags, training) call — and any unknown armor id — keeps
+	# the hard-coded armour row value, so old call sites and stray ids can't shift
+	# combat. Mass has no equivalent "legacy" fallback anymore (see the next test):
+	# with no mount id, mass correctly falls back to just the soldier's own real
+	# body mass, not an assumption that a mount is present.
 	var bare: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6)
 	assert_eq(bare["armour"], 0.40, "no armor id -> the legacy cavalry armour")
-	assert_eq(bare["mass"], 2.5, "no mount id -> the legacy cavalry mass")
 	var unknown: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6, 999, 999)
 	assert_eq(unknown["armour"], 0.40, "an unknown armor id keeps the legacy armour")
-	assert_eq(unknown["mass"], 2.5, "an unknown mount id keeps the legacy mass")
+
+
+func test_profile_zero_mount_id_falls_back_to_the_body_alone() -> void:
+	# With no mount id resolving (a bare call, or an unknown id), mass derives from
+	# body_mass_kg alone — "no mount" now genuinely means "just this soldier's own
+	# body", not the old hard-coded literal that implicitly assumed a mount was
+	# present. This is a deliberate, judged consequence of deriving mass from real
+	# kilograms end to end rather than keeping a second, separately-tuned fallback.
+	var bare: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6)
+	assert_almost_eq(bare["mass"], 75.0 / 80.0, TOL,
+		"no mount id -> just the rider's own 75 kg body, no horse")
+	var unknown: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6, 999, 999)
+	assert_almost_eq(unknown["mass"], 75.0 / 80.0, TOL,
+		"an unknown mount id -> just the rider's own body, no horse")
 
 
 func test_profile_typed_panoply_can_diverge_from_the_type_default() -> void:
@@ -100,7 +161,8 @@ func test_profile_typed_panoply_can_diverge_from_the_type_default() -> void:
 	assert_eq(mailed_archer["armour"], 0.45, "an archer in mail protects like mail")
 	var mounted_infantry: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5,
 			LoadoutRegistry.ARMOR_HAMATA, LoadoutRegistry.MOUNT_WARHORSE)
-	assert_eq(mounted_infantry["mass"], 2.5, "a mounted foot profile carries the horse's mass")
+	assert_almost_eq(mounted_infantry["mass"], 6.625, TOL,
+		"a mounted foot profile carries the horse's real mass: 80 kg body + 450 kg warhorse")
 
 
 func test_profile_reports_real_body_mass_in_kilograms() -> void:
@@ -273,10 +335,15 @@ func test_math_is_deterministic() -> void:
 # --- mass + knockback impulse -----------------------------------
 
 func test_profiles_carry_per_type_mass() -> void:
-	assert_almost_eq(SoldierCombat.profile_for(true, false, false, 0.5)["mass"], 2.5, 1e-6, "cavalry are heavy")
+	# Bare calls (no mount id) resolve mass from body_mass_kg alone — a cavalry
+	# RIDER's own body (75 kg) is actually lighter than the 80 kg baseline; the
+	# unit only reads as "heavy" once its real mount is composed in (see
+	# test_profile_typed_panoply_mass_is_derived_from_real_kilograms above).
+	assert_almost_eq(SoldierCombat.profile_for(true, false, false, 0.5)["mass"], 75.0 / 80.0, 1e-6,
+		"a bare cavalry profile is just the rider's own body, no mount")
 	assert_almost_eq(SoldierCombat.profile_for(false, true, false, 0.5)["mass"], 1.0, 1e-6, "spearmen baseline mass")
 	assert_almost_eq(SoldierCombat.profile_for(false, false, false, 0.5)["mass"], 1.0, 1e-6, "infantry baseline mass")
-	assert_almost_eq(SoldierCombat.profile_for(false, false, true, 0.5)["mass"], 0.9, 1e-6, "archers are light")
+	assert_almost_eq(SoldierCombat.profile_for(false, false, true, 0.5)["mass"], 0.875, 1e-6, "archers are light")
 
 
 func test_knockback_impulse_baseline() -> void:

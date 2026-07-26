@@ -95,10 +95,20 @@ func test_spawned_soldiers_strike_inputs_match_the_old_table() -> void:
 
 
 ## The typed armor/mount split (per-unit ids -> profile_for) must leave every
-## spawned roster unit's armour and contact mass bit-identical to the
-## pre-registry hard-coded rows — the same equivalence bar the weapon/shield
-## split above already meets.
+## spawned roster unit's armour bit-identical to the pre-registry hard-coded
+## rows, the same equivalence bar the weapon/shield split above already meets.
+## Contact mass is a deliberate exception: it is now derived from the real
+## spawned body/mount kilograms (docs/soldier-loadout-design.md's contact-mass
+## derivation) rather than a separately-tuned relative constant, so it is no
+## longer expected to match the pre-registry literal for every type.
 func test_spawned_units_armour_and_mass_match_the_old_table() -> void:
+	# Armour still matches the pre-registry literals bit-for-bit. Mass no longer
+	# does for every type: it is now SoldierCombat.relative_mass_from_kg of the
+	# real spawned body/mount kilograms, not a separately-tuned relative constant.
+	# Spearmen and Infantry both weigh the 80 kg baseline, so their mass is
+	# unchanged; Archers (70 kg) and Cavalry (75 kg rider + 450 kg warhorse, real
+	# spawned units always carry LoadoutRegistry.MOUNT_WARHORSE) genuinely change
+	# from the old tuned 0.9 and 2.5 to the values real kilograms actually derive.
 	Replay.forced_seed = SEED
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	add_child_autofree(battle)
@@ -106,8 +116,8 @@ func test_spawned_units_armour_and_mass_match_the_old_table() -> void:
 	var expected: Dictionary = {
 		"Spearmen": {"armour": 0.35, "mass": 1.0},
 		"Infantry": {"armour": 0.45, "mass": 1.0},
-		"Archers": {"armour": 0.10, "mass": 0.9},
-		"Cavalry": {"armour": 0.40, "mass": 2.5},
+		"Archers": {"armour": 0.10, "mass": 0.875},
+		"Cavalry": {"armour": 0.40, "mass": 6.5625},
 	}
 	var checked: int = 0
 	for node in get_tree().get_nodes_in_group("units"):
@@ -120,8 +130,8 @@ func test_spawned_units_armour_and_mass_match_the_old_table() -> void:
 		var prof: Dictionary = u.combat_profile()
 		assert_eq(prof["armour"], float(expected[type_name]["armour"]),
 			"%s spawned armour equals the pre-registry literal" % u.unit_name)
-		assert_eq(prof["mass"], float(expected[type_name]["mass"]),
-			"%s spawned contact mass equals the pre-registry literal" % u.unit_name)
+		assert_almost_eq(prof["mass"], float(expected[type_name]["mass"]), 0.0001,
+			"%s spawned contact mass is derived from its real body/mount kilograms" % u.unit_name)
 		checked += 1
 	assert_gt(checked, 0, "the battle spawned roster units to check")
 
