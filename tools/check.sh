@@ -21,6 +21,13 @@
 #             bare wu literals documented by metric comments. Diff-scoped to
 #             added lines like `comments`, sharing its base resolution. Mirrors
 #             the units step in check-comment-citations.yml.
+#   file_length
+#             Caps NEW scripts/*.gd files (added by this diff, not existing ones) at 100
+#             lines -- CLAUDE.md's "one function per file" convention as a hard budget for
+#             genuinely new files. Diff-scoped like `comments`/`units`, sharing their base
+#             resolution: a whole-tree gate would fail on the 167 of 274 tracked *.gd files
+#             that already exceed 100 lines. Scoped to scripts/, not test/ (this repo's
+#             test files deliberately group many test functions per file).
 #   coverage  GUT suite instrumented for line coverage; writes coverage/lcov.info.
 #             Mirrors .github/workflows/test-coverage.yml. Slower than `test` and
 #             non-gating, so not in the default set (run it explicitly or via "all").
@@ -53,7 +60,7 @@
 #             workflow's defect-scan step.
 #
 # Usage:
-#   tools/check.sh                 # default set: validate, test, chars, comments, units
+#   tools/check.sh                 # default set: validate, test, chars, comments, units, file_length
 #   tools/check.sh test chars      # only the named checks, in the given order
 #   tools/check.sh all             # every check (links included if lychee is present)
 #   tools/check.sh -l | --list     # list the available checks
@@ -76,11 +83,13 @@
 #                running before the checks start (default 5) — the early signal
 #                of an orphan leak building up.
 #   SPARTA_CHECK_COMMENTS_BASE
-#                Commit-ish the `comments` and `units` checks diff HEAD against to find
-#                *new* lines to scan (default: tries origin/main, then main; CI
-#                sets this per-event — see check-comment-citations.yml). When no
+#                Commit-ish the `comments`, `units`, and `file_length` checks diff HEAD
+#                against to find *new* lines/files to scan (default: tries origin/main,
+#                then main; CI sets this per-event — see check-comment-citations.yml). When no
 #                base can be resolved, the check skips rather than scanning the
 #                whole tree.
+#   SPARTA_CHECK_MAX_NEW_FILE_LINES
+#                Line-count cap for the `file_length` check (default: 100).
 #   SPARTA_CHECK_PATCH_COVERAGE_BASE
 #                Same, for the `patch_coverage` check's diff base (default:
 #                tries origin/main, then main).
@@ -110,8 +119,8 @@ COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-2700}"
 # shellcheck source=lib/run-bounded.sh
 . "$SCRIPT_DIR/lib/run-bounded.sh"
 
-DEFAULT_CHECKS=(validate test chars comments units)
-ALL_CHECKS=(validate test chars comments units coverage patch_coverage lint links demo_defects)
+DEFAULT_CHECKS=(validate test chars comments units file_length)
+ALL_CHECKS=(validate test chars comments units file_length coverage patch_coverage lint links demo_defects)
 
 # --- pretty output ---------------------------------------------------------
 # Colour only when stdout is a terminal and NO_COLOR isn't set. Per the NO_COLOR
@@ -173,6 +182,7 @@ list_checks() {
   info "  chars      non-standard characters in docs (check-non-standard-chars.yml)"
   info "  comments   issue/PR-number citations in NEW GDScript comment lines (check-comment-citations.yml)"
   info "  units      units-convention lint on NEW GDScript lines (docs/units-convention.md)"
+  info "  file_length  caps NEW scripts/*.gd files at 100 lines (one-function-per-file convention)"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  patch_coverage  local codecov/patch gate for this diff's scripts/*.gd changes (fails below the effective target)"
   info "  lint       GDScript style lint via gdlint (see .gdlintrc), whole tracked *.gd tree"
@@ -797,6 +807,64 @@ check_comments() {
   info "No new issue/PR-number citations found in this diff's GDScript comments."
 }
 
+check_file_length() {
+  # Cap NEW scripts/*.gd files at MAX_NEW_FILE_LINES lines -- CLAUDE.md's "one function per
+  # file" convention read as a hard budget for genuinely new production files. Diff-scoped to
+  # files ADDED by this diff (git diff --diff-filter=A), not a whole-tree scan: 167 of this
+  # repo's 274 tracked *.gd files already exceed 100 lines -- several in the thousands
+  # (Unit.gd, Battle.gd, core orchestration files) -- so a whole-tree gate would fail almost
+  # every PR until a large, separate decomposition effort lands. Scoped to scripts/ only, not
+  # test/: this repo's test-file convention deliberately groups many related test functions
+  # into one file (test_soldier_melee.gd runs hundreds of lines by design), which
+  # one-function-per-file was never meant to constrain. Reuses check_comments' base
+  # resolution (and SPARTA_CHECK_COMMENTS_BASE override) so local and CI agree.
+  local base
+  if ! base="$(resolve_comments_base)"; then
+    warn "No base ref to diff against (shallow checkout, no 'main'/'origin/main',"
+    warn "or a brand-new branch with no shared history) -- skipping the"
+    warn "file-length check rather than scanning the whole tree."
+    warn "Set SPARTA_CHECK_COMMENTS_BASE, or fetch full history (git fetch --unshallow)."
+    set_result file_length skip
+    return 0
+  fi
+
+  local merge_base head
+  merge_base="$(cd "$PROJECT_ROOT" && git merge-base HEAD "$base" 2>/dev/null)"
+  head="$(cd "$PROJECT_ROOT" && git rev-parse HEAD 2>/dev/null)"
+  if [ -z "$merge_base" ]; then
+    warn "No common history with '$base' -- skipping the file-length check."
+    set_result file_length skip
+    return 0
+  fi
+  if [ "$merge_base" = "$head" ]; then
+    info "HEAD is '$base' (or an ancestor of it) -- no new commits to check."
+    return 0
+  fi
+
+  local files=()
+  while IFS= read -r -d '' f; do
+    files+=("$f")
+  done < <(cd "$PROJECT_ROOT" && git diff --no-color --diff-filter=A -z --name-only "$merge_base" HEAD -- 'scripts/*.gd')
+  if [ ${#files[@]} -eq 0 ]; then
+    info "No new scripts/*.gd files in this diff."
+    return 0
+  fi
+
+  local max="${SPARTA_CHECK_MAX_NEW_FILE_LINES:-100}"
+  local failed=0 f lines
+  for f in "${files[@]}"; do
+    lines="$(wc -l < "$PROJECT_ROOT/$f" | tr -d ' ')"
+    if [ "$lines" -gt "$max" ]; then
+      err "$f: $lines lines (new files are capped at $max -- CLAUDE.md's one-function-per-file convention; split it up)"
+      failed=1
+    fi
+  done
+  if [ "$failed" -eq 1 ]; then
+    return 1
+  fi
+  info "Every new scripts/*.gd file in this diff is within the ${max}-line cap."
+}
+
 check_units() {
   # Units-convention lint (docs/units-convention.md): sim geometry is authored
   # in metres and stored in world units, converted ONLY inside const
@@ -1056,7 +1124,7 @@ main() {
       -h|--help) usage; exit 0 ;;
       -l|--list) list_checks; exit 0 ;;
       all)       checks+=("${ALL_CHECKS[@]}") ;;
-      validate|test|chars|comments|units|coverage|patch_coverage|lint|links|demo_defects) checks+=("$arg") ;;
+      validate|test|chars|comments|units|file_length|coverage|patch_coverage|lint|links|demo_defects) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
   done
