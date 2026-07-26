@@ -1656,7 +1656,7 @@ func _think(delta: float) -> void:
 	for u in get_tree().get_nodes_in_group("units"):
 		if u is Unit and u.team != team and u.is_ranged and u.state != State.DEAD \
 				and u.state != State.ROUTING \
-				and position.distance_to(u.position) <= RANGED_RANGE:
+				and position.distance_squared_to(u.position) <= RANGED_RANGE * RANGED_RANGE: # OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 			_under_fire = true
 			break
 
@@ -1705,8 +1705,10 @@ func _think(delta: float) -> void:
 	else:
 		enemy = UnitTargeting.current_target(self)
 	if enemy != null:
-		var dist: float = position.distance_to(enemy.position)
-		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		var dist_sq: float = position.distance_squared_to(enemy.position)
+		var contact_dist: float = attack_range + RADIUS + enemy.RADIUS
+		var in_contact: bool = dist_sq <= contact_dist * contact_dist
 		# Chase: relentless pursuit. Everywhere else in this branch gates fighting/closing
 		# on "target_enemy != null or not has_move_target" (an explicit attack order, or no
 		# move order at all) — that's what lets a plain move order pull a unit off a foe it
@@ -1720,14 +1722,14 @@ func _think(delta: float) -> void:
 		# plain disengage move order fall through to the normal paths.
 		if not is_ranged and order_mode == ORDER_CYCLE_CHARGE \
 				and (target_enemy != null or not has_move_target):
-			if _cycle_charge_tick(enemy, dist, in_contact, delta):
+			if _cycle_charge_tick(enemy, sqrt(dist_sq), in_contact, delta):
 				return
 		# Skirmish: a ranged unit kites — if a threat is inside the kite
 		# distance it backs off (away from the threat, clamped to the field) rather
 		# than standing to fire or being caught in melee; beyond it, it falls through
 		# to the normal ranged fire below. Gated by the same "not disengaging" rule
 		# as firing, so a plain move order still marches it off instead of kiting.
-		if is_ranged and order_mode == ORDER_SKIRMISH and dist < SKIRMISH_KITE_DISTANCE \
+		if is_ranged and order_mode == ORDER_SKIRMISH and dist_sq < SKIRMISH_KITE_DISTANCE * SKIRMISH_KITE_DISTANCE \
 				and (target_enemy != null or not has_move_target):
 			var away: Vector2 = position - enemy.position
 			if away.length() < 0.001:
@@ -1743,7 +1745,7 @@ func _think(delta: float) -> void:
 		# that hasn't closed to melee — they skirmish at distance instead of charging.
 		# Gated by the same "not disengaging" rule as melee: a plain move order with
 		# no explicit attack target marches them off rather than rooting them to fire.
-		if is_ranged and not in_contact and dist <= RANGED_RANGE \
+		if is_ranged and not in_contact and dist_sq <= RANGED_RANGE * RANGED_RANGE \
 				and (target_enemy != null or not has_move_target or chasing):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe so next tick's current_target() returns it
@@ -1989,9 +1991,11 @@ func _support_tick(delta: float) -> void:
 	var ward: Unit = support_target
 	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS)
 	if threat != null:
-		var dist: float = position.distance_to(threat.position)
-		var in_contact: bool = dist <= attack_range + RADIUS + threat.RADIUS
-		if is_ranged and not in_contact and dist <= RANGED_RANGE:
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		var dist_sq: float = position.distance_squared_to(threat.position)
+		var contact_dist: float = attack_range + RADIUS + threat.RADIUS
+		var in_contact: bool = dist_sq <= contact_dist * contact_dist
+		if is_ranged and not in_contact and dist_sq <= RANGED_RANGE * RANGED_RANGE:
 			state = State.FIGHTING
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = RANGED_INTERVAL
