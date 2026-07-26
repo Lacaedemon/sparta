@@ -977,7 +977,6 @@ check_units() {
   info "No units-convention violations in this diff's added GDScript lines."
 }
 
-
 check_lint() {
   # GDScript style lint via gdtoolkit's gdlint. Config lives in .gdlintrc at the project root
   # (gdlint auto-discovers it by walking up from cwd -- no --gdlintrc flag needed as long as
@@ -1001,7 +1000,6 @@ check_lint() {
   fi
   ( cd "$PROJECT_ROOT" && gdlint "${files[@]}" )
 }
-
 
 check_links() {
   if ! have lychee; then
