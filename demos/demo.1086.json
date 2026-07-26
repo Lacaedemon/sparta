@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/multiple-engage-target-cycling.json",
+  "caption": "Multiple engage now cycles its strike target: once a unit is genuinely fighting 2+ adjacent enemy regiments, target_enemy rotates between them so both take casualties instead of one sitting untouched.",
+  "fixed_fps": 30,
+  "max_frames": 450,
+  "fps": 15,
+  "width": 720
+}

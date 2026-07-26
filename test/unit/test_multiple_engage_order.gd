@@ -358,8 +358,11 @@ func test_multiple_engage_spreads_casualties_across_both_adjacent_enemies_over_t
 	# _attack_cd only decrements in _physics_process (not _think itself), so a bare-fixture
 	# test driving _think() directly (the pattern every other test in this file uses) has to
 	# replicate that decrement by hand between ticks to let the cooldown actually run out and
-	# more than one strike land.
-	for i in range(300):
+	# more than one strike land. 100 ticks (10 sim seconds) is enough for several strikes at the
+	# default gladius cadence (melee_attack_interval ~1.2s) without fully depleting either
+	# 120-soldier enemy -- a full kill would fall through to the PRE-EXISTING nearest-enemy
+	# fallback in UnitTargeting.current_target() and confound this test with that unrelated path.
+	for i in range(100):
 		u._attack_cd = maxf(0.0, u._attack_cd - 0.1)
 		u._think(0.1)
 	assert_lt(e1.soldiers, e1_before, "the first adjacent enemy takes casualties")
@@ -388,7 +391,8 @@ func test_normal_order_mode_control_leaves_the_second_adjacent_enemy_undamaged()
 	u.target_enemy = e1
 	var e1_before: int = e1.soldiers
 	var e2_before: int = e2.soldiers
-	for i in range(300):
+	# Same 100-tick window as the MULTIPLE_ENGAGE test above, for a like-for-like contrast.
+	for i in range(100):
 		u._attack_cd = maxf(0.0, u._attack_cd - 0.1)
 		u._think(0.1)
 	assert_lt(e1.soldiers, e1_before, "sanity: e1 is still being fought and takes casualties")

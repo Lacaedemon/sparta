@@ -1289,7 +1289,11 @@ into different tools:
   combined width of every attacker pressing it, so its line can actually
   reach all of them instead of presenting a narrower front than the fight
   has grown to. Both effects stay off below 2 adjacent enemies --- a normal
-  single-opponent fight under this stance looks like any other stance.
+  single-opponent fight under this stance looks like any other stance. Its
+  strikes also cycle: rather than every blow landing on whichever one enemy
+  it engaged first, the unit rotates its strike target among every adjacent
+  enemy in turn, so casualties spread across all of them instead of leaving
+  the rest untouched.
 
 ::: {#fig-cycle-charge-flee .demo}
 
