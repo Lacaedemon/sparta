@@ -1,7 +1,7 @@
 # gdlint (gdtoolkit) config, tuned to this repo's actual, deliberate conventions rather than
-# gdtoolkit's opinionated defaults. See tools/README.md, "GDScript lint (gdlint)", and issue
-# #1102 for the full investigation this config is based on: run against the whole codebase with
-# defaults, ~1050 findings; with the disables below, 3 (all genuine, fixed alongside this config).
+# gdtoolkit's opinionated defaults. Run with gdtoolkit's own defaults against the whole
+# codebase: ~1050 findings. With the disables below: 3, all genuine naming-convention slips,
+# fixed alongside this config landing.
 #
 # Rules disabled below and why -- each conflicts with an established, intentional convention
 # rather than catching a real defect:

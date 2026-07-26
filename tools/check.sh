@@ -36,9 +36,9 @@
 #             ~15-20 min CI round trip.
 #   lint      GDScript style lint via gdtoolkit's gdlint, if it's installed (pip install
 #             gdtoolkit). Config in .gdlintrc, tuned to this repo's actual conventions --
-#             see that file's own header and issue #1102 for the full rationale. Runs over
-#             every tracked *.gd file (not diff-scoped): the baseline is clean, so this is
-#             simpler than a diff-scoped check and any finding is unambiguously new. Not in
+#             see that file's own header for the full rationale. Runs over every tracked
+#             *.gd file (not diff-scoped): the baseline is clean, so this is simpler than a
+#             diff-scoped check and any finding is unambiguously new. Not in
 #             the default set (run it explicitly or via "all"); mirrors
 #             .github/workflows/check-gdlint.yml.
 #   links     Markdown link-check with lychee, if it's installed. Mirrors
