@@ -5741,6 +5741,7 @@ func to_snapshot_dict() -> Dictionary:
 		"move_target": move_target, "has_move_target": has_move_target,
 		"order_mode": order_mode, "knockback_push_indefinite": knockback_push_indefinite,
 		"formation_mode": formation_mode, "rank_relief": rank_relief,
+		"player_group_id": player_group_id, "subcommander_rank_title": subcommander_rank_title,
 		"engage_reshape_mode": engage_reshape_mode, "tier": tier,
 		"frontage_override": frontage_override,
 		"frontage_anchor_offset": frontage_anchor_offset,
@@ -5845,6 +5846,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	knockback_push_indefinite = bool(d["knockback_push_indefinite"])
 	formation_mode = int(d["formation_mode"])
 	rank_relief = bool(d["rank_relief"])
+	player_group_id = int(d["player_group_id"])
+	subcommander_rank_title = String(d["subcommander_rank_title"])
 	engage_reshape_mode = int(d["engage_reshape_mode"])
 	tier = int(d["tier"])
 	frontage_override = int(d["frontage_override"])

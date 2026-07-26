@@ -100,6 +100,47 @@ func test_capture_and_restore_round_trips_a_live_battles_state() -> void:
 	_leave_playback(prev_mode)
 
 
+func test_capture_and_restore_round_trips_player_delegation() -> void:
+	# Battle AI phase 4 (docs/battle-ai-design.md): Unit.player_group_id/subcommander_rank_title
+	# must survive a snapshot round-trip like every other mutable runtime field (Unit.
+	# to_snapshot_dict/apply_snapshot_dict's own field-level contract is covered in
+	# test_unit_snapshot.gd; this is the Battle-level proof that a REAL restore -- which
+	# respawns a fresh Unit node rather than mutating the live one -- actually carries
+	# delegation through, not just an isolated in-memory dict round-trip).
+	var prev_mode := _enter_playback()
+	var battle := _spawn_battle(_clash_scenario())
+	while battle.current_tick() < 20:
+		await get_tree().physics_frame
+
+	var units: Dictionary = _units_by_uid(battle)
+	var team0_uid: int = -1
+	for uid in units:
+		if (units[uid] as Unit).team == 0:
+			team0_uid = uid
+			break
+	assert_ne(team0_uid, -1, "a team-0 unit exists to delegate")
+
+	battle.enqueue_delegation([team0_uid], 5)
+	assert_true((units[team0_uid] as Unit).is_delegated(), "delegated before capture")
+
+	var snap: Dictionary = battle.capture_snapshot()
+	while battle.current_tick() < 80:
+		await get_tree().physics_frame
+	# Revoke on the LIVE (post-capture) unit -- proves the restore brings back the CAPTURED
+	# delegated state, not just whatever the live unit still happens to carry by coincidence.
+	battle.enqueue_delegation([team0_uid], Unit.UNDELEGATED)
+
+	battle.restore_snapshot(snap)
+	var restored: Unit = _units_by_uid(battle)[team0_uid]
+	assert_true(restored.is_delegated(),
+		"delegation survives a snapshot round-trip, like every other mutable runtime field")
+	assert_eq(restored.player_group_id, 5)
+	assert_ne(restored.subcommander_rank_title, "",
+		"the resolved rank title survives the round-trip too")
+
+	_leave_playback(prev_mode)
+
+
 func test_restore_snapshot_lets_the_battle_keep_ticking_forward_afterward() -> void:
 	var prev_mode := _enter_playback()
 	var battle := _spawn_battle(_clash_scenario())
