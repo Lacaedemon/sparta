@@ -264,6 +264,14 @@ const DEFAULT_ORDER_BINDINGS := {
 	"give_ground": KEY_QUOTELEFT,
 	# KEY_P collides with HUD._is_pause_keypress()'s pause toggle; KEY_SLASH is the next unclaimed key.
 	"push": KEY_SLASH,
+	# Every letter key, digit (control groups), and punctuation-row key is now claimed by an
+	# earlier order mode, a fixed camera/UI hotkey, or a maneuver drill (see
+	# SelectionManager.gd/HUD.gd's own key maps) -- there is no free key left on the main
+	# keyboard rows. Function keys are otherwise unused in this project (F1 is the one
+	# exception, HUD._is_tray_toggle_keypress -- see its own comment on why F-keys are the
+	# fallback once every other key is spoken for), so F2 is both free and, like F1, immune
+	# to Godot's built-in UI action bindings.
+	"multiple_engage": KEY_F2,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
