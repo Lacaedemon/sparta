@@ -4426,6 +4426,11 @@ func test_engaged_soldiers_ease_into_a_forward_strike_lunge() -> void:
 
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(0.0)   # arm the engaged latch so engaged_soldier_indices returns the front rank
+	# engaged_soldier_indices() memoizes per (Engine.get_physics_frames(), count) -- a real
+	# physics tick never fires between these two synchronous calls, so without this reset
+	# the second call would hit the cache entry the FIRST _refresh_flock_render call above
+	# populated (before the latch was armed) and never see the newly-engaged state at all.
+	u._engaged_indices_cache_frame = -1
 	u._refresh_flock_render(0.05)
 	var after_one_tick: float = u._render_strike_progress[0]
 	assert_gt(after_one_tick, 0.0, "progress starts moving toward the fully-lunged target")
@@ -4470,6 +4475,7 @@ func test_leaving_engagement_eases_the_lunge_back_out() -> void:
 
 	u.state = Unit.State.IDLE
 	u.tick_engaged(10.0)   # ENGAGED_LINGER worth of real time -- the latch fully decays
+	u._engaged_indices_cache_frame = -1   # force a fresh read -- see the sibling test's own comment
 	u._refresh_flock_render(0.05)
 	var after_one_tick: float = u._render_strike_progress[0]
 	assert_lt(after_one_tick, 1.0, "progress starts moving back toward rest")
@@ -4490,6 +4496,9 @@ func test_process_keeps_easing_strike_progress_with_no_other_refresh_trigger_act
 
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(0.0)   # arm the engaged latch
+	u._engaged_indices_cache_frame = -1   # force a fresh read (no real tick advances the frame
+	                                       # counter between these synchronous calls) -- see
+	                                       # test_engaged_soldiers_ease_into_a_forward_strike_lunge
 	u._refresh_flock_render(0.05)   # the same-tick kickoff refresh a real strike would trigger
 	assert_gt(u._render_strike_progress[0], 0.0, "the kickoff refresh starts the ease")
 	assert_true(u._strike_easing_active, "still short of the target right after the kickoff")
