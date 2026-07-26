@@ -76,4 +76,5 @@ DEMOS=(
   "disengage_step_back|demos/inputs/disengage-step-back.json|30|220|640|input"
   "shield_wall_encirclement|demos/inputs/shield-wall-encirclement.json|30|360|640|input"
   "player_delegation|demos/inputs/player-delegation.json|30|150|640|input"
+  "multiple_engage|demos/inputs/multiple-engage.json|30|350|720|input"
 )
