@@ -118,6 +118,8 @@ const _STANCE_ENTRIES := [
 	{"id": 15, "mode": BattleRef.OrderMode.PUSH, "label": "Push", "slug": "push"},
 	{"id": 16, "mode": BattleRef.OrderMode.MULTIPLE_ENGAGE, "label": "Multiple engage",
 		"slug": "multiple_engage"},
+	{"id": 17, "mode": BattleRef.OrderMode.MARCH_TO_CONTACT, "label": "March to contact",
+		"slug": "march_to_contact"},
 ]
 
 # The multi-unit form-up distribution modes, in menu order (the default, EQUAL_DEPTH_SPACE,
