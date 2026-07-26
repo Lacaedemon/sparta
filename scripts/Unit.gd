@@ -1800,6 +1800,12 @@ func _think(delta: float) -> void:
 			if faced and _attack_cd <= 0.0:
 				_start_attack_cd(melee_attack_interval())
 				UnitCombat.strike(self, enemy)
+				# MULTIPLE_ENGAGE: cycle target_enemy to the next distinct adjacent enemy so a
+				# genuinely multi-attacker fight spreads damage across all of them instead of
+				# every strike landing on whichever one target_enemy first resolved to -- see
+				# _next_multiple_engage_target's own doc for the round-robin/determinism rule.
+				if order_mode == ORDER_MULTIPLE_ENGAGE:
+					target_enemy = _next_multiple_engage_target(_adjacent_engaged_enemy_units(), enemy)
 			# MULTIPLE_ENGAGE: reflow this regiment's own frontage toward the combined width
 			# of every distinct enemy currently pressing it, once there are genuinely 2+ of
 			# them in contact -- see _multiple_engage_reflow's own doc for the debounce/
@@ -2396,6 +2402,29 @@ func _multiple_engage_reflow(adjacent: Array[Unit]) -> void:
 			and Engine.get_physics_frames() - _last_reshape_tick < MULTIPLE_ENGAGE_FRONTAGE_COOLDOWN_TICKS:
 		return
 	set_frontage(target_files)
+
+
+## MULTIPLE_ENGAGE strike-target cycling: UnitCombat.strike() still only ever damages
+## whichever ONE enemy `target_enemy` currently resolves to, so a genuinely multi-attacker
+## fight (2+ distinct enemies in `adjacent`, from _adjacent_engaged_enemy_units()) leaves
+## every enemy but that one taking zero casualties indefinitely. Rather than restructuring
+## strike()'s regiment-vs-regiment resolution into a per-soldier-pair model, round-robin the
+## single `target_enemy` across the adjacent set after each landed strike, so damage
+## distributes over time instead of locking onto whichever enemy resolved first.
+##
+## Deterministic: sorts `adjacent` by `uid` (not array/instance order, which iteration over a
+## group/spatial query doesn't guarantee stable) and advances one step past `current`'s
+## position in that order, wrapping around. `current` not being in `adjacent` (it left contact
+## range, or was never a member) resolves to index -1, so `(idx + 1) % size` lands on the
+## lowest-uid entry -- a sensible restart rather than an out-of-range access. Returns `current`
+## unchanged when fewer than 2 enemies are adjacent, since there's nothing to rotate onto.
+func _next_multiple_engage_target(adjacent: Array[Unit], current: Unit) -> Unit:
+	if adjacent.size() < 2:
+		return current
+	var sorted: Array[Unit] = adjacent.duplicate()
+	sorted.sort_custom(func(x: Variant, y: Variant) -> bool: return (x as Unit).uid < (y as Unit).uid)
+	var idx: int = sorted.find(current)
+	return sorted[(idx + 1) % sorted.size()]
 
 
 ## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
