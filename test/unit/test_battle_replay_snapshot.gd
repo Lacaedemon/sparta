@@ -100,6 +100,55 @@ func test_capture_and_restore_round_trips_a_live_battles_state() -> void:
 	_leave_playback(prev_mode)
 
 
+func test_capture_and_restore_round_trips_player_delegation() -> void:
+	# Battle AI phase 4 (docs/battle-ai-design.md): Unit.player_group_id/subcommander_rank_title
+	# must survive a snapshot round-trip like every other mutable runtime field (Unit.
+	# to_snapshot_dict/apply_snapshot_dict's own field-level contract is covered in
+	# test_unit_snapshot.gd; this is the Battle-level proof that a REAL restore -- which
+	# respawns a fresh Unit node rather than mutating the live one -- actually carries
+	# delegation through, not just an isolated in-memory dict round-trip). Written directly
+	# on the unit rather than through Battle.enqueue_delegation: this whole suite runs the
+	# battle in PLAYBACK mode (_enter_playback), where enqueue_delegation -- like every other
+	# enqueue_* function -- is a deliberate no-op, and the live-play delegation gesture itself
+	# is already covered elsewhere (test_battle.gd, test_battle_ai_player_delegation.gd). This
+	# test is only about whether the snapshot machinery carries the fields, not about how they
+	# got set in the first place.
+	var prev_mode := _enter_playback()
+	var battle := _spawn_battle(_clash_scenario())
+	while battle.current_tick() < 20:
+		await get_tree().physics_frame
+
+	var units: Dictionary = _units_by_uid(battle)
+	var team0_uid: int = -1
+	for uid in units:
+		if (units[uid] as Unit).team == 0:
+			team0_uid = uid
+			break
+	assert_ne(team0_uid, -1, "a team-0 unit exists to delegate")
+
+	var delegated_unit: Unit = units[team0_uid]
+	delegated_unit.player_group_id = 5
+	delegated_unit.subcommander_rank_title = "Tribune"
+
+	var snap: Dictionary = battle.capture_snapshot()
+	while battle.current_tick() < 80:
+		await get_tree().physics_frame
+	# Clear on the LIVE (post-capture) unit -- proves the restore brings back the CAPTURED
+	# delegated state, not just whatever the live unit still happens to carry by coincidence.
+	delegated_unit.player_group_id = Unit.UNDELEGATED
+	delegated_unit.subcommander_rank_title = ""
+
+	battle.restore_snapshot(snap)
+	var restored: Unit = _units_by_uid(battle)[team0_uid]
+	assert_true(restored.is_delegated(),
+		"delegation survives a snapshot round-trip, like every other mutable runtime field")
+	assert_eq(restored.player_group_id, 5)
+	assert_eq(restored.subcommander_rank_title, "Tribune",
+		"the resolved rank title survives the round-trip too")
+
+	_leave_playback(prev_mode)
+
+
 func test_restore_snapshot_lets_the_battle_keep_ticking_forward_afterward() -> void:
 	var prev_mode := _enter_playback()
 	var battle := _spawn_battle(_clash_scenario())

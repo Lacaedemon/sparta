@@ -193,6 +193,26 @@ var formation_mode: int = FORMATION_NORMAL
 # fatigue reduction and in-fight morale recovery on it, so turning it off makes a
 # disciplined unit tire and waver like an untrained one.
 var rank_relief: bool = true
+# Battle AI phase 4 (docs/battle-ai-design.md): player delegation. UNDELEGATED (the default)
+# means the player controls this unit directly, exactly as every unit always has -- untouched
+# by any AI decision. A value >= 0 names which AI subcommander group (an id the player chose
+# when delegating, via Battle.enqueue_delegation) this unit currently answers to; Battle.
+# _run_player_delegated_ai groups every team-0 unit with the same player_group_id and runs it
+# through the same Subcommander/UnitLeader pipeline team 1's AI already uses. Written ONLY by
+# Battle._apply_order_cmd's ORDER_DELEGATION_ONLY branch, so it rides the replay stream like
+# every other durable per-unit toggle (rank_relief above, walk_advance below) -- never set
+# directly by any other code, the same "one apply site" discipline the whole orders queue
+# follows. Any other explicit player order to this unit clears it back to UNDELEGATED (the
+# design doc's "a manual player order always wins over the subcommander's directive").
+const UNDELEGATED := -1
+var player_group_id: int = UNDELEGATED
+# The delegated group's subcommander rank title, from the player's own doctrine profile
+# (PlayerDelegation.subcommander_rank_title) -- resolved once, when delegation is granted, and
+# cleared to "" on revocation. Pure display text (HUD.show_unit reads it directly); never
+# itself recorded, since it's a deterministic function of already-recorded state (the battle's
+# fixed player_doctrine plus the recorded delegation toggle), matching every other derived-not-
+# recorded display value in this file.
+var subcommander_rank_title: String = ""
 # Which frontage the unit settles into after an engage/attack re-face turn-in-place
 # (_settle_engage_turn) completes. KEEP_NEW_FRONTING is the shipped MVP: the men stay put
 # and the unit fights with whatever edge the turn left facing the enemy. The other two
@@ -4287,6 +4307,12 @@ func is_engaged() -> bool:
 	return _engaged_linger > 0.0
 
 
+## Battle AI phase 4 (docs/battle-ai-design.md): whether the player has delegated this unit to
+## an AI subcommander group. A function of player_group_id only -- see its own doc comment.
+func is_delegated() -> bool:
+	return player_group_id != UNDELEGATED
+
+
 ## How braced (set to receive) this regiment's soldiers are, in [0, 1] (#201 bracing): a
 ## regiment engaged and not skirmishing is set and buttresses knockback/knockdown; a loose
 ## skirmish line, or one not engaged, is not. Binary for now -- graded postures (advancing /
@@ -5764,6 +5790,7 @@ func to_snapshot_dict() -> Dictionary:
 		"move_target": move_target, "has_move_target": has_move_target,
 		"order_mode": order_mode, "knockback_push_indefinite": knockback_push_indefinite,
 		"formation_mode": formation_mode, "rank_relief": rank_relief,
+		"player_group_id": player_group_id, "subcommander_rank_title": subcommander_rank_title,
 		"engage_reshape_mode": engage_reshape_mode, "tier": tier,
 		"frontage_override": frontage_override,
 		"frontage_anchor_offset": frontage_anchor_offset,
@@ -5868,6 +5895,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	knockback_push_indefinite = bool(d["knockback_push_indefinite"])
 	formation_mode = int(d["formation_mode"])
 	rank_relief = bool(d["rank_relief"])
+	player_group_id = int(d["player_group_id"])
+	subcommander_rank_title = String(d["subcommander_rank_title"])
 	engage_reshape_mode = int(d["engage_reshape_mode"])
 	tier = int(d["tier"])
 	frontage_override = int(d["frontage_override"])

@@ -801,6 +801,67 @@ func test_enqueue_unit_settings_is_disabled_during_playback() -> void:
 	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
 
 
+# --- player delegation (Battle AI phase 4, docs/battle-ai-design.md) -----------------------
+
+func test_enqueue_delegation_applies_live_and_queues_for_recording() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	assert_eq(u.player_group_id, 5, "applied live")
+	assert_eq(u.subcommander_rank_title,
+		PlayerDelegation.subcommander_rank_title(DoctrineRegistry.doctrine(b.player_doctrine)),
+		"the rank title resolves from the battle's own player_doctrine")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_DELEGATION_ONLY, "queued for recording")
+	assert_eq(int(cmd["frontage"]), 6, "the group id (5) rides the queued command, +1 encoded")
+
+
+func test_enqueue_delegation_revoke_clears_group_id_and_rank_title() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	b.enqueue_delegation([1], Unit.UNDELEGATED)
+	assert_false(u.is_delegated())
+	assert_eq(u.subcommander_rank_title, "")
+
+
+func test_enqueue_delegation_is_a_no_op_with_no_units() -> void:
+	var b := _battle([])
+	b.enqueue_delegation([], 5)
+	assert_true(b._pending_orders.is_empty(), "nothing to delegate -- no command queued")
+
+
+func test_enqueue_delegation_is_disabled_during_playback() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	var prev_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	b.enqueue_delegation([1], 5)
+	Replay.mode = prev_mode
+	assert_false(u.is_delegated(), "no write during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_ai_issued_order_does_not_revoke_the_delegation_it_was_just_given() -> void:
+	# _apply_order_cmd's from_player=false path (Battle._run_player_delegated_ai's own call
+	# shape) must not clear the very delegation that produced the order -- only a genuinely
+	# player-issued command does that (see the next test).
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	b._apply_order_cmd({"units": [1], "x": 900.0, "y": 900.0, "target": -1}, false)
+	assert_true(u.is_delegated(), "an AI-issued order leaves the delegation that produced it intact")
+
+
+func test_player_issued_order_revokes_an_existing_delegation() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	b._apply_order_cmd({"units": [1], "x": 900.0, "y": 900.0, "target": -1})   # from_player defaults true
+	assert_false(u.is_delegated(),
+		"a genuine player order to a delegated unit always overrides its subcommander")
+
+
 # --- support / defend ------------------------------------------------
 
 func test_support_order_sets_the_ward_not_a_relief() -> void:

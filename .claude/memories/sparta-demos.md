@@ -893,6 +893,28 @@ PR #981, `demos/inputs/spear-standoff.json`: an initial 50wu-gap two-formation s
 of 30 Infantry soldiers, all at full HP, within the first 10 ticks -- re-staged with a
 200wu gap and no scripted steps, letting the enemy AI march in instead.)
 
+**The same spacing rule applies to two FRIENDLY units spawned side by side, not just
+opposing ones -- but the defect shows up differently.** Two same-team regiments whose
+bounding boxes overlap at spawn (a formation's own bbox width, ~120 wu for a 120-soldier
+Infantry NORMAL formation, easily exceeds a "looks fine at a glance" gap between their
+centres) trip cross-unit friendly-crowding/avoidance forces at the touching edge -- but
+since the two units never fight each other, the defect scan's `overlap` metric (nearest-
+neighbour distance WITHIN one unit's own soldier array, `DemoDefects.nnd_stats`) flags it
+as each unit's OWN internal ranks compressing, not a cross-unit collision metric (there
+isn't one). This can look like a Subcommander/AI bug at first glance -- confirm it isn't by
+staging an ISOLATED single-unit control scenario (same type, no neighbor at all): if nnd
+stays rock-stable there and only degrades once a second friendly unit is added nearby, the
+mechanism is cross-unit crowding, not anything specific to whatever feature the two units
+are demonstrating. **Fix:** widen the gap between the two friendly units' spawn centres
+well past the sum of their two formation half-widths (not just "wider than it was"), and
+re-verify with the exact `state`/`expect` ticks the demo actually declares -- `tools/check.sh
+demo_defects` scans precisely those, so a fix that only clears a WIDER diagnostic tick set
+than the demo's own declared ticks doesn't prove anything. (`Lacaedemon/sparta` PR #1082,
+`demos/inputs/player-delegation.json`: two Infantry units 100 wu apart (x=500/600, each
+~120 wu wide) showed `overlap` failing on both at tick 42 -- widening to 300 wu (x=450/750)
+cleared it; an earlier facing-reversal hypothesis for the same symptom was disproven by the
+same isolated-unit control test, since the compressed unit's facing never actually changed.)
+
 ## A per-soldier reach-standoff bias can splay a formation once the enemy scatters into routing stragglers -- SUPERSEDED, see below
 
 **Update: this is now resolved as a side effect of a mid-PR design correction, not a

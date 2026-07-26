@@ -215,3 +215,45 @@ func test_a_leave_toggle_omits_the_unit_settings_keys_on_round_trip() -> void:
 			"a LEAVE toggle carries no walk_advance_toggle key at all, like an old-format replay")
 	assert_false(due[0].has("reform_toggle"),
 			"a LEAVE toggle carries no reform_toggle key at all, like an old-format replay")
+
+
+func test_save_load_round_trips_a_delegation_orders_group_id() -> void:
+	# Battle AI phase 4 (docs/battle-ai-design.md): a player-delegation toggle
+	# (Battle.enqueue_delegation, target ORDER_DELEGATION_ONLY = -12) rides the "frontage"
+	# field as group_id + 1 -- see enqueue_delegation's own doc comment for why the +1 shift
+	# is load-bearing, not incidental.
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [0], Vector2.ZERO, -12, 0, 0, 6)   # -12 = ORDER_DELEGATION_ONLY, group 5
+	var path: String = r.save("Test", 5)
+	assert_ne(path, "", "the recording saves")
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1, "the delegation order round-trips")
+	assert_eq(int(due[0].get("frontage", 0)) - 1, 5,
+			"the encoded group id (5) round-trips through save/load")
+
+
+func test_delegating_to_group_0_round_trips_distinctly_from_an_omitted_frontage() -> void:
+	# Regression coverage for the exact hazard enqueue_delegation's own doc comment names:
+	# Replay.record_order OMITS "frontage" from the saved entry whenever the value is exactly
+	# 0 (its own "old replays stay compact" convention), and group id 0 IS a legitimate
+	# delegation target (Ctrl+Shift+0) -- without the +1 encoding shift, delegating to group 0
+	# would round-trip identically to an order that never touched delegation at all, silently
+	# decoding back as a revoke instead of "delegated to group 0".
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [0], Vector2.ZERO, -12, 0, 0, 1)   # group 0 encoded as frontage=1
+	var path: String = r.save("Test", 5)
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1)
+	assert_true(due[0].has("frontage"),
+		"group 0 encodes as a nonzero frontage (1), so it's never omitted -- unlike an actual "
+		+ "revoke (group_id Unit.UNDELEGATED = -1 encodes to frontage 0, which IS omitted, and "
+		+ "correctly decodes right back to UNDELEGATED on an absent key)")
+	assert_eq(int(due[0]["frontage"]) - 1, 0, "decodes back to group 0, not UNDELEGATED (-1)")
