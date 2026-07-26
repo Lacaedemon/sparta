@@ -204,6 +204,11 @@ var _click_count: int = 0
 var _click_combo_window_ms: int = 500
 # Control groups: number-key digit -> bound Array of units.
 var _groups: Dictionary = {}
+# Composite (nested) control groups: number-key digit -> Array of OTHER group numbers
+# whose current members compose it -- see _bind_group()/_group_union_match(). A group is
+# either a flat leaf (present in _groups, absent here) or a composite (present here; any
+# stale _groups entry for the same digit is cleared and never read again).
+var _group_children: Dictionary = {}
 # Armed order mode: the next right-click issues an order in this stance.
 # Selected by hotkey (rebindable via ☰ Menu → Keybindings) and shown by the
 # cursor + a HUD indicator. Stays armed (sticky) until changed or cleared (Esc).
@@ -1697,18 +1702,69 @@ func _digit_for_keycode(keycode: Key) -> int:
 	return -1
 
 
-## Bind the current selection to a control group (a snapshot of live members).
+## Bind the current selection to a control group. If the alive selection is exactly the
+## union of one or more OTHER already-bound groups' current members (see
+## _group_union_match()), records `n` as a COMPOSITE (nested) group over those children
+## instead of a flat snapshot -- so recalling `n` later live-resolves to whatever its
+## children currently hold, rather than freezing today's membership. Any other selection
+## (a partial overlap with a bound group, extra units, or no match at all) falls back to
+## the ordinary flat snapshot bind, unchanged from before composite groups existed.
 func _bind_group(n: int) -> void:
 	var members: Array = []
 	for u in _selected:
 		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
 			members.append(u)
+	var children: Array = _group_union_match(n, members)
+	if not children.is_empty():
+		_group_children[n] = children
+		_groups.erase(n)   # a stale flat snapshot for n would never be read again
+		return
+	_group_children.erase(n)   # a re-bind as a flat group overrides any old composite
 	_groups[n] = members
+
+
+## Whether `selection` (already alive-filtered, the pending bind for group `n`) is exactly
+## the union of the CURRENT live members of some subset of already-bound groups OTHER than
+## `n` -- the "clean union, no partial overlap" precondition _bind_group() uses to decide
+## whether to record `n` as a composite group. A group only counts as a candidate child
+## when ALL of its current members are in `selection`; a group with only SOME of its
+## members selected is a partial overlap, so it's excluded here, which in turn leaves its
+## overlapping members uncovered by the final check below -- this is what makes a partial
+## overlap fall through to an ordinary flat bind rather than a silent error. Returns the
+## matched group numbers (ascending), or `[]` when no clean decomposition exists --
+## including when `selection` is empty or matches no bound group at all.
+func _group_union_match(n: int, selection: Array) -> Array:
+	if selection.is_empty():
+		return []
+	var children: Array = []
+	var covered: Dictionary = {}
+	for g in range(10):
+		if g == n or not has_group(g):
+			continue
+		var members: Array = group_members(g)
+		if members.is_empty():
+			continue
+		var fully_contained := true
+		for u in members:
+			if not selection.has(u):
+				fully_contained = false
+				break
+		if not fully_contained:
+			continue
+		children.append(g)
+		for u in members:
+			covered[u] = true
+	if children.is_empty():
+		return []
+	for u in selection:
+		if not covered.has(u):
+			return []
+	return children
 
 
 ## Replace the selection with a control group's still-alive members.
 func _recall_group(n: int) -> void:
-	if not _groups.has(n):
+	if not has_group(n):
 		return
 	_clear_selection()
 	for u in group_members(n):
@@ -1718,11 +1774,35 @@ func _recall_group(n: int) -> void:
 	_refresh_hud()
 
 
-## The live (not dead, still valid) members of control group `n`, or `[]` if
-## unbound (or if every bound member has since died). Shared with
-## _recall_group() above, which used to duplicate this same live-filtering loop.
+## The live (not dead, still valid) members of control group `n`, or `[]` if unbound (or
+## if every bound member -- direct or, for a composite, transitive -- has since died).
+## Shared with _recall_group() above, which used to duplicate this same live-filtering
+## loop. Delegates to _group_members_visited() for the composite-recursion cycle guard.
 func group_members(n: int) -> Array:
+	return _group_members_visited(n, {})
+
+
+## group_members()'s recursive worker. `visited` tracks the group numbers already expanded
+## earlier in the current call chain, so a composite group that (directly or transitively)
+## names itself as one of its own children resolves that branch to `[]` instead of
+## recursing forever. _bind_group() only ever records a composite from OTHER groups' state
+## at bind time (never `n` itself), but two groups can still end up mutually composite if
+## each is (re)bound as a composite of the other in turn -- in that case every affected
+## group's members resolve to `[]` rather than looping or erroring.
+func _group_members_visited(n: int, visited: Dictionary) -> Array:
 	var out: Array = []
+	if _group_children.has(n):
+		if visited.has(n):
+			return out
+		var next_visited: Dictionary = visited.duplicate()
+		next_visited[n] = true
+		var seen: Dictionary = {}
+		for child in _group_children[n]:
+			for u in _group_members_visited(child, next_visited):
+				if not seen.has(u):
+					seen[u] = true
+					out.append(u)
+		return out
 	if not _groups.has(n):
 		return out
 	for u in _groups[n]:
@@ -1731,13 +1811,14 @@ func group_members(n: int) -> Array:
 	return out
 
 
-## Whether control group `n` has ever been bound (Ctrl+0-9) -- distinct from
-## group_members(n) returning `[]`, which is ambiguous between "never bound"
-## and "bound, but every member has since died." A caller that wants to
-## distinguish those two cases (e.g. falling back to "no group selected"
-## behavior only for the former) checks this first.
+## Whether control group `n` has ever been bound (Ctrl+0-9) -- either as a flat snapshot or
+## as a composite (nested) group over other groups, see _bind_group() -- distinct from
+## group_members(n) returning `[]`, which is ambiguous between "never bound" and "bound,
+## but every member (or, for a composite, every child) has since died/emptied out." A
+## caller that wants to distinguish those two cases (e.g. falling back to "no group
+## selected" behavior only for the former) checks this first.
 func has_group(n: int) -> bool:
-	return _groups.has(n)
+	return _groups.has(n) or (_group_children.has(n) and not _group_children[n].is_empty())
 
 
 # --- battle AI player delegation (phase 4, docs/battle-ai-design.md) -------
