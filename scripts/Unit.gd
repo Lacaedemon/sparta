@@ -1677,7 +1677,7 @@ func _think(delta: float) -> void:
 	for u in get_tree().get_nodes_in_group("units"):
 		if u is Unit and u.team != team and u.is_ranged and u.state != State.DEAD \
 				and u.state != State.ROUTING \
-				and position.distance_squared_to(u.position) <= RANGED_RANGE * RANGED_RANGE: # OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+				and position.distance_squared_to(u.position) <= RANGED_RANGE * RANGED_RANGE:
 			_under_fire = true
 			break
 
@@ -1726,7 +1726,6 @@ func _think(delta: float) -> void:
 	else:
 		enemy = UnitTargeting.current_target(self)
 	if enemy != null:
-		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var dist_sq: float = position.distance_squared_to(enemy.position)
 		var contact_dist: float = attack_range + RADIUS + enemy.RADIUS
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
@@ -2053,7 +2052,6 @@ func _support_tick(delta: float) -> void:
 	var ward: Unit = support_target
 	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS)
 	if threat != null:
-		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var dist_sq: float = position.distance_squared_to(threat.position)
 		var contact_dist: float = attack_range + RADIUS + threat.RADIUS
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
