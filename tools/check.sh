@@ -34,6 +34,13 @@
 #             slow — not in the default set. Run it before pushing a scripts/
 #             change rather than discovering a codecov/patch failure after a
 #             ~15-20 min CI round trip.
+#   lint      GDScript style lint via gdtoolkit's gdlint, if it's installed (pip install
+#             gdtoolkit). Config in .gdlintrc, tuned to this repo's actual conventions --
+#             see that file's own header and issue #1102 for the full rationale. Runs over
+#             every tracked *.gd file (not diff-scoped): the baseline is clean, so this is
+#             simpler than a diff-scoped check and any finding is unambiguously new. Not in
+#             the default set (run it explicitly or via "all"); mirrors
+#             .github/workflows/check-gdlint.yml.
 #   links     Markdown link-check with lychee, if it's installed. Mirrors
 #             .github/workflows/check-links.yml. Needs network; not in the
 #             default set (run it explicitly or via "all").
@@ -104,7 +111,7 @@ COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-2700}"
 . "$SCRIPT_DIR/lib/run-bounded.sh"
 
 DEFAULT_CHECKS=(validate test chars comments units)
-ALL_CHECKS=(validate test chars comments units coverage patch_coverage links demo_defects)
+ALL_CHECKS=(validate test chars comments units coverage patch_coverage lint links demo_defects)
 
 # --- pretty output ---------------------------------------------------------
 # Colour only when stdout is a terminal and NO_COLOR isn't set. Per the NO_COLOR
@@ -168,6 +175,7 @@ list_checks() {
   info "  units      units-convention lint on NEW GDScript lines (docs/units-convention.md)"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  patch_coverage  local codecov/patch gate for this diff's scripts/*.gd changes (fails below the effective target)"
+  info "  lint       GDScript style lint via gdlint (see .gdlintrc), whole tracked *.gd tree"
   info "  links      Markdown link-check via lychee (check-links.yml)"
   info "  demo_defects  deterministic defect scan of this diff's changed demo input scripts (demo-video.yml)"
   info ""
@@ -902,6 +910,31 @@ check_units() {
 }
 
 
+check_lint() {
+  # GDScript style lint via gdtoolkit's gdlint. Config lives in .gdlintrc at the project root
+  # (gdlint auto-discovers it by walking up from cwd -- no --gdlintrc flag needed as long as
+  # this runs from inside the repo tree). Whole tracked *.gd tree, not diff-scoped: unlike
+  # comments/units (which scan only added lines because pre-existing violations are common
+  # and unrelated to any one diff), this repo's gdlint baseline is clean -- see .gdlintrc's
+  # own header -- so scanning everything is both simpler and correct: any finding is new.
+  if ! have gdlint; then
+    warn "gdlint not installed — skipping GDScript lint."
+    warn "Install it: pip install gdtoolkit==4.5.0"
+    set_result lint skip
+    return 0
+  fi
+  local files=()
+  while IFS= read -r -d '' f; do
+    files+=("$f")
+  done < <(cd "$PROJECT_ROOT" && git ls-files -z '*.gd' -- ':!:addons')
+  if [ ${#files[@]} -eq 0 ]; then
+    info "No GDScript files to check."
+    return 0
+  fi
+  ( cd "$PROJECT_ROOT" && gdlint "${files[@]}" )
+}
+
+
 check_links() {
   if ! have lychee; then
     warn "lychee not installed — skipping link check."
@@ -1023,7 +1056,7 @@ main() {
       -h|--help) usage; exit 0 ;;
       -l|--list) list_checks; exit 0 ;;
       all)       checks+=("${ALL_CHECKS[@]}") ;;
-      validate|test|chars|comments|units|coverage|patch_coverage|links|demo_defects) checks+=("$arg") ;;
+      validate|test|chars|comments|units|coverage|patch_coverage|lint|links|demo_defects) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
   done
