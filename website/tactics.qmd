@@ -1279,6 +1279,17 @@ into different tools:
   on its own. Arm it when you want to trade space for time --- peeling a
   spent line back toward reinforcements, or buying a moment for a flank to
   arrive --- without breaking off the fight entirely.
+- **Multiple engage** (<kbd>F2</kbd>) --- for a unit pressed by two or more
+  distinct enemy regiments in contact at once. Normally a unit keeps turning
+  to bring its front to bear on whichever single foe it's currently
+  fighting; with several attackers pressing from different bearings, that
+  turn would just whipsaw the whole line back and forth between them. Under
+  this stance the unit instead holds its current facing once genuinely 2+
+  enemy regiments are in contact, and widens its own frontage toward the
+  combined width of every attacker pressing it, so its line can actually
+  reach all of them instead of presenting a narrower front than the fight
+  has grown to. Both effects stay off below 2 adjacent enemies --- a normal
+  single-opponent fight under this stance looks like any other stance.
 
 ::: {#fig-cycle-charge-flee .demo}
 
@@ -1329,6 +1340,24 @@ Two equal-reach Infantry regiments lock in melee. Once engaged, the player
 issues Give ground on their own unit --- it backs steadily away from the
 enemy line while the two sides keep trading blows, instead of holding its
 ground the way the passive reach standoff would.
+:::
+
+::: {#fig-multiple-engage .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/multiple_engage.jpg">
+  <source src="media/multiple_engage.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A player Infantry regiment arms Multiple engage before two smaller enemy
+Infantry regiments, closing from different bearings, reach contact. The
+first enemy engages normally; once the second also presses in, the
+regiment's frontage widens from 11 to 14 files (their combined width) and
+its facing holds steady instead of swinging between the two of them.
 :::
 
 **Push stance** (<kbd>/</kbd>) is the aggressive, offensive counterpart to Give ground: an engaged unit continuously applies physical pressure to drive its opponent backwards. Where Give ground yields territory while fighting, Push stance advances into the enemy line, pushing opposing soldiers back while maintaining melee contact.

@@ -116,6 +116,8 @@ const _STANCE_ENTRIES := [
 	{"id": 13, "mode": BattleRef.OrderMode.KNOCKBACK_FOCUS, "label": "Knockback focus", "slug": "knockback_focus"},
 	{"id": 14, "mode": BattleRef.OrderMode.GIVE_GROUND, "label": "Give ground", "slug": "give_ground"},
 	{"id": 15, "mode": BattleRef.OrderMode.PUSH, "label": "Push", "slug": "push"},
+	{"id": 16, "mode": BattleRef.OrderMode.MULTIPLE_ENGAGE, "label": "Multiple engage",
+		"slug": "multiple_engage"},
 ]
 
 # The multi-unit form-up distribution modes, in menu order (the default, EQUAL_DEPTH_SPACE,

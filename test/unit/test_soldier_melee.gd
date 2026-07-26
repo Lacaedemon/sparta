@@ -438,15 +438,17 @@ func _typed_defender(uid: int, pos: Vector2, face: Vector2, cavalry: bool, range
 
 
 func test_heavier_defender_is_knocked_back_less() -> void:
-	# Same infantry attacker and the same seed, striking a light archer (mass 0.9) vs a heavy
-	# cavalry body (mass 2.5): the heavy body takes a smaller impulse (J ~ 1/mass). Both
-	# defenders are set to skirmish so brace capacity doesn't absorb the blow — this tests
-	# mass alone, not the (separately tested) static-friction gate, so both start already
-	# moving -- above SoldierCombat.STATIC_FRICTION_VELOCITY_GATE, in the same direction the
-	# shove will push them -- so the strike is always in the kinetic-friction regime for both.
-	# Since the preset is identical for both and additive with the (mass-scaled) shove, the
-	# comparison between the two final speeds still isolates the mass effect. The eta can't
-	# flip in cavalry's favour: cavalry's shield (0.25) > archer's (0.05) means its p_land is
+	# Same infantry attacker and the same seed, striking a light archer (mass ~0.875) vs a
+	# heavier cavalry body (mass ~0.9375: _typed_defender never assigns a mount, so this is
+	# just the rider's own real body, not a mounted cavalryman's full contact mass): the
+	# heavier body takes a smaller impulse (J ~ 1/mass). Both defenders are set to skirmish
+	# so brace capacity doesn't absorb the blow — this tests mass alone, not the (separately
+	# tested) static-friction gate, so both start already moving -- above
+	# SoldierCombat.STATIC_FRICTION_VELOCITY_GATE, in the same direction the shove will push
+	# them -- so the strike is always in the kinetic-friction regime for both. Since the
+	# preset is identical for both and additive with the (mass-scaled) shove, the comparison
+	# between the two final speeds still isolates the mass effect. The eta can't flip in
+	# cavalry's favour: cavalry's shield (0.25) > archer's (0.05) means its p_land is
 	# strictly <= the archer's, so "cavalry lands" implies "archer lands"; the mass ratio then
 	# dominates in every reachable land/defend outcome.
 	Replay.rng.seed = SEED

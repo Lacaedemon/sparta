@@ -1942,6 +1942,7 @@ func _order_mode_color(mode: int) -> Color:
 		BattleRef.OrderMode.KNOCKBACK_FOCUS: return Color(0.95, 0.75, 0.1)
 		BattleRef.OrderMode.GIVE_GROUND: return Color(0.65, 0.65, 0.7)
 		BattleRef.OrderMode.PUSH: return Color(0.9, 0.45, 0.2)
+		BattleRef.OrderMode.MULTIPLE_ENGAGE: return Color(0.75, 0.2, 0.85)
 		_: return Color.WHITE
 
 
