@@ -13,6 +13,29 @@ older hand-authored/recorded `replay` path (documented in the main `sparta.md`
 quick reuse of `demos/showcase.json`, but prefer scripted input for anything that
 shows a specific player gesture.
 
+## Standing rule: "not legible in a compressed clip" is never a valid reason to skip
+
+Don't reach for `demos/demo.<slug>.json`'s `skip: true` because the change "isn't
+legible in a compressed clip" or is "too subtle to show at demo scale." That
+excuse doesn't hold up: if a bug was found (or could be found) by zooming into a
+specific frame — exactly how many of the incidents in this file and `sparta.md`
+were actually diagnosed (frame-by-frame video review, cropped/upscaled PNG
+comparisons, `SPARTA_DEMO_FRAMES` captures at precise ticks) — the FIX is provable
+the same way. A compressed auto-recorded GIF at normal playback speed is the
+wrong tool for a subtle positional/cosmetic change; a **before/after crop pair**
+(one frame from `main`, one from the branch, at the exact tick the effect is
+visible, cropped/upscaled to the relevant few dozen pixels, per "Upscale crops to
+verify few-pixel render detail" above) usually is not. Reach for that — embedded
+in the PR description per CLAUDE.md's "Static features: images in the PR
+description" section — before concluding a change genuinely can't be shown.
+
+Reserve `skip: true` for changes with no rendered manifestation at all (an
+internal refactor, a data-model change nothing draws differently, a CI/tooling
+change) — never for "the difference exists on screen but is small." (Corrected
+directly by the user on PR #1074, 2026-07-24: the fix's own bug report was found
+by zooming into a specific video frame; the fix needed the same treatment, not a
+skip.)
+
 ## Standing rule: always check a demo thoroughly for unnatural behavior, not just the claimed feature
 
 Before treating a demo/recording as verified, watch (or dump-state) the **whole
@@ -869,6 +892,28 @@ any later tick's numbers as representative of the sustained mechanic. (`Lacaedem
 PR #981, `demos/inputs/spear-standoff.json`: an initial 50wu-gap two-formation spawn lost 5
 of 30 Infantry soldiers, all at full HP, within the first 10 ticks -- re-staged with a
 200wu gap and no scripted steps, letting the enemy AI march in instead.)
+
+**The same spacing rule applies to two FRIENDLY units spawned side by side, not just
+opposing ones -- but the defect shows up differently.** Two same-team regiments whose
+bounding boxes overlap at spawn (a formation's own bbox width, ~120 wu for a 120-soldier
+Infantry NORMAL formation, easily exceeds a "looks fine at a glance" gap between their
+centres) trip cross-unit friendly-crowding/avoidance forces at the touching edge -- but
+since the two units never fight each other, the defect scan's `overlap` metric (nearest-
+neighbour distance WITHIN one unit's own soldier array, `DemoDefects.nnd_stats`) flags it
+as each unit's OWN internal ranks compressing, not a cross-unit collision metric (there
+isn't one). This can look like a Subcommander/AI bug at first glance -- confirm it isn't by
+staging an ISOLATED single-unit control scenario (same type, no neighbor at all): if nnd
+stays rock-stable there and only degrades once a second friendly unit is added nearby, the
+mechanism is cross-unit crowding, not anything specific to whatever feature the two units
+are demonstrating. **Fix:** widen the gap between the two friendly units' spawn centres
+well past the sum of their two formation half-widths (not just "wider than it was"), and
+re-verify with the exact `state`/`expect` ticks the demo actually declares -- `tools/check.sh
+demo_defects` scans precisely those, so a fix that only clears a WIDER diagnostic tick set
+than the demo's own declared ticks doesn't prove anything. (`Lacaedemon/sparta` PR #1082,
+`demos/inputs/player-delegation.json`: two Infantry units 100 wu apart (x=500/600, each
+~120 wu wide) showed `overlap` failing on both at tick 42 -- widening to 300 wu (x=450/750)
+cleared it; an earlier facing-reversal hypothesis for the same symptom was disproven by the
+same isolated-unit control test, since the compressed unit's facing never actually changed.)
 
 ## A per-soldier reach-standoff bias can splay a formation once the enemy scatters into routing stragglers -- SUPERSEDED, see below
 

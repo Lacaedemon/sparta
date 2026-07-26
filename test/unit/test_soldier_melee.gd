@@ -177,6 +177,75 @@ func test_square_attacker_inflicts_fewer_wounds_via_soldier_path() -> void:
 		0.001, "by exactly the square's offence factor")
 
 
+# --- SoldierEncirclement's per-soldier "broken" override -----------------------
+
+func test_broken_defender_loses_the_shield_wall_frontal_defense_bonus() -> void:
+	# An individually broken SHIELD_WALL defender (SoldierEncirclement._sim_soldier_broken)
+	# fights as an unmodified individual: its frontal melee defense bonus is gone, so it
+	# takes the SAME wounds as a normal-formation defender under identical seed/geometry --
+	# not merely fewer than an intact wall (that's the pre-existing test above), the FULL
+	# baseline amount.
+	Replay.rng.seed = SEED
+	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+
+	Replay.rng.seed = SEED
+	var a_wall := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d_wall := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	d_wall.set_formation(Unit.FORMATION_SHIELD_WALL)
+	d_wall._sim_soldier_broken[0] = 1   # this specific soldier has broken from the wall
+	var broken_wounds: float = _wounds_over(a_wall, d_wall, 10)
+
+	assert_gt(normal_wounds, 0.0, "the normal defender takes wounds (sanity)")
+	assert_almost_eq(broken_wounds, normal_wounds, 0.001,
+		"a broken soldier's shield-wall bonus is gone -- it takes exactly the unmodified baseline wound")
+
+
+func test_broken_attacker_loses_the_testudo_melee_penalty() -> void:
+	# An individually broken TESTUDO attacker no longer suffers the "head-down, can barely
+	# swing" penalty -- it wounds at the full baseline rate, not the reduced testudo rate.
+	Replay.rng.seed = SEED
+	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+
+	Replay.rng.seed = SEED
+	var a_test := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a_test.set_formation(Unit.FORMATION_TESTUDO)
+	a_test._sim_soldier_broken[0] = 1   # this specific soldier has broken from the roof-lock
+	var d_test := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var broken_wounds: float = _wounds_over(a_test, d_test, 10)
+
+	assert_gt(normal_wounds, 0.0, "the normal attacker lands wounds (sanity)")
+	assert_almost_eq(broken_wounds, normal_wounds, 0.001,
+		"a broken testudo soldier fights at the full unmodified rate, not the testudo penalty")
+
+
+func test_broken_flag_has_no_effect_on_square_attack_factor() -> void:
+	# formation_attack_factor (SQUARE/SCHILTRON's own offence penalty) is hoisted out of the
+	# per-strike broken check in SoldierMelee.resolve because SoldierEncirclement never marks
+	# a SQUARE/SCHILTRON soldier broken in the first place (Unit.breaks_under_encirclement
+	# excludes them) -- but even if some OTHER caller forced the flag directly, as here, the
+	# square offence penalty still applies unchanged: only formation_melee_attack_factor and
+	# melee_defense_factor vary per soldier.
+	Replay.rng.seed = SEED
+	var a_square := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a_square.set_formation(Unit.FORMATION_SQUARE)
+	var d_square := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var square_wounds: float = _wounds_over(a_square, d_square, 10)
+
+	Replay.rng.seed = SEED
+	var a_square_broken := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a_square_broken.set_formation(Unit.FORMATION_SQUARE)
+	a_square_broken._sim_soldier_broken[0] = 1
+	var d_square_broken := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var square_broken_wounds: float = _wounds_over(a_square_broken, d_square_broken, 10)
+
+	assert_almost_eq(square_broken_wounds, square_wounds, 0.001,
+		"formation_attack_factor is unaffected by the broken flag -- it's SQUARE/SCHILTRON's own penalty")
+
+
 func test_schiltron_attacker_inflicts_fewer_wounds_than_orbis_via_soldier_path() -> void:
 	# Schiltron pays a DEEPER offence penalty than orbis for its harder charge brace --
 	# this must hold in the per-soldier path too, not just formation_attack_factor()
@@ -666,3 +735,121 @@ func test_reformed_block_holds_frontage_and_closes_up_after_casualties() -> void
 	for i in range(slots.size()):
 		assert_true(absf(slots[i].x) <= front_edge + 0.001,
 			"reformed slot %d stays within the block's frontage" % i)
+
+
+# --- Fallen casualty-heap anchoring: one mark per REAL fallen-soldier position ----
+
+func test_live_soldiers_near_returns_the_closest_real_positions() -> void:
+	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
+	u._sim_soldier_pos[0] = Vector2(0, 0)
+	u._sim_soldier_pos[1] = Vector2(10, 0)
+	u._sim_soldier_pos[2] = Vector2(1000, 1000)
+	u._sim_soldier_pos[3] = Vector2(-1000, -1000)
+	var near: PackedVector2Array = u.live_soldiers_near(Vector2(5, 0), 2)
+	assert_eq(near.size(), 2, "returns exactly the requested count")
+	assert_true(Vector2(0, 0) in near and Vector2(10, 0) in near,
+		"the two nearest REAL positions, ignoring the two far-flung outliers")
+
+
+func test_live_soldiers_near_is_empty_with_no_seeded_bodies() -> void:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 4
+	add_child_autofree(u)
+	assert_true(u.live_soldiers_near(Vector2.ZERO, 2).is_empty(),
+		"an unseeded soldier layer has no nearby bodies to report")
+
+
+func test_reap_anchors_the_fallen_heap_at_each_dying_soldiers_own_real_position() -> void:
+	# The cosmetic Fallen heap must drop one mark per dying soldier, at THAT soldier's own
+	# real live position -- not an averaged point, not the unit's idealized formation-slot
+	# geometry (which can have already scattered away from the live bodies mid-melee).
+	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
+	u._sim_soldier_pos[0] = Vector2(500.0, -300.0)
+	u._sim_soldier_pos[1] = Vector2(520.0, -280.0)
+	u._sim_soldier_hp[0] = 0.0
+	u._sim_soldier_hp[1] = 0.0
+	SoldierMelee.reap(u, u)
+	assert_eq(u.soldiers, 2, "two men fell")
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	assert_eq(fx._marks.size(), 2, "one mark per dying soldier")
+	var found_first := false
+	var found_second := false
+	for m in fx._marks:
+		var world: Vector2 = fx.global_position + m
+		if world.distance_to(Vector2(500.0, -300.0)) < 0.01:
+			found_first = true
+		if world.distance_to(Vector2(520.0, -280.0)) < 0.01:
+			found_second = true
+	assert_true(found_first and found_second,
+		"each mark sits exactly at its own dying soldier's real position, not an average")
+
+
+func test_register_casualties_uses_real_nearby_positions_when_no_per_death_data_but_soldiers_exist() -> void:
+	# The regiment-formula path (take_casualties) has no per-death position data -- most
+	# commonly the very first strike after fresh contact, before the engaged-tier latch
+	# sets (is_engaged() reads false for that one tick; see Unit.tick_engaged). This is
+	# NOT a rare edge case: a real bug reproduction hit exactly this path for every one of
+	# its casualty events. The unit still has a live soldier layer, so the heap must anchor
+	# on real live positions, not the idealized formation-slot edge.
+	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
+	var live_pos := Vector2(500.0, -300.0)
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] = live_pos   # every body scattered to the same live spot
+	UnitCombat.register_casualties(u, 2, null, 1.0)   # no dead_local_positions: formula path
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	assert_almost_eq(fx.global_position.distance_to(live_pos), 0.0, 0.01,
+		"with no per-death data but a live soldier layer, the heap anchors on real live positions")
+
+
+func test_register_casualties_biases_toward_soldiers_near_the_attacker_when_the_block_has_spread() -> void:
+	# A still-forming battle line (rear ranks not yet engaged) or a knockback-spread block
+	# can have live bodies far from where THIS strike actually landed. Picking real
+	# positions nearest the attacker lands the marks at the actual clash cluster, not
+	# scattered across (or averaged into the gap between) the whole spread-out block.
+	var u := _unit(1, 0, 6, Vector2(0, 0), Vector2.DOWN, false)
+	var near_clash := Vector2(0.0, 100.0)
+	var far_rear := Vector2(0.0, -900.0)
+	for i in range(3):
+		u._sim_soldier_pos[i] = near_clash   # the actual front line, fighting now
+	for i in range(3, 6):
+		u._sim_soldier_pos[i] = far_rear     # rear ranks, nowhere near this strike
+	var attacker := _unit(2, 1, 1, Vector2(0, 120), Vector2.UP, false)
+	UnitCombat.register_casualties(u, 2, attacker, 1.0)
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	for m in fx._marks:
+		assert_almost_eq((fx.global_position + m).distance_to(near_clash), 0.0, 0.01,
+			"every mark lands on the attacker-proximal cluster, not the untouched rear")
+
+
+func test_register_casualties_falls_back_to_formation_geometry_with_no_soldier_layer_at_all() -> void:
+	# A caller with NO soldier layer at all (an unseeded unit) has no real position of any
+	# kind to anchor on -- the heap keeps using the idealized formation-geometry edge.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 10
+	add_child_autofree(u)
+	u.uid = 3
+	u.team = 0
+	u.position = Vector2(200, 200)
+	u.facing = Vector2.DOWN
+	u.soldiers = 10
+	UnitCombat.register_casualties(u, 3, null, 1.0)
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	var expected_edge: Vector2 = u.global_position + u.block_centre_offset()
+	assert_almost_eq(fx.global_position.distance_to(expected_edge), 0.0, 0.01,
+		"with no live soldier data at all, the heap still anchors on the formation-geometry edge")

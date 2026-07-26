@@ -80,3 +80,26 @@ func test_wheel_gait_rate_degenerate_radius_falls_back_to_the_ceiling() -> void:
 		"a lone man standing on the hinge has no pacing file -- the ceiling governs")
 	assert_almost_eq(Maneuver.wheel_gait_rate(PI * 0.5, 36.0, -1.0), PI * 0.5, 0.0001,
 		"a negative radius is degenerate input, not a division")
+
+
+# --- max_turn_rate_for_speed ---------------------------------------------------
+
+func test_max_turn_rate_for_speed_is_accel_over_speed() -> void:
+	# Redirecting a 170 wu/s velocity at 0.4 rad/s costs 68 wu/s^2 of centripetal
+	# accel; capping at 40 wu/s^2 of budget caps the achievable rate at 40/170.
+	assert_almost_eq(Maneuver.max_turn_rate_for_speed(40.0, 170.0), 40.0 / 170.0, 0.0001,
+		"the cap is exactly body_accel / speed")
+
+
+func test_max_turn_rate_for_speed_is_looser_at_lower_cruising_speed() -> void:
+	var fast: float = Maneuver.max_turn_rate_for_speed(40.0, 170.0)
+	var slow: float = Maneuver.max_turn_rate_for_speed(40.0, 34.0)
+	assert_gt(slow, fast,
+		"the same body_accel affords a much sharper turn at a walk than at a sprint")
+
+
+func test_max_turn_rate_for_speed_is_unbounded_at_zero_speed() -> void:
+	assert_eq(Maneuver.max_turn_rate_for_speed(40.0, 0.0), INF,
+		"a body standing still can reorient freely -- no centripetal cost to redirect")
+	assert_eq(Maneuver.max_turn_rate_for_speed(40.0, -5.0), INF,
+		"a negative speed is degenerate input, not a division")

@@ -500,6 +500,38 @@ from all four sides, weathers the volleys that its overhead shields blunt from
 every direction.
 :::
 
+Both stances still assume a soldier's shield stays locked with the men either side of
+it, which only holds while the threat comes from one direction. A soldier who is
+actually contacted by enemies on more than one side at once --- attacked from the front
+and the rear together, or enveloped around a flank --- can't be defended by that
+assumption any more, so it individually **breaks**: it fights that cadence as an
+unmodified soldier (no wall bonus, no testudo penalty) and falls back toward the gap in
+the ring of attackers around it, rejoining the moment an opening actually appears. This
+is a per-soldier reaction, not a stance change --- the rest of the unit keeps holding
+Shield Wall or Testudo throughout, and a soldier that breaks rejoins on its own the
+instant the encirclement clears, with no order needed. Square and schiltron never do
+this: their whole design is to face attackers from every side, so being surrounded is
+the plan, not a breakdown.
+
+::: {#fig-shield-wall-encirclement .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/shield_wall_encirclement.jpg">
+  <source src="media/shield_wall_encirclement.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A Shield Wall infantry unit charged from front and rear at once: the tinted (red)
+soldiers have individually broken from the wall and are falling back toward the gap
+between their two attackers, then rejoin the formation once the rear attacker is
+beaten back and only one side remains. A few soldiers still flicker broken again
+later in the clip --- ordinary flank pressure from the one remaining attacker, not a
+second encirclement.
+:::
+
 ## Form square against cavalry
 
 When horse threatens a unit's flank or rear and you have no spear screen to spare,
@@ -677,6 +709,46 @@ weaker units alone meet the enemy. As the front line takes losses its
 morale crosses the doctrine's threshold, and the general folds the
 reserves into the fight --- they break their stationary hold, march up,
 and join the melee.
+:::
+
+## Player delegation
+
+You can hand a group of your own units over to the same subcommander
+machinery the enemy's AI already runs: select the units and press
+<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+*a number key* (0--9) to delegate them
+to AI subcommander group *N*. Press the same combination again on the
+same selection to take them back. A delegated group marches, forms
+square, calls for relief, and supports its neighbors on its own ---
+exactly like an enemy group, right down to the orders it issues showing
+up in the transcript the same way a hand-issued order would.
+
+The delegated group's subcommander carries a period-flavored rank title
+drawn from your own doctrine profile (an aggressive doctrine's
+subcommanders are Tribunes, a cautious doctrine's are Legates) ---
+shown in the selected-unit info panel while a unit is delegated.
+
+You always outrank the AI: giving *any* explicit order to a delegated
+unit --- a move, an attack, a stance, even just re-arming Hold --- takes
+it back under your direct control immediately. There's no suppression
+window and nothing to undo first; the next order you issue to that unit
+is exactly that, an order, not a suggestion competing with a
+subcommander's own directive.
+
+::: {#fig-player-delegation .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/player_delegation.jpg">
+  <source src="media/player_delegation.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two units delegated to subcommander group 5 (a Tribune, under the
+aggressive doctrine) march on and engage the lone enemy with no further
+orders; partway through, reclaiming manual control with Hold
+(<kbd>Ctrl</kbd>+<kbd>H</kbd>) instantly clears the delegation.
 :::
 
 ## Weapon reach
@@ -1005,7 +1077,22 @@ fastest from a stand and tightens its turn rate the faster it's already moving
 (down to 40% of the stationary rate at a full sprint), reflecting the real
 lateral force a moving body or formation can exert without losing footing or
 cohesion. So a turn ordered from a standstill snaps around quickest; one
-ordered mid-charge takes noticeably longer to come about.
+ordered mid-charge takes noticeably longer to come about. A second, independent
+cap takes over once a unit is genuinely **sprinting** (past its own jog pace) ---
+below that, the pace/footprint pacing above already keeps every unit turning
+within its own physical means, so this second cap has nothing to add for an
+ordinary walking or jogging march. This isn't limited to a deliberate cavalry
+charge: every unit sprints during the last stretch of any approach (closing
+the final ground to a target at full pace), so the cap can engage for any
+unit type caught mid-turn during that final rush, not cavalry alone --- it
+just never has anything to do outside a genuine sprint segment. At a full
+sprint, though, the pivot also never asks a soldier's own body to redirect
+its cruising velocity faster than that soldier's own acceleration allows ---
+so a broad, fast block (cavalry most visibly, since it sprints fastest and
+farthest) sprinting into a sustained course correction turns more
+deliberately still than the speed taper alone would call for, trading a
+slower turn for keeping its ranks intact instead of smearing out of
+formation.
 
 Speed itself isn't instant either: a unit **ramps up** to its target pace
 (walk, jog, or sprint) and **ramps down** when slowing or stopping, rather than

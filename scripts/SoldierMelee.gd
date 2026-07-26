@@ -33,26 +33,34 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 	var reach: float = attacker.soldier_reach()
 	# Formation melee scaling, applied to the wound this cadence lands: a hunkered SQUARE
 	# or a head-down TESTUDO attacker hits softer (their offence penalties), and a braced
-	# SHIELD_WALL defender's locked shields blunt a frontal assault. All are regiment-level
-	# (constant across the cadence, from the units' formation and relative facing), so
-	# compute once. Scales only the wound magnitude, never the seeded land/fall rolls --
-	# the RNG stream (draw count and order) is untouched, so replays stay bit-identical.
-	# order_mode_modifiers folds in All-out attack the same way: mods.x boosts the
+	# SHIELD_WALL defender's locked shields blunt a frontal assault. Most of this is
+	# regiment-level (constant across the cadence, from the units' formation and relative
+	# facing) -- order_mode_modifiers folds in All-out attack the same way: mods.x boosts the
 	# wound when the ATTACKER is fighting all-out, and dividing by mods.y (< 1.0 when
 	# the DEFENDER is) inflates the wound the defender takes -- the same asymmetric
 	# attacker/defender lookup the regiment-formula path (UnitCombat.strike/shoot)
 	# already applies, so the per-soldier melee path (the dominant case whenever both
-	# sides are engaged) isn't left as a silent no-op for this stance.
+	# sides are engaged) isn't left as a silent no-op for this stance. formation_attack_factor
+	# has no per-soldier override (it's SQUARE/SCHILTRON's own offence penalty, and neither
+	# formation ever marks a soldier broken -- see breaks_under_encirclement), so it's hoisted
+	# out here; formation_melee_attack_factor and melee_defense_factor DO vary per soldier
+	# (an individually broken soldier drops the multiplier back to 1.0 -- see below), so those
+	# two are computed per strike instead. Scales only the wound magnitude, never the seeded
+	# land/fall rolls -- the RNG stream (draw count and order) is untouched, so replays stay
+	# bit-identical.
 	var mods: Vector2 = UnitCombat.order_mode_modifiers(attacker, defender)
-	var wound_scale: float = attacker.formation_attack_factor() \
-			* attacker.formation_melee_attack_factor() \
-			* defender.melee_defense_factor(attacker) \
-			* mods.x / mods.y
+	var atk_formation_scale: float = attacker.formation_attack_factor()
 
 	for ai in attackers:
 		if ai < attacker._sim_prone.size() and attacker._sim_prone[ai] > 0.0:
 			continue   # a felled attacker can't strike (no target search, no RNG — order stays stable)
 		var apos: Vector2 = attacker._sim_soldier_pos[ai]
+		# An individually broken attacker (Unit.is_soldier_broken, driven by SoldierEncirclement)
+		# fights as an unmodified individual: it no longer earns (or suffers) its unit's own
+		# stance melee-output modifier -- TESTUDO's "head-down, can barely swing" penalty is
+		# exactly the assumption a surrounded soldier's broken formation can't back up any more.
+		var attacker_broken: bool = attacker.is_soldier_broken(ai)
+		var atk_melee_scale: float = 1.0 if attacker_broken else attacker.formation_melee_attack_factor()
 		# Nearest LIVING enemy soldier within reach — a longer reach lets us hit foes
 		# who can't hit back (the spear screen).
 		var target: int = -1
@@ -67,6 +75,13 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 				target = di
 		if target < 0:
 			continue   # nothing in reach this strike — no RNG drawn, so order stays stable
+
+		# Same per-soldier override on the defending side: a broken SHIELD_WALL soldier's
+		# frontal melee bonus assumed its shield was still locked with its neighbours, which
+		# is exactly what being surrounded breaks.
+		var defender_broken: bool = defender.is_soldier_broken(target)
+		var def_defense_scale: float = 1.0 if defender_broken else defender.melee_defense_factor(attacker)
+		var wound_scale: float = atk_formation_scale * atk_melee_scale * def_defense_scale * mods.x / mods.y
 
 		var dpos: Vector2 = defender._sim_soldier_pos[target]
 		var axis: Vector2 = dpos - apos
@@ -232,11 +247,17 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 ## the melee path leaves it 1.0 (facing is already in the strike rolls), while a ranged
 ## volley passes its regiment-level flank so a shot into the rear routs harder — matching
 ## the regiment-formula path. Deterministic — no RNG; walks high-to-low so a removal
-## never shifts an index still to be checked.
+## never shifts an index still to be checked. Captures each dying soldier's own live
+## `_sim_soldier_pos` before it's spliced out, so the cosmetic Fallen heap drops one mark
+## at each man's REAL position — not an averaged point, and not the unit's idealized
+## formation-slot geometry, which can have already scattered away from the live bodies
+## mid-melee.
 static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 	var dead: int = 0
+	var dead_positions := PackedVector2Array()
 	for i in range(unit._sim_soldier_hp.size() - 1, -1, -1):
 		if unit._sim_soldier_hp[i] <= 0.0:
+			dead_positions.push_back(unit._sim_soldier_pos[i])
 			unit._sim_soldier_pos.remove_at(i)
 			unit._sim_body_vel.remove_at(i)
 			unit._sim_soldier_hp.remove_at(i)
@@ -257,11 +278,13 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				# at the dead soldier's own index (not recomputing) is what makes a casualty
 				# preserve every OTHER survivor's file identity -- see Unit._ensure_file_assignment.
 				unit._sim_soldier_file.remove_at(i)
+			if i < unit._sim_soldier_broken.size():
+				unit._sim_soldier_broken.remove_at(i)   # and the encirclement-broken flag
 			dead += 1
 	if dead == 0:
 		return
 	unit.soldiers = maxi(0, unit.soldiers - dead)
-	UnitCombat.register_casualties(unit, dead, killer, morale_flank)
+	UnitCombat.register_casualties(unit, dead, killer, morale_flank, dead_positions)
 
 
 ## Apply a ranged volley's `casualties` to `target` at the individual level: the men

@@ -193,6 +193,26 @@ var formation_mode: int = FORMATION_NORMAL
 # fatigue reduction and in-fight morale recovery on it, so turning it off makes a
 # disciplined unit tire and waver like an untrained one.
 var rank_relief: bool = true
+# Battle AI phase 4 (docs/battle-ai-design.md): player delegation. UNDELEGATED (the default)
+# means the player controls this unit directly, exactly as every unit always has -- untouched
+# by any AI decision. A value >= 0 names which AI subcommander group (an id the player chose
+# when delegating, via Battle.enqueue_delegation) this unit currently answers to; Battle.
+# _run_player_delegated_ai groups every team-0 unit with the same player_group_id and runs it
+# through the same Subcommander/UnitLeader pipeline team 1's AI already uses. Written ONLY by
+# Battle._apply_order_cmd's ORDER_DELEGATION_ONLY branch, so it rides the replay stream like
+# every other durable per-unit toggle (rank_relief above, walk_advance below) -- never set
+# directly by any other code, the same "one apply site" discipline the whole orders queue
+# follows. Any other explicit player order to this unit clears it back to UNDELEGATED (the
+# design doc's "a manual player order always wins over the subcommander's directive").
+const UNDELEGATED := -1
+var player_group_id: int = UNDELEGATED
+# The delegated group's subcommander rank title, from the player's own doctrine profile
+# (PlayerDelegation.subcommander_rank_title) -- resolved once, when delegation is granted, and
+# cleared to "" on revocation. Pure display text (HUD.show_unit reads it directly); never
+# itself recorded, since it's a deterministic function of already-recorded state (the battle's
+# fixed player_doctrine plus the recorded delegation toggle), matching every other derived-not-
+# recorded display value in this file.
+var subcommander_rank_title: String = ""
 # Which frontage the unit settles into after an engage/attack re-face turn-in-place
 # (_settle_engage_turn) completes. KEEP_NEW_FRONTING is the shipped MVP: the men stay put
 # and the unit fights with whatever edge the turn left facing the enemy. The other two
@@ -521,6 +541,21 @@ const REORDER_MOMENTUM_DOT_MIN: float = 0.5   # tuned (cosine of the widest cont
 # a dedicated maneuver (the circumductio flank wheel, see wheel()), not this general movement taper.
 const TURN_RATE: float = PI
 const TURN_RATE_TAPER_FLOOR: float = 0.4
+# Share of a body's own acceleration budget a formed march/chase's centre pivot may
+# spend redirecting the REGIMENT's cruising velocity (UnitManeuver.max_turn_rate_for_speed,
+# via _move_to's pivot_as_formation branch -- only once _current_speed exceeds jog_speed;
+# see that branch's own comment for why it's gated there rather than applied always).
+# Redirecting a body's own velocity of magnitude V at angular rate omega costs a
+# centripetal acceleration of V * omega -- spending the WHOLE body_accel budget on that
+# (a factor of 1.0) leaves nothing over for a soldier's own arrival term to close its
+# individual residual gap to a still-swinging slot, so the two compete for the same
+# budget every tick a pivot and a lagging body coincide. An even split reserves half the
+# budget for each side of that competition -- not a further-derived value, just the
+# natural default absent a reason to weight one side over the other. Lower reduces the
+# growing shear a sustained high-speed pivot leaves behind (verified empirically against
+# a long cavalry pursuit); much lower makes the pivot itself look sluggish relative to
+# the drill/wheel ceilings above.
+const TURN_ACCEL_BUDGET_FRACTION: float = 0.5
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
 # rotates toward the opposite heading at this rate (rad/s), taking ~0.5 s for a full 180°.
 # This is NOT a pivot of the block — neither a centre pivot (move orders) nor a flank wheel
@@ -1458,12 +1493,22 @@ func _update_current_order() -> void:
 			retire_current_order()
 
 
+## This unit's own melee attack cadence: the equipped weapon's attack_interval_s,
+## falling back to the flat ATTACK_INTERVAL baseline when the weapon id doesn't
+## resolve (defensive; weapon_type_id is always a valid registry key in practice --
+## mirrors soldier_lethality's own fallback). Regiment-level, not per-soldier: every
+## soldier in a unit shares the same weapon_type_id today.
+func melee_attack_interval() -> float:
+	var w: Weapon = LoadoutRegistry.weapon(weapon_type_id)
+	return w.attack_interval_s if w != null else ATTACK_INTERVAL
+
+
 ## Arm the attack cooldown for the swing about to land, picking the interval that
 ## matches the unit's stance: PIN_DOWN swings on the slower PIN_DOWN_ATTACK_INTERVAL
 ## and opens its own exposure window (pin_down_defense_factor); every other stance
-## uses the normal baseline (ATTACK_INTERVAL melee / RANGED_INTERVAL ranged). Called
-## right before UnitCombat.strike()/shoot(), so the exposure window is already open
-## for any riposte that lands later in the same tick.
+## uses the normal baseline (the caller's own melee_attack_interval() or
+## RANGED_INTERVAL). Called right before UnitCombat.strike()/shoot(), so the exposure
+## window is already open for any riposte that lands later in the same tick.
 func _start_attack_cd(baseline_interval: float) -> void:
 	if order_mode == ORDER_PIN_DOWN:
 		_attack_cd = PIN_DOWN_ATTACK_INTERVAL
@@ -1742,7 +1787,7 @@ func _think(delta: float) -> void:
 			# brought to bear — the strike is withheld until then.
 			var faced: bool = _face_for_action(enemy.position, delta, enemy)
 			if faced and _attack_cd <= 0.0:
-				_start_attack_cd(ATTACK_INTERVAL)
+				_start_attack_cd(melee_attack_interval())
 				UnitCombat.strike(self, enemy)
 			# Press into contact: a committed melee unit keeps advancing onto the enemy
 			# while it fights, so the lines close to body contact (separation provides the
@@ -1900,10 +1945,11 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 		# Only peel back once a hit actually lands: flipping to recharging is gated on the
 		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
 		# clears, rather than retreating without having landed the charge. (For current
-		# cavalry speeds the cycle period exceeds ATTACK_INTERVAL, so this rarely bites —
-		# but the gate keeps it correct if speed or the interval is later retuned.)
+		# cavalry speeds the cycle period exceeds cavalry's own melee cadence, so this
+		# rarely bites — but the gate keeps it correct if speed or the cadence is later
+		# retuned.)
 		if _attack_cd <= 0.0:
-			_attack_cd = ATTACK_INTERVAL
+			_attack_cd = melee_attack_interval()
 			UnitCombat.strike(self, enemy)
 			_cycle_recharging = true
 		return true
@@ -1936,7 +1982,7 @@ func _support_tick(delta: float) -> void:
 		elif in_contact:
 			state = State.FIGHTING
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
-				_attack_cd = ATTACK_INTERVAL
+				_attack_cd = melee_attack_interval()
 				UnitCombat.strike(self, threat)
 		else:
 			# Threat out of range: chase it. Settle a dangling re-face first so the frozen
@@ -2160,6 +2206,40 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# scramble after their slots instead of turning in good order and the block reads
 		# as a blob until they catch up. The corner man paces the whole pivot at up to a jog.
 		pivot_rate = UnitManeuver.wheel_gait_rate(pivot_rate, jog_speed, _pivot_radius())
+		# wheel_gait_rate alone only bounds the corner man's TANGENTIAL footspeed -- a
+		# purely geometric limit that says nothing about whether a body actually
+		# CRUISING at speed could physically achieve that turn. Redirecting a body's own
+		# (much larger, march-speed) velocity at this angular rate demands a centripetal
+		# acceleration of _current_speed * pivot_rate; past a jog/sprint cruise this can
+		# exceed the unit's own body_accel long before the corner man's footspeed cap
+		# ever binds -- exactly the gap a sustained chase or a routing/terrain-detouring
+		# pursuit keeps re-triggering, since the target's own motion re-aims steer_dir
+		# again before the block has finished turning onto the last one. A pivot that
+		# outpaces what an accelerating body can track doesn't blob outright (the soldier
+		# bodies still arrive under their own bounded force) but the whole formation
+		# lags the swinging slot grid by a growing amount the longer the mismatch
+		# persists -- a real, cumulative shear, not a one-tick artifact.
+		#
+		# Gated to genuinely SPRINTING (current_speed strictly past this unit's own
+		# jog_speed) -- not applied at walk/jog. At or below jog_speed, wheel_gait_rate's
+		# own pace (jog-bounded by construction) already sits within what the unit's real
+		# body_accel affords for any formation this game spawns, so this cap has nothing
+		# to correct there and would only be an unmotivated extra brake on an ordinary
+		# march. Verified against a default 120-soldier Infantry unit at plain walk pace
+		# (accel 30 wu/s^2, walk_speed 26 wu/s, pivot_radius ~70 wu): the required
+		# centripetal accel for wheel_gait_rate's own rate there is ~18.5 wu/s^2, safely
+		# under the unit's 30 wu/s^2 budget, so this cap must not bind at that speed --
+		# gating on jog_speed guarantees it structurally can't, rather than relying on
+		# TURN_ACCEL_BUDGET_FRACTION alone to happen to come out loose enough. Cap the
+		# pivot, once sprinting, at a share (TURN_ACCEL_BUDGET_FRACTION) of the same
+		# body_accel floor SoldierBodies.step() uses for arrival -- so the ANCHOR never
+		# demands a sharper turn than its own bodies could physically hold, and the
+		# remaining share stays free for each soldier's OWN arrival correction to the
+		# (still-swinging) slot, instead of the two competing for the exact same
+		# acceleration every tick.
+		if _current_speed > jog_speed:
+			var turn_body_accel: float = maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) * TURN_ACCEL_BUDGET_FRACTION
+			pivot_rate = minf(pivot_rate, UnitManeuver.max_turn_rate_for_speed(turn_body_accel, _current_speed))
 		_rotate_facing_toward(steer_dir, delta, pivot_rate)
 	else:
 		_face_dir(steer_dir)
@@ -2756,6 +2836,30 @@ func in_schiltron() -> bool:
 	return formation_mode == FORMATION_SCHILTRON
 
 
+## True for the two formations whose stance bonus depends on the shields staying locked
+## with a soldier's neighbours in one particular direction: SHIELD_WALL's frontal melee/
+## missile defense, and TESTUDO's all-round missile cover and melee-output penalty. A
+## soldier genuinely surrounded in either of these can individually "break" -- see
+## SoldierEncirclement. SQUARE/SCHILTRON are deliberately excluded: their whole point is an
+## all-around stance built to be attacked from every side at once, so being surrounded is
+## the design working as intended, not a breakdown to react to.
+func breaks_under_encirclement() -> bool:
+	return formation_mode == FORMATION_SHIELD_WALL or formation_mode == FORMATION_TESTUDO
+
+
+## Whether soldier `i` is CURRENTLY broken from the formation's shield-lock: both that its
+## own _sim_soldier_broken flag is set AND that the unit's present formation can actually
+## break in the first place. The second half matters because _sim_soldier_broken isn't
+## cleared by set_formation() itself -- only by SoldierEncirclement.accumulate()'s own
+## per-tick fill(0), which skips a unit entirely the instant it leaves SHIELD_WALL/TESTUDO
+## (see that class's own doc comment) -- so a flag left over from before a formation change
+## must not still read as broken. The single canonical check shared by both consumers: the
+## per-soldier combat-multiplier override in SoldierMelee.resolve, and the render tint in
+## _soldier_is_broken_for_render.
+func is_soldier_broken(i: int) -> bool:
+	return breaks_under_encirclement() and i < _sim_soldier_broken.size() and _sim_soldier_broken[i] == 1
+
+
 ## Offensive-output scale from the formation stance. Both square variants hunker to
 ## defend on every side, so they hit softer -- schiltron harder still than orbis
 ## (SCHILTRON_ATTACK_FACTOR < SQUARE_ATTACK_FACTOR), trading offence for the stronger
@@ -2988,6 +3092,19 @@ var _prone_easing_active: bool = false
 # reduces both offence and active defence through SoldierCombat.stamina_factor (g(sigma)).
 var _sim_soldier_stamina: PackedFloat32Array = PackedFloat32Array()
 
+# Per-soldier "broken from the shield-lock" flag (1 = broken, 0 = holding), index-aligned
+# with _sim_soldier_pos: recomputed every tick by SoldierEncirclement.accumulate for a
+# SHIELD_WALL/TESTUDO unit's engaged soldiers only (see breaks_under_encirclement() and that
+# class's own doc comment) -- every other formation, and every soldier SoldierEncirclement
+# doesn't currently touch, stays 0. A soldier genuinely contacted by enemies spanning more
+# than a single facing's hemisphere can't be defended by either stance's shield-lock
+# assumption any more, so it fights as an unmodified individual (SoldierMelee.resolve reads
+# this per soldier to drop the stance's attack/defense multiplier for just that one body) and
+# steers toward the widest gap between its attackers instead of holding its formation slot.
+# Cleared the instant the soldier is no longer surrounded -- no latch/hysteresis, so "breaks"
+# and "rejoins" both track the live contact geometry tick to tick.
+var _sim_soldier_broken: PackedByteArray = PackedByteArray()
+
 # Persistent per-soldier file (column) assignment for file_major_reform, index-aligned with
 # _sim_soldier_pos: _sim_soldier_file[i] is soldier i's file id (0..files-1). Kept in sync
 # through an ordinary casualty by SoldierMelee.reap() removing the dead soldier's entry at
@@ -3103,6 +3220,29 @@ func soldier_id(index: int) -> int:
 ## read can only ever see this tick's own fresh value or none.
 var _step_slots_for_couple: PackedVector2Array = PackedVector2Array()
 var _step_slots_for_couple_valid: bool = false
+
+## The REAL positions of the `count` live soldiers nearest `local_point` (parent-local,
+## same frame as `position` -- see _sim_soldier_pos's own doc comment), or an empty array
+## when the soldier layer has no bodies. Actual body positions, never an averaged point or
+## a synthetic scatter -- when a caller doesn't know exactly which soldiers died (the
+## regiment-formula path), these stand in as honest positions for "roughly where these men
+## actually are," biased toward whatever `local_point` represents (typically the attacker)
+## rather than the whole regiment, which can be spread far from the point of interest (a
+## still-forming battle line with rear ranks not yet engaged, knockback carrying some
+## bodies away from the rest).
+func live_soldiers_near(local_point: Vector2, count: int) -> PackedVector2Array:
+	if _sim_soldier_pos.is_empty() or count <= 0:
+		return PackedVector2Array()
+	var indices: Array = range(_sim_soldier_pos.size())
+	indices.sort_custom(func(a, b):
+		return _sim_soldier_pos[a].distance_squared_to(local_point) \
+			< _sim_soldier_pos[b].distance_squared_to(local_point))
+	var n: int = mini(count, indices.size())
+	var out := PackedVector2Array()
+	for i in range(n):
+		out.push_back(_sim_soldier_pos[indices[i]])
+	return out
+
 
 func soldier_world_slots(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
@@ -4169,6 +4309,12 @@ func is_engaged() -> bool:
 	return _engaged_linger > 0.0
 
 
+## Battle AI phase 4 (docs/battle-ai-design.md): whether the player has delegated this unit to
+## an AI subcommander group. A function of player_group_id only -- see its own doc comment.
+func is_delegated() -> bool:
+	return player_group_id != UNDELEGATED
+
+
 ## How braced (set to receive) this regiment's soldiers are, in [0, 1] (#201 bracing): a
 ## regiment engaged and not skirmishing is set and buttresses knockback/knockdown; a loose
 ## skirmish line, or one not engaged, is not. Binary for now -- graded postures (advancing /
@@ -5094,19 +5240,32 @@ const PRONE_COLOR: Color = Color(0.22, 0.22, 0.22, 0.80)   # dark grey, 80% alph
 # hues) so it reads unambiguously at a glance.
 const ENGAGED_HIGHLIGHT_COLOR: Color = Color(1.0, 0.80, 0.05)
 
+# Always-on visual (not a debug toggle -- see _sim_soldier_broken's own doc comment): tints a
+# soldier that has individually broken from its unit's shield-lock under encirclement. A
+# distinct hue from ENGAGED_HIGHLIGHT_COLOR's amber so the two never read as the same thing --
+# a broken soldier is a real gameplay-relevant state change the player should be able to see
+# at a glance, not an opt-in dev overlay.
+const BROKEN_HIGHLIGHT_COLOR: Color = Color(0.85, 0.15, 0.15)
+
 
 ## Which color a single soldier's mark should draw in this frame -- prone always wins (a felled
-## soldier's dark tint is a more important signal than the debug highlight), otherwise the
-## engaged highlight applies only when the debug toggle is on AND this soldier is actually in
-## the engaged set, else the normal white. `prone_progress` (0 = standing, 1 = fully fallen)
-## LERPS toward PRONE_COLOR rather than switching to it at a threshold, so the tint eases in
-## alongside the pose transform instead of snapping the instant the soldier goes down -- at
-## the exact endpoints (0.0 / 1.0) this returns the identical colors the old boolean form did.
-## Pure -- a function of its three args only, so it's directly unit-testable without a live
-## MultiMesh (whose instance data isn't synchronously readable back in headless tests -- see
-## the MultiMesh instance-transform gotcha this mirrors).
-static func _soldier_render_color(prone_progress: float, engaged_highlight_on: bool, is_engaged: bool) -> Color:
-	var base: Color = ENGAGED_HIGHLIGHT_COLOR if (engaged_highlight_on and is_engaged) else Color.WHITE
+## soldier's dark tint is a more important signal than either highlight), then the broken tint
+## (a real gameplay state, always shown), then the engaged debug highlight (opt-in, only when
+## the debug toggle is on AND this soldier is actually in the engaged set), else the normal
+## white. `prone_progress` (0 = standing, 1 = fully fallen) LERPS toward PRONE_COLOR rather than
+## switching to it at a threshold, so the tint eases in alongside the pose transform instead of
+## snapping the instant the soldier goes down -- at the exact endpoints (0.0 / 1.0) this returns
+## the identical colors the old boolean form did. Pure -- a function of its four args only, so
+## it's directly unit-testable without a live MultiMesh (whose instance data isn't
+## synchronously readable back in headless tests -- see the MultiMesh instance-transform
+## gotcha this mirrors).
+static func _soldier_render_color(prone_progress: float, engaged_highlight_on: bool, is_engaged: bool,
+		is_broken: bool = false) -> Color:
+	var base: Color = Color.WHITE
+	if is_broken:
+		base = BROKEN_HIGHLIGHT_COLOR
+	elif engaged_highlight_on and is_engaged:
+		base = ENGAGED_HIGHLIGHT_COLOR
 	# Special-cased at the exact endpoints rather than trusting lerp(..., 1.0)/lerp(..., 0.0)
 	# to land bit-exact -- floating-point rounding through the lerp arithmetic can differ from
 	# the literal constant in the last bit, which fails an exact Color equality check even
@@ -5356,6 +5515,18 @@ func _render_body_count() -> int:
 	return soldiers if tier == FormationTier.FAR else _sim_soldier_pos.size()
 
 
+## Whether soldier `i` should render the broken-formation tint this frame: is_soldier_broken's
+## own gate (see that method) plus the far-tier exclusion (a far-tier unit has no simulated
+## bodies to tint). `far_tier` is passed in rather than read from `tier` directly so the
+## caller's own far-tier check (already computed once per _refresh_flock_render call) isn't
+## redone per soldier. Extracted as its own method (rather than inlined at the
+## _refresh_flock_render call site) for the same reason _soldier_render_color/
+## _facing_pip_transform are: MultiMesh instance data isn't synchronously readable back in
+## headless tests, so the gating logic needs to be directly testable on its own.
+func _soldier_is_broken_for_render(i: int, far_tier: bool) -> bool:
+	return not far_tier and is_soldier_broken(i)
+
+
 ## Push the current mark positions/colours into the two MultiMeshes (1 instance per mark).
 ## The figures' facing is handled by a mesh swap (see _apply_lod_meshes), not a per-instance
 ## transform — MultiMesh 2D can't store a reflected (mirrored) instance transform. At figure
@@ -5439,7 +5610,8 @@ func _refresh_flock_render(delta: float) -> void:
 		_mm_body.set_instance_transform_2d(i, t)
 		_mm_outline.set_instance_transform_2d(i, t)
 		var is_engaged: bool = engaged_highlight_on and engaged_lookup[i] == 1
-		_mm_body.set_instance_color(i, _soldier_render_color(pp, engaged_highlight_on, is_engaged))
+		var is_broken: bool = _soldier_is_broken_for_render(i, far_tier)
+		_mm_body.set_instance_color(i, _soldier_render_color(pp, engaged_highlight_on, is_engaged, is_broken))
 		_mm_outline.set_instance_color(i, Color.WHITE)
 		if _detailed_lod:
 			_mm_facing_pip.set_instance_transform_2d(i, _facing_pip_transform(pp, sf, pos))
@@ -5620,6 +5792,7 @@ func to_snapshot_dict() -> Dictionary:
 		"move_target": move_target, "has_move_target": has_move_target,
 		"order_mode": order_mode, "knockback_push_indefinite": knockback_push_indefinite,
 		"formation_mode": formation_mode, "rank_relief": rank_relief,
+		"player_group_id": player_group_id, "subcommander_rank_title": subcommander_rank_title,
 		"engage_reshape_mode": engage_reshape_mode, "tier": tier,
 		"frontage_override": frontage_override,
 		"frontage_anchor_offset": frontage_anchor_offset,
@@ -5724,6 +5897,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	knockback_push_indefinite = bool(d["knockback_push_indefinite"])
 	formation_mode = int(d["formation_mode"])
 	rank_relief = bool(d["rank_relief"])
+	player_group_id = int(d["player_group_id"])
+	subcommander_rank_title = String(d["subcommander_rank_title"])
 	engage_reshape_mode = int(d["engage_reshape_mode"])
 	tier = int(d["tier"])
 	frontage_override = int(d["frontage_override"])

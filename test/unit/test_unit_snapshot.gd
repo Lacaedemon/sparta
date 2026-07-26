@@ -50,6 +50,8 @@ func _sample_unit() -> Unit:
 	u.knockback_push_indefinite = true
 	u.formation_mode = Unit.FORMATION_SQUARE
 	u.rank_relief = false
+	u.player_group_id = 3   # non-default (defaults Unit.UNDELEGATED), so the round-trip is provable
+	u.subcommander_rank_title = "Tribune"
 	u.engage_reshape_mode = Unit.EngageReshapeMode.RECREATE_WIDTH
 	u.tier = FormationTier.FAR
 	u.frontage_override = 6
@@ -135,6 +137,9 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.has_move_target, original.has_move_target)
 	assert_eq(restored.order_mode, original.order_mode)
 	assert_eq(restored.formation_mode, original.formation_mode)
+	assert_eq(restored.player_group_id, original.player_group_id,
+		"Battle AI phase 4: player delegation survives a snapshot round-trip")
+	assert_eq(restored.subcommander_rank_title, original.subcommander_rank_title)
 	assert_eq(restored.walk_advance, original.walk_advance)
 	assert_eq(restored.reform_before_move, original.reform_before_move)
 	assert_eq(restored.file_major_reform_mode, original.file_major_reform_mode)

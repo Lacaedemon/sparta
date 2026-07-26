@@ -1238,6 +1238,98 @@ func test_pivot_rate_is_paced_by_the_corner_man() -> void:
 		"the first tick's pivot step is the corner-man-paced rate, not raw TURN_RATE")
 
 
+func test_formed_pivot_turning_cap_does_not_bind_at_or_below_jog_pace() -> void:
+	# Regression guard for a claude-code-review finding on the PR that introduced this
+	# cap: worked through this exact fixture's own numbers (a default 120-soldier unit,
+	# the same size the review's own worked example used), the review found that
+	# applying the acceleration-based cap unconditionally makes it bind TIGHTER than the
+	# pre-existing corner-man footspeed cap already at plain WALK pace -- not just past a
+	# jog/sprint cruise as the fix's own docs claimed. That would have throttled every
+	# ordinary marching turn in the game, not only a sprinting cavalry chase. Gating the
+	# cap to only apply once current_speed exceeds jog_speed fixes this: at walk pace
+	# (always at or below jog_speed for every unit type in this game) the pivot rate must
+	# come out EXACTLY as it did before this fix existed -- the pre-existing footspeed/
+	# taper caps alone, with no contribution from the new cap at all.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._current_speed = u.walk_speed
+	u.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_WALK)
+	assert_lte(u._current_speed, u.jog_speed, "walk pace sits at or below jog pace for every unit type")
+	var pre_existing_cap: float = UnitManeuver.wheel_gait_rate(
+			Unit.TURN_RATE * lerpf(1.0, Unit.TURN_RATE_TAPER_FLOOR,
+					clampf(u._current_speed / u.move_speed, 0.0, 1.0)),
+			u.jog_speed, u._pivot_radius())
+	u._move_to(Vector2(0, 100000), 0.1, true)
+	assert_almost_eq(u.facing.angle(), pre_existing_cap * 0.1, 0.0001,
+		"at walk pace the pre-existing footspeed/taper caps alone govern -- the new " +
+			"accel-based cap must not tighten this further")
+
+
+func test_formed_pivot_is_capped_by_the_units_own_turning_acceleration_at_speed() -> void:
+	# Redirecting a body's own velocity of magnitude V at angular rate omega demands a
+	# centripetal acceleration of V * omega -- this cap only ever applies once a unit is
+	# genuinely SPRINTING (current_speed past its own jog_speed -- see _move_to's own
+	# comment for why: at or below jog pace the pre-existing footspeed cap already keeps
+	# every real formation within its own accel budget, so gating here is what keeps this
+	# new cap scoped to the fast-cruising case it exists for, not every ordinary march).
+	# jog_speed and move_speed are overridden to a moderate, deliberately chosen pair
+	# (not an unrealistically huge jog_speed, which would ALSO defeat the new gate) so
+	# the fixture cruises well past its own jog_speed while the pre-existing footspeed/
+	# taper caps stay loose, isolating this cap the same way
+	# test_orderly_pivot_is_slower_at_speed_than_at_a_stand isolates the taper.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u.jog_speed = 200.0
+	u.move_speed = 400.0
+	u._current_speed = 400.0   # cruising at full sprint, well past jog_speed
+	# An explicit SPRINT gait pins pace_speed to move_speed -- matching _current_speed
+	# already, so the ramp inside _move_to (which would otherwise decel toward the AUTO
+	# ladder's walk pace for a far destination) leaves speed exactly at move_speed for
+	# the pivot-rate computation this test isolates. haste stays false (new_move's
+	# default): this fixture tests _move_to's own cap directly, not Battle.gd's separate
+	# "an explicit RUN/SPRINT gait is haste" order-dispatch policy.
+	u.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_SPRINT)
+	var turn_body_accel: float = maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR) * Unit.TURN_ACCEL_BUDGET_FRACTION
+	var expected_rate: float = UnitManeuver.max_turn_rate_for_speed(turn_body_accel, u._current_speed)
+	var pre_existing_cap: float = UnitManeuver.wheel_gait_rate(
+			Unit.TURN_RATE * Unit.TURN_RATE_TAPER_FLOOR, u.jog_speed, u._pivot_radius())
+	assert_lt(expected_rate, pre_existing_cap,
+		"the fixture's cruising speed is high enough that this cap governs, not the pre-existing footspeed/taper caps")
+	u._move_to(Vector2(0, 100000), 0.1, true)
+	assert_almost_eq(u.facing.angle(), expected_rate * 0.1, 0.0001,
+		"the first tick's pivot step is capped by the unit's own turning acceleration, not the pre-existing caps alone")
+
+
+func test_formed_pivot_turning_cap_loosens_at_a_slower_cruise() -> void:
+	# The same body_accel affords a much sharper turn at a walk than at a sprint
+	# (UnitManeuver.max_turn_rate_for_speed's own inverse relationship), so an identical
+	# pivot started from a slower (but still past-jog-speed, so the cap is engaged for
+	# both) cruise should turn further in one tick than the same pivot at full speed.
+	var slow := _make_unit()
+	slow.position = Vector2.ZERO
+	slow.facing = Vector2.RIGHT
+	slow.jog_speed = 200.0
+	slow.move_speed = 250.0
+	slow._current_speed = 250.0   # past jog_speed, so the new cap is engaged
+	slow.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_SPRINT)
+	slow._move_to(Vector2(0, 100000), 0.1, true)
+
+	var fast := _make_unit()
+	fast.position = Vector2.ZERO
+	fast.facing = Vector2.RIGHT
+	fast.jog_speed = 200.0
+	fast.move_speed = 400.0
+	fast._current_speed = 400.0   # further past jog_speed than the "slow" fixture above
+	fast.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_SPRINT)
+	fast._move_to(Vector2(0, 100000), 0.1, true)
+
+	assert_gt(slow.facing.angle(), fast.facing.angle(),
+		"a slower cruise affords a sharper turn under the same body_accel budget")
+	assert_gt(fast.facing.angle(), 0.0, "the fast-cruising unit still turns, just more slowly")
+
+
 func test_pivot_radius_is_the_footprint_half_diagonal() -> void:
 	# 120 soldiers in the default line: formation_files gives the file count, ranks
 	# follow, and the radius is half the diagonal of the (files-1) x (ranks-1) slot
@@ -4509,6 +4601,94 @@ func test_soldier_render_color_eases_toward_prone_at_intermediate_progress() -> 
 	var mid: Color = Unit._soldier_render_color(0.5, false, false)
 	assert_ne(mid, Color.WHITE, "half-fallen isn't still pure white")
 	assert_ne(mid, Unit.PRONE_COLOR, "half-fallen isn't yet the full prone tint")
+
+
+# --- _soldier_render_color: the always-on broken-formation highlight (SoldierEncirclement) ----
+
+func test_soldier_render_color_broken_wins_over_the_engaged_debug_highlight() -> void:
+	# A broken soldier is a real gameplay state change, not an opt-in debug overlay -- it
+	# takes precedence over the engaged-highlight toggle even when both would otherwise apply.
+	assert_eq(Unit._soldier_render_color(0.0, true, true, true), Unit.BROKEN_HIGHLIGHT_COLOR,
+		"broken wins over the engaged highlight")
+
+
+func test_soldier_render_color_broken_shows_even_with_the_engaged_toggle_off() -> void:
+	# Unlike the engaged highlight, the broken tint is never gated behind Settings.show_engaged_highlight.
+	assert_eq(Unit._soldier_render_color(0.0, false, false, true), Unit.BROKEN_HIGHLIGHT_COLOR,
+		"broken shows regardless of the debug toggle")
+
+
+func test_soldier_render_color_prone_wins_over_broken() -> void:
+	# A felled soldier's dark tint is a more important signal than either highlight.
+	assert_eq(Unit._soldier_render_color(1.0, false, false, true), Unit.PRONE_COLOR,
+		"fully prone beats the broken highlight too")
+
+
+func test_soldier_render_color_defaults_to_not_broken() -> void:
+	# The is_broken parameter defaults to false, so every pre-existing 3-argument call site
+	# keeps its old behavior unchanged.
+	assert_eq(Unit._soldier_render_color(0.0, false, false), Color.WHITE)
+
+
+# --- is_soldier_broken: the shared gate (breaks_under_encirclement() + the raw flag) -----
+# Both SoldierMelee.resolve's per-soldier combat-multiplier override and the render tint
+# (_soldier_is_broken_for_render below) read this one canonical check.
+
+func test_is_soldier_broken_true_for_a_broken_soldier_in_an_eligible_formation() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_true(u.is_soldier_broken(0))
+
+
+func test_is_soldier_broken_ignores_a_stale_flag_after_a_formation_change() -> void:
+	# set_formation() doesn't clear _sim_soldier_broken -- a flag left over from when the unit
+	# was still SHIELD_WALL must not still read as broken once the unit has switched away.
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	u._sim_soldier_broken = PackedByteArray([1])   # stale, from before the formation change below
+	u.set_formation(Unit.FORMATION_NORMAL)
+	assert_false(u.is_soldier_broken(0),
+		"a stale broken flag is ignored the instant the unit leaves an eligible formation")
+
+
+func test_is_soldier_broken_false_for_a_square_unit_even_with_the_flag_set() -> void:
+	# SQUARE/SCHILTRON never legitimately set this flag (SoldierEncirclement excludes them),
+	# but the gate defends against it regardless of how the flag got set.
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_false(u.is_soldier_broken(0))
+
+
+func test_is_soldier_broken_false_when_the_flag_is_zero() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	u._sim_soldier_broken = PackedByteArray([0])
+	assert_false(u.is_soldier_broken(0))
+
+
+func test_is_soldier_broken_false_when_the_array_is_too_short() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	u._sim_soldier_broken = PackedByteArray()   # never seeded -- no out-of-range read
+	assert_false(u.is_soldier_broken(0))
+
+
+# --- _soldier_is_broken_for_render: is_soldier_broken plus the far-tier exclusion --------
+
+func test_soldier_is_broken_for_render_matches_is_soldier_broken_at_close_tier() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_true(u._soldier_is_broken_for_render(0, false))
+
+
+func test_soldier_is_broken_for_render_false_at_far_tier_even_when_eligible_and_broken() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_false(u._soldier_is_broken_for_render(0, true), "far-tier units have no simulated bodies to tint")
 
 
 # --- drag-to-form-up: deploy facing on arrival ----------

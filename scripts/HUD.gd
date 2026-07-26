@@ -836,6 +836,12 @@ func show_unit(u, group_count: int) -> void:
 	lines.append("Formation: %s" % u.formation_summary())
 	lines.append("Width: %s" % UnitFormation.files_label(UnitFormation.frontage(u)))
 	lines.append("Order: %s" % u.order_summary())
+	# Battle AI phase 4 (docs/battle-ai-design.md): a delegated unit's period-flavored
+	# subcommander rank, resolved from the player's own doctrine profile at delegation time
+	# (Unit.subcommander_rank_title). Absent entirely for a non-delegated unit, matching the
+	# "Cohesion"/"Training" lines above that only appear when they apply.
+	if u.is_delegated():
+		lines.append("Delegated to: %s (Group %d)" % [u.subcommander_rank_title, u.player_group_id])
 	lines.append(_dynamic_stats(u))
 	_info.text = "\n".join(lines)
 	# The static characteristics live behind the fold; the toggle row appears

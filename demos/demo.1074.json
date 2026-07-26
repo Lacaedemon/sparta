@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/routing-terrain-pathfinding.json",
+  "caption": "The dying-soldier casualty heap now drops among the ranks where the men actually fell, not floating alone in empty ground. Watch the crowd around 1.8s (first contact): the dark casualty marks appear nestled between the soldier files, not detached at the flanks. Before/after crops in the PR description show the difference clearly at zoom -- this same input script is issue #1072's own reproduction.",
+  "fixed_fps": 60,
+  "max_frames": 200,
+  "fps": 24,
+  "width": 960
+}

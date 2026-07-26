@@ -19,17 +19,23 @@ extends Resource
 # Rest pose: the angle (radians, relative to the soldier's facing) the weapon
 # is held at when not striking. Feeds the render once visuals read the type.
 @export var default_hold_angle: float
+# How often this weapon lands a melee damage tick, in seconds — the regiment's
+# aggregate battle-pace cadence (see Unit.ATTACK_INTERVAL's own doc comment: not a
+# literal per-soldier swing rate). Per-weapon-type since a telegraphed thrust and a
+# quick slashing exchange land at genuinely different tempos.
+@export var attack_interval_s: float
 
 
 ## Build one interned type instance. Registry construction only — everything
 ## else reads shared instances through LoadoutRegistry.weapon(id).
 static func make(p_id: int, p_name: String, p_reach_m: float, p_lethality: float,
-		p_hold_angle: float = 0.0) -> Weapon:
+		p_attack_interval_s: float, p_hold_angle: float = 0.0) -> Weapon:
 	var w := Weapon.new()
 	w.id = p_id
 	w.display_name = p_name
 	w.reach_m = p_reach_m
 	w.lethality = p_lethality
+	w.attack_interval_s = p_attack_interval_s
 	w.default_hold_angle = p_hold_angle
 	return w
 
