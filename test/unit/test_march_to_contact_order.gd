@@ -147,9 +147,12 @@ func test_march_to_contact_resumes_the_queued_move_once_the_enemy_is_defeated() 
 	# The enemy is defeated (annihilated in melee).
 	enemy.state = Unit.State.DEAD
 
-	# Tick 2: no living enemy is left to fight, so the queued move resumes on its own --
-	# no separate "resume" mechanism is needed, since has_move_target was never cleared.
-	u._think(0.1)
+	# No living enemy is left to fight, so the queued move resumes on its own -- no
+	# separate "resume" mechanism is needed, since has_move_target was never cleared.
+	# Several ticks (bounded acceleration ramps up from a standing stop, same as any
+	# other march) rather than asserting after a single 1/60s tick.
+	for i in range(60):
+		u._think(1.0 / 60.0)
 	assert_true(u.has_move_target, "the move order is still live")
 	assert_lt(u.position.x, before.x,
 		"the unit resumes marching toward its original destination (-x) once the foe is gone")
@@ -176,7 +179,8 @@ func test_march_to_contact_lets_a_disengaging_foe_go_rather_than_chasing_it() ->
 	# The foe disengages: still alive, still detected, but no longer in contact/range.
 	enemy.position = Vector2(100, 0)
 
-	u._think(0.1)
+	for i in range(60):
+		u._think(1.0 / 60.0)
 	assert_true(u.has_move_target, "the move order is still live")
 	assert_lt(u.position.x, before.x,
 		"the unit resumes toward its own destination (-x) rather than following the foe (+x)")
