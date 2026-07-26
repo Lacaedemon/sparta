@@ -19,9 +19,9 @@ The registry has since grown two more type families on the same contract
 rows), never the sim's relative contact scalar — the units convention's "no
 raw sim number reaches the player," applied to mass.
 
-**The contact-mass derivation is now done.** `SoldierCombat.
-relative_mass_from_kg(mass_kg)` divides a real kilogram figure by
-`CONTACT_MASS_BASELINE_KG` (80 kg, the heavy-foot body mass), and
+**The contact-mass derivation is now done.**
+`SoldierCombat.relative_mass_from_kg(mass_kg)` divides a real kilogram
+figure by `CONTACT_MASS_BASELINE_KG` (80 kg, the heavy-foot body mass), and
 `profile_for()` composes a soldier's relative contact mass as
 `relative_mass_from_kg(body_mass_kg)` plus, when mounted,
 `relative_mass_from_kg(mount.mass_kg)` — real body-plus-mount kilograms end

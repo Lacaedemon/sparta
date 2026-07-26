@@ -55,9 +55,9 @@ weapon type's `lethality`, and $b$ composes as the equipped shield type's
 residual (`shield_residual`: Spearmen 0.05 braced footing, Archers 0.05
 unshielded deflection, otherwise 0), summing bit-for-bit to the table's $b$.
 
-$m$ is likewise derived, not a separately-tuned figure: `SoldierCombat.
-relative_mass_from_kg` divides a real mass in kilograms by the 80 kg
-heavy-foot baseline, so Spearmen and Infantry (both 80 kg) land on exactly
+$m$ is likewise derived, not a separately-tuned figure:
+`SoldierCombat.relative_mass_from_kg` divides a real mass in kilograms by
+the 80 kg heavy-foot baseline, so Spearmen and Infantry (both 80 kg) land on exactly
 1.0, Archers' lighter 70 kg body on 0.875, and a mounted Cavalryman's rider
 (75 kg) plus warhorse (450 kg) on 6.5625 — a real ~525 kg rider-and-horse
 relative to a foot soldier, not a hand-tuned "cavalry hits like 2.5 men"
