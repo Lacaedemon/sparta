@@ -886,19 +886,23 @@ func test_multi_defender_resolve_each_attacking_soldier_finds_its_own_nearest_de
 func test_multi_defender_resolve_prefers_the_nearer_defender_regardless_of_array_order() -> void:
 	# b is farther but has the LOWER uid (so it sorts and is enumerated first inside resolve());
 	# c is nearer but has the higher uid. The nearest-target search must still find c every
-	# time, proving distance decides -- not defender processing order.
+	# time, proving distance decides -- not defender processing order. c's health is boosted
+	# so it survives the whole loop (matching this file's own _deep_unit-style convention) --
+	# otherwise c dying partway through would correctly (not a bug) redirect the remaining
+	# strikes onto b, since it would be the only one left in reach, muddying this specific
+	# "distance always wins while both are alive" assertion.
 	Replay.rng.seed = SEED
 	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var b := _unit(2, 1, 1, Vector2(0, 20), Vector2.UP, false)   # farther, still in reach (20 < 26)
 	var c := _unit(3, 1, 1, Vector2(0, 10), Vector2.UP, false)   # nearer, in reach (10 < 26)
+	c._sim_soldier_hp[0] = 9999.0
 	var b_full: float = b._sim_soldier_hp[0]
 	var c_full: float = c._sim_soldier_hp[0]
 	for _k in range(40):
 		SoldierMelee.resolve(a, [b, c])
 	assert_almost_eq(b._sim_soldier_hp[0], b_full, 0.001,
 		"the farther defender takes no wounds at all while the nearer one is alive to absorb every strike")
-	assert_true(c.soldiers == 0 or c._sim_soldier_hp[0] < c_full,
-		"the nearer defender absorbs every strike instead")
+	assert_lt(c._sim_soldier_hp[0], c_full, "the nearer defender absorbs every strike instead")
 
 
 func test_multi_defender_resolve_is_deterministic_across_runs() -> void:

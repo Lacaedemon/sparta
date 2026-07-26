@@ -26,6 +26,22 @@ func _make_unit(max_soldiers: int = 120) -> Unit:
 	return u
 
 
+## An engaged, soldier-seeded variant of _make_unit() -- mirrors test_all_out_attack.gd's
+## _make_engaged_unit(): UnitCombat.strike()'s per-soldier melee branch (and, through it,
+## Unit.resolve_soldier_melee's adjacent-enemy fan-out) requires is_engaged() true and a
+## populated _sim_soldier_pos on both sides, which a bare _make_unit() never reaches.
+func _make_engaged_unit(max_soldiers: int, pos: Vector2, face: Vector2) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = max_soldiers
+	add_child_autofree(u)
+	u.position = pos
+	u.facing = face
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.1)     # latch is_engaged() true
+	u.seed_sim_soldiers()   # seed bodies + full health
+	return u
+
+
 # --- Registration: enum mirror, name, hotkey slug ---------------------------
 
 func test_order_multiple_engage_mirrors_battle_order_mode() -> void:
@@ -288,37 +304,56 @@ func test_multiple_engage_reflow_fires_from_a_live_think_tick_in_melee_contact()
 		"a live _think() tick reflows frontage toward the combined width of both adjacent enemies (9 + 9)")
 
 
-# --- End-to-end: a live _think() tick damages every adjacent enemy at once --
-# (SoldierMelee.resolve's own multi-defender search, chase/reach/determinism coverage
-# lives in test_soldier_melee.gd -- this file only checks that the live _think() call site
-# actually reaches it regardless of order_mode, mirroring the frontage-reflow end-to-end
-# test above.)
+# --- End-to-end: resolve_soldier_melee damages every adjacent engaged enemy at once ------
+# (SoldierMelee.resolve's own multi-defender search, reach-gating, and determinism coverage
+# lives in test_soldier_melee.gd -- this file only checks that Unit.resolve_soldier_melee's
+# own adjacent-enemy gather, called the way UnitCombat.strike actually calls it, reaches both
+# enemies regardless of order_mode, mirroring the frontage-reflow end-to-end test above.)
 
-func test_live_think_tick_damages_both_adjacent_enemies_in_one_cadence_regardless_of_order_mode() -> void:
-	# Two enemies flank u on opposite sides (not stacked behind it), so u's own soldiers
-	# naturally split: the left-file soldiers find e_left nearest, the right-file soldiers
-	# find e_right nearest. Plain NORMAL order_mode -- proving this is no longer
-	# MULTIPLE_ENGAGE-specific, per this file's own top-of-file doc comment.
-	var u := _make_unit(60)
+func test_resolve_soldier_melee_damages_both_adjacent_engaged_enemies_regardless_of_order_mode() -> void:
+	# u is genuinely adjacent to (and engaged with) TWO distinct enemy units at once, stacked
+	# behind it at slightly different distances (mirroring _adjacent_engaged_enemy_units()'s
+	# own contact-range test above -- unit-CENTER distance, not per-soldier position, is what
+	# "adjacent" means). Calling resolve_soldier_melee(e_left) -- exactly how UnitCombat.strike's
+	# engaged branch invokes it -- must ALSO damage e_right, since the wrapper unions in every
+	# adjacent engaged enemy, not just the one it's handed. Plain NORMAL order_mode (u.order_mode
+	# is never set here) -- proving this is no longer MULTIPLE_ENGAGE-specific, per this file's
+	# own top-of-file doc comment.
+	var u := _make_engaged_unit(60, Vector2(0, 0), Vector2.DOWN)
 	u.uid = 1
 	u.team = 0
-	var e_left := _make_unit(120)
+
+	var e_left := Unit.new()
+	e_left.max_soldiers = 120
+	add_child_autofree(e_left)   # _ready() sets soldiers = max_soldiers, so _front_depth() below is valid
 	e_left.uid = 2
 	e_left.team = 1
-	e_left.position = Vector2(-40.0, u._front_depth() + e_left._front_depth() - 5.0)
-	var e_right := _make_unit(120)
+	e_left.facing = Vector2.UP
+	e_left.position = Vector2(0.0, u._front_depth() + e_left._front_depth() - 2.0)
+	e_left.state = Unit.State.FIGHTING
+	e_left.tick_engaged(0.1)
+	e_left.seed_sim_soldiers()   # seeded AFTER position is set, so bodies land at the right spot
+
+	var e_right := Unit.new()
+	e_right.max_soldiers = 120
+	add_child_autofree(e_right)
 	e_right.uid = 3
 	e_right.team = 1
-	e_right.position = Vector2(40.0, u._front_depth() + e_right._front_depth() - 5.0)
-	u.target_enemy = e_left
+	e_right.facing = Vector2.UP
+	e_right.position = Vector2(0.0, u._front_depth() + e_right._front_depth() - 4.0)
+	e_right.state = Unit.State.FIGHTING
+	e_right.tick_engaged(0.1)
+	e_right.seed_sim_soldiers()
+
+	assert_eq(u._adjacent_engaged_enemy_units().size(), 2,
+		"sanity: both enemies read as adjacent and engaged")
 	var e_left_before: int = e_left.soldiers
 	var e_right_before: int = e_right.soldiers
-	# _attack_cd only decrements in _physics_process (not _think itself), so a bare-fixture
-	# test driving _think() directly (the pattern every other test in this file uses) has to
-	# replicate that decrement by hand between ticks to let the cooldown actually run out.
-	for i in range(20):
-		u._attack_cd = maxf(0.0, u._attack_cd - 0.1)
-		u._think(0.1)
-	assert_lt(e_left.soldiers, e_left_before, "the left-flanking enemy takes casualties")
+	# resolve_soldier_melee bypasses attack-cadence gating entirely (that's _think()'s own
+	# _attack_cd, not this function's concern), so a plain loop suffices -- no need to drive
+	# _think() or replicate its cooldown decrement.
+	for _k in range(100):
+		u.resolve_soldier_melee(e_left)
+	assert_lt(e_left.soldiers, e_left_before, "the primary (passed) enemy takes casualties")
 	assert_lt(e_right.soldiers, e_right_before,
-		"the right-flanking enemy ALSO takes casualties in the same run -- each soldier finds its own nearest enemy, no rotation needed")
+		"the other adjacent enemy ALSO takes casualties in the same run -- each soldier finds its own nearest enemy, no rotation needed")
