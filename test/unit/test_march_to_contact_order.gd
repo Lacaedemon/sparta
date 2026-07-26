@@ -128,6 +128,12 @@ func test_normal_ranged_unit_marches_through_the_same_hostile_control() -> void:
 # --- Resume: the march continues once the fight ends -----------------------
 
 func test_march_to_contact_resumes_the_queued_move_once_the_enemy_is_defeated() -> void:
+	# PathField.active is a global static that persists across GUT tests within the same
+	# run -- save/restore around any isolated-unit test that reaches _move_to() (per
+	# .claude/memories/sparta.md), so this test's result doesn't depend on whichever
+	# PathField an earlier test in the same suite run happened to leave active.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
 	var u := _make_unit()
 	u.team = 0
 	u.order_mode = Unit.ORDER_MARCH_TO_CONTACT
@@ -156,12 +162,16 @@ func test_march_to_contact_resumes_the_queued_move_once_the_enemy_is_defeated() 
 	assert_true(u.has_move_target, "the move order is still live")
 	assert_lt(u.position.x, before.x,
 		"the unit resumes marching toward its original destination (-x) once the foe is gone")
+	PathField.active = old_pf
 
 
 func test_march_to_contact_lets_a_disengaging_foe_go_rather_than_chasing_it() -> void:
 	# Distinguishes MARCH_TO_CONTACT from CHASE: once a foe it stopped to fight breaks
 	# contact (retreats out of range) WITHOUT dying, the unit must not give chase -- it
 	# should resume its own queued move instead of following the foe's new position.
+	# PathField.active save/restore: see the identical note in the resume-on-defeat test above.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
 	var u := _make_unit()
 	u.team = 0
 	u.order_mode = Unit.ORDER_MARCH_TO_CONTACT
@@ -186,3 +196,54 @@ func test_march_to_contact_lets_a_disengaging_foe_go_rather_than_chasing_it() ->
 		"the unit resumes toward its own destination (-x) rather than following the foe (+x)")
 	assert_null(u.target_enemy,
 		"the auto-acquired foe was never committed, so nothing pulls the unit toward it")
+	assert_eq(u._engage_turn_target, Vector2.ZERO,
+		"an engage turn armed by the off-axis contact above (facing DOWN, foe at (30,0) is a "
+		+ "90-degree bearing) does not stay stranded once the march resumes")
+	assert_false(u.is_maneuver_turning(),
+		"SoldierBodies.step's slot-approach term is not left frozen behind")
+	PathField.active = old_pf
+
+
+func test_march_to_contact_settles_a_stranded_engage_turn_when_the_foe_disengages_mid_turn() -> void:
+	# Regression guard for a bug found by review: the resume path (`if has_move_target:
+	# _move_to(...)`) never used to settle an in-progress engage turn -- the ONE branch that
+	# does (`elif target_enemy != null or (chasing and not in_contact):`) is unreachable under
+	# this stance, since target_enemy deliberately stays null and chasing is false. Left
+	# stranded, a nonzero _engage_turn_target permanently freezes SoldierBodies.step's
+	# slot-approach term (see the "early return...must settle" lesson in
+	# .claude/memories/sparta.md), producing a blob/smear instead of a clean march.
+	# PathField.active save/restore: see the identical note on the sibling tests above.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.team = 0
+	u.order_mode = Unit.ORDER_MARCH_TO_CONTACT
+	var enemy := _make_unit()
+	enemy.team = 1
+	# A bearing 90 degrees off the unit's DOWN facing -- comfortably past
+	# ENGAGE_TURN_THRESHOLD (75 degrees), so this arms a genuine in-place turn rather than
+	# the small-offset instant snap.
+	enemy.position = Vector2(30, 0)
+	u.has_move_target = true
+	u.move_target = Vector2(-500, 0)
+	u.target_enemy = null
+
+	# One tick engages and begins the turn -- not enough time (at CONVERSIO_TURN_RATE) for a
+	# 90-degree swing to finish in a single 0.1s call.
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "sanity: the off-axis contact engaged")
+	assert_ne(u._engage_turn_target, Vector2.ZERO, "sanity: an off-axis engage turn armed")
+	assert_true(u.is_maneuver_turning(), "sanity: the turn is genuinely still in progress")
+
+	# The foe disengages before the turn completes: still alive, still detected, but no
+	# longer in contact/range. MARCH_TO_CONTACT never commits target_enemy, so the only path
+	# back to marching is the has_move_target resume branch under test.
+	enemy.position = Vector2(100, 0)
+	for i in range(60):
+		u._think(1.0 / 60.0)
+
+	assert_eq(u._engage_turn_target, Vector2.ZERO,
+		"the stranded engage turn is settled once the march resumes, not left stuck forever")
+	assert_false(u.is_maneuver_turning(),
+		"SoldierBodies.step's slot-approach term is free to run again")
+	PathField.active = old_pf

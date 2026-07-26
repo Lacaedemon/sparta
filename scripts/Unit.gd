@@ -1888,6 +1888,20 @@ func _think(delta: float) -> void:
 	# without the orderly path's arrival braking -- a charge must carry its speed through
 	# contact.
 	if has_move_target:
+		# A resumed march must settle any in-progress engage turn first, the same way the
+		# sibling chase/auto-advance/idle branches already do (see their own comments). This
+		# branch didn't need the guard before MARCH_TO_CONTACT existed -- no other stance
+		# reaches an armed _engage_turn_target while has_move_target is still true and
+		# target_enemy stays null (every other route to a fight either commits target_enemy,
+		# clears has_move_target, or both). MARCH_TO_CONTACT can arm an engage turn (an
+		# off-axis auto-acquired foe) and then have that foe break contact before the turn
+		# completes, with neither of those true -- so this is the only remaining path back to
+		# a plain move that can find the turn still armed. Left unsettled, the stranded
+		# _engage_turn_target permanently freezes SoldierBodies.step()'s slot-approach term
+		# (the "early return...must settle" lesson in .claude/memories/sparta.md), producing a
+		# visible blob/smear instead of a clean march resumption.
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
 		# Arrival at the FINAL destination requires both a close position AND a near-zero
 		# speed -- not position alone. _move_to's braking ramps _current_speed down along
 		# the arrival envelope on the route's last leg, so by the time the unit is within
