@@ -1,0 +1,16 @@
+{
+  "_comment": "Worst-case scenario for the per-soldier multi-target melee widening (#1092): four large friendly regiments, each simultaneously adjacent to four distinct enemy regiments (a tight 2x2 cluster per side), so SoldierMelee.resolve's nearest-search runs against the widest realistic candidate population (4 adjacent engaged units) for every attacking soldier, every cadence tick -- not the typical 1-2 this repo's combat scenarios exercise elsewhere. Loaded directly by BenchmarkRunner.gd via Battle.scenario, like large-battle.json.",
+  "seed": "934210",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 500, "y": 480, "count": 140},
+    {"team": 0, "type": "Infantry", "x": 700, "y": 480, "count": 140},
+    {"team": 0, "type": "Infantry", "x": 500, "y": 620, "count": 140},
+    {"team": 0, "type": "Infantry", "x": 700, "y": 620, "count": 140},
+
+    {"team": 1, "type": "Infantry", "x": 520, "y": 500, "count": 120},
+    {"team": 1, "type": "Infantry", "x": 680, "y": 500, "count": 120},
+    {"team": 1, "type": "Infantry", "x": 520, "y": 600, "count": 120},
+    {"team": 1, "type": "Infantry", "x": 680, "y": 600, "count": 120},
+    {"team": 1, "type": "Infantry", "x": 600, "y": 550, "count": 120}
+  ]
+}
