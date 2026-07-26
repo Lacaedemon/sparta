@@ -49,10 +49,12 @@ static func tier_name(value: int) -> String:
 ## closes within PROMOTE_RANGE. Deliberately a pure predicate over two already-serialized
 ## positions — no camera/attention signal — so replay determinism can't depend on rendering.
 static func should_promote(formation_pos: Vector2, nearest_enemy_pos: Vector2) -> bool:
-	return formation_pos.distance_to(nearest_enemy_pos) < PROMOTE_RANGE
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	return formation_pos.distance_squared_to(nearest_enemy_pos) < PROMOTE_RANGE * PROMOTE_RANGE
 
 
 ## Placeholder demote trigger: the mirror check against the farther DEMOTE_RANGE. Between
 ## the two thresholds neither predicate fires, so the formation keeps its current tier.
 static func should_demote(formation_pos: Vector2, nearest_enemy_pos: Vector2) -> bool:
-	return formation_pos.distance_to(nearest_enemy_pos) > DEMOTE_RANGE
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	return formation_pos.distance_squared_to(nearest_enemy_pos) > DEMOTE_RANGE * DEMOTE_RANGE

@@ -2080,7 +2080,8 @@ func _support_tick(delta: float) -> void:
 	# so the body arrival isn't left frozen indefinitely.
 	if _engage_turn_target != Vector2.ZERO:
 		_settle_engage_turn()
-	if position.distance_to(ward.position) > SUPPORT_FOLLOW_DISTANCE:
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	if position.distance_squared_to(ward.position) > SUPPORT_FOLLOW_DISTANCE * SUPPORT_FOLLOW_DISTANCE:
 		_move_to(ward.position, delta, false, true)
 	else:
 		state = State.IDLE
@@ -2828,7 +2829,8 @@ func _has_congested_same_team_router() -> bool:
 		if u == null or u == self or u.team != team or u.state == State.DEAD:
 			continue
 		var nearby_radius: float = (terrain_clearance() + u.terrain_clearance()) * FUNNEL_CONGESTION_RANGE_FACTOR
-		if position.distance_to(u.position) > nearby_radius:
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		if position.distance_squared_to(u.position) > nearby_radius * nearby_radius:
 			continue
 		if facing.dot(u.facing) < 0.0:   # roughly the same general direction, not opposed
 			continue
@@ -5204,7 +5206,8 @@ func _rout() -> void:
 	for u in get_tree().get_nodes_in_group("units"):
 		var friend: Unit = u as Unit
 		if friend != null and friend.team == team:
-			if position.distance_to(friend.position) < ROUT_SHOCK_RADIUS:
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			if position.distance_squared_to(friend.position) < ROUT_SHOCK_RADIUS * ROUT_SHOCK_RADIUS:
 				friend.morale -= 12.0
 	# Cosmetic morale-shock ripple marking the area allies were shaken. Spawned on
 	# the deterministic sim tick but animated/faded on render time, in no sim group, so
