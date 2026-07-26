@@ -45,8 +45,8 @@ A starting table (tunable; maps onto the existing loadout types):
 |---|---|---|---|---|---|---|---|---|
 | Spearmen | 0.75 | 0.35 | 0.65 | 0.85 | long (2.4 m) | 1.0 | 100 | 100 |
 | Infantry | 0.50 | 0.45 | 0.60 | 1.00 | medium (1.3 m) | 1.0 | 110 | 100 |
-| Archers  | 0.30 | 0.10 | 0.05 | 0.50 | short (0.6 m) | 0.9 |  80 |  90 |
-| Cavalry  | 0.60 | 0.40 | 0.25 | 1.10 | medium (1.5 m) | 2.5 | 140 | 120 |
+| Archers  | 0.30 | 0.10 | 0.05 | 0.50 | short (0.6 m) | 0.875 |  80 |  90 |
+| Cavalry  | 0.60 | 0.40 | 0.25 | 1.10 | medium (1.5 m) | 6.5625 | 140 | 120 |
 
 As implemented, $b$ and $\ell$ resolve at strike time through the soldier's
 loadout ids (see `docs/soldier-loadout-design.md`): $\ell$ is the equipped
@@ -54,6 +54,14 @@ weapon type's `lethality`, and $b$ composes as the equipped shield type's
 `block_value` (scutum 0.60, round 0.25, none 0) plus a per-type stance
 residual (`shield_residual`: Spearmen 0.05 braced footing, Archers 0.05
 unshielded deflection, otherwise 0), summing bit-for-bit to the table's $b$.
+
+$m$ is likewise derived, not a separately-tuned figure:
+`SoldierCombat.relative_mass_from_kg` divides a real mass in kilograms by
+the 80 kg heavy-foot baseline, so Spearmen and Infantry (both 80 kg) land on exactly
+1.0, Archers' lighter 70 kg body on 0.875, and a mounted Cavalryman's rider
+(75 kg) plus warhorse (450 kg) on 6.5625 — a real ~525 kg rider-and-horse
+relative to a foot soldier, not a hand-tuned "cavalry hits like 2.5 men"
+scalar.
 
 ### Two condition factors
 

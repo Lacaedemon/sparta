@@ -13,19 +13,30 @@ far.
 The registry has since grown two more type families on the same contract
 (interned, immutable, disjoint id ranges): `Armor` (protection — the scalar
 `profile_for()`'s rows used to hard-code — plus a provisional panoply
-`weight_kg`) and `Mount` (a sim-internal relative mass contribution — body
-1.0 + warhorse 1.5 composes the cavalry row's pre-registry 2.5 contact mass
-— plus the animal's real `mass_kg` and a provisional `top_speed_mps`).
-Player-facing mass always reports in absolute kilograms (the mount's
-`mass_kg`, and the per-type `body_mass_kg` in `profile_for()`'s rows), never
-the tuned relative contact scalar — the units convention's "no raw sim
-number reaches the player," applied to mass. Deriving the contact scalars
-from the real kg data is deliberately NOT done yet (it would change combat);
-that derivation belongs to the physics-parameter purge. Unlike
-weapons/shields these types are referenced per UNIT (`Unit.armor_type_id` /
-`Unit.mount_type_id`), not per soldier — nothing varies per soldier for
-them yet; the per-soldier array move is a natural follow-on if a phase ever
-needs mixed panoplies inside one regiment.
+`weight_kg`) and `Mount` (the animal's real `mass_kg` plus a provisional
+`top_speed_mps`). Player-facing mass always reports in absolute kilograms
+(the mount's `mass_kg`, and the per-type `body_mass_kg` in `profile_for()`'s
+rows), never the sim's relative contact scalar — the units convention's "no
+raw sim number reaches the player," applied to mass.
+
+**The contact-mass derivation is now done.**
+`SoldierCombat.relative_mass_from_kg(mass_kg)` divides a real kilogram
+figure by `CONTACT_MASS_BASELINE_KG` (80 kg, the heavy-foot body mass), and
+`profile_for()` composes a soldier's relative contact mass as
+`relative_mass_from_kg(body_mass_kg)` plus, when mounted,
+`relative_mass_from_kg(mount.mass_kg)` — real body-plus-mount kilograms end
+to end, not a separately-tuned relative scalar living alongside them. This
+changes combat: Spearmen and Infantry both weigh the 80 kg baseline, so
+their mass is unchanged at 1.0, but Archers' 70 kg body now derives to
+0.875 (was the tuned 0.9) and a mounted Cavalryman's 75 kg rider plus a
+450 kg warhorse now derives to 6.5625 (was the tuned 2.5) — a real ~525 kg
+rider-and-horse relative to a foot soldier, not a hand-picked "cavalry hits
+like 2.5 men" figure. `Mount` no longer carries a separate
+`mass_contribution` field; `mass_kg` is the only source. Unlike
+weapons/shields, `Armor`/`Mount` are referenced per UNIT
+(`Unit.armor_type_id` / `Unit.mount_type_id`), not per soldier — nothing
+varies per soldier for them yet; the per-soldier array move is a natural
+follow-on if a phase ever needs mixed panoplies inside one regiment.
 
 ## Motivation
 

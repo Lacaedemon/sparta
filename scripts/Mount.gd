@@ -11,18 +11,14 @@ extends Resource
 
 @export var id: int
 @export var display_name: String
-# The mount's own contribution to the soldier's effective contact mass, in the
-# sim's relative mass units (a foot soldier's body is ~1.0). profile_for
-# composes the combatant's mass as body mass + this contribution — the horse
-# is what makes a cavalryman hit like 2.5 foot soldiers, not a heavier rider.
-# SIM-INTERNAL, a tuned gameplay scalar: never shown to the player (the HUD
-# reports mass_kg below), and not yet derived from the real mass — deriving
-# the contact scalars from the kg data is tracked follow-up work.
-@export var mass_contribution: float
 # The animal's real mass in kilograms — the absolute figure the HUD reports,
-# per the units convention (a raw sim scalar never reaches the player).
-# Provisional shape data for gameplay, like Shield.arc_deg: contact physics
-# still reads the tuned mass_contribution above, not this.
+# per the units convention, AND the single source of truth for the mount's
+# contribution to a soldier's contact mass: SoldierCombat.relative_mass_from_kg
+# (mass_kg) is the mount's share of the sim's relative mass units (a foot
+# soldier's body is ~1.0). The horse is what makes a cavalryman hit like
+# several foot soldiers, not a heavier rider. There is no separate tuned
+# "mass_contribution" scalar anymore — the relative contact figure is always
+# derived from this real kilogram value, never hand-maintained alongside it.
 @export var mass_kg: float
 # The mount's own top pace in metres/second. Provisional shape data, like
 # Shield.arc_deg: nothing reads it for gameplay yet — the loadout table's
@@ -33,12 +29,10 @@ extends Resource
 
 ## Build one interned type instance. Registry construction only — everything
 ## else reads shared instances through LoadoutRegistry.mount(id).
-static func make(p_id: int, p_name: String, p_mass_contribution: float,
-		p_mass_kg: float, p_top_speed_mps: float) -> Mount:
+static func make(p_id: int, p_name: String, p_mass_kg: float, p_top_speed_mps: float) -> Mount:
 	var m := Mount.new()
 	m.id = p_id
 	m.display_name = p_name
-	m.mass_contribution = p_mass_contribution
 	m.mass_kg = p_mass_kg
 	m.top_speed_mps = p_top_speed_mps
 	return m

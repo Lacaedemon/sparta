@@ -87,6 +87,26 @@ const PRONE_CHANCE_MAX: float = 0.6        # p_prone_max: no single blow is a su
 const PRONE_RISE_TIME: float = 1.2         # T_up (seconds) a felled soldier needs to stand
 
 
+## The baseline body mass (kilograms) the sim's relative contact-mass scalar of 1.0
+## represents: the heavy-foot soldier's own body_mass_kg (infantry and spearmen both
+## weigh in at this figure). Chosen as the baseline specifically so the two heavy-foot
+## types keep their relative mass at exactly 1.0 by construction -- traceable to a real,
+## already-defined body_mass_kg below, not an invented magic number.
+const CONTACT_MASS_BASELINE_KG: float = 80.0
+
+
+## The sim's relative contact-mass scalar for a real mass in kilograms: a simple ratio
+## against CONTACT_MASS_BASELINE_KG. Pure and static; the single source every relative
+## "mass" figure in a combat profile derives from, replacing what used to be a set of
+## separately-tuned relative constants living alongside (and able to drift from) the
+## real kg data. Because it is linear, relative_mass_from_kg(a) + relative_mass_from_kg(b)
+## == relative_mass_from_kg(a + b) -- summing two components' relative masses (a rider's
+## body plus its mount) is equivalent to deriving the relative mass of their combined
+## real weight.
+static func relative_mass_from_kg(mass_kg: float) -> float:
+	return mass_kg / CONTACT_MASS_BASELINE_KG
+
+
 ## Per-type combat profile (docs/combat-model.md "Soldier attributes"): skill is the
 ## unit's training; the health/stamina pools are per type. Weapon lethality and the
 ## shield's own block value live on the interned types (LoadoutRegistry) and are
@@ -98,41 +118,43 @@ const PRONE_RISE_TIME: float = 1.2         # T_up (seconds) a felled soldier nee
 ## pre-split per-type weight. Pure and static so it is testable without a live node.
 ##
 ## armour and mass now come from the typed loadout when ids are given: a registered
-## Armor's protection replaces the row's legacy armour scalar, and a registered
-## Mount recomposes mass as the soldier's own body mass plus the mount's
-## contribution (body 1.0 + warhorse 1.5 = the cavalry row's pre-registry 2.5).
-## Zero/unknown ids keep the legacy row values, so a bare
-## profile_for(flags, training) call — and every unit whose ids match its type's
-## default panoply — is bit-identical to the pre-registry table. Registry lookups
-## are interned dictionary reads (no allocation, no RNG), so this stays replay-safe.
+## Armor's protection replaces the row's legacy armour scalar, and mass is always the
+## relative_mass_from_kg of the soldier's own body_mass_kg, plus (when a registered
+## Mount resolves) the relative_mass_from_kg of the mount's own real mass_kg -- so a
+## mounted cavalryman's contact mass is a real ~525 kg rider+horse relative to the
+## 80 kg foot-soldier baseline, not a separately-tuned scalar. An unknown armor id
+## keeps the legacy armour row value; an unknown/absent mount id (MOUNT_NONE resolves
+## to a real, zero-mass, zero-contribution type, so this only bites a raw call with no
+## id at all) leaves mass at the bare body-only figure. Registry lookups are interned
+## dictionary reads (no allocation, no RNG), so this stays replay-safe.
 static func profile_for(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool, p_training: float,
 		p_armor_id: int = 0, p_mount_id: int = 0) -> Dictionary:
 	var skill: float = clampf(p_training, 0.0, 1.0)
 	var prof: Dictionary
-	var body_mass: float
+	var body_mass_kg: float
 	# body_mass_kg is the soldier's own real body mass in kilograms — the absolute
-	# figure the HUD reports, per the units convention (the relative "mass" scalar
-	# below is a tuned sim quantity and never reaches the player). Provisional
-	# shape data: contact physics still reads the relative scalar, which is not
-	# yet derived from the kg values.
+	# figure the HUD reports, per the units convention, AND the single source of
+	# truth the relative "mass" contact scalar below is derived from.
 	if p_is_cavalry:
-		prof = {"skill": skill, "armour": 0.40, "shield_residual": 0.0, "max_health": 140.0, "max_stamina": 120.0, "mass": 2.5, "body_mass_kg": 75.0}
-		body_mass = 1.0
+		prof = {"skill": skill, "armour": 0.40, "shield_residual": 0.0, "max_health": 140.0, "max_stamina": 120.0}
+		body_mass_kg = 75.0
 	elif p_anti_cavalry:
-		prof = {"skill": skill, "armour": 0.35, "shield_residual": 0.05, "max_health": 100.0, "max_stamina": 100.0, "mass": 1.0, "body_mass_kg": 80.0}
-		body_mass = 1.0
+		prof = {"skill": skill, "armour": 0.35, "shield_residual": 0.05, "max_health": 100.0, "max_stamina": 100.0}
+		body_mass_kg = 80.0
 	elif p_is_ranged:
-		prof = {"skill": skill, "armour": 0.10, "shield_residual": 0.05, "max_health": 80.0, "max_stamina": 90.0, "mass": 0.9, "body_mass_kg": 70.0}
-		body_mass = 0.9
+		prof = {"skill": skill, "armour": 0.10, "shield_residual": 0.05, "max_health": 80.0, "max_stamina": 90.0}
+		body_mass_kg = 70.0
 	else:
-		prof = {"skill": skill, "armour": 0.45, "shield_residual": 0.0, "max_health": 110.0, "max_stamina": 100.0, "mass": 1.0, "body_mass_kg": 80.0}
-		body_mass = 1.0
+		prof = {"skill": skill, "armour": 0.45, "shield_residual": 0.0, "max_health": 110.0, "max_stamina": 100.0}
+		body_mass_kg = 80.0
+	prof["body_mass_kg"] = body_mass_kg
+	prof["mass"] = relative_mass_from_kg(body_mass_kg)
 	var armor: Armor = LoadoutRegistry.armor(p_armor_id)
 	if armor != null:
 		prof["armour"] = armor.protection
 	var mount: Mount = LoadoutRegistry.mount(p_mount_id)
 	if mount != null:
-		prof["mass"] = body_mass + mount.mass_contribution
+		prof["mass"] = relative_mass_from_kg(body_mass_kg) + relative_mass_from_kg(mount.mass_kg)
 	return prof
 
 

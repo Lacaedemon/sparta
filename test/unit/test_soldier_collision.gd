@@ -2,10 +2,12 @@ extends GutTest
 ## Unit tests for SoldierCollision.gd: bidirectional impulse splitting,
 ## static/kinetic friction, and momentum conservation. Pure functions, no live nodes.
 
-# Test data: common unit types and their mass profiles
-const CAVALRY_MASS: float = 2.5
+# Test data: common unit types and their mass profiles (SoldierCombat.profile_for's
+# relative_mass_from_kg-derived contact mass for a real spawned unit -- a mounted
+# cavalryman's rider + warhorse, and the other types' own body mass alone).
+const CAVALRY_MASS: float = 6.5625
 const ANTI_CAVALRY_MASS: float = 1.0
-const ARCHER_MASS: float = 0.9
+const ARCHER_MASS: float = 0.875
 const INFANTRY_MASS: float = 1.0
 
 # Friction constants (from SoldierCombat.gd)
@@ -51,8 +53,8 @@ func test_bidirectional_impulse_heavy_attacker_vs_light_defender():
 	## the velocity deltas themselves are inversely proportional to mass, by design.
 	var impulse_mag: float = 60.0
 	var strike_axis: Vector2 = Vector2.RIGHT
-	var mass_a: float = CAVALRY_MASS  # 2.5 (heavy)
-	var mass_b: float = ARCHER_MASS   # 0.9 (light)
+	var mass_a: float = CAVALRY_MASS  # ~6.56 (heavy)
+	var mass_b: float = ARCHER_MASS   # 0.875 (light)
 	var brace_a: float = 0.0
 	var brace_b: float = 0.0
 
@@ -74,8 +76,8 @@ func test_bidirectional_impulse_light_attacker_vs_heavy_defender():
 	## Light attacker vs. heavy defender: attacker rebounds hard, defender barely shoved.
 	var impulse_mag: float = 60.0
 	var strike_axis: Vector2 = Vector2.RIGHT
-	var mass_a: float = ARCHER_MASS       # 0.9 (light)
-	var mass_b: float = CAVALRY_MASS      # 2.5 (heavy)
+	var mass_a: float = ARCHER_MASS       # 0.875 (light)
+	var mass_b: float = CAVALRY_MASS      # ~6.56 (heavy)
 	var brace_a: float = 0.0
 	var brace_b: float = 0.0
 

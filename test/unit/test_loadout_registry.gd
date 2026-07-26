@@ -74,7 +74,7 @@ func test_every_roster_mount_resolves() -> void:
 			continue
 		assert_eq(m.id, type_id, "the mount knows its own registry id")
 		assert_ne(m.display_name, "", "the mount has a display name")
-		assert_gte(m.mass_contribution, 0.0, "a mount never lightens its rider")
+		assert_gte(m.mass_kg, 0.0, "a mount never lightens its rider")
 
 
 func test_id_helpers_cover_exactly_the_roster() -> void:
@@ -182,24 +182,30 @@ func test_make_builds_armor_and_mount_types_field_for_field() -> void:
 	assert_eq(a.display_name, "Test panoply")
 	assert_eq(a.protection, 0.5)
 	assert_eq(a.weight_kg, 9.0)
-	var m: Mount = Mount.make(399, "Test mount", 1.2, 320.0, 7.0)
+	var m: Mount = Mount.make(399, "Test mount", 320.0, 7.0)
 	assert_eq(m.id, 399)
 	assert_eq(m.display_name, "Test mount")
-	assert_eq(m.mass_contribution, 1.2)
 	assert_eq(m.mass_kg, 320.0)
 	assert_eq(m.top_speed_mps, 7.0)
 
 
-func test_warhorse_mass_composes_to_the_pre_registry_cavalry_mass() -> void:
-	# Body (1.0) + warhorse contribution must equal the cavalry row's pre-registry
-	# 2.5 mass literal exactly — contact physics reads the composed value.
+func test_warhorse_mass_derives_the_cavalry_contact_mass_from_real_kilograms() -> void:
+	# There is no separately-tuned "mass_contribution" scalar anymore: a mounted
+	# soldier's relative contact mass is body_mass_kg (the rider, from
+	# SoldierCombat.profile_for) and the mount's own real mass_kg, both measured
+	# relative_mass_from_kg against the same baseline and summed.
 	var horse: Mount = LoadoutRegistry.mount(LoadoutRegistry.MOUNT_WARHORSE)
-	assert_eq(1.0 + horse.mass_contribution, 2.5,
-		"body + warhorse composes to the pre-registry cavalry contact mass")
-	assert_eq(LoadoutRegistry.mount(LoadoutRegistry.MOUNT_NONE).mass_contribution, 0.0,
+	var rider_body_mass_kg: float = 75.0   # SoldierCombat.profile_for's cavalry body_mass_kg
+	var expected_cavalry_mass: float = SoldierCombat.relative_mass_from_kg(rider_body_mass_kg) \
+			+ SoldierCombat.relative_mass_from_kg(horse.mass_kg)
+	assert_almost_eq(expected_cavalry_mass, 6.5625, 0.0001,
+		"rider (75 kg) + warhorse (450 kg) over the 80 kg baseline")
+	assert_eq(SoldierCombat.relative_mass_from_kg(
+			LoadoutRegistry.mount(LoadoutRegistry.MOUNT_NONE).mass_kg), 0.0,
 		"on foot adds no mass")
-	# The real mass is separate DATA (what the HUD reports, in absolute kg) — the
-	# tuned relative contact scalar above is sim-internal and not derived from it.
+	# The real mass is separate DATA (what the HUD reports, in absolute kg) — but it
+	# is now the ONLY source the relative contact scalar derives from, not a second,
+	# independently-tuned figure living alongside it.
 	assert_gt(horse.mass_kg, 300.0, "a warhorse weighs like a horse, not a sim scalar")
 	assert_eq(LoadoutRegistry.mount(LoadoutRegistry.MOUNT_NONE).mass_kg, 0.0,
 		"on foot carries no mount mass")
