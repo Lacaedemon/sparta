@@ -1132,6 +1132,7 @@ Figure&nbsp;20: Coasting to a stop: a lone Cavalry regiment wipes out its target
 <li><strong>Knockback focus</strong> (<kbd>=</kbd>) — an offense-only trade: the unit hits 40% softer, but every blow shoves the enemy back much harder and is more likely to fell it outright. Hold <kbd>Shift</kbd> when you arm or issue it to pick the push distance: the plain hotkey shoves a struck enemy just far enough to clear the battle line, while Shift+hotkey drives it much further back. Use it to break up a packed formation or buy room to maneuver, not to win a straight fight — the softer hits mean it trades its own damage output for control of space.</li>
 <li><strong>Give ground</strong> (<kbd>`</kbd>) — a deliberate withdrawal: the unit backs away from its nearest enemy at a steady pace while it keeps fighting, regardless of weapon reach on either side. This is the explicit, player-commanded counterpart to <a href="#weapon-reach">Weapon reach</a>’s passive standoff above — that mechanic only ever holds a longer-reach unit’s ground or presses a shorter-reach one forward; it never backs a unit away on its own. Arm it when you want to trade space for time — peeling a spent line back toward reinforcements, or buying a moment for a flank to arrive — without breaking off the fight entirely.</li>
 <li><strong>Multiple engage</strong> (<kbd>F2</kbd>) — for a unit pressed by two or more distinct enemy regiments in contact at once. Normally a unit keeps turning to bring its front to bear on whichever single foe it’s currently fighting; with several attackers pressing from different bearings, that turn would just whipsaw the whole line back and forth between them. Under this stance the unit instead holds its current facing once genuinely 2+ enemy regiments are in contact, and widens its own frontage toward the combined width of every attacker pressing it, so its line can actually reach all of them instead of presenting a narrower front than the fight has grown to. Both effects stay off below 2 adjacent enemies — a normal single-opponent fight under this stance looks like any other stance. Its strikes also cycle: rather than every blow landing on whichever one enemy it engaged first, the unit rotates its strike target among every adjacent enemy in turn, so casualties spread across all of them instead of leaving the rest untouched.</li>
+<li><strong>March to contact</strong> (<kbd>F3</kbd>) — an advance-to-contact stance for a plain move order. Normally, a plain move order with no explicit attack target pushes straight through any hostile it crosses — the unit auto-acquires and fires or fights only under an explicit attack order, or once it has no move order left at all. Under March to contact, that same plain move order instead stops the unit to fight anything it meets along the way, then — once the fight ends — resumes toward its original destination on its own, with no separate order needed. Unlike Chase, it never actively pursues a foe: a hostile that breaks contact and retreats is let go rather than followed, and the march simply continues. Arm it before issuing a move order to advance a unit through contested ground and let it handle whatever it meets along the way, without babysitting each engagement.</li>
 </ul>
 <div id="fig-cycle-charge-flee" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -1189,6 +1190,20 @@ Figure&nbsp;24: A player Infantry regiment arms Multiple engage before two small
 </figcaption>
 </figure>
 </div>
+<div id="fig-march-to-contact" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-march-to-contact-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/march_to_contact.jpg">
+  <source src="media/march_to_contact.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-march-to-contact-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;25: A player Infantry regiment is ordered under March to contact toward a point beyond a weaker hostile sitting in its path. It halts and fights on contact instead of marching through — the info panel keeps reading its original destination order the whole time, so the queued move was never cleared — routs the weaker foe, then resumes marching and arrives at its original destination.
+</figcaption>
+</figure>
+</div>
 <p><strong>Push stance</strong> (<kbd>/</kbd>) is the aggressive, offensive counterpart to Give ground: an engaged unit continuously applies physical pressure to drive its opponent backwards. Where Give ground yields territory while fighting, Push stance advances into the enemy line, pushing opposing soldiers back while maintaining melee contact.</p>
 <p><strong>Disengage and step back</strong> (<kbd>Ctrl</kbd> + <kbd>↓</kbd>) is different in kind from the stances above: a one-shot maneuver, not a standing order. Where Give ground keeps fighting while backing away, disengaging breaks the fight off entirely — the unit stops striking back and steps a short, fixed distance to the rear, holding facing. Use it to pull a unit out of a fight that isn’t worth finishing, so it can regroup or be redirected elsewhere, rather than to hold a losing line (that’s what Give ground is for). It costs something too: the enemy’s own attack order doesn’t release just because you stopped fighting back, so it keeps swinging — with the flank/rear bonus — for as long as it can still reach the retreating line.</p>
 <p><strong>Disengage with sacrifice</strong> (<kbd>Shift</kbd> + <kbd>Ctrl</kbd> + <kbd>↓</kbd>) is a harsher variant for heavily pressed regiments. A small rearguard detachment (~10% of remaining soldiers) stays engaged and is sacrificed as casualties to screen the main body’s retreat. The rearguard’s sacrifice delays the advancing enemy, slowing their pursuit while the surviving soldiers step back to safety.</p>
@@ -1202,7 +1217,7 @@ Figure&nbsp;24: A player Infantry regiment arms Multiple engage before two small
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-disengage-under-pressure-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;25: Two evenly-matched Infantry regiments hold a stalemate in melee. The player disengages their own unit — it clears its target and steps back, holding facing, while the enemy (still committed to the fight) keeps pressing after it.
+Figure&nbsp;26: Two evenly-matched Infantry regiments hold a stalemate in melee. The player disengages their own unit — it clears its target and steps back, holding facing, while the enemy (still committed to the fight) keeps pressing after it.
 </figcaption>
 </figure>
 </div>
@@ -1226,7 +1241,7 @@ Figure&nbsp;25: Two evenly-matched Infantry regiments hold a stalemate in melee.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;26: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;27: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
@@ -1270,7 +1285,7 @@ Table&nbsp;3: Terrain patches and their movement effects.
 </figure>
 </div>
 <p>Units automatically path around impassable terrain when ordered to move. A formed regiment takes the detour in good order: it steers by the corridor’s long-run direction and pivots onto it no faster than its corner man can run, so the block holds rank-and-file around the turn instead of smearing into a crowd. The forest is a different trade-off: going <em>around</em> it costs distance; going <em>through</em> it costs time. Generally it is faster to push cavalry or fast-moving infantry through rather than around a narrow forest.</p>
-<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;28</a>).</p>
+<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;29</a>).</p>
 <div id="fig-terrain-exact-footprint" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1281,7 +1296,7 @@ Table&nbsp;3: Terrain patches and their movement effects.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;27: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
+Figure&nbsp;28: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
 </figcaption>
 </figure>
 </div>
@@ -1295,7 +1310,7 @@ Figure&nbsp;27: A 30-man squad ordered straight down the lane just west of the h
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-funnel-lanes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;28: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
+Figure&nbsp;29: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
 </figcaption>
 </figure>
 </div>
