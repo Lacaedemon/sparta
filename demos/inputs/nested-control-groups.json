@@ -1,0 +1,36 @@
+{
+  "_comment": "Control groups can nest (hierarchically): binding a selection that's exactly the combined membership of one or more OTHER already-bound groups -- no partial overlap, no extra units -- records the new group as a COMPOSITE over those groups instead of a flat snapshot, so recalling it always live-resolves to whatever its nested groups currently hold. A drill-mode scenario (no enemy needed -- this is a pure selection/UI mechanic) with four well-separated Infantry units on their own: unit 0 alone becomes group 2; units 1+2 together become group 3; selecting exactly {0, 1, 2} -- the clean union of groups 2 and 3, with no leftovers -- and Ctrl+1 records group 1 as nested over groups 2 and 3. Unit 3 is a control unit that's never grouped or recalled. The selection is then deliberately switched to unit 3 (so the next step can't be mistaken for a no-op), and pressing 1 alone recalls group 1, live-reselecting exactly units 0/1/2. A move order issued right after moves only those three -- unit 3 stays put -- proving the recall (and the order it carries) resolved to the nested union, not to unit 3 or an empty selection. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 300, "y": 300 },
+    { "team": 0, "type": "Infantry", "x": 700, "y": 300 },
+    { "team": 0, "type": "Infantry", "x": 1100, "y": 300 },
+    { "team": 0, "type": "Infantry", "x": 1500, "y": 300 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 900, "y": 550, "zoom": 0.55 }
+  ],
+  "steps": [
+    { "tick": 10, "click": [300, 300] },
+    { "tick": 30, "key": "2", "ctrl": true },
+    { "tick": 50, "box": { "from": [600, 200], "to": [1300, 400] } },
+    { "tick": 90, "key": "3", "ctrl": true },
+    { "tick": 110, "box": { "from": [200, 200], "to": [1300, 400] } },
+    { "tick": 150, "key": "1", "ctrl": true },
+    { "tick": 170, "click": [1500, 300] },
+    { "tick": 190, "key": "1" },
+    { "tick": 210, "rmb_click": [700, 900] }
+  ],
+  "state": [12, 32, 152, 172, 192, 260],
+  "expect": [
+    { "tick": 12, "uid": 0, "field": "current_order", "value": null },
+    { "tick": 152, "uid": 0, "field": "current_order", "value": null },
+    { "tick": 152, "uid": 1, "field": "current_order", "value": null },
+    { "tick": 152, "uid": 2, "field": "current_order", "value": null },
+    { "tick": [220, 260], "uid": 0, "field": "current_order", "value": "MOVE" },
+    { "tick": [220, 260], "uid": 1, "field": "current_order", "value": "MOVE" },
+    { "tick": [220, 260], "uid": 2, "field": "current_order", "value": "MOVE" },
+    { "tick": [220, 260], "uid": 3, "field": "current_order", "value": null }
+  ]
+}

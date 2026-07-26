@@ -59,7 +59,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Nudge (small step, holds facing) | <kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↑</kbd> forward-step · <kbd>↓</kbd> back-step (a few metres each) |
 | Disengage and step back | <kbd>Ctrl</kbd> + <kbd>↓</kbd> on a unit currently in melee: breaks contact and steps back a short distance, holding facing |
 | Merge selected units | <kbd>M</kbd> |
-| Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall |
+| Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall. Binding a selection that's exactly the combined membership of one or more other groups (no partial overlap, no extras) nests those groups under the new one, so recalling it always reflects whatever its nested groups currently hold |
 | Delegate to AI subcommander | <kbd>Ctrl</kbd>+<kbd>Shift</kbd> + <kbd>0</kbd>-<kbd>9</kbd> hands the selection to AI subcommander group *N* (press again on the same selection to take it back); any explicit order to a delegated unit reclaims it immediately -- see [Tactics](tactics.qmd#player-delegation) |
 | Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (top-left, on by default) |
 | Order distance labels | **☰ Menu → Order distance labels** toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default) |
@@ -100,6 +100,32 @@ Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking
   multi-unit attack and a multi-unit relief.
 
 The bar updates immediately when you select a different unit or change a setting elsewhere.
+
+**Control groups can nest.** Binding a selection that's exactly the combined
+membership of one or more other groups --- no partial overlap, no extra units ---
+records the new group as a **composite** over those groups instead of a frozen
+snapshot. Recalling it always reflects whatever its nested groups currently hold:
+rebind one of the nested groups later, and the parent's next recall picks up the
+change automatically. A selection that doesn't cleanly decompose this way (a
+partial overlap with a bound group, or extra units alongside a match) just binds
+as an ordinary flat group, exactly as before.
+
+::: {#fig-nested-control-groups .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/nested_control_groups.jpg">
+  <source src="media/nested_control_groups.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two units are bound as groups 2 and 3; selecting exactly their combined
+membership and binding it as group 1 records group 1 as nested over both ---
+recalling group 1 (after switching the selection elsewhere) reselects both
+units and a move order lands only on them.
+:::
 
 **Pace modes (AUTO by default).** Units walk on approach, jog when a ranged enemy is
 within range (under missile fire), and accelerate to full sprint speed once within

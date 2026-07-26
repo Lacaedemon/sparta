@@ -215,6 +215,34 @@ func test_bind_group_matching_exactly_one_other_group_is_a_degenerate_composite_
 	assert_eq(sm.group_members(1), [a, b], "group 1 resolves the same as group 2")
 
 
+func test_bind_group_with_an_empty_selection_is_not_treated_as_a_composite() -> void:
+	var sm := _sm()
+	sm._bind_group(1)   # Ctrl+1 with nothing selected -- an empty flat bind, unchanged behavior
+	assert_false(sm._group_children.has(1), "an empty selection never counts as a clean union")
+	assert_true(sm.has_group(1), "still an ordinary (empty) flat bind, same as before composites existed")
+	assert_eq(sm.group_members(1), [], "resolves to no members")
+
+
+func test_bind_group_ignores_a_bound_but_currently_empty_group_as_a_candidate() -> void:
+	var sm := _sm()
+	var dead := _unit(false, false)
+	sm._select(dead)
+	sm._bind_group(5)   # group 5 = {dead}
+	dead.state = UnitScript.State.DEAD
+	assert_true(sm.has_group(5), "group 5 is still bound...")
+	assert_eq(sm.group_members(5), [], "...but every member has since died")
+	var a := _unit(false, false)
+	sm._clear_selection()
+	sm._select(a)
+	sm._bind_group(2)   # group 2 = {a}
+	sm._clear_selection()
+	sm._select(a)
+	sm._bind_group(1)   # selection == {a}; group 5 (bound, but empty) must not falsely qualify
+	assert_true(sm._group_children.has(1), "group 1 still composites cleanly over group 2 alone")
+	assert_eq(sm._group_children[1], [2], "the empty, dead group 5 is never picked as a candidate child")
+	assert_eq(sm.group_members(1), [a], "group 1 resolves to just a, not affected by group 5 at all")
+
+
 func test_mutually_composite_groups_do_not_infinite_loop_and_resolve_to_something_sane() -> void:
 	var sm := _sm()
 	var a := _unit(false, false)
