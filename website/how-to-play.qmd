@@ -121,10 +121,10 @@ as an ordinary flat group, exactly as before.
 </video>
 ```
 
-Two units are bound as groups 2 and 3; selecting exactly their combined
-membership and binding it as group 1 records group 1 as nested over both ---
-recalling group 1 (after switching the selection elsewhere) reselects both
-units and a move order lands only on them.
+One unit is bound as group 2 and two more as group 3; selecting exactly their
+combined membership and binding it as group 1 records group 1 as nested over
+both --- recalling group 1 (after switching the selection elsewhere) reselects
+all three units and a move order lands only on them.
 :::
 
 **Pace modes (AUTO by default).** Units walk on approach, jog when a ranged enemy is
