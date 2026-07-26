@@ -12,7 +12,7 @@ failure) without pushing and waiting on the runners.
 ```sh
 tools/check.sh                 # default set: validate, test, chars, comments
 tools/check.sh test chars      # only the named checks, in order
-tools/check.sh all             # every check (adds links if lychee is installed)
+tools/check.sh all             # every check (adds lint/links if gdlint/lychee are installed)
 tools/check.sh --list          # list the available checks
 tools/check.sh --help          # full usage
 ```
@@ -25,6 +25,7 @@ tools/check.sh --help          # full usage
 | `comments` | Flags issue/PR-number citations (`#123`) added by this diff's GDScript (`*.gd`) comment lines — CLAUDE.md's "no issue-number references" rule (`TODO(#N):`/`FIXME(#N):` excepted). Diff-scoped against `origin/main` (or `SPARTA_CHECK_COMMENTS_BASE`), not a whole-repo scan, so pre-existing citations elsewhere in the tree don't fail the check. | `check-comment-citations.yml` |
 | `coverage` | Runs the GUT suite instrumented for line coverage and writes `coverage/lcov.info` (git-ignored). Slower than `test` (instrumentation overhead) and coverage numbers never gate a PR on their own, so it's **not** in the default set. | `test-coverage.yml` |
 | `patch_coverage` | Local approximation of Codecov's `codecov/patch` check: regenerates `coverage/lcov.info` fresh (runs `coverage` first), then reports what fraction of THIS diff's added `scripts/*.gd` lines are covered — per-file breakdown plus the exact missing line numbers — and **fails when that fraction is below the effective target** (auto: the project-wide total from the regenerated report, mirroring `codecov/patch`'s `target: auto`; override with `SPARTA_CHECK_PATCH_COVERAGE_TARGET`). Diff-scoped against `origin/main` (or `SPARTA_CHECK_PATCH_COVERAGE_BASE`), same as `comments`. Run it before pushing a `scripts/` change to catch a `codecov/patch` shortfall locally instead of after a CI round trip — see "Checking patch coverage before you push" below. **Not** in the default set (inherits `coverage`'s slowness). | `codecov/patch` (GitHub check, driven by `test-coverage.yml`'s upload) |
+| `lint` | GDScript style lint via [gdtoolkit](https://github.com/Scony/godot-gdscript-toolkit)'s `gdlint`, if installed (`pip install gdtoolkit==4.5.0`). Config in `.gdlintrc` at the project root, tuned to this repo's actual conventions — see that file's own header for the disabled-rule rationale. Runs over every tracked `*.gd` file (not diff-scoped: the baseline is clean, so any finding is unambiguously new), skipping `addons/`. **Not** in the default set (an external tool most local setups won't have installed by default). | `check-gdlint.yml` |
 | `links` | Markdown link-check via [lychee](https://github.com/lycheeverse/lychee), if installed. Needs network, so it's **not** in the default set. | `check-links.yml` |
 
 Exit status is non-zero if any selected check fails, so it drops straight into a
@@ -44,6 +45,7 @@ tools/check.sh && git push
 - **GUT** is vendored on demand into `addons/gut/` the first time `validate`/`test`
   runs (it isn't committed); no manual install needed.
 - **lychee** only for the optional `links` check.
+- **gdtoolkit** (`pip install gdtoolkit==4.5.0`) only for the optional `lint` check.
 - **`comments`** needs a resolvable diff base (`origin/main`, a local `main`, or
   `SPARTA_CHECK_COMMENTS_BASE`) to find the lines this diff adds — see below. A
   shallow clone with no such ref available skips the check rather than falling
