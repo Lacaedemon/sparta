@@ -1,0 +1,4 @@
+{
+  "input": "demos/inputs/multiple-engage.json",
+  "caption": "Multiple engage (issue #1019): a player Infantry regiment (60 soldiers, 11-file frontage) is pressed by two smaller enemy Infantry regiments (25 each, 7-file frontage) closing from different bearings. The player issues Multiple engage (Ctrl+F2) before either enemy makes contact. Verified via dump-state.sh: the southern enemy engages first (~tick 150) and the regiment turns to face it normally; once the second, south-eastern enemy also reaches contact, the regiment's own frontage widens from 11 to 14 files between tick 300 and 310 (the combined 7+7 of both attackers), while its facing keeps holding close to its original heading for the rest of the clip instead of swinging between the two foes."
+}

@@ -1,0 +1,28 @@
+{
+  "_comment": "Multiple engage (#1019): a melee stance for a unit pressed by 2+ distinct enemy regiments in contact at once. One player Infantry regiment (team 0, 60 soldiers, natural 11-file frontage) starts near-stationary and centred; two smaller enemy Infantry regiments (team 1, 25 soldiers each, 7-file frontage) auto-advance on it from different bearings -- one from due south (roughly straight ahead of the player unit's default facing), one from the south-east (a shallow angle off that facing). At tick 8, before either enemy reaches contact, the player selects the unit and issues Ctrl+F2 (Multiple engage). Verified via dump-state.sh: the southern enemy reaches contact first (~tick 150) and the unit engages it normally, facing turning only slightly off its spawn heading; the south-eastern enemy also reaches contact by ~tick 300, and between tick 300 and 310 the unit's own frontage widens from 11 to 14 files (the combined 7+7 of both adjacent enemies), while its facing keeps holding close to its original heading (small wobble, no big turn toward either foe individually) through the rest of this clip. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "seed": "101019",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 600, "y": 500, "count": 60 },
+    { "team": 1, "type": "Infantry", "x": 600, "y": 650, "count": 25 },
+    { "team": 1, "type": "Infantry", "x": 830, "y": 560, "count": 25 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 700, "y": 570, "zoom": 0.85 }
+  ],
+  "steps": [
+    { "tick": 5, "click": [600, 500] },
+    { "tick": 8, "key": "F2", "ctrl": true }
+  ],
+  "frames": [10, 150, 310, 400, 600],
+  "state": [10, 50, 100, 150, 200, 250, 300, 310, 350, 400, 500, 600, 700],
+  "expect": [
+    { "tick": [10, 700], "uid": 0, "field": "order_mode", "value": "Multiple engage" },
+    { "tick": 10, "uid": 0, "field": "frontage", "value": 11 },
+    { "tick": 300, "uid": 0, "field": "frontage", "value": 11 },
+    { "tick": 400, "uid": 0, "field": "frontage", "value": 14 }
+  ],
+  "fixed_fps": 30,
+  "max_frames": 350,
+  "fps": 20,
+  "width": 720
+}

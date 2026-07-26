@@ -344,6 +344,18 @@ var ordered_facing: Vector2 = Vector2.ZERO
 # exemption is needed (morale erosion and rout thresholds don't key off order_mode or
 # position, so a retreating-while-fighting unit is treated exactly like any other engaged
 # unit for morale purposes).
+# MULTIPLE_ENGAGE is the melee-maneuver counterpart to a unit that finds itself fighting
+# more than one enemy regiment at once (surrounded, or pressed from two directions by an
+# enemy that split around it). Two effects, both gated on genuinely having 2+ distinct
+# enemy Unit instances within melee contact range at once (see _adjacent_engaged_enemy_units
+# and its two call sites, _face_for_action and _multiple_engage_reflow): the unit holds its
+# current facing instead of turning to bring the front to bear on whichever single foe
+# target_enemy happens to resolve to (a facing turn would just whipsaw toward whoever `dir`
+# points at this tick as target_enemy flips between the several attackers), and it widens
+# its own frontage to roughly the combined width of every adjacent enemy so its line can
+# actually reach all of them instead of presenting a narrower front than the fight has grown
+# to. Below 2 adjacent enemies (approaching, or only one opponent in contact so far), both
+# effects no-op and the unit behaves exactly as it would under NORMAL.
 const ORDER_HOLD := 1
 const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
@@ -359,6 +371,7 @@ const ORDER_WEDGE_CHARGE := 12
 const ORDER_KNOCKBACK_FOCUS := 13
 const ORDER_GIVE_GROUND := 14
 const ORDER_PUSH := 15
+const ORDER_MULTIPLE_ENGAGE := 16
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
@@ -1787,6 +1800,12 @@ func _think(delta: float) -> void:
 			if faced and _attack_cd <= 0.0:
 				_start_attack_cd(melee_attack_interval())
 				UnitCombat.strike(self, enemy)
+			# MULTIPLE_ENGAGE: reflow this regiment's own frontage toward the combined width
+			# of every distinct enemy currently pressing it, once there are genuinely 2+ of
+			# them in contact -- see _multiple_engage_reflow's own doc for the debounce/
+			# hysteresis that keeps this from flapping every tick.
+			if order_mode == ORDER_MULTIPLE_ENGAGE:
+				_multiple_engage_reflow(_adjacent_engaged_enemy_units())
 			# Press into contact: a committed melee unit keeps advancing onto the enemy
 			# while it fights, so the lines close to body contact (separation provides the
 			# counterforce, settling them at the engaged-enemy front-rank floor) instead
@@ -2296,6 +2315,89 @@ func _face(point: Vector2) -> void:
 	_face_dir(point - position)
 
 
+# Per-tick memo for _adjacent_engaged_enemy_units(), the same (frame -> result) idiom
+# _engaged_indices_cache uses: the scan is cheap per call (it walks the regiment-level
+# candidate list, not a per-soldier one), but MULTIPLE_ENGAGE's own two call sites
+# (_face_for_action and the frontage reflow in _think) can both fire in the same tick, so
+# memoizing avoids computing the identical answer twice. A frame-keyed cache, not captured
+# by to_snapshot_dict/restore (see that function's own "what's deliberately NOT captured"
+# note) -- it regenerates on the next tick exactly like a freshly spawned unit's would.
+var _adjacent_engaged_cache: Array[Unit] = []
+var _adjacent_engaged_cache_frame: int = -1
+
+## Distinct enemy Unit instances currently within melee contact range of this regiment --
+## i.e. close enough for genuine simultaneous engagement, not merely detected at long range.
+## "Contact range" reuses _separate()'s own "engaged enemy lines close until front ranks
+## meet" floor (this unit's _front_depth() plus the candidate's own), rather than inventing a
+## second distance rule for what "adjacent" means -- the two places agree on when two blocks
+## are physically pressed together.
+##
+## Queried from _separation_candidates(), the same broad-phase population _separate() itself
+## scans (living units and routers, filtered here to a different, non-DEAD, enemy team). Used
+## by MULTIPLE_ENGAGE's facing-hold (_face_for_action) and frontage-widening
+## (_multiple_engage_reflow) logic to tell whether this unit is genuinely fighting more than
+## one opponent at once -- not stance-specific itself, just the shared "who's actually
+## pressing me right now" query both of that stance's effects need.
+func _adjacent_engaged_enemy_units() -> Array[Unit]:
+	var frame: int = Engine.get_physics_frames()
+	if _adjacent_engaged_cache_frame == frame:
+		return _adjacent_engaged_cache
+	var out: Array[Unit] = []
+	for o in _separation_candidates():
+		var other := o as Unit
+		if other == null or other == self or other.state == State.DEAD:
+			continue
+		if other.team == team:
+			continue
+		var contact: float = _front_depth() + other._front_depth()
+		if position.distance_to(other.position) <= contact:
+			out.append(other)
+	_adjacent_engaged_cache = out
+	_adjacent_engaged_cache_frame = frame
+	return out
+
+
+# MULTIPLE_ENGAGE's frontage-widening cooldown: minimum ticks between two automatic
+# set_frontage() calls this stance drives, so a target file count that's still settling
+# (enemy formations reflow constantly under casualties/pressure) doesn't retrigger a reshape
+# every tick. ~1 real second at the sim's fixed 60 Hz physics rate.
+const MULTIPLE_ENGAGE_FRONTAGE_COOLDOWN_TICKS: int = 60
+
+# MULTIPLE_ENGAGE's minimum file-count delta worth re-widening for. A target that differs
+# from the current frontage by only one file is noise (enemy formations reflow constantly),
+# not a real "another opponent joined the fight" moment.
+const MULTIPLE_ENGAGE_FRONTAGE_HYSTERESIS: int = 1
+
+## While genuinely fighting 2+ distinct adjacent enemy units at once (`adjacent`, from
+## _adjacent_engaged_enemy_units()), widen this regiment's own frontage to roughly match the
+## combined width of every adjacent enemy, so its line can actually reach all of them instead
+## of presenting a narrower front than the fight has grown to. `enemy.formation_files(enemy.
+## soldiers)` (not UnitFormation.frontage) reads each enemy's file count the same way
+## _settle_engage_turn's own MATCH_TARGET branch already does, so a squared (SQUARE/
+## SCHILTRON) adjacent enemy is matched by its real square file count rather than the wide-
+## line frontage its soldiers aren't standing on.
+##
+## Debounced via _last_reshape_tick -- the tick stamp set_frontage() already records on every
+## actual reshape, reused here rather than adding a second, parallel cooldown field, since it
+## already records exactly what this needs: how long it's been since this regiment's frontage
+## last actually changed. No-ops (frontage untouched) below 2 adjacent enemies, so a normal
+## single-opponent fight under this stance looks identical to today.
+func _multiple_engage_reflow(adjacent: Array[Unit]) -> void:
+	if adjacent.size() < 2:
+		return
+	var target_files: int = 0
+	for enemy in adjacent:
+		target_files += enemy.formation_files(enemy.soldiers)
+	target_files = clampi(target_files, 1, maxi(1, max_soldiers))
+	var current_files: int = formation_files(soldiers)
+	if abs(target_files - current_files) <= MULTIPLE_ENGAGE_FRONTAGE_HYSTERESIS:
+		return
+	if _last_reshape_tick >= 0 \
+			and Engine.get_physics_frames() - _last_reshape_tick < MULTIPLE_ENGAGE_FRONTAGE_COOLDOWN_TICKS:
+		return
+	set_frontage(target_files)
+
+
 ## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
 ## bringing the front to bear on; kept so the settle step can reshape toward it under
 ## MATCH_TARGET -- see engage_reshape_mode). A small heading correction snaps (stays
@@ -2322,6 +2424,19 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		# return and _engage_turn_target is never cleared by anything else: it stays stuck
 		# non-zero forever, which permanently freezes SoldierBodies.step's slot-approach term
 		# (via is_maneuver_turning()) -- the squared body never eases onto its new slots.
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
+		return true
+	# MULTIPLE_ENGAGE, once genuinely fighting 2+ distinct adjacent enemy units at once: hold
+	# the current facing instead of turning to bring the front to bear on whichever single foe
+	# `point`/target_enemy currently resolves to. With several attackers already pressing from
+	# different bearings, chasing any one of their headings would whipsaw the whole grid toward
+	# whoever `dir` happens to point at this tick -- the same crowded-multi-attacker swing
+	# in_square()'s own comment above describes, just without that formation's omnidirectional
+	# brace to justify never turning at all. Below 2 adjacent enemies (still approaching, or
+	# only one opponent in contact so far), fall through unchanged so a normal single-opponent
+	# fight under this stance looks identical to any other stance.
+	if order_mode == ORDER_MULTIPLE_ENGAGE and _adjacent_engaged_enemy_units().size() >= 2:
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		return true
