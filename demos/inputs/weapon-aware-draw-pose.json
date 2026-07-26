@@ -1,5 +1,5 @@
 {
-  "_comment": "Phase 3 (#538): a Spearmen (team 0, WEAPON_SPEAR) vs Infantry (team 1, WEAPON_GLADIUS + SHIELD_SCUTUM) clash, camera eased in past LOD_ZOOM_IN (1.55) so the figure silhouettes are active. Two modest 18-soldier lines spawned well outside either side's melee reach so no instant mass casualties (per the spear-standoff staging lesson), letting the enemy AI march the infantry in on its own -- no scripted steps needed. Shows the spear's forward-tilted rest pose against the shield's raised-guard rest pose (both now read from LoadoutRegistry.default_hold_angle instead of the old single fixed baked angle), then the strike lunge once the front ranks make contact.",
+  "_comment": "Phase 3 (#538): a Spearmen (team 0, WEAPON_SPEAR) vs Infantry (team 1, WEAPON_GLADIUS + SHIELD_SCUTUM) clash, camera eased in past LOD_ZOOM_IN (1.55) so the figure silhouettes are active. Two modest 18-soldier lines spawned well outside either side's melee reach so no instant mass casualties (per the spear-standoff staging lesson), letting the enemy AI march the infantry in on its own -- no scripted steps needed. Timing verified empirically via dump-state.sh: both units stay unengaged until ~tick 208 (Spearmen stays put; Infantry closes the whole gap), so the state/frames ticks below sample the rest pose well before contact, then the front-rank strike lunge once combat starts.",
   "seed": "20260726",
   "scenario": [
     {"team": 0, "type": "Spearmen", "x": 640, "y": 340, "count": 18},
@@ -8,13 +8,9 @@
   "camera": [
     {"tick": 0, "x": 640.0, "y": 450.0, "zoom": 1.0},
     {"tick": 50, "x": 640.0, "y": 450.0, "zoom": 1.0},
-    {"tick": 85, "x": 640.0, "y": 450.0, "zoom": 2.2},
-    {"tick": 300, "x": 640.0, "y": 450.0, "zoom": 2.2}
+    {"tick": 85, "x": 640.0, "y": 390.0, "zoom": 2.2},
+    {"tick": 300, "x": 640.0, "y": 390.0, "zoom": 2.2}
   ],
-  "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 15,
-  "width": 720,
-  "state": [10, 60, 90, 120, 150, 180, 220, 260],
-  "frames": [10, 90, 150, 220]
+  "state": [10, 150, 205, 230, 270, 290],
+  "frames": [10, 150, 205, 230, 270]
 }
