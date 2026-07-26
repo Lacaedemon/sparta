@@ -374,14 +374,15 @@ const ORDER_WEDGE_CHARGE := 12
 const ORDER_KNOCKBACK_FOCUS := 13
 const ORDER_GIVE_GROUND := 14
 const ORDER_PUSH := 15
+const ORDER_MULTIPLE_ENGAGE := 16
 # MARCH_TO_CONTACT: an advance-to-contact stance for a plain move order. NORMAL's
 # existing "plain move order with no explicit target = disengage/push through" rule
 # (see the ranged and melee gates in _think()) lets a marching unit auto-acquire and
 # then walk straight past a hostile it crosses -- correct as the deliberate default,
-# but sometimes the player wants the unit to
-# stop and fight anything it meets along an already-queued route, then continue once
-# the fight is over. MARCH_TO_CONTACT does exactly that: it widens the same two gates'
-# disjunction so an auto-acquired foe (target_enemy == null, not chasing) still triggers
+# but sometimes the player wants the unit to stop and fight anything it meets along an
+# already-queued route, then continue once the fight is over. MARCH_TO_CONTACT does
+# exactly that: it widens the same two gates' disjunction so an auto-acquired foe
+# (target_enemy == null, not chasing) still triggers
 # fire/melee under a plain move order, instead of only under an explicit attack order or
 # no move order at all. It deliberately does NOT clear has_move_target anywhere, so the
 # queued destination survives the fight untouched -- once the enemy dies, routs out of
