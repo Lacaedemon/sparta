@@ -1289,7 +1289,11 @@ into different tools:
   combined width of every attacker pressing it, so its line can actually
   reach all of them instead of presenting a narrower front than the fight
   has grown to. Both effects stay off below 2 adjacent enemies --- a normal
-  single-opponent fight under this stance looks like any other stance.
+  single-opponent fight under this stance looks like any other stance. Its
+  strikes also cycle: rather than every blow landing on whichever one enemy
+  it engaged first, the unit rotates its strike target among every adjacent
+  enemy in turn, so casualties spread across all of them instead of leaving
+  the rest untouched.
 
 ::: {#fig-cycle-charge-flee .demo}
 
@@ -1357,7 +1361,11 @@ A player Infantry regiment arms Multiple engage before two smaller enemy
 Infantry regiments, closing from different bearings, reach contact. The
 first enemy engages normally; once the second also presses in, the
 regiment's frontage widens from 11 to 14 files (their combined width) and
-its facing holds steady instead of swinging between the two of them.
+its facing holds steady instead of swinging between the two of them. Its
+strikes cycle too: the same clip's own state transcript shows the
+regiment's strike target switching from the first enemy to the second
+around the point both are pressing in at once, and the second enemy's
+soldier count keeps dropping afterward instead of sitting untouched.
 :::
 
 **Push stance** (<kbd>/</kbd>) is the aggressive, offensive counterpart to Give ground: an engaged unit continuously applies physical pressure to drive its opponent backwards. Where Give ground yields territory while fighting, Push stance advances into the enemy line, pushing opposing soldiers back while maintaining melee contact.

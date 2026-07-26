@@ -346,16 +346,19 @@ var ordered_facing: Vector2 = Vector2.ZERO
 # unit for morale purposes).
 # MULTIPLE_ENGAGE is the melee-maneuver counterpart to a unit that finds itself fighting
 # more than one enemy regiment at once (surrounded, or pressed from two directions by an
-# enemy that split around it). Two effects, both gated on genuinely having 2+ distinct
+# enemy that split around it). Three effects, all gated on genuinely having 2+ distinct
 # enemy Unit instances within melee contact range at once (see _adjacent_engaged_enemy_units
-# and its two call sites, _face_for_action and _multiple_engage_reflow): the unit holds its
-# current facing instead of turning to bring the front to bear on whichever single foe
-# target_enemy happens to resolve to (a facing turn would just whipsaw toward whoever `dir`
-# points at this tick as target_enemy flips between the several attackers), and it widens
-# its own frontage to roughly the combined width of every adjacent enemy so its line can
-# actually reach all of them instead of presenting a narrower front than the fight has grown
-# to. Below 2 adjacent enemies (approaching, or only one opponent in contact so far), both
-# effects no-op and the unit behaves exactly as it would under NORMAL.
+# and its call sites, _face_for_action, _multiple_engage_reflow, and the strike-target
+# cycling in _think()): the unit holds its current facing instead of turning to bring the
+# front to bear on whichever single foe target_enemy happens to resolve to (a facing turn
+# would just whipsaw toward whoever `dir` points at this tick as target_enemy flips between
+# the several attackers); it widens its own frontage to roughly the combined width of every
+# adjacent enemy so its line can actually reach all of them instead of presenting a narrower
+# front than the fight has grown to; and it rotates target_enemy among the adjacent set
+# after each landed strike, so damage spreads across all of them instead of every strike
+# landing on whichever one target_enemy first resolved to. Below 2 adjacent enemies
+# (approaching, or only one opponent in contact so far), all three effects no-op and the
+# unit behaves exactly as it would under NORMAL.
 const ORDER_HOLD := 1
 const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
@@ -1802,6 +1805,12 @@ func _think(delta: float) -> void:
 			if faced and _attack_cd <= 0.0:
 				_start_attack_cd(melee_attack_interval())
 				UnitCombat.strike(self, enemy)
+				# MULTIPLE_ENGAGE: cycle target_enemy to the next distinct adjacent enemy so a
+				# genuinely multi-attacker fight spreads damage across all of them instead of
+				# every strike landing on whichever one target_enemy first resolved to -- see
+				# _next_multiple_engage_target's own doc for the round-robin/determinism rule.
+				if order_mode == ORDER_MULTIPLE_ENGAGE:
+					target_enemy = _next_multiple_engage_target(_adjacent_engaged_enemy_units(), enemy)
 			# MULTIPLE_ENGAGE: reflow this regiment's own frontage toward the combined width
 			# of every distinct enemy currently pressing it, once there are genuinely 2+ of
 			# them in contact -- see _multiple_engage_reflow's own doc for the debounce/
@@ -2321,9 +2330,10 @@ func _face(point: Vector2) -> void:
 
 # Per-tick memo for _adjacent_engaged_enemy_units(), the same (frame -> result) idiom
 # _engaged_indices_cache uses: the scan is cheap per call (it walks the regiment-level
-# candidate list, not a per-soldier one), but MULTIPLE_ENGAGE's own two call sites
-# (_face_for_action and the frontage reflow in _think) can both fire in the same tick, so
-# memoizing avoids computing the identical answer twice. A frame-keyed cache, not captured
+# candidate list, not a per-soldier one), but MULTIPLE_ENGAGE's own call sites
+# (_face_for_action, the frontage reflow, and the strike-target cycling, all in _think())
+# can all fire in the same tick, so memoizing avoids recomputing the identical answer for
+# each one. A frame-keyed cache, not captured
 # by to_snapshot_dict/restore (see that function's own "what's deliberately NOT captured"
 # note) -- it regenerates on the next tick exactly like a freshly spawned unit's would.
 var _adjacent_engaged_cache: Array[Unit] = []
@@ -2400,6 +2410,29 @@ func _multiple_engage_reflow(adjacent: Array[Unit]) -> void:
 			and Engine.get_physics_frames() - _last_reshape_tick < MULTIPLE_ENGAGE_FRONTAGE_COOLDOWN_TICKS:
 		return
 	set_frontage(target_files)
+
+
+## MULTIPLE_ENGAGE strike-target cycling: UnitCombat.strike() still only ever damages
+## whichever ONE enemy `target_enemy` currently resolves to, so a genuinely multi-attacker
+## fight (2+ distinct enemies in `adjacent`, from _adjacent_engaged_enemy_units()) leaves
+## every enemy but that one taking zero casualties indefinitely. Rather than restructuring
+## strike()'s regiment-vs-regiment resolution into a per-soldier-pair model, round-robin the
+## single `target_enemy` across the adjacent set after each landed strike, so damage
+## distributes over time instead of locking onto whichever enemy resolved first.
+##
+## Deterministic: sorts `adjacent` by `uid` (not array/instance order, which iteration over a
+## group/spatial query doesn't guarantee stable) and advances one step past `current`'s
+## position in that order, wrapping around. `current` not being in `adjacent` (it left contact
+## range, or was never a member) resolves to index -1, so `(idx + 1) % size` lands on the
+## lowest-uid entry -- a sensible restart rather than an out-of-range access. Returns `current`
+## unchanged when fewer than 2 enemies are adjacent, since there's nothing to rotate onto.
+func _next_multiple_engage_target(adjacent: Array[Unit], current: Unit) -> Unit:
+	if adjacent.size() < 2:
+		return current
+	var sorted: Array[Unit] = adjacent.duplicate()
+	sorted.sort_custom(func(x: Variant, y: Variant) -> bool: return (x as Unit).uid < (y as Unit).uid)
+	var idx: int = sorted.find(current)
+	return sorted[(idx + 1) % sorted.size()]
 
 
 ## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
