@@ -374,8 +374,8 @@ func test_normal_order_mode_control_leaves_the_second_adjacent_enemy_undamaged()
 	# Contrast for the test above: the identical two-adjacent-enemy setup under the default
 	# stance never rotates target_enemy at all -- current_target() just keeps returning the
 	# same live target_enemy -- so every strike lands on e1 and e2 takes zero casualties. This
-	# is the bug #1084 fixes; without it, this control and the MULTIPLE_ENGAGE test above would
-	# look identical.
+	# is exactly the locked-onto-one-enemy bug the cycling fixes; without it, this control and
+	# the MULTIPLE_ENGAGE test above would look identical.
 	var u := _make_unit(60)
 	u.uid = 1
 	u.team = 0
