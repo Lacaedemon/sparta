@@ -92,6 +92,75 @@ func test_dart_mesh_is_cached() -> void:
 		"the same radius returns the shared cached mesh")
 
 
+# --- weapon/shield hold-angle orientation (docs/soldier-loadout-design.md phase 3) -----
+
+func test_rotate_polys_about_is_a_no_op_at_zero_angle() -> void:
+	# 0.0 must reproduce the originally-authored polygon bit-for-bit (returns the input
+	# array unchanged, not a rotated copy), so a type left at LoadoutRegistry's neutral
+	# default renders identically to the pre-phase-3 baked orientation.
+	var poly := PackedVector2Array([Vector2(1, 0), Vector2(0, 1)])
+	var out: Array = UnitMeshes._rotate_polys_about([poly], Vector2(3, 4), 0.0)
+	assert_eq(out[0], poly)
+
+
+func test_rotate_polys_about_rotates_around_the_given_pivot() -> void:
+	# (2,0) about pivot (1,0) by 90 degrees: the relative vector (1,0) rotates to (0,1),
+	# then the pivot is added back -> (1,1).
+	var poly := PackedVector2Array([Vector2(2, 0)])
+	var out: Array = UnitMeshes._rotate_polys_about([poly], Vector2(1, 0), PI * 0.5)
+	var rotated: Vector2 = out[0][0]
+	assert_almost_eq(rotated.x, 1.0, 0.0001)
+	assert_almost_eq(rotated.y, 1.0, 0.0001)
+
+
+func test_spear_polys_hold_angle_zero_matches_the_originally_authored_shaft() -> void:
+	# Regression guard: passing the default hold_angle must reproduce the exact vertices
+	# _spear_polys always returned, before the hold-angle parameter existed.
+	var polys: Array = UnitMeshes._spear_polys(R)
+	var shaft: PackedVector2Array = polys[0]
+	assert_eq(shaft[0], Vector2(0.78 * R, -2.0 * R))
+	assert_eq(shaft[2], Vector2(1.0 * R, 1.55 * R))
+
+
+func test_spear_polys_hold_angle_reorients_the_shaft() -> void:
+	var rest: Array = UnitMeshes._spear_polys(R)
+	var tilted: Array = UnitMeshes._spear_polys(R, deg_to_rad(20.0))
+	var rest_shaft: PackedVector2Array = rest[0]
+	var tilted_shaft: PackedVector2Array = tilted[0]
+	assert_ne(rest_shaft[0], tilted_shaft[0], "a nonzero hold angle moves the shaft's vertices")
+
+
+func test_shield_polys_hold_angle_zero_matches_the_originally_authored_shield() -> void:
+	var polys: Array = UnitMeshes._shield_polys(R)
+	var shield: PackedVector2Array = polys[0]
+	assert_eq(shield[0], Vector2(-1.3 * R, -0.7 * R))
+	assert_eq(shield[3], Vector2(-0.9 * R, 0.7 * R))
+
+
+func test_shield_polys_hold_angle_reorients_the_shield() -> void:
+	var rest: Array = UnitMeshes._shield_polys(R)
+	var tilted: Array = UnitMeshes._shield_polys(R, deg_to_rad(20.0))
+	var rest_shield: PackedVector2Array = rest[0]
+	var tilted_shield: PackedVector2Array = tilted[0]
+	assert_ne(rest_shield[0], tilted_shield[0], "a nonzero hold angle moves the shield's vertices")
+
+
+func test_figure_mesh_hold_angle_participates_in_the_cache_key() -> void:
+	# A different weapon hold angle must bake a genuinely different mesh, not collide in
+	# the shared cache with the neutral orientation.
+	var neutral := UnitMeshes.figure_mesh(false, UnitMeshes.FOOT_SPEAR, R, false, false)
+	var tilted := UnitMeshes.figure_mesh(false, UnitMeshes.FOOT_SPEAR, R, false, false, deg_to_rad(20.0))
+	assert_true(neutral != tilted, "a different weapon hold angle bakes a different mesh")
+
+
+func test_figure_mesh_hold_angle_defaults_reproduce_the_pre_phase_3_mesh() -> void:
+	# Omitting the trailing hold-angle args (every pre-phase-3 call site) must still return
+	# the SAME cached mesh as passing 0.0 explicitly.
+	var omitted := UnitMeshes.figure_mesh(false, UnitMeshes.FOOT_INFANTRY, R, false, false)
+	var explicit_zero := UnitMeshes.figure_mesh(false, UnitMeshes.FOOT_INFANTRY, R, false, false, 0.0, 0.0)
+	assert_eq(omitted, explicit_zero)
+
+
 # --- figure shading and contact shadows (vertex colours) ----------------------
 
 func _surface_colors(mesh: ArrayMesh) -> PackedColorArray:

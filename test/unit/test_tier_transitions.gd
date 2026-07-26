@@ -196,7 +196,13 @@ func test_promote_reconstructs_one_body_per_living_soldier_on_the_grid() -> void
 		assert_eq(u._sim_soldier_stamina[i], max_stamina, "everyone reconstructs rested")
 		assert_eq(u._sim_soldier_weapon_id[i], u.weapon_type_id)
 		assert_eq(u._sim_soldier_shield_id[i], u.shield_type_id)
-		assert_eq(u._sim_soldier_shield_hold_angle[i], u.shield_rest_angle(),
+		# _sim_soldier_shield_hold_angle is a PackedFloat32Array (single precision), while
+		# shield_rest_angle() returns a plain (double-precision) float -- a real, nonzero
+		# hold angle (docs/soldier-loadout-design.md phase 3: LoadoutRegistry.SHIELD_SCUTUM's
+		# default_hold_angle) loses a few bits of precision on the round trip through the
+		# float32 array, so an exact assert_eq no longer holds now that SHIELD_SCUTUM's
+		# angle isn't the trivially-exact 0.0 every type defaulted to before phase 3.
+		assert_almost_eq(u._sim_soldier_shield_hold_angle[i], u.shield_rest_angle(), 0.0001,
 			"hold angles reconstruct at the shield type's rest pose")
 		# Both components asserted: a facing of (0, epsilon) must not pass as DOWN.
 		assert_eq(u._sim_soldier_facing[i].x, u.facing.x)

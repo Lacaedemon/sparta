@@ -1,14 +1,21 @@
 # Design note: soldier weapon/shield loadout
 
-Status: **phases 1-2 implemented** (#536, #537): the `Weapon`/`Shield` type
+Status: **phases 1-3 implemented** (#536, #537, #538): the `Weapon`/`Shield` type
 classes, the interned `LoadoutRegistry`, the per-soldier id arrays, and the
 per-soldier shield hold-angle state are in the code, with the weapon type as
 the single source of truth for spawn-time reach. The strike-time combat-read
 re-express (#571, split out of phase 1) is implemented too: melee reads
 lethality through the attacker's weapon id and composes the defensive shield
 weight as the type's stance residual plus the struck soldier's shield
-`block_value` (see phase 1 below). Phases 3-4 (#538-#539) are design-only so
-far.
+`block_value` (see phase 1 below). Phase 3's rendering now reads the actual
+equipped weapon type for figure/mark mesh selection (`Unit._foot_kind()`,
+preferring `weapon_type_id` over the coarse `anti_cavalry`/`is_ranged` flags),
+orients the FOOT_SPEAR spear glyph and the infantry shield glyph by their
+type's `default_hold_angle` (`Unit.weapon_rest_angle()`/`shield_rest_angle()`
+-> `UnitMeshes.figure_mesh`), and eases a per-soldier render-only "strike lunge"
+forward along facing while a soldier sits in `engaged_soldier_indices()` (see
+phase 3 below for the details and what's still out of scope). Phase 4
+(#539) is design-only so far.
 
 The registry has since grown two more type families on the same contract
 (interned, immutable, disjoint id ranges): `Armor` (protection — the scalar
@@ -239,9 +246,14 @@ turned out to be more machinery than the data needs).
   `Shield.covers(attack_angle, hold_angle)` sketch above remains illustrative
   shape data nothing reads for gameplay yet; the wound formula is unchanged
   behaviorally throughout.
-- **Rendering** — the soldier's `MultiMesh` draw pose reads `weapon_id` /
-  `shield_id` (which mesh/sprite) plus `shield_hold_angle` (where to draw it
-  relative to the body) once phase 3 wires visuals.
+- **Rendering** (implemented, phase 3) — the soldier's `MultiMesh` draw pose
+  reads `weapon_id` (`Unit._foot_kind()`, which mesh/sprite) and each type's
+  `default_hold_angle` (`Unit.weapon_rest_angle()`/`shield_rest_angle()`,
+  where to draw the held item relative to the body). The per-soldier
+  `_sim_soldier_shield_hold_angle` array itself stays a per-UNIT read at mesh-
+  build time for now (every soldier in a unit shares one shield type, so the
+  array is uniformly filled) rather than a genuinely per-soldier one -- see
+  phase 3 below.
 - **#530's formation geometry** (PR #534, open as of this writing) wants
   exactly the "shield relative to body" data this issue's per-soldier hold
   angle provides — a shield-wall or testudo restructure reads
@@ -301,14 +313,44 @@ Each phase: scope, dependencies, done-check, behavior-change label.
 - **Behavior change:** **none to combat outcomes** — this phase only makes the
   data available; nothing reads it for gameplay yet (rendering is phase 3).
 
-### Phase 3 — rendering reads weapon/shield type + hold state
-- **Scope:** Soldier `MultiMesh` draw pose reads `weapon_id` / `shield_id` to
-  select the correct mesh/sprite and `shield_hold_angle` to orient it relative
-  to the body.
+### Phase 3 — rendering reads weapon/shield type + hold state (implemented, #538)
+- **Scope, as implemented:**
+  - `Unit._foot_kind()` (the figure/mark archetype selector) now reads
+    `weapon_type_id` first (`WEAPON_SPEAR` -> spear, `WEAPON_SIDEARM` ->
+    archer), falling back to the `anti_cavalry`/`is_ranged` flags only when
+    `weapon_type_id` doesn't resolve to either -- a bare/synthetic unit built
+    directly in a test, which sets the flags but keeps `Unit`'s default
+    `WEAPON_GLADIUS`. Under today's roster every real spawned unit's
+    `weapon_type_id` and flags agree, so this is a behavior-preserving remap
+    of the old flag-only logic; the id read is what makes a future weapon
+    switch (#516 phase 4) reflect in the render immediately. `_build_mark_meshes`
+    now switches on `_foot_kind()` too, instead of duplicating the flag logic.
+  - `UnitMeshes.figure_mesh` (and `_foot_figure_polys`/`_spear_polys`/
+    `_shield_polys`) gained optional `weapon_hold_angle`/`shield_hold_angle`
+    parameters (radians, defaulting to 0.0) that rotate the held-item polygon
+    about a pivot near its grip (`UnitMeshes._rotate_polys_about`) rather than
+    the geometry staying at a single hardcoded angle. `Unit._build_figure_meshes`
+    resolves them via the new `Unit.weapon_rest_angle()` (mirroring the existing
+    `shield_rest_angle()`) and threads them through. Only the FOOT_SPEAR spear
+    glyph and the infantry shield glyph consume their angle today -- the bow
+    has no matching registry weapon type yet, and cavalry's mounted figure has
+    no held-item glyph at all. `LoadoutRegistry`'s weapons/shields carry real,
+    distinct `default_hold_angle` values now instead of the uniform 0.0 every
+    type defaulted to before this phase (`WEAPON_SPEAR` presented forward,
+    `SHIELD_SCUTUM` raised into a guard; every other type stays at the neutral
+    default pending a future glyph).
+  - A render-only per-soldier "strike lunge" (`Unit._render_strike_progress`,
+    `Unit._soldier_strike_offset`) eases a soldier's mark/figure position
+    forward along its own facing while its index sits in
+    `engaged_soldier_indices()` -- the same derived-not-simulated pattern as
+    `_render_prone_progress`, so it reflects "hold state" (idle vs. actively
+    striking) without any new per-soldier *simulation* array. Purely additive
+    to the render position; `_sim_soldier_pos` (combat/collision) is untouched.
 - **Dependencies:** phases 1-2.
-- **Done-check:** visual spot-check (demo clip) shows shields oriented per
-  soldier state; no change to combat math or sim tick performance (stress
-  test with the existing hundreds-of-soldiers scenario).
+- **Done-check:** visual spot-check (demo clip, plus before/after upscaled
+  crops in the PR) shows the spear/shield hold angles and the strike lunge;
+  no change to combat math, determinism, or sim tick performance (confirmed
+  by a website-demo-diff transcript showing zero changed sim content).
 - **Behavior change:** **new capability** (visual), no change to sim outcomes.
 
 ### Phase 4 — gameplay layer: weapon switching

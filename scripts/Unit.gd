@@ -346,16 +346,19 @@ var ordered_facing: Vector2 = Vector2.ZERO
 # unit for morale purposes).
 # MULTIPLE_ENGAGE is the melee-maneuver counterpart to a unit that finds itself fighting
 # more than one enemy regiment at once (surrounded, or pressed from two directions by an
-# enemy that split around it). Two effects, both gated on genuinely having 2+ distinct
+# enemy that split around it). Three effects, all gated on genuinely having 2+ distinct
 # enemy Unit instances within melee contact range at once (see _adjacent_engaged_enemy_units
-# and its two call sites, _face_for_action and _multiple_engage_reflow): the unit holds its
-# current facing instead of turning to bring the front to bear on whichever single foe
-# target_enemy happens to resolve to (a facing turn would just whipsaw toward whoever `dir`
-# points at this tick as target_enemy flips between the several attackers), and it widens
-# its own frontage to roughly the combined width of every adjacent enemy so its line can
-# actually reach all of them instead of presenting a narrower front than the fight has grown
-# to. Below 2 adjacent enemies (approaching, or only one opponent in contact so far), both
-# effects no-op and the unit behaves exactly as it would under NORMAL.
+# and its call sites, _face_for_action, _multiple_engage_reflow, and the strike-target
+# cycling in _think()): the unit holds its current facing instead of turning to bring the
+# front to bear on whichever single foe target_enemy happens to resolve to (a facing turn
+# would just whipsaw toward whoever `dir` points at this tick as target_enemy flips between
+# the several attackers); it widens its own frontage to roughly the combined width of every
+# adjacent enemy so its line can actually reach all of them instead of presenting a narrower
+# front than the fight has grown to; and it rotates target_enemy among the adjacent set
+# after each landed strike, so damage spreads across all of them instead of every strike
+# landing on whichever one target_enemy first resolved to. Below 2 adjacent enemies
+# (approaching, or only one opponent in contact so far), all three effects no-op and the
+# unit behaves exactly as it would under NORMAL.
 const ORDER_HOLD := 1
 const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
@@ -372,6 +375,24 @@ const ORDER_KNOCKBACK_FOCUS := 13
 const ORDER_GIVE_GROUND := 14
 const ORDER_PUSH := 15
 const ORDER_MULTIPLE_ENGAGE := 16
+# MARCH_TO_CONTACT: an advance-to-contact stance for a plain move order. NORMAL's
+# existing "plain move order with no explicit target = disengage/push through" rule
+# (see the ranged and melee gates in _think()) lets a marching unit auto-acquire and
+# then walk straight past a hostile it crosses -- correct as the deliberate default,
+# but sometimes the player wants the unit to stop and fight anything it meets along an
+# already-queued route, then continue once the fight is over. MARCH_TO_CONTACT does
+# exactly that: it widens the same two gates' disjunction so an auto-acquired foe
+# (target_enemy == null, not chasing) still triggers
+# fire/melee under a plain move order, instead of only under an explicit attack order or
+# no move order at all. It deliberately does NOT clear has_move_target anywhere, so the
+# queued destination survives the fight untouched -- once the enemy dies, routs out of
+# range, or otherwise leaves contact, the very next tick falls through to the ordinary
+# "obey the move order" branch and the march resumes on its own, exactly the way
+# ORDER_CHASE's held move_target already resumes a march once its quarry is gone. Unlike
+# CHASE, which actively seeks out and relentlessly pursues one target indefinitely,
+# MARCH_TO_CONTACT never chases -- it only stops for whatever is already in range/contact
+# during a move, and lets a foe that breaks contact go rather than following it.
+const ORDER_MARCH_TO_CONTACT := 17
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
@@ -1747,15 +1768,25 @@ func _think(delta: float) -> void:
 		# that hasn't closed to melee — they skirmish at distance instead of charging.
 		# Gated by the same "not disengaging" rule as melee: a plain move order with
 		# no explicit attack target marches them off rather than rooting them to fire.
+		# MARCH_TO_CONTACT is the one exception: it widens this same disjunction so an
+		# auto-acquired foe (target_enemy still null, not chasing) still stops the unit
+		# to fire under a plain move order -- see ORDER_MARCH_TO_CONTACT's own doc comment
+		# for why has_move_target is deliberately left untouched (the march resumes on its
+		# own once the fight ends).
 		if is_ranged and not in_contact and dist_sq <= RANGED_RANGE * RANGED_RANGE \
-				and (target_enemy != null or not has_move_target or chasing):
+				and (target_enemy != null or not has_move_target or chasing \
+					or order_mode == ORDER_MARCH_TO_CONTACT):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe so next tick's current_target() returns it
 			# instead of re-running nearest_enemy() from scratch -- see the melee branch's
 			# matching commit below for why an unpersisted pick thrashes facing, and why
 			# ORDER_HOLD is excluded (the chase branch below has no HOLD guard, since
-			# target_enemy previously only went non-null via an explicit order).
-			if order_mode != ORDER_HOLD:
+			# target_enemy previously only went non-null via an explicit order). MARCH_TO_
+			# CONTACT is excluded for the identical reason: committing here would let the
+			# chase branch below march this unit off after a foe that has broken contact,
+			# instead of letting it go and resuming the queued move (see ORDER_MARCH_TO_
+			# CONTACT's own doc comment).
+			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT:
 				target_enemy = enemy
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
@@ -1768,7 +1799,11 @@ func _think(delta: float) -> void:
 		# the unit break contact. (Pulling out exposes the rear; the enemy chasing
 		# it strikes for the ×2 flank bonus, which is the cost of disengaging.) A
 		# CHASE unit never takes this disengage: it keeps fighting the same foe.
-		if in_contact and (target_enemy != null or not has_move_target or chasing):
+		# MARCH_TO_CONTACT never disengages from a foe it's already in contact with
+		# either -- see ORDER_MARCH_TO_CONTACT's own doc comment for the stop-then-
+		# resume mechanism this shares with the "obey a move order" branch below.
+		if in_contact and (target_enemy != null or not has_move_target or chasing \
+				or order_mode == ORDER_MARCH_TO_CONTACT):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe: current_target() (UnitTargeting.gd) only keeps
 			# returning an already-live target_enemy -- it never writes back the nearest_enemy()
@@ -1794,7 +1829,14 @@ func _think(delta: float) -> void:
 			# preserves the pre-existing contract at the cost of not fixing its own facing-whipsaw
 			# case (an un-squared HOLD unit under a multi-attacker press) -- not a regression,
 			# since that combination was never fixed by this change in the first place.
-			if order_mode != ORDER_HOLD:
+			#
+			# Skip it under ORDER_MARCH_TO_CONTACT for the same reason, but for a different
+			# consequence: MARCH_TO_CONTACT's whole point is to let a foe that breaks contact
+			# go and resume the queued move, rather than following it (unlike CHASE, which
+			# deliberately keeps pursuing). Committing target_enemy here would make the chase
+			# branch below pursue it anyway the instant contact breaks -- exactly the HOLD
+			# failure mode above, just reached via a plain move order instead of a HELD one.
+			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT:
 				target_enemy = enemy
 			# Re-face for action: a large swing off the current fronting turns the men in
 			# place gradually (they hold their ground) before the line strikes; a small
@@ -1804,6 +1846,12 @@ func _think(delta: float) -> void:
 			if faced and _attack_cd <= 0.0:
 				_start_attack_cd(melee_attack_interval())
 				UnitCombat.strike(self, enemy)
+				# MULTIPLE_ENGAGE: cycle target_enemy to the next distinct adjacent enemy so a
+				# genuinely multi-attacker fight spreads damage across all of them instead of
+				# every strike landing on whichever one target_enemy first resolved to -- see
+				# _next_multiple_engage_target's own doc for the round-robin/determinism rule.
+				if order_mode == ORDER_MULTIPLE_ENGAGE:
+					target_enemy = _next_multiple_engage_target(_adjacent_engaged_enemy_units(), enemy)
 			# MULTIPLE_ENGAGE: reflow this regiment's own frontage toward the combined width
 			# of every distinct enemy currently pressing it, once there are genuinely 2+ of
 			# them in contact -- see _multiple_engage_reflow's own doc for the debounce/
@@ -1842,6 +1890,20 @@ func _think(delta: float) -> void:
 	# without the orderly path's arrival braking -- a charge must carry its speed through
 	# contact.
 	if has_move_target:
+		# A resumed march must settle any in-progress engage turn first, the same way the
+		# sibling chase/auto-advance/idle branches already do (see their own comments). This
+		# branch didn't need the guard before MARCH_TO_CONTACT existed -- no other stance
+		# reaches an armed _engage_turn_target while has_move_target is still true and
+		# target_enemy stays null (every other route to a fight either commits target_enemy,
+		# clears has_move_target, or both). MARCH_TO_CONTACT can arm an engage turn (an
+		# off-axis auto-acquired foe) and then have that foe break contact before the turn
+		# completes, with neither of those true -- so this is the only remaining path back to
+		# a plain move that can find the turn still armed. Left unsettled, the stranded
+		# _engage_turn_target permanently freezes SoldierBodies.step()'s slot-approach term
+		# (the "early return...must settle" lesson in .claude/memories/sparta.md), producing a
+		# visible blob/smear instead of a clean march resumption.
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
 		# Arrival at the FINAL destination requires both a close position AND a near-zero
 		# speed -- not position alone. _move_to's braking ramps _current_speed down along
 		# the arrival envelope on the route's last leg, so by the time the unit is within
@@ -2323,9 +2385,10 @@ func _face(point: Vector2) -> void:
 
 # Per-tick memo for _adjacent_engaged_enemy_units(), the same (frame -> result) idiom
 # _engaged_indices_cache uses: the scan is cheap per call (it walks the regiment-level
-# candidate list, not a per-soldier one), but MULTIPLE_ENGAGE's own two call sites
-# (_face_for_action and the frontage reflow in _think) can both fire in the same tick, so
-# memoizing avoids computing the identical answer twice. A frame-keyed cache, not captured
+# candidate list, not a per-soldier one), but MULTIPLE_ENGAGE's own call sites
+# (_face_for_action, the frontage reflow, and the strike-target cycling, all in _think())
+# can all fire in the same tick, so memoizing avoids recomputing the identical answer for
+# each one. A frame-keyed cache, not captured
 # by to_snapshot_dict/restore (see that function's own "what's deliberately NOT captured"
 # note) -- it regenerates on the next tick exactly like a freshly spawned unit's would.
 var _adjacent_engaged_cache: Array[Unit] = []
@@ -2402,6 +2465,29 @@ func _multiple_engage_reflow(adjacent: Array[Unit]) -> void:
 			and Engine.get_physics_frames() - _last_reshape_tick < MULTIPLE_ENGAGE_FRONTAGE_COOLDOWN_TICKS:
 		return
 	set_frontage(target_files)
+
+
+## MULTIPLE_ENGAGE strike-target cycling: UnitCombat.strike() still only ever damages
+## whichever ONE enemy `target_enemy` currently resolves to, so a genuinely multi-attacker
+## fight (2+ distinct enemies in `adjacent`, from _adjacent_engaged_enemy_units()) leaves
+## every enemy but that one taking zero casualties indefinitely. Rather than restructuring
+## strike()'s regiment-vs-regiment resolution into a per-soldier-pair model, round-robin the
+## single `target_enemy` across the adjacent set after each landed strike, so damage
+## distributes over time instead of locking onto whichever enemy resolved first.
+##
+## Deterministic: sorts `adjacent` by `uid` (not array/instance order, which iteration over a
+## group/spatial query doesn't guarantee stable) and advances one step past `current`'s
+## position in that order, wrapping around. `current` not being in `adjacent` (it left contact
+## range, or was never a member) resolves to index -1, so `(idx + 1) % size` lands on the
+## lowest-uid entry -- a sensible restart rather than an out-of-range access. Returns `current`
+## unchanged when fewer than 2 enemies are adjacent, since there's nothing to rotate onto.
+func _next_multiple_engage_target(adjacent: Array[Unit], current: Unit) -> Unit:
+	if adjacent.size() < 2:
+		return current
+	var sorted: Array[Unit] = adjacent.duplicate()
+	sorted.sort_custom(func(x: Variant, y: Variant) -> bool: return (x as Unit).uid < (y as Unit).uid)
+	var idx: int = sorted.find(current)
+	return sorted[(idx + 1) % sorted.size()]
 
 
 ## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
@@ -2806,6 +2892,18 @@ func set_formation(mode: int) -> void:
 	_reset_shield_hold_angles()
 
 
+## The rest-pose hold angle for this unit's weapon type (docs/soldier-loadout-design.md
+## phase 3): read by _build_figure_meshes to orient the figure's held-item glyph (today,
+## only the FOOT_SPEAR spear glyph -- see UnitMeshes.figure_mesh's own doc comment for
+## why the others don't consume it yet). An unknown weapon id resolves to 0.0, the same
+## defensive fallback shield_rest_angle below uses.
+func weapon_rest_angle() -> float:
+	var w: Weapon = LoadoutRegistry.weapon(weapon_type_id)
+	if w == null:
+		return 0.0
+	return w.default_hold_angle
+
+
 ## The rest-pose hold angle for this unit's shield type: the single source every
 ## hold-angle default reads (SoldierBodies.seed, its tail resize, and the
 ## formation-change reset below). An unknown shield id resolves to 0.0 —
@@ -3203,6 +3301,32 @@ const PRONE_EASE_RATE: float = 4.0
 # forever instead of completing, the same "inert number" class of bug already
 # fixed for _current_speed/position.
 var _prone_easing_active: bool = false
+
+# Per-soldier RENDER-only "striking" lunge progress (docs/soldier-loadout-design.md
+# phase 3; 0 = idle/marching, 1 = fully lunged in), index-aligned with _sim_soldier_pos --
+# mirrors _render_prone_progress's derived-not-simulated pattern exactly, just eased
+# toward a different sim signal: 1.0 while the soldier's index is in
+# engaged_soldier_indices() (the sim's own melee/contact selection -- the same set the
+# engaged-highlight debug overlay already reads), 0.0 otherwise. _refresh_flock_render
+# consumes it to nudge the MARK/FIGURE render position forward along the soldier's own
+# facing (_soldier_strike_offset below) -- purely cosmetic: _sim_soldier_pos (the real
+# combat/collision position) is untouched, so this can't affect combat outcomes or
+# determinism. Lazily resized in _refresh_flock_render, same as _render_prone_progress.
+var _render_strike_progress: PackedFloat32Array = PackedFloat32Array()
+# Per-second rate _render_strike_progress eases toward its target -- faster than
+# PRONE_EASE_RATE so a lunge reads as a quick, punctuated thrust rather than either an
+# instant snap or a sluggish drift.
+const STRIKE_EASE_RATE: float = 6.0
+# How far (world units) a fully-lunged soldier's render position shifts forward along its
+# own facing, as a fraction of the mark radius -- large enough to read as a visible push
+# into contact at both LODs, small enough that neighbouring soldiers' marks don't overlap.
+const STRIKE_LUNGE_RADIUS_FRACTION: float = 0.55
+# Whether ANY soldier's _render_strike_progress is still short of its target -- the
+# strike-pose counterpart to _prone_easing_active, needed for the identical reason: a
+# soldier can stop being engaged (ENGAGED_LINGER decaying, or the whole unit leaving
+# FIGHTING) well before its lunge has eased back out, and none of _process's other
+# refresh-gate conditions are guaranteed to keep firing once that happens.
+var _strike_easing_active: bool = false
 
 # Per-soldier stamina pool (slice D), index-aligned with _sim_soldier_pos: current stamina
 # in [0, max_stamina] where max_stamina is the per-type value from combat_profile(). Drained
@@ -5469,34 +5593,67 @@ func _setup_flock_renderer() -> void:
 ## tip). All three reach about as far forward as the pointer and stay no longer along the
 ## facing axis, so a rotated rank can't merge into a bar. The earlier spearmen rect and
 ## archer diamond were elongated/symmetric and, laid flat across a rank, striped.
+## Keyed off _foot_kind() (docs/soldier-loadout-design.md phase 3), so the mark shape and
+## the figure-LOD silhouette below share one archetype source instead of duplicating the
+## selection logic.
 func _build_mark_meshes(mark_r: float) -> void:
-	if anti_cavalry:
-		_mark_body_mesh    = UnitMeshes.dart_mesh(mark_r * 1.15)
-		_mark_outline_mesh = UnitMeshes.dart_mesh(mark_r * 1.15 + 0.6)
-	elif is_ranged:
-		_mark_body_mesh    = UnitMeshes.kite_mesh(mark_r * 1.15)
-		_mark_outline_mesh = UnitMeshes.kite_mesh(mark_r * 1.15 + 0.6)
-	else:
-		_mark_body_mesh    = UnitMeshes.pointer_mesh(mark_r)
-		_mark_outline_mesh = UnitMeshes.pointer_mesh(mark_r + 0.6)
+	match _foot_kind():
+		UnitMeshes.FOOT_SPEAR:
+			_mark_body_mesh    = UnitMeshes.dart_mesh(mark_r * 1.15)
+			_mark_outline_mesh = UnitMeshes.dart_mesh(mark_r * 1.15 + 0.6)
+		UnitMeshes.FOOT_ARCHER:
+			_mark_body_mesh    = UnitMeshes.kite_mesh(mark_r * 1.15)
+			_mark_outline_mesh = UnitMeshes.kite_mesh(mark_r * 1.15 + 0.6)
+		_:
+			_mark_body_mesh    = UnitMeshes.pointer_mesh(mark_r)
+			_mark_outline_mesh = UnitMeshes.pointer_mesh(mark_r + 0.6)
 
 
 ## Detailed figure-silhouette meshes (zoomed-in LOD): a standing soldier for foot,
 ## a mounted rider for cavalry. Both are shared/cached like the mark meshes. Foot
-## soldiers carry a per-type item (spear / bow / shield) matching their mark shape.
-## Each is baked facing right and mirrored facing left, so the render can swap meshes
-## to face the unit's march direction.
+## soldiers carry a per-type item (spear / bow / shield) matching their mark shape,
+## oriented at that item's actual weapon/shield type's rest-pose hold angle
+## (docs/soldier-loadout-design.md phase 3 -- weapon_rest_angle/shield_rest_angle,
+## which resolve through LoadoutRegistry). Each is baked facing right and mirrored
+## facing left, so the render can swap meshes to face the unit's march direction.
+## Both angles are threaded through uniformly for every foot_kind, even though
+## _foot_figure_polys only reads whichever one matches the kind's own held item
+## (weapon for FOOT_SPEAR, shield for the infantry kind, neither for FOOT_ARCHER's
+## bow) -- simpler than special-casing figure_mesh's cache key per kind, at the cost
+## of an occasional cache entry that's geometrically identical to another one under
+## a different unused angle.
 func _build_figure_meshes(mark_r: float) -> void:
 	var foot_kind: int = _foot_kind()
-	_figure_body_mesh = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, false, false)
-	_figure_outline_mesh = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, true, false)
-	_figure_body_mesh_flip = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, false, true)
-	_figure_outline_mesh_flip = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, true, true)
+	var weapon_hold: float = weapon_rest_angle()
+	var shield_hold: float = shield_rest_angle()
+	_figure_body_mesh = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, false, false,
+			weapon_hold, shield_hold)
+	_figure_outline_mesh = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, true, false,
+			weapon_hold, shield_hold)
+	_figure_body_mesh_flip = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, false, true,
+			weapon_hold, shield_hold)
+	_figure_outline_mesh_flip = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, true, true,
+			weapon_hold, shield_hold)
 
 
 ## Which foot-figure variant this unit uses, mirroring the per-type mark shapes
 ## (spearmen = shaft, archers = bow, everything else = shield). Cavalry ignores it.
+##
+## Prefers the soldier's actual equipped weapon type (docs/soldier-loadout-design.md
+## phase 3) over the coarse anti_cavalry/is_ranged flags, since weapon_type_id is the
+## field a future weapon-switch order would actually write -- reading it here means
+## the render follows a switch immediately instead of needing its own update.
+## Falls back to the flags when weapon_type_id doesn't resolve to either archetype
+## (a bare/synthetic unit built directly in a test, which sets anti_cavalry/is_ranged
+## but keeps Unit's default WEAPON_GLADIUS): under today's roster every real spawned
+## unit's weapon_type_id and flags agree (WEAPON_SPEAR <-> anti_cavalry, WEAPON_SIDEARM
+## <-> is_ranged), so this is a behavior-preserving remap of the old flag-only logic,
+## not a new selection.
 func _foot_kind() -> int:
+	if weapon_type_id == LoadoutRegistry.WEAPON_SPEAR:
+		return UnitMeshes.FOOT_SPEAR
+	if weapon_type_id == LoadoutRegistry.WEAPON_SIDEARM:
+		return UnitMeshes.FOOT_ARCHER
 	if anti_cavalry:
 		return UnitMeshes.FOOT_SPEAR
 	if is_ranged:
@@ -5570,14 +5727,16 @@ func _process(delta: float) -> void:
 	# moved (SoldierBodies.step raised _render_dirty), the facing turned (mark rotation,
 	# figure mirror and conversio squash all key off it), the unit is fighting (front-rank
 	# churn / prone flips), the instance count drifted from the body count, or a soldier's
-	# prone-progress ease is still mid-transition (_prone_easing_active, set by the refresh
-	# itself below) -- a knocked-down soldier's body velocity settles to rest well before
-	# _render_prone_progress finishes easing, and none of the other conditions fire once
-	# combat moves on, so without this the ease would freeze partway instead of completing
+	# prone-progress or strike-lunge ease is still mid-transition (_prone_easing_active /
+	# _strike_easing_active, both set by the refresh itself below) -- a knocked-down
+	# soldier's body velocity settles to rest (and ENGAGED_LINGER can outlast FIGHTING)
+	# well before either ease finishes, and none of the other conditions fire once combat
+	# moves on, so without these flags the ease would freeze partway instead of completing
 	# (the exact "inert number" failure class already fixed for _current_speed/position).
 	# The routing fade does NOT belong here -- it never touches the marks (see _apply_flock_color).
 	if _render_dirty or facing != _render_last_facing or state == State.FIGHTING \
-			or _mm_body.instance_count != _render_body_count() or _prone_easing_active:
+			or _mm_body.instance_count != _render_body_count() \
+			or _prone_easing_active or _strike_easing_active:
 		_render_dirty = false
 		_render_last_facing = facing
 		_refresh_flock_render(delta)
@@ -5680,19 +5839,28 @@ func _refresh_flock_render(delta: float) -> void:
 	# index-aligned per-soldier array in this file already accepts).
 	if _render_prone_progress.size() != n:
 		_render_prone_progress.resize(n)
-	# Engaged-soldier highlight (Settings.show_engaged_highlight, dev/debug): computed once
-	# per refresh, not per soldier -- a far-tier unit has no simulated bodies to look up
-	# (_render_body_count() reads `soldiers`, not _sim_soldier_pos, for it), so the highlight
-	# only applies at the close tier, where n == _sim_soldier_pos.size() as
-	# engaged_soldier_indices expects.
+	if _render_strike_progress.size() != n:
+		_render_strike_progress.resize(n)
+	# The engaged-soldier set -- the sim's own melee/contact selection -- feeds TWO
+	# consumers now: the pre-existing Settings.show_engaged_highlight dev tint below, and
+	# the always-on strike-lunge render offset (docs/soldier-loadout-design.md phase 3), so
+	# it's built unconditionally at the close tier rather than gated behind the debug
+	# toggle. A far-tier unit has no simulated bodies to look up (_render_body_count()
+	# reads `soldiers`, not _sim_soldier_pos, for it), so both stay close-tier only, where
+	# n == _sim_soldier_pos.size() as engaged_soldier_indices expects. Already per-frame
+	# cached by engaged_soldier_indices() and read by other systems most ticks a unit is
+	# actually fighting, so unconditional construction adds no new expensive path.
 	var engaged_highlight_on: bool = Settings.show_engaged_highlight and not far_tier
 	var engaged_lookup := PackedByteArray()
-	if engaged_highlight_on:
+	if not far_tier:
 		engaged_lookup.resize(n)
 		for idx in engaged_soldier_indices(n):
 			if idx >= 0 and idx < n:
 				engaged_lookup[idx] = 1
+	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+	var lunge_dist: float = mark_r * STRIKE_LUNGE_RADIUS_FRACTION
 	var still_easing: bool = false
+	var still_easing_strike: bool = false
 	for i in range(n):
 		# Prone: ease the mark's squash/rotate and dark tint in via _render_prone_progress,
 		# rather than switching at a threshold -- see that field's own doc comment.
@@ -5704,12 +5872,23 @@ func _refresh_flock_render(delta: float) -> void:
 		var pp: float = _render_prone_progress[i]
 		if pp != prone_target:
 			still_easing = true
+		# Strike lunge: ease the mark/figure position forward while the soldier is in the
+		# sim's engaged set, same "ease toward a target, never snap" idiom as prone above --
+		# see _render_strike_progress's own doc comment. (A far-tier unit has no engaged set
+		# either; everyone stays at rest.)
+		var strike_target: float = 1.0 if not far_tier and engaged_lookup[i] == 1 else 0.0
+		_render_strike_progress[i] = move_toward(_render_strike_progress[i],
+				strike_target, STRIKE_EASE_RATE * delta)
+		if _render_strike_progress[i] != strike_target:
+			still_easing_strike = true
 		var pos: Vector2 = far_locals[i] if far_tier else _sim_soldier_pos[i] - position
 		var sf: Vector2 = facing
 		if far_tier:
 			sf = far_facings[i]
 		elif i < _sim_soldier_facing.size():
 			sf = _sim_soldier_facing[i]
+		if not far_tier:
+			pos += _soldier_strike_offset(_render_strike_progress[i], sf, lunge_dist)
 		var t: Transform2D
 		if pp > 0.0:
 			if _detailed_lod:
@@ -5735,6 +5914,7 @@ func _refresh_flock_render(delta: float) -> void:
 		if _detailed_lod:
 			_mm_facing_pip.set_instance_transform_2d(i, _facing_pip_transform(pp, sf, pos))
 	_prone_easing_active = still_easing
+	_strike_easing_active = still_easing_strike
 	_apply_flock_color()
 
 
@@ -5752,6 +5932,23 @@ static func _facing_pip_transform(prone_progress: float, sf: Vector2, pos: Vecto
 	t.x *= scale
 	t.y *= scale
 	return t
+
+
+## The forward "lunge" render offset for a soldier actively striking
+## (docs/soldier-loadout-design.md phase 3 -- engaged_soldier_indices()), easing in via
+## `strike_progress` (0 = idle/marching, 1 = fully lunged) rather than a hard cosmetic
+## snap -- see _render_strike_progress's own doc comment. Purely additive to the render
+## position; combat/collision (_sim_soldier_pos) is untouched, so this can't change
+## outcomes or determinism. `sf` is the soldier's own facing (assumed already a unit
+## vector, matching every other caller in _refresh_flock_render that uses it via
+## `.angle()` without renormalizing). Pure -- a function of its three args only, directly
+## unit-testable without a live MultiMesh (whose instance data isn't synchronously
+## readable back in headless tests, the same reason _soldier_render_color/
+## _facing_pip_transform are extracted this way).
+static func _soldier_strike_offset(strike_progress: float, sf: Vector2, lunge_dist: float) -> Vector2:
+	if strike_progress <= 0.0:
+		return Vector2.ZERO
+	return sf * (lunge_dist * strike_progress)
 
 
 

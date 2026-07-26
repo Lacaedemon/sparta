@@ -1289,7 +1289,24 @@ into different tools:
   combined width of every attacker pressing it, so its line can actually
   reach all of them instead of presenting a narrower front than the fight
   has grown to. Both effects stay off below 2 adjacent enemies --- a normal
-  single-opponent fight under this stance looks like any other stance.
+  single-opponent fight under this stance looks like any other stance. Its
+  strikes also cycle: rather than every blow landing on whichever one enemy
+  it engaged first, the unit rotates its strike target among every adjacent
+  enemy in turn, so casualties spread across all of them instead of leaving
+  the rest untouched.
+- **March to contact** (<kbd>F3</kbd>) --- an advance-to-contact stance for a
+  plain move order. Normally, a plain move order with no explicit attack
+  target pushes straight through any hostile it crosses --- the unit
+  auto-acquires and fires or fights only under an explicit attack order, or
+  once it has no move order left at all. Under March to contact, that same
+  plain move order instead stops the unit to fight anything it meets along
+  the way, then --- once the fight ends --- resumes toward its original
+  destination on its own, with no separate order needed. Unlike Chase, it
+  never actively pursues a foe: a hostile that breaks contact and retreats is
+  let go rather than followed, and the march simply continues. Arm it before
+  issuing a move order to advance a unit through contested ground and let it
+  handle whatever it meets along the way, without babysitting each
+  engagement.
 
 ::: {#fig-cycle-charge-flee .demo}
 
@@ -1357,7 +1374,30 @@ A player Infantry regiment arms Multiple engage before two smaller enemy
 Infantry regiments, closing from different bearings, reach contact. The
 first enemy engages normally; once the second also presses in, the
 regiment's frontage widens from 11 to 14 files (their combined width) and
-its facing holds steady instead of swinging between the two of them.
+its facing holds steady instead of swinging between the two of them. Its
+strikes cycle too: the same clip's own state transcript shows the
+regiment's strike target switching from the first enemy to the second
+around the point both are pressing in at once, and the second enemy's
+soldier count keeps dropping afterward instead of sitting untouched.
+:::
+
+::: {#fig-march-to-contact .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/march_to_contact.jpg">
+  <source src="media/march_to_contact.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A player Infantry regiment is ordered under March to contact toward a point
+beyond a weaker hostile sitting in its path. It halts and fights on contact
+instead of marching through --- the info panel keeps reading its original
+destination order the whole time, so the queued move was never cleared ---
+routs the weaker foe, then resumes marching and arrives at its original
+destination.
 :::
 
 **Push stance** (<kbd>/</kbd>) is the aggressive, offensive counterpart to Give ground: an engaged unit continuously applies physical pressure to drive its opponent backwards. Where Give ground yields territory while fighting, Push stance advances into the enemy line, pushing opposing soldiers back while maintaining melee contact.

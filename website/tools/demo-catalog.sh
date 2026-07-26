@@ -77,4 +77,6 @@ DEMOS=(
   "shield_wall_encirclement|demos/inputs/shield-wall-encirclement.json|30|360|640|input"
   "player_delegation|demos/inputs/player-delegation.json|30|150|640|input"
   "multiple_engage|demos/inputs/multiple-engage.json|30|350|720|input"
+  "march_to_contact|demos/inputs/march-to-contact.json|30|370|640|input"
+  "nested_control_groups|demos/inputs/nested-control-groups.json|30|300|640|input"
 )

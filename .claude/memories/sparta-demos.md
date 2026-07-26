@@ -564,6 +564,25 @@ check the selection-commit timing before suspecting the key name or the dispatch
 after a `box` at tick 10 — the release lands at tick 26, so the command hit an empty
 selection; moved to tick 40.)
 
+## A tightly-drawn `box` can silently exclude a unit sitting right at its edge
+
+`DemoInputRecorder._drag`'s interpolated motion steps only reach `from.lerp(to, 15.0/16.0)`
+— `for i in range(1, DRAG_TICKS)` with `DRAG_TICKS := 16` stops at `i = 15`, one short of a
+full `i = 16`. The box-selection rectangle SelectionManager actually queries against is
+whatever the last `InputEventMouseMotion` set, so the effective drag corner is 15/16 of the
+way to the scripted `to`, not `to` itself — the button-up event at `tick + DRAG_TICKS` does
+carry the true `to` position, but it's an `InputEventMouseButton`, not a motion event, and
+doesn't update the box rectangle. A box drawn to just barely enclose a unit at its edge can
+therefore exclude that unit, with no error — the recording completes normally and the
+composite/group/order the script expects just silently has one fewer member than intended.
+
+**How to apply:** pad `box`/`rmb_drag` corner coordinates generously past any unit you need
+included — don't draw the box tightly to a unit's exact position. If a scripted box-select
+demo comes up short by exactly one unit at a boundary, check this 15/16 shortfall before
+suspecting the unit's spawn coordinates or the selection logic itself.
+(`Lacaedemon/sparta` PR #1088, 2026-07-26: `nested-control-groups.json`'s box-select for
+group 3 needed padding past its intended two units for this reason.)
+
 ## Staging a rout-pursuit demo: the constraint map (four dumped failures)
 
 Retuning the trapped_routing clip surveyed the pursuit-dynamics staging space;

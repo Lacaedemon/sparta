@@ -49,8 +49,19 @@ const MOUNT_WARHORSE: int = 302
 # 2026-07-24/25 discussion (docs/combat-model.md, once cited there) that the flat
 # rate felt unrealistically fast even as a short burst. The other types keep the
 # old baseline until they get their own tuning pass.
+#
+# default_hold_angle (phase 3, docs/soldier-loadout-design.md): the rest-pose angle
+# UnitMeshes.figure_mesh's held-item geometry rotates about its grip pivot from the
+# originally-authored orientation (angle 0.0 reproduces that orientation bit-for-bit --
+# see UnitMeshes._rotate_polys_about). Only WEAPON_SPEAR's angle is read today
+# (Unit._build_figure_meshes -> Unit.weapon_rest_angle(), threaded into the FOOT_SPEAR
+# figure's spear glyph): the spear is presented at a slight forward cant rather than
+# dead vertical, a deliberate ready-stance choice. The other three carry no rendered
+# held-item glyph today (Infantry's figure shows its shield, not the gladius; the
+# archer's bow isn't a registry weapon type; cavalry ignores foot figures entirely),
+# so their angles stay at the neutral 0.0 default pending a future glyph.
 static var _weapons: Dictionary = {
-	WEAPON_SPEAR: Weapon.make(WEAPON_SPEAR, "Spear", 2.4, 0.85, 0.6),
+	WEAPON_SPEAR: Weapon.make(WEAPON_SPEAR, "Spear", 2.4, 0.85, 0.6, deg_to_rad(15.0)),
 	WEAPON_GLADIUS: Weapon.make(WEAPON_GLADIUS, "Gladius", 1.3, 1.0, 1.2),
 	WEAPON_SIDEARM: Weapon.make(WEAPON_SIDEARM, "Sidearm", 0.6, 0.5, 0.6),
 	WEAPON_SPATHA: Weapon.make(WEAPON_SPATHA, "Spatha", 1.5, 1.1, 0.6),
@@ -68,8 +79,18 @@ static var _weapons: Dictionary = {
 # 0.05 stance residual is unshielded deflection, not a shield). arc_deg is
 # provisional shape data (nothing reads it for gameplay yet): the big body
 # scutum covers a wide front, the round shield less.
+#
+# default_hold_angle (phase 3): the rest-pose angle Unit.shield_rest_angle() resolves
+# and UnitMeshes.figure_mesh's held-item geometry rotates the shield glyph by (see the
+# matching comment on _weapons above -- angle 0.0 reproduces the originally-authored
+# orientation bit-for-bit). Only SHIELD_SCUTUM's angle is rendered today -- it's the
+# only shield type a figure actually draws a glyph for (Infantry's FOOT_INFANTRY
+# figure; Spearmen also carry a scutum but their figure shows the spear instead, and
+# Cavalry's mounted figure has no shield glyph at all) -- raised into a forward guard
+# rather than hanging dead vertical. SHIELD_ROUND and SHIELD_NONE stay at the neutral
+# 0.0 default pending a future glyph.
 static var _shields: Dictionary = {
-	SHIELD_SCUTUM: Shield.make(SHIELD_SCUTUM, "Scutum", 0.6, 120.0),
+	SHIELD_SCUTUM: Shield.make(SHIELD_SCUTUM, "Scutum", 0.6, 120.0, deg_to_rad(10.0)),
 	SHIELD_ROUND: Shield.make(SHIELD_ROUND, "Round shield", 0.25, 90.0),
 	SHIELD_NONE: Shield.make(SHIELD_NONE, "Unshielded", 0.0, 0.0),
 }
