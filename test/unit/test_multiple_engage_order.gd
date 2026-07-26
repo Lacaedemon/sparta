@@ -2,7 +2,12 @@ extends GutTest
 ## MULTIPLE_ENGAGE stance (melee maneuver): an engaged unit fighting 2+ distinct enemy
 ## units at once holds its current facing (instead of turning to bear on whichever single
 ## foe target_enemy resolves to) and widens its own frontage toward the combined width of
-## every adjacent enemy, so its line can actually reach all of them.
+## every adjacent enemy, so its line can actually reach all of them. Distributing damage
+## across those adjacent enemies is no longer this stance's own job -- SoldierMelee.resolve
+## (via Unit.resolve_soldier_melee) now fights every adjacent engaged enemy simultaneously,
+## per soldier, regardless of order_mode (see test_soldier_melee.gd's own multi-defender
+## coverage) -- so this file only covers the facing-hold and frontage-widening behavior that
+## remains specific to this stance.
 
 const BattleScript = preload("res://scripts/Battle.gd")
 const SEED: int = 12345
@@ -18,6 +23,22 @@ func _make_unit(max_soldiers: int = 120) -> Unit:
 	add_child_autofree(u)   # _ready() sets soldiers = max_soldiers and joins groups
 	u.facing = Vector2.DOWN
 	u.position = Vector2.ZERO
+	return u
+
+
+## An engaged, soldier-seeded variant of _make_unit() -- mirrors test_all_out_attack.gd's
+## _make_engaged_unit(): UnitCombat.strike()'s per-soldier melee branch (and, through it,
+## Unit.resolve_soldier_melee's adjacent-enemy fan-out) requires is_engaged() true and a
+## populated _sim_soldier_pos on both sides, which a bare _make_unit() never reaches.
+func _make_engaged_unit(max_soldiers: int, pos: Vector2, face: Vector2) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = max_soldiers
+	add_child_autofree(u)
+	u.position = pos
+	u.facing = face
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.1)     # latch is_engaged() true
+	u.seed_sim_soldiers()   # seed bodies + full health
 	return u
 
 
@@ -283,118 +304,56 @@ func test_multiple_engage_reflow_fires_from_a_live_think_tick_in_melee_contact()
 		"a live _think() tick reflows frontage toward the combined width of both adjacent enemies (9 + 9)")
 
 
-# --- Strike-target cycling (_next_multiple_engage_target) -------------------
+# --- End-to-end: resolve_soldier_melee damages every adjacent engaged enemy at once ------
+# (SoldierMelee.resolve's own multi-defender search, reach-gating, and determinism coverage
+# lives in test_soldier_melee.gd -- this file only checks that Unit.resolve_soldier_melee's
+# own adjacent-enemy gather, called the way UnitCombat.strike actually calls it, reaches both
+# enemies regardless of order_mode, mirroring the frontage-reflow end-to-end test above.)
 
-func test_next_multiple_engage_target_is_a_no_op_with_fewer_than_two_adjacent() -> void:
-	var u := _make_unit()
-	var e1 := _make_unit()
-	e1.uid = 2
-	assert_eq(u._next_multiple_engage_target([], e1), e1,
-		"no adjacent enemies at all: current is returned unchanged")
-	assert_eq(u._next_multiple_engage_target([e1], e1), e1,
-		"only one adjacent enemy: current is returned unchanged -- nothing to rotate onto")
-
-
-func test_next_multiple_engage_target_advances_to_the_next_higher_uid() -> void:
-	var u := _make_unit()
-	var e_lo := _make_unit()
-	e_lo.uid = 2
-	var e_mid := _make_unit()
-	e_mid.uid = 5
-	var e_hi := _make_unit()
-	e_hi.uid = 9
-	# Array order deliberately NOT uid-sorted -- the rotation must sort internally rather
-	# than trust whatever order a group/spatial query happens to hand back.
-	var adjacent: Array[Unit] = [e_hi, e_lo, e_mid]
-	assert_eq(u._next_multiple_engage_target(adjacent, e_lo), e_mid,
-		"advances from the lowest uid to the next one up")
-	assert_eq(u._next_multiple_engage_target(adjacent, e_mid), e_hi,
-		"advances from the middle uid to the highest")
-
-
-func test_next_multiple_engage_target_wraps_around_from_the_highest_uid() -> void:
-	var u := _make_unit()
-	var e_lo := _make_unit()
-	e_lo.uid = 2
-	var e_hi := _make_unit()
-	e_hi.uid = 9
-	assert_eq(u._next_multiple_engage_target([e_hi, e_lo], e_hi), e_lo,
-		"the highest-uid entry wraps back around to the lowest, completing the round robin")
-
-
-func test_next_multiple_engage_target_restarts_at_the_lowest_uid_when_current_is_not_adjacent() -> void:
-	var u := _make_unit()
-	var e_lo := _make_unit()
-	e_lo.uid = 2
-	var e_hi := _make_unit()
-	e_hi.uid = 9
-	var gone := _make_unit()   # e.g. the previously-fought enemy just broke contact
-	gone.uid = 4
-	assert_eq(u._next_multiple_engage_target([e_hi, e_lo], gone), e_lo,
-		"current not present in the adjacent set restarts at the lowest-uid entry, not an out-of-range index")
-
-
-# --- End-to-end: MULTIPLE_ENGAGE spreads casualties across both enemies -----
-
-func test_multiple_engage_spreads_casualties_across_both_adjacent_enemies_over_time() -> void:
-	# UnitCombat.strike() only ever damages whichever ONE enemy target_enemy resolves to --
-	# this proves the cycling above actually changes the outcome for a genuinely
-	# multi-attacker fight: both e1 and e2 take casualties over time, not just e1.
-	var u := _make_unit(60)
+func test_resolve_soldier_melee_damages_both_adjacent_engaged_enemies_regardless_of_order_mode() -> void:
+	# u is genuinely adjacent to (and engaged with) TWO distinct enemy units at once, stacked
+	# behind it at slightly different distances (mirroring _adjacent_engaged_enemy_units()'s
+	# own contact-range test above -- unit-CENTER distance, not per-soldier position, is what
+	# "adjacent" means). Calling resolve_soldier_melee(e_left) -- exactly how UnitCombat.strike's
+	# engaged branch invokes it -- must ALSO damage e_right, since the wrapper unions in every
+	# adjacent engaged enemy, not just the one it's handed. Plain NORMAL order_mode (u.order_mode
+	# is never set here) -- proving this is no longer MULTIPLE_ENGAGE-specific, per this file's
+	# own top-of-file doc comment.
+	var u := _make_engaged_unit(60, Vector2(0, 0), Vector2.DOWN)
 	u.uid = 1
 	u.team = 0
-	u.order_mode = Unit.ORDER_MULTIPLE_ENGAGE
-	var e1 := _make_unit(120)
-	e1.uid = 2
-	e1.team = 1
-	e1.position = Vector2(0.0, u._front_depth() + e1._front_depth() - 2.0)
-	var e2 := _make_unit(120)
-	e2.uid = 3
-	e2.team = 1
-	e2.position = Vector2(0.0, u._front_depth() + e2._front_depth() - 4.0)
-	u.target_enemy = e1
-	var e1_before: int = e1.soldiers
-	var e2_before: int = e2.soldiers
-	# _attack_cd only decrements in _physics_process (not _think itself), so a bare-fixture
-	# test driving _think() directly (the pattern every other test in this file uses) has to
-	# replicate that decrement by hand between ticks to let the cooldown actually run out and
-	# more than one strike land. 100 ticks (10 sim seconds) is enough for several strikes at the
-	# default gladius cadence (melee_attack_interval ~1.2s) without fully depleting either
-	# 120-soldier enemy -- a full kill would fall through to the PRE-EXISTING nearest-enemy
-	# fallback in UnitTargeting.current_target() and confound this test with that unrelated path.
-	for i in range(100):
-		u._attack_cd = maxf(0.0, u._attack_cd - 0.1)
-		u._think(0.1)
-	assert_lt(e1.soldiers, e1_before, "the first adjacent enemy takes casualties")
-	assert_lt(e2.soldiers, e2_before,
-		"the second adjacent enemy ALSO takes casualties -- cycling spreads the damage instead of locking onto e1 alone")
 
+	var e_left := Unit.new()
+	e_left.max_soldiers = 120
+	add_child_autofree(e_left)   # _ready() sets soldiers = max_soldiers, so _front_depth() below is valid
+	e_left.uid = 2
+	e_left.team = 1
+	e_left.facing = Vector2.UP
+	e_left.position = Vector2(0.0, u._front_depth() + e_left._front_depth() - 2.0)
+	e_left.state = Unit.State.FIGHTING
+	e_left.tick_engaged(0.1)
+	e_left.seed_sim_soldiers()   # seeded AFTER position is set, so bodies land at the right spot
 
-func test_normal_order_mode_control_leaves_the_second_adjacent_enemy_undamaged() -> void:
-	# Contrast for the test above: the identical two-adjacent-enemy setup under the default
-	# stance never rotates target_enemy at all -- current_target() just keeps returning the
-	# same live target_enemy -- so every strike lands on e1 and e2 takes zero casualties. This
-	# is exactly the locked-onto-one-enemy bug the cycling fixes; without it, this control and
-	# the MULTIPLE_ENGAGE test above would look identical.
-	var u := _make_unit(60)
-	u.uid = 1
-	u.team = 0
-	# order_mode defaults to NORMAL.
-	var e1 := _make_unit(120)
-	e1.uid = 2
-	e1.team = 1
-	e1.position = Vector2(0.0, u._front_depth() + e1._front_depth() - 2.0)
-	var e2 := _make_unit(120)
-	e2.uid = 3
-	e2.team = 1
-	e2.position = Vector2(0.0, u._front_depth() + e2._front_depth() - 4.0)
-	u.target_enemy = e1
-	var e1_before: int = e1.soldiers
-	var e2_before: int = e2.soldiers
-	# Same 100-tick window as the MULTIPLE_ENGAGE test above, for a like-for-like contrast.
-	for i in range(100):
-		u._attack_cd = maxf(0.0, u._attack_cd - 0.1)
-		u._think(0.1)
-	assert_lt(e1.soldiers, e1_before, "sanity: e1 is still being fought and takes casualties")
-	assert_eq(e2.soldiers, e2_before,
-		"without MULTIPLE_ENGAGE, target_enemy never rotates onto e2, so it takes no casualties at all")
+	var e_right := Unit.new()
+	e_right.max_soldiers = 120
+	add_child_autofree(e_right)
+	e_right.uid = 3
+	e_right.team = 1
+	e_right.facing = Vector2.UP
+	e_right.position = Vector2(0.0, u._front_depth() + e_right._front_depth() - 4.0)
+	e_right.state = Unit.State.FIGHTING
+	e_right.tick_engaged(0.1)
+	e_right.seed_sim_soldiers()
+
+	assert_eq(u._adjacent_engaged_enemy_units().size(), 2,
+		"sanity: both enemies read as adjacent and engaged")
+	var e_left_before: int = e_left.soldiers
+	var e_right_before: int = e_right.soldiers
+	# resolve_soldier_melee bypasses attack-cadence gating entirely (that's _think()'s own
+	# _attack_cd, not this function's concern), so a plain loop suffices -- no need to drive
+	# _think() or replicate its cooldown decrement.
+	for _k in range(100):
+		u.resolve_soldier_melee(e_left)
+	assert_lt(e_left.soldiers, e_left_before, "the primary (passed) enemy takes casualties")
+	assert_lt(e_right.soldiers, e_right_before,
+		"the other adjacent enemy ALSO takes casualties in the same run -- each soldier finds its own nearest enemy, no rotation needed")
