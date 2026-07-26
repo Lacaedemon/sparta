@@ -4411,6 +4411,117 @@ func test_render_dirty_clears_after_a_refreshing_process_tick() -> void:
 	assert_false(u._render_dirty, "a process tick consumes the dirty flag")
 
 
+# --- strike lunge: docs/soldier-loadout-design.md phase 3 ---------------------
+
+func test_engaged_soldiers_ease_into_a_forward_strike_lunge() -> void:
+	# A soldier the sim treats as actively fighting (engaged_soldier_indices) renders
+	# nudged forward along its own facing, easing in rather than snapping -- the same
+	# "no snaps" render idiom _render_prone_progress already uses, applied to a lunge
+	# instead of a fall. Soldier 0 (rank 0, file 0) is genuinely laid out at the front of
+	# a NORMAL formation, so it's inside the engaged selection once the latch is armed.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u._refresh_flock_render(0.0)
+	assert_almost_eq(u._render_strike_progress[0], 0.0, 0.0001, "starts idle -- not engaged yet")
+
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch so engaged_soldier_indices returns the front rank
+	u._refresh_flock_render(0.05)
+	var after_one_tick: float = u._render_strike_progress[0]
+	assert_gt(after_one_tick, 0.0, "progress starts moving toward the fully-lunged target")
+	assert_lt(after_one_tick, 1.0, "one small tick does not snap straight to the lunge")
+
+	for _i in range(50):
+		u._refresh_flock_render(0.05)
+	assert_almost_eq(u._render_strike_progress[0], 1.0, 0.0001,
+		"enough ticks converge on fully lunged")
+
+
+func test_unengaged_soldiers_do_not_lunge() -> void:
+	# The last soldier in a 120-strong NORMAL formation sits well behind the engaged
+	# depth (files * engaged_ranks()), so it should stay at rest even while the unit
+	# fights.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var rear_idx: int = u._sim_soldier_pos.size() - 1
+	var cutoff: int = mini(u._sim_soldier_pos.size(),
+			u.formation_files(u._sim_soldier_pos.size()) * u.engaged_ranks())
+	assert_lt(cutoff, u._sim_soldier_pos.size(),
+		"sanity: the engaged budget is a genuine subset of the whole block")
+	for _i in range(50):
+		u._refresh_flock_render(0.05)
+	assert_almost_eq(u._render_strike_progress[rear_idx], 0.0, 0.0001,
+		"a soldier outside the engaged selection never starts lunging")
+
+
+func test_leaving_engagement_eases_the_lunge_back_out() -> void:
+	# The reverse direction: once the soldier drops out of the engaged selection (the
+	# regiment stops fighting and ENGAGED_LINGER decays to 0), the lunge must ease back
+	# to rest, not snap upright instantly.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	for _i in range(50):
+		u._refresh_flock_render(0.05)
+	assert_almost_eq(u._render_strike_progress[0], 1.0, 0.0001, "fully lunged after enough ticks")
+
+	u.state = Unit.State.IDLE
+	u.tick_engaged(10.0)   # ENGAGED_LINGER worth of real time -- the latch fully decays
+	u._refresh_flock_render(0.05)
+	var after_one_tick: float = u._render_strike_progress[0]
+	assert_lt(after_one_tick, 1.0, "progress starts moving back toward rest")
+	assert_gt(after_one_tick, 0.0, "one small tick does not snap straight back to rest")
+
+
+func test_process_keeps_easing_strike_progress_with_no_other_refresh_trigger_active() -> void:
+	# Mirrors test_process_keeps_easing_prone_progress_with_no_other_refresh_trigger_active:
+	# once a soldier's lunge ease is mid-transition, _process must keep advancing it via
+	# _strike_easing_active even when none of _process's OTHER refresh triggers hold -- in
+	# real play the ENGAGED_LINGER window keeps engaged_soldier_indices() returning a
+	# soldier for a beat after combat state itself moves the unit out of FIGHTING.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.IDLE
+	u._process(0.0)   # consume the initial _render_dirty raised by seeding
+	assert_almost_eq(u._render_strike_progress[0], 0.0, 0.0001, "starts idle")
+
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch
+	u._refresh_flock_render(0.05)   # the same-tick kickoff refresh a real strike would trigger
+	assert_gt(u._render_strike_progress[0], 0.0, "the kickoff refresh starts the ease")
+	assert_true(u._strike_easing_active, "still short of the target right after the kickoff")
+
+	u.state = Unit.State.IDLE   # combat state moves on; ENGAGED_LINGER still holds the latch
+	assert_false(u._render_dirty, "no body-speed trigger armed -- the body has already settled")
+	assert_ne(u.state, Unit.State.FIGHTING, "not fighting -- that gate condition is not what's covering us")
+	for _i in range(60):
+		u._process(0.05)
+
+	assert_almost_eq(u._render_strike_progress[0], 1.0, 0.0001,
+		"the ease completes via _strike_easing_active even with every other trigger inactive")
+
+
+# --- _soldier_strike_offset: pure render-position helper ----------------------
+# Pure function, no live MultiMesh read-back (same reasoning as _facing_pip_transform).
+
+func test_soldier_strike_offset_is_zero_when_not_striking() -> void:
+	assert_eq(Unit._soldier_strike_offset(0.0, Vector2.RIGHT, 5.0), Vector2.ZERO)
+
+
+func test_soldier_strike_offset_scales_with_progress_along_facing() -> void:
+	assert_eq(Unit._soldier_strike_offset(1.0, Vector2.RIGHT, 5.0), Vector2(5.0, 0.0))
+	assert_eq(Unit._soldier_strike_offset(0.5, Vector2.RIGHT, 5.0), Vector2(2.5, 0.0))
+
+
+func test_soldier_strike_offset_follows_an_arbitrary_facing_direction() -> void:
+	var offset: Vector2 = Unit._soldier_strike_offset(1.0, Vector2.UP, 4.0)
+	assert_almost_eq(offset.x, 0.0, 0.0001, "no sideways component when facing straight up")
+	assert_almost_eq(offset.y, -4.0, 0.0001, "the full lunge distance, toward -y (up)")
+
+
 func test_render_alpha_fades_toward_routing_target_instead_of_snapping() -> void:
 	# A routing unit's translucency eases at Unit.ALPHA_FADE_RATE, not an instant drop to
 	# Unit.ROUTING_ALPHA -- the same "active fade, not a snap" pattern as _current_speed's
@@ -4477,6 +4588,65 @@ func test_foot_kind_matches_unit_type() -> void:
 	assert_eq(_make_unit(4)._foot_kind(), UnitMeshes.FOOT_INFANTRY, "plain unit -> infantry (shield)")
 	assert_eq(_spearman_unit()._foot_kind(), UnitMeshes.FOOT_SPEAR, "anti-cavalry unit -> spear")
 	assert_eq(_archer_unit()._foot_kind(), UnitMeshes.FOOT_ARCHER, "ranged unit -> archer (bow)")
+
+
+func test_foot_kind_prefers_the_actual_equipped_weapon_type_over_the_flags() -> void:
+	# docs/soldier-loadout-design.md phase 3: _foot_kind reads weapon_type_id first, ahead
+	# of the coarse anti_cavalry/is_ranged flags -- a future weapon-switch order writes
+	# weapon_type_id, so the render must follow THAT, not a flag nothing else touches.
+	var u := _make_unit(4)
+	assert_eq(u._foot_kind(), UnitMeshes.FOOT_INFANTRY, "sanity: default loadout is infantry")
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	assert_eq(u._foot_kind(), UnitMeshes.FOOT_SPEAR,
+		"weapon_type_id alone (no anti_cavalry flag) selects the spear figure")
+
+	var v := _make_unit(4)
+	v.weapon_type_id = LoadoutRegistry.WEAPON_SIDEARM
+	assert_eq(v._foot_kind(), UnitMeshes.FOOT_ARCHER,
+		"weapon_type_id alone (no is_ranged flag) selects the archer figure")
+
+
+func test_weapon_rest_angle_reads_the_registry_default() -> void:
+	var u := _make_unit(4)
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	assert_almost_eq(u.weapon_rest_angle(),
+		LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPEAR).default_hold_angle, 0.0001)
+
+
+func test_weapon_rest_angle_falls_back_to_zero_for_an_unknown_id() -> void:
+	var u := _make_unit(4)
+	u.weapon_type_id = -999
+	assert_eq(u.weapon_rest_angle(), 0.0)
+
+
+func test_shield_rest_angle_reads_the_registry_default() -> void:
+	var u := _make_unit(4)
+	u.shield_type_id = LoadoutRegistry.SHIELD_SCUTUM
+	assert_almost_eq(u.shield_rest_angle(),
+		LoadoutRegistry.shield(LoadoutRegistry.SHIELD_SCUTUM).default_hold_angle, 0.0001)
+
+
+func test_shield_rest_angle_falls_back_to_zero_for_an_unknown_id() -> void:
+	var u := _make_unit(4)
+	u.shield_type_id = -999
+	assert_eq(u.shield_rest_angle(), 0.0)
+
+
+func test_figure_meshes_bake_the_unit_loadout_hold_angles() -> void:
+	# _build_figure_meshes threads weapon_rest_angle()/shield_rest_angle() through to
+	# UnitMeshes.figure_mesh, so a unit actually carrying WEAPON_SPEAR (set before _ready(),
+	# matching how Battle._spawn_unit configures a real Spearman) bakes a figure that
+	# differs from the same shape built at the neutral 0.0 default -- proving the angle
+	# actually reaches the mesh, not just that weapon_rest_angle() itself is nonzero.
+	var u: Unit = Unit.new()
+	u.anti_cavalry = true
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	add_child_autofree(u)
+	assert_gt(absf(u.weapon_rest_angle()), 0.0001,
+		"sanity: LoadoutRegistry gives the spear a nonzero rest angle")
+	var neutral := UnitMeshes.figure_mesh(false, UnitMeshes.FOOT_SPEAR, Unit.MARK_RADIUS, false, false)
+	assert_true(u._figure_body_mesh != neutral,
+		"the spawned unit's figure differs from the same shape baked at hold_angle 0.0")
 
 
 func test_foot_types_build_distinct_figure_meshes() -> void:

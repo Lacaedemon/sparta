@@ -142,12 +142,24 @@ static func kite_mesh(radius: float) -> ArrayMesh:
 ## scaled-up rim copy; `flip` mirrors it left-right so the figure faces the unit's march
 ## direction (MultiMesh 2D can't store a reflected instance transform, so we bake two
 ## meshes and swap). Built by fan-triangulating the figure's convex polygon parts.
-static func figure_mesh(is_cav: bool, foot_kind: int, mark_r: float, outline: bool, flip: bool) -> ArrayMesh:
+##
+## `weapon_hold_angle`/`shield_hold_angle` (docs/soldier-loadout-design.md phase 3, radians)
+## orient the held-item glyph the unit's actual equipped Weapon/Shield type carries --
+## resolved by the caller (Unit._build_figure_meshes) via LoadoutRegistry, never invented
+## here. Both default to 0.0, which reproduces the originally-authored orientation
+## bit-for-bit (see _rotate_polys_about), so a caller that omits them (every pre-phase-3
+## call site, and the bow/cavalry figures below, which have no matching registry type to
+## read a hold angle from) is unaffected. Included in the cache key like every other
+## shape parameter, so distinct hold angles bake distinct meshes rather than colliding.
+static func figure_mesh(is_cav: bool, foot_kind: int, mark_r: float, outline: bool, flip: bool,
+		weapon_hold_angle: float = 0.0, shield_hold_angle: float = 0.0) -> ArrayMesh:
 	var who: String = "cav" if is_cav else "foot%d" % foot_kind
-	var key: String = "fig_%s_%s%s_%.2f" % [who, "o" if outline else "b", "f" if flip else "", mark_r]
+	var key: String = "fig_%s_%s%s_%.2f_%.4f_%.4f" % [who, "o" if outline else "b", "f" if flip else "",
+			mark_r, weapon_hold_angle, shield_hold_angle]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var polys: Array = _horse_figure_polys(mark_r) if is_cav else _foot_figure_polys(foot_kind, mark_r)
+	var polys: Array = _horse_figure_polys(mark_r) if is_cav \
+			else _foot_figure_polys(foot_kind, mark_r, weapon_hold_angle, shield_hold_angle)
 	var shades: Array = []
 	if not outline:
 		# BODY meshes carry per-part vertex-colour shading (values around white, so the
@@ -261,6 +273,24 @@ static func _scale_polys(polys: Array, s: float) -> Array:
 	return out
 
 
+## Rotate every vertex of every polygon about `pivot` by `angle` radians -- used to
+## orient a held item (spear, shield) to its weapon/shield type's hold angle without
+## re-authoring the polygon's own shape. An angle of exactly 0.0 is a no-op (returns
+## the input `polys` unchanged, not a rotated copy), so a type left at
+## LoadoutRegistry's neutral default renders identically to the pre-phase-3 baked
+## orientation.
+static func _rotate_polys_about(polys: Array, pivot: Vector2, angle: float) -> Array:
+	if is_zero_approx(angle):
+		return polys
+	var out: Array = []
+	for poly in polys:
+		var rotated := PackedVector2Array()
+		for v in poly:
+			rotated.push_back(pivot + (v - pivot).rotated(angle))
+		out.push_back(rotated)
+	return out
+
+
 ## Mirror every vertex left-right about the figure's centre (negate x), producing the
 ## opposite-facing figure. Reverses polygon winding, but 2D canvas meshes aren't
 ## backface-culled, so the silhouette renders the same.
@@ -288,15 +318,18 @@ static func _disc_poly(c: Vector2, radius: float, segments: int = 8) -> PackedVe
 ## (screen-up = -y): a head, a tapering torso and two legs, plus a per-type held
 ## item (`kind`) on one flank so spearmen / archers / infantry stay distinct up
 ## close. Sizes scale with the mark radius so the figure tracks the mark it replaces.
-static func _foot_figure_polys(kind: int, r: float) -> Array:
+## `weapon_hold_angle`/`shield_hold_angle` orient the held item -- see figure_mesh's
+## own doc comment for where they come from and why the bow ignores its param.
+static func _foot_figure_polys(kind: int, r: float, weapon_hold_angle: float = 0.0,
+		shield_hold_angle: float = 0.0) -> Array:
 	var parts: Array = _foot_body_polys(r)
 	match kind:
 		FOOT_SPEAR:
-			parts.append_array(_spear_polys(r))
+			parts.append_array(_spear_polys(r, weapon_hold_angle))
 		FOOT_ARCHER:
 			parts.append_array(_bow_polys(r))
 		_:
-			parts.append_array(_shield_polys(r))
+			parts.append_array(_shield_polys(r, shield_hold_angle))
 	return parts
 
 
@@ -320,8 +353,11 @@ static func _foot_body_polys(r: float) -> Array:
 
 
 ## A spear held upright on the figure's right: a thin shaft rising above the head
-## with a small triangular head, protruding past the body silhouette.
-static func _spear_polys(r: float) -> Array:
+## with a small triangular head, protruding past the body silhouette. `hold_angle`
+## (radians, docs/soldier-loadout-design.md phase 3 -- Weapon.default_hold_angle)
+## rotates the whole spear about a pivot near the gripping hand (hip height); 0.0
+## reproduces the originally-authored dead-vertical orientation bit-for-bit.
+static func _spear_polys(r: float, hold_angle: float = 0.0) -> Array:
 	var shaft := PackedVector2Array([
 		Vector2(0.78 * r, -2.0 * r), Vector2(1.0 * r, -2.0 * r),
 		Vector2(1.0 * r, 1.55 * r), Vector2(0.78 * r, 1.55 * r),
@@ -330,7 +366,8 @@ static func _spear_polys(r: float) -> Array:
 		Vector2(0.89 * r, -2.6 * r), Vector2(1.22 * r, -1.9 * r),
 		Vector2(0.56 * r, -1.9 * r),
 	])
-	return [shaft, head]
+	var grip := Vector2(0.9 * r, 0.45 * r)
+	return _rotate_polys_about([shaft, head], grip, hold_angle)
 
 
 ## A bow held on the figure's right: a curved limb (an arc strip) with a straight
@@ -348,14 +385,18 @@ static func _bow_polys(r: float) -> Array:
 
 
 ## A heater shield held on the figure's left: a convex pentagon protruding past
-## the torso so the silhouette reads as a shield-bearer.
-static func _shield_polys(r: float) -> Array:
+## the torso so the silhouette reads as a shield-bearer. `hold_angle` (radians,
+## docs/soldier-loadout-design.md phase 3 -- Shield.default_hold_angle) rotates the
+## shield about a pivot near the shield arm's grip (the inner edge, chest height);
+## 0.0 reproduces the originally-authored orientation bit-for-bit.
+static func _shield_polys(r: float, hold_angle: float = 0.0) -> Array:
 	var shield := PackedVector2Array([
 		Vector2(-1.3 * r, -0.7 * r), Vector2(-0.5 * r, -0.7 * r),
 		Vector2(-0.5 * r, 0.25 * r), Vector2(-0.9 * r, 0.7 * r),
 		Vector2(-1.3 * r, 0.25 * r),
 	])
-	return [shield]
+	var grip := Vector2(-0.5 * r, -0.2 * r)
+	return _rotate_polys_about([shield], grip, hold_angle)
 
 
 ## A curved strip — an arc of `radius` about `c` from angle `a0` to `a1`, `thickness`

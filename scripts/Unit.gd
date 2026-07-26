@@ -2890,6 +2890,18 @@ func set_formation(mode: int) -> void:
 	_reset_shield_hold_angles()
 
 
+## The rest-pose hold angle for this unit's weapon type (docs/soldier-loadout-design.md
+## phase 3): read by _build_figure_meshes to orient the figure's held-item glyph (today,
+## only the FOOT_SPEAR spear glyph -- see UnitMeshes.figure_mesh's own doc comment for
+## why the others don't consume it yet). An unknown weapon id resolves to 0.0, the same
+## defensive fallback shield_rest_angle below uses.
+func weapon_rest_angle() -> float:
+	var w: Weapon = LoadoutRegistry.weapon(weapon_type_id)
+	if w == null:
+		return 0.0
+	return w.default_hold_angle
+
+
 ## The rest-pose hold angle for this unit's shield type: the single source every
 ## hold-angle default reads (SoldierBodies.seed, its tail resize, and the
 ## formation-change reset below). An unknown shield id resolves to 0.0 —
@@ -3287,6 +3299,32 @@ const PRONE_EASE_RATE: float = 4.0
 # forever instead of completing, the same "inert number" class of bug already
 # fixed for _current_speed/position.
 var _prone_easing_active: bool = false
+
+# Per-soldier RENDER-only "striking" lunge progress (docs/soldier-loadout-design.md
+# phase 3; 0 = idle/marching, 1 = fully lunged in), index-aligned with _sim_soldier_pos --
+# mirrors _render_prone_progress's derived-not-simulated pattern exactly, just eased
+# toward a different sim signal: 1.0 while the soldier's index is in
+# engaged_soldier_indices() (the sim's own melee/contact selection -- the same set the
+# engaged-highlight debug overlay already reads), 0.0 otherwise. _refresh_flock_render
+# consumes it to nudge the MARK/FIGURE render position forward along the soldier's own
+# facing (_soldier_strike_offset below) -- purely cosmetic: _sim_soldier_pos (the real
+# combat/collision position) is untouched, so this can't affect combat outcomes or
+# determinism. Lazily resized in _refresh_flock_render, same as _render_prone_progress.
+var _render_strike_progress: PackedFloat32Array = PackedFloat32Array()
+# Per-second rate _render_strike_progress eases toward its target -- faster than
+# PRONE_EASE_RATE so a lunge reads as a quick, punctuated thrust rather than either an
+# instant snap or a sluggish drift.
+const STRIKE_EASE_RATE: float = 6.0
+# How far (world units) a fully-lunged soldier's render position shifts forward along its
+# own facing, as a fraction of the mark radius -- large enough to read as a visible push
+# into contact at both LODs, small enough that neighbouring soldiers' marks don't overlap.
+const STRIKE_LUNGE_RADIUS_FRACTION: float = 0.55
+# Whether ANY soldier's _render_strike_progress is still short of its target -- the
+# strike-pose counterpart to _prone_easing_active, needed for the identical reason: a
+# soldier can stop being engaged (ENGAGED_LINGER decaying, or the whole unit leaving
+# FIGHTING) well before its lunge has eased back out, and none of _process's other
+# refresh-gate conditions are guaranteed to keep firing once that happens.
+var _strike_easing_active: bool = false
 
 # Per-soldier stamina pool (slice D), index-aligned with _sim_soldier_pos: current stamina
 # in [0, max_stamina] where max_stamina is the per-type value from combat_profile(). Drained
@@ -5553,34 +5591,67 @@ func _setup_flock_renderer() -> void:
 ## tip). All three reach about as far forward as the pointer and stay no longer along the
 ## facing axis, so a rotated rank can't merge into a bar. The earlier spearmen rect and
 ## archer diamond were elongated/symmetric and, laid flat across a rank, striped.
+## Keyed off _foot_kind() (docs/soldier-loadout-design.md phase 3), so the mark shape and
+## the figure-LOD silhouette below share one archetype source instead of duplicating the
+## selection logic.
 func _build_mark_meshes(mark_r: float) -> void:
-	if anti_cavalry:
-		_mark_body_mesh    = UnitMeshes.dart_mesh(mark_r * 1.15)
-		_mark_outline_mesh = UnitMeshes.dart_mesh(mark_r * 1.15 + 0.6)
-	elif is_ranged:
-		_mark_body_mesh    = UnitMeshes.kite_mesh(mark_r * 1.15)
-		_mark_outline_mesh = UnitMeshes.kite_mesh(mark_r * 1.15 + 0.6)
-	else:
-		_mark_body_mesh    = UnitMeshes.pointer_mesh(mark_r)
-		_mark_outline_mesh = UnitMeshes.pointer_mesh(mark_r + 0.6)
+	match _foot_kind():
+		UnitMeshes.FOOT_SPEAR:
+			_mark_body_mesh    = UnitMeshes.dart_mesh(mark_r * 1.15)
+			_mark_outline_mesh = UnitMeshes.dart_mesh(mark_r * 1.15 + 0.6)
+		UnitMeshes.FOOT_ARCHER:
+			_mark_body_mesh    = UnitMeshes.kite_mesh(mark_r * 1.15)
+			_mark_outline_mesh = UnitMeshes.kite_mesh(mark_r * 1.15 + 0.6)
+		_:
+			_mark_body_mesh    = UnitMeshes.pointer_mesh(mark_r)
+			_mark_outline_mesh = UnitMeshes.pointer_mesh(mark_r + 0.6)
 
 
 ## Detailed figure-silhouette meshes (zoomed-in LOD): a standing soldier for foot,
 ## a mounted rider for cavalry. Both are shared/cached like the mark meshes. Foot
-## soldiers carry a per-type item (spear / bow / shield) matching their mark shape.
-## Each is baked facing right and mirrored facing left, so the render can swap meshes
-## to face the unit's march direction.
+## soldiers carry a per-type item (spear / bow / shield) matching their mark shape,
+## oriented at that item's actual weapon/shield type's rest-pose hold angle
+## (docs/soldier-loadout-design.md phase 3 -- weapon_rest_angle/shield_rest_angle,
+## which resolve through LoadoutRegistry). Each is baked facing right and mirrored
+## facing left, so the render can swap meshes to face the unit's march direction.
+## Both angles are threaded through uniformly for every foot_kind, even though
+## _foot_figure_polys only reads whichever one matches the kind's own held item
+## (weapon for FOOT_SPEAR, shield for the infantry kind, neither for FOOT_ARCHER's
+## bow) -- simpler than special-casing figure_mesh's cache key per kind, at the cost
+## of an occasional cache entry that's geometrically identical to another one under
+## a different unused angle.
 func _build_figure_meshes(mark_r: float) -> void:
 	var foot_kind: int = _foot_kind()
-	_figure_body_mesh = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, false, false)
-	_figure_outline_mesh = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, true, false)
-	_figure_body_mesh_flip = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, false, true)
-	_figure_outline_mesh_flip = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, true, true)
+	var weapon_hold: float = weapon_rest_angle()
+	var shield_hold: float = shield_rest_angle()
+	_figure_body_mesh = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, false, false,
+			weapon_hold, shield_hold)
+	_figure_outline_mesh = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, true, false,
+			weapon_hold, shield_hold)
+	_figure_body_mesh_flip = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, false, true,
+			weapon_hold, shield_hold)
+	_figure_outline_mesh_flip = UnitMeshes.figure_mesh(is_cavalry, foot_kind, mark_r, true, true,
+			weapon_hold, shield_hold)
 
 
 ## Which foot-figure variant this unit uses, mirroring the per-type mark shapes
 ## (spearmen = shaft, archers = bow, everything else = shield). Cavalry ignores it.
+##
+## Prefers the soldier's actual equipped weapon type (docs/soldier-loadout-design.md
+## phase 3) over the coarse anti_cavalry/is_ranged flags, since weapon_type_id is the
+## field a future weapon-switch order would actually write -- reading it here means
+## the render follows a switch immediately instead of needing its own update.
+## Falls back to the flags when weapon_type_id doesn't resolve to either archetype
+## (a bare/synthetic unit built directly in a test, which sets anti_cavalry/is_ranged
+## but keeps Unit's default WEAPON_GLADIUS): under today's roster every real spawned
+## unit's weapon_type_id and flags agree (WEAPON_SPEAR <-> anti_cavalry, WEAPON_SIDEARM
+## <-> is_ranged), so this is a behavior-preserving remap of the old flag-only logic,
+## not a new selection.
 func _foot_kind() -> int:
+	if weapon_type_id == LoadoutRegistry.WEAPON_SPEAR:
+		return UnitMeshes.FOOT_SPEAR
+	if weapon_type_id == LoadoutRegistry.WEAPON_SIDEARM:
+		return UnitMeshes.FOOT_ARCHER
 	if anti_cavalry:
 		return UnitMeshes.FOOT_SPEAR
 	if is_ranged:
@@ -5654,14 +5725,16 @@ func _process(delta: float) -> void:
 	# moved (SoldierBodies.step raised _render_dirty), the facing turned (mark rotation,
 	# figure mirror and conversio squash all key off it), the unit is fighting (front-rank
 	# churn / prone flips), the instance count drifted from the body count, or a soldier's
-	# prone-progress ease is still mid-transition (_prone_easing_active, set by the refresh
-	# itself below) -- a knocked-down soldier's body velocity settles to rest well before
-	# _render_prone_progress finishes easing, and none of the other conditions fire once
-	# combat moves on, so without this the ease would freeze partway instead of completing
+	# prone-progress or strike-lunge ease is still mid-transition (_prone_easing_active /
+	# _strike_easing_active, both set by the refresh itself below) -- a knocked-down
+	# soldier's body velocity settles to rest (and ENGAGED_LINGER can outlast FIGHTING)
+	# well before either ease finishes, and none of the other conditions fire once combat
+	# moves on, so without these flags the ease would freeze partway instead of completing
 	# (the exact "inert number" failure class already fixed for _current_speed/position).
 	# The routing fade does NOT belong here -- it never touches the marks (see _apply_flock_color).
 	if _render_dirty or facing != _render_last_facing or state == State.FIGHTING \
-			or _mm_body.instance_count != _render_body_count() or _prone_easing_active:
+			or _mm_body.instance_count != _render_body_count() \
+			or _prone_easing_active or _strike_easing_active:
 		_render_dirty = false
 		_render_last_facing = facing
 		_refresh_flock_render(delta)
@@ -5764,19 +5837,28 @@ func _refresh_flock_render(delta: float) -> void:
 	# index-aligned per-soldier array in this file already accepts).
 	if _render_prone_progress.size() != n:
 		_render_prone_progress.resize(n)
-	# Engaged-soldier highlight (Settings.show_engaged_highlight, dev/debug): computed once
-	# per refresh, not per soldier -- a far-tier unit has no simulated bodies to look up
-	# (_render_body_count() reads `soldiers`, not _sim_soldier_pos, for it), so the highlight
-	# only applies at the close tier, where n == _sim_soldier_pos.size() as
-	# engaged_soldier_indices expects.
+	if _render_strike_progress.size() != n:
+		_render_strike_progress.resize(n)
+	# The engaged-soldier set -- the sim's own melee/contact selection -- feeds TWO
+	# consumers now: the pre-existing Settings.show_engaged_highlight dev tint below, and
+	# the always-on strike-lunge render offset (docs/soldier-loadout-design.md phase 3), so
+	# it's built unconditionally at the close tier rather than gated behind the debug
+	# toggle. A far-tier unit has no simulated bodies to look up (_render_body_count()
+	# reads `soldiers`, not _sim_soldier_pos, for it), so both stay close-tier only, where
+	# n == _sim_soldier_pos.size() as engaged_soldier_indices expects. Already per-frame
+	# cached by engaged_soldier_indices() and read by other systems most ticks a unit is
+	# actually fighting, so unconditional construction adds no new expensive path.
 	var engaged_highlight_on: bool = Settings.show_engaged_highlight and not far_tier
 	var engaged_lookup := PackedByteArray()
-	if engaged_highlight_on:
+	if not far_tier:
 		engaged_lookup.resize(n)
 		for idx in engaged_soldier_indices(n):
 			if idx >= 0 and idx < n:
 				engaged_lookup[idx] = 1
+	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+	var lunge_dist: float = mark_r * STRIKE_LUNGE_RADIUS_FRACTION
 	var still_easing: bool = false
+	var still_easing_strike: bool = false
 	for i in range(n):
 		# Prone: ease the mark's squash/rotate and dark tint in via _render_prone_progress,
 		# rather than switching at a threshold -- see that field's own doc comment.
@@ -5788,12 +5870,23 @@ func _refresh_flock_render(delta: float) -> void:
 		var pp: float = _render_prone_progress[i]
 		if pp != prone_target:
 			still_easing = true
+		# Strike lunge: ease the mark/figure position forward while the soldier is in the
+		# sim's engaged set, same "ease toward a target, never snap" idiom as prone above --
+		# see _render_strike_progress's own doc comment. (A far-tier unit has no engaged set
+		# either; everyone stays at rest.)
+		var strike_target: float = 1.0 if not far_tier and engaged_lookup[i] == 1 else 0.0
+		_render_strike_progress[i] = move_toward(_render_strike_progress[i],
+				strike_target, STRIKE_EASE_RATE * delta)
+		if _render_strike_progress[i] != strike_target:
+			still_easing_strike = true
 		var pos: Vector2 = far_locals[i] if far_tier else _sim_soldier_pos[i] - position
 		var sf: Vector2 = facing
 		if far_tier:
 			sf = far_facings[i]
 		elif i < _sim_soldier_facing.size():
 			sf = _sim_soldier_facing[i]
+		if not far_tier:
+			pos += _soldier_strike_offset(_render_strike_progress[i], sf, lunge_dist)
 		var t: Transform2D
 		if pp > 0.0:
 			if _detailed_lod:
@@ -5819,6 +5912,7 @@ func _refresh_flock_render(delta: float) -> void:
 		if _detailed_lod:
 			_mm_facing_pip.set_instance_transform_2d(i, _facing_pip_transform(pp, sf, pos))
 	_prone_easing_active = still_easing
+	_strike_easing_active = still_easing_strike
 	_apply_flock_color()
 
 
@@ -5836,6 +5930,23 @@ static func _facing_pip_transform(prone_progress: float, sf: Vector2, pos: Vecto
 	t.x *= scale
 	t.y *= scale
 	return t
+
+
+## The forward "lunge" render offset for a soldier actively striking
+## (docs/soldier-loadout-design.md phase 3 -- engaged_soldier_indices()), easing in via
+## `strike_progress` (0 = idle/marching, 1 = fully lunged) rather than a hard cosmetic
+## snap -- see _render_strike_progress's own doc comment. Purely additive to the render
+## position; combat/collision (_sim_soldier_pos) is untouched, so this can't change
+## outcomes or determinism. `sf` is the soldier's own facing (assumed already a unit
+## vector, matching every other caller in _refresh_flock_render that uses it via
+## `.angle()` without renormalizing). Pure -- a function of its three args only, directly
+## unit-testable without a live MultiMesh (whose instance data isn't synchronously
+## readable back in headless tests, the same reason _soldier_render_color/
+## _facing_pip_transform are extracted this way).
+static func _soldier_strike_offset(strike_progress: float, sf: Vector2, lunge_dist: float) -> Vector2:
+	if strike_progress <= 0.0:
+		return Vector2.ZERO
+	return sf * (lunge_dist * strike_progress)
 
 
 
