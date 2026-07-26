@@ -500,7 +500,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-07-25</p>
+      <p class="date">Last updated: 2026-07-26</p>
     </div>
   </div>
   
@@ -548,7 +548,7 @@ Note
 </section>
 <section id="one-blow-step-by-step" class="level2">
 <h2 class="anchored" data-anchor-id="one-blow-step-by-step">One blow, step by step</h2>
-<p>When a soldier swings at the enemy in front of them, the game resolves a closing speed, a contest, a wound, a stamina cost, and a shove.</p>
+<p>When a soldier swings at the enemy in front of them, the game resolves a closing speed, a contest, a wound, a stamina cost, and a shove. How <em>often</em> they get to swing depends on the weapon: a legionary’s gladius lands a blow roughly every 1.2 seconds, slower than the 0.6-second baseline every other weapon still uses — a short sword-and-shield exchange is a deliberate, telegraphed affair, not a flurry.</p>
 <p>The formulas below are sketches: a subscript <span class="math inline">\(A\)</span> or <span class="math inline">\(D\)</span> means the <strong>attacker’s</strong> or <strong>defender’s</strong> value (so <span class="math inline">\(a_D\)</span> is the defender’s armour), and a trailing <span class="math inline">\(\cdots\)</span> hides finer factors kept in the full spec. Each symbol is explained where it first appears.</p>
 <p><strong>0. How fast are they closing?</strong> The attacker’s speed <em>toward</em> the target — call it the <strong>charge</strong> <span class="math inline">\(c\)</span> — is zero standing still and large for a galloping horse. It makes the blow harder to dodge, harder-hitting, and harder-shoving, all at once. Closing speed belongs to <strong>both</strong> fighters: it counts for <em>whoever strikes during the rush</em>, in either direction, and head-on speeds <strong>add</strong>. So a spearman who holds his point into a charge spits the rider on its own momentum, and two horsemen charging each other trade blows at <em>combined</em> speed — cavalry into cavalry is the deadliest clash there is.</p>
 <p><strong>1. Does it land? (attack vs.&nbsp;defence)</strong> The blow is an <em>opposed</em> roll: the attacker’s offence against the defender’s <strong>active defence</strong> — footwork, parry, shield. Crucially, you can only actively defend what you can <strong>see</strong>:</p>
