@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "This fix scales a soldier-level collision margin (SoldierEnemyContact's per-pair contact radius, widened by a few world units per formation_mode) rather than changing anything player-controlled -- it's a physics-tuning change to how deep opposing melee lines intermix, verified directly against SoldierEnemyContact.accumulate/Unit.formation_containment_margin in test/unit/test_soldier_enemy_contact.gd and test/unit/test_unit.gd. A convincing recorded clip needs a carefully staged multi-regiment clash plus tick-by-tick state-dump verification (this repo's own convention for collision/maneuver changes) to show the difference reliably rather than misleadingly -- left as a follow-up rather than blocking this fix."
+  "input": "demos/inputs/normal-formation-melee-contact.json",
+  "caption": "Melee contact is now proximity-based, not combat-state-based, and NORMAL formation gets its own containment margin: two NORMAL-formation Infantry regiments clash into a real front-to-front line (a couple of ranks of intermixing at the boundary, not the full checkerboard interleaving the previous code produced -- see the site showcase clip and this PR's description for a before/after comparison).",
+  "fixed_fps": 30,
+  "max_frames": 540,
+  "fps": 15,
+  "width": 720
 }
