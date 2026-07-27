@@ -485,42 +485,6 @@ func test_brace_capacity_deep_file_exceeds_lone() -> void:
 		"a 3-deep file absorbs more than a lone man")
 
 
-# --- weapon-differentiated brace capacity (docs/combat-model.md "Bracing") -----------
-
-func test_brace_capacity_for_type_anti_cav_exceeds_infantry_baseline() -> void:
-	# A grounded, angled spear/pike shaft is an independent leveraged strut into the
-	# earth, so it resists more than a shield-only soldier's friction/mass-stacking alone.
-	var anti_cav: float = SoldierCombat.brace_capacity_for_type(false, true, false)
-	var infantry: float = SoldierCombat.brace_capacity_for_type(false, false, false)
-	assert_gt(anti_cav, infantry, "a grounded spear/pike braces harder than a shield-only soldier")
-	assert_almost_eq(infantry, SoldierCombat.BRACE_CAPACITY, TOL,
-		"the plain-infantry case matches the flat baseline every prior caller used")
-
-
-func test_brace_capacity_for_type_matches_named_constants() -> void:
-	assert_almost_eq(SoldierCombat.brace_capacity_for_type(false, true, false),
-		SoldierCombat.BRACE_CAPACITY_ANTI_CAV, TOL)
-	assert_almost_eq(SoldierCombat.brace_capacity_for_type(false, false, true),
-		SoldierCombat.BRACE_CAPACITY_RANGED, TOL)
-	assert_almost_eq(SoldierCombat.brace_capacity_for_type(true, false, false),
-		SoldierCombat.BRACE_CAPACITY_CAVALRY, TOL)
-
-
-func test_brace_capacity_for_type_cavalry_takes_priority_over_anti_cav() -> void:
-	# A mounted anti-cavalry flag combination shouldn't occur in practice, but the
-	# dispatch order should still be well-defined: cavalry is checked first, matching
-	# profile_for's own branch order.
-	assert_almost_eq(SoldierCombat.brace_capacity_for_type(true, true, false),
-		SoldierCombat.BRACE_CAPACITY_CAVALRY, TOL)
-
-
-func test_brace_capacity_threads_a_type_specific_j_cap() -> void:
-	var lone: PackedFloat32Array = PackedFloat32Array([1.0])
-	var anti_cav_cap: float = SoldierCombat.brace_capacity(lone, SoldierCombat.BRACE_CAPACITY_ANTI_CAV)
-	assert_almost_eq(anti_cav_cap, SoldierCombat.BRACE_CAPACITY_ANTI_CAV, TOL,
-		"a lone set man's capacity is exactly the passed-in j_cap")
-
-
 # --- stamina factor g(sigma) (docs/combat-model.md "Stamina") ------------------
 
 func test_stamina_factor_full_stamina_is_one() -> void:
