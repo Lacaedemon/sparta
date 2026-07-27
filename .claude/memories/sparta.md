@@ -387,9 +387,15 @@ default) can be BLOCKED OUTRIGHT by the Claude Code auto-mode permission
 classifier on the name alone, even in dry-run mode.** Don't fight that block
 by retrying or improvising a workaround. `Get-CimInstance Win32_Process
 -Filter "Name LIKE '%Godot%'" | Select ProcessId, ParentProcessId,
-CreationDate, CommandLine` (Windows) distinguishes a genuinely stalled/
-orphaned process (unchanged `CreationDate` across repeated checks, minutes
-apart) from one still making progress. When blocked from cleaning up and
+CreationDate, CommandLine` (Windows) surfaces the candidates, but
+`CreationDate` alone can't tell a stalled process from one still working --
+it's the process's fixed start time, unchanged for the whole life of ANY
+still-running process. Use it for AGE instead (`now - CreationDate` well past
+the suite's normal completion time, not a delta between two checks), or check
+a genuinely progress-tracking signal: whether the run's own output artifact
+(e.g. `coverage/lcov.info`, the GUT log) is still growing, or the process's
+CPU-time counters (`KernelModeTime`/`UserModeTime`) advancing between checks.
+When blocked from cleaning up and
 unable to guarantee a local run is uncontaminated, fall back to CI's own
 clean-runner results (`gh pr checks`) as the authoritative signal instead of
 trusting a local re-verify. (`Lacaedemon/sparta` PR #1106, 2026-07-27.)
