@@ -882,31 +882,54 @@ for merge" report was correct; a first-pass verification that filtered by
 `author.login == "claude"` found only the stale "Needs more work" comment and
 nearly contradicted a true report.)
 
-## `claude-code-review.yml` no longer auto-fires on every PR — Copilot does, Claude review is manual-dispatch only
+## `claude-code-review.yml` auto-fires on every PR again (re-enabled #1122, was off #1051-#1122)
 
-As of PR #1062 (issue #1061, 2026-07-23), `.github/workflows/claude-code-review.yml` has
-**no `pull_request:` trigger** — it runs only on `workflow_dispatch`. GitHub Copilot code
-review is already enabled repo-wide via the `main` branch ruleset (`copilot_code_review`
-rule, `review_on_push: true`, `review_draft_pull_requests: true`), so every PR still gets
-an automatic review — just from Copilot, not Claude.
+PR #1062 (issue #1061, 2026-07-23) removed `.github/workflows/claude-code-review.yml`'s
+`pull_request:` trigger, on the reasoning that GitHub Copilot code review (enabled
+repo-wide via the `main` branch ruleset's `copilot_code_review` rule) already reviews
+every PR automatically, making an automatic Claude pass redundant. Issue #1122
+(2026-07-27) reversed that call at the user's direct request — the `pull_request:`
+trigger (`types: [opened, synchronize, ready_for_review, reopened]`) is back, so a fresh
+PR again gets an automatic `claude[bot]` review comment, in addition to Copilot's.
 
-**What this changes for ARDI:** a fresh PR no longer gets an automatic `claude[bot]`
-review comment — only a Copilot one. All of this file's and ai-config's stub-review /
-"do the review yourself when @claude doesn't produce a verdict" handling still applies,
-but now to **Copilot's** review output, not Claude's, as the default automatic pass.
-`claude.yml`'s own re-dispatch-after-push mechanism (which targets this same workflow
-file via `workflow_dispatch`) still works, and a manual
-`gh workflow run claude-code-review.yml -f pr_number=<N>` still gets a real Claude review
-on demand — reach for it when Copilot's review looks thin/stubbed, or when the change
-needs the state-transcript-verification rigor Claude's own prompt-addendum asks for
-(inline demo/transcript cross-checking, per this file's own review-quality conventions),
-which Copilot's review doesn't necessarily apply.
+**What this means for ARDI going forward:** a fresh PR gets BOTH an automatic Copilot
+review and an automatic Claude review — check both (`gh pr view <N> --json reviews` and
+`gh api repos/<owner>/<repo>/pulls/<N>/comments`, per the "Re-check for latest review
+findings" convention) rather than assuming only one fired. All of this file's and
+ai-config's stub-review / "do the review yourself when @claude doesn't produce a verdict"
+handling still applies to Claude's automatic pass, same as before it was ever disabled.
+`claude.yml`'s own re-dispatch-after-push mechanism and a manual
+`gh workflow run claude-code-review.yml -f pr_number=<N>` both still work as before —
+useful for an ad-hoc re-review after a push, since `synchronize` already re-fires
+automatically now.
 
-**How to apply:** before treating a PR's review status as settled, check for a Copilot
-review the same way this file's other entries check for a `claude[bot]` one — via
-`gh pr view <N> --json reviews` and `gh api repos/<owner>/<repo>/pulls/<N>/comments` (the
-"Re-check for latest review findings" convention applies regardless of which bot
-authored the review). Don't assume "no `claude[bot]` comment yet" means unreviewed.
+If this ever needs disabling again, PR #1062's diff (`git show 17fab72a`) is the exact
+prior workflow-config change to reference.
+
+**Copilot's own review can also fail closed, not just Claude's.** Copilot's review comment
+can read `Copilot was unable to review this pull request because the user who requested the
+review has reached their quota limit.` — repeatedly, across many pushes. This is a distinct
+failure mode from Claude's own quota-skip message, but the same handling applies: it's not an
+approval, don't wait on it, self-review or manually dispatch Claude instead.
+
+**A manual `gh workflow run "Claude Code Review" -f pr_number=<N>` dispatch can silently run
+against `main`'s ref instead of the PR branch and post NO comment at all — a distinct, quieter
+failure than the documented stub-review pattern.** The run itself reports `success` (all three
+jobs green), and every run so far has carried a `The process '/usr/bin/git' failed with exit
+code 128` annotation regardless of whether it actually posted a review — that annotation is
+benign, expected noise, not a sign anything went wrong. The real tell is the run's own
+`head_branch`: a manually-triggered run that resolves to `main` (rather than the PR's actual
+branch) reviews nothing PR-specific and produces no comment, even on `success`. Meanwhile, this
+repo's automated re-dispatch mechanism (`claude.yml`'s push-triggered re-dispatch, attributed to
+`github-actions[bot]`) fires its OWN `workflow_dispatch` correctly scoped to the PR's real branch
+— and if a manual dispatch is still in flight when it queues, the `claude-review-<N>` concurrency
+group cancels the manual one in favor of it (`Canceling since a higher priority waiting request
+for claude-review-<N> exists`). **How to apply:** after pushing, check `gh run list
+--workflow="Claude Code Review"` for a run whose `head_branch` matches the PR's actual branch
+before manually dispatching — the automated re-dispatch usually beats you to it within a minute
+or two. If you do dispatch manually and it lands on `main` with no resulting comment, that's the
+signal to just wait for (or re-dispatch and confirm) a run scoped to the real branch, not to
+suspect the PR itself. (`Lacaedemon/sparta` PR #1070, 2026-07-27.)
 
 ## Verify an issue's own stated root cause empirically before implementing its proposed fix
 
