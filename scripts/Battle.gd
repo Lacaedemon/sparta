@@ -179,13 +179,14 @@ enum Gait { WALK, JOG, RUN, SPRINT }
 ## what happens once the fight actually ends:
 ##
 ## - Engaged fraction never reached this threshold during the fight (a graze): the march
-##   resumes automatically, same as the original pre-#1119 pause-then-resume behavior.
+##   resumes automatically, same as the original pause-then-resume behavior this refines.
 ## - It reached this threshold, but the destination is still clear of any living enemy: the
 ##   march resumes anyway -- a real fight happened, but the original plan is still valid, so
 ##   the commander isn't forced to re-decide something that isn't actually stale.
 ## - It reached this threshold AND the destination now sits inside a living enemy's own
 ##   footprint: the order cancels outright, rather than blindly marching into ground the
-##   enemy now holds -- the case #1096 actually cared about.
+##   enemy now holds -- the actual motivating case for gating a plain move on engagement
+##   at all.
 ##
 ## Only a NORMAL-stance plain move gets this guard (see _apply_order_cmd's two
 ## Order.new_move call sites): HOLD, CHASE, MARCH_TO_CONTACT, and every other non-NORMAL

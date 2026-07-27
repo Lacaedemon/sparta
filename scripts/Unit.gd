@@ -1591,13 +1591,14 @@ func _update_current_order() -> void:
 ## march should resume toward its original destination or cancel outright.
 ##
 ## - The fight never crossed the order's own guard_param threshold (a graze): resume, same
-##   as the pre-#1119 pause-then-resume behavior.
+##   as the pause-then-resume behavior this refines.
 ## - It crossed the threshold, but the destination is still clear: resume anyway -- a real
 ##   fight happened, but the original plan is still valid, so don't force a fresh order over
 ##   nothing.
 ## - It crossed the threshold AND the destination now sits inside a living enemy's own
-##   footprint (OrderGuards.move_target_occupied_by_enemy): cancel. This is the case #1096
-##   actually cared about -- don't blindly march into ground the enemy now holds.
+##   footprint (OrderGuards.move_target_occupied_by_enemy): cancel -- the actual motivating
+##   case for gating a plain move on engagement at all: don't blindly march into ground the
+##   enemy now holds.
 ##
 ## Called once, from _think's "obey a move order" branch, right before it would otherwise
 ## call _move_to() -- returning true means the caller should stop (the order just retired)
