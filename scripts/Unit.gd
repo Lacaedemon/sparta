@@ -905,18 +905,19 @@ const SEPARATION_RADIUS_CAVALRY: float = 1.2 * WorldScaleRef.WU_PER_M
 # pathological case of two maxed archer blobs is not a melee concern.)
 const SEPARATION_RADIUS_MAX: float = 1.4 * WorldScaleRef.WU_PER_M
 
-# Speed ceiling on _separate()'s own per-pair correction (issue #1107): the overlap
-# resolution is expressed as a velocity impulse capped at this speed, then integrated
-# into position the same way every other collision response in this codebase already
-# is (SoldierCombat.capped_knockback_velocity's additive-then-clamp pattern), instead
-# of writing position directly. min_dist (either branch: separation_radius pair sum,
+# Speed ceiling on _separate()'s own per-pair correction: the overlap resolution is
+# expressed as a velocity impulse capped at this speed, then integrated into position
+# the same way every other collision response in this codebase already is
+# (SoldierCombat.capped_knockback_velocity's additive-then-clamp pattern), instead of
+# writing position directly. min_dist (either branch: separation_radius pair sum,
 # capped at 2*SEPARATION_RADIUS_MAX=56, or the engaged _front_depth() pair sum, each
 # half capped at attack_range*0.5) bounds the largest possible single-pair push to
 # roughly that same ~50-60 wu even in the fully-overlapping/co-located worst case, so
 # this cap -- comfortably above 60wu/(1/60s)=3600 wu/s -- never binds for any push a
 # legitimate min_dist can produce; it only ever bounds a genuinely pathological state
 # (a corrupted min_dist from a bug elsewhere). Measured real gameplay (a full-sprint
-# cavalry-vs-spear-line hard block, #1104's audit) sits far below this, at ~100-200 wu/s.
+# cavalry-vs-spear-line hard block) sits far below this, at ~100-200 wu/s.
+# tuned in wu
 const SEPARATION_SPEED_CAP: float = 6000.0
 
 # Cavalry charge: a physics-based bonus, not a one-shot token. The damage
@@ -989,10 +990,10 @@ var current_speed: float:
 # for diagnostics/tests; the move itself happens in SoldierBodies.couple, bounded so it
 # never teleports.
 var _body_follow_vel: Vector2 = Vector2.ZERO
-# Velocity _separate() applied this tick to resolve regiment-vs-regiment overlap
-# (issue #1107). Recomputed fresh each tick from the current overlap (there's no
-# persistent momentum to carry -- the correction self-extinguishes as the overlap
-# closes), capped at SEPARATION_SPEED_CAP. Stored for diagnostics/tests, mirroring
+# Velocity _separate() applied this tick to resolve regiment-vs-regiment overlap.
+# Recomputed fresh each tick from the current overlap (there's no persistent
+# momentum to carry -- the correction self-extinguishes as the overlap closes),
+# capped at SEPARATION_SPEED_CAP. Stored for diagnostics/tests, mirroring
 # _body_follow_vel above.
 var _separation_velocity: Vector2 = Vector2.ZERO
 # Cycle-charge phase: true while the unit is peeling back to its standoff after a
@@ -3098,7 +3099,7 @@ func formation_morale_erosion_factor() -> float:
 ## The correction is applied as a capped velocity impulse (SEPARATION_SPEED_CAP),
 ## then integrated into position -- the same additive-then-clamp shape every other
 ## collision response in this codebase already uses (SoldierCombat's knockback) --
-## rather than writing position directly (issue #1107).
+## rather than writing position directly.
 func _separate(delta: float) -> void:
 	_separation_velocity = Vector2.ZERO
 	if state == State.DEAD:
