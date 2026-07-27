@@ -379,6 +379,27 @@ going in the same worktree; the "rerun" reported the pre-edit coverage
 number, and a later full-suite run failed one unrelated test until the
 scrambled `settings.cfg` was deleted.)
 
+**An orphaned Godot process (e.g. a `bash tools/check.sh | head -N` pipe
+SIGPIPE-killing the wrapper script but leaving its spawned Godot child
+running detached) is a lock the same way a live foreground run is — and this
+repo's own `tools/kill-orphan-godot.ps1`/`.sh` cleanup tool (dry-run by
+default) can be BLOCKED OUTRIGHT by the Claude Code auto-mode permission
+classifier on the name alone, even in dry-run mode.** Don't fight that block
+by retrying or improvising a workaround. `Get-CimInstance Win32_Process
+-Filter "Name LIKE '%Godot%'" | Select ProcessId, ParentProcessId,
+CreationDate, CommandLine` (Windows) surfaces the candidates, but
+`CreationDate` alone can't tell a stalled process from one still working --
+it's the process's fixed start time, unchanged for the whole life of ANY
+still-running process. Use it for AGE instead (`now - CreationDate` well past
+the suite's normal completion time, not a delta between two checks), or check
+a genuinely progress-tracking signal: whether the run's own output artifact
+(e.g. `coverage/lcov.info`, the GUT log) is still growing, or the process's
+CPU-time counters (`KernelModeTime`/`UserModeTime`) advancing between checks.
+When blocked from cleaning up and
+unable to guarantee a local run is uncontaminated, fall back to CI's own
+clean-runner results (`gh pr checks`) as the authoritative signal instead of
+trusting a local re-verify. (`Lacaedemon/sparta` PR #1106, 2026-07-27.)
+
 **A branch SWITCH counts as a second writer too: never `git checkout` in a
 worktree while a Godot job is still running there.** The suite (and the
 coverage/patch_coverage runs especially) reloads scripts from disk as it

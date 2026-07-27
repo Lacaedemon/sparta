@@ -337,6 +337,53 @@ funcs in `tools/demo/DemoState.gd` (a `class_name`, unit-tested in
   main adding SHIELD_WALL/TESTUDO) leaves the map STALE even when conflict-free —
   update the map + its test + the README field row.
 
+## A charge-vs-braced-line demo can outrun issue #296's kinematic gap — check soldier CENTROID, not just regiment position, across the whole clip
+
+A cavalry charge into a genuinely braced (stationary, high-resistance) line can
+produce a real, visible artifact distinct from anything covered above: the
+*charging* regiment's own soldier-body centroid can cross PAST the defending
+regiment's centroid — the cavalry visually rides through/around the line — even
+while both units correctly stay `FIGHTING`/`engaged` and take real casualties
+the whole time. This is issue #296 (a charging regiment's `_move_to`-driven
+kinematic position isn't fully bound by its own soldiers' contact resistance),
+not a bug in whatever bracing/knockback mechanic the demo is meant to show —
+per-soldier melee resolution (casualties, knockback, brace-capacity absorption)
+was verified correct in the case this was found; only the regiment-level
+position anchor outran it.
+
+**Why a state-dump `position`-only check misses this:** the regiment's own
+`position` field can look plausible (small, contained displacement) while the
+underlying soldier bodies' `soldier_summary.centroid` has already moved past
+the other unit's centroid — the two diverge under fast, heavy contact. Compare
+`soldier_summary.centroid`, not just `position`, between the attacker and
+defender at each sampled tick once contact begins.
+
+**How to catch it before publishing a demo:** dump `SPARTA_DEMO_STATE_FULL=1`
+at dense ticks (every 10-20) spanning the whole post-contact window (not just
+the committed sparse sample points — same blind spot the "dense tick sweep"
+entry above warns about for caption claims) and check whether the charging
+unit's centroid Y ever crosses past the defender's, specifically for a
+STATIONARY defender (a held/braced line) — a defender that's also moving
+(pressing forward, chasing) doesn't show the same crossover, since there's no
+fixed point for the charger to overshoot.
+
+**Fix, since #296 itself is out of scope for most PRs:** shorten `max_frames`
+(remember the fixed_fps-to-physics-tick conversion — `physics_tick =
+max_frames * (60 / fixed_fps)`) to end the clip cleanly before the crossover,
+and adjust the caption to describe only what the shortened clip actually shows
+— don't claim "the charge stalls" if the clip cuts off before proving it holds
+indefinitely. State the cutoff reason in the caption rather than silently
+picking a suspiciously short `max_frames`, so a reviewer doesn't have to
+rediscover the gap independently. (`Lacaedemon/sparta` PR #1106,
+`demos/inputs/brace-vs-unbraced-charge.json`, 2026-07-27: a braced-vs-unbraced
+spear-line demo's cavalry centroid crossed the braced spearman's centroid
+between tick ~495 and ~505; `max_frames` cut from 280 to 240 -- 480 physics
+ticks -- with margin. Caught independently by the user watching the posted
+GIF AND by an automated review cross-checking the PR's own commit message
+against `website/tools/demo-catalog.sh`'s separately-recorded row, which still
+specified the old, unsafe frame count — grep every catalog/manifest copy of a
+demo's `max_frames` after changing it, not just the one you edited first.)
+
 ## A unified "all artifacts done" quit-check must guard on armed
 
 When two (or more) optional per-tick artifact paths (frame capture, state dump)
