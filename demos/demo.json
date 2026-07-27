@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/push-stance.json",
-  "caption": "Push stance maneuver (issue #1017): Team 0 Infantry engages Team 1 Infantry in melee standoff. The player selects Team 0 and presses Ctrl+Slash to issue Push stance, driving the front line forward against enemy pressure.",
-  "fixed_fps": 30,
-  "max_frames": 500,
-  "fps": 15,
-  "width": 640
+  "skip": true,
+  "reason": "This fix scales a soldier-level collision margin (SoldierEnemyContact's per-pair contact radius, widened by a few world units per formation_mode) rather than changing anything player-controlled -- it's a physics-tuning change to how deep opposing melee lines intermix, verified directly against SoldierEnemyContact.accumulate/Unit.formation_containment_margin in test/unit/test_soldier_enemy_contact.gd and test/unit/test_unit.gd. A convincing recorded clip needs a carefully staged multi-regiment clash plus tick-by-tick state-dump verification (this repo's own convention for collision/maneuver changes) to show the difference reliably rather than misleadingly -- left as a follow-up rather than blocking this fix."
 }

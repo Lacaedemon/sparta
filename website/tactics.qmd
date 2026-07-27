@@ -451,6 +451,15 @@ way, handy for stepping back one density without looping all the way round. Two 
 build on Tight's locked-shield density and are set from the control-bar Formation menu or
 their own direct keys.
 
+Density also decides how deep an enemy can press into the line once melee is joined.
+Tight, Square, Shield Wall, and Testudo hold the enemy at the front rank with
+essentially no depth-wise mixing --- shields lock with the men either side, so one
+soldier going down doesn't open a seam. Normal order leaves enough personal space
+that a felled defender's own slot briefly cedes ground to whoever knocked him down,
+letting the fight bleed a rank or two deep for as long as he's on the floor. Loose
+order has no such discipline: soldiers can end up genuinely enmeshed with the enemy
+line.
+
 ::: {#fig-formation-shift-reverse .demo}
 
 ```{=html}
