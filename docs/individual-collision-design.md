@@ -369,7 +369,8 @@ doc comments and this file's "Decisions" section already record a history of sub
 swirl/instability regressions from narrowing its selection, and widening WHICH units
 qualify for it (not just how narrow the selection is once they do) is an untested new axis.
 Left as a known, real, but not-yet-safely-closed follow-up rather than risk landing a hang
-in a live-battle-critical path.
+in a live-battle-critical path -- tracked on
+[#1136](https://github.com/Lacaedemon/sparta/issues/1136).
 
 **This — and the position-anchor gap above — do not fully close the underlying issue
 either way.** Verified empirically against the site's showcase clip
