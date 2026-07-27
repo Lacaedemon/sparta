@@ -1953,7 +1953,7 @@ func test_infantry_pair_clear_at_40px_not_pushed() -> void:
 	var b := _make_unit()
 	a.position = Vector2.ZERO
 	b.position = Vector2(40.0, 0.0)
-	a._separate()
+	a._separate(1.0 / 60.0)
 	assert_almost_eq(a.position.x, 0.0, 0.001, "infantry at 40px are already clear")
 
 
@@ -1966,7 +1966,7 @@ func test_cavalry_pair_overlap_at_40px_pushed_apart() -> void:
 	b.team = 1
 	a.position = Vector2.ZERO
 	b.position = Vector2(40.0, 0.0)
-	a._separate()
+	a._separate(1.0 / 60.0)
 	assert_lt(a.position.x, 0.0, "cavalry at 40px overlap by footprint and push apart")
 
 
@@ -1996,7 +1996,7 @@ func test_spearmen_pair_overlap_at_38px_pushed_apart() -> void:
 	b.team = 1
 	a.position = Vector2.ZERO
 	b.position = Vector2(38.0, 0.0)
-	a._separate()
+	a._separate(1.0 / 60.0)
 	assert_lt(a.position.x, 0.0, "spearmen at 38px overlap by footprint and push apart")
 
 
@@ -2013,10 +2013,10 @@ func test_co_located_pair_fans_apart_by_uid() -> void:
 	b.uid = 7
 	a.position = Vector2.ZERO
 	b.position = Vector2.ZERO
-	a._separate()
+	a._separate(1.0 / 60.0)
 	var a_push: Vector2 = a.position
 	a.position = Vector2.ZERO   # reset so b sees the same co-located pair
-	b._separate()
+	b._separate(1.0 / 60.0)
 	var b_push: Vector2 = b.position
 	assert_gt(a_push.length(), 0.0, "a co-located unit is pushed off the stack")
 	assert_gt(b_push.length(), 0.0, "its partner is pushed too")
@@ -2035,7 +2035,7 @@ func test_co_located_push_matches_uid_formula() -> void:
 	b.uid = 7
 	a.position = Vector2.ZERO
 	b.position = Vector2.ZERO
-	a._separate()
+	a._separate(1.0 / 60.0)
 	# lo = min(5, 7) = 5 -> angle = 5/100 * TAU; a holds the lower uid so dir = -1.
 	# magnitude = (sep_a + sep_b) * share, share = 0.5 for two infantry enemies.
 	var magnitude: float = (a.separation_radius + b.separation_radius) * 0.5
@@ -2055,10 +2055,10 @@ func test_co_located_equal_uid_pair_still_fans_apart() -> void:
 	assert_eq(b.uid, -1, "unspawned units keep the default uid")
 	a.position = Vector2.ZERO
 	b.position = Vector2.ZERO
-	a._separate()
+	a._separate(1.0 / 60.0)
 	var a_push: Vector2 = a.position
 	a.position = Vector2.ZERO
-	b._separate()
+	b._separate(1.0 / 60.0)
 	var b_push: Vector2 = b.position
 	# Guard non-zero pushes explicitly: a dot product with a zero vector is 0 (not
 	# negative), so the opposite-direction check below can't on its own tell
@@ -2221,7 +2221,7 @@ func test_mover_passes_through_idle_friendly() -> void:
 	idle.state = Unit.State.IDLE
 	mover.position = Vector2.ZERO
 	idle.position = Vector2(10.0, 0.0)        # deep overlap (infantry floor 36)
-	mover._separate()
+	mover._separate(1.0 / 60.0)
 	assert_almost_eq(mover.position.x, 0.0, 0.001,
 		"a moving unit is not pushed off an idle friendly — it passes through")
 
@@ -2238,7 +2238,7 @@ func test_separate_leaves_friendly_pairs_to_the_soldier_layer() -> void:
 	b.state = Unit.State.IDLE
 	a.position = Vector2.ZERO
 	b.position = Vector2(10.0, 0.0)
-	a._separate()
+	a._separate(1.0 / 60.0)
 	assert_almost_eq(a.position.x, 0.0, 0.001,
 		"_separate() leaves friendlies to the soldier layer (no regiment-circle push)")
 
@@ -2252,7 +2252,7 @@ func test_mover_does_not_pass_through_idle_enemy() -> void:
 	enemy.state = Unit.State.IDLE
 	mover.position = Vector2.ZERO
 	enemy.position = Vector2(10.0, 0.0)
-	mover._separate()
+	mover._separate(1.0 / 60.0)
 	assert_lt(mover.position.x, 0.0, "an enemy is never exempt — the mover is blocked")
 
 
@@ -2267,7 +2267,7 @@ func test_idle_friendly_does_not_push_the_mover_either() -> void:
 	idle.state = Unit.State.IDLE
 	mover.position = Vector2.ZERO
 	idle.position = Vector2(10.0, 0.0)
-	idle._separate()
+	idle._separate(1.0 / 60.0)
 	assert_almost_eq(idle.position.x, 10.0, 0.001,
 		"idle does not push itself off the mover — the exemption fires from both sides")
 
@@ -2285,7 +2285,7 @@ func test_spearman_holds_line_against_enemy_cavalry() -> void:
 	cav.team = 1                          # enemy cavalry
 	spear.position = Vector2.ZERO
 	cav.position = Vector2(20.0, 0.0)     # overlapping (floor 20+24 = 44)
-	spear._separate()
+	spear._separate(1.0 / 60.0)
 	assert_almost_eq(spear.position.x, 0.0, 0.001,
 		"a spearman yields nothing to enemy cavalry — the line holds")
 
@@ -2296,7 +2296,7 @@ func test_enemy_cavalry_shoved_clear_of_spear_line() -> void:
 	cav.team = 1                          # enemy cavalry
 	spear.position = Vector2.ZERO
 	cav.position = Vector2(20.0, 0.0)
-	cav._separate()
+	cav._separate(1.0 / 60.0)
 	assert_gt(cav.position.x, 20.0,
 		"enemy cavalry takes the full push-out and is shoved clear of the spears")
 
@@ -2309,7 +2309,7 @@ func test_enemy_infantry_still_separates_softly_from_spearman() -> void:
 	inf.team = 1                          # enemy infantry (not cavalry)
 	spear.position = Vector2.ZERO
 	inf.position = Vector2(20.0, 0.0)
-	spear._separate()
+	spear._separate(1.0 / 60.0)
 	assert_lt(spear.position.x, 0.0,
 		"a spearman is only a hard wall to cavalry — infantry shoves it normally")
 
