@@ -65,4 +65,10 @@ exclude = [
   # loads again, or replace the citation with primary sources (Livy VIII.8,
   # Polybius VI.25).
   "^https://imperiumromanum\\.pl",
+  # romanobritain.org rejects lychee's automated request with HTTP 415
+  # (Unsupported Media Type) as of 2026-07-27, even though the page loads
+  # fine in a browser — the same false-positive pattern as spotterup.com/
+  # bandaarcgeophysics.co.uk/marathonhandbook.com above. Linked as a citation
+  # from docs/combat-model.md.
+  "^https://www\\.romanobritain\\.org",
 ]
