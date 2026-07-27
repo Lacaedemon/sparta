@@ -1,0 +1,25 @@
+{
+  "_comment": "Issue #1096/#1119: a plain NORMAL-stance MOVE order now carries Order.Guard.ENGAGED_FRACTION_ABOVE, cancelling the order outright once >=10% of the unit's own soldiers are melee-engaged, rather than letting the redirect march proceed (the old behavior would have the unit eventually break free of the fight and resume toward the now-stale destination). Stages a lone player Spearmen unit given an explicit ATTACK order against a weak Infantry detachment; once heavily engaged (tick 134), the player is redirected far off to the side with a plain move order (tick 145). Under the fix the redirect order is retired the very next tick (current_order/order_guard drop to null) instead of being accepted -- the unit never budges toward the new destination for the rest of the fight.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 800, "y": 300, "count": 40},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 450, "count": 10, "morale": 20.0}
+  ],
+  "camera": [
+    {"tick": 0, "x": 1025.0, "y": 380.0, "zoom": 0.9}
+  ],
+  "steps": [
+    {"tick": 8, "click": [800, 300]},
+    {"tick": 16, "rmb_click": [800, 450]},
+    {"tick": 145, "rmb_click": [1250, 300]}
+  ],
+  "state": [8, 16, 60, 120, 134, 138, 145, 146, 150, 160, 170, 175],
+  "frames": [16, 134, 150, 172],
+  "expect": [
+    {"tick": [130, 140], "uid": 0, "field": "engaged", "value": true},
+    {"tick": 145, "uid": 0, "field": "order_guard", "value": "ENGAGED_FRACTION_ABOVE"},
+    {"tick": [146, 175], "uid": 0, "field": "current_order", "value": null}
+  ],
+  "fixed_fps": 30,
+  "max_frames": 150
+}

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/move-cancels-on-engagement.json",
+  "caption": "Follow-up on #1096/#1119: a plain NORMAL-stance MOVE order now cancels outright once >=10% of the unit's own soldiers are melee-engaged, instead of the old pause-then-resume-on-disengage behavior. The Spearmen unit is ordered to attack a weak Infantry detachment; once heavily engaged in the clash, it's redirected far to the right with a plain move order. The redirect order is retired the very next tick -- the unit never budges toward the new destination (the empty patch of ground on the right) for the rest of the fight.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 12,
+  "width": 640
+}

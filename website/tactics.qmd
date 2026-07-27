@@ -1613,6 +1613,13 @@ Stop the unit and it re-engages anything nearby. Timing the disengage --- late e
 that the enemy is committed, early enough that you survive the exit --- is one of the
 game's sharper decisions.
 
+A move order given while the unit is still heavily engaged (10%+ of its own soldiers
+actively in melee) doesn't queue up and wait its turn --- it cancels outright the moment
+it's issued, so the fight already underway plays out instead of the commander dragging
+the unit toward a destination that's gone stale by the time the melee actually ends.
+Reissue the order once the unit's engagement eases below that threshold to make the
+redirect stick.
+
 ---
 
 *Source: [`README.md`](https://github.com/Lacaedemon/sparta/blob/main/README.md) ·
