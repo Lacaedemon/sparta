@@ -184,7 +184,7 @@ list_checks() {
   info "  chars      non-standard characters in docs (check-non-standard-chars.yml)"
   info "  comments   issue/PR-number citations in NEW GDScript comment lines (check-comment-citations.yml)"
   info "  units      units-convention lint on NEW GDScript lines (docs/units-convention.md)"
-  info "  file_length  caps NEW scripts/*.gd files at 100 lines (modularity budget, see .gdlintrc)"
+  info "  file_length  caps NEW scripts/*.gd files at 100 lines (see tools/README.md's file_length entry)"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  patch_coverage  local codecov/patch gate for this diff's scripts/*.gd changes (fails below the effective target)"
   info "  lint       GDScript style lint via gdlint (see .gdlintrc), whole tracked *.gd tree"
