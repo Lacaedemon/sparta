@@ -905,6 +905,20 @@ const SEPARATION_RADIUS_CAVALRY: float = 1.2 * WorldScaleRef.WU_PER_M
 # pathological case of two maxed archer blobs is not a melee concern.)
 const SEPARATION_RADIUS_MAX: float = 1.4 * WorldScaleRef.WU_PER_M
 
+# Speed ceiling on _separate()'s own per-pair correction (issue #1107): the overlap
+# resolution is expressed as a velocity impulse capped at this speed, then integrated
+# into position the same way every other collision response in this codebase already
+# is (SoldierCombat.capped_knockback_velocity's additive-then-clamp pattern), instead
+# of writing position directly. min_dist (either branch: separation_radius pair sum,
+# capped at 2*SEPARATION_RADIUS_MAX=56, or the engaged _front_depth() pair sum, each
+# half capped at attack_range*0.5) bounds the largest possible single-pair push to
+# roughly that same ~50-60 wu even in the fully-overlapping/co-located worst case, so
+# this cap -- comfortably above 60wu/(1/60s)=3600 wu/s -- never binds for any push a
+# legitimate min_dist can produce; it only ever bounds a genuinely pathological state
+# (a corrupted min_dist from a bug elsewhere). Measured real gameplay (a full-sprint
+# cavalry-vs-spear-line hard block, #1104's audit) sits far below this, at ~100-200 wu/s.
+const SEPARATION_SPEED_CAP: float = 6000.0
+
 # Cavalry charge: a physics-based bonus, not a one-shot token. The damage
 # multiplier scales with the rider's IMPACT VELOCITY at the moment of contact — the
 # component of its approach velocity aimed straight at the target — so both closing
@@ -975,6 +989,12 @@ var current_speed: float:
 # for diagnostics/tests; the move itself happens in SoldierBodies.couple, bounded so it
 # never teleports.
 var _body_follow_vel: Vector2 = Vector2.ZERO
+# Velocity _separate() applied this tick to resolve regiment-vs-regiment overlap
+# (issue #1107). Recomputed fresh each tick from the current overlap (there's no
+# persistent momentum to carry -- the correction self-extinguishes as the overlap
+# closes), capped at SEPARATION_SPEED_CAP. Stored for diagnostics/tests, mirroring
+# _body_follow_vel above.
+var _separation_velocity: Vector2 = Vector2.ZERO
 # Cycle-charge phase: true while the unit is peeling back to its standoff after a
 # charge, false while it's driving in for the next charge. Flipped by
 # _cycle_charge_tick — set on the contact strike, cleared once the unit has opened
@@ -1091,7 +1111,7 @@ func _physics_process(delta: float) -> void:
 	if state == State.ROUTING:
 		_process_rout(delta)
 		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
-			_separate()   # routers still shoulder past anyone in their path
+			_separate(delta)   # routers still shoulder past anyone in their path
 		return
 
 	_attack_cd = max(0.0, _attack_cd - delta)
@@ -1104,7 +1124,7 @@ func _physics_process(delta: float) -> void:
 
 	# Units are solid: resolve any overlap so an advancing regiment can't
 	# walk straight through (or over) the one in front of it.
-	_separate()
+	_separate(delta)
 
 	UnitMorale.tick_fatigue(self, delta)
 	UnitMorale.tick_cohesion(self, delta)
@@ -3075,7 +3095,12 @@ func formation_morale_erosion_factor() -> float:
 ## default; an anti-cavalry spearman yields nothing to enemy cavalry (a hard
 ## block — see _push_share). Since units move sequentially (each only moves
 ## itself), one frame reduces an overlap by ~75%; it converges within a few frames.
-func _separate() -> void:
+## The correction is applied as a capped velocity impulse (SEPARATION_SPEED_CAP),
+## then integrated into position -- the same additive-then-clamp shape every other
+## collision response in this codebase already uses (SoldierCombat's knockback) --
+## rather than writing position directly (issue #1107).
+func _separate(delta: float) -> void:
+	_separation_velocity = Vector2.ZERO
 	if state == State.DEAD:
 		return
 	# Consider living units and routers alike: nobody gets walked through.
@@ -3142,7 +3167,15 @@ func _separate() -> void:
 			else:
 				dir = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
 			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * share)
-		position += push
+		# push is this tick's desired displacement; express it as a velocity (capped)
+		# and integrate that, not the raw displacement, so a pathological overlap
+		# can't move the regiment further in one tick than SEPARATION_SPEED_CAP*delta
+		# allows. In the ordinary case (every measured overlap is far below the cap)
+		# this integrates to exactly `push`, same as before.
+		var desired_vel: Vector2 = push / delta if delta > 0.0 else Vector2.ZERO
+		var step_vel: Vector2 = desired_vel.limit_length(SEPARATION_SPEED_CAP)
+		_separation_velocity += step_vel
+		position += step_vel * delta
 
 
 ## Advance or decay this unit's intermixing meter. Rises while a non-ranged unit is
