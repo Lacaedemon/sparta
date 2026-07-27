@@ -13,14 +13,14 @@
     { "tick": 8, "key": "F4", "ctrl": true }
   ],
   "fixed_fps": 30,
-  "max_frames": 280,
+  "max_frames": 240,
   "fps": 15,
   "width": 720,
-  "state": [5, 65, 200, 400, 500, 550],
+  "state": [5, 65, 200, 400, 460, 480],
   "spawn_fingerprint": "76b0d1bfe076367d9d5e51293d57e250",
   "expect": [
     { "tick": [5, 65], "uid": 1, "field": "order_mode", "value": "Brace" },
-    { "tick": [500, 550], "uid": 0, "field": "engaged", "value": true },
-    { "tick": [500, 550], "uid": 1, "field": "engaged", "value": true }
+    { "tick": [400, 480], "uid": 0, "field": "state", "value": "MOVING" },
+    { "tick": [460, 480], "uid": 1, "field": "engaged", "value": true }
   ]
 }
