@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "This fix scales a soldier-level collision margin (SoldierEnemyContact's per-pair contact radius, widened by a few world units per formation_mode) rather than changing anything player-controlled -- it's a physics-tuning change to how deep opposing melee lines intermix, verified directly against SoldierEnemyContact.accumulate/Unit.formation_containment_margin in test/unit/test_soldier_enemy_contact.gd and test/unit/test_unit.gd. A convincing recorded clip needs a carefully staged multi-regiment clash plus tick-by-tick state-dump verification (this repo's own convention for collision/maneuver changes) to show the difference reliably rather than misleadingly -- left as a follow-up rather than blocking this fix."
+  "input": "demos/inputs/shield-wall-holds-depth.json",
+  "caption": "Melee-intermixing depth gated by formation looseness (#1094): a Shield Wall Infantry regiment (28) holds its ground against a larger attacking Infantry regiment (40) marching in under its own AI order. The attacker's front line presses flush against the defender's front rank and holds there -- it doesn't scatter into or bleed past the defender's own rear ranks the way an un-gated clash would.",
+  "fixed_fps": 30,
+  "max_frames": 720,
+  "fps": 15,
+  "width": 720
 }

@@ -452,9 +452,9 @@ build on Tight's locked-shield density and are set from the control-bar Formatio
 their own direct keys.
 
 Density also decides how deep an enemy can press into the line once melee is joined.
-Tight, Square, Shield Wall, and Testudo hold the enemy at the front rank with
-essentially no depth-wise mixing --- shields lock with the men either side, so one
-soldier going down doesn't open a seam. Normal and Loose order have no such
+Tight, Square, Schiltron, Shield Wall, and Testudo hold the enemy at the front rank
+with essentially no depth-wise mixing --- shields lock with the men either side, so
+one soldier going down doesn't open a seam. Normal and Loose order have no such
 discipline holding a line, so soldiers there can end up more deeply mixed with the
 enemy.
 
