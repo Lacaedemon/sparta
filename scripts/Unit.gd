@@ -537,7 +537,7 @@ const TESTUDO_SPACING_SCALE: float = 0.6
 # CAV_MARK_RADIUS case.
 const FORMATION_CONTAINMENT_SCALE_TIGHT: float = 1.0
 # NORMAL's own containment margin: well under TIGHT's full value -- "a couple of ranks
-# deep" (the #1094 design intent), not the effectively-zero-intermixing TIGHT gets. A
+# deep" by design intent, not the effectively-zero-intermixing TIGHT gets. A
 # FLAT, unconditional value (not gated on prone state the way an earlier, reverted
 # attempt was -- see formation_containment_margin's doc comment), so every NORMAL
 # soldier gets the identical margin every tick: the contact-pair SET this feature
