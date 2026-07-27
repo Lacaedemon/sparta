@@ -2314,6 +2314,32 @@ func test_enemy_infantry_still_separates_softly_from_spearman() -> void:
 		"a spearman is only a hard wall to cavalry — infantry shoves it normally")
 
 
+func test_separate_caps_the_summed_push_across_simultaneous_overlaps() -> void:
+	# A pathologically huge separation_radius (simulating a corrupted min_dist, the
+	# case SEPARATION_SPEED_CAP exists to guard against) makes a single pair's raw
+	# push, on its own, already dwarf the cap. Three such enemies overlapping at
+	# once must still sum to no more than the cap's own single-tick budget -- not
+	# three times it -- or the cap is only bounding each pair independently while
+	# leaving the real per-tick total unbounded.
+	var a := _make_unit()
+	a.separation_radius = 2000.0
+	var delta := 1.0 / 60.0
+	var enemies: Array[Unit] = []
+	for x in [5.0, 10.0, 15.0]:
+		var e := _make_unit()
+		e.team = 1
+		e.separation_radius = 2000.0
+		e.position = Vector2(x, 0.0)
+		enemies.append(e)
+	a.position = Vector2.ZERO
+	a._separate(delta)
+	var cap_budget: float = Unit.SEPARATION_SPEED_CAP * delta
+	assert_lte(a.position.length(), cap_budget + 0.01,
+		"the total single-tick displacement from all three overlaps together stays " +
+		"within one tick's speed-cap budget, not three times it")
+	assert_gt(a.position.length(), 0.0, "the unit is still pushed, just bounded")
+
+
 # --- fatigue + line relief --------------------------------------
 
 func test_fatigue_builds_while_fighting() -> void:
