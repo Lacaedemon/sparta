@@ -50,8 +50,8 @@ jobs:
       - name: Check new scripts/*.gd files stay under the file-length cap
         # Same diff-scoped shape and base override as the comments check above --
         # only files ADDED by this diff are checked, so this doesn't gate on the
-        # many pre-existing files already over the cap. See CLAUDE.md's
-        # one-function-per-file convention.
+        # many pre-existing files already over the cap. See tools/README.md's
+        # file_length entry for the rationale.
         env:
           SPARTA_CHECK_COMMENTS_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: tools/check.sh file_length

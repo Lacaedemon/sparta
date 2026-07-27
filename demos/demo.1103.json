@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure tooling PR (gdlint wiring into tools/check.sh and CI) plus a mechanical, behavior-preserving rename in scripts/Battle.gd (ROUT_MARGIN promoted var->const; FIELD_WITH_MARGIN renamed to lowercase field_with_margin -- naming-convention fixes gdlint itself flagged, zero gameplay/visual change, confirmed by the full GUT suite matching before and after). Nothing here is visible in a recorded battle."
+}

@@ -23,8 +23,10 @@
 #             the units step in check-comment-citations.yml.
 #   file_length
 #             Caps NEW scripts/*.gd files (added by this diff, not existing ones) at 100
-#             lines -- CLAUDE.md's "one function per file" convention as a hard budget for
-#             genuinely new files. Diff-scoped like `comments`/`units`, sharing their base
+#             lines, on the modularity/maintainability grounds one-function-per-file rules
+#             are usually written for (a hard budget for genuinely new files, not an
+#             existing CLAUDE.md rule in this repo -- see .gdlintrc's own header for the
+#             fuller rationale). Diff-scoped like `comments`/`units`, sharing their base
 #             resolution: a whole-tree gate would fail on the 167 of 274 tracked *.gd files
 #             that already exceed 100 lines. Scoped to scripts/, not test/ (this repo's
 #             test files deliberately group many test functions per file).
@@ -182,7 +184,7 @@ list_checks() {
   info "  chars      non-standard characters in docs (check-non-standard-chars.yml)"
   info "  comments   issue/PR-number citations in NEW GDScript comment lines (check-comment-citations.yml)"
   info "  units      units-convention lint on NEW GDScript lines (docs/units-convention.md)"
-  info "  file_length  caps NEW scripts/*.gd files at 100 lines (one-function-per-file convention)"
+  info "  file_length  caps NEW scripts/*.gd files at 100 lines (modularity budget, see .gdlintrc)"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  patch_coverage  local codecov/patch gate for this diff's scripts/*.gd changes (fails below the effective target)"
   info "  lint       GDScript style lint via gdlint (see .gdlintrc), whole tracked *.gd tree"
@@ -808,16 +810,17 @@ check_comments() {
 }
 
 check_file_length() {
-  # Cap NEW scripts/*.gd files at MAX_NEW_FILE_LINES lines -- CLAUDE.md's "one function per
-  # file" convention read as a hard budget for genuinely new production files. Diff-scoped to
-  # files ADDED by this diff (git diff --diff-filter=A), not a whole-tree scan: 167 of this
-  # repo's 274 tracked *.gd files already exceed 100 lines -- several in the thousands
-  # (Unit.gd, Battle.gd, core orchestration files) -- so a whole-tree gate would fail almost
-  # every PR until a large, separate decomposition effort lands. Scoped to scripts/ only, not
-  # test/: this repo's test-file convention deliberately groups many related test functions
-  # into one file (test_soldier_melee.gd runs hundreds of lines by design), which
-  # one-function-per-file was never meant to constrain. Reuses check_comments' base
-  # resolution (and SPARTA_CHECK_COMMENTS_BASE override) so local and CI agree.
+  # Cap NEW scripts/*.gd files at MAX_NEW_FILE_LINES lines -- a modularity budget for
+  # genuinely new production files (this repo has no existing CLAUDE.md rule of this shape;
+  # it's a new convention this check itself introduces). Diff-scoped to files ADDED by this
+  # diff (git diff --diff-filter=A), not a whole-tree scan: 167 of this repo's 274 tracked
+  # *.gd files already exceed 100 lines -- several in the thousands (Unit.gd, Battle.gd, core
+  # orchestration files) -- so a whole-tree gate would fail almost every PR until a large,
+  # separate decomposition effort lands. Scoped to scripts/ only, not test/: this repo's
+  # test-file convention deliberately groups many related test functions into one file
+  # (test_soldier_melee.gd runs hundreds of lines by design), which a per-new-file budget
+  # was never meant to constrain. Reuses check_comments' base resolution (and
+  # SPARTA_CHECK_COMMENTS_BASE override) so local and CI agree.
   local base
   if ! base="$(resolve_comments_base)"; then
     warn "No base ref to diff against (shallow checkout, no 'main'/'origin/main',"
@@ -855,7 +858,7 @@ check_file_length() {
   for f in "${files[@]}"; do
     lines="$(wc -l < "$PROJECT_ROOT/$f" | tr -d ' ')"
     if [ "$lines" -gt "$max" ]; then
-      err "$f: $lines lines (new files are capped at $max -- CLAUDE.md's one-function-per-file convention; split it up)"
+      err "$f: $lines lines (new files are capped at $max -- see tools/README.md's file_length entry; split it up)"
       failed=1
     fi
   done
