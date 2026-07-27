@@ -4866,13 +4866,16 @@ const ANCHOR_RANKS: int = 2
 ## formation's position should read off its leading edge, not an average a casualty-thinned or
 ## knocked-back deeper rank can pull around -- see `SoldierBodies.couple()`, the only caller.
 ## Square/Schiltron has no single front to speak of (the ring wraps the whole block), so it
-## returns empty there; the caller keeps using the existing perimeter-based engaged selection
+## returns empty there; the caller keeps using the existing perimeter-based contact selection
 ## for that formation instead. Live-position selection (UnitFormation.live_front_indices),
 ## same as engaged_soldier_indices, for the same reason: a casualty splices the per-soldier
 ## arrays, so a fixed-index "first N slots" reading would go stale the moment the array
-## compacts.
+## compacts. Gated on is_engaged() OR _in_enemy_contact, like contact_soldier_indices -- a
+## regiment merely in physical contact (not fighting) still needs its position anchored on
+## its real front-rank bodies, or couple() dilutes the anchor over the whole, mostly-static
+## block the same way #783/#784 fixed for a fighting regiment's kinematic charge.
 func near_front_soldier_indices(count: int) -> PackedInt32Array:
-	if not is_engaged() or count <= 0 or in_square():
+	if not (is_engaged() or _in_enemy_contact) or count <= 0 or in_square():
 		return PackedInt32Array()
 	var cutoff: int = mini(count, formation_files(count) * ANCHOR_RANKS)
 	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
@@ -4881,15 +4884,20 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 
 
 ## The soldier-index selection `SoldierBodies.couple()` anchors `position` on: the live
-## near-front ranks (`near_front_soldier_indices`) for a settled, non-Square engaged
-## regiment, or the wider `engaged_soldier_indices` selection otherwise (Square/Schiltron,
-## or any of the three unstable-transition cases `_position_anchor_unstable` names). Empty
-## when not engaged at all -- `couple()` falls back to the whole-block centroid in that case.
-func position_anchor_indices(count: int, use_cache: bool = true) -> PackedInt32Array:
-	if not is_engaged():
+## near-front ranks (`near_front_soldier_indices`) for a settled, non-Square regiment, or the
+## wider `contact_soldier_indices` selection otherwise (Square/Schiltron, or any of the three
+## unstable-transition cases `_position_anchor_unstable` names). Empty when neither fighting
+## nor in physical contact -- `couple()` falls back to the whole-block centroid in that case.
+## Gated on is_engaged() OR _in_enemy_contact (not is_engaged() alone): a "disengaging" unit
+## (a plain move order with no attack target) never fights, but its regiment position still
+## needs to anchor on its real contact-resisted front ranks while it's physically touching an
+## enemy, or its kinematic march dilutes right through that contact the same way #783/#784
+## found for a fighting regiment's charge -- see docs/individual-collision-design.md.
+func position_anchor_indices(count: int) -> PackedInt32Array:
+	if not (is_engaged() or _in_enemy_contact):
 		return PackedInt32Array()
 	if in_square() or _position_anchor_unstable():
-		return engaged_soldier_indices(count, use_cache)
+		return contact_soldier_indices(count)
 	return near_front_soldier_indices(count)
 
 
