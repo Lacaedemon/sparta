@@ -917,8 +917,7 @@ const SEPARATION_RADIUS_MAX: float = 1.4 * WorldScaleRef.WU_PER_M
 # legitimate min_dist can produce; it only ever bounds a genuinely pathological state
 # (a corrupted min_dist from a bug elsewhere). Measured real gameplay (a full-sprint
 # cavalry-vs-spear-line hard block) sits far below this, at ~100-200 wu/s.
-# tuned in wu
-const SEPARATION_SPEED_CAP: float = 6000.0
+const SEPARATION_SPEED_CAP: float = 6000.0   # tuned in wu
 
 # Cavalry charge: a physics-based bonus, not a one-shot token. The damage
 # multiplier scales with the rider's IMPACT VELOCITY at the moment of contact — the
