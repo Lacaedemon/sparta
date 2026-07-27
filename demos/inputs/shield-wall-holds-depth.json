@@ -1,0 +1,14 @@
+{
+  "_comment": "Formation-looseness-gated melee intermixing (#1094): a stationary Infantry regiment in Shield Wall (formation 4) holds ground while a LARGER Infantry regiment (40 vs 28 soldiers -- enough attackers to press hard) marches up under its own enemy-AI order and locks in melee (~tick 220). Watch the front line in the recording: the attacker presses flush against the defender's front rank and holds there. Verified via dump-state.sh (soldiers_full.pos, both units, restricted to attacker bodies that fall within the defender's own lateral frontage so a wide attacker's flanking soldiers aren't mistaken for depth-wise penetration): no attacker soldier ever crosses into the defender's own current depth span (front-edge to rear-edge Y-range) for the whole clash -- the deepest approach stays on the attacker's own side of the front rank. Compared against the pre-fix commit on this identical scenario, the regiment-level separation floor already gives Shield Wall SOME coarse protection in a clean one-on-one clash like this one, so the before/after contrast here is real but not dramatic (see the PR description for the exact numbers) -- formation_containment_margin's soldier-level guarantee matters most once that coarser mechanism's own assumptions break down (several simultaneous attackers, casualties compacting a rank), which a single clean clash doesn't stress.",
+  "seed": "48001",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 500, "y": 400, "count": 28, "formation": 4 },
+    { "team": 1, "type": "Infantry", "x": 500, "y": 600, "count": 40 }
+  ],
+  "camera": [ { "tick": 0, "x": 500, "y": 440, "zoom": 2.1 } ],
+  "state": [60, 120, 180, 220, 260, 300, 340, 380, 420, 460, 500, 560, 620, 680, 740],
+  "fixed_fps": 30,
+  "max_frames": 720,
+  "fps": 15,
+  "width": 720
+}
