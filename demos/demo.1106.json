@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/brace-vs-unbraced-charge.json",
+  "caption": "Two identical Spearmen lines face an identical cavalry charge. The right line is ordered to Brace (Ctrl+F4) early, so it settles well before contact; the left line is left at the merely-engaged default. soldier_brace() is no longer binary: the braced line holds its ground almost exactly (its position barely shifts on contact), while the unbraced line visibly presses forward into the melee -- the same graded value also raises its knockback/knockdown resistance and its weapon-differentiated brace capacity (issue #1105).",
+  "fixed_fps": 30,
+  "max_frames": 280,
+  "fps": 15,
+  "width": 720
+}

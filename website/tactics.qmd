@@ -1307,6 +1307,33 @@ into different tools:
   issuing a move order to advance a unit through contested ground and let it
   handle whatever it meets along the way, without babysitting each
   engagement.
+- **Brace** (<kbd>F4</kbd>) --- a deliberate "plant and hold" stance for
+  receiving a charge. Bracing is graded, not a flat switch: a merely-engaged
+  line (no explicit order) is only partly set, and one still under way is
+  barely set at all. Ordering Brace and holding the line still for about a
+  second sets it fully --- the doc's "you must be set before it arrives" ---
+  raising its resistance to being knocked back or knocked down, and it stops
+  the unit from pressing forward or auto-advancing while armed, the same as
+  Hold. A grounded spear/pike line braces harder than a shield-only one at
+  the same posture, so set spears before contact rather than shields alone
+  when you can choose which.
+
+::: {#fig-brace-vs-unbraced .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/brace_vs_unbraced.jpg">
+  <source src="media/brace_vs_unbraced.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two identical Spearmen lines face an identical cavalry charge. The right line is
+ordered to Brace and settles well before contact; the left is left at the
+merely-engaged default. The braced line holds its ground almost exactly on
+impact, while the unbraced line visibly presses forward into the melee.
+:::
 
 ::: {#fig-cycle-charge-flee .demo}
 
