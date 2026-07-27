@@ -16,10 +16,12 @@ class_name SoldierEnemyContact
 ## pass until that's fixed and re-verified.
 ##
 ## Each pair's contact radius is also widened by both soldiers' own formation-containment
-## margin (Unit.formation_containment_margin) -- a tight/shield-wall-class defender resists an
-## attacker before their bodies would actually overlap, gating how far melee intermixes with
-## the defender's own formation_mode instead of letting an attacker slip through however wide
-## a gap its raw body radius happens to leave.
+## margin (Unit.formation_containment_margin) -- a shield-wall-class defender (TIGHT/SQUARE/
+## SCHILTRON/SHIELD_WALL/TESTUDO) resists an attacker before their bodies would actually
+## overlap, gating how far melee intermixes with the defender's own formation_mode. NORMAL
+## and LOOSE stay at zero -- deliberately unchanged from their pre-existing contact geometry
+## (see formation_containment_margin's own doc comment for why an earlier per-soldier NORMAL
+## variant was reverted).
 ##
 ## Determinism: regiments are processed in uid order and each regiment's engaged soldiers in
 ## ascending index, so the gathered arrays are already global-soldier-id sorted; the
@@ -75,6 +77,7 @@ static func accumulate(units: Array, frame: int) -> void:
 		if idxs.is_empty():
 			continue
 		var r: float = u.soldier_body_radius()
+		var contain: float = u.formation_containment_margin()
 		var mass: float = u.combat_profile()["mass"]
 		var brace: float = u.soldier_brace()
 		for i in idxs:
@@ -84,10 +87,7 @@ static func accumulate(units: Array, frame: int) -> void:
 			sowners.push_back(u)
 			sslots.push_back(i)
 			sradii.push_back(r)
-			# Per-soldier, not hoisted like r/mass/brace above -- formation_containment_margin
-			# can differ soldier-to-soldier within the same unit (a NORMAL-formation body's
-			# margin drops to zero while THAT body is prone; see the function's own doc).
-			scontain.push_back(u.formation_containment_margin(i))
+			scontain.push_back(contain)
 			smass.push_back(mass)
 			sbrace.push_back(brace)
 			steams.push_back(u.team)

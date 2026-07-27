@@ -150,7 +150,7 @@ func test_shield_wall_containment_margin_triggers_contact_before_raw_radii_overl
 	a.set_formation(Unit.FORMATION_SHIELD_WALL)
 	b.set_formation(Unit.FORMATION_SHIELD_WALL)
 	var raw: float = a.soldier_body_radius() + b.soldier_body_radius()
-	var margin: float = a.formation_containment_margin(0)
+	var margin: float = a.formation_containment_margin()
 	var d: float = raw + margin   # > raw (not touching by body radius alone), < raw + 2*margin
 	a._sim_soldier_pos[0] = Vector2.ZERO
 	b._sim_soldier_pos[0] = Vector2(d, 0)
@@ -171,7 +171,7 @@ func test_loose_formation_has_no_containment_margin_at_the_same_distance() -> vo
 	# own margin is zero, which is exactly the behaviour under test.
 	var shield_wall_ref := _make_unit(3, 0, Vector2.ZERO, 1)
 	shield_wall_ref.set_formation(Unit.FORMATION_SHIELD_WALL)
-	var d: float = raw + shield_wall_ref.formation_containment_margin(0)
+	var d: float = raw + shield_wall_ref.formation_containment_margin()
 	a._sim_soldier_pos[0] = Vector2.ZERO
 	b._sim_soldier_pos[0] = Vector2(d, 0)
 	SoldierEnemyContact.accumulate([a, b], 90102)
@@ -179,30 +179,33 @@ func test_loose_formation_has_no_containment_margin_at_the_same_distance() -> vo
 	assert_eq(b._sim_body_vel[0], Vector2.ZERO, "no formation discipline -- no containment push")
 
 
-func test_normal_formation_containment_margin_vanishes_once_the_defender_is_prone() -> void:
-	# The "consequence of knockback" case: at a fixed separation inside NORMAL's
-	# standing containment margin, felling one defender (prone) removes ITS OWN
-	# contribution to min_dist and the pair stops resolving as in contact.
+func test_normal_formation_pair_at_the_raw_radius_boundary_is_unaffected_by_containment() -> void:
+	# Regression guard: NORMAL contributes zero containment margin, so a pair placed
+	# exactly at the raw body-radius boundary (touching by radius alone, the pre-existing
+	# contact test) behaves identically to before this feature -- no widened min_dist. An
+	# earlier version gave NORMAL a per-soldier, prone-gated margin here; that measurably
+	# reintroduced the melee-lock-swirl regression on CI (see Unit.formation_containment_margin's
+	# doc comment), so NORMAL's contact geometry must stay bit-identical to its pre-feature
+	# behaviour: exactly zero, always, regardless of prone state.
 	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)   # default FORMATION_NORMAL
 	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)  # default FORMATION_NORMAL
+	assert_eq(a.formation_containment_margin(), 0.0, "sanity: NORMAL contributes no margin")
 	var raw: float = a.soldier_body_radius() + b.soldier_body_radius()
-	var margin_standing: float = a.formation_containment_margin(0)
-	var min_dist_both_standing: float = raw + 2.0 * margin_standing
-	var min_dist_one_prone: float = raw + margin_standing   # b's own margin drops to 0
-	var d: float = (min_dist_both_standing + min_dist_one_prone) * 0.5
+	var d: float = raw + 0.5   # just outside raw-radius contact -- must stay out of contact
 	a._sim_soldier_pos[0] = Vector2.ZERO
 	b._sim_soldier_pos[0] = Vector2(d, 0)
-
 	SoldierEnemyContact.accumulate([a, b], 90103)
-	assert_true(a._sim_body_vel[0].length() > 0.0,
-		"two standing NORMAL soldiers at this distance are still in contact")
+	assert_eq(a._sim_body_vel[0], Vector2.ZERO,
+		"NORMAL soldiers just outside raw-radius contact stay out of contact -- no containment widening")
+	assert_eq(b._sim_body_vel[0], Vector2.ZERO,
+		"NORMAL soldiers just outside raw-radius contact stay out of contact -- no containment widening")
 
-	a._sim_body_vel[0] = Vector2.ZERO
-	b._sim_body_vel[0] = Vector2.ZERO
+	# The SAME distance, with one defender prone, must resolve identically (zero impulse) --
+	# NORMAL's margin never varies with prone state now.
 	b._sim_prone[0] = 1.0
 	SoldierEnemyContact.accumulate([a, b], 90104)
 	assert_eq(a._sim_body_vel[0], Vector2.ZERO,
-		"once the defender is prone its own margin drops to zero and the same gap is no longer contact")
+		"a prone NORMAL defender still contributes no margin -- unaffected by prone state")
 
 
 func test_accumulate_caps_a_soldiers_summed_velocity_across_multiple_simultaneous_enemies() -> void:
