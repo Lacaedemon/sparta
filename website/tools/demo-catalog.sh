@@ -79,5 +79,5 @@ DEMOS=(
   "multiple_engage|demos/inputs/multiple-engage.json|30|350|720|input"
   "march_to_contact|demos/inputs/march-to-contact.json|30|370|640|input"
   "nested_control_groups|demos/inputs/nested-control-groups.json|30|300|640|input"
-  "brace_vs_unbraced|demos/inputs/brace-vs-unbraced-charge.json|30|280|720|input"
+  "brace_vs_unbraced|demos/inputs/brace-vs-unbraced-charge.json|30|240|720|input"
 )
