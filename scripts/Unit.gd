@@ -4568,8 +4568,8 @@ func is_delegated() -> bool:
 	return player_group_id != UNDELEGATED
 
 
-## How braced (set to receive) this regiment's soldiers are, in [0, 1] (#201 bracing,
-## graded per docs/combat-model.md's `br` formula). A regiment engaged and not skirmishing
+## How braced (set to receive) this regiment's soldiers are, in [0, 1], graded per
+## docs/combat-model.md's `br` formula. A regiment engaged and not skirmishing
 ## is "at attention" -- some footing, not fully set. Being under way (current_speed > 0)
 ## costs footing: a body still translating can't plant. Holding ORDER_BRACE, once genuinely
 ## stationary for BRACE_SETTLE_TIME (this is the doc's T_post -- "you must be set before it
