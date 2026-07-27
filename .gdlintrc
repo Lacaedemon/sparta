@@ -1,0 +1,87 @@
+# gdlint (gdtoolkit) config, tuned to this repo's actual, deliberate conventions rather than
+# gdtoolkit's opinionated defaults. Run with gdtoolkit's own defaults against the whole
+# codebase: ~1050 findings. With the disables below: 3, all genuine naming-convention slips,
+# fixed alongside this config landing.
+#
+# Rules disabled below and why -- each conflicts with an established, intentional convention
+# rather than catching a real defect:
+#
+# - class-definitions-order: this repo organizes a script's members by documented comment-header
+#   sections (e.g. "# --- Combat -----"), not gdlint's prescribed tools/consts/vars/funcs order.
+# - max-line-length: no existing line-length convention here; this repo's style favors long,
+#   thorough explanatory comments over wrapping at a fixed column.
+# - max-public-methods / max-returns / max-file-lines / function-arguments-number: fixed
+#   complexity budgets that don't fit an established architecture with several large,
+#   well-organized orchestration files (Unit.gd, Battle.gd) and heavy, intentional
+#   early-return/guard-clause style (see shared/coding/avoid-nesting.md).
+# - duplicated-load: a real redundancy smell in principle, but spread across 19 files already --
+#   too widespread to enable without its own dedicated cleanup pass. Candidate follow-up.
+# - no-elif-return / no-else-return: an `elif` chain after `return` is this repo's idiomatic,
+#   readable way to write a mutually-exclusive dispatch table (see SelectionManager.gd's
+#   keyboard-shortcut handling) -- flattening it into a bare `if` sequence isn't a real
+#   improvement.
+# - mixed-tabs-and-spaces: turned out to be a deliberate technique (a trailing space after tabs,
+#   aligning a wrapped comment's continuation line under the code above it), not a formatting bug.
+# - unused-argument: almost entirely GUT test signal-handler stub parameters, required by the
+#   callback signature and genuinely unused -- persistent noise on test files specifically.
+disable:
+  - class-definitions-order
+  - max-line-length
+  - max-public-methods
+  - max-returns
+  - max-file-lines
+  - function-arguments-number
+  - duplicated-load
+  - no-elif-return
+  - no-else-return
+  - mixed-tabs-and-spaces
+  - unused-argument
+
+class-definitions-order:
+  - tools
+  - classnames
+  - extends
+  - docstrings
+  - signals
+  - enums
+  - consts
+  - staticvars
+  - exports
+  - pubvars
+  - prvvars
+  - onreadypubvars
+  - onreadyprvvars
+  - others
+class-load-variable-name: (([A-Z][a-z0-9]*)+|_?[a-z][a-z0-9]*(_[a-z0-9]+)*)
+class-name: ([A-Z][a-z0-9]*)+
+class-variable-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
+comparison-with-itself: null
+constant-name: _?[A-Z][A-Z0-9]*(_[A-Z0-9]+)*
+enum-element-name: '[A-Z][A-Z0-9]*(_[A-Z0-9]+)*'
+enum-name: ([A-Z][a-z0-9]*)+
+excluded_directories: !!set
+  .git: null
+expression-not-assigned: null
+function-argument-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
+function-arguments-number: 10
+function-name: (_on_([A-Z][a-z0-9]*)+(_[a-z0-9]+)*|_?[a-z][a-z0-9]*(_[a-z0-9]+)*)
+function-preload-variable-name: ([A-Z][a-z0-9]*)+
+# Widened from gdtoolkit's default ('[a-z][a-z0-9]*(_[a-z0-9]+)*', no leading underscore) to match
+# every OTHER variable-name rule's own pattern -- this repo does use a leading underscore on some
+# function-scope locals (e.g. _enemy, _other), and this was the only name rule that disallowed it.
+function-variable-name: '_?[a-z][a-z0-9]*(_[a-z0-9]+)*'
+load-constant-name: (([A-Z][a-z0-9]*)+|_?[A-Z][A-Z0-9]*(_[A-Z0-9]+)*)
+loop-variable-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
+max-file-lines: 1000
+max-line-length: 100
+max-public-methods: 20
+max-returns: 6
+mixed-tabs-and-spaces: null
+no-elif-return: null
+no-else-return: null
+signal-name: '[a-z][a-z0-9]*(_[a-z0-9]+)*'
+sub-class-name: _?([A-Z][a-z0-9]*)+
+tab-characters: 1
+trailing-whitespace: null
+unnecessary-pass: null
+unused-argument: null
