@@ -590,14 +590,14 @@ func test_deep_set_file_is_knocked_back_less_than_a_lone_man() -> void:
 	atk1._approach_velocity = Vector2(0, 500.0)   # large charge — impulse clears lone brace
 	var lone := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
 	lone._sim_soldier_hp[0] = 9999.0
-	SoldierMelee.resolve(atk1, lone)
+	SoldierMelee.resolve(atk1, [lone])
 	var lone_kb: float = lone._sim_body_vel[0].length()
 
 	Replay.rng.seed = SEED
 	var atk2 := _unit(3, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	atk2._approach_velocity = Vector2(0, 500.0)
 	var deep := _deep_unit(4, 3, Vector2(0, 6), Vector2.UP)
-	SoldierMelee.resolve(atk2, deep)
+	SoldierMelee.resolve(atk2, [deep])
 	var deep_kb: float = deep._sim_body_vel[0].length()
 
 	assert_gt(lone_kb, 0.0, "the lone set man is knocked back (shove clears his lone brace capacity)")
@@ -618,7 +618,7 @@ func test_flank_blow_gets_no_bracing() -> void:
 	atk_front._approach_velocity = Vector2(0.0, charge_speed)   # same magnitude as the flank
 	var def_front := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)   # faces the attacker: phi > 0
 	def_front._sim_soldier_hp[0] = 9999.0
-	SoldierMelee.resolve(atk_front, def_front)
+	SoldierMelee.resolve(atk_front, [def_front])
 	var front_kb: float = def_front._sim_body_vel[0].length()
 
 	Replay.rng.seed = SEED
@@ -626,7 +626,7 @@ func test_flank_blow_gets_no_bracing() -> void:
 	atk_flank._approach_velocity = Vector2(charge_speed, 0.0)   # same charge magnitude, lateral
 	var def_flank := _unit(4, 1, 1, Vector2(0, 0), Vector2.DOWN, false)   # faces down: phi = 0
 	def_flank._sim_soldier_hp[0] = 9999.0
-	SoldierMelee.resolve(atk_flank, def_flank)
+	SoldierMelee.resolve(atk_flank, [def_flank])
 	var flank_kb: float = def_flank._sim_body_vel[0].length()
 
 	assert_gt(flank_kb, front_kb,
@@ -894,3 +894,72 @@ func test_register_casualties_falls_back_to_formation_geometry_with_no_soldier_l
 	var expected_edge: Vector2 = u.global_position + u.block_centre_offset()
 	assert_almost_eq(fx.global_position.distance_to(expected_edge), 0.0, 0.01,
 		"with no live soldier data at all, the heap still anchors on the formation-geometry edge")
+
+
+# --- multi-defender resolve: each soldier finds its own nearest enemy, across units ------
+# resolve() now takes a defenders population, not one fixed Unit -- these pin the behaviour
+# that must emerge from widening the search: casualties land on whichever defender a given
+# attacking soldier actually finds nearest within reach, the search isn't confined to (or
+# biased by) whichever defender happens to be processed first, and it stays deterministic.
+
+func test_multi_defender_resolve_each_attacking_soldier_finds_its_own_nearest_defender() -> void:
+	# Two defenders flank one attacker with two soldiers: the LEFT attacking soldier is in
+	# reach of only the left defender, the RIGHT attacking soldier is in reach of only the
+	# right defender. Proves the search spans BOTH defenders in one resolve() call, instead
+	# of being confined to whichever single unit is passed as "the" defender.
+	var a := _unit(1, 0, 2, Vector2(0, 0), Vector2.DOWN, false)
+	a._sim_soldier_pos[0] = Vector2(-15, 0)
+	a._sim_soldier_pos[1] = Vector2(15, 0)
+	var b := _unit(2, 1, 1, Vector2(-15, 6), Vector2.UP, false)   # only a's soldier 0 is in reach (dist 6 < 26)
+	var c := _unit(3, 1, 1, Vector2(15, 6), Vector2.UP, false)    # only a's soldier 1 is in reach (dist 6 < 26)
+	var b_full: float = b._sim_soldier_hp[0]
+	var c_full: float = c._sim_soldier_hp[0]
+	for _k in range(80):
+		SoldierMelee.resolve(a, [b, c])
+	assert_true(b.soldiers == 0 or b._sim_soldier_hp[0] < b_full,
+		"the left defender takes wounds from a's left soldier")
+	assert_true(c.soldiers == 0 or c._sim_soldier_hp[0] < c_full,
+		"the right defender ALSO takes wounds from a's right soldier, in the SAME resolve() calls -- no rotation needed")
+
+
+func test_multi_defender_resolve_prefers_the_nearer_defender_regardless_of_array_order() -> void:
+	# b is farther but has the LOWER uid (so it sorts and is enumerated first inside resolve());
+	# c is nearer but has the higher uid. The nearest-target search must still find c every
+	# time, proving distance decides -- not defender processing order. c's health is boosted
+	# so it survives the whole loop (matching this file's own _deep_unit-style convention) --
+	# otherwise c dying partway through would correctly (not a bug) redirect the remaining
+	# strikes onto b, since it would be the only one left in reach, muddying this specific
+	# "distance always wins while both are alive" assertion.
+	Replay.rng.seed = SEED
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(0, 20), Vector2.UP, false)   # farther, still in reach (20 < 26)
+	var c := _unit(3, 1, 1, Vector2(0, 10), Vector2.UP, false)   # nearer, in reach (10 < 26)
+	c._sim_soldier_hp[0] = 9999.0
+	var b_full: float = b._sim_soldier_hp[0]
+	var c_full: float = c._sim_soldier_hp[0]
+	for _k in range(40):
+		SoldierMelee.resolve(a, [b, c])
+	assert_almost_eq(b._sim_soldier_hp[0], b_full, 0.001,
+		"the farther defender takes no wounds at all while the nearer one is alive to absorb every strike")
+	assert_lt(c._sim_soldier_hp[0], c_full, "the nearer defender absorbs every strike instead")
+
+
+func test_multi_defender_resolve_is_deterministic_across_runs() -> void:
+	# Same seed, same fixture geometry, same number of cadence rounds -> identical outcome
+	# across two independent runs -- the wider multi-defender search draws no new RNG and
+	# introduces no order-dependent nondeterminism.
+	var results: Array = []
+	for run in range(2):
+		Replay.rng.seed = SEED
+		var a := _unit(10 + run, 0, 2, Vector2(0, 0), Vector2.DOWN, false)
+		a._sim_soldier_pos[0] = Vector2(-15, 0)
+		a._sim_soldier_pos[1] = Vector2(15, 0)
+		var b := _unit(20 + run, 1, 1, Vector2(-15, 6), Vector2.UP, false)
+		var c := _unit(30 + run, 1, 1, Vector2(15, 6), Vector2.UP, false)
+		for _k in range(60):
+			SoldierMelee.resolve(a, [b, c])
+		results.append([b.soldiers, c.soldiers, b._sim_soldier_hp, c._sim_soldier_hp])
+	assert_eq(results[0][0], results[1][0], "left defender's surviving count matches across runs")
+	assert_eq(results[0][1], results[1][1], "right defender's surviving count matches across runs")
+	assert_eq(results[0][2], results[1][2], "left defender's per-soldier health matches across runs")
+	assert_eq(results[0][3], results[1][3], "right defender's per-soldier health matches across runs")

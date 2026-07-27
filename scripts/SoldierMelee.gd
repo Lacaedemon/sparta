@@ -1,54 +1,76 @@
 class_name SoldierMelee
 ## Per-soldier melee resolution (phase 4b), extracted from Unit.gd. Each engaged
 ## front-rank soldier of the attacker strikes the nearest enemy soldier within its
-## weapon reach, rolling the model's opposed land contest (SoldierCombat); a hit
-## wounds the enemy soldier's health pool, and a soldier whose health reaches 0 dies
-## and is removed, re-packing the formation. Flanking (facing), the spear-vs-sword reach
-## standoff, the charge, and compounding wounds all emerge here, not from modifiers.
+## weapon reach -- searching across EVERY adjacent engaged enemy unit passed in, not
+## just one, so a soldier fights whoever is actually next to it regardless of which
+## regiment its own unit's `target_enemy` happens to point to -- rolling the model's
+## opposed land contest (SoldierCombat); a hit wounds the enemy soldier's health pool,
+## and a soldier whose health reaches 0 dies and is removed, re-packing the formation.
+## Flanking (facing), the spear-vs-sword reach standoff, the charge, and compounding
+## wounds all emerge here, not from modifiers.
 ## The strike's loadout stats resolve through the per-soldier id arrays: the attacker's
 ## weapon id sets the blow's lethality, and the struck soldier's shield id adds its
 ## block value to the type's stance residual (see LoadoutRegistry / soldier-loadout
 ## design doc), so a per-soldier loadout change alters combat immediately.
-## Replay-deterministic: attackers in soldier-id order, a fixed TWO Replay.rng draws per
-## in-reach strike (the land roll, then the fall roll), and no RNG in the death-reaping.
+## Replay-deterministic: attackers in soldier-id order, defenders in uid order, a fixed
+## TWO Replay.rng draws per in-reach strike (the land roll, then the fall roll), and no
+## RNG in the death-reaping.
 
-## Resolve one melee cadence of `attacker`'s engaged front rank striking `defender`.
-static func resolve(attacker: Unit, defender: Unit) -> void:
+## Resolve one melee cadence of `attacker`'s engaged front rank striking whichever of
+## `defenders` each attacking soldier finds nearest within reach. `defenders` is every
+## enemy unit `attacker` is genuinely adjacent to and engaged with this tick (see
+## Unit.resolve_soldier_melee) -- a size-1 array degenerates to exactly the old
+## single-enemy resolution.
+static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 	var attackers: PackedInt32Array = attacker.engaged_soldier_indices(attacker._sim_soldier_pos.size())
-	var defenders: PackedInt32Array = defender.engaged_soldier_indices(defender._sim_soldier_pos.size())
 	if attackers.is_empty() or defenders.is_empty():
 		return
 
+	# Sorted by uid (not array/instance order, which the caller's contact-query iteration
+	# doesn't guarantee stable) so an exact-distance tie in the nearest-target search below
+	# resolves the same way every run -- the same determinism convention the retired
+	# _next_multiple_engage_target round-robin used.
+	var live_defenders: Array[Unit] = defenders.duplicate()
+	live_defenders.sort_custom(func(x: Variant, y: Variant) -> bool: return (x as Unit).uid < (y as Unit).uid)
+
+	# Per-defender-unit constants, computed once per DISTINCT defender (not once per call,
+	# now that a strike can land on any of several simultaneous adjacent enemies) --
+	# negligible extra work at the typical 1-3 adjacent enemies this ever sees.
+	var def_indices: Array[PackedInt32Array] = []
+	var def_prof: Array[Dictionary] = []
+	var def_mods: Array[Vector2] = []
+	var any_candidates := false
+	for d in live_defenders:
+		var di: PackedInt32Array = d.engaged_soldier_indices(d._sim_soldier_pos.size())
+		def_indices.append(di)
+		def_prof.append(d.combat_profile())
+		# Formation melee scaling, applied to the wound this cadence lands: a hunkered SQUARE
+		# or a head-down TESTUDO attacker hits softer (their offence penalties), and a braced
+		# SHIELD_WALL defender's locked shields blunt a frontal assault. order_mode_modifiers
+		# folds in All-out attack the same way: mods.x boosts the wound when the ATTACKER is
+		# fighting all-out, and dividing by mods.y (< 1.0 when the DEFENDER is) inflates the
+		# wound the defender takes -- the same asymmetric attacker/defender lookup the
+		# regiment-formula path (UnitCombat.strike/shoot) already applies, so the per-soldier
+		# melee path (the dominant case whenever both sides are engaged) isn't left as a silent
+		# no-op for this stance. Scales only the wound magnitude, never the seeded land/fall
+		# rolls -- the RNG stream (draw count and order) is untouched, so replays stay
+		# bit-identical.
+		def_mods.append(UnitCombat.order_mode_modifiers(attacker, d))
+		if not di.is_empty():
+			any_candidates = true
+	if not any_candidates:
+		return
+
 	var my_prof: Dictionary = attacker.combat_profile()
-	var en_prof: Dictionary = defender.combat_profile()
 	var my_maxhp: float = my_prof["max_health"]
-	var en_maxhp: float = en_prof["max_health"]
 	var my_maxstam: float = my_prof["max_stamina"]
-	var en_maxstam: float = en_prof["max_stamina"]
-	# The non-shield part of the defender's shield weight b: stance/training
-	# deflection, per type, constant across the cadence. The shield's own block
-	# value is read per strike through the struck soldier's shield id, so
-	# b = residual + block_value — bit-for-bit the pre-split per-type weight.
-	var en_shield_residual: float = en_prof["shield_residual"]
 	var reach: float = attacker.soldier_reach()
-	# Formation melee scaling, applied to the wound this cadence lands: a hunkered SQUARE
-	# or a head-down TESTUDO attacker hits softer (their offence penalties), and a braced
-	# SHIELD_WALL defender's locked shields blunt a frontal assault. Most of this is
-	# regiment-level (constant across the cadence, from the units' formation and relative
-	# facing) -- order_mode_modifiers folds in All-out attack the same way: mods.x boosts the
-	# wound when the ATTACKER is fighting all-out, and dividing by mods.y (< 1.0 when
-	# the DEFENDER is) inflates the wound the defender takes -- the same asymmetric
-	# attacker/defender lookup the regiment-formula path (UnitCombat.strike/shoot)
-	# already applies, so the per-soldier melee path (the dominant case whenever both
-	# sides are engaged) isn't left as a silent no-op for this stance. formation_attack_factor
-	# has no per-soldier override (it's SQUARE/SCHILTRON's own offence penalty, and neither
-	# formation ever marks a soldier broken -- see breaks_under_encirclement), so it's hoisted
-	# out here; formation_melee_attack_factor and melee_defense_factor DO vary per soldier
-	# (an individually broken soldier drops the multiplier back to 1.0 -- see below), so those
-	# two are computed per strike instead. Scales only the wound magnitude, never the seeded
-	# land/fall rolls -- the RNG stream (draw count and order) is untouched, so replays stay
-	# bit-identical.
-	var mods: Vector2 = UnitCombat.order_mode_modifiers(attacker, defender)
+	# formation_attack_factor has no per-soldier override (it's SQUARE/SCHILTRON's own
+	# offence penalty, and neither formation ever marks a soldier broken -- see
+	# breaks_under_encirclement), so it's hoisted out here, attacker-side only;
+	# formation_melee_attack_factor and melee_defense_factor DO vary per soldier (an
+	# individually broken soldier drops the multiplier back to 1.0 -- see below), so those
+	# two are computed per strike instead.
 	var atk_formation_scale: float = attacker.formation_attack_factor()
 
 	for ai in attackers:
@@ -61,20 +83,42 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# exactly the assumption a surrounded soldier's broken formation can't back up any more.
 		var attacker_broken: bool = attacker.is_soldier_broken(ai)
 		var atk_melee_scale: float = 1.0 if attacker_broken else attacker.formation_melee_attack_factor()
-		# Nearest LIVING enemy soldier within reach — a longer reach lets us hit foes
-		# who can't hit back (the spear screen).
+		# Nearest LIVING enemy soldier within reach, across EVERY adjacent engaged defender —
+		# a longer reach lets us hit foes who can't hit back (the spear screen), and a soldier
+		# fights whoever's actually next to it, not only whichever regiment target_enemy points
+		# to. Enumerated in the uid-sorted defenders order established above so an exact-
+		# distance tie resolves the same way every run (the `<=` below keeps the pre-existing
+		# last-checked-wins tie rule).
 		var target: int = -1
+		var target_def: int = -1
 		var best_d_sq: float = reach * reach
-		for di in defenders:
-			if defender._sim_soldier_hp[di] <= 0.0:
+		for dj in range(live_defenders.size()):
+			var candidates: PackedInt32Array = def_indices[dj]
+			if candidates.is_empty():
 				continue
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-			var d_sq: float = apos.distance_squared_to(defender._sim_soldier_pos[di])
-			if d_sq <= best_d_sq:
-				best_d_sq = d_sq
-				target = di
+			var d: Unit = live_defenders[dj]
+			for di in candidates:
+				if d._sim_soldier_hp[di] <= 0.0:
+					continue
+				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+				var d_sq: float = apos.distance_squared_to(d._sim_soldier_pos[di])
+				if d_sq <= best_d_sq:
+					best_d_sq = d_sq
+					target = di
+					target_def = dj
 		if target < 0:
 			continue   # nothing in reach this strike — no RNG drawn, so order stays stable
+
+		var defender: Unit = live_defenders[target_def]
+		var en_prof: Dictionary = def_prof[target_def]
+		var en_maxhp: float = en_prof["max_health"]
+		var en_maxstam: float = en_prof["max_stamina"]
+		# The non-shield part of the defender's shield weight b: stance/training
+		# deflection, per type, constant across the cadence. The shield's own block
+		# value is read per strike through the struck soldier's shield id, so
+		# b = residual + block_value — bit-for-bit the pre-split per-type weight.
+		var en_shield_residual: float = en_prof["shield_residual"]
+		var mods: Vector2 = def_mods[target_def]
 
 		# Same per-soldier override on the defending side: a broken SHIELD_WALL soldier's
 		# frontal melee bonus assumed its shield was still locked with its neighbours, which
@@ -241,7 +285,12 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 				defender._sim_soldier_stamina[target]
 					- SoldierCombat.KAPPA_D * phi * (1.0 + maxf(0.0, c)))
 
-	reap(defender, attacker)
+	# reap() no-ops immediately when a given unit had zero deaths this cadence, so it's safe
+	# (and simplest) to call it once per distinct defender in the candidate set, unconditionally
+	# -- exactly generalizing the old single-defender "reap(defender, attacker)" call, which was
+	# always made once regardless of whether that one defender actually lost anyone this tick.
+	for d in live_defenders:
+		reap(d, attacker)
 
 
 ## Remove `unit`'s soldiers whose health has reached 0: compact them out of the

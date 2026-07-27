@@ -1289,11 +1289,13 @@ into different tools:
   combined width of every attacker pressing it, so its line can actually
   reach all of them instead of presenting a narrower front than the fight
   has grown to. Both effects stay off below 2 adjacent enemies --- a normal
-  single-opponent fight under this stance looks like any other stance. Its
-  strikes also cycle: rather than every blow landing on whichever one enemy
-  it engaged first, the unit rotates its strike target among every adjacent
-  enemy in turn, so casualties spread across all of them instead of leaving
-  the rest untouched.
+  single-opponent fight under this stance looks like any other stance.
+  Casualties are no longer this stance's own job to spread around: every
+  soldier in an engaged regiment now finds and strikes its own nearest enemy
+  soldier across *every* adjacent enemy unit in reach, regardless of stance
+  --- so once this stance's widened frontage brings a second (or third)
+  enemy within reach, it starts taking casualties immediately, in the same
+  cadence, with nothing needing to rotate onto it.
 - **March to contact** (<kbd>F3</kbd>) --- an advance-to-contact stance for a
   plain move order. Normally, a plain move order with no explicit attack
   target pushes straight through any hostile it crosses --- the unit
@@ -1401,11 +1403,7 @@ A player Infantry regiment arms Multiple engage before two smaller enemy
 Infantry regiments, closing from different bearings, reach contact. The
 first enemy engages normally; once the second also presses in, the
 regiment's frontage widens from 11 to 14 files (their combined width) and
-its facing holds steady instead of swinging between the two of them. Its
-strikes cycle too: the same clip's own state transcript shows the
-regiment's strike target switching from the first enemy to the second
-around the point both are pressing in at once, and the second enemy's
-soldier count keeps dropping afterward instead of sitting untouched.
+its facing holds steady instead of swinging between the two of them.
 :::
 
 ::: {#fig-march-to-contact .demo}
