@@ -53,7 +53,8 @@ static func contact_made(u: Unit) -> bool:
 		if other.state == Unit.State.DEAD or other.state == Unit.State.ROUTING:
 			continue
 		var contact: float = u.attack_range + Unit.RADIUS + other.RADIUS
-		if u.position.distance_to(other.position) <= contact:
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		if u.position.distance_squared_to(other.position) <= contact * contact:
 			return true
 	return false
 
@@ -98,7 +99,8 @@ static func flanked(u: Unit, range_units: float) -> bool:
 			continue
 		if other.state == Unit.State.DEAD or other.state == Unit.State.ROUTING:
 			continue
-		if u.position.distance_to(other.position) > radius:
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		if u.position.distance_squared_to(other.position) > radius * radius:
 			continue
 		if UnitCombat.flank_multiplier(u, other) > 1.0:
 			return true

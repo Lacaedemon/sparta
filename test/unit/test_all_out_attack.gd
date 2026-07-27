@@ -105,6 +105,9 @@ func test_both_units_all_out_attack_apply_independently() -> void:
 func test_all_out_attack_striker_deals_more_melee_damage_when_engaged() -> void:
 	# Same attacker/defender stat line and the same RNG draws; only the attacker's
 	# stance differs, so any damage delta is attributable to ALL_OUT_ATTACK alone.
+	# The two pairs sit far apart (SoldierMelee.resolve now fights every unit its
+	# attacker is genuinely adjacent to -- see Unit.resolve_soldier_melee -- so co-located
+	# pairs would cross-contaminate each other's casualty counts).
 	var attacker_all_out := _make_engaged_unit(100, Vector2(0, 0), Vector2.DOWN)
 	attacker_all_out.team = 0
 	attacker_all_out.order_mode = Unit.ORDER_ALL_OUT_ATTACK
@@ -112,9 +115,9 @@ func test_all_out_attack_striker_deals_more_melee_damage_when_engaged() -> void:
 	defender_a.team = 1
 	var before_a: int = defender_a.soldiers
 
-	var attacker_normal := _make_engaged_unit(100, Vector2(0, 0), Vector2.DOWN)
+	var attacker_normal := _make_engaged_unit(100, Vector2(10000, 0), Vector2.DOWN)
 	attacker_normal.team = 0
-	var defender_b := _make_engaged_unit(100, Vector2(0, 10), Vector2.UP)
+	var defender_b := _make_engaged_unit(100, Vector2(10000, 10), Vector2.UP)
 	defender_b.team = 1
 	var before_b: int = defender_b.soldiers
 
@@ -140,6 +143,7 @@ func test_all_out_attack_striker_deals_more_melee_damage_when_engaged() -> void:
 func test_all_out_attack_defender_takes_more_melee_damage_when_engaged() -> void:
 	# Same attacker, same RNG draws; only the DEFENDER's stance differs, isolating the
 	# defense-penalty half of the tradeoff (the half the bug hid for three rounds).
+	# The two pairs sit far apart -- see the matching comment on the striker-side test above.
 	var attacker_a := _make_engaged_unit(100, Vector2(0, 0), Vector2.DOWN)
 	attacker_a.team = 0
 	var defender_all_out := _make_engaged_unit(100, Vector2(0, 10), Vector2.UP)
@@ -147,9 +151,9 @@ func test_all_out_attack_defender_takes_more_melee_damage_when_engaged() -> void
 	defender_all_out.order_mode = Unit.ORDER_ALL_OUT_ATTACK
 	var before_a: int = defender_all_out.soldiers
 
-	var attacker_b := _make_engaged_unit(100, Vector2(0, 0), Vector2.DOWN)
+	var attacker_b := _make_engaged_unit(100, Vector2(10000, 0), Vector2.DOWN)
 	attacker_b.team = 0
-	var defender_normal := _make_engaged_unit(100, Vector2(0, 10), Vector2.UP)
+	var defender_normal := _make_engaged_unit(100, Vector2(10000, 10), Vector2.UP)
 	defender_normal.team = 1
 	var before_b: int = defender_normal.soldiers
 

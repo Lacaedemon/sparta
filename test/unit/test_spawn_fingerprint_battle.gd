@@ -4,7 +4,7 @@ extends GutTest
 ## loaded stamp no longer matches this build's spawn flags a mismatch. Standing up the full
 ## Battle scene is heavy, so each case spawns one default battle and asserts pre-tick.
 
-const BattleScene := "res://scenes/Battle.tscn"
+const BATTLE_SCENE_PATH := "res://scenes/Battle.tscn"
 
 
 func after_each() -> void:
@@ -17,7 +17,7 @@ func after_each() -> void:
 
 
 func _spawn_default_battle() -> Node:
-	var battle: Node = load(BattleScene).instantiate()
+	var battle: Node = load(BATTLE_SCENE_PATH).instantiate()
 	# add_child runs Battle._ready() synchronously, which spawns both default lines and then
 	# stamps/checks the fingerprint. Assert immediately, before any physics frame.
 	add_child_autofree(battle)

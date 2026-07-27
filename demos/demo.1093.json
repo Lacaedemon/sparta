@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/multiple-engage-simultaneous-damage.json",
+  "caption": "Per-soldier multi-target melee: a player Infantry regiment fights two distinct adjacent enemy regiments at once. target_enemy_uid locks onto one of them (uid 2) and never rotates, but BOTH enemies take casualties over the same window -- uid 1 drops 26 -> 24, uid 2 drops 22 -> 20 by tick 400 -- because every attacking soldier now finds its own nearest enemy across every adjacent engaged unit, instead of the whole regiment being confined to whichever single enemy target_enemy resolves to (previously #1086's round-robin had to rotate the target over many cadences to reach a second enemy at all).",
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 20,
+  "width": 720
+}

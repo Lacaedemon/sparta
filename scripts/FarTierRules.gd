@@ -196,7 +196,8 @@ static func casualty_rate(attacker: FarTierFormation, defender: FarTierFormation
 static func in_striking_range(attacker: FarTierFormation, defender: FarTierFormation) -> bool:
 	var reach: float = Unit.RANGED_RANGE if attacker.is_ranged \
 			else attacker.attack_range + Unit.RADIUS * 2.0
-	return attacker.position.distance_to(defender.position) <= reach
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	return attacker.position.distance_squared_to(defender.position) <= reach * reach
 
 
 ## Apply `killed` whole casualties to the record: clamp to the living, book the losses,
@@ -269,7 +270,8 @@ static func can_rally(rec: FarTierFormation, enemy: FarTierFormation) -> bool:
 		return false
 	if is_destroyed(enemy):
 		return true
-	return rec.position.distance_to(enemy.position) > Unit.RALLY_CONTACT_RADIUS
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	return rec.position.distance_squared_to(enemy.position) > Unit.RALLY_CONTACT_RADIUS * Unit.RALLY_CONTACT_RADIUS
 
 
 ## Recover from a rout: the far-tier analog of Unit._rally(). Clears the routing flag and
