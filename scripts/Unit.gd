@@ -3103,6 +3103,14 @@ func _separate(delta: float) -> void:
 	_separation_velocity = Vector2.ZERO
 	if state == State.DEAD:
 		return
+	# Shared budget so N simultaneously-overlapping neighbors can't each add up to
+	# SEPARATION_SPEED_CAP independently -- the same write-back-clamp-the-total
+	# shape SoldierEnemyContact.accumulate already uses for per-soldier contact
+	# impulses, applied here as a running budget so each pair can still move
+	# position immediately (preserving the existing sequential-convergence
+	# behavior, where a later pair's overlap is measured against the position an
+	# earlier pair already shifted this same tick).
+	var speed_budget: float = SEPARATION_SPEED_CAP
 	# Consider living units and routers alike: nobody gets walked through.
 	for o in _separation_candidates():
 		var other: Unit = o as Unit
@@ -3167,13 +3175,16 @@ func _separate(delta: float) -> void:
 			else:
 				dir = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
 			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * share)
-		# push is this tick's desired displacement; express it as a velocity (capped)
-		# and integrate that, not the raw displacement, so a pathological overlap
-		# can't move the regiment further in one tick than SEPARATION_SPEED_CAP*delta
-		# allows. In the ordinary case (every measured overlap is far below the cap)
-		# this integrates to exactly `push`, same as before.
+		# push is this tick's desired displacement; express it as a velocity (capped
+		# by whatever's left of this tick's shared budget) and integrate that, not
+		# the raw displacement, so a pathological overlap -- even summed across every
+		# overlapping neighbor -- can't move the regiment further in one tick than
+		# SEPARATION_SPEED_CAP*delta allows. In the ordinary case (every measured
+		# overlap is far below the cap) this integrates to exactly `push`, same as
+		# before.
 		var desired_vel: Vector2 = push / delta if delta > 0.0 else Vector2.ZERO
-		var step_vel: Vector2 = desired_vel.limit_length(SEPARATION_SPEED_CAP)
+		var step_vel: Vector2 = desired_vel.limit_length(speed_budget)
+		speed_budget = maxf(0.0, speed_budget - step_vel.length())
 		_separation_velocity += step_vel
 		position += step_vel * delta
 
