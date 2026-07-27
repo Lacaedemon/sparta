@@ -151,6 +151,14 @@ var state: int = State.IDLE
 var facing: Vector2 = Vector2.DOWN
 var move_target: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
+## Peak OrderGuards.current_engaged_fraction() reading since a currently-pending
+## Order.Guard.ENGAGED_FRACTION_ABOVE move was issued -- Battle._apply_order_cmd resets this
+## to 0.0 at both attachment sites (a fresh move, an appended waypoint leg), and
+## _update_current_order() raises it every tick regardless of what current_order actually is,
+## so a fight that happens while the guarded move is only QUEUED behind an active ATTACK/HOLD
+## order still counts once the leg is promoted. See _resolve_disengage_move_order()'s own doc
+## for why the peak (not a point-in-time read) is what the disengage-time decision needs.
+var _move_order_peak_engaged_fraction: float = 0.0
 var target_enemy: Unit = null
 var selected: bool = false
 # The unified orders queue (docs/orders-queue-design.md). `current_order` (orders[0],
@@ -1498,7 +1506,15 @@ func current_maneuver() -> int:
 ## otherwise complete. This is the terminal-condition mechanism: "advance UNTIL contact THEN
 ## attack" is a MOVE order guarded by CONTACT_MADE with an appended ATTACK order behind it --
 ## the guard firing retires the MOVE and promotes the ATTACK on the very same tick.
+##
+## Also raises _move_order_peak_engaged_fraction every tick, unconditionally on what
+## current_order actually is -- a fight can be happening under an ATTACK/HOLD order while a
+## guarded MOVE leg sits queued behind it, and that leg's own eventual disengage-time
+## decision (_resolve_disengage_move_order) needs to know the fight happened even though it
+## wasn't current_order at the time.
 func _update_current_order() -> void:
+	_move_order_peak_engaged_fraction = maxf(_move_order_peak_engaged_fraction,
+			OrderGuards.current_engaged_fraction(self))
 	if current_order == null:
 		return
 	if current_order.guard != Order.Guard.NONE:
@@ -1554,6 +1570,45 @@ func _update_current_order() -> void:
 			# Instantaneous: applied and complete in the same tick Battle issues them, so they
 			# never accumulate here -- retire defensively in case one is ever observed live.
 			retire_current_order()
+
+
+## The disengage-time decision for a plain MOVE order carrying Order.Guard.
+## ENGAGED_FRACTION_ABOVE (Battle.ENGAGED_FRACTION_CANCELS_MOVE's own doc comment has the
+## full policy): once the current fight genuinely ends (is_engaged() has decayed false --
+## not just this instant's contact, the FIGHTING-plus-linger latch), decide whether the
+## march should resume toward its original destination or cancel outright.
+##
+## - The fight never crossed the order's own guard_param threshold (a graze): resume, same
+##   as the pre-#1119 pause-then-resume behavior.
+## - It crossed the threshold, but the destination is still clear: resume anyway -- a real
+##   fight happened, but the original plan is still valid, so don't force a fresh order over
+##   nothing.
+## - It crossed the threshold AND the destination now sits inside a living enemy's own
+##   footprint (OrderGuards.move_target_occupied_by_enemy): cancel. This is the case #1096
+##   actually cared about -- don't blindly march into ground the enemy now holds.
+##
+## Called once, from _think's "obey a move order" branch, right before it would otherwise
+## call _move_to() -- returning true means the caller should stop (the order just retired)
+## rather than fall through to the ordinary march/arrival logic below. The peak tracker is
+## consumed (reset to 0.0) on every call that reaches the threshold check, whichever way it
+## decides, so this fires its real decision only once per order: every later tick this same
+## path runs again, the peak reads back 0.0 and the check is a no-op forever after, matching
+## "at the disengage transition, not every tick" -- the state machine can't route a plain
+## move (target_enemy null, has_move_target true) back into FIGHTING under the same order,
+## so there's no second transition to catch.
+func _resolve_disengage_move_order() -> bool:
+	if current_order == null or current_order.guard != Order.Guard.ENGAGED_FRACTION_ABOVE:
+		return false
+	if is_engaged():
+		return false
+	var was_heavy: bool = _move_order_peak_engaged_fraction >= current_order.guard_param
+	_move_order_peak_engaged_fraction = 0.0
+	if was_heavy and OrderGuards.move_target_occupied_by_enemy(self, move_target):
+		_interrupt_current_order()
+		has_move_target = false
+		retire_current_order()
+		return true
+	return false
 
 
 ## This unit's own melee attack cadence: the equipped weapon's attack_interval_s,
@@ -1932,6 +1987,12 @@ func _think(delta: float) -> void:
 		# visible blob/smear instead of a clean march resumption.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
+		# The disengage-time resume-vs-cancel decision for a heavily-engaged plain move --
+		# see _resolve_disengage_move_order()'s own doc. Checked after the engage-turn settle
+		# above (so that cleanup always runs first regardless) and before anything else below
+		# reads move_target, since a cancel drops it via retire_current_order().
+		if _resolve_disengage_move_order():
+			return
 		# Arrival at the FINAL destination requires both a close position AND a near-zero
 		# speed -- not position alone. _move_to's braking ramps _current_speed down along
 		# the arrival envelope on the route's last leg, so by the time the unit is within
