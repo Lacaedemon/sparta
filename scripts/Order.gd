@@ -110,6 +110,12 @@ enum Guard {
 	TICKS_ELAPSED,   ## guard_param physics ticks have elapsed since the order became current.
 	FLANKED,         ## A live enemy currently stands in this unit's flank/rear arc within
 	                 ## guard_param world units (contact range when guard_param <= 0).
+	ENGAGED_FRACTION_ABOVE, ## At least guard_param (0..1) of this unit's CURRENT living
+	                 ## soldiers are melee-engaged (Unit.engaged_soldier_indices) --
+	                 ## the fractional counterpart to Unit.is_engaged()'s whole-regiment binary
+	                 ## latch, so a plain MOVE order cancels once the fight has drawn in enough
+	                 ## of the unit rather than only pausing/resuming around the old binary
+	                 ## FIGHTING state.
 }
 
 const GUARD_NAMES := {
@@ -120,6 +126,7 @@ const GUARD_NAMES := {
 	Guard.ALLY_EXHAUSTED: "ALLY_EXHAUSTED",
 	Guard.TICKS_ELAPSED: "TICKS_ELAPSED",
 	Guard.FLANKED: "FLANKED",
+	Guard.ENGAGED_FRACTION_ABOVE: "ENGAGED_FRACTION_ABOVE",
 }
 
 const TYPE_NAMES := {
@@ -349,8 +356,9 @@ var friendly_target: Unit = null
 ## means the order runs to its own ordinary completion only. Set at issue time.
 var guard: int = Guard.NONE
 ## The guard's numeric parameter: a range in world units (ENEMY_IN_RANGE, FLANKED), a morale
-## threshold (MORALE_BELOW), a fatigue threshold (ALLY_EXHAUSTED), or a tick count
-## (TICKS_ELAPSED). Unused (0.0) for CONTACT_MADE, which has no parameter.
+## threshold (MORALE_BELOW), a fatigue threshold (ALLY_EXHAUSTED), a tick count
+## (TICKS_ELAPSED), or a soldier-fraction threshold in 0..1 (ENGAGED_FRACTION_ABOVE). Unused
+## (0.0) for CONTACT_MADE, which has no parameter.
 var guard_param: float = 0.0
 ## The friendly unit's uid ALLY_EXHAUSTED watches; -1 for every other guard.
 var guard_uid: int = -1

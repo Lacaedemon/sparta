@@ -159,6 +159,57 @@ func test_flanked_false_when_the_flanking_enemy_is_outside_radius() -> void:
 	assert_false(OrderGuards.flanked(u, 100.0))
 
 
+# --- ENGAGED_FRACTION_ABOVE ------------------------------------------------------
+
+## A controllable "N% of the line is engaged" fixture: frontage_override fixes the file
+## count directly (rather than relying on the sqrt-based auto width), so
+## `engaged_ranks() * files` -- the front-rank cutoff engaged_soldier_indices() selects --
+## lands on an exact, predictable fraction of `total`. A bare Unit defaults to attack_range
+## 26.0 / rank_pitch 9.0wu, so engaged_ranks() == 3 (see test_unit.gd's own
+## test_engaged_ranks_matches_the_old_flat_default_for_a_bare_units_default_reach) --
+## `files` is chosen against that fixed depth.
+func _make_engaged_unit(total: int, files: int) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = total
+	add_child_autofree(u)
+	u.soldiers = total
+	u.frontage_override = files
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch so engaged_soldier_indices() isn't empty
+	return u
+
+
+func test_engaged_fraction_above_false_below_the_threshold() -> void:
+	# 3 files * 3 engaged ranks = 9 of 100 soldiers engaged (9%), under a 10% threshold.
+	var u := _make_engaged_unit(100, 3)
+	assert_false(OrderGuards.engaged_fraction_above(u, 0.10))
+
+
+func test_engaged_fraction_above_true_at_or_above_the_threshold() -> void:
+	# 4 files * 3 engaged ranks = 12 of 100 soldiers engaged (12%), over a 10% threshold.
+	var u := _make_engaged_unit(100, 4)
+	assert_true(OrderGuards.engaged_fraction_above(u, 0.10))
+
+
+func test_engaged_fraction_above_false_when_the_unit_is_not_engaged_at_all() -> void:
+	# is_engaged() (the whole-regiment binary latch) gates engaged_soldier_indices() --
+	# a unit that was never fighting reads as 0% engaged regardless of its formation.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 100
+	add_child_autofree(u)
+	u.soldiers = 100
+	u.frontage_override = 4
+	u.seed_sim_soldiers()
+	assert_false(OrderGuards.engaged_fraction_above(u, 0.10))
+
+
+func test_engaged_fraction_above_false_with_no_living_soldiers() -> void:
+	var u := _make_unit()
+	u.soldiers = 0
+	assert_false(OrderGuards.engaged_fraction_above(u, 0.10))
+
+
 # --- satisfied() dispatch ---------------------------------------------------------
 
 func test_satisfied_is_false_for_an_unguarded_order() -> void:

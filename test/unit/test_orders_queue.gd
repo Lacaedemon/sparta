@@ -470,6 +470,52 @@ func test_ticks_elapsed_guard_fires_after_the_configured_tick_count() -> void:
 	assert_null(u.current_order, "the third tick reaches the configured count")
 
 
+# --- ENGAGED_FRACTION_ABOVE guard (auto-cancel a MOVE on heavy melee engagement) --------
+
+## frontage_override fixes the file count so engaged_ranks() (3, a bare Unit's default) *
+## files lands on an exact, predictable fraction of `total` -- see
+## test_order_guards.gd's own _make_engaged_unit for the same fixture, restated here (not
+## reused directly) since this file's own bare-Unit convention is _make_unit(uid), and
+## OrderGuards' own guard-value tests already cover the fraction math itself; this covers
+## only the queue's retirement wiring on top of it.
+func _make_engaged_unit(uid: int, total: int, files: int) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = total
+	add_child_autofree(u)
+	u.uid = uid
+	u.soldiers = total
+	u.frontage_override = files
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch
+	return u
+
+
+func test_engaged_fraction_guard_stays_current_below_the_threshold() -> void:
+	# 3 files * 3 engaged ranks = 9 of 100 (9%), under a 10% threshold.
+	var u := _make_engaged_unit(1, 100, 3)
+	var o := Order.new_move(Vector2(1000, 0)).with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, 0.10)
+	u.set_current_order(o)
+	u.has_move_target = true
+	u.move_target = Vector2(1000, 0)
+	u._update_current_order()
+	assert_eq(u.current_order, o, "9% engaged is still under the 10% threshold")
+	assert_true(u.has_move_target, "the march is undisturbed while the guard is unmet")
+
+
+func test_engaged_fraction_guard_retires_the_move_at_or_above_the_threshold() -> void:
+	# 4 files * 3 engaged ranks = 12 of 100 (12%), over a 10% threshold.
+	var u := _make_engaged_unit(1, 100, 4)
+	var o := Order.new_move(Vector2(1000, 0)).with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, 0.10)
+	u.set_current_order(o)
+	u.has_move_target = true
+	u.move_target = Vector2(1000, 0)
+	u._update_current_order()
+	assert_null(u.current_order,
+		"12% engaged clears the threshold -- the MOVE cancels rather than pausing")
+	assert_false(u.has_move_target, "the stale march target is dropped, not left to resurrect")
+
+
 # --- queued route (waypoints as queued MOVE legs) ----------------------------
 
 func test_queued_move_points_lists_the_route_after_the_current_order() -> void:
