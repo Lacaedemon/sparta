@@ -906,6 +906,21 @@ automatically now.
 If this ever needs disabling again, PR #1062's diff (`git show 17fab72a`) is the exact
 prior workflow-config change to reference.
 
+**A PR that edits `claude-code-review.yml` (or a workflow file the review action reads)
+gets no inline Claude review at all — by design, not a stub.** The `review/claude-review`
+job still runs and reports `pass`, but posts a run annotation instead of a review comment:
+"PR #N edits `.github/workflows/claude-code-review.yml` — skipping self-review (the action
+401s on workflow validation until merged; it runs after merge)." **The exact mechanism is
+unconfirmed** (not verified against `d-morrison/gha`'s own implementation) — the plausible
+read is that GitHub only lets the review action validate against the workflow version
+already on the base branch, so a PR changing that same file can't be validated pre-merge and
+the action detects this and defers review to post-merge instead of failing or posting a
+stub — but that's inference from a single annotation, not a confirmed cause. Regardless of
+the exact mechanism, don't treat the skip as a broken/stub review needing a manual
+re-dispatch (per the existing stub-review handling above) — check the run's own annotations
+(`gh run view <run-id>`) before assuming a self-review is missing for the usual reasons.
+(`Lacaedemon/sparta` PR #1123, 2026-07-27.)
+
 **Copilot's own review can also fail closed, not just Claude's.** Copilot's review comment
 can read `Copilot was unable to review this pull request because the user who requested the
 review has reached their quota limit.` — repeatedly, across many pushes. This is a distinct
