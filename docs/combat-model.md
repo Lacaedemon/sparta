@@ -5,10 +5,9 @@ Status: **phase 4 of individual-soldier collision — largely implemented** (see
 probabilistic model that resolves combat between individual soldiers; it is now wired
 into **engaged melee**, which is soldier-authoritative (`SoldierMelee.resolve`). The
 per-slice `> Implemented` notes below track what has landed (the land contest, wound,
-knockback, prone, graded bracing, and stamina) and what is deferred (the full posture
-enum/stamina-regen system, the domino cascade, and enemy collision → #201). The
-player-facing version lives at [`website/combat.qmd`](../website/combat.qmd) — keep the
-two in sync.
+knockback, prone, bracing, and stamina) and what is deferred (posture-graded bracing,
+the domino cascade, and enemy collision → #201). The player-facing version lives at
+[`website/combat.qmd`](../website/combat.qmd) — keep the two in sync.
 
 The guiding principle is **emergence, not modifiers**. We do not bolt a "flanking
 bonus" or an "out-of-formation debuff" onto regiment combat. Instead each soldier
@@ -108,16 +107,6 @@ Two consequences fall straight out of this table and matter everywhere below:
   a charge lands — you must be **set before** it arrives. This is the whole tactical
   game of receiving a charge: a line ordered to brace in time holds; one caught
   *at ease* or still shuffling into position is ridden down before it can plant.
-
-> **Implemented (#1105), simplified:** the closing term $c$ (below) already reads real
-> velocity, so "motion is the charge" was already true. What #1105 adds is the *brace* half:
-> a new `ORDER_BRACE` order plus a `BRACE_SETTLE_TIME` ($T_{\mathrm{post}}$) held-still timer
-> before the full braced bonus applies — see the `> Implemented` note under "Bracing and the
-> knockback chain" below. The full seven-way posture table above (`at ease` / `at attention` /
-> `advancing` / `jogging` / `sprinting` / `braced` / `prone`, each with its own stamina-regen
-> rate) is **not** implemented as a discrete state machine — bracing instead reads a
-> continuous penalty from the regiment's own `current_speed`, not a named gait. `prone` is
-> implemented separately (see "Going prone and getting up" below).
 
 ## One strike: attacker $A$ on defender $D$
 
@@ -378,27 +367,16 @@ non-negative — the *same* facing that gates active defence). A loose, flanked,
 file has $\mathrm{br}\to 0$, dominoes, and goes down; a *braced*, tight,
 front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 
-> **Implemented (#201 slice C, graded in #1105):** `SoldierCombat.brace_depth` and
-> `brace_capacity` compute the depth-buttressed column capacity $C_i$. `Unit.soldier_brace()`
-> is graded, not binary: a merely-engaged, non-skirmish regiment sits at a baseline ("at
-> attention," `BRACE_BASELINE_ENGAGED`); ordering `ORDER_BRACE` and holding still
-> (`current_speed` at or below `BRACE_STILL_SPEED`) for `BRACE_SETTLE_TIME` seconds — the
-> doc's $T_{\mathrm{post}}$, "you must be set before it arrives" — adds the full
-> `BRACE_SET_BONUS`, and a tight formation adds a further `BRACE_TIGHT_BONUS` ($w_f$ above);
-> motion still under way subtracts a penalty scaled by `current_speed`. `ORDER_SKIRMISH`
-> still forces 0. The $w_d$ facing term is deliberately not folded into this formula — it is
-> already enforced at the call site (`SoldierMelee.resolve`'s front-facing-only rearward file
-> walk), so adding it here would double-count it. `SoldierCombat.brace_capacity_for_type` also
-> grades $J_{\mathrm{cap}}$ itself by weapon: a grounded, angled spear/pike (anti-cavalry)
-> resists via an independent leveraged strut into the earth, so its column capacity exceeds a
-> shield-only soldier's friction/mass-stacking baseline. In `SoldierMelee.resolve` the struck
-> soldier's file column is walked rearward (front-facing blows only — $\phi = 0$ gives no
-> buttress), and the sub-capacity shove is absorbed before applying velocity; `brace_depth` is
-> also passed to `prone_chance` to raise the knockdown threshold for a set phalanx.
-> **Deferred:** the rearward domino cascade ($J_{i+1} = \tau(J_i - C_i)_+$, surplus toppling
-> rear ranks) and the full posture enum/stamina-regen table (`at ease` / `advancing` /
-> `jogging` / `sprinting` distinguished as separate gaits, not just a motion-scaled penalty)
-> remain follow-up work.
+> **Implemented (#201 slice C):** `SoldierCombat.brace_depth` and `brace_capacity` compute
+> the depth-buttressed column capacity $C_i$. `Unit.soldier_brace()` returns `BRACE_SET` (1)
+> when the regiment is engaged and not a skirmish line, 0 otherwise (binary; graded posture
+> is the posture slice). In `SoldierMelee.resolve` the struck soldier's file column is walked
+> rearward (front-facing blows only — $\phi = 0$ gives no buttress), and the sub-capacity
+> shove is absorbed before applying velocity; `brace_depth` is also passed to `prone_chance`
+> to raise the knockdown threshold for a set phalanx. **Deferred:** the rearward domino
+> cascade ($J_{i+1} = \tau(J_i - C_i)_+$, surplus toppling rear ranks) is a follow-up. The
+> graded `br` formula above (posture weights $b_{\mathrm{post}}$, $w_f$, $w_d$) is also
+> deferred to the posture slice; `br` is binary here.
 
 > **Implemented (#201 slice D):** `SoldierCombat.stamina_factor` ($g(\sigma)$) and the
 > per-soldier `_sim_soldier_stamina` pool. In `SoldierMelee.resolve`, `cond_a`/`cond_d`

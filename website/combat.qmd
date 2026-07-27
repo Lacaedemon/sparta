@@ -18,17 +18,14 @@ shoves the struck soldier back -- harder on a clean landing or at charge speed, 
 against a heavy soldier like cavalry), **knockdown** (a hard enough hit can knock a soldier
 flat: while down it has no active defence and can't strike until it scrambles up),
 **bracing** (an engaged, set file buttresses the front man with the whole column's footing --
-a deep phalanx absorbs a shove that would throw a lone man back, and is far harder to fell;
-bracing is graded and takes time to set, not an instant switch -- order **Brace** and hold
-still before the charge lands, or a moving/merely-engaged line gets only partial credit),
+a deep phalanx absorbs a shove that would throw a lone man back, and is far harder to fell),
 and **stamina and exhaustion** (every strike thrown and every blow met drains stamina;
 a soldier under sustained pressure tires, their defence collapses, and then blows land
 freely -- surround and exhaust is real, not a modifier).
-**Coming:** the full posture/stance system (distinct named gaits -- *at ease*, *advancing*,
-*jogging*, *sprinting* -- each with its own stamina-regen rate, rather than a continuous
-speed-scaled penalty) and the rearward domino cascade (a blow that punches through the front
-rank topples men rearward until the impulse is spent). The sections below describe the whole
-model; where a piece isn't live yet, it soon will be.
+**Coming:** the posture/stance system (graded brace from sprinting to set) and the rearward
+domino cascade (a blow that punches through the front rank topples men rearward until the
+impulse is spent). The sections below describe the whole model; where a piece isn't live yet,
+it soon will be.
 :::
 
 ## What each soldier carries
@@ -41,10 +38,7 @@ Every soldier has live state that combat reads and changes moment to moment:
 - **Stance** --- from *at ease*, through *advancing* and *sprinting*, to *braced*
   (set to receive a hit), or knocked **prone**. Stance sets how hard you hit on the
   move, how well you hold your ground, and how fast you tire --- and changing it
-  takes time, so you must be set *before* the blow arrives. Order **Brace**
-  (`Ctrl+F4`) and hold a line still to set it deliberately; a merely-engaged line
-  that never got the order is only partly set, and one still moving is barely
-  set at all.
+  takes time, so you must be set *before* the blow arrives.
 
 and fixed traits from their regiment:
 

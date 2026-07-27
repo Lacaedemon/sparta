@@ -326,14 +326,13 @@ func test_in_reach_strike_shoves_the_defender_away() -> void:
 	# Newton's-laws split (SoldierCollision.bidirectional_impulse), the defender receives only
 	# its SHARE of that impulse -- weighted by the ATTACKER's effective mass over the total
 	# effective mass of both bodies -- since the rest goes to the attacker's own recoil. The
-	# attacker here is engaged and not skirmishing, so it's at the merely-engaged baseline
-	# brace (soldier_brace() == Unit.BRACE_BASELINE_ENGAGED -- not fully set, since it was
-	# never given an explicit ORDER_BRACE to settle into); the defender is unbraced (skirmish).
+	# attacker here is engaged and not skirmishing, so it's braced (soldier_brace() == 1.0);
+	# the defender is unbraced (skirmish).
 	var c: float = SoldierCombat.charge_factor(closing)
 	var min_impulse: float = SoldierCombat.knockback_impulse(1.0, c, 1.0, SoldierCombat.ETA_DEFENDED)
 	assert_gt(min_impulse, SoldierCombat.STATIC_FRICTION_THRESHOLD,
 		"sanity: this charge clears the resting defender's static-friction threshold even at the defended floor")
-	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * Unit.BRACE_BASELINE_ENGAGED)
+	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 1.0)
 	var defender_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 0.0)
 	var min_shove: float = min_impulse * attacker_m_eff / (attacker_m_eff + defender_m_eff)
 	assert_gte(b._sim_body_vel[0].y, min_shove - 1e-3,
@@ -356,9 +355,7 @@ func test_tiny_impulse_leaves_a_resting_unbraced_defender_still() -> void:
 	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
 	b.order_mode = Unit.ORDER_SKIRMISH   # unbraced
 	b._sim_soldier_hp[0] = 9999.0
-	# a is merely engaged (no explicit ORDER_BRACE), so it sits at the "at attention"
-	# baseline (Unit.BRACE_BASELINE_ENGAGED), not the old flat 1.0.
-	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * Unit.BRACE_BASELINE_ENGAGED)
+	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 1.0)
 	var defender_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 0.0)
 	var min_defended_impulse: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, SoldierCombat.ETA_DEFENDED)
 	var min_shove: float = min_defended_impulse * attacker_m_eff / (attacker_m_eff + defender_m_eff)
@@ -378,42 +375,6 @@ func test_tiny_impulse_leaves_a_resting_unbraced_defender_still() -> void:
 		"at least one sub-threshold (defended, no-charge) strike left the resting defender still")
 	assert_true(saw_shoved,
 		"at least one strike cleared the static-friction threshold and shoved the defender")
-
-
-func test_settled_brace_order_absorbs_more_than_the_merely_engaged_default() -> void:
-	# The graded soldier_brace() formula's whole point: a unit deliberately ordered to
-	# brace and given time to settle resists a charge harder than one merely engaged
-	# (the old binary switch made no distinction at all -- both used to read 1.0).
-	Replay.rng.seed = SEED
-	var closing: float = 220.0   # a real charge, well above the static-friction floor
-	var attacker := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, true)   # spear, for a high J_cap
-	attacker._approach_velocity = Vector2(0, closing)
-
-	var engaged := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, true)
-	engaged._sim_soldier_hp[0] = 9999.0
-	# default order_mode (NORMAL), merely engaged -- the "at attention" baseline.
-
-	var braced := _unit(3, 1, 1, Vector2(0, 6), Vector2.UP, true)
-	braced._sim_soldier_hp[0] = 9999.0
-	braced.order_mode = Unit.ORDER_BRACE
-	braced.tick_brace_settle(Unit.BRACE_SETTLE_TIME + 0.01)   # stationary, settled
-
-	assert_gt(braced.soldier_brace(), engaged.soldier_brace(),
-		"sanity: the settled brace order really does grade above the merely-engaged baseline")
-
-	# Re-seed identically before each resolve so both defenders face the SAME land/miss
-	# roll -- isolating the bracing effect from unrelated RNG drift between the two calls.
-	Replay.rng.seed = SEED
-	attacker.resolve_soldier_melee(engaged)
-	var attacker2 := _unit(4, 0, 1, Vector2(0, 0), Vector2.DOWN, true)
-	attacker2._approach_velocity = Vector2(0, closing)
-	Replay.rng.seed = SEED
-	attacker2.resolve_soldier_melee(braced)
-
-	var engaged_shove: float = engaged._sim_body_vel[0].length()
-	var braced_shove: float = braced._sim_body_vel[0].length()
-	assert_lte(braced_shove, engaged_shove,
-		"a settled, deliberately braced defender is shoved no harder than a merely engaged one under an identical charge")
 
 
 func test_knockback_points_away_from_the_attacker() -> void:

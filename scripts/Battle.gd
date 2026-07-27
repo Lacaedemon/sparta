@@ -160,7 +160,7 @@ const ORDER_DELEGATION_ONLY := -12
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE, KNOCKBACK_FOCUS, GIVE_GROUND, PUSH, MULTIPLE_ENGAGE, MARCH_TO_CONTACT, BRACE }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE, KNOCKBACK_FOCUS, GIVE_GROUND, PUSH, MULTIPLE_ENGAGE, MARCH_TO_CONTACT }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
 ## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
@@ -210,7 +210,6 @@ const ORDER_MODE_NAMES := {
 	OrderMode.PUSH: "Push",
 	OrderMode.MULTIPLE_ENGAGE: "Multiple engage",
 	OrderMode.MARCH_TO_CONTACT: "March to contact",
-	OrderMode.BRACE: "Brace",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -236,7 +235,6 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.PUSH, "slug": "push"},
 	{"mode": OrderMode.MULTIPLE_ENGAGE, "slug": "multiple_engage"},
 	{"mode": OrderMode.MARCH_TO_CONTACT, "slug": "march_to_contact"},
-	{"mode": OrderMode.BRACE, "slug": "brace"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
@@ -395,8 +393,7 @@ func _ready() -> void:
 			and UnitRef.ORDER_GIVE_GROUND == OrderMode.GIVE_GROUND \
 			and UnitRef.ORDER_PUSH == OrderMode.PUSH \
 			and UnitRef.ORDER_MULTIPLE_ENGAGE == OrderMode.MULTIPLE_ENGAGE \
-			and UnitRef.ORDER_MARCH_TO_CONTACT == OrderMode.MARCH_TO_CONTACT \
-			and UnitRef.ORDER_BRACE == OrderMode.BRACE,
+			and UnitRef.ORDER_MARCH_TO_CONTACT == OrderMode.MARCH_TO_CONTACT,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 	# Same mirror-and-assert pattern for Unit's NUDGE_* constants (Battle.NudgeDir).
 	assert(UnitRef.NUDGE_LEFT == NudgeDir.LEFT \

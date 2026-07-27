@@ -275,9 +275,6 @@ const DEFAULT_ORDER_BINDINGS := {
 	# F1/F2 are already claimed (tray toggle, multiple_engage above); F3 is the next free
 	# function key.
 	"march_to_contact": KEY_F3,
-	# F1/F2/F3 are already claimed (tray toggle, multiple_engage, march_to_contact above);
-	# F4 is the next free function key.
-	"brace": KEY_F4,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
