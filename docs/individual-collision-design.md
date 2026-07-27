@@ -265,3 +265,32 @@ health pool) and morale-from-soldier-state; retiring the regiment circle's enemy
 branches is unblocked on the momentum/mass side (#783 closed via #784's engaged-weighted
 body coupling — see the phase-5 note above) but still needs its own residual-transient fix
 before that retirement is safe (tracked on #296).
+
+## Melee-intermixing depth is gated by the defender's formation_mode
+
+Two enemy regiments in sustained melee previously had no formation-mode-aware limit on
+how deep the fighting could intermix: the regiment circle's engaged-vs-engaged closeup
+(`Unit._separate`) only bounds the two blocks' *centres*, and the soldier-level contact
+pass (`SoldierEnemyContact.accumulate`/`SoldierCollision.enemy_contact_impulse`) only
+resolves actual body-radius overlaps — so an attacker able to find (or open) a seam
+between neighbouring defenders could press arbitrarily deep into the defending formation
+regardless of how tightly that formation was packed. `Unit.formation_containment_margin`
+closes that gap: each defending soldier's own formation widens the enemy-contact test
+radius that `SoldierEnemyContact.accumulate` resolves against, in three tiers —
+
+- **Shield-wall-class** (TIGHT/SQUARE/SCHILTRON/SHIELD_WALL/TESTUDO): the full margin,
+  unconditionally, so the front ranks hold contact with effectively no depth-wise
+  intermixing — a fallen defender's live neighbours still cover the gap.
+- **NORMAL**: the same margin, but it drops to zero for a body while that specific
+  soldier is prone — an ordinary line's wider personal space means a felled defender's
+  own slot really does cede ground to the attacker who felled him, for as long as the
+  fall lasts (a couple of ranks deep, as a knockback/charge *consequence*, not a
+  standing steady-state overlap).
+- **LOOSE**: always zero, so soldiers rely on nothing but their raw body radius and can
+  become genuinely enmeshed with the enemy line.
+
+Cavalry never contribute a margin (mounted formations don't interlock shields, and
+`CAV_MARK_RADIUS`'s wider body would eat most of `SoldierSpatialHash.CELL_SIZE`'s own
+headroom over the raw separation floor it's pinned against). The margin is scaled off
+`soldier_body_radius()` rather than a flat metre value, so it stays proportionate to the
+body it protects.

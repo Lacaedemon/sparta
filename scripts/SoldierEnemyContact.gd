@@ -15,6 +15,12 @@ class_name SoldierEnemyContact
 ## cause and status. The regiment-circle enemy-collision branch stays in place alongside this
 ## pass until that's fixed and re-verified.
 ##
+## Each pair's contact radius is also widened by both soldiers' own formation-containment
+## margin (Unit.formation_containment_margin) -- a tight/shield-wall-class defender resists an
+## attacker before their bodies would actually overlap, gating how far melee intermixes with
+## the defender's own formation_mode instead of letting an attacker slip through however wide
+## a gap its raw body radius happens to leave.
+##
 ## Determinism: regiments are processed in uid order and each regiment's engaged soldiers in
 ## ascending index, so the gathered arrays are already global-soldier-id sorted; the
 ## SoldierSpatialHash query then visits candidates in a reproducible order, and every pair is
@@ -54,6 +60,7 @@ static func accumulate(units: Array, frame: int) -> void:
 	var sowners: Array = []          # owning Unit per entry
 	var sslots := PackedInt32Array() # local index into the owner's _sim_body_vel
 	var sradii := PackedFloat32Array()
+	var scontain := PackedFloat32Array()
 	var smass := PackedFloat32Array()
 	var sbrace := PackedFloat32Array()
 	var steams := PackedInt32Array()
@@ -77,6 +84,10 @@ static func accumulate(units: Array, frame: int) -> void:
 			sowners.push_back(u)
 			sslots.push_back(i)
 			sradii.push_back(r)
+			# Per-soldier, not hoisted like r/mass/brace above -- formation_containment_margin
+			# can differ soldier-to-soldier within the same unit (a NORMAL-formation body's
+			# margin drops to zero while THAT body is prone; see the function's own doc).
+			scontain.push_back(u.formation_containment_margin(i))
 			smass.push_back(mass)
 			sbrace.push_back(brace)
 			steams.push_back(u.team)
@@ -99,7 +110,11 @@ static func accumulate(units: Array, frame: int) -> void:
 				continue   # each pair once
 			if steams[a] == steams[b]:
 				continue   # friendlies don't contact-collide here -- SoldierSteering handles them
-			var min_dist: float = sradii[a] + sradii[b]
+			# Each side's own formation-containment margin widens the contact test
+			# symmetrically -- in a live clash both bodies are simultaneously "attacker" and
+			# "defender" from the other's perspective, so a's formation resists b's advance
+			# into a's ranks exactly as b's formation resists a's advance into b's.
+			var min_dist: float = sradii[a] + sradii[b] + scontain[a] + scontain[b]
 			var offset: Vector2 = spos[a] - spos[b]
 			var d: float = offset.length()
 			if d >= min_dist:

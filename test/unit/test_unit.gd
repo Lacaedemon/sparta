@@ -3701,6 +3701,81 @@ func test_loose_spacing_still_widens_the_grid() -> void:
 		"loose still doubles the grid spacing")
 
 
+# --- formation_containment_margin: melee-intermixing depth gated by formation_mode --
+
+func test_shield_wall_class_formations_have_the_full_containment_margin() -> void:
+	# TIGHT/SQUARE/SCHILTRON/SHIELD_WALL/TESTUDO all interlock shields shoulder-to-
+	# shoulder, so they share the same full margin -- "effectively no depth-wise
+	# intermixing" doesn't distinguish between them.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	var expected: float = u.soldier_body_radius() * Unit.FORMATION_CONTAINMENT_SCALE_TIGHT
+	for mode: int in [Unit.FORMATION_TIGHT, Unit.FORMATION_SQUARE, Unit.FORMATION_SCHILTRON,
+			Unit.FORMATION_SHIELD_WALL, Unit.FORMATION_TESTUDO]:
+		u.set_formation(mode)
+		assert_almost_eq(u.formation_containment_margin(0), expected, 0.001,
+			"formation %d gets the full shield-wall-class containment margin" % mode)
+
+
+func test_shield_wall_class_containment_margin_survives_that_body_being_prone() -> void:
+	# The whole point of the tiered design: a shield-wall-class formation's neighbours
+	# cover a fallen defender's gap, so the margin does NOT drop to zero for a prone body
+	# the way NORMAL's does below.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	var standing: float = u.formation_containment_margin(0)
+	u._sim_prone[0] = 1.0
+	assert_almost_eq(u.formation_containment_margin(0), standing, 0.001,
+		"a shield-wall body's prone state doesn't cede its formation's containment margin")
+
+
+func test_normal_formation_has_a_partial_containment_margin_while_standing() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	assert_eq(u.formation_mode, Unit.FORMATION_NORMAL, "sanity: default formation is NORMAL")
+	var expected: float = u.soldier_body_radius() * Unit.FORMATION_CONTAINMENT_SCALE_NORMAL
+	assert_almost_eq(u.formation_containment_margin(0), expected, 0.001,
+		"a standing NORMAL-formation body holds a partial (not full, not zero) margin")
+	assert_lt(u.formation_containment_margin(0),
+		u.soldier_body_radius() * Unit.FORMATION_CONTAINMENT_SCALE_TIGHT,
+		"NORMAL's margin is strictly less than the shield-wall-class margin")
+
+
+func test_normal_formation_containment_margin_drops_to_zero_while_prone() -> void:
+	# The "couple of ranks deep, as a knockback CONSEQUENCE" case: a NORMAL-order body's
+	# own gap really opens once it's felled, unlike the shield-wall class above.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u._sim_prone[0] = 1.0
+	assert_eq(u.formation_containment_margin(0), 0.0,
+		"a prone NORMAL-formation body contributes no containment margin")
+
+
+func test_loose_formation_has_no_containment_margin_standing_or_prone() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.set_formation(Unit.FORMATION_LOOSE)
+	assert_eq(u.formation_containment_margin(0), 0.0,
+		"a standing LOOSE-formation body contributes no containment margin")
+	u._sim_prone[0] = 1.0
+	assert_eq(u.formation_containment_margin(0), 0.0,
+		"a prone LOOSE-formation body still contributes no containment margin")
+
+
+func test_cavalry_never_gets_a_containment_margin_regardless_of_formation() -> void:
+	# Mounted formations don't interlock shields -- and budgeting CAV_MARK_RADIUS's wider
+	# body would eat SoldierSpatialHash.CELL_SIZE's own headroom (see that class's
+	# invariant test), so cavalry stays at zero across every formation mode.
+	var cav := _cavalry()
+	cav.seed_sim_soldiers()
+	for mode: int in [Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT, Unit.FORMATION_SHIELD_WALL,
+			Unit.FORMATION_TESTUDO, Unit.FORMATION_LOOSE]:
+		cav.set_formation(mode)
+		assert_eq(cav.formation_containment_margin(0), 0.0,
+			"cavalry formation %d still contributes no containment margin" % mode)
+
+
 func test_shielded_stances_absorb_cavalry_charge() -> void:
 	var cav := _cavalry()
 	cav.position = Vector2.ZERO

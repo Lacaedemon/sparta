@@ -524,6 +524,19 @@ const LOOSE_SPACING_SCALE: float = 2.0
 # wall does).
 const SHIELD_WALL_SPACING_SCALE: float = 0.75
 const TESTUDO_SPACING_SCALE: float = 0.6
+# Enemy-contact CONTAINMENT margin: how much extra world-unit "personal space" a
+# defending soldier's own formation adds to SoldierEnemyContact's per-pair contact
+# radius before an attacker counts as touching it (see formation_containment_margin
+# below and docs/individual-collision-design.md's melee-intermixing-depth note).
+# Scaled off soldier_body_radius() rather than a flat metre value so it stays
+# proportionate to the body it protects. Kept small enough that even the widest
+# same-type pairing (two infantry, both at the TIGHT scale) stays well inside
+# SoldierSpatialHash.CELL_SIZE's own margin over the raw body-radius floor it's
+# pinned against (see that class's own invariant test) -- cavalry never contributes
+# a margin (see the function), so this never has to budget for the wider
+# CAV_MARK_RADIUS case.
+const FORMATION_CONTAINMENT_SCALE_TIGHT: float = 1.0
+const FORMATION_CONTAINMENT_SCALE_NORMAL: float = 0.35
 # Melee intermixing: a legacy softening of enemy separation for fighting non-hold
 # units. Largely superseded by the engaged-enemy front-rank close-up in _separate
 # (which lets lines meet at contact and the per-soldier collision set the spacing);
@@ -4879,6 +4892,40 @@ func pairing_sort_indices(indices: PackedInt32Array, positions: PackedVector2Arr
 ## `separation_radius + other.separation_radius`.
 func soldier_body_radius() -> float:
 	return CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+
+
+## Extra world-unit "personal space" soldier `i`'s own formation contributes to the
+## enemy-contact test radius against an attacking body -- SoldierEnemyContact.accumulate
+## adds this to the raw soldier_body_radius() sum on BOTH sides of a cross-team pair, so
+## a tightly-packed formation resists an attacker well before its soldiers' bodies would
+## actually overlap, gating melee-intermixing depth by the DEFENDER's own formation_mode
+## (docs/individual-collision-design.md). Three tiers, matching the design intent:
+##   - Shield-wall-class (TIGHT/SQUARE/SCHILTRON/SHIELD_WALL/TESTUDO): full margin,
+##     UNCONDITIONALLY -- shields interlock with a soldier's live neighbours, not with
+##     this one man's own footing, so a single fallen defender doesn't open a seam. Front
+##     ranks hold contact with effectively no depth-wise intermixing.
+##   - NORMAL: the same margin, but ZERO while this specific body is prone -- an ordinary
+##     line has more personal space between neighbours than a locked shield-wall, so a
+##     felled defender's own gap really does open, letting an attacker step into the
+##     vacated slot for as long as the fall lasts (a couple of ranks deep, as a
+##     knockback/charge CONSEQUENCE -- not a standing steady-state overlap).
+##   - LOOSE: always zero -- no formation discipline holds a line, so soldiers rely on
+##     nothing but their own raw body radius, letting an attacker become genuinely
+##     enmeshed with the line.
+## Cavalry never contributes a margin: a mounted formation doesn't interlock shields, and
+## budgeting for CAV_MARK_RADIUS's wider body would eat most of SoldierSpatialHash.
+## CELL_SIZE's own headroom over the raw separation floor it's pinned against.
+func formation_containment_margin(i: int) -> float:
+	if is_cavalry:
+		return 0.0
+	match formation_mode:
+		FORMATION_SHIELD_WALL, FORMATION_TESTUDO, FORMATION_TIGHT, FORMATION_SQUARE, FORMATION_SCHILTRON:
+			return soldier_body_radius() * FORMATION_CONTAINMENT_SCALE_TIGHT
+		FORMATION_LOOSE:
+			return 0.0
+		_:
+			var prone: bool = i < _sim_prone.size() and _sim_prone[i] > 0.0
+			return 0.0 if prone else soldier_body_radius() * FORMATION_CONTAINMENT_SCALE_NORMAL
 
 
 ## This regiment's per-soldier strike reach, in world units: the weapon reach
