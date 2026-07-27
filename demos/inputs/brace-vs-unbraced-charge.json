@@ -1,0 +1,26 @@
+{
+  "_comment": "Two identical Spearmen lines face an identical cavalry charge. The right line (uid 1) is ordered to Brace early and settles well before contact; the left line (uid 0) is left at the merely-engaged default. Demonstrates the graded soldier_brace() formula (issue #1105).",
+  "seed": "12345",
+  "scenario": [
+    { "team": 0, "type": "Spearmen", "x": 400, "y": 400, "count": 40 },
+    { "team": 0, "type": "Spearmen", "x": 700, "y": 400, "count": 40 },
+    { "team": 1, "type": "Cavalry", "x": 400, "y": 800, "count": 40 },
+    { "team": 1, "type": "Cavalry", "x": 700, "y": 800, "count": 40 }
+  ],
+  "camera": [ { "tick": 0, "x": 550, "y": 620, "zoom": 1.0 } ],
+  "steps": [
+    { "tick": 5, "click": [700, 400] },
+    { "tick": 8, "key": "F4", "ctrl": true }
+  ],
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 15,
+  "width": 720,
+  "state": [5, 65, 200, 400, 460, 480],
+  "spawn_fingerprint": "76b0d1bfe076367d9d5e51293d57e250",
+  "expect": [
+    { "tick": [5, 65], "uid": 1, "field": "order_mode", "value": "Brace" },
+    { "tick": [400, 480], "uid": 0, "field": "state", "value": "MOVING" },
+    { "tick": [460, 480], "uid": 1, "field": "engaged", "value": true }
+  ]
+}

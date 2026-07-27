@@ -267,7 +267,31 @@ static func prone_chance(impulse_j: float, defender_mass: float, brace_d: float 
 # A knockback below C_i is absorbed (the charge breaks on the braced depth); only the surplus
 # moves the front man. The depth-brace sum also raises his prone threshold.
 const ZETA: float = 0.5             # per-rank support-transmission efficiency (0..1]
-const BRACE_CAPACITY: float = 50.0  # J_cap: impulse a fully-set man (br = 1) absorbs
+const BRACE_CAPACITY: float = 50.0  # J_cap: shield/body-friction baseline (Infantry)
+
+# Bracing capacity varies by TYPE, not just posture: a spear/pike square braces via a
+# grounded, angled shaft -- an independent leveraged strut into the earth, largely
+# decoupled from body friction -- so it resists far more than a shield-only soldier's
+# friction/mass-stacking alone (FRICTION_BRACING_MULTIPLIER's effective-mass channel is
+# shared by every type; only this ceiling differs). Mirrors profile_for's own
+# is_cavalry/anti_cavalry/is_ranged branching so the two per-type tables can't drift
+# apart in shape. Values are tunable, playtest-adjustable starting points.
+const BRACE_CAPACITY_ANTI_CAV: float = 65.0   # J_cap: grounded, angled spear/pike shaft
+const BRACE_CAPACITY_RANGED: float = 30.0     # J_cap: light, unshielded
+const BRACE_CAPACITY_CAVALRY: float = 35.0    # J_cap: mounted -- a lesser case, low priority to tune
+
+
+## The bracing capacity J_cap for a soldier type, mirroring profile_for's own
+## is_cavalry/anti_cavalry/is_ranged branching (docs/combat-model.md "Soldier attributes").
+## Pure and static, like the rest of this file's per-type dispatch.
+static func brace_capacity_for_type(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool) -> float:
+	if p_is_cavalry:
+		return BRACE_CAPACITY_CAVALRY
+	elif p_anti_cavalry:
+		return BRACE_CAPACITY_ANTI_CAV
+	elif p_is_ranged:
+		return BRACE_CAPACITY_RANGED
+	return BRACE_CAPACITY
 
 
 ## Depth-buttressed brace sum down a file: file_braces[0] is the struck man's brace, [1..] the
@@ -283,9 +307,11 @@ static func brace_depth(file_braces: PackedFloat32Array) -> float:
 	return total
 
 
-## Impulse the struck man's set file can absorb: J_cap times the depth-brace sum.
-static func brace_capacity(file_braces: PackedFloat32Array) -> float:
-	return BRACE_CAPACITY * brace_depth(file_braces)
+## Impulse the struck man's set file can absorb: J_cap times the depth-brace sum. `j_cap`
+## defaults to the Infantry/shield baseline; callers with a known soldier type pass
+## brace_capacity_for_type()'s result instead to get the weapon-differentiated ceiling.
+static func brace_capacity(file_braces: PackedFloat32Array, j_cap: float = BRACE_CAPACITY) -> float:
+	return j_cap * brace_depth(file_braces)
 
 
 # Collision friction (Newton's laws, bidirectional impulses): When soldiers collide or
