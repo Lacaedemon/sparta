@@ -3701,50 +3701,6 @@ func test_loose_spacing_still_widens_the_grid() -> void:
 		"loose still doubles the grid spacing")
 
 
-# --- formation_containment_margin: melee-intermixing depth gated by formation_mode --
-# NORMAL and LOOSE are deliberately left at zero (bit-identical to their pre-existing
-# contact geometry) -- an earlier per-soldier NORMAL variant reintroduced the
-# melee-lock-swirl regression test_residual_melee_swirl_battle.gd guards against; see
-# formation_containment_margin's own doc comment for the full story.
-
-func test_shield_wall_class_formations_have_the_full_containment_margin() -> void:
-	# TIGHT/SQUARE/SCHILTRON/SHIELD_WALL/TESTUDO all interlock shields shoulder-to-
-	# shoulder, so they share the same full margin -- "effectively no depth-wise
-	# intermixing" doesn't distinguish between them.
-	var u := _make_unit()
-	u.seed_sim_soldiers()
-	var expected: float = u.soldier_body_radius() * Unit.FORMATION_CONTAINMENT_SCALE_TIGHT
-	for mode: int in [Unit.FORMATION_TIGHT, Unit.FORMATION_SQUARE, Unit.FORMATION_SCHILTRON,
-			Unit.FORMATION_SHIELD_WALL, Unit.FORMATION_TESTUDO]:
-		u.set_formation(mode)
-		assert_almost_eq(u.formation_containment_margin(), expected, 0.001,
-			"formation %d gets the full shield-wall-class containment margin" % mode)
-
-
-func test_normal_and_loose_formations_have_no_containment_margin() -> void:
-	var u := _make_unit()
-	u.seed_sim_soldiers()
-	assert_eq(u.formation_mode, Unit.FORMATION_NORMAL, "sanity: default formation is NORMAL")
-	assert_eq(u.formation_containment_margin(), 0.0,
-		"NORMAL contributes no containment margin -- unchanged from before this feature")
-	u.set_formation(Unit.FORMATION_LOOSE)
-	assert_eq(u.formation_containment_margin(), 0.0,
-		"LOOSE contributes no containment margin either")
-
-
-func test_cavalry_never_gets_a_containment_margin_regardless_of_formation() -> void:
-	# Mounted formations don't interlock shields -- and budgeting CAV_MARK_RADIUS's wider
-	# body would eat SoldierSpatialHash.CELL_SIZE's own headroom (see that class's
-	# invariant test), so cavalry stays at zero across every formation mode.
-	var cav := _cavalry()
-	cav.seed_sim_soldiers()
-	for mode: int in [Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT, Unit.FORMATION_SHIELD_WALL,
-			Unit.FORMATION_TESTUDO, Unit.FORMATION_LOOSE]:
-		cav.set_formation(mode)
-		assert_eq(cav.formation_containment_margin(), 0.0,
-			"cavalry formation %d still contributes no containment margin" % mode)
-
-
 func test_shielded_stances_absorb_cavalry_charge() -> void:
 	var cav := _cavalry()
 	cav.position = Vector2.ZERO

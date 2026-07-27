@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/shield-wall-holds-depth.json",
-  "caption": "Melee-intermixing depth gated by formation looseness (#1094): a Shield Wall Infantry regiment (28) holds its ground against a larger attacking Infantry regiment (40) marching in under its own AI order. The attacker's front line presses flush against the defender's front rank and holds there -- it doesn't scatter into or bleed past the defender's own rear ranks the way an un-gated clash would.",
+  "input": "demos/inputs/push-stance.json",
+  "caption": "Push stance maneuver (issue #1017): Team 0 Infantry engages Team 1 Infantry in melee standoff. The player selects Team 0 and presses Ctrl+Slash to issue Push stance, driving the front line forward against enemy pressure.",
   "fixed_fps": 30,
-  "max_frames": 720,
+  "max_frames": 500,
   "fps": 15,
-  "width": 720
+  "width": 640
 }
