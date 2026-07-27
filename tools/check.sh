@@ -291,24 +291,54 @@ preflight_godot_count() {
 # every check that runs Godot against project or test scripts greps for them.
 has_script_errors() {
   local log="$1"
-  grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" "$log" >&2
+  grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error|class_names have not been imported" "$log" >&2
 }
 
-check_validate() {
-  require_godot || return 1
-  ensure_gut || return 1
+# gut_ran_tests <log> — true when GUT's own end-of-run summary confirms it
+# actually loaded script files ("Scripts   N" with N > 0), not just that the
+# process exited cleanly with no error marker. A killed/aborted GUT run (e.g.
+# addons/gut/version_conversion.gd's class_name guard aborting gut_cmdln's
+# _init before a single test file loads) still exits 0 and prints no text
+# has_script_errors' markers match, so a "no errors" log alone doesn't prove
+# anything ran. Reserved as a backstop independent of ensure_project_imported
+# below -- covers any other way the suite could come back empty (an -gdir typo,
+# a future change to what GUT prints on early abort) without needing to name
+# that specific failure mode here.
+gut_ran_tests() {
+  local log="$1" scripts
+  scripts="$(grep -E '^Scripts[[:space:]]+[0-9]+' "$log" | tail -1 | awk '{print $2}')"
+  [ -n "$scripts" ] && [ "$scripts" -gt 0 ]
+}
+
+# ensure_project_imported — run Godot's project import once per invocation, so
+# `test`/`coverage` don't silently depend on `validate` having run first.
+# Godot's `class_name` globals (GUT's GutTest, GutMain, ... included) and every
+# imported asset (the .sample/.oggvorbisstr caches under .godot/imported/) are
+# only registered by an --import pass. Skip it and GUT's own class_name guard
+# (addons/gut/version_conversion.gd) aborts gut_cmdln's _init before running a
+# single test -- but gut_cmdln still exits 0 with zero tests executed, and the
+# guard's own error text didn't used to match has_script_errors' patterns
+# either (fixed above, as a backstop), so a bare `tools/check.sh test` in a
+# fresh checkout used to report PASS having run nothing. Caching the result
+# under `_project_imported` means `validate` (or an earlier `test`/`coverage`
+# this same invocation) pays for the import once and every later caller reuses
+# it for free.
+ensure_project_imported() {
+  case "$(get_result _project_imported)" in
+    pass) return 0 ;;
+    fail) return 1 ;;
+  esac
   local log; log="$(mktemp)"
-  # `--import` loads the project in full and reports compile/import errors, but
-  # Godot doesn't reliably exit non-zero on script errors — so, like CI, we fail
-  # on any error marker in the log. A timeout is the one exit status that IS
-  # meaningful here: a killed run leaves a truncated log with no error markers,
-  # which the grep below would wrongly read as a pass.
+  # A timeout is the one exit status that IS meaningful here: a killed run
+  # leaves a truncated log with no error markers, which has_script_errors below
+  # would wrongly read as a pass.
   local rc=0
   ( cd "$PROJECT_ROOT" && run_bounded "$VALIDATE_TIMEOUT" \
       "$GODOT_BIN" --headless --import --verbose ) >"$log" 2>&1 || rc=$?
   if run_bounded_timed_out "$rc"; then
     err "Godot import timed out after ${VALIDATE_TIMEOUT}s and was killed (no orphan left behind)."
     rm -f "$log"
+    set_result _project_imported fail
     return 1
   fi
   # Send the matched error lines to stderr so all of this check's error output
@@ -316,16 +346,24 @@ check_validate() {
   if has_script_errors "$log"; then
     err "Godot reported script/resource errors during import (see above)."
     rm -f "$log"
+    set_result _project_imported fail
     return 1
   fi
   rm -f "$log"
+  set_result _project_imported pass
   info "Project imported with no script/parse errors."
+}
+
+check_validate() {
+  require_godot || return 1
+  ensure_gut || return 1
+  ensure_project_imported || return 1
   # The import pass compiles only what the imported resources reach, so a parse error
   # in a script nothing references at import time (a tools/ helper, a scene-swapped
   # runner's dependency) sails past it and only surfaces at runtime. Sweep-load every
   # .gd to force full compilation; the sweep exits non-zero on any failure (and prints
   # which scripts broke).
-  rc=0
+  local rc=0
   ( cd "$PROJECT_ROOT" && run_bounded "$VALIDATE_TIMEOUT" \
       "$GODOT_BIN" --headless -s tools/ci/compile_all_scripts.gd ) 2>&1 || rc=$?
   if run_bounded_timed_out "$rc"; then
@@ -341,6 +379,12 @@ check_validate() {
 check_test() {
   require_godot || return 1
   ensure_gut || return 1
+  # A bare `test` run (no `validate` first, e.g. the first check in a fresh
+  # checkout) never imports the project otherwise -- see ensure_project_imported's
+  # own comment for why that used to make GUT silently run nothing while still
+  # reporting PASS. Cheap when validate/coverage already imported earlier this
+  # invocation; ensure_project_imported caches the result.
+  ensure_project_imported || return 1
   # If `coverage` (or `patch_coverage`, which internally calls check_coverage)
   # already ran THIS SAME invocation and the GUT suite itself came back clean,
   # reuse that instead of paying for a second full run -- check_coverage's run is
@@ -400,6 +444,16 @@ check_test() {
     rm -f "$log"
     return 1
   fi
+  # Nor does a clean exit + no error markers prove GUT ran anything at all --
+  # confirm its own summary reports a non-zero script count.
+  if ! gut_ran_tests "$log"; then
+    err "GUT's summary reports zero test scripts loaded -- the suite did not"
+    err "actually run (see the log above), even though the run exited cleanly"
+    err "with no error marker. -gdir/-ginclude_subdirs may have resolved to an"
+    err "empty directory."
+    rm -f "$log"
+    return 1
+  fi
   rm -f "$log"
   return 0
 }
@@ -407,6 +461,7 @@ check_test() {
 check_coverage() {
   require_godot || return 1
   ensure_gut || return 1
+  ensure_project_imported || { set_result _suite_health fail; return 1; }
   # Same run as `test`, plus the GUT pre/post hooks that instrument res://scripts
   # and write an lcov report. Mirrors .github/workflows/test-coverage.yml. Not in
   # the default set — instrumentation is slower and coverage never gates. The
@@ -442,6 +497,14 @@ check_coverage() {
     err "one test script failed to load and its tests were silently skipped, even though"
     err "the suite reported success. Fix the broken script; a passing run must load"
     err "every test script."
+    rm -f "$log"
+    set_result _suite_health fail
+    return 1
+  fi
+  if ! gut_ran_tests "$log"; then
+    err "GUT's summary reports zero test scripts loaded -- the coverage run did not"
+    err "actually run anything (see the log above), even though it exited cleanly"
+    err "with no error marker."
     rm -f "$log"
     set_result _suite_health fail
     return 1
