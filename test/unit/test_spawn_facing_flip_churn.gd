@@ -162,7 +162,7 @@ func test_degenerate_zero_length_dir_leaves_facing_unchanged() -> void:
 	assert_eq(u._formation_angle, 0.0, "nothing to absorb from a no-op snap")
 
 
-# --- issue #1108: the other _face_dir call sites, exercised through their real caller ------
+# --- the other _face_dir call sites, exercised through their real caller ------------------
 #
 # The tests above prove the _face_dir MECHANISM is caller-independent: it's a pure function
 # of (self, dir) that folds any large jump into _formation_angle, so nothing about which
@@ -173,7 +173,7 @@ func test_degenerate_zero_length_dir_leaves_facing_unchanged() -> void:
 # only ever calls _face_dir with an offset <= ENGAGE_TURN_THRESHOLD (== FACING_SNAP_ABSORB_
 # THRESHOLD by construction -- see Unit.gd:3437), so it never exercises the large-snap-absorb
 # branch at all; nothing new to verify there beyond the small-correction case above. _face()
-# (2399) is a one-line wrapment with no side effects of its own. That leaves two real call
+# (2399) is a one-line wrapper with no side effects of its own. That leaves two real call
 # paths that CAN trigger a large snap and hadn't been exercised end to end: _move_to's
 # non-pivoting branch (an undisciplined/in-haste unit's first order) and the reform-hold
 # pivot fallback's form-up branch (a drag-to-form-up order's deploy_facing).
