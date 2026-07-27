@@ -393,6 +393,14 @@ const ORDER_MULTIPLE_ENGAGE := 16
 # MARCH_TO_CONTACT never chases -- it only stops for whatever is already in range/contact
 # during a move, and lets a foe that breaks contact go rather than following it.
 const ORDER_MARCH_TO_CONTACT := 17
+# BRACE: a deliberate "plant and hold" stance for receiving a charge. Behaves like
+# ORDER_HOLD everywhere movement/intermixing is concerned (see the ORDER_HOLD exclusions
+# in _think(), _tick_intermixing(), and _is_melee_intermixing_with() below -- BRACE joins
+# every one of them) so a bracing unit never presses forward, auto-advances, or
+# intermixes with the enemy line. Its distinguishing effect is soldier_brace(): once
+# held still under this order for BRACE_SETTLE_TIME, it grants the full braced-posture
+# bonus instead of the lesser merely-engaged baseline.
+const ORDER_BRACE := 18
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
@@ -1130,6 +1138,7 @@ func _physics_process(delta: float) -> void:
 	UnitMorale.tick_cohesion(self, delta)
 	UnitMorale.tick_morale(self, delta)
 	tick_engaged(delta)
+	tick_brace_settle(delta)
 	UnitRelief.update(self)
 	_ranks_closed = UnitFormation.should_close_ranks(_ranks_closed, soldiers, max_soldiers)
 
@@ -1804,7 +1813,8 @@ func _think(delta: float) -> void:
 			# chase branch below march this unit off after a foe that has broken contact,
 			# instead of letting it go and resuming the queued move (see ORDER_MARCH_TO_
 			# CONTACT's own doc comment).
-			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT:
+			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT \
+					and order_mode != ORDER_BRACE:
 				target_enemy = enemy
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
@@ -1854,7 +1864,8 @@ func _think(delta: float) -> void:
 			# deliberately keeps pursuing). Committing target_enemy here would make the chase
 			# branch below pursue it anyway the instant contact breaks -- exactly the HOLD
 			# failure mode above, just reached via a plain move order instead of a HELD one.
-			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT:
+			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT \
+					and order_mode != ORDER_BRACE:
 				target_enemy = enemy
 			# Re-face for action: a large swing off the current fronting turns the men in
 			# place gradually (they hold their ground) before the line strikes; a small
@@ -1881,7 +1892,8 @@ func _think(delta: float) -> void:
 			# press; ranged units don't melee-press at all. While still turning in place to
 			# bring the front to bear, hold position — the men turn where they stand, so the
 			# press waits until the turn fully finishes.
-			if _engage_turn_target == Vector2.ZERO and not is_ranged and order_mode != ORDER_HOLD:
+			if _engage_turn_target == Vector2.ZERO and not is_ranged \
+					and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
 				_press_into(enemy.position, delta)
 			return
 		elif target_enemy != null or (chasing and not in_contact):
@@ -1982,7 +1994,7 @@ func _think(delta: float) -> void:
 				# arrival) it appended nothing, so the order just retires normally
 				# (has_move_target false, active_leaf().turn_target still zero), leaving
 				# the unit facing the pivoted heading instead of turning back.
-	elif enemy != null and order_mode != ORDER_HOLD:
+	elif enemy != null and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
 		# range/contact). If a re-face turn was in progress, settle it first: the unit is
 		# marching now, so the frozen arrival must release (folding the partial rotation into
@@ -3191,9 +3203,10 @@ func _separate(delta: float) -> void:
 
 
 ## Advance or decay this unit's intermixing meter. Rises while a non-ranged unit is
-## actively fighting without a hold order; decays at 4x speed when not fighting.
+## actively fighting without a hold or brace order; decays at 4x speed when not fighting.
 func _tick_intermixing(delta: float) -> void:
-	if state == State.FIGHTING and order_mode != ORDER_HOLD and not is_ranged:
+	if state == State.FIGHTING and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE \
+			and not is_ranged:
 		_combat_intermixing = minf(MELEE_INTERMIX_MAX,
 				_combat_intermixing + MELEE_INTERMIX_RATE * delta)
 	else:
@@ -3203,14 +3216,15 @@ func _tick_intermixing(delta: float) -> void:
 
 ## True when mutual melee intermixing should soften the separation push between
 ## this unit and `other`, so their lines close into contact. Both must be actively
-## fighting without a hold order.
+## fighting without a hold or brace order (a braced line holds its own footing
+## rigidly, the same as a held one).
 func _is_melee_intermixing_with(other: Unit) -> bool:
 	if other.team == team:
 		return false
 	return state == State.FIGHTING \
 			and other.state == State.FIGHTING \
-			and order_mode != ORDER_HOLD \
-			and other.order_mode != ORDER_HOLD
+			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE \
+			and other.order_mode != ORDER_HOLD and other.order_mode != ORDER_BRACE
 
 
 # --- Individual-soldier simulation (simulated bodies, rendered + authoritative melee) ---
@@ -4575,13 +4589,43 @@ func is_delegated() -> bool:
 	return player_group_id != UNDELEGATED
 
 
-## How braced (set to receive) this regiment's soldiers are, in [0, 1] (#201 bracing): a
-## regiment engaged and not skirmishing is set and buttresses knockback/knockdown; a loose
-## skirmish line, or one not engaged, is not. Binary for now -- graded postures (advancing /
-## sprinting / braced) come with the posture slice. Front-facing is enforced at the call site.
-const BRACE_SET: float = 1.0
+## How braced (set to receive) this regiment's soldiers are, in [0, 1], graded per
+## docs/combat-model.md's `br` formula. A regiment engaged and not skirmishing
+## is "at attention" -- some footing, not fully set. Being under way (current_speed > 0)
+## costs footing: a body still translating can't plant. Holding ORDER_BRACE, once genuinely
+## stationary for BRACE_SETTLE_TIME (this is the doc's T_post -- "you must be set before it
+## arrives," not an instant switch), adds the full braced bonus. A tight formation adds a
+## further margin (w_f in the doc). Front-facing is enforced at the call site
+## (SoldierMelee's rearward file walk only buttresses front-facing blows), not here -- adding
+## it here too would double-count it.
+const BRACE_BASELINE_ENGAGED: float = 0.35  # br_0: merely engaged, not explicitly set
+const BRACE_SET_BONUS: float = 0.65         # added once ORDER_BRACE has settled
+const BRACE_TIGHT_BONUS: float = 0.15       # w_f: FORMATION_TIGHT gets extra margin
+const BRACE_MOTION_PENALTY: float = 0.5     # scaled by how fast the regiment is moving
+const BRACE_MOTION_REF_SPEED: float = CHARGE_REFERENCE_SPEED
+const BRACE_STILL_SPEED: float = 5.0        # wu/s; at or below this counts as "stationary"
+const BRACE_SETTLE_TIME: float = 1.0        # seconds (T_post) held still+ordered before the bonus applies
+
+# Seconds this regiment has been continuously stationary (current_speed <= BRACE_STILL_SPEED)
+# while under ORDER_BRACE; resets the instant either condition breaks. Deterministic --
+# driven by combat/movement state and the fixed-step delta, never wall-clock.
+var _brace_settled_time: float = 0.0
+
+func tick_brace_settle(delta: float) -> void:
+	if order_mode == ORDER_BRACE and current_speed <= BRACE_STILL_SPEED:
+		_brace_settled_time += delta
+	else:
+		_brace_settled_time = 0.0
+
 func soldier_brace() -> float:
-	return BRACE_SET if (is_engaged() and order_mode != ORDER_SKIRMISH) else 0.0
+	if not is_engaged() or order_mode == ORDER_SKIRMISH:
+		return 0.0
+	var motion_term: float = BRACE_MOTION_PENALTY \
+			* clampf(current_speed / BRACE_MOTION_REF_SPEED, 0.0, 1.0)
+	var set_term: float = BRACE_SET_BONUS \
+			if (order_mode == ORDER_BRACE and _brace_settled_time >= BRACE_SETTLE_TIME) else 0.0
+	var tight_term: float = BRACE_TIGHT_BONUS if formation_mode == FORMATION_TIGHT else 0.0
+	return clampf(BRACE_BASELINE_ENGAGED + set_term + tight_term - motion_term, 0.0, 1.0)
 
 
 ## Indices of the engaged soldiers: the front engaged_ranks() ranks' worth of an engaged
@@ -6152,7 +6196,7 @@ func to_snapshot_dict() -> Dictionary:
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
 		"order_response_timer": _order_response_timer,
-		"engaged_linger": _engaged_linger,
+		"engaged_linger": _engaged_linger, "brace_settled_time": _brace_settled_time,
 		"moved_last_frame": _moved_last_frame,
 		"approach_velocity": _approach_velocity, "current_speed": _current_speed,
 		"body_follow_vel": _body_follow_vel, "cycle_recharging": _cycle_recharging,
@@ -6265,6 +6309,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_shattered = bool(d["shattered"])
 	_order_response_timer = float(d["order_response_timer"])
 	_engaged_linger = float(d["engaged_linger"])
+	_brace_settled_time = float(d["brace_settled_time"])
 	_moved_last_frame = bool(d["moved_last_frame"])
 	_approach_velocity = d["approach_velocity"]
 	_current_speed = float(d["current_speed"])

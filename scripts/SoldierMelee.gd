@@ -190,7 +190,12 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 				file_braces.append(br)
 				rank_idx += frontage
 		var brace_d: float = SoldierCombat.brace_depth(file_braces)
-		var cap: float = SoldierCombat.BRACE_CAPACITY * brace_d   # avoids a second walk of file_braces
+		# Weapon-differentiated ceiling (docs/combat-model.md "Bracing"): a grounded spear/pike
+		# resists via an independent leveraged strut, so it absorbs more than a shield-only
+		# soldier's friction/mass-stacking alone -- see SoldierCombat.brace_capacity_for_type.
+		var j_cap: float = SoldierCombat.brace_capacity_for_type(
+				defender.is_cavalry, defender.anti_cavalry, defender.is_ranged)
+		var cap: float = j_cap * brace_d   # avoids a second walk of file_braces via brace_capacity()
 		var received: float = maxf(0.0, impulse_mag - cap)
 		# Knockback focus's own per-order push-distance parameter (Unit.
 		# knockback_push_indefinite): "just clear the line" (the default) caps the shoved
