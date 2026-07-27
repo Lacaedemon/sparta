@@ -171,6 +171,17 @@ enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYC
 ## inside SPRINT_START_DISTANCE (see Unit._move_to).
 enum Gait { WALK, JOG, RUN, SPRINT }
 
+## Once this fraction of a unit's CURRENT soldiers are melee-engaged
+## (Order.Guard.ENGAGED_FRACTION_ABOVE, via OrderGuards.engaged_fraction_above), a plain MOVE
+## order cancels rather than pausing-then-resuming around Unit.is_engaged()'s old whole-
+## regiment binary latch -- the fight already in front of the unit plays out instead of the
+## commander trying to keep marching it toward a now-stale destination. Only a NORMAL-stance
+## plain move gets this guard (see _apply_order_cmd's two Order.new_move call sites): HOLD,
+## CHASE, MARCH_TO_CONTACT, and every other non-NORMAL order_mode already represent a
+## deliberate, already-committed decision to fight (or to hold ground / press an attack) that
+## this default should not second-guess.
+const ENGAGED_FRACTION_CANCELS_MOVE: float = 0.10
+
 ## How a multi-unit attack or line-relief order distributes its target among the
 ## ordered units. Focused (default): every unit attacks the same enemy, or (for a
 ## relief) every reliever swaps with the one clicked friendly. Distributed: units
@@ -2070,6 +2081,10 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				# busy one continues its current order and the leg commits when it is
 				# promoted (retire_current_order -> _start_promoted_move).
 				var leg := Order.new_move(point, mode, gait, false)
+				# Only a NORMAL-stance plain move auto-cancels on heavy melee engagement --
+				# see ENGAGED_FRACTION_CANCELS_MOVE's own doc comment.
+				if mode == OrderMode.NORMAL:
+					leg.with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, ENGAGED_FRACTION_CANCELS_MOVE)
 				u.append_order(leg)
 				if u.current_order == leg and not u.has_move_target:
 					u.move_target = point
@@ -2162,6 +2177,12 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				# leave a partial rank at the front, and a hold before the wheel even starts
 				# would defeat the whole point of a continuous, no-halt maneuver.
 				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
+				# Only a NORMAL-stance plain move auto-cancels on heavy melee engagement --
+				# see ENGAGED_FRACTION_CANCELS_MOVE's own doc comment. Set on
+				# the top-level `order` (current_order), not a REFORM/march child leaf split
+				# off it below -- _update_current_order() only ever reads current_order.guard.
+				if mode == OrderMode.NORMAL:
+					order.with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, ENGAGED_FRACTION_CANCELS_MOVE)
 				order.reform = u.reform_before_move and not lateral_pivot and not wheel_turn \
 						and not moving_wheel_turn
 				# A multi-unit drag-line form-up: tag this order as one member of the shared

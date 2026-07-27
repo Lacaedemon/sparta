@@ -28,6 +28,8 @@ static func satisfied(u: Unit, order: Order) -> bool:
 			return ticks_elapsed(order, order.guard_param)
 		Order.Guard.FLANKED:
 			return flanked(u, order.guard_param)
+		Order.Guard.ENGAGED_FRACTION_ABOVE:
+			return engaged_fraction_above(u, order.guard_param)
 		_:
 			return false
 
@@ -105,3 +107,25 @@ static func flanked(u: Unit, range_units: float) -> bool:
 		if UnitCombat.flank_multiplier(u, other) > 1.0:
 			return true
 	return false
+
+
+## At least `fraction` (0..1) of u's CURRENT living soldiers (u.soldiers, not max_soldiers)
+## are melee-engaged -- the fractional counterpart to Unit.is_engaged()'s
+## whole-regiment binary latch -- lets a plain MOVE order cancel once the fight has drawn in
+## a meaningful share of the unit, rather than the old all-or-nothing FIGHTING pause/resume.
+##
+## Reuses engaged_soldier_indices() -- the same front-rank selection SoldierMelee.resolve()
+## already strikes from each melee cadence -- rather than counting soldiers that actually
+## landed/received a blow on THIS specific tick. Melee cadence is gated by
+## melee_attack_interval(), so a "struck this tick" count is zero on most ticks and would
+## make the fraction jump discontinuously between 0 and a spike every cadence -- a poor,
+## jittery signal for "how much of the line is in this fight" compared to the standing
+## engaged-tier selection, which already gates on Unit.is_engaged() (the FIGHTING-plus-linger
+## latch) and returns empty -- fraction 0.0, guard never satisfied -- for a unit not fighting
+## at all.
+static func engaged_fraction_above(u: Unit, fraction: float) -> bool:
+	var total: int = u.soldiers
+	if total <= 0:
+		return false
+	var engaged: int = u.engaged_soldier_indices(total).size()
+	return float(engaged) / float(total) >= fraction
