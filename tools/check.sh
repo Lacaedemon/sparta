@@ -25,8 +25,8 @@
 #             Caps NEW scripts/*.gd files (added by this diff, not existing ones) at 100
 #             lines, on the modularity/maintainability grounds one-function-per-file rules
 #             are usually written for (a hard budget for genuinely new files, not an
-#             existing CLAUDE.md rule in this repo -- see .gdlintrc's own header for the
-#             fuller rationale). Diff-scoped like `comments`/`units`, sharing their base
+#             existing CLAUDE.md rule in this repo -- see tools/README.md's file_length
+#             entry for the fuller rationale). Diff-scoped like `comments`/`units`, sharing their base
 #             resolution: a whole-tree gate would fail on the 167 of 274 tracked *.gd files
 #             that already exceed 100 lines. Scoped to scripts/, not test/ (this repo's
 #             test files deliberately group many test functions per file).
