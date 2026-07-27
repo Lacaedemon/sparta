@@ -1694,8 +1694,8 @@ cause of the cross-branch contamination cases. (`Lacaedemon/sparta`, GIA batch c
 
 ## FIXED: a fresh worktree's first `tools/check.sh test` run used to need a manual second import pass
 
-**Fixed by `ensure_project_imported()` in `tools/check.sh`** (issue/PR TBD, filed after this bug
-was reported directly against a fresh `sparta-auto-review` worktree). `check_test()` (and
+**Fixed by `ensure_project_imported()` in `tools/check.sh`** (issue #1130, PR #1131, filed after
+this bug was reported directly against a fresh `sparta-auto-review` worktree). `check_test()` (and
 `check_coverage()`) now run Godot's `--import` themselves, right after `ensure_gut`, caching the
 result under the `_project_imported` result key so a same-invocation `validate` isn't paid for
 twice. `has_script_errors()` also now matches "class_names have not been imported" directly, and
