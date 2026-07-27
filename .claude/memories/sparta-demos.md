@@ -825,6 +825,28 @@ PR's demo section, check the manifest actually lives in *this* PR's diff (`git s
 GIF is present and a caption reads plausibly — a fluent caption describing the wrong PR is not
 self-evidently wrong from the text alone. (`Lacaedemon/sparta` PR #831, 2026-07-13.)
 
+## A skip manifest that exists but uses the wrong schema fails exactly as silently as a missing one
+
+The entry above covers a *missing* `demos/demo.<slug>.json`. A **present but wrongly-shaped**
+one is just as silent a failure: `demo-video.yml`'s "Resolve demo source" step reads the
+manifest with a flat, top-level `jq -r '.skip // false'` lookup. A file that nests `skip`/
+`reason` one level deeper — e.g. `{"manifest": {"skip": true, "reason": "..."}}` instead of the
+documented flat `{"skip": true, "reason": "..."}` (see `demos/demo.skip.example.json` and any
+existing `demo.<N>.json` with `skip: true`) — makes that lookup evaluate to `false`. CI then
+silently falls through past the skip branch and records the generic `demos/showcase.json`
+fallback with the caption "Gameplay demo for this PR.", exactly the misleading-fallback outcome
+the skip manifest exists to prevent. Nothing errors: the file is valid JSON, CI runs green, and
+a PR comment claiming "added a skip manifest" reads as true because the file genuinely exists —
+only the actual posted demo section (or the raw `jq` lookup) reveals it never took effect.
+
+**How to apply:** after adding or editing any `demos/demo.<slug>.json` with `skip: true`, don't
+stop at confirming the file exists — check the posted PR description's demo section actually
+shows the skip note ("🚫 No gameplay clip for this PR — `<reason>`"), not a rendered GIF with a
+generic caption. If it shows the fallback GIF instead, the manifest's shape is wrong, not the
+demo pipeline. (`Lacaedemon/sparta` PR #1070, 2026-07-27: an automated agent's `demo.1070.json`
+nested `skip`/`reason` under a stray `"manifest"` key; caught by a Claude review round after an
+earlier PR comment had already (wrongly) asserted the skip manifest was "confirmed present.")
+
 ## A "wait then quit" helper reachable from multiple recorder modes needs a mode-guarded await
 
 The demo-video CI job's state-transcript step (drives `DemoInputRecorder` in state-only mode)

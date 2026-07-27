@@ -906,6 +906,31 @@ automatically now.
 If this ever needs disabling again, PR #1062's diff (`git show 17fab72a`) is the exact
 prior workflow-config change to reference.
 
+**Copilot's own review can also fail closed, not just Claude's.** Copilot's review comment
+can read `Copilot was unable to review this pull request because the user who requested the
+review has reached their quota limit.` — repeatedly, across many pushes. This is a distinct
+failure mode from Claude's own quota-skip message, but the same handling applies: it's not an
+approval, don't wait on it, self-review or manually dispatch Claude instead.
+
+**A manual `gh workflow run "Claude Code Review" -f pr_number=<N>` dispatch can silently run
+against `main`'s ref instead of the PR branch and post NO comment at all — a distinct, quieter
+failure than the documented stub-review pattern.** The run itself reports `success` (all three
+jobs green), and every run so far has carried a `The process '/usr/bin/git' failed with exit
+code 128` annotation regardless of whether it actually posted a review — that annotation is
+benign, expected noise, not a sign anything went wrong. The real tell is the run's own
+`head_branch`: a manually-triggered run that resolves to `main` (rather than the PR's actual
+branch) reviews nothing PR-specific and produces no comment, even on `success`. Meanwhile, this
+repo's automated re-dispatch mechanism (`claude.yml`'s push-triggered re-dispatch, attributed to
+`github-actions[bot]`) fires its OWN `workflow_dispatch` correctly scoped to the PR's real branch
+— and if a manual dispatch is still in flight when it queues, the `claude-review-<N>` concurrency
+group cancels the manual one in favor of it (`Canceling since a higher priority waiting request
+for claude-review-<N> exists`). **How to apply:** after pushing, check `gh run list
+--workflow="Claude Code Review"` for a run whose `head_branch` matches the PR's actual branch
+before manually dispatching — the automated re-dispatch usually beats you to it within a minute
+or two. If you do dispatch manually and it lands on `main` with no resulting comment, that's the
+signal to just wait for (or re-dispatch and confirm) a run scoped to the real branch, not to
+suspect the PR itself. (`Lacaedemon/sparta` PR #1070, 2026-07-27.)
+
 ## Verify an issue's own stated root cause empirically before implementing its proposed fix
 
 A well-written bug issue with specific code references (line numbers, a named mechanism,
