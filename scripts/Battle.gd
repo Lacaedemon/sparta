@@ -32,8 +32,8 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 # plausible target for as long as it's still visible, rather than vanishing early. Reads the
 # class constant, not any one unit's own (caller-configurable) detection_range field, since
 # this margin is a single battle-wide strip, not sized per unit.
-var ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
-var FIELD_WITH_MARGIN: Rect2 = FIELD.grow(ROUT_MARGIN)
+const ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
+var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
 
 # Terrain patches; type keys into TERRAIN_COLOR. kind="block" is impassable; kind="slow" is a speed zone.
 const TERRAIN: Array = [
@@ -436,7 +436,7 @@ func _ready() -> void:
 				spawn_line_ys = parsed.get("spawn_lines", spawn_line_ys)
 
 	# The rout margin tracks the live field, not the default const.
-	FIELD_WITH_MARGIN = field.grow(ROUT_MARGIN)
+	field_with_margin = field.grow(ROUT_MARGIN)
 
 	_camera.bounds = field
 	_camera.position = field.position + field.size * 0.5
@@ -590,10 +590,10 @@ func _exit_tree() -> void:
 
 
 func _draw() -> void:
-	# The retreat margin (see FIELD_WITH_MARGIN) drawn first, under the field, so it reads
+	# The retreat margin (see field_with_margin) drawn first, under the field, so it reads
 	# as a dimmer strip of ground beyond the playable edge — where a routing unit may still
 	# be fleeing (and still fightable) before it's gone for good.
-	draw_rect(FIELD_WITH_MARGIN, FIELD_COLOR.darkened(0.3))
+	draw_rect(field_with_margin, FIELD_COLOR.darkened(0.3))
 	# Textured grass field (seeded procedural art built once in _ready; render-only, so
 	# nothing the sim reads changes). The flat-colour rects remain as the fallback for a
 	# battle whose textures never built (a test poking _draw without a full _ready).
@@ -876,7 +876,7 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.facing = facing
 	u.position = pos
 	u.field_bounds = field   # so a skirmisher kites without backing off the map
-	u.retreat_bounds = FIELD_WITH_MARGIN   # a router may flee this far before it escapes
+	u.retreat_bounds = field_with_margin   # a router may flee this far before it escapes
 	_units.add_child(u)
 	# Set after add_child() so _ready() has already established the type's base
 	# separation_radius for set_formation() to scale from, and set soldiers from
