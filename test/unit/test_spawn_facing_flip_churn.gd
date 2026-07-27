@@ -179,15 +179,20 @@ func test_degenerate_zero_length_dir_leaves_facing_unchanged() -> void:
 # pivot fallback's form-up branch (a drag-to-form-up order's deploy_facing).
 
 func test_move_to_non_pivoting_branch_keeps_every_body_on_its_own_slot() -> void:
-	# An undisciplined unit's first order, facing sharply away from its destination -- the
-	# non-pivoting branch (Unit.gd:2346) calls _face_dir(steer_dir) with no threshold gate at
-	# all, unlike _face_for_action's small-offset-only snap.
+	# An undisciplined unit's first order, facing sharply away from its destination. pivot_as_
+	# formation = (orderly or formed_turn) and disciplined and not _is_move_order_in_haste()
+	# (Unit.gd:2283) -- orderly=true (the real "obey a move order" call, Unit.gd:1938) clears
+	# the first clause, so disciplined=false is what actually forces the non-pivoting branch
+	# here; a bare two-arg call would already take that branch regardless of disciplined (that
+	# shape matches a different real caller instead, the skirmish-kite retreat at Unit.gd:1778).
+	# The branch itself (Unit.gd:2346) calls _face_dir(steer_dir) with no threshold gate at all,
+	# unlike _face_for_action's small-offset-only snap.
 	var u := _unit(1, 0, Vector2(500, 500), Vector2.UP)
-	u.disciplined = false   # forces pivot_as_formation = false -> the non-pivoting branch
+	u.disciplined = false
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
 	var start_bbox: Vector2 = _bbox(u._sim_soldier_pos)
 
-	u._move_to(Vector2(500, 1500), 1.0 / 60.0)   # straight south: a ~180 degree flip from UP
+	u._move_to(Vector2(500, 1500), 1.0 / 60.0, true)   # orderly: straight south, ~180 deg flip from UP
 
 	assert_true(absf(angle_difference(Vector2.UP.angle(), u.facing.angle())) > deg_to_rad(90.0),
 		"sanity: the move order did flip facing by more than 90 degrees")
@@ -202,7 +207,7 @@ func test_move_to_non_pivoting_branch_keeps_every_body_on_its_own_slot() -> void
 		assert_almost_eq(slots[i].y, u._sim_soldier_pos[i].y, 0.5)
 
 	for _i in range(90):
-		u._move_to(Vector2(500, 1500), 1.0 / 60.0)
+		u._move_to(Vector2(500, 1500), 1.0 / 60.0, true)
 		SoldierBodies.step(u, 1.0 / 60.0)
 	var mid_bbox: Vector2 = _bbox(u._sim_soldier_pos)
 	assert_almost_eq(mid_bbox.x, start_bbox.x, 1.0,
