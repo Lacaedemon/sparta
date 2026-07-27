@@ -347,31 +347,39 @@ branch both switched to this proximity-inclusive gate; `engaged_soldier_indices(
 disengaging unit still deals and takes no melee damage and its morale is unaffected by the
 brush; only its bodies now physically resist.
 
-**The regiment's own position anchor needed the same decoupling.** #783 (SoldierBodies.
-couple() averaging position drift over every soldier body, diluting a fighting regiment's
-resisted front rank against its unengaged bulk — the "charge rides through a braced line"
-bug) was already fixed by #784, which weighted `couple()`'s anchor toward
-`Unit.position_anchor_indices()`'s narrower live-front selection instead of the whole-block
-centroid. But `position_anchor_indices()` (and the `near_front_soldier_indices()` it calls)
-gated on `is_engaged()` alone, same as everything else above — so a disengaging unit's
-`couple()` call still fell through to the whole-block-centroid average, and its position
-(and therefore every soldier's formation-slot target) diluted right through contact the
-same way #783 documented for a charging regiment, just never fixed for a merely-marching
-one. Both functions now gate on `is_engaged() OR _in_enemy_contact` too, and the
-Square/unstable-transition fallback reads `contact_soldier_indices()` instead of
-`engaged_soldier_indices()` — reusing the exact same decoupling as the soldier-contact fix
-above, not a new mechanism.
+**The regiment's own position anchor has the same gap, tried here and reverted.** #783
+(SoldierBodies.couple() averaging position drift over every soldier body, diluting a
+fighting regiment's resisted front rank against its unengaged bulk — the "charge rides
+through a braced line" bug) was already fixed by #784, which weighted `couple()`'s anchor
+toward `Unit.position_anchor_indices()`'s narrower live-front selection instead of the
+whole-block centroid. But `position_anchor_indices()` (and the `near_front_soldier_indices()`
+it calls) gate on `is_engaged()` alone, same as everything else above did before this PR —
+so a disengaging unit's `couple()` call still falls through to the whole-block-centroid
+average, and its position (and therefore every soldier's formation-slot target) dilutes
+right through contact the same way #783 documented for a charging regiment, just never
+fixed for a merely-marching one.
 
-**This still does not fully close the gap.** Verified empirically against the site's
-showcase clip (`demos/showcase.json`, seed 12345): a "disengaging" unit now visibly takes
-real contact resistance (and casualties, since the enemy's own attack still lands) it took
-none of before, and its regiment position anchors on its real contact-resisted front ranks
-instead of the diluted whole-block centroid — but `_move_to()`, the code driving that
-unit's own kinematic march toward its destination, is still not itself gated by contact at
-all. It keeps commanding `position` forward at full march speed every tick regardless; the
-soldier/regiment-level resistance above only pushes back afterward, bounded, each tick — a
-tug-of-war between an unbounded kinematic drive and a bounded physical response, not the
-drive itself yielding to contact. Closing it fully needs `_move_to()` itself (or the
-regiment's overall kinematic advance) to yield to contact, not just be resisted after the
-fact — a change to core movement code shared by every unit in the game, deliberately out
-of scope here.
+Extending both functions to `is_engaged() OR _in_enemy_contact` (mirroring the exact
+decoupling this PR applies everywhere else) was tried and reverted: it made
+`test_collision_knockback_battle.gd`'s live 900-tick showcase-scenario regression guard
+hang indefinitely (reproduced in isolation, not a flake — a plain, no-coverage run of just
+that one test never completes). Not yet root-caused; the position anchor is a much more
+sensitive piece of code than the contact-resolution/`_separate()` changes above — its own
+doc comments and this file's "Decisions" section already record a history of subtle
+swirl/instability regressions from narrowing its selection, and widening WHICH units
+qualify for it (not just how narrow the selection is once they do) is an untested new axis.
+Left as a known, real, but not-yet-safely-closed follow-up rather than risk landing a hang
+in a live-battle-critical path.
+
+**This — and the position-anchor gap above — do not fully close the underlying issue
+either way.** Verified empirically against the site's showcase clip
+(`demos/showcase.json`, seed 12345): a "disengaging" unit now visibly takes real contact
+resistance (and casualties, since the enemy's own attack still lands) it took none of
+before, but `_move_to()` — the code driving that unit's own kinematic march toward its
+destination — is still not itself gated by contact at all. It keeps commanding `position`
+forward at full march speed every tick regardless; the soldier/regiment-level resistance
+above only pushes back afterward, bounded, each tick — a tug-of-war between an unbounded
+kinematic drive and a bounded physical response, not the drive itself yielding to contact.
+Closing it fully needs `_move_to()` itself (or the regiment's overall kinematic advance) to
+yield to contact, not just be resisted after the fact — a change to core movement code
+shared by every unit in the game, deliberately out of scope here.
