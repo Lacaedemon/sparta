@@ -1,6 +1,4 @@
 {
-  "manifest": {
-    "skip": true,
-    "reason": "This PR (#1070) optimizes internal math (`distance_to` -> `distance_squared_to`) in `Unit.gd` without any intended visual or behavioral side effects. No new scenario is required."
-  }
+  "skip": true,
+  "reason": "This PR (#1070) optimizes internal math (`distance_to` -> `distance_squared_to`) in `Unit.gd` without any intended visual or behavioral side effects. No new scenario is required."
 }
