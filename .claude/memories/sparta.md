@@ -379,6 +379,27 @@ going in the same worktree; the "rerun" reported the pre-edit coverage
 number, and a later full-suite run failed one unrelated test until the
 scrambled `settings.cfg` was deleted.)
 
+**An orphaned Godot process (e.g. a `bash tools/check.sh | head -N` pipe
+SIGPIPE-killing the wrapper script but leaving its spawned Godot child
+running detached) is a lock the same way a live foreground run is — and this
+repo's own `tools/kill-orphan-godot.ps1`/`.sh` cleanup tool (dry-run by
+default) can be BLOCKED OUTRIGHT by the Claude Code auto-mode permission
+classifier on the name alone, even in dry-run mode.** Don't fight that block
+by retrying or improvising a workaround. `Get-CimInstance Win32_Process
+-Filter "Name LIKE '%Godot%'" | Select ProcessId, ParentProcessId,
+CreationDate, CommandLine` (Windows) surfaces the candidates, but
+`CreationDate` alone can't tell a stalled process from one still working --
+it's the process's fixed start time, unchanged for the whole life of ANY
+still-running process. Use it for AGE instead (`now - CreationDate` well past
+the suite's normal completion time, not a delta between two checks), or check
+a genuinely progress-tracking signal: whether the run's own output artifact
+(e.g. `coverage/lcov.info`, the GUT log) is still growing, or the process's
+CPU-time counters (`KernelModeTime`/`UserModeTime`) advancing between checks.
+When blocked from cleaning up and
+unable to guarantee a local run is uncontaminated, fall back to CI's own
+clean-runner results (`gh pr checks`) as the authoritative signal instead of
+trusting a local re-verify. (`Lacaedemon/sparta` PR #1106, 2026-07-27.)
+
 **A branch SWITCH counts as a second writer too: never `git checkout` in a
 worktree while a Godot job is still running there.** The suite (and the
 coverage/patch_coverage runs especially) reloads scripts from disk as it
@@ -1692,27 +1713,34 @@ to reuse/assume any pre-existing worktree unless explicitly named -- this is the
 cause of the cross-branch contamination cases. (`Lacaedemon/sparta`, GIA batch cleanup,
 2026-07-09 -- affected PRs #695, #698, #701/#713, #702, #706/#707, #708, #709, #711.)
 
-## A fresh worktree's first `tools/check.sh test` run needs a second `--headless --import` pass
+## FIXED: a fresh worktree's first `tools/check.sh test` run used to need a manual second import pass
 
-`tools/check.sh test` vendors GUT on demand (clones into `addons/gut`) when a fresh worktree
-doesn't have it yet, but Godot's `class_name` registration only happens during project import
--- which already ran (or never ran) before GUT's files existed on disk. So the very first
-`tools/check.sh test` call in a brand-new worktree always fails with:
+**Fixed by `ensure_project_imported()` in `tools/check.sh`** (issue #1130, PR #1131, filed after
+this bug was reported directly against a fresh `sparta-auto-review` worktree). `check_test()` (and
+`check_coverage()`) now run Godot's `--import` themselves, right after `ensure_gut`, caching the
+result under the `_project_imported` result key so a same-invocation `validate` isn't paid for
+twice. `has_script_errors()` also now matches "class_names have not been imported" directly, and
+both GUT-driving checks assert a `gut_ran_tests()` smoke check (GUT's own "Scripts   N" summary
+line, N > 0) as a backstop independent of the import fix. A bare `tools/check.sh test` (or
+`coverage`) in a brand-new worktree is now self-sufficient and no longer needs `validate` (or a
+manual `godot --headless --import`) to run first.
+
+Kept here as the historical record of the failure mode, since it recurred across many sessions
+before the fix: `tools/check.sh test` vendors GUT on demand (clones into `addons/gut`) when a
+fresh worktree doesn't have it yet, but Godot's `class_name` registration only happens during
+project import. Without an import, the very first `tools/check.sh test` call in a brand-new
+worktree used to fail with:
 
 ```
 ERROR: Some GUT class_names have not been imported.  Please restart the Editor or run godot --headless --import
 Missing class_names:  ["GutErrorTracker", ... "GutTest", ...]
 ```
 
-`== summary == PASS test` / `All checks passed.` still prints -- the script doesn't treat this
-as a failure, so it's easy to miss that no tests actually ran.
-
-**How to apply:** in a fresh worktree, run `<godot> --headless --import` once, then
-`tools/check.sh test` (vendors GUT), then `<godot> --headless --import` a SECOND time (registers
-GUT's newly-vendored `class_name`s), then re-run `tools/check.sh test` for the real result. A
-worktree that already has `addons/gut/` from a prior run only needs the one usual import pass.
-Hit repeatedly across many fresh worktrees during the 2026-07-09/2026-07-13 GIA batch-cleanup
-and independent-verification passes.
+`== summary == PASS test` / `All checks passed.` still printed -- the script didn't treat this as
+a failure (none of `has_script_errors`' patterns matched the class_name-guard text, and nothing
+checked GUT's own summary for a non-zero test count), so it silently reported PASS with zero
+tests run. Hit repeatedly across many fresh worktrees during the 2026-07-09/2026-07-13 GIA
+batch-cleanup and independent-verification passes, and again when reported directly as a bug.
 
 ## The Coverage CI job shifts sim timing — read spawn values PRE-tick and budget arcs in real sim ticks
 
