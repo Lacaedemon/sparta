@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Bounds a defensive safety cap that only ever binds in an already-pathological state (a corrupted min_dist far outside anything normal gameplay produces); the fix is behaviorally invisible in ordinary play, and the full GUT suite (including the new regression test) already proves the bound numerically. Nothing new to show on screen."
+}
