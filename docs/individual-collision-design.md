@@ -265,3 +265,46 @@ health pool) and morale-from-soldier-state; retiring the regiment circle's enemy
 branches is unblocked on the momentum/mass side (#783 closed via #784's engaged-weighted
 body coupling — see the phase-5 note above) but still needs its own residual-transient fix
 before that retirement is safe (tracked on #296).
+
+## Melee-intermixing depth is gated by the defender's formation_mode
+
+Two enemy regiments in sustained melee previously had no formation-mode-aware limit on
+how deep the fighting could intermix: the regiment circle's engaged-vs-engaged closeup
+(`Unit._separate`) only bounds the two blocks' *centres*, and the soldier-level contact
+pass (`SoldierEnemyContact.accumulate`/`SoldierCollision.enemy_contact_impulse`) only
+resolves actual body-radius overlaps — so an attacker able to find (or open) a seam
+between neighbouring defenders could press arbitrarily deep into the defending formation
+regardless of how tightly that formation was packed. `Unit.formation_containment_margin`
+closes that gap for the shield-wall-class tier: each defending soldier's own formation
+widens the enemy-contact test radius that `SoldierEnemyContact.accumulate` resolves
+against.
+
+- **Shield-wall-class** (TIGHT/SQUARE/SCHILTRON/SHIELD_WALL/TESTUDO): the full margin,
+  unconditionally, so the front ranks hold contact with effectively no depth-wise
+  intermixing — a fallen defender's live neighbours still cover the gap.
+- **NORMAL and LOOSE**: both stay at zero, deliberately unchanged from their pre-existing
+  contact geometry (see below for why).
+
+Cavalry never contribute a margin (mounted formations don't interlock shields, and
+`CAV_MARK_RADIUS`'s wider body would eat most of `SoldierSpatialHash.CELL_SIZE`'s own
+headroom over the raw separation floor it's pinned against). The margin is scaled off
+`soldier_body_radius()` rather than a flat metre value, so it stays proportionate to the
+body it protects.
+
+**Why NORMAL doesn't (yet) get a margin.** An earlier version of this fix also gave
+NORMAL a smaller margin that zeroed out for a specific body while that soldier was prone
+— letting a felled defender's own slot briefly cede ground to the attacker who felled
+him, matching "a couple of ranks deep, as a knockback consequence, not a standing
+steady-state overlap." That made the enemy-contact contact-*pair set* vary per soldier,
+per tick, depending on which individual bodies happened to be prone — and
+`SoldierEnemyContact`'s contact-pair geometry is already the documented dominant source
+of the "melee-lock swirl" torque bias (`.claude/memories/sparta.md`; see also
+`test_residual_melee_swirl_battle.gd`'s regression guard and the `ANCHOR_RANKS` doc
+comment on `Unit.gd`). That per-soldier heterogeneity measurably reintroduced the swirl
+on CI (Linux) even though the guard test stayed under its threshold locally on Windows —
+this sim is only deterministic *within* a build/platform, not bit-exact across them (see
+"Decisions" above), so a chaotic-sensitive regression like this one can clear a local run
+and still fail CI. Reverted to keep NORMAL's contact geometry bit-identical to before this
+feature. A follow-up would need a coarser, non-per-soldier mechanism (e.g. a
+regiment-level aggregate of how many engaged soldiers are currently prone, applied
+uniformly rather than body-by-body) if the NORMAL-tier nuance is worth pursuing further.
