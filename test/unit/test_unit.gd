@@ -2069,6 +2069,36 @@ func test_co_located_equal_uid_pair_still_fans_apart() -> void:
 		"equal-uid co-located units fall back to the instance-id sign and fan apart")
 
 
+# --- SEPARATION_SPEED_CAP bounds the SUMMED push, not each pair alone --------
+
+func test_separation_speed_cap_bounds_summed_push_across_multiple_neighbors() -> void:
+	# Two enemies stacked at the same spot so both push `a` in the identical
+	# direction, each with a pathologically large separation_radius so a single
+	# pair's desired push already exceeds SEPARATION_SPEED_CAP*delta on its own.
+	# If the cap only bounded each pair independently (the bug this test guards
+	# against), two such neighbors would move `a` by 2*SEPARATION_SPEED_CAP*delta;
+	# clamping the summed total instead bounds it to SEPARATION_SPEED_CAP*delta
+	# regardless of neighbor count.
+	var a := _make_unit()
+	var b := _make_unit()
+	var c := _make_unit()
+	b.team = 1
+	c.team = 1
+	a.separation_radius = 1000.0
+	b.separation_radius = 1000.0
+	c.separation_radius = 1000.0
+	a.position = Vector2.ZERO
+	b.position = Vector2(10.0, 0.0)
+	c.position = Vector2(10.0, 0.0)
+	var delta := 1.0 / 60.0
+	a._separate(delta)
+	var cap_distance: float = Unit.SEPARATION_SPEED_CAP * delta
+	assert_almost_eq(a.position.x, -cap_distance, 0.01,
+		"two overlapping neighbors together must not exceed the per-tick cap")
+	assert_almost_eq(a._separation_velocity.length(), Unit.SEPARATION_SPEED_CAP, 0.1,
+		"the diagnostic field mirrors the summed, capped velocity")
+
+
 # --- waypoints (queued MOVE legs on the orders queue) -----------
 
 func test_unit_advances_to_next_waypoint_on_arrival() -> void:

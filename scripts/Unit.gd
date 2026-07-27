@@ -3098,11 +3098,16 @@ func formation_morale_erosion_factor() -> float:
 ## The correction is applied as a capped velocity impulse (SEPARATION_SPEED_CAP),
 ## then integrated into position -- the same additive-then-clamp shape every other
 ## collision response in this codebase already uses (SoldierCombat's knockback) --
-## rather than writing position directly.
+## rather than writing position directly. The cap bounds the SUMMED velocity across
+## every overlapping neighbor this tick, not each pair independently -- otherwise N
+## simultaneous overlaps could move the regiment N*SEPARATION_SPEED_CAP*delta, the
+## same multi-pair-accumulation gap SoldierEnemyContact.accumulate already guards
+## against via SoldierCombat.capped_knockback_velocity.
 func _separate(delta: float) -> void:
 	_separation_velocity = Vector2.ZERO
 	if state == State.DEAD:
 		return
+	var desired_total: Vector2 = Vector2.ZERO
 	# Consider living units and routers alike: nobody gets walked through.
 	for o in _separation_candidates():
 		var other: Unit = o as Unit
@@ -3167,14 +3172,22 @@ func _separate(delta: float) -> void:
 			else:
 				dir = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
 			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * share)
-		# push is this tick's desired displacement; express it as a velocity (capped)
-		# and integrate that, not the raw displacement, so a pathological overlap
-		# can't move the regiment further in one tick than SEPARATION_SPEED_CAP*delta
-		# allows. In the ordinary case (every measured overlap is far below the cap)
-		# this integrates to exactly `push`, same as before.
+		# push is this tick's desired displacement; express it as a velocity and
+		# accumulate it into the running RESULT total, then clamp that total (not
+		# this pair's contribution alone) so a pathological overlap -- from one
+		# neighbor or many at once -- can't move the regiment further this tick
+		# than SEPARATION_SPEED_CAP*delta allows. Apply only the incremental step
+		# between the previous and newly-clamped total, so position still updates
+		# once per candidate (each subsequent pair's offset reads the latest
+		# position, same as before) while the summed displacement stays bounded.
+		# In the ordinary case (every measured overlap is far below the cap) the
+		# total never approaches the cap, so this integrates to exactly `push`
+		# per pair, same as before.
 		var desired_vel: Vector2 = push / delta if delta > 0.0 else Vector2.ZERO
-		var step_vel: Vector2 = desired_vel.limit_length(SEPARATION_SPEED_CAP)
-		_separation_velocity += step_vel
+		desired_total += desired_vel
+		var clamped_total: Vector2 = desired_total.limit_length(SEPARATION_SPEED_CAP)
+		var step_vel: Vector2 = clamped_total - _separation_velocity
+		_separation_velocity = clamped_total
 		position += step_vel * delta
 
 
