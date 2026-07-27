@@ -19,9 +19,10 @@ class_name SoldierEnemyContact
 ## margin (Unit.formation_containment_margin) -- a shield-wall-class defender (TIGHT/SQUARE/
 ## SCHILTRON/SHIELD_WALL/TESTUDO) resists an attacker before their bodies would actually
 ## overlap, gating how far melee intermixes with the defender's own formation_mode. NORMAL
-## and LOOSE stay at zero -- deliberately unchanged from their pre-existing contact geometry
-## (see formation_containment_margin's own doc comment for why an earlier per-soldier NORMAL
-## variant was reverted).
+## gets a smaller, flat margin of its own (still unconditional -- see formation_containment_
+## margin's own doc comment for why an earlier per-soldier, prone-gated NORMAL variant was
+## reverted). LOOSE stays at zero -- deliberately, per its own "can become deeply enmeshed"
+## design intent.
 ##
 ## Determinism: regiments are processed in uid order and each regiment's engaged soldiers in
 ## ascending index, so the gathered arrays are already global-soldier-id sorted; the
@@ -49,9 +50,11 @@ static func body_trim_scale(orig_vel: Vector2, delta: Vector2) -> float:
 ## each body's _sim_body_vel. `frame` keys the spatial hash; pass a value distinct from
 ## SoldierSteering.accumulate's own frame key (the two passes gather different position
 ## sets in the same tick, so they can't share one cached grid) -- Battle drives this via a
-## fixed odd/even offset. Only the ORIGINAL engaged tier (Unit.engaged_soldier_indices, not
-## SoldierSteering's friendly-contact-tier expansion) is gathered: enemy contact only ever
-## matters at melee range, which the engaged tier already captures.
+## fixed odd/even offset. Gathers Unit.contact_soldier_indices (not SoldierSteering's
+## friendly-contact-tier expansion, and not the combat-state-gated engaged_soldier_indices):
+## contact is a physical fact, gated on proximity (Unit._in_enemy_contact) as well as combat
+## state, so a "disengaging" unit's bodies still resist an enemy's rather than walking
+## through it -- see contact_soldier_indices' own doc comment.
 static func accumulate(units: Array, frame: int) -> void:
 	var sorted_units: Array = units.duplicate()
 	sorted_units.sort_custom(func(x: Variant, y: Variant) -> bool: return (x as Unit).uid < (y as Unit).uid)
@@ -73,7 +76,7 @@ static func accumulate(units: Array, frame: int) -> void:
 		var nb: int = u._sim_soldier_pos.size()
 		if nb == 0 or u._sim_body_vel.size() != nb:
 			continue
-		var idxs: PackedInt32Array = u.engaged_soldier_indices(nb)
+		var idxs: PackedInt32Array = u.contact_soldier_indices(nb)
 		if idxs.is_empty():
 			continue
 		var r: float = u.soldier_body_radius()

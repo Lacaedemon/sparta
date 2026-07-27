@@ -279,11 +279,15 @@ closes that gap for the shield-wall-class tier: each defending soldier's own for
 widens the enemy-contact test radius that `SoldierEnemyContact.accumulate` resolves
 against.
 
-- **Shield-wall-class** (TIGHT/SQUARE/SCHILTRON/SHIELD_WALL/TESTUDO): the full margin,
-  unconditionally, so the front ranks hold contact with effectively no depth-wise
-  intermixing — a fallen defender's live neighbours still cover the gap.
-- **NORMAL and LOOSE**: both stay at zero, deliberately unchanged from their pre-existing
-  contact geometry (see below for why).
+- **Shield-wall-class** (TIGHT/SQUARE/SCHILTRON/SHIELD_WALL/TESTUDO): the full margin
+  (`FORMATION_CONTAINMENT_SCALE_TIGHT = 1.0`), unconditionally, so the front ranks hold
+  contact with effectively no depth-wise intermixing — a fallen defender's live neighbours
+  still cover the gap.
+- **NORMAL**: a smaller, also-unconditional margin
+  (`FORMATION_CONTAINMENT_SCALE_NORMAL = 0.4`) — "a couple of ranks deep", not a full
+  block (see below for why it's flat rather than knockback-reactive).
+- **LOOSE**: stays at zero — the design intent is explicitly that a loose formation "can
+  become deeply enmeshed."
 
 Cavalry never contribute a margin (mounted formations don't interlock shields, and
 `CAV_MARK_RADIUS`'s wider body would eat most of `SoldierSpatialHash.CELL_SIZE`'s own
@@ -291,12 +295,12 @@ headroom over the raw separation floor it's pinned against). The margin is scale
 `soldier_body_radius()` rather than a flat metre value, so it stays proportionate to the
 body it protects.
 
-**Why NORMAL doesn't (yet) get a margin.** An earlier version of this fix also gave
-NORMAL a smaller margin that zeroed out for a specific body while that soldier was prone
-— letting a felled defender's own slot briefly cede ground to the attacker who felled
+**Why NORMAL's margin is flat rather than knockback-reactive.** An earlier version of this
+fix gave NORMAL a smaller margin that zeroed out for a specific body while that soldier was
+prone — letting a felled defender's own slot briefly cede ground to the attacker who felled
 him, matching "a couple of ranks deep, as a knockback consequence, not a standing
-steady-state overlap." That made the enemy-contact contact-*pair set* vary per soldier,
-per tick, depending on which individual bodies happened to be prone — and
+steady-state overlap" more literally. That made the enemy-contact contact-*pair set* vary
+per soldier, per tick, depending on which individual bodies happened to be prone — and
 `SoldierEnemyContact`'s contact-pair geometry is already the documented dominant source
 of the "melee-lock swirl" torque bias (`.claude/memories/sparta.md`; see also
 `test_residual_melee_swirl_battle.gd`'s regression guard and the `ANCHOR_RANKS` doc
@@ -304,7 +308,59 @@ comment on `Unit.gd`). That per-soldier heterogeneity measurably reintroduced th
 on CI (Linux) even though the guard test stayed under its threshold locally on Windows —
 this sim is only deterministic *within* a build/platform, not bit-exact across them (see
 "Decisions" above), so a chaotic-sensitive regression like this one can clear a local run
-and still fail CI. Reverted to keep NORMAL's contact geometry bit-identical to before this
-feature. A follow-up would need a coarser, non-per-soldier mechanism (e.g. a
-regiment-level aggregate of how many engaged soldiers are currently prone, applied
-uniformly rather than body-by-body) if the NORMAL-tier nuance is worth pursuing further.
+and still fail CI. Reverted, then replaced with the flat value used here: every NORMAL
+soldier gets the identical margin regardless of prone state or tick, so the contact-pair
+set never varies over time — the same structural shape as TIGHT's own always-on margin,
+which is not itself a swirl source. A regiment-level, knockback-reactive refinement (e.g.
+an aggregate of how many engaged soldiers are currently prone, applied uniformly rather
+than body-by-body) is still a possible follow-up if the reactive nuance is worth
+pursuing.
+
+## Physical contact is proximity-based, not combat-state-based
+
+Both the margin above and the underlying soldier-level pass it widens
+(`SoldierEnemyContact.accumulate`) used to gather soldiers via
+`Unit.engaged_soldier_indices()` — gated entirely on `is_engaged()`, a COMBAT-state
+decision (`state == FIGHTING`, with a short linger). That conflated two genuinely
+different questions: "is this regiment fighting" (a gameplay/order choice) and "is this
+regiment's body touching an enemy's" (a physical fact). A unit under a plain move order
+with no attack target deliberately never fights an enemy it walks into — `_think()`'s own
+"disengage" comment: "Fight when in contact, UNLESS the player gave a plain move order
+with no explicit attack target — that's a disengage command." But that combat decision
+was ALSO silently disabling every soldier-level collision check for that unit: with
+`engaged_soldier_indices()` empty, none of its soldiers ever entered
+`SoldierEnemyContact.accumulate`'s pooled array, so its bodies had zero physical
+resistance against an enemy they were geometrically inside of — the regiment marched
+straight through, no different from an obstacle-free field. (The regiment-circle backstop
+in `_separate()` had the same gap on its tighter, engaged-only `_front_depth()` floor.)
+
+Fixed by decoupling the two: `Unit._in_enemy_contact` is a PURE PROXIMITY flag — true
+whenever any live enemy regiment is within melee contact range (`attack_range + both
+RADII`), computed unconditionally every tick in `_think()` (mirroring the existing
+`_under_fire` check, before any order-branch early return, so it's fresh regardless of
+which branch a given tick takes). `Unit.contact_soldier_indices()` is a new selection,
+sharing the exact same near-front geometry as `engaged_soldier_indices()`
+(`_select_near_front_indices`) but gated on `is_engaged() OR _in_enemy_contact` rather
+than `is_engaged()` alone. `SoldierEnemyContact.accumulate` and `_separate()`'s enemy
+branch both switched to this proximity-inclusive gate; `engaged_soldier_indices()` itself
+— and everything downstream of it (melee striking, `SoldierSteering`) — is untouched, so a
+disengaging unit still deals and takes no melee damage and its morale is unaffected by the
+brush; only its bodies now physically resist.
+
+**This does not fully close the gap.** Verified empirically against the site's showcase
+clip (`demos/showcase.json`, seed 12345): a "disengaging" unit now visibly takes real
+contact resistance (and casualties, since the enemy's own attack still lands) it took none
+of before, but its formation still shows meaningful residual intermixing, because
+`_move_to()` — the code driving that unit's own kinematic march toward its destination —
+is not itself gated by contact at all. It keeps commanding `position` forward at full
+march speed every tick regardless; the soldier/regiment-level resistance this fix adds
+only pushes back afterward, bounded, each tick — a tug-of-war between an unbounded
+kinematic drive and a bounded physical response, not the drive itself yielding to contact.
+This is the same architecture gap #783/#296 already document for a CHARGING (fighting)
+regiment's kinematic advance riding through a braced line via `SoldierBodies.couple()`
+averaging drift over the whole regiment, not just the resisted front rank — this fix shows
+it also applies to a merely-marching, never-fighting regiment, not only a charge. Closing
+it fully needs `_move_to()` itself (or the regiment's overall kinematic advance) to yield
+to contact, not just be resisted after the fact — a change to core movement code shared by
+every unit in the game, deliberately out of scope here; see #783/#296 for the fuller
+architecture discussion.

@@ -60,6 +60,39 @@ func test_accumulate_skips_a_friendly_pair() -> void:
 	assert_eq(b._sim_body_vel, before_b, "friendlies don't contact-collide here -- SoldierSteering handles them")
 
 
+func test_accumulate_resolves_contact_for_a_disengaged_but_proximate_pair() -> void:
+	# The core fix: accumulate() gathers via Unit.contact_soldier_indices (proximity-gated),
+	# not the combat-state-gated engaged_soldier_indices -- a "disengaging" unit's soldiers
+	# (a plain move order with no attack target; see Unit._think()'s own disengage comment)
+	# still physically resist an enemy's bodies, even though neither unit ever became
+	# is_engaged(). Built without _make_unit's FIGHTING/tick_engaged() setup, since that's
+	# exactly the combat state this test deliberately withholds.
+	var a := Unit.new()
+	a.max_soldiers = 20
+	add_child_autofree(a)
+	a.uid = 1
+	a.team = 0
+	a.position = Vector2.ZERO
+	a.facing = Vector2.DOWN
+	a.seed_sim_soldiers()
+	a._in_enemy_contact = true
+	var b := Unit.new()
+	b.max_soldiers = 20
+	add_child_autofree(b)
+	b.uid = 2
+	b.team = 1
+	b.position = Vector2.ZERO
+	b.facing = Vector2.UP
+	b.seed_sim_soldiers()
+	b._in_enemy_contact = true
+	assert_false(a.is_engaged() or b.is_engaged(), "sanity: neither unit is combat-engaged")
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)   # well within raw body-radius contact
+	SoldierEnemyContact.accumulate([a, b], 90200)
+	assert_true(a._sim_body_vel[0].length() > 0.0 or b._sim_body_vel[0].length() > 0.0,
+		"contact resolves even though neither unit is combat-engaged")
+
+
 func test_accumulate_fans_apart_an_exactly_co_located_enemy_pair() -> void:
 	# Single-soldier units: engaged_soldier_indices' live-position front selection
 	# (UnitFormation.live_front_indices) always includes the whole unit when count == 1
@@ -179,33 +212,62 @@ func test_loose_formation_has_no_containment_margin_at_the_same_distance() -> vo
 	assert_eq(b._sim_body_vel[0], Vector2.ZERO, "no formation discipline -- no containment push")
 
 
-func test_normal_formation_pair_at_the_raw_radius_boundary_is_unaffected_by_containment() -> void:
-	# Regression guard: NORMAL contributes zero containment margin, so a pair placed
-	# exactly at the raw body-radius boundary (touching by radius alone, the pre-existing
-	# contact test) behaves identically to before this feature -- no widened min_dist. An
-	# earlier version gave NORMAL a per-soldier, prone-gated margin here; that measurably
-	# reintroduced the melee-lock-swirl regression on CI (see Unit.formation_containment_margin's
-	# doc comment), so NORMAL's contact geometry must stay bit-identical to its pre-feature
-	# behaviour: exactly zero, always, regardless of prone state.
+func test_normal_formation_containment_margin_triggers_contact_before_raw_radii_overlap() -> void:
+	# A pair placed OUTSIDE raw-radius contact (d > sum of body radii) but still inside
+	# NORMAL's own (smaller-than-shield-wall-class) containment margin still resolves to a
+	# nonzero impulse -- "a couple of ranks deep" still means SOME resistance, not none.
 	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)   # default FORMATION_NORMAL
 	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)  # default FORMATION_NORMAL
-	assert_eq(a.formation_containment_margin(), 0.0, "sanity: NORMAL contributes no margin")
+	assert_eq(a.formation_mode, Unit.FORMATION_NORMAL, "sanity: default formation is NORMAL")
 	var raw: float = a.soldier_body_radius() + b.soldier_body_radius()
-	var d: float = raw + 0.5   # just outside raw-radius contact -- must stay out of contact
+	var margin: float = a.formation_containment_margin()
+	assert_gt(margin, 0.0, "sanity: NORMAL contributes a nonzero containment margin")
+	var d: float = raw + margin   # > raw (not touching by body radius alone), < raw + 2*margin
 	a._sim_soldier_pos[0] = Vector2.ZERO
 	b._sim_soldier_pos[0] = Vector2(d, 0)
 	SoldierEnemyContact.accumulate([a, b], 90103)
-	assert_eq(a._sim_body_vel[0], Vector2.ZERO,
-		"NORMAL soldiers just outside raw-radius contact stay out of contact -- no containment widening")
-	assert_eq(b._sim_body_vel[0], Vector2.ZERO,
-		"NORMAL soldiers just outside raw-radius contact stay out of contact -- no containment widening")
+	assert_true(a._sim_body_vel[0].length() > 0.0 or b._sim_body_vel[0].length() > 0.0,
+		"a NORMAL pair not yet touching by raw radius is still pushed apart, within its margin")
 
-	# The SAME distance, with one defender prone, must resolve identically (zero impulse) --
-	# NORMAL's margin never varies with prone state now.
-	b._sim_prone[0] = 1.0
+
+func test_normal_formation_containment_margin_is_flat_regardless_of_prone_state() -> void:
+	# Regression guard: NORMAL's margin is a FLAT, unconditional value -- an earlier version
+	# gave NORMAL a per-soldier, prone-gated margin instead; that measurably reintroduced the
+	# melee-lock-swirl regression on CI (see Unit.formation_containment_margin's doc comment).
+	# So the same pair, at the same distance, must resolve identically whether or not the
+	# defender happens to be prone.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)   # default FORMATION_NORMAL
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)  # default FORMATION_NORMAL
+	var raw: float = a.soldier_body_radius() + b.soldier_body_radius()
+	var d: float = raw + a.formation_containment_margin() * 0.5   # inside the margin band
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(d, 0)
 	SoldierEnemyContact.accumulate([a, b], 90104)
+	var standing_delta: float = a._sim_body_vel[0].length()
+	assert_gt(standing_delta, 0.0, "sanity: this distance is inside the margin band")
+
+	a._sim_body_vel[0] = Vector2.ZERO
+	b._sim_body_vel[0] = Vector2.ZERO
+	b._sim_prone[0] = 1.0
+	SoldierEnemyContact.accumulate([a, b], 90105)
+	assert_almost_eq(a._sim_body_vel[0].length(), standing_delta, 0.01,
+		"a prone NORMAL defender contributes the identical margin -- unaffected by prone state")
+
+
+func test_normal_formation_pair_well_outside_the_containment_margin_is_unaffected() -> void:
+	# Control: a pair placed past raw radius PLUS both margins never triggers contact --
+	# NORMAL still allows genuine standoff distance, it's not an unbounded block either.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)
+	var raw: float = a.soldier_body_radius() + b.soldier_body_radius()
+	var d: float = raw + a.formation_containment_margin() + b.formation_containment_margin() + 0.5
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(d, 0)
+	SoldierEnemyContact.accumulate([a, b], 90106)
 	assert_eq(a._sim_body_vel[0], Vector2.ZERO,
-		"a prone NORMAL defender still contributes no margin -- unaffected by prone state")
+		"a NORMAL pair past raw radius plus both margins stays out of contact")
+	assert_eq(b._sim_body_vel[0], Vector2.ZERO,
+		"a NORMAL pair past raw radius plus both margins stays out of contact")
 
 
 func test_accumulate_caps_a_soldiers_summed_velocity_across_multiple_simultaneous_enemies() -> void:
