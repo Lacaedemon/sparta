@@ -1117,3 +1117,89 @@ its own. (`Lacaedemon/sparta` PR #1002: a first staging attempt left the "statio
 its default Normal stance under `all_teams_control`; it auto-advanced toward the mover and the
 two met in the middle regardless of the mover's own stance, defeating the whole point of the
 demo until the enemy was also explicitly put on Hold.)
+
+## Every demo defect check is diff- or delta-scoped -- nothing ever scans a clip absolutely
+
+Worth knowing before concluding "the checks would have caught it." All three layers ask
+what a PR *changed*, never "is this clip defective, full stop":
+
+- `tools/check.sh demo_defects` -- only `demos/inputs/*.json` files CHANGED in the diff
+  (`git diff --name-only $base HEAD`). Skips entirely when nothing changed. Gating.
+- `demo-video.yml`'s *Demo defect scan* -- only the ONE PR-tailored clip named by
+  `demos/demo.<slug>.json`. Gating.
+- `website-demo-diff.yml` -- sweeps the full `website/tools/demo-catalog.sh` catalog, but
+  dumps PR-head vs MERGE-BASE and runs DemoDefects only over clips whose transcript
+  CHANGED. `continue-on-error`, informational comment, never blocks.
+
+So a defect present identically on both sides of a diff -- a pre-existing one, or one that
+predates the scan -- is invisible to every layer. The delta design was the right call for
+what `website-demo-diff.yml` was built to do (#905, replacing a byte-hash comparison that
+flagged ~every clip on ~every PR), but it means the site's 70+ published clips have never
+been checked in absolute terms.
+
+Practical consequence: when a clip on the live docs site looks wrong, do NOT reason "CI is
+green, so this must be intended." Check whether any PR has actually changed that clip since
+the scan existed -- `git log --oneline -- demos/inputs/<name>.json` -- and whether the
+script even carries an `expect` block (most don't). Absent both, the clip has never been
+judged by anything. (Found on the `square` clip, `anti-cav-square.json`, untouched since
+#749: a real reform defect sat on the published site indefinitely. Filed as #1146; the
+whole-catalog absolute sweep as #1147.)
+
+## The identity checks are real, but they are blind DURING a reshape -- which is when a bad route happens
+
+`DemoDefects` DOES read per-soldier identity, and it is easy to talk yourself out of
+believing that. `misslotted_count` compares `positions[i]` against `slots[i]` BY ARRAY
+INDEX and counts a soldier only when some other man's slot is strictly nearer;
+`test_misslotted_count_zero_on_slots_and_full_on_a_swap` proves it catches a two-man swap.
+`kabsch_fit` is index-paired at both the angle-fit and the residual stage, so it is NOT
+permutation-invariant either -- `test_kabsch_fit_reports_scramble_as_residual_not_rotation`
+scrambles a point set and asserts a large residual. Only a permutation that is ITSELF a
+rigid motion (an array reverse on a centred grid = a 180-degree rotation) fits with zero
+residual. Do not hand-duplicate these checks believing they don't exist.
+
+The real gap is narrower and entirely about TIMING:
+
+- **`misslotted` is deliberately switched off while the block is in transit.** It is
+  recorded as `0.0` unless the mean nearest-any-slot distance is within
+  `MISSLOT_SETTLED_FRAC` (0.25) of the spacing, because mid-reshape every body is between
+  slots and "whose slot is nearest" is genuinely noise. So during a reform it reports
+  nothing -- and once the block settles, the men ARE on their correct new slots, so it
+  legitimately reports nothing then either.
+- **`shape_residual` does fire, and gets excused.** `_sustained_verdict`'s
+  `CONVERGING_IMPROVEMENT_FRAC` (0.05) resets the run whenever a failing sample improves
+  more than 5% on its predecessor, so a steadily-converging transition never reaches
+  `MIN_SUSTAIN`. Its docstring names the intent: a legitimate reshape "reads far out of
+  tolerance for many samples while steadily converging."
+- **`judged_mask`** additionally exempts engaged, routing, post-casualty, and
+  engagement-adjacent samples.
+
+Net effect, measured on the `square` clip (`anti-cav-square.json`) in a full-catalog sweep:
+`shape_residual worst=48.72 threshold=6.75` -> PASS, `misslotted worst=0.34 threshold=0.25`
+-> PASS. The only FAIL was an unrelated `overlap` sample. So the scan genuinely does not
+catch #1146 -- but because every metric asks about the END STATE and that end state is
+correct, not because identity is unmeasured. #1146 is a bad ROUTE to a right answer, and
+nothing scores routes.
+
+**How to apply:** when verifying a maneuver whose whole point is WHERE INDIVIDUAL MEN END
+UP -- a reform, an about-face, a countermarch, a frontage change, a formation switch -- a
+green scan tells you the destination was right, not the path. Do the per-index comparison
+by hand: dump `soldiers_full.pos` at a settled tick before AND after, de-rotate both into
+the unit's local frame, and compare BY ARRAY INDEX.
+
+The de-rotation angle must match `soldier_world_slots`' own:
+`ang = facing.angle() + PI/2 + _formation_angle`. **The `_formation_angle` term is not
+optional here** -- a completed about-face folds it to +/-PI and a quarter-turn to +/-PI/2,
+which are exactly the maneuvers this check is for, so omitting it de-rotates into the wrong
+frame for the cases that need it most. It cancels only when comparing two ticks that share
+the same facing AND the same fold (a pure in-place reshape with no turn, e.g. the square
+case above); confirm that before relying on the shortcut. `_formation_angle` is not in the
+state dump, so read it live or pick a window where no turn occurs.
+
+Check two things the settled-state metrics can't: per-index travel distance, and whether
+the local lateral coordinate flips sign (the soldier crossed its own centreline). Restrict
+the window to one with no casualties, or `reap()`'s array compaction invalidates
+index-as-identity. A useful second number: compare total travel against a greedy
+nearest-slot pairing over the same start positions and target slots -- greedy is an upper
+bound on optimal, so if the actual assignment costs ~2x greedy, most of the movement is
+churn rather than geometry. (Recurred as #541 about-face, #668 countermarch, #802
+target-slot cadence, #1146 square reform. Route-aware metric tracked as #1149.)
