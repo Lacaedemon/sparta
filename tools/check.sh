@@ -1145,6 +1145,11 @@ check_demo_defects() {
     if [ "$rc" -eq 1 ]; then
       err "Defect scan failed for $script"
       failed=1
+    elif [ "$rc" -eq 3 ]; then
+      # The script's own declarations are malformed, so NOTHING was judged for this
+      # clip. Gate on it: a silent skip here loses every metric behind a green check.
+      err "Malformed expect/defect_exemptions block in $script -- nothing was scanned"
+      failed=1
     elif [ "$rc" -ne 0 ]; then
       warn "Defect scan input unusable for $script (rc=$rc); nothing gated."
     fi

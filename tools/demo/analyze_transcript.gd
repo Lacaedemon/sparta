@@ -15,7 +15,8 @@ extends SceneTree
 ## metric for the units it names and prints them as EXEMPT instead of FAIL. An exemption
 ## must name its units and state its reason; one whose named unit now passes anyway prints
 ## as STALE so it gets removed. Either declaration may be absent, but a present one of the
-## wrong shape is a usage error, not a silent skip. --expect is an alias for the same flag.
+## wrong shape exits 3 and gates, rather than skipping the scan behind a green check.
+## --expect is an alias for the same flag.
 ## --compare-hashes is its own mode: instead of defect analysis, compare the two dump
 ## runs' per-tick hash streams (hash_stream.jsonl, written by every armed dump run --
 ## see DemoStateHash / DemoHashStream) and report the FIRST divergent tick and tier, replacing an
@@ -28,7 +29,14 @@ extends SceneTree
 ## pre-filter: the cheap hash compare says which clips changed (and the exact first
 ## divergent tick + tier) so the expensive field-level jq analysis runs only for those.
 ## Exit code 0 = every verdict passed (or streams identical, or the tree compare ran);
-## 1 = at least one defect (or a divergence); 2 = usage/input error.
+## 1 = at least one defect (or a divergence); 2 = usage/input error; 3 = the demo script
+## itself declares something malformed.
+##
+## 2 and 3 are deliberately distinct. 2 means the data to judge is absent (no snapshots, a
+## failed dump) -- there is nothing to gate on, so callers warn and move on. 3 means a
+## script the author wrote is wrong, and the scan therefore judged NOTHING for that clip;
+## folding that into 2 would let a single typo in a `defect_exemptions` block silently
+## disable every metric for the clip behind a green check. Callers gate on 3.
 ## push_error alone can't fail a CI step (it still exits 0 -- see CLAUDE.md), so the
 ## exit code IS the contract; --json additionally prints the machine-readable verdicts
 ## for a CI step to attach to a comment.
@@ -78,36 +86,38 @@ func _init() -> void:
 			push_error("not a readable demo script: " + script_path)
 			quit(2)
 			return
-		# Absent is fine; present-but-wrong-shape is an authoring error and must be loud.
-		# Dropping that distinction would quietly break the promise DemoInputRecorder
-		# makes when it defers validation here rather than failing mid-recording.
+		# Absent is fine; present-but-wrong-shape is an authoring error, and it exits 3 so
+		# callers gate on it. Silence here would be the worst outcome available: the scan
+		# returns before computing a single metric, so a stray typo in one declaration
+		# would disable every check for the clip while the run still looked healthy.
 		var declared = parsed_script.get("expect")
 		if declared != null and not (declared is Array):
 			push_error("`expect` must be an array in: " + script_path)
-			quit(2)
+			quit(3)
 			return
 		var declared_exempt = parsed_script.get("defect_exemptions")
 		if declared_exempt != null and not (declared_exempt is Dictionary):
 			push_error("`defect_exemptions` must be an object in: " + script_path)
-			quit(2)
+			quit(3)
 			return
 		if declared is Array:
 			expects = declared
 			# Shape-validate every entry up front: a malformed expectation (a [480] range
-			# missing its upper bound, a missing field) is a usage error under this tool's
-			# own exit-code contract, not a demo defect.
+			# missing its upper bound, a missing field) is an authoring error under this
+			# tool's own exit-code contract, not a demo defect -- so it exits 3 and gates,
+			# because nothing after this point gets judged.
 			for e in expects:
 				var shape_error: String = DemoDefects.expect_entry_error(e)
 				if shape_error != "":
 					push_error("malformed expect entry (%s): %s" % [shape_error, str(e)])
-					quit(2)
+					quit(3)
 					return
 		if declared_exempt is Dictionary:
 			for metric in declared_exempt:
 				var ex_error: String = DemoDefects.exemption_error(metric, declared_exempt[metric])
 				if ex_error != "":
 					push_error("bad defect_exemptions entry: " + ex_error)
-					quit(2)
+					quit(3)
 					return
 			exemptions = declared_exempt
 	var snapshots: Array = _load_snapshots(dir_path)

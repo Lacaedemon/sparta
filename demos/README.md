@@ -417,7 +417,11 @@ super-physical speed, and crossing routes). Run it headless over a dump director
 
 Exit `0` = clean, `1` = at least one defect (the verdict lines name the unit, metric, worst
 value, and threshold), `2` = unusable input (e.g. the dump wasn't taken with
-`SPARTA_DEMO_STATE_FULL=1`). Post-contact samples are exempt from the spacing/shape checks —
+`SPARTA_DEMO_STATE_FULL=1`), `3` = the script's own `expect`/`defect_exemptions` block is
+malformed. `2` and `3` differ in whether anything could have been judged: `2` means the data
+is absent, so callers warn and move on, while `3` means an authoring typo stopped the scan
+before it computed a single metric — CI gates on that, since otherwise one bad character in
+a declaration would silently disable every check for the clip. Post-contact samples are exempt from the spacing/shape checks —
 melee press legitimately compresses a block — and the sustained checks are
 convergence-aware: a long transition (a reshape, a big commanded turn) that steadily
 improves toward tolerance is read as healthy, while the same magnitude holding flat or
