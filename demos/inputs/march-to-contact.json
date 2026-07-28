@@ -20,7 +20,7 @@
     {"tick": 36, "rmb_click": [500, 650]}
   ],
   "frames": [24, 130, 200, 260, 330, 600, 700],
-  "state": [24, 60, 90, 130, 160, 190, 200, 250, 300, 320, 330, 600, 660, 700],
+  "state": [24, 60, 90, 130, 160, 190, 200, 250, 300, 320, 330, 600, 660, 700, 720],
   "expect": [
     {"tick": [24, 700], "uid": 0, "field": "order_mode", "value": "March to contact"},
     {"tick": 160, "uid": 0, "field": "state", "value": "MOVING"},
@@ -28,7 +28,7 @@
     {"tick": [200, 300], "uid": 0, "field": "current_order", "value": "MOVE"},
     {"tick": 330, "uid": 0, "field": "state", "value": "MOVING"},
     {"tick": 700, "uid": 0, "field": "state", "value": "IDLE"},
-    {"tick": 700, "uid": 0, "field": "current_order", "value": null}
+    {"tick": [700, 720], "uid": 0, "field": "current_order", "value": null}
   ],
   "fixed_fps": 30,
   "max_frames": 370,
