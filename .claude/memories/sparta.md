@@ -3162,8 +3162,8 @@ reshape that changes `files` reassigns most soldiers to distant cells, and they 
 under the normal bounded-arrival body steering -- physically correct motion toward a
 geometrically arbitrary destination.
 
-This has now produced the same visible defect four separate times, each diagnosed and
-fixed only for its own maneuver: #541 (about-face swapped soldier identities, 0/40 held
+This has now produced the same visible defect four separate times. The first three were
+each diagnosed and fixed only for their own maneuver; the fourth is still open: #541 (about-face swapped soldier identities, 0/40 held
 position), #668 (countermarch reform swapped soldiers to the opposite flank rather than
 just reversing rank order), #802 (target-slot reassignment cadence), and #1146 (the
 NORMAL -> SQUARE reform: 28% of soldiers cross the centreline, mean travel 33.8 wu, about
@@ -3188,6 +3188,7 @@ selection, not into any reform's slot assignment. #547 (explicit per-soldier slo
 ownership) would subsume the whole family.
 
 Verification technique for any fix here is the per-index, local-frame comparison described
-under "Aggregate and rotation-invariant metrics structurally CANNOT see a soldier-identity
-swap" in `sparta-demos.md` -- the aggregate footprint metrics are blind to exactly this,
+under "The identity checks are real, but they are blind DURING a reshape" in
+`sparta-demos.md`. The scan's identity metrics do exist and work, but they only judge a
+SETTLED block -- and every one of these bugs reaches a correct end state by a wrong route,
 which is why all four instances were caught by eye rather than by a check.
