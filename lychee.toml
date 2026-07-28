@@ -71,4 +71,12 @@ exclude = [
   # bandaarcgeophysics.co.uk/marathonhandbook.com above. Linked as a citation
   # from docs/combat-model.md.
   "^https://www\\.romanobritain\\.org",
+  # codecov.io's own badge.svg generation endpoint (linked from README.md's
+  # coverage badge) intermittently returns HTTP 503 Service Unavailable —
+  # confirmed reproducible across two separate CI re-runs within minutes of
+  # each other on 2026-07-28, unrelated to any PR's own content (README.md's
+  # badge line never changes). A dynamically-generated status badge isn't
+  # meaningful link-check content anyway; skip it rather than reddening
+  # every PR on a third-party rate-limit/outage this repo doesn't control.
+  "^https://codecov\\.io/gh/[^/]+/[^/]+/graph/badge\\.svg",
 ]

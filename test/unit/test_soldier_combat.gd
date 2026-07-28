@@ -346,6 +346,110 @@ func test_profiles_carry_per_type_mass() -> void:
 	assert_almost_eq(SoldierCombat.profile_for(false, false, true, 0.5)["mass"], 0.875, 1e-6, "archers are light")
 
 
+# --- effective mass (bracing) --------------------------------------------------
+
+func test_effective_mass_no_brace_is_bare_mass() -> void:
+	assert_almost_eq(SoldierCombat.effective_mass(2.0, 0.0), 2.0, TOL)
+
+
+func test_effective_mass_full_brace_raises_it_by_the_multiplier() -> void:
+	var expected: float = 2.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER)
+	assert_almost_eq(SoldierCombat.effective_mass(2.0, 1.0), expected, TOL,
+		"full bracing raises effective mass by FRICTION_BRACING_MULTIPLIER")
+
+
+func test_effective_mass_never_negative() -> void:
+	assert_almost_eq(SoldierCombat.effective_mass(-5.0, -1.0), 0.0, TOL,
+		"out-of-range inputs clamp, never a negative mass")
+
+
+# --- is_hard_collision (real-closing-speed gate for collision damage) ---------
+
+func test_is_hard_collision_false_below_the_default_threshold() -> void:
+	assert_false(SoldierCombat.is_hard_collision(SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 0.5))
+
+
+func test_is_hard_collision_true_at_and_above_the_default_threshold() -> void:
+	assert_true(SoldierCombat.is_hard_collision(SoldierCombat.COLLISION_DAMAGE_MIN_SPEED))
+	assert_true(SoldierCombat.is_hard_collision(SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 2.0))
+
+
+func test_is_hard_collision_threads_a_caller_supplied_threshold() -> void:
+	# A caller-overridden min_speed changes the verdict at a speed where the default wouldn't --
+	# the CLAUDE.md caller-configurable-parameters shape, matching capped_knockback_velocity's
+	# own speed_cap parameter.
+	assert_false(SoldierCombat.is_hard_collision(40.0, 50.0))
+	assert_true(SoldierCombat.is_hard_collision(40.0, 30.0))
+
+
+# --- collision damage (a hard, fast contact converts a real velocity change into damage) -
+
+func test_collision_damage_scales_with_the_square_of_the_velocity_change() -> void:
+	var single: float = SoldierCombat.collision_damage(Vector2(10.0, 0.0))
+	var doubled: float = SoldierCombat.collision_damage(Vector2(20.0, 0.0))
+	assert_almost_eq(doubled, single * 4.0, TOL, "damage scales with the square of the velocity change")
+
+
+func test_collision_damage_matches_the_scale_formula() -> void:
+	var delta_v := Vector2(30.0, 40.0)   # length 50
+	var expected: float = SoldierCombat.COLLISION_DAMAGE_SCALE * 50.0 * 50.0
+	assert_almost_eq(SoldierCombat.collision_damage(delta_v), expected, TOL)
+
+
+func test_collision_damage_is_direction_independent() -> void:
+	# Only the MAGNITUDE of the velocity change matters, not which way it points.
+	var a: float = SoldierCombat.collision_damage(Vector2(50.0, 0.0))
+	var b: float = SoldierCombat.collision_damage(Vector2(0.0, -50.0))
+	assert_almost_eq(a, b, TOL)
+
+
+func test_collision_damage_zero_delta_is_zero() -> void:
+	assert_almost_eq(SoldierCombat.collision_damage(Vector2.ZERO), 0.0, TOL)
+
+
+func test_collision_damage_threads_a_caller_supplied_scale() -> void:
+	var default_scale: float = SoldierCombat.collision_damage(Vector2(10.0, 0.0))
+	var doubled_scale: float = SoldierCombat.collision_damage(Vector2(10.0, 0.0), SoldierCombat.COLLISION_DAMAGE_SCALE * 2.0)
+	assert_almost_eq(doubled_scale, default_scale * 2.0, TOL,
+		"a caller-overridden scale changes the result -- CLAUDE.md caller-configurable-parameters shape")
+
+
+func test_collision_damage_never_negative() -> void:
+	# A negative scale is the only way this could go negative; guarded at the source.
+	assert_almost_eq(SoldierCombat.collision_damage(Vector2(10.0, 0.0), -1.0), 0.0, TOL)
+
+
+func test_collision_damage_composed_with_enemy_contact_impulse_favors_the_heavier_side() -> void:
+	# Regression: an earlier version of collision_damage split a shared total by
+	# jn^2/mass_i_eff, which could make a BRACED/heavier defender take MORE absolute damage
+	# than an unbraced one against a much heavier attacker -- inverting what bracing is supposed
+	# to do. Deriving damage from each side's own ACTUAL velocity change (this function's
+	# design) fixes that automatically: a heavier/braced body always receives a SMALLER
+	# velocity change from the same contact (SoldierCollision.enemy_contact_impulse's own
+	# effective-mass split), so it always takes less damage too -- composing the two functions
+	# directly (mirroring how SoldierEnemyContact.accumulate actually uses them) proves this
+	# holds for a realistic heavy-attacker-vs-light-defender pairing.
+	var closing_speed: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 2.0
+	var vel_a := Vector2(closing_speed, 0.0)   # heavy attacker closing on b
+	var vel_b := Vector2.ZERO                  # stationary defender
+	var heavy_mass: float = 6.5                # a mounted cavalry-scale effective mass
+	var light_mass: float = 1.0                # an unbraced infantry-scale effective mass
+	var impulses: Array = SoldierCollision.enemy_contact_impulse(
+		vel_a, vel_b, heavy_mass, 0.0, light_mass, 0.0, Vector2(-1.0, 0.0), 0.0)
+	var damage_heavy: float = SoldierCombat.collision_damage(impulses[0])
+	var damage_light: float = SoldierCombat.collision_damage(impulses[1])
+	assert_lt(damage_heavy, damage_light,
+		"the heavier side takes less damage than the lighter side it struck")
+
+	# Now brace the light side (raise its effective mass via brace_b) and confirm its OWN
+	# damage drops relative to unbraced -- the property the earlier formula got backwards.
+	var braced_impulses: Array = SoldierCollision.enemy_contact_impulse(
+		vel_a, vel_b, heavy_mass, 0.0, light_mass, 1.0, Vector2(-1.0, 0.0), 0.0)
+	var damage_light_braced: float = SoldierCombat.collision_damage(braced_impulses[1])
+	assert_lt(damage_light_braced, damage_light,
+		"bracing reduces the defender's own absolute damage, not just its share of the total")
+
+
 func test_knockback_impulse_baseline() -> void:
 	# lethality 1, no charge, mass 1, landed -> the base scale.
 	assert_almost_eq(SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, 1.0),
