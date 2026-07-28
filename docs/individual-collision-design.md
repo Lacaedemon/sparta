@@ -384,3 +384,43 @@ kinematic drive and a bounded physical response, not the drive itself yielding t
 Closing it fully needs `_move_to()` itself (or the regiment's overall kinematic advance) to
 yield to contact, not just be resisted after the fact — a change to core movement code
 shared by every unit in the game, deliberately out of scope here.
+
+## Collision damage: hard contact converts dissipated kinetic energy into health loss
+
+`SoldierCollision.enemy_contact_impulse` resolves closing velocity **fully inelastically**
+(no bounce-back — see its own doc comment) whenever two enemy soldier bodies are in
+contact. That resolution genuinely dissipates kinetic energy every tick, but until this
+section landed nothing attached a consequence to it beyond the existing skill-roll-driven
+strike damage (`SoldierCombat.wound`) — a fast, hard impact and a gentle graze arrested the
+same way as far as health was concerned.
+
+`SoldierCombat.collision_damage(delta_v)` converts a soldier's actual velocity change this
+tick into health loss (`COLLISION_DAMAGE_SCALE * delta_v.length_squared()`) — a deceleration-
+based severity measure (the same shape real crash-injury metrics use), not a literal
+kinetic-energy split. An earlier version derived damage independently from each pair's raw
+closing speed and effective masses (a `0.5 * mu * closing_speed^2` reduced-mass split); review
+on the introducing PR found three compounding bugs in that approach — no cap across a
+soldier's simultaneous contacts (mirroring the exact "multi-pair force accumulation" bug this
+file's own "Decisions" section already documents for the velocity pipeline), full KE
+recomputed from scratch every tick during a multi-tick arrest (overcounting total damage
+1.4-2x for a realistic charge), and a mass-split formula that made a **braced/heavier**
+defender take **more** absolute damage against a much heavier attacker, not less — inverting
+what bracing is supposed to do.
+
+**Fixed by deriving damage from the velocity pipeline's own output instead of an independent
+recompute.** `SoldierEnemyContact.accumulate` flags which soldiers had at least one pair clear
+`SoldierCombat.is_hard_collision`'s real-closing-speed threshold (`COLLISION_DAMAGE_MIN_SPEED`
+— never the synthetic overlap-correction term, so ordinary sustained pushing between two
+packed lines causes zero extra damage), then — AFTER the existing multi-pair trim and
+per-tick `KNOCKBACK_SPEED_MAX` cap have fully resolved each soldier's actual velocity change
+for the tick — computes damage from that real, already-bounded delta. This automatically
+inherits both of the velocity pipeline's existing correctness properties (the multi-pair cap
+and the per-tick bound) with no separate bookkeeping, and automatically gets the bracing
+direction right: a heavier/braced body always receives a *smaller* velocity change from the
+same contact (`enemy_contact_impulse`'s own effective-mass split), so it always takes less
+damage too — no separate asymmetry formula to get backwards.
+
+`COLLISION_DAMAGE_MIN_SPEED` and `COLLISION_DAMAGE_SCALE` are tunable constants, threaded as
+overridable parameters on `is_hard_collision`/`collision_damage` respectively (see
+`SoldierCombat.gd`'s own comments for the calibration reasoning); both need playtesting, not
+just derivation.

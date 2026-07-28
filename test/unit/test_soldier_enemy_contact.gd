@@ -292,3 +292,144 @@ func test_accumulate_caps_a_soldiers_summed_velocity_across_multiple_simultaneou
 		"sanity: the forced overlap actually produced an impulse, not a vacuous pass below")
 	assert_true(a._sim_body_vel[0].length() <= SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
 		"a soldier's summed contact impulse across multiple simultaneous enemies stays capped, not additive")
+
+
+# --- collision damage (SoldierCombat.collision_damage wired into accumulate) ---
+
+func test_accumulate_applies_collision_damage_for_a_fast_closing_pair() -> void:
+	# Two single-soldier units, in contact, closing on each other above
+	# COLLISION_DAMAGE_MIN_SPEED but not so hard it kills either soldier outright --
+	# this test is about damage being applied, not about the reap/death path
+	# (see test_accumulate_reaps_a_soldier_killed_by_collision_damage below for that).
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)   # within raw body-radius contact
+	var closing: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 0.7
+	a._sim_body_vel[0] = Vector2(closing, 0.0)   # closing on b
+	b._sim_body_vel[0] = Vector2(-closing, 0.0)  # closing on a
+	var hp_a_before: float = a._sim_soldier_hp[0]
+	var hp_b_before: float = b._sim_soldier_hp[0]
+	SoldierEnemyContact.accumulate([a, b], 90007)
+	assert_lt(a._sim_soldier_hp[0], hp_a_before, "a fast closing impact damages side a")
+	assert_lt(b._sim_soldier_hp[0], hp_b_before, "a fast closing impact damages side b")
+
+
+func test_accumulate_applies_no_collision_damage_below_the_speed_threshold() -> void:
+	# Same contact geometry, but both bodies at rest -- the pair is merely interpenetrating
+	# (the synthetic overlap-correction term still resolves a velocity impulse), which must
+	# cause zero collision damage on its own.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)
+	var hp_a_before: float = a._sim_soldier_hp[0]
+	var hp_b_before: float = b._sim_soldier_hp[0]
+	SoldierEnemyContact.accumulate([a, b], 90008)
+	assert_almost_eq(a._sim_soldier_hp[0], hp_a_before, 1e-4,
+		"ordinary low-speed contact (overlap correction only) causes no collision damage")
+	assert_almost_eq(b._sim_soldier_hp[0], hp_b_before, 1e-4,
+		"ordinary low-speed contact (overlap correction only) causes no collision damage")
+
+
+func test_accumulate_reaps_a_soldier_killed_by_collision_damage() -> void:
+	# A soldier already at the brink of death, hit by a hard enough collision, should be
+	# reaped (compacted out and counted as a casualty) the same tick -- proving the damage
+	# path is wired all the way through to SoldierMelee.reap()/UnitCombat.register_casualties,
+	# not just subtracting HP into a vacuum.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 3)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)
+	a._sim_soldier_hp[0] = 0.01   # one hard hit away from death
+	a._sim_body_vel[0] = Vector2(200.0, 0.0)
+	b._sim_body_vel[0] = Vector2(-200.0, 0.0)
+	var soldiers_before: int = a.soldiers
+	SoldierEnemyContact.accumulate([a, b], 90009)
+	assert_lt(a.soldiers, soldiers_before, "the killed soldier is reaped out of the regiment count")
+
+
+func test_accumulate_caps_a_soldiers_collision_damage_across_multiple_simultaneous_enemies() -> void:
+	# Regression: an earlier version of collision damage summed each pair's independently
+	# computed damage with no cap, so a soldier touching several fast-closing enemies at once
+	# was billed for a "complete stop" once per pair even though it only has one real velocity
+	# to lose. Deriving damage from the soldier's ACTUAL, already-capped velocity change (this
+	# function's design) bounds total collision damage the same way the velocity pipeline
+	# already bounds total knockback -- mirrors
+	# test_accumulate_caps_a_soldiers_summed_velocity_across_multiple_simultaneous_enemies above.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 2)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)
+	b._sim_soldier_pos[1] = Vector2(5, 0)
+	var closing: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 2.0
+	a._sim_body_vel[0] = Vector2(closing, 0.0)
+	b._sim_body_vel[0] = Vector2(-closing, 0.0)
+	b._sim_body_vel[1] = Vector2(-closing, 0.0)
+	var hp_a_before: float = a._sim_soldier_hp[0]
+	SoldierEnemyContact.accumulate([a, b], 90010)
+	var damage_a: float = hp_a_before - a._sim_soldier_hp[0]
+	var max_possible_damage: float = SoldierCombat.collision_damage(Vector2(SoldierCombat.KNOCKBACK_SPEED_MAX, 0.0))
+	assert_true(damage_a <= max_possible_damage + 0.01,
+		"total collision damage across simultaneous enemies stays bounded by what a's own capped velocity change could produce, not additive per pair")
+
+
+func test_accumulate_collision_damage_does_not_recharge_full_ke_every_tick_during_a_multi_tick_arrest() -> void:
+	# Regression: an earlier version recomputed the COMPLETE inelastic-stop kinetic energy from
+	# the current closing speed every tick, with no memory of prior ticks -- overcounting total
+	# damage for a fast pair that takes more than one tick to fully arrest
+	# (enemy_contact_impulse's own effective_closing_speed cap is KNOCKBACK_SPEED_MAX per tick).
+	# Deriving damage from each tick's ACTUAL velocity change (this function's design) can't
+	# overcount this way: every tick only ever charges for the real velocity change that tick,
+	# never a hypothetical full stop from the current speed. Verified by comparing the actual
+	# two-tick total against what the old, buggy per-tick-full-recompute formula would have
+	# produced for the identical sequence.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)
+	var closing: float = SoldierCombat.CHARGE_REFERENCE_SPEED   # exceeds KNOCKBACK_SPEED_MAX,
+			# so a single tick's contact resolution can't fully arrest it -- takes 2+ ticks.
+	a._sim_body_vel[0] = Vector2(closing, 0.0)
+
+	var hp_before_tick1: float = a._sim_soldier_hp[0]
+	SoldierEnemyContact.accumulate([a, b], 90011)
+	var actual_tick1: float = hp_before_tick1 - a._sim_soldier_hp[0]
+
+	# The real closing speed remaining after tick 1, read from the units' own post-tick state --
+	# used both to drive tick 2 and to compute what the old buggy formula would have charged.
+	var closing_speed_tick2: float = maxf(0.0, -(a._sim_body_vel[0] - b._sim_body_vel[0]).dot(Vector2(-1.0, 0.0)))
+	var hp_before_tick2: float = a._sim_soldier_hp[0]
+	SoldierEnemyContact.accumulate([a, b], 90012)
+	var actual_tick2: float = hp_before_tick2 - a._sim_soldier_hp[0]
+	var actual_total: float = actual_tick1 + actual_tick2
+
+	# The old formula: SCALE * 0.5 * mu * closing_speed^2, recomputed from scratch each tick --
+	# mu = 0.5 for these two default-profile (equal, unbraced) units.
+	var mu: float = 0.5
+	var buggy_tick1: float = SoldierCombat.COLLISION_DAMAGE_SCALE * 0.5 * mu * closing * closing
+	var buggy_tick2: float = SoldierCombat.COLLISION_DAMAGE_SCALE * 0.5 * mu * closing_speed_tick2 * closing_speed_tick2
+	var buggy_total: float = buggy_tick1 + buggy_tick2
+
+	assert_lt(actual_total, buggy_total,
+		"deriving damage from the actual per-tick velocity change avoids the old formula's cross-tick overcounting")
+
+
+func test_accumulate_no_damage_when_a_soldiers_net_velocity_change_cancels_to_zero() -> void:
+	# Covers the actual_delta_v == Vector2.ZERO branch: a soldier flagged damage-eligible (real
+	# closing speed against BOTH neighbors individually clears the threshold) whose two contacts
+	# push in exactly opposite directions, netting zero actual velocity change -- should take
+	# zero damage, since damage derives from the real resulting delta, not from mere eligibility.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 2)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)    # b's soldier 0 to the right of a
+	b._sim_soldier_pos[1] = Vector2(-5, 0)   # b's soldier 1 to the left of a, symmetric
+	var closing: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 2.0
+	a._sim_body_vel[0] = Vector2.ZERO
+	b._sim_body_vel[0] = Vector2(-closing, 0.0)   # closing on a from the right
+	b._sim_body_vel[1] = Vector2(closing, 0.0)    # closing on a from the left, symmetric
+	var hp_a_before: float = a._sim_soldier_hp[0]
+	SoldierEnemyContact.accumulate([a, b], 90013)
+	assert_almost_eq(a._sim_soldier_hp[0], hp_a_before, 1e-3,
+		"symmetric opposing contacts cancel a's net velocity change, so it takes no damage even though it was contact-eligible")

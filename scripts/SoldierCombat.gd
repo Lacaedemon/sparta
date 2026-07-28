@@ -324,6 +324,69 @@ static func brace_capacity(file_braces: PackedFloat32Array, j_cap: float = BRACE
 # This makes a braced defender recoil less and impart more recoil to the attacker.
 const FRICTION_BRACING_MULTIPLIER: float = 0.5  # bracing raises effective mass by up to 50%
 
+
+## The bracing-scaled effective mass m_eff = m * (1 + FRICTION_BRACING_MULTIPLIER * br) used
+## throughout SoldierCollision.gd's momentum-split math (bidirectional_impulse,
+## overcomes_static_friction, enemy_contact_impulse) -- extracted here so the three call
+## sites share one definition instead of repeating the formula inline. Pure; never negative.
+static func effective_mass(mass: float, brace: float) -> float:
+	return maxf(0.0, mass) * (1.0 + FRICTION_BRACING_MULTIPLIER * maxf(0.0, brace))
+
+
+# Collision damage: SoldierCollision.enemy_contact_impulse resolves closing velocity FULLY
+# INELASTICALLY (no bounce-back), which genuinely dissipates kinetic energy every tick two
+# enemy bodies are in contact -- but only a genuinely hard, fast impact converts that
+# dissipation into damage; ordinary sustained pushing (the synthetic overlap-correction term,
+# not real closing speed) never does. Scoped to real closing speed alone -- see
+# enemy_contact_impulse's own doc comment for the overlap-vs-closing distinction.
+#
+# Below this speed the dissipated KE is small (two lines merely meeting, not a charge) and
+# causes no damage. 0.5x CHARGE_REFERENCE_SPEED -- half of what the existing charge-bonus math
+# already calls "a full charge" -- so a collision only counts as damaging once it's carrying
+# real momentum, not an arbitrary unrelated number.
+const COLLISION_DAMAGE_MIN_SPEED: float = 0.5 * CHARGE_REFERENCE_SPEED
+
+# TUNED (needs playtesting): calibrated so two equal-mass, unbraced infantry soldiers meeting
+# at exactly COLLISION_DAMAGE_MIN_SPEED (85 wu/s) -- one tick's worth of the velocity pipeline's
+# own per-tick KNOCKBACK_SPEED_MAX cap (60 wu/s effective closing speed, since 85 exceeds the
+# per-tick cap) -- take a velocity change of ~30 wu/s each, dealing ~27 damage
+# (COLLISION_DAMAGE_SCALE * 30^2), comparable to one landed strike's baseline (`wound()`'s
+# DAMAGE_SCALE). A harder or more prolonged impact (several ticks to fully arrest a fast
+# charge, or an asymmetric mass pairing) scales up from there via collision_damage's own
+# quadratic-in-velocity-change formula.
+const COLLISION_DAMAGE_SCALE: float = 0.03
+
+
+## Whether a pair's real closing speed clears the threshold for collision damage to apply at
+## all -- gates on REAL closing speed only, never the synthetic overlap-correction term (see
+## SoldierEnemyContact.accumulate's own doc comment for why). `min_speed` defaults to
+## COLLISION_DAMAGE_MIN_SPEED; a caller (a test, a future balance pass) can override it --
+## matching capped_knockback_velocity's own speed_cap parameter shape, per CLAUDE.md's
+## caller-configurable-parameters convention. Pure.
+static func is_hard_collision(closing_speed: float, min_speed: float = COLLISION_DAMAGE_MIN_SPEED) -> bool:
+	return closing_speed >= min_speed
+
+
+## Health lost from a soldier's ACTUAL velocity change this tick -- the fully-resolved,
+## multi-pair-trimmed, per-tick-capped delta SoldierEnemyContact.accumulate's existing velocity
+## pipeline already computes (`owner._sim_body_vel[slot]` before vs. after this tick's contact
+## resolution), not an independently re-derived "if fully stopped from the current closing
+## speed" calculation. Deliberately reuses the pipeline's own output rather than re-deriving a
+## parallel formula from mass/closing-speed: the velocity pipeline already correctly caps a
+## soldier's summed delta across multiple simultaneous contacts (`body_trim_scale` + the final
+## safety-net clamp) and per-tick (`KNOCKBACK_SPEED_MAX`) -- collision damage inherits both
+## bounds automatically this way, with no separate bookkeeping (and no separate bugs) of its
+## own. Scales with the SQUARE of the velocity change (how hard the body was actually jerked --
+## a deceleration-based severity measure, the same shape real crash-injury metrics use, rather
+## than a literal kinetic-energy split): since a heavier/braced body already receives a SMALLER
+## velocity change from the same contact (enemy_contact_impulse's own effective-mass split),
+## it automatically takes less damage too -- no separate asymmetry formula needed, and no risk
+## of the split direction inverting the way an independent mass-weighted split could.
+## `scale` defaults to COLLISION_DAMAGE_SCALE. Pure; never negative.
+static func collision_damage(delta_v: Vector2, scale: float = COLLISION_DAMAGE_SCALE) -> float:
+	return maxf(0.0, scale) * delta_v.length_squared()
+
+
 # Static friction: a body at rest (v < STATIC_FRICTION_VELOCITY_GATE below -- a much lower
 # bar than KINETIC_FRICTION_VELOCITY_REFERENCE, which instead governs how fast the
 # *continuous* kinetic-friction damping decays for an already-moving body, a separate
