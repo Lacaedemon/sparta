@@ -3292,6 +3292,86 @@ func test_canonical_target_slot_indices_delegates_to_live_perimeter_when_squared
 		"canonical_target_slot_indices delegates to the live-position selection for SQUARE")
 
 
+# --- contact_soldier_indices: physical collision is proximity-gated, not combat-state-gated --
+
+func test_contact_soldier_indices_is_empty_when_neither_engaged_nor_in_contact() -> void:
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	assert_false(u.is_engaged(), "sanity: a fresh unit is not engaged")
+	assert_false(u._in_enemy_contact, "sanity: a fresh unit has no recorded contact")
+	assert_eq(u.contact_soldier_indices(u._sim_soldier_pos.size()).size(), 0,
+		"no soldiers participate in contact resolution with neither signal set")
+
+
+func test_contact_soldier_indices_returns_soldiers_when_in_contact_but_not_engaged() -> void:
+	# The core fix: a "disengaging" unit (a plain move order with no attack target -- see
+	# _think()'s own disengage comment) never becomes is_engaged(), but its soldiers' BODIES
+	# must still physically resist an enemy they're touching -- contact is a proximity fact,
+	# not a combat-state choice.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.MOVING
+	u._in_enemy_contact = true
+	assert_false(u.is_engaged(), "sanity: still not engaged -- no combat decision was made")
+	var n: int = u._sim_soldier_pos.size()
+	assert_gt(u.contact_soldier_indices(n).size(), 0,
+		"soldiers still participate in physical contact resolution")
+
+
+func test_engaged_soldier_indices_stays_empty_when_only_in_contact_not_engaged() -> void:
+	# Regression guard: the COMBAT-facing selection (melee striking, steering) must NOT be
+	# widened by _in_enemy_contact -- only contact_soldier_indices (physical collision) is.
+	# A disengaging unit still deals and takes no melee damage; only its bodies resist.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.MOVING
+	u._in_enemy_contact = true
+	var n: int = u._sim_soldier_pos.size()
+	assert_eq(u.engaged_soldier_indices(n).size(), 0,
+		"melee/steering's own selection is unaffected by mere physical contact")
+
+
+func test_contact_soldier_indices_matches_engaged_soldier_indices_when_actually_engaged() -> void:
+	# Sanity: for a genuinely fighting unit, both functions select the same soldiers -- they
+	# share the same geometry (_select_near_front_indices), only the GATE differs.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	assert_eq(u.contact_soldier_indices(n), u.engaged_soldier_indices(n),
+		"a fighting unit's contact and engaged selections are identical")
+
+
+func test_in_enemy_contact_becomes_true_from_proximity_alone_even_when_disengaging() -> void:
+	# Mirrors test_normal_unit_in_melee_contact_marches_through_the_same_hostile_control's own
+	# setup (test_march_to_contact_order.gd): a plain move order with no attack target is a
+	# disengage command, so this unit never becomes is_engaged() -- but _in_enemy_contact must
+	# still go true from proximity alone, since physical collision is not a combat decision.
+	var u := _make_unit()
+	u.team = 0
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)   # within melee contact range
+	u.has_move_target = true
+	u.move_target = Vector2(-200, 0)
+	u.target_enemy = null
+	u._think(0.1)
+	assert_true(u._in_enemy_contact,
+		"contact is recorded from proximity alone, even though this unit is disengaging")
+	assert_false(u.is_engaged(), "sanity: the unit itself never decided to fight")
+
+
+func test_in_enemy_contact_is_false_with_no_enemy_nearby() -> void:
+	var u := _make_unit()
+	u.team = 0
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(2000, 2000)   # far outside melee contact range
+	u._think(0.1)
+	assert_false(u._in_enemy_contact, "no enemy nearby -- no contact recorded")
+
+
 func test_engaged_soldier_indices_memoizes_within_the_same_physics_tick() -> void:
 	# Called from up to six places per tick; the second call with the same
 	# (Engine.get_physics_frames(), count) must reuse the first call's cached result rather
@@ -3702,9 +3782,10 @@ func test_loose_spacing_still_widens_the_grid() -> void:
 
 
 # --- formation_containment_margin: melee-intermixing depth gated by formation_mode --
-# NORMAL and LOOSE are deliberately left at zero (bit-identical to their pre-existing
-# contact geometry) -- an earlier per-soldier NORMAL variant reintroduced the
-# melee-lock-swirl regression test_residual_melee_swirl_battle.gd guards against; see
+# Shield-wall-class formations get the full margin; NORMAL gets a smaller, FLAT margin of
+# its own; LOOSE is deliberately left at zero (can become deeply enmeshed by design). An
+# earlier per-soldier, prone-gated NORMAL variant reintroduced the melee-lock-swirl
+# regression test_residual_melee_swirl_battle.gd guards against; see
 # formation_containment_margin's own doc comment for the full story.
 
 func test_shield_wall_class_formations_have_the_full_containment_margin() -> void:
@@ -3721,15 +3802,25 @@ func test_shield_wall_class_formations_have_the_full_containment_margin() -> voi
 			"formation %d gets the full shield-wall-class containment margin" % mode)
 
 
-func test_normal_and_loose_formations_have_no_containment_margin() -> void:
+func test_normal_formation_has_a_smaller_containment_margin_than_shield_wall_class() -> void:
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	assert_eq(u.formation_mode, Unit.FORMATION_NORMAL, "sanity: default formation is NORMAL")
-	assert_eq(u.formation_containment_margin(), 0.0,
-		"NORMAL contributes no containment margin -- unchanged from before this feature")
+	var expected: float = u.soldier_body_radius() * Unit.FORMATION_CONTAINMENT_SCALE_NORMAL
+	assert_almost_eq(u.formation_containment_margin(), expected, 0.001,
+		"NORMAL gets its own flat, smaller-than-shield-wall-class containment margin")
+	assert_lt(u.formation_containment_margin(),
+		u.soldier_body_radius() * Unit.FORMATION_CONTAINMENT_SCALE_TIGHT,
+		"NORMAL's margin stays well under the shield-wall-class full margin -- a couple of "
+		+ "ranks deep, not effectively no intermixing")
+
+
+func test_loose_formation_has_no_containment_margin() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
 	u.set_formation(Unit.FORMATION_LOOSE)
 	assert_eq(u.formation_containment_margin(), 0.0,
-		"LOOSE contributes no containment margin either")
+		"LOOSE contributes no containment margin -- can become deeply enmeshed by design")
 
 
 func test_cavalry_never_gets_a_containment_margin_regardless_of_formation() -> void:
