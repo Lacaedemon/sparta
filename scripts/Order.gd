@@ -409,7 +409,8 @@ static func resolve_friendly_target(u: Unit) -> void:
 		or partner.state == Unit.State.DEAD \
 		or partner.state == Unit.State.ROUTING
 	var apart: bool = is_instance_valid(partner) \
-		and u.position.distance_to(partner.position) \
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		and u.position.distance_squared_to(partner.position) \
 			> u.separation_radius + partner.separation_radius \
 				+ u.soldier_block_extent() + partner.soldier_block_extent()
 	if gone or apart:

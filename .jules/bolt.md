@@ -11,3 +11,6 @@
 ## 2026-07-25 - Optimize high-frequency loop distance calculations in Unit AI
 **Learning:** In GDScript, `distance_to` computes an expensive square root. In high-frequency O(N) loops like `Unit._think` or `Unit._support_tick` that run every frame for every unit, evaluating thresholds using `distance_squared_to` against a squared threshold is a low-risk, high-impact optimization that avoids the `sqrt` compute overhead.
 **Action:** Always prefer `distance_squared_to` over `distance_to` when evaluating threshold ranges (e.g. `RANGED_RANGE`, `attack_range + RADIUS`, `SKIRMISH_KITE_DISTANCE`) in unit AI update loops.
+## 2024-05-18 - Syntax errors and performance regressions in distance checks
+**Learning:** In GDScript, placing a comment (`#`) inside a line-continuation block (connected by `\`) breaks the parser, causing fatal syntax errors. Additionally, when optimizing `distance_to` to `distance_squared_to` by duplicating a complex threshold expression (e.g., `(a() + b()) * (a() + b())`), the function calls are executed twice, negating the performance benefits of avoiding `sqrt()`.
+**Action:** When working with line-continuation blocks in GDScript, place comments outside the block. When optimizing thresholds that involve function calls, calculate the threshold once, store it in a local variable, and then square the variable before comparison.

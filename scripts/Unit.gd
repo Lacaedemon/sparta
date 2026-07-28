@@ -2071,7 +2071,8 @@ func _think(delta: float) -> void:
 		# elsewhere in this tick. Intermediate waypoints pop on position alone, so a queued
 		# route rolls through each corner at pace instead of halting leg by leg.
 		var on_last_leg: bool = not _has_queued_move_leg()
-		var arrived: bool = position.distance_to(move_target) <= 5.0
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		var arrived: bool = position.distance_squared_to(move_target) <= 25.0
 		# Wait for the stop only when the unit can actually brake: a degenerate loadout
 		# with no positive brake rate (decel <= 0) can never bleed speed, so it finalizes
 		# on position alone -- the pre-braking contract -- instead of hanging on the
@@ -2337,7 +2338,8 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 			GAIT_JOG:
 				pace_speed = jog_speed
 			GAIT_RUN:
-				pace_speed = move_speed if position.distance_to(point) <= SPRINT_START_DISTANCE else jog_speed
+				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+				pace_speed = move_speed if position.distance_squared_to(point) <= SPRINT_START_DISTANCE * SPRINT_START_DISTANCE else jog_speed
 			GAIT_SPRINT:
 				pace_speed = move_speed
 			_:
@@ -2351,7 +2353,8 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# recovery leg and arriving at the turn-around point with the most momentum
 		# exactly where the flip back toward the enemy needs the least.
 		pace_speed = jog_speed
-	elif position.distance_to(point) <= SPRINT_START_DISTANCE:
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	elif position.distance_squared_to(point) <= SPRINT_START_DISTANCE * SPRINT_START_DISTANCE:
 		pace_speed = move_speed  # sprint distance beats under-fire: charge through the kill zone at full speed
 	elif _under_fire:
 		pace_speed = jog_speed
@@ -2578,7 +2581,8 @@ func _adjacent_engaged_enemy_units() -> Array[Unit]:
 		if other.team == team:
 			continue
 		var contact: float = _front_depth() + other._front_depth()
-		if position.distance_to(other.position) <= contact:
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		if position.distance_squared_to(other.position) <= contact * contact:
 			out.append(other)
 	_adjacent_engaged_cache = out
 	_adjacent_engaged_cache_frame = frame
