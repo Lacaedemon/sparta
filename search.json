@@ -120,6 +120,18 @@
     ]
   },
   {
+    "objectID": "tactics.html#collision-damage",
+    "href": "tactics.html#collision-damage",
+    "title": "Tactics That Matter",
+    "section": "Collision damage",
+    "text": "Collision damage\nA hard, fast impact — not just a landed blow — can wound. When two soldiers collide at real speed (a charge slamming into a line, not just two ranks pressed together), the force of the collision itself deals damage on top of whatever a weapon lands. A gentle, slow-closing press between two locked lines causes no extra harm this way — it takes genuine speed behind the hit.\nThe lighter or less-braced side of a hard collision takes the worse damage, because damage tracks the same velocity jolt as the shove itself: a braced, heavy line is already shoved less by the same impact, so it also takes less of a jolt to the body — and less jolt means less damage. This is part of why riding a charge into a set line is so costly for the attacker if the charge doesn’t break through cleanly — the impact itself hurts both sides, and the braced defender takes less of it.",
+    "crumbs": [
+      "Home",
+      "Play",
+      "Tactics That Matter"
+    ]
+  },
+  {
     "objectID": "tactics.html#line-width-frontage",
     "href": "tactics.html#line-width-frontage",
     "title": "Tactics That Matter",
