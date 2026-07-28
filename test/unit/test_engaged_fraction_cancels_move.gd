@@ -1,7 +1,9 @@
 extends GutTest
-## A plain NORMAL-stance MOVE order pauses (as it always has -- unchanged) while the unit is
-## State.FIGHTING, then, once the fight genuinely ends, either resumes toward its original
-## destination or cancels outright -- Order.Guard.ENGAGED_FRACTION_ABOVE marks which moves opt
+## A plain NORMAL-stance MOVE order marches off immediately once issued -- it does NOT pause
+## while the unit is State.FIGHTING (Unit._think()'s melee-contact gate treats a null
+## target_enemy as a disengage command). What happens once the unit's own lingering-engagement
+## latch decays out (is_engaged() finally false) is either a resume toward the original
+## destination or a cancel outright -- Order.Guard.ENGAGED_FRACTION_ABOVE marks which moves opt
 ## into this policy, and Unit._resolve_disengage_move_order() makes the actual call: resume
 ## when the fight never crossed the guard's threshold, or when it did but the destination is
 ## still clear of any living enemy; cancel only when it crossed the threshold AND the
