@@ -3188,6 +3188,84 @@ func test_engaged_ranks_is_clamped_to_the_cap() -> void:
 	assert_eq(u.engaged_ranks(), Unit.ENGAGED_RANKS_CAP)
 
 
+func test_body_tier_ranks_is_one_at_the_standard_rank_pitch() -> void:
+	# Body contact is a BODY-geometry question, not a reach one: a 0.45m body at the standard
+	# 0.45m rank pitch spans exactly one rank, so only the front rank is physically in contact
+	# however far the unit's weapon reaches.
+	var u := _make_unit(120)
+	assert_eq(u.body_tier_ranks(), 1)
+
+
+func test_body_tier_ranks_ignores_weapon_reach() -> void:
+	# The whole point of the split: a spear's 48wu reach takes engaged_ranks() to 6 (who can
+	# STRIKE) without moving body_tier_ranks() off 1 (whose BODY is being shoved). A sixth-rank
+	# spearman strikes past five files of his own men without anything touching him.
+	var u := _make_unit(120)
+	u.attack_range = 48.0
+	assert_eq(u.engaged_ranks(), 6, "sanity: reach still drives the melee tier")
+	assert_eq(u.body_tier_ranks(), 1, "but not the body-contact tier")
+
+
+func test_body_tier_ranks_deepens_when_ranks_compress_below_a_body_diameter() -> void:
+	# TESTUDO packs ranks to 0.6 of the standard pitch (5.4wu), below a 9wu body diameter, so a
+	# second rank genuinely IS in contact: ceil(9 / 5.4) = 2.
+	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	assert_eq(u.body_tier_ranks(), 2)
+
+
+func test_body_tier_ranks_is_clamped_to_the_cap() -> void:
+	var u := _make_unit(120)
+	u.rank_pitch = 0.01   # an absurdly compressed pitch can't blow the tier out to dozens of ranks
+	assert_eq(u.body_tier_ranks(), Unit.BODY_TIER_RANKS_CAP)
+
+
+func test_body_tier_leaves_an_unengaged_bulk_when_reach_would_swallow_the_block() -> void:
+	# The defect this split fixes (#1144): a block shallower than its own reach depth had EVERY
+	# soldier in the engaged tier, so SoldierBodies.step() lost the unengaged bulk its engaged
+	# branch is written relative to. A 40-man, 9-file spear regiment is 5 ranks deep against an
+	# engaged depth of 6 -- the melee tier still (correctly) covers everyone, while the body
+	# tier keeps a real bulk in reserve.
+	var u := _make_unit(40)
+	u.attack_range = 48.0
+	u.set_frontage(9)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(1.0 / 60.0)
+	var n: int = u._sim_soldier_pos.size()
+	assert_gt(n, 0, "sanity: bodies are seeded")
+	assert_eq(u.engaged_soldier_indices(n).size(), n,
+		"sanity: reach-derived melee tier still covers the whole shallow block")
+	var body_tier: int = u.body_tier_soldier_indices(n).size()
+	assert_gt(body_tier, 0, "the body tier is never empty for an engaged unit")
+	assert_lt(body_tier, n, "the body tier always leaves an unengaged bulk")
+
+
+func test_body_tier_never_widens_the_melee_tier() -> void:
+	# The cap only ever REMOVES rear ranks; every body it drops falls back to ordinary
+	# unengaged treatment, so this can never expand what melee/contact resolution sees.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(1.0 / 60.0)
+	var n: int = u._sim_soldier_pos.size()
+	var melee: PackedInt32Array = u.engaged_soldier_indices(n)
+	var body: PackedInt32Array = u.body_tier_soldier_indices(n)
+	assert_lte(body.size(), melee.size(), "the body tier is never wider than the melee tier")
+	var melee_set := {}
+	for i in melee:
+		melee_set[i] = true
+	for i in body:
+		assert_true(melee_set.has(i), "every body-tier soldier is also in the melee tier")
+
+
+func test_body_tier_soldier_indices_is_empty_when_not_engaged() -> void:
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	assert_false(u.is_engaged(), "sanity: a fresh unit is not engaged")
+	assert_eq(u.body_tier_soldier_indices(u._sim_soldier_pos.size()).size(), 0)
+
+
 func test_engaged_soldier_indices_reaches_beyond_the_old_flat_rank_cap_for_a_longer_reach_unit() -> void:
 	# A spear-reach unit (48wu, engaged_ranks()==6) with enough soldiers to actually fill
 	# beyond 3 ranks must have its LIVE selection reach soldiers whose true rank is >= 3 --
