@@ -652,8 +652,8 @@ func _finish_right_button(end_pos: Vector2, append: bool) -> void:
 		# so a march can be plotted as a multi-leg path.
 		# Track multi-clicks on ground moves to determine gait (walk/jog/run/sprint).
 		var now_ms: int = Time.get_ticks_msec()
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var click_combo: bool = (now_ms - _last_right_click_ms <= _click_combo_window_ms) and \
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 			end_pos.distance_squared_to(_last_right_click_pos) < 100.0
 		if click_combo:
 			_click_count += 1
