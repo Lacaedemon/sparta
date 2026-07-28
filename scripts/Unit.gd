@@ -4908,7 +4908,7 @@ func contact_soldier_indices(count: int) -> PackedInt32Array:
 ##
 ## SoldierBodies.step() asks something else: whose BODY is being shoved around by the enemy
 ## line. That is a question about body geometry, not reach -- a sixth-rank spearman strikes
-## past five files of his own men without anything touching him -- so it takes
+## past five ranks of his own men without anything touching him -- so it takes
 ## body_tier_ranks() below. Answering it with reach conflates the two: a block shallower than
 ## its own reach depth (a 40-man, 9-file spear regiment is 5 ranks deep against an engaged
 ## depth of 6) has EVERY soldier "engaged", which is right for melee and wrong here, because

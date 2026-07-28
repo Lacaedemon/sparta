@@ -3192,3 +3192,86 @@ under "The identity checks are real, but they are blind DURING a reshape" in
 `sparta-demos.md`. The scan's identity metrics do exist and work, but they only judge a
 SETTLED block -- and every one of these bugs reaches a correct end state by a wrong route,
 which is why all four instances were caught by eye rather than by a check.
+
+## One selector, two questions: reach answers "who can strike", geometry answers "whose body is shoved"
+
+`Unit.engaged_soldier_indices()` derives its depth from `engaged_ranks()`, which scales with
+the regiment's own WEAPON REACH. That is the correct answer to the question it exists for --
+a spear phalanx really does project six ranks of points into contact, and all six deal and
+take blows. It is the wrong answer to a question about BODIES, and reusing it for one is a
+recurring trap: a sixth-rank spearman strikes past five ranks of his own men without anything
+touching him.
+
+The failure only becomes visible when a block is SHALLOWER THAN ITS OWN REACH DEPTH. A 40-man,
+9-file spear regiment is 5 ranks deep against an engaged depth of 6, so every soldier lands in
+the tier and any "the rest of the block is the unengaged bulk" assumption silently evaporates.
+`SoldierBodies.step()` had exactly that assumption baked in -- an engaged body drops the march
+feed-forward and is re-paired onto a canonical target slot, both meaningful only RELATIVE to a
+bulk still tracking the formation's own slots. With no bulk left, every body free-floats under
+continuous contact impulses while its slot identity is globally re-sorted by lateral position,
+so rank/file order churns indefinitely instead of recovering (soldiers visibly sliding sideways
+through a sustained melee).
+
+Fixed by `body_tier_soldier_indices()` / `body_tier_ranks()`: same gate, same geometry, but
+depth = how many ranks one body DIAMETER spans at this formation's own rank pitch (1 at the
+standard 0.45 m pitch; 2 for SHIELD_WALL/TESTUDO, which compress below a body width; 1 for
+cavalry's roomy 3.0 m pitch). Derived from constants the soldier layer already scales off, so
+no tuned number.
+
+**How to apply:** before consuming `engaged_soldier_indices()` in a NEW caller, ask which
+question that caller is really asking. If it is about physical contact, crowding, or body
+motion -- not about who can land a blow -- it wants a geometry-derived depth, and it needs its
+own selector. This is the same class of bug PR #1137 fixed one layer over (a combat selector,
+`is_engaged()`, silently gating physical collision), so it has now bitten twice; expect a third
+site. Note also that two tuned alternatives were tried and rejected on measurement first --
+"leave one rear rank as bulk" barely moved the churn, and "cap at half the block depth" fixed
+one unit but not the other -- only the geometry derivation landed symmetrically.
+
+## Capping a selection must narrow WITHIN the meaningful candidate set, never re-select over the whole population
+
+When adding a size cap to a selection that already computed a MEANINGFUL candidate set, apply
+the cap to that set. Falling back to a fresh ranking over the whole population is a different
+answer, not a smaller one.
+
+Concretely: `Unit._select_near_front_indices()`'s Square/Schiltron branch computes `threatened`
+(soldiers with an enemy actually in reach). A first cut handled the capped case by falling
+through to `UnitFormation.live_perimeter_indices()`, which ranks purely by distance from the
+block's own centroid -- i.e. the corners -- with no reference to enemy position at all. For a
+pressed square that is the ORDINARY case, not an edge case (a 100-soldier square caps around
+`ceil(sqrt(100)) = 10` while a one-sided press typically threatens 30-40), and it returns
+soldiers with nothing near them while dropping soldiers genuinely in contact -- inverting the
+selection's own meaning and breaking the body-tier subset engaged-tier invariant.
+
+Fixed with `UnitFormation.most_exposed_among(positions, candidates, target_count)`: ranks by
+exposure WITHIN the candidate set, centroid still taken over the whole block (the subset filters
+who may be picked, it does not move the middle). `live_perimeter_indices` delegates to it, so
+there is one heap selection rather than two copies.
+
+**How to apply:** any time a bounded and unbounded caller share a selection function, check that
+the bounded path returns a SUBSET of what the unbounded path would. If it can return something
+the unbounded path would never return, the cap is re-selecting rather than narrowing. Caught by
+review, not by the implementation or its first test -- see the vacuous-test entry below for why
+that test did not catch it either.
+
+## A guard test can be vacuous ONLY under full-suite ordering -- single-test runs can hide it
+
+The standing habit of reverting a fix to prove its test bites has a failure mode worth naming:
+the test can fail correctly in a SINGLE-TEST run and still pass in a FULL-SUITE run, because a
+frame-keyed static cache served it another test's data. So "I reverted and it failed" is not
+sufficient evidence unless the revert was run the same way CI runs it.
+
+Concretely: a new test for the square capping path above passed against the reverted fix in a
+full `test_unit.gd` run, while failing correctly when selected alone. Root cause was the already
+documented hazard above -- `SoldierEnemyProximity` is keyed by `Engine.get_physics_frames()`, so
+a synchronous test inherits whatever grid the previous test built, and the enemy this test
+staged was never in it, leaving `threatened` empty and the capped branch unreached. Adding
+`SoldierEnemyProximity.reset()` made it fail against the bug in BOTH modes (4 failures, indices
+33/43/44/54, matching an independent probe's prediction of exactly 4 leaked soldiers).
+
+**How to apply:** run the revert check the way CI runs the suite, not just with `-gunit_test_name`.
+A guard that only bites in isolation is not a guard. Also add a positive sanity assertion that the
+branch under test is genuinely reached (here `assert_gt(melee.size(), u.body_tier_cap(n))`), so the
+test cannot quietly go vacuous later when geometry or constants shift. Note this hazard's own
+`reset()` rule was ALREADY documented in this file and still got missed while writing a fresh
+test -- treat "does this test construct fixtures that a frame-keyed cache reads?" as a checklist
+item on every new test, not a thing to recall.

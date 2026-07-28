@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Docs-only: memory-file additions plus a one-word terminology fix in a Unit.gd doc comment (files -> ranks). No sim, scene, or render behaviour changes, so a recorded battle would show nothing related to this PR."
+}
