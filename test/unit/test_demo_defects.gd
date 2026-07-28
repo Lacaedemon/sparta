@@ -362,6 +362,113 @@ func test_a_converging_transition_passes_where_a_stuck_defect_fails() -> void:
 
 # --- declared expectations (intent as data) ------------------------------------------
 
+func _swap_corners(grid: Array) -> Array:
+	# Trade both diagonal corner pairs of a 6x4 block: four men cross the entire
+	# formation, and the two diagonals genuinely intersect at its centre. A plain
+	# two-man swap cannot serve here -- its paths are collinear, and for a block that
+	# small the swap IS a rigid 180-degree turn, which the fit correctly absorbs.
+	var out: Array = grid.duplicate()
+	out[0] = grid[23]
+	out[23] = grid[0]
+	out[5] = grid[18]
+	out[18] = grid[5]
+	return out
+
+
+func test_crossing_indices_ignores_a_block_that_only_turned_and_marched() -> void:
+	var before: Array = _grid(6, 4, SPACING, Vector2(50, 50))
+	var after: Array = _grid(6, 4, SPACING, Vector2(95, 20), deg_to_rad(35.0))
+	assert_eq(DemoDefects.crossing_indices(before, after, SPACING * 0.5).size(), 0,
+			"rigid motion is removed first, so no man has an in-formation route at all")
+
+
+func test_crossing_indices_names_the_men_who_traded_places_across_the_block() -> void:
+	var grid: Array = _grid(6, 4, SPACING)
+	var crossed: Array = DemoDefects.crossing_indices(grid, _swap_corners(grid), SPACING * 0.5)
+	assert_eq(crossed, [0, 5, 18, 23], "exactly the four corner men took crossing routes")
+
+
+func test_crossing_indices_drops_jostle_below_the_travel_floor() -> void:
+	var grid: Array = _grid(6, 4, SPACING)
+	var jittered: Array = []
+	for i in range(grid.size()):
+		var away: float = 1.0 if i % 2 == 0 else -1.0
+		jittered.append([float(grid[i][0]) + away * SPACING * 0.1,
+				float(grid[i][1]) - away * SPACING * 0.1])
+	assert_eq(DemoDefects.crossing_indices(grid, jittered, SPACING * 0.5).size(), 0,
+			"sub-floor jitter is press, not a journey across the block")
+
+
+func test_repeated_place_trading_fails_path_crossing_while_a_turn_passes() -> void:
+	var grid: Array = _grid(6, 4, SPACING)
+	var swapped: Array = _swap_corners(grid)
+	var trading: Array = [
+		_snapshot(0, grid, grid), _snapshot(30, swapped, grid), _snapshot(60, grid, grid)]
+	assert_false(bool(_verdict(DemoDefects.analyze(trading), "path_crossing")["pass"]),
+			"men crossing the block to trade places is a route defect")
+	var turning: Array = [
+		_snapshot(0, _grid(6, 4, SPACING), grid),
+		_snapshot(30, _grid(6, 4, SPACING, Vector2.ZERO, deg_to_rad(20.0)), grid),
+		_snapshot(60, _grid(6, 4, SPACING, Vector2.ZERO, deg_to_rad(40.0)), grid)]
+	assert_true(bool(_verdict(DemoDefects.analyze(turning), "path_crossing")["pass"]),
+			"a block turning through the same angles keeps every man on his own route")
+
+
+func test_exemption_requires_named_units_and_a_written_reason() -> void:
+	var good: Dictionary = {"uids": [0], "reason": "the drill re-deals every man"}
+	assert_eq(DemoDefects.exemption_error("path_crossing", good), "",
+			"named units plus a stated reason is usable")
+	assert_ne(DemoDefects.exemption_error("path_crossing", "just a string"), "",
+			"a bare reason cannot say which units it covers")
+	assert_ne(DemoDefects.exemption_error("path_crossing", {"uids": [0], "reason": ""}), "",
+			"an exemption with no reason is indistinguishable from silencing a defect")
+	assert_ne(DemoDefects.exemption_error("path_crossing", {"uids": [0], "reason": "  "}), "",
+			"and whitespace is not a reason either")
+	assert_ne(DemoDefects.exemption_error("path_crossing", {"uids": [], "reason": "r"}), "",
+			"an empty uid list would forgive nothing or everything")
+	assert_ne(DemoDefects.exemption_error("path_crossing", {"uids": ["a"], "reason": "r"}), "",
+			"uids are numbers")
+	assert_ne(DemoDefects.exemption_error("", good), "", "the metric name is required")
+
+
+func test_an_exemption_forgives_only_the_units_it_names() -> void:
+	# The shape most real declarations take: a multi-unit clip where one unit's maneuver
+	# is deliberate and another unit's failure of the SAME metric is genuine.
+	var verdicts: Array = [
+		{"uid": 0, "metric": "path_crossing", "pass": false, "worst": 0.4, "threshold": 0.15},
+		{"uid": 1, "metric": "path_crossing", "pass": false, "worst": 0.9, "threshold": 0.15},
+		{"uid": 0, "metric": "blob", "pass": false, "worst": 1.0, "threshold": 4.5},
+	]
+	var out: Array = DemoDefects.apply_exemptions(
+			verdicts, {"path_crossing": {"uids": [0], "reason": "counter-march"}})
+	assert_true(bool(out[0]["pass"]), "the named unit's metric is forgiven")
+	assert_eq(String(out[0]["exempt"]), "counter-march", "and carries its reason for printing")
+	assert_false(bool(out[1]["pass"]),
+			"an unnamed unit's failure of the same metric survives")
+	assert_false(out[1].has("exempt"), "and is not dressed up as an exemption")
+	assert_false(bool(out[2]["pass"]), "an unexempted metric is untouched")
+
+
+func test_a_passing_named_unit_is_reported_stale_without_dragging_in_its_neighbours() -> void:
+	var verdicts: Array = [
+		{"uid": 0, "metric": "path_crossing", "pass": true, "worst": 0.0, "threshold": 0.15},
+		{"uid": 1, "metric": "path_crossing", "pass": true, "worst": 0.0, "threshold": 0.15},
+	]
+	var out: Array = DemoDefects.apply_exemptions(
+			verdicts, {"path_crossing": {"uids": [0], "reason": "no longer needed"}})
+	assert_true(bool(out[0]["stale_exempt"]),
+			"a unit that outgrew its defect should be told to drop its claim")
+	assert_false(out[1].has("stale_exempt"),
+			"a unit the exemption never named is not part of that judgement")
+
+
+func test_an_exemption_naming_an_absent_unit_forgives_nothing() -> void:
+	var verdicts: Array = [
+		{"uid": 0, "metric": "path_crossing", "pass": false, "worst": 0.4, "threshold": 0.15}]
+	var out: Array = DemoDefects.apply_exemptions(
+			verdicts, {"path_crossing": {"uids": [7], "reason": "typo'd uid"}})
+	assert_false(bool(out[0]["pass"]), "a mistyped uid leaves the clip red, the safe direction")
+
 func test_expect_ticks_collects_scalars_and_range_ends() -> void:
 	var expects: Array = [
 		{"tick": 60, "uid": 0, "field": "state", "value": "MOVING"},

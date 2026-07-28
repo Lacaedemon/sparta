@@ -79,6 +79,25 @@ const SUPERPHYSICAL_SPEED_FRAC := 1.15
 ## mean nearest-ANY-slot distance is within MISSLOT_SETTLED_FRAC of the spacing.
 const MISSLOT_MAX_FRAC := 0.25
 const MISSLOT_SETTLED_FRAC := 0.25
+## Two soldiers whose routes cross swapped sides on the way to wherever they were going,
+## rather than each walking to the nearest place that needed filling. Routes are measured
+## in the block's own co-rotating frame (the rigid motion the whole block shares is
+## removed first), so a wheel, a march, or an about-face cannot manufacture crossings.
+## Only residual travel beyond this fraction of the grid pitch counts as a route at all --
+## shorter residuals are jostle under press, not a journey across the block.
+const CROSS_MIN_TRAVEL_FRAC := 0.5
+## More than this fraction of a unit's soldiers taking crossing routes between two
+## consecutive judged samples is a crossing verdict. An assignment minimizing total travel
+## provably has no crossing straight-line paths -- swapping any crossing pair shortens the
+## total -- so this is a direct reading of how far a reshape's slot assignment sits from
+## optimal, not a proxy for it.
+## Sized against the catalog rather than guessed: a legitimate big reshape (a schiltron
+## forming, a square reform under the proximity pairing that fixed it) peaks around 0.14
+## of the block and then goes quiet, while a reshape whose slots are dealt by array index
+## holds a fifth to a half of the block on crossing routes for sample after sample. Pure
+## translations and turns read a flat zero. Hence a threshold just above the healthy peak,
+## plus MIN_SUSTAIN: both discriminators have to agree before a verdict fails.
+const CROSS_MAX_FRAC := 0.15
 ## Consecutive-sample count that turns a transient reading into a sustained verdict.
 const MIN_SUSTAIN := 2
 
@@ -203,6 +222,56 @@ static func max_soldier_speed(prev: Array, cur: Array, dt_ticks: int, tps: float
 	for i in range(n):
 		best = maxf(best, _vec(prev[i]).distance_to(_vec(cur[i])) / dt)
 	return best
+
+
+## Do two open segments properly cross? Orientation (cross-product sign) test on both
+## pairs. Collinear and endpoint-touching cases are not crossings worth reporting, and
+## exact zeros are measure-zero in float body data anyway.
+static func _segments_cross(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2) -> bool:
+	var d1: float = (a2 - a1).cross(b1 - a1)
+	var d2: float = (a2 - a1).cross(b2 - a1)
+	var d3: float = (b2 - b1).cross(a1 - b1)
+	var d4: float = (b2 - b1).cross(a2 - b1)
+	return ((d1 > 0.0) != (d2 > 0.0)) and ((d3 > 0.0) != (d4 > 0.0))
+
+
+## Which soldiers take a CROSSING route between two consecutive body samples -- the
+## route-quality question every other metric here structurally cannot ask, because the
+## rest all score where the men END UP and a bad route still reaches a good end state.
+##
+## The block's own rigid motion between the two samples is removed first (the same
+## best-fit transform kabsch_fit and aligned_slots already use), so what remains per
+## soldier is his travel WITHIN his own formation. A rigid rotation or translation of the
+## whole block therefore leaves every residual path empty and can never register a
+## crossing. Paths shorter than `min_travel` are dropped before any pairing, so ordinary
+## press-jitter cannot accumulate into a verdict.
+##
+## Index-aligned: both samples must describe the same men in the same order, so callers
+## skip pairs spanning a casualty compaction (which renumbers everyone). O(n^2) in the
+## routed subset, which is empty for a block that is merely marching.
+static func crossing_indices(prev: Array, cur: Array, min_travel: float) -> Array:
+	var n: int = mini(prev.size(), cur.size())
+	if n < 2:
+		return []
+	var fit: Dictionary = kabsch_fit(prev, cur)
+	var start: Array = aligned_slots(prev, cur, fit)
+	var routed: Array = []
+	for i in range(n):
+		if _vec(start[i]).distance_to(_vec(cur[i])) >= min_travel:
+			routed.append(i)
+	var crossed: Dictionary = {}
+	for a in range(routed.size()):
+		var i: int = routed[a]
+		for b in range(a + 1, routed.size()):
+			var j: int = routed[b]
+			if crossed.has(i) and crossed.has(j):
+				continue
+			if _segments_cross(_vec(start[i]), _vec(cur[i]), _vec(start[j]), _vec(cur[j])):
+				crossed[i] = true
+				crossed[j] = true
+	var out: Array = crossed.keys()
+	out.sort()
+	return out
 
 
 ## Analyze a whole transcript: `snapshots` is an Array of parsed state-dump Dictionaries
@@ -342,6 +411,28 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 		worst_run = maxi(worst_run, over_run)
 	out.append({"uid": uid, "metric": "superphysical_speed", "pass": worst_run < MIN_SUSTAIN,
 			"worst": worst_speed, "threshold": cap})
+
+	# Crossing routes: soldiers swapping sides on the way to wherever they are going.
+	# Deliberately NOT routed through _sustained_verdict. That helper forgives a series
+	# that steadily improves, which is exactly the shape a reshape's crossing count has --
+	# it falls to zero as the men arrive. Forgiving convergence here would forgive the
+	# very defect this metric exists to catch, since a bad route still converges on a
+	# correct end state; that is why the settled-state metrics cannot see this at all.
+	var min_travel: float = spacing * CROSS_MIN_TRAVEL_FRAC
+	var worst_cross := 0.0
+	var cross_run := 0
+	var worst_cross_run := 0
+	for i in range(1, n):
+		if s["counts"][i] != s["counts"][i - 1] or not (bool(mask[i]) and bool(mask[i - 1])):
+			cross_run = 0   # renumbered by a casualty, or an exempt sample
+			continue
+		var crossed: int = crossing_indices(s["pos"][i - 1], s["pos"][i], min_travel).size()
+		var frac: float = float(crossed) / maxf(1.0, float(s["counts"][i]))
+		worst_cross = maxf(worst_cross, frac)
+		cross_run = cross_run + 1 if frac > CROSS_MAX_FRAC else 0
+		worst_cross_run = maxi(worst_cross_run, cross_run)
+	out.append({"uid": uid, "metric": "path_crossing", "pass": worst_cross_run < MIN_SUSTAIN,
+			"worst": worst_cross, "threshold": CROSS_MAX_FRAC})
 	return out
 
 
@@ -482,6 +573,77 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 				"worst": actual if actual != null else "(no snapshot/unit/field in range)",
 				"threshold": expected})
 	return out
+
+
+## Shape-validate one `defect_exemptions` entry: empty string when usable, else a message
+## naming what's wrong. An entry names the units it covers and states why:
+##
+##   "defect_exemptions": { "path_crossing": {"uids": [0], "reason": "..."} }
+##
+## Both fields are mandatory. The reason, because an exemption without a stated
+## justification is indistinguishable from someone silencing a real defect, and the whole
+## value of a deterministic scan is that suppressing it has to be argued in writing. The
+## uid list, because most clips carry several units and a metric-wide exemption would
+## forgive every one of them -- including a unit whose failure is genuine and unrelated to
+## the maneuver being excused. Naming the units keeps an exemption as narrow as the claim
+## behind it.
+static func exemption_error(metric, entry) -> String:
+	if not (metric is String) or String(metric).strip_edges().is_empty():
+		return "exemption key must be a metric name"
+	if not (entry is Dictionary):
+		return "exemption for '%s' must be an object with `uids` and `reason`" % str(metric)
+	var uids = (entry as Dictionary).get("uids")
+	if not (uids is Array) or (uids as Array).is_empty():
+		return "exemption for '%s' needs a non-empty `uids` list" % str(metric)
+	for u in uids:
+		if not (u is float or u is int):
+			return "exemption for '%s' has a non-numeric uid: %s" % [str(metric), str(u)]
+	var reason = (entry as Dictionary).get("reason")
+	if not (reason is String) or String(reason).strip_edges().is_empty():
+		return "exemption for '%s' needs a non-empty reason" % str(metric)
+	return ""
+
+
+## Apply a demo script's declared `defect_exemptions` to its verdicts. A verdict is
+## forgiven only when BOTH its metric and its uid are named, and it then carries the
+## reason so the analyzer prints it as EXEMPT rather than silently dropping it -- an
+## exemption stays visible in every run's output.
+##
+## The per-uid match is what keeps an exemption honest. `analyze` flattens every unit's
+## verdicts into one array, so matching on metric alone would forgive a second unit's
+## genuine, unrelated failure in the same clip, and that collapsed verdict set feeds the
+## website demo-diff comparison as well as the gating scan.
+##
+## `stale_exempt` marks a named unit whose metric was passing anyway: that unit no longer
+## trips the check, so its claim has outlived its reason and wants removing. Scoping by
+## uid is what makes this readable on a multi-unit clip -- a metric-wide match would report
+## STALE off whichever unit happened to be passing, and acting on it would delete the
+## exemption another unit still needs. A stale exemption is reported, not failed: failing
+## it would redden the very PR that fixed the underlying defect.
+##
+## A uid named here that has no verdict at all (a typo) simply matches nothing, so the
+## clip stays red -- the fail-safe direction.
+static func apply_exemptions(verdicts: Array, exemptions: Dictionary) -> Array:
+	var out: Array = []
+	for v in verdicts:
+		var entry = exemptions.get(String(v.get("metric", "")))
+		if not (entry is Dictionary) or not _exempts_uid(entry, int(v.get("uid", -1))):
+			out.append(v)
+			continue
+		var marked: Dictionary = (v as Dictionary).duplicate()
+		marked["stale_exempt"] = bool(v["pass"])
+		marked["exempt"] = String((entry as Dictionary).get("reason", ""))
+		marked["pass"] = true
+		out.append(marked)
+	return out
+
+
+## Does this exemption entry name `uid` among the units it covers?
+static func _exempts_uid(entry: Dictionary, uid: int) -> bool:
+	for u in entry.get("uids", []):
+		if int(u) == uid:
+			return true
+	return false
 
 
 static func _values_match(expected, actual) -> bool:

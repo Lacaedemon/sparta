@@ -37,17 +37,16 @@ if [ ! -s "$CHANGED_LIST" ]; then
   exit 0
 fi
 
-# The catalog maps clip names to their source scripts, whose declared `expect`
-# assertions (input-type rows only) join the scan on both sides.
+# The catalog maps clip names to their source scripts, whose declared `expect` assertions and
+# `defect_exemptions` (input-type rows only) join the scan on both sides.
 # shellcheck source=../../website/tools/demo-catalog.sh
 . "$PR_TREE/website/tools/demo-catalog.sh"
 
-expect_source() {
+script_source() {
   local want="$1" spec NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE
   for spec in "${DEMOS[@]}"; do
     IFS='|' read -r NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE <<<"$spec"
-    if [ "$NAME" = "$want" ] && [ "${TYPE:-replay}" = "input" ] \
-        && jq -e '.expect | type == "array" and length > 0' "$PR_TREE/$SOURCE" >/dev/null 2>&1; then
+    if [ "$NAME" = "$want" ] && [ "${TYPE:-replay}" = "input" ]; then
       printf '%s' "$PR_TREE/$SOURCE"
       return 0
     fi
@@ -58,10 +57,10 @@ expect_source() {
 # Failing metrics for one transcript dir, as "metric(uidN), ..." | "clean" | "n/a".
 # The analyzer prints a Godot banner before the JSON line, so keep only the JSON.
 failing_metrics() {
-  local dir="$1" expect_src="$2" out rc=0
-  if [ -n "$expect_src" ]; then
+  local dir="$1" script_src="$2" out rc=0
+  if [ -n "$script_src" ]; then
     out="$("$GODOT_BIN" --headless --path "$PR_TREE" -s tools/demo/analyze_transcript.gd -- \
-        "$dir" --json --expect "$expect_src" 2>/dev/null | grep -m1 '^{' || true)" || rc=$?
+        "$dir" --json --script "$script_src" 2>/dev/null | grep -m1 '^{' || true)" || rc=$?
   else
     out="$("$GODOT_BIN" --headless --path "$PR_TREE" -s tools/demo/analyze_transcript.gd -- \
         "$dir" --json 2>/dev/null | grep -m1 '^{' || true)" || rc=$?
@@ -89,9 +88,9 @@ REGRESSION_COUNT=0
 while IFS= read -r name; do
   [ -n "$name" ] || continue
   [ -d "$BASELINE_DIR/$name" ] && [ -d "$PR_DIR/$name" ] || continue
-  expect_src="$(expect_source "$name")"
-  base_fail="$(failing_metrics "$BASELINE_DIR/$name" "$expect_src")"
-  pr_fail="$(failing_metrics "$PR_DIR/$name" "$expect_src")"
+  script_src="$(script_source "$name")"
+  base_fail="$(failing_metrics "$BASELINE_DIR/$name" "$script_src")"
+  pr_fail="$(failing_metrics "$PR_DIR/$name" "$script_src")"
   verdict="no new defects"
   if [ "$pr_fail" = "n/a" ] || [ "$base_fail" = "n/a" ]; then
     verdict="n/a (a side lacks full-dump data)"
