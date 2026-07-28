@@ -219,6 +219,48 @@ func test_square_reform_still_faces_the_ring_outward_after_pairing() -> void:
 	assert_gt(checked, 30, "spot-checked a meaningful number of ring soldiers")
 
 
+func test_casualties_carry_the_pairing_instead_of_re_pairing_the_block() -> void:
+	# The wiring half of the casualty story: SoldierMelee.reap() trims the pairing at the
+	# dead man's own array index, exactly like every other per-soldier array, so a survivor
+	# keeps the cell he already held. Without that trim the pairing silently goes stale --
+	# it would still be the right length but would name cells for men who are no longer at
+	# those indices.
+	var u: Unit = _stage_lone_infantry()
+	assert_not_null(u, "the lone Infantry regiment spawned")
+	if u == null:
+		return
+	await _run_ticks(60)
+	_battle.enqueue_formation([u.uid], Unit.FORMATION_SQUARE)
+	await _run_ticks(160)
+	assert_eq(u._sim_soldier_square_slot.size(), u.soldiers,
+		"the settled square carries one paired cell per living soldier")
+
+	# Kill a man in the middle of the array -- the case that shifts every later index.
+	var doomed: int = 47
+	var vacated_cell: int = u._sim_soldier_square_slot[doomed]
+	var neighbour_cell: int = u._sim_soldier_square_slot[10]
+	# Cell ids above the vacancy step down by one, because the grid itself loses its last
+	# cell and re-closes; ids below it are untouched.
+	var expected_neighbour: int = neighbour_cell - (1 if neighbour_cell > vacated_cell else 0)
+	u._sim_soldier_hp[doomed] = 0.0
+	SoldierMelee.reap(u, null)
+
+	assert_eq(u._sim_soldier_square_slot.size(), u.soldiers,
+		"the pairing shrank in step with the soldier arrays")
+	assert_eq(u._sim_soldier_square_slot.size(), u._sim_soldier_pos.size(),
+		"and stays index-aligned with the bodies")
+	var seen := {}
+	for cell in u._sim_soldier_square_slot:
+		assert_true(cell >= 0 and cell < u.soldiers,
+			"cell id %d stays inside the shrunken grid" % cell)
+		seen[cell] = true
+	assert_eq(seen.size(), u.soldiers, "the pairing is still a bijection after the casualty")
+	# A survivor is never re-paired by someone else's death: he holds his own cell, or
+	# steps one cell forward because the grid closed up behind him.
+	assert_eq(u._sim_soldier_square_slot[10], expected_neighbour,
+		"a survivor keeps his own cell across a casualty elsewhere in the block")
+
+
 # --- The pure pairing primitive ---------------------------------------------
 # UnitFormation.pair_slots_by_lateral_file and its two companions, exercised directly:
 # no battle, no bodies, just the geometry the live tests above prove end to end.
