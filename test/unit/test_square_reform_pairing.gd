@@ -375,3 +375,55 @@ func test_repeated_casualties_leave_a_valid_permutation() -> void:
 			seen[cell] = true
 		assert_eq(seen.size(), perm.size(),
 			"the pairing is still a bijection after %d casualties" % (n - perm.size()))
+
+
+func _off_identity_count(perm: PackedInt32Array) -> int:
+	var n: int = 0
+	for i in range(perm.size()):
+		if perm[i] != i:
+			n += 1
+	return n
+
+
+func test_a_regiment_path_casualty_does_not_revert_the_pairing_to_index_order() -> void:
+	# The REGIMENT casualty path (UnitCombat.take_casualties) drops `soldiers` without
+	# splicing the per-soldier arrays, and SoldierBodies.step queries the slots BEFORE it
+	# resizes those arrays to match. That leaves a window where the body layer is LARGER
+	# than the live count. Reading that window as "no bodies to pair against" reverted the
+	# whole block to the index-order layout -- and cached the reversion, so a settled square
+	# re-scrambled on its first melee strike and never recovered.
+	#
+	# Driven through that state directly rather than through SoldierMelee.reap(), which is
+	# the one casualty path that keeps the arrays in sync and so never reached the bug.
+	var u: Unit = _stage_lone_infantry()
+	assert_not_null(u, "the lone Infantry regiment spawned")
+	if u == null:
+		return
+	await _run_ticks(60)
+	_battle.enqueue_formation([u.uid], Unit.FORMATION_SQUARE)
+	await _run_ticks(REFORM_TICKS)
+
+	var settled: int = _off_identity_count(u._sim_soldier_square_slot)
+	assert_gt(settled, 20,
+		"precondition: the settled square really is paired, not already the identity layout")
+
+	# Exactly what the regiment path leaves behind: fewer soldiers, same bodies.
+	var bodies_before: int = u._sim_soldier_pos.size()
+	u.soldiers -= 3
+	assert_eq(u._sim_soldier_pos.size(), bodies_before,
+		"the regiment path leaves the body arrays untouched")
+
+	await _run_ticks(2)
+
+	assert_eq(u._sim_soldier_square_slot.size(), u.soldiers,
+		"the pairing tracks the live soldier count")
+	assert_gt(_off_identity_count(u._sim_soldier_square_slot), 20,
+		"a regiment-path casualty must not revert the block to the index-order layout")
+
+	var seen := {}
+	for cell in u._sim_soldier_square_slot:
+		assert_true(cell >= 0 and cell < u.soldiers,
+			"cell id %d stays inside the shrunken grid" % cell)
+		seen[cell] = true
+	assert_eq(seen.size(), u.soldiers,
+		"the re-pairing is still a bijection onto the live cells")

@@ -3817,12 +3817,20 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 ## about-face folds it to +/-PI and a quarter-turn to +/-PI/2, which is exactly when a
 ## de-rotation into the wrong frame would be furthest off.
 ##
-## Returns an EMPTY array whenever the body layer doesn't hold exactly `count` soldiers --
-## a far-tier unit with no bodies, a not-yet-seeded spawn, or a query for a count the arrays
-## were never sized to -- which callers read as "there is nothing here to compare against".
+## Returns an EMPTY array only when the body layer holds FEWER than `count` soldiers -- a
+## far-tier unit with no bodies, or a not-yet-seeded spawn -- which callers read as "there
+## is nothing here to compare against".
+##
+## MORE bodies than `count` is normal rather than a fault, and is read from the first `count`
+## entries instead of being discarded. A casualty taken through the regiment path
+## (UnitCombat.take_casualties) drops `soldiers` WITHOUT splicing the per-soldier arrays, and
+## SoldierBodies.step queries the slots before it resizes those arrays to match. Since resize()
+## trims at the tail, the leading `count` bodies are exactly the survivors, still index-aligned
+## -- so they are the right thing to pair against. Treating that window as "no data" instead
+## silently reverted a settled square to the index-order layout on its first melee strike.
 func _slot_frame_positions(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
-	if count <= 0 or _sim_soldier_pos.size() != count:
+	if count <= 0 or _sim_soldier_pos.size() < count:
 		return out
 	var ang: float = soldier_block_world_angle()
 	out.resize(count)
@@ -3848,11 +3856,13 @@ func _slot_frame_positions(count: int) -> PackedVector2Array:
 ## promotion both build the bodies FROM these slots, so nobody has a prior position to stay
 ## near.
 ##
-## An ordinary casualty deliberately does NOT land here: SoldierMelee.reap() renumbers the
+## A per-soldier casualty deliberately does NOT land here: SoldierMelee.reap() renumbers the
 ## pairing in place (UnitFormation.drop_slot_assignment), keeping the array size and `count`
-## in sync, so the pairing is only ever recomputed on a genuine reshape. Re-pairing per
-## casualty would read tidier on a still frame but would recompute slot targets from
-## jostling bodies every tick a squared unit is under attack.
+## in sync, so a survivor keeps the cell he already held. A casualty taken through the
+## REGIMENT path (UnitCombat.take_casualties) has no such option: it never says which man
+## died, and it leaves `count` smaller than the pairing array, so it necessarily re-pairs
+## from live positions here. That costs little churn -- the bodies have barely moved, so the
+## fresh pairing lands essentially where the old one did.
 ##
 ## Idempotent and side-effect-free once in sync, like _ensure_file_assignment above, so it
 ## is safe to call from every query in a tick rather than only the first.
@@ -3864,7 +3874,12 @@ func _ensure_square_slot_assignment(count: int, files: int, slots: PackedVector2
 		_sim_soldier_square_slot = UnitFormation.identity_assignment(count)
 	else:
 		_sim_soldier_square_slot = UnitFormation.pair_slots_by_lateral_file(live, slots, files)
-	_square_slot_files = files
+	# Commit the file count ONLY when the pairing was actually computed from live bodies. A
+	# fallback pairing is a placeholder for a tick whose body layer could not be read, not an
+	# answer: committing it here would satisfy this function's own early-out forever after, so
+	# the placeholder would outlive the window that produced it and never be re-paired.
+	# Leaving the count invalid instead makes the next in-sync query redo the pairing properly.
+	_square_slot_files = files if not live.is_empty() else -1
 
 
 ## World-space per-soldier facing directions for `count` soldiers, index-aligned with
