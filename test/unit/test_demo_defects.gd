@@ -414,6 +414,37 @@ func test_repeated_place_trading_fails_path_crossing_while_a_turn_passes() -> vo
 			"a block turning through the same angles keeps every man on his own route")
 
 
+func test_exemption_requires_a_metric_and_a_written_reason() -> void:
+	assert_eq(DemoDefects.exemption_error("path_crossing", "the drill re-deals every man"), "",
+			"a named metric with a stated reason is usable")
+	assert_ne(DemoDefects.exemption_error("path_crossing", ""), "",
+			"an exemption with no reason is indistinguishable from silencing a defect")
+	assert_ne(DemoDefects.exemption_error("path_crossing", "   "), "",
+			"and whitespace is not a reason either")
+	assert_ne(DemoDefects.exemption_error("", "some reason"), "", "the metric name is required")
+
+
+func test_exemptions_forgive_the_named_metric_and_leave_the_rest_alone() -> void:
+	var verdicts: Array = [
+		{"uid": 0, "metric": "path_crossing", "pass": false, "worst": 0.4, "threshold": 0.15},
+		{"uid": 0, "metric": "blob", "pass": false, "worst": 1.0, "threshold": 4.5},
+	]
+	var out: Array = DemoDefects.apply_exemptions(verdicts, {"path_crossing": "counter-march"})
+	assert_true(bool(out[0]["pass"]), "the exempted metric passes")
+	assert_eq(String(out[0]["exempt"]), "counter-march", "and carries its reason for printing")
+	assert_false(bool(out[0]["stale_exempt"]), "it was genuinely failing, so the exemption earns its keep")
+	assert_false(bool(out[1]["pass"]), "an unexempted metric is untouched")
+	assert_false(out[1].has("exempt"), "and carries no exemption marker")
+
+
+func test_an_exemption_for_a_passing_metric_is_reported_stale() -> void:
+	var verdicts: Array = [
+		{"uid": 0, "metric": "path_crossing", "pass": true, "worst": 0.0, "threshold": 0.15}]
+	var out: Array = DemoDefects.apply_exemptions(verdicts, {"path_crossing": "no longer needed"})
+	assert_true(bool(out[0]["stale_exempt"]),
+			"a clip that outgrew its defect should be told to drop the exemption")
+
+
 func test_expect_ticks_collects_scalars_and_range_ends() -> void:
 	var expects: Array = [
 		{"tick": 60, "uid": 0, "field": "state", "value": "MOVING"},

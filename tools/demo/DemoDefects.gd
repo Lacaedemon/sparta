@@ -91,7 +91,13 @@ const CROSS_MIN_TRAVEL_FRAC := 0.5
 ## provably has no crossing straight-line paths -- swapping any crossing pair shortens the
 ## total -- so this is a direct reading of how far a reshape's slot assignment sits from
 ## optimal, not a proxy for it.
-const CROSS_MAX_FRAC := 0.1
+## Sized against the catalog rather than guessed: a legitimate big reshape (a schiltron
+## forming, a square reform under the proximity pairing that fixed it) peaks around 0.14
+## of the block and then goes quiet, while a reshape whose slots are dealt by array index
+## holds a fifth to a half of the block on crossing routes for sample after sample. Pure
+## translations and turns read a flat zero. Hence a threshold just above the healthy peak,
+## plus MIN_SUSTAIN: both discriminators have to agree before a verdict fails.
+const CROSS_MAX_FRAC := 0.15
 ## Consecutive-sample count that turns a transient reading into a sustained verdict.
 const MIN_SUSTAIN := 2
 
@@ -566,6 +572,42 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 				"pass": probed and passed,
 				"worst": actual if actual != null else "(no snapshot/unit/field in range)",
 				"threshold": expected})
+	return out
+
+
+## Shape-validate one `defect_exemptions` entry: empty string when usable, else a message
+## naming what's wrong. A reason is mandatory -- an exemption without a stated
+## justification is indistinguishable from someone silencing a real defect, and the whole
+## value of a deterministic scan is that suppressing it has to be argued in writing.
+static func exemption_error(metric, reason) -> String:
+	if not (metric is String) or String(metric).strip_edges().is_empty():
+		return "exemption key must be a metric name"
+	if not (reason is String) or String(reason).strip_edges().is_empty():
+		return "exemption for '%s' needs a non-empty reason" % str(metric)
+	return ""
+
+
+## Apply a demo script's declared `defect_exemptions` (metric name -> written reason) to
+## its verdicts. A matching verdict is forced to pass and carries the reason, so the
+## analyzer can print it as EXEMPT rather than silently dropping it -- an exemption stays
+## visible in every run's output.
+##
+## `stale_exempt` marks an exemption whose metric was passing anyway: the maneuver no
+## longer trips the check, so the declaration has outlived its reason and wants removing.
+## That is reported, not failed -- failing it would redden the very PR that fixed the
+## underlying defect, which is exactly the wrong incentive.
+static func apply_exemptions(verdicts: Array, exemptions: Dictionary) -> Array:
+	var out: Array = []
+	for v in verdicts:
+		var metric: String = String(v.get("metric", ""))
+		if not exemptions.has(metric):
+			out.append(v)
+			continue
+		var marked: Dictionary = (v as Dictionary).duplicate()
+		marked["stale_exempt"] = bool(v["pass"])
+		marked["exempt"] = String(exemptions[metric])
+		marked["pass"] = true
+		out.append(marked)
 	return out
 
 

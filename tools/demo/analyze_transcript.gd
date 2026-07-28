@@ -3,14 +3,18 @@ extends SceneTree
 ## (state_*.json, from SPARTA_DEMO_STATE_FULL=1) and print per-unit defect verdicts.
 ##
 ##   godot --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json] \
-##       [--expect <input-script.json>]
+##       [--script <input-script.json>]
 ##   godot --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> \
 ##       --compare-hashes <other-dump-dir>
 ##   godot --headless --path . -s tools/demo/analyze_transcript.gd -- <base-tree> \
 ##       --compare-hash-trees <pr-tree>
 ##
-## --expect additionally evaluates the input script's declared `expect` list (intent as
-## data: {tick, uid, field, value}) against the same snapshots -- see DemoDefects.
+## --script points at the clip's own input script and reads two optional declarations from
+## it: the `expect` list (intent as data: {tick, uid, field, value}), evaluated against the
+## same snapshots, and `defect_exemptions` (metric name -> written reason), which forgives
+## a named metric for this clip and prints it as EXEMPT instead of FAIL. An exemption
+## requires a stated reason, and one whose metric now passes anyway prints as STALE so it
+## gets removed. --expect is accepted as an alias for the same flag.
 ## --compare-hashes is its own mode: instead of defect analysis, compare the two dump
 ## runs' per-tick hash streams (hash_stream.jsonl, written by every armed dump run --
 ## see DemoStateHash / DemoHashStream) and report the FIRST divergent tick and tier, replacing an
@@ -32,7 +36,7 @@ extends SceneTree
 func _init() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.is_empty():
-		push_error("usage: godot --headless -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json] [--expect <input-script.json>] [--compare-hashes <other-dump-dir>] [--compare-hash-trees <pr-tree>]")
+		push_error("usage: godot --headless -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json] [--script <input-script.json>] [--compare-hashes <other-dump-dir>] [--compare-hash-trees <pr-tree>]")
 		quit(2)
 		return
 	var dir_path: String = args[0]
@@ -53,30 +57,47 @@ func _init() -> void:
 		_compare_hashes(dir_path, args[cmp_idx + 1])
 		return
 	var as_json: bool = args.has("--json")
+	# One flag carries the demo script, which declares both the `expect` intent list and
+	# any `defect_exemptions`; either may be absent. (Callers used to pass --expect only
+	# when a script had expectations, which left exemptions unreachable for every script
+	# without them. --expect stays accepted as an alias.)
 	var expects: Array = []
-	var expect_idx: int = args.find("--expect")
-	if expect_idx != -1:
-		if expect_idx + 1 >= args.size():
-			push_error("--expect needs the input script path that declares the expectations")
+	var exemptions: Dictionary = {}
+	var script_idx: int = args.find("--script")
+	if script_idx == -1:
+		script_idx = args.find("--expect")
+	if script_idx != -1:
+		if script_idx + 1 >= args.size():
+			push_error("--script needs the input script path declaring expectations/exemptions")
 			quit(2)
 			return
-		var script_text: String = FileAccess.get_file_as_string(args[expect_idx + 1])
-		var parsed_script = JSON.parse_string(script_text)
-		if not (parsed_script is Dictionary) or not (parsed_script.get("expect") is Array) \
-				or (parsed_script["expect"] as Array).is_empty():
-			push_error("no usable `expect` array in: " + args[expect_idx + 1])
+		var script_path: String = args[script_idx + 1]
+		var parsed_script = JSON.parse_string(FileAccess.get_file_as_string(script_path))
+		if not (parsed_script is Dictionary):
+			push_error("not a readable demo script: " + script_path)
 			quit(2)
 			return
-		expects = parsed_script["expect"]
-		# Shape-validate every entry up front: a malformed expectation (a [480] range
-		# missing its upper bound, a missing field) is a usage error under this tool's
-		# own exit-code contract, not a demo defect.
-		for e in expects:
-			var shape_error: String = DemoDefects.expect_entry_error(e)
-			if shape_error != "":
-				push_error("malformed expect entry (%s): %s" % [shape_error, str(e)])
-				quit(2)
-				return
+		var declared = parsed_script.get("expect")
+		if declared is Array:
+			expects = declared
+			# Shape-validate every entry up front: a malformed expectation (a [480] range
+			# missing its upper bound, a missing field) is a usage error under this tool's
+			# own exit-code contract, not a demo defect.
+			for e in expects:
+				var shape_error: String = DemoDefects.expect_entry_error(e)
+				if shape_error != "":
+					push_error("malformed expect entry (%s): %s" % [shape_error, str(e)])
+					quit(2)
+					return
+		var declared_exempt = parsed_script.get("defect_exemptions")
+		if declared_exempt is Dictionary:
+			for metric in declared_exempt:
+				var ex_error: String = DemoDefects.exemption_error(metric, declared_exempt[metric])
+				if ex_error != "":
+					push_error("bad defect_exemptions entry: " + ex_error)
+					quit(2)
+					return
+			exemptions = declared_exempt
 	var snapshots: Array = _load_snapshots(dir_path)
 	if snapshots.is_empty():
 		push_error("no state_*.json snapshots found in: " + dir_path)
@@ -85,6 +106,7 @@ func _init() -> void:
 	var result: Dictionary = DemoDefects.analyze(snapshots)
 	var verdicts: Array = result["verdicts"]
 	verdicts.append_array(DemoDefects.check_expectations(expects, snapshots))
+	verdicts = DemoDefects.apply_exemptions(verdicts, exemptions)
 	if verdicts.is_empty():
 		# A transcript without soldiers_full/motion_ref (a non-FULL dump) has nothing to
 		# verify -- fail loudly rather than passing vacuously. (Declared expectations
@@ -103,9 +125,15 @@ func _init() -> void:
 			# worst/threshold are numbers for the defect metrics but can be strings for
 			# expectation verdicts (an actual field value, or a no-data note) -- print
 			# them as-is rather than forcing floats.
-			print("%s uid%d %-20s worst=%s threshold=%s" % [
-					"PASS" if v["pass"] else "FAIL", v["uid"], v["metric"],
-					str(v["worst"]), str(v["threshold"])])
+			# An exemption never hides: it prints in place of the verdict, with the reason
+			# the script had to state to claim it. STALE marks one the clip has outgrown.
+			var label: String = "PASS" if v["pass"] else "FAIL"
+			if v.has("exempt"):
+				label = "STALE" if bool(v.get("stale_exempt", false)) else "EXEMPT"
+			print("%s uid%d %-20s worst=%s threshold=%s%s" % [
+					label, v["uid"], v["metric"],
+					str(v["worst"]), str(v["threshold"]),
+					("  <- " + str(v["exempt"])) if v.has("exempt") else ""])
 		print("%d/%d verdicts passed" % [verdicts.size() - failed, verdicts.size()])
 	quit(0 if failed == 0 else 1)
 

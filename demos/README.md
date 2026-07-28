@@ -396,7 +396,7 @@ enough to make the data it checks exist; the analyzer evaluates them offline:
 
 ```sh
 "$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> \
-    --expect demos/inputs/<name>.json
+    --script demos/inputs/<name>.json
 ```
 
 An expectation that cannot be checked (no snapshot in range, no such unit, no such field)
@@ -409,7 +409,7 @@ where a flee was staged) turns into a red exit code instead of an eyeball catch.
 `tools/demo/DemoDefects.gd` turns a FULL dump into deterministic defect verdicts — the
 machine-checkable core of the demo-review checklist (blob/compression, soldier overlap,
 shape scramble via an ordered-vs-actual best-fit decomposition, facing whipsaw, sustained
-super-physical speed). Run it headless over a dump directory:
+super-physical speed, and crossing routes). Run it headless over a dump directory:
 
 ```sh
 "$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json]
@@ -423,6 +423,39 @@ convergence-aware: a long transition (a reshape, a big commanded turn) that stea
 improves toward tolerance is read as healthy, while the same magnitude holding flat or
 worsening is a defect. Slot-misassignment only counts once the men are actually standing on
 the grid (identity is noise mid-transit).
+
+`path_crossing` is the one metric that scores the ROUTE rather than the destination, and it
+exists because every other check above is blind in exactly the same place. Misslot is
+switched off while a block is in transit, and the sustained checks forgive a series that
+steadily converges — so a reshape that reaches a perfectly correct end state by an absurd
+route (men walking clear across their own formation and swapping sides on the way) passes
+every one of them. Between two consecutive judged samples this metric removes the block's
+own rigid motion, leaving each soldier's travel *within* his formation, and counts the men
+whose residual paths cross. An assignment minimizing total travel provably has no crossing
+straight-line paths, so the reading measures how far a reshape's slot assignment sits from
+optimal rather than standing in for it; a rigid turn or march leaves every residual empty
+and cannot register. It deliberately does **not** use the convergence-aware sustain rule,
+which would forgive precisely the defect it is built to catch. Sub-floor travel is dropped
+first, so ordinary press-jitter cannot accumulate into a verdict.
+
+What it cannot do is read intent. A counter-march, an about-face, and a form-up all move
+men across their own block on purpose, and geometry alone does not distinguish a drill
+that reorders the ranks deliberately from a reshape that does it by accident. So a script
+whose maneuver legitimately trips a metric declares an exemption, with a written reason:
+
+```json
+"defect_exemptions": {
+  "path_crossing": "The exelismos marches files through each other by design; see #123."
+}
+```
+
+The reason is mandatory — an exemption with no argument is indistinguishable from
+silencing a real defect, and the point of a deterministic scan is that suppressing it has
+to be justified in writing. Exemptions never hide: the verdict still prints, as `EXEMPT`
+with its reason attached, and one whose metric has started passing on its own prints as
+`STALE` so it gets deleted rather than outliving the problem it was written for. A stale
+exemption is reported, not failed — failing it would redden the very PR that fixed the
+underlying defect.
 
 CI runs this scan on every PR demo (the demo workflow's "Demo defect scan" step, with the
 script's own `expect` assertions included) and appends the verdict table to the posted

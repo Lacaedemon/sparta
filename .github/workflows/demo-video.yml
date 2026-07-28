@@ -404,13 +404,9 @@ jobs:
             echo "::warning::full state dump failed; skipping the defect scan."
             exit 0
           fi
-          EXPECT_ARGS=()
-          if jq -e '.expect | type == "array" and length > 0' "$SOURCE" >/dev/null 2>&1; then
-            EXPECT_ARGS=(--expect "$SOURCE")
-          fi
           rc=0
           godot --headless --path . -s tools/demo/analyze_transcript.gd -- \
-            "$FULL_DIR" "${EXPECT_ARGS[@]}" | tee /tmp/defects.txt || rc=$?
+            "$FULL_DIR" --script "$SOURCE" | tee /tmp/defects.txt || rc=$?
           # Fold the verdict table into the transcript comment when one is being posted,
           # so reviewers see the machine verdicts next to the per-tick tables.
           if [ -s /tmp/transcript.md ] && [ -s /tmp/defects.txt ]; then
