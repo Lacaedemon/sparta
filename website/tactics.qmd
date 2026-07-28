@@ -618,10 +618,11 @@ open only works if the cavalry arrives before the square finishes forming.
 the line it came from --- a 120-man regiment goes from fifteen files to eleven ---
 so forming one always costs some ground. Each soldier takes the nearest sensible
 place in the new grid, keeping his own file and his own side of the block, instead of
-filing across the formation to a slot on the far flank. On that 120-man regiment the
-men cover about a third of the distance they otherwise would, and the ring is
-standing and still in roughly half the time --- which is exactly the margin the
-"square up early" advice above is about.
+filing across the formation to a slot on the far flank. Measured on a lone regiment
+drilling with no enemy near it, that 120-man square costs about a third of the
+distance walked, and the ring is standing and still appreciably sooner. A real
+square forms under pressure rather than on the drill ground, so treat those figures
+as the shape of the saving and not a number to time a charge against.
 
 **Orbis vs schiltron.** The hollow square comes in two variants with different
 trade-offs, not one generic stance:
