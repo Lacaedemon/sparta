@@ -2291,6 +2291,54 @@ across time instead of across simultaneous pairs -- when reviewing or writing a 
 SIMULTANEOUS sources in one tick, and does it compound across SUCCESSIVE ticks of the same
 source. (`Lacaedemon/sparta` PR #860, 2026-07-15.)
 
+## A new per-soldier physics quantity added alongside an already-correct pipeline should derive from that pipeline's OUTPUT, not recompute independently from raw inputs
+
+PR #1143 (collision damage: converting a hard contact's dissipated kinetic energy into health
+loss) shipped a first version that computed damage independently per contact pair, straight
+from each pair's raw closing speed and effective masses -- a parallel calculation living
+alongside (not reusing) `SoldierEnemyContact.accumulate`'s existing, carefully-engineered
+velocity-impulse pipeline (the multi-pair torque-neutral trim, the per-tick `KNOCKBACK_SPEED_MAX`
+cap). Review found the independent recompute had re-derived, and gotten wrong, THREE separate
+properties the velocity pipeline already gets right:
+
+1. **No cap across a soldier's simultaneous contacts** -- exactly the "multi-pair force
+   accumulation needs a write-back clamp" bug class two sections above, just on the new damage
+   channel instead of the velocity one. The velocity pipeline has `body_trim_scale` + a final
+   safety-net clamp specifically for this; the parallel damage formula had no equivalent.
+2. **No memory across ticks during a multi-tick arrest** -- exactly the "compounds ACROSS TICKS"
+   bug class immediately above, again just on damage instead of velocity. A fast pair takes
+   several ticks to fully arrest (the impulse pipeline caps velocity reduction at
+   `KNOCKBACK_SPEED_MAX` per tick), but the damage formula recomputed the COMPLETE inelastic-stop
+   energy from the CURRENT closing speed every tick, overcounting total damage ~1.4-2x for a
+   realistic charge -- decision-changing in the worked example (a soldier who should survive at
+   14 HP instead died).
+3. **A mass-weighted split that inverted the intended asymmetry** -- the formula split a shared
+   total by `jn^2/mass_i_eff`, which the reviewer derived (and verified numerically against real
+   game constants) makes a BRACED/HEAVIER defender take MORE absolute damage against a much
+   heavier attacker, not less -- opposite of what bracing is supposed to do, and opposite of the
+   PR's own website prose.
+
+**Fix:** derive damage from each soldier's ACTUAL, already-resolved velocity change this tick --
+read `owner._sim_body_vel[slot]` (after the existing multi-pair trim and per-tick cap have run)
+minus the pre-tick snapshot -- instead of an independent formula from raw closing speed and
+mass. This fixed all three findings AT ONCE, not as three separate patches: the multi-pair cap
+and the per-tick bound come along for free since they're the SAME bounded number the velocity
+pipeline already computed, and the bracing direction self-corrects because a heavier/braced body
+already receives a smaller velocity change from the same contact (`enemy_contact_impulse`'s own
+effective-mass split) -- so `damage = SCALE * delta_v^2` automatically gives it less damage too,
+with no separate asymmetry formula left to get backwards.
+
+**How to apply:** when adding a NEW per-soldier physics quantity (damage, stamina drain, a
+cosmetic effect) that logically depends on the SAME contact/impulse an existing pipeline already
+resolves, check first whether that pipeline's OUTPUT (its final, already-bounded per-body delta)
+can be read and reused, rather than writing a second formula from the same raw inputs the
+pipeline itself consumes. A parallel recompute doesn't just risk bugs the original pipeline
+already solved (multi-pair caps, cross-tick memory) -- it risks re-deriving the WRONG formula
+for a property (like the mass-split direction here) the existing pipeline already encodes
+correctly in its own math, and getting the two implementations to agree by construction is far
+more reliable than getting them to agree by careful parallel tuning. (`Lacaedemon/sparta` PR
+#1143, 2026-07-28.)
+
 ## A new maneuver can reuse an existing composite instead of building new per-soldier choreography -- but check for facing side-effects from the reused legs
 
 PR #866 (closes #375) needed the countermarch (exelismos): reverse which end of a unit faces

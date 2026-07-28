@@ -551,6 +551,32 @@ casualties, inter-unit crowding) that a small scenario can't exercise at all. Fo
 per-soldier physics mechanic (collision damage, a single knockback, a prone check),
 default to the smallest scenario, not the standard 5v5/100v100 battle layout.
 
+**Caveat, discovered building the collision-damage demo (#1142/PR #1143): a genuine
+1-vs-1 (or few-soldier) matchup can be TOO minimal for a mechanic gated on actual
+body-to-body proximity, because melee STRIKE resolution fires at a much longer range
+first.** `Unit._in_enemy_contact` (and the melee-strike path it gates) triggers at
+`attack_range + 2*Unit.RADIUS` — roughly 60-70 world units for common types, since
+`Unit.RADIUS` is a flat per-REGIMENT footprint constant (18 wu), not a per-soldier
+body radius. A lone or small-count target's whole HP pool is thin enough that a
+single charge-bonus-amplified strike at THAT range can wipe it out entirely — with
+zero cost to the attacker — long before the two soldiers' actual `_sim_soldier_pos`
+values ever converge to the much tighter distance (`sradii[a]+sradii[b]+containment`,
+typically ~10-20 wu) genuine collision-physics contact (`SoldierEnemyContact.
+accumulate`) requires. Tried repeatedly (1, 3, 4, 6, 10, 12 soldiers per side, cavalry
+vs infantry AND cavalry vs cavalry) and reproduced identically every time, confirmed
+via `git stash` to be pre-existing on unmodified `main`, not caused by the feature
+being demoed — filed as issue #1151 rather than blocking the demo work on fixing it.
+
+**How to apply:** before committing to a "smallest possible" scenario for a mechanic
+gated on genuine body PROXIMITY (not just being in the SAME battle), check whether a
+devastating first strike could resolve the fight before proximity is ever reached —
+particularly for any matchup involving a charge-bonus attacker (cavalry) against a
+target with few enough soldiers that one hit threatens its whole HP pool. If so, "the
+minimum that still demonstrates the phenomenon" is a modest few-soldier-DEPTH
+scenario (enough survivors that the fight continues past the opening strikes and
+bodies actually close to real contact range), not a literal 1v1 — still far smaller
+than a full regiment clash, but not the absolute floor either.
+
 ## A hotkey rebind (merge-conflict collision fix) has THREE copies to sync, not one
 
 When resolving an `OrderMode`-enum merge collision (see `sparta.md`'s
