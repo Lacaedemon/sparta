@@ -151,6 +151,19 @@ var state: int = State.IDLE
 var facing: Vector2 = Vector2.DOWN
 var move_target: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
+## Peak OrderGuards.current_engaged_fraction() reading since a currently-pending
+## Order.Guard.ENGAGED_FRACTION_ABOVE move was issued -- Battle._apply_order_cmd resets this to
+## 0.0 for a fresh move (always immediately current) and for an appended waypoint leg ONLY when
+## the unit is genuinely idle (the leg becomes current right away, nothing to inherit from). A
+## leg appended behind a still-busy order does NOT get reset, at append time or later when it's
+## finally promoted: _update_current_order() raises this every tick regardless of what
+## current_order actually is, so a fight that happens while the guarded move is only QUEUED
+## behind an active ATTACK/HOLD order deliberately still counts once the leg is promoted --
+## Unit._start_promoted_move() must never reset this, or that carried-over fight is lost for
+## good (see that function's own doc for the concrete ATTACK-chases-a-router failure mode).
+## See _resolve_disengage_move_order()'s own doc for why the peak (not a point-in-time read) is
+## what the disengage-time decision needs.
+var _move_order_peak_engaged_fraction: float = 0.0
 var target_enemy: Unit = null
 var selected: bool = false
 # The unified orders queue (docs/orders-queue-design.md). `current_order` (orders[0],
@@ -536,6 +549,14 @@ const TESTUDO_SPACING_SCALE: float = 0.6
 # contributes a margin (see the function), so this never has to budget for the wider
 # CAV_MARK_RADIUS case.
 const FORMATION_CONTAINMENT_SCALE_TIGHT: float = 1.0
+# NORMAL's own containment margin: well under TIGHT's full value -- "a couple of ranks
+# deep" by design intent, not the effectively-zero-intermixing TIGHT gets. A
+# FLAT, unconditional value (not gated on prone state the way an earlier, reverted
+# attempt was -- see formation_containment_margin's doc comment), so every NORMAL
+# soldier gets the identical margin every tick: the contact-pair SET this feature
+# resolves against never varies with transient per-soldier state, the same structural
+# shape as TIGHT's own margin (which doesn't cause the melee-lock-swirl regression).
+const FORMATION_CONTAINMENT_SCALE_NORMAL: float = 0.4
 # Melee intermixing: a legacy softening of enemy separation for fighting non-hold
 # units. Largely superseded by the engaged-enemy front-rank close-up in _separate
 # (which lets lines meet at contact and the per-soldier collision set the spacing);
@@ -736,6 +757,15 @@ var file_major_reform: bool:
 # Set to true in _think when a ranged enemy is within RANGED_RANGE; drives the
 # AUTO-pace jog escalation. Cleared each frame before the check.
 var _under_fire: bool = false
+# Set to true in _think when ANY live-or-routing enemy regiment is within melee contact
+# range of EITHER side's own reach -- PURE PROXIMITY, independent of order_mode/state
+# (unlike is_engaged(), which only goes true once this unit itself decides to fight).
+# Feeds the soldier-level contact-collision gate (Unit.contact_soldier_indices /
+# SoldierEnemyContact) and _separate()'s enemy-collision branch, so a unit's bodies still
+# physically resist an enemy's bodies even while "disengaging" (a plain move order with no
+# attack target: see the disengage comment below) or otherwise not actively fighting --
+# contact is a physical fact, not a gameplay choice; see docs/individual-collision-design.md.
+var _in_enemy_contact: bool = false
 
 var support_target: Unit = null
 # Field rectangle the unit keeps inside when kiting (set by Battle on spawn). The
@@ -1288,6 +1318,15 @@ func _apply_promoted_stance() -> void:
 ## flight. Phase stays NONE -- a queued leg is a plain march, exactly like a Battle-committed
 ## plain move; the phased (rear-move) composite is only ever built on a fresh order at the
 ## apply site. No-op for every other order kind, an already-marching unit, or a phased order.
+##
+## Deliberately does NOT reset _move_order_peak_engaged_fraction here: a guarded leg promoted
+## from behind a busy ATTACK/HOLD order is meant to inherit whatever peak accumulated while it
+## was only queued (see the field's own doc comment) -- an ATTACK order chasing a routed enemy
+## can run well past ENGAGED_LINGER's decay before the target finally dies and this leg is
+## promoted, so resetting here would silently erase a real, already-recorded fight the
+## disengage decision still needs. Battle._apply_order_cmd's two attachment sites are the only
+## legitimate reset points: a fresh order (always immediately current) and an appended leg that
+## promotes itself right away because the unit was genuinely idle (nothing to inherit from).
 func _start_promoted_move() -> void:
 	if current_order == null or current_order.type != Order.Type.MOVE:
 		return
@@ -1511,7 +1550,15 @@ func current_maneuver() -> int:
 ## otherwise complete. This is the terminal-condition mechanism: "advance UNTIL contact THEN
 ## attack" is a MOVE order guarded by CONTACT_MADE with an appended ATTACK order behind it --
 ## the guard firing retires the MOVE and promotes the ATTACK on the very same tick.
+##
+## Also raises _move_order_peak_engaged_fraction every tick, unconditionally on what
+## current_order actually is -- a fight can be happening under an ATTACK/HOLD order while a
+## guarded MOVE leg sits queued behind it, and that leg's own eventual disengage-time
+## decision (_resolve_disengage_move_order) needs to know the fight happened even though it
+## wasn't current_order at the time.
 func _update_current_order() -> void:
+	_move_order_peak_engaged_fraction = maxf(_move_order_peak_engaged_fraction,
+			OrderGuards.current_engaged_fraction(self))
 	if current_order == null:
 		return
 	if current_order.guard != Order.Guard.NONE:
@@ -1569,6 +1616,51 @@ func _update_current_order() -> void:
 			retire_current_order()
 
 
+## The disengage-time decision for a plain MOVE order carrying Order.Guard.
+## ENGAGED_FRACTION_ABOVE (Battle.ENGAGED_FRACTION_CANCELS_MOVE's own doc comment has the
+## full policy, including two corrections to what this might look like it does). This order is
+## issued with target_enemy == null, which Unit._think()'s melee-contact gate treats as a
+## disengage command: the unit marches off toward move_target immediately and never re-enters
+## State.FIGHTING under this order. So "once the current fight genuinely ends" here does NOT
+## mean "the unit stops fighting" -- it means _engaged_linger (set from whatever fight was
+## happening up to and including the tick this order was issued, and refreshed only by
+## State.FIGHTING) finishes decaying to 0 (is_engaged() false) while the unit is already
+## marching away. This function is the one-time check that fires the instant that decay
+## completes.
+##
+## - The unit was never engaged at all this order (peak fraction never left 0.0): resume.
+## - It was engaged at some point, but the destination is still clear: resume anyway -- a real
+##   fight happened, but the original plan is still valid, so don't force a fresh order over
+##   nothing.
+## - It was engaged AND the destination now sits inside a living enemy's own footprint
+##   (OrderGuards.move_target_occupied_by_enemy): cancel -- the actual motivating case for
+##   gating a plain move on engagement at all: don't blindly march into ground the enemy now
+##   holds.
+##
+## Called once, from _think's "obey a move order" branch, right before it would otherwise
+## call _move_to() -- returning true means the caller should stop (the order just retired)
+## rather than fall through to the ordinary march/arrival logic below. The peak tracker is
+## consumed (reset to 0.0) on every call that reaches the threshold check, whichever way it
+## decides, so this fires its real decision only once per order: every later tick this same
+## path runs again, the peak reads back 0.0 and the check is a no-op forever after, matching
+## "at the disengage transition, not every tick" -- the state machine can't route a plain
+## move (target_enemy null, has_move_target true) back into FIGHTING under the same order,
+## so there's no second transition to catch.
+func _resolve_disengage_move_order() -> bool:
+	if current_order == null or current_order.guard != Order.Guard.ENGAGED_FRACTION_ABOVE:
+		return false
+	if is_engaged():
+		return false
+	var was_heavy: bool = _move_order_peak_engaged_fraction >= current_order.guard_param
+	_move_order_peak_engaged_fraction = 0.0
+	if was_heavy and OrderGuards.move_target_occupied_by_enemy(self, move_target):
+		_interrupt_current_order()
+		has_move_target = false
+		retire_current_order()
+		return true
+	return false
+
+
 ## This unit's own melee attack cadence: the equipped weapon's attack_interval_s,
 ## falling back to the flat ATTACK_INTERVAL baseline when the weapon id doesn't
 ## resolve (defensive; weapon_type_id is always a valid registry key in practice --
@@ -1595,6 +1687,23 @@ func _start_attack_cd(baseline_interval: float) -> void:
 
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
+	# Physical contact: true when ANY live-or-routing enemy regiment is within melee
+	# contact range of EITHER side's own reach, regardless of order_mode/state -- see
+	# _in_enemy_contact's own doc comment. Computed first, before every other branch in
+	# this function (including the order-response-delay/reform/turn/wheel early returns
+	# below), so it's always fresh on every tick regardless of which branch a unit takes --
+	# unlike _under_fire further down, which only needs to be fresh for the branches that
+	# actually read it.
+	_in_enemy_contact = false
+	var contact_candidates: Array = get_tree().get_nodes_in_group("units")
+	contact_candidates.append_array(get_tree().get_nodes_in_group("routers"))
+	for u in contact_candidates:
+		if u is Unit and u.team != team and u.state != State.DEAD:
+			var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
+			if position.distance_squared_to(u.position) <= c_dist * c_dist:
+				_in_enemy_contact = true
+				break
+
 	_update_current_order()
 	# Order-response delay: tick down on every frame. Non-fighting units are frozen
 	# until the timer expires; fighting units are not gated — they keep executing
@@ -1838,7 +1947,11 @@ func _think(delta: float) -> void:
 		# Fight when in contact, UNLESS the player gave a plain move order with no
 		# explicit attack target — that's a disengage command, so march off and let
 		# the unit break contact. (Pulling out exposes the rear; the enemy chasing
-		# it strikes for the ×2 flank bonus, which is the cost of disengaging.) A
+		# it strikes for the ×2 flank bonus, which is the cost of disengaging.) This
+		# is a COMBAT decision only -- state stays MOVING, no strikes exchanged, no
+		# combat morale loss -- not a physical one: the soldiers' own bodies still
+		# can't walk through an enemy's while marching past (_in_enemy_contact feeds
+		# soldier-level contact resolution independently of this state gate). A
 		# CHASE unit never takes this disengage: it keeps fighting the same foe.
 		# MARCH_TO_CONTACT never disengages from a foe it's already in contact with
 		# either -- see ORDER_MARCH_TO_CONTACT's own doc comment for the stop-then-
@@ -1945,6 +2058,12 @@ func _think(delta: float) -> void:
 		# visible blob/smear instead of a clean march resumption.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
+		# The disengage-time resume-vs-cancel decision for a heavily-engaged plain move --
+		# see _resolve_disengage_move_order()'s own doc. Checked after the engage-turn settle
+		# above (so that cleanup always runs first regardless) and before anything else below
+		# reads move_target, since a cancel drops it via retire_current_order().
+		if _resolve_disengage_move_order():
+			return
 		# Arrival at the FINAL destination requires both a close position AND a near-zero
 		# speed -- not position alone. _move_to's braking ramps _current_speed down along
 		# the arrival envelope on the route's last leg, so by the time the unit is within
@@ -3146,7 +3265,8 @@ func _separate(delta: float) -> void:
 		# Phase 5 (slice 1): friendly regiments no longer collide as circles -- their
 		# spacing is resolved at the soldier level (SoldierSteering's friendly tier feeds
 		# the body->regiment coupling). The regiment circle now only separates ENEMIES; the
-		# enemy front-rank closeup and the spear-vs-cavalry hard block below are unchanged.
+		# enemy front-rank closeup and the spear-vs-cavalry hard block below still apply
+		# (their own gating condition is now proximity-based too -- see _in_enemy_contact).
 		# (The move-through-idle / relief exemptions were friendly-only, so they re-home to
 		# the steering pass too.)
 		if other.team == team:
@@ -3155,12 +3275,13 @@ func _separate(delta: float) -> void:
 		# are skipped there's nothing left to exempt here -- the checks re-home to the
 		# steering pass. _separation_exempt is still used there.)
 		var min_dist: float
-		if other.team != team and is_engaged() and other.is_engaged():
-			# Engaged enemy lines close until their FRONT RANKS meet (centres a block-
-			# depth apart on each side), then the per-soldier collision pass holds the
-			# contact and packs the soldiers — so the spacing emerges from the bodies,
-			# not a fixed enemy gap. No type-specific standoff here: a spear's reach
-			# standoff is meant to emerge from knockback, not a separation rule.
+		if (is_engaged() or _in_enemy_contact) and (other.is_engaged() or other._in_enemy_contact):
+			# Lines in melee contact (fighting, or merely physically close -- see
+			# _in_enemy_contact's own doc comment) close until their FRONT RANKS meet
+			# (centres a block-depth apart on each side), then the per-soldier collision
+			# pass holds the contact and packs the soldiers — so the spacing emerges from
+			# the bodies, not a fixed enemy gap. No type-specific standoff here: a spear's
+			# reach standoff is meant to emerge from knockback, not a separation rule.
 			min_dist = _front_depth() + other._front_depth()
 		else:
 			min_dist = separation_radius + other.separation_radius
@@ -4748,9 +4869,31 @@ func engaged_soldier_indices(count: int, use_cache: bool = true) -> PackedInt32A
 
 
 func _compute_engaged_soldier_indices(count: int) -> PackedInt32Array:
-	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
-		return out
+		return PackedInt32Array()
+	return _select_near_front_indices(count)
+
+
+## Which of this regiment's own soldiers get soldier-level contact/melee resolution, for
+## PHYSICAL COLLISION purposes -- gated on _in_enemy_contact (pure proximity) as well as
+## is_engaged() (combat state), unlike engaged_soldier_indices() above (state only). See
+## _in_enemy_contact's own doc comment: a unit "disengaging" under a plain move order still
+## has soldiers whose BODIES must not walk through an enemy's, even though it isn't
+## fighting (no melee/steering changes -- those stay on the state-gated function above, so
+## disengaging still means no strikes exchanged and no combat morale loss). Deliberately
+## NOT cached like engaged_soldier_indices() -- SoldierEnemyContact.accumulate is this
+## function's only caller today, so there's no repeated-call cost to amortize.
+func contact_soldier_indices(count: int) -> PackedInt32Array:
+	if not (is_engaged() or _in_enemy_contact) or count <= 0:
+		return PackedInt32Array()
+	return _select_near_front_indices(count)
+
+
+## Pure geometry: which near-front (or, in_square(), near-threat/perimeter) soldier
+## indices to select, given this regiment already qualifies for soldier-level resolution.
+## Shared by engaged_soldier_indices() (combat-state-gated) and contact_soldier_indices()
+## (proximity-gated) so both use identical selection logic -- only the GATE differs.
+func _select_near_front_indices(count: int) -> PackedInt32Array:
 	if in_square():
 		var all_units: Array = get_tree().get_nodes_in_group("units")
 		all_units.append_array(get_tree().get_nodes_in_group("routers"))
@@ -4813,6 +4956,13 @@ const ANCHOR_RANKS: int = 2
 ## same as engaged_soldier_indices, for the same reason: a casualty splices the per-soldier
 ## arrays, so a fixed-index "first N slots" reading would go stale the moment the array
 ## compacts.
+##
+## Deliberately still gated on is_engaged() alone, NOT is_engaged() OR _in_enemy_contact --
+## unlike contact_soldier_indices/SoldierEnemyContact/_separate, which all switched to that
+## broader gate. Widening this specific selection's membership (not just how narrow it is
+## once a unit qualifies) was tried and made a live 900-tick battle regression test
+## (test_collision_knockback_battle.gd) hang indefinitely; reverted, not yet root-caused.
+## See docs/individual-collision-design.md's "Physical contact is proximity-based" section.
 func near_front_soldier_indices(count: int) -> PackedInt32Array:
 	if not is_engaged() or count <= 0 or in_square():
 		return PackedInt32Array()
@@ -4902,24 +5052,26 @@ func soldier_body_radius() -> float:
 ## (docs/individual-collision-design.md). Shield-wall-class formations (TIGHT/SQUARE/
 ## SCHILTRON/SHIELD_WALL/TESTUDO) get the full margin, UNCONDITIONALLY -- shields interlock
 ## with a soldier's live neighbours, not with any one man's own footing, so the front ranks
-## hold contact with effectively no depth-wise intermixing. NORMAL and LOOSE both stay at
-## zero -- deliberately unchanged from their pre-existing behaviour.
+## hold contact with effectively no depth-wise intermixing. NORMAL gets a smaller, ALSO
+## unconditional margin (FORMATION_CONTAINMENT_SCALE_NORMAL) -- "a couple of ranks deep",
+## not a full block. LOOSE stays at zero: the design intent is explicitly that a loose
+## formation "can become deeply enmeshed".
 ##
-## An earlier version of this also gave NORMAL a smaller margin that zeroed out for a
-## specific prone body (letting a felled defender's own slot briefly cede ground, matching
-## the "couple of ranks deep, as a knockback consequence" design intent) -- but that made
-## the enemy-contact contact-PAIR SET vary per soldier, per tick, based on which individual
-## bodies happened to be prone, and this exact subsystem is already the documented dominant
-## source of the "melee-lock swirl" torque bias (.claude/memories/sparta.md; see also
-## test_residual_melee_swirl_battle.gd's own regression guard and the ANCHOR_RANKS doc
-## comment above). That per-soldier heterogeneity measurably reintroduced the swirl on CI
-## (Linux) even though it stayed under the guard's threshold locally on Windows -- this sim
-## is only deterministic WITHIN a build/platform, not bit-exact across them (see
-## docs/individual-collision-design.md's "Decisions" section), so a chaotic-sensitive
-## regression like this one can clear a local run and still fail CI. Reverted to keep
-## NORMAL's contact geometry bit-identical to before this feature: a follow-up needs a
-## coarser, non-per-soldier mechanism (e.g. a regiment-level aggregate) if the NORMAL-tier
-## nuance is worth pursuing further.
+## An earlier version of NORMAL's margin instead zeroed out for a specific prone body
+## (letting a felled defender's own slot briefly cede ground, matching the "as a knockback
+## consequence" half of the design intent) -- but that made the enemy-contact contact-PAIR
+## SET vary per soldier, per tick, based on which individual bodies happened to be prone,
+## and this exact subsystem is already the documented dominant source of the "melee-lock
+## swirl" torque bias (.claude/memories/sparta.md; see also test_residual_melee_swirl_battle.gd's
+## own regression guard and the ANCHOR_RANKS doc comment above). That per-soldier
+## heterogeneity measurably reintroduced the swirl on CI (Linux) even though it stayed
+## under the guard's threshold locally on Windows -- this sim is only deterministic WITHIN
+## a build/platform, not bit-exact across them (see docs/individual-collision-design.md's
+## "Decisions" section), so a chaotic-sensitive regression like this one can clear a local
+## run and still fail CI. Reverted, then replaced with the FLAT value used here: every
+## NORMAL soldier gets the identical margin regardless of prone state or tick, so the
+## contact-pair set this feature resolves against never varies over time -- the same
+## structural shape as TIGHT's own always-on margin, which is not itself a swirl source.
 ##
 ## Cavalry never contributes a margin: a mounted formation doesn't interlock shields, and
 ## budgeting for CAV_MARK_RADIUS's wider body would eat most of SoldierSpatialHash.
@@ -4930,6 +5082,8 @@ func formation_containment_margin() -> float:
 	match formation_mode:
 		FORMATION_SHIELD_WALL, FORMATION_TESTUDO, FORMATION_TIGHT, FORMATION_SQUARE, FORMATION_SCHILTRON:
 			return soldier_body_radius() * FORMATION_CONTAINMENT_SCALE_TIGHT
+		FORMATION_NORMAL:
+			return soldier_body_radius() * FORMATION_CONTAINMENT_SCALE_NORMAL
 		_:
 			return 0.0
 
@@ -6245,7 +6399,7 @@ func to_snapshot_dict() -> Dictionary:
 		"walk_advance": walk_advance, "reform_before_move": reform_before_move,
 		"file_major_reform_mode": file_major_reform_mode,
 		"file_assignment_files": _file_assignment_files,
-		"under_fire": _under_fire,
+		"under_fire": _under_fire, "in_enemy_contact": _in_enemy_contact,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
 		"order_response_timer": _order_response_timer,
@@ -6259,6 +6413,7 @@ func to_snapshot_dict() -> Dictionary:
 		"engage_turn_start_facing": _engage_turn_start_facing,
 		"engage_turn_old_files": _engage_turn_old_files,
 		"reform_on_arrival": _reform_on_arrival,
+		"move_order_peak_engaged_fraction": _move_order_peak_engaged_fraction,
 
 		# Unit references, resolved by uid after every unit in the snapshot is restored.
 		"target_enemy_uid": target_enemy.uid if is_instance_valid(target_enemy) else -1,
@@ -6356,6 +6511,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	file_major_reform_mode = int(d["file_major_reform_mode"])
 	_file_assignment_files = int(d["file_assignment_files"])
 	_under_fire = bool(d["under_fire"])
+	_in_enemy_contact = bool(d["in_enemy_contact"])
 	_attack_cd = float(d["attack_cd"])
 	_pin_down_exposure_cd = float(d["pin_down_exposure_cd"])
 	_rout_timer = float(d["rout_timer"])
@@ -6374,6 +6530,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_engage_turn_start_facing = d["engage_turn_start_facing"]
 	_engage_turn_old_files = int(d["engage_turn_old_files"])
 	_reform_on_arrival = bool(d["reform_on_arrival"])
+	_move_order_peak_engaged_fraction = float(d["move_order_peak_engaged_fraction"])
 
 	var restored: Array[Order] = []
 	for od in d.get("orders", []):

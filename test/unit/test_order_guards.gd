@@ -210,6 +210,75 @@ func test_engaged_fraction_above_false_with_no_living_soldiers() -> void:
 	assert_false(OrderGuards.engaged_fraction_above(u, 0.10))
 
 
+func test_current_engaged_fraction_returns_the_raw_ratio() -> void:
+	# 4 files * 3 engaged ranks = 12 of 100 soldiers engaged -- 0.12, not just "above 0.10".
+	var u := _make_engaged_unit(100, 4)
+	assert_almost_eq(OrderGuards.current_engaged_fraction(u), 0.12, 0.001)
+
+
+func test_current_engaged_fraction_zero_when_not_engaged() -> void:
+	var u := _make_unit()
+	u.soldiers = 10
+	assert_eq(OrderGuards.current_engaged_fraction(u), 0.0)
+
+
+# --- move_target_occupied_by_enemy ------------------------------------------------
+
+func test_move_target_occupied_by_enemy_true_within_the_enemys_footprint() -> void:
+	var u := _make_unit(1, 0)
+	var enemy := _make_unit(2, 1)
+	enemy.position = Vector2(500, 500)
+	var reach: float = enemy.separation_radius + enemy.soldier_block_extent()
+	var dest: Vector2 = enemy.position + Vector2(reach - 1.0, 0)
+	assert_true(OrderGuards.move_target_occupied_by_enemy(u, dest))
+
+
+func test_move_target_occupied_by_enemy_true_within_the_combined_footprint_but_outside_the_enemys_alone() -> void:
+	# Regression test: an earlier version of this check summed only the ENEMY's own
+	# footprint, missing `u`'s own -- a destination just past the enemy's own reach but
+	# still inside the two units' COMBINED reach read as falsely "clear", even though u's
+	# own block will physically occupy that ground too once it arrives.
+	var u := _make_unit(1, 0)
+	var enemy := _make_unit(2, 1)
+	enemy.position = Vector2(500, 500)
+	var enemy_only_reach: float = enemy.separation_radius + enemy.soldier_block_extent()
+	var combined_reach: float = u.separation_radius + u.soldier_block_extent() + enemy_only_reach
+	var dest: Vector2 = enemy.position + Vector2(combined_reach - 1.0, 0)
+	assert_true(dest.distance_to(enemy.position) > enemy_only_reach,
+		"sanity: dest is genuinely outside the enemy-only reach this test targets")
+	assert_true(OrderGuards.move_target_occupied_by_enemy(u, dest))
+
+
+func test_move_target_occupied_by_enemy_false_well_clear_of_any_enemy() -> void:
+	var u := _make_unit(1, 0)
+	var enemy := _make_unit(2, 1)
+	enemy.position = Vector2(500, 500)
+	assert_false(OrderGuards.move_target_occupied_by_enemy(u, enemy.position + Vector2(1000, 0)))
+
+
+func test_move_target_occupied_by_enemy_ignores_a_routing_enemy() -> void:
+	var u := _make_unit(1, 0)
+	var enemy := _make_unit(2, 1)
+	enemy.position = Vector2(500, 500)
+	enemy.state = Unit.State.ROUTING
+	assert_false(OrderGuards.move_target_occupied_by_enemy(u, enemy.position))
+
+
+func test_move_target_occupied_by_enemy_ignores_a_dead_enemy() -> void:
+	var u := _make_unit(1, 0)
+	var enemy := _make_unit(2, 1)
+	enemy.position = Vector2(500, 500)
+	enemy.state = Unit.State.DEAD
+	assert_false(OrderGuards.move_target_occupied_by_enemy(u, enemy.position))
+
+
+func test_move_target_occupied_by_enemy_ignores_a_friendly() -> void:
+	var u := _make_unit(1, 0)
+	var friendly := _make_unit(2, 0)
+	friendly.position = Vector2(500, 500)
+	assert_false(OrderGuards.move_target_occupied_by_enemy(u, friendly.position))
+
+
 # --- satisfied() dispatch ---------------------------------------------------------
 
 func test_satisfied_is_false_for_an_unguarded_order() -> void:
@@ -229,4 +298,13 @@ func test_satisfied_falls_back_to_false_for_an_unmapped_guard_value() -> void:
 	var u := _make_unit()
 	var o := Order.new_move(Vector2.ZERO)
 	o.guard = 99
+	assert_false(OrderGuards.satisfied(u, o))
+
+
+func test_satisfied_never_fires_for_engaged_fraction_above_even_when_heavily_engaged() -> void:
+	# ENGAGED_FRACTION_ABOVE deliberately never self-terminates via satisfied() -- the
+	# disengage-time decision lives in Unit._resolve_disengage_move_order() instead. A unit
+	# heavily engaged well past the threshold must still read unsatisfied here.
+	var u := _make_engaged_unit(100, 4)   # 12% engaged, well over a 10% threshold
+	var o := Order.new_move(Vector2.ZERO).with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, 0.10)
 	assert_false(OrderGuards.satisfied(u, o))

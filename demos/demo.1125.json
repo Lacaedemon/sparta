@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/move-cancels-on-engagement.json",
+  "caption": "Follow-up on #1096/#1119/#1128: a plain NORMAL-stance MOVE order marches off immediately once issued (it does not pause), but the destination is now vetted before the march is allowed to stick, so it resumes or cancels once the unit's own lingering engagement from the preceding fight decays out, depending on whether the destination is still clear. Two evenly-matched Spearmen regiments lock into a sustained melee; at tick 300, mid-fight, the player is redirected to a point just past the clash. The redirected unit starts marching right away, but once its engagement linger decays (~tick 332) the destination still sits inside the enemy's own footprint, so the order cancels outright instead of marching into occupied ground -- the unit falls straight back into the same fight rather than straying off.",
+  "fixed_fps": 30,
+  "max_frames": 250,
+  "fps": 12,
+  "width": 640
+}

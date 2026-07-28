@@ -270,6 +270,12 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"subcommander_rank": u.subcommander_rank_title if u.is_delegated() else null,
 		"target_enemy_uid": target_uid,
 		"engaged": u.is_engaged(),
+		# Pure-proximity contact (Unit._in_enemy_contact) -- distinct from "engaged" (a combat-
+		# state decision): a "disengaging" unit (a plain move order with no attack target) can
+		# read in_enemy_contact: true, engaged: false simultaneously -- its soldiers physically
+		# resist an enemy it's touching without ever deciding to fight it. See
+		# Unit.contact_soldier_indices' own doc comment.
+		"in_enemy_contact": u._in_enemy_contact,
 		# A single readable label for the in-progress drill/maneuver, consolidating
 		# current_order/order_phase/order_mode into one field a verifier can read directly --
 		# e.g. a conversio and a centre-pivot both otherwise read as current_order: "MOVE"/

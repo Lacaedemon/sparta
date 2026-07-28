@@ -86,6 +86,7 @@ func _sample_unit() -> Unit:
 	u._engage_turn_start_facing = Vector2(0, -1)
 	u._engage_turn_old_files = 9
 	u._reform_on_arrival = true
+	u._move_order_peak_engaged_fraction = 0.55
 
 	u._sim_soldier_pos = PackedVector2Array([Vector2(1, 2), Vector2(3, 4)])
 	u._sim_body_vel = PackedVector2Array([Vector2(0.1, 0.2)])
@@ -158,6 +159,10 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.current_speed, original.current_speed)
 	assert_eq(restored._engage_turn_target, original._engage_turn_target)
 	assert_eq(restored._engage_turn_old_files, original._engage_turn_old_files)
+	assert_almost_eq(restored._move_order_peak_engaged_fraction,
+			original._move_order_peak_engaged_fraction, 0.001,
+			"an unconsumed disengage-time peak survives a replay-seek restore -- a snapshot" \
+			+ " reload must not silently resume a guarded MOVE a straight playthrough would cancel")
 
 	assert_eq(Array(restored._sim_soldier_pos), Array(original._sim_soldier_pos))
 	assert_eq(Array(restored._sim_soldier_hp), Array(original._sim_soldier_hp))

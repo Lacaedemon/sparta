@@ -400,6 +400,26 @@ unable to guarantee a local run is uncontaminated, fall back to CI's own
 clean-runner results (`gh pr checks`) as the authoritative signal instead of
 trusting a local re-verify. (`Lacaedemon/sparta` PR #1106, 2026-07-27.)
 
+**The contending process isn't always yours — a GENUINELY EXTERNAL Godot
+process on the same dev machine (a different session, a different tool, an
+unrelated scheduled job) can collide the exact same way, and it's easy to
+mistake for your own stray/orphaned run at first.** `Get-CimInstance
+Win32_Process -Filter "Name LIKE '%Godot%'" | Select ProcessId, CommandLine`
+disambiguates: check the **binary path** and **working-directory-implied
+args** in `CommandLine`, not just the process name. A process invoking a
+binary you never referenced this session (e.g. a Downloads-folder copy when
+every command you ran used a Documents/apps one) is definitively not yours --
+don't try to kill it (same permission-classifier block as an orphan of your
+own, and it's not yours to kill regardless), just wait for it to clear before
+running your own suite, exactly as if it were a sibling worktree's job. This
+recurred repeatedly across roughly 40 minutes in one PR's final-verification
+pass, each time truncating the local run's log with no error message at the
+truncation point -- distinguishable from a genuine hang in your own code
+(which also produces a truncated/no-summary log) only by re-running the
+SPECIFIC test alone, in isolation, once the machine is confirmed clear; if it
+completes fine standalone, the earlier truncations were contention, not a
+real regression. (`Lacaedemon/sparta` PR #1137, 2026-07-27.)
+
 **A branch SWITCH counts as a second writer too: never `git checkout` in a
 worktree while a Godot job is still running there.** The suite (and the
 coverage/patch_coverage runs especially) reloads scripts from disk as it
@@ -1090,6 +1110,80 @@ instead of being reduced to one synthetic representative point — the direct ve
 BOTH simpler and more correct than the aggregate one, on this codebase's own terms.
 (`Lacaedemon/sparta` issues #1076/#1077, PRs #1078, 2026-07-25.)
 
+## A "matches the issue's own framing" fix can be completely inert for the actual reported symptom — verify with the SAME artifact the report used
+
+Building on the entries above: PR #1137 (closing #1129, reporting infantry visibly walking
+through each other in the site's showcase clip) started by fixing exactly what the linked
+issue described — NORMAL formation's zero containment margin (a real gap #1118 deliberately
+left open). Implementing it, testing it, and even doing a live-battle probe render made it
+LOOK like the fix worked. But a direct before/after render of the ACTUAL reported artifact
+(`demos/showcase.json`, tick 600, unmodified vs. fixed) came back **pixel-identical** — the
+exact same "zero effect" signal the Fallen-heap case above already documents. Root cause,
+found only by then tracing WHY the probe render differed from the real artifact: the showcase
+demo's player units were on a plain MOVE order with no attack target, which this repo's own
+`_think()` deliberately treats as "disengage" — the units never entered `state == FIGHTING`
+at all, so `is_engaged()`-gated `engaged_soldier_indices()` (which the containment margin
+widens) never fired for them regardless of any margin value. The real fix needed a second,
+deeper layer: decoupling PHYSICAL collision from combat state entirely
+(`Unit._in_enemy_contact`, a pure-proximity flag).
+
+**How to apply:** when a reported bug names a specific mechanism/issue, and a fix matching
+that framing "looks right" (passes new tests, even improves a HAND-BUILT reproduction), still
+render the SAME artifact the bug report itself pointed at (not a look-alike scenario you
+construct) before declaring it fixed. A hand-built probe scenario inherits your own mental
+model of the bug — same blind spot the entry above names — and can pass even when the real
+artifact wouldn't. (`Lacaedemon/sparta` issue #1129, PR #1137, 2026-07-27.)
+
+## Widening a validated is_engaged()-OR-proximity gate to an ADJACENT function isn't automatically safe — position-anchor code has its own sensitivity
+
+PR #1137 decoupled several functions from combat-state-only gating (`is_engaged()`) to
+`is_engaged() OR _in_enemy_contact` — a pure-proximity flag — so a "disengaging" unit's
+soldier BODIES still physically resist an enemy even though the unit itself never fights.
+This worked cleanly for `SoldierEnemyContact.accumulate`, `_separate()`'s enemy branch, and
+the new `contact_soldier_indices()` selection: full test suite green, no regressions.
+
+Applying the IDENTICAL pattern to `Unit.position_anchor_indices()` / `near_front_soldier_
+indices()` (the selection `SoldierBodies.couple()` anchors a regiment's `position` on)
+looked like the natural, structurally-identical next step — and #783/#784 already
+established the exact real-world need (a fighting regiment's charge "rides through" a braced
+line because `couple()` dilutes its resisted front rank's signal over the whole unengaged
+block; the same dilution applies to a merely-in-contact-not-fighting unit, unfixed). It
+compiled, passed `validate`/`comments`/`units`/`chars`, and even a quick isolated live-battle
+unit test. Only running the FULL test suite (specifically `test_collision_knockback_battle.gd`,
+a live 900-tick showcase-scenario regression guard) revealed it hung INDEFINITELY (reproduced
+with a 90s timeout in isolation, never completes; the same test normally runs in ~17s).
+
+**How to apply:** two functions sharing the SAME surface pattern (a combat-state gate, a
+near-front selection) are not interchangeable in risk just because the fix mechanism looks
+identical. `Unit.ANCHOR_RANKS`' own doc comment already documents a history of subtle
+swirl/instability regressions from narrowing this SPECIFIC selection's DEPTH; widening WHICH
+UNITS qualify for it turned out to be an untested new axis on that same sensitive surface,
+not a safe copy of a pattern proven elsewhere. Before extending a validated fix to an
+adjacent function, specifically re-run any LIVE, LONG-RUNNING (not just isolated/short)
+regression tests that already exist for that function's own subsystem — a hang can hide
+behind every fast/isolated check passing. Reverted rather than root-caused under time
+pressure; tracked as issue #1136 for whoever investigates further with per-tick
+instrumentation.
+
+## Even well-documented anti-patterns get re-violated under complexity/time pressure — a targeted pre-push grep still pays for itself
+
+PR #1137's first review round found 5 real findings — two of which are mistakes THIS FILE
+already documents in detail before this PR even started: the asymmetric
+`maxf(self_reach, candidate_reach)` contact-check convention (see "A symmetric 'is X near Y'
+contact check" below) and the `demos/demo.json` shared-file-is-a-perennial-merge-conflict-
+point / use-a-per-PR-numbered-manifest convention (see "record-demos.sh DEMOS conflicts are
+ADDITIVE" above and CLAUDE.md's own demo-authoring section). Both got violated anyway,
+despite being demonstrably already in front of the session (they were even cited correctly,
+from memory, elsewhere in the SAME session's own reasoning, just not cross-checked against
+the specific lines being written).
+
+**How to apply:** having read a memory file once earlier in a session is not the same as
+re-checking it at the moment of writing the specific code it warns about. For any PR
+touching `SoldierEnemyContact`/`_separate`/proximity-style contact checks, or any PR
+touching `demos/demo.json`, grep this file for the relevant section NAME right before the
+final push (not just recall it from earlier context) — a 10-second grep is cheaper than a
+full review round. (`Lacaedemon/sparta` PR #1137, 2026-07-27.)
+
 ## A freshly-constructed test Unit defaults to morale 100 — routing tests can auto-rally instantly
 
 `Unit.gd`'s `morale` field defaults to `100.0`. A GUT test that constructs a bare `Unit`
@@ -1493,6 +1587,15 @@ for two entities with independently-valued per-side ranges, test BOTH directions
 (querier-is-longer-range and candidate-is-longer-range) rather than assuming symmetry --
 a same-magnitude test case can pass by coincidence even when the formula silently favors one
 side. (`Lacaedemon/sparta` PR #760, 2026-07-11.)
+
+**Recurred, despite this exact entry already existing:** PR #1137's own new
+`Unit._in_enemy_contact` proximity check shipped with `c_dist = attack_range + RADIUS +
+u.RADIUS` -- only the QUERYING unit's own `attack_range`, the identical one-sided mistake
+this entry already documents, in the same file's own memory the session had access to.
+Caught by review, not self-caught. Fixed the same way: `maxf(attack_range, u.attack_range)`.
+See "Even well-documented anti-patterns get re-violated under complexity/time pressure"
+above for the broader lesson about re-checking memory at write time, not just recalling it
+from earlier in the session. (`Lacaedemon/sparta` PR #1137, 2026-07-27.)
 
 ## Claiming a demo change "can't be shown visually" needs a check for existing debug-visual precedent first
 
@@ -3049,3 +3152,43 @@ sim-hash instrument this was found for, but any future test built the same
 way. (`Lacaedemon/sparta` PR #1068 / issue #1067, 2026-07-24: diagnosed with
 a throwaway per-unit diagnostic comparing body-step counts against `_tick`
 across the two passes, not guessed.)
+
+## Formation slot assignment is by ARRAY INDEX -- a recurring bug family, not a one-off
+
+`UnitFormation.block_slots` maps soldier index `i` to grid cell `i` (`file = i % files`,
+`rank = i / files`). Nothing in the reform path solves an assignment problem: there is no
+nearest-slot pairing, no angular pairing, no minimum-travel matching anywhere. So any
+reshape that changes `files` reassigns most soldiers to distant cells, and they walk there
+under the normal bounded-arrival body steering -- physically correct motion toward a
+geometrically arbitrary destination.
+
+This has now produced the same visible defect four separate times. The first three were
+each diagnosed and fixed only for their own maneuver; the fourth is still open: #541 (about-face swapped soldier identities, 0/40 held
+position), #668 (countermarch reform swapped soldiers to the opposite flank rather than
+just reversing rank order), #802 (target-slot reassignment cadence), and #1146 (the
+NORMAL -> SQUARE reform: 28% of soldiers cross the centreline, mean travel 33.8 wu, about
+2x the greedy-nearest-slot optimum, on a block only 90 wu wide once squared).
+
+**Before assuming a given reshape is safe, check whether its path has its own pairing
+logic or falls through to raw index order.** `Unit.formation_slots()` is the dispatcher.
+The square branch is bare `block_slots(...)`. The file-major branch preserves a persistent
+per-soldier file (`_sim_soldier_file`), which is the one real identity-preserving
+mechanism in the file -- and it is deliberately OFF for squares, on the stated grounds
+that `formation_files()` recomputes continuously as casualties shrink the live count so
+there is no stable file to preserve. That rationale is sound for CASUALTY REFLOW and does
+not transfer to a DELIBERATE RESHAPE, which is a discrete one-off event where a pairing
+could be computed once and held. Don't let the docstring's reasoning talk you out of
+checking the reshape case.
+
+The right primitive already exists unused for this purpose:
+`UnitFormation.sort_indices_by_angle()` pairs soldiers to ring slots by angle about the
+centroid, described in its own docstring as lining up "each live defender with the ring
+slot nearest its own actual side of the block" -- currently wired only into engaged-soldier
+selection, not into any reform's slot assignment. #547 (explicit per-soldier slot
+ownership) would subsume the whole family.
+
+Verification technique for any fix here is the per-index, local-frame comparison described
+under "The identity checks are real, but they are blind DURING a reshape" in
+`sparta-demos.md`. The scan's identity metrics do exist and work, but they only judge a
+SETTLED block -- and every one of these bugs reaches a correct end state by a wrong route,
+which is why all four instances were caught by eye rather than by a check.

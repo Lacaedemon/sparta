@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/normal-formation-melee-contact.json",
+  "caption": "Melee contact is now proximity-based, not combat-state-based, and NORMAL formation gets its own containment margin: two NORMAL-formation Infantry regiments clash into a real front-to-front line (a couple of ranks of intermixing at the boundary, not the full checkerboard interleaving the previous code produced -- see the site showcase clip and this PR's description for a before/after comparison).",
+  "fixed_fps": 30,
+  "max_frames": 540,
+  "fps": 15,
+  "width": 720
+}
