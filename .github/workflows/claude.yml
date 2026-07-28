@@ -2,7 +2,7 @@
 # NOTE: requires the CLAUDE_CODE_OAUTH_TOKEN repository secret. The calling job
 # grants write permissions so Claude can push branches and open PRs. Secrets are
 # passed explicitly (not via `secrets: inherit`) because the reusable workflow
-# lives in a different account's repo (d-morrison/gha) — `inherit` only forwards
+# lives in a different account's repo (Morrison-Lab/gha) — `inherit` only forwards
 # secrets to reusable workflows within the SAME owner/org, so across owners it
 # silently passes an empty token. SUBMODULES_TOKEN is optional (only needed when
 # checkout-submodules is enabled) and resolves to empty when unset.
@@ -31,7 +31,7 @@ jobs:
       actions: write
     # Pinned to the @v2 moving major tag — the upstream-recommended consumer pin
     # (v2 includes the Claude caller workflows).
-    uses: d-morrison/gha/.github/workflows/claude.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/claude.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
