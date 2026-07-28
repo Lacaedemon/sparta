@@ -533,6 +533,24 @@ isolated recovery case above is a GUT-test-only regression guard for now, not
 also a recordable website demo clip — sparta#657 tracks the follow-up to make
 it recordable. (`Lacaedemon/sparta` PR #654, 2026-07-04.)
 
+## Scale a demo to the minimum that still demonstrates the phenomenon
+
+Beyond isolating the phenomenon from unrelated confounds (above), also minimize the
+demo's SCALE — soldier count, unit count, formation size — to whatever is smallest
+and still shows the mechanic. A phenomenon that's fundamentally pairwise or
+per-soldier (a collision between two bodies, a single strike landing, a knockback)
+doesn't need a 100-vs-100 regiment clash to demonstrate it: two soldiers (or the
+smallest scenario the engine's spawn path supports) colliding is both easier to
+verify (fewer confounding casualties/array-compaction hazards, per this file's other
+entries on that failure mode) and easier for a reviewer to read at a glance than
+picking one interaction out of a hundred-soldier melee.
+
+Reach for a larger-scale scenario only when the phenomenon ITSELF is about scale —
+formation-wide behavior (a whole rank's morale, a regiment's shape eroding under
+casualties, inter-unit crowding) that a small scenario can't exercise at all. For a
+per-soldier physics mechanic (collision damage, a single knockback, a prone check),
+default to the smallest scenario, not the standard 5v5/100v100 battle layout.
+
 ## A hotkey rebind (merge-conflict collision fix) has THREE copies to sync, not one
 
 When resolving an `OrderMode`-enum merge collision (see `sparta.md`'s

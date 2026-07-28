@@ -292,3 +292,58 @@ func test_accumulate_caps_a_soldiers_summed_velocity_across_multiple_simultaneou
 		"sanity: the forced overlap actually produced an impulse, not a vacuous pass below")
 	assert_true(a._sim_body_vel[0].length() <= SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
 		"a soldier's summed contact impulse across multiple simultaneous enemies stays capped, not additive")
+
+
+# --- collision damage (SoldierCombat.collision_damage wired into accumulate) ---
+
+func test_accumulate_applies_collision_damage_for_a_fast_closing_pair() -> void:
+	# Two single-soldier units, in contact, closing on each other above
+	# COLLISION_DAMAGE_MIN_SPEED but not so hard it kills either soldier outright --
+	# this test is about damage being applied, not about the reap/death path
+	# (see test_accumulate_reaps_a_soldier_killed_by_collision_damage below for that).
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)   # within raw body-radius contact
+	var closing: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 0.7
+	a._sim_body_vel[0] = Vector2(closing, 0.0)   # closing on b
+	b._sim_body_vel[0] = Vector2(-closing, 0.0)  # closing on a
+	var hp_a_before: float = a._sim_soldier_hp[0]
+	var hp_b_before: float = b._sim_soldier_hp[0]
+	SoldierEnemyContact.accumulate([a, b], 90007)
+	assert_lt(a._sim_soldier_hp[0], hp_a_before, "a fast closing impact damages side a")
+	assert_lt(b._sim_soldier_hp[0], hp_b_before, "a fast closing impact damages side b")
+
+
+func test_accumulate_applies_no_collision_damage_below_the_speed_threshold() -> void:
+	# Same contact geometry, but both bodies at rest -- the pair is merely interpenetrating
+	# (the synthetic overlap-correction term still resolves a velocity impulse), which must
+	# cause zero collision damage on its own.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)
+	var hp_a_before: float = a._sim_soldier_hp[0]
+	var hp_b_before: float = b._sim_soldier_hp[0]
+	SoldierEnemyContact.accumulate([a, b], 90008)
+	assert_almost_eq(a._sim_soldier_hp[0], hp_a_before, 1e-4,
+		"ordinary low-speed contact (overlap correction only) causes no collision damage")
+	assert_almost_eq(b._sim_soldier_hp[0], hp_b_before, 1e-4,
+		"ordinary low-speed contact (overlap correction only) causes no collision damage")
+
+
+func test_accumulate_reaps_a_soldier_killed_by_collision_damage() -> void:
+	# A soldier already at the brink of death, hit by a hard enough collision, should be
+	# reaped (compacted out and counted as a casualty) the same tick -- proving the damage
+	# path is wired all the way through to SoldierMelee.reap()/UnitCombat.register_casualties,
+	# not just subtracting HP into a vacuum.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 3)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)
+	a._sim_soldier_hp[0] = 0.01   # one hard hit away from death
+	a._sim_body_vel[0] = Vector2(200.0, 0.0)
+	b._sim_body_vel[0] = Vector2(-200.0, 0.0)
+	var soldiers_before: int = a.soldiers
+	SoldierEnemyContact.accumulate([a, b], 90009)
+	assert_lt(a.soldiers, soldiers_before, "the killed soldier is reaped out of the regiment count")

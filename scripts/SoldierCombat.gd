@@ -324,6 +324,54 @@ static func brace_capacity(file_braces: PackedFloat32Array, j_cap: float = BRACE
 # This makes a braced defender recoil less and impart more recoil to the attacker.
 const FRICTION_BRACING_MULTIPLIER: float = 0.5  # bracing raises effective mass by up to 50%
 
+
+## The bracing-scaled effective mass m_eff = m * (1 + FRICTION_BRACING_MULTIPLIER * br) used
+## throughout SoldierCollision.gd's momentum-split math (bidirectional_impulse,
+## overcomes_static_friction, enemy_contact_impulse) -- extracted here so the three call
+## sites share one definition instead of repeating the formula inline. Pure; never negative.
+static func effective_mass(mass: float, brace: float) -> float:
+	return maxf(0.0, mass) * (1.0 + FRICTION_BRACING_MULTIPLIER * maxf(0.0, brace))
+
+
+# Collision damage: SoldierCollision.enemy_contact_impulse resolves closing velocity FULLY
+# INELASTICALLY (no bounce-back), which genuinely dissipates kinetic energy every tick two
+# enemy bodies are in contact -- but only a genuinely hard, fast impact converts that
+# dissipation into damage; ordinary sustained pushing (the synthetic overlap-correction term,
+# not real closing speed) never does. Scoped to real closing speed alone -- see
+# enemy_contact_impulse's own doc comment for the overlap-vs-closing distinction.
+#
+# Below this speed the dissipated KE is small (two lines merely meeting, not a charge) and
+# causes no damage. 0.5x CHARGE_REFERENCE_SPEED -- half of what the existing charge-bonus math
+# already calls "a full charge" -- so a collision only counts as damaging once it's carrying
+# real momentum, not an arbitrary unrelated number.
+const COLLISION_DAMAGE_MIN_SPEED: float = 0.5 * CHARGE_REFERENCE_SPEED
+
+# TUNED (needs playtesting): calibrated so two equal-mass, unbraced soldiers colliding at
+# exactly COLLISION_DAMAGE_MIN_SPEED take roughly one landed strike's worth of damage each
+# (~27, comparable to `wound()`'s baseline), scaling quadratically with closing speed above
+# that -- a full-charge-speed impact (closing_speed ~= CHARGE_REFERENCE_SPEED) deals close to
+# a soldier's own max_health, so getting run down by a real charge is genuinely dangerous.
+const COLLISION_DAMAGE_SCALE: float = 0.03
+
+
+## Health lost by each side of a hard collision, split by effective mass -- the reduced-mass
+## kinetic-energy loss of a fully inelastic stop (damage_a + damage_b ==
+## COLLISION_DAMAGE_SCALE * 0.5 * mu * closing_speed^2, mu the reduced mass), apportioned the
+## same way enemy_contact_impulse's own velocity split is: the lighter/less-braced side, which
+## already receives the bigger velocity change from the same impulse, also takes the bigger
+## damage share. Returns [0.0, 0.0] below COLLISION_DAMAGE_MIN_SPEED -- the call site should
+## gate on that threshold before calling (skipping the work entirely for ordinary contact),
+## but this degrades gracefully even if it doesn't. Pure; never negative.
+static func collision_damage(closing_speed: float, mass_a_eff: float, mass_b_eff: float) -> Array:
+	if closing_speed < COLLISION_DAMAGE_MIN_SPEED or mass_a_eff < 0.01 or mass_b_eff < 0.01:
+		return [0.0, 0.0]
+	var mu: float = (mass_a_eff * mass_b_eff) / (mass_a_eff + mass_b_eff)
+	var jn: float = closing_speed * mu
+	var damage_a: float = COLLISION_DAMAGE_SCALE * 0.5 * jn * jn / mass_a_eff
+	var damage_b: float = COLLISION_DAMAGE_SCALE * 0.5 * jn * jn / mass_b_eff
+	return [damage_a, damage_b]
+
+
 # Static friction: a body at rest (v < STATIC_FRICTION_VELOCITY_GATE below -- a much lower
 # bar than KINETIC_FRICTION_VELOCITY_REFERENCE, which instead governs how fast the
 # *continuous* kinetic-friction damping decays for an already-moving body, a separate

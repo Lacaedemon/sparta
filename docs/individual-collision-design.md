@@ -384,3 +384,40 @@ kinematic drive and a bounded physical response, not the drive itself yielding t
 Closing it fully needs `_move_to()` itself (or the regiment's overall kinematic advance) to
 yield to contact, not just be resisted after the fact — a change to core movement code
 shared by every unit in the game, deliberately out of scope here.
+
+## Collision damage: hard contact converts dissipated kinetic energy into health loss
+
+`SoldierCollision.enemy_contact_impulse` resolves closing velocity **fully inelastically**
+(no bounce-back — see its own doc comment) whenever two enemy soldier bodies are in
+contact. That resolution genuinely dissipates kinetic energy every tick, but until this
+section landed nothing attached a consequence to it beyond the existing skill-roll-driven
+strike damage (`SoldierCombat.wound`) — a fast, hard impact and a gentle graze arrested the
+same way as far as health was concerned.
+
+`SoldierCombat.collision_damage(closing_speed, mass_a_eff, mass_b_eff)` converts the
+reduced-mass kinetic energy a fully inelastic stop dissipates (`0.5 * mu * closing_speed^2`,
+`mu` the reduced mass) into health loss, split by effective mass the same way
+`enemy_contact_impulse`'s own velocity split already is: the lighter/less-braced side, which
+already receives the bigger velocity change from the same impulse, also takes the bigger
+damage share — no new asymmetry assumption beyond the one the velocity split already
+establishes.
+
+**Scoped to real closing speed only, above `SoldierCombat.COLLISION_DAMAGE_MIN_SPEED`** —
+never the synthetic overlap-correction term `enemy_contact_impulse` also resolves (the term
+that fires continuously whenever two bodies are merely interpenetrating, e.g. a packed,
+grinding melee line at a dead stop). Ordinary sustained pushing between two lines therefore
+causes zero extra damage; only a genuinely fast impact does.
+
+**Computed independently of the velocity-impulse pipeline**, not routed through its
+`KNOCKBACK_SPEED_MAX` cap or the torque-neutrality trim in `SoldierEnemyContact.accumulate`
+(see that file's own doc comment, and this doc's "Decisions" section, for the history of
+subtle torque-leakage bugs that trim exists to prevent). Damage is a scalar with no
+directional/torque implications, so it doesn't need to inherit that pipeline's fragility —
+`accumulate()` computes it straight from each pair's actual (untrimmed) closing velocity
+along the contact normal, applies it directly to `_sim_soldier_hp`, and reaps any resulting
+deaths once per unit after the full pass (mirroring `SoldierMelee.resolve`'s own end-of-batch
+reap).
+
+`COLLISION_DAMAGE_MIN_SPEED` and `COLLISION_DAMAGE_SCALE` are tunable constants (see
+`SoldierCombat.gd`'s own comments for the calibration reasoning); both need playtesting, not
+just derivation.

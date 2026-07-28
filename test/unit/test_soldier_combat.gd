@@ -346,6 +346,74 @@ func test_profiles_carry_per_type_mass() -> void:
 	assert_almost_eq(SoldierCombat.profile_for(false, false, true, 0.5)["mass"], 0.875, 1e-6, "archers are light")
 
 
+# --- effective mass (bracing) --------------------------------------------------
+
+func test_effective_mass_no_brace_is_bare_mass() -> void:
+	assert_almost_eq(SoldierCombat.effective_mass(2.0, 0.0), 2.0, TOL)
+
+
+func test_effective_mass_full_brace_raises_it_by_the_multiplier() -> void:
+	var expected: float = 2.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER)
+	assert_almost_eq(SoldierCombat.effective_mass(2.0, 1.0), expected, TOL,
+		"full bracing raises effective mass by FRICTION_BRACING_MULTIPLIER")
+
+
+func test_effective_mass_never_negative() -> void:
+	assert_almost_eq(SoldierCombat.effective_mass(-5.0, -1.0), 0.0, TOL,
+		"out-of-range inputs clamp, never a negative mass")
+
+
+# --- collision damage (a hard, fast contact converts dissipated KE into damage) -
+
+func test_collision_damage_below_threshold_is_zero() -> void:
+	var below: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 0.5
+	var dmg: Array = SoldierCombat.collision_damage(below, 1.0, 1.0)
+	assert_almost_eq(dmg[0], 0.0, TOL)
+	assert_almost_eq(dmg[1], 0.0, TOL)
+
+
+func test_collision_damage_at_threshold_matches_reduced_mass_ke_formula() -> void:
+	# Equal, unbraced masses: mu (reduced mass) = 0.5, so the damage splits evenly.
+	var speed: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED
+	var dmg: Array = SoldierCombat.collision_damage(speed, 1.0, 1.0)
+	var mu: float = 0.5
+	var jn: float = speed * mu
+	var expected: float = SoldierCombat.COLLISION_DAMAGE_SCALE * 0.5 * jn * jn
+	assert_almost_eq(dmg[0], expected, TOL)
+	assert_almost_eq(dmg[1], expected, TOL, "equal effective mass splits damage evenly")
+
+
+func test_collision_damage_lighter_side_takes_more() -> void:
+	var speed: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 2.0
+	var dmg: Array = SoldierCombat.collision_damage(speed, 1.0, 3.0)
+	assert_gt(dmg[0], dmg[1],
+		"the lighter effective mass -- which already takes the bigger velocity change -- also takes the bigger damage share")
+
+
+func test_collision_damage_scales_quadratically_with_closing_speed() -> void:
+	var speed: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED
+	var single: Array = SoldierCombat.collision_damage(speed, 1.0, 1.0)
+	var doubled: Array = SoldierCombat.collision_damage(speed * 2.0, 1.0, 1.0)
+	assert_almost_eq(doubled[0], single[0] * 4.0, TOL, "kinetic energy scales with the square of closing speed")
+
+
+func test_collision_damage_total_matches_reduced_mass_ke_loss() -> void:
+	var speed: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 1.5
+	var m_a: float = 1.0
+	var m_b: float = 2.0
+	var dmg: Array = SoldierCombat.collision_damage(speed, m_a, m_b)
+	var mu: float = (m_a * m_b) / (m_a + m_b)
+	var expected_total: float = SoldierCombat.COLLISION_DAMAGE_SCALE * 0.5 * mu * speed * speed
+	assert_almost_eq(dmg[0] + dmg[1], expected_total, TOL,
+		"total damage equals the reduced-mass KE loss of a fully inelastic stop")
+
+
+func test_collision_damage_never_negative() -> void:
+	var dmg: Array = SoldierCombat.collision_damage(-10.0, 1.0, 1.0)
+	assert_almost_eq(dmg[0], 0.0, TOL)
+	assert_almost_eq(dmg[1], 0.0, TOL)
+
+
 func test_knockback_impulse_baseline() -> void:
 	# lethality 1, no charge, mass 1, landed -> the base scale.
 	assert_almost_eq(SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, 1.0),

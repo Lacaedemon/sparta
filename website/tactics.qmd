@@ -320,6 +320,21 @@ A cluster of prone soldiers in the front rank is a warning sign: your line is ti
 outmatched there, and each fallen body briefly opens a gap in your defence before they
 can rise.
 
+## Collision damage
+
+A hard, fast impact --- not just a landed blow --- can wound. When two soldiers
+collide at real speed (a charge slamming into a line, not just two ranks pressed
+together), the force of the collision itself deals damage on top of whatever a
+weapon lands. A gentle, slow-closing press between two locked lines causes no
+extra harm this way --- it takes genuine speed behind the hit.
+
+The lighter or less-braced side of a hard collision takes the worse damage, the
+same way it already takes the bigger shove: a braced, heavy line shrugs off an
+impact that would badly hurt an unbraced or lightly-built soldier caught the same
+way. This is part of why riding a charge into a set line is so costly for the
+attacker if the charge doesn't break through cleanly --- the impact itself hurts
+both sides, and the braced defender comes off better.
+
 ## Line width (frontage)
 
 You set how wide each regiment fights --- <kbd>[</kbd> and <kbd>]</kbd> step the
