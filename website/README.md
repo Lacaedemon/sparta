@@ -54,7 +54,7 @@ per-PR state-transcript diff, so a new clip joins both automatically).
 Pushing to `main` (touching `website/**` or game code) triggers `publish-site.yml`.
 Its `demos` job records the clips and uploads them as an artifact; its `publish`
 job calls the shared reusable workflow
-[`d-morrison/gha/.github/workflows/quarto-publish.yml@v2`](https://github.com/d-morrison/gha),
+[`Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2`](https://github.com/Morrison-Lab/gha),
 which pulls that artifact into `website/media`, renders the Quarto project, and
 deploys to the `gh-pages` branch. The render/deploy logic lives in `gha` (reused
 across SERG Quarto repos), not hand-rolled here.

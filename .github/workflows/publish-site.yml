@@ -2,7 +2,7 @@
 # GitHub Pages. The site embeds gameplay demo clips, so a first job records a
 # couple of deterministic replays headlessly (Godot Movie Maker -> ffmpeg ->
 # mp4 + poster) and uploads them as an artifact; the publish job (the reusable
-# d-morrison/gha quarto-publish workflow) pulls that artifact in before render.
+# Morrison-Lab/gha quarto-publish workflow) pulls that artifact in before render.
 # So no binaries live in git and the clips always reflect the current main build.
 #
 # One-time setup: in repo Settings -> Pages, set "Source" to "Deploy from a
@@ -89,7 +89,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  # Render + deploy via the shared reusable workflow (d-morrison/gha). It checks
+  # Render + deploy via the shared reusable workflow (Morrison-Lab/gha). It checks
   # out the repo, pulls the demo-media artifact into website/media, renders the
   # Quarto project, and deploys to the gh-pages branch. Runs even if the demos
   # job flaked. As of gha v2 the deploy pushes to gh-pages (not the Pages
@@ -99,7 +99,7 @@ jobs:
     if: always() && github.repository == 'Lacaedemon/sparta'
     permissions:
       contents: write
-    uses: d-morrison/gha/.github/workflows/quarto-publish.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2
     with:
       path: website
       pre-render-artifact: demo-media

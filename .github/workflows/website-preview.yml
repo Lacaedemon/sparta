@@ -5,7 +5,7 @@
 # (read-only build vs. privileged deploy) is the trust boundary -- never merge
 # the two into one job.
 #
-# Three-part family (mirrors d-morrison/gha's own setup):
+# Three-part family (mirrors Morrison-Lab/gha's own setup):
 #   website-preview.yml          <- this file (build; runs on pull_request)
 #   website-preview-deploy.yml   <- deploy (workflow_run, base-repo context)
 #   website-preview-cleanup.yml  <- weekly teardown of merged/closed previews
@@ -29,7 +29,7 @@ on:
 
 jobs:
   build:
-    uses: d-morrison/gha/.github/workflows/preview.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/preview.yml@v2
     with:
       path: website
       use-renv: false
