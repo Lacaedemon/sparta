@@ -1221,3 +1221,43 @@ nearest-slot pairing over the same start positions and target slots -- greedy is
 bound on optimal, so if the actual assignment costs ~2x greedy, most of the movement is
 churn rather than geometry. (Recurred as #541 about-face, #668 countermarch, #802
 target-slot cadence, #1146 square reform. Route-aware metric tracked as #1149.)
+
+## A caption claiming an ON-SCREEN effect must be checked against the render path, not inferred from the sim change
+
+The existing caption-accuracy entries cover claims about per-tick SIM values (verify against the
+transcript, not a local dump). A distinct and easier mistake: asserting that a change will look
+a particular way on screen, when nothing in the diff touches the code that draws it.
+
+Concretely: a demo staged with `Settings.show_engaged_highlight` was captioned as showing the
+amber tint "sitting on the contact rank instead of covering both blocks end to end" -- describing
+a newly narrowed physics tier. But that overlay is fed by `engaged_soldier_indices()` inside
+`Unit._refresh_flock_render()`, which the change deliberately left alone, so the tint kept
+covering both whole blocks exactly as before. The claim was invented from what the sim change
+did, never checked against what the renderer reads. Caught by review.
+
+**How to apply:** before writing any caption sentence about what a viewer will SEE, grep the diff
+for the render path that produces it (`git diff <base>...HEAD -- scripts/ | grep -c
+'_refresh_flock_render\|show_engaged_highlight\|_draw'`). A zero count means the visual is
+unchanged and the caption must not claim otherwise. When the change genuinely has no on-screen
+representation, say so plainly and point at what IS visible instead -- here, the formation's own
+rank/file order. Rewiring a dev overlay to make a caption true is the wrong fix: it changes what
+an existing debug visual means, for the sake of prose.
+
+## Read the website demo-diff's WHOLE defect-delta table, not just the flagged rows
+
+`website-demo-diff.yml` flags only clips where a defect fires on the PR side but not the
+merge-base -- by construction, only the rows that got WORSE. Reading just those gives a
+systematically pessimistic view of a change that moves sim behaviour broadly, and can make a
+net improvement look like a regression.
+
+Concretely: a core melee-dynamics change was flagged with 4 candidate-regression clips. Tallying
+every row instead showed 10 defect instances CLEARED across 7 clips (three going fully clean)
+against 6 added across 4 -- net 4 fewer, 7 improved vs 4 degraded. That accounting was also the
+strongest available evidence against a specific regression hypothesis: a systematic force acting
+from first contact would degrade broadly and in one direction, and could not clear ten instances
+across seven unrelated clips. Per-clip before/after sampling had been suggestive; the whole-table
+tally was decisive.
+
+**How to apply:** when the diff flags several clips, tally cleared-vs-added across the full table
+before classifying anything, and put the net accounting in the PR description. The flagged rows
+tell you where to look first, not what the change did overall.
