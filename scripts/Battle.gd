@@ -2111,16 +2111,23 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				# promoted (retire_current_order -> _start_promoted_move).
 				var leg := Order.new_move(point, mode, gait, false)
 				# Only a NORMAL-stance plain move gets the disengage-time policy -- see
-				# ENGAGED_FRACTION_CANCELS_MOVE's own doc comment. Reset the peak tracker here,
-				# at issue time: a fresh guarded order's own disengage decision must not inherit
-				# a stale reading from whatever this unit was doing before this leg was queued.
+				# ENGAGED_FRACTION_CANCELS_MOVE's own doc comment.
 				if mode == OrderMode.NORMAL:
 					leg.with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, ENGAGED_FRACTION_CANCELS_MOVE)
-					u._move_order_peak_engaged_fraction = 0.0
 				u.append_order(leg)
-				if u.current_order == leg and not u.has_move_target:
-					u.move_target = point
-					u.has_move_target = true
+				if u.current_order == leg:
+					# Reset the peak tracker only once this leg actually becomes current: an
+					# idle unit's leg is promoted right here, so this is issue-time for it. A
+					# busy unit's leg stays queued behind whatever order is still running --
+					# resetting unconditionally would clobber that OTHER, still-current order's
+					# own unconsumed peak (it's tracked per-unit, but logically belongs to
+					# whichever order is actually current). This leg's own peak starts fresh
+					# whenever it's later promoted instead (Unit._start_promoted_move).
+					if mode == OrderMode.NORMAL:
+						u._move_order_peak_engaged_fraction = 0.0
+					if not u.has_move_target:
+						u.move_target = point
+						u.has_move_target = true
 			else:
 				# Choose the drill maneuver for a plain move (a form-up commands its own
 				# facing, so it never side-steps). A small lateral shift holds facing and

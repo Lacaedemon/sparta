@@ -90,6 +90,38 @@ func test_an_appended_waypoint_leg_also_resets_the_peak_engaged_fraction() -> vo
 	assert_eq(u._move_order_peak_engaged_fraction, 0.0)
 
 
+func test_appending_a_waypoint_behind_a_still_busy_order_does_not_clobber_its_peak() -> void:
+	# Regression test: an earlier version reset the peak unconditionally on append, even when
+	# the leg does NOT become current (a busy unit just queues it) -- clobbering the unrelated,
+	# still-current order's own unconsumed reading, which belongs to a real fight in progress.
+	var u := _make_unit()
+	u.uid = 1
+	var enemy := _make_unit()
+	enemy.uid = 2
+	enemy.team = 1
+	var current := Order.new_move(Vector2(1000, 0)).with_guard(
+			Order.Guard.ENGAGED_FRACTION_ABOVE, BattleScript.ENGAGED_FRACTION_CANCELS_MOVE)
+	u.set_current_order(current)
+	u.has_move_target = true
+	u.move_target = Vector2(1000, 0)
+	u._move_order_peak_engaged_fraction = 0.6   # a real fight already happened under this order
+	var b := _battle([u, enemy])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0,
+		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.NORMAL})
+	assert_eq(u.current_order, current,
+		"the unit is still busy with its original order -- the appended leg only queues")
+	assert_eq(u._move_order_peak_engaged_fraction, 0.6,
+		"the still-current order's own unconsumed peak must survive an unrelated append")
+	# Promoting the queued leg (the original order finishing/being interrupted) resets the
+	# peak fresh for the leg's OWN disengage decision -- it must not inherit the 0.6 that
+	# belonged to the order it's replacing.
+	u.retire_current_order()
+	assert_eq(u.current_order.type, Order.Type.MOVE)
+	assert_ne(u.current_order, current)
+	assert_eq(u._move_order_peak_engaged_fraction, 0.0,
+		"the newly-promoted leg starts its own disengage tracking from zero")
+
+
 # --- Already-committed stances keep their own behavior, no auto-cancel guard -------------
 
 func test_a_hold_stance_move_does_not_get_the_engaged_fraction_guard() -> void:

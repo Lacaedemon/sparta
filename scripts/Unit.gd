@@ -1295,9 +1295,18 @@ func _apply_promoted_stance() -> void:
 ## flight. Phase stays NONE -- a queued leg is a plain march, exactly like a Battle-committed
 ## plain move; the phased (rear-move) composite is only ever built on a fresh order at the
 ## apply site. No-op for every other order kind, an already-marching unit, or a phased order.
+##
+## Also resets _move_order_peak_engaged_fraction for a guarded leg promoted here: a leg queued
+## behind a still-busy unit (Battle._apply_order_cmd's append branch) deliberately does NOT
+## reset the peak at issue time, since the tracker is per-unit but the value logically belongs
+## to whichever order is actually current -- resetting then would clobber the still-running
+## order's own unconsumed reading. This leg's own disengage decision must not inherit whatever
+## that prior order accumulated, so it starts fresh exactly when it becomes current instead.
 func _start_promoted_move() -> void:
 	if current_order == null or current_order.type != Order.Type.MOVE:
 		return
+	if current_order.guard == Order.Guard.ENGAGED_FRACTION_ABOVE:
+		_move_order_peak_engaged_fraction = 0.0
 	if has_move_target or current_order.phase != Order.Phase.NONE:
 		return
 	move_target = current_order.target_pos
@@ -6325,6 +6334,7 @@ func to_snapshot_dict() -> Dictionary:
 		"engage_turn_start_facing": _engage_turn_start_facing,
 		"engage_turn_old_files": _engage_turn_old_files,
 		"reform_on_arrival": _reform_on_arrival,
+		"move_order_peak_engaged_fraction": _move_order_peak_engaged_fraction,
 
 		# Unit references, resolved by uid after every unit in the snapshot is restored.
 		"target_enemy_uid": target_enemy.uid if is_instance_valid(target_enemy) else -1,
@@ -6440,6 +6450,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_engage_turn_start_facing = d["engage_turn_start_facing"]
 	_engage_turn_old_files = int(d["engage_turn_old_files"])
 	_reform_on_arrival = bool(d["reform_on_arrival"])
+	_move_order_peak_engaged_fraction = float(d["move_order_peak_engaged_fraction"])
 
 	var restored: Array[Order] = []
 	for od in d.get("orders", []):
