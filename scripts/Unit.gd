@@ -4677,6 +4677,12 @@ const ENGAGED_LINGER: float = 0.5
 # doesn't bind for any current loadout; it exists purely as a future-proofing ceiling.
 const ENGAGED_RANKS_CAP: int = 6
 
+# Ceiling on body_tier_ranks()'s geometry-derived depth, mirroring ENGAGED_RANKS_CAP's role
+# for engaged_ranks(): a future formation with an extremely compressed rank pitch can't blow
+# the body-dynamics tier out to arbitrary depth. No current loadout/formation reaches it
+# (TESTUDO, the tightest, computes to 2).
+const BODY_TIER_RANKS_CAP: int = 3
+
 # Soldier->regiment coupling (phase 5): each tick the regiment center slides a fraction
 # FOLLOW_RATE*delta of the way toward its soldiers' centroid (geometric decay, stable for
 # FOLLOW_RATE*delta < 1; ~10%/tick at 60 Hz). The step is capped at MAX_FOLLOW_SPEED*delta
@@ -4888,11 +4894,82 @@ func contact_soldier_indices(count: int) -> PackedInt32Array:
 	return _select_near_front_indices(count)
 
 
+## Which of this regiment's own soldiers get ENGAGED BODY DYNAMICS in SoldierBodies.step()
+## -- the same combat-state gate and the same near-front geometry as
+## engaged_soldier_indices(), but scoped to BODILY contact depth (body_tier_ranks) rather
+## than weapon-reach depth -- so a real unengaged bulk always remains.
+##
+## Why this is a SEPARATE selector rather than a reuse of engaged_soldier_indices(): the two
+## answer different questions, and only one of them is about weapon reach.
+##
+## engaged_soldier_indices() answers "who can STRIKE", so engaged_ranks() derives its depth
+## from the regiment's own reach -- correctly: a spear phalanx really does project six ranks
+## of points into contact, and all six deal and take blows.
+##
+## SoldierBodies.step() asks something else: whose BODY is being shoved around by the enemy
+## line. That is a question about body geometry, not reach -- a sixth-rank spearman strikes
+## past five files of his own men without anything touching him -- so it takes
+## body_tier_ranks() below. Answering it with reach conflates the two: a block shallower than
+## its own reach depth (a 40-man, 9-file spear regiment is 5 ranks deep against an engaged
+## depth of 6) has EVERY soldier "engaged", which is right for melee and wrong here, because
+## step()'s engaged branch is written relative to an unengaged bulk -- see
+## BODY_TIER_RANKS_CAP's neighbouring commentary and this function's callers.
+##
+## Same class of split as contact_soldier_indices() above: one selection geometry, several
+## consumers, each with its own gate and its own depth.
+##
+## Deliberately NOT memoized the way engaged_soldier_indices() is, for the same reason
+## contact_soldier_indices() isn't: that cache exists to spare its SEVERAL same-tick callers
+## (SoldierMelee, SoldierEncirclement, OrderGuards -- SoldierBodies took the split below and
+## no longer calls it) a repeat of one selection,
+## whereas this has a single caller and so would compute exactly once per unit per tick with
+## or without a cache. The cost this does add is that one bounded heap selection -- the same
+## O(n log k) shape the melee tier's own selection already runs, and below the benchmark's
+## noise floor in practice.
+func body_tier_soldier_indices(count: int) -> PackedInt32Array:
+	if not is_engaged() or count <= 0:
+		return PackedInt32Array()
+	return _select_near_front_indices(count, body_tier_cap(count))
+
+
+## How many ranks deep this regiment's soldiers are actually in BODILY contact with an enemy
+## line pressed against its front -- as opposed to engaged_ranks()'s reach-derived "can strike"
+## depth. Contact is a body-geometry question: a soldier is only shoved by what physically
+## touches him, so the depth is how many ranks one body DIAMETER spans at this formation's own
+## rank pitch. At the standard 0.45 m pitch a 0.45 m body spans exactly one rank -- only the
+## front rank is in contact. A formation that compresses its ranks below a body diameter
+## (SHIELD_WALL at 0.75, TESTUDO at 0.6) genuinely puts a second rank in contact, and this
+## reports that; cavalry's roomy 3.0 m rank pitch keeps a 1 m horse to a single rank.
+##
+## Derived from the same dumped constants everything else in the soldier layer scales off, so
+## a retune of body size or formation spacing retunes this with it rather than desyncing from
+## a hand-picked rank count.
+func body_tier_ranks() -> int:
+	var diameter: float = soldier_body_radius() * 2.0
+	return clampi(ceili(diameter / maxf(rank_pitch_wu(), 0.01)), 1, BODY_TIER_RANKS_CAP)
+
+
+## The most soldiers body_tier_soldier_indices() may select: its body-contact depth in ranks,
+## converted to a head count. Expressed as a COUNT rather than a rank depth so it also bounds
+## Square/Schiltron's perimeter selection -- which has no rank concept -- on the same terms as
+## the line grid's.
+func body_tier_cap(count: int) -> int:
+	var files: int = maxi(1, formation_files(count))
+	return maxi(1, mini(count, files * body_tier_ranks()))
+
+
 ## Pure geometry: which near-front (or, in_square(), near-threat/perimeter) soldier
 ## indices to select, given this regiment already qualifies for soldier-level resolution.
-## Shared by engaged_soldier_indices() (combat-state-gated) and contact_soldier_indices()
-## (proximity-gated) so both use identical selection logic -- only the GATE differs.
-func _select_near_front_indices(count: int) -> PackedInt32Array:
+## Shared by engaged_soldier_indices() (combat-state-gated), contact_soldier_indices()
+## (proximity-gated) and body_tier_soldier_indices() (combat-state-gated, capped) so all
+## three use identical selection logic -- only the GATE and the cap differ.
+##
+## `max_selected` bounds how many indices come back; -1 (the default) means "no bound", the
+## historical behaviour every caller but body_tier_soldier_indices() still wants. A bound is
+## applied by NARROWING the selection itself, not by trimming the result, so what comes back
+## is still the most-forward (or, in square, most-exposed) soldiers rather than an arbitrary
+## subset -- both underlying selections take the target count as an input.
+func _select_near_front_indices(count: int, max_selected: int = -1) -> PackedInt32Array:
 	if in_square():
 		var all_units: Array = get_tree().get_nodes_in_group("units")
 		all_units.append_array(get_tree().get_nodes_in_group("routers"))
@@ -4904,14 +4981,28 @@ func _select_near_front_indices(count: int) -> PackedInt32Array:
 			if SoldierEnemyProximity.has_enemy_within(_sim_soldier_pos[i], team, r, reach):
 				threatened.push_back(i)
 		if not threatened.is_empty():
-			return threatened
+			# An unbounded caller takes the threatened set as-is. A bounded one narrows it
+			# to its most exposed members -- but only ever WITHIN the threatened set, never
+			# by re-selecting over the whole block. Under a one-sided press a square can
+			# have far more soldiers in reach than the body tier admits, and ranking the
+			# whole block by centroid distance there would return corner men with nothing
+			# near them while dropping men actually in contact: the exact inverse of what
+			# this selection means, and a violation of body_tier ⊆ engaged_tier.
+			if max_selected < 0 or threatened.size() <= max_selected:
+				return threatened
+			return UnitFormation.most_exposed_among(
+					_sim_soldier_pos, threatened, max_selected)
 		var square_file_count: int = formation_files(count)
 		var ring_size: int = 0
 		for i in range(count):
 			if UnitFormation.square_is_perimeter(i, count, square_file_count):
 				ring_size += 1
+		if max_selected >= 0:
+			ring_size = mini(ring_size, max_selected)
 		return UnitFormation.live_perimeter_indices(_sim_soldier_pos, ring_size)
 	var cutoff: int = mini(count, formation_files(count) * engaged_ranks())
+	if max_selected >= 0:
+		cutoff = mini(cutoff, max_selected)
 	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
 	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
 	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)

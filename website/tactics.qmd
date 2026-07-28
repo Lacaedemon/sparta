@@ -458,6 +458,32 @@ one soldier going down doesn't open a seam. Normal order holds a couple of ranks
 of the line before it starts to give; Loose order has no such discipline, so
 soldiers there can end up more deeply mixed with the enemy.
 
+Only the men actually in bodily contact get shoved about by the fighting.
+A spear reaches several ranks deep, so rank-four and rank-five spearmen
+strike over the heads of the men in front --- but nothing is touching them,
+so they go on dressing their ranks normally while the contact rank absorbs
+the shoving. That is what lets a formation stay a formation through a long
+grind instead of dissolving into a mob: the ranks behind the fighting hold
+the shape the front rank recovers back into. A block packed tightly enough
+that its ranks stand closer than a man is wide --- Shield Wall and Testudo
+--- genuinely puts a second rank in contact, and gives ground accordingly.
+
+::: {#fig-phalanx-holds-ranks .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/phalanx_holds_ranks.jpg">
+  <source src="media/phalanx_holds_ranks.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two spear phalanxes grind head-on. Only the contact rank is shoved about,
+so the ranks behind it keep their files and the blocks stay recognisable
+formations rather than dissolving into a mob.
+:::
+
 ::: {#fig-formation-shift-reverse .demo}
 
 ```{=html}

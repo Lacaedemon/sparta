@@ -481,6 +481,58 @@ func test_live_perimeter_indices_degenerate_inputs() -> void:
 		"target_count beyond the array size is clamped to the array size")
 
 
+func test_most_exposed_among_only_ever_returns_candidates() -> void:
+	# The whole point of the restricted form: index 0 is by far the most centroid-distant
+	# point, but it is not a candidate, so it must never be picked no matter how exposed it
+	# is. Ranking over the whole array instead would return it -- the bug this replaced.
+	var positions := PackedVector2Array([
+		Vector2(100, 0), Vector2(1, 0), Vector2(4, 0), Vector2(-1, 0), Vector2(-2, 0)])
+	var candidates := PackedInt32Array([1, 2, 3, 4])
+	var out := UnitFormation.most_exposed_among(positions, candidates, 2)
+	assert_eq(out.size(), 2, "returns exactly target_count")
+	for i in out:
+		assert_ne(i, 0, "the non-candidate outlier is never selected")
+		assert_true(candidates.has(i), "every returned index came from the candidate set")
+
+
+func test_most_exposed_among_picks_the_farthest_within_the_candidate_set() -> void:
+	# Exposure is still measured from the WHOLE block's centroid, not the candidates' own --
+	# the subset filters who may be picked, it does not move the middle.
+	var positions := PackedVector2Array([
+		Vector2(0, 0), Vector2(1, 0), Vector2(2, 0), Vector2(3, 0), Vector2(10, 0)])
+	var centroid := Vector2.ZERO
+	for p in positions:
+		centroid += p
+	centroid /= float(positions.size())
+	# Candidates exclude the farthest point (index 4); among the rest, index 0 sits farthest
+	# from that whole-array centroid (3.2, 0).
+	var out := UnitFormation.most_exposed_among(positions, PackedInt32Array([0, 1, 2, 3]), 1)
+	assert_eq(out.size(), 1)
+	assert_eq(out[0], 0, "the most centroid-distant CANDIDATE wins")
+
+
+func test_most_exposed_among_skips_out_of_range_candidate_indices() -> void:
+	# A candidate list built before a casualty compaction can name indices that no longer
+	# exist; those are skipped rather than read out of bounds, degrading to a smaller
+	# selection instead of crashing.
+	var positions := PackedVector2Array([Vector2(1, 0), Vector2(2, 0), Vector2(3, 0)])
+	var out := UnitFormation.most_exposed_among(
+		positions, PackedInt32Array([-1, 0, 2, 7, 99]), 5)
+	assert_eq(out.size(), 2, "only the two in-range candidates survive")
+	for i in out:
+		assert_true(i >= 0 and i < positions.size(), "no out-of-range index is returned")
+
+
+func test_most_exposed_among_degenerate_inputs() -> void:
+	var positions := PackedVector2Array([Vector2(1, 0), Vector2(2, 0)])
+	assert_eq(UnitFormation.most_exposed_among(
+		PackedVector2Array(), PackedInt32Array([0]), 2).size(), 0, "no positions -> nothing")
+	assert_eq(UnitFormation.most_exposed_among(
+		positions, PackedInt32Array([0, 1]), 0).size(), 0, "target_count <= 0 -> nothing")
+	assert_eq(UnitFormation.most_exposed_among(
+		positions, PackedInt32Array(), 2).size(), 0, "no candidates -> nothing")
+
+
 func test_live_perimeter_indices_matches_a_brute_force_full_sort() -> void:
 	# The real implementation is a bounded min-heap (O(n log target_count)), not a full sort
 	# of every soldier -- differential test against a brute-force reference (sort every index

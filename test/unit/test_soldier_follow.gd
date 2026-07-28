@@ -270,11 +270,15 @@ func test_engaged_target_pairing_holds_fixed_within_the_reassignment_interval() 
 	# driven by hand, exactly like every other test in this file.
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(DELTA)
-	assert_eq(u.engaged_soldier_indices(6).size(), 6, "sanity: all 6 are engaged")
+	assert_eq(u.engaged_soldier_indices(6).size(), 6, "sanity: all 6 are in the melee tier")
 	SoldierBodies.step(u, DELTA)
 	var first_engaged: PackedInt32Array = u._engaged_target_pairing_engaged.duplicate()
 	var first_canonical: PackedInt32Array = u._engaged_target_pairing_canonical.duplicate()
-	assert_eq(first_engaged.size(), 6, "the first call computes and records a pairing")
+	# Sized against the narrower BODY-CONTACT tier the pairing actually covers, not the melee
+	# tier asserted above -- see Unit.body_tier_ranks.
+	assert_eq(first_engaged.size(), u.body_tier_soldier_indices(6).size(),
+		"the first call computes and records a pairing")
+	assert_gt(first_engaged.size(), 0, "sanity: the recorded pairing is non-empty")
 	# Swap two live body positions -- if the pairing were recomputed fresh every tick, this
 	# would change which canonical slot each swapped body pairs with.
 	var tmp: Vector2 = u._sim_soldier_pos[0]
@@ -314,13 +318,22 @@ func test_engaged_target_pairing_recomputes_immediately_after_a_casualty() -> vo
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(DELTA)
 	SoldierBodies.step(u, DELTA)
-	assert_eq(u._engaged_target_pairing_engaged.size(), 6, "sanity: the first pairing covers all 6 bodies")
+	# Sized against the BODY-CONTACT tier, not the whole block: SoldierBodies.step() pairs
+	# body_tier_soldier_indices(), which is deliberately narrower than the melee tier so an
+	# unengaged bulk always remains (Unit.body_tier_ranks). Read the expected width from the
+	# selector rather than hard-coding it, so this test keeps checking the cache-invalidation
+	# behaviour it is actually about if that geometry is ever retuned.
+	assert_eq(u._engaged_target_pairing_engaged.size(), u.body_tier_soldier_indices(6).size(),
+		"sanity: the first pairing covers the body-contact tier")
 	u._sim_soldier_hp[0] = 0.0
 	SoldierMelee.reap(u, u)
 	assert_eq(u.soldiers, 5, "sanity: one soldier fell")
 	SoldierBodies.step(u, DELTA)   # same physics frame -- no await needed
-	assert_eq(u._engaged_target_pairing_engaged.size(), 5,
+	assert_eq(u._engaged_target_pairing_engaged.size(), u.body_tier_soldier_indices(5).size(),
 		"the pairing recomputes immediately against the post-casualty count, not on the old cache")
+	for idx in u._engaged_target_pairing_engaged:
+		assert_lt(idx, 5,
+			"a recomputed pairing only references bodies that still exist post-compaction")
 
 
 func test_engaged_target_pairing_resets_on_full_disengage_then_recomputes_on_re_engage() -> void:
@@ -335,7 +348,11 @@ func test_engaged_target_pairing_resets_on_full_disengage_then_recomputes_on_re_
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(DELTA)
 	SoldierBodies.step(u, DELTA)   # engage: computes and caches the pairing
-	assert_eq(u._engaged_target_pairing_engaged.size(), 6, "sanity: the first pairing covers all 6 bodies")
+	# Body-contact tier width, not the whole block -- see the casualty test above.
+	var tier_width: int = u.body_tier_soldier_indices(6).size()
+	assert_gt(tier_width, 0, "sanity: an engaged unit fields a body-contact tier")
+	assert_eq(u._engaged_target_pairing_engaged.size(), tier_width,
+		"sanity: the first pairing covers the body-contact tier")
 	# Fully disengage.
 	u._engaged_linger = 0.0
 	assert_false(u.is_engaged(), "sanity: the unit is no longer engaged")
@@ -348,7 +365,7 @@ func test_engaged_target_pairing_resets_on_full_disengage_then_recomputes_on_re_
 	u.tick_engaged(DELTA)
 	await get_tree().physics_frame
 	SoldierBodies.step(u, DELTA)
-	assert_eq(u._engaged_target_pairing_engaged.size(), 6,
+	assert_eq(u._engaged_target_pairing_engaged.size(), tier_width,
 		"re-engaging forces a fresh pairing instead of reusing the stale cache from the prior" +
 		" engagement")
 
