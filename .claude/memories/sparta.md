@@ -2301,10 +2301,11 @@ velocity-impulse pipeline (the multi-pair torque-neutral trim, the per-tick `KNO
 cap). Review found the independent recompute had re-derived, and gotten wrong, THREE separate
 properties the velocity pipeline already gets right:
 
-1. **No cap across a soldier's simultaneous contacts** -- exactly the "multi-pair force
-   accumulation needs a write-back clamp" bug class two sections above, just on the new damage
-   channel instead of the velocity one. The velocity pipeline has `body_trim_scale` + a final
-   safety-net clamp specifically for this; the parallel damage formula had no equivalent.
+1. **No cap across a soldier's simultaneous contacts** -- exactly the "Multi-pair force
+   accumulation needs a write-back clamp, not just a per-pair cap" bug class documented earlier
+   in this file, just on the new damage channel instead of the velocity one. The velocity
+   pipeline has `body_trim_scale` + a final safety-net clamp specifically for this; the parallel
+   damage formula had no equivalent.
 2. **No memory across ticks during a multi-tick arrest** -- exactly the "compounds ACROSS TICKS"
    bug class immediately above, again just on damage instead of velocity. A fast pair takes
    several ticks to fully arrest (the impulse pipeline caps velocity reduction at

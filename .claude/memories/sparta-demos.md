@@ -553,29 +553,39 @@ default to the smallest scenario, not the standard 5v5/100v100 battle layout.
 
 **Caveat, discovered building the collision-damage demo (#1142/PR #1143): a genuine
 1-vs-1 (or few-soldier) matchup can be TOO minimal for a mechanic gated on actual
-body-to-body proximity, because melee STRIKE resolution fires at a much longer range
-first.** `Unit._in_enemy_contact` (and the melee-strike path it gates) triggers at
-`attack_range + 2*Unit.RADIUS` — roughly 60-70 world units for common types, since
-`Unit.RADIUS` is a flat per-REGIMENT footprint constant (18 wu), not a per-soldier
-body radius. A lone or small-count target's whole HP pool is thin enough that a
-single charge-bonus-amplified strike at THAT range can wipe it out entirely — with
-zero cost to the attacker — long before the two soldiers' actual `_sim_soldier_pos`
-values ever converge to the much tighter distance (`sradii[a]+sradii[b]+containment`,
-typically ~10-20 wu) genuine collision-physics contact (`SoldierEnemyContact.
-accumulate`) requires. Tried repeatedly (1, 3, 4, 6, 10, 12 soldiers per side, cavalry
-vs infantry AND cavalry vs cavalry) and reproduced identically every time, confirmed
-via `git stash` to be pre-existing on unmodified `main`, not caused by the feature
-being demoed — filed as issue #1151 rather than blocking the demo work on fixing it.
+body-to-body proximity, because melee STRIKE engagement fires at a much longer range
+first.** The strike/engagement gate in `Unit._think()` triggers at `attack_range +
+RADIUS + enemy.RADIUS` — roughly 60-70 world units for common types, one-sided (only
+the querying unit's own `attack_range`), since `Unit.RADIUS` is a flat per-REGIMENT
+footprint constant (18 wu), not a per-soldier body radius. (This is a DIFFERENT check
+from `Unit._in_enemy_contact`, which correctly uses `maxf(attack_range,
+u.attack_range) + RADIUS + u.RADIUS` — see "A symmetric 'is X near Y' contact check
+needs BOTH sides' own range" in `sparta.md` — `_in_enemy_contact` gates physical
+collision selection, not the strike path.) A lone or small-count target's whole HP
+pool is thin enough that a single charge-bonus-amplified strike at THAT range
+*could* wipe it out entirely with zero cost to the attacker, long before the two
+soldiers' actual `_sim_soldier_pos` values ever converge to the much tighter
+distance (`sradii[a]+sradii[b]+containment`, typically ~10-20 wu) genuine
+collision-physics contact (`SoldierEnemyContact.accumulate`) requires — **but the
+exact mechanism behind the observed wipe is UNCONFIRMED** (see #1151, still open):
+the symptom (a symmetric 10v10 Cavalry matchup, one whole regiment vanishing in one
+tick with the OTHER side reporting zero HP loss) doesn't cleanly fit a single-strike
+story either, so a still-regiment-level casualty/morale-authority path or a
+`_check_victory()` edge case remain live alternative explanations. The reproducible
+OBSERVATION is solid (tried 1, 3, 4, 6, 10, 12 soldiers per side, cavalry vs infantry
+AND cavalry vs cavalry, identical every time, confirmed via `git stash` to be
+pre-existing on unmodified `main`) — only the CAUSE is still open.
 
 **How to apply:** before committing to a "smallest possible" scenario for a mechanic
-gated on genuine body PROXIMITY (not just being in the SAME battle), check whether a
-devastating first strike could resolve the fight before proximity is ever reached —
-particularly for any matchup involving a charge-bonus attacker (cavalry) against a
-target with few enough soldiers that one hit threatens its whole HP pool. If so, "the
-minimum that still demonstrates the phenomenon" is a modest few-soldier-DEPTH
-scenario (enough survivors that the fight continues past the opening strikes and
-bodies actually close to real contact range), not a literal 1v1 — still far smaller
-than a full regiment clash, but not the absolute floor either.
+gated on genuine body PROXIMITY (not just being in the SAME battle), check whether
+the fight could resolve entirely before proximity is ever reached — particularly for
+any matchup involving a charge-bonus attacker (cavalry) against a target with few
+enough soldiers that a single engagement threatens its whole HP pool, or its whole
+regiment (per #1151's still-unconfirmed mechanism). If so, "the minimum that still
+demonstrates the phenomenon" is a modest few-soldier-DEPTH scenario (enough
+survivors that the fight continues past the opening exchanges and bodies actually
+close to real contact range), not a literal 1v1 — still far smaller than a full
+regiment clash, but not the absolute floor either.
 
 ## A hotkey rebind (merge-conflict collision fix) has THREE copies to sync, not one
 
