@@ -16,6 +16,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Spearmen 1",
@@ -76,6 +77,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "IDLE",
           "morale": 100.0,
           "name": "Spearmen 2",
@@ -141,6 +143,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Spearmen 1",
@@ -201,6 +204,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "IDLE",
           "morale": 100.0,
           "name": "Spearmen 2",
@@ -266,6 +270,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Spearmen 1",
@@ -326,6 +331,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Spearmen 2",
@@ -391,6 +397,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Spearmen 1",
@@ -451,6 +458,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Spearmen 2",
@@ -516,6 +524,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 93.3,
           "name": "Spearmen 1",
@@ -576,6 +585,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 95.5,
           "name": "Spearmen 2",
@@ -641,6 +651,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 93.3,
           "name": "Spearmen 1",
@@ -701,6 +712,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 95.6,
           "name": "Spearmen 2",
@@ -766,6 +778,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 93.7,
           "name": "Spearmen 1",
@@ -826,6 +839,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 96.0,
           "name": "Spearmen 2",
@@ -891,6 +905,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.9,
           "name": "Spearmen 1",
@@ -951,6 +966,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 96.4,
           "name": "Spearmen 2",
@@ -1016,6 +1032,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 85.6,
           "name": "Spearmen 1",
@@ -1076,6 +1093,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 85.6,
           "name": "Spearmen 2",
@@ -1141,6 +1159,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "MARCHING",
           "morale": 85.7,
           "name": "Spearmen 1",
@@ -1201,6 +1220,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 85.7,
           "name": "Spearmen 2",
@@ -1266,6 +1286,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "MARCHING",
           "morale": 85.9,
           "name": "Spearmen 1",
@@ -1326,6 +1347,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 85.7,
           "name": "Spearmen 2",
@@ -1391,6 +1413,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "MARCHING",
           "morale": 86.2,
           "name": "Spearmen 1",
@@ -1451,6 +1474,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 85.8,
           "name": "Spearmen 2",
@@ -1516,6 +1540,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "MARCHING",
           "morale": 86.6,
           "name": "Spearmen 1",
@@ -1576,6 +1601,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 85.9,
           "name": "Spearmen 2",
@@ -1641,6 +1667,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "MARCHING",
           "morale": 77.6,
           "name": "Spearmen 1",
@@ -1701,6 +1728,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 85.9,
           "name": "Spearmen 2",
@@ -1766,6 +1794,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 77.7,
           "name": "Spearmen 1",
@@ -1785,7 +1814,7 @@
           "soldier_summary": {
             "bbox": [
               73.6,
-              37.53
+              37.51
             ],
             "broken_count": 0,
             "centroid": [
@@ -1798,7 +1827,7 @@
           "soldier_summary_m": {
             "bbox_m": [
               3.68,
-              1.876
+              1.875
             ],
             "centroid_m": [
               39.982,
@@ -1826,6 +1855,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 79.2,
           "name": "Spearmen 2",
@@ -1834,7 +1864,7 @@
           "order_phase": "NONE",
           "position": [
             803.32,
-            389.06
+            389.07
           ],
           "position_m": [
             40.166,
@@ -1891,6 +1921,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 77.8,
           "name": "Spearmen 1",
@@ -1899,7 +1930,7 @@
           "order_phase": null,
           "position": [
             798.15,
-            354.49
+            354.48
           ],
           "position_m": [
             39.908,
@@ -1910,7 +1941,7 @@
           "soldier_summary": {
             "bbox": [
               74.32,
-              35.14
+              35.1
             ],
             "broken_count": 0,
             "centroid": [
@@ -1923,7 +1954,7 @@
           "soldier_summary_m": {
             "bbox_m": [
               3.716,
-              1.757
+              1.755
             ],
             "centroid_m": [
               39.926,
@@ -1951,6 +1982,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 79.3,
           "name": "Spearmen 2",
@@ -1969,8 +2001,8 @@
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              74.19,
-              31.37
+              74.18,
+              31.36
             ],
             "broken_count": 0,
             "centroid": [
@@ -2016,6 +2048,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 75.9,
           "name": "Spearmen 1",
@@ -2023,36 +2056,36 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            794.01,
-            354.94
+            793.9,
+            354.92
           ],
           "position_m": [
-            39.701,
-            17.747
+            39.695,
+            17.746
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              73.62,
-              29.45
+              73.63,
+              29.43
             ],
             "broken_count": 0,
             "centroid": [
-              795.78,
-              353.66
+              795.76,
+              353.56
             ],
             "count": 28,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.681,
-              1.473
+              3.682,
+              1.472
             ],
             "centroid_m": [
-              39.789,
-              17.683
+              39.788,
+              17.678
             ]
           },
           "soldiers": 28,
@@ -2076,6 +2109,7 @@
           ],
           "formation": "TIGHT",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 77.4,
           "name": "Spearmen 2",
@@ -2083,36 +2117,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            798.88,
-            386.75
+            798.82,
+            386.79
           ],
           "position_m": [
-            39.944,
-            19.338
+            39.941,
+            19.339
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
               77.91,
-              27.24
+              28.22
             ],
             "broken_count": 0,
             "centroid": [
-              801.71,
-              387.16
+              801.66,
+              387.27
             ],
             "count": 29,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.895,
-              1.362
+              3.896,
+              1.411
             ],
             "centroid_m": [
-              40.086,
-              19.358
+              40.083,
+              19.363
             ]
           },
           "soldiers": 29,
