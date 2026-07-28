@@ -3221,7 +3221,7 @@ func test_body_tier_ranks_is_clamped_to_the_cap() -> void:
 
 
 func test_body_tier_leaves_an_unengaged_bulk_when_reach_would_swallow_the_block() -> void:
-	# The defect this split fixes (#1144): a block shallower than its own reach depth had EVERY
+	# The defect this split fixes: a block shallower than its own reach depth had EVERY
 	# soldier in the engaged tier, so SoldierBodies.step() lost the unengaged bulk its engaged
 	# branch is written relative to. A 40-man, 9-file spear regiment is 5 ranks deep against an
 	# engaged depth of 6 -- the melee tier still (correctly) covers everyone, while the body
