@@ -3152,3 +3152,42 @@ sim-hash instrument this was found for, but any future test built the same
 way. (`Lacaedemon/sparta` PR #1068 / issue #1067, 2026-07-24: diagnosed with
 a throwaway per-unit diagnostic comparing body-step counts against `_tick`
 across the two passes, not guessed.)
+
+## Formation slot assignment is by ARRAY INDEX -- a recurring bug family, not a one-off
+
+`UnitFormation.block_slots` maps soldier index `i` to grid cell `i` (`file = i % files`,
+`rank = i / files`). Nothing in the reform path solves an assignment problem: there is no
+nearest-slot pairing, no angular pairing, no minimum-travel matching anywhere. So any
+reshape that changes `files` reassigns most soldiers to distant cells, and they walk there
+under the normal bounded-arrival body steering -- physically correct motion toward a
+geometrically arbitrary destination.
+
+This has now produced the same visible defect four separate times, each diagnosed and
+fixed only for its own maneuver: #541 (about-face swapped soldier identities, 0/40 held
+position), #668 (countermarch reform swapped soldiers to the opposite flank rather than
+just reversing rank order), #802 (target-slot reassignment cadence), and #1146 (the
+NORMAL -> SQUARE reform: 28% of soldiers cross the centreline, mean travel 33.8 wu, about
+2x the greedy-nearest-slot optimum, on a block only 90 wu wide once squared).
+
+**Before assuming a given reshape is safe, check whether its path has its own pairing
+logic or falls through to raw index order.** `Unit.formation_slots()` is the dispatcher.
+The square branch is bare `block_slots(...)`. The file-major branch preserves a persistent
+per-soldier file (`_sim_soldier_file`), which is the one real identity-preserving
+mechanism in the file -- and it is deliberately OFF for squares, on the stated grounds
+that `formation_files()` recomputes continuously as casualties shrink the live count so
+there is no stable file to preserve. That rationale is sound for CASUALTY REFLOW and does
+not transfer to a DELIBERATE RESHAPE, which is a discrete one-off event where a pairing
+could be computed once and held. Don't let the docstring's reasoning talk you out of
+checking the reshape case.
+
+The right primitive already exists unused for this purpose:
+`UnitFormation.sort_indices_by_angle()` pairs soldiers to ring slots by angle about the
+centroid, described in its own docstring as lining up "each live defender with the ring
+slot nearest its own actual side of the block" -- currently wired only into engaged-soldier
+selection, not into any reform's slot assignment. #547 (explicit per-soldier slot
+ownership) would subsume the whole family.
+
+Verification technique for any fix here is the per-index, local-frame comparison described
+under "Aggregate and rotation-invariant metrics structurally CANNOT see a soldier-identity
+swap" in `sparta-demos.md` -- the aggregate footprint metrics are blind to exactly this,
+which is why all four instances were caught by eye rather than by a check.

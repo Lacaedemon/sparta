@@ -1117,3 +1117,60 @@ its own. (`Lacaedemon/sparta` PR #1002: a first staging attempt left the "statio
 its default Normal stance under `all_teams_control`; it auto-advanced toward the mover and the
 two met in the middle regardless of the mover's own stance, defeating the whole point of the
 demo until the enemy was also explicitly put on Hold.)
+
+## Every demo defect check is diff- or delta-scoped -- nothing ever scans a clip absolutely
+
+Worth knowing before concluding "the checks would have caught it." All three layers ask
+what a PR *changed*, never "is this clip defective, full stop":
+
+- `tools/check.sh demo_defects` -- only `demos/inputs/*.json` files CHANGED in the diff
+  (`git diff --name-only $base HEAD`). Skips entirely when nothing changed. Gating.
+- `demo-video.yml`'s *Demo defect scan* -- only the ONE PR-tailored clip named by
+  `demos/demo.<slug>.json`. Gating.
+- `website-demo-diff.yml` -- sweeps the full `website/tools/demo-catalog.sh` catalog, but
+  dumps PR-head vs MERGE-BASE and runs DemoDefects only over clips whose transcript
+  CHANGED. `continue-on-error`, informational comment, never blocks.
+
+So a defect present identically on both sides of a diff -- a pre-existing one, or one that
+predates the scan -- is invisible to every layer. The delta design was the right call for
+what `website-demo-diff.yml` was built to do (#905, replacing a byte-hash comparison that
+flagged ~every clip on ~every PR), but it means the site's 70+ published clips have never
+been checked in absolute terms.
+
+Practical consequence: when a clip on the live docs site looks wrong, do NOT reason "CI is
+green, so this must be intended." Check whether any PR has actually changed that clip since
+the scan existed -- `git log --oneline -- demos/inputs/<name>.json` -- and whether the
+script even carries an `expect` block (most don't). Absent both, the clip has never been
+judged by anything. (Found on the `square` clip, `anti-cav-square.json`, untouched since
+#749: a real reform defect sat on the published site indefinitely. Filed as #1146; the
+whole-catalog absolute sweep as #1147.)
+
+## Aggregate and rotation-invariant metrics structurally CANNOT see a soldier-identity swap
+
+A distinct gap from the coverage one above, and the more insidious of the two: even a clip
+that IS scanned can hide soldiers trading places, because no DemoDefects metric reads
+per-soldier identity. `blob`/`overlap` measure spacing; `shape_residual` Kabsch-fits the
+whole point cloud rigidly before measuring, so it is invariant to any permutation that
+preserves the cloud's shape; `misslot` asks "is a body near *a* slot", not "near *its own*
+slot"; `whipsaw` is per-unit facing; `superphysical` is clean for a swap performed at legal
+gait. They all read a SET of positions, never a per-index identity.
+
+#541 already stated this exactly, about a hand-rolled check, back in July: "the aggregate
+metrics cannot distinguish 'each soldier stayed put' from 'soldiers traded places.' Only
+per-soldier-index position tracking reveals it." That remained true of the automated scan
+built afterwards.
+
+**How to apply:** any time you are verifying a maneuver whose whole point is WHERE
+INDIVIDUAL MEN END UP -- a reform, an about-face, a countermarch, a frontage change, a
+formation switch -- a green defect scan proves nothing about identity. Do the per-index
+comparison by hand: dump `soldiers_full.pos` at a settled tick before and after,
+de-rotate both into the unit's local frame (`ang = atan2(facing.y, facing.x) + PI/2`), and
+compare BY ARRAY INDEX. Check two things the aggregate metrics can't: per-index travel
+distance, and whether the local lateral coordinate flips sign (the soldier crossed its own
+centreline). Restrict the window to one with no casualties, or `reap()`'s array compaction
+invalidates index-as-identity. A useful second number: compare total travel against a
+greedy nearest-slot pairing over the same start positions and target slots -- greedy is an
+upper bound on optimal, so if the actual assignment costs ~2x greedy, most of the movement
+is churn rather than geometry. (This bug family has now recurred four times -- #541
+about-face, #668 countermarch, #802 target-slot cadence, #1146 square reform -- each caught
+by a human noticing a clip and then hand-writing this comparison. Metric tracked as #1149.)
