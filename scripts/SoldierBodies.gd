@@ -173,7 +173,13 @@ static func step(unit: Unit, delta: float) -> void:
 			unit._sim_soldier_stamina[p] + SoldierCombat.RHO_STAMINA * delta
 				- (SoldierCombat.KAPPA_P if just_rose else 0.0),
 			0.0, maxs)
-	var engaged_indices: PackedInt32Array = unit.engaged_soldier_indices(n)
+	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but
+	# capped so it never covers the whole block. Everything below this line -- the dropped
+	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged
+	# bulk that still tracks the formation's own slots (see this file's class doc), so a tier
+	# that swallowed every rank would leave those behaviours with no reference to work
+	# against. See Unit.body_tier_soldier_indices / body_tier_ranks.
+	var engaged_indices: PackedInt32Array = unit.body_tier_soldier_indices(n)
 	# Membership test for the per-soldier loop below, as a packed bool array instead of a
 	# Dictionary -- every tick, every unit builds one of these (engaged or not), so a
 	# Dictionary's per-entry hashing/boxing overhead here is pure per-tick waste versus a
