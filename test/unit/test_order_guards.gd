@@ -233,6 +233,22 @@ func test_move_target_occupied_by_enemy_true_within_the_enemys_footprint() -> vo
 	assert_true(OrderGuards.move_target_occupied_by_enemy(u, dest))
 
 
+func test_move_target_occupied_by_enemy_true_within_the_combined_footprint_but_outside_the_enemys_alone() -> void:
+	# Regression test: an earlier version of this check summed only the ENEMY's own
+	# footprint, missing `u`'s own -- a destination just past the enemy's own reach but
+	# still inside the two units' COMBINED reach read as falsely "clear", even though u's
+	# own block will physically occupy that ground too once it arrives.
+	var u := _make_unit(1, 0)
+	var enemy := _make_unit(2, 1)
+	enemy.position = Vector2(500, 500)
+	var enemy_only_reach: float = enemy.separation_radius + enemy.soldier_block_extent()
+	var combined_reach: float = u.separation_radius + u.soldier_block_extent() + enemy_only_reach
+	var dest: Vector2 = enemy.position + Vector2(combined_reach - 1.0, 0)
+	assert_true(dest.distance_to(enemy.position) > enemy_only_reach,
+		"sanity: dest is genuinely outside the enemy-only reach this test targets")
+	assert_true(OrderGuards.move_target_occupied_by_enemy(u, dest))
+
+
 func test_move_target_occupied_by_enemy_false_well_clear_of_any_enemy() -> void:
 	var u := _make_unit(1, 0)
 	var enemy := _make_unit(2, 1)

@@ -1586,19 +1586,24 @@ func _update_current_order() -> void:
 
 ## The disengage-time decision for a plain MOVE order carrying Order.Guard.
 ## ENGAGED_FRACTION_ABOVE (Battle.ENGAGED_FRACTION_CANCELS_MOVE's own doc comment has the
-## full policy): once the current fight genuinely ends (is_engaged() has decayed false --
-## not just this instant's contact, the FIGHTING-plus-linger latch), decide whether the
-## march should resume toward its original destination or cancel outright.
+## full policy, including two corrections to what this might look like it does). This order is
+## issued with target_enemy == null, which Unit._think()'s melee-contact gate treats as a
+## disengage command: the unit marches off toward move_target immediately and never re-enters
+## State.FIGHTING under this order. So "once the current fight genuinely ends" here does NOT
+## mean "the unit stops fighting" -- it means _engaged_linger (set from whatever fight was
+## happening up to and including the tick this order was issued, and refreshed only by
+## State.FIGHTING) finishes decaying to 0 (is_engaged() false) while the unit is already
+## marching away. This function is the one-time check that fires the instant that decay
+## completes.
 ##
-## - The fight never crossed the order's own guard_param threshold (a graze): resume, same
-##   as the pause-then-resume behavior this refines.
-## - It crossed the threshold, but the destination is still clear: resume anyway -- a real
+## - The unit was never engaged at all this order (peak fraction never left 0.0): resume.
+## - It was engaged at some point, but the destination is still clear: resume anyway -- a real
 ##   fight happened, but the original plan is still valid, so don't force a fresh order over
 ##   nothing.
-## - It crossed the threshold AND the destination now sits inside a living enemy's own
-##   footprint (OrderGuards.move_target_occupied_by_enemy): cancel -- the actual motivating
-##   case for gating a plain move on engagement at all: don't blindly march into ground the
-##   enemy now holds.
+## - It was engaged AND the destination now sits inside a living enemy's own footprint
+##   (OrderGuards.move_target_occupied_by_enemy): cancel -- the actual motivating case for
+##   gating a plain move on engagement at all: don't blindly march into ground the enemy now
+##   holds.
 ##
 ## Called once, from _think's "obey a move order" branch, right before it would otherwise
 ## call _move_to() -- returning true means the caller should stop (the order just retired)

@@ -146,22 +146,25 @@ static func engaged_fraction_above(u: Unit, fraction: float) -> bool:
 
 
 ## Whether `dest` -- a unit's own move_target -- now falls inside a living, non-routing
-## enemy's own physical footprint: within that enemy's separation_radius plus
-## soldier_block_extent() (the same "clear of each other" reach Order.resolve_friendly_target
-## already uses for a relief pass-through). The disengage-time staleness check for a plain
-## MOVE that just finished a heavy melee engagement (Unit._resolve_disengage_move_order): the
-## march is worth cancelling only when the ground it was headed for is actually held by the
-## enemy now, not merely because a fight happened somewhere along the way. A routing enemy
-## doesn't count -- a broken, fleeing regiment doesn't hold ground the way a live one does
-## (mirrors flanked()'s and enemy_in_range()'s own routing exclusion).
+## enemy's own physical footprint: within the COMBINED separation_radius + soldier_block_extent()
+## of both `u` and the enemy (the same symmetric "clear of each other" reach
+## Order.resolve_friendly_target already uses for a relief pass-through -- both sides' own
+## footprint, not just the enemy's, since `u`'s own block will physically occupy space around
+## `dest` too once it arrives). The disengage-time staleness check for a plain MOVE that just
+## finished a heavy melee engagement (Unit._resolve_disengage_move_order): the march is worth
+## cancelling only when the ground it was headed for is actually held by the enemy now, not
+## merely because a fight happened somewhere along the way. A routing enemy doesn't count -- a
+## broken, fleeing regiment doesn't hold ground the way a live one does (mirrors flanked()'s and
+## enemy_in_range()'s own routing exclusion).
 static func move_target_occupied_by_enemy(u: Unit, dest: Vector2) -> bool:
+	var u_reach: float = u.separation_radius + u.soldier_block_extent()
 	for o in u.get_tree().get_nodes_in_group("units"):
 		var other: Unit = o as Unit
 		if other == null or other.team == u.team:
 			continue
 		if other.state == Unit.State.DEAD or other.state == Unit.State.ROUTING:
 			continue
-		var reach: float = other.separation_radius + other.soldier_block_extent()
+		var reach: float = u_reach + other.separation_radius + other.soldier_block_extent()
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		if dest.distance_squared_to(other.position) <= reach * reach:
 			return true
