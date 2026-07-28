@@ -3298,6 +3298,29 @@ func test_body_tier_in_square_narrows_within_the_threatened_set_not_the_whole_bl
 			"every body-tier soldier in a square is also in the melee tier (index %d was not)" % i)
 
 
+func test_body_tier_in_square_caps_the_perimeter_when_no_enemy_is_in_reach() -> void:
+	# The square's OTHER branch: a unit can be engaged (the linger latch outlives contact --
+	# the enemy died or was knocked clear) with nothing currently in reach, so `threatened` is
+	# empty and the selection falls to the formation's own perimeter ring. The bounded caller
+	# still has to cap that ring; the unbounded one takes it whole, which is what
+	# test_engaged_soldier_indices_is_the_whole_perimeter_when_squared already pins.
+	SoldierEnemyProximity.reset()
+	var u := _make_unit(60)
+	u.seed_sim_soldiers()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(1.0 / 60.0)
+	assert_true(u.is_engaged(), "sanity: engaged, with no enemy anywhere on the field")
+	var n: int = u._sim_soldier_pos.size()
+	var cap: int = u.body_tier_cap(n)
+	var body: PackedInt32Array = u.body_tier_soldier_indices(n)
+	var ring: PackedInt32Array = u.engaged_soldier_indices(n)
+	assert_gt(ring.size(), cap,
+		"sanity: the untrimmed perimeter genuinely exceeds the cap, so the cap actually binds")
+	assert_gt(body.size(), 0, "the body tier is never empty for an engaged unit")
+	assert_lte(body.size(), cap, "the perimeter ring is capped to the body-contact budget")
+
+
 func test_body_tier_soldier_indices_is_empty_when_not_engaged() -> void:
 	var u := _make_unit(120)
 	u.seed_sim_soldiers()
