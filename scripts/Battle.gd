@@ -2117,12 +2117,16 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				u.append_order(leg)
 				if u.current_order == leg:
 					# Reset the peak tracker only once this leg actually becomes current: an
-					# idle unit's leg is promoted right here, so this is issue-time for it. A
-					# busy unit's leg stays queued behind whatever order is still running --
-					# resetting unconditionally would clobber that OTHER, still-current order's
-					# own unconsumed peak (it's tracked per-unit, but logically belongs to
-					# whichever order is actually current). This leg's own peak starts fresh
-					# whenever it's later promoted instead (Unit._start_promoted_move).
+					# idle unit has nothing running to inherit from, so this is a genuine fresh
+					# start for it. A busy unit's leg stays queued behind whatever order is
+					# still running -- resetting unconditionally would clobber that OTHER,
+					# still-current order's own unconsumed peak (it's tracked per-unit, but
+					# logically belongs to whichever order is actually current). A queued leg
+					# does NOT get a reset when it's later promoted either: the peak accumulated
+					# while it waited legitimately carries over (see
+					# _move_order_peak_engaged_fraction's own doc comment and
+					# Unit._start_promoted_move's, for why resetting there would silently erase
+					# a real fight the disengage decision still needs).
 					if mode == OrderMode.NORMAL:
 						u._move_order_peak_engaged_fraction = 0.0
 					if not u.has_move_target:

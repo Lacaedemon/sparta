@@ -112,14 +112,16 @@ func test_appending_a_waypoint_behind_a_still_busy_order_does_not_clobber_its_pe
 		"the unit is still busy with its original order -- the appended leg only queues")
 	assert_eq(u._move_order_peak_engaged_fraction, 0.6,
 		"the still-current order's own unconsumed peak must survive an unrelated append")
-	# Promoting the queued leg (the original order finishing/being interrupted) resets the
-	# peak fresh for the leg's OWN disengage decision -- it must not inherit the 0.6 that
-	# belonged to the order it's replacing.
+	# Promoting the queued leg (the original order finishing/being interrupted) does NOT reset
+	# the peak: the 0.6 was a real fight that happened while this leg waited queued, and the
+	# field's own contract is that such a fight "still counts once the leg is promoted" -- an
+	# ATTACK order chasing a routed enemy can run well past the fight's own end before the
+	# target finally dies and this leg promotes, so the peak must survive that gap too.
 	u.retire_current_order()
 	assert_eq(u.current_order.type, Order.Type.MOVE)
 	assert_ne(u.current_order, current)
-	assert_eq(u._move_order_peak_engaged_fraction, 0.0,
-		"the newly-promoted leg starts its own disengage tracking from zero")
+	assert_eq(u._move_order_peak_engaged_fraction, 0.6,
+		"a fight that happened while this leg was only queued still counts once it's promoted")
 
 
 # --- Already-committed stances keep their own behavior, no auto-cancel guard -------------

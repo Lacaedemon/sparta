@@ -152,12 +152,17 @@ var facing: Vector2 = Vector2.DOWN
 var move_target: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
 ## Peak OrderGuards.current_engaged_fraction() reading since a currently-pending
-## Order.Guard.ENGAGED_FRACTION_ABOVE move was issued -- Battle._apply_order_cmd resets this
-## to 0.0 at both attachment sites (a fresh move, an appended waypoint leg), and
-## _update_current_order() raises it every tick regardless of what current_order actually is,
-## so a fight that happens while the guarded move is only QUEUED behind an active ATTACK/HOLD
-## order still counts once the leg is promoted. See _resolve_disengage_move_order()'s own doc
-## for why the peak (not a point-in-time read) is what the disengage-time decision needs.
+## Order.Guard.ENGAGED_FRACTION_ABOVE move was issued -- Battle._apply_order_cmd resets this to
+## 0.0 for a fresh move (always immediately current) and for an appended waypoint leg ONLY when
+## the unit is genuinely idle (the leg becomes current right away, nothing to inherit from). A
+## leg appended behind a still-busy order does NOT get reset, at append time or later when it's
+## finally promoted: _update_current_order() raises this every tick regardless of what
+## current_order actually is, so a fight that happens while the guarded move is only QUEUED
+## behind an active ATTACK/HOLD order deliberately still counts once the leg is promoted --
+## Unit._start_promoted_move() must never reset this, or that carried-over fight is lost for
+## good (see that function's own doc for the concrete ATTACK-chases-a-router failure mode).
+## See _resolve_disengage_move_order()'s own doc for why the peak (not a point-in-time read) is
+## what the disengage-time decision needs.
 var _move_order_peak_engaged_fraction: float = 0.0
 var target_enemy: Unit = null
 var selected: bool = false
@@ -1296,17 +1301,17 @@ func _apply_promoted_stance() -> void:
 ## plain move; the phased (rear-move) composite is only ever built on a fresh order at the
 ## apply site. No-op for every other order kind, an already-marching unit, or a phased order.
 ##
-## Also resets _move_order_peak_engaged_fraction for a guarded leg promoted here: a leg queued
-## behind a still-busy unit (Battle._apply_order_cmd's append branch) deliberately does NOT
-## reset the peak at issue time, since the tracker is per-unit but the value logically belongs
-## to whichever order is actually current -- resetting then would clobber the still-running
-## order's own unconsumed reading. This leg's own disengage decision must not inherit whatever
-## that prior order accumulated, so it starts fresh exactly when it becomes current instead.
+## Deliberately does NOT reset _move_order_peak_engaged_fraction here: a guarded leg promoted
+## from behind a busy ATTACK/HOLD order is meant to inherit whatever peak accumulated while it
+## was only queued (see the field's own doc comment) -- an ATTACK order chasing a routed enemy
+## can run well past ENGAGED_LINGER's decay before the target finally dies and this leg is
+## promoted, so resetting here would silently erase a real, already-recorded fight the
+## disengage decision still needs. Battle._apply_order_cmd's two attachment sites are the only
+## legitimate reset points: a fresh order (always immediately current) and an appended leg that
+## promotes itself right away because the unit was genuinely idle (nothing to inherit from).
 func _start_promoted_move() -> void:
 	if current_order == null or current_order.type != Order.Type.MOVE:
 		return
-	if current_order.guard == Order.Guard.ENGAGED_FRACTION_ABOVE:
-		_move_order_peak_engaged_fraction = 0.0
 	if has_move_target or current_order.phase != Order.Phase.NONE:
 		return
 	move_target = current_order.target_pos
