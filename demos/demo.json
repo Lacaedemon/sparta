@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/normal-formation-melee-contact.json",
-  "caption": "Melee contact is now proximity-based, not combat-state-based, and NORMAL formation gets its own containment margin: two NORMAL-formation Infantry regiments clash into a real front-to-front line (a couple of ranks of intermixing at the boundary, not the full checkerboard interleaving the previous code produced -- see the site showcase clip and this PR's description for a before/after comparison).",
+  "input": "demos/inputs/shield-wall-holds-depth.json",
+  "caption": "Melee-intermixing depth gated by formation looseness (#1094): a Shield Wall Infantry regiment (28) holds its ground against a larger attacking Infantry regiment (40) marching in under its own AI order. The attacker's front line presses flush against the defender's front rank and holds there -- it doesn't scatter into or bleed past the defender's own rear ranks the way an un-gated clash would.",
   "fixed_fps": 30,
-  "max_frames": 540,
+  "max_frames": 720,
   "fps": 15,
   "width": 720
 }

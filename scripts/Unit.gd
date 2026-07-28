@@ -743,14 +743,14 @@ var file_major_reform: bool:
 # Set to true in _think when a ranged enemy is within RANGED_RANGE; drives the
 # AUTO-pace jog escalation. Cleared each frame before the check.
 var _under_fire: bool = false
-# Set to true in _think when ANY live enemy regiment is within melee contact range --
-# PURE PROXIMITY, independent of order_mode/state (unlike is_engaged(), which only goes
-# true once this unit itself decides to fight). Feeds the soldier-level contact-collision
-# gate (Unit.contact_soldier_indices / SoldierEnemyContact) and _separate()'s enemy-collision
-# branch, so a unit's bodies still physically resist an enemy's bodies even while
-# "disengaging" (a plain move order with no attack target: see the disengage comment
-# below) or otherwise not actively fighting -- contact is a physical fact, not a
-# gameplay choice; see docs/individual-collision-design.md.
+# Set to true in _think when ANY live-or-routing enemy regiment is within melee contact
+# range of EITHER side's own reach -- PURE PROXIMITY, independent of order_mode/state
+# (unlike is_engaged(), which only goes true once this unit itself decides to fight).
+# Feeds the soldier-level contact-collision gate (Unit.contact_soldier_indices /
+# SoldierEnemyContact) and _separate()'s enemy-collision branch, so a unit's bodies still
+# physically resist an enemy's bodies even while "disengaging" (a plain move order with no
+# attack target: see the disengage comment below) or otherwise not actively fighting --
+# contact is a physical fact, not a gameplay choice; see docs/individual-collision-design.md.
 var _in_enemy_contact: bool = false
 
 var support_target: Unit = null
@@ -1611,6 +1611,23 @@ func _start_attack_cd(baseline_interval: float) -> void:
 
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
+	# Physical contact: true when ANY live-or-routing enemy regiment is within melee
+	# contact range of EITHER side's own reach, regardless of order_mode/state -- see
+	# _in_enemy_contact's own doc comment. Computed first, before every other branch in
+	# this function (including the order-response-delay/reform/turn/wheel early returns
+	# below), so it's always fresh on every tick regardless of which branch a unit takes --
+	# unlike _under_fire further down, which only needs to be fresh for the branches that
+	# actually read it.
+	_in_enemy_contact = false
+	var contact_candidates: Array = get_tree().get_nodes_in_group("units")
+	contact_candidates.append_array(get_tree().get_nodes_in_group("routers"))
+	for u in contact_candidates:
+		if u is Unit and u.team != team and u.state != State.DEAD:
+			var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
+			if position.distance_squared_to(u.position) <= c_dist * c_dist:
+				_in_enemy_contact = true
+				break
+
 	_update_current_order()
 	# Order-response delay: tick down on every frame. Non-fighting units are frozen
 	# until the timer expires; fighting units are not gated — they keep executing
@@ -1739,20 +1756,6 @@ func _think(delta: float) -> void:
 				and position.distance_squared_to(u.position) <= ranged_range_sq:
 			_under_fire = true
 			break
-
-	# Physical contact: true when ANY live enemy regiment is within melee contact range
-	# (the same attack_range + RADII test the in_contact local below uses against this
-	# unit's own current target), regardless of order_mode/state -- see _in_enemy_contact's
-	# own doc comment. Must run before every order-branch early return (mirrors _under_fire
-	# immediately above), so it's always fresh even for a branch that returns before
-	# reaching the current-target in_contact check further down.
-	_in_enemy_contact = false
-	for u in get_tree().get_nodes_in_group("units"):
-		if u is Unit and u.team != team and u.state != State.DEAD:
-			var c_dist: float = attack_range + RADIUS + u.RADIUS
-			if position.distance_squared_to(u.position) <= c_dist * c_dist:
-				_in_enemy_contact = true
-				break
 
 	# Support stance: guard a friendly ward — engage threats near it, else
 	# shadow it. Handled up front so it overrides the normal target/move logic. If

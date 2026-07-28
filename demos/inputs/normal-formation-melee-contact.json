@@ -1,5 +1,5 @@
 {
-  "_comment": "Melee contact is proximity-based, not combat-state-based, and NORMAL gets its own containment margin (this PR): a stationary NORMAL-formation Infantry regiment holds ground while an enemy Infantry regiment marches up under its own AI order. Before this fix, two NORMAL-formation lines in melee contact would fully interleave (soldier marks from both sides checkerboarded across the whole depth of the block, verified against the site showcase clip); this demo shows a real front-to-front clash instead.",
+  "_comment": "Melee contact is proximity-based, not combat-state-based, and NORMAL gets its own containment margin (this PR): two NORMAL-formation Infantry regiments each auto-advance on detecting the other (neither is on HOLD) and meet in the middle. Before this fix, two NORMAL-formation lines in melee contact would fully interleave (soldier marks from both sides checkerboarded across the whole depth of the block, verified against the site showcase clip); this demo shows a real front-to-front clash instead.",
   "seed": "31007",
   "scenario": [
     { "team": 0, "type": "Infantry", "x": 500, "y": 400, "count": 100 },
