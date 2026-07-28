@@ -11,10 +11,11 @@ extends SceneTree
 ##
 ## --script points at the clip's own input script and reads two optional declarations from
 ## it: the `expect` list (intent as data: {tick, uid, field, value}), evaluated against the
-## same snapshots, and `defect_exemptions` (metric name -> written reason), which forgives
-## a named metric for this clip and prints it as EXEMPT instead of FAIL. An exemption
-## requires a stated reason, and one whose metric now passes anyway prints as STALE so it
-## gets removed. --expect is accepted as an alias for the same flag.
+## same snapshots, and `defect_exemptions` (metric -> {uids, reason}), which forgives that
+## metric for the units it names and prints them as EXEMPT instead of FAIL. An exemption
+## must name its units and state its reason; one whose named unit now passes anyway prints
+## as STALE so it gets removed. Either declaration may be absent, but a present one of the
+## wrong shape is a usage error, not a silent skip. --expect is an alias for the same flag.
 ## --compare-hashes is its own mode: instead of defect analysis, compare the two dump
 ## runs' per-tick hash streams (hash_stream.jsonl, written by every armed dump run --
 ## see DemoStateHash / DemoHashStream) and report the FIRST divergent tick and tier, replacing an
@@ -77,7 +78,19 @@ func _init() -> void:
 			push_error("not a readable demo script: " + script_path)
 			quit(2)
 			return
+		# Absent is fine; present-but-wrong-shape is an authoring error and must be loud.
+		# Dropping that distinction would quietly break the promise DemoInputRecorder
+		# makes when it defers validation here rather than failing mid-recording.
 		var declared = parsed_script.get("expect")
+		if declared != null and not (declared is Array):
+			push_error("`expect` must be an array in: " + script_path)
+			quit(2)
+			return
+		var declared_exempt = parsed_script.get("defect_exemptions")
+		if declared_exempt != null and not (declared_exempt is Dictionary):
+			push_error("`defect_exemptions` must be an object in: " + script_path)
+			quit(2)
+			return
 		if declared is Array:
 			expects = declared
 			# Shape-validate every entry up front: a malformed expectation (a [480] range
@@ -89,7 +102,6 @@ func _init() -> void:
 					push_error("malformed expect entry (%s): %s" % [shape_error, str(e)])
 					quit(2)
 					return
-		var declared_exempt = parsed_script.get("defect_exemptions")
 		if declared_exempt is Dictionary:
 			for metric in declared_exempt:
 				var ex_error: String = DemoDefects.exemption_error(metric, declared_exempt[metric])
