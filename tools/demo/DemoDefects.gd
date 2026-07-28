@@ -576,39 +576,74 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 
 
 ## Shape-validate one `defect_exemptions` entry: empty string when usable, else a message
-## naming what's wrong. A reason is mandatory -- an exemption without a stated
+## naming what's wrong. An entry names the units it covers and states why:
+##
+##   "defect_exemptions": { "path_crossing": {"uids": [0], "reason": "..."} }
+##
+## Both fields are mandatory. The reason, because an exemption without a stated
 ## justification is indistinguishable from someone silencing a real defect, and the whole
-## value of a deterministic scan is that suppressing it has to be argued in writing.
-static func exemption_error(metric, reason) -> String:
+## value of a deterministic scan is that suppressing it has to be argued in writing. The
+## uid list, because most clips carry several units and a metric-wide exemption would
+## forgive every one of them -- including a unit whose failure is genuine and unrelated to
+## the maneuver being excused. Naming the units keeps an exemption as narrow as the claim
+## behind it.
+static func exemption_error(metric, entry) -> String:
 	if not (metric is String) or String(metric).strip_edges().is_empty():
 		return "exemption key must be a metric name"
+	if not (entry is Dictionary):
+		return "exemption for '%s' must be an object with `uids` and `reason`" % str(metric)
+	var uids = (entry as Dictionary).get("uids")
+	if not (uids is Array) or (uids as Array).is_empty():
+		return "exemption for '%s' needs a non-empty `uids` list" % str(metric)
+	for u in uids:
+		if not (u is float or u is int):
+			return "exemption for '%s' has a non-numeric uid: %s" % [str(metric), str(u)]
+	var reason = (entry as Dictionary).get("reason")
 	if not (reason is String) or String(reason).strip_edges().is_empty():
 		return "exemption for '%s' needs a non-empty reason" % str(metric)
 	return ""
 
 
-## Apply a demo script's declared `defect_exemptions` (metric name -> written reason) to
-## its verdicts. A matching verdict is forced to pass and carries the reason, so the
-## analyzer can print it as EXEMPT rather than silently dropping it -- an exemption stays
-## visible in every run's output.
+## Apply a demo script's declared `defect_exemptions` to its verdicts. A verdict is
+## forgiven only when BOTH its metric and its uid are named, and it then carries the
+## reason so the analyzer prints it as EXEMPT rather than silently dropping it -- an
+## exemption stays visible in every run's output.
 ##
-## `stale_exempt` marks an exemption whose metric was passing anyway: the maneuver no
-## longer trips the check, so the declaration has outlived its reason and wants removing.
-## That is reported, not failed -- failing it would redden the very PR that fixed the
-## underlying defect, which is exactly the wrong incentive.
+## The per-uid match is what keeps an exemption honest. `analyze` flattens every unit's
+## verdicts into one array, so matching on metric alone would forgive a second unit's
+## genuine, unrelated failure in the same clip, and that collapsed verdict set feeds the
+## website demo-diff comparison as well as the gating scan.
+##
+## `stale_exempt` marks a named unit whose metric was passing anyway: that unit no longer
+## trips the check, so its claim has outlived its reason and wants removing. Scoping by
+## uid is what makes this readable on a multi-unit clip -- a metric-wide match would report
+## STALE off whichever unit happened to be passing, and acting on it would delete the
+## exemption another unit still needs. A stale exemption is reported, not failed: failing
+## it would redden the very PR that fixed the underlying defect.
+##
+## A uid named here that has no verdict at all (a typo) simply matches nothing, so the
+## clip stays red -- the fail-safe direction.
 static func apply_exemptions(verdicts: Array, exemptions: Dictionary) -> Array:
 	var out: Array = []
 	for v in verdicts:
-		var metric: String = String(v.get("metric", ""))
-		if not exemptions.has(metric):
+		var entry = exemptions.get(String(v.get("metric", "")))
+		if not (entry is Dictionary) or not _exempts_uid(entry, int(v.get("uid", -1))):
 			out.append(v)
 			continue
 		var marked: Dictionary = (v as Dictionary).duplicate()
 		marked["stale_exempt"] = bool(v["pass"])
-		marked["exempt"] = String(exemptions[metric])
+		marked["exempt"] = String((entry as Dictionary).get("reason", ""))
 		marked["pass"] = true
 		out.append(marked)
 	return out
+
+
+## Does this exemption entry name `uid` among the units it covers?
+static func _exempts_uid(entry: Dictionary, uid: int) -> bool:
+	for u in entry.get("uids", []):
+		if int(u) == uid:
+			return true
+	return false
 
 
 static func _values_match(expected, actual) -> bool:

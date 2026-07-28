@@ -414,36 +414,60 @@ func test_repeated_place_trading_fails_path_crossing_while_a_turn_passes() -> vo
 			"a block turning through the same angles keeps every man on his own route")
 
 
-func test_exemption_requires_a_metric_and_a_written_reason() -> void:
-	assert_eq(DemoDefects.exemption_error("path_crossing", "the drill re-deals every man"), "",
-			"a named metric with a stated reason is usable")
-	assert_ne(DemoDefects.exemption_error("path_crossing", ""), "",
+func test_exemption_requires_named_units_and_a_written_reason() -> void:
+	var good: Dictionary = {"uids": [0], "reason": "the drill re-deals every man"}
+	assert_eq(DemoDefects.exemption_error("path_crossing", good), "",
+			"named units plus a stated reason is usable")
+	assert_ne(DemoDefects.exemption_error("path_crossing", "just a string"), "",
+			"a bare reason cannot say which units it covers")
+	assert_ne(DemoDefects.exemption_error("path_crossing", {"uids": [0], "reason": ""}), "",
 			"an exemption with no reason is indistinguishable from silencing a defect")
-	assert_ne(DemoDefects.exemption_error("path_crossing", "   "), "",
+	assert_ne(DemoDefects.exemption_error("path_crossing", {"uids": [0], "reason": "  "}), "",
 			"and whitespace is not a reason either")
-	assert_ne(DemoDefects.exemption_error("", "some reason"), "", "the metric name is required")
+	assert_ne(DemoDefects.exemption_error("path_crossing", {"uids": [], "reason": "r"}), "",
+			"an empty uid list would forgive nothing or everything")
+	assert_ne(DemoDefects.exemption_error("path_crossing", {"uids": ["a"], "reason": "r"}), "",
+			"uids are numbers")
+	assert_ne(DemoDefects.exemption_error("", good), "", "the metric name is required")
 
 
-func test_exemptions_forgive_the_named_metric_and_leave_the_rest_alone() -> void:
+func test_an_exemption_forgives_only_the_units_it_names() -> void:
+	# The shape most real declarations take: a multi-unit clip where one unit's maneuver
+	# is deliberate and another unit's failure of the SAME metric is genuine.
 	var verdicts: Array = [
 		{"uid": 0, "metric": "path_crossing", "pass": false, "worst": 0.4, "threshold": 0.15},
+		{"uid": 1, "metric": "path_crossing", "pass": false, "worst": 0.9, "threshold": 0.15},
 		{"uid": 0, "metric": "blob", "pass": false, "worst": 1.0, "threshold": 4.5},
 	]
-	var out: Array = DemoDefects.apply_exemptions(verdicts, {"path_crossing": "counter-march"})
-	assert_true(bool(out[0]["pass"]), "the exempted metric passes")
+	var out: Array = DemoDefects.apply_exemptions(
+			verdicts, {"path_crossing": {"uids": [0], "reason": "counter-march"}})
+	assert_true(bool(out[0]["pass"]), "the named unit's metric is forgiven")
 	assert_eq(String(out[0]["exempt"]), "counter-march", "and carries its reason for printing")
-	assert_false(bool(out[0]["stale_exempt"]), "it was genuinely failing, so the exemption earns its keep")
-	assert_false(bool(out[1]["pass"]), "an unexempted metric is untouched")
-	assert_false(out[1].has("exempt"), "and carries no exemption marker")
+	assert_false(bool(out[1]["pass"]),
+			"an unnamed unit's failure of the same metric survives")
+	assert_false(out[1].has("exempt"), "and is not dressed up as an exemption")
+	assert_false(bool(out[2]["pass"]), "an unexempted metric is untouched")
 
 
-func test_an_exemption_for_a_passing_metric_is_reported_stale() -> void:
+func test_a_passing_named_unit_is_reported_stale_without_dragging_in_its_neighbours() -> void:
 	var verdicts: Array = [
-		{"uid": 0, "metric": "path_crossing", "pass": true, "worst": 0.0, "threshold": 0.15}]
-	var out: Array = DemoDefects.apply_exemptions(verdicts, {"path_crossing": "no longer needed"})
+		{"uid": 0, "metric": "path_crossing", "pass": true, "worst": 0.0, "threshold": 0.15},
+		{"uid": 1, "metric": "path_crossing", "pass": true, "worst": 0.0, "threshold": 0.15},
+	]
+	var out: Array = DemoDefects.apply_exemptions(
+			verdicts, {"path_crossing": {"uids": [0], "reason": "no longer needed"}})
 	assert_true(bool(out[0]["stale_exempt"]),
-			"a clip that outgrew its defect should be told to drop the exemption")
+			"a unit that outgrew its defect should be told to drop its claim")
+	assert_false(out[1].has("stale_exempt"),
+			"a unit the exemption never named is not part of that judgement")
 
+
+func test_an_exemption_naming_an_absent_unit_forgives_nothing() -> void:
+	var verdicts: Array = [
+		{"uid": 0, "metric": "path_crossing", "pass": false, "worst": 0.4, "threshold": 0.15}]
+	var out: Array = DemoDefects.apply_exemptions(
+			verdicts, {"path_crossing": {"uids": [7], "reason": "typo'd uid"}})
+	assert_false(bool(out[0]["pass"]), "a mistyped uid leaves the clip red, the safe direction")
 
 func test_expect_ticks_collects_scalars_and_range_ends() -> void:
 	var expects: Array = [

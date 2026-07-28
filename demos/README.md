@@ -441,15 +441,22 @@ first, so ordinary press-jitter cannot accumulate into a verdict.
 What it cannot do is read intent. A counter-march, an about-face, and a form-up all move
 men across their own block on purpose, and geometry alone does not distinguish a drill
 that reorders the ranks deliberately from a reshape that does it by accident. So a script
-whose maneuver legitimately trips a metric declares an exemption, with a written reason:
+whose maneuver legitimately trips a metric declares an exemption, naming the units it
+covers and stating why:
 
 ```json
 "defect_exemptions": {
-  "path_crossing": "The exelismos marches files through each other by design; see #123."
+  "path_crossing": {
+    "uids": [0],
+    "reason": "The exelismos marches files through each other by design; see #123."
+  }
 }
 ```
 
-The reason is mandatory — an exemption with no argument is indistinguishable from
+Both fields are mandatory. The `uids` list keeps the claim as narrow as the maneuver
+behind it: most clips carry several units, and a metric-wide exemption would forgive every
+one of them, including a unit whose failure of that same metric is genuine and unrelated.
+The reason is mandatory because an exemption with no argument is indistinguishable from
 silencing a real defect, and the point of a deterministic scan is that suppressing it has
 to be justified in writing. Exemptions never hide: the verdict still prints, as `EXEMPT`
 with its reason attached, and one whose metric has started passing on its own prints as
