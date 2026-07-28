@@ -3259,6 +3259,45 @@ func test_body_tier_never_widens_the_melee_tier() -> void:
 		assert_true(melee_set.has(i), "every body-tier soldier is also in the melee tier")
 
 
+func test_body_tier_in_square_narrows_within_the_threatened_set_not_the_whole_block() -> void:
+	# A pressed square routinely has more soldiers in reach than the body tier admits, so the
+	# cap has to narrow the THREATENED set rather than re-select over the block. Ranking the
+	# whole block by centroid distance instead would return corner soldiers with nothing near
+	# them while dropping men actually in contact -- the inverse of what this selection means.
+	# Exercised here because the line-formation tests below/above never reach the square branch.
+	# SoldierEnemyProximity is keyed by Engine.get_physics_frames(), so a synchronous test
+	# shares a frame with whatever ran before it and would otherwise query a grid built from
+	# ANOTHER test's units -- which silently makes this one pass for the wrong reason (it did,
+	# until the reset was added: verified by reverting the fix and watching the full-suite run
+	# stay green while the single-test run failed).
+	SoldierEnemyProximity.reset()
+	var u := _make_unit(60)
+	u.seed_sim_soldiers()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_true(u.in_square(), "sanity: the unit is in a square")
+	var enemy := _make_unit(60)
+	enemy.team = 1
+	# Press one face only, so the threatened set is a genuine subset of the perimeter and the
+	# block's most centroid-distant soldiers include corners with nothing near them.
+	enemy.position = u.position + Vector2(0.0, u.soldier_block_extent() + 10.0)
+	enemy.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(1.0 / 60.0)
+	var n: int = u._sim_soldier_pos.size()
+	var melee: PackedInt32Array = u.engaged_soldier_indices(n)
+	var body: PackedInt32Array = u.body_tier_soldier_indices(n)
+	assert_gt(melee.size(), 0, "sanity: the square has soldiers in the melee tier")
+	assert_gt(melee.size(), u.body_tier_cap(n),
+		"sanity: this press genuinely exceeds the cap, so the narrowing path actually runs")
+	assert_lte(body.size(), melee.size(), "the body tier is never wider than the melee tier")
+	var melee_set := {}
+	for i in melee:
+		melee_set[i] = true
+	for i in body:
+		assert_true(melee_set.has(i),
+			"every body-tier soldier in a square is also in the melee tier (index %d was not)" % i)
+
+
 func test_body_tier_soldier_indices_is_empty_when_not_engaged() -> void:
 	var u := _make_unit(120)
 	u.seed_sim_soldiers()

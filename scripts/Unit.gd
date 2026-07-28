@@ -4920,7 +4920,8 @@ func contact_soldier_indices(count: int) -> PackedInt32Array:
 ##
 ## Deliberately NOT memoized the way engaged_soldier_indices() is, for the same reason
 ## contact_soldier_indices() isn't: that cache exists to spare its SEVERAL same-tick callers
-## (SoldierMelee, SoldierEncirclement, OrderGuards, SoldierBodies) a repeat of one selection,
+## (SoldierMelee, SoldierEncirclement, OrderGuards -- SoldierBodies took the split below and
+## no longer calls it) a repeat of one selection,
 ## whereas this has a single caller and so would compute exactly once per unit per tick with
 ## or without a cache. The cost this does add is that one bounded heap selection -- the same
 ## O(n log k) shape the melee tier's own selection already runs, and below the benchmark's
@@ -4979,14 +4980,18 @@ func _select_near_front_indices(count: int, max_selected: int = -1) -> PackedInt
 		for i in range(count):
 			if SoldierEnemyProximity.has_enemy_within(_sim_soldier_pos[i], team, r, reach):
 				threatened.push_back(i)
-		# An unbounded caller takes the threatened set as-is. A bounded one can't: under
-		# envelopment every soldier can have an enemy in reach, so this branch is exactly
-		# where a square's tier swallows the whole block. Fall through to the perimeter
-		# selection, which ranks by exposure (distance from the block's own centroid) and so
-		# can honour a cap meaningfully -- "the most exposed N" -- where an unordered
-		# threatened list cannot.
-		if not threatened.is_empty() and (max_selected < 0 or threatened.size() <= max_selected):
-			return threatened
+		if not threatened.is_empty():
+			# An unbounded caller takes the threatened set as-is. A bounded one narrows it
+			# to its most exposed members -- but only ever WITHIN the threatened set, never
+			# by re-selecting over the whole block. Under a one-sided press a square can
+			# have far more soldiers in reach than the body tier admits, and ranking the
+			# whole block by centroid distance there would return corner men with nothing
+			# near them while dropping men actually in contact: the exact inverse of what
+			# this selection means, and a violation of body_tier ⊆ engaged_tier.
+			if max_selected < 0 or threatened.size() <= max_selected:
+				return threatened
+			return UnitFormation.most_exposed_among(
+					_sim_soldier_pos, threatened, max_selected)
 		var square_file_count: int = formation_files(count)
 		var ring_size: int = 0
 		for i in range(count):

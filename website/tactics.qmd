@@ -468,6 +468,22 @@ the shape the front rank recovers back into. A block packed tightly enough
 that its ranks stand closer than a man is wide --- Shield Wall and Testudo
 --- genuinely puts a second rank in contact, and gives ground accordingly.
 
+::: {#fig-phalanx-holds-ranks .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/phalanx_holds_ranks.jpg">
+  <source src="media/phalanx_holds_ranks.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two spear phalanxes grind head-on. Only the contact rank is shoved about,
+so the ranks behind it keep their files and the blocks stay recognisable
+formations rather than dissolving into a mob.
+:::
+
 ::: {#fig-formation-shift-reverse .demo}
 
 ```{=html}

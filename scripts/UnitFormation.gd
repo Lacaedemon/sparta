@@ -298,14 +298,33 @@ static func square_is_perimeter(i: int, n: int, files: int) -> bool:
 ## O(n log n) sort of every soldier, since only the top `target_count` are ever read. Pure and
 ## deterministic: ties broken by index (lower index wins), no RNG, no wall-clock.
 static func live_perimeter_indices(positions: PackedVector2Array, target_count: int) -> PackedInt32Array:
+	var pool := PackedInt32Array()
+	for i in range(positions.size()):
+		pool.push_back(i)
+	return most_exposed_among(positions, pool, target_count)
+
+
+## The `target_count` most exposed soldiers AMONG `candidates` -- exposure being distance
+## from the BLOCK's own centroid, so the answer is "which of these men are furthest out",
+## not "which are furthest from each other". The centroid is always taken over the whole
+## `positions` array, never over the candidate subset: the subset is a filter on who may be
+## picked, not a redefinition of where the block's middle is.
+##
+## `live_perimeter_indices` above is the whole-block case (every index a candidate). The
+## restricted form exists so a caller that has already computed a MEANINGFUL candidate set --
+## e.g. Unit._select_near_front_indices' square branch, which knows exactly which soldiers
+## have an enemy in reach -- can narrow that set without discarding it. Ranking over the
+## whole block instead would happily return corner soldiers with nothing near them while
+## dropping men actually in contact, which is the opposite of what such a caller is asking.
+##
+## Candidate indices outside `positions` are skipped rather than treated as an error, so a
+## stale candidate list from before a casualty compaction degrades to a smaller selection
+## instead of an out-of-bounds read.
+static func most_exposed_among(positions: PackedVector2Array, candidates: PackedInt32Array,
+		target_count: int) -> PackedInt32Array:
 	var n: int = positions.size()
-	if n <= 0 or target_count <= 0:
+	if n <= 0 or target_count <= 0 or candidates.is_empty():
 		return PackedInt32Array()
-	if target_count >= n:
-		var all := PackedInt32Array()
-		for i in range(n):
-			all.push_back(i)
-		return all
 	var centroid := Vector2.ZERO
 	for p in positions:
 		centroid += p
@@ -316,7 +335,9 @@ static func live_perimeter_indices(positions: PackedVector2Array, target_count: 
 	# decide whether it displaces anything.
 	var heap_i := PackedInt32Array()
 	var heap_d := PackedFloat32Array()
-	for i in range(n):
+	for i in candidates:
+		if i < 0 or i >= n:
+			continue
 		var d: float = positions[i].distance_squared_to(centroid)
 		if heap_i.size() < target_count:
 			heap_i.push_back(i)
