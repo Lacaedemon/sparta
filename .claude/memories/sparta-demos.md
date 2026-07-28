@@ -579,13 +579,18 @@ pre-existing on unmodified `main`) — only the CAUSE is still open.
 **How to apply:** before committing to a "smallest possible" scenario for a mechanic
 gated on genuine body PROXIMITY (not just being in the SAME battle), check whether
 the fight could resolve entirely before proximity is ever reached — particularly for
-any matchup involving a charge-bonus attacker (cavalry) against a target with few
-enough soldiers that a single engagement threatens its whole HP pool, or its whole
-regiment (per #1151's still-unconfirmed mechanism). If so, "the minimum that still
-demonstrates the phenomenon" is a modest few-soldier-DEPTH scenario (enough
-survivors that the fight continues past the opening exchanges and bodies actually
-close to real contact range), not a literal 1v1 — still far smaller than a full
-regiment clash, but not the absolute floor either.
+any matchup involving a charge-bonus attacker (cavalry). Don't assume adding a bit
+more depth fixes it: EVERY cavalry-involving count actually tested here (1, 6, 10
+per side, both cavalry-vs-infantry and cavalry-vs-cavalry) wiped identically before
+reaching real contact — the one config that didn't show the wipe (12 infantry vs 3-4
+cavalry) never reached contact within the tested window either, so it's an untested
+gap, not a confirmed fix; there is currently no known small-scale cavalry-involving
+configuration that reaches genuine body-proximity contact. Until #1151 resolves, the
+working options are: skip the live-battle demo entirely and rely on unit tests (what
+PR #1143 itself did), or use a matchup that never triggers a charge bonus at all
+(e.g. two slow-closing Infantry-only regiments, which reach real contact fine per the
+`normal-formation-melee-contact.json` precedent — just at a scale/duration too large
+to call "minimal").
 
 ## A hotkey rebind (merge-conflict collision fix) has THREE copies to sync, not one
 
