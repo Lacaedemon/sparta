@@ -26,7 +26,7 @@
 # the author contract.
 #
 # Why a separate workflow (not claude.yml): claude.yml only *calls* an external
-# reusable workflow (d-morrison/gha), so recording steps can't be added there.
+# reusable workflow (Morrison-Lab/gha), so recording steps can't be added there.
 #
 # How the GIF gets inline without GitHub's browser-only attachment CDN: the GIF is
 # pushed to a long-lived media branch ($MEDIA_BRANCH) and embedded by raw URL. That

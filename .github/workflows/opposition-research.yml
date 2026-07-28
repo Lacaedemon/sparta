@@ -4,7 +4,7 @@ name: Periodic Opposition Research
 # by competitor communities and file tracking issues.
 #
 # NOTE: The schedule trigger below should be enabled once reviewed and approved.
-# KNOWN LIMITATION: the reusable d-morrison/gha claude.yml job's own `if:` gate
+# KNOWN LIMITATION: the reusable Morrison-Lab/gha claude.yml job's own `if:` gate
 # never matches workflow_dispatch or schedule triggers, so neither trigger below
 # actually runs the job yet — this workflow is intentionally merged in an
 # honestly-documented-inert state, pending an upstream fix to that gate; both
@@ -28,7 +28,7 @@ jobs:
       issues: write
       id-token: write
       actions: write
-    uses: d-morrison/gha/.github/workflows/claude.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/claude.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

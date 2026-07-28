@@ -1075,7 +1075,7 @@ check_links() {
     return 0
   fi
   # Null-delimited so filenames with spaces survive into lychee's argv. Note this
-  # is a bare lychee run; the CI workflow delegates to d-morrison/gha's reusable
+  # is a bare lychee run; the CI workflow delegates to Morrison-Lab/gha's reusable
   # check-links.yml, which may carry its own ignore-list/timeout config, so a
   # local pass here doesn't guarantee an identical CI result.
   local files=()
