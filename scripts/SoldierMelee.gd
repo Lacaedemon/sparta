@@ -332,6 +332,14 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				# at the dead soldier's own index (not recomputing) is what makes a casualty
 				# preserve every OTHER survivor's file identity -- see Unit._ensure_file_assignment.
 				unit._sim_soldier_file.remove_at(i)
+			if i < unit._sim_soldier_square_slot.size():
+				# Keep the square slot pairing index-aligned AND still a permutation:
+				# dropping this man's entry and stepping every later cell id down is
+				# what the grid itself does when it loses a soldier, so the survivors
+				# hold the cells they already had instead of the whole block re-pairing
+				# mid-fight -- see UnitFormation.drop_slot_assignment.
+				unit._sim_soldier_square_slot = UnitFormation.drop_slot_assignment(
+						unit._sim_soldier_square_slot, i)
 			if i < unit._sim_soldier_broken.size():
 				unit._sim_soldier_broken.remove_at(i)   # and the encirclement-broken flag
 			dead += 1

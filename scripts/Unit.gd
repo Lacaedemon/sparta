@@ -3005,6 +3005,13 @@ static func spacing_scale_for_mode(mode: int) -> float:
 ## Uses _base_separation_radius (which absorb() keeps updated) so a formation
 ## cycle on a merged unit doesn't discard the merge-widened body.
 func set_formation(mode: int) -> void:
+	if mode != formation_mode:
+		# A deliberate reshape. The square slot pairing is taken from where the men
+		# stand at the moment the square forms (_ensure_square_slot_assignment), so a
+		# pairing left over from an earlier square must not survive a spell back in
+		# line: the bodies have moved since, and reusing it would put the reform back
+		# on an arbitrary labelling. -1 forces the next query to pair fresh.
+		_square_slot_files = -1
 	formation_mode = mode
 	var base := _base_separation_radius
 	# The close-order stances all build on TIGHT's locked-shield collision footprint.
@@ -3527,6 +3534,21 @@ var _sim_soldier_file: PackedInt32Array = PackedInt32Array()
 # rather than keep stale file ids from a now-different frontage. -1 = never assigned yet.
 var _file_assignment_files: int = -1
 
+# Persistent per-soldier SQUARE slot assignment, index-aligned with _sim_soldier_pos:
+# _sim_soldier_square_slot[i] is the index, within the square grid UnitFormation.block_slots
+# lays out, of the cell soldier i occupies. Empty (and unread) for every other formation,
+# which keeps its own layout. Paired from where the men ACTUALLY stand
+# (UnitFormation.pair_slots_by_lateral_file) only on a deliberate reshape -- forming the
+# square, or its file count changing -- and otherwise carried through a casualty by
+# SoldierMelee.reap()'s index-aligned trim, exactly like _sim_soldier_file above, so the
+# slot targets a squared block steers onto never churn tick to tick while it takes losses.
+var _sim_soldier_square_slot: PackedInt32Array = PackedInt32Array()
+# The file count _sim_soldier_square_slot was last paired against; a mismatch against the
+# current formation_files(count) means the grid has genuinely reshaped and the pairing
+# should be recomputed from the live bodies. -1 = never paired, or invalidated by a
+# formation change (see set_formation) -- either way the next query pairs fresh.
+var _square_slot_files: int = -1
+
 # Per-soldier facing (the drill-maneuver foundation), index-aligned with
 # _sim_soldier_pos. By default every body faces the unit heading (kept synced each
 # tick in SoldierBodies.step). A per-soldier maneuver -- about-face (conversio),
@@ -3711,7 +3733,12 @@ func _effective_file_major_reform() -> bool:
 ## schiltron NEVER uses the file-major layout: formation_files() recomputes its file count
 ## continuously as casualties shrink the live count, so there is no stable "file" to
 ## preserve -- the hollow-square perimeter already has its own live-position staleness fix
-## (UnitFormation.live_perimeter_indices). Otherwise, _effective_file_major_reform() true
+## (UnitFormation.live_perimeter_indices). What it DOES keep is a per-soldier pairing onto
+## that square grid (_sim_soldier_square_slot -- see _ensure_square_slot_assignment): the
+## square's file count differs from the line's, so handing soldier i cell i sends the men
+## walking past each other to cells they were never near. The grid itself is unchanged;
+## only WHICH man stands on which of its cells is decided by proximity instead of by array
+## order. Otherwise, _effective_file_major_reform() true
 ## gives each soldier a persistent file assignment (_sim_soldier_file, rebuilt only on a
 ## genuine reflow -- see _ensure_file_assignment) laid out by
 ## UnitFormation.file_major_block_slots, so a casualty only shortens its OWN file's rear.
@@ -3720,11 +3747,15 @@ func _effective_file_major_reform() -> bool:
 ## casualty -- SHIELD_WALL/TESTUDO already pack tighter via spacing_scale (set in
 ## set_formation) regardless of which of the two casualty-reflow layouts applies. Pure --
 ## a function of (count, formation_mode, file_major_reform_mode, disciplined, spacing_scale,
-## the unit's frontage inputs, and -- for the file-major branch -- the unit's own
-## file-assignment state) -- so it stays deterministic and replay-safe like the callers below.
+## the unit's frontage inputs, and -- for the square and file-major branches -- the unit's
+## own assignment state) -- so it stays deterministic and replay-safe like the callers below.
 func formation_slots(count: int) -> PackedVector2Array:
 	if in_square():
-		return UnitFormation.block_slots(count, formation_files(count), file_pitch_wu())
+		var square_file_count: int = formation_files(count)
+		var square_grid: PackedVector2Array = UnitFormation.block_slots(
+				count, square_file_count, file_pitch_wu())
+		_ensure_square_slot_assignment(count, square_file_count, square_grid)
+		return UnitFormation.permute_slots(square_grid, _sim_soldier_square_slot)
 	if _effective_file_major_reform():
 		var files: int = formation_files(count)
 		_ensure_file_assignment(count, files)
@@ -3779,6 +3810,63 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 	_file_assignment_files = files
 
 
+## The live soldier bodies expressed in the SLOT GRID's own local frame -- the exact inverse
+## of the mirror-then-rotate mapping soldier_world_slots applies on the way out, so a
+## position here is directly comparable against a formation_slots()/block_slots() offset.
+## The _formation_angle term inside soldier_block_world_angle() is not optional: a completed
+## about-face folds it to +/-PI and a quarter-turn to +/-PI/2, which is exactly when a
+## de-rotation into the wrong frame would be furthest off.
+##
+## Returns an EMPTY array whenever the body layer doesn't hold exactly `count` soldiers --
+## a far-tier unit with no bodies, a not-yet-seeded spawn, or a query for a count the arrays
+## were never sized to -- which callers read as "there is nothing here to compare against".
+func _slot_frame_positions(count: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	if count <= 0 or _sim_soldier_pos.size() != count:
+		return out
+	var ang: float = soldier_block_world_angle()
+	out.resize(count)
+	for i in range(count):
+		var local: Vector2 = (_sim_soldier_pos[i] - position).rotated(-ang)
+		if _formation_mirror_x:
+			local.x = -local.x
+		out[i] = local
+	return out
+
+
+## Rebuild the square slot pairing (_sim_soldier_square_slot) whenever it is out of sync
+## with the current (count, files): the first query after the square forms, a file-count
+## change (the live count crossing a perfect-square boundary), or a count jump from
+## something other than an ordinary casualty (a merge, a tier promotion). `slots` is the
+## caller's already-computed block_slots grid, passed in rather than recomputed, so a tick's
+## repeated formation_slots/soldier_world_facings queries stay cheap.
+##
+## Pairs by proximity from where the men actually stand
+## (UnitFormation.pair_slots_by_lateral_file) whenever the body layer is available, and
+## falls back to the identity pairing -- the historical index-order layout -- when it is
+## not. Identity is the CORRECT answer there, not a degraded one: a fresh spawn and a tier
+## promotion both build the bodies FROM these slots, so nobody has a prior position to stay
+## near.
+##
+## An ordinary casualty deliberately does NOT land here: SoldierMelee.reap() renumbers the
+## pairing in place (UnitFormation.drop_slot_assignment), keeping the array size and `count`
+## in sync, so the pairing is only ever recomputed on a genuine reshape. Re-pairing per
+## casualty would read tidier on a still frame but would recompute slot targets from
+## jostling bodies every tick a squared unit is under attack.
+##
+## Idempotent and side-effect-free once in sync, like _ensure_file_assignment above, so it
+## is safe to call from every query in a tick rather than only the first.
+func _ensure_square_slot_assignment(count: int, files: int, slots: PackedVector2Array) -> void:
+	if _sim_soldier_square_slot.size() == count and _square_slot_files == files:
+		return
+	var live: PackedVector2Array = _slot_frame_positions(count)
+	if live.is_empty():
+		_sim_soldier_square_slot = UnitFormation.identity_assignment(count)
+	else:
+		_sim_soldier_square_slot = UnitFormation.pair_slots_by_lateral_file(live, slots, files)
+	_square_slot_files = files
+
+
 ## World-space per-soldier facing directions for `count` soldiers, index-aligned with
 ## soldier_world_slots. Either square variant points every soldier on the block's outer
 ## ring radially OUTWARD from the block centre -- the anti-cav ring actually presents
@@ -3794,10 +3882,17 @@ func soldier_world_facings(count: int) -> PackedVector2Array:
 		return out
 	var files: int = formation_files(count)
 	var slots := UnitFormation.block_slots(count, files, file_pitch_wu())
+	_ensure_square_slot_assignment(count, files, slots)
 	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
 	for i in range(slots.size()):
-		if UnitFormation.square_is_perimeter(i, count, files) and slots[i].length_squared() > 0.0001:
-			out[i] = slots[i].rotated(ang).normalized()
+		# Read the CELL this soldier was paired onto, not its raw array index. The
+		# pairing is what decides who ends up standing on the ring, so a facing keyed
+		# off the index would point interior men outward and leave ring men facing
+		# along the unit heading -- the two arrays would disagree about the same body.
+		var cell: int = _sim_soldier_square_slot[i] if i < _sim_soldier_square_slot.size() else i
+		if UnitFormation.square_is_perimeter(cell, count, files) \
+					and slots[cell].length_squared() > 0.0001:
+			out[i] = slots[cell].rotated(ang).normalized()
 		else:
 			out[i] = facing   # interior fill / degenerate centre slot keeps the unit heading
 	return out
@@ -6489,6 +6584,7 @@ func to_snapshot_dict() -> Dictionary:
 		"walk_advance": walk_advance, "reform_before_move": reform_before_move,
 		"file_major_reform_mode": file_major_reform_mode,
 		"file_assignment_files": _file_assignment_files,
+		"square_slot_files": _square_slot_files,
 		"under_fire": _under_fire, "in_enemy_contact": _in_enemy_contact,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
@@ -6528,6 +6624,7 @@ func to_snapshot_dict() -> Dictionary:
 		"sim_soldier_stamina": _sim_soldier_stamina.duplicate(),
 		"sim_soldier_facing": _sim_soldier_facing.duplicate(),
 		"sim_soldier_file": _sim_soldier_file.duplicate(),
+		"sim_soldier_square_slot": _sim_soldier_square_slot.duplicate(),
 	}
 
 
@@ -6600,6 +6697,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	reform_before_move = bool(d["reform_before_move"])
 	file_major_reform_mode = int(d["file_major_reform_mode"])
 	_file_assignment_files = int(d["file_assignment_files"])
+	_square_slot_files = int(d["square_slot_files"])
 	_under_fire = bool(d["under_fire"])
 	_in_enemy_contact = bool(d["in_enemy_contact"])
 	_attack_cd = float(d["attack_cd"])
@@ -6640,3 +6738,5 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_soldier_stamina = (d["sim_soldier_stamina"] as PackedFloat32Array).duplicate()
 	_sim_soldier_facing = (d["sim_soldier_facing"] as PackedVector2Array).duplicate()
 	_sim_soldier_file = (d["sim_soldier_file"] as PackedInt32Array).duplicate()
+	_sim_soldier_square_slot = \
+			(d["sim_soldier_square_slot"] as PackedInt32Array).duplicate()
