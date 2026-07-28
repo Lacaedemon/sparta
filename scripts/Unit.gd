@@ -4917,6 +4917,14 @@ func contact_soldier_indices(count: int) -> PackedInt32Array:
 ##
 ## Same class of split as contact_soldier_indices() above: one selection geometry, several
 ## consumers, each with its own gate and its own depth.
+##
+## Deliberately NOT memoized the way engaged_soldier_indices() is, for the same reason
+## contact_soldier_indices() isn't: that cache exists to spare its SEVERAL same-tick callers
+## (SoldierMelee, SoldierEncirclement, OrderGuards, SoldierBodies) a repeat of one selection,
+## whereas this has a single caller and so would compute exactly once per unit per tick with
+## or without a cache. The cost this does add is that one bounded heap selection -- the same
+## O(n log k) shape the melee tier's own selection already runs, and below the benchmark's
+## noise floor in practice.
 func body_tier_soldier_indices(count: int) -> PackedInt32Array:
 	if not is_engaged() or count <= 0:
 		return PackedInt32Array()
