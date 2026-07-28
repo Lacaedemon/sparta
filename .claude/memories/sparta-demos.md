@@ -571,24 +571,33 @@ exact mechanism behind the observed wipe is UNCONFIRMED** (see #1151, still open
 the symptom (a symmetric 10v10 Cavalry matchup, one whole regiment vanishing in one
 tick with the OTHER side reporting zero HP loss) doesn't cleanly fit a single-strike
 story either, so a still-regiment-level casualty/morale-authority path or a
-`_check_victory()` edge case remain live alternative explanations. The reproducible
-OBSERVATION is solid (tried 1, 3, 4, 6, 10, 12 soldiers per side, cavalry vs infantry
-AND cavalry vs cavalry, identical every time, confirmed via `git stash` to be
-pre-existing on unmodified `main`) — only the CAUSE is still open.
+`_check_victory()` edge case remain live alternative explanations.
+
+**The reproducible OBSERVATION, precisely:** five cavalry-involving configurations
+reached real contact, and every one of them wiped identically —
+Cavalry(1) vs Infantry(1) at a 110wu spawn gap; Cavalry(6) vs Infantry(6) at 110wu
+(re-confirmed pre-existing on unmodified `main` via `git stash`); Infantry(10) vs
+Cavalry(4) at 100wu; Infantry(12) vs Cavalry(3) at 150wu; and Cavalry(10) vs
+Cavalry(10) at 150wu (the symmetric, zero-cost-to-attacker case documented in
+#1151's own body). Two OTHER attempts — the same Cavalry(1)/Infantry(1) and
+Infantry(10)/Cavalry(4) pairings, but at a wider 200-220wu spawn gap — never reached
+contact within the recording's wall-clock budget at all; those two are inconclusive,
+not evidence either way, and are NOT counted among the five above. Only the CAUSE is
+still open — every configuration that actually reached contact wiped, with zero
+exceptions.
 
 **How to apply:** before committing to a "smallest possible" scenario for a mechanic
 gated on genuine body PROXIMITY (not just being in the SAME battle), check whether
 the fight could resolve entirely before proximity is ever reached — particularly for
-any matchup involving a charge-bonus attacker (cavalry). Don't assume adding a bit
-more depth fixes it: EVERY cavalry-involving count actually tested here (1, 6, 10
-per side, both cavalry-vs-infantry and cavalry-vs-cavalry) wiped identically before
-reaching real contact — the one config that didn't show the wipe (12 infantry vs 3-4
-cavalry) never reached contact within the tested window either, so it's an untested
-gap, not a confirmed fix; there is currently no known small-scale cavalry-involving
-configuration that reaches genuine body-proximity contact. Until #1151 resolves, the
-working options are: skip the live-battle demo entirely and rely on unit tests (what
-PR #1143 itself did), or use a matchup that never triggers a charge bonus at all
-(e.g. two slow-closing Infantry-only regiments, which reach real contact fine per the
+any matchup involving a charge-bonus attacker (cavalry). Don't assume adding depth or
+spacing avoids it: every configuration that actually reached contact wiped, across
+soldier counts from 1 to 12 per side and both cavalry-vs-infantry and
+cavalry-vs-cavalry matchups (see the precise enumeration above) — there is currently
+no known small-scale cavalry-involving configuration CONFIRMED to reach genuine
+body-proximity contact. Until #1151 resolves, the working options are: skip the
+live-battle demo entirely and rely on unit tests (what PR #1143 itself did), or use a
+matchup that never triggers a charge bonus at all (e.g. two slow-closing
+Infantry-only regiments, which reach real contact fine per the
 `normal-formation-melee-contact.json` precedent — just at a scale/duration too large
 to call "minimal").
 
