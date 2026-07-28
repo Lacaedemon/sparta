@@ -1372,6 +1372,21 @@ Figure&nbsp;30: Two widths, two lanes: a wide battle line and a narrow squad rou
 </div>
 </div>
 <p>Stop the unit and it re-engages anything nearby. Timing the disengage — late enough that the enemy is committed, early enough that you survive the exit — is one of the game’s sharper decisions.</p>
+<p>A move order given while the unit is still fighting takes hold right away — the unit starts marching off toward the new destination immediately, it doesn’t hold the line and keep trading blows first. If no real fight happened under this order, the march just continues to its destination as normal. If the unit <em>was</em> engaged, the destination gets one more check once the fight has genuinely died down: if the ground you were marching toward is now held by a living enemy, the order cancels outright instead of marching the unit into occupied ground, so the commander isn’t left dragging it toward a destination the battle has since invalidated. If the destination is still clear, the march continues as normal even though a fight happened along the way. Reissue the order once the ground clears (or pick a different destination) to redirect the unit for real.</p>
+<div id="fig-move-cancel-on-engagement" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-move-cancel-on-engagement-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/move_cancel_on_engagement.jpg">
+  <source src="media/move_cancel_on_engagement.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-move-cancel-on-engagement-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;31: Redirecting an engaged unit: a mid-fight move order marches the unit off right away, but once its engagement with the enemy dies down the destination is checked one last time — if the enemy still holds that ground, the order cancels outright and the unit falls back into the fight instead of marching into occupied territory.
+</figcaption>
+</figure>
+</div>
 <hr>
 <p><em>Source: <a href="https://github.com/Lacaedemon/sparta/blob/main/README.md"><code>README.md</code></a> · combat math lives in <a href="https://github.com/Lacaedemon/sparta/blob/main/scripts/Unit.gd"><code>scripts/Unit.gd</code></a> (<code>_strike()</code>, <code>_flank_multiplier()</code>).</em></p>
 
