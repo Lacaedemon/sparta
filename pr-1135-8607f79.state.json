@@ -16,6 +16,7 @@
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": false,
           "maneuver": "IDLE",
           "morale": 100.0,
           "name": "Infantry 1",
@@ -76,6 +77,7 @@
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Infantry 2",
@@ -141,6 +143,7 @@
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Infantry 1",
@@ -201,6 +204,7 @@
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Infantry 2",
@@ -266,6 +270,7 @@
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Infantry 1",
@@ -326,6 +331,7 @@
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": false,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Infantry 2",
@@ -386,11 +392,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.01,
+            0.0,
             1.0
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 83.9,
           "name": "Infantry 1",
@@ -398,11 +405,11 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            499.98,
+            499.78,
             450.74
           ],
           "position_m": [
-            24.999,
+            24.989,
             22.537
           ],
           "queue_tail": [],
@@ -410,12 +417,12 @@
           "soldier_summary": {
             "bbox": [
               40.5,
-              6.49
+              6.64
             ],
             "broken_count": 0,
             "centroid": [
               501.21,
-              449.68
+              449.18
             ],
             "count": 23,
             "prone_count": 0
@@ -423,11 +430,11 @@
           "soldier_summary_m": {
             "bbox_m": [
               2.025,
-              0.325
+              0.332
             ],
             "centroid_m": [
               25.06,
-              22.484
+              22.459
             ]
           },
           "soldiers": 23,
@@ -446,11 +453,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.01,
+            0.0,
             -1.0
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -458,12 +466,12 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            499.99,
-            473.88
+            500.01,
+            474.07
           ],
           "position_m": [
             25.0,
-            23.694
+            23.704
           ],
           "queue_tail": [],
           "rank_relief": true,
@@ -475,7 +483,7 @@
             "broken_count": 0,
             "centroid": [
               500.0,
-              469.62
+              470.05
             ],
             "count": 36,
             "prone_count": 0
@@ -487,7 +495,7 @@
             ],
             "centroid_m": [
               25.0,
-              23.481
+              23.502
             ]
           },
           "soldiers": 36,
@@ -511,11 +519,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.08,
+            -0.01,
             1.0
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 83.9,
           "name": "Infantry 1",
@@ -523,35 +532,35 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            501.2,
-            437.19
+            500.21,
+            437.58
           ],
           "position_m": [
-            25.06,
-            21.859
+            25.011,
+            21.879
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              31.24,
-              12.08
+              31.98,
+              13.42
             ],
-            "broken_count": 9,
+            "broken_count": 10,
             "centroid": [
-              500.85,
-              439.02
+              500.64,
+              439.01
             ],
             "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              1.562,
-              0.604
+              1.599,
+              0.671
             ],
             "centroid_m": [
-              25.043,
+              25.032,
               21.951
             ]
           },
@@ -571,11 +580,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.08,
+            0.01,
             -1.0
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -583,36 +593,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            499.56,
-            459.28
+            499.98,
+            459.77
           ],
           "position_m": [
-            24.978,
-            22.964
+            24.999,
+            22.989
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              74.43,
-              48.22
+              73.03,
+              41.73
             ],
             "broken_count": 0,
             "centroid": [
-              500.17,
-              455.16
+              499.97,
+              455.72
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.721,
-              2.411
+              3.652,
+              2.086
             ],
             "centroid_m": [
-              25.009,
-              22.758
+              24.999,
+              22.786
             ]
           },
           "soldiers": 36,
@@ -641,6 +651,7 @@
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 83.9,
           "name": "Infantry 1",
@@ -648,36 +659,36 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            498.47,
-            425.66
+            500.56,
+            426.27
           ],
           "position_m": [
-            24.924,
-            21.283
+            25.028,
+            21.313
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              26.78,
-              21.78
+              32.9,
+              16.46
             ],
             "broken_count": 0,
             "centroid": [
-              501.01,
-              425.25
+              500.37,
+              425.89
             ],
             "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              1.339,
-              1.089
+              1.645,
+              0.823
             ],
             "centroid_m": [
-              25.051,
-              21.262
+              25.018,
+              21.294
             ]
           },
           "soldiers": 23,
@@ -701,6 +712,7 @@
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -708,36 +720,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            498.29,
-            448.45
+            500.15,
+            449.11
           ],
           "position_m": [
-            24.915,
-            22.422
+            25.007,
+            22.456
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              100.43,
-              83.09
+              90.7,
+              76.59
             ],
             "broken_count": 0,
             "centroid": [
-              500.46,
-              450.97
+              499.96,
+              451.63
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              5.022,
-              4.155
+              4.535,
+              3.83
             ],
             "centroid_m": [
-              25.023,
-              22.549
+              24.998,
+              22.582
             ]
           },
           "soldiers": 36,
@@ -766,6 +778,7 @@
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 83.9,
           "name": "Infantry 1",
@@ -773,36 +786,36 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            498.25,
-            420.35
+            499.84,
+            420.66
           ],
           "position_m": [
-            24.913,
-            21.018
+            24.992,
+            21.033
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              42.65,
-              32.95
+              40.17,
+              24.07
             ],
             "broken_count": 0,
             "centroid": [
-              499.72,
-              418.93
+              499.84,
+              419.17
             ],
             "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              2.132,
-              1.648
+              2.009,
+              1.203
             ],
             "centroid_m": [
-              24.986,
-              20.947
+              24.992,
+              20.958
             ]
           },
           "soldiers": 23,
@@ -826,6 +839,7 @@
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -833,36 +847,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            497.97,
-            443.29
+            499.63,
+            443.81
           ],
           "position_m": [
-            24.899,
-            22.164
+            24.982,
+            22.191
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              116.1,
-              110.75
+              97.23,
+              96.66
             ],
             "broken_count": 0,
             "centroid": [
-              500.46,
-              446.28
+              500.71,
+              447.51
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              5.805,
-              5.538
+              4.861,
+              4.833
             ],
             "centroid_m": [
-              25.023,
-              22.314
+              25.036,
+              22.375
             ]
           },
           "soldiers": 36,
@@ -886,11 +900,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.04,
+            0.04,
             1.0
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 83.9,
           "name": "Infantry 1",
@@ -898,36 +913,36 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            495.84,
-            416.94
+            496.89,
+            417.48
           ],
           "position_m": [
-            24.792,
-            20.847
+            24.844,
+            20.874
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              36.23,
-              37.28
+              36.3,
+              31.27
             ],
-            "broken_count": 2,
+            "broken_count": 0,
             "centroid": [
-              497.13,
-              416.64
+              498.57,
+              414.66
             ],
             "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              1.811,
-              1.864
+              1.815,
+              1.564
             ],
             "centroid_m": [
-              24.857,
-              20.832
+              24.929,
+              20.733
             ]
           },
           "soldiers": 23,
@@ -946,11 +961,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.04,
+            -0.04,
             -1.0
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -958,36 +974,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            495.12,
-            439.69
+            497.91,
+            440.87
           ],
           "position_m": [
-            24.756,
-            21.985
+            24.895,
+            22.043
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              120.1,
-              120.67
+              101.59,
+              101.78
             ],
             "broken_count": 0,
             "centroid": [
-              499.71,
-              443.13
+              499.34,
+              444.98
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              6.005,
-              6.033
+              5.08,
+              5.089
             ],
             "centroid_m": [
-              24.986,
-              22.157
+              24.967,
+              22.249
             ]
           },
           "soldiers": 36,
@@ -1011,11 +1027,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.05,
+            0.06,
             1.0
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 83.9,
           "name": "Infantry 1",
@@ -1023,36 +1040,36 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            493.53,
-            414.27
+            495.62,
+            416.44
           ],
           "position_m": [
-            24.676,
-            20.714
+            24.781,
+            20.822
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              31.33,
-              20.73
+              34.43,
+              41.27
             ],
-            "broken_count": 4,
+            "broken_count": 0,
             "centroid": [
-              493.59,
-              413.01
+              496.57,
+              412.78
             ],
             "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              1.567,
-              1.037
+              1.722,
+              2.063
             ],
             "centroid_m": [
-              24.679,
-              20.651
+              24.829,
+              20.639
             ]
           },
           "soldiers": 23,
@@ -1071,11 +1088,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.05,
+            -0.06,
             -1.0
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -1083,36 +1101,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            494.79,
-            437.57
+            497.06,
+            440.26
           ],
           "position_m": [
-            24.74,
-            21.878
+            24.853,
+            22.013
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              117.14,
-              104.69
+              101.03,
+              84.47
             ],
             "broken_count": 0,
             "centroid": [
-              497.8,
-              441.69
+              496.68,
+              444.55
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              5.857,
-              5.234
+              5.051,
+              4.224
             ],
             "centroid_m": [
-              24.89,
-              22.084
+              24.834,
+              22.228
             ]
           },
           "soldiers": 36,
@@ -1136,11 +1154,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.1,
-            0.99
+            0.06,
+            1.0
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 83.9,
           "name": "Infantry 1",
@@ -1148,36 +1167,36 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            491.36,
-            412.26
+            495.18,
+            416.89
           ],
           "position_m": [
-            24.568,
-            20.613
+            24.759,
+            20.845
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              34.13,
-              18.49
+              40.18,
+              42.8
             ],
-            "broken_count": 1,
+            "broken_count": 0,
             "centroid": [
-              490.93,
-              409.29
+              495.71,
+              413.27
             ],
             "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              1.706,
-              0.924
+              2.009,
+              2.14
             ],
             "centroid_m": [
-              24.547,
-              20.465
+              24.785,
+              20.664
             ]
           },
           "soldiers": 23,
@@ -1196,11 +1215,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.1,
-            -0.99
+            -0.06,
+            -1.0
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -1208,36 +1228,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            494.05,
-            435.81
+            496.49,
+            440.36
           ],
           "position_m": [
-            24.703,
-            21.79
+            24.824,
+            22.018
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              111.58,
-              84.35
+              85.76,
+              69.54
             ],
             "broken_count": 0,
             "centroid": [
-              495.43,
-              441.07
+              495.17,
+              445.6
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              5.579,
-              4.218
+              4.288,
+              3.477
             ],
             "centroid_m": [
-              24.771,
-              22.053
+              24.758,
+              22.28
             ]
           },
           "soldiers": 36,
@@ -1261,11 +1281,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.16,
-            0.99
+            0.05,
+            1.0
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 83.9,
           "name": "Infantry 1",
@@ -1273,36 +1294,36 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            488.72,
-            411.18
+            495.34,
+            418.57
           ],
           "position_m": [
-            24.436,
-            20.559
+            24.767,
+            20.929
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              36.65,
-              24.19
+              36.98,
+              34.26
             ],
             "broken_count": 0,
             "centroid": [
-              488.63,
-              407.31
+              495.08,
+              414.32
             ],
             "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              1.832,
-              1.21
+              1.849,
+              1.713
             ],
             "centroid_m": [
-              24.432,
-              20.365
+              24.754,
+              20.716
             ]
           },
           "soldiers": 23,
@@ -1321,11 +1342,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.16,
-            -0.99
+            -0.05,
+            -1.0
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -1333,36 +1355,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            492.38,
-            435.11
+            496.46,
+            442.63
           ],
           "position_m": [
-            24.619,
-            21.755
+            24.823,
+            22.131
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              118.11,
-              67.12
+              81.87,
+              50.66
             ],
             "broken_count": 0,
             "centroid": [
-              494.13,
-              440.58
+              496.65,
+              447.53
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              5.905,
-              3.356
+              4.094,
+              2.533
             ],
             "centroid_m": [
-              24.707,
-              22.029
+              24.832,
+              22.376
             ]
           },
           "soldiers": 36,
@@ -1386,51 +1408,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.18,
-            0.98
+            0.08,
+            1.0
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 80.7,
+          "morale": 83.9,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            484.02,
-            414.31
+            496.36,
+            423.31
           ],
           "position_m": [
-            24.201,
-            20.716
+            24.818,
+            21.165
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              42.57,
-              25.26
+              32.87,
+              30.57
             ],
             "broken_count": 0,
             "centroid": [
-              484.84,
-              411.54
+              494.82,
+              419.26
             ],
-            "count": 22,
+            "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              2.128,
-              1.263
+              1.644,
+              1.528
             ],
             "centroid_m": [
-              24.242,
-              20.577
+              24.741,
+              20.963
             ]
           },
-          "soldiers": 22,
+          "soldiers": 23,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "target_enemy_uid": 1,
@@ -1446,11 +1469,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.18,
-            -0.98
+            -0.08,
+            -1.0
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -1458,36 +1482,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            488.24,
-            437.58
+            498.24,
+            447.15
           ],
           "position_m": [
-            24.412,
-            21.879
+            24.912,
+            22.357
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              116.17,
-              57.98
+              86.71,
+              40.2
             ],
             "broken_count": 0,
             "centroid": [
-              491.42,
-              440.96
+              498.93,
+              450.07
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              5.809,
-              2.899
+              4.335,
+              2.01
             ],
             "centroid_m": [
-              24.571,
-              22.048
+              24.947,
+              22.504
             ]
           },
           "soldiers": 36,
@@ -1511,51 +1535,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.22,
-            0.98
+            0.02,
+            1.0
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 80.7,
+          "morale": 83.9,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            479.53,
-            418.85
+            496.67,
+            428.38
           ],
           "position_m": [
-            23.976,
-            20.943
+            24.833,
+            21.419
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              34.9,
-              19.81
+              39.52,
+              23.1
             ],
             "broken_count": 0,
             "centroid": [
-              479.42,
-              418.9
+              496.4,
+              426.69
             ],
-            "count": 22,
+            "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              1.745,
-              0.99
+              1.976,
+              1.155
             ],
             "centroid_m": [
-              23.971,
-              20.945
+              24.82,
+              21.334
             ]
           },
-          "soldiers": 22,
+          "soldiers": 23,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "target_enemy_uid": 1,
@@ -1571,11 +1596,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.22,
-            -0.98
+            -0.02,
+            -1.0
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -1583,36 +1609,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            484.47,
-            441.43
+            497.09,
+            451.73
           ],
           "position_m": [
-            24.224,
-            22.072
+            24.854,
+            22.587
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              113.64,
-              61.12
+              80.14,
+              30.19
             ],
             "broken_count": 0,
             "centroid": [
-              489.01,
-              443.07
+              498.82,
+              451.95
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              5.682,
-              3.056
+              4.007,
+              1.509
             ],
             "centroid_m": [
-              24.45,
-              22.154
+              24.941,
+              22.597
             ]
           },
           "soldiers": 36,
@@ -1636,51 +1662,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.24,
-            0.97
+            -0.01,
+            1.0
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 80.7,
+          "morale": 83.9,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            477.78,
-            423.22
+            498.65,
+            431.48
           ],
           "position_m": [
-            23.889,
-            21.161
+            24.932,
+            21.574
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              35.95,
-              34.75
+              39.97,
+              19.24
             ],
-            "broken_count": 1,
+            "broken_count": 0,
             "centroid": [
-              477.52,
-              421.69
+              497.63,
+              430.56
             ],
-            "count": 22,
+            "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              1.798,
-              1.737
+              1.998,
+              0.962
             ],
             "centroid_m": [
-              23.876,
-              21.084
+              24.881,
+              21.528
             ]
           },
-          "soldiers": 22,
+          "soldiers": 23,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "target_enemy_uid": 1,
@@ -1696,11 +1723,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.24,
-            -0.97
+            0.01,
+            -1.0
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -1708,36 +1736,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            483.47,
-            445.73
+            498.19,
+            454.85
           ],
           "position_m": [
-            24.173,
-            22.286
+            24.91,
+            22.742
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              111.87,
-              66.14
+              76.61,
+              46.08
             ],
             "broken_count": 0,
             "centroid": [
-              486.76,
-              448.2
+              498.5,
+              457.48
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              5.594,
-              3.307
+              3.831,
+              2.304
             ],
             "centroid_m": [
-              24.338,
-              22.41
+              24.925,
+              22.874
             ]
           },
           "soldiers": 36,
@@ -1761,51 +1789,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.31,
-            0.95
+            0.02,
+            1.0
           ],
           "formation": "SHIELD_WALL",
           "frontage": 7,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 80.7,
+          "morale": 83.9,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            477.69,
-            426.68
+            500.29,
+            436.41
           ],
           "position_m": [
-            23.885,
-            21.334
+            25.014,
+            21.82
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              38.05,
-              37.34
+              39.33,
+              19.66
             ],
             "broken_count": 0,
             "centroid": [
-              476.94,
-              424.78
+              500.52,
+              434.11
             ],
-            "count": 22,
+            "count": 23,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              1.903,
-              1.867
+              1.966,
+              0.983
             ],
             "centroid_m": [
-              23.847,
-              21.239
+              25.026,
+              21.705
             ]
           },
-          "soldiers": 22,
+          "soldiers": 23,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "target_enemy_uid": 1,
@@ -1821,11 +1850,12 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.31,
-            -0.95
+            -0.02,
+            -1.0
           ],
           "formation": "NORMAL",
           "frontage": 9,
+          "in_enemy_contact": true,
           "maneuver": "FIGHTING",
           "morale": 91.0,
           "name": "Infantry 2",
@@ -1833,36 +1863,36 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            484.95,
-            448.98
+            500.86,
+            460.1
           ],
           "position_m": [
-            24.248,
-            22.449
+            25.043,
+            23.005
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              102.59,
-              61.31
+              89.54,
+              48.08
             ],
             "broken_count": 0,
             "centroid": [
-              486.55,
-              451.77
+              500.11,
+              462.76
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              5.13,
-              3.066
+              4.477,
+              2.404
             ],
             "centroid_m": [
-              24.327,
-              22.589
+              25.006,
+              23.138
             ]
           },
           "soldiers": 36,
