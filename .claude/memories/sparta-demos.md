@@ -551,6 +551,56 @@ casualties, inter-unit crowding) that a small scenario can't exercise at all. Fo
 per-soldier physics mechanic (collision damage, a single knockback, a prone check),
 default to the smallest scenario, not the standard 5v5/100v100 battle layout.
 
+**Caveat, discovered building the collision-damage demo (#1142/PR #1143): a genuine
+1-vs-1 (or few-soldier) matchup can be TOO minimal for a mechanic gated on actual
+body-to-body proximity, because melee STRIKE engagement fires at a much longer range
+first.** The strike/engagement gate in `Unit._think()` triggers at `attack_range +
+RADIUS + enemy.RADIUS` — roughly 60-70 world units for common types, one-sided (only
+the querying unit's own `attack_range`), since `Unit.RADIUS` is a flat per-REGIMENT
+footprint constant (18 wu), not a per-soldier body radius. (This is a DIFFERENT check
+from `Unit._in_enemy_contact`, which correctly uses `maxf(attack_range,
+u.attack_range) + RADIUS + u.RADIUS` — see "A symmetric 'is X near Y' contact check
+needs BOTH sides' own range" in `sparta.md` — `_in_enemy_contact` gates physical
+collision selection, not the strike path.) A lone or small-count target's whole HP
+pool is thin enough that a single charge-bonus-amplified strike at THAT range
+*could* wipe it out entirely with zero cost to the attacker, long before the two
+soldiers' actual `_sim_soldier_pos` values ever converge to the much tighter
+distance (`sradii[a]+sradii[b]+containment`, typically ~10-20 wu) genuine
+collision-physics contact (`SoldierEnemyContact.accumulate`) requires — **but the
+exact mechanism behind the observed wipe is UNCONFIRMED** (see #1151, still open):
+the symptom (a symmetric 10v10 Cavalry matchup, one whole regiment vanishing in one
+tick with the OTHER side reporting zero HP loss) doesn't cleanly fit a single-strike
+story either, so a still-regiment-level casualty/morale-authority path or a
+`_check_victory()` edge case remain live alternative explanations.
+
+**The reproducible OBSERVATION, precisely:** five cavalry-involving configurations
+reached real contact, and every one of them wiped identically —
+Cavalry(1) vs Infantry(1) at a 110wu spawn gap; Cavalry(6) vs Infantry(6) at 110wu
+(re-confirmed pre-existing on unmodified `main` via `git stash`); Infantry(10) vs
+Cavalry(4) at 100wu; Infantry(12) vs Cavalry(3) at 150wu; and Cavalry(10) vs
+Cavalry(10) at 150wu (the symmetric, zero-cost-to-attacker case documented in
+#1151's own body). Two OTHER attempts — the same Cavalry(1)/Infantry(1) and
+Infantry(10)/Cavalry(4) pairings, but at a wider 200-220wu spawn gap — never reached
+contact within the recording's wall-clock budget at all; those two are inconclusive,
+not evidence either way, and are NOT counted among the five above. Only the CAUSE is
+still open — every configuration that actually reached contact wiped, with zero
+exceptions.
+
+**How to apply:** before committing to a "smallest possible" scenario for a mechanic
+gated on genuine body PROXIMITY (not just being in the SAME battle), check whether
+the fight could resolve entirely before proximity is ever reached — particularly for
+any matchup involving a charge-bonus attacker (cavalry). Don't assume adding depth or
+spacing avoids it: every configuration that actually reached contact wiped, across
+soldier counts from 1 to 12 per side and both cavalry-vs-infantry and
+cavalry-vs-cavalry matchups (see the precise enumeration above) — there is currently
+no known small-scale cavalry-involving configuration CONFIRMED to reach genuine
+body-proximity contact. Until #1151 resolves, the working options are: skip the
+live-battle demo entirely and rely on unit tests (what PR #1143 itself did), or use a
+matchup that never triggers a charge bonus at all (e.g. two slow-closing
+Infantry-only regiments, which reach real contact fine per the
+`normal-formation-melee-contact.json` precedent — just at a scale/duration too large
+to call "minimal").
+
 ## A hotkey rebind (merge-conflict collision fix) has THREE copies to sync, not one
 
 When resolving an `OrderMode`-enum merge collision (see `sparta.md`'s
