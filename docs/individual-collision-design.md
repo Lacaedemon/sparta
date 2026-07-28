@@ -394,30 +394,33 @@ section landed nothing attached a consequence to it beyond the existing skill-ro
 strike damage (`SoldierCombat.wound`) — a fast, hard impact and a gentle graze arrested the
 same way as far as health was concerned.
 
-`SoldierCombat.collision_damage(closing_speed, mass_a_eff, mass_b_eff)` converts the
-reduced-mass kinetic energy a fully inelastic stop dissipates (`0.5 * mu * closing_speed^2`,
-`mu` the reduced mass) into health loss, split by effective mass the same way
-`enemy_contact_impulse`'s own velocity split already is: the lighter/less-braced side, which
-already receives the bigger velocity change from the same impulse, also takes the bigger
-damage share — no new asymmetry assumption beyond the one the velocity split already
-establishes.
+`SoldierCombat.collision_damage(delta_v)` converts a soldier's actual velocity change this
+tick into health loss (`COLLISION_DAMAGE_SCALE * delta_v.length_squared()`) — a deceleration-
+based severity measure (the same shape real crash-injury metrics use), not a literal
+kinetic-energy split. An earlier version derived damage independently from each pair's raw
+closing speed and effective masses (a `0.5 * mu * closing_speed^2` reduced-mass split); review
+on the introducing PR found three compounding bugs in that approach — no cap across a
+soldier's simultaneous contacts (mirroring the exact "multi-pair force accumulation" bug this
+file's own "Decisions" section already documents for the velocity pipeline), full KE
+recomputed from scratch every tick during a multi-tick arrest (overcounting total damage
+1.4-2x for a realistic charge), and a mass-split formula that made a **braced/heavier**
+defender take **more** absolute damage against a much heavier attacker, not less — inverting
+what bracing is supposed to do.
 
-**Scoped to real closing speed only, above `SoldierCombat.COLLISION_DAMAGE_MIN_SPEED`** —
-never the synthetic overlap-correction term `enemy_contact_impulse` also resolves (the term
-that fires continuously whenever two bodies are merely interpenetrating, e.g. a packed,
-grinding melee line at a dead stop). Ordinary sustained pushing between two lines therefore
-causes zero extra damage; only a genuinely fast impact does.
+**Fixed by deriving damage from the velocity pipeline's own output instead of an independent
+recompute.** `SoldierEnemyContact.accumulate` flags which soldiers had at least one pair clear
+`SoldierCombat.is_hard_collision`'s real-closing-speed threshold (`COLLISION_DAMAGE_MIN_SPEED`
+— never the synthetic overlap-correction term, so ordinary sustained pushing between two
+packed lines causes zero extra damage), then — AFTER the existing multi-pair trim and
+per-tick `KNOCKBACK_SPEED_MAX` cap have fully resolved each soldier's actual velocity change
+for the tick — computes damage from that real, already-bounded delta. This automatically
+inherits both of the velocity pipeline's existing correctness properties (the multi-pair cap
+and the per-tick bound) with no separate bookkeeping, and automatically gets the bracing
+direction right: a heavier/braced body always receives a *smaller* velocity change from the
+same contact (`enemy_contact_impulse`'s own effective-mass split), so it always takes less
+damage too — no separate asymmetry formula to get backwards.
 
-**Computed independently of the velocity-impulse pipeline**, not routed through its
-`KNOCKBACK_SPEED_MAX` cap or the torque-neutrality trim in `SoldierEnemyContact.accumulate`
-(see that file's own doc comment, and this doc's "Decisions" section, for the history of
-subtle torque-leakage bugs that trim exists to prevent). Damage is a scalar with no
-directional/torque implications, so it doesn't need to inherit that pipeline's fragility —
-`accumulate()` computes it straight from each pair's actual (untrimmed) closing velocity
-along the contact normal, applies it directly to `_sim_soldier_hp`, and reaps any resulting
-deaths once per unit after the full pass (mirroring `SoldierMelee.resolve`'s own end-of-batch
-reap).
-
-`COLLISION_DAMAGE_MIN_SPEED` and `COLLISION_DAMAGE_SCALE` are tunable constants (see
+`COLLISION_DAMAGE_MIN_SPEED` and `COLLISION_DAMAGE_SCALE` are tunable constants, threaded as
+overridable parameters on `is_hard_collision`/`collision_damage` respectively (see
 `SoldierCombat.gd`'s own comments for the calibration reasoning); both need playtesting, not
 just derivation.

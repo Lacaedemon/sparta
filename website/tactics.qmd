@@ -328,12 +328,13 @@ together), the force of the collision itself deals damage on top of whatever a
 weapon lands. A gentle, slow-closing press between two locked lines causes no
 extra harm this way --- it takes genuine speed behind the hit.
 
-The lighter or less-braced side of a hard collision takes the worse damage, the
-same way it already takes the bigger shove: a braced, heavy line shrugs off an
-impact that would badly hurt an unbraced or lightly-built soldier caught the same
-way. This is part of why riding a charge into a set line is so costly for the
-attacker if the charge doesn't break through cleanly --- the impact itself hurts
-both sides, and the braced defender comes off better.
+The lighter or less-braced side of a hard collision takes the worse damage,
+because damage tracks the same velocity jolt as the shove itself: a braced,
+heavy line is already shoved less by the same impact, so it also takes less
+of a jolt to the body --- and less jolt means less damage. This is part of
+why riding a charge into a set line is so costly for the attacker if the
+charge doesn't break through cleanly --- the impact itself hurts both sides,
+and the braced defender takes less of it.
 
 ## Line width (frontage)
 

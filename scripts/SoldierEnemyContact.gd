@@ -56,14 +56,14 @@ static func body_trim_scale(orig_vel: Vector2, delta: Vector2) -> float:
 ## state, so a "disengaging" unit's bodies still resist an enemy's rather than walking
 ## through it -- see contact_soldier_indices' own doc comment.
 ##
-## Also applies collision damage (SoldierCombat.collision_damage) for pairs closing fast
-## enough to clear COLLISION_DAMAGE_MIN_SPEED: computed straight from each pair's actual
-## (untrimmed) closing velocity along `normal`, independent of the velocity-impulse pipeline's
-## KNOCKBACK_SPEED_MAX cap and the torque-neutrality trim below -- damage is a scalar with no
-## directional/torque implications, so it doesn't need to inherit that pipeline's fragility
-## (see .claude/memories/sparta.md's torque-leakage history for why that trim exists at all).
-## Applied directly to _sim_soldier_hp as each pair resolves (unlike the velocity deltas,
-## damage needs no deferred trimming), with deaths reaped once per unit after the full pass.
+## Also applies collision damage (SoldierCombat.collision_damage) for soldiers with at least
+## one pair closing fast enough to clear COLLISION_DAMAGE_MIN_SPEED: the pair loop below only
+## flags ELIGIBILITY (real closing speed, never the synthetic overlap-correction term); the
+## actual damage amount is derived AFTER the velocity pipeline resolves, from each flagged
+## soldier's real, already-bounded velocity change this tick -- reusing the pipeline's own
+## multi-pair trim and per-tick cap rather than an independent per-pair recompute (see
+## SoldierCombat.collision_damage's own doc comment for why). Deaths are reaped once per unit
+## after the full pass.
 static func accumulate(units: Array, frame: int) -> void:
 	var sorted_units: Array = units.duplicate()
 	sorted_units.sort_custom(func(x: Variant, y: Variant) -> bool: return (x as Unit).uid < (y as Unit).uid)
@@ -116,13 +116,18 @@ static func accumulate(units: Array, frame: int) -> void:
 	var pair_b: PackedInt32Array = PackedInt32Array()
 	var pair_impulse_a: PackedVector2Array = PackedVector2Array()
 	var pair_impulse_b: PackedVector2Array = PackedVector2Array()
-	# Collision damage is independent of the velocity-impulse pipeline above -- applied
-	# directly to _sim_soldier_hp as each pair resolves, no deferred trim needed. `killer` is
-	# an approximation for reap()'s morale/fallen-direction argument: contact is mutual, not
-	# directed like a strike, so this just remembers the FIRST opposing unit each unit took
-	# collision damage from this tick (mirroring SoldierMelee.resolve's own one-attacker-at-a-
-	# time approximation elsewhere in this codebase).
-	var killer: Dictionary = {}
+	# Collision damage is deferred to AFTER the velocity pipeline below fully resolves each
+	# soldier's actual per-tick delta (multi-pair trim + final safety-net clamp) -- damage is
+	# then derived from that same real, already-bounded velocity change, not an independent
+	# per-pair recompute (see SoldierCombat.collision_damage's own doc comment for why). Here we
+	# only flag WHICH soldiers had at least one pair clear the real-closing-speed threshold, and
+	# remember one opposing unit per flagged soldier for reap()'s morale/fallen-direction
+	# argument -- contact is mutual, not directed like a strike, so this is the same
+	# first-opponent approximation SoldierMelee.resolve already makes elsewhere.
+	var damage_eligible := PackedByteArray()
+	damage_eligible.resize(n)
+	var contact_enemy: Array = []
+	contact_enemy.resize(n)
 	for a in range(n):
 		for b in SoldierSpatialHash.query(spos[a]):
 			if sgids[b] <= sgids[a]:
@@ -161,24 +166,17 @@ static func accumulate(units: Array, frame: int) -> void:
 			pair_impulse_b.push_back(impulses[1])
 
 			# Real closing speed only (never the overlap_frac term above) -- a pair that's
-			# merely interpenetrating at low relative speed causes zero collision damage.
+			# merely interpenetrating at low relative speed causes zero collision damage. Only
+			# flags eligibility here; the actual damage amount is derived after the velocity
+			# pipeline resolves (see this function's own doc comment).
 			var closing_speed: float = maxf(0.0, -(svel[a] - svel[b]).dot(normal))
-			if closing_speed >= SoldierCombat.COLLISION_DAMAGE_MIN_SPEED:
-				var m_a_eff: float = SoldierCombat.effective_mass(smass[a], sbrace[a])
-				var m_b_eff: float = SoldierCombat.effective_mass(smass[b], sbrace[b])
-				var dmg: Array = SoldierCombat.collision_damage(closing_speed, m_a_eff, m_b_eff)
-				var owner_a: Unit = sowners[a]
-				var owner_b: Unit = sowners[b]
-				var slot_a: int = sslots[a]
-				var slot_b: int = sslots[b]
-				if slot_a < owner_a._sim_soldier_hp.size():
-					owner_a._sim_soldier_hp[slot_a] -= dmg[0]
-					if not killer.has(owner_a):
-						killer[owner_a] = owner_b
-				if slot_b < owner_b._sim_soldier_hp.size():
-					owner_b._sim_soldier_hp[slot_b] -= dmg[1]
-					if not killer.has(owner_b):
-						killer[owner_b] = owner_a
+			if SoldierCombat.is_hard_collision(closing_speed):
+				if damage_eligible[a] == 0:
+					damage_eligible[a] = 1
+					contact_enemy[a] = sowners[b]
+				if damage_eligible[b] == 0:
+					damage_eligible[b] = 1
+					contact_enemy[b] = sowners[a]
 
 	# Trim each body's SUMMED delta to what capped_knockback_velocity would allow it in
 	# isolation, expressed as a per-body scale factor -- reusing the existing clamp rather than
@@ -235,6 +233,24 @@ static func accumulate(units: Array, frame: int) -> void:
 			var slot: int = sslots[k]
 			owner._sim_body_vel[slot] = SoldierCombat.capped_knockback_velocity(
 				owner._sim_body_vel[slot], scaled_delta_v[k])
+
+	# Collision damage: derived from each flagged soldier's ACTUAL velocity change this tick
+	# (post-clamp velocity minus the pre-tick svel[k] snapshot) -- the fully-resolved delta the
+	# loop above just computed, already correctly bounded across multiple simultaneous contacts
+	# and per-tick. See SoldierCombat.collision_damage's own doc comment for why this is derived
+	# from the pipeline's output rather than an independent per-pair formula.
+	var killer: Dictionary = {}
+	for k in range(n):
+		if damage_eligible[k] == 0:
+			continue
+		var owner: Unit = sowners[k]
+		var slot: int = sslots[k]
+		var actual_delta_v: Vector2 = owner._sim_body_vel[slot] - svel[k]
+		if actual_delta_v == Vector2.ZERO or slot >= owner._sim_soldier_hp.size():
+			continue
+		owner._sim_soldier_hp[slot] -= SoldierCombat.collision_damage(actual_delta_v)
+		if not killer.has(owner):
+			killer[owner] = contact_enemy[k]
 
 	# Reap collision-damage deaths once per unit, after every pair this tick has resolved --
 	# mirroring SoldierMelee.resolve's own end-of-batch reap() call. reap() no-ops for a unit
