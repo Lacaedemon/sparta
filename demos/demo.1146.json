@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/square-reform-slot-pairing.json",
+  "caption": "Forming square (O) with a lone 120-man Infantry regiment, no enemy on the field. The wide line runs 15 files across; the square runs 11, so the block really does have to narrow and deepen. What changed is which man walks to which cell. Each soldier used to be handed the grid cell matching his array index, so the reform filed men through each other to reach the far side: 51 of the 120 finished on the opposite side of their own centreline, for 4939 wu of travel against a 1772 wu greedy nearest-slot reference. The cells are now paired by proximity, so the block folds inward along its own files instead: 1738 wu and zero crossings, re-measured from this clip's own state dump. Watch the block compress and deepen without the men trading places across it; it is settled by tick 160 and holds still to the end.",
+  "fixed_fps": 30,
+  "max_frames": 120,
+  "fps": 15,
+  "width": 720
+}
