@@ -3199,7 +3199,7 @@ which is why all four instances were caught by eye rather than by a check.
 the regiment's own WEAPON REACH. That is the correct answer to the question it exists for --
 a spear phalanx really does project six ranks of points into contact, and all six deal and
 take blows. It is the wrong answer to a question about BODIES, and reusing it for one is a
-recurring trap: a sixth-rank spearman strikes past five files of his own men without anything
+recurring trap: a sixth-rank spearman strikes past five ranks of his own men without anything
 touching him.
 
 The failure only becomes visible when a block is SHALLOWER THAN ITS OWN REACH DEPTH. A 40-man,
