@@ -177,7 +177,7 @@ enum Gait { WALK, JOG, RUN, SPRINT }
 ## the enum member's own doc comment for why).
 ##
 ## Two corrections to what this threshold might look like it does, from how it actually
-## behaves in practice (found during PR #1125's review):
+## behaves in practice:
 ##
 ## - This order is issued with target_enemy == null, which Unit._think()'s melee-contact gate
 ##   deliberately treats as a disengage command -- the unit marches off immediately and never
@@ -190,8 +190,8 @@ enum Gait { WALK, JOG, RUN, SPRINT }
 ##   TIGHT formation is always "0% or 100% engaged", never something between). So in practice
 ##   there is no reachable "light graze" tier that resumes purely on threshold: the real
 ##   policy is "any engagement at all, once the destination is occupied by a living enemy,
-##   cancels the order; otherwise it resumes" -- see #1138 for the deferred idea of a genuine
-##   graded engagement-intensity signal, if the binary behavior ever proves unsatisfying.
+##   cancels the order; otherwise it resumes" -- a genuine graded engagement-intensity signal
+##   is a deferred idea, tracked separately, if the binary behavior ever proves unsatisfying.
 ##
 ## What ships today:
 ##
