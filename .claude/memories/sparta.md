@@ -3324,3 +3324,101 @@ test cannot quietly go vacuous later when geometry or constants shift. Note this
 `reset()` rule was ALREADY documented in this file and still got missed while writing a fresh
 test -- treat "does this test construct fixtures that a frame-keyed cache reads?" as a checklist
 item on every new test, not a thing to recall.
+
+## A caching fallback outlives the window that produced it -- never commit a placeholder as an answer
+
+A lazily-rebuilt per-soldier assignment (the `_ensure_*_assignment` family) guards its rebuild
+on a committed key: `if _sim_soldier_square_slot.size() == count and _square_slot_files == files:
+return`. If the rebuild has a fallback branch for "the inputs could not be read this tick," and
+the function commits the key unconditionally afterwards, the fallback **satisfies the guard
+forever after** -- the placeholder is never reconsidered, long after the condition that produced
+it has passed. The bug is not the fallback; it is committing the key on the fallback path.
+
+Shipped and caught in review on PR #1158: `_ensure_square_slot_assignment` fell back to
+`identity_assignment` (the exact pre-fix layout the PR existed to remove) whenever
+`_slot_frame_positions` returned empty, then set `_square_slot_files = files` regardless. A
+settled square hit that window on its first melee strike and stayed on the index-order layout
+for the rest of its life -- strictly worse than the bug being fixed, and in exactly the
+anti-cavalry scenario the PR targeted.
+
+**How to apply:** any lazy-rebuild function with both a real path and a degraded path must commit
+its freshness key only on the real path (`_square_slot_files = files if not live.is_empty()
+else -1`). Leaving the key invalid costs a recompute per tick until the inputs are readable
+again, which is the correct trade: a cheap repeated attempt beats a permanent wrong answer.
+
+## There are TWO casualty paths and they have opposite array-sync semantics
+
+Easy to miss, and it makes a whole class of test structurally unable to reach a whole class of bug:
+
+- **Per-soldier path** -- `SoldierMelee.reap()` splices every per-soldier array at the dead man's
+  index, so `soldiers` and the arrays stay in sync, and per-soldier identity survives.
+- **Regiment path** -- `UnitCombat.take_casualties` (`scripts/UnitCombat.gd`) does `u.soldiers -=
+  total` and touches NO per-soldier array. It never says which man died. `SoldierBodies.step`
+  then queries `soldier_world_slots(unit.soldiers)` BEFORE resizing `_sim_soldier_pos` to match
+  later in the same call, so there is a guaranteed window where the body layer is LARGER than the
+  live count.
+
+The regiment path is not an edge case: the per-soldier path is gated on `is_engaged()`, a latch
+that arms one tick after `FIGHTING` starts, so the **first strike of every fresh contact** goes
+through the regiment path (as does every strike for a ranged unit in melee, plus `absorb()` and
+`disengage_with_sacrifice()`).
+
+**How to apply:** any new per-soldier state must be correct across BOTH paths, and a test that
+only drives `SoldierMelee.reap()` proves nothing about the regiment path -- it is the one path
+that keeps the arrays in sync, so it cannot reach a desync bug at all. Drive the regiment shape
+explicitly (drop `soldiers` with the body arrays left untouched, then step) as its own test.
+Note also that a body layer larger than `count` is real data, not a fault: `resize()` trims at
+the tail, so the leading `count` entries are exactly the survivors, still index-aligned.
+(PR #1158.)
+
+## Never pin a benchmark number in PR prose -- the comment updates in place
+
+The `sparta-benchmark` PR comment is rewritten in place on every push, so any figure copied out
+of it into a PR description, a commit message, or a review reply goes stale silently and reads
+as a live measurement. Worse, the run-to-run spread is large enough that the number was never
+meaningful: across three pushes of essentially identical code on PR #1158 the same comment
+reported **-7.0%, -0.2%, and -1.8%** against the same baseline -- the CI-runner variance
+`tools/benchmark/baseline.json`'s own `_comment` already documents.
+
+Quoting one of those produced a wrong claim in the PR description (caught by review), and then a
+wrong correction of the correction. **Describe the result qualitatively ("neutral, inside the
+threshold") and point at the live comment** rather than freezing a figure. Reserve actual numbers
+for a same-machine local before/after comparison, which is the only form that controls for runner
+noise.
+
+## GitHub Actions does NOT follow a repo-transfer redirect for `uses:` -- and `gh api` DOES, which hides it
+
+When the shared CI repo moved from `d-morrison/gha` to `Morrison-Lab/gha` (2026-07-28), every
+sparta workflow calling a gha reusable workflow broke at once, repo-wide, on every push. The
+failure signature is distinctive and easy to misread:
+
+- The run **fails instantly at startup**: zero jobs scheduled, `created_at == updated_at`, and no
+  check-run annotations to read (`gh run view --log-failed` reports "log not found").
+- `gh run list` shows the run's name as the raw **`.github/workflows/x.yml` path** instead of the
+  workflow's own `name:` field -- the tell that GitHub could not resolve the workflow at all.
+- `gh run rerun` refuses outright: *"cannot be rerun; its workflow file may be broken."* A
+  startup-failed run needs a **fresh trigger** (a push, or close/reopen); it can never be re-run
+  in place.
+
+**The trap that cost the most time:** `gh api repos/d-morrison/gha` transparently follows the
+transfer redirect and returns `"full_name": "Morrison-Lab/gha"`, and every content path still
+resolves under the old owner. So a check of "does the reference still work?" via `gh api` says
+YES while Actions says no. Actions is the only authority here. On the first occurrence this was
+misdiagnosed as a transient migration window and reported as self-healed; the very next push
+failed identically, which is what forced the real diagnosis.
+
+**How to spot it:** if several unrelated workflows fail at startup simultaneously, check what
+they have in common -- here, every failing workflow was an external `uses: <owner>/<repo>/...`
+caller and every passing one was self-contained. Confirm repo-wide (not PR-specific) by listing
+one workflow's runs across all branches and finding the timestamp where success turns to failure.
+
+**Fix:** retarget the references to the new owner, keeping the `@vN` pin, and verify every
+distinct referenced path resolves at the new owner's tag before pushing. The consuming repo's own
+CI is the real test -- if the previously-dead workflows schedule jobs and report their real names
+again, the diagnosis and the fix are both confirmed. (sparta #1159/PR #1160: 11 call sites.)
+
+**Related gotcha:** a PR that edits `claude-code-review.yml` makes the `@claude` review self-skip
+by design (every step reports `skipped`; the action 401s validating a workflow file from a PR
+ref). That is the benign skip, NOT a stub review -- read the run's step list to tell them apart.
+Combined with Copilot being quota-exhausted, such a PR can have no automated verdict at all, in
+which case the standing rule applies: do the review yourself and post it before merging.
