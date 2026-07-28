@@ -413,3 +413,23 @@ func test_accumulate_collision_damage_does_not_recharge_full_ke_every_tick_durin
 
 	assert_lt(actual_total, buggy_total,
 		"deriving damage from the actual per-tick velocity change avoids the old formula's cross-tick overcounting")
+
+
+func test_accumulate_no_damage_when_a_soldiers_net_velocity_change_cancels_to_zero() -> void:
+	# Covers the actual_delta_v == Vector2.ZERO branch: a soldier flagged damage-eligible (real
+	# closing speed against BOTH neighbors individually clears the threshold) whose two contacts
+	# push in exactly opposite directions, netting zero actual velocity change -- should take
+	# zero damage, since damage derives from the real resulting delta, not from mere eligibility.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 2)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)    # b's soldier 0 to the right of a
+	b._sim_soldier_pos[1] = Vector2(-5, 0)   # b's soldier 1 to the left of a, symmetric
+	var closing: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 2.0
+	a._sim_body_vel[0] = Vector2.ZERO
+	b._sim_body_vel[0] = Vector2(-closing, 0.0)   # closing on a from the right
+	b._sim_body_vel[1] = Vector2(closing, 0.0)    # closing on a from the left, symmetric
+	var hp_a_before: float = a._sim_soldier_hp[0]
+	SoldierEnemyContact.accumulate([a, b], 90013)
+	assert_almost_eq(a._sim_soldier_hp[0], hp_a_before, 1e-3,
+		"symmetric opposing contacts cancel a's net velocity change, so it takes no damage even though it was contact-eligible")
