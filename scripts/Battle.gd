@@ -171,15 +171,44 @@ enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYC
 ## inside SPRINT_START_DISTANCE (see Unit._move_to).
 enum Gait { WALK, JOG, RUN, SPRINT }
 
-## Once this fraction of a unit's CURRENT soldiers are melee-engaged
-## (Order.Guard.ENGAGED_FRACTION_ABOVE, via OrderGuards.engaged_fraction_above), a plain MOVE
-## order cancels rather than pausing-then-resuming around Unit.is_engaged()'s old whole-
-## regiment binary latch -- the fight already in front of the unit plays out instead of the
-## commander trying to keep marching it toward a now-stale destination. Only a NORMAL-stance
-## plain move gets this guard (see _apply_order_cmd's two Order.new_move call sites): HOLD,
-## CHASE, MARCH_TO_CONTACT, and every other non-NORMAL order_mode already represent a
-## deliberate, already-committed decision to fight (or to hold ground / press an attack) that
-## this default should not second-guess.
+## The engaged-fraction threshold for a plain MOVE's disengage-time policy
+## (Order.Guard.ENGAGED_FRACTION_ABOVE; the decision itself is
+## Unit._resolve_disengage_move_order(), not a per-tick guard check -- see that function and
+## the enum member's own doc comment for why).
+##
+## Two corrections to what this threshold might look like it does, from how it actually
+## behaves in practice:
+##
+## - This order is issued with target_enemy == null, which Unit._think()'s melee-contact gate
+##   deliberately treats as a disengage command -- the unit marches off immediately and never
+##   re-enters State.FIGHTING for this order, it does NOT pause while still fighting. What
+##   actually delays the resume-vs-cancel decision by ~ENGAGED_LINGER (0.5s) is that latch
+##   decaying on an ALREADY-MARCHING unit, not a fight holding the order in place.
+## - OrderGuards.current_engaged_fraction() reuses engaged_soldier_indices(), a formation-SHAPE
+##   selection, not a measure of fight intensity -- for any realistic formation this resolves
+##   to exactly 0.0 or 1.0, never a graded value (confirmed: a 40-soldier Spearmen unit in
+##   TIGHT formation is always "0% or 100% engaged", never something between). So in practice
+##   there is no reachable "light graze" tier that resumes purely on threshold: the real
+##   policy is "any engagement at all, once the destination is occupied by a living enemy,
+##   cancels the order; otherwise it resumes" -- a genuine graded engagement-intensity signal
+##   is a deferred idea, tracked separately, if the binary behavior ever proves unsatisfying.
+##
+## What ships today:
+##
+## - The unit was never engaged at all during this move (no fight happened): the march
+##   resumes automatically once _move_order_peak_engaged_fraction's tracking finds nothing to
+##   act on.
+## - It was engaged, but the destination is still clear of any living enemy: the march
+##   resumes anyway -- a real fight happened, but the original plan is still valid, so the
+##   commander isn't forced to re-decide something that isn't actually stale.
+## - It was engaged AND the destination now sits inside a living enemy's own footprint: the
+##   order cancels outright, rather than blindly marching into ground the enemy now holds --
+##   the actual motivating case for gating a plain move on engagement at all.
+##
+## Only a NORMAL-stance plain move gets this guard (see _apply_order_cmd's two
+## Order.new_move call sites): HOLD, CHASE, MARCH_TO_CONTACT, and every other non-NORMAL
+## order_mode already represent a deliberate, already-committed decision to fight (or to
+## hold ground / press an attack) that this default should not second-guess.
 const ENGAGED_FRACTION_CANCELS_MOVE: float = 0.10
 
 ## How a multi-unit attack or line-relief order distributes its target among the
@@ -2081,14 +2110,28 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				# busy one continues its current order and the leg commits when it is
 				# promoted (retire_current_order -> _start_promoted_move).
 				var leg := Order.new_move(point, mode, gait, false)
-				# Only a NORMAL-stance plain move auto-cancels on heavy melee engagement --
-				# see ENGAGED_FRACTION_CANCELS_MOVE's own doc comment.
+				# Only a NORMAL-stance plain move gets the disengage-time policy -- see
+				# ENGAGED_FRACTION_CANCELS_MOVE's own doc comment.
 				if mode == OrderMode.NORMAL:
 					leg.with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, ENGAGED_FRACTION_CANCELS_MOVE)
 				u.append_order(leg)
-				if u.current_order == leg and not u.has_move_target:
-					u.move_target = point
-					u.has_move_target = true
+				if u.current_order == leg:
+					# Reset the peak tracker only once this leg actually becomes current: an
+					# idle unit has nothing running to inherit from, so this is a genuine fresh
+					# start for it. A busy unit's leg stays queued behind whatever order is
+					# still running -- resetting unconditionally would clobber that OTHER,
+					# still-current order's own unconsumed peak (it's tracked per-unit, but
+					# logically belongs to whichever order is actually current). A queued leg
+					# does NOT get a reset when it's later promoted either: the peak accumulated
+					# while it waited legitimately carries over (see
+					# _move_order_peak_engaged_fraction's own doc comment and
+					# Unit._start_promoted_move's, for why resetting there would silently erase
+					# a real fight the disengage decision still needs).
+					if mode == OrderMode.NORMAL:
+						u._move_order_peak_engaged_fraction = 0.0
+					if not u.has_move_target:
+						u.move_target = point
+						u.has_move_target = true
 			else:
 				# Choose the drill maneuver for a plain move (a form-up commands its own
 				# facing, so it never side-steps). A small lateral shift holds facing and
@@ -2177,12 +2220,15 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				# leave a partial rank at the front, and a hold before the wheel even starts
 				# would defeat the whole point of a continuous, no-halt maneuver.
 				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
-				# Only a NORMAL-stance plain move auto-cancels on heavy melee engagement --
-				# see ENGAGED_FRACTION_CANCELS_MOVE's own doc comment. Set on
-				# the top-level `order` (current_order), not a REFORM/march child leaf split
-				# off it below -- _update_current_order() only ever reads current_order.guard.
+				# Only a NORMAL-stance plain move gets the disengage-time policy -- see
+				# ENGAGED_FRACTION_CANCELS_MOVE's own doc comment. Set on the top-level `order`
+				# (current_order), not a REFORM/march child leaf split off it below --
+				# Unit._resolve_disengage_move_order() only ever reads current_order.guard.
+				# Reset the peak tracker here too: a fresh order's own decision must not
+				# inherit a stale reading from whatever this unit was doing before this order.
 				if mode == OrderMode.NORMAL:
 					order.with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, ENGAGED_FRACTION_CANCELS_MOVE)
+					u._move_order_peak_engaged_fraction = 0.0
 				order.reform = u.reform_before_move and not lateral_pivot and not wheel_turn \
 						and not moving_wheel_turn
 				# A multi-unit drag-line form-up: tag this order as one member of the shared

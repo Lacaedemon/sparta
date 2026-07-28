@@ -100,7 +100,9 @@ enum Phase {
 ## true, retires the order early -- the self-terminating form of queue advancement. Kept
 ## deliberately closed (no free-form predicate) so every guard is a pure function of
 ## serialized state (OrderGuards.satisfied); adding a new guard is a new enum member plus a
-## new OrderGuards branch, never inline scripting on the order itself.
+## new OrderGuards branch, never inline scripting on the order itself. ENGAGED_FRACTION_ABOVE
+## is the one exception to the "self-terminating" half of this contract -- see its own doc
+## comment below.
 enum Guard {
 	NONE,            ## No guard: the order runs to its own normal completion only.
 	ENEMY_IN_RANGE,  ## A live enemy is within guard_param world units of this unit.
@@ -110,12 +112,16 @@ enum Guard {
 	TICKS_ELAPSED,   ## guard_param physics ticks have elapsed since the order became current.
 	FLANKED,         ## A live enemy currently stands in this unit's flank/rear arc within
 	                 ## guard_param world units (contact range when guard_param <= 0).
-	ENGAGED_FRACTION_ABOVE, ## At least guard_param (0..1) of this unit's CURRENT living
-	                 ## soldiers are melee-engaged (Unit.engaged_soldier_indices) --
-	                 ## the fractional counterpart to Unit.is_engaged()'s whole-regiment binary
-	                 ## latch, so a plain MOVE order cancels once the fight has drawn in enough
-	                 ## of the unit rather than only pausing/resuming around the old binary
-	                 ## FIGHTING state.
+	ENGAGED_FRACTION_ABOVE, ## Marks a plain MOVE order whose destination is worth re-checking
+	                 ## once the current fight lets go of it: guard_param (0..1) is the
+	                 ## soldier-fraction threshold a heavy engagement must cross
+	                 ## (OrderGuards.current_engaged_fraction) before the destination staleness
+	                 ## check even runs. NOT evaluated by OrderGuards.satisfied() -- unlike
+	                 ## every other guard here, this one doesn't self-terminate on a per-tick
+	                 ## true/false read. Unit._resolve_disengage_move_order() makes the actual
+	                 ## resume-vs-cancel call once, at the tick the fight genuinely ends (see
+	                 ## that function's own doc for why a point-in-time check can't do this
+	                 ## alone, and Battle.ENGAGED_FRACTION_CANCELS_MOVE for the full policy).
 }
 
 const GUARD_NAMES := {
