@@ -79,6 +79,19 @@ const SUPERPHYSICAL_SPEED_FRAC := 1.15
 ## mean nearest-ANY-slot distance is within MISSLOT_SETTLED_FRAC of the spacing.
 const MISSLOT_MAX_FRAC := 0.25
 const MISSLOT_SETTLED_FRAC := 0.25
+## Two soldiers whose routes cross swapped sides on the way to wherever they were going,
+## rather than each walking to the nearest place that needed filling. Routes are measured
+## in the block's own co-rotating frame (the rigid motion the whole block shares is
+## removed first), so a wheel, a march, or an about-face cannot manufacture crossings.
+## Only residual travel beyond this fraction of the grid pitch counts as a route at all --
+## shorter residuals are jostle under press, not a journey across the block.
+const CROSS_MIN_TRAVEL_FRAC := 0.5
+## More than this fraction of a unit's soldiers taking crossing routes between two
+## consecutive judged samples is a crossing verdict. An assignment minimizing total travel
+## provably has no crossing straight-line paths -- swapping any crossing pair shortens the
+## total -- so this is a direct reading of how far a reshape's slot assignment sits from
+## optimal, not a proxy for it.
+const CROSS_MAX_FRAC := 0.1
 ## Consecutive-sample count that turns a transient reading into a sustained verdict.
 const MIN_SUSTAIN := 2
 
@@ -203,6 +216,56 @@ static func max_soldier_speed(prev: Array, cur: Array, dt_ticks: int, tps: float
 	for i in range(n):
 		best = maxf(best, _vec(prev[i]).distance_to(_vec(cur[i])) / dt)
 	return best
+
+
+## Do two open segments properly cross? Orientation (cross-product sign) test on both
+## pairs. Collinear and endpoint-touching cases are not crossings worth reporting, and
+## exact zeros are measure-zero in float body data anyway.
+static func _segments_cross(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2) -> bool:
+	var d1: float = (a2 - a1).cross(b1 - a1)
+	var d2: float = (a2 - a1).cross(b2 - a1)
+	var d3: float = (b2 - b1).cross(a1 - b1)
+	var d4: float = (b2 - b1).cross(a2 - b1)
+	return ((d1 > 0.0) != (d2 > 0.0)) and ((d3 > 0.0) != (d4 > 0.0))
+
+
+## Which soldiers take a CROSSING route between two consecutive body samples -- the
+## route-quality question every other metric here structurally cannot ask, because the
+## rest all score where the men END UP and a bad route still reaches a good end state.
+##
+## The block's own rigid motion between the two samples is removed first (the same
+## best-fit transform kabsch_fit and aligned_slots already use), so what remains per
+## soldier is his travel WITHIN his own formation. A rigid rotation or translation of the
+## whole block therefore leaves every residual path empty and can never register a
+## crossing. Paths shorter than `min_travel` are dropped before any pairing, so ordinary
+## press-jitter cannot accumulate into a verdict.
+##
+## Index-aligned: both samples must describe the same men in the same order, so callers
+## skip pairs spanning a casualty compaction (which renumbers everyone). O(n^2) in the
+## routed subset, which is empty for a block that is merely marching.
+static func crossing_indices(prev: Array, cur: Array, min_travel: float) -> Array:
+	var n: int = mini(prev.size(), cur.size())
+	if n < 2:
+		return []
+	var fit: Dictionary = kabsch_fit(prev, cur)
+	var start: Array = aligned_slots(prev, cur, fit)
+	var routed: Array = []
+	for i in range(n):
+		if _vec(start[i]).distance_to(_vec(cur[i])) >= min_travel:
+			routed.append(i)
+	var crossed: Dictionary = {}
+	for a in range(routed.size()):
+		var i: int = routed[a]
+		for b in range(a + 1, routed.size()):
+			var j: int = routed[b]
+			if crossed.has(i) and crossed.has(j):
+				continue
+			if _segments_cross(_vec(start[i]), _vec(cur[i]), _vec(start[j]), _vec(cur[j])):
+				crossed[i] = true
+				crossed[j] = true
+	var out: Array = crossed.keys()
+	out.sort()
+	return out
 
 
 ## Analyze a whole transcript: `snapshots` is an Array of parsed state-dump Dictionaries
@@ -342,6 +405,28 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 		worst_run = maxi(worst_run, over_run)
 	out.append({"uid": uid, "metric": "superphysical_speed", "pass": worst_run < MIN_SUSTAIN,
 			"worst": worst_speed, "threshold": cap})
+
+	# Crossing routes: soldiers swapping sides on the way to wherever they are going.
+	# Deliberately NOT routed through _sustained_verdict. That helper forgives a series
+	# that steadily improves, which is exactly the shape a reshape's crossing count has --
+	# it falls to zero as the men arrive. Forgiving convergence here would forgive the
+	# very defect this metric exists to catch, since a bad route still converges on a
+	# correct end state; that is why the settled-state metrics cannot see this at all.
+	var min_travel: float = spacing * CROSS_MIN_TRAVEL_FRAC
+	var worst_cross := 0.0
+	var cross_run := 0
+	var worst_cross_run := 0
+	for i in range(1, n):
+		if s["counts"][i] != s["counts"][i - 1] or not (bool(mask[i]) and bool(mask[i - 1])):
+			cross_run = 0   # renumbered by a casualty, or an exempt sample
+			continue
+		var crossed: int = crossing_indices(s["pos"][i - 1], s["pos"][i], min_travel).size()
+		var frac: float = float(crossed) / maxf(1.0, float(s["counts"][i]))
+		worst_cross = maxf(worst_cross, frac)
+		cross_run = cross_run + 1 if frac > CROSS_MAX_FRAC else 0
+		worst_cross_run = maxi(worst_cross_run, cross_run)
+	out.append({"uid": uid, "metric": "path_crossing", "pass": worst_cross_run < MIN_SUSTAIN,
+			"worst": worst_cross, "threshold": CROSS_MAX_FRAC})
 	return out
 
 
