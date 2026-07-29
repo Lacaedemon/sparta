@@ -3417,8 +3417,56 @@ distinct referenced path resolves at the new owner's tag before pushing. The con
 CI is the real test -- if the previously-dead workflows schedule jobs and report their real names
 again, the diagnosis and the fix are both confirmed. (sparta #1159/PR #1160: 11 call sites.)
 
+**A still-open PR branch cut BEFORE the retarget carries the stale refs itself, and `gh run
+rerun` reproduces the failure rather than recovering from it.** `main` being fixed does not help a
+branch whose own `.github/workflows/` still says `d-morrison/gha`: every fresh trigger on it
+startup-fails with zero jobs scheduled, no logs, and no annotations, and re-running that branch's
+last SUCCESSFUL run on the same head startup-fails too -- which makes it look intermittently
+broken rather than deterministically so. The fix is to merge `main` into the branch. Diagnose with
+`git merge-base --is-ancestor <retarget-commit> <branch>` and confirm with
+`git show <branch>:.github/workflows/<wf>.yml | grep uses:` (on Windows Git Bash that needs
+`MSYS_NO_PATHCONV=1`, or the revision:path argument gets mangled into a Windows path).
+(`Lacaedemon/sparta` PR #1135, 2026-07-29: stuck five review rounds, and the sixth could not
+be triggered at all
+until `main` was merged in -- after which the review ran normally and passed.)
+
 **Related gotcha:** a PR that edits `claude-code-review.yml` makes the `@claude` review self-skip
 by design (every step reports `skipped`; the action 401s validating a workflow file from a PR
 ref). That is the benign skip, NOT a stub review -- read the run's step list to tell them apart.
 Combined with Copilot being quota-exhausted, such a PR can have no automated verdict at all, in
 which case the standing rule applies: do the review yourself and post it before merging.
+
+
+## A PR-description edit can duplicate the CI-managed demo block
+
+`demo-video.yml` upserts its clip into the PR **description**, between `<!-- sparta-demo -->` and
+`<!-- /sparta-demo -->`. A programmatic description edit that disturbs the whitespace around those
+markers makes the next upsert fail to match, so it **appends a second block** instead of replacing
+the first -- leaving a superseded commit's GIF live alongside the current one, rendering as two
+"Gameplay demo" sections.
+
+After any `gh api .../pulls/N -X PATCH` on a body, check `grep -c '<!-- sparta-demo -->'` is
+exactly 1 and that no superseded SHA remains. When rebuilding a body programmatically, capture the
+block with a regex and re-append it verbatim, newlines included.
+(`Lacaedemon/sparta` PR #1135, 2026-07-29.)
+
+## An `.import` diff that reads as deletion is a headless-Godot rewrite, not a removal
+
+`.jules/bolt.md`'s own 2024-11-20 entry already says to revert `.import` sidecars a headless run
+regenerated. The tell is easy to misread: in `--stat` and in `gh pr view --json files` the churn
+shows as `0+ 6-` per file -- pure removals, which reads as *deleted files*. They are not deleted.
+They are modified, losing engine-version-specific keys (`compress/uastc_level`,
+`process/channel_remap/*`). Confirm with `--diff-filter=D` (returns nothing) before describing
+them as deletions, and restore with `git checkout origin/main -- <paths>`. (Misdescribed twice on
+`Lacaedemon/sparta` PR #1165 before checking, 2026-07-29.)
+
+## Grep `main` before stripping a "noise" pattern a PR appears to introduce
+
+Before removing a stylistic pattern a PR adds -- a narration comment, a redundant annotation --
+`git grep` it on `origin/main` first. On `Lacaedemon/sparta` PR #1165 three
+`# OPTIMIZATION: ...` comments looked
+like that PR's own noise; 17 identical ones were already on `main` from earlier merged work.
+Stripping only the PR's three is inconsistent, and stripping all 20 drags eight unrelated files
+into a PR whose whole purpose at that moment was being minimal -- the exact collateral-scope
+problem being criticised on that same PR. Leave the pattern and note it, or raise it as its own
+sweep. (2026-07-29.)
