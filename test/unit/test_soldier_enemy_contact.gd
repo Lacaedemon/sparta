@@ -477,6 +477,14 @@ func test_accumulate_caps_a_resting_soldier_pressed_by_multiple_fast_closing_ene
 		"sanity: the forced fast-closing overlap actually produced an impulse, not a vacuous pass below")
 	assert_true(a._sim_body_vel[0].length() <= SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
 		"a resting soldier pressed by several fast-closing enemies at once stays within the knockback ceiling")
+	# Pin the exact expected value, not just the ceiling: three pairs at 30 each trim to
+	# precisely the cap, so a lower bound here also catches a subtler vacuity than the
+	# two-attacker case did -- if some pairs silently stopped resolving (a stale spatial-hash
+	# grid, a narrowed contact selection), the surviving impulses would land UNDER the cap and
+	# the upper bound alone would still pass. Robust to a retune: the raw sum is always 1.5x
+	# whatever the ceiling is, so the trimmed result sits exactly at it.
+	assert_true(a._sim_body_vel[0].length() >= SoldierCombat.KNOCKBACK_SPEED_MAX - 0.01,
+		"all three contacts actually resolved and the summed impulse reached the ceiling before being trimmed to it")
 
 
 func test_accumulate_never_accelerates_a_body_already_above_the_knockback_ceiling() -> void:
