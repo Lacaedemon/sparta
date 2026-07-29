@@ -693,7 +693,22 @@ Figure&nbsp;4: Routing around terrain: a brittle cavalry unit breaks under a fla
 <p>A wider line is easier to outlast in depth and quicker to crumble once it bends; a deeper one trades frontage for staying power. A width you’ve set by hand (the bracket keys or a flank drag) holds exactly as you left it — the game never overrides your explicit choice.</p>
 <p><strong>Close the ranks.</strong> Left on auto, though, a regiment that’s lost half its strength narrows its own frontage one notch, trading width for depth so the survivors reform into a smaller, still-solid block rather than stretching a nearly-spent line across its original width. It widens back out again if the regiment claws back above about two-thirds strength (reinforcement, a relief, a lull in the fighting) — but not the instant it edges past halfway, so a unit trading casualties right around the line doesn’t flicker between shapes fight to fight.</p>
 <p><strong>File-doubling for a fast reshape.</strong> The <kbd>[</kbd> / <kbd>]</kbd> steps are fine for fine-tuning, but two drill maneuvers swap the whole shape in one press. <kbd>B</kbd> (<strong>explicatio</strong>) doubles the frontage and halves the depth — a column unfolds into a wide line to overlap a flank or plug a gap. <kbd>N</kbd> (<strong>duplicatio</strong>) does the reverse: it halves the frontage and doubles the depth, folding a broad line into a deep column so you can squeeze down a lane or mass depth to punch through one point. The men walk to their new slots rather than snapping, so there’s a beat of disorder while the block reshapes — don’t start the maneuver in contact, and give it room before the enemy arrives. A natural rhythm is duplicatio to march a column through a chokepoint, then explicatio to deploy back into line on the far side.</p>
-<p><strong>Everyone shifts to the file nearest him.</strong> Changing the width renumbers every file, so in principle each man could end up anywhere in the new grid. He doesn’t: the block keeps its left-to-right order through the reshape, so a man on the right flank takes a file on the right, and he holds his place in his own column’s depth as well. The block widens or narrows by opening and closing between the files rather than filing men across itself, which is both quicker and far tidier to watch. Measured on a lone regiment drilling with no enemy near it, that cuts the ground covered in a reshape by about a third, and the men walk to their new places without threading through each other on the way.</p>
+<p><strong>Everyone shifts to the file nearest him.</strong> Changing the width renumbers every file, so in principle each man could end up anywhere in the new grid. He doesn’t: the block keeps its left-to-right order through the reshape, so a man on the right flank takes a file on the right, and he holds his place in his own column’s depth as well. The block widens or narrows by opening and closing between the files rather than filing men across itself, which is both quicker and far tidier to watch. Measured on a lone regiment drilling with no enemy near it, that cuts the ground covered in a reshape by about a third, and the men walk to their new places without threading through each other on the way (<a href="#fig-frontage-slot-pairing" class="quarto-xref">Figure&nbsp;5</a>).</p>
+<p>One caveat worth knowing if you are watching closely: this tidier dealing is chosen at the moment the frontage changes. A regiment that then takes casualties in a melee keeps the places it was dealt, but a fresh reshape is what re-chooses them — the block does not continuously re-sort itself under fire, which would be its own kind of churn.</p>
+<div id="fig-frontage-slot-pairing" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-frontage-slot-pairing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/frontage_slot_pairing.jpg">
+  <source src="media/frontage_slot_pairing.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-frontage-slot-pairing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: A lone Spearmen block widening by three files, with no enemy on the field. The frontage change renumbers every file, so each man could in principle be sent anywhere in the new grid. Instead the block keeps its left-to-right order and each man takes the file nearest him, so the formation opens outward and settles rather than filing men across itself.
+</figcaption>
+</figure>
+</div>
 <p><strong>Anchored explicatio for a pinned flank.</strong> The plain explicatio widens about the unit’s own centre, so both flanks drift when the frontage doubles — fine in the open, but a problem when one flank is braced against a hill, a river, or a neighbouring unit that can’t shift with it. <kbd>Shift+B</kbd> widens while holding the right flank fixed; <kbd>Ctrl+B</kbd> holds the left. The whole widen lands on the free flank instead, so the pinned side never moves and the line still gets the extra frontage where there’s room for it.</p>
 <p><strong>How a line reforms after losses.</strong> By default (<strong>File-major</strong>, the unit settings panel’s File-major reform button), every soldier holds a persistent file (column) assignment: when a man falls, only the survivors behind him in his OWN file step forward to close that one gap, and every other file is untouched — nobody switches columns just because a neighbouring file took a hit. A mauled unit’s rear reads as jagged, not uniform: a hard-hit file can run noticeably shallower than one that’s taken no losses at all, side by side in the same rank of survivors. The front rank still keeps its full width for as long as any file has a man left to hold it, and the block never bulges wider than the frontage you set — only the depth, file by file, tells you where the losses landed.</p>
 <p>Click the button through to <strong>Row-major</strong> for the historical behavior instead: the whole grid recomputes fresh from the live headcount every tick, so the file behind each fighter feeds men forward to hold the contact line and the depth shrinks rank by rank, uniformly. When the rearmost rank is left short-handed, its survivors close up toward the centre — the wings shorten first while the middle files stay deepest — rather than leaving a ragged, gap-toothed back rank, but a soldier’s own file assignment isn’t stable: it can shift sideways as the whole block re-knits itself around the casualty.</p>
@@ -735,7 +750,7 @@ Figure&nbsp;4: Routing around terrain: a brittle cavalry unit breaks under a fla
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-phalanx-holds-ranks-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;5: Two spear phalanxes grind head-on. Only the contact rank is shoved about, so the ranks behind it keep their files and the blocks stay recognisable formations rather than dissolving into a mob.
+Figure&nbsp;6: Two spear phalanxes grind head-on. Only the contact rank is shoved about, so the ranks behind it keep their files and the blocks stay recognisable formations rather than dissolving into a mob.
 </figcaption>
 </figure>
 </div>
@@ -749,7 +764,7 @@ Figure&nbsp;5: Two spear phalanxes grind head-on. Only the contact rank is shove
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-formation-shift-reverse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;6: Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight — the same parallelism as Shift+Y and Shift+X reversing the form-up-split and group-attack-mode cycles.
+Figure&nbsp;7: Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight — the same parallelism as Shift+Y and Shift+X reversing the form-up-split and group-attack-mode cycles.
 </figcaption>
 </figure>
 </div>
@@ -768,7 +783,7 @@ Figure&nbsp;6: Formation density cycling with the Shift-reverse: <kbd>T</kbd> st
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-testudo-under-fire-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.
+Figure&nbsp;8: Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.
 </figcaption>
 </figure>
 </div>
@@ -783,7 +798,7 @@ Figure&nbsp;7: Testudo under fire: an infantry unit locked in testudo, ringed by
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-shield-wall-encirclement-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;8: A Shield Wall infantry unit charged from front and rear at once: the tinted (red) soldiers have individually broken from the wall and are falling back toward the gap between their two attackers, then rejoin the formation once the rear attacker is beaten back and only one side remains. A few soldiers still flicker broken again later in the clip — ordinary flank pressure from the one remaining attacker, not a second encirclement.
+Figure&nbsp;9: A Shield Wall infantry unit charged from front and rear at once: the tinted (red) soldiers have individually broken from the wall and are falling back toward the gap between their two attackers, then rejoin the formation once the rear attacker is beaten back and only one side remains. A few soldiers still flicker broken again later in the clip — ordinary flank pressure from the one remaining attacker, not a second encirclement.
 </figcaption>
 </figure>
 </div>
@@ -816,7 +831,7 @@ Figure&nbsp;8: A Shield Wall infantry unit charged from front and rear at once: 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.
+Figure&nbsp;10: Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.
 </figcaption>
 </figure>
 </div>
@@ -830,7 +845,7 @@ Figure&nbsp;9: Anti-cavalry square: an infantry unit is charged in the rear by t
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-schiltron-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Schiltron: the same rear cavalry charge as above, but the unit forms Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge harder than orbis does, at a deeper offence cost.
+Figure&nbsp;11: Schiltron: the same rear cavalry charge as above, but the unit forms Schiltron (Shift+O) instead of Orbis. The denser hedge braces the charge harder than orbis does, at a deeper offence cost.
 </figcaption>
 </figure>
 </div>
@@ -844,7 +859,7 @@ Figure&nbsp;10: Schiltron: the same rear cavalry charge as above, but the unit f
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-battle-ai-leaders-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Two AI unit-leader decisions in one clash: the AI spearmen on the left form the anti-cavalry square on their own as player cavalry closes, with no player key press arming it. The AI infantry on the right advances and attacks, then re-targets and turns to face a second player unit that closes on its flank instead of fighting on with its back exposed.
+Figure&nbsp;12: Two AI unit-leader decisions in one clash: the AI spearmen on the left form the anti-cavalry square on their own as player cavalry closes, with no player key press arming it. The AI infantry on the right advances and attacks, then re-targets and turns to face a second player unit that closes on its flank instead of fighting on with its back exposed.
 </figcaption>
 </figure>
 </div>
@@ -868,7 +883,7 @@ Figure&nbsp;11: Two AI unit-leader decisions in one clash: the AI spearmen on th
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-subcommander-mutual-support-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Mutual support: one enemy unit stays locked in a long fight while its neighbor’s own foe dies fast, freeing it up. The subcommander sends the freed unit to guard its still-fighting neighbor, and it closes the distance to join the melee directly.
+Figure&nbsp;13: Mutual support: one enemy unit stays locked in a long fight while its neighbor’s own foe dies fast, freeing it up. The subcommander sends the freed unit to guard its still-fighting neighbor, and it closes the distance to join the melee directly.
 </figcaption>
 </figure>
 </div>
@@ -893,7 +908,7 @@ Figure&nbsp;12: Mutual support: one enemy unit stays locked in a long fight whil
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-general-doctrine-reserves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;13: A cautious general holds two full-strength units in reserve while three weaker units alone meet the enemy. As the front line takes losses its morale crosses the doctrine’s threshold, and the general folds the reserves into the fight — they break their stationary hold, march up, and join the melee.
+Figure&nbsp;14: A cautious general holds two full-strength units in reserve while three weaker units alone meet the enemy. As the front line takes losses its morale crosses the doctrine’s threshold, and the general folds the reserves into the fight — they break their stationary hold, march up, and join the melee.
 </figcaption>
 </figure>
 </div>
@@ -913,7 +928,7 @@ Figure&nbsp;13: A cautious general holds two full-strength units in reserve whil
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-player-delegation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;14: Two units delegated to subcommander group 5 (a Tribune, under the aggressive doctrine) march on and engage the lone enemy with no further orders; partway through, reclaiming manual control with Hold (<kbd>Ctrl</kbd>+<kbd>H</kbd>) instantly clears the delegation.
+Figure&nbsp;15: Two units delegated to subcommander group 5 (a Tribune, under the aggressive doctrine) march on and engage the lone enemy with no further orders; partway through, reclaiming manual control with Hold (<kbd>Ctrl</kbd>+<kbd>H</kbd>) instantly clears the delegation.
 </figcaption>
 </figure>
 </div>
@@ -939,7 +954,7 @@ Figure&nbsp;14: Two units delegated to subcommander group 5 (a Tribune, under th
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-spear-standoff-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;15: A Spearmen regiment holds its ground once locked in melee with an Infantry/sword regiment — it doesn’t retreat to hold reach distance, and its reach advantage keeps landing hits the same way it did on the approach. The sword presses forward to close the gap, but keeps taking losses faster than the spear does.
+Figure&nbsp;16: A Spearmen regiment holds its ground once locked in melee with an Infantry/sword regiment — it doesn’t retreat to hold reach distance, and its reach advantage keeps landing hits the same way it did on the approach. The sword presses forward to close the gap, but keeps taking losses faster than the spear does.
 </figcaption>
 </figure>
 </div>
@@ -1017,7 +1032,7 @@ Table&nbsp;2: Movement paces by unit type, in metres per second.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pace-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;16: Pace modes: a regiment attack-marches on AUTO pace — walking on approach, jogging through the beaten zone once enemy archery reaches it, then sprinting at full charge speed inside charge distance of its target — all three phases as distinct legs of one advance. Check Walk advance in the unit settings panel to lock the selection to walk pace throughout.
+Figure&nbsp;17: Pace modes: a regiment attack-marches on AUTO pace — walking on approach, jogging through the beaten zone once enemy archery reaches it, then sprinting at full charge speed inside charge distance of its target — all three phases as distinct legs of one advance. Check Walk advance in the unit settings panel to lock the selection to walk pace throughout.
 </figcaption>
 </figure>
 </div>
@@ -1036,7 +1051,7 @@ Figure&nbsp;16: Pace modes: a regiment attack-marches on AUTO pace — walking o
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-multi-click-speeds-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17: Four identical Cavalry regiments sent on the same move, one click apart: Walk, Jog, Run, and Sprint pull apart into four distinct paces instead of moving in lockstep.
+Figure&nbsp;18: Four identical Cavalry regiments sent on the same move, one click apart: Walk, Jog, Run, and Sprint pull apart into four distinct paces instead of moving in lockstep.
 </figcaption>
 </figure>
 </div>
@@ -1061,7 +1076,7 @@ Figure&nbsp;17: Four identical Cavalry regiments sent on the same move, one clic
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-lateral-pivot-flank-march-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;18: A Spearmen line ordered far to its own right: it quarter-turns toward the destination in place, marches straight there without ever reforming (the wide line stays wide, sliding sideways relative to its own shape), then quarter-turns back to its original facing on arrival.
+Figure&nbsp;19: A Spearmen line ordered far to its own right: it quarter-turns toward the destination in place, marches straight there without ever reforming (the wide line stays wide, sliding sideways relative to its own shape), then quarter-turns back to its original facing on arrival.
 </figcaption>
 </figure>
 </div>
@@ -1079,7 +1094,7 @@ Figure&nbsp;18: A Spearmen line ordered far to its own right: it quarter-turns t
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-back-speed-by-type-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;19: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
+Figure&nbsp;20: Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the same formation density and given the same rear-move order at the same tick. The lighter-kitted Archers settle their countermarch and step off first; the heavier-kitted Spearmen are still holding position when the clip ends.
 </figcaption>
 </figure>
 </div>
@@ -1105,7 +1120,7 @@ Figure&nbsp;19: Per-type backward-walk speed: a Spearmen and an Archers regiment
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-decel-arrival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;20: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
+Figure&nbsp;21: Braking on arrival: a lone Infantry regiment sprints toward a move order, eases off over the last stretch, and settles exactly on the ordered point — no lurching stop, no coasting past the marker.
 </figcaption>
 </figure>
 </div>
@@ -1120,7 +1135,7 @@ Figure&nbsp;20: Braking on arrival: a lone Infantry regiment sprints toward a mo
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-coast-to-stop-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;21: Coasting to a stop: a lone Cavalry regiment wipes out its target mid-charge; with no enemy left to chase and no new order, it keeps sliding forward on its residual charge speed, decelerating, before finally coming to rest.
+Figure&nbsp;22: Coasting to a stop: a lone Cavalry regiment wipes out its target mid-charge; with no enemy left to chase and no new order, it keeps sliding forward on its residual charge speed, decelerating, before finally coming to rest.
 </figcaption>
 </figure>
 </div>
@@ -1146,12 +1161,12 @@ Figure&nbsp;21: Coasting to a stop: a lone Cavalry regiment wipes out its target
 <li><strong>Attack flank</strong> (<kbd>F</kbd>) / <strong>Attack rear</strong> (<kbd>R</kbd>) — the unit maneuvers for the side or back rather than the front, cashing in the ×1.5 / ×2 multipliers above. Pair it with a frontal pin.</li>
 <li><strong>Skirmish</strong> (<kbd>K</kbd>) — a ranged unit kites: it backs off when a threat closes inside its firing range, trading ground to keep shooting rather than being caught in melee.</li>
 <li><strong>Support</strong> (<kbd>G</kbd>) — the unit guards a chosen ally, shadowing it and intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable horse, or a guard onto your archers.</li>
-<li><strong>Cycle charge</strong> (<kbd>J</kbd>) — a caracole for cavalry: the unit charges, lands its impact hit, then peels back to a standoff and charges again, instead of grinding in a static melee where the charge bonus is already spent. The charge bonus scales with closing speed, so each fresh run lands hard — but don’t cycle into braced spears, where a fast charge backfires. The retire leg rides at a trot and brakes onto the standoff before wheeling about, and the run back in canters until the final sprint — so the loop keeps after a target that breaks and flees, instead of strolling off behind it and never re-engaging (<a href="#fig-cycle-charge-flee" class="quarto-xref">Figure&nbsp;23</a>).</li>
+<li><strong>Cycle charge</strong> (<kbd>J</kbd>) — a caracole for cavalry: the unit charges, lands its impact hit, then peels back to a standoff and charges again, instead of grinding in a static melee where the charge bonus is already spent. The charge bonus scales with closing speed, so each fresh run lands hard — but don’t cycle into braced spears, where a fast charge backfires. The retire leg rides at a trot and brakes onto the standoff before wheeling about, and the run back in canters until the final sprint — so the loop keeps after a target that breaks and flees, instead of strolling off behind it and never re-engaging (<a href="#fig-cycle-charge-flee" class="quarto-xref">Figure&nbsp;24</a>).</li>
 <li><strong>Sweep routers</strong> (<kbd>,</kbd>) — the unit prioritizes a routing (fleeing) enemy over a closer enemy that’s still standing and fighting, even as the gap to the router narrows. Arm it on a unit you want cleaning up broken formations rather than getting drawn into (or staying stuck in) a fresh melee with whoever happens to be nearest — a natural pairing with a flanking cavalry sweep once the enemy line starts to crack. The pursuit rides at a canter beyond the sprint window, so the sweeper actually gains on a fleeing router instead of strolling after it.</li>
 <li><strong>Roll the line</strong> (<kbd>;</kbd>) — once the current target routs or is destroyed, the unit automatically re-targets the next-closest enemy still fighting instead of standing idle or chasing a broken foe down. A single attack order can carry a unit through a whole line of weaker enemies one after another — useful once you’ve broken through a flank and want the advance to keep rolling without a fresh order for every foe.</li>
 <li><strong>Pin down</strong> (<kbd>.</kbd>) — a stall/pin trade for a unit confronted head-on: it swings roughly half as often as a normal stance, so it deals less damage over time — but each swing’s follow-through opens a brief window where its own defense is lowered, so a foe that catches it mid-swing hits harder than it otherwise would. Use it to hold a line cheaply in casualties from its own attacks, not to win a stand-up fight outright; it’s a genuine tradeoff, not a strict upgrade over a normal stance.</li>
 <li><strong>All-out attack</strong> (<kbd>’</kbd>) — a straight offense/defense trade: +20% effective attack, but the unit’s own defense drops 20% while it’s fighting all-out. It hits harder and dies faster at the same time, so use it to force a quick, costly decision — finishing off a wavering enemy, or a rearguard buying time — not as a strict upgrade over a normal stance.</li>
-<li><strong>Chase</strong> (<kbd>\</kbd>) — relentless pursuit: the unit overrides the normal disengage exit a plain move order (or losing steady contact) otherwise gives it, so it keeps closing on and re-engaging the same fleeing or repositioning enemy instead of breaking off. It also presses the approach at a canter beyond the sprint window (a plain attack conserves stamina at a walk out there), so “relentless” means it actually closes, not just that it never gives up. Use it to run down a routing foe rather than let it escape to rally and rejoin the fight later (<a href="#fig-chase-canter" class="quarto-xref">Figure&nbsp;24</a>).</li>
+<li><strong>Chase</strong> (<kbd>\</kbd>) — relentless pursuit: the unit overrides the normal disengage exit a plain move order (or losing steady contact) otherwise gives it, so it keeps closing on and re-engaging the same fleeing or repositioning enemy instead of breaking off. It also presses the approach at a canter beyond the sprint window (a plain attack conserves stamina at a walk out there), so “relentless” means it actually closes, not just that it never gives up. Use it to run down a routing foe rather than let it escape to rally and rejoin the fight later (<a href="#fig-chase-canter" class="quarto-xref">Figure&nbsp;25</a>).</li>
 <li><strong>Wedge charge</strong> (<kbd>-</kbd>) — maximizes the approach at the cost of defense and stamina: a faster pace toward the target, a lower own defense while fighting, and faster fatigue buildup while engaged. Use it to punch a hole in the enemy line before it can brace, not as a strict upgrade over a normal stance — the unit that arrives first is also the easier one to hit.</li>
 <li><strong>Knockback focus</strong> (<kbd>=</kbd>) — an offense-only trade: the unit hits 40% softer, but every blow shoves the enemy back much harder and is more likely to fell it outright. Hold <kbd>Shift</kbd> when you arm or issue it to pick the push distance: the plain hotkey shoves a struck enemy just far enough to clear the battle line, while Shift+hotkey drives it much further back. Use it to break up a packed formation or buy room to maneuver, not to win a straight fight — the softer hits mean it trades its own damage output for control of space.</li>
 <li><strong>Give ground</strong> (<kbd>`</kbd>) — a deliberate withdrawal: the unit backs away from its nearest enemy at a steady pace while it keeps fighting, regardless of weapon reach on either side. This is the explicit, player-commanded counterpart to <a href="#weapon-reach">Weapon reach</a>’s passive standoff above — that mechanic only ever holds a longer-reach unit’s ground or presses a shorter-reach one forward; it never backs a unit away on its own. Arm it when you want to trade space for time — peeling a spent line back toward reinforcements, or buying a moment for a flank to arrive — without breaking off the fight entirely.</li>
@@ -1169,7 +1184,7 @@ Figure&nbsp;21: Coasting to a stop: a lone Cavalry regiment wipes out its target
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-brace-vs-unbraced-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;22: Two identical Spearmen lines face an identical cavalry charge. The right line is ordered to Brace and settles well before contact; the left is left at the merely-engaged default. The braced line holds its ground almost exactly on impact, while the unbraced line visibly presses forward into the melee.
+Figure&nbsp;23: Two identical Spearmen lines face an identical cavalry charge. The right line is ordered to Brace and settles well before contact; the left is left at the merely-engaged default. The braced line holds its ground almost exactly on impact, while the unbraced line visibly presses forward into the melee.
 </figcaption>
 </figure>
 </div>
@@ -1183,7 +1198,7 @@ Figure&nbsp;22: Two identical Spearmen lines face an identical cavalry charge. T
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cycle-charge-flee-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;23: A caracole against a broken foe: the first impact routs the infantry, which flees. The cavalry retires at a trot, brakes onto its standoff, wheels about, and canters back in to drive a second charge home — the foe rallies while the horse is out at the standoff, and the fresh charge slams into it just the same.
+Figure&nbsp;24: A caracole against a broken foe: the first impact routs the infantry, which flees. The cavalry retires at a trot, brakes onto its standoff, wheels about, and canters back in to drive a second charge home — the foe rallies while the horse is out at the standoff, and the fresh charge slams into it just the same.
 </figcaption>
 </figure>
 </div>
@@ -1197,7 +1212,7 @@ Figure&nbsp;23: A caracole against a broken foe: the first impact routs the infa
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-chase-canter-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;24: Stern-chase pacing: two identical cavalry pursue the same withdrawing infantry from beyond the sprint window. The Chase-armed unit presses at a canter and runs the quarry down; the plain attack order keeps the stamina-conserving walk and barely gains on a quarry walking away at nearly its own pace.
+Figure&nbsp;25: Stern-chase pacing: two identical cavalry pursue the same withdrawing infantry from beyond the sprint window. The Chase-armed unit presses at a canter and runs the quarry down; the plain attack order keeps the stamina-conserving walk and barely gains on a quarry walking away at nearly its own pace.
 </figcaption>
 </figure>
 </div>
@@ -1211,7 +1226,7 @@ Figure&nbsp;24: Stern-chase pacing: two identical cavalry pursue the same withdr
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-give-ground-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;25: Two equal-reach Infantry regiments lock in melee. Once engaged, the player issues Give ground on their own unit — it backs steadily away from the enemy line while the two sides keep trading blows, instead of holding its ground the way the passive reach standoff would.
+Figure&nbsp;26: Two equal-reach Infantry regiments lock in melee. Once engaged, the player issues Give ground on their own unit — it backs steadily away from the enemy line while the two sides keep trading blows, instead of holding its ground the way the passive reach standoff would.
 </figcaption>
 </figure>
 </div>
@@ -1225,7 +1240,7 @@ Figure&nbsp;25: Two equal-reach Infantry regiments lock in melee. Once engaged, 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-multiple-engage-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;26: A player Infantry regiment arms Multiple engage before two smaller enemy Infantry regiments, closing from different bearings, reach contact. The first enemy engages normally; once the second also presses in, the regiment’s frontage widens from 11 to 14 files (their combined width) and its facing holds steady instead of swinging between the two of them.
+Figure&nbsp;27: A player Infantry regiment arms Multiple engage before two smaller enemy Infantry regiments, closing from different bearings, reach contact. The first enemy engages normally; once the second also presses in, the regiment’s frontage widens from 11 to 14 files (their combined width) and its facing holds steady instead of swinging between the two of them.
 </figcaption>
 </figure>
 </div>
@@ -1239,7 +1254,7 @@ Figure&nbsp;26: A player Infantry regiment arms Multiple engage before two small
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-march-to-contact-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;27: A player Infantry regiment is ordered under March to contact toward a point beyond a weaker hostile sitting in its path. It halts and fights on contact instead of marching through — the info panel keeps reading its original destination order the whole time, so the queued move was never cleared — routs the weaker foe, then resumes marching and arrives at its original destination.
+Figure&nbsp;28: A player Infantry regiment is ordered under March to contact toward a point beyond a weaker hostile sitting in its path. It halts and fights on contact instead of marching through — the info panel keeps reading its original destination order the whole time, so the queued move was never cleared — routs the weaker foe, then resumes marching and arrives at its original destination.
 </figcaption>
 </figure>
 </div>
@@ -1256,7 +1271,7 @@ Figure&nbsp;27: A player Infantry regiment is ordered under March to contact tow
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-disengage-under-pressure-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;28: Two evenly-matched Infantry regiments hold a stalemate in melee. The player disengages their own unit — it clears its target and steps back, holding facing, while the enemy (still committed to the fight) keeps pressing after it.
+Figure&nbsp;29: Two evenly-matched Infantry regiments hold a stalemate in melee. The player disengages their own unit — it clears its target and steps back, holding facing, while the enemy (still committed to the fight) keeps pressing after it.
 </figcaption>
 </figure>
 </div>
@@ -1280,7 +1295,7 @@ Figure&nbsp;28: Two evenly-matched Infantry regiments hold a stalemate in melee.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;29: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;30: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
@@ -1324,7 +1339,7 @@ Table&nbsp;3: Terrain patches and their movement effects.
 </figure>
 </div>
 <p>Units automatically path around impassable terrain when ordered to move. A formed regiment takes the detour in good order: it steers by the corridor’s long-run direction and pivots onto it no faster than its corner man can run, so the block holds rank-and-file around the turn instead of smearing into a crowd. The forest is a different trade-off: going <em>around</em> it costs distance; going <em>through</em> it costs time. Generally it is faster to push cavalry or fast-moving infantry through rather than around a narrow forest.</p>
-<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;31</a>).</p>
+<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;32</a>).</p>
 <div id="fig-terrain-exact-footprint" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1335,7 +1350,7 @@ Table&nbsp;3: Terrain patches and their movement effects.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;30: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
+Figure&nbsp;31: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
 </figcaption>
 </figure>
 </div>
@@ -1349,7 +1364,7 @@ Figure&nbsp;30: A 30-man squad ordered straight down the lane just west of the h
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-funnel-lanes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;31: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
+Figure&nbsp;32: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
 </figcaption>
 </figure>
 </div>
@@ -1406,7 +1421,7 @@ Figure&nbsp;31: Two widths, two lanes: a wide battle line and a narrow squad rou
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-move-cancel-on-engagement-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;32: Redirecting an engaged unit: a mid-fight move order marches the unit off right away, but once its engagement with the enemy dies down the destination is checked one last time — if the enemy still holds that ground, the order cancels outright and the unit falls back into the fight instead of marching into occupied territory.
+Figure&nbsp;33: Redirecting an engaged unit: a mid-fight move order marches the unit off right away, but once its engagement with the enemy dies down the destination is checked one last time — if the enemy still holds that ground, the order cancels outright and the unit falls back into the fight instead of marching into occupied territory.
 </figcaption>
 </figure>
 </div>
