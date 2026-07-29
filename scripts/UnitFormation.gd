@@ -243,6 +243,141 @@ static func file_major_block_slots(file_ids: PackedInt32Array, files: int, spaci
 	return out
 
 
+# --- Deliberate-reshape slot pairing -----------------------------------------
+# block_slots hands soldier index i grid cell i, which is only a sensible answer while the
+# grid keeps its shape. A reshape that CHANGES the file count -- a 15-file line squaring
+# onto 11 files -- moves cell i a long way from wherever soldier i is standing, so the men
+# walk past each other to reach cells they were never near: measured over a 120-man
+# line-to-square reform, roughly a quarter of the block crossed its own centreline and the
+# total travel ran about three times what the same reshape needs. The pairing below decides
+# WHICH man takes WHICH of those cells, once, from where the men actually stand. It changes
+# only the labelling of the grid, never the grid itself, so every footprint, extent and
+# perimeter calculation downstream reads exactly as it did.
+
+
+## The identity slot assignment for `n` soldiers -- soldier i takes cell i, exactly the
+## layout `block_slots` lays out on its own. The right answer whenever there is nothing to
+## pair against: a fresh spawn and a tier promotion both build the soldier bodies FROM these
+## slots, so there is no prior position for anyone to stay near.
+static func identity_assignment(n: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(maxi(0, n))
+	for i in range(out.size()):
+		out[i] = i
+	return out
+
+
+## Pair each soldier to one of `slots` by proximity: returns `perm`, where `perm[i]` is the
+## slot index soldier `i` should occupy. `positions` and `slots` must be the same length and
+## share the block's own local frame (the frame `Unit.soldier_block_world_angle` rotates out
+## of); anything else falls back to `identity_assignment`, i.e. the historical index-order
+## layout.
+##
+## The rule is "keep your file, then keep your depth order within it": sort the men by
+## lateral position, hand each target FILE its own share of that order left to right, then
+## sort each file's share by depth and fill the file front to back. Preserving the lateral
+## order is what makes a centreline crossing structurally impossible, save where two
+## adjacent target files straddle the centre themselves -- the one case a narrowing block
+## genuinely forces. Measured across line-to-square reforms from 24 to 200 soldiers this
+## leaves 0-2 crossings where the index-order layout leaves 7-92, at 1.04x to 1.23x the
+## travel of a near-optimal (greedy plus 2-opt) assignment, for O(n log n) work instead of
+## the assignment problem's own cost.
+##
+## Files are bucketed by slot index modulo `files`, not by the slots' x coordinate:
+## `block_slots` offsets a partial rear rank by half a file when its count and the frontage
+## have opposite parity, so equal-x bucketing would split one file in two and could hand a
+## flank man a slot on the far side of the block.
+##
+## Pure and deterministic -- no RNG, no wall-clock, every comparison a strict total order
+## broken by ascending index -- so two runs of the same replay pair identically.
+static func pair_slots_by_lateral_file(positions: PackedVector2Array,
+		slots: PackedVector2Array, files: int) -> PackedInt32Array:
+	var n: int = positions.size()
+	if n <= 0 or files <= 0 or slots.size() != n:
+		return identity_assignment(slots.size())
+	var order: Array = range(n)
+	order.sort_custom(func(a: int, b: int) -> bool:
+		var pa: Vector2 = positions[a]
+		var pb: Vector2 = positions[b]
+		if pa.x != pb.x:
+			return pa.x < pb.x
+		if pa.y != pb.y:
+			return pa.y < pb.y
+		return a < b)
+	var perm := PackedInt32Array()
+	perm.resize(n)
+	var taken: int = 0
+	for f in range(files):
+		# block_slots is rank-major, so file f owns cells f, f + files, f + 2*files, ...
+		# already in front-to-back depth order -- nothing to sort on this side. A partial
+		# rear rank simply stops early, giving the outer files one cell fewer.
+		var column := PackedInt32Array()
+		var s: int = f
+		while s < n:
+			column.push_back(s)
+			s += files
+		if column.is_empty():
+			continue
+		var group: Array = []
+		for _k in range(column.size()):
+			if taken >= n:
+				break
+			group.push_back(order[taken])
+			taken += 1
+		group.sort_custom(func(a: int, b: int) -> bool:
+			var pa: Vector2 = positions[a]
+			var pb: Vector2 = positions[b]
+			if pa.y != pb.y:
+				return pa.y < pb.y
+			return a < b)
+		for k in range(group.size()):
+			perm[group[k]] = column[k]
+	return perm
+
+
+## `slots` relabelled by `perm` (perm[i] = the cell soldier i occupies), so the returned
+## array is index-aligned with the live soldier arrays like every other slot array in the
+## sim. A `perm` of the wrong size returns `slots` untouched -- the historical index-order
+## layout -- and an out-of-range entry clamps, the same defensive degrade
+## `file_major_block_slots` already applies to a stale file id.
+static func permute_slots(slots: PackedVector2Array, perm: PackedInt32Array) -> PackedVector2Array:
+	var n: int = slots.size()
+	if n <= 0 or perm.size() != n:
+		return slots
+	var out := PackedVector2Array()
+	out.resize(n)
+	for i in range(n):
+		out[i] = slots[clampi(perm[i], 0, n - 1)]
+	return out
+
+
+## `perm` with the entry for the soldier at `index` removed and every remaining cell id
+## above the vacated one stepped down by one, so the result is still a permutation -- of
+## 0..size-2 this time.
+##
+## That renumbering is exactly what the grid itself does when it loses a man:
+## `block_slots(n - 1, ...)` is `block_slots(n, ...)` minus its last cell, with the partial
+## rear rank re-closing onto the centre files. So each survivor holds the cell it already
+## had, or steps one cell forward if it stood behind the vacancy -- the same close-up the
+## index-order layout has always produced, only now applied in the paired order.
+##
+## Called from `SoldierMelee.reap` alongside every other per-soldier array's own trim, so an
+## ordinary casualty never re-pairs the block. Re-pairing per casualty would read better on
+## a still frame but would recompute slot targets from jostling bodies every tick a squared
+## unit is being ground down, which is the target-slot churn this sim has been bitten by
+## before. Out-of-range `index` returns `perm` unchanged.
+static func drop_slot_assignment(perm: PackedInt32Array, index: int) -> PackedInt32Array:
+	if index < 0 or index >= perm.size():
+		return perm
+	var vacated: int = perm[index]
+	var out := PackedInt32Array(perm)
+	out.remove_at(index)
+	for i in range(out.size()):
+		if out[i] > vacated:
+			out[i] -= 1
+	return out
+
+
 # --- Square / orbis grid (real hollow/solid square footprint) ---------------
 # The anti-cavalry square is a genuine square block, not the standard wide-line
 # frontage: it uses its own file count (files ~= ranks, so the bbox aspect is ~1)

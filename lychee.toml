@@ -1,4 +1,4 @@
-# lychee config for the Check Links workflow (overrides d-morrison/gha's bundled
+# lychee config for the Check Links workflow (overrides Morrison-Lab/gha's bundled
 # default; passed via `lychee-config: lychee.toml`). Mirrors that default and
 # adds repo-specific exclusions.
 

@@ -551,6 +551,56 @@ casualties, inter-unit crowding) that a small scenario can't exercise at all. Fo
 per-soldier physics mechanic (collision damage, a single knockback, a prone check),
 default to the smallest scenario, not the standard 5v5/100v100 battle layout.
 
+**Caveat, discovered building the collision-damage demo (#1142/PR #1143): a genuine
+1-vs-1 (or few-soldier) matchup can be TOO minimal for a mechanic gated on actual
+body-to-body proximity, because melee STRIKE engagement fires at a much longer range
+first.** The strike/engagement gate in `Unit._think()` triggers at `attack_range +
+RADIUS + enemy.RADIUS` — roughly 60-70 world units for common types, one-sided (only
+the querying unit's own `attack_range`), since `Unit.RADIUS` is a flat per-REGIMENT
+footprint constant (18 wu), not a per-soldier body radius. (This is a DIFFERENT check
+from `Unit._in_enemy_contact`, which correctly uses `maxf(attack_range,
+u.attack_range) + RADIUS + u.RADIUS` — see "A symmetric 'is X near Y' contact check
+needs BOTH sides' own range" in `sparta.md` — `_in_enemy_contact` gates physical
+collision selection, not the strike path.) A lone or small-count target's whole HP
+pool is thin enough that a single charge-bonus-amplified strike at THAT range
+*could* wipe it out entirely with zero cost to the attacker, long before the two
+soldiers' actual `_sim_soldier_pos` values ever converge to the much tighter
+distance (`sradii[a]+sradii[b]+containment`, typically ~10-20 wu) genuine
+collision-physics contact (`SoldierEnemyContact.accumulate`) requires — **but the
+exact mechanism behind the observed wipe is UNCONFIRMED** (see #1151, still open):
+the symptom (a symmetric 10v10 Cavalry matchup, one whole regiment vanishing in one
+tick with the OTHER side reporting zero HP loss) doesn't cleanly fit a single-strike
+story either, so a still-regiment-level casualty/morale-authority path or a
+`_check_victory()` edge case remain live alternative explanations.
+
+**The reproducible OBSERVATION, precisely:** five cavalry-involving configurations
+reached real contact, and every one of them wiped identically —
+Cavalry(1) vs Infantry(1) at a 110wu spawn gap; Cavalry(6) vs Infantry(6) at 110wu
+(re-confirmed pre-existing on unmodified `main` via `git stash`); Infantry(10) vs
+Cavalry(4) at 100wu; Infantry(12) vs Cavalry(3) at 150wu; and Cavalry(10) vs
+Cavalry(10) at 150wu (the symmetric, zero-cost-to-attacker case documented in
+#1151's own body). Two OTHER attempts — the same Cavalry(1)/Infantry(1) and
+Infantry(10)/Cavalry(4) pairings, but at a wider 200-220wu spawn gap — never reached
+contact within the recording's wall-clock budget at all; those two are inconclusive,
+not evidence either way, and are NOT counted among the five above. Only the CAUSE is
+still open — every configuration that actually reached contact wiped, with zero
+exceptions.
+
+**How to apply:** before committing to a "smallest possible" scenario for a mechanic
+gated on genuine body PROXIMITY (not just being in the SAME battle), check whether
+the fight could resolve entirely before proximity is ever reached — particularly for
+any matchup involving a charge-bonus attacker (cavalry). Don't assume adding depth or
+spacing avoids it: every configuration that actually reached contact wiped, across
+soldier counts from 1 to 12 per side and both cavalry-vs-infantry and
+cavalry-vs-cavalry matchups (see the precise enumeration above) — there is currently
+no known small-scale cavalry-involving configuration CONFIRMED to reach genuine
+body-proximity contact. Until #1151 resolves, the working options are: skip the
+live-battle demo entirely and rely on unit tests (what PR #1143 itself did), or use a
+matchup that never triggers a charge bonus at all (e.g. two slow-closing
+Infantry-only regiments, which reach real contact fine per the
+`normal-formation-melee-contact.json` precedent — just at a scale/duration too large
+to call "minimal").
+
 ## A hotkey rebind (merge-conflict collision fix) has THREE copies to sync, not one
 
 When resolving an `OrderMode`-enum merge collision (see `sparta.md`'s
@@ -1221,3 +1271,43 @@ nearest-slot pairing over the same start positions and target slots -- greedy is
 bound on optimal, so if the actual assignment costs ~2x greedy, most of the movement is
 churn rather than geometry. (Recurred as #541 about-face, #668 countermarch, #802
 target-slot cadence, #1146 square reform. Route-aware metric tracked as #1149.)
+
+## A caption claiming an ON-SCREEN effect must be checked against the render path, not inferred from the sim change
+
+The existing caption-accuracy entries cover claims about per-tick SIM values (verify against the
+transcript, not a local dump). A distinct and easier mistake: asserting that a change will look
+a particular way on screen, when nothing in the diff touches the code that draws it.
+
+Concretely: a demo staged with `Settings.show_engaged_highlight` was captioned as showing the
+amber tint "sitting on the contact rank instead of covering both blocks end to end" -- describing
+a newly narrowed physics tier. But that overlay is fed by `engaged_soldier_indices()` inside
+`Unit._refresh_flock_render()`, which the change deliberately left alone, so the tint kept
+covering both whole blocks exactly as before. The claim was invented from what the sim change
+did, never checked against what the renderer reads. Caught by review.
+
+**How to apply:** before writing any caption sentence about what a viewer will SEE, grep the diff
+for the render path that produces it (`git diff <base>...HEAD -- scripts/ | grep -c
+'_refresh_flock_render\|show_engaged_highlight\|_draw'`). A zero count means the visual is
+unchanged and the caption must not claim otherwise. When the change genuinely has no on-screen
+representation, say so plainly and point at what IS visible instead -- here, the formation's own
+rank/file order. Rewiring a dev overlay to make a caption true is the wrong fix: it changes what
+an existing debug visual means, for the sake of prose.
+
+## Read the website demo-diff's WHOLE defect-delta table, not just the flagged rows
+
+`website-demo-diff.yml` flags only clips where a defect fires on the PR side but not the
+merge-base -- by construction, only the rows that got WORSE. Reading just those gives a
+systematically pessimistic view of a change that moves sim behaviour broadly, and can make a
+net improvement look like a regression.
+
+Concretely: a core melee-dynamics change was flagged with 4 candidate-regression clips. Tallying
+every row instead showed 10 defect instances CLEARED across 7 clips (three going fully clean)
+against 6 added across 4 -- net 4 fewer, 7 improved vs 4 degraded. That accounting was also the
+strongest available evidence against a specific regression hypothesis: a systematic force acting
+from first contact would degrade broadly and in one direction, and could not clear ten instances
+across seven unrelated clips. Per-clip before/after sampling had been suggestive; the whole-table
+tally was decisive.
+
+**How to apply:** when the diff flags several clips, tally cleared-vs-added across the full table
+before classifying anything, and put the net accounting in the PR description. The flagged rows
+tell you where to look first, not what the change did overall.

@@ -2291,6 +2291,55 @@ across time instead of across simultaneous pairs -- when reviewing or writing a 
 SIMULTANEOUS sources in one tick, and does it compound across SUCCESSIVE ticks of the same
 source. (`Lacaedemon/sparta` PR #860, 2026-07-15.)
 
+## A new per-soldier physics quantity added alongside an already-correct pipeline should derive from that pipeline's OUTPUT, not recompute independently from raw inputs
+
+PR #1143 (collision damage: converting a hard contact's dissipated kinetic energy into health
+loss) shipped a first version that computed damage independently per contact pair, straight
+from each pair's raw closing speed and effective masses -- a parallel calculation living
+alongside (not reusing) `SoldierEnemyContact.accumulate`'s existing, carefully-engineered
+velocity-impulse pipeline (the multi-pair torque-neutral trim, the per-tick `KNOCKBACK_SPEED_MAX`
+cap). Review found the independent recompute had re-derived, and gotten wrong, THREE separate
+properties the velocity pipeline already gets right:
+
+1. **No cap across a soldier's simultaneous contacts** -- exactly the "Multi-pair force
+   accumulation needs a write-back clamp, not just a per-pair cap" bug class documented earlier
+   in this file, just on the new damage channel instead of the velocity one. The velocity
+   pipeline has `body_trim_scale` + a final safety-net clamp specifically for this; the parallel
+   damage formula had no equivalent.
+2. **No memory across ticks during a multi-tick arrest** -- exactly the "compounds ACROSS TICKS"
+   bug class immediately above, again just on damage instead of velocity. A fast pair takes
+   several ticks to fully arrest (the impulse pipeline caps velocity reduction at
+   `KNOCKBACK_SPEED_MAX` per tick), but the damage formula recomputed the COMPLETE inelastic-stop
+   energy from the CURRENT closing speed every tick, overcounting total damage ~1.4-2x for a
+   realistic charge -- decision-changing in the worked example (a soldier who should survive at
+   14 HP instead died).
+3. **A mass-weighted split that inverted the intended asymmetry** -- the formula split a shared
+   total by `jn^2/mass_i_eff`, which the reviewer derived (and verified numerically against real
+   game constants) makes a BRACED/HEAVIER defender take MORE absolute damage against a much
+   heavier attacker, not less -- opposite of what bracing is supposed to do, and opposite of the
+   PR's own website prose.
+
+**Fix:** derive damage from each soldier's ACTUAL, already-resolved velocity change this tick --
+read `owner._sim_body_vel[slot]` (after the existing multi-pair trim and per-tick cap have run)
+minus the pre-tick snapshot -- instead of an independent formula from raw closing speed and
+mass. This fixed all three findings AT ONCE, not as three separate patches: the multi-pair cap
+and the per-tick bound come along for free since they're the SAME bounded number the velocity
+pipeline already computed, and the bracing direction self-corrects because a heavier/braced body
+already receives a smaller velocity change from the same contact (`enemy_contact_impulse`'s own
+effective-mass split) -- so `damage = SCALE * delta_v^2` automatically gives it less damage too,
+with no separate asymmetry formula left to get backwards.
+
+**How to apply:** when adding a NEW per-soldier physics quantity (damage, stamina drain, a
+cosmetic effect) that logically depends on the SAME contact/impulse an existing pipeline already
+resolves, check first whether that pipeline's OUTPUT (its final, already-bounded per-body delta)
+can be read and reused, rather than writing a second formula from the same raw inputs the
+pipeline itself consumes. A parallel recompute doesn't just risk bugs the original pipeline
+already solved (multi-pair caps, cross-tick memory) -- it risks re-deriving the WRONG formula
+for a property (like the mass-split direction here) the existing pipeline already encodes
+correctly in its own math, and getting the two implementations to agree by construction is far
+more reliable than getting them to agree by careful parallel tuning. (`Lacaedemon/sparta` PR
+#1143, 2026-07-28.)
+
 ## A new maneuver can reuse an existing composite instead of building new per-soldier choreography -- but check for facing side-effects from the reused legs
 
 PR #866 (closes #375) needed the countermarch (exelismos): reverse which end of a unit faces
@@ -3192,3 +3241,184 @@ under "The identity checks are real, but they are blind DURING a reshape" in
 `sparta-demos.md`. The scan's identity metrics do exist and work, but they only judge a
 SETTLED block -- and every one of these bugs reaches a correct end state by a wrong route,
 which is why all four instances were caught by eye rather than by a check.
+
+## One selector, two questions: reach answers "who can strike", geometry answers "whose body is shoved"
+
+`Unit.engaged_soldier_indices()` derives its depth from `engaged_ranks()`, which scales with
+the regiment's own WEAPON REACH. That is the correct answer to the question it exists for --
+a spear phalanx really does project six ranks of points into contact, and all six deal and
+take blows. It is the wrong answer to a question about BODIES, and reusing it for one is a
+recurring trap: a sixth-rank spearman strikes past five ranks of his own men without anything
+touching him.
+
+The failure only becomes visible when a block is SHALLOWER THAN ITS OWN REACH DEPTH. A 40-man,
+9-file spear regiment is 5 ranks deep against an engaged depth of 6, so every soldier lands in
+the tier and any "the rest of the block is the unengaged bulk" assumption silently evaporates.
+`SoldierBodies.step()` had exactly that assumption baked in -- an engaged body drops the march
+feed-forward and is re-paired onto a canonical target slot, both meaningful only RELATIVE to a
+bulk still tracking the formation's own slots. With no bulk left, every body free-floats under
+continuous contact impulses while its slot identity is globally re-sorted by lateral position,
+so rank/file order churns indefinitely instead of recovering (soldiers visibly sliding sideways
+through a sustained melee).
+
+Fixed by `body_tier_soldier_indices()` / `body_tier_ranks()`: same gate, same geometry, but
+depth = how many ranks one body DIAMETER spans at this formation's own rank pitch (1 at the
+standard 0.45 m pitch; 2 for SHIELD_WALL/TESTUDO, which compress below a body width; 1 for
+cavalry's roomy 3.0 m pitch). Derived from constants the soldier layer already scales off, so
+no tuned number.
+
+**How to apply:** before consuming `engaged_soldier_indices()` in a NEW caller, ask which
+question that caller is really asking. If it is about physical contact, crowding, or body
+motion -- not about who can land a blow -- it wants a geometry-derived depth, and it needs its
+own selector. This is the same class of bug PR #1137 fixed one layer over (a combat selector,
+`is_engaged()`, silently gating physical collision), so it has now bitten twice; expect a third
+site. Note also that two tuned alternatives were tried and rejected on measurement first --
+"leave one rear rank as bulk" barely moved the churn, and "cap at half the block depth" fixed
+one unit but not the other -- only the geometry derivation landed symmetrically.
+
+## Capping a selection must narrow WITHIN the meaningful candidate set, never re-select over the whole population
+
+When adding a size cap to a selection that already computed a MEANINGFUL candidate set, apply
+the cap to that set. Falling back to a fresh ranking over the whole population is a different
+answer, not a smaller one.
+
+Concretely: `Unit._select_near_front_indices()`'s Square/Schiltron branch computes `threatened`
+(soldiers with an enemy actually in reach). A first cut handled the capped case by falling
+through to `UnitFormation.live_perimeter_indices()`, which ranks purely by distance from the
+block's own centroid -- i.e. the corners -- with no reference to enemy position at all. For a
+pressed square that is the ORDINARY case, not an edge case (a 100-soldier square caps around
+`ceil(sqrt(100)) = 10` while a one-sided press typically threatens 30-40), and it returns
+soldiers with nothing near them while dropping soldiers genuinely in contact -- inverting the
+selection's own meaning and breaking the body-tier subset engaged-tier invariant.
+
+Fixed with `UnitFormation.most_exposed_among(positions, candidates, target_count)`: ranks by
+exposure WITHIN the candidate set, centroid still taken over the whole block (the subset filters
+who may be picked, it does not move the middle). `live_perimeter_indices` delegates to it, so
+there is one heap selection rather than two copies.
+
+**How to apply:** any time a bounded and unbounded caller share a selection function, check that
+the bounded path returns a SUBSET of what the unbounded path would. If it can return something
+the unbounded path would never return, the cap is re-selecting rather than narrowing. Caught by
+review, not by the implementation or its first test -- see the vacuous-test entry below for why
+that test did not catch it either.
+
+## A guard test can be vacuous ONLY under full-suite ordering -- single-test runs can hide it
+
+The standing habit of reverting a fix to prove its test bites has a failure mode worth naming:
+the test can fail correctly in a SINGLE-TEST run and still pass in a FULL-SUITE run, because a
+frame-keyed static cache served it another test's data. So "I reverted and it failed" is not
+sufficient evidence unless the revert was run the same way CI runs it.
+
+Concretely: a new test for the square capping path above passed against the reverted fix in a
+full `test_unit.gd` run, while failing correctly when selected alone. Root cause was the already
+documented hazard above -- `SoldierEnemyProximity` is keyed by `Engine.get_physics_frames()`, so
+a synchronous test inherits whatever grid the previous test built, and the enemy this test
+staged was never in it, leaving `threatened` empty and the capped branch unreached. Adding
+`SoldierEnemyProximity.reset()` made it fail against the bug in BOTH modes (4 failures, indices
+33/43/44/54, matching an independent probe's prediction of exactly 4 leaked soldiers).
+
+**How to apply:** run the revert check the way CI runs the suite, not just with `-gunit_test_name`.
+A guard that only bites in isolation is not a guard. Also add a positive sanity assertion that the
+branch under test is genuinely reached (here `assert_gt(melee.size(), u.body_tier_cap(n))`), so the
+test cannot quietly go vacuous later when geometry or constants shift. Note this hazard's own
+`reset()` rule was ALREADY documented in this file and still got missed while writing a fresh
+test -- treat "does this test construct fixtures that a frame-keyed cache reads?" as a checklist
+item on every new test, not a thing to recall.
+
+## A caching fallback outlives the window that produced it -- never commit a placeholder as an answer
+
+A lazily-rebuilt per-soldier assignment (the `_ensure_*_assignment` family) guards its rebuild
+on a committed key: `if _sim_soldier_square_slot.size() == count and _square_slot_files == files:
+return`. If the rebuild has a fallback branch for "the inputs could not be read this tick," and
+the function commits the key unconditionally afterwards, the fallback **satisfies the guard
+forever after** -- the placeholder is never reconsidered, long after the condition that produced
+it has passed. The bug is not the fallback; it is committing the key on the fallback path.
+
+Shipped and caught in review on PR #1158: `_ensure_square_slot_assignment` fell back to
+`identity_assignment` (the exact pre-fix layout the PR existed to remove) whenever
+`_slot_frame_positions` returned empty, then set `_square_slot_files = files` regardless. A
+settled square hit that window on its first melee strike and stayed on the index-order layout
+for the rest of its life -- strictly worse than the bug being fixed, and in exactly the
+anti-cavalry scenario the PR targeted.
+
+**How to apply:** any lazy-rebuild function with both a real path and a degraded path must commit
+its freshness key only on the real path (`_square_slot_files = files if not live.is_empty()
+else -1`). Leaving the key invalid costs a recompute per tick until the inputs are readable
+again, which is the correct trade: a cheap repeated attempt beats a permanent wrong answer.
+
+## There are TWO casualty paths and they have opposite array-sync semantics
+
+Easy to miss, and it makes a whole class of test structurally unable to reach a whole class of bug:
+
+- **Per-soldier path** -- `SoldierMelee.reap()` splices every per-soldier array at the dead man's
+  index, so `soldiers` and the arrays stay in sync, and per-soldier identity survives.
+- **Regiment path** -- `UnitCombat.take_casualties` (`scripts/UnitCombat.gd`) does `u.soldiers -=
+  total` and touches NO per-soldier array. It never says which man died. `SoldierBodies.step`
+  then queries `soldier_world_slots(unit.soldiers)` BEFORE resizing `_sim_soldier_pos` to match
+  later in the same call, so there is a guaranteed window where the body layer is LARGER than the
+  live count.
+
+The regiment path is not an edge case: the per-soldier path is gated on `is_engaged()`, a latch
+that arms one tick after `FIGHTING` starts, so the **first strike of every fresh contact** goes
+through the regiment path (as does every strike for a ranged unit in melee, plus `absorb()` and
+`disengage_with_sacrifice()`).
+
+**How to apply:** any new per-soldier state must be correct across BOTH paths, and a test that
+only drives `SoldierMelee.reap()` proves nothing about the regiment path -- it is the one path
+that keeps the arrays in sync, so it cannot reach a desync bug at all. Drive the regiment shape
+explicitly (drop `soldiers` with the body arrays left untouched, then step) as its own test.
+Note also that a body layer larger than `count` is real data, not a fault: `resize()` trims at
+the tail, so the leading `count` entries are exactly the survivors, still index-aligned.
+(PR #1158.)
+
+## Never pin a benchmark number in PR prose -- the comment updates in place
+
+The `sparta-benchmark` PR comment is rewritten in place on every push, so any figure copied out
+of it into a PR description, a commit message, or a review reply goes stale silently and reads
+as a live measurement. Worse, the run-to-run spread is large enough that the number was never
+meaningful: across three pushes of essentially identical code on PR #1158 the same comment
+reported **-7.0%, -0.2%, and -1.8%** against the same baseline -- the CI-runner variance
+`tools/benchmark/baseline.json`'s own `_comment` already documents.
+
+Quoting one of those produced a wrong claim in the PR description (caught by review), and then a
+wrong correction of the correction. **Describe the result qualitatively ("neutral, inside the
+threshold") and point at the live comment** rather than freezing a figure. Reserve actual numbers
+for a same-machine local before/after comparison, which is the only form that controls for runner
+noise.
+
+## GitHub Actions does NOT follow a repo-transfer redirect for `uses:` -- and `gh api` DOES, which hides it
+
+When the shared CI repo moved from `d-morrison/gha` to `Morrison-Lab/gha` (2026-07-28), every
+sparta workflow calling a gha reusable workflow broke at once, repo-wide, on every push. The
+failure signature is distinctive and easy to misread:
+
+- The run **fails instantly at startup**: zero jobs scheduled, `created_at == updated_at`, and no
+  check-run annotations to read (`gh run view --log-failed` reports "log not found").
+- `gh run list` shows the run's name as the raw **`.github/workflows/x.yml` path** instead of the
+  workflow's own `name:` field -- the tell that GitHub could not resolve the workflow at all.
+- `gh run rerun` refuses outright: *"cannot be rerun; its workflow file may be broken."* A
+  startup-failed run needs a **fresh trigger** (a push, or close/reopen); it can never be re-run
+  in place.
+
+**The trap that cost the most time:** `gh api repos/d-morrison/gha` transparently follows the
+transfer redirect and returns `"full_name": "Morrison-Lab/gha"`, and every content path still
+resolves under the old owner. So a check of "does the reference still work?" via `gh api` says
+YES while Actions says no. Actions is the only authority here. On the first occurrence this was
+misdiagnosed as a transient migration window and reported as self-healed; the very next push
+failed identically, which is what forced the real diagnosis.
+
+**How to spot it:** if several unrelated workflows fail at startup simultaneously, check what
+they have in common -- here, every failing workflow was an external `uses: <owner>/<repo>/...`
+caller and every passing one was self-contained. Confirm repo-wide (not PR-specific) by listing
+one workflow's runs across all branches and finding the timestamp where success turns to failure.
+
+**Fix:** retarget the references to the new owner, keeping the `@vN` pin, and verify every
+distinct referenced path resolves at the new owner's tag before pushing. The consuming repo's own
+CI is the real test -- if the previously-dead workflows schedule jobs and report their real names
+again, the diagnosis and the fix are both confirmed. (sparta #1159/PR #1160: 11 call sites.)
+
+**Related gotcha:** a PR that edits `claude-code-review.yml` makes the `@claude` review self-skip
+by design (every step reports `skipped`; the action 401s validating a workflow file from a PR
+ref). That is the benign skip, NOT a stub review -- read the run's step list to tell them apart.
+Combined with Copilot being quota-exhausted, such a PR can have no automated verdict at all, in
+which case the standing rule applies: do the review yourself and post it before merging.
