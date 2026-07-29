@@ -208,16 +208,20 @@ func test_a_per_soldier_casualty_closes_up_only_the_dead_mans_own_file() -> void
 	_assert_ranks_are_contiguous_per_file(u._sim_soldier_file, u._sim_soldier_rank)
 
 
-func test_a_regiment_path_casualty_re_deals_from_the_surviving_bodies() -> void:
+func test_a_regiment_path_casualty_rebuilds_without_reading_the_jostled_bodies() -> void:
 	# The OTHER casualty path. UnitCombat.take_casualties drops `soldiers` without splicing
-	# any per-soldier array, and SoldierBodies.step queries the slots before it resizes them,
-	# so the body layer is briefly LARGER than the live count. Reading that window as "no
-	# bodies to deal against" would fall back to the index-order layout -- and caching the
-	# fallback would freeze it there, which is what the commit guard in
-	# _ensure_file_assignment exists to prevent.
+	# any per-soldier array, so the assignment goes out of sync with the live count and has
+	# to be rebuilt -- but the frontage has NOT changed, so this is attrition, not a reshape,
+	# and it keeps the historical index-order fill.
+	#
+	# That distinction is load-bearing. Dealing a casualty rebuild from live bodies instead
+	# would re-read every man's file off positions that contact impulses are shoving around,
+	# on the tick of every casualty, for the whole of a melee. Measured on the residual
+	# melee-lock swirl guard, doing so drove a matched 100-v-100 clash from about 20 degrees
+	# of pivot to nearly 58.
 	#
 	# Driven into that state directly, since reap() is the one path that keeps the arrays in
-	# sync and so can never reach it.
+	# sync and so never reaches this rebuild at all.
 	var u: Unit = _stage_lone_infantry()
 	assert_not_null(u, "the lone Infantry regiment spawned")
 	if u == null:
@@ -232,45 +236,61 @@ func test_a_regiment_path_casualty_re_deals_from_the_surviving_bodies() -> void:
 	assert_eq(u._sim_soldier_pos.size(), bodies_before,
 		"the regiment path leaves the body arrays untouched")
 
-	var start: PackedVector2Array = _local_positions(u)
-	start.resize(u.soldiers)   # resize() trims at the tail, so these are the survivors
-	var slots: PackedVector2Array = u.formation_slots(u.soldiers)
+	var dealt := PackedInt32Array(u._sim_soldier_file)
+	var _slots: PackedVector2Array = u.formation_slots(u.soldiers)
 
-	assert_eq(u._sim_soldier_file.size(), u.soldiers, "the deal tracks the live soldier count")
+	assert_eq(u._sim_soldier_file.size(), u.soldiers, "the rebuild tracks the live soldier count")
 	assert_eq(u._file_assignment_files, UnitFormation.frontage(u),
-		"a deal made from live bodies commits its file count")
-	_assert_ranks_are_contiguous_per_file(u._sim_soldier_file, u._sim_soldier_rank)
+		"and commits its file count, so it is not redone on every query")
 
 	var capacities: PackedInt32Array = UnitFormation.file_capacities(
 			u.soldiers, UnitFormation.frontage(u))
-	var index_ids: PackedInt32Array = UnitFormation.file_ids_in_index_order(capacities)
-	var index_order: PackedVector2Array = UnitFormation.file_major_block_slots(
-			index_ids, UnitFormation.frontage(u), u.file_pitch_wu(), u.rank_pitch_wu())
-	assert_gt(_total_travel(start, index_order), 1.0,
-		"precondition: the index-order layout is not where these men are already standing")
-	assert_lt(_total_travel(start, slots), _total_travel(start, index_order),
-		"the re-deal reads the surviving bodies rather than reverting to index order")
+	assert_eq(Array(u._sim_soldier_file),
+		Array(UnitFormation.file_ids_in_index_order(capacities)),
+		"attrition rebuilds in index order -- it never re-reads the bodies")
+	assert_eq(u._sim_soldier_rank.size(), 0,
+		"and drops the explicit ranks with them, since array order is the depth order again")
+	assert_ne(Array(u._sim_soldier_file).slice(0, u.soldiers), Array(dealt).slice(0, u.soldiers),
+		"precondition: the reshape's own deal really was something other than index order")
 
 
-func test_a_deal_made_without_bodies_is_never_cached() -> void:
-	# The fallback must not satisfy the function's own early-out: it is a placeholder for a
-	# tick whose body layer could not be read, not an answer. Caching one froze a settled
-	# square on the index-order layout for the rest of its life on the sibling fix, so the
-	# same guard is asserted directly here.
+func test_a_deal_with_no_bodies_at_all_is_the_answer_and_commits() -> void:
+	# There is nothing to deal against before the bodies exist -- a fresh spawn and a tier
+	# promotion both build them FROM these slots -- so the index-order fill is the correct
+	# answer there, not a placeholder, and it commits like any other.
 	var u := Unit.new()
 	autofree(u)
 	assert_eq(u._sim_soldier_pos.size(), 0, "precondition: a bare unit has no bodies yet")
 
 	u._ensure_file_assignment(24, 6)
 
-	assert_eq(u._sim_soldier_file.size(), 24, "it still deals a file to every man")
 	assert_eq(Array(u._sim_soldier_file),
 		Array(UnitFormation.file_ids_in_index_order(UnitFormation.file_capacities(24, 6))),
-		"falling back to the historical index-order fill")
+		"it deals the historical index-order fill")
 	assert_eq(u._sim_soldier_rank.size(), 0,
-		"an index-order fill needs no explicit ranks -- array order already is the depth order")
+		"with no explicit ranks -- array order already is the depth order")
+	assert_eq(u._file_assignment_files, 6,
+		"and commits, so a far-tier unit does not re-deal on every query")
+
+
+func test_a_reshape_that_finds_only_part_of_the_body_layer_is_never_cached() -> void:
+	# The other fallback, and the one that must NOT be cached. UnitCombat.take_casualties
+	# drops `soldiers` before SoldierBodies.step resizes the per-soldier arrays, so a reshape
+	# landing inside that window sees a body layer too short to read. The fill it falls back
+	# on is a placeholder for that tick; committing it would satisfy _ensure_file_assignment's
+	# own early-out forever after and freeze the block on the index-order layout -- the exact
+	# caching bug the sibling square fix had to correct in a follow-up.
+	var u := Unit.new()
+	autofree(u)
+	u._sim_soldier_pos.resize(20)          # some bodies, but fewer than the count asked for
+	u._file_assignment_files = 5           # so 24-over-6 reads as a genuine reshape
+
+	u._ensure_file_assignment(24, 6)
+
+	assert_eq(u._sim_soldier_file.size(), 24, "it still lays out every man")
 	assert_eq(u._file_assignment_files, -1,
-		"but the file count stays invalid, so the next query deals again once bodies exist")
+		"but leaves the file count invalid, so the next query deals again once the"
+		+ " body layer has caught up")
 
 
 ## Every file's ranks run 0, 1, 2, ... with no gaps and no duplicates.

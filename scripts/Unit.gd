@@ -3823,21 +3823,32 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 	if _sim_soldier_file.size() == count and _file_assignment_files == files:
 		return
 	var capacities: PackedInt32Array = UnitFormation.file_capacities(count, files)
-	var live: PackedVector2Array = _slot_frame_positions(count)
+	# Only a genuine RESHAPE -- the file count itself changing -- re-chooses which man stands
+	# where. The other way into this function is a size mismatch with the frontage unchanged
+	# (the first assignment, a merge, or a regiment-path casualty that dropped `soldiers`
+	# without splicing the per-soldier arrays), and that keeps the historical index-order
+	# fill. Dealing THOSE from live bodies would re-read every man's file off positions that
+	# contact impulses are shoving around, on the tick of every casualty, for the whole of a
+	# melee -- the target-slot churn this sim has been bitten by before, and it measurably
+	# worsens the residual melee-lock swirl.
+	var reshaped: bool = _file_assignment_files != files
+	var live := _slot_frame_positions(count) if reshaped else PackedVector2Array()
 	if live.is_empty():
 		_sim_soldier_file = UnitFormation.file_ids_in_index_order(capacities)
 		_sim_soldier_rank = PackedInt32Array()   # array order IS the depth order here
 	else:
 		_sim_soldier_file = UnitFormation.deal_file_ids_by_lateral_order(live, capacities)
 		_sim_soldier_rank = UnitFormation.deal_ranks_by_depth(live, _sim_soldier_file)
-	# Commit the file count ONLY when the deal was actually made from live bodies. A fallback
-	# deal is a placeholder for a tick whose body layer could not be read, not an answer:
-	# committing it here would satisfy this function's own early-out forever after, so the
-	# placeholder would outlive the window that produced it and never be re-dealt. Leaving the
-	# count invalid instead makes the next query redo the deal properly. The regiment casualty
-	# path (UnitCombat.take_casualties) drops `soldiers` without splicing the per-soldier
-	# arrays, so that window is reached on an ordinary first melee strike, not only in theory.
-	_file_assignment_files = files if not live.is_empty() else -1
+	# A reshape that wanted live bodies and found only SOME of them read a body layer larger
+	# than the live count -- the window UnitCombat.take_casualties opens by dropping
+	# `soldiers` before SoldierBodies.step resizes the arrays. The fill it fell back on is a
+	# placeholder for that tick, not an answer, so the file count stays invalid and the next
+	# query deals again; committing it would satisfy this function's own early-out forever
+	# after and freeze the placeholder. With NO bodies at all -- a fresh spawn, a far-tier
+	# unit -- the index-order fill IS the answer, because the bodies are built FROM these
+	# slots, so there is nothing to wait for and it commits like any other.
+	var placeholder: bool = reshaped and live.is_empty() and not _sim_soldier_pos.is_empty()
+	_file_assignment_files = -1 if placeholder else files
 
 
 ## The live soldier bodies expressed in the SLOT GRID's own local frame -- the exact inverse

@@ -507,9 +507,9 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 		file_ids: PackedInt32Array) -> PackedInt32Array:
 	var n: int = file_ids.size()
 	var out := PackedInt32Array()
-	out.resize(n)
 	if n <= 0 or positions.size() != n:
-		return out
+		return out   # EMPTY, not zeroed: a full-length array of zeros would read as explicit
+	out.resize(n)    # ranks and stack a whole file on rank 0 instead of degrading cleanly
 	var by_file: Dictionary = {}
 	for i in range(n):
 		var f: int = file_ids[i]
