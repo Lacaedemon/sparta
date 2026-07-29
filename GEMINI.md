@@ -3,9 +3,9 @@
 Orientation and standing policies for any Gemini or Google Antigravity (AGY) session working in this repo.
 Sparta is a **Godot 4.7** (GDScript, Standard build — not .NET/C#) prototype fusing dynastic grand strategy with real-time tactical battles. See `README.md` for layout and `PLAN.md` for project vision, roadmap, architecture, and verification steps — read `PLAN.md` first.
 
-## Cross-repo AI configuration (`d-morrison/ai-config`)
+## Cross-repo AI configuration (`Morrison-Lab/ai-config`)
 
-This repo pulls in [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) for portable skills and memories via the **Plugin Marketplace**.
+This repo pulls in [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) for portable skills and memories via the **Plugin Marketplace**.
 
 **Local / after cloning:** the submodule is already registered in `.gitmodules`; initialize it with:
 ```bash
