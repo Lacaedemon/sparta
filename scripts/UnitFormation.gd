@@ -214,10 +214,20 @@ static func block_slots(n: int, files: int, spacing: float,
 ## which is exactly the cross-file coupling file-major mode exists to avoid. The block's
 ## depth (y0) centres on whichever file currently has the most survivors, mirroring
 ## block_slots' own centred-on-max-depth convention. Out-of-range file ids clamp into
-## [0, files-1] defensively (never crash on a stale/misaligned array). Pure --
-## deterministic in (file_ids, files, spacing, rank_pitch).
+## [0, files-1] defensively (never crash on a stale/misaligned array).
+##
+## `rank_ids`, when supplied at full length, gives each soldier's depth WITHIN his file
+## explicitly instead of deriving it from array order (see
+## Unit._sim_soldier_rank / deal_ranks_by_depth). Array order is a fine answer for a block
+## that has only ever lost men -- the survivors keep the order they were laid out in -- but
+## it is an arbitrary one for a block that has just RESHAPED, where the men arriving in a
+## file are in whatever order their array indices happen to run rather than the order they
+## are standing in. Absent or wrong-sized, ranks fall back to the array-order count, which
+## is what every caller did before an explicit order was available. Pure -- deterministic
+## in (file_ids, files, spacing, rank_pitch, rank_ids).
 static func file_major_block_slots(file_ids: PackedInt32Array, files: int, spacing: float,
-		rank_pitch: float = -1.0) -> PackedVector2Array:
+		rank_pitch: float = -1.0,
+		rank_ids: PackedInt32Array = PackedInt32Array()) -> PackedVector2Array:
 	var n: int = file_ids.size()
 	var out := PackedVector2Array()
 	out.resize(n)
@@ -225,6 +235,7 @@ static func file_major_block_slots(file_ids: PackedInt32Array, files: int, spaci
 		return PackedVector2Array()
 	var depth: float = rank_pitch if rank_pitch >= 0.0 else spacing
 	var rx0: float = -(files - 1) * 0.5 * spacing
+	var explicit: bool = rank_ids.size() == n
 	var rank_counts := PackedInt32Array()
 	rank_counts.resize(files)
 	var ranks := PackedInt32Array()
@@ -232,9 +243,9 @@ static func file_major_block_slots(file_ids: PackedInt32Array, files: int, spaci
 	var max_rank: int = 0
 	for i in range(n):
 		var file: int = clampi(file_ids[i], 0, files - 1)
-		var rank: int = rank_counts[file]
+		var rank: int = maxi(0, rank_ids[i]) if explicit else rank_counts[file]
 		ranks[i] = rank
-		rank_counts[file] = rank + 1
+		rank_counts[file] = rank_counts[file] + 1
 		max_rank = maxi(max_rank, rank + 1)
 	var y0: float = -(max_rank - 1) * 0.5 * depth
 	for i in range(n):
@@ -253,6 +264,28 @@ static func file_major_block_slots(file_ids: PackedInt32Array, files: int, spaci
 # WHICH man takes WHICH of those cells, once, from where the men actually stand. It changes
 # only the labelling of the grid, never the grid itself, so every footprint, extent and
 # perimeter calculation downstream reads exactly as it did.
+
+
+## The men's own indices in left-to-right lateral order: ascending local x, ties broken by
+## depth and then by array index. `positions` must be in the block's own local frame (the
+## frame `Unit.soldier_block_world_angle` rotates out of), so "left" means the block's own
+## left, not the world's.
+##
+## Every deal below hands the men out in this one order, so "left to right" means exactly the
+## same thing whether a reshape is choosing cells or file ids. The comparison is a strict
+## total order with no RNG and no wall-clock, so two runs of the same replay order the men
+## identically.
+static func lateral_order(positions: PackedVector2Array) -> PackedInt32Array:
+	var order: Array = range(positions.size())
+	order.sort_custom(func(a: int, b: int) -> bool:
+		var pa: Vector2 = positions[a]
+		var pb: Vector2 = positions[b]
+		if pa.x != pb.x:
+			return pa.x < pb.x
+		if pa.y != pb.y:
+			return pa.y < pb.y
+		return a < b)
+	return PackedInt32Array(order)
 
 
 ## The identity slot assignment for `n` soldiers -- soldier i takes cell i, exactly the
@@ -295,15 +328,7 @@ static func pair_slots_by_lateral_file(positions: PackedVector2Array,
 	var n: int = positions.size()
 	if n <= 0 or files <= 0 or slots.size() != n:
 		return identity_assignment(slots.size())
-	var order: Array = range(n)
-	order.sort_custom(func(a: int, b: int) -> bool:
-		var pa: Vector2 = positions[a]
-		var pb: Vector2 = positions[b]
-		if pa.x != pb.x:
-			return pa.x < pb.x
-		if pa.y != pb.y:
-			return pa.y < pb.y
-		return a < b)
+	var order: PackedInt32Array = lateral_order(positions)
 	var perm := PackedInt32Array()
 	perm.resize(n)
 	var taken: int = 0
@@ -375,6 +400,156 @@ static func drop_slot_assignment(perm: PackedInt32Array, index: int) -> PackedIn
 	for i in range(out.size()):
 		if out[i] > vacated:
 			out[i] -= 1
+	return out
+
+
+# --- Deliberate-reshape file dealing -----------------------------------------
+# The pairing above relabels a grid whose cells are fixed. The FILE-MAJOR layout
+# (file_major_block_slots) has no such fixed grid to relabel: a soldier's cell is derived
+# from his own persistent file id (Unit._sim_soldier_file), so the same "walk past each
+# other on a reshape" defect lives one level up, in how those file ids are handed out. The
+# deal below hands them out by the same lateral order, from where the men actually stand,
+# so a frontage change puts each man in the file nearest him instead of the file his array
+# index happens to name.
+
+
+## How many men each of `files` files holds when `count` soldiers fill that frontage: every
+## file carries the same number of FULL ranks, and a partial rear rank's remainder goes to a
+## CENTRED span of files -- the same `(files - remainder) / 2` centring `block_slots` applies
+## to its own partial rear rank, so a full-strength block reads symmetric instead of leaving
+## one flank permanently a rank deeper.
+##
+## This is the SHAPE of a file-major block, held separate from the question of which man
+## stands where: both deals below fill exactly these capacities, so choosing a man's file by
+## proximity rather than by array index cannot change the block's footprint by a single cell.
+static func file_capacities(count: int, files: int) -> PackedInt32Array:
+	var f: int = maxi(1, files)
+	var out := PackedInt32Array()
+	out.resize(f)
+	if count <= 0:
+		return out
+	var full_ranks: int = count / f
+	var remainder: int = count % f
+	var extra_start: int = (f - remainder) / 2
+	for file in range(f):
+		var extra: bool = file >= extra_start and file < extra_start + remainder
+		out[file] = full_ranks + (1 if extra else 0)
+	return out
+
+
+## File ids for the historical INDEX-ORDER fill of `capacities`: walk the block rank by rank
+## and, within a rank, hand the next array entries to each file still occupied at that depth.
+## Index-aligned with the live soldier array.
+##
+## This is the right answer whenever there is nothing to deal against -- a fresh spawn and a
+## tier promotion both build the soldier bodies FROM these slots, so nobody has a prior
+## position to stay near -- and it is what a lateral deal degrades to when its inputs do not
+## line up.
+static func file_ids_in_index_order(capacities: PackedInt32Array) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var max_rank: int = 0
+	for c in capacities:
+		max_rank = maxi(max_rank, c)
+	for rank in range(max_rank):
+		for file in range(capacities.size()):
+			if capacities[file] > rank:
+				out.push_back(file)
+	return out
+
+
+## Deal each soldier a file id by lateral proximity: order the men left to right
+## (`lateral_order`) and give file 0 the leftmost `capacities[0]` of them, file 1 the next
+## `capacities[1]`, and so on. Returns file ids index-aligned with `positions`, which must be
+## in the block's own local frame.
+##
+## Because the deal walks both the men and the files in the same left-to-right order, a man
+## can only ever land in a file on his own side of the block: the lateral ORDER of the block
+## survives the reshape intact, which is what stops the men walking past each other to reach
+## a file they were never near. The capacities are untouched, so the resulting block has the
+## identical shape the index-order fill would have produced -- only who stands in which file
+## differs.
+##
+## Falls back to `file_ids_in_index_order` when the capacities do not account for exactly
+## `positions.size()` men, the same defensive degrade `pair_slots_by_lateral_file` applies to
+## a mismatched slot array. Pure and deterministic, so a replay deals identically.
+static func deal_file_ids_by_lateral_order(positions: PackedVector2Array,
+		capacities: PackedInt32Array) -> PackedInt32Array:
+	var n: int = positions.size()
+	var total: int = 0
+	for c in capacities:
+		total += c
+	if n <= 0 or total != n:
+		return file_ids_in_index_order(capacities)
+	var order: PackedInt32Array = lateral_order(positions)
+	var out := PackedInt32Array()
+	out.resize(n)
+	var taken: int = 0
+	for file in range(capacities.size()):
+		for _k in range(capacities[file]):
+			out[order[taken]] = file
+			taken += 1
+	return out
+
+
+## Each soldier's rank (depth) within his own file, taken from where the men actually stand:
+## the men sharing a file are ordered front to back by local y and given ranks 0, 1, 2, ...
+## in that order. Index-aligned with `positions` and `file_ids`.
+##
+## The lateral deal above settles WHICH file a man joins; this settles WHERE IN IT he stands.
+## Without it a file's depth order is the array-index order of whoever the deal happened to
+## send there, so two men a step apart routinely swap depths on a reshape -- cheap in
+## distance, but they walk straight through each other to do it, which is exactly what the
+## route metrics count. Ranks stay contiguous from 0 within every file, so the block's
+## footprint is identical either way.
+##
+## Ties in depth break by array index, so the order is strict and a replay deals identically.
+static func deal_ranks_by_depth(positions: PackedVector2Array,
+		file_ids: PackedInt32Array) -> PackedInt32Array:
+	var n: int = file_ids.size()
+	var out := PackedInt32Array()
+	out.resize(n)
+	if n <= 0 or positions.size() != n:
+		return out
+	var by_file: Dictionary = {}
+	for i in range(n):
+		var f: int = file_ids[i]
+		if not by_file.has(f):
+			by_file[f] = []
+		(by_file[f] as Array).push_back(i)
+	for f in by_file:
+		var column: Array = by_file[f]
+		column.sort_custom(func(a: int, b: int) -> bool:
+			if positions[a].y != positions[b].y:
+				return positions[a].y < positions[b].y
+			return a < b)
+		for r in range(column.size()):
+			out[column[r]] = r
+	return out
+
+
+## `ranks` with the entry for the soldier at `index` removed and every SAME-FILE survivor
+## standing behind him stepped one rank forward, so each file's ranks stay contiguous from 0.
+##
+## That is precisely file-major casualty reflow: a file closes up over its own gap and no
+## other file moves at all -- the same close-up the array-order count produces implicitly,
+## made explicit now that the ranks are stored rather than derived. `file_ids` must still
+## hold the dead man's entry (callers trim both arrays together, this one first).
+## Out-of-range `index`, or a `file_ids` that does not line up, returns `ranks` unchanged.
+static func drop_rank_assignment(ranks: PackedInt32Array, file_ids: PackedInt32Array,
+		index: int) -> PackedInt32Array:
+	if index < 0 or index >= ranks.size() or file_ids.size() != ranks.size():
+		return ranks
+	var file: int = file_ids[index]
+	var vacated: int = ranks[index]
+	var out := PackedInt32Array(ranks)
+	out.remove_at(index)
+	var i: int = 0
+	for j in range(file_ids.size()):
+		if j == index:
+			continue
+		if file_ids[j] == file and out[i] > vacated:
+			out[i] -= 1
+		i += 1
 	return out
 
 

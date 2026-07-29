@@ -3523,11 +3523,20 @@ var _sim_soldier_broken: PackedByteArray = PackedByteArray()
 # _sim_soldier_pos: _sim_soldier_file[i] is soldier i's file id (0..files-1). Kept in sync
 # through an ordinary casualty by SoldierMelee.reap() removing the dead soldier's entry at
 # the same index as every other per-soldier array -- a survivor's file id therefore never
-# changes just because a soldier in ANOTHER file died. Rebuilt fresh, row-major, only on a
-# genuine reflow event (a size mismatch, or a deliberate frontage change) -- see
-# _ensure_file_assignment(). Unused (left empty) while file_major_reform is false or the unit
-# is squared (in_square()).
+# changes just because a soldier in ANOTHER file died. Rebuilt fresh, by LATERAL PROXIMITY
+# from where the men stand, only on a genuine reflow event (a size mismatch, or a deliberate
+# frontage change) -- see _ensure_file_assignment(). Unused (left empty) while
+# file_major_reform is false or the unit is squared (in_square()).
 var _sim_soldier_file: PackedInt32Array = PackedInt32Array()
+# Persistent per-soldier RANK (depth within its own file), the other half of the same
+# assignment and index-aligned with it: _sim_soldier_rank[i] is how far back in file
+# _sim_soldier_file[i] soldier i stands. Dealt alongside the file ids, front to back by where
+# the men actually stand (UnitFormation.deal_ranks_by_depth), and closed up over a casualty's
+# gap by SoldierMelee.reap() (UnitFormation.drop_rank_assignment) so a file's ranks stay
+# contiguous from 0. Stored rather than derived from array order because array order is
+# arbitrary for men who have just been dealt into a file by a reshape -- deriving it there
+# routinely swaps two neighbours' depths, sending them walking through each other.
+var _sim_soldier_rank: PackedInt32Array = PackedInt32Array()
 # The file count _sim_soldier_file was last built against; a mismatch against the CURRENT
 # formation_files(count) means a deliberate reshape happened (set_frontage, explicatio/
 # duplicatio, the automatic ranks-closed narrowing) and the assignment should reflow fresh
@@ -3760,7 +3769,7 @@ func formation_slots(count: int) -> PackedVector2Array:
 		var files: int = formation_files(count)
 		_ensure_file_assignment(count, files)
 		var out := UnitFormation.file_major_block_slots(
-				_sim_soldier_file, files, file_pitch_wu(), rank_pitch_wu())
+				_sim_soldier_file, files, file_pitch_wu(), rank_pitch_wu(), _sim_soldier_rank)
 		return UnitFormation.apply_frontage_anchor_offset(out, frontage_anchor_offset)
 	return UnitFormation.slots(self, count)
 
@@ -3776,38 +3785,59 @@ func formation_slots(count: int) -> PackedVector2Array:
 ## exactly like every other per-soldier array, so `count` and _sim_soldier_file.size() stay
 ## in sync through it and each survivor keeps its own file id.
 ##
-## Fills full ranks first (every file gets one soldier per rank), then -- if `count` isn't an
-## exact multiple of `files` -- assigns the partial last rank to a CENTRED span of files
-## (`extra_start` = the same "(full - partial)/2" centring UnitFormation.block_slots already
-## uses for its own partial rear rank), not raw file index order. Without this, a plain
-## `i % files` divide piles the leftover onto whichever files happen to land first in the
-## row-major count, always the SAME edge of the block -- so a fresh, zero-casualty spawn
-## would read as lopsided (one flank permanently a rank deeper) for any unit whose headcount
-## isn't a clean multiple of its file count, i.e. almost every unit in the game. Centring
-## keeps a fresh spawn visually symmetric, matching what the historical (row-major) grid has
-## always looked like at full strength -- the two modes only diverge once a casualty actually
-## lands.
+## The block's SHAPE comes from UnitFormation.file_capacities: full ranks first (every file
+## gets one soldier per rank), then -- if `count` isn't an exact multiple of `files` -- the
+## partial last rank on a CENTRED span of files (the same "(full - partial)/2" centring
+## UnitFormation.block_slots already uses for its own partial rear rank), not raw file index
+## order. Without this, a plain `i % files` divide piles the leftover onto whichever files
+## happen to land first in the row-major count, always the SAME edge of the block -- so a
+## fresh, zero-casualty spawn would read as lopsided (one flank permanently a rank deeper)
+## for any unit whose headcount isn't a clean multiple of its file count, i.e. almost every
+## unit in the game.
+##
+## WHICH man fills which of those files is then decided by LATERAL PROXIMITY
+## (UnitFormation.deal_file_ids_by_lateral_order) from where the men actually stand: the
+## leftmost men take the leftmost file, and so on across the block. Dealing the same
+## capacities in raw array order instead sends a man to whatever file his array index names,
+## which on a frontage change is nowhere near him -- measured over a 140-man duplicatio and a
+## 60-man drag-resize, the men covered roughly 1.5x the ground the same reshape needs, with
+## between a fifth and half the block crossing its own centreline to get there. The shape is
+## untouched either way; only the labelling differs.
+##
+## WHERE IN his file each man stands is settled the same way, front to back by live depth
+## (UnitFormation.deal_ranks_by_depth into _sim_soldier_rank). A file's depth order would
+## otherwise be the array-index order of whoever the deal happened to send there, which
+## swaps neighbouring men's depths for almost no extra distance -- but they walk through
+## each other to trade places, and that is most of what remains on the route metrics once
+## the file half is right.
+##
+## Falls back to the index-order fill (UnitFormation.file_ids_in_index_order) when there are
+## no live bodies to deal against -- a fresh spawn or a tier promotion builds the bodies FROM
+## these slots, so nobody has a prior position to stay near, which makes index order the
+## correct answer there rather than a degraded one. The rank array is cleared with it, since
+## an index-order fill already lays each file out front to back in array order.
 ##
 ## Idempotent and side-effect-free once in sync -- safe to call from every formation_slots()
 ## query in a tick, not just the first.
 func _ensure_file_assignment(count: int, files: int) -> void:
 	if _sim_soldier_file.size() == count and _file_assignment_files == files:
 		return
-	_sim_soldier_file = PackedInt32Array()
-	_sim_soldier_file.resize(count)
-	var f: int = maxi(1, files)
-	var full_ranks: int = count / f
-	var remainder: int = count % f
-	var extra_start: int = (f - remainder) / 2
-	var idx: int = 0
-	for rank in range(full_ranks + (1 if remainder > 0 else 0)):
-		for file in range(f):
-			var has_soldier: bool = rank < full_ranks \
-					or (file >= extra_start and file < extra_start + remainder)
-			if has_soldier:
-				_sim_soldier_file[idx] = file
-				idx += 1
-	_file_assignment_files = files
+	var capacities: PackedInt32Array = UnitFormation.file_capacities(count, files)
+	var live: PackedVector2Array = _slot_frame_positions(count)
+	if live.is_empty():
+		_sim_soldier_file = UnitFormation.file_ids_in_index_order(capacities)
+		_sim_soldier_rank = PackedInt32Array()   # array order IS the depth order here
+	else:
+		_sim_soldier_file = UnitFormation.deal_file_ids_by_lateral_order(live, capacities)
+		_sim_soldier_rank = UnitFormation.deal_ranks_by_depth(live, _sim_soldier_file)
+	# Commit the file count ONLY when the deal was actually made from live bodies. A fallback
+	# deal is a placeholder for a tick whose body layer could not be read, not an answer:
+	# committing it here would satisfy this function's own early-out forever after, so the
+	# placeholder would outlive the window that produced it and never be re-dealt. Leaving the
+	# count invalid instead makes the next query redo the deal properly. The regiment casualty
+	# path (UnitCombat.take_casualties) drops `soldiers` without splicing the per-soldier
+	# arrays, so that window is reached on an ordinary first melee strike, not only in theory.
+	_file_assignment_files = files if not live.is_empty() else -1
 
 
 ## The live soldier bodies expressed in the SLOT GRID's own local frame -- the exact inverse
@@ -6639,6 +6669,7 @@ func to_snapshot_dict() -> Dictionary:
 		"sim_soldier_stamina": _sim_soldier_stamina.duplicate(),
 		"sim_soldier_facing": _sim_soldier_facing.duplicate(),
 		"sim_soldier_file": _sim_soldier_file.duplicate(),
+		"sim_soldier_rank": _sim_soldier_rank.duplicate(),
 		"sim_soldier_square_slot": _sim_soldier_square_slot.duplicate(),
 	}
 
@@ -6753,5 +6784,6 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_soldier_stamina = (d["sim_soldier_stamina"] as PackedFloat32Array).duplicate()
 	_sim_soldier_facing = (d["sim_soldier_facing"] as PackedVector2Array).duplicate()
 	_sim_soldier_file = (d["sim_soldier_file"] as PackedInt32Array).duplicate()
+	_sim_soldier_rank = (d["sim_soldier_rank"] as PackedInt32Array).duplicate()
 	_sim_soldier_square_slot = \
 			(d["sim_soldier_square_slot"] as PackedInt32Array).duplicate()

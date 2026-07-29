@@ -375,6 +375,15 @@ the maneuver in contact, and give it room before the enemy arrives. A natural rh
 duplicatio to march a column through a chokepoint, then explicatio to deploy back into line on
 the far side.
 
+**Everyone shifts to the file nearest him.** Changing the width renumbers every file, so
+in principle each man could end up anywhere in the new grid. He doesn't: the block keeps its
+left-to-right order through the reshape, so a man on the right flank takes a file on the
+right, and he holds his place in his own column's depth as well. The block widens or narrows
+by opening and closing between the files rather than filing men across itself, which is both
+quicker and far tidier to watch. Measured on a lone regiment drilling with no enemy near it,
+that cuts the ground covered in a reshape by about a third, and the men walk to their new
+places without threading through each other on the way.
+
 **Anchored explicatio for a pinned flank.** The plain explicatio widens about the unit's own
 centre, so both flanks drift when the frontage doubles --- fine in the open, but a problem when
 one flank is braced against a hill, a river, or a neighbouring unit that can't shift with it.

@@ -101,6 +101,7 @@ static func demote(u: Unit) -> void:
 	# array: dropped here, lazily rebuilt fresh on promotion (Unit._ensure_file_assignment,
 	# triggered by the size mismatch against promote()'s own soldier_world_slots() call).
 	u._sim_soldier_file = PackedInt32Array()
+	u._sim_soldier_rank = PackedInt32Array()
 	u._file_assignment_files = -1
 	# Same for the square slot pairing: it is meaningless without bodies to pair, and
 	# promote() rebuilds the bodies FROM the slots, so it re-pairs to identity there.
