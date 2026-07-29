@@ -17,7 +17,7 @@
 # the merge-base. So a defect sitting identically on both sides of every diff, or one that
 # predates the scan entirely, is invisible to all of them. The catalog is 70+ clips
 # published on the live docs site, most untouched for weeks; this sweep is the only thing
-# that ever asks "is this clip defective, full stop". See #1147.
+# that ever asks "is this clip defective, full stop".
 #
 # Deliberately INFORMATIONAL: exit status is always 0 and the caller reports to a tracking
 # issue rather than failing a check. We do not yet know how many existing clips fail, and

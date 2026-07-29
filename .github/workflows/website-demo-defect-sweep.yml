@@ -6,9 +6,9 @@
 # the merge-base. None of them ever asks "is this clip defective, full stop", so a defect
 # sitting identically on both sides of every diff -- or one that predates the scan
 # entirely -- is invisible to all of them. The catalog is 70+ clips published on the live
-# docs site, most untouched for weeks. See #1147, and #1146 for the concrete defect (a
-# NORMAL -> Square reform sending 28% of soldiers across the block) that a human found by
-# eye on the published page because no check could have.
+# docs site, most untouched for weeks. The motivating case was a NORMAL -> Square reform
+# sending 28% of soldiers across the block, which a human found by eye on the published
+# page because no automated check was in a position to.
 #
 # Reports to a marker-tagged tracking ISSUE rather than a check run, so the verdict list is
 # durable and diffable week to week without blocking anything. Deliberately NOT a gate: we
@@ -24,9 +24,9 @@ name: Website demo defect sweep
 
 on:
   schedule:
-    # Weekly, Monday 07:00 UTC -- the cadence #1147 proposed, matching
-    # refresh-benchmark-baseline.yml's, and staggered an hour after it so the two heavy
-    # scheduled Godot jobs do not contend for runners.
+    # Weekly, Monday 07:00 UTC -- matching refresh-benchmark-baseline.yml's cadence, and
+    # staggered an hour after it so the two heavy scheduled Godot jobs do not contend for
+    # runners.
     - cron: '0 7 * * 1'
   workflow_dispatch:
 
@@ -58,12 +58,22 @@ jobs:
           run-import: false
 
       - name: Dump state transcripts for the whole catalog
+        id: dump
+        # dump-demo-states.sh exits at the FIRST clip that fails, times out, or writes no
+        # snapshots, leaving every later clip undumped. Without continue-on-error that would
+        # abort the job before the sweep step ever ran, so one flaky clip out of ~73 would
+        # cost the entire week's report -- and the sweep's own "no transcript" bucket, built
+        # for exactly this case, would be unreachable for the failure it was written to
+        # describe. Let the sweep judge whatever did complete; the undumped clips report
+        # themselves, and the issue body says the run was partial.
+        continue-on-error: true
         timeout-minutes: 25
         run: |
           GODOT_BIN=godot website/tools/dump-demo-states.sh /tmp/transcripts "$GITHUB_WORKSPACE"
 
       - name: Run the absolute defect sweep
         id: sweep
+        if: always()
         run: |
           set -euo pipefail
           GODOT_BIN=godot tools/ci/website-demo-defect-sweep.sh \
@@ -78,6 +88,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Ensure the tracking label exists
+        if: always()
         # `gh issue create --label` hard-fails on a label the repo does not have, and
         # upsert-issue.sh scopes its duplicate search to this same label. Creating it
         # idempotently here keeps the workflow self-contained rather than depending on
@@ -92,6 +103,7 @@ jobs:
             --force
 
       - name: Upsert the tracking issue
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -100,12 +112,19 @@ jobs:
           CLEAN: ${{ steps.sweep.outputs.clean }}
           DEFECT: ${{ steps.sweep.outputs.defect }}
           MALFORMED: ${{ steps.sweep.outputs.malformed }}
+          DUMP_OUTCOME: ${{ steps.dump.outcome }}
         run: |
           set -euo pipefail
           MARKER="<!-- sparta-demo-defect-sweep -->"
+          # A partial dump would otherwise render as a wall of "no transcript" rows that
+          # read like mass defects rather than missing data.
+          NOTE=""
+          if [ "$DUMP_OUTCOME" != "success" ]; then
+            NOTE=$(printf '\n> [!WARNING]\n> The catalog dump did not complete (`%s`), so this sweep judged only the clips dumped before it stopped. Rows reading `no transcript` below are undumped, not necessarily defective.\n' "$DUMP_OUTCOME")
+          fi
           TITLE="Website demo catalog: absolute defect sweep"
-          BODY=$(printf '%s\n## Absolute DemoDefects sweep of the website demo catalog\n\nEvery row of `website/tools/demo-catalog.sh`, judged on its own rather than against a diff (#1147). Commit: %s\nRun: %s\n\n%s\n\n<sub>Informational only -- never a merge gate. Re-run on demand via this workflow'"'"'s `workflow_dispatch`, or wait for the Monday sweep; each run threads onto this issue as a comment so the catalog'"'"'s health is diffable week to week. A `defect` row is a real DemoDefects verdict on a published clip; a `malformed` row means that clip'"'"'s own `expect`/`defect_exemptions` block is broken and NOTHING was judged for it.</sub>' \
-            "$MARKER" "$SHA" "$RUN_URL" "$(cat /tmp/sweep.md)")
+          BODY=$(printf '%s\n## Absolute DemoDefects sweep of the website demo catalog\n\nEvery row of `website/tools/demo-catalog.sh`, judged on its own rather than against a diff (#1147). Commit: %s\nRun: %s\n%s\n%s\n\n<sub>Informational only -- never a merge gate. Re-run on demand via this workflow'"'"'s `workflow_dispatch`, or wait for the Monday sweep; each run threads onto this issue as a comment so the catalog'"'"'s health is diffable week to week. A `defect` row is a real DemoDefects verdict on a published clip; a `malformed` row means that clip'"'"'s own `expect`/`defect_exemptions` block is broken and NOTHING was judged for it.</sub>' \
+            "$MARKER" "$SHA" "$RUN_URL" "$NOTE" "$(cat /tmp/sweep.md)")
           tools/ci/upsert-issue.sh \
             "${{ github.repository }}" \
             "$MARKER" \
