@@ -442,19 +442,36 @@ func test_accumulate_caps_a_resting_soldier_pressed_by_multiple_fast_closing_ene
 	# bodies past KNOCKBACK_SPEED_MAX blamed exactly that term, on the grounds that the overlap
 	# term already targets a steady separating speed instead of re-injecting a full impulse
 	# every tick. This pins the closing-speed path under the worst case that report describes:
-	# a rank arriving at melee range still carrying full charge speed, with more than one
-	# attacker on the same defender from the same side so their impulses stack rather than
-	# partially cancel.
+	# a rank arriving at melee range still carrying full charge speed, with several attackers
+	# on the same defender from the same side so their impulses stack rather than cancel.
+	#
+	# THREE attackers, not two, and the count is load-bearing. Each pair's own
+	# effective_closing_speed saturates at KNOCKBACK_SPEED_MAX (60) and splits evenly between
+	# the two equal effective masses, so each pair contributes exactly 30 to the defender. Two
+	# attackers therefore sum to exactly 60 -- precisely AT the ceiling, where body_trim_scale
+	# and the final capped_knockback_velocity clamp both compute a no-op ratio of 1.0, so the
+	# assertion below would pass identically with the whole multi-pair capping mechanism
+	# deleted and replaced by an unconditional `+=`. Three sum to a raw 90, genuinely over the
+	# ceiling, so the trim has to bind for this test to pass.
 	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
-	var b := _make_unit(2, 1, Vector2(-2000, -2000), 2)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 3)
 	a._sim_soldier_pos[0] = Vector2.ZERO
 	b._sim_soldier_pos[0] = Vector2(5, 0)
 	b._sim_soldier_pos[1] = Vector2(5, 0)
+	b._sim_soldier_pos[2] = Vector2(5, 0)
 	# a stands still, so its own ceiling is exactly KNOCKBACK_SPEED_MAX -- capped_knockback_
 	# velocity raises it only for a body that was ALREADY faster (see the test below).
 	a._sim_body_vel[0] = Vector2.ZERO
 	b._sim_body_vel[0] = Vector2(-SoldierCombat.CHARGE_REFERENCE_SPEED, 0.0)
 	b._sim_body_vel[1] = Vector2(-SoldierCombat.CHARGE_REFERENCE_SPEED, 0.0)
+	b._sim_body_vel[2] = Vector2(-SoldierCombat.CHARGE_REFERENCE_SPEED, 0.0)
+	# Headroom so the collision damage this contact also deals cannot reap a's only soldier
+	# mid-test: a capped 60 wu/s delta bills COLLISION_DAMAGE_SCALE * 60^2 = 108 against a
+	# default max_health of 110, a ~2 HP margin that a retune of either constant would close --
+	# and a reaped soldier would splice the arrays, turning the read below into an
+	# out-of-bounds crash rather than a clean failure. This test is about the velocity ceiling,
+	# so decouple it from collision-damage tuning entirely.
+	a._sim_soldier_hp[0] = 10000.0
 	SoldierEnemyContact.accumulate([a, b], 90014)
 	assert_true(a._sim_body_vel[0].length() > 0.0,
 		"sanity: the forced fast-closing overlap actually produced an impulse, not a vacuous pass below")
@@ -478,10 +495,29 @@ func test_accumulate_never_accelerates_a_body_already_above_the_knockback_ceilin
 	b._sim_body_vel[0] = Vector2(-charge, 0.0)
 	var pre_a: float = a._sim_body_vel[0].length()
 	var pre_b: float = b._sim_body_vel[0].length()
+	# Same headroom as the test above, and for a sharper reason here: if capped_knockback_
+	# velocity ever regressed to a flat cap, a would drop 170 -> 60 in one tick, and that
+	# 110 wu/s delta bills COLLISION_DAMAGE_SCALE * 110^2 = 363 against 110 max HP -- reaping
+	# the only soldier and splicing the arrays, so the assertions below would die with an
+	# out-of-bounds read instead of reporting the ceiling violation they exist to catch.
+	# (Verified: without these two lines, that regression fails as a crash, not a message.)
+	a._sim_soldier_hp[0] = 10000.0
+	b._sim_soldier_hp[0] = 10000.0
 	SoldierEnemyContact.accumulate([a, b], 90015)
 	assert_true(a._sim_body_vel[0].length() < pre_a,
 		"sanity: the head-on contact actually arrested some of a's closing speed, not a vacuous pass below")
+	# The LOWER bound is what actually pins max(current, cap) against a flat cap, and it has to
+	# be asserted explicitly: with pre_a (170) already above the ceiling, maxf(pre_a, 60)
+	# collapses to pre_a, so the upper bounds below reduce to "slower than it arrived" -- which
+	# the sanity assertion above already implies. Regress capped_knockback_velocity to an
+	# unconditional limit_length(KNOCKBACK_SPEED_MAX) and a would come out at exactly 60
+	# instead of 140, satisfying every upper bound here while breaking the documented
+	# semantics. Only a lower bound catches that.
+	assert_true(a._sim_body_vel[0].length() > SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
+		"a body that arrived above the ceiling stays above it; a flat cap would clamp it to exactly the ceiling")
 	assert_true(a._sim_body_vel[0].length() <= maxf(pre_a, SoldierCombat.KNOCKBACK_SPEED_MAX) + 0.01,
 		"a head-on charge contact never leaves the charging body faster than it arrived")
+	assert_true(b._sim_body_vel[0].length() > SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
+		"the same flat-cap regression guard holds for the opposing body in the pair")
 	assert_true(b._sim_body_vel[0].length() <= maxf(pre_b, SoldierCombat.KNOCKBACK_SPEED_MAX) + 0.01,
 		"the same per-body ceiling holds for the opposing body in the pair")
