@@ -1,0 +1,117 @@
+# Weekly ABSOLUTE defect sweep of the website demo catalog.
+#
+# Every other demo check in this repo is DIFF-scoped: `check.sh demo_defects` scans only
+# the demo scripts a diff changed, demo-video.yml scans only the one PR-tailored clip, and
+# website-demo-diff.yml runs the analyzer only over clips whose transcript CHANGED versus
+# the merge-base. None of them ever asks "is this clip defective, full stop", so a defect
+# sitting identically on both sides of every diff -- or one that predates the scan
+# entirely -- is invisible to all of them. The catalog is 70+ clips published on the live
+# docs site, most untouched for weeks. See #1147, and #1146 for the concrete defect (a
+# NORMAL -> Square reform sending 28% of soldiers across the block) that a human found by
+# eye on the published page because no check could have.
+#
+# Reports to a marker-tagged tracking ISSUE rather than a check run, so the verdict list is
+# durable and diffable week to week without blocking anything. Deliberately NOT a gate: we
+# do not yet know how many existing clips fail, and turning a wall of pre-existing failures
+# into a merge blocker would be unusable. Report first; decide about gating once the
+# baseline is known.
+#
+# Distinct from website-demo-diff.yml, which answers "did THIS PR change any clip's
+# behavior" on a per-PR basis and is likewise informational. This workflow answers "is the
+# published catalog healthy right now", on main, with no PR involved.
+
+name: Website demo defect sweep
+
+on:
+  schedule:
+    # Weekly, Monday 07:00 UTC -- the cadence #1147 proposed, matching
+    # refresh-benchmark-baseline.yml's, and staggered an hour after it so the two heavy
+    # scheduled Godot jobs do not contend for runners.
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: website-demo-defect-sweep
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write   # upsert the tracking issue
+
+jobs:
+  sweep:
+    name: Sweep the demo catalog for defects
+    runs-on: ubuntu-latest
+    # One full headless catalog sweep. --fixed-fps detaches the sim from the wall clock, so
+    # this is CPU-bound rather than clip-duration-bound; website-demo-diff.yml budgets 18
+    # minutes for each of its TWO sweeps, so one sweep plus the analyzer fits comfortably.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Godot project
+        # GUT is needed because the project's test files extend GutTest, so the import must
+        # resolve that class; the import itself happens inside dump-demo-states.sh, which
+        # is why run-import is off here (same reason website-demo-diff.yml turns it off).
+        uses: ./.github/actions/setup-godot-project
+        with:
+          run-import: false
+
+      - name: Dump state transcripts for the whole catalog
+        timeout-minutes: 25
+        run: |
+          GODOT_BIN=godot website/tools/dump-demo-states.sh /tmp/transcripts "$GITHUB_WORKSPACE"
+
+      - name: Run the absolute defect sweep
+        id: sweep
+        run: |
+          set -euo pipefail
+          GODOT_BIN=godot tools/ci/website-demo-defect-sweep.sh \
+            /tmp/transcripts /tmp/sweep.md "$GITHUB_WORKSPACE" | tee /tmp/sweep-stdout.txt
+          # SWEEP-SUMMARY<TAB>total<TAB>clean<TAB>defect<TAB>malformed<TAB>na<TAB>missing
+          SUMMARY=$(grep '^SWEEP-SUMMARY' /tmp/sweep-stdout.txt | head -n1)
+          {
+            echo "total=$(printf '%s' "$SUMMARY" | cut -f2)"
+            echo "clean=$(printf '%s' "$SUMMARY" | cut -f3)"
+            echo "defect=$(printf '%s' "$SUMMARY" | cut -f4)"
+            echo "malformed=$(printf '%s' "$SUMMARY" | cut -f5)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Ensure the tracking label exists
+        # `gh issue create --label` hard-fails on a label the repo does not have, and
+        # upsert-issue.sh scopes its duplicate search to this same label. Creating it
+        # idempotently here keeps the workflow self-contained rather than depending on
+        # someone having added the label by hand first.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create demo-defect-sweep \
+            --repo "${{ github.repository }}" \
+            --color ededed \
+            --description "Auto-filed: weekly absolute defect sweep of the website demo catalog" \
+            --force
+
+      - name: Upsert the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+          TOTAL: ${{ steps.sweep.outputs.total }}
+          CLEAN: ${{ steps.sweep.outputs.clean }}
+          DEFECT: ${{ steps.sweep.outputs.defect }}
+          MALFORMED: ${{ steps.sweep.outputs.malformed }}
+        run: |
+          set -euo pipefail
+          MARKER="<!-- sparta-demo-defect-sweep -->"
+          TITLE="Website demo catalog: absolute defect sweep"
+          BODY=$(printf '%s\n## Absolute DemoDefects sweep of the website demo catalog\n\nEvery row of `website/tools/demo-catalog.sh`, judged on its own rather than against a diff (#1147). Commit: %s\nRun: %s\n\n%s\n\n<sub>Informational only -- never a merge gate. Re-run on demand via this workflow'"'"'s `workflow_dispatch`, or wait for the Monday sweep; each run threads onto this issue as a comment so the catalog'"'"'s health is diffable week to week. A `defect` row is a real DemoDefects verdict on a published clip; a `malformed` row means that clip'"'"'s own `expect`/`defect_exemptions` block is broken and NOTHING was judged for it.</sub>' \
+            "$MARKER" "$SHA" "$RUN_URL" "$(cat /tmp/sweep.md)")
+          tools/ci/upsert-issue.sh \
+            "${{ github.repository }}" \
+            "$MARKER" \
+            "demo-defect-sweep" \
+            "$TITLE" \
+            "$BODY" \
+            "demo-defect-sweep" \
+            "$BODY"
+          echo "Sweep: $CLEAN clean, $DEFECT defect, $MALFORMED malformed, of $TOTAL clips."
