@@ -573,6 +573,7 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
 # mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
 const SPRINT_START_DISTANCE: float = 200.0   # tuned in wu: gameplay pacing distance from target to start the full-speed charge
+const SPRINT_START_DISTANCE_SQ: float = SPRINT_START_DISTANCE * SPRINT_START_DISTANCE
 # Below this current speed a unit counts as stopped for arrival purposes -- small enough
 # not to read as motion (every pace/gait is well above it), but nonzero so a unit that has
 # braked all the way down its arrival envelope finalizes its order instead of forever
@@ -2071,7 +2072,7 @@ func _think(delta: float) -> void:
 		# elsewhere in this tick. Intermediate waypoints pop on position alone, so a queued
 		# route rolls through each corner at pace instead of halting leg by leg.
 		var on_last_leg: bool = not _has_queued_move_leg()
-		var arrived: bool = position.distance_to(move_target) <= 5.0
+		var arrived: bool = position.distance_squared_to(move_target) <= 25.0
 		# Wait for the stop only when the unit can actually brake: a degenerate loadout
 		# with no positive brake rate (decel <= 0) can never bleed speed, so it finalizes
 		# on position alone -- the pre-braking contract -- instead of hanging on the
@@ -2337,7 +2338,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 			GAIT_JOG:
 				pace_speed = jog_speed
 			GAIT_RUN:
-				pace_speed = move_speed if position.distance_to(point) <= SPRINT_START_DISTANCE else jog_speed
+				pace_speed = move_speed if position.distance_squared_to(point) <= SPRINT_START_DISTANCE_SQ else jog_speed
 			GAIT_SPRINT:
 				pace_speed = move_speed
 			_:
@@ -2351,7 +2352,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# recovery leg and arriving at the turn-around point with the most momentum
 		# exactly where the flip back toward the enemy needs the least.
 		pace_speed = jog_speed
-	elif position.distance_to(point) <= SPRINT_START_DISTANCE:
+	elif position.distance_squared_to(point) <= SPRINT_START_DISTANCE_SQ:
 		pace_speed = move_speed  # sprint distance beats under-fire: charge through the kill zone at full speed
 	elif _under_fire:
 		pace_speed = jog_speed
@@ -2578,7 +2579,7 @@ func _adjacent_engaged_enemy_units() -> Array[Unit]:
 		if other.team == team:
 			continue
 		var contact: float = _front_depth() + other._front_depth()
-		if position.distance_to(other.position) <= contact:
+		if position.distance_squared_to(other.position) <= contact * contact:
 			out.append(other)
 	_adjacent_engaged_cache = out
 	_adjacent_engaged_cache_frame = frame
@@ -4686,14 +4687,14 @@ func _advance_moving_wheel(leaf: Order, delta: float) -> bool:
 ## the hinge is invariant, so the value stays steady through the swing. Falls back to the
 ## formation slots when the bodies haven't seeded (a bare unit in a headless test).
 func _wheel_outer_radius(hinge: Vector2) -> float:
-	var radius: float = 0.0
+	var max_sq: float = 0.0
 	for p in _sim_soldier_pos:
-		radius = maxf(radius, hinge.distance_to(p))
-	if radius > 0.0:
-		return radius
+		max_sq = maxf(max_sq, hinge.distance_squared_to(p))
+	if max_sq > 0.0:
+		return sqrt(max_sq)
 	for s in soldier_world_slots(soldiers):
-		radius = maxf(radius, hinge.distance_to(s))
-	return radius
+		max_sq = maxf(max_sq, hinge.distance_squared_to(s))
+	return sqrt(max_sq)
 
 
 ## Complete a WHEEL leaf that just finished its swing: clear its turn goal, then hand off.
