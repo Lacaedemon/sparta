@@ -185,7 +185,7 @@ static func _nearest_available(target_pos: Vector2, self_unit: Unit, group: Arra
 		if not _is_available(u, self_unit, directives):
 			continue
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-		var d: float = target_pos.distance_squared_to(u.position)
+		var d: float = target_pos.distance_to(u.position)
 		if d < best_d:
 			best_d = d
 			best = u
