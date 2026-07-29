@@ -1969,7 +1969,6 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				attack_targets.append(candidate)
 		var ref_pos: Vector2 = target_unit.position
 		attack_targets.sort_custom(func(a: Unit, b: Unit) -> bool:
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 			var da: float = a.position.distance_squared_to(ref_pos)
 			var db: float = b.position.distance_squared_to(ref_pos)
 			return da < db if da != db else a.uid < b.uid)
@@ -2008,7 +2007,6 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				relief_targets.append(candidate)
 			var relief_ref_pos: Vector2 = target_unit.position
 			relief_targets.sort_custom(func(a: Unit, b: Unit) -> bool:
-				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 				var da: float = a.position.distance_squared_to(relief_ref_pos)
 				var db: float = b.position.distance_squared_to(relief_ref_pos)
 				return da < db if da != db else a.uid < b.uid)
@@ -2443,18 +2441,16 @@ func _tick_tier_transitions() -> void:
 		if u == null or u.state == UnitRef.State.DEAD:
 			continue
 		var nearest_pos := Vector2.ZERO
-		var nearest_dist: float = INF
+		var nearest_dist_sq: float = INF
 		for other in all_units:
 			var e = other as UnitRef
 			if e == null or e.team == u.team or e.state == UnitRef.State.DEAD:
 				continue
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-			var d: float = u.position.distance_squared_to(e.position)
-			if d < nearest_dist:
-				nearest_dist = d
+			var d_sq: float = u.position.distance_squared_to(e.position)
+			if d_sq < nearest_dist_sq:
+				nearest_dist_sq = d_sq
 				nearest_pos = e.position
-		nearest_dist = sqrt(nearest_dist)
-		if nearest_dist == INF:
+		if nearest_dist_sq == INF:
 			continue   # no enemy in play: hold the current tier (the victory check ends the battle)
 		if u.tier == FormationTier.FAR:
 			if FormationTier.should_promote(u.position, nearest_pos):
