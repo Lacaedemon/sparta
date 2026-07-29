@@ -102,6 +102,10 @@ static func demote(u: Unit) -> void:
 	# triggered by the size mismatch against promote()'s own soldier_world_slots() call).
 	u._sim_soldier_file = PackedInt32Array()
 	u._file_assignment_files = -1
+	# Same for the square slot pairing: it is meaningless without bodies to pair, and
+	# promote() rebuilds the bodies FROM the slots, so it re-pairs to identity there.
+	u._sim_soldier_square_slot = PackedInt32Array()
+	u._square_slot_files = -1
 	u._render_dirty = true   # the render swaps to the aggregate (formation-grid) marks
 
 

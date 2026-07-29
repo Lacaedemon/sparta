@@ -129,7 +129,7 @@ func _ready() -> void:
 	# snapshots, so every expect tick joins the state-dump defaults -- declaring an
 	# expectation is enough to make the data it checks exist on a dump run. A
 	# malformed (non-array) `expect` is ignored here rather than crashing the
-	# recorder; the analyzer's own --expect validation is where authoring errors
+	# recorder; the analyzer's own --script validation is where authoring errors
 	# get their loud failure.
 	var raw_expect = script.get("expect", [])
 	var state_defaults: Array = DemoFrames.script_array(script, "state")

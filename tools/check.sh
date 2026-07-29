@@ -1137,19 +1137,18 @@ check_demo_defects() {
       warn "State dump failed for $script -- skipping its scan (CI warns the same way)."
       continue
     fi
-    # Bash 3.2 (macOS's system bash, a supported target) errors expanding an empty
-    # array under `set -u`, so branch on whether --expect applies instead of
-    # expanding a maybe-empty argument array.
+    # The script always goes in: it carries both the declared `expect` assertions
+    # and any `defect_exemptions`, and the analyzer treats either as optional.
     rc=0
-    if jq -e '.expect | type == "array" and length > 0' "$PROJECT_ROOT/$script" >/dev/null 2>&1; then
-      "$GODOT_BIN" --headless --path "$PROJECT_ROOT" -s tools/demo/analyze_transcript.gd -- \
-        "$dir" --expect "$PROJECT_ROOT/$script" || rc=$?
-    else
-      "$GODOT_BIN" --headless --path "$PROJECT_ROOT" -s tools/demo/analyze_transcript.gd -- \
-        "$dir" || rc=$?
-    fi
+    "$GODOT_BIN" --headless --path "$PROJECT_ROOT" -s tools/demo/analyze_transcript.gd -- \
+      "$dir" --script "$PROJECT_ROOT/$script" || rc=$?
     if [ "$rc" -eq 1 ]; then
       err "Defect scan failed for $script"
+      failed=1
+    elif [ "$rc" -eq 3 ]; then
+      # The script's own declarations are malformed, so NOTHING was judged for this
+      # clip. Gate on it: a silent skip here loses every metric behind a green check.
+      err "Malformed expect/defect_exemptions block in $script -- nothing was scanned"
       failed=1
     elif [ "$rc" -ne 0 ]; then
       warn "Defect scan input unusable for $script (rc=$rc); nothing gated."

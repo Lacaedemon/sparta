@@ -404,13 +404,9 @@ jobs:
             echo "::warning::full state dump failed; skipping the defect scan."
             exit 0
           fi
-          EXPECT_ARGS=()
-          if jq -e '.expect | type == "array" and length > 0' "$SOURCE" >/dev/null 2>&1; then
-            EXPECT_ARGS=(--expect "$SOURCE")
-          fi
           rc=0
           godot --headless --path . -s tools/demo/analyze_transcript.gd -- \
-            "$FULL_DIR" "${EXPECT_ARGS[@]}" | tee /tmp/defects.txt || rc=$?
+            "$FULL_DIR" --script "$SOURCE" | tee /tmp/defects.txt || rc=$?
           # Fold the verdict table into the transcript comment when one is being posted,
           # so reviewers see the machine verdicts next to the per-tick tables.
           if [ -s /tmp/transcript.md ] && [ -s /tmp/defects.txt ]; then
@@ -423,6 +419,11 @@ jobs:
           if [ "$rc" -eq 1 ]; then
             echo "failed=true" >> "$GITHUB_OUTPUT"
             echo "::error::demo defect scan found failing verdicts (see the transcript comment / log above)."
+          elif [ "$rc" -eq 3 ]; then
+            # Malformed declarations mean NOTHING was judged for this clip -- gate on it
+            # rather than letting a typo silently disable every metric behind a green check.
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+            echo "::error::malformed expect/defect_exemptions block in $SOURCE -- nothing was scanned."
           elif [ "$rc" -ne 0 ]; then
             echo "::warning::defect scan input unusable (rc=$rc); nothing gated."
           fi
