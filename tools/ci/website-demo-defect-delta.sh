@@ -42,45 +42,18 @@ fi
 # shellcheck source=../../website/tools/demo-catalog.sh
 . "$PR_TREE/website/tools/demo-catalog.sh"
 
-script_source() {
-  local want="$1" spec NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE
-  for spec in "${DEMOS[@]}"; do
-    IFS='|' read -r NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE <<<"$spec"
-    if [ "$NAME" = "$want" ] && [ "${TYPE:-replay}" = "input" ]; then
-      printf '%s' "$PR_TREE/$SOURCE"
-      return 0
-    fi
-  done
-  return 0
-}
+# Both helpers below are shared with the absolute catalog sweep
+# (tools/ci/website-demo-defect-sweep.sh), which needs the identical reduction --
+# see the lib's own header for why a second copy here would drift silently.
+# shellcheck source=../lib/demo-defect-metrics.sh
+. "$PR_TREE/tools/lib/demo-defect-metrics.sh"
 
-# Failing metrics for one transcript dir, as "metric(uidN), ..." | "clean" | "n/a".
-# The analyzer prints a Godot banner before the JSON line, so keep only the JSON.
+# Failing metrics for one transcript dir, as "metric (uidN), ..." | "clean" | "n/a".
+# The delta deliberately ignores the analyzer's rc (field 1 of the shared verdict): a
+# clip whose own declarations are malformed reduces to "n/a" here, which this script
+# already reports as an unjudgeable side rather than a clean one.
 failing_metrics() {
-  local dir="$1" script_src="$2" out rc=0
-  if [ -n "$script_src" ]; then
-    out="$("$GODOT_BIN" --headless --path "$PR_TREE" -s tools/demo/analyze_transcript.gd -- \
-        "$dir" --json --script "$script_src" 2>/dev/null | grep -m1 '^{' || true)" || rc=$?
-  else
-    out="$("$GODOT_BIN" --headless --path "$PR_TREE" -s tools/demo/analyze_transcript.gd -- \
-        "$dir" --json 2>/dev/null | grep -m1 '^{' || true)" || rc=$?
-  fi
-  if [ -z "$out" ]; then
-    printf 'n/a'
-    return 0
-  fi
-  # A compact transcript with a declared `expect` block still yields expect-only
-  # verdicts, so non-empty output alone doesn't prove the physics metrics ran: require
-  # at least one non-expect verdict before treating the side as analyzable, or a data
-  # gap on one side could masquerade as "clean" and mislabel the other side's
-  # pre-existing defect a candidate regression.
-  printf '%s' "$out" | jq -r '
-    if ([.verdicts[] | select(.metric | startswith("expect:") | not)] | length) == 0
-    then "n/a"
-    else [.verdicts[] | select(.pass | not) | "\(.metric) (uid\(.uid))"]
-      | if length == 0 then "clean" else join(", ") end
-    end' \
-    2>/dev/null || printf 'n/a'
+  demo_defect_verdict "$1" "$2" "$PR_TREE" | cut -f2
 }
 
 ROWS=""
@@ -88,7 +61,7 @@ REGRESSION_COUNT=0
 while IFS= read -r name; do
   [ -n "$name" ] || continue
   [ -d "$BASELINE_DIR/$name" ] && [ -d "$PR_DIR/$name" ] || continue
-  script_src="$(script_source "$name")"
+  script_src="$(demo_clip_script_source "$name" "$PR_TREE")"
   base_fail="$(failing_metrics "$BASELINE_DIR/$name" "$script_src")"
   pr_fail="$(failing_metrics "$PR_DIR/$name" "$script_src")"
   verdict="no new defects"
