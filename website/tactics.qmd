@@ -382,7 +382,29 @@ right, and he holds his place in his own column's depth as well. The block widen
 by opening and closing between the files rather than filing men across itself, which is both
 quicker and far tidier to watch. Measured on a lone regiment drilling with no enemy near it,
 that cuts the ground covered in a reshape by about a third, and the men walk to their new
-places without threading through each other on the way.
+places without threading through each other on the way (@fig-frontage-slot-pairing).
+
+One caveat worth knowing if you are watching closely: this tidier dealing is chosen at the
+moment the frontage changes. A regiment that then takes casualties in a melee keeps the
+places it was dealt, but a fresh reshape is what re-chooses them --- the block does not
+continuously re-sort itself under fire, which would be its own kind of churn.
+
+::: {#fig-frontage-slot-pairing .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/frontage_slot_pairing.jpg">
+  <source src="media/frontage_slot_pairing.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A lone Spearmen block widening by three files, with no enemy on the field. The frontage
+change renumbers every file, so each man could in principle be sent anywhere in the new
+grid. Instead the block keeps its left-to-right order and each man takes the file nearest
+him, so the formation opens outward and settles rather than filing men across itself.
+:::
 
 **Anchored explicatio for a pinned flank.** The plain explicatio widens about the unit's own
 centre, so both flanks drift when the frontage doubles --- fine in the open, but a problem when
