@@ -108,7 +108,13 @@ func test_tray_source_units_scopes_to_the_bound_group() -> void:
 func test_group_changed_handler_is_a_noop_with_no_tray_built_yet() -> void:
 	var hud := HUDScript.new()
 	autofree(hud)   # never add_child'd, so _ready() (and _build_unit_card_tray) never runs
+
+	# Asserting the precondition keeps the test honest in both directions: without it, a
+	# tray built somewhere other than _ready() would leave this passing while no longer
+	# exercising the null path at all.
+	assert_null(hud._unit_card_tray, "precondition: the tray was never built")
 	hud._on_unit_card_tray_group_changed(0)   # must not crash on the null _unit_card_tray
+	pass_test("the handler is a no-op instead of crashing on the unbuilt tray")
 
 
 func test_periodic_resync_discards_a_unit_that_dropped_out_of_a_rebound_group() -> void:
