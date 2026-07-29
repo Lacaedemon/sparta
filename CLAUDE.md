@@ -6,12 +6,12 @@ fusing dynastic grand strategy with real-time tactical battles. See
 `README.md` for layout and `PLAN.md` for project vision, roadmap, architecture,
 and verification steps — read `PLAN.md` first.
 
-## Cross-repo AI configuration (`d-morrison/ai-config`)
+## Cross-repo AI configuration (`Morrison-Lab/ai-config`)
 
-This repo pulls in [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+This repo pulls in [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config)
 for portable skills and memories via the **Plugin Marketplace**.
 
-`.claude/settings.json` registers the `d-morrison` marketplace and enables the
+`.claude/settings.json` registers the `Morrison-Lab` marketplace and enables the
 `ai-config` plugin, so Claude Code installs it at session start — skills are
 available as `/ai-config:<name>` (e.g. `/ai-config:ardi`, `/ai-config:remember`).
 
