@@ -25,6 +25,7 @@ DEMOS=(
   "schiltron|demos/inputs/schiltron.json|30|300|640|input"
   "order_distance|demos/inputs/order-distance.json|30|120|640|input"
   "file_doubling|demos/inputs/file-doubling.json|30|300|640|input"
+  "frontage_slot_pairing|demos/inputs/frontage-change-slot-pairing.json|30|170|640|input"
   "file_doubling_asymmetric|demos/inputs/file-doubling-asymmetric.json|30|150|640|input"
   "cycle_charge|demos/inputs/cycle-charge.json|30|650|640|input"
   "cycle_charge_flee|demos/inputs/cycle-charge-flee.json|30|520|640|input"

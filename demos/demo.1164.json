@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/frontage-change-slot-pairing.json",
+  "caption": "Widening a lone Spearmen block by three files. A file-major regiment used to give soldier i the file and depth his array index named, so renumbering the files scattered the whole block onto long diagonal routes for a change this small. Each man now takes the file nearest him and holds his depth order within it, so the block just breathes outward and settles. Measured on the two clips that found this, total travel drops from about 1.5x a greedy nearest-slot reference to about 1.0x.",
+  "fixed_fps": 30,
+  "max_frames": 170,
+  "fps": 15,
+  "width": 720
+}

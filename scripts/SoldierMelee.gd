@@ -331,6 +331,11 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				# Keep file_major_reform's persistent file assignment index-aligned: trimming
 				# at the dead soldier's own index (not recomputing) is what makes a casualty
 				# preserve every OTHER survivor's file identity -- see Unit._ensure_file_assignment.
+				# The rank half closes up over the gap the dead man leaves, so his own file's
+				# survivors step forward and no other file moves -- and it goes FIRST, while
+				# _sim_soldier_file still holds his entry to say which file that was.
+				unit._sim_soldier_rank = UnitFormation.drop_rank_assignment(
+						unit._sim_soldier_rank, unit._sim_soldier_file, i)
 				unit._sim_soldier_file.remove_at(i)
 			if i < unit._sim_soldier_square_slot.size():
 				# Keep the square slot pairing index-aligned AND still a permutation:
