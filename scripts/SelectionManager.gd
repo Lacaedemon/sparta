@@ -313,7 +313,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_update_resize(_cursor_world())
 			queue_redraw()
 		elif _rmb_down:
-			if _rmb_start.distance_to(_cursor_world()) > CLICK_THRESHOLD:
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			if _rmb_start.distance_squared_to(_cursor_world()) > CLICK_THRESHOLD * CLICK_THRESHOLD:
 				_rmb_dragging = true
 			queue_redraw()
 		elif _dragging:
@@ -651,8 +652,9 @@ func _finish_right_button(end_pos: Vector2, append: bool) -> void:
 		# so a march can be plotted as a multi-leg path.
 		# Track multi-clicks on ground moves to determine gait (walk/jog/run/sprint).
 		var now_ms: int = Time.get_ticks_msec()
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var click_combo: bool = (now_ms - _last_right_click_ms <= _click_combo_window_ms) and \
-			end_pos.distance_to(_last_right_click_pos) < 10.0
+			end_pos.distance_squared_to(_last_right_click_pos) < 100.0
 		if click_combo:
 			_click_count += 1
 		else:
@@ -1453,7 +1455,8 @@ func _resize_handle_at(world_pos: Vector2):
 		return null
 	var hs: Array = _resize_handle_positions(u)
 	for i in range(hs.size()):
-		if world_pos.distance_to(hs[i]) <= RESIZE_HANDLE_HIT:
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		if world_pos.distance_squared_to(hs[i]) <= RESIZE_HANDLE_HIT * RESIZE_HANDLE_HIT:
 			# hs[0] sits out along +file-axis -- the block's local +X flank
 			# (Anchor.RIGHT); hs[1] is its mirror (Anchor.LEFT).
 			var side: int = UnitFormation.Anchor.RIGHT if i == 0 else UnitFormation.Anchor.LEFT

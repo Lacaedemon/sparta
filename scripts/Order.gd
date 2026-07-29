@@ -408,10 +408,15 @@ static func resolve_friendly_target(u: Unit) -> void:
 	var gone: bool = not is_instance_valid(partner) \
 		or partner.state == Unit.State.DEAD \
 		or partner.state == Unit.State.ROUTING
-	var apart: bool = is_instance_valid(partner) \
-		and u.position.distance_to(partner.position) \
-			> u.separation_radius + partner.separation_radius \
-				+ u.soldier_block_extent() + partner.soldier_block_extent()
+	# Compute the contact threshold once -- soldier_block_extent() is a real call and this runs
+	# per unit per tick -- but keep it inside the validity guard. partner is expected to become a
+	# freed instance mid-relief, which is exactly what the `gone` check above detects, so reading
+	# its fields unconditionally would fault one line before that guard can fire.
+	var apart: bool = false
+	if is_instance_valid(partner):
+		var contact: float = u.separation_radius + partner.separation_radius \
+			+ u.soldier_block_extent() + partner.soldier_block_extent()
+		apart = u.position.distance_squared_to(partner.position) > contact * contact
 	if gone or apart:
 		order.friendly_target = null
 
