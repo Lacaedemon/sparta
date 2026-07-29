@@ -433,3 +433,55 @@ func test_accumulate_no_damage_when_a_soldiers_net_velocity_change_cancels_to_ze
 	SoldierEnemyContact.accumulate([a, b], 90013)
 	assert_almost_eq(a._sim_soldier_hp[0], hp_a_before, 1e-3,
 		"symmetric opposing contacts cancel a's net velocity change, so it takes no damage even though it was contact-eligible")
+
+
+func test_accumulate_caps_a_resting_soldier_pressed_by_multiple_fast_closing_enemies() -> void:
+	# Regression: the multi-pair cap test above drives its impulses purely from OVERLAP (every
+	# body in it starts at rest), so it never exercises enemy_contact_impulse's other input --
+	# the real CLOSING-SPEED term. A report that first line-to-line contact briefly shoves
+	# bodies past KNOCKBACK_SPEED_MAX blamed exactly that term, on the grounds that the overlap
+	# term already targets a steady separating speed instead of re-injecting a full impulse
+	# every tick. This pins the closing-speed path under the worst case that report describes:
+	# a rank arriving at melee range still carrying full charge speed, with more than one
+	# attacker on the same defender from the same side so their impulses stack rather than
+	# partially cancel.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 2)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)
+	b._sim_soldier_pos[1] = Vector2(5, 0)
+	# a stands still, so its own ceiling is exactly KNOCKBACK_SPEED_MAX -- capped_knockback_
+	# velocity raises it only for a body that was ALREADY faster (see the test below).
+	a._sim_body_vel[0] = Vector2.ZERO
+	b._sim_body_vel[0] = Vector2(-SoldierCombat.CHARGE_REFERENCE_SPEED, 0.0)
+	b._sim_body_vel[1] = Vector2(-SoldierCombat.CHARGE_REFERENCE_SPEED, 0.0)
+	SoldierEnemyContact.accumulate([a, b], 90014)
+	assert_true(a._sim_body_vel[0].length() > 0.0,
+		"sanity: the forced fast-closing overlap actually produced an impulse, not a vacuous pass below")
+	assert_true(a._sim_body_vel[0].length() <= SoldierCombat.KNOCKBACK_SPEED_MAX + 0.01,
+		"a resting soldier pressed by several fast-closing enemies at once stays within the knockback ceiling")
+
+
+func test_accumulate_never_accelerates_a_body_already_above_the_knockback_ceiling() -> void:
+	# The other half of the same ceiling contract: capped_knockback_velocity bounds a body at
+	# max(its own current speed, KNOCKBACK_SPEED_MAX), so a body that arrives already faster
+	# than the ceiling (a charge at CHARGE_REFERENCE_SPEED, nearly 3x it) keeps that speed
+	# rather than being clamped down to it -- contact may only ever slow it, never drive it
+	# faster. Comparing a charging body's raw speed against the flat ceiling therefore reads a
+	# violation that isn't one; this per-body relative bound is the actual invariant.
+	var a := _make_unit(1, 0, Vector2(2000, 2000), 1)
+	var b := _make_unit(2, 1, Vector2(-2000, -2000), 1)
+	a._sim_soldier_pos[0] = Vector2.ZERO
+	b._sim_soldier_pos[0] = Vector2(5, 0)
+	var charge: float = SoldierCombat.CHARGE_REFERENCE_SPEED
+	a._sim_body_vel[0] = Vector2(charge, 0.0)
+	b._sim_body_vel[0] = Vector2(-charge, 0.0)
+	var pre_a: float = a._sim_body_vel[0].length()
+	var pre_b: float = b._sim_body_vel[0].length()
+	SoldierEnemyContact.accumulate([a, b], 90015)
+	assert_true(a._sim_body_vel[0].length() < pre_a,
+		"sanity: the head-on contact actually arrested some of a's closing speed, not a vacuous pass below")
+	assert_true(a._sim_body_vel[0].length() <= maxf(pre_a, SoldierCombat.KNOCKBACK_SPEED_MAX) + 0.01,
+		"a head-on charge contact never leaves the charging body faster than it arrived")
+	assert_true(b._sim_body_vel[0].length() <= maxf(pre_b, SoldierCombat.KNOCKBACK_SPEED_MAX) + 0.01,
+		"the same per-body ceiling holds for the opposing body in the pair")
