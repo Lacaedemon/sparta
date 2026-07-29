@@ -45,6 +45,7 @@ on:
       - 'website/tools/dump-demo-states.sh'
       - 'tools/ci/website-demo-state-diff.sh'
       - 'tools/ci/website-demo-defect-delta.sh'
+      - 'tools/lib/demo-defect-metrics.sh'
       - 'tools/demo/DemoDefects.gd'
       - 'tools/demo/DemoStateHash.gd'
       - 'tools/demo/DemoHashStream.gd'
