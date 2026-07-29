@@ -3436,6 +3436,36 @@ ref). That is the benign skip, NOT a stub review -- read the run's step list to 
 Combined with Copilot being quota-exhausted, such a PR can have no automated verdict at all, in
 which case the standing rule applies: do the review yourself and post it before merging.
 
+**The account move was not limited to `gha` -- `ai-config` followed, and it breaks a DIFFERENT
+mechanism.** `d-morrison/ai-config` moved to `Morrison-Lab/ai-config` the next day
+(2026-07-29). The `gha` move broke Actions `uses:` refs; this one breaks the **Claude Code
+plugin marketplace**, registered in `.claude/settings.json` via `extraKnownMarketplaces` +
+`enabledPlugins`. The installer does not follow the transfer redirect either, so
+`review / claude-review` dies before it ever reviews anything:
+
+```
+Action failed with error: Failed to install plugin 'ai-config@d-morrison' (exit code: 1)
+Claude review did not complete successfully and was not eligible for a stub-review retry
+```
+
+The signature differs from every other review failure documented above: the job posts **no
+review comment at all** (it dies at plugin install, before the review step), so there is no
+stub body to read and no verdict to mistake for one. `review / require-review` fails with it,
+and it is required -- so the whole repo is unmergeable until retargeted. The same `gh api`
+trap applies verbatim (`gh api repos/d-morrison/ai-config --jq .full_name` cheerfully returns
+`Morrison-Lab/ai-config`), so the old path "resolving fine" proves nothing.
+
+**Generalize the lesson rather than patching one repo at a time:** when ANY repo under an
+account you consume moves, immediately grep your own repo for **every** reference to that
+account, not just the moved repo -- `uses:` refs, plugin-marketplace sources, submodule URLs
+in `.gitmodules`, and prose links. Sibling repos under the same account are likely to follow.
+Distinguish real repo paths from things that merely look like them: a `reviewer: d-morrison`
+workflow comment is a GitHub **username** (unaffected by a repo transfer), and
+`website/_extensions/d-morrison/equation-anchors/` is a Quarto extension install path that
+only changes via a Quarto reinstall. (`Lacaedemon/sparta` #1171/PR #1172, 2026-07-29: caught
+when the first PR pushed after the move failed review; the last green run was 30 minutes
+earlier.)
+
 
 ## A PR-description edit can duplicate the CI-managed demo block
 
