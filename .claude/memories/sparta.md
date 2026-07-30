@@ -66,7 +66,6 @@ modifier or an instant state switch that ignores it. Concretely:
   whether an existing mechanism (knockback, reach-based hit resolution, contact impulses)
   already produces the intended outcome as a side effect — if so, the new mechanic should
   do LESS, not add a parallel force alongside it.
-
 - **No top-down RESOLUTION AUTHORITY either, not just no top-down mechanics.** The
   bullets above are all about a mechanic's *effect* (a flat modifier, a snap, an inert
   number, a synthetic force). The same principle governs *who computes an outcome at
@@ -3776,3 +3775,63 @@ Two things worth knowing before reading a state dump as evidence:
   array.** Passing `96,100` to a script that declares `"state": [80, 88, 92, ...]` dumps
   all of them. Handy, but it means the dumped set can be wider than you asked for, and a
   run can hit its snapshot budget on ticks you did not request.
+
+## Re-check a cited blocker's CURRENT state before writing it into durable prose
+
+An issue number cited as "blocked on #N" is a claim with an expiry date, and nothing
+warns you when it lapses. Copying such a citation from an existing doc inherits its
+staleness silently, and the copy then reads as freshly verified.
+
+A memory entry asserted `#296` was "blocked on #783". `#783` had been CLOSED/COMPLETED
+for 18 days, fixed by `#784` -- and `#296`'s own thread recorded a different, still-
+unfiled blocker (a residual ~1-2 px first-contact overshoot), explicitly advising against
+reusing `#783`'s number for it. The phrasing came from
+`docs/individual-collision-design.md`, which still carries it in FIVE places (#1189).
+
+The failure is worse than a dangling reference: a future reader who checks `#783` and
+finds it closed has two plausible readings, and both are wrong -- "this is fixed now" or
+"this whole entry is stale, ignore it". The genuinely useful state (still blocked, by
+something narrower) survives only in a comment thread.
+
+- **Do:** run `gh issue view <N> --json state,stateReason` on every issue cited as a
+  blocker, and skim the blocked issue's own recent comments for what it currently says is
+  blocking it, before the citation goes into a memory file, design doc, or code comment.
+- **Do:** when a cited issue turns out closed, say so explicitly in the prose ("#783 was
+  fixed by #784; the live blocker is X") rather than just swapping the number, so the next
+  reader is not left re-deriving why a closed issue was mentioned.
+- **Don't:** carry a "blocked on #N" phrase over from another file on the assumption that
+  whoever wrote it checked -- inheriting it is exactly how it spreads.
+
+(`Lacaedemon/sparta` PR #1188, 2026-07-30: caught by the automated reviewer, not by
+drafting; the same stale citation one file over is tracked as #1189.)
+
+
+## A script-inserted markdown block needs an EXPLICIT blank line, not just a newline
+
+Inserting a block into a markdown file programmatically (a `python` splice, a `sed`
+insertion, an anchor `replace`) terminates the last line but does not create a paragraph
+break. Under CommonMark/GFM lazy continuation, a non-indented paragraph that directly
+follows a list item's text with no blank line is folded INTO that list item rather than
+rendered as its own top-level paragraph.
+
+Building a bullet as `nl.join([...lines..., ''])` looks like it ends with a blank line; it
+does not. `join` only puts the separator BETWEEN elements, so a trailing `''` merely ends
+the final line. The result splices straight onto whatever followed the anchor.
+
+Nothing in this repo's checks catches it: `tools/check.sh chars` scans characters, the
+GDScript lint ignores markdown, and there is no conflict marker to point at -- the damage
+is invisible in the raw text and shows up only in the rendered output. It was caught by
+review reading the rendered semantics.
+
+- **Do:** after any scripted insertion into markdown, print the seam (`sed -n 'A,Bp' file`)
+  and confirm a blank line separates the block from what FOLLOWS it -- that is the half
+  that fixes the swallowed paragraph.
+- **Do:** add one BEFORE it too, unless the insertion is a new item continuing an existing
+  TIGHT list. Per CommonMark, tightness is a property of the whole list: one blank line
+  between any two items makes every sibling loose and `<p>`-wrapped, so a leading blank
+  line silently reformats bullets the diff never touched.
+- **Don't:** trust a trailing empty element in a `join` to produce a blank line.
+
+(`Lacaedemon/sparta` PR #1188, 2026-07-30: the inserted bullet swallowed the closing
+paragraph of the whole "no top-down X" list, which applies to the list rather than to any
+one bullet.)
