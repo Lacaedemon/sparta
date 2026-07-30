@@ -66,7 +66,6 @@ modifier or an instant state switch that ignores it. Concretely:
   whether an existing mechanism (knockback, reach-based hit resolution, contact impulses)
   already produces the intended outcome as a side effect — if so, the new mechanic should
   do LESS, not add a parallel force alongside it.
-
 - **No top-down RESOLUTION AUTHORITY either, not just no top-down mechanics.** The
   bullets above are all about a mechanic's *effect* (a flat modifier, a snap, an inert
   number, a synthetic force). The same principle governs *who computes an outcome at
@@ -3820,13 +3819,18 @@ does not. `join` only puts the separator BETWEEN elements, so a trailing `''` me
 the final line. The result splices straight onto whatever followed the anchor.
 
 Nothing in this repo's checks catches it: `tools/check.sh chars` scans characters, the
-GDScript lint ignores markdown, and there is no conflict marker to point at -- the same
-invisibility as the MD022 blank-line case this file already records for merges into
-growing lists. It was caught by review reading the rendered semantics.
+GDScript lint ignores markdown, and there is no conflict marker to point at -- the damage
+is invisible in the raw text and shows up only in the rendered output. It was caught by
+review reading the rendered semantics.
 
 - **Do:** after any scripted insertion into markdown, print the seam (`sed -n 'A,Bp' file`)
-  and confirm a blank line sits on BOTH sides of the inserted block.
-- **Don't:** trust a trailing empty element in a `join` to produce one.
+  and confirm a blank line separates the block from what FOLLOWS it -- that is the half
+  that fixes the swallowed paragraph.
+- **Do:** add one BEFORE it too, unless the insertion is a new item continuing an existing
+  TIGHT list. Per CommonMark, tightness is a property of the whole list: one blank line
+  between any two items makes every sibling loose and `<p>`-wrapped, so a leading blank
+  line silently reformats bullets the diff never touched.
+- **Don't:** trust a trailing empty element in a `join` to produce a blank line.
 
 (`Lacaedemon/sparta` PR #1188, 2026-07-30: the inserted bullet swallowed the closing
 paragraph of the whole "no top-down X" list, which applies to the list rather than to any
