@@ -19,8 +19,8 @@ see the phase-5 note below and #296). #201's momentum physics landed (#749), but
 empirical test (#296) found it does NOT yet arrest a charge on its own; #783 was the root
 cause, and #784 fixed it. Retiring the regiment circle stays blocked, but on the residual
 first-contact overshoot transient recorded in #296's own thread — not on #783, which is
-closed (see the phase-5 note below). Posture/graded bracing and the rearward domino
-cascade are also deferred. The design decisions are settled (see
+closed. Posture/graded bracing and the rearward domino cascade are also deferred. The
+design decisions are settled (see
 "Decisions" below).
 
 Tracks [#164](https://github.com/Lacaedemon/sparta/issues/164) (collision at the
