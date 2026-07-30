@@ -940,6 +940,16 @@ PR's demo section, check the manifest actually lives in *this* PR's diff (`git s
 GIF is present and a caption reads plausibly — a fluent caption describing the wrong PR is not
 self-evidently wrong from the text alone. (`Lacaedemon/sparta` PR #831, 2026-07-13.)
 
+**This applies to any PR we didn't author the manifest for — a third-party bot's PR (Jules,
+Dependabot) never reads `demos/README.md` at all, so it's the same gap with nobody to brief.**
+Check it as part of reviewing such a PR, the same way you'd check a delegated agent's. When the
+change is genuinely non-visual, the fix is a skip manifest, not a clip: `demos/demo.skip.example.json`
+names "a non-visual refactor" as a sanctioned reason, and a demo-diff comment reporting 0
+sim-content changes across every website clip is exactly the evidence that justifies it — quote
+that number in the `reason` so the skip is auditable instead of asserted. (`Lacaedemon/sparta`
+PR #1176, 2026-07-29: a Jules perf PR's description advertised an unrelated shield-wall
+melee-depth clip from #1094 for a change with provably zero sim effect.)
+
 ## A skip manifest that exists but uses the wrong schema fails exactly as silently as a missing one
 
 The entry above covers a *missing* `demos/demo.<slug>.json`. A **present but wrongly-shaped**

@@ -962,6 +962,37 @@ re-dispatch (per the existing stub-review handling above) — check the run's ow
 (`gh run view <run-id>`) before assuming a self-review is missing for the usual reasons.
 (`Lacaedemon/sparta` PR #1123, 2026-07-27.)
 
+**The corollary, and it is the dangerous half: that self-skip means a PR which BREAKS the
+review config gets no review OF that breakage — so on a PR editing `claude-code-review.yml`,
+a fully green board is the WEAKEST assurance available, not the strongest.** The skip fires
+before the config is exercised, so a broken `plugins:`/`plugin-marketplaces:` ref sails
+through with `review / require-review` itself reporting `pass`. The failure then lands on the
+NEXT PR opened, where that same required check dies at plugin install and blocks the whole
+repo. Nothing on the introducing PR points at it.
+
+This is not hypothetical: PR #1176 (a Jules-authored one-line `distance_squared_to`
+micro-optimization) carried a commit that changed `plugins: ai-config@Morrison-Lab` back to
+`ai-config@d-morrison`, whose own message described it as *"fixes a Claude plugin marketplace
+reference bug"* — inverted, since the marketplace declares `"name": "Morrison-Lab"` (see the
+account-move entry below). It reverted #1172 and would have reintroduced #1171, making every
+subsequent PR unmergeable. All 14 checks were green, and the comment block *directly above the
+changed line* already warned against exactly that value, error string included. Three failures
+had to stack for it to get that far: the bot's inverted "fix", the self-skip suppressing the
+only reviewer that would have caught it, and Copilot simultaneously quota-exhausted.
+
+**How to apply.** Treat any diff touching `claude-code-review.yml` as review-exempt by
+construction and hand-verify it, no matter how green CI is or how plausible the commit message
+sounds. Concretely: diff the file against `main` (`git diff origin/main -- .github/workflows/claude-code-review.yml`)
+and, for a plugin/marketplace ref, check it against the marketplace's own live declared name
+rather than reasoning from the URL —
+`gh api repos/<owner>/ai-config/contents/.claude-plugin/marketplace.json --jq .content | base64 -d`.
+Best outcome when the workflow edit is unrelated collateral (as here): drop it entirely. The
+file then becomes byte-identical to `main` and falls out of the PR's diff, which retires the
+skip condition — confirmed on #1176, where the review went from a 6s skip to a genuine 11m
+run and verdict on the very next push. That also resolves the older note that a fix applied to
+this workflow "cannot verify itself": true while the edit is present, but removing the edit is
+itself the escape hatch. (`Lacaedemon/sparta` PR #1176, 2026-07-29.)
+
 **Copilot's own review can also fail closed, not just Claude's.** Copilot's review comment
 can read `Copilot was unable to review this pull request because the user who requested the
 review has reached their quota limit.` — repeatedly, across many pushes. This is a distinct
