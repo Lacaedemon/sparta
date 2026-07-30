@@ -93,18 +93,36 @@ last_snapshot_tick() {
 
 # "tick 960 of 1300 (26% downstream)" -- when the divergence landed, and how much of the
 # clip sits after it, which is the range any reported difference had to develop over.
+#
+# Both ticks are normalized through 10# before any arithmetic. The snapshot tick comes out
+# of a state_%05d.json filename, so it is ALWAYS zero-padded, and bash reads a leading-zero
+# numeral as OCTAL: "00960" aborts the script outright under `set -e` ("value too great for
+# base", since 9 is not an octal digit), and a value whose digits happen to all be octal-
+# valid computes silently wrong instead. The HASHCMP tick is unpadded today, but it is
+# normalized too so a future format change cannot reintroduce this.
 divergence_label() {
-  local div="$1" last="$2"
+  local div="$1" last="$2" downstream
   if [ -z "$div" ]; then
     printf 'unknown'
     return 0
   fi
-  if [ -z "$last" ] || [ "$last" -le 0 ]; then
-    printf 'tick %s' "$div"
+  div=$(( 10#$div ))
+  if [ -n "$last" ]; then
+    last=$(( 10#$last ))
+  else
+    last=0
+  fi
+  if [ "$last" -le 0 ]; then
+    printf 'tick %d' "$div"
     return 0
   fi
-  local downstream=$(( (last - div) * 100 / last ))
-  printf 'tick %s of %s (%d%% downstream)' "$div" "$last" "$downstream"
+  # A divergence past the last SAMPLED tick is possible -- the hash stream is written every
+  # tick while snapshots are sparse -- and means no sampled tick is downstream of it.
+  downstream=$(( (last - div) * 100 / last ))
+  if [ "$downstream" -lt 0 ]; then
+    downstream=0
+  fi
+  printf 'tick %d of %d (%d%% downstream)' "$div" "$last" "$downstream"
 }
 
 # The metrics failing on the PR side ($2) that are absent from the merge-base side ($1).
