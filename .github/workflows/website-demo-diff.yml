@@ -26,7 +26,10 @@
 # continue-on-error and posts a plain comment, never a check-run failure. The comment
 # does carry a machine assist: a defect-delta table (DemoDefects verdicts on both sides
 # of every changed clip) that auto-labels a defect firing only on the PR side as a
-# candidate regression, so the human classification starts from those rows.
+# candidate regression, so the human classification starts from those rows. Each row also
+# reports where its two runs diverged and how much of the clip sits after that point,
+# since the two are bit-identical before it and so every delta is post-divergence by
+# construction -- a late divergence means a short chaotic tail and weak evidence.
 
 name: Website demo diff
 
@@ -153,15 +156,20 @@ jobs:
             /tmp/hash-verdict.tsv
 
       - name: Defect delta over changed clips
-        # The deterministic DemoDefects analyzer over BOTH sides' FULL transcripts of
-        # just the changed clips (pure JSON reads -- no battles re-run), appended to the
-        # same comment: a defect firing only on the PR side is auto-labelled a candidate
+        # The deterministic DemoDefects analyzer over BOTH sides' FULL transcripts of just
+        # the changed clips (pure JSON reads -- no battles re-run), appended to the same
+        # comment: a defect firing only on the PR side is auto-labelled a candidate
         # regression, so reviewer judgment narrows to those rows instead of every clip.
+        # The hash verdict is passed for a SECOND use here beyond the pre-filter: its
+        # first-divergent-tick per clip is what lets each row report how much of the clip
+        # is downstream of the divergence, which is the range any reported difference had
+        # to develop over and so how much weight the row deserves.
         run: |
           set -euo pipefail
           GODOT_BIN=godot tools/ci/website-demo-defect-delta.sh \
             /tmp/transcripts-base /tmp/transcripts-pr \
-            /tmp/website-demo-diff.md.changed /tmp/defect-delta.md "$GITHUB_WORKSPACE"
+            /tmp/website-demo-diff.md.changed /tmp/defect-delta.md "$GITHUB_WORKSPACE" \
+            /tmp/hash-verdict.tsv
           if [ -s /tmp/defect-delta.md ]; then
             cat /tmp/defect-delta.md >> /tmp/website-demo-diff.md
           fi
