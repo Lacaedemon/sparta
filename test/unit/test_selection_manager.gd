@@ -983,11 +983,11 @@ func test_flag_pick_distance_hits_the_standard_and_misses_the_body_and_empty_spa
 	# The standard's local centre, from the same geometry UnitSprites draws.
 	var center: Vector2 = UnitSprites.standard_bounds(u.render_block_extent()).get_center()
 	var flag_world: Vector2 = u.global_position + center
-	assert_almost_eq(sm._flag_pick_distance(u, flag_world), 0.0, 0.001,
+	assert_almost_eq(sm._flag_pick_distance_squared(u, flag_world), 0.0, 0.001,
 			"a cursor on the standard's centre is zero distance from it")
-	assert_eq(sm._flag_pick_distance(u, u.global_position), -1.0,
+	assert_eq(sm._flag_pick_distance_squared(u, u.global_position), -1.0,
 			"the body centre is well below the raised standard, so not a flag hit")
-	assert_eq(sm._flag_pick_distance(u, u.global_position + Vector2(9999, 0)), -1.0,
+	assert_eq(sm._flag_pick_distance_squared(u, u.global_position + Vector2(9999, 0)), -1.0,
 			"empty space far from the standard is not a flag hit")
 
 
@@ -2290,11 +2290,11 @@ func test_flag_pick_tracks_the_shifted_standard() -> void:
 	var shifted_box: Rect2 = UnitSprites.standard_bounds(
 			u.render_block_extent(), u.block_centre_offset())
 	var hit_at: Vector2 = u.global_position + shifted_box.get_center()
-	assert_gte(sm._flag_pick_distance(u, hit_at), 0.0,
+	assert_gte(sm._flag_pick_distance_squared(u, hit_at), 0.0,
 			"a click on the shifted standard picks the unit")
 	var old_box: Rect2 = UnitSprites.standard_bounds(u.render_block_extent())
 	var stale_spot: Vector2 = u.global_position + old_box.get_center()
-	assert_eq(sm._flag_pick_distance(u, stale_spot), -1.0,
+	assert_eq(sm._flag_pick_distance_squared(u, stale_spot), -1.0,
 			"the old, unshifted spot no longer answers for the flag")
 
 
