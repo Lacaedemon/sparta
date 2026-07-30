@@ -4883,6 +4883,33 @@ func is_engaged() -> bool:
 	return _engaged_linger > 0.0 or state == State.FIGHTING
 
 
+## Whether this regiment can RECEIVE per-soldier melee resolution: engaged, or simply
+## close enough that an enemy's men can reach its own. Deliberately wider than
+## is_engaged(), and deliberately used only for the DEFENDING side of a strike.
+##
+## A unit being attacked for the first time has not entered FIGHTING yet -- its attacker
+## reaches it during the attacker's own _think(), before the defender has run a tick of
+## its own. Requiring is_engaged() on the defender therefore rejected the per-soldier
+## path for the opening blow of every melee, sending it to the regiment damage formula.
+##
+## Attacking stays gated on is_engaged() (combat state), so this does NOT let a unit
+## that is merely disengaging past an enemy throw strikes -- it only decides how the
+## casualties such a unit RECEIVES are resolved. Same predicate the soldier-body contact
+## path already uses (see _in_enemy_contact), rather than a second parallel notion of
+## engagement.
+func in_melee_contact_with(attacker: Unit) -> bool:
+	if is_engaged():
+		return true
+	# Measured here rather than read off _in_enemy_contact, which each unit fills in at the
+	# top of its OWN _think(). Units resolve one after another within a tick, so the unit
+	# that moves first strikes while its target has not run yet and is still carrying last
+	# tick's value -- false on exactly the tick contact is made. Recomputing against the
+	# attacker is order-independent, and uses the same reach both sides already agree on
+	# (the wider of the two, so a longer weapon reaches a shorter one).
+	var contact_dist: float = maxf(attack_range, attacker.attack_range) + RADIUS + attacker.RADIUS
+	return position.distance_squared_to(attacker.position) <= contact_dist * contact_dist
+
+
 ## Battle AI phase 4 (docs/battle-ai-design.md): whether the player has delegated this unit to
 ## an AI subcommander group. A function of player_group_id only -- see its own doc comment.
 func is_delegated() -> bool:

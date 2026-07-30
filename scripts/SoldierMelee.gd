@@ -41,7 +41,13 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 	var def_mods: Array[Vector2] = []
 	var any_candidates := false
 	for d in live_defenders:
-		var di: PackedInt32Array = d.engaged_soldier_indices(d._sim_soldier_pos.size())
+		# contact_soldier_indices, not engaged_soldier_indices: a defender taking the opening
+		# blow of a fresh melee has not entered FIGHTING yet, so the state-gated selection
+		# returns empty and no man is available to be hit. Both selectors pick the same near
+		# front ranks; this one also answers for a defender that is merely in contact, which
+		# is exactly the case the first strike lands in. Attacker selection above stays
+		# state-gated, so a disengaging unit still throws no strikes of its own.
+		var di: PackedInt32Array = d.contact_soldier_indices(d._sim_soldier_pos.size())
 		def_indices.append(di)
 		def_prof.append(d.combat_profile())
 		# Formation melee scaling, applied to the wound this cadence lands: a hunkered SQUARE

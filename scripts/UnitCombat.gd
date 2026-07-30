@@ -104,7 +104,7 @@ static func strike(u: Unit, enemy: Unit) -> void:
 	# regiment damage formula. This is where flanking, reach (spear vs. sword, #240), and
 	# charge fall out of geometry. Ranged volleys and any non-engaged edge case fall
 	# through to the formula below.
-	if Unit.INDIVIDUAL_COLLISION and not u.is_ranged and u.is_engaged() and enemy.is_engaged() \
+	if Unit.INDIVIDUAL_COLLISION and not u.is_ranged and u.is_engaged() and enemy.in_melee_contact_with(u) \
 			and not u._sim_soldier_pos.is_empty() and not enemy._sim_soldier_pos.is_empty():
 		u.resolve_soldier_melee(enemy)
 		u._approach_velocity = Vector2.ZERO   # spend the charge on this contact strike
