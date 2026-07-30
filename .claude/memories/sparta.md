@@ -3819,7 +3819,7 @@ represents the document's position.
 (`Lacaedemon/sparta` PR #1188, 2026-07-30: caught by the automated reviewer, not by
 drafting. Fixed one file over in #1191/#1189, where the count was ALSO wrong at first --
 reported as five occurrences because a `grep | head -5` truncation was read as the total;
-there were eight, of which only three were stale.)
+there were eight, of which five were stale and three were already accurate.)
 
 
 ## A script-inserted markdown block needs an EXPLICIT blank line, not just a newline
