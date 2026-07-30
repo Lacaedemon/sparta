@@ -67,6 +67,21 @@ modifier or an instant state switch that ignores it. Concretely:
   already produces the intended outcome as a side effect — if so, the new mechanic should
   do LESS, not add a parallel force alongside it.
 
+- **No top-down RESOLUTION AUTHORITY either, not just no top-down mechanics.** The
+  bullets above are all about a mechanic's *effect* (a flat modifier, a snap, an inert
+  number, a synthetic force). The same principle governs *who computes an outcome at
+  all*. A regiment-level formula that turns a stat difference into an absolute soldier
+  count is the same shortcut aimed at arithmetic instead of at forces -- the regiment is
+  an unnecessary abstraction over something the individual soldiers already determine.
+  The owner's framing: **no unnecessary abstractions**. Worked instance: #1151, where
+  `UnitCombat.strike`'s regiment formula annihilates a 10-man unit in one blow because
+  the damage number IS the casualty count, sized for an 80-man regiment. Casualties
+  should be resolved individually; morale may stay a regiment scalar for now (owner
+  directive, 2026-07-30). Ranged is the same shape and is tracked separately in #1186
+  (by individuals, at individuals, with per-soldier range).
+  This now has three instances -- gameplay mechanics, cosmetic VFX (the Fallen-heap
+  redesign), and resolution authority -- so treat it as the general rule rather than a
+  list of special cases.
 When implementing or reviewing a new mechanic, ask: does this emerge from the
 individual-level physics already in place, or is it a shortcut layered on top? Prefer
 the former; flag the latter as a candidate for this list.
@@ -3679,3 +3694,69 @@ filenames, emits the field, or defines the invariant, and generate the fixture t
 confirm it actually fails. A fixture that passes both before and after has told you nothing.
 And when a stub asserts two things DIFFER, first check whether the system permits them to --
 an impossible fixture is worse than no fixture, because it manufactures confidence.
+
+## The regiment damage formula is load-bearing for the regiment ENGAGEMENT gate
+
+Do not try to make the opening melee blow resolve per-soldier while the engagement
+gate stays regiment-level. The two are entangled, and removing one without the other
+replaces a violent bug with a silent one.
+
+`UnitCombat.strike()` picks per-soldier resolution only when both sides pass
+`is_engaged()`. Two independent ordering artifacts make the DEFENDER fail that test on
+the exact tick contact is made, so the opening blow of every melee falls through to the
+regiment damage formula -- where the damage number is used as an ABSOLUTE soldier count
+(`take_casualties` does `u.soldiers -= total`):
+
+1. **The latch arms a tick late.** `_physics_process` runs `_think()` -- where a unit
+   enters FIGHTING and lands its first strike -- BEFORE `tick_engaged()` sets
+   `_engaged_linger`. So an attacker is fighting but not "engaged" during its own first
+   strike, even though `ENGAGED_LINGER`'s doc says a regiment is engaged "while FIGHTING
+   and for ENGAGED_LINGER seconds after".
+2. **`_in_enemy_contact` is stale for whoever has not run yet.** Each unit fills it in at
+   the top of its OWN `_think()`. Units resolve one after another within a tick, so the
+   unit that goes first strikes while its target still carries LAST tick's value. This
+   ordering asymmetry is also why the loser takes 100% of the casualties: it is dead
+   before it ever gets a tick of its own.
+
+Fixing both does stop the wipe. But combat then never resolves at all: 400 ticks of
+FIGHTING, zero casualties, both sides at full strength and morale 100. The pair closes to
+**28.30 wu** and locks there, while cavalry `attack_range` is **26.0** -- the soldiers sit
+just outside per-soldier reach. The regiment gate (`attack_range + RADIUS + enemy.RADIUS`
+= 26 + 18 + 18 = **62 wu**) flips both units to FIGHTING, which halts the approach march,
+long before any soldier is actually within reach of another.
+
+So the regiment formula is currently what papers over that gap -- it deals damage at a
+range no individual soldier could reach. This is the deferred "retire the regiment
+circle" work (#296, blocked on #783), not an independent bug.
+
+- **Do:** sequence per-soldier casualties AFTER per-soldier engagement, and measure the
+  post-fix battle far enough forward (hundreds of ticks) to prove casualties still accrue.
+- **Don't:** remove or bypass the regiment casualty formula while the engagement gate is
+  still regiment-level -- the fight silently stops instead of resolving.
+
+**Instrument after the FIRST zero-effect result, not the third.** This file already says
+a before/after showing no difference means the fix's path is not the one being exercised.
+Two successive fixes here produced byte-identical output before the gate was instrumented;
+a single `print()` of the gate's own operands then settled it in one run, showing
+`u.eng=true e.eng=false e.inContact=false` -- the attacker half fixed, the defender half
+not. A temporary print at the branch you believe you changed is cheaper than another
+reasoning pass.
+
+(`Lacaedemon/sparta` #1151, draft PR #1187, 2026-07-30. Reproduced with seed `40002`,
+two 10-soldier Cavalry regiments: tick 94 gap 68.29 wu matching the issue's own figure,
+one unit gone at tick 96 while the survivor kept full strength, full HP and morale 100.)
+
+
+## `dump-state.sh` includes routers, and merges the script's own `state` ticks
+
+Two things worth knowing before reading a state dump as evidence:
+
+- **A unit missing from a snapshot really has left play.** `DemoState.build_snapshot`
+  walks `COMBAT_GROUPS`, which covers `routers` as well as `units` -- a routing unit still
+  appears, distinguished by `state: "ROUTING"`. So an absent uid means `_remove_from_play()`
+  (death or merge), not a group change. Do not spend a round wondering whether the dump
+  simply does not show routers.
+- **The tick list is the UNION of the CLI argument and the input script's own `state`
+  array.** Passing `96,100` to a script that declares `"state": [80, 88, 92, ...]` dumps
+  all of them. Handy, but it means the dumped set can be wider than you asked for, and a
+  run can hit its snapshot budget on ticks you did not request.
