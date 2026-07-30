@@ -3802,8 +3802,25 @@ something narrower) survives only in a comment thread.
 - **Don't:** carry a "blocked on #N" phrase over from another file on the assumption that
   whoever wrote it checked -- inheriting it is exactly how it spreads.
 
+- **Do:** when FIXING stale citations, classify every occurrence before changing any of
+  them. Some are legitimate history ("#783 documented X", "#784 fixed it") and are exactly
+  what tells a later reader why a closed issue is mentioned at all.
+- **Don't:** blanket find-and-replace the stale issue number. That destroys the accurate
+  mentions along with the wrong ones, and the accurate ones are the more useful half.
+
+**Expect PARTIAL refresh, not uniform staleness.** When an issue closes, whoever updates
+the doc tends to fix the section they were reading and miss the summary. The result is a
+file that contradicts itself: `docs/individual-collision-design.md` simultaneously said
+the work "stays blocked on #783" (header, phase list) and that "#783 closed via #784 ...
+but still needs its own residual-transient fix" (phase-5 note, position-anchor section).
+It reads as authoritative in whichever section you happen to open, so grep the whole file
+and reconcile the occurrences against each other -- do not assume the first one you find
+represents the document's position.
+
 (`Lacaedemon/sparta` PR #1188, 2026-07-30: caught by the automated reviewer, not by
-drafting; the same stale citation one file over is tracked as #1189.)
+drafting. Fixed one file over in #1191/#1189, where the count was ALSO wrong at first --
+reported as five occurrences because a `grep | head -5` truncation was read as the total;
+there were eight, of which only three were stale.)
 
 
 ## A script-inserted markdown block needs an EXPLICIT blank line, not just a newline
