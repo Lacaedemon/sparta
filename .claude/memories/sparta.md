@@ -3801,7 +3801,6 @@ something narrower) survives only in a comment thread.
   reader is not left re-deriving why a closed issue was mentioned.
 - **Don't:** carry a "blocked on #N" phrase over from another file on the assumption that
   whoever wrote it checked -- inheriting it is exactly how it spreads.
-
 - **Do:** when FIXING stale citations, classify every occurrence before changing any of
   them. Some are legitimate history ("#783 documented X", "#784 fixed it") and are exactly
   what tells a later reader why a closed issue is mentioned at all.
