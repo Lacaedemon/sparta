@@ -1331,3 +1331,24 @@ tally was decisive.
 **How to apply:** when the diff flags several clips, tally cleared-vs-added across the full table
 before classifying anything, and put the net accounting in the PR description. The flagged rows
 tell you where to look first, not what the change did overall.
+
+## Every defect-delta row is post-divergence -- read the Diverges column as its weight
+
+Structural, not incidental: the delta's two sides are bit-identical up to the first divergent
+tick, because that tick comes from a hash covering each unit's `position` and its whole
+`_sim_soldier_pos` array, written every tick -- the same data the position metrics read. So a
+difference can only ever appear AFTER divergence, and no bound produces an "attributable"
+delta; bounding to the pre-divergence range empties the comparison rather than narrowing it
+(tried and reverted in PR #1180).
+
+What the divergence tick is good for is weighting. The table's `Diverges` column reports it
+plus how much of the clip sits after it: a row diverging at tick 960 of 1300 had only the last
+quarter to grow a difference in and is weak evidence, while one diverging at tick 60 was
+restructured wholesale and its delta is far more likely to be real. Two rows that previously
+read identically as "candidate regression" are now distinguishable at a glance -- which is the
+calibration #1167 had to be derived by hand, after being filed as a suspected regression it
+turned out not to be.
+
+**How to apply:** never read a candidate-regression row without its `Diverges` value, and do
+not chase a late-divergence row as a regression before checking whether the difference lives
+entirely in the chaotic tail.

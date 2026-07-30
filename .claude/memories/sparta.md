@@ -3644,3 +3644,38 @@ to files ADDED under `scripts/` with a `.gd` extension -- deliberately not `test
 shell or workflow files. A CI/tooling PR adding a 115-line script and a 117-line workflow
 passes it untouched, reporting "No new scripts/*.gd files in this diff". Worth knowing
 before restructuring a new tool to fit a budget that does not apply to it.
+
+## A stubbed fixture built from your own premise tests the code, not the premise
+
+The two entries above cover verifying a bug's stated ROOT CAUSE, and verifying that a fix
+engages the reported bug's real CODE PATH. This is the third member of that family, and it
+bites when the thing under test is CI tooling rather than sim code: when you stand up a
+stub or a fixture to exercise a script in isolation, the fixture encodes your model of the
+system, so any assumption baked into it is exactly what the test cannot check. It returns
+the answer it was built to return, and reads as a clean verification.
+
+Two instances in one PR (#1180, closing #1179), both caught by review rather than by the
+verification itself:
+
+- **An unconstructible state.** The fix bounded the demo defect delta to ticks before two
+  runs diverge, and a stub "proved" it worked by returning DIFFERENT failing metrics for the
+  two sides inside that window. That state cannot exist: `div_tick` comes from
+  `DemoStateHash.cheap_tick_hash`, which hashes each unit's `position` plus the whole
+  `_sim_soldier_pos` byte array EVERY tick -- the same data the position metrics read -- so
+  below it the two sides are bit-identical by construction. The bound did not narrow the
+  comparison, it emptied it, and the one fixture row that fired was the one row reality
+  forbids.
+- **A filename format nobody writes.** The rework read a clip's last tick out of
+  `state_<tick>.json` names, and the fixture created them as `state_8.json`. Both producers
+  (`DemoInputRecorder.gd`, `DemoStateSink.gd`) write `state_%05d.json`, and bash reads a
+  leading-zero numeral as OCTAL: `00900` raises "value too great for base" and, under
+  `set -euo pipefail`, aborts the whole step, while an all-octal-valid `01260` silently
+  evaluates to 688 and prints a plausible-looking wrong percentage.
+
+**How to apply.** When a fixture stands in for real data, derive its shape from the PRODUCER,
+not from memory or from the consumer's expectations -- open the code that writes the
+filenames, emits the field, or defines the invariant, and generate the fixture the same way
+(here, `printf %05d`). Then prove the fixture bites: run it against the unfixed code and
+confirm it actually fails. A fixture that passes both before and after has told you nothing.
+And when a stub asserts two things DIFFER, first check whether the system permits them to --
+an impossible fixture is worse than no fixture, because it manufactures confidence.
