@@ -3786,7 +3786,8 @@ A memory entry asserted `#296` was "blocked on #783". `#783` had been CLOSED/COM
 for 18 days, fixed by `#784` -- and `#296`'s own thread recorded a different, still-
 unfiled blocker (a residual ~1-2 px first-contact overshoot), explicitly advising against
 reusing `#783`'s number for it. The phrasing came from
-`docs/individual-collision-design.md`, which still carries it in FIVE places (#1189).
+`docs/individual-collision-design.md`, which carried that stale phrasing in five of its
+eight `#783` mentions (#1189).
 
 The failure is worse than a dangling reference: a future reader who checks `#783` and
 finds it closed has two plausible readings, and both are wrong -- "this is fixed now" or
@@ -3801,9 +3802,27 @@ something narrower) survives only in a comment thread.
   reader is not left re-deriving why a closed issue was mentioned.
 - **Don't:** carry a "blocked on #N" phrase over from another file on the assumption that
   whoever wrote it checked -- inheriting it is exactly how it spreads.
+- **Do:** when FIXING stale citations, classify every occurrence before changing any of
+  them. Some are legitimate history ("#783 documented X", "#784 fixed it") and are exactly
+  what tells a later reader why a closed issue is mentioned at all.
+- **Don't:** blanket find-and-replace the stale issue number. That destroys the accurate
+  mentions along with the wrong ones, and the accurate ones are the more useful half.
+
+**Expect PARTIAL refresh, not uniform staleness.** When an issue closes, whoever updates
+the doc tends to fix the section they were reading and miss the summary. The result is a
+file that contradicts itself: `docs/individual-collision-design.md` simultaneously said
+the work "stays blocked on #783" (the header summary, and the phase-5 "Enemy collision"
+bullet) and that "#783 closed via #784 ... but still needs its own residual-transient fix"
+(the level-of-detail section's authority-slices paragraph, the doc's only use of that
+phrase).
+It reads as authoritative in whichever section you happen to open, so grep the whole file
+and reconcile the occurrences against each other -- do not assume the first one you find
+represents the document's position.
 
 (`Lacaedemon/sparta` PR #1188, 2026-07-30: caught by the automated reviewer, not by
-drafting; the same stale citation one file over is tracked as #1189.)
+drafting. Fixed one file over in #1191/#1189, where the count was ALSO wrong at first --
+reported as five occurrences because a `grep | head -5` truncation was read as the total;
+there were eight, of which five were stale and three were already accurate.)
 
 
 ## A script-inserted markdown block needs an EXPLICIT blank line, not just a newline
