@@ -82,6 +82,7 @@ modifier or an instant state switch that ignores it. Concretely:
   This now has three instances -- gameplay mechanics, cosmetic VFX (the Fallen-heap
   redesign), and resolution authority -- so treat it as the general rule rather than a
   list of special cases.
+
 When implementing or reviewing a new mechanic, ask: does this emerge from the
 individual-level physics already in place, or is it a shortcut layered on top? Prefer
 the former; flag the latter as a candidate for this list.
@@ -3738,7 +3739,11 @@ wrong explanation off the unused 26.0 default; caught by fact-checking the const
 rather than by any test.)
 
 Either way the entanglement stands, and it is the deferred "retire the regiment circle"
-work (#296, blocked on #783), not an independent bug.
+work (#296), not an independent bug. Note #296 is **not** blocked on #783 any more --
+that was the `SoldierBodies.couple()` averaging-dilution bug, fixed and closed by #784
+on 2026-07-12. #296's own thread records the current blocker as a residual ~1-2 px
+overshoot transient at first contact, which is still unfiled, and explicitly advises
+against reusing #783's number for it.
 
 - **Do:** sequence per-soldier casualties AFTER per-soldier engagement, and measure the
   post-fix battle far enough forward (hundreds of ticks) to prove casualties still accrue.
