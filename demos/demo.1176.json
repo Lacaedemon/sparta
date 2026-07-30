@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Non-visual refactor: swaps `distance_to` for `distance_squared_to` (comparing against a squared threshold) in `Subcommander._nearest_available`. The comparison is exactly equivalent for non-negative operands, so the change is provably behaviour-preserving and there is nothing for a recorded battle to show. Confirmed empirically by the website demo-diff sweep on this PR: 0 sim-content changes across all 73 clips, every sampled tick identical to the merge-base."
+}
