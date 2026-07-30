@@ -3786,7 +3786,8 @@ A memory entry asserted `#296` was "blocked on #783". `#783` had been CLOSED/COM
 for 18 days, fixed by `#784` -- and `#296`'s own thread recorded a different, still-
 unfiled blocker (a residual ~1-2 px first-contact overshoot), explicitly advising against
 reusing `#783`'s number for it. The phrasing came from
-`docs/individual-collision-design.md`, which still carries it in FIVE places (#1189).
+`docs/individual-collision-design.md`, which carried that stale phrasing in five of its
+eight `#783` mentions (#1189).
 
 The failure is worse than a dangling reference: a future reader who checks `#783` and
 finds it closed has two plausible readings, and both are wrong -- "this is fixed now" or
@@ -3810,8 +3811,10 @@ something narrower) survives only in a comment thread.
 **Expect PARTIAL refresh, not uniform staleness.** When an issue closes, whoever updates
 the doc tends to fix the section they were reading and miss the summary. The result is a
 file that contradicts itself: `docs/individual-collision-design.md` simultaneously said
-the work "stays blocked on #783" (header, phase list) and that "#783 closed via #784 ...
-but still needs its own residual-transient fix" (phase-5 note, position-anchor section).
+the work "stays blocked on #783" (the header summary, and the phase-5 "Enemy collision"
+bullet) and that "#783 closed via #784 ... but still needs its own residual-transient fix"
+(the level-of-detail section's authority-slices paragraph, the doc's only use of that
+phrase).
 It reads as authoritative in whichever section you happen to open, so grep the whole file
 and reconcile the occurrences against each other -- do not assume the first one you find
 represents the document's position.
