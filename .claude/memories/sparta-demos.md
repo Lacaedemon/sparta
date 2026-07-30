@@ -943,12 +943,22 @@ self-evidently wrong from the text alone. (`Lacaedemon/sparta` PR #831, 2026-07-
 **This applies to any PR we didn't author the manifest for — a third-party bot's PR (Jules,
 Dependabot) never reads `demos/README.md` at all, so it's the same gap with nobody to brief.**
 Check it as part of reviewing such a PR, the same way you'd check a delegated agent's. When the
-change is genuinely non-visual, the fix is a skip manifest, not a clip: `demos/demo.skip.example.json`
-names "a non-visual refactor" as a sanctioned reason, and a demo-diff comment reporting 0
-sim-content changes across every website clip is exactly the evidence that justifies it — quote
-that number in the `reason` so the skip is auditable instead of asserted. (`Lacaedemon/sparta`
-PR #1176, 2026-07-29: a Jules perf PR's description advertised an unrelated shield-wall
-melee-depth clip from #1094 for a change with provably zero sim effect.)
+change is genuinely non-visual, the fix is a skip manifest, not a clip:
+`demos/demo.skip.example.json` names "a non-visual refactor" as a sanctioned reason.
+
+**But a demo-diff reporting 0 sim-content changes does NOT by itself establish "non-visual" --
+it is necessary, not sufficient.** Per the demo-diff section above, that tool never sees the
+render layer at all, so a purely render-side change (a shader tweak, HUD layout, draw order,
+LOD) reports 0 sim-content changes while being *fully* visible -- exactly the kind of change
+that most needs a clip. Treating the count alone as a skip justification would license skipping
+there. Pair it with a check that the diff touches no render path at all (grep the diff for
+`_draw`/`_refresh_flock_render`-style calls, per this file's own "caption claiming an ON-SCREEN
+effect must be checked against the render path" rule); only when BOTH hold is "non-visual"
+actually supported. Then quote both in the `reason`, so the skip is auditable instead of
+asserted. (`Lacaedemon/sparta` PR #1176, 2026-07-29: a Jules perf PR's description advertised
+an unrelated shield-wall melee-depth clip from #1094 for a `distance_to` -> `distance_squared_to`
+swap in AI targeting math -- 0 sim changes across 73 clips AND no render path in the diff, so
+genuinely skippable on both counts.)
 
 ## A skip manifest that exists but uses the wrong schema fails exactly as silently as a missing one
 
