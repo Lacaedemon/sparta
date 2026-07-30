@@ -21,17 +21,23 @@ its source — keep them in sync when the originals change.
 
 ## Quarto extensions
 
-`_extensions/` holds vendored Quarto extensions, committed as plain files in the
-standard `_extensions/<publisher>/<name>/` layout that `_quarto.yml` references.
-They are not submodules, so a plain clone builds the site with no extra fetch step.
+`_extensions/` holds the site's Quarto extensions, installed with `quarto add` and
+**committed as plain files** in the `_extensions/<publisher>/<name>/` layout that
+`_quarto.yml` references by `<publisher>/<name>`.
 
-| extension | upstream | vendored at |
-|---|---|---|
-| `d-morrison/equation-anchors` | [d-morrison/equation-anchors](https://github.com/d-morrison/equation-anchors) `9d0ff89` | `_extensions/d-morrison/equation-anchors/` |
+Checking them in is what Quarto asks for: extensions are
+[treated as source code](https://quarto.org/docs/extensions/managing.html) so the
+project renders far into the future without depending on an external package
+manager still being reachable. They are deliberately **not** submodules -- a
+submodule would reintroduce exactly the fetch dependency that checking the files
+in exists to avoid.
 
-To refresh one, copy the extension's own `_extensions/<name>/` directory from the
-upstream repo over the vendored copy, then update the commit above so the pinned
-version stays recorded.
+| extension | upstream | installed with | vendored at |
+|---|---|---|---|
+| `d-morrison/equation-anchors` | [d-morrison/equation-anchors](https://github.com/d-morrison/equation-anchors) `9d0ff89` | `quarto add d-morrison/equation-anchors` | `_extensions/d-morrison/equation-anchors/` |
+
+To refresh one, re-run its `quarto add` command and update the pinned commit above
+so the recorded version stays accurate.
 
 ## Demo clips
 
