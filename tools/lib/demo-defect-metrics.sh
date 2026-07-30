@@ -36,7 +36,7 @@ demo_clip_script_source() {
   return 0
 }
 
-# demo_defect_verdict <transcript-dir> <script-source-or-empty> <tree> [max-tick]
+# demo_defect_verdict <transcript-dir> <script-source-or-empty> <tree>
 #
 # Prints one line: "<analyzer-rc><TAB><status>", where <status> is
 #   "metric (uidN), ..."  the failing metrics, when the clip has any
@@ -45,11 +45,6 @@ demo_clip_script_source() {
 #                          transcript predating the FULL-dump schema, so only
 #                          expect-verdicts came back and no physics metric ran)
 #
-# <max-tick> bounds the scan to snapshots at or below that tick (empty = the whole
-# transcript). The delta consumer passes the last tick before its two sides diverge, so
-# both are judged over a window in which they are still the same battle; a window too
-# narrow to hold a snapshot reduces to "n/a" via the analyzer's own rc 2.
-#
 # The rc is the analyzer's OWN exit status, captured through a temp file rather than a
 # pipe: `godot ... | grep` would yield grep's status, not Godot's, which silently loses
 # the rc 3 ("the clip's own expect/defect_exemptions block is malformed, so NOTHING was
@@ -57,21 +52,17 @@ demo_clip_script_source() {
 # Per analyze_transcript.gd: 0 = all passed, 1 = a defect, 2 = unusable input,
 # 3 = malformed declarations in the demo script itself.
 demo_defect_verdict() {
-  local dir="$1" script_src="$2" tree="$3" max_tick="${4:-}"
+  local dir="$1" script_src="$2" tree="$3"
   local godot="${GODOT_BIN:-godot}"
   local raw status rc=0 tmp
-  # Seeded with the two always-present arguments so the array is never empty, which
-  # "${argv[@]}" would reject under `set -u` on bash older than 4.4.
-  local -a argv=("$dir" --json)
-  if [ -n "$script_src" ]; then
-    argv+=(--script "$script_src")
-  fi
-  if [ -n "$max_tick" ]; then
-    argv+=(--max-tick "$max_tick")
-  fi
   tmp="$(mktemp)"
-  "$godot" --headless --path "$tree" -s tools/demo/analyze_transcript.gd -- \
-    "${argv[@]}" >"$tmp" 2>/dev/null || rc=$?
+  if [ -n "$script_src" ]; then
+    "$godot" --headless --path "$tree" -s tools/demo/analyze_transcript.gd -- \
+      "$dir" --json --script "$script_src" >"$tmp" 2>/dev/null || rc=$?
+  else
+    "$godot" --headless --path "$tree" -s tools/demo/analyze_transcript.gd -- \
+      "$dir" --json >"$tmp" 2>/dev/null || rc=$?
+  fi
   # Godot prints its own banner before the JSON line, so keep only the JSON.
   raw="$(grep -m1 '^{' "$tmp" || true)"
   rm -f "$tmp"

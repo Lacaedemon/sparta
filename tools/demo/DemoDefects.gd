@@ -274,25 +274,6 @@ static func crossing_indices(prev: Array, cur: Array, min_travel: float) -> Arra
 	return out
 
 
-## The snapshots whose tick is at or below `max_tick`, in input order; a negative
-## `max_tick` means unbounded and returns the series unchanged.
-##
-## Bounding a scan to a window both sides share is what makes a two-sided defect delta
-## attributable. Two runs of the same scripted clip are the same battle only until they
-## diverge; past that point one side has a different soldier count, so every later
-## sample's verdict difference is chaotic amplification of the change rather than
-## evidence about it. Comparing bounded windows keeps the delta on the ticks where the
-## comparison actually means something.
-static func snapshots_up_to(snapshots: Array, max_tick: int) -> Array:
-	if max_tick < 0:
-		return snapshots
-	var out: Array = []
-	for snap in snapshots:
-		if int(snap["tick"]) <= max_tick:
-			out.append(snap)
-	return out
-
-
 ## Analyze a whole transcript: `snapshots` is an Array of parsed state-dump Dictionaries
 ## (each with "tick" and "units", the units carrying soldiers_full + motion_ref -- i.e. a
 ## FULL dump). Returns per-uid metric series and a flat `verdicts` array; every verdict

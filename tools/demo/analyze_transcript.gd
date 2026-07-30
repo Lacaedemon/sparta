@@ -3,7 +3,7 @@ extends SceneTree
 ## (state_*.json, from SPARTA_DEMO_STATE_FULL=1) and print per-unit defect verdicts.
 ##
 ##   godot --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json] \
-##       [--script <input-script.json>] [--max-tick <N>]
+##       [--script <input-script.json>]
 ##   godot --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> \
 ##       --compare-hashes <other-dump-dir>
 ##   godot --headless --path . -s tools/demo/analyze_transcript.gd -- <base-tree> \
@@ -17,11 +17,6 @@ extends SceneTree
 ## as STALE so it gets removed. Either declaration may be absent, but a present one of the
 ## wrong shape exits 3 and gates, rather than skipping the scan behind a green check.
 ## --expect is an alias for the same flag.
-## --max-tick bounds the scan to snapshots at or below a tick. website-demo-diff.yml
-## passes the last tick before two runs of a clip diverge, so its two-sided defect delta
-## judges windows over which both sides are still the same battle; omitting it (the
-## default) scans the whole transcript. A window holding no snapshots exits 2, the same
-## "nothing to judge" answer an empty dump gives, rather than a vacuous clean scan.
 ## --compare-hashes is its own mode: instead of defect analysis, compare the two dump
 ## runs' per-tick hash streams (hash_stream.jsonl, written by every armed dump run --
 ## see DemoStateHash / DemoHashStream) and report the FIRST divergent tick and tier, replacing an
@@ -50,7 +45,7 @@ extends SceneTree
 func _init() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.is_empty():
-		push_error("usage: godot --headless -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json] [--script <input-script.json>] [--max-tick <N>] [--compare-hashes <other-dump-dir>] [--compare-hash-trees <pr-tree>]")
+		push_error("usage: godot --headless -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json] [--script <input-script.json>] [--compare-hashes <other-dump-dir>] [--compare-hash-trees <pr-tree>]")
 		quit(2)
 		return
 	var dir_path: String = args[0]
@@ -71,22 +66,6 @@ func _init() -> void:
 		_compare_hashes(dir_path, args[cmp_idx + 1])
 		return
 	var as_json: bool = args.has("--json")
-	# Bound the scan to a tick window (see the header). Parsed strictly: int("abc") is 0
-	# in GDScript, so an unparseable argument would silently become "keep tick 0 only" --
-	# a scan of one snapshot reported as if it were the whole clip.
-	var max_tick: int = -1
-	var max_tick_idx: int = args.find("--max-tick")
-	if max_tick_idx != -1:
-		if max_tick_idx + 1 >= args.size():
-			push_error("--max-tick needs a tick number")
-			quit(2)
-			return
-		var max_tick_arg: String = args[max_tick_idx + 1]
-		if not max_tick_arg.is_valid_int():
-			push_error("--max-tick needs an integer tick number, got: " + max_tick_arg)
-			quit(2)
-			return
-		max_tick = int(max_tick_arg)
 	# One flag carries the demo script, which declares both the `expect` intent list and
 	# any `defect_exemptions`; either may be absent. (Callers used to pass --expect only
 	# when a script had expectations, which left exemptions unreachable for every script
@@ -144,11 +123,6 @@ func _init() -> void:
 	var snapshots: Array = _load_snapshots(dir_path)
 	if snapshots.is_empty():
 		push_error("no state_*.json snapshots found in: " + dir_path)
-		quit(2)
-		return
-	snapshots = DemoDefects.snapshots_up_to(snapshots, max_tick)
-	if snapshots.is_empty():
-		push_error("no state_*.json snapshots at or below --max-tick %d in: %s" % [max_tick, dir_path])
 		quit(2)
 		return
 	var result: Dictionary = DemoDefects.analyze(snapshots)
