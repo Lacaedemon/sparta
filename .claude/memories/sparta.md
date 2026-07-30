@@ -3718,16 +3718,27 @@ regiment damage formula -- where the damage number is used as an ABSOLUTE soldie
    ordering asymmetry is also why the loser takes 100% of the casualties: it is dead
    before it ever gets a tick of its own.
 
-Fixing both does stop the wipe. But combat then never resolves at all: 400 ticks of
-FIGHTING, zero casualties, both sides at full strength and morale 100. The pair closes to
-**28.30 wu** and locks there, while cavalry `attack_range` is **26.0** -- the soldiers sit
-just outside per-soldier reach. The regiment gate (`attack_range + RADIUS + enemy.RADIUS`
-= 26 + 18 + 18 = **62 wu**) flips both units to FIGHTING, which halts the approach march,
-long before any soldier is actually within reach of another.
+Fixing both does stop the wipe. But combat then never resolves at all: **400 ticks of
+FIGHTING, zero casualties, both sides at full strength and morale 100**, with the pair
+locked at a 28.30 wu centre gap. That is the load-bearing part: the regiment formula is
+currently the only thing producing melee casualties on first contact, so removing it
+without replacing it stops the fight rather than fixing it.
 
-So the regiment formula is currently what papers over that gap -- it deals damage at a
-range no individual soldier could reach. This is the deferred "retire the regiment
-circle" work (#296, blocked on #783), not an independent bug.
+**The reason the per-soldier path then lands no wounds is NOT yet established -- do not
+assume it is a reach shortfall.** Check the real numbers before theorising. Cavalry's
+`attack_range` is **30.0 wu**, not the `@export` default of 26.0 that `Unit.gd` declares:
+`Battle.gd` overwrites it per loadout (`u.attack_range = weapon_type.reach_m *
+WORLD_UNITS_PER_METER`), and the Spatha's `reach_m` is 1.5 m at 20 wu/m.
+`soldier_reach()` just returns `attack_range`, so per-soldier reach is 30.0 wu too, and
+the regiment gate is `attack_range + RADIUS + enemy.RADIUS` = 30 + 18 + 18 = **66 wu**
+(`RADIUS` is `0.9 * WU_PER_M` = 18). At a 28.30 wu separation the men are therefore
+INSIDE reach, not outside it -- so "they cannot quite touch" does not explain the stall,
+and whatever does is still open. (An earlier draft of this entry asserted exactly that
+wrong explanation off the unused 26.0 default; caught by fact-checking the constants
+rather than by any test.)
+
+Either way the entanglement stands, and it is the deferred "retire the regiment circle"
+work (#296, blocked on #783), not an independent bug.
 
 - **Do:** sequence per-soldier casualties AFTER per-soldier engagement, and measure the
   post-fix battle far enough forward (hundreds of ticks) to prove casualties still accrue.
