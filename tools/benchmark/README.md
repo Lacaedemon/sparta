@@ -133,6 +133,18 @@ the recorded results):
 Re-run the pair (plus the scale sweep) whenever the thresholds, the per-soldier realism, or the
 reference hardware change, and update the design doc's recorded numbers.
 
+## Per-tick work counts (the before/after graph)
+
+Set `SPARTA_BENCHMARK_SERIES=<path>` (optionally with `SPARTA_BENCHMARK_LABEL`) and the runner
+also writes a per-tick series: one row per measured tick holding that tick's `SimOps` work
+counts and the wall-clock cost of the same tick. Counting is off otherwise, so an ordinary
+benchmark run measures the same sim an ordinary game tick runs.
+
+Unlike the timing aggregate above, those counts are deterministic — the same scenario and seed
+produce byte-identical columns on any machine — which is what makes a before/after comparison
+meaningful. `tools/perf/` turns two such series into the graph a backend-only performance PR is
+required to ship; see [`../perf/README.md`](../perf/README.md).
+
 ## What this does and doesn't measure
 
 **Physics-step time only, not full frame/render time.** `BenchmarkRunner` runs plain

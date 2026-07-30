@@ -1694,15 +1694,21 @@ func _think(delta: float) -> void:
 	# below), so it's always fresh on every tick regardless of which branch a unit takes --
 	# unlike _under_fire further down, which only needs to be fresh for the branches that
 	# actually read it.
+	SimOps.bump(SimOps.UNIT_THINK)
 	_in_enemy_contact = false
 	var contact_candidates: Array = get_tree().get_nodes_in_group("units")
 	contact_candidates.append_array(get_tree().get_nodes_in_group("routers"))
+	# The regiment-scale contact broadphase: every candidate this scan measures against, whether
+	# or not the early break below cuts it short (counted at the break, not by the loop bound).
+	var contact_checks: int = 0
 	for u in contact_candidates:
 		if u is Unit and u.team != team and u.state != State.DEAD:
+			contact_checks += 1
 			var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
 			if position.distance_squared_to(u.position) <= c_dist * c_dist:
 				_in_enemy_contact = true
 				break
+	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
 
 	_update_current_order()
 	# Order-response delay: tick down on every frame. Non-fighting units are frozen

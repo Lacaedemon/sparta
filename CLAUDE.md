@@ -121,6 +121,32 @@ media.
   can't film, `skip` the clip (above) and rely on the
   image.
 
+### Backend-only performance PRs: graph the work, then film the result
+
+A PR whose point is that the simulation does the **same thing faster** — a hot-loop
+rewrite, a cheaper query, a removed redundant pass, anything in the `⚡ Bolt` family
+— ships two artifacts, both in the PR description:
+
+1. **A before/after graph of computations per tick** (y = operations, x = tick) over a
+   representative demo, from `tools/perf/ops-before-after.sh`. Commit the PNG under
+   `demos/shots/` and embed it by raw URL at the commit SHA, alongside the
+   per-bucket table the tool prints. Counts, not milliseconds: they're deterministic
+   for a given scenario and seed, so the two lines differ only where the code did —
+   a timing chart at CI's documented ~20–30% run-to-run swing can hide a real win or
+   invent a fake one. `tools/perf/README.md` has the full protocol.
+2. **A demo video recorded after the improvement** — a real `demos/demo.<slug>.json`
+   clip, not `"skip": true`. "Backend-only" is the claim under review, not a licence
+   to skip the clip: an optimization that quietly changed the battle it was
+   optimizing looks exactly like one that didn't until someone watches it. Reuse a
+   scenario that actually exercises the path you touched, and check it against the
+   standard defect checklist like any other demo.
+
+If the graph shows the two lines exactly coincident, say so plainly and explain why
+(the path you optimized isn't one the counters cover, or the change is
+cheaper-per-operation rather than fewer-operations) — don't present a flat graph as
+if it demonstrated a win. Same for a wall-clock-only claim: pair it with the graph
+rather than substituting for it.
+
 ## Website updates in user-facing PRs
 
 When a PR changes **how the game looks or plays** — mechanics, controls, UI,

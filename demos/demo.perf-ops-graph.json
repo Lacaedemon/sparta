@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Tooling and policy only: adds off-by-default per-tick work counters, a per-tick series output on the benchmark runner, and the graphing tool a backend-only performance PR now ships. The counters are inert unless a run asks for them (SimOps.enabled stays false in normal play), so a recorded battle is bit-for-bit the same battle it was before this PR — there is nothing for a clip to show. The graph this PR exists to make possible is embedded in the description instead."
+}

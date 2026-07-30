@@ -74,6 +74,7 @@ static func rebuild(pos: PackedVector2Array, team: PackedInt32Array, radius: Pac
 		if not _cells.has(key):
 			_cells[key] = PackedInt32Array()
 		_cells[key].append(i)
+	SimOps.add(SimOps.GRID_INSERT, _pos.size())
 
 
 ## Nearest engaged enemy soldier within striking distance of `pos` (same reach-asymmetric
@@ -83,6 +84,8 @@ static func rebuild(pos: PackedVector2Array, team: PackedInt32Array, radius: Pac
 ## first-encountered candidate wins) -- that order is itself deterministic (see the class doc
 ## comment above), so no separate tie-break key is needed.
 static func nearest_enemy(pos: Vector2, team: int, self_radius: float, self_reach: float) -> Dictionary:
+	# Not instrumented, for the same reason as SoldierEnemyProximity.has_enemy_within: this
+	# runs once per engaged soldier, so counting inside it costs more than the number is worth.
 	var c := _key(pos)
 	var best_d2: float = -1.0
 	var best_idx: int = -1

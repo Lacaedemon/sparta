@@ -368,6 +368,9 @@ static func step(unit: Unit, delta: float) -> void:
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
 			unit._render_dirty = true
+	# One arrival integration per body, each with exactly one `to_slot.length()`.
+	SimOps.add(SimOps.BODY_STEP, n)
+	SimOps.add(SimOps.SQRT_EVAL, n)
 
 
 ## Cap a stationary/reforming body's velocity to its unit's jog pace, but to the slower

@@ -191,6 +191,15 @@ scheduled task every 30–60 min so a leak never builds up unattended.
 The headless demo recorder used by the demo-video pipeline — see
 [`demos/README.md`](../demos/README.md).
 
+## `perf/`
+
+Before/after graphs of **computations per tick** — the evidence a backend-only
+performance PR ships alongside its post-improvement demo clip. Deterministic work
+counts (`scripts/SimOps.gd`) rather than wall-clock time, so the two lines differ only
+where the code did. `ops-before-after.sh` records both sides and draws the graph; see
+[`perf/README.md`](perf/README.md) for the protocol and CLAUDE.md's "Backend-only
+performance PRs" for when it's required.
+
 ## `ci/`
 
 Small helpers invoked by GitHub Actions workflows.
