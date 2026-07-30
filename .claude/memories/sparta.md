@@ -3514,3 +3514,84 @@ Stripping only the PR's three is inconsistent, and stripping all 20 drags eight 
 into a PR whose whole purpose at that moment was being minimal -- the exact collateral-scope
 problem being criticised on that same PR. Leave the pattern and note it, or raise it as its own
 sweep. (2026-07-29.)
+
+## A report-generating workflow's data-gathering step needs `continue-on-error` plus `if: always()` downstream -- and a salvaged partial report must say so
+
+A scheduled workflow whose whole deliverable is "a durable signal posted every week" is
+defeated by the default GitHub Actions behaviour that a job stops at its first failing
+step. If the data-gathering step can fail on one bad input out of many, and the
+report-posting steps have no `if: always()`, then a single flaky input costs the entire
+run's report -- with no diagnostic beyond a red scheduled run nobody is watching.
+
+This is easy to ship because the *consuming* script is often written to handle missing
+data gracefully, which makes the pipeline feel robust when it is not. `website/tools/
+dump-demo-states.sh` `exit`s at the first clip that fails, times out, or writes no
+snapshots (only two genuinely-skippable cases `continue`), leaving every later clip
+undumped. The sweep script consuming it buckets a missing transcript as a `no transcript`
+finding rather than something fatal -- but that bucket was unreachable for exactly the
+failure it was written to describe, because the job never reached the sweep step.
+
+**The second-order trap, which the obvious fix alone does not cover:** because the dump
+aborts at the FIRST bad input rather than skipping it, everything after that point is
+missing too. A salvaged report therefore renders as a wall of "no data" rows that read
+like a mass regression rather than absent data. Thread the gathering step's own
+`steps.<id>.outcome` into the report and prepend a warning when it is not `success`, so a
+partial run is legible as partial. Verify by simulating the report body for both outcomes,
+including that the success path renders identically to before.
+
+(`Lacaedemon/sparta` PR #1175, 2026-07-29: caught in review, not by the implementation.)
+
+## Extract a workflow's `run:` blocks and `bash -n` them -- valid YAML does not imply valid shell
+
+Parsing a workflow as YAML proves the file's structure, not that the shell inside each
+`run:` block is syntactically valid. Extract every `run:` body, stub the GitHub
+expressions (`re.sub(r'\$\{\{[^}]*\}\}', 'EXPR', run)` -- they are not bash and will
+fail the check spuriously), write each to a file, and `bash -n` it. On Windows write those
+files to a RELATIVE path in the worktree: a Python `tempfile` path hands bash a
+backslashed Windows path it silently mangles into "No such file or directory", which reads
+as a syntax failure.
+
+The same pass also catches a distinct and nastier failure: a generated block whose
+intended backslash-n ESCAPES became REAL newlines. If any resulting line then starts at
+column 1 inside a `run: |` block the YAML itself breaks -- a line beginning `>` (e.g. a
+`> [!WARNING]` GitHub callout) is read as a block-scalar indicator, not text. Confirm with
+`sed -n 'A,Bp' file | cat -A` that every line of the block is indented.
+
+**The mechanism, which bit twice while writing this entry.** A doubled backslash inside a
+shell heredoc that feeds Python collapses to a SINGLE backslash before Python parses it,
+so `\\n` arrives as `\n` and Python turns it into a real newline. The tell is a
+`SyntaxWarning: invalid escape sequence` on a sibling sequence: `\\$` survives as `\$`
+precisely because it is not a valid Python escape, while `\\n` silently does not. To emit a
+literal backslash-n through that path, build it from `chr(92)` (or quadruple the backslash),
+or reword to avoid the literal entirely -- do not trust a doubled backslash to survive.
+
+(`Lacaedemon/sparta` PR #1175, 2026-07-29: a warning-callout `printf` broke the workflow
+this way; the YAML parse caught the column-1 case and the extraction pass confirmed the
+repair.)
+
+## The no-issue-numbers-in-comments rule does not cover generated issue/PR body text
+
+CLAUDE.md's "Comments: no issue-number references" rule is scoped to code comments -- its
+own rationale is that "a reader shouldn't need to open a tracker to understand the code"
+-- and it explicitly allows issue numbers in commit messages, PR descriptions, and
+`TODO`/`FIXME` markers. A workflow step that BUILDS a tracking-issue body is producing
+tracker-facing content, not a code comment, so a cross-reference there is appropriate and
+has direct precedent: `godot-ci.yml`'s own failure-issue `printf` cites the issue that
+motivated its check. A reviewer flagging such a line is worth rebutting rather than
+complying with; this rebuttal was accepted on re-review after the reviewer independently
+confirmed the precedent.
+
+The rest of the rule still bites, and this file already records it recurring. When a review
+flags it, **grep the whole diff** (`grep -n '#[0-9]\{3,4\}'` over every changed file)
+rather than patching only the flagged lines -- that is how the code-comment instances and
+the legitimate issue-body one get correctly separated in a single round instead of two.
+
+(`Lacaedemon/sparta` PR #1175, 2026-07-29.)
+
+## `tools/check.sh file_length` is scoped to `scripts/*.gd` -- new `.sh`/`.yml` files are not capped
+
+`check_file_length`'s `SPARTA_CHECK_MAX_NEW_FILE_LINES` budget (default 100) applies only
+to files ADDED under `scripts/` with a `.gd` extension -- deliberately not `test/`, and not
+shell or workflow files. A CI/tooling PR adding a 115-line script and a 117-line workflow
+passes it untouched, reporting "No new scripts/*.gd files in this diff". Worth knowing
+before restructuring a new tool to fit a budget that does not apply to it.
