@@ -128,8 +128,15 @@ static func accumulate(units: Array, frame: int) -> void:
 	damage_eligible.resize(n)
 	var contact_enemy: Array = []
 	contact_enemy.resize(n)
+	# Work tallies for this pass, reported once after the loop rather than per soldier: a
+	# SimOps call inside either loop would cost more than the counting is worth. The pairs
+	# actually RESOLVED need no tally at all -- that is pair_a.size().
+	var candidates_seen: int = 0
+	var dist_checks: int = 0
 	for a in range(n):
-		for b in SoldierSpatialHash.query(spos[a]):
+		var neighbours: PackedInt32Array = SoldierSpatialHash.query(spos[a])
+		candidates_seen += neighbours.size()
+		for b in neighbours:
 			if sgids[b] <= sgids[a]:
 				continue   # each pair once
 			if steams[a] == steams[b]:
@@ -140,6 +147,7 @@ static func accumulate(units: Array, frame: int) -> void:
 			# into a's ranks exactly as b's formation resists a's advance into b's.
 			var min_dist: float = sradii[a] + sradii[b] + scontain[a] + scontain[b]
 			var offset: Vector2 = spos[a] - spos[b]
+			dist_checks += 1
 			var d: float = offset.length()
 			if d >= min_dist:
 				continue   # not touching -- nothing to resolve
@@ -177,6 +185,9 @@ static func accumulate(units: Array, frame: int) -> void:
 				if damage_eligible[b] == 0:
 					damage_eligible[b] = 1
 					contact_enemy[b] = sowners[a]
+	SimOps.add(SimOps.GRID_CANDIDATE, candidates_seen)
+	SimOps.add(SimOps.CONTACT_PAIR, pair_a.size())
+	SimOps.add(SimOps.SQRT_EVAL, dist_checks)
 
 	# Trim each body's SUMMED delta to what capped_knockback_velocity would allow it in
 	# isolation, expressed as a per-body scale factor -- reusing the existing clamp rather than

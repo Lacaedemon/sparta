@@ -84,6 +84,7 @@ static func rebuild(units: Array, frame: int) -> void:
 		if not _cells.has(key):
 			_cells[key] = PackedInt32Array()
 		_cells[key].append(i)
+	SimOps.add(SimOps.GRID_INSERT, _pos.size())
 
 
 ## True when a living soldier of a team OTHER than `team` is within STRIKING distance of
@@ -94,6 +95,9 @@ static func rebuild(units: Array, frame: int) -> void:
 ## the candidate's reach here would silently drop that soldier from the engaged set the
 ## instant it's the LONGER-reach side, even though it's positioned to strike.
 static func has_enemy_within(pos: Vector2, team: int, self_radius: float, self_reach: float) -> bool:
+	# Not instrumented: this runs once per candidate soldier, so any counting here -- a SimOps
+	# call or even a local tally reported on both exits -- is paid thousands of times a tick to
+	# measure a scan the grid's own insert count already bounds. See tools/perf/README.md.
 	var c := _key(pos)
 	for dx in range(-1, 2):
 		for dy in range(-1, 2):

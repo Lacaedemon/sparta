@@ -39,3 +39,7 @@ website/media/*.jpg
 # Per-PR git worktrees used by AI sessions (see CLAUDE.md) — each is its own
 # checkout, not repo content to track from the main checkout's perspective.
 /.claude/worktrees/
+
+# Python bytecode from the tools/ helper scripts.
+__pycache__/
+*.pyc

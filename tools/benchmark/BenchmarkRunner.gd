@@ -46,6 +46,8 @@ var _measure_ticks: int = DEFAULT_MEASURE_TICKS
 var _scale: float = DEFAULT_SCALE
 var _scenario_path: String = DEFAULT_SCENARIO
 var _out_path: String = ""
+var _series_path: String = ""
+var _series_label: String = ""
 var _seed_str: String = "0"
 var _scaled_specs: Array = []
 var _soldier_count: int = 0
@@ -54,6 +56,9 @@ var _frame_count: int = 0
 var _last_time_usec: int = -1
 var _samples_usec: Array = []
 var _close_tier_samples: Array = []
+var _series_ticks: PackedInt64Array = PackedInt64Array()
+var _series_usec: PackedInt64Array = PackedInt64Array()
+var _series_ops: Dictionary = {}   # bucket name -> PackedInt64Array, one entry per sampled tick
 var _last_battle_tick: int = -1
 var _stall_count: int = 0
 var _finished: bool = false
@@ -79,6 +84,16 @@ func _ready() -> void:
 	_out_path = OS.get_environment("SPARTA_BENCHMARK_OUT")
 	if _out_path == "":
 		_out_path = OS.get_temp_dir().path_join("sparta_benchmark_result.json")
+	# Per-tick work series (see tools/perf/README.md). Deterministic counts, so unlike the
+	# timing aggregate above this one is comparable across machines -- which is the whole point
+	# of graphing it before and after an optimization. Counting is off unless asked for, so an
+	# ordinary benchmark run measures the same sim an ordinary game tick runs.
+	_series_path = OS.get_environment("SPARTA_BENCHMARK_SERIES")
+	_series_label = _env_str("SPARTA_BENCHMARK_LABEL", "run")
+	if _series_path != "":
+		SimOps.enabled = true
+		for name in SimOps.BUCKET_NAMES:
+			_series_ops[name] = PackedInt64Array()
 
 	var script: Dictionary = _load_scenario(_scenario_path)
 	_seed_str = str(script.get("seed", "0"))
@@ -111,9 +126,18 @@ func _on_physics_frame() -> void:
 	_stall_count = (_stall_count + 1) if tick == _last_battle_tick else 0
 	_last_battle_tick = tick
 
+	# Drain the work counters EVERY frame, warmup included, so each recorded row holds one
+	# tick's work rather than a running total. Returns zeros when counting is off.
+	var ops: Dictionary = SimOps.take_tick()
+
 	var now: int = Time.get_ticks_usec()
 	if _last_time_usec >= 0 and _frame_count >= _warmup_ticks:
 		_samples_usec.append(now - _last_time_usec)
+		if _series_path != "":
+			_series_ticks.append(tick)
+			_series_usec.append(now - _last_time_usec)
+			for name in SimOps.BUCKET_NAMES:
+				_series_ops[name].append(ops[name])
 		# Sample the promoted-bubble size alongside each timing sample: the close-tier
 		# soldier count is the number the tier thresholds must hold under the measured
 		# ceiling (docs/large-scale-simulation-design.md, phase 4), so the report carries
@@ -162,6 +186,7 @@ func _finish(early_stop: bool) -> void:
 		"close_tier_soldiers": close_tier,
 	}
 	_write_report(report)
+	_write_series()
 
 	print("[benchmark] done: %d/%d ticks sampled (%s), %d soldiers -- mean %.3fms p95 %.3fms max %.3fms (implied %.1f fps)"
 		% [stats["count"], _measure_ticks, "early stop" if early_stop else "complete",
@@ -187,6 +212,41 @@ func _close_tier_soldier_count() -> int:
 			if u != null and u.state != Unit.State.DEAD and u.tier == FormationTier.CLOSE:
 				total += u.soldiers
 	return total
+
+
+## Write the per-tick work series (tick, per-bucket counts, and the wall-clock cost of the same
+## tick) as parallel columns -- the input tools/perf/plot-ops-per-tick.py graphs. No-op unless
+## SPARTA_BENCHMARK_SERIES asked for one.
+func _write_series() -> void:
+	if _series_path == "":
+		return
+	SimOps.enabled = false
+	var totals := PackedInt64Array()
+	totals.resize(_series_ticks.size())
+	for name in SimOps.BUCKET_NAMES:
+		var column: PackedInt64Array = _series_ops[name]
+		for i in range(totals.size()):
+			totals[i] += column[i]
+	var series: Dictionary = {
+		"label": _series_label,
+		"scenario": _scenario_path,
+		"seed": _seed_str,
+		"scale": _scale,
+		"soldier_count": _soldier_count,
+		"warmup_ticks": _warmup_ticks,
+		"buckets": SimOps.BUCKET_NAMES,
+		"ticks": _series_ticks,
+		"ops": _series_ops,
+		"ops_total": totals,
+		"tick_usec": _series_usec,
+	}
+	var f: FileAccess = FileAccess.open(_series_path, FileAccess.WRITE)
+	if f == null:
+		push_warning("[benchmark] could not open %s for writing (err %d)" % [_series_path, FileAccess.get_open_error()])
+		return
+	f.store_string(JSON.stringify(series))
+	f.close()
+	print("[benchmark] wrote per-tick work series (%d ticks) -> %s" % [_series_ticks.size(), _series_path])
 
 
 func _write_report(report: Dictionary) -> void:

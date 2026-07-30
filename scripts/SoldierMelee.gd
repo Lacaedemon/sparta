@@ -73,9 +73,20 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 	# two are computed per strike instead.
 	var atk_formation_scale: float = attacker.formation_attack_factor()
 
+	# The nearest-target scan below is O(attackers x candidates) and dominates a melee tick, so
+	# it is counted by ARITHMETIC rather than by tallying inside it: the candidate set is fixed
+	# for the whole cadence (def_indices is built once, above) and each searching attacker walks
+	# all of it -- the inner `continue` skips a dead body only after entering its iteration, and
+	# nothing breaks out early. So the exact evaluation count is candidates x searchers, and the
+	# only per-attacker cost is one integer increment.
+	var candidates_per_attacker: int = 0
+	for di_list in def_indices:
+		candidates_per_attacker += di_list.size()
+	var searchers: int = 0
 	for ai in attackers:
 		if ai < attacker._sim_prone.size() and attacker._sim_prone[ai] > 0.0:
 			continue   # a felled attacker can't strike (no target search, no RNG — order stays stable)
+		searchers += 1
 		var apos: Vector2 = attacker._sim_soldier_pos[ai]
 		# An individually broken attacker (Unit.is_soldier_broken, driven by SoldierEncirclement)
 		# fights as an unmodified individual: it no longer earns (or suffers) its unit's own
@@ -284,6 +295,8 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 			defender._sim_soldier_stamina[target] = maxf(0.0,
 				defender._sim_soldier_stamina[target]
 					- SoldierCombat.KAPPA_D * phi * (1.0 + maxf(0.0, c)))
+
+	SimOps.add(SimOps.MELEE_CHECK, searchers * candidates_per_attacker)
 
 	# reap() no-ops immediately when a given unit had zero deaths this cadence, so it's safe
 	# (and simplest) to call it once per distinct defender in the candidate set, unconditionally

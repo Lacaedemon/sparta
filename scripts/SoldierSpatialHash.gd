@@ -52,6 +52,7 @@ static func rebuild(positions: PackedVector2Array, frame: int) -> void:
 		if not _cells.has(key):
 			_cells[key] = PackedInt32Array()
 		_cells[key].append(i)
+	SimOps.add(SimOps.GRID_INSERT, positions.size())
 
 
 ## Candidate record indices in the 3x3 cell block around `pos` — a superset of
@@ -65,6 +66,9 @@ static func query(pos: Vector2) -> PackedInt32Array:
 			var cell: Variant = _cells.get(Vector2i(c.x + dx, c.y + dy))
 			if cell != null:
 				out.append_array(cell)
+	# Deliberately NOT counted here: query() runs once per soldier, so a SimOps call in this
+	# function would add thousands of them per tick. Each caller tallies the candidate counts
+	# it receives into a local and reports the pass total once (SimOps.GRID_CANDIDATE).
 	return out
 
 

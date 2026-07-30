@@ -39,6 +39,13 @@ Every PR that changes the user experience (UI elements, HUD overlays, unit cards
 - Before trusting any new demo, actually look at a captured frame (or the state dump) and confirm it shows what the caption claims — a clip that runs without erroring is not the same as a clip that demonstrates the feature.
 - Check every new demo against the standard defect checklist in `.gemini/skills/verify-via-state-dump/SKILL.md` (or `.claude/skills/verify-via-state-dump/SKILL.md`).
 
+### Backend-only performance PRs: graph the work, then film the result
+A PR whose point is that the sim does the same thing faster (a hot-loop rewrite, a cheaper query, a removed redundant pass — the `⚡ Bolt` family) ships two artifacts in its description:
+1. **A before/after graph of computations per tick** (y = operations, x = tick) over a representative demo, from `tools/perf/ops-before-after.sh`. Commit the PNG under `demos/shots/`, embed it by raw URL at the commit SHA, and paste the per-bucket table the tool prints. Counts, not milliseconds — they're deterministic for a scenario and seed, so the two lines differ only where the code did, while a timing chart carries CI's documented ~20–30% run-to-run swing. Full protocol: `tools/perf/README.md`.
+2. **A demo video recorded after the improvement** — a real `demos/demo.<slug>.json` clip, not `"skip": true`. "Backend-only" is the claim under review: an optimization that quietly changed the battle looks exactly like one that didn't until someone watches it.
+
+If the two lines coincide exactly, say so and explain why (the path isn't one the counters cover, or the change is cheaper-per-operation rather than fewer-operations) — never present a flat graph as a demonstrated win.
+
 ## Code conventions
 
 ### Parameters are caller-configurable; only real physical constants are fixed
