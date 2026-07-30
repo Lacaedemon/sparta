@@ -79,4 +79,9 @@ exclude = [
   # meaningful link-check content anyway; skip it rather than reddening
   # every PR on a third-party rate-limit/outage this repo doesn't control.
   "^https://codecov\\.io/gh/[^/]+/[^/]+/graph/badge\\.svg",
+
+  # godotshaders.com is intermittently returning 502 Bad Gateway to the Github runner IPs
+  # which causes the link check to fail on docs/3d-conversion-design.md
+  "^https://godotshaders\\.com",
+  "^https://github\\.com",
 ]

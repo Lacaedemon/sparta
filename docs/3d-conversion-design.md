@@ -414,7 +414,7 @@ Precedents: [RecoilEngine sim/render split](https://github.com/beyond-all-reason
 [RTS float sync postmortem](https://www.gamedeveloper.com/programming/cross-platform-rts-synchronization-and-floating-point-indeterminism).
 Godot techniques: [MultiMesh optimization](https://docs.godotengine.org/en/stable/tutorials/performance/using_multimesh.html) ·
 [antzGames VAT plugin](https://github.com/antzGames/Godot_Vertex_Animation_Textures_Plugin) ·
-[VAT instancing shader](https://godotshaders.com/shader/vertex-animation-with-instancing/) ·
+[VAT instancing shader](https://web.archive.org/web/20240723173740/https://godotshaders.com/shader/vertex-animation-with-instancing/) ·
 [Skeleton3D GL ceiling](https://github.com/godotengine/godot/issues/88954) ·
 [Skeleton3D scaling](https://github.com/godotengine/godot/issues/99194) ·
 [Terrain3D](https://github.com/TokisanGames/Terrain3D) ([height queries](https://terrain3d.readthedocs.io/en/latest/docs/collision.html)) ·

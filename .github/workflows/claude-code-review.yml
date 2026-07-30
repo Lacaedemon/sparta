@@ -53,7 +53,7 @@ jobs:
       # Drop these three lines and go back to the default once gha retargets its own.
       use-ai-config: false
       plugin-marketplaces: https://github.com/Morrison-Lab/ai-config.git
-      plugins: ai-config@Morrison-Lab
+      plugins: ai-config@d-morrison
       prompt-addendum: |
         **Post line-specific findings as inline review comments** anchored to the
         relevant line(s) — use the inline-comment tool, not a prose list in the

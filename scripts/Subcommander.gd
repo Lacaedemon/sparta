@@ -179,14 +179,15 @@ static func _is_available(u: Unit, self_unit: Unit, directives: Dictionary) -> b
 static func _nearest_available(target_pos: Vector2, self_unit: Unit, group: Array,
 		directives: Dictionary, max_range: float) -> Unit:
 	var best: Unit = null
-	var best_d: float = max_range
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	var best_d_sq: float = max_range * max_range
 	for node in group:
 		var u := node as Unit
 		if not _is_available(u, self_unit, directives):
 			continue
-		var d: float = target_pos.distance_to(u.position)
-		if d < best_d:
-			best_d = d
+		var d_sq: float = target_pos.distance_squared_to(u.position)
+		if d_sq < best_d_sq:
+			best_d_sq = d_sq
 			best = u
 	return best
 
