@@ -4871,9 +4871,16 @@ func tick_engaged(delta: float) -> void:
 
 
 ## True while this regiment is in the engaged tier (its front ranks run the full
-## per-soldier pass). A function of the latch only.
+## per-soldier pass). Reads the latch OR the live FIGHTING state, matching
+## ENGAGED_LINGER's stated contract ("engaged while FIGHTING and for ENGAGED_LINGER
+## seconds after"). The latch alone can't express the "while FIGHTING" half on the
+## opening tick: _physics_process runs _think() -- which is where a unit enters
+## FIGHTING and lands its first strike -- BEFORE tick_engaged() arms the latch. Reading
+## state directly closes that one-tick hole, so a unit that is fighting right now counts
+## as engaged for the strike it is making right now, and melee casualties resolve per
+## soldier from the first blow instead of falling through to the regiment formula.
 func is_engaged() -> bool:
-	return _engaged_linger > 0.0
+	return _engaged_linger > 0.0 or state == State.FIGHTING
 
 
 ## Battle AI phase 4 (docs/battle-ai-design.md): whether the player has delegated this unit to
