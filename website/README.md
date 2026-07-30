@@ -19,6 +19,26 @@ The pages re-present content whose source of truth lives in the repo root
 (`README.md`, `PLAN.md`, `REPLAY.md`, `ASSETS.md`, `docs/`). Each page links back to
 its source — keep them in sync when the originals change.
 
+## Quarto extensions
+
+`_extensions/` holds the site's Quarto extensions, installed with `quarto add` and
+**committed as plain files** in the `_extensions/<publisher>/<name>/` layout that
+`_quarto.yml` references by `<publisher>/<name>`.
+
+Checking them in is what Quarto asks for: extensions are
+[treated as source code](https://quarto.org/docs/extensions/managing.html) so the
+project renders far into the future without depending on an external package
+manager still being reachable. They are deliberately **not** submodules -- a
+submodule would reintroduce exactly the fetch dependency that checking the files
+in exists to avoid.
+
+| extension | upstream | installed with | vendored at |
+|---|---|---|---|
+| `d-morrison/equation-anchors` | [d-morrison/equation-anchors](https://github.com/d-morrison/equation-anchors) `9d0ff89` | `quarto add d-morrison/equation-anchors` | `_extensions/d-morrison/equation-anchors/` |
+
+To refresh one, re-run its `quarto add` command and update the pinned commit above
+so the recorded version stays accurate.
+
 ## Demo clips
 
 The `<video>` embeds point at `media/showcase.mp4` and `media/clash.mp4` (with
