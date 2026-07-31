@@ -983,7 +983,7 @@ func test_flag_pick_distance_hits_the_standard_and_misses_the_body_and_empty_spa
 	# The standard's local centre, from the same geometry UnitSprites draws.
 	var center: Vector2 = UnitSprites.standard_bounds(u.render_block_extent()).get_center()
 	var flag_world: Vector2 = u.global_position + center
-	assert_almost_eq(sm._flag_pick_distance_squared(u, flag_world), 0.0, 0.001,
+	assert_almost_eq(sm._flag_pick_distance_squared(u, flag_world), 0.0, 0.000001,
 			"a cursor on the standard's centre is zero distance from it")
 	assert_eq(sm._flag_pick_distance_squared(u, u.global_position), -1.0,
 			"the body centre is well below the raised standard, so not a flag hit")
