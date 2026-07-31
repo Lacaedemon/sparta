@@ -1155,20 +1155,22 @@ func _build_order_tree_row(row: Dictionary, leaf, u = null) -> Control:
 		lbl.add_theme_color_override("font_color", _ORDER_TREE_ACTIVE_COLOR)
 	hbox.add_child(lbl)
 
-	var cancel_btn := Button.new()
-	cancel_btn.flat = true
-	cancel_btn.text = "✕"
-	cancel_btn.tooltip_text = "Cancel order"
-	cancel_btn.add_theme_font_size_override("font_size", 11)
-	cancel_btn.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
-	var order_idx: int = row.get("order_index", 0)
-	cancel_btn.pressed.connect(_on_cancel_order_pressed.bind(u, order, order_idx))
-	hbox.add_child(cancel_btn)
+	var depth: int = int(row.get("depth", 0))
+	if depth == 0:
+		var cancel_btn := Button.new()
+		cancel_btn.flat = true
+		cancel_btn.text = "✕"
+		cancel_btn.tooltip_text = "Cancel order"
+		cancel_btn.add_theme_font_size_override("font_size", 11)
+		cancel_btn.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
+		var order_idx: int = int(row.get("order_index", 0))
+		cancel_btn.pressed.connect(_on_cancel_order_pressed.bind(u, order_idx))
+		hbox.add_child(cancel_btn)
 
 	return hbox
 
 
-func _on_cancel_order_pressed(u, order, order_index: int) -> void:
+func _on_cancel_order_pressed(u, order_index: int) -> void:
 	if _sel_mgr != null and _sel_mgr.has_selection():
 		_sel_mgr.cancel_selected_order_at(order_index)
 	elif u != null and is_instance_valid(u):

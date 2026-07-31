@@ -1912,8 +1912,15 @@ func set_selected_walk_advance(value: bool) -> void:
 func cancel_selected_order_at(index: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
-	for u in get_selected_units():
-		u.cancel_order_at(index)
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	if _battle != null and _battle.has_method("enqueue_cancel_order"):
+		_battle.enqueue_cancel_order(uids, index)
+	else:
+		for u in get_selected_units():
+			if u != null and is_instance_valid(u):
+				u.cancel_order_at(index)
 
 
 

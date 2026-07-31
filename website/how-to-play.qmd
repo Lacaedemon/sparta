@@ -1161,11 +1161,7 @@ and accelerate to full speed on contact.
    the horse's bulk behind every charge).
    Every line carries a single stat, so the panel reads as one narrow top-to-bottom
    column.
-   The panel's **Order** line shows the
-   unit's current order as a small tree when it's a composite maneuver (a move-to-the-rear's
-   turn-then-march, say): each step is indented under the maneuver it belongs to, the step
-   actually running is highlighted, and a triangle toggle expands or collapses the steps. A
-   simple order with no sub-steps still shows as the single line it always has.
+   The panel's **Order** section shows the unit's active order and queued follow-up legs as a tree, with a cancel button (✕) on each top-level order to delete queued orders or interrupt the active maneuver.
 2. **Order** --- right-click to send them. Move them onto an enemy's flank, or
    right-click the enemy directly to attack. There is a brief **reaction delay**
    (~0.5 s, faster for cavalry) before units execute --- orders aren't instant.

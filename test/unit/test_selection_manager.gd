@@ -2414,3 +2414,42 @@ func test_can_form_up_treats_a_routing_enemy_endpoint_as_an_attack() -> void:
 	router.add_to_group("routers")
 	assert_false(sm._can_form_up(Vector2.ZERO, router.global_position),
 			"a drag ending on a routing enemy is an attack, not a form-up")
+
+
+class MockBattle:
+	var cancel_calls: Array = []
+	func enqueue_cancel_order(uids: Array, index: int) -> void:
+		cancel_calls.append({"uids": uids, "index": index})
+
+
+func test_cancel_selected_order_at_enqueues_command_or_cancels_directly() -> void:
+	var sm := _sm()
+	sm._battle = null
+	var u := _unit()
+	u.set_current_order(Order.new_move(Vector2(100, 100)))
+	u.append_order(Order.new_move(Vector2(200, 200)))
+	sm._selected = [u]
+
+	# 1. With _battle == null, cancels directly on selected units
+	sm.cancel_selected_order_at(1)
+	assert_eq(u.orders.size(), 1, "cancels queued order at index 1 directly when no battle")
+
+	# 2. With playback mode, returns early (noop)
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm.cancel_selected_order_at(0)
+	assert_eq(u.orders.size(), 1, "playback mode returns early without cancelling")
+	Replay.mode = prev_mode
+
+	# 3. With no selection, returns early (noop)
+	sm._selected = []
+	sm.cancel_selected_order_at(0)
+
+	# 4. With _battle set, enqueues order cancellation
+	var battle := MockBattle.new()
+	sm._battle = battle
+	sm._selected = [u]
+	sm.cancel_selected_order_at(0)
+	assert_eq(battle.cancel_calls.size(), 1, "enqueues cancel order command when battle is present")
+	assert_eq(battle.cancel_calls[0]["index"], 0, "order cancel index passed to battle")
+

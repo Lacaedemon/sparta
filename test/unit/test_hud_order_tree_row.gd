@@ -7,6 +7,7 @@ extends GutTest
 ## the pure-Order tests next door.
 
 const HUDScript = preload("res://scripts/HUD.gd")
+const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
 
 
 func _hud() -> HUDScript:
@@ -97,7 +98,7 @@ func test_composite_order_renders_indented_children_with_a_toggle() -> void:
 			"the composite root isn't the active leaf itself")
 
 	var turn_row: HBoxContainer = rows[1]
-	assert_eq(turn_row.get_child_count(), 4, "depth 1 leaf: indent + toggle-gap + label + cancel button")
+	assert_eq(turn_row.get_child_count(), 3, "depth 1 leaf: indent + toggle-gap + label, no cancel button")
 	var indent: Control = turn_row.get_child(0)
 	assert_eq(indent.custom_minimum_size, Vector2(hud._ORDER_TREE_INDENT, 0))
 	var turn_lbl: Label = turn_row.get_child(2)
@@ -180,7 +181,7 @@ func test_cancel_button_cancels_queued_order() -> void:
 	assert_eq(hud._order_tree_box.get_children().size(), 2)
 
 	# Click cancel on the second order (queued leg)
-	hud._on_cancel_order_pressed(u, o2, 1)
+	hud._on_cancel_order_pressed(u, 1)
 	assert_eq(u.orders.size(), 1)
 	assert_eq(u.current_order, o1)
 	assert_eq(hud._order_tree_box.get_children().size(), 1)
@@ -196,7 +197,30 @@ func test_cancel_button_cancels_current_order() -> void:
 	hud._rebuild_order_tree(u)
 
 	# Click cancel on current order (index 0)
-	hud._on_cancel_order_pressed(u, o1, 0)
+	hud._on_cancel_order_pressed(u, 0)
 	assert_eq(u.orders.size(), 1)
 	assert_eq(u.current_order, o2, "promotes next queued order to current")
+
+
+func test_interrupt_current_order_clears_marching_state() -> void:
+	var u := _make_unit()
+	u.has_move_target = true
+	u.move_target = Vector2(500, 500)
+	u.set_current_order(Order.new_move(Vector2(500, 500)))
+	u.cancel_order_at(0)
+	assert_false(u.has_move_target, "interrupting current order clears move target")
+	assert_eq(u.move_target, Vector2.ZERO)
+
+
+func test_cancel_button_with_selection_manager_routes_through_selection_manager() -> void:
+	var hud := _hud()
+	var u := _make_unit()
+	u.set_current_order(Order.new_move(Vector2(100, 100)))
+	u.append_order(Order.new_move(Vector2(200, 200)))
+	var sm: Node2D = SelectionManagerScript.new()
+	add_child_autofree(sm)
+	sm._selected = [u]
+	hud._sel_mgr = sm
+	hud._on_cancel_order_pressed(u, 1)
+	assert_eq(u.orders.size(), 1, "cancels via SelectionManager when sel_mgr is set")
 
