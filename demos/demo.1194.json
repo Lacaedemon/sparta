@@ -1,0 +1,15 @@
+{
+  "scenario": "res://benchmarks/scenarios/large-battle.json",
+  "reason": "This PR (#1194) optimizes UI distance calculations (distance_to -> distance_squared_to) without logic change. No visual or simulation state change is expected. This clip records the base large-battle scenario to confirm it plays out identically to the un-optimized baseline.",
+  "ticks": 200,
+  "views": [
+    {
+      "time": 0.0,
+      "camera": {
+        "x": 0.0,
+        "y": 0.0,
+        "zoom": 1.0
+      }
+    }
+  ]
+}
