@@ -192,7 +192,7 @@ shield, deflection). Active defence only works against blows the defender can se
 and meet:
 
 $$\mathcal{A} = s_A\,q(h_A)\,g(\sigma_A) + \mu\,c,$$
-$$\mathcal{D} = \phi_D\,\big(s_D + \lambda\,b_D\big)\,q(h_D)\,g(\sigma_D),
+$$\mathcal{D} = \phi_D\,\big(s_D + \lambda\,b_D\,s_D\big)\,q(h_D)\,g(\sigma_D),
 \qquad
 \phi_D = \big(\hat{n}_D \cdot \hat{u}_{D\to A}\big)_+ .$$
 
