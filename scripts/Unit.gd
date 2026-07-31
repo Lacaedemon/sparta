@@ -1382,6 +1382,33 @@ func clear_orders() -> void:
 	current_order = null
 
 
+## Cancel an order from the queue by index. If cancelling index 0 (current_order),
+## interrupts the in-flight maneuver and promotes the next queued order (if any) or goes idle.
+## If cancelling a queued order (index > 0), removes it from the queue without touching current_order.
+func cancel_order_at(index: int) -> void:
+	if index < 0 or index >= orders.size():
+		return
+	if index == 0:
+		_interrupt_current_order()
+		retire_current_order()
+	else:
+		orders.remove_at(index)
+
+
+## Cancel a specific Order instance from the queue. Resolves child orders back to their top-level
+## root entry before cancelling.
+func cancel_order(order: Order) -> void:
+	if order == null:
+		return
+	var root: Order = order
+	while root.parent != null:
+		root = root.parent
+	var idx: int = orders.find(root)
+	if idx >= 0:
+		cancel_order_at(idx)
+
+
+
 ## Interrupt whatever maneuver the outgoing current order has in flight, before the queue is
 ## replaced or cleared. A partial in-place turn is settled -- the rotation folds into
 ## _formation_angle so every man keeps his own slot and the bodies don't surge -- and a wheel

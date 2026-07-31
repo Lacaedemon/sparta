@@ -1908,6 +1908,15 @@ func set_selected_walk_advance(value: bool) -> void:
 	Sfx.play(&"order")
 
 
+## Cancel queued order at index on every currently selected friendly unit.
+func cancel_selected_order_at(index: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	for u in get_selected_units():
+		u.cancel_order_at(index)
+
+
+
 ## Set reform_before_move on every currently selected friendly unit (called from the info
 ## panel checkbox and the control bar's Reform quick-toggle). See set_selected_walk_advance.
 func set_selected_reform_before_move(value: bool) -> void:
