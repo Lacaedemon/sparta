@@ -1564,7 +1564,7 @@ func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> U
 	# click on the enemy team, since routing units are valid combat targets but a plain
 	# "units"-only scan can't resolve a click on one at all.
 	var best = null
-	var best_d: float = UnitRef.RADIUS + BODY_PICK_PAD
+	var best_d_sq: float = (UnitRef.RADIUS + BODY_PICK_PAD) * (UnitRef.RADIUS + BODY_PICK_PAD)
 	# Fallback: the unit whose raised standard (flag + pole) is under the cursor, so the
 	# flag is clickable just like the body. A body hit always wins; the standard only
 	# resolves the click when no block is under the cursor. Nearest flag breaks ties.
@@ -1585,9 +1585,10 @@ func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> U
 					continue
 			elif unit.team != team:
 				continue
-			var d: float = unit.global_position.distance_to(world_pos)
-			if d < best_d:
-				best_d = d
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			var d_sq: float = unit.global_position.distance_squared_to(world_pos)
+			if d_sq < best_d_sq:
+				best_d_sq = d_sq
 				best = unit
 			var fd: float = _flag_pick_distance(unit, world_pos)
 			if fd >= 0.0 and fd < flag_best_d:
@@ -1607,7 +1608,8 @@ func _flag_pick_distance(u, world_pos: Vector2) -> float:
 			u.block_centre_offset()).grow(FLAG_HIT_PAD)
 	if box.has_point(local):
 		# grow() preserves the centre, so this tiebreak distance is independent of FLAG_HIT_PAD.
-		return local.distance_to(box.get_center())
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		return local.distance_squared_to(box.get_center())
 	return -1.0
 
 

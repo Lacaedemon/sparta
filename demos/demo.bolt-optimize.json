@@ -1,0 +1,5 @@
+{
+  "scenario": "res://demos/empty.json",
+  "reason": "This PR optimizes internal math (`distance_to` -> `distance_squared_to`) in `SelectionManager.gd` which strictly processes player inputs (mouse clicks). No new scenario is required since player input is not part of the standard simulation replay format, and visual/behavioral changes are guaranteed zero.",
+  "skip": true
+}
