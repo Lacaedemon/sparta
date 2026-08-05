@@ -13,7 +13,7 @@ const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 
 # Land contest (opposed roll): p_land = clip(L(beta*(A - D)), p_min, p_max), where
 #   A = s_A * cond_A + mu * c                  (attacker offence + charge-to-hit)
-#   D = phi_D * (s_D + lambda * b_D) * cond_D   (defender active defence, facing-gated)
+#   D = phi_D * (s_D + lambda * b_D * s_D) * cond_D  (defender active defence, facing-gated)
 # and L is the logistic. See docs/combat-model.md "The land contest".
 const HIT_SHARPNESS: float = 3.0          # beta: how sharply the skill gap swings the odds
 const CHARGE_HIT_WEIGHT: float = 0.5      # mu: closing speed's weight in the attack

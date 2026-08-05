@@ -87,7 +87,7 @@ shield. Crucially, you can only actively defend what you can **see**:
 
 $$p_{\mathrm{land}} = L\big(\beta\,(\mathcal{A} - \mathcal{D})\big),
 \qquad
-\mathcal{D} = \phi\,(s_D + \lambda\,b_D)\cdots$$
+\mathcal{D} = \phi\,(s_D + \lambda\,b_D\,s_D)\cdots$$
 
 Here $\mathcal{A}$ and $\mathcal{D}$ are the attacker's and defender's scores, $L$
 turns the gap between them into a hit chance (an even gap is even odds), and $\beta$
