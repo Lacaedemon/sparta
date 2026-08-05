@@ -923,9 +923,10 @@ the partial success that leaves an empty, orphaned directory,
 and the fake worktree whose directory has no `.git` of its own.
 
 **Recovery:** first confirm the worktree is genuinely disposable.
-`git status --short` comes back empty,
-`git merge-base --is-ancestor <head> origin/main` returns true,
-and `git rev-list --count origin/main..<head>` is 0.
+`git status --short` comes back empty
+and `git merge-base --is-ancestor <head> origin/main` returns true.
+An empty `git rev-list origin/main..<head>` is the same fact in another
+form, so run one or the other rather than both.
 Then delete the directory with the platform's own tool
 and run `git worktree prune` to clear the admin stub.
 
