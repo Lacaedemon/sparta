@@ -908,43 +908,63 @@ a CLAUDE.md rule; it isn't in sparta's `CLAUDE.md`, and the codebase's own
 convention (e.g. `Settings.gd`) wraps explanatory comments across 2-3 lines.
 Rebutting with that distinction is fine — verify the citation, don't just comply.
 
-## `git worktree remove` refuses outright on a worktree containing a submodule
+## `git worktree remove` needs `--force` on a worktree containing a submodule
 
 sparta vendors `.ai-config` as a git submodule,
 so any `.claude/worktrees/<name>` worktree with it checked out
-cannot be removed the normal way.
-The exact error is
+refuses the plain removal:
 `fatal: working trees containing submodules cannot be moved or removed`.
 
-This is a FLAT REFUSAL, not a dirty-tree complaint.
-`--force` does not help, and the worktree can be perfectly clean.
+This is a FLAT REFUSAL, not a dirty-tree complaint --
+the worktree can be perfectly clean and still hit it.
 It is distinct from the two failure modes already documented above:
 the partial success that leaves an empty, orphaned directory,
 and the fake worktree whose directory has no `.git` of its own.
 
-**Recovery:** first confirm the worktree is genuinely disposable.
-`git status --short` comes back empty
-and `git merge-base --is-ancestor <head> origin/main` returns true.
+**`--force` is the whole fix, and it is one command.**
+
+```bash
+git worktree remove --force <path>
+```
+
+git's own `git-worktree` docs say so under `remove`:
+"Unclean worktrees or ones with submodules can be removed with `--force`."
+Only `git worktree move` refuses a submodule worktree unconditionally;
+`remove` accepts `--force` exactly as it does for an unclean tree.
+
+Measured on git 2.37.2.windows.2, against a throwaway worktree with
+`.ai-config` checked out: the plain form exits 128 with the error above,
+and `--force` exits 0, deletes the directory,
+and drops the entry from `git worktree list` with no prune needed.
+
+Verify disposability before forcing, since `--force` is the point of no
+return: `git status --short` comes back empty and
+`git merge-base --is-ancestor <head> origin/main` returns true.
 An empty `git rev-list origin/main..<head>` is the same fact in another
 form, so run one or the other rather than both.
-Then delete the directory with the platform's own tool
-and run `git worktree prune` to clear the admin stub.
 
-On Windows that means PowerShell `Remove-Item -Recurse -Force`.
-A Git Bash `rm -rf` is blocked by Claude Code's own permission classifier,
-so reach for PowerShell rather than fighting the denial.
-
-- **Do:** check whether the worktree has the submodule checked out
-  as soon as a routine sweep reports this error.
-- **Do:** verify disposability first, then remove by hand and prune.
+- **Do:** reach for `--force` as soon as a routine sweep reports this error.
+- **Do:** verify disposability first -- `--force` discards without asking.
 - **Don't:** read the refusal as "the worktree is busy" -- nothing holds it.
-- **Don't:** retry with `--force`; git declines this case unconditionally.
+- **Don't:** conclude `--force` is refused without running it.
+  The plain refusal's wording says nothing about what `--force` does,
+  and a hand deletion plus `git worktree prune` is a longer road to the
+  same place.
 
 (2026-08-05, a local working-directory cleanup sweep:
 7 of 8 worktrees were removed normally by `git worktree remove`;
 `gii-mwc-4b00e5` refused with this error alone,
 was verified clean with 0 unique commits and an ancestor of `origin/main`,
-and was cleared via PowerShell `Remove-Item` plus `git worktree prune`.)
+and was cleared via PowerShell `Remove-Item` plus `git worktree prune`.
+That hand deletion was unnecessary: `--force` was never attempted,
+and this entry originally asserted from that omission that it "does not
+help".
+Review challenged the claim against git's own docs, and the measurement
+above -- run afterwards, on a purpose-built submodule worktree -- confirmed
+the reviewer was right.
+The reusable lesson is the narrower one:
+a refusal message describes the command you ran,
+not the flag you did not try.)
 
 ## A stub-review retry's recovered verdict posts under `github-actions`, not `claude`
 
