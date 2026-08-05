@@ -1,0 +1,19 @@
+{
+  "_comment": "Isolates the skill-scaled shield mechanic. Two DEFENDERS (team 0) are identical Infantry regiments -- same type, same count, same SHIELD_SCUTUM, same formation -- differing ONLY in the per-unit `training` override: the west pair's defender is a veteran (0.9), the east pair's is a raw levy (0.1). Each is attacked by an identical stock Infantry regiment (team 1, default training). Contrasting two different unit TYPES instead would have varied attack, defence, weapon and armour simultaneously, which is why the scenario sets `training` directly. Under the skill-scaled formula the veteran's shield still buys real defence while the levy's buys almost none, so the east defender should erode faster than the west one from the same attack. No scripted steps: team 0 is stationary by default and team 1's own AI marches in, so nothing depends on click coordinates. The 220wu vertical gap keeps both pairs out of contact at tick 0 (well past attack_range + 2*RADIUS), and the 500wu horizontal gap keeps the two pairs from crowding each other's flanks.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 400, "y": 300, "count": 40, "training": 0.9},
+    {"team": 0, "type": "Infantry", "x": 900, "y": 300, "count": 40, "training": 0.1},
+    {"team": 1, "type": "Infantry", "x": 400, "y": 520, "count": 40},
+    {"team": 1, "type": "Infantry", "x": 900, "y": 520, "count": 40}
+  ],
+  "camera": [
+    {"tick": 0, "x": 650, "y": 400, "zoom": 1.6}
+  ],
+  "steps": [],
+  "state": [8, 200, 400, 600, 800],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [400, 300]},
+    {"tick": 8, "uid": 1, "field": "position", "value": [900, 300]}
+  ]
+}

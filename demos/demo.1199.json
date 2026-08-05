@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/shield-scales-with-skill.json",
+  "caption": "A shield is now something the defender *uses*, not armour that protects regardless. Both defending regiments (top) are identical Infantry with the same scutum, same strength and same formation, differing only in training: the west one is a veteran, the east one a raw levy. Each is attacked by an identical stock regiment. The veteran's shield still buys real defence and its line barely erodes, while the levy's contributes almost nothing and its line is ground down -- the west attacker ends up worse off than the defender it charged, the east attacker nearly untouched. Under the previous additive formula both defenders got the same flat shield bonus regardless of training.",
+  "fixed_fps": 30,
+  "max_frames": 400,
+  "fps": 15,
+  "width": 720
+}
