@@ -9,9 +9,10 @@
 # Claude's own review (`.github/workflows/claude-code-review.yml`) and Copilot
 # code review are unaffected and still run on every PR.
 #
-# To re-enable once quota is back: set `disable: false` and flip the three
-# `pull_request_opened` toggles back to their defaults (help: false,
-# summary: true, code_review: true).
+# To re-enable once quota is back: set `disable: false` and delete the
+# `pull_request_opened` block, so whatever the product default is applies
+# rather than a pinned copy of it that can drift (today: help: false,
+# summary: false, code_review: true).
 have_fun: false
 
 code_review:
