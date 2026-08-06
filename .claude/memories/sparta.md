@@ -4018,3 +4018,50 @@ gate has to be the SEED MEAN with a looser per-seed backstop, not a per-seed cei
   casualty-driven array compaction is what arms the defect.
 - **Don't:** quietly widen a threshold to make a red guard green. Widening is only honest
   once you know the metric moves; otherwise it converts a wrong answer into no answer.
+
+## `.gemini/` holds TWO configs for two different consumers -- and reviews are currently paused there
+
+`.gemini/config.json` is the **Antigravity/Gemini CLI workspace** config (its `skills`/`memories`
+path lists, written by ai-config's `bootstrap.sh`). `.gemini/config.yaml` is the **Gemini Code
+Assist GitHub App** config -- a different schema read by a different consumer. Editing one does
+nothing to the other, and the names are close enough to conflate at a glance.
+
+As of PR #1214 (2026-08-06) the GitHub App's automated review is **off**: `code_review.disable:
+true`, quota exhausted. A quota-exhausted reviewer posts nothing or a "could not review" stub,
+which this file already documents as easy to misread as an approval (the Copilot quota case, the
+review self-skip case) -- so the pause is deliberate and documented rather than a silent gap.
+Claude's own `claude-code-review.yml` and Copilot review are untouched and still gate every PR.
+
+Worth knowing before hunting for a lever that isn't there: sparta has **no** Actions-based
+Antigravity reviewer (nothing under `.github/workflows/` references one) and no Gemini/Antigravity
+bot has ever posted a review comment or check run on a recent PR. So `.gemini/config.yaml` is the
+only in-repo switch; a reviewer driven from the Antigravity dashboard or IDE is toggled there, not
+here. `GEMINI.md` carries the same note, since that is the file a Gemini/Antigravity session
+actually reads.
+
+## A "how to restore this" note must not pin a copy of an upstream product's defaults
+
+When disabling a third-party feature by overriding its config, the natural way to document the
+reversal is to write down what the defaults were, so a future reader can put them back. That is
+exactly the wrong shape: the pinned copy is a second source of truth for a value you do not own,
+it cannot be verified from inside the repo, and it rots silently when upstream changes it.
+
+The failure is not hypothetical -- it happened in the same commit that introduced the note. The
+reversal comment claimed `pull_request_opened` defaults of `help: false, summary: true,
+code_review: true`; the real default for `summary` is `false`. Anyone following it to "restore the
+defaults" would have left PR-open summaries on. Review caught it (`claude[bot]`, PR #1214), and the
+web docs confirmed it independently.
+
+Correcting the value would have left the mechanism intact. The fix that removes the failure mode is
+to say **delete the overriding block** on re-enable, so whatever the product default is at that
+time applies, with today's values quoted as context rather than as instructions.
+
+- **Do:** phrase a reversal as "delete the override" whenever the pre-override behaviour is an
+  upstream default rather than something this repo chose.
+- **Do:** verify a documented third-party default against that product's own docs before writing
+  it down at all -- and prefer not writing it down.
+- **Don't:** treat a reviewer's `suggestion` block as the whole fix. Here the suggestion corrected
+  the wrong value, which was right as far as it went; the better change was structural, and taking
+  the suggestion verbatim would have re-armed the same trap for the next drift.
+- **Don't:** forget the PR description carries the same claim. Fixing the files and leaving the
+  description asserting the old values just moves the stale copy somewhere a reader still finds it.
