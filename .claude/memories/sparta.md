@@ -2325,8 +2325,14 @@ documents that local run as matching Codecov's own figures, so it is a legitimat
 but "patch coverage is green" is a claim about the wrong instrument if CI never computed it.
 
 The decisive query is the job's per-step conclusions, not the job's own red status.
-Confirm the absence itself against the paginated check-runs endpoint and the commit's statuses
-rather than `gh pr checks`, which does not list every check run on a head:
+Confirm the absence itself against the paginated check-runs endpoint and the commit's statuses.
+Prefer those over `gh pr checks` for a counting question, because its row count and the
+endpoint's run count are not the same number: measured on PR #1210's head, `gh pr checks`
+printed 12 rows where the endpoint returned 13 runs, the extra being a second run named
+`claude / claude`.
+Every distinct check name did appear in both, so on this repo the gap is a collapsed duplicate
+name rather than a hidden check -- enough to make a count misleading, not enough to hide a
+check outright:
 
 ```bash
 gh api repos/Lacaedemon/sparta/actions/jobs/<job-id> --jq '.steps[] | "\(.name) => \(.conclusion)"'
@@ -2360,7 +2366,12 @@ never runs.
 #1207) turned `Validate & test` and `Coverage` red as expected.
 The unexpected part was `codecov/patch` never posting: the paginated check-runs list holds 16
 entries and none is a Codecov one, and `commits/<sha>/status` returns
-`{"state":"pending","contexts":[]}`.
+`{"state":"pending","statuses":[]}`.
+That response carries no `contexts` field at all -- its array is `statuses`, exactly as the
+recipe above queries.
+An earlier revision of this entry named it `contexts`, which was a `jq` projection written by
+the session that measured it (`--jq '{state, contexts:[.statuses[]|...]}'`) mistaken for the
+API's own shape; caught in review.
 Coverage job `92475169686` logged `Wrote lcov coverage for 77 files to res://coverage/lcov.info`
 and then reported step 4 `failure`, step 5 `skipped`, step 6 `skipped`.
 The claim "patch coverage is green" was made on this PR from a local run before the gap was
