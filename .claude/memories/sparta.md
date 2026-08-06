@@ -908,6 +908,64 @@ a CLAUDE.md rule; it isn't in sparta's `CLAUDE.md`, and the codebase's own
 convention (e.g. `Settings.gd`) wraps explanatory comments across 2-3 lines.
 Rebutting with that distinction is fine — verify the citation, don't just comply.
 
+## `git worktree remove` needs `--force` on a worktree containing a submodule
+
+sparta vendors `.ai-config` as a git submodule,
+so any `.claude/worktrees/<name>` worktree with it checked out
+refuses the plain removal:
+`fatal: working trees containing submodules cannot be moved or removed`.
+
+This is a FLAT REFUSAL, not a dirty-tree complaint --
+the worktree can be perfectly clean and still hit it.
+It is distinct from the two failure modes already documented above:
+the partial success that leaves an empty, orphaned directory,
+and the fake worktree whose directory has no `.git` of its own.
+
+**`--force` is the whole fix, and it is one command.**
+
+```bash
+git worktree remove --force <path>
+```
+
+git's own `git-worktree` docs say so under `remove`:
+"Unclean worktrees or ones with submodules can be removed with `--force`."
+Only `git worktree move` refuses a submodule worktree unconditionally;
+`remove` accepts `--force` exactly as it does for an unclean tree.
+
+Measured on git 2.37.2.windows.2, against a throwaway worktree with
+`.ai-config` checked out: the plain form exits 128 with the error above,
+and `--force` exits 0, deletes the directory,
+and drops the entry from `git worktree list` with no prune needed.
+
+Verify disposability before forcing, since `--force` is the point of no
+return: `git status --short` comes back empty and
+`git merge-base --is-ancestor <head> origin/main` returns true.
+An empty `git rev-list origin/main..<head>` is the same fact in another
+form, so run one or the other rather than both.
+
+- **Do:** reach for `--force` as soon as a routine sweep reports this error.
+- **Do:** verify disposability first -- `--force` discards without asking.
+- **Don't:** read the refusal as "the worktree is busy" -- nothing holds it.
+- **Don't:** conclude `--force` is refused without running it.
+  The plain refusal's wording says nothing about what `--force` does,
+  and a hand deletion plus `git worktree prune` is a longer road to the
+  same place.
+
+(2026-08-05, a local working-directory cleanup sweep:
+7 of 8 worktrees were removed normally by `git worktree remove`;
+`gii-mwc-4b00e5` refused with this error alone,
+was verified clean with 0 unique commits and an ancestor of `origin/main`,
+and was cleared via PowerShell `Remove-Item` plus `git worktree prune`.
+That hand deletion was unnecessary: `--force` was never attempted,
+and this entry originally asserted from that omission that it "does not
+help".
+Review challenged the claim against git's own docs, and the measurement
+above -- run afterwards, on a purpose-built submodule worktree -- confirmed
+the reviewer was right.
+The reusable lesson is the narrower one:
+a refusal message describes the command you ran,
+not the flag you did not try.)
+
 ## A stub-review retry's recovered verdict posts under `github-actions`, not `claude`
 
 When auditing a PR's true review status, don't filter comments by
@@ -3928,3 +3986,35 @@ review reading the rendered semantics.
 (`Lacaedemon/sparta` PR #1188, 2026-07-30: the inserted bullet swallowed the closing
 paragraph of the whole "no top-down X" list, which applies to the list rather than to any
 one bullet.)
+
+## Calibrate a threshold guard against a deliberately-regressed build, not just healthy seeds
+
+A live-battle guard picks a threshold from measurements, and the measurements almost always
+come from the healthy build alone -- "main sits at ~20 degrees, so gate at 28". That says
+nothing about whether the metric MOVES when the fix is removed, and a metric that does not
+move is a pass path indistinguishable from a failure path.
+
+`test_residual_melee_swirl_battle.gd` measured each regiment's facing rotation at tick 700
+of a matched 100v100 Infantry grind, gated at 28 degrees on one seed. Re-measuring across
+six seeds showed clean main spanning 17.8-58.0 degrees (it exceeded its own gate at two of
+them, and was outright red on Linux while green on Windows). The decisive measurement,
+though, was a deliberately regressed build -- the canonical-slot mapping disabled in both
+`SoldierBodies.step()` and `couple()`, behind a temporary `OS.has_environment` hook -- which
+came out WORSE at three seeds and BETTER at three. The gated quantity carried no signal
+about the fix at all, on any seed.
+
+The same scenario measured in its OPENING window (300 ticks) separates cleanly: healthy
+holds a 2.84-3.44 degree band across eight seeds while the regressed build ranges 1.94 to
+14.45 (means 2.98 vs 6.52). Two regressed seeds still land under the healthy band, so the
+gate has to be the SEED MEAN with a looser per-seed backstop, not a per-seed ceiling.
+
+- **Do:** before trusting a threshold, break the fix behind a temporary env hook and re-run
+  the same measurement. Ratio of regressed to healthy IS the guard's discriminating power;
+  if it is near 1, the threshold is decoration whatever its value.
+- **Do:** prefer the window where the two builds separate. Long chaotic battles diverge
+  between platforms (this file already documents that for demo transcripts) and fan out
+  seed to seed, so a late absolute bound is unportable on top of being uninformative.
+- **Do:** assert the window is not vacuous -- here, that casualties actually occurred, since
+  casualty-driven array compaction is what arms the defect.
+- **Don't:** quietly widen a threshold to make a red guard green. Widening is only honest
+  once you know the metric moves; otherwise it converts a wrong answer into no answer.
