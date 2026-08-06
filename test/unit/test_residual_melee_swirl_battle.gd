@@ -27,13 +27,15 @@ extends GutTest
 ## is stale for the same reason -- it cites ~12 and ~10 degrees for seeds 99999 and 424242,
 ## where `main` now measures 35.89 and 15.45.
 ##
-## The rotation is still MEASURED and REPORTED for every seed, so the numbers this guard
-## exists to watch stay visible in the CI log; only the build-failing assertion is gone.
-## Redesigning it into a bound that means something is tracked in issue 1207, and the
-## per-seed CI figures printed below are the data that work needs.
+## The rotation is still MEASURED and REPORTED, so the number this guard exists to watch
+## stays visible in the CI log; only the build-failing assertion is gone. The printed figure
+## is the data a replacement bound has to be built from.
 ##
-## Note the sweep is the point: a single seed cannot distinguish a regression from an
-## unlucky draw when the metric ranges 9 to 53 degrees on unmodified `main`.
+## A single seed cannot distinguish a regression from an unlucky draw when the metric ranges
+## 9 to 53 degrees on unmodified `main`, so any replacement has to sweep seeds -- and the
+## seeds have to be measured in SEPARATE processes, per the note on SWEEP_SEED below.
+##
+## TODO(#1207): replace the quarantined bound with one that holds across seeds and platforms.
 
 
 var _battle: Node = null
@@ -64,8 +66,8 @@ func _team_unit(team: int) -> Unit:
 ## between iterations is not sufficient; see this file's sibling note in
 ## .claude/memories/sparta.md on frame-keyed static caches and `PathField.active`.
 ##
-## So the per-seed figures issue 1207 needs have to come from separate Godot invocations,
-## not from a loop here. Anything else silently measures contamination.
+## So per-seed figures have to come from separate Godot invocations, not from a loop here.
+## Anything else silently measures contamination.
 const SWEEP_SEED: int = 12345
 
 
@@ -99,16 +101,23 @@ func _measure_turn_for_seed(seed_value: int) -> float:
 	return rad_to_deg(absf(a.facing.angle_to(start_facing_a)))
 
 
-func test_matched_infantry_clash_keeps_facing_close_to_its_start_heading() -> void:
-	# Quarantined per issue 1207 -- see this file's header. The rotation is still measured and
-	# reported, and no longer fails the build, because the bound it used to assert is one
-	# unmodified `main` breaks at a third of the seeds measured.
+## Named for what it now verifies, not for what the quarantined bound used to promise. The
+## old name asserted the facing stayed near its start heading, which nothing here checks any
+## more -- so a green run would have read as proof of a property the measurements below show
+## can be violated by 53 degrees. A test whose pass and failure paths look alike is the exact
+## defect the quarantined bound had; the name should not reintroduce it one level up.
+func test_matched_infantry_clash_reports_swirl_rotation() -> void:
+	# See this file's header for why the rotation bound is quarantined: it asserted a property
+	# unmodified `main` breaks at a third of the seeds measured. The rotation is still measured
+	# and reported here; it just no longer fails the build.
 	var turned: float = await _measure_turn_for_seed(SWEEP_SEED)
 
-	# Reported, not asserted. This is the number issue 1207 needs from CI, and printing it
-	# here is the only way a Linux figure ever reaches that issue -- a passing assertion
-	# prints nothing, which is why the old gate's own value was invisible until it failed.
+	# Reported, not asserted. Printing it is the only way a CI-side figure is ever visible --
+	# a passing assertion prints nothing, which is why the old gate's own value could not be
+	# read until the day it failed.
 	gut.p("[swirl-1207] seed %d: turned %.2f deg (Windows `main` measured 13.73)"
 		% [SWEEP_SEED, turned])
 
+	# Guards the sentinel only: -1.0 means the regiments never deployed, so the number above
+	# would describe nothing. Deliberately NOT a bound on the rotation itself.
 	assert_gt(turned, -1.0, "the clash produced a rotation measurement at all")
