@@ -2303,6 +2303,69 @@ gating -- the box-select loop, `_select_same_type`, the conversio/quarter-turn d
 the `_enemy_team()` empty-selection fallback -- were each genuinely untested by any existing test,
 not just newly added by the diff; found and closed this way in one pass.)
 
+## One failing test suppresses the whole `codecov/patch` signal -- and an absent check looks like one that has not run yet
+
+The entry above assumes Codecov reported a gap and asks which lines.
+This is the prior question: whether it reported at all.
+
+A single failing test in `test-coverage.yml` costs two red checks AND the entire server-side
+coverage signal, from one root cause that has nothing to do with coverage.
+`-gexit` fails the "Run unit tests with coverage" step, and no later step carries
+`if: always()`, so both "Verify coverage report was written" and "Upload coverage to Codecov"
+are **skipped**.
+The post-run hook has already written `coverage/lcov.info` by then -- the log says so in as
+many words -- but nothing ever uploads it, so Codecov posts no status and no check run and the
+PR simply has no `codecov/patch`.
+
+It is silent in the direction that matters: an absent check is indistinguishable from one that
+has not run yet, and nobody is told that coverage reporting was suppressed.
+That also makes a local `tools/check.sh patch_coverage` run the only evidence available,
+exactly when it is easiest to forget which instrument produced the number -- CLAUDE.md
+documents that local run as matching Codecov's own figures, so it is a legitimate substitute,
+but "patch coverage is green" is a claim about the wrong instrument if CI never computed it.
+
+The decisive query is the job's per-step conclusions, not the job's own red status.
+Confirm the absence itself against the paginated check-runs endpoint and the commit's statuses
+rather than `gh pr checks`, which does not list every check run on a head:
+
+```bash
+gh api repos/Lacaedemon/sparta/actions/jobs/<job-id> --jq '.steps[] | "\(.name) => \(.conclusion)"'
+gh api --paginate "repos/Lacaedemon/sparta/commits/<sha>/check-runs?per_page=100" \
+  --jq '.check_runs[].name' | sort | grep -i codecov
+gh api "repos/Lacaedemon/sparta/commits/<sha>/status" --jq '{state, n: (.statuses|length)}'
+```
+
+`skipped` on the upload step (rather than `failure`) is the tell that an earlier step's exit
+suppressed it.
+
+Generalizes past coverage: when a test fails in a job that also produces an artifact or uploads
+to an external service, check whether the failure suppressed that side effect.
+A job's red status describes its tests and says nothing about whether its *other* outputs were
+produced.
+This is the same shape as the `push_error()` bullet in `CLAUDE.md`, inverted: there the step
+passes while the artifact is missing, here the artifact exists while the step that consumes it
+never runs.
+
+- **Do:** check the per-step conclusions of any red job that also uploads or emits an artifact,
+  and treat a `skipped` publish step as a suppressed signal rather than a missing one.
+- **Do:** say explicitly that a coverage number came from a local run whenever the `Coverage`
+  job is red, since CI computed nothing.
+- **Don't:** read an absent `codecov/patch` as "no patch-coverage gap" or as "still pending" --
+  on a red `Coverage` job it means the upload never happened.
+- **Don't:** report patch coverage as green on CI's authority when only a local run produced
+  the figure.
+
+(`Lacaedemon/sparta` PR #1199, 2026-08-05, head `a9fff0d8`: one failing test out of 2597
+(`test_residual_melee_swirl_battle.gd`, a pre-existing mis-calibrated guard, tracked as issue
+#1207) turned `Validate & test` and `Coverage` red as expected.
+The unexpected part was `codecov/patch` never posting: the paginated check-runs list holds 16
+entries and none is a Codecov one, and `commits/<sha>/status` returns
+`{"state":"pending","contexts":[]}`.
+Coverage job `92475169686` logged `Wrote lcov coverage for 77 files to res://coverage/lcov.info`
+and then reported step 4 `failure`, step 5 `skipped`, step 6 `skipped`.
+The claim "patch coverage is green" was made on this PR from a local run before the gap was
+caught.)
+
 ## A `blob/main` doc link to a file this same PR adds 404s the link checker until merge
 
 Docs that reference source files by absolute GitHub URL --
