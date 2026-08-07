@@ -9,6 +9,8 @@ accept = [200, 201, 202, 203, 204, 206, 301, 302, 303, 307, 308, 429]
 timeout = 20
 
 exclude = [
+  # GitHub issue endpoints return 502s when lychee blasts them
+  "^https://github\\.com/Lacaedemon/sparta/issues/.*",
   # Bundled-default placeholders / local-only URLs.
   "https://github.com/YOUR-USERNAME/.*",
   "https://YOUR-USERNAME.github.io/.*",
