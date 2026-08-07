@@ -2453,3 +2453,40 @@ func test_cancel_selected_order_at_enqueues_command_or_cancels_directly() -> voi
 	assert_eq(battle.cancel_calls.size(), 1, "enqueues cancel order command when battle is present")
 	assert_eq(battle.cancel_calls[0]["index"], 0, "order cancel index passed to battle")
 
+
+
+func test_cancel_selected_order_at_scopes_to_the_unit_the_panel_shows() -> void:
+	# The order tree the cancel button lives in is built from _selected[0]
+	# (_hud.show_unit(_selected[0], ...)), so `index` is a row in THAT unit's queue. Two
+	# selected units generally have differently-shaped queues, so applying the index across
+	# the selection would cancel orders the player never saw.
+	var sm := _sm()
+	var battle := MockBattle.new()
+	sm._battle = battle
+	var shown := _unit()
+	shown.uid = 7
+	var other := _unit()
+	other.uid = 8
+	sm._selected = [shown, other]
+	sm.cancel_selected_order_at(1)
+	assert_eq(battle.cancel_calls.size(), 1, "one cancel command is issued")
+	assert_eq(battle.cancel_calls[0]["uids"], [7],
+			"only the displayed unit's uid is cancelled, not every selected uid")
+
+
+func test_cancel_selected_order_at_is_a_no_op_with_no_selection() -> void:
+	var sm := _sm()
+	var battle := MockBattle.new()
+	sm._battle = battle
+	sm._selected = []
+	sm.cancel_selected_order_at(0)
+	assert_true(battle.cancel_calls.is_empty(), "nothing selected -- no command issued")
+
+
+func test_cancel_order_at_ignores_an_out_of_range_index() -> void:
+	var u := _unit()
+	u.set_current_order(Order.new_move(Vector2(100, 100)))
+	u.cancel_order_at(5)
+	assert_eq(u.orders.size(), 1, "an index past the queue end is ignored")
+	u.cancel_order_at(-1)
+	assert_eq(u.orders.size(), 1, "a negative index is ignored")
