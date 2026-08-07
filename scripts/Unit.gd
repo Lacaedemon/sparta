@@ -1390,6 +1390,21 @@ func cancel_order_at(index: int) -> void:
 		return
 	if index == 0:
 		_interrupt_current_order()
+		# Drop the in-flight execution state. This lives here rather than in
+		# _interrupt_current_order() because that function is also reached from
+		# set_current_order(), where a replacing order has just had its own target_enemy /
+		# support_target written by Battle._apply_order_cmd -- clearing them there silently
+		# drops attack, support and relief orders issued to any non-idle unit. Cancellation is
+		# the one case with no incoming order to supply fresh state.
+		#
+		# _move_order_peak_engaged_fraction is deliberately NOT cleared: retire_current_order()
+		# below promotes the next queued leg via _start_promoted_move(), and that field's doc
+		# requires a fight counted while the leg was still QUEUED to survive promotion, or the
+		# promoted leg's ENGAGED_FRACTION_ABOVE disengage guard is defeated.
+		has_move_target = false
+		move_target = Vector2.ZERO
+		target_enemy = null
+		support_target = null
 		retire_current_order()
 	else:
 		orders.remove_at(index)
@@ -1409,17 +1424,15 @@ func _interrupt_current_order() -> void:
 		_settle_order_turn()
 	elif is_wheeling():
 		active_leaf().turn_target = Vector2.ZERO
-	has_move_target = false
-	move_target = Vector2.ZERO
-	target_enemy = null
-	support_target = null
-	# _move_order_peak_engaged_fraction is deliberately NOT reset here. This runs immediately
-	# before retire_current_order() -> _start_promoted_move(), and that field's own doc requires
-	# the peak to survive promotion: a fight that happened while a guarded move was still QUEUED
-	# behind this order has to keep counting, or the promoted leg's ENGAGED_FRACTION_ABOVE
-	# disengage guard is silently defeated and the unit marches into ground it should be held out
-	# of. Resetting it here would reintroduce exactly the failure _start_promoted_move()'s doc
-	# describes, one function earlier.
+	# Execution state (has_move_target / move_target / target_enemy / support_target) is
+	# deliberately NOT cleared here. This function is shared with set_current_order(), where the
+	# incoming order REPLACES the old one -- and Battle._apply_order_cmd writes target_enemy /
+	# support_target immediately BEFORE that call for the ATTACK, SUPPORT and relief-fallback
+	# paths. Clearing them here would null the brand-new order's own target, and
+	# _update_current_order() would retire it on the next tick, so ordering an already-busy unit
+	# to attack or support would silently drop the order. Cancellation is the only caller that
+	# genuinely has no successor state to inherit, so it does its own clearing --
+	# see cancel_order_at().
 
 
 ## The genuinely atomic order actually driving this tick's movement/turn logic --

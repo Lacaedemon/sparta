@@ -1687,3 +1687,34 @@ func test_enqueue_cancel_order_preserves_the_promoted_legs_engagement_peak() -> 
 	assert_eq(u.orders.size(), 1, "the queued move is promoted")
 	assert_almost_eq(u._move_order_peak_engaged_fraction, 0.75, 0.0001,
 			"the engagement peak carried over to the promoted leg, not reset by the interrupt")
+
+
+func test_a_fresh_attack_order_on_a_busy_unit_keeps_its_target() -> void:
+	# Regression guard: _interrupt_current_order() must not clear target_enemy/support_target.
+	# It is reached from set_current_order(), and Battle._apply_order_cmd writes the target
+	# immediately BEFORE that call -- so clearing it there nulls the brand-new order's own
+	# target, and _update_current_order() retires the order on the next tick. The unit would
+	# silently go idle instead of attacking, for any unit that was not already idle.
+	var u := _unit(1, Vector2(0, 100))
+	var enemy := _unit(2, Vector2(0, 300))
+	enemy.team = 1
+	var b := _battle([u, enemy])
+	b._apply_order_cmd({"units": [1], "x": 500.0, "y": 500.0, "target": -1})   # busy: a move
+	assert_not_null(u.current_order, "the unit is now busy, so the interrupt path is live")
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0, "target": 2})        # then attack
+	assert_eq(u.target_enemy, enemy,
+			"the fresh attack order keeps the target Battle just assigned it")
+	assert_eq(u.current_order.type, Order.Type.ATTACK, "and the order itself is the attack")
+
+
+func test_a_fresh_support_order_on_a_busy_unit_keeps_its_target() -> void:
+	var u := _unit(1, Vector2(0, 100))
+	var friend := _unit(2, Vector2(0, 300))
+	var b := _battle([u, friend])
+	b._apply_order_cmd({"units": [1], "x": 500.0, "y": 500.0, "target": -1})   # busy: a move
+	# A same-team target only takes the SUPPORT branch when the order carries that mode;
+	# without it Battle routes to relief instead, which never sets support_target.
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0, "target": 2,
+			"mode": BattleScript.OrderMode.SUPPORT})
+	assert_eq(u.support_target, friend,
+			"the fresh support order keeps the target Battle just assigned it")
