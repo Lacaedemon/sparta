@@ -1047,20 +1047,20 @@ func _track_accel(u, mean_mps: float) -> void:
 # an order actually decomposes.
 
 ## Flattens the order tree rooted at `order` into display rows, depth-first pre-order: each
-## row is {"order": Order, "depth": int, "path": String, "has_children": bool}. `path` is a
+## row is {"order": Order, "depth": int, "path": String, "has_children": bool, "order_index": int}. `path` is a
 ## dot-joined chain of child indices from the root ("0", "0.1", "0.1.0", ...) -- a stable key
 ## into `expanded` that survives the per-frame rebuild _rebuild_order_tree does (unlike the
 ## transient Order/Control instances). A composite node collapsed in `expanded` stops the
 ## walk there -- its children are omitted from the returned rows entirely, not just hidden.
 ## Pure and UI-free so it's directly unit-testable against plain Order trees.
-func _order_tree_rows(order, expanded: Dictionary, depth: int = 0, path: String = "0") -> Array:
+func _order_tree_rows(order, expanded: Dictionary, depth: int = 0, path: String = "0", order_index: int = 0) -> Array:
 	if order == null:
 		return []
 	var has_children: bool = not order.children.is_empty()
-	var rows: Array = [{"order": order, "depth": depth, "path": path, "has_children": has_children}]
+	var rows: Array = [{"order": order, "depth": depth, "path": path, "has_children": has_children, "order_index": order_index}]
 	if has_children and expanded.get(path, true):
 		for i in order.children.size():
-			rows.append_array(_order_tree_rows(order.children[i], expanded, depth + 1, "%s.%d" % [path, i]))
+			rows.append_array(_order_tree_rows(order.children[i], expanded, depth + 1, "%s.%d" % [path, i], order_index))
 	return rows
 
 
@@ -1077,24 +1077,21 @@ func _order_tree_row_signature(rows: Array, leaf) -> Array:
 	var sig: Array = []
 	for row: Dictionary in rows:
 		var order = row["order"]
-		sig.append([row["path"], row["has_children"], order.describe(), order == leaf])
+		sig.append([row["path"], row["has_children"], order.describe(), order == leaf, row.get("order_index", 0)])
 	return sig
 
 
-## Rebuilds the order-tree rows against `u.current_order` -- called every time show_unit()/
+## Rebuilds the order-tree rows against `u.orders` -- called every time show_unit()/
 ## clear_unit() runs (SelectionManager._refresh_hud() drives that every frame for the selected
-## unit), so the tree always reflects the live _active_child cursor. Actually tearing down and
-## recreating the row Controls is skipped whenever the rows would render identically to last
-## time (see _order_tree_row_signature): rebuilding on every one of those per-frame calls
-## regardless of whether anything changed would queue_free() and recreate the expand/collapse
-## toggle Buttons even when nothing about the tree changed. Since a real mouse click's
-## press-then-release can straddle more than one frame, and Godot's BaseButton only fires
-## `pressed` when both land on the SAME Button instance, doing that would silently break the
-## toggle: the down click's instance is gone by the time the up click lands on its freshly
-## rebuilt replacement, so `pressed` never fires. Skipping the rebuild when nothing changed
-## keeps the toggle Buttons -- and every other row Control -- alive across those frames.
+## unit), so the tree always reflects the live _active_child cursor and all queued orders.
+## Actually tearing down and recreating the row Controls is skipped whenever the rows would render
+## identically to last time (see _order_tree_row_signature): rebuilding on every one of those
+## per-frame calls regardless of whether anything changed would queue_free() and recreate the
+## expand/collapse toggle Buttons even when nothing about the tree changed. Skipping the rebuild
+## when nothing changed keeps the toggle Buttons -- and every other row Control -- alive across
+## those frames.
 func _rebuild_order_tree(u) -> void:
-	if u == null or not is_instance_valid(u) or u.current_order == null:
+	if u == null or not is_instance_valid(u) or u.current_order == null or u.orders.is_empty():
 		if _order_tree_last_signature == null:
 			return   # already empty/hidden from a previous call (or never built) -- nothing to do
 		for row_node in _order_tree_box.get_children():
@@ -1103,8 +1100,10 @@ func _rebuild_order_tree(u) -> void:
 		_order_tree_last_signature = null
 		return
 	var leaf = u.active_leaf()
-	var root_path := "%d:0" % u.get_instance_id()
-	var rows: Array = _order_tree_rows(u.current_order, _order_tree_expanded, 0, root_path)
+	var rows: Array = []
+	for i in u.orders.size():
+		var root_path := "%d:%d" % [u.get_instance_id(), i]
+		rows.append_array(_order_tree_rows(u.orders[i], _order_tree_expanded, 0, root_path, i))
 	var signature := _order_tree_row_signature(rows, leaf)
 	if signature == _order_tree_last_signature:
 		return   # would render identically to what's already there -- keep the existing Controls
@@ -1118,15 +1117,16 @@ func _rebuild_order_tree(u) -> void:
 		row_node.queue_free()
 	_order_tree_box.visible = true
 	for row: Dictionary in rows:
-		_order_tree_box.add_child(_build_order_tree_row(row, leaf))
+		_order_tree_box.add_child(_build_order_tree_row(row, leaf, u))
 
 
 ## One row: depth-indent spacer, an expand/collapse toggle for a composite node (a same-width
 ## blank spacer for a leaf, so every row's label lines up in the same column regardless of
-## whether its siblings have children), then the describe() label -- highlighted in the same
+## whether its siblings have children), the describe() label -- highlighted in the same
 ## amber _order_mode_label uses for "the order currently in effect" when `order` is the
-## active leaf Unit._think is actually driving.
-func _build_order_tree_row(row: Dictionary, leaf) -> Control:
+## active leaf Unit._think is actually driving -- and a cancel button (✕) to delete the order
+## from the queue.
+func _build_order_tree_row(row: Dictionary, leaf, u = null) -> Control:
 	var order = row["order"]
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 4)
@@ -1154,7 +1154,29 @@ func _build_order_tree_row(row: Dictionary, leaf) -> Control:
 	if is_active_leaf:
 		lbl.add_theme_color_override("font_color", _ORDER_TREE_ACTIVE_COLOR)
 	hbox.add_child(lbl)
+
+	var depth: int = int(row.get("depth", 0))
+	if depth == 0:
+		var cancel_btn := Button.new()
+		cancel_btn.flat = true
+		cancel_btn.text = "✕"
+		cancel_btn.tooltip_text = "Cancel order"
+		cancel_btn.add_theme_font_size_override("font_size", 11)
+		cancel_btn.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
+		var order_idx: int = int(row.get("order_index", 0))
+		cancel_btn.pressed.connect(_on_cancel_order_pressed.bind(u, order_idx))
+		hbox.add_child(cancel_btn)
+
 	return hbox
+
+
+func _on_cancel_order_pressed(u, order_index: int) -> void:
+	if _sel_mgr != null and _sel_mgr.has_selection():
+		_sel_mgr.cancel_selected_order_at(order_index)
+	elif u != null and is_instance_valid(u):
+		u.cancel_order_at(order_index)
+	if u != null and is_instance_valid(u):
+		_rebuild_order_tree(u)
 
 
 func _on_order_tree_toggle(path: String) -> void:

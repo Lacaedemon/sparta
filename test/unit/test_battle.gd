@@ -1592,3 +1592,161 @@ func test_bare_unit_without_loadout_keeps_default_walk_advance_and_reform_before
 	add_child_autofree(u)
 	assert_false(u.walk_advance, "a bare unit with no loadout falls back to the Unit.gd default")
 	assert_true(u.reform_before_move, "a bare unit with no loadout falls back to the Unit.gd default")
+
+
+## enqueue_cancel_order -- the replay-recorded route for the HUD's per-order cancel button.
+## SelectionManager.cancel_selected_order_at() goes through here rather than calling
+## Unit.cancel_order_at() directly, so a cancellation lands in the replay track at the tick it
+## was issued, like every other order-queue mutation.
+
+func test_enqueue_cancel_order_applies_live_and_queues_for_recording() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.append_order(Order.new_move(Vector2(200, 0)))
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 1)
+	assert_eq(u.orders.size(), 1, "the queued leg is cancelled live")
+	assert_eq(u.orders[0].target_pos, Vector2(100, 0), "the surviving order is the current one")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_CANCEL_ONLY, "queued for recording")
+	assert_eq(int(cmd["frontage"]), 1, "the cancelled index rides the queued command")
+
+
+func test_enqueue_cancel_order_at_index_zero_promotes_the_next_leg() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.append_order(Order.new_move(Vector2(200, 0)))
+	u.has_move_target = true
+	u.move_target = Vector2(100, 0)
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.orders.size(), 1, "the queued leg behind it is promoted, not dropped")
+	assert_eq(u.orders[0].target_pos, Vector2(200, 0), "the promoted order is the next leg")
+	# retire_current_order() -> _start_promoted_move() commits the promoted leg's march, so the
+	# cancelled destination is replaced rather than merely cleared -- the unit marches on to the
+	# next waypoint instead of stopping where it stood.
+	assert_true(u.has_move_target, "the promoted leg commits its own march")
+	assert_eq(u.move_target, Vector2(200, 0),
+			"the march retargets to the promoted leg, not the cancelled one")
+
+
+func test_enqueue_cancel_order_at_index_zero_with_nothing_queued_stops_the_march() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.has_move_target = true
+	u.move_target = Vector2(100, 0)
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_true(u.orders.is_empty(), "the queue empties")
+	assert_null(u.current_order, "and nothing is promoted behind it")
+	assert_false(u.has_move_target,
+			"with no leg to promote, cancelling the current order stops the march")
+	assert_eq(u.move_target, Vector2.ZERO, "and clears the stale destination")
+
+
+func test_enqueue_cancel_order_skips_dead_units() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.state = UnitScript.State.DEAD
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.orders.size(), 1, "a dead unit's queue is left alone")
+
+
+func test_enqueue_cancel_order_is_a_no_op_with_no_units() -> void:
+	var b := _battle([])
+	b.enqueue_cancel_order([], 0)
+	assert_true(b._pending_orders.is_empty(), "nothing to cancel -- no command queued")
+
+
+func test_enqueue_cancel_order_is_disabled_during_playback() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	var b := _battle([u])
+	var prev_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	b.enqueue_cancel_order([1], 0)
+	Replay.mode = prev_mode
+	assert_eq(u.orders.size(), 1, "no write during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_enqueue_cancel_order_preserves_the_promoted_legs_engagement_peak() -> void:
+	# Regression guard: _interrupt_current_order() must not reset
+	# _move_order_peak_engaged_fraction. It runs immediately before retire_current_order()
+	# promotes the queued leg, and that field's doc requires a fight counted while the leg was
+	# only QUEUED to survive promotion -- otherwise the promoted move's
+	# ENGAGED_FRACTION_ABOVE disengage guard is defeated and the unit marches into ground it
+	# should be held out of.
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_attack(9))
+	u.append_order(Order.new_move(Vector2(200, 0)))
+	u._move_order_peak_engaged_fraction = 0.75
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.orders.size(), 1, "the queued move is promoted")
+	assert_almost_eq(u._move_order_peak_engaged_fraction, 0.75, 0.0001,
+			"the engagement peak carried over to the promoted leg, not reset by the interrupt")
+
+
+func test_a_fresh_attack_order_on_a_busy_unit_keeps_its_target() -> void:
+	# Regression guard: _interrupt_current_order() must not clear target_enemy/support_target.
+	# It is reached from set_current_order(), and Battle._apply_order_cmd writes the target
+	# immediately BEFORE that call -- so clearing it there nulls the brand-new order's own
+	# target, and _update_current_order() retires the order on the next tick. The unit would
+	# silently go idle instead of attacking, for any unit that was not already idle.
+	var u := _unit(1, Vector2(0, 100))
+	var enemy := _unit(2, Vector2(0, 300))
+	enemy.team = 1
+	var b := _battle([u, enemy])
+	b._apply_order_cmd({"units": [1], "x": 500.0, "y": 500.0, "target": -1})   # busy: a move
+	assert_not_null(u.current_order, "the unit is now busy, so the interrupt path is live")
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0, "target": 2})        # then attack
+	assert_eq(u.target_enemy, enemy,
+			"the fresh attack order keeps the target Battle just assigned it")
+	assert_eq(u.current_order.type, Order.Type.ATTACK, "and the order itself is the attack")
+
+
+func test_a_fresh_support_order_on_a_busy_unit_keeps_its_target() -> void:
+	var u := _unit(1, Vector2(0, 100))
+	var friend := _unit(2, Vector2(0, 300))
+	var b := _battle([u, friend])
+	b._apply_order_cmd({"units": [1], "x": 500.0, "y": 500.0, "target": -1})   # busy: a move
+	# A same-team target only takes the SUPPORT branch when the order carries that mode;
+	# without it Battle routes to relief instead, which never sets support_target.
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0, "target": 2,
+			"mode": BattleScript.OrderMode.SUPPORT})
+	assert_eq(u.support_target, friend,
+			"the fresh support order keeps the target Battle just assigned it")
+
+
+func test_enqueue_cancel_order_revokes_delegation_like_any_other_player_order() -> void:
+	# A cancel is an ordinary player action. The ORDER_DELEGATION_ONLY exemption on the
+	# revoke check exists only because delegation is self-referential -- the AI's own
+	# delegating order must not immediately un-delegate. A cancel has no such reason, and
+	# _apply_order_cmd's doc states the contract: a player order to a delegated unit always
+	# overrides its subcommander. Without revocation, _run_player_delegated_ai re-issues a
+	# directive within ai_period ticks and the player never regains manual control.
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	assert_true(u.is_delegated(), "delegated first")
+	b.enqueue_cancel_order([1], 0)
+	assert_false(u.is_delegated(), "cancelling takes manual control back")
+
+
+func test_enqueue_cancel_order_clears_the_maneuver_hold_state() -> void:
+	# Side-step/back-step park ordered_facing, form-up parks deploy_facing, a reform parks
+	# _reform_on_arrival. Left set past a cancel they lock facing and force walk pace for the
+	# promoted leg. Every other order-terminating path clears them; so does this one.
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.ordered_facing = Vector2.RIGHT
+	u.deploy_facing = Vector2.UP
+	u._reform_on_arrival = true
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.ordered_facing, Vector2.ZERO, "the side-step facing hold is dropped")
+	assert_eq(u.deploy_facing, Vector2.ZERO, "the form-up deploy facing is dropped")
+	assert_false(u._reform_on_arrival, "the parked on-arrival reform is dropped")

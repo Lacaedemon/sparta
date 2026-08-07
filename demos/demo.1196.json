@@ -1,0 +1,6 @@
+{
+  "title": "Cancellable order queue buttons",
+  "description": "HUD order-tree cancel buttons (✕) allowing players to delete queued follow-up orders or interrupt the active order.",
+  "skip": true,
+  "reason": "HUD order-tree cancel buttons are reachable only via mouse clicks on HUD controls, which the scripted-input recorder cannot click."
+}

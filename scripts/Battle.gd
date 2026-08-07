@@ -153,6 +153,7 @@ const ORDER_DISENGAGE_SACRIFICE := -11
 # The delegated group id (Unit.UNDELEGATED to revoke, or a player-chosen id >= 0) rides the
 # existing "frontage" field, so the replay format is unchanged (see enqueue_delegation).
 const ORDER_DELEGATION_ONLY := -12
+const ORDER_CANCEL_ONLY := -13
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -1743,6 +1744,25 @@ func enqueue_delegation(uids: Array, group_id: int) -> void:
 	_apply_order_live(cmd)
 
 
+## Enqueue an order-cancellation command for the given units. Recorded so replays reproducible
+## cancel queued orders or active maneuvers at the exact tick they were issued.
+func enqueue_cancel_order(uids: Array, order_index: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if uids.is_empty():
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_CANCEL_ONLY,
+		"mode": OrderMode.NORMAL,
+		"frontage": order_index,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
 ## Apply one order (move or attack) to its units. Shared by live play and playback so both
 ## produce identical results. `from_player` distinguishes a genuine player-issued command (the
 ## default -- every enqueue_* call and every recorded order drained from the replay stream)
@@ -1755,6 +1775,13 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	var target_uid: int = int(cmd["target"])
 	if from_player and target_uid != ORDER_DELEGATION_ONLY:
 		_revoke_delegation(cmd["units"])
+	if target_uid == ORDER_CANCEL_ONLY:
+		var idx: int = int(cmd.get("frontage", 0))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null and u.state != UnitRef.State.DEAD:
+				u.cancel_order_at(idx)
+		return
 	# Player-delegation-only: write each unit's player_group_id (and, for a fresh delegation,
 	# its subcommander_rank_title from the player's own doctrine profile), leaving all
 	# movement/formation/stance state untouched. "frontage" is group_id + 1 (see

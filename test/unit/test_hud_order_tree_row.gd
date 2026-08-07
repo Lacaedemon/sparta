@@ -7,6 +7,7 @@ extends GutTest
 ## the pure-Order tests next door.
 
 const HUDScript = preload("res://scripts/HUD.gd")
+const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
 
 
 func _hud() -> HUDScript:
@@ -71,10 +72,12 @@ func test_leaf_order_renders_a_single_highlighted_row() -> void:
 	var rows := hud._order_tree_box.get_children()
 	assert_eq(rows.size(), 1, "a leaf order is exactly one row")
 	var row: HBoxContainer = rows[0]
-	assert_eq(row.get_child_count(), 2, "no indent at depth 0, plus a toggle-gap and the label")
+	assert_eq(row.get_child_count(), 3, "no indent at depth 0, plus toggle-gap, label, and cancel button")
 	var lbl: Label = row.get_child(1)
 	assert_string_starts_with(lbl.text, "▶ ", "the only order is also the active leaf")
 	assert_true(lbl.has_theme_color_override("font_color"), "the active leaf gets the amber override")
+	var cancel_btn: Button = row.get_child(2)
+	assert_eq(cancel_btn.text, "✕")
 
 
 func test_composite_order_renders_indented_children_with_a_toggle() -> void:
@@ -87,7 +90,7 @@ func test_composite_order_renders_indented_children_with_a_toggle() -> void:
 	assert_eq(rows.size(), 3, "parent + 2 children, expanded by default")
 
 	var root_row: HBoxContainer = rows[0]
-	assert_eq(root_row.get_child_count(), 2, "depth 0 composite: toggle + label, no indent")
+	assert_eq(root_row.get_child_count(), 3, "depth 0 composite: toggle + label + cancel button")
 	var toggle: Button = root_row.get_child(0)
 	assert_eq(toggle.text, "▾", "expanded toggle points down")
 	var root_lbl: Label = root_row.get_child(1)
@@ -95,7 +98,7 @@ func test_composite_order_renders_indented_children_with_a_toggle() -> void:
 			"the composite root isn't the active leaf itself")
 
 	var turn_row: HBoxContainer = rows[1]
-	assert_eq(turn_row.get_child_count(), 3, "depth 1 leaf: indent + toggle-gap + label")
+	assert_eq(turn_row.get_child_count(), 3, "depth 1 leaf: indent + toggle-gap + label, no cancel button")
 	var indent: Control = turn_row.get_child(0)
 	assert_eq(indent.custom_minimum_size, Vector2(hud._ORDER_TREE_INDENT, 0))
 	var turn_lbl: Label = turn_row.get_child(2)
@@ -165,3 +168,59 @@ func test_unchanged_rebuild_reuses_the_same_toggle_button_instance() -> void:
 # the structural invariant a real click depends on (the same Button instance survives an
 # unchanged rebuild), which is what actually matters: if the instance is stable, whatever
 # engine-internal state correlates a down click with its matching up click is too.
+
+
+func test_cancel_button_cancels_queued_order() -> void:
+	var hud := _hud()
+	var u := _make_unit()
+	var o1 := Order.new_move(Vector2(100, 100))
+	var o2 := Order.new_move(Vector2(200, 200))
+	u.set_current_order(o1)
+	u.append_order(o2)
+	hud._rebuild_order_tree(u)
+	assert_eq(hud._order_tree_box.get_children().size(), 2)
+
+	# Click cancel on the second order (queued leg)
+	hud._on_cancel_order_pressed(u, 1)
+	assert_eq(u.orders.size(), 1)
+	assert_eq(u.current_order, o1)
+	assert_eq(hud._order_tree_box.get_children().size(), 1)
+
+
+func test_cancel_button_cancels_current_order() -> void:
+	var hud := _hud()
+	var u := _make_unit()
+	var o1 := Order.new_move(Vector2(100, 100))
+	var o2 := Order.new_move(Vector2(200, 200))
+	u.set_current_order(o1)
+	u.append_order(o2)
+	hud._rebuild_order_tree(u)
+
+	# Click cancel on current order (index 0)
+	hud._on_cancel_order_pressed(u, 0)
+	assert_eq(u.orders.size(), 1)
+	assert_eq(u.current_order, o2, "promotes next queued order to current")
+
+
+func test_interrupt_current_order_clears_marching_state() -> void:
+	var u := _make_unit()
+	u.has_move_target = true
+	u.move_target = Vector2(500, 500)
+	u.set_current_order(Order.new_move(Vector2(500, 500)))
+	u.cancel_order_at(0)
+	assert_false(u.has_move_target, "interrupting current order clears move target")
+	assert_eq(u.move_target, Vector2.ZERO)
+
+
+func test_cancel_button_with_selection_manager_routes_through_selection_manager() -> void:
+	var hud := _hud()
+	var u := _make_unit()
+	u.set_current_order(Order.new_move(Vector2(100, 100)))
+	u.append_order(Order.new_move(Vector2(200, 200)))
+	var sm: Node2D = SelectionManagerScript.new()
+	add_child_autofree(sm)
+	sm._selected = [u]
+	hud._sel_mgr = sm
+	hud._on_cancel_order_pressed(u, 1)
+	assert_eq(u.orders.size(), 1, "cancels via SelectionManager when sel_mgr is set")
+

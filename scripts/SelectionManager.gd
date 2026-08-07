@@ -1908,6 +1908,27 @@ func set_selected_walk_advance(value: bool) -> void:
 	Sfx.play(&"order")
 
 
+## Cancel the order at `index` on the unit whose queue the info panel is actually showing.
+##
+## Deliberately NOT every selected unit, unlike its siblings in this file. `index` is a row
+## position in the order tree the HUD rendered, and that tree is built from a single unit --
+## `_hud.show_unit(_selected[0], ...)`. Two selected units generally have differently-shaped
+## queues, so the same index means a different order in each; applying it across the selection
+## would cancel orders the player never saw. The cancel button is per-row, so its scope is the
+## row's own unit.
+func cancel_selected_order_at(index: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var shown: Unit = _selected[0] if not _selected.is_empty() else null
+	if shown == null or not is_instance_valid(shown):
+		return
+	if _battle != null and _battle.has_method("enqueue_cancel_order"):
+		_battle.enqueue_cancel_order([shown.uid], index)
+	else:
+		shown.cancel_order_at(index)
+
+
+
 ## Set reform_before_move on every currently selected friendly unit (called from the info
 ## panel checkbox and the control bar's Reform quick-toggle). See set_selected_walk_advance.
 func set_selected_reform_before_move(value: bool) -> void:
