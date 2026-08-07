@@ -3690,6 +3690,33 @@ exactly 1 and that no superseded SHA remains. When rebuilding a body programmati
 block with a regex and re-append it verbatim, newlines included.
 (`Lacaedemon/sparta` PR #1135, 2026-07-29.)
 
+**That check has to run again after the NEXT demo workflow completes --- immediately after your
+own PATCH it passes even when the damage is already done.** The duplication is not something your
+edit writes; it is something `demo-video.yml` writes later, when its next upsert fails to match
+the markers you disturbed and appends a second block instead of replacing the first. So the
+sequence is: you edit, you check, the count is 1 and the check looks satisfied, and the second
+block appears minutes later on the next push or re-run.
+
+Concretely, the count is a lagging indicator of an edit you already made, so treat a passing check
+immediately after a PATCH as establishing nothing. Re-read the body once the demo job for the
+following push has finished --- or simply before reporting the PR ready, which is the moment the
+description gets read anyway:
+
+```bash
+gh pr view <N> --json body --jq .body | grep -c '<!-- sparta-demo -->'   # expect 1
+```
+
+Repairing it is a dedupe rather than a rewrite: strip every block with a regex, then re-append the
+**last** one verbatim, since that is CI's most recent upsert and the earlier copies are stale.
+Confirm afterwards that whatever else you had added to the body (an embedded image, a corrected
+claim) survived the strip --- the naive `re.sub` that removes the blocks will happily remove
+anything you nested between them.
+
+(`Lacaedemon/sparta` PR #1196, 2026-08-07: a description edit adding a required UI screenshot and
+correcting two stale claims was checked immediately afterwards and read exactly 1 block. The
+round-5 review then found 2, from CI's own re-upsert in between. The rule above was followed to
+the letter and still missed it, which is why the timing needs saying rather than the check.)
+
 ## An `.import` diff that reads as deletion is a headless-Godot rewrite, not a removal
 
 `.jules/bolt.md`'s own 2024-11-20 entry already says to revert `.import` sidecars a headless run
