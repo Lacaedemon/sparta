@@ -1773,7 +1773,7 @@ func enqueue_cancel_order(uids: Array, order_index: int) -> void:
 ## tick. See Unit.player_group_id's own doc comment.
 func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	var target_uid: int = int(cmd["target"])
-	if from_player and target_uid != ORDER_DELEGATION_ONLY and target_uid != ORDER_CANCEL_ONLY:
+	if from_player and target_uid != ORDER_DELEGATION_ONLY:
 		_revoke_delegation(cmd["units"])
 	if target_uid == ORDER_CANCEL_ONLY:
 		var idx: int = int(cmd.get("frontage", 0))

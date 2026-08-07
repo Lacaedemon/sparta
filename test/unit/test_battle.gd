@@ -1718,3 +1718,35 @@ func test_a_fresh_support_order_on_a_busy_unit_keeps_its_target() -> void:
 			"mode": BattleScript.OrderMode.SUPPORT})
 	assert_eq(u.support_target, friend,
 			"the fresh support order keeps the target Battle just assigned it")
+
+
+func test_enqueue_cancel_order_revokes_delegation_like_any_other_player_order() -> void:
+	# A cancel is an ordinary player action. The ORDER_DELEGATION_ONLY exemption on the
+	# revoke check exists only because delegation is self-referential -- the AI's own
+	# delegating order must not immediately un-delegate. A cancel has no such reason, and
+	# _apply_order_cmd's doc states the contract: a player order to a delegated unit always
+	# overrides its subcommander. Without revocation, _run_player_delegated_ai re-issues a
+	# directive within ai_period ticks and the player never regains manual control.
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	assert_true(u.is_delegated(), "delegated first")
+	b.enqueue_cancel_order([1], 0)
+	assert_false(u.is_delegated(), "cancelling takes manual control back")
+
+
+func test_enqueue_cancel_order_clears_the_maneuver_hold_state() -> void:
+	# Side-step/back-step park ordered_facing, form-up parks deploy_facing, a reform parks
+	# _reform_on_arrival. Left set past a cancel they lock facing and force walk pace for the
+	# promoted leg. Every other order-terminating path clears them; so does this one.
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.ordered_facing = Vector2.RIGHT
+	u.deploy_facing = Vector2.UP
+	u._reform_on_arrival = true
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.ordered_facing, Vector2.ZERO, "the side-step facing hold is dropped")
+	assert_eq(u.deploy_facing, Vector2.ZERO, "the form-up deploy facing is dropped")
+	assert_false(u._reform_on_arrival, "the parked on-arrival reform is dropped")

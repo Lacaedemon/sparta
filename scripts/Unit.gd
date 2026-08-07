@@ -1405,6 +1405,16 @@ func cancel_order_at(index: int) -> void:
 		move_target = Vector2.ZERO
 		target_enemy = null
 		support_target = null
+		# The maneuver-hold state a cancelled order parked, matching what every other
+		# order-terminating path already clears (Battle._apply_order_cmd's fresh-order block,
+		# and both disengage paths below). Side-step and back-step park ordered_facing, form-up
+		# parks deploy_facing, and a reform parks _reform_on_arrival -- exactly the maneuvers a
+		# player cancels. Left set, they lock facing and force walk pace in _move_to's
+		# "maneuvering" branch for the promoted leg or any later auto-chase, and a stale
+		# deploy_facing snaps facing on arrival. The promoted leg re-sets whichever it needs.
+		ordered_facing = Vector2.ZERO
+		deploy_facing = Vector2.ZERO
+		_reform_on_arrival = false
 		retire_current_order()
 	else:
 		orders.remove_at(index)
