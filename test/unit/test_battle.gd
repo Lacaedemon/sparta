@@ -1592,3 +1592,80 @@ func test_bare_unit_without_loadout_keeps_default_walk_advance_and_reform_before
 	add_child_autofree(u)
 	assert_false(u.walk_advance, "a bare unit with no loadout falls back to the Unit.gd default")
 	assert_true(u.reform_before_move, "a bare unit with no loadout falls back to the Unit.gd default")
+
+
+## enqueue_cancel_order -- the replay-recorded route for the HUD's per-order cancel button.
+## SelectionManager.cancel_selected_order_at() goes through here rather than calling
+## Unit.cancel_order_at() directly, so a cancellation lands in the replay track at the tick it
+## was issued, like every other order-queue mutation.
+
+func test_enqueue_cancel_order_applies_live_and_queues_for_recording() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.append_order(Order.new_move(Vector2(200, 0)))
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 1)
+	assert_eq(u.orders.size(), 1, "the queued leg is cancelled live")
+	assert_eq(u.orders[0].target_pos, Vector2(100, 0), "the surviving order is the current one")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_CANCEL_ONLY, "queued for recording")
+	assert_eq(int(cmd["frontage"]), 1, "the cancelled index rides the queued command")
+
+
+func test_enqueue_cancel_order_at_index_zero_promotes_the_next_leg() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.append_order(Order.new_move(Vector2(200, 0)))
+	u.has_move_target = true
+	u.move_target = Vector2(100, 0)
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.orders.size(), 1, "the queued leg behind it is promoted, not dropped")
+	assert_eq(u.orders[0].target_pos, Vector2(200, 0), "the promoted order is the next leg")
+	# retire_current_order() -> _start_promoted_move() commits the promoted leg's march, so the
+	# cancelled destination is replaced rather than merely cleared -- the unit marches on to the
+	# next waypoint instead of stopping where it stood.
+	assert_true(u.has_move_target, "the promoted leg commits its own march")
+	assert_eq(u.move_target, Vector2(200, 0),
+			"the march retargets to the promoted leg, not the cancelled one")
+
+
+func test_enqueue_cancel_order_at_index_zero_with_nothing_queued_stops_the_march() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.has_move_target = true
+	u.move_target = Vector2(100, 0)
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_true(u.orders.is_empty(), "the queue empties")
+	assert_null(u.current_order, "and nothing is promoted behind it")
+	assert_false(u.has_move_target,
+			"with no leg to promote, cancelling the current order stops the march")
+	assert_eq(u.move_target, Vector2.ZERO, "and clears the stale destination")
+
+
+func test_enqueue_cancel_order_skips_dead_units() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.state = UnitScript.State.DEAD
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.orders.size(), 1, "a dead unit's queue is left alone")
+
+
+func test_enqueue_cancel_order_is_a_no_op_with_no_units() -> void:
+	var b := _battle([])
+	b.enqueue_cancel_order([], 0)
+	assert_true(b._pending_orders.is_empty(), "nothing to cancel -- no command queued")
+
+
+func test_enqueue_cancel_order_is_disabled_during_playback() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	var b := _battle([u])
+	var prev_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	b.enqueue_cancel_order([1], 0)
+	Replay.mode = prev_mode
+	assert_eq(u.orders.size(), 1, "no write during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
