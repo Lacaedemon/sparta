@@ -1413,7 +1413,13 @@ func _interrupt_current_order() -> void:
 	move_target = Vector2.ZERO
 	target_enemy = null
 	support_target = null
-	_move_order_peak_engaged_fraction = 0.0
+	# _move_order_peak_engaged_fraction is deliberately NOT reset here. This runs immediately
+	# before retire_current_order() -> _start_promoted_move(), and that field's own doc requires
+	# the peak to survive promotion: a fight that happened while a guarded move was still QUEUED
+	# behind this order has to keep counting, or the promoted leg's ENGAGED_FRACTION_ABOVE
+	# disengage guard is silently defeated and the unit marches into ground it should be held out
+	# of. Resetting it here would reintroduce exactly the failure _start_promoted_move()'s doc
+	# describes, one function earlier.
 
 
 ## The genuinely atomic order actually driving this tick's movement/turn logic --

@@ -1669,3 +1669,21 @@ func test_enqueue_cancel_order_is_disabled_during_playback() -> void:
 	Replay.mode = prev_mode
 	assert_eq(u.orders.size(), 1, "no write during playback")
 	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_enqueue_cancel_order_preserves_the_promoted_legs_engagement_peak() -> void:
+	# Regression guard: _interrupt_current_order() must not reset
+	# _move_order_peak_engaged_fraction. It runs immediately before retire_current_order()
+	# promotes the queued leg, and that field's doc requires a fight counted while the leg was
+	# only QUEUED to survive promotion -- otherwise the promoted move's
+	# ENGAGED_FRACTION_ABOVE disengage guard is defeated and the unit marches into ground it
+	# should be held out of.
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_attack(9))
+	u.append_order(Order.new_move(Vector2(200, 0)))
+	u._move_order_peak_engaged_fraction = 0.75
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.orders.size(), 1, "the queued move is promoted")
+	assert_almost_eq(u._move_order_peak_engaged_fraction, 0.75, 0.0001,
+			"the engagement peak carried over to the promoted leg, not reset by the interrupt")
