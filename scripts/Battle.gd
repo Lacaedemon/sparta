@@ -960,6 +960,12 @@ func _spawn_scenario(specs: Array) -> void:
 			d["disciplined"] = bool(spec["disciplined"])
 		if spec.has("atomic_response_s"):
 			d["atomic_response_s"] = float(spec["atomic_response_s"])
+		if spec.has("training"):
+			# Skill, normally a per-type constant. A scenario isolating a
+			# skill-dependent mechanic needs two otherwise-identical units that
+			# differ only here; contrasting two different TYPES instead would vary
+			# attack, defence, weapon and armour at the same time.
+			d["training"] = float(spec["training"])
 		# Per-unit overrides for the type-defaulted settings (Battle._default_loadout's own
 		# "walk_advance_default"/"reform_before_move_default"/"file_major_reform_default"
 		# keys) -- a demo/test scenario that specifically needs a NON-default value on one

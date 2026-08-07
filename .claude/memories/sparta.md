@@ -908,6 +908,64 @@ a CLAUDE.md rule; it isn't in sparta's `CLAUDE.md`, and the codebase's own
 convention (e.g. `Settings.gd`) wraps explanatory comments across 2-3 lines.
 Rebutting with that distinction is fine — verify the citation, don't just comply.
 
+## `git worktree remove` needs `--force` on a worktree containing a submodule
+
+sparta vendors `.ai-config` as a git submodule,
+so any `.claude/worktrees/<name>` worktree with it checked out
+refuses the plain removal:
+`fatal: working trees containing submodules cannot be moved or removed`.
+
+This is a FLAT REFUSAL, not a dirty-tree complaint --
+the worktree can be perfectly clean and still hit it.
+It is distinct from the two failure modes already documented above:
+the partial success that leaves an empty, orphaned directory,
+and the fake worktree whose directory has no `.git` of its own.
+
+**`--force` is the whole fix, and it is one command.**
+
+```bash
+git worktree remove --force <path>
+```
+
+git's own `git-worktree` docs say so under `remove`:
+"Unclean worktrees or ones with submodules can be removed with `--force`."
+Only `git worktree move` refuses a submodule worktree unconditionally;
+`remove` accepts `--force` exactly as it does for an unclean tree.
+
+Measured on git 2.37.2.windows.2, against a throwaway worktree with
+`.ai-config` checked out: the plain form exits 128 with the error above,
+and `--force` exits 0, deletes the directory,
+and drops the entry from `git worktree list` with no prune needed.
+
+Verify disposability before forcing, since `--force` is the point of no
+return: `git status --short` comes back empty and
+`git merge-base --is-ancestor <head> origin/main` returns true.
+An empty `git rev-list origin/main..<head>` is the same fact in another
+form, so run one or the other rather than both.
+
+- **Do:** reach for `--force` as soon as a routine sweep reports this error.
+- **Do:** verify disposability first -- `--force` discards without asking.
+- **Don't:** read the refusal as "the worktree is busy" -- nothing holds it.
+- **Don't:** conclude `--force` is refused without running it.
+  The plain refusal's wording says nothing about what `--force` does,
+  and a hand deletion plus `git worktree prune` is a longer road to the
+  same place.
+
+(2026-08-05, a local working-directory cleanup sweep:
+7 of 8 worktrees were removed normally by `git worktree remove`;
+`gii-mwc-4b00e5` refused with this error alone,
+was verified clean with 0 unique commits and an ancestor of `origin/main`,
+and was cleared via PowerShell `Remove-Item` plus `git worktree prune`.
+That hand deletion was unnecessary: `--force` was never attempted,
+and this entry originally asserted from that omission that it "does not
+help".
+Review challenged the claim against git's own docs, and the measurement
+above -- run afterwards, on a purpose-built submodule worktree -- confirmed
+the reviewer was right.
+The reusable lesson is the narrower one:
+a refusal message describes the command you ran,
+not the flag you did not try.)
+
 ## A stub-review retry's recovered verdict posts under `github-actions`, not `claude`
 
 When auditing a PR's true review status, don't filter comments by
@@ -2302,6 +2360,80 @@ lines Codecov flagged. (`Lacaedemon/sparta` PR #853: 5 lines in `SelectionManage
 gating -- the box-select loop, `_select_same_type`, the conversio/quarter-turn dispatchers, and
 the `_enemy_team()` empty-selection fallback -- were each genuinely untested by any existing test,
 not just newly added by the diff; found and closed this way in one pass.)
+
+## One failing test suppresses the whole `codecov/patch` signal -- and an absent check looks like one that has not run yet
+
+The entry above assumes Codecov reported a gap and asks which lines.
+This is the prior question: whether it reported at all.
+
+A single failing test in `test-coverage.yml` costs two red checks AND the entire server-side
+coverage signal, from one root cause that has nothing to do with coverage.
+`-gexit` fails the "Run unit tests with coverage" step, and no later step carries
+`if: always()`, so both "Verify coverage report was written" and "Upload coverage to Codecov"
+are **skipped**.
+The post-run hook has already written `coverage/lcov.info` by then -- the log says so in as
+many words -- but nothing ever uploads it, so Codecov posts no status and no check run and the
+PR simply has no `codecov/patch`.
+
+It is silent in the direction that matters: an absent check is indistinguishable from one that
+has not run yet, and nobody is told that coverage reporting was suppressed.
+That also makes a local `tools/check.sh patch_coverage` run the only evidence available,
+exactly when it is easiest to forget which instrument produced the number -- CLAUDE.md
+documents that local run as matching Codecov's own figures, so it is a legitimate substitute,
+but "patch coverage is green" is a claim about the wrong instrument if CI never computed it.
+
+The decisive query is the job's per-step conclusions, not the job's own red status.
+Confirm the absence itself against the paginated check-runs endpoint and the commit's statuses.
+Prefer those over `gh pr checks` for a counting question, because its row count and the
+endpoint's run count are not the same number: measured on PR #1210's head, `gh pr checks`
+printed 12 rows where the endpoint returned 13 runs, the extra being a second run named
+`claude / claude`.
+Every distinct check name did appear in both, so on this repo the gap is a collapsed duplicate
+name rather than a hidden check -- enough to make a count misleading, not enough to hide a
+check outright:
+
+```bash
+gh api repos/Lacaedemon/sparta/actions/jobs/<job-id> --jq '.steps[] | "\(.name) => \(.conclusion)"'
+gh api --paginate "repos/Lacaedemon/sparta/commits/<sha>/check-runs?per_page=100" \
+  --jq '.check_runs[].name' | sort | grep -i codecov
+gh api "repos/Lacaedemon/sparta/commits/<sha>/status" --jq '{state, n: (.statuses|length)}'
+```
+
+`skipped` on the upload step (rather than `failure`) is the tell that an earlier step's exit
+suppressed it.
+
+Generalizes past coverage: when a test fails in a job that also produces an artifact or uploads
+to an external service, check whether the failure suppressed that side effect.
+A job's red status describes its tests and says nothing about whether its *other* outputs were
+produced.
+This is the same shape as the `push_error()` bullet in `CLAUDE.md`, inverted: there the step
+passes while the artifact is missing, here the artifact exists while the step that consumes it
+never runs.
+
+- **Do:** check the per-step conclusions of any red job that also uploads or emits an artifact,
+  and treat a `skipped` publish step as a suppressed signal rather than a missing one.
+- **Do:** say explicitly that a coverage number came from a local run whenever the `Coverage`
+  job is red, since CI computed nothing.
+- **Don't:** read an absent `codecov/patch` as "no patch-coverage gap" or as "still pending" --
+  on a red `Coverage` job it means the upload never happened.
+- **Don't:** report patch coverage as green on CI's authority when only a local run produced
+  the figure.
+
+(`Lacaedemon/sparta` PR #1199, 2026-08-05, head `a9fff0d8`: one failing test out of 2597
+(`test_residual_melee_swirl_battle.gd`, a pre-existing mis-calibrated guard, tracked as issue
+#1207) turned `Validate & test` and `Coverage` red as expected.
+The unexpected part was `codecov/patch` never posting: the paginated check-runs list holds 16
+entries and none is a Codecov one, and `commits/<sha>/status` returns
+`{"state":"pending","statuses":[]}`.
+That response carries no `contexts` field at all -- its array is `statuses`, exactly as the
+recipe above queries.
+An earlier revision of this entry named it `contexts`, which was a `jq` projection written by
+the session that measured it (`--jq '{state, contexts:[.statuses[]|...]}'`) mistaken for the
+API's own shape; caught in review.
+Coverage job `92475169686` logged `Wrote lcov coverage for 77 files to res://coverage/lcov.info`
+and then reported step 4 `failure`, step 5 `skipped`, step 6 `skipped`.
+The claim "patch coverage is green" was made on this PR from a local run before the gap was
+caught.)
 
 ## A `blob/main` doc link to a file this same PR adds 404s the link checker until merge
 
@@ -3854,3 +3986,82 @@ review reading the rendered semantics.
 (`Lacaedemon/sparta` PR #1188, 2026-07-30: the inserted bullet swallowed the closing
 paragraph of the whole "no top-down X" list, which applies to the list rather than to any
 one bullet.)
+
+## Calibrate a threshold guard against a deliberately-regressed build, not just healthy seeds
+
+A live-battle guard picks a threshold from measurements, and the measurements almost always
+come from the healthy build alone -- "main sits at ~20 degrees, so gate at 28". That says
+nothing about whether the metric MOVES when the fix is removed, and a metric that does not
+move is a pass path indistinguishable from a failure path.
+
+`test_residual_melee_swirl_battle.gd` measured each regiment's facing rotation at tick 700
+of a matched 100v100 Infantry grind, gated at 28 degrees on one seed. Re-measuring across
+six seeds showed clean main spanning 17.8-58.0 degrees (it exceeded its own gate at two of
+them, and was outright red on Linux while green on Windows). The decisive measurement,
+though, was a deliberately regressed build -- the canonical-slot mapping disabled in both
+`SoldierBodies.step()` and `couple()`, behind a temporary `OS.has_environment` hook -- which
+came out WORSE at three seeds and BETTER at three. The gated quantity carried no signal
+about the fix at all, on any seed.
+
+The same scenario measured in its OPENING window (300 ticks) separates cleanly: healthy
+holds a 2.84-3.44 degree band across eight seeds while the regressed build ranges 1.94 to
+14.45 (means 2.98 vs 6.52). Two regressed seeds still land under the healthy band, so the
+gate has to be the SEED MEAN with a looser per-seed backstop, not a per-seed ceiling.
+
+- **Do:** before trusting a threshold, break the fix behind a temporary env hook and re-run
+  the same measurement. Ratio of regressed to healthy IS the guard's discriminating power;
+  if it is near 1, the threshold is decoration whatever its value.
+- **Do:** prefer the window where the two builds separate. Long chaotic battles diverge
+  between platforms (this file already documents that for demo transcripts) and fan out
+  seed to seed, so a late absolute bound is unportable on top of being uninformative.
+- **Do:** assert the window is not vacuous -- here, that casualties actually occurred, since
+  casualty-driven array compaction is what arms the defect.
+- **Don't:** quietly widen a threshold to make a red guard green. Widening is only honest
+  once you know the metric moves; otherwise it converts a wrong answer into no answer.
+
+## `.gemini/` holds TWO configs for two different consumers -- and reviews are currently paused there
+
+`.gemini/config.json` is the **Antigravity/Gemini CLI workspace** config (its `skills`/`memories`
+path lists, written by ai-config's `bootstrap.sh`). `.gemini/config.yaml` is the **Gemini Code
+Assist GitHub App** config -- a different schema read by a different consumer. Editing one does
+nothing to the other, and the names are close enough to conflate at a glance.
+
+As of PR #1214 (2026-08-06) the GitHub App's automated review is **off**: `code_review.disable:
+true`, quota exhausted. A quota-exhausted reviewer posts nothing or a "could not review" stub,
+which this file already documents as easy to misread as an approval (the Copilot quota case, the
+review self-skip case) -- so the pause is deliberate and documented rather than a silent gap.
+Claude's own `claude-code-review.yml` and Copilot review are untouched and still gate every PR.
+
+Worth knowing before hunting for a lever that isn't there: sparta has **no** Actions-based
+Antigravity reviewer (nothing under `.github/workflows/` references one) and no Gemini/Antigravity
+bot has ever posted a review comment or check run on a recent PR. So `.gemini/config.yaml` is the
+only in-repo switch; a reviewer driven from the Antigravity dashboard or IDE is toggled there, not
+here. `GEMINI.md` carries the same note, since that is the file a Gemini/Antigravity session
+actually reads.
+
+## A "how to restore this" note must not pin a copy of an upstream product's defaults
+
+When disabling a third-party feature by overriding its config, the natural way to document the
+reversal is to write down what the defaults were, so a future reader can put them back. That is
+exactly the wrong shape: the pinned copy is a second source of truth for a value you do not own,
+it cannot be verified from inside the repo, and it rots silently when upstream changes it.
+
+The failure is not hypothetical -- it happened in the same commit that introduced the note. The
+reversal comment claimed `pull_request_opened` defaults of `help: false, summary: true,
+code_review: true`; the real default for `summary` is `false`. Anyone following it to "restore the
+defaults" would have left PR-open summaries on. Review caught it (`claude[bot]`, PR #1214), and the
+web docs confirmed it independently.
+
+Correcting the value would have left the mechanism intact. The fix that removes the failure mode is
+to say **delete the overriding block** on re-enable, so whatever the product default is at that
+time applies, with today's values quoted as context rather than as instructions.
+
+- **Do:** phrase a reversal as "delete the override" whenever the pre-override behaviour is an
+  upstream default rather than something this repo chose.
+- **Do:** verify a documented third-party default against that product's own docs before writing
+  it down at all -- and prefer not writing it down.
+- **Don't:** treat a reviewer's `suggestion` block as the whole fix. Here the suggestion corrected
+  the wrong value, which was right as far as it went; the better change was structural, and taking
+  the suggestion verbatim would have re-armed the same trap for the next drift.
+- **Don't:** forget the PR description carries the same claim. Fixing the files and leaving the
+  description asserting the old values just moves the stale copy somewhere a reader still finds it.
