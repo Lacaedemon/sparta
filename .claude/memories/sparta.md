@@ -4182,3 +4182,63 @@ review passed at 02:53:55Z, #1198's failed at 05:56:48Z. Tracked as ai-config#12
 The authored-versus-landed distinction is the part worth keeping: a `git log` date on the
 offending commit will predate the breakage by hours, which makes the timeline look
 inconsistent until you check when it merged.
+
+## Before fixing a finding by clearing state, list every OTHER caller of the function you are clearing it in
+
+The narrow lesson --- implement exactly what a review asked for and no more --- has now
+produced four regressions in this repo across two PRs, so the prose version is not enough
+on its own. What actually catches it is one mechanical question, asked before the edit:
+
+> Which other call sites reach this function, and does the state I am about to clear mean
+> something different for them?
+
+The failure shape is always the same. A review names a real defect ("cancelling an order
+does not stop the unit"). The obvious fix is to clear the stale execution state. The
+function that seems to own that state turns out to be **shared**, so the clearing lands on
+callers the finding never mentioned, and their behaviour changes silently --- no conflict,
+no failing test, nothing in the diff that looks wrong.
+
+**PR #1125 (2026-07-28)** was the first instance: an unprompted extra reset added to
+`Unit._start_promoted_move()` defeated the `ENGAGED_FRACTION_ABOVE` disengage guard,
+contradicting the field's own doc comment, which states the opposite contract in as many
+words.
+
+**PR #1196 (2026-08-07)** produced three more, all from a single round-1 fix that added
+four clears to `Unit._interrupt_current_order()`:
+
+1. `_move_order_peak_engaged_fraction = 0.0` --- the *same field and same guard as #1125*,
+   defeated again, from a different function one call earlier.
+2. `target_enemy = null` / `support_target = null` --- the severe one.
+   `_interrupt_current_order()` is reached from `set_current_order()`, which **every fresh
+   order in the game goes through**, and `Battle._apply_order_cmd` writes those two fields
+   immediately *before* calling it for the ATTACK, SUPPORT and relief-fallback branches
+   (`Battle.gd` 2086-2091, 2096-2099, 2133-2136). So a fresh attack order on any non-idle
+   unit had its own target nulled a moment after assignment, and `_update_current_order()`
+   retired the order on the next tick. Ordering a busy unit to attack silently did nothing.
+3. `SelectionManager.cancel_selected_order_at` applied one order-tree row index across every
+   selected unit's own queue, while the tree it indexes is built from a single unit
+   (`_hud.show_unit(_selected[0], ...)`).
+
+**The check, concretely.** Before adding a clear/reset to a function in order to fix a
+finding:
+
+```bash
+grep -n "_the_function_name(" scripts/*.gd        # every caller, not just the flagged one
+git show origin/main:scripts/Unit.gd | sed -n '<range>p'   # what did it do BEFORE this PR?
+```
+
+If more than one caller reaches it, the clearing usually belongs in the *specific* caller
+the finding is about, not in the shared function. In #1196 the fix was to move all four
+clears out of `_interrupt_current_order()` and into `cancel_order_at()`, which is the one
+caller with no incoming order to supply fresh state --- and to leave a comment at *both*
+sites saying why the split exists, since the natural tidying instinct is to put them back.
+
+**Two things that do not catch this.** CI stays green: the reverted or cleared state is
+internally consistent, and the existing suite has no test for "a fresh order on a busy
+unit". And a field's doc comment stating the contract does not prevent it either --- #1125
+and #1196's first regression both contradicted a doc comment that said the opposite
+explicitly. Only enumerating the callers, or a test that exercises the other caller, does.
+
+**When you do fix it, prove the guard bites.** Re-introduce the clearing, confirm the new
+test fails, then restore. Every guard added for the three #1196 regressions was verified
+this way; without it a regression test is a guess about what it covers.
