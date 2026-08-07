@@ -1770,12 +1770,13 @@ opengl3 --write-movie <path>.png --fixed-fps 30 --quit-after N ...`, then `Read`
 frame) is the fastest way to confirm whether a facing swing is a real visible rotation or
 inert bookkeeping.
 
-## THREE distinct root causes behind "formation visibly spins" -- don't assume it's one bug
+## FOUR distinct root causes behind "formation visibly spins" -- don't assume it's one bug
 
-There are at least three separate mechanisms that each independently make a regiment's
+There are at least four separate mechanisms that each independently make a regiment's
 soldier block visibly rotate or smear: two swirls discovered investigating #724 and #774 in
-the same session (both unresolved as of this writing), and a third -- the pre-contact
-approach-march blob -- found and fixed later (#921). All show up as `facing` and the soldier
+the same session (both unresolved as of this writing), a third -- the pre-contact
+approach-march blob -- found and fixed later (#921), and a fourth, the LATE-WINDOW rotation
+of a head-on locked melee, attributed under #1213. All show up as `facing` and the soldier
 block's world orientation drifting, but they're driven by different subsystems and resist
 the same fixes:
 
@@ -1848,6 +1849,18 @@ the same fixes:
   when the symptom is "block rotates/smears while marching" rather than a persistent melee
   swirl.
 
+- **A FOURTH mechanism -- the late-window rotation of a head-on LOCKED melee (#1213,
+  measured 2026-08-07):** two matched 100-soldier Infantry regiments clashing head-on with
+  no orders rotate up to 58 deg by tick 700 on clean `main`. Attribution, by sampling
+  between every stage of `Battle._on_soldier_tick` and converting each stage's effect into
+  BEARING rotation of the inter-unit vector: `SoldierBodies.couple` carries -59.163 of the
+  -59.16 total, and `_press_into` carries **0.002**. `couple` is only the conduit (it
+  follows the bodies); the origin is a persistent one-signed TANGENTIAL differential
+  velocity injected into the two body clouds, +2.82 from `SoldierEnemyContact` and +3.04
+  from the body-integration step, against 0.00 from every other stage. That is the same
+  suspect the #724 bullet above already names, reached independently on a different
+  scenario -- so treat the two as likely the same underlying shear, not as separate finds.
+
 **How to apply:** don't assume a "formation spins" report is the same bug as a previously
 diagnosed one just because the symptom looks similar. Reproduce fresh with the SAME
 cumulative-torque-instrumentation technique (temporary `print()`s in
@@ -1855,43 +1868,38 @@ cumulative-torque-instrumentation technique (temporary `print()`s in
 revert before committing) to find which specific subsystem is the source for THIS
 reproduction before assuming a fix that didn't work for one case will work for the other.
 
-- **A FOURTH mechanism, and the one that dominates a head-on LOCKED melee (#1213, measured
-  2026-08-07):** two matched 100-soldier Infantry regiments clashing head-on with no orders
-  rotate up to 58 deg by tick 700 on clean `main`. The driver is `Unit._press_into()`, which
-  writes `position` DIRECTLY every tick a regiment is in contact
-  (`position += to.normalized() * move_speed * MELEE_PRESS_FRACTION * delta`, reached from
-  `_think()`'s in-contact branch), derived from no soldier's motion. Cumulative per-unit X
-  displacement at tick 700, seed 777: `_physics_process` (i.e. `_press_into`) contributes
-  (+152.4, -152.4) -- exactly anti-symmetric -- against `SoldierBodies.couple`'s
-  (-173.6, +164.1), netting only (-21.2, +11.7). The accounting closes exactly
-  (800 + 152.432 - 173.58 = 778.85 vs a measured 778.847). Every soldier-layer term is an
-  order of magnitude smaller (`SoldierEnemyContact` +/-16.9, the integration step -/+27).
-  So the swirl is the residual of a top-down position write fighting the body layer, and it
-  is NOT slot selection and NOT re-facing. Filed as #1223; #1104's audit had already
-  inventoried this site as a category (c) bypass but had no observable symptom for it, which
-  is what separates it from its sibling #1107 (`_separate`, checked and closed as benign).
 
-- **Methodological correction to the torque-proxy technique above: for a TWO-REGIMENT orbit
-  it measures the wrong quantity.** The cumulative per-stage torque proxy sums
-  `cross(r_i, delta_v_i)` about each unit's OWN centroid, so it measures internal SPIN. What
-  rotates a clash's inter-unit bearing is differential LATERAL CENTROID displacement between
-  the two regiments -- a quantity the torque proxy does not see at all. Measure the per-stage
-  contribution to each unit's `position` along the perpendicular of the separation axis
-  instead. In the #1213 clash the separation starts along +Y, so plain world-X displacement
-  per unit is the whole signal, and the two channels a stage can write
-  (`_sim_body_vel` and `position`) are what to sample.
+### Attributing a two-regiment orbit: measure the BEARING, not a fixed world axis
 
-- **Two traps in the disconnect-and-drive-by-hand probe technique, both of which produce a
-  confident wrong answer:** (a) a cumulative DELTA on `_sim_steer` telescopes to ~0, because
-  `SoldierSteering` CLEARS and rewrites that array every tick, so `SoldierSteering`/
-  `SoldierMeleeStandoff`/`SoldierEncirclement` all read a vacuous `0.00` and are not
-  separately attributable that way -- their effect shows up folded into the integration
-  step's own `delta_v`; and (b) a battle that is not the FIRST one in the process does not
-  reproduce the trajectory -- the identical seed measured 28.55 deg as a second battle
-  against 56.14 deg as the first, so a separate preceding CONTROL run is worthless and the
-  control has to be the measured run's own value. Driving the six stages manually (after
-  `_battle.get_tree().physics_frame.disconnect(_battle._on_soldier_tick)`) IS faithful once
-  it is the first battle: it reproduced the connected run's 56.14 exactly.
+Four traps in the disconnect-and-drive-by-hand probe, each of which produced a confident
+wrong answer during #1213 before the next one caught it. The first is the important one.
+
+1. **Projecting onto a FIXED world axis is only valid at t=0.** In the #1213 clash the
+   separation starts along +Y, which makes plain world-X displacement look like the whole
+   signal. Once the bearing has rotated tens of degrees, world X carries a large RADIAL
+   component. Measured that way `_press_into` appears to contribute +/-152 wu of exactly
+   anti-symmetric displacement and reads as the dominant driver -- and it is not a driver at
+   all. Attribute the bearing angle directly instead: `dtheta = cross(r_hat, dr) / |r|`,
+   with `r` re-read immediately before each stage.
+2. **Exact anti-symmetry is not evidence of a driver -- it is the signature of a CENTRAL
+   pair, the one thing that cannot rotate anything.** `_press_into(enemy.position)` aims at
+   the enemy's centre, so it displaces both regiments along the line joining them and
+   changes only the separation's LENGTH. Its radial magnitude really is large (-1023 wu by
+   tick 700 against couple's +937), which is exactly why it dominates a world-axis
+   projection while contributing 0.002 deg of rotation.
+3. **The torque proxy the #724 bullet above uses measures a different quantity.** It sums
+   `cross(r_i, delta_v_i)` about each unit's OWN centroid, i.e. internal SPIN. What rotates
+   a two-regiment orbit is the tangential DIFFERENTIAL velocity between the two clouds. Both
+   are worth measuring; do not substitute one for the other.
+4. **Two vacuity traps.** A cumulative DELTA on `_sim_steer` telescopes to ~0, because
+   `SoldierSteering` clears and rewrites that array every tick -- so `SoldierSteering`/
+   `SoldierMeleeStandoff`/`SoldierEncirclement` read a vacuous `0.00` and are not separately
+   attributable that way (their effect folds into the integration step's own figure). And a
+   battle that is not the FIRST in the process does not reproduce the trajectory: the same
+   seed measured 28.55 deg as a second battle against 56.14 as the first, so a separate
+   preceding CONTROL run is worthless and the control has to be the measured run's own
+   value. The manual drive itself IS faithful once it is the first battle -- it reproduced
+   the connected run's 56.14 exactly.
 
 ## A live-battle GUT test reading `current_order` needs the tick-count wait loop, not a single bare `await physics_frame`
 

@@ -71,41 +71,65 @@ extends GutTest
 ## ## What drives the late window (measured)
 ##
 ## The late rotation is NOT this guard's own mechanism, and not a facing-logic feedback loop
-## either. Measured on seed 777 at tick 700, sampling between every stage of
-## Battle._on_soldier_tick:
+## either. Measured on seed 777, sampling between every stage of Battle._on_soldier_tick and
+## attributing each stage's contribution to the BEARING of the inter-unit vector.
 ##
-## * `facing` is perfectly SLAVED to the inter-unit bearing. Each regiment's facing-to-enemy
-##   residual holds at ~0.3 degrees or less at every sample, and `turned_a`, `turned_b` and
-##   the rotation of the (b.position - a.position) vector agree to a few hundredths. The two
-##   regiments' CENTRES orbit each other at a locked separation (~34-45 wu) and each simply
-##   re-aims. `_face_for_action` is a follower here, not a driver -- so the earlier
-##   mutual-re-facing-feedback family, offered as the likely candidate, is ruled out.
-## * The centres are moved by two large, nearly-cancelling terms. Per-unit cumulative X
-##   displacement at tick 700: `Unit._physics_process` contributes (+152.4, -152.4) --
-##   exactly anti-symmetric -- against `SoldierBodies.couple`'s (-173.6, +164.1), for a net
-##   of only (-21.2, +11.7). The accounting closes exactly: 800 + 152.432 - 173.58 = 778.85
-##   against a measured 778.847. Every soldier-layer contribution is an order of magnitude
-##   smaller (`SoldierEnemyContact` +/-16.9, the body-integration step -/+27).
-## * The `_physics_process` half is `_press_into`, which writes `position` DIRECTLY
-##   (`position += to.normalized() * move_speed * MELEE_PRESS_FRACTION * delta`) toward the
-##   enemy's centre every tick a unit is in contact -- derived from no soldier's motion.
-##   `couple` then drags the centre back toward the bodies. The swirl is the residual of
-##   that tug-of-war, so it is a regiment-level position write in tension with the
-##   soldier-level physics, not an artifact of slot selection.
+## * `facing` is perfectly SLAVED to that bearing. Each regiment's facing-to-enemy residual
+##   holds at ~0.3 degrees or less at every sample, and `turned_a`, `turned_b` and the
+##   bearing's own rotation agree to a few hundredths. The two regiments' CENTRES orbit each
+##   other at a locked separation (~34-45 wu) and each simply re-aims. `_face_for_action` is
+##   a follower here, not a driver -- so the earlier mutual-re-facing-feedback family,
+##   offered as the likely candidate, is ruled out.
+## * Only two things write `position`: `_press_into` (from `_think`'s in-contact branch) and
+##   `SoldierBodies.couple`. Of the -59.16 degrees of bearing rotation accumulated by tick
+##   700, `couple` carries -59.163 and `_press_into` carries **0.002**. `_press_into` aims
+##   exactly at the enemy's centre, so it displaces both regiments along the line joining
+##   them; a purely central displacement changes the separation's LENGTH and never its
+##   direction, so it cannot rotate the pair however large it is. Its magnitude is in fact
+##   large (-1023 wu of radial travel by tick 700, against couple's +937) -- but radial.
+## * `couple` is the conduit, not the origin: it only follows the bodies. The tangential
+##   DIFFERENTIAL velocity injected into the two body clouds, projected perpendicular to the
+##   current separation, is +2.82 from `SoldierEnemyContact` and +3.04 from the body
+##   integration step, against 0.00 from every other stage. So the rotation originates as a
+##   persistent one-signed tangential shear between the two engaged fronts, and reaches the
+##   regiment centres through `couple`.
 ##
-## Not gated here, deliberately: bounding the tug-of-war would need a threshold calibrated
+## Two limits on that attribution, stated because each is a place a reader could over-read
+## it. The three steer-writing stages (`SoldierSteering`, `SoldierMeleeStandoff`,
+## `SoldierEncirclement`) contribute 0.00 on the velocity channel BY CONSTRUCTION -- they
+## write `_sim_steer`, which the integration step consumes as feed-forward -- so their
+## effect is folded into that step's +3.04 and is not separately attributed here. And the
+## split between `SoldierEnemyContact` and the integration step is a split between an
+## impulse and the arrival term that partly answers it, not two independent sources.
+##
+## Not gated here, deliberately: bounding the shear would need a threshold calibrated
 ## against a build with that mechanism regressed, which is the method this file's own
-## opening-window bounds came from, and the fix is a design change rather than a
-## recalibration. Tracked as its own issue rather than as a decorative gate.
+## opening-window bounds came from. A bound added without that is decoration.
 ##
-## Method note, for whoever picks that up: the per-stage attribution above came from
-## disconnecting `Battle._on_soldier_tick` and driving its six stages by hand from a test,
-## sampling between them. Two traps in that technique -- a cumulative DELTA on `_sim_steer`
-## telescopes to zero, because SoldierSteering clears and rewrites that array every tick
-## (so the first three stages read a vacuous 0.00 and are not separately attributable that
-## way), and a battle that is not the FIRST one in the process does not reproduce the
-## trajectory (the same seed measured 28.55 degrees as a second battle against 56.14 as the
-## first), so the control has to be the measured run itself.
+## Method note, for whoever picks that up. The attribution came from disconnecting
+## `Battle._on_soldier_tick` and driving its six stages by hand from a test, sampling
+## between them. Four traps, each of which produced a confident wrong answer first:
+##
+## 1. Projecting onto a FIXED world axis. The separation starts along +Y, which makes world
+##    X look like the whole signal -- true only at t=0. Once the bearing has rotated tens of
+##    degrees, world X carries a large RADIAL component, and the radial channel is dominated
+##    by `_press_into`. Measured that way, `_press_into` appears to contribute +/-152 wu of
+##    exactly anti-symmetric displacement and reads as the driver. It is not: project onto
+##    the perpendicular of the CURRENT separation, or attribute the bearing angle directly
+##    via `cross(r_hat, dr) / |r|`.
+## 2. Reading exact anti-symmetry as evidence of a driver. It is the signature of a CENTRAL
+##    pair, which is the one thing that cannot rotate anything.
+## 3. A cumulative DELTA on `_sim_steer` telescopes to zero, because SoldierSteering clears
+##    and rewrites that array every tick -- a vacuous 0.00, not an absence of contribution.
+## 4. A battle that is not the FIRST in the process does not reproduce the trajectory (the
+##    same seed measured 28.55 degrees as a second battle against 56.14 as the first), so a
+##    separate preceding control run is worthless; the control has to be the measured run's
+##    own tick-700 value.
+##
+## Measured headless on Windows; the tables above are headless Linux. Seed 777 reproduces at
+## 56.14 against the 58.0 recorded there, within the local/CI divergence this repo's memories
+## document for a 700-tick 200-soldier melee.
+
 
 # Seeds are arbitrary but FIXED: the point of several is that no single one decides the
 # verdict, and the calibration above is only meaningful against the same set.
