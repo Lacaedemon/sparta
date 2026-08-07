@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation-only change: this PR adds docs/square-formation-design.md (a design note resolving the #1161 RFC on modelling square formation as sub-unit folding) and a one-paragraph roadmap reference in PLAN.md. No scripts/, scenes/, assets/, or project.godot changes -- the running simulation is untouched, so a recorded battle would look and play identically to any other. Nothing to show in a clip."
+}

@@ -13,7 +13,7 @@ const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 
 # Land contest (opposed roll): p_land = clip(L(beta*(A - D)), p_min, p_max), where
 #   A = s_A * cond_A + mu * c                  (attacker offence + charge-to-hit)
-#   D = phi_D * (s_D + lambda * b_D) * cond_D   (defender active defence, facing-gated)
+#   D = phi_D * (s_D + lambda * b_D * s_D) * cond_D  (defender active defence, facing-gated)
 # and L is the logistic. See docs/combat-model.md "The land contest".
 const HIT_SHARPNESS: float = 3.0          # beta: how sharply the skill gap swings the odds
 const CHARGE_HIT_WEIGHT: float = 0.5      # mu: closing speed's weight in the attack
@@ -178,12 +178,12 @@ static func facing_gate(defender_facing: Vector2, attack_from_dir: Vector2) -> f
 
 
 ## The land-contest probability that an attacker's strike lands: the opposed roll of
-## offence (skill + charge) against facing-gated active defence (skill + shield),
+## offence (skill + charge) against facing-gated active defence (skill + skill * shield),
 ## squashed through the logistic and clipped to [p_min, p_max]. `cond_a`/`cond_d` are
 ## the attacker's/defender's condition factors q*g. See docs/combat-model.md.
 static func land_chance(skill_a: float, skill_d: float, shield_d: float, phi_d: float, c: float, cond_a: float = 1.0, cond_d: float = 1.0) -> float:
 	var offence: float = skill_a * cond_a + CHARGE_HIT_WEIGHT * maxf(0.0, c)
-	var defence: float = phi_d * (skill_d + SHIELD_DEFENSE_WEIGHT * shield_d) * cond_d
+	var defence: float = phi_d * (skill_d + SHIELD_DEFENSE_WEIGHT * shield_d * skill_d) * cond_d
 	var x: float = HIT_SHARPNESS * (offence - defence)
 	var p: float = 1.0 / (1.0 + exp(-x))
 	return clampf(p, LAND_MIN, LAND_MAX)

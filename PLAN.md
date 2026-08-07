@@ -95,6 +95,13 @@ then grow outward.
      reshaping instructions plus bounded standing orders like "advance if your file-mate dies" —
      from their unit commander. Formation-level behavior (rank-closing, reshaping) emerges from
      individually-ordered soldiers, not a centralized recompute.
+   - **Square as sub-unit folding (#1161, design in `docs/square-formation-design.md`):**
+     the same principle applied to drill --- a square should form by its *existing* files
+     folding onto four faces as a genuine hollow shell, with footprint emerging from the
+     fold, rather than re-filing every man onto a solid `ceil(sqrt(n))` grid. Subsumes the
+     recurring array-index identity-swap bug family (#541/#668/#802/#1146) by making "a man
+     crossed his own formation" structurally unrepresentable. Ships independently of #547,
+     which only the optional last phase uses.
    - **Rout/discipline (#529, in flight as PR #533):** stays at the current unit-level morale-scalar
      architecture for now — a candidate for later, not scoped now. Individual soldier morale/fear
      (nearby casualties, whether neighbors are routing, commander proximity) aggregating into

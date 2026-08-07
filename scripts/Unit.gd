@@ -1382,6 +1382,44 @@ func clear_orders() -> void:
 	current_order = null
 
 
+## Cancel an order from the queue by index. If cancelling index 0 (current_order),
+## interrupts the in-flight maneuver and promotes the next queued order (if any) or goes idle.
+## If cancelling a queued order (index > 0), removes it from the queue without touching current_order.
+func cancel_order_at(index: int) -> void:
+	if index < 0 or index >= orders.size():
+		return
+	if index == 0:
+		_interrupt_current_order()
+		# Drop the in-flight execution state. This lives here rather than in
+		# _interrupt_current_order() because that function is also reached from
+		# set_current_order(), where a replacing order has just had its own target_enemy /
+		# support_target written by Battle._apply_order_cmd -- clearing them there silently
+		# drops attack, support and relief orders issued to any non-idle unit. Cancellation is
+		# the one case with no incoming order to supply fresh state.
+		#
+		# _move_order_peak_engaged_fraction is deliberately NOT cleared: retire_current_order()
+		# below promotes the next queued leg via _start_promoted_move(), and that field's doc
+		# requires a fight counted while the leg was still QUEUED to survive promotion, or the
+		# promoted leg's ENGAGED_FRACTION_ABOVE disengage guard is defeated.
+		has_move_target = false
+		move_target = Vector2.ZERO
+		target_enemy = null
+		support_target = null
+		# The maneuver-hold state a cancelled order parked, matching what every other
+		# order-terminating path already clears (Battle._apply_order_cmd's fresh-order block,
+		# and both disengage paths below). Side-step and back-step park ordered_facing, form-up
+		# parks deploy_facing, and a reform parks _reform_on_arrival -- exactly the maneuvers a
+		# player cancels. Left set, they lock facing and force walk pace in _move_to's
+		# "maneuvering" branch for the promoted leg or any later auto-chase, and a stale
+		# deploy_facing snaps facing on arrival. The promoted leg re-sets whichever it needs.
+		ordered_facing = Vector2.ZERO
+		deploy_facing = Vector2.ZERO
+		_reform_on_arrival = false
+		retire_current_order()
+	else:
+		orders.remove_at(index)
+
+
 ## Interrupt whatever maneuver the outgoing current order has in flight, before the queue is
 ## replaced or cleared. A partial in-place turn is settled -- the rotation folds into
 ## _formation_angle so every man keeps his own slot and the bodies don't surge -- and a wheel
@@ -1396,6 +1434,15 @@ func _interrupt_current_order() -> void:
 		_settle_order_turn()
 	elif is_wheeling():
 		active_leaf().turn_target = Vector2.ZERO
+	# Execution state (has_move_target / move_target / target_enemy / support_target) is
+	# deliberately NOT cleared here. This function is shared with set_current_order(), where the
+	# incoming order REPLACES the old one -- and Battle._apply_order_cmd writes target_enemy /
+	# support_target immediately BEFORE that call for the ATTACK, SUPPORT and relief-fallback
+	# paths. Clearing them here would null the brand-new order's own target, and
+	# _update_current_order() would retire it on the next tick, so ordering an already-busy unit
+	# to attack or support would silently drop the order. Cancellation is the only caller that
+	# genuinely has no successor state to inherit, so it does its own clearing --
+	# see cancel_order_at().
 
 
 ## The genuinely atomic order actually driving this tick's movement/turn logic --
