@@ -4065,3 +4065,120 @@ time applies, with today's values quoted as context rather than as instructions.
   the suggestion verbatim would have re-armed the same trap for the next drift.
 - **Don't:** forget the PR description carries the same claim. Fixing the files and leaving the
   description asserting the old values just moves the stale copy somewhere a reader still finds it.
+
+## A PR can revert merged `main` content through a perfectly clean merge -- trial-merge onto `main` before trusting a green board
+
+The standing sync rules all assume the hazard announces itself as a conflict. It does not
+have to. A commit that lands on a PR branch *after* `main` was merged in can undo that
+merge's content, and the result then merges back onto `main` cleanly, with no conflict, no
+red check, and no signal in the PR's own diff view -- which shows the PR against its base,
+not what merging it would do to `main`.
+
+**Concrete case:** on `Lacaedemon/sparta` PR #1194 (2026-08-07), `google-labs-jules[bot]`
+pushed `870e199e` on top of a session's own `main`-sync commit. Its diffstat read as
+ordinary deletions; what it actually did was revert every file the sync had brought in.
+Trial-merging the PR head onto `main` produced **14 files changed, 77 insertions, 484
+deletions**, undoing merged work from five PRs: #1199 (shield defense by defender skill,
+across `scripts/Shield.gd` / `SoldierCombat.gd` / `Battle.gd` / `test_soldier_combat.gd`),
+#1212 (`test_residual_melee_swirl_battle.gd`, 193 lines), #1210/#1208/#1205 (memory
+entries), and #1214/#1215 (`GEMINI.md`, `.gemini/config.yaml`). Only `+24/-24` in
+`scripts/SelectionManager.gd` was the PR's actual subject.
+
+**Why the usual checks miss it.** `mergeable: MERGEABLE` / `mergeStateStatus: CLEAN` only
+say there is no textual conflict. `gh pr diff` shows the PR against its merge-base. CI runs
+on the PR head, where the reverted state is internally consistent and passes. Even
+`git merge-base --is-ancestor <main-commit> <pr-head>` returns **true** for every reverted
+commit, because the merge really is in the ancestry -- the revert sits on top of it. That
+last one is the trap: the obvious ancestry check actively reassures you.
+
+**The check that works** is a real trial merge in a throwaway worktree, then a diff against
+`main`:
+
+```bash
+git worktree add --detach /tmp/mt origin/main
+cd /tmp/mt && git merge --no-commit --no-ff <pr-head>
+git diff origin/main --stat        # net effect on main; large deletions == revert
+git merge --abort; cd - && git worktree remove --force /tmp/mt
+```
+
+Run it before merging any PR whose branch gained commits after a `main` sync -- especially
+one pushed by a different agent, since a bot with a stale working tree can commit its whole
+tree state and silently revert anything newer.
+
+- **Do:** trial-merge onto `main` and read the net diffstat before merging a PR you did not
+  drive end to end.
+- **Do:** treat a large deletion count against `main` as a revert until proven otherwise.
+- **Don't:** read `MERGEABLE`/`CLEAN`, a green board, or a true `--is-ancestor` result as
+  evidence that merging preserves `main`'s content.
+
+## `tools/check.sh chars` scans only `*.qmd` and `*.R` -- `docs/*.md` is outside every net
+
+`check_chars` (and the `check / check-chars` CI job) is scoped to the website docs. A brand
+new Markdown file under `docs/` can therefore land banned punctuation with every check
+green. `CLAUDE.md`'s ASCII-punctuation rule covers *every* tracked source file including
+`.md`, so the rule and its enforcement disagree, and the gap is invisible from CI.
+
+Found on PR #1198 (2026-08-07): `docs/square-formation-design.md`, a new 238-line file
+added by that PR, carried **33 em-dashes**, plus one on its added `PLAN.md` line. All
+checks were green and the automated review did not flag them either. Because the whole file
+is the PR's own added lines, these were in scope for that PR rather than grandfathered.
+
+When editing or adding `.md` under `docs/`, check the added lines by hand:
+
+```bash
+git diff origin/main -- <paths> | grep "^+" | python -c "
+import sys; d=sys.stdin.buffer.read().decode('utf-8')
+print(sum(d.count(c) for c in u'\u2014\u2013\u201c\u201d\u2018\u2019\u00d7'))"
+```
+
+Scope the fix to lines the PR actually added: a whole-file replace on a pre-existing file
+(`PLAN.md` has 55 other em-dashes) is the scope-creep the punctuation rule itself warns
+against.
+
+## `main` has no required status checks -- a red `require-review` does not block merging
+
+Easy to assume the opposite from the check's name, and the assumption changes how urgently
+a broken reviewer gets treated. Verified 2026-08-07:
+
+```bash
+gh api repos/Lacaedemon/sparta/branches/main/protection      #=> 404 Branch not protected
+gh api repos/Lacaedemon/sparta/rules/branches/main --jq '[.[].type]'
+#=> ["deletion","non_fast_forward","pull_request","copilot_code_review"]  -- no required_status_checks
+```
+
+A PR whose `claude-review` and `require-review` are both red still reads
+`mergeable: MERGEABLE`, `mergeStateStatus: UNSTABLE`. So a reviewer outage removes review
+*silently* rather than gating merges, which is the more dangerous shape: nothing stops an
+unreviewed PR being merged, and the merge button gives no hint. Don't report a red review
+check as a merge blocker without querying protection first.
+
+Note the `copilot_code_review` ruleset in that list: per `pr-on-claim`, that means Copilot
+is re-requested automatically on push, which is why an explicit request's pending entry
+disappears moments after a `201`.
+
+## A `claude-review` that dies at ~40s with `total_cost_usd: 0` is not necessarily quota
+
+`fully-clean`'s zero-cost signature (`is_error: true`, `num_turns: 1`, `total_cost_usd: 0`,
+short duration) genuinely covers quota exhaustion and expired credentials. It also covers a
+third cause that never reaches the model at all: a **plugin-install failure**.
+
+```
+##[error]Action failed with error: Failed to install plugin 'ai-config@Morrison-Lab' (exit code: 1)
+##[error]Claude review did not complete successfully and was not eligible for a stub-review retry
+TOTAL_COST: 0.0000
+```
+
+Same cost, same rough duration, completely different fix -- and unlike quota it will never
+clear on its own. Read the job's own `##[error]` lines before classifying by the fingerprint;
+a retry-and-wait on this one waits forever.
+
+**Root cause when it appeared (2026-08-07):** `Morrison-Lab/ai-config` commit `6dc0cb49`
+renamed the marketplace `"name"` from `Morrison-Lab` to `morrison-lab`, authored 02:53Z but
+only reaching `main` when ai-config#1238 merged at 05:32Z. A plugin ref resolves by the
+marketplace's **declared name**, which is case-sensitive, so every consumer pinning
+`ai-config@Morrison-Lab` broke. Sparta's own runs bracket the landing exactly: #1194's
+review passed at 02:53:55Z, #1198's failed at 05:56:48Z. Tracked as ai-config#1246/#1248.
+
+The authored-versus-landed distinction is the part worth keeping: a `git log` date on the
+offending commit will predate the breakage by hours, which makes the timeline look
+inconsistent until you check when it merged.
