@@ -63,6 +63,15 @@ See `docs/units-convention.md` for full rules. Author length/speed constants as 
 - Commit `.gd.uid` sidecars alongside every new `.gd` script.
 - Run `godot --headless --import` after adding new `class_name` declarations so global classes register before running GUT unit tests.
 
+## Automated PR reviews are paused (quota exhausted)
+
+Gemini/Antigravity automated pull-request review is **off** for this repo: `.gemini/config.yaml` sets `code_review.disable: true`, and the `pull_request_opened` toggles are all false. The reason is quota, not a change of policy - a quota-exhausted reviewer posts nothing (or a "could not review" stub), which is easily misread as an approval it never gave.
+
+- Don't run a PR review from an Antigravity/Gemini session while this stands, and don't re-request one on a PR that has none.
+- Claude's review (`.github/workflows/claude-code-review.yml`) and Copilot code review are unaffected and still run on every PR; a PR is still reviewed before merge.
+- To restore: set `code_review.disable: false` in `.gemini/config.yaml` and delete the `pull_request_opened` block, so the product defaults apply instead of a pinned copy that can drift (today: `help: false`, `summary: false`, `code_review: true`).
+- Scope: `.gemini/config.yaml` is the lever for the **GitHub App**. Sparta has no Actions-based Antigravity reviewer (no workflow references one, and no Gemini/Antigravity bot has posted on a recent PR), so there is nothing else in-repo to switch off - but if such a workflow is ever added, it needs disabling separately, and reviews driven from the Antigravity dashboard or IDE are toggled there rather than here.
+
 ## Code review handling policy
 1. **In scope + confident + small** → fix on PR branch, commit, push.
 2. **Ambiguous or architecturally significant** → ask user before acting.
