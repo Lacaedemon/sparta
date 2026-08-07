@@ -224,7 +224,8 @@ func has_escape_route(from: Vector2, direction: Vector2, clearance: float = 0.0)
 func next_step_fleeing(from: Vector2, direction: Vector2, clearance: float = 0.0) -> Vector2:
 	var dir: Vector2 = direction.normalized()
 	var clipped: Vector2 = _clip_to_bounds(from, dir)
-	if from.distance_to(clipped) < _cell:
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	if from.distance_squared_to(clipped) < _cell * _cell:
 		return from + dir * 1000.0
 	return next_step(from, clipped, clearance)
 
@@ -489,7 +490,8 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	for raw_c in [grown.position, Vector2(grown.end.x, grown.position.y),
 			grown.end, Vector2(grown.position.x, grown.end.y)]:
 		var c: Vector2 = raw_c + tangent * lane_offset
-		if from.distance_to(c) < CORNER_ARRIVE_EPS:
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		if from.distance_squared_to(c) < CORNER_ARRIVE_EPS * CORNER_ARRIVE_EPS:
 			continue
 		# The corner's side about the same centre/axis: a corner strictly on
 		# the other side of the rect from the route is not a candidate. (For a

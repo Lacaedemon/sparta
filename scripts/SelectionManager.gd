@@ -1564,12 +1564,12 @@ func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> U
 	# click on the enemy team, since routing units are valid combat targets but a plain
 	# "units"-only scan can't resolve a click on one at all.
 	var best = null
-	var best_d: float = UnitRef.RADIUS + BODY_PICK_PAD
+	var best_d_sq: float = (UnitRef.RADIUS + BODY_PICK_PAD) * (UnitRef.RADIUS + BODY_PICK_PAD)
 	# Fallback: the unit whose raised standard (flag + pole) is under the cursor, so the
 	# flag is clickable just like the body. A body hit always wins; the standard only
 	# resolves the click when no block is under the cursor. Nearest flag breaks ties.
 	var flag_best = null
-	var flag_best_d: float = INF
+	var flag_best_d_sq: float = INF
 	var groups: Array = _ATTACKABLE_GROUPS if include_routers else ["units"]
 	for group in groups:
 		for node in get_tree().get_nodes_in_group(group):
@@ -1585,29 +1585,31 @@ func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> U
 					continue
 			elif unit.team != team:
 				continue
-			var d: float = unit.global_position.distance_to(world_pos)
-			if d < best_d:
-				best_d = d
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			var d_sq: float = unit.global_position.distance_squared_to(world_pos)
+			if d_sq < best_d_sq:
+				best_d_sq = d_sq
 				best = unit
-			var fd: float = _flag_pick_distance(unit, world_pos)
-			if fd >= 0.0 and fd < flag_best_d:
-				flag_best_d = fd
+			var fd_sq: float = _flag_pick_distance_squared(unit, world_pos)
+			if fd_sq >= 0.0 and fd_sq < flag_best_d_sq:
+				flag_best_d_sq = fd_sq
 				flag_best = unit
 	return best if best != null else flag_best
 
 
-## Distance from `world_pos` to the centre of `u`'s raised standard when the cursor falls
+## Squared distance from `world_pos` to the centre of `u`'s raised standard when the cursor falls
 ## within its (padded) bounds, else -1.0 for "not on the flag". Used as the flag-click
 ## fallback in `_unit_at`; the standard's geometry comes from UnitSprites so the hit region
 ## tracks what's drawn. The standard is drawn in an unrotated screen frame about the unit
 ## centre, so the cursor maps in by a plain translation (no facing rotation).
-func _flag_pick_distance(u, world_pos: Vector2) -> float:
+func _flag_pick_distance_squared(u, world_pos: Vector2) -> float:
 	var local: Vector2 = world_pos - u.global_position
 	var box: Rect2 = UnitSprites.standard_bounds(u.render_block_extent(),
 			u.block_centre_offset()).grow(FLAG_HIT_PAD)
 	if box.has_point(local):
 		# grow() preserves the centre, so this tiebreak distance is independent of FLAG_HIT_PAD.
-		return local.distance_to(box.get_center())
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		return local.distance_squared_to(box.get_center())
 	return -1.0
 
 
