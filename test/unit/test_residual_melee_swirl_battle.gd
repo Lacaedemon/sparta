@@ -91,8 +91,11 @@ extends GutTest
 ##   that scale. `_press_into` aims
 ##   exactly at the enemy's centre, so it displaces both regiments along the line joining
 ##   them; a purely central displacement changes the separation's LENGTH and never its
-##   direction, so it cannot rotate the pair however large it is. Its magnitude is in fact
-##   large (-1023 wu of radial travel by tick 700, against couple's +937) -- but radial.
+##   direction, so it cannot rotate the pair however large it is. The radial magnitude is in
+##   fact large (-1023 wu by tick 700, against couple's +937) -- but that figure belongs to
+##   the same `_physics_process` channel, so it covers `_separate()`'s central push too and
+##   is not `_press_into`'s alone. Radial either way, which is why the split does not matter
+##   to the rotation.
 ## * `couple` is the conduit, not the origin: it only follows the bodies. The tangential
 ##   DIFFERENTIAL velocity injected into the two body clouds, projected perpendicular to the
 ##   current separation, is +2.82 from `SoldierEnemyContact` and +3.04 from the body
