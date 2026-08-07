@@ -1899,7 +1899,11 @@ wrong answer during #1213 before the next one caught it. The first is the import
    seed measured 28.55 deg as a second battle against 56.14 as the first, so a separate
    preceding CONTROL run is worthless and the control has to be the measured run's own
    value. The manual drive itself IS faithful once it is the first battle -- it reproduced
-   the connected run's 56.14 exactly.
+   the connected run's 56.14 exactly. That 56.14 is headless WINDOWS, and the 58 deg in the
+   mechanism bullet above is the headless Linux figure recorded in #1213 for the same seed
+   and tick; the gap is the local/CI divergence this file's own "precise-tick caption claim"
+   section documents for a 700-tick 200-soldier melee, not a discrepancy in the measurement.
+   Reproduce against 56.14 on Windows and 58.0 on Linux.
 
 ## A live-battle GUT test reading `current_order` needs the tick-count wait loop, not a single bare `await physics_frame`
 
