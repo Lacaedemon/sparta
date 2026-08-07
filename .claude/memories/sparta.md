@@ -1855,6 +1855,44 @@ cumulative-torque-instrumentation technique (temporary `print()`s in
 revert before committing) to find which specific subsystem is the source for THIS
 reproduction before assuming a fix that didn't work for one case will work for the other.
 
+- **A FOURTH mechanism, and the one that dominates a head-on LOCKED melee (#1213, measured
+  2026-08-07):** two matched 100-soldier Infantry regiments clashing head-on with no orders
+  rotate up to 58 deg by tick 700 on clean `main`. The driver is `Unit._press_into()`, which
+  writes `position` DIRECTLY every tick a regiment is in contact
+  (`position += to.normalized() * move_speed * MELEE_PRESS_FRACTION * delta`, reached from
+  `_think()`'s in-contact branch), derived from no soldier's motion. Cumulative per-unit X
+  displacement at tick 700, seed 777: `_physics_process` (i.e. `_press_into`) contributes
+  (+152.4, -152.4) -- exactly anti-symmetric -- against `SoldierBodies.couple`'s
+  (-173.6, +164.1), netting only (-21.2, +11.7). The accounting closes exactly
+  (800 + 152.432 - 173.58 = 778.85 vs a measured 778.847). Every soldier-layer term is an
+  order of magnitude smaller (`SoldierEnemyContact` +/-16.9, the integration step -/+27).
+  So the swirl is the residual of a top-down position write fighting the body layer, and it
+  is NOT slot selection and NOT re-facing. Filed as #1223; #1104's audit had already
+  inventoried this site as a category (c) bypass but had no observable symptom for it, which
+  is what separates it from its sibling #1107 (`_separate`, checked and closed as benign).
+
+- **Methodological correction to the torque-proxy technique above: for a TWO-REGIMENT orbit
+  it measures the wrong quantity.** The cumulative per-stage torque proxy sums
+  `cross(r_i, delta_v_i)` about each unit's OWN centroid, so it measures internal SPIN. What
+  rotates a clash's inter-unit bearing is differential LATERAL CENTROID displacement between
+  the two regiments -- a quantity the torque proxy does not see at all. Measure the per-stage
+  contribution to each unit's `position` along the perpendicular of the separation axis
+  instead. In the #1213 clash the separation starts along +Y, so plain world-X displacement
+  per unit is the whole signal, and the two channels a stage can write
+  (`_sim_body_vel` and `position`) are what to sample.
+
+- **Two traps in the disconnect-and-drive-by-hand probe technique, both of which produce a
+  confident wrong answer:** (a) a cumulative DELTA on `_sim_steer` telescopes to ~0, because
+  `SoldierSteering` CLEARS and rewrites that array every tick, so `SoldierSteering`/
+  `SoldierMeleeStandoff`/`SoldierEncirclement` all read a vacuous `0.00` and are not
+  separately attributable that way -- their effect shows up folded into the integration
+  step's own `delta_v`; and (b) a battle that is not the FIRST one in the process does not
+  reproduce the trajectory -- the identical seed measured 28.55 deg as a second battle
+  against 56.14 deg as the first, so a separate preceding CONTROL run is worthless and the
+  control has to be the measured run's own value. Driving the six stages manually (after
+  `_battle.get_tree().physics_frame.disconnect(_battle._on_soldier_tick)`) IS faithful once
+  it is the first battle: it reproduced the connected run's 56.14 exactly.
+
 ## A live-battle GUT test reading `current_order` needs the tick-count wait loop, not a single bare `await physics_frame`
 
 `Battle._physics_process` increments `_tick` AFTER running that tick's `_run_enemy_ai()` (so

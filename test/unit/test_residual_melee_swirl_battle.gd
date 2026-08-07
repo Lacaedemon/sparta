@@ -66,8 +66,46 @@ extends GutTest
 ##
 ## What this file deliberately does NOT assert: any bound on the late-window rotation. Clean
 ## main really does reach tens of degrees by tick 700 on some seeds (the first table above),
-## and pretending to bound that would put the old silent-pass back. The residual swirl's own
-## magnitude is tracked as its own open sim question, not as a gate here.
+## and pretending to bound that would put the old silent-pass back.
+##
+## ## What drives the late window (measured)
+##
+## The late rotation is NOT this guard's own mechanism, and not a facing-logic feedback loop
+## either. Measured on seed 777 at tick 700, sampling between every stage of
+## Battle._on_soldier_tick:
+##
+## * `facing` is perfectly SLAVED to the inter-unit bearing. Each regiment's facing-to-enemy
+##   residual holds at ~0.3 degrees or less at every sample, and `turned_a`, `turned_b` and
+##   the rotation of the (b.position - a.position) vector agree to a few hundredths. The two
+##   regiments' CENTRES orbit each other at a locked separation (~34-45 wu) and each simply
+##   re-aims. `_face_for_action` is a follower here, not a driver -- so the earlier
+##   mutual-re-facing-feedback family, offered as the likely candidate, is ruled out.
+## * The centres are moved by two large, nearly-cancelling terms. Per-unit cumulative X
+##   displacement at tick 700: `Unit._physics_process` contributes (+152.4, -152.4) --
+##   exactly anti-symmetric -- against `SoldierBodies.couple`'s (-173.6, +164.1), for a net
+##   of only (-21.2, +11.7). The accounting closes exactly: 800 + 152.432 - 173.58 = 778.85
+##   against a measured 778.847. Every soldier-layer contribution is an order of magnitude
+##   smaller (`SoldierEnemyContact` +/-16.9, the body-integration step -/+27).
+## * The `_physics_process` half is `_press_into`, which writes `position` DIRECTLY
+##   (`position += to.normalized() * move_speed * MELEE_PRESS_FRACTION * delta`) toward the
+##   enemy's centre every tick a unit is in contact -- derived from no soldier's motion.
+##   `couple` then drags the centre back toward the bodies. The swirl is the residual of
+##   that tug-of-war, so it is a regiment-level position write in tension with the
+##   soldier-level physics, not an artifact of slot selection.
+##
+## Not gated here, deliberately: bounding the tug-of-war would need a threshold calibrated
+## against a build with that mechanism regressed, which is the method this file's own
+## opening-window bounds came from, and the fix is a design change rather than a
+## recalibration. Tracked as its own issue rather than as a decorative gate.
+##
+## Method note, for whoever picks that up: the per-stage attribution above came from
+## disconnecting `Battle._on_soldier_tick` and driving its six stages by hand from a test,
+## sampling between them. Two traps in that technique -- a cumulative DELTA on `_sim_steer`
+## telescopes to zero, because SoldierSteering clears and rewrites that array every tick
+## (so the first three stages read a vacuous 0.00 and are not separately attributable that
+## way), and a battle that is not the FIRST one in the process does not reproduce the
+## trajectory (the same seed measured 28.55 degrees as a second battle against 56.14 as the
+## first), so the control has to be the measured run itself.
 
 # Seeds are arbitrary but FIXED: the point of several is that no single one decides the
 # verdict, and the calibration above is only meaningful against the same set.
