@@ -80,13 +80,22 @@ extends GutTest
 ##   other at a locked separation (~34-45 wu) and each simply re-aims. `_face_for_action` is
 ##   a follower here, not a driver -- so the earlier mutual-re-facing-feedback family,
 ##   offered as the likely candidate, is ruled out.
-## * Only two things write `position`: `_press_into` (from `_think`'s in-contact branch) and
-##   `SoldierBodies.couple`. Of the -59.16 degrees of bearing rotation accumulated by tick
-##   700, `couple` carries -59.163 and `_press_into` carries **0.002**. `_press_into` aims
+## * Three things write `position` here: `_press_into` (from `_think`'s in-contact branch),
+##   `Unit._separate()` (`:3396`, a capped displacement -- the velocity there bounds the write
+##   rather than replacing it), and `SoldierBodies.couple`. The first two both run inside
+##   `Unit._physics_process`, and the probe's `think` channel captures that whole function, so
+##   they are bounded together rather than split. Of the -59.16 degrees of bearing rotation
+##   accumulated by tick
+##   700, `couple` carries -59.163 and the whole `_physics_process` channel carries **0.002**
+##   -- every regiment-level position write combined, so no split between them can matter at
+##   that scale. `_press_into` aims
 ##   exactly at the enemy's centre, so it displaces both regiments along the line joining
 ##   them; a purely central displacement changes the separation's LENGTH and never its
-##   direction, so it cannot rotate the pair however large it is. Its magnitude is in fact
-##   large (-1023 wu of radial travel by tick 700, against couple's +937) -- but radial.
+##   direction, so it cannot rotate the pair however large it is. The radial magnitude is in
+##   fact large (-1023 wu by tick 700, against couple's +937) -- but that figure belongs to
+##   the same `_physics_process` channel, so it covers `_separate()`'s central push too and
+##   is not `_press_into`'s alone. Radial either way, which is why the split does not matter
+##   to the rotation.
 ## * `couple` is the conduit, not the origin: it only follows the bodies. The tangential
 ##   DIFFERENTIAL velocity injected into the two body clouds, projected perpendicular to the
 ##   current separation, is +2.82 from `SoldierEnemyContact` and +3.04 from the body
@@ -125,6 +134,13 @@ extends GutTest
 ##    same seed measured 28.55 degrees as a second battle against 56.14 as the first), so a
 ##    separate preceding control run is worthless; the control has to be the measured run's
 ##    own tick-700 value.
+## 5. An `awk '/^func NAME/,/^func .../' | grep` range over a GDScript function returns EMPTY
+##    when the closing pattern also matches the opening line -- which it does whenever the
+##    function's own signature has the return-type shape the closing pattern looks for. That
+##    empty result reads as "this function does not do X". It cost a published false claim
+##    about `_separate()` here. Print the range's own line count before grepping it, per this
+##    repo's standing rule that a check must report what it examined and not only what it
+##    found.
 ##
 ## Measured headless on Windows; the tables above are headless Linux. Seed 777 reproduces at
 ## 56.14 against the 58.0 recorded there, within the local/CI divergence this repo's memories

@@ -1854,7 +1854,9 @@ the same fixes:
   no orders rotate up to 58 deg by tick 700 on clean `main`. Attribution, by sampling
   between every stage of `Battle._on_soldier_tick` and converting each stage's effect into
   BEARING rotation of the inter-unit vector: `SoldierBodies.couple` carries -59.163 of the
-  -59.16 total, and `_press_into` carries **0.002**. `couple` is only the conduit (it
+  -59.16 total, and the whole `_physics_process` channel -- `_press_into` plus
+  `Unit._separate()`, which also writes `position` (`:3396`, a capped displacement) --
+  carries **0.002** between them. `couple` is only the conduit (it
   follows the bodies); the origin is a persistent one-signed TANGENTIAL differential
   velocity injected into the two body clouds, +2.82 from `SoldierEnemyContact` and +3.04
   from the body-integration step, against 0.00 from every other stage. That is the same
@@ -1884,9 +1886,11 @@ wrong answer during #1213 before the next one caught it. The first is the import
 2. **Exact anti-symmetry is not evidence of a driver -- it is the signature of a CENTRAL
    pair, the one thing that cannot rotate anything.** `_press_into(enemy.position)` aims at
    the enemy's centre, so it displaces both regiments along the line joining them and
-   changes only the separation's LENGTH. Its radial magnitude really is large (-1023 wu by
+   changes only the separation's LENGTH. The radial magnitude really is large (-1023 wu by
    tick 700 against couple's +937), which is exactly why it dominates a world-axis
-   projection while contributing 0.002 deg of rotation.
+   projection while the whole channel contributes 0.002 deg of rotation. Both figures are
+   channel-scoped: `Unit._separate()` shares `_physics_process` and pushes centrally too, so
+   neither the -1023 nor the 0.002 is `_press_into`'s alone.
 3. **The torque proxy the #724 bullet above uses measures a different quantity.** It sums
    `cross(r_i, delta_v_i)` about each unit's OWN centroid, i.e. internal SPIN. What rotates
    a two-regiment orbit is the tangential DIFFERENTIAL velocity between the two clouds. Both
