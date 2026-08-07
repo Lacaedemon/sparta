@@ -50,8 +50,7 @@ and fixed traits from their regiment:
 
 - **Skill** $s$ --- training. Lands blows, parries, beats shields, tires slower.
 - **Armour** $a$ --- soaks part of a landed blow, from *any* angle.
-- **Shield** $b$ --- blocks blows, but only ones you face, and only as well as
-  your skill lets you use it.
+- **Shield** $b$ --- blocks blows, but only ones you face.
 - **Lethality** $\ell$ --- how deadly the weapon is.
 - **Reach** $r$ --- how far the weapon strikes (a spear out-reaches a sword).
 - **Mass** $m$ --- how hard they are to shove or knock down (a horse is heavy).
@@ -88,15 +87,13 @@ shield. Crucially, you can only actively defend what you can **see**:
 
 $$p_{\mathrm{land}} = L\big(\beta\,(\mathcal{A} - \mathcal{D})\big),
 \qquad
-\mathcal{D} = \phi\,(s_D + \lambda\,b_D\,s_D)\cdots$$
+\mathcal{D} = \phi\,(s_D + \lambda\,b_D)\cdots$$
 
 Here $\mathcal{A}$ and $\mathcal{D}$ are the attacker's and defender's scores, $L$
 turns the gap between them into a hit chance (an even gap is even odds), and $\beta$
 sets how sharply skill tells. $\phi$ is your **facing** against the incoming blow:
 full to the front, little to the flank, **zero to the back** --- and $\lambda$ is how
-much a shield ($b_D$) multiplies the defence your *training* already buys. A shield
-is something a soldier uses, not armour that works regardless: it is worth almost
-nothing to a raw recruit and more the better trained they are. A blow to a
+much a shield ($b_D$) adds to a defence you can actually bring to bear. A blow to a
 soldier's back meets no parry and no shield --- only armour. Skill, shields, and
 footwork all live on the front. Wound the attacker or wind the defender and these
 scores shift; nothing is ever a guaranteed hit or miss.
@@ -184,11 +181,9 @@ Everything tactical comes out of the rolls above:
   ridden down), keep it **deep** (a shallow braced line can be punched through), and
   a heavy enough charge topples men even when braced. Never take a charge loose or in
   the flank; never send horse into set spears.
-- **Armour and shields buy time --- but shields only for troops who can use them.**
-  Heavy, shielded troops turn wounds into blocked shoves and glancing hits, so they
-  grind slowly and endure, and light troops caught in the press evaporate. Armour
-  protects whoever wears it; a shield's worth scales with training, so handing
-  shields to a raw levy buys far less than handing them to veterans.
+- **Armour and shields buy time.** Heavy, shielded troops turn wounds into blocked
+  shoves and glancing hits --- they grind slowly and endure. Light troops caught in
+  the press evaporate.
 - **Fight fresh, fight skilled.** Skill and stamina help at *both* ends --- landing
   more, defending more, tiring slower. Rested veterans beat winded levies by more
   than the headcount suggests, so pace your commitment.

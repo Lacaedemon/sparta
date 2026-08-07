@@ -264,23 +264,6 @@ func test_land_shield_lowers_the_chance() -> void:
 	assert_lt(shielded, no_shield, "a shield turns more blows")
 
 
-func test_land_shield_effectiveness_scales_with_defender_skill() -> void:
-	# A skilled defender gains a larger active defense boost from a shield than a less skilled one.
-	var high_skill_no_shield: float = SoldierCombat.land_chance(0.5, 0.8, 0.0, 1.0, 0.0)
-	var high_skill_shielded: float = SoldierCombat.land_chance(0.5, 0.8, 0.5, 1.0, 0.0)
-	var high_skill_diff: float = high_skill_no_shield - high_skill_shielded
-
-	var low_skill_no_shield: float = SoldierCombat.land_chance(0.5, 0.2, 0.0, 1.0, 0.0)
-	var low_skill_shielded: float = SoldierCombat.land_chance(0.5, 0.2, 0.5, 1.0, 0.0)
-	var low_skill_diff: float = low_skill_no_shield - low_skill_shielded
-
-	assert_gt(high_skill_diff, low_skill_diff, "more skilled defender derives greater active defense benefit from a shield")
-	# Zero-skill defender gets zero active shield block benefit.
-	var zero_skill_no_shield: float = SoldierCombat.land_chance(0.5, 0.0, 0.0, 1.0, 0.0)
-	var zero_skill_shielded: float = SoldierCombat.land_chance(0.5, 0.0, 0.5, 1.0, 0.0)
-	assert_almost_eq(zero_skill_no_shield, zero_skill_shielded, 1e-5, "untrained defender gets zero active shield block")
-
-
 func test_land_charge_raises_the_chance() -> void:
 	var standing: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 0.0)
 	var charging: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 1.0)

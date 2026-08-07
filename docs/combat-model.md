@@ -192,16 +192,12 @@ shield, deflection). Active defence only works against blows the defender can se
 and meet:
 
 $$\mathcal{A} = s_A\,q(h_A)\,g(\sigma_A) + \mu\,c,$$
-$$\mathcal{D} = \phi_D\,\big(s_D + \lambda\,b_D\,s_D\big)\,q(h_D)\,g(\sigma_D),
+$$\mathcal{D} = \phi_D\,\big(s_D + \lambda\,b_D\big)\,q(h_D)\,g(\sigma_D),
 \qquad
 \phi_D = \big(\hat{n}_D \cdot \hat{u}_{D\to A}\big)_+ .$$
 
 Here $\mu \ge 0$ weights closing speed into the attack (how much a charge helps it
-land), and $\lambda \ge 0$ weights the shield into active defence. The shield term
-is multiplied by the defender's own skill $s_D$ rather than added independently of
-it, so a shield is worth nothing to an untrained defender and worth progressively
-more as training rises: the shield is something the defender *uses*, not armour
-that protects regardless. $\phi_D$ is the
+land), and $\lambda \ge 0$ weights the shield into active defence. $\phi_D$ is the
 **facing gate**: the dot of the defender's facing with the
 direction the blow comes from, clamped to non-negative. A blow from the front
 ($\phi_D \to 1$) meets full active defence; a blow from the flank meets little; a
@@ -462,10 +458,7 @@ opposed rolls, the prone threshold, and the bracing chain acting together.
   same shared $c$, over meeting it horse-to-horse.
 - **Shields and armour** turn would-be wounds into blocked shoves (shield, from the
   front) or glancing hits (armour, from any angle), so a heavy, shielded line
-  grinds slowly and survives; light troops caught in the press evaporate. The two
-  differ in who benefits: armour protects whoever wears it, while the shield's
-  contribution to active defence scales with the defender's own skill, so issuing
-  shields to a raw levy buys far less than issuing them to veterans.
+  grinds slowly and survives; light troops caught in the press evaporate.
 - **Skill and freshness** compound at both ends — landing more, defending more,
   tiring slower — so rested veterans beat raw or winded levies out of proportion to
   their numbers. Pace the fight: a line that has been holding all battle defends

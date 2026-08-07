@@ -883,45 +883,6 @@ against it line by line. When delegating demo authorship to a subagent, state th
 explicitly in the brief up front — both recurrences were from agents who verified locally, wrote
 a confident caption from that, and never diffed it against what CI would actually record.
 
-**The rule above is scoped to a demo CAPTION, and the same figures pasted into a PR COMMENT
-are the same error with nothing pointing at it.**
-Every statement of it so far -- the heading, the how-to-apply, the recurrence paragraph --
-says "caption", so a session about to quote survivor counts into a review reply, an ARD
-disposition table, or a PR description does not see itself in it.
-The artifact does not change the physics: a local Windows `dump-state.sh` run and CI's Linux
-transcript diverge in a long battle whichever document you quote them into, and a PR comment
-is read by the human deciding whether to merge.
-So read this rule as governing any artifact that publishes a precise per-tick number, not
-only the caption.
-
-What makes the wrong figure feel safe to write is that the QUALITATIVE conclusion survives
-the substitution intact.
-A demo staged to show a dramatic contrast stays dramatic under either set of numbers, so
-nothing about the claim reads as wrong afterwards -- only the pinned digits were ever false,
-and they are the part a reader quotes onward.
-Treat an intact conclusion as the reason to check the digits, never as evidence they hold.
-
-- **Do:** cross-check against CI's own posted transcript for the shipping commit before
-  putting a precise per-tick number in ANY artifact -- caption, PR comment, PR description,
-  or review reply.
-- **Do:** word a claim qualitatively when the point is a contrast, and let CI's transcript
-  supply whatever has to be exact.
-- **Don't:** read "the conclusion is unchanged" as licence to leave local figures standing;
-  the conclusion was never the part that was wrong.
-- **Don't:** assume the caption framing exempts a comment -- the divergence is a property of
-  the run, not of the document it lands in.
-
-(`Lacaedemon/sparta` PR #1199, 2026-08-05: a round-1 disposition comment reported the raw-levy
-defender ending at 17/40 with morale 48.3, taken from a local Windows `dump-state.sh` run of a
-~800-tick four-regiment melee.
-CI's own posted transcript for the same PR reports 21/40 and morale 57.3 at that tick.
-This file's rule had been on the books since 2026-07-12 and was loaded in that session;
-it was read as governing the demo's caption -- which was written qualitatively and needed no
-change -- while the comment quoting exact figures went unchecked.
-The qualitative claim held either way, which is why it read as safe: the veteran loses 4 men
-where the levy loses 19 on CI's numbers, and the contrast was just as stark on the local ones.
-Corrected in a follow-up comment on the same PR.)
-
 ## Footprint-preserving maneuvers are inherently subtle on screen — stage for legibility, verify by per-region pixel-diff
 
 A footprint-preserving maneuver — the conversio/about-face (#394), where the block reverses 180°
