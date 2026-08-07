@@ -100,8 +100,8 @@ then grow outward.
      folding onto four faces as a genuine hollow shell, with footprint emerging from the
      fold, rather than re-filing every man onto a solid `ceil(sqrt(n))` grid. Subsumes the
      recurring array-index identity-swap bug family (#541/#668/#802/#1146) by making "a man
-     crossed his own formation" structurally unrepresentable. Sequenced after the #547
-     primitive, but the first slice stands alone.
+     crossed his own formation" structurally unrepresentable. Ships independently of #547,
+     which only the optional last phase uses.
    - **Rout/discipline (#529, in flight as PR #533):** stays at the current unit-level morale-scalar
      architecture for now — a candidate for later, not scoped now. Individual soldier morale/fear
      (nearby casualties, whether neighbors are routing, commander proximity) aggregating into

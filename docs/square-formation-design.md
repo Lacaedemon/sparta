@@ -147,15 +147,18 @@ footprint becomes an output, not an input.
 
 ### Standalone, or ride on #547?
 
-**Sequence it after #547's primitive, but scope the first slice to stand
-alone.** [#547](https://github.com/Lacaedemon/sparta/issues/547) (explicit
-per-soldier slot ownership) is the enabling primitive that makes identity
-first-class and makes "a man crossed his own formation" *unrepresentable* rather
-than merely *detectable*. The full hollow-file-folding model wants that
-primitive underneath it. But phase 1 below (preserve file identity through the
-reshape) reuses the `_sim_soldier_file` machinery that already exists and does
-not need #547 --- it is a small, self-contained step that de-risks the rest and is
-worth shipping first.
+**Stand alone. #547 is an optional upgrade, not a prerequisite.**
+[#547](https://github.com/Lacaedemon/sparta/issues/547) (explicit per-soldier
+slot ownership) is the primitive that would make identity first-class, turning
+"a man crossed his own formation" from *detectable* into *unrepresentable*. That
+is a strictly better end state, and Phase 4 below takes it.
+
+But none of the three gap-closing phases need it. Phase 1 reuses the
+`_sim_soldier_file` machinery that already exists; Phases 2 and 3 are layout
+geometry, which #547 does not supply. Only Phase 4, which the plan marks
+optional, re-expresses the fold as sub-unit orders on top of #547. So the whole
+gap-closing sequence can ship before #547 exists, and should not be scheduled
+behind it.
 
 ### Cost
 
@@ -239,17 +242,25 @@ against `demos/inputs/anti-cav-square.json` and the `square` catalog clip).
   is tiny by construction, so the shell cannot hold all `n` men for most of the
   roster:
 
-  | unit | n | reach | t | s | shell capacity | result |
-  | --- | ---: | ---: | ---: | ---: | ---: | --- |
-  | Spearmen | 140 | 2.4 m | 5 | 12 | 140 | fits exactly, 2x2 core |
-  | Infantry | 120 | 1.3 m | 3 | 11 | 96 | 24 men unplaced |
-  | Cavalry | 80 | 1.5 m | 3 | 9 | 72 | 8 men unplaced |
-  | Archers | 90 | 0.6 m | 1 | 10 | 36 | 54 men unplaced |
+  | unit | n | reach | rank pitch | t | s | shell capacity | result |
+  | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+  | Spearmen | 140 | 2.4 m | 0.45 m | 5 | 12 | 140 | fits exactly, 2x2 core |
+  | Infantry | 120 | 1.3 m | 0.45 m | 3 | 11 | 96 | 24 men unplaced |
+  | Archers | 90 | 0.6 m | 0.45 m | 1 | 10 | 36 | 54 men unplaced |
+  | Cavalry | 80 | 1.5 m | **3.0 m** | 1 | 9 | 32 | 48 men unplaced |
+
+  Cavalry is the row that matters most and the easiest to get wrong: it is the
+  only loadout that overrides the rank pitch (`Battle.gd` sets
+  `"rank_pitch_m": 3.0` against the 0.45 m default), so applying the infantry
+  default would give `t = 3` and understate the shortfall by a factor of six.
+  Reach values are `LoadoutRegistry`'s own (`Spear` 2.4, `Gladius` 1.3, `Spatha`
+  1.5, `Sidearm` 0.6).
 
   The `max_by_headcount` valve only covers the opposite case (too few men to fill
   the shell). So Phase 2 needs at least a headcount-derived side length before
   Phase 3 replaces it with the fold-derived one; otherwise an implementer hits
-  unplaced men on the first non-Spearmen unit tested.
+  unplaced men on the first non-Spearmen unit tested --- and worst on cavalry,
+  where the roomy pitch leaves a single-rank shell holding under half the unit.
 - **Phase 3 --- derive the footprint from the fold.** Replace `ceil(sqrt(n))` as
   the primary footprint definition with the fold-derived side length; keep it as
   the degenerate-remnant fallback. Closes gap 3. Depends on phases 1-2.
