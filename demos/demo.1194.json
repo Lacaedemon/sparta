@@ -1,16 +1,4 @@
 {
-  "scenario": "res://benchmarks/scenarios/large-battle.json",
-  "reason": "This PR (#1194) optimizes UI distance calculations (distance_to -> distance_squared_to) without logic change. No visual or simulation state change is expected.",
   "skip": true,
-  "ticks": 200,
-  "views": [
-    {
-      "time": 0.0,
-      "camera": {
-        "x": 0.0,
-        "y": 0.0,
-        "zoom": 1.0
-      }
-    }
-  ]
+  "reason": "Optimizes UI hit-testing math in SelectionManager (distance_to -> distance_squared_to) with no behavioural change. Nothing to film: the diff touches only mouse click/hover resolution, no _draw or render path, and the website demo-diff reports no sim-transcript change across the catalog. The before/after work-per-tick graph in the PR description is flat by construction, since no SimOps bucket counts the input path."
 }
