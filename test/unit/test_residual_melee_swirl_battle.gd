@@ -91,7 +91,12 @@ extends GutTest
 ##   that scale. `_press_into` aims
 ##   exactly at the enemy's centre, so it displaces both regiments along the line joining
 ##   them; a purely central displacement changes the separation's LENGTH and never its
-##   direction, so it cannot rotate the pair however large it is. The radial magnitude is in
+##   direction, so it cannot rotate the pair however large it is -- with one caveat that does
+##   not bite here: `_press_into` ends with two INDEPENDENT `clampf` calls on `position.x` and
+##   `position.y`, so against a field edge one component truncates and the other does not, and
+##   the displacement stops being central. This clash runs mid-field, so neither clamp ever
+##   binds and the measurement is unaffected; a scenario pressed against a boundary needs the
+##   argument re-derived. The radial magnitude is in
 ##   fact large (-1023 wu by tick 700, against couple's +937) -- but that figure belongs to
 ##   the same `_physics_process` channel, so it covers `_separate()`'s central push too and
 ##   is not `_press_into`'s alone. Radial either way, which is why the split does not matter
