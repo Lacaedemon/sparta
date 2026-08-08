@@ -1884,7 +1884,9 @@ wrong answer during #1213 before the next one caught it. The first is the import
    all. Attribute the bearing angle directly instead: `dtheta = cross(r_hat, dr) / |r|`,
    with `r` re-read immediately before each stage.
 2. **Exact anti-symmetry is not evidence of a driver -- it is the signature of a CENTRAL
-   pair, the one thing that cannot rotate anything.** `_press_into(enemy.position)` aims at
+   pair, the one thing that cannot rotate anything (unless something breaks the symmetry --
+   `_press_into`'s two INDEPENDENT `clampf` calls on `position.x`/`position.y` do exactly that
+   against a field edge, though they never bind mid-field).** `_press_into(enemy.position)` aims at
    the enemy's centre, so it displaces both regiments along the line joining them and
    changes only the separation's LENGTH. The radial magnitude really is large (-1023 wu by
    tick 700 against couple's +937), which is exactly why it dominates a world-axis
