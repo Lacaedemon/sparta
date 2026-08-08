@@ -450,12 +450,14 @@ func record_pointer(tick: int, cursor: Vector2, dragging: bool, drag_start: Vect
 		return
 	if not _pointer_track.is_empty():
 		var last: Dictionary = _pointer_track[_pointer_track.size() - 1]
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var still: bool = bool(last["drag"]) == dragging \
 				and int(last["mode"]) == armed_mode \
 				and last["sel"] == selection \
-				and Vector2(last["x"], last["y"]).distance_to(cursor) <= POINTER_EPS
+				and Vector2(last["x"], last["y"]).distance_squared_to(cursor) <= POINTER_EPS * POINTER_EPS
 		if still and dragging:
-			still = Vector2(last.get("sx", 0.0), last.get("sy", 0.0)).distance_to(drag_start) <= POINTER_EPS
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			still = Vector2(last.get("sx", 0.0), last.get("sy", 0.0)).distance_squared_to(drag_start) <= POINTER_EPS * POINTER_EPS
 		if still:
 			return
 	var entry := {

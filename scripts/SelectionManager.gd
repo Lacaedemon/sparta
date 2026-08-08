@@ -681,7 +681,9 @@ func _can_form_up(a: Vector2, b: Vector2) -> bool:
 	# The inter-unit gaps eat MULTI_FORM_UP_GAP*(n-1) of the drag, so require that much extra
 	# on top of FORM_UP_MIN_WIDTH — otherwise a multi-unit drag could leave zero usable width
 	# and collapse every unit to a single-file column. A too-short drag falls back to a move.
-	return a.distance_to(b) >= FORM_UP_MIN_WIDTH + MULTI_FORM_UP_GAP * float(n - 1)
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	var threshold: float = FORM_UP_MIN_WIDTH + MULTI_FORM_UP_GAP * float(n - 1)
+	return a.distance_squared_to(b) >= threshold * threshold
 
 
 ## Deploy the selected units along the dragged flank line: `a` is the left flank, `b` the
@@ -2062,10 +2064,11 @@ func _order_cursor_texture(color: Color) -> ImageTexture:
 	var r: float = CURSOR_SIZE / 2.0 - 1.0
 	for y in CURSOR_SIZE:
 		for x in CURSOR_SIZE:
-			var d: float = Vector2(x + 0.5, y + 0.5).distance_to(c)
-			if d <= r - 3.0:
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			var d_sq: float = Vector2(x + 0.5, y + 0.5).distance_squared_to(c)
+			if d_sq <= (r - 3.0) * (r - 3.0):
 				img.set_pixel(x, y, color)
-			elif d <= r:
+			elif d_sq <= r * r:
 				img.set_pixel(x, y, Color.WHITE)   # rim for contrast on any background
 	return ImageTexture.create_from_image(img)
 
