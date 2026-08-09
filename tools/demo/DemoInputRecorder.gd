@@ -395,7 +395,7 @@ func _unit_record(u: Node) -> Dictionary:
 ## than routed through SelectionManager, matching how P/F1/Shift+/ are also HUD-only global
 ## toggles). Position comes via the cursor override (all selection/order logic reads
 ## _cursor_world()), so the synthesized events' own position fields don't need to be accurate
-## — only the button/key and pressed state matter.
+## -- only the button/key and pressed state matter.
 func _fire(ev: Dictionary) -> void:
 	match ev["kind"]:
 		"mb":
