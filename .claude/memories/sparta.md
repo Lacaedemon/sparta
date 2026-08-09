@@ -1090,6 +1090,28 @@ review has reached their quota limit.` — repeatedly, across many pushes. This 
 failure mode from Claude's own quota-skip message, but the same handling applies: it's not an
 approval, don't wait on it, self-review or manually dispatch Claude instead.
 
+**A second, quieter Copilot failure mode: zero seats provisioned, which produces total
+silence rather than a quota-refusal comment.** Requesting Copilot review
+(`POST .../requested_reviewers -f 'reviewers[]=copilot-pull-request-reviewer[bot]'`) can
+return `200` with the reviewer already absent from `requested_reviewers` in the same
+response --- and after that, no check run, no comment, no review, no legacy commit status
+ever appears, even after 15+ minutes. This is *not* the same as the quota-refusal case
+above: that one at least posts a comment explaining the refusal, which is itself proof the
+request reached Copilot. Total silence with no artifact of any kind is the tell for a
+different cause --- no Copilot seat exists for the org to act under at all. Confirm
+directly rather than guessing between the two:
+
+```bash
+gh api "orgs/<org>/copilot/billing" --jq '{total: .seat_breakdown.total, setting: .seat_management_setting}'
+```
+
+`Lacaedemon` returns `{"total": 0, "setting": "unconfigured"}` --- zero seats, so the
+`copilot_code_review` branch ruleset's `review_on_push: true` has nothing to dispatch to,
+and an explicit request silently no-ops the same way. Treat this exactly like the
+quota-refusal case for handling purposes (not an approval, self-review instead), but don't
+conflate the two when explaining *why* --- one is "Copilot looked and declined", the other is
+"Copilot was never in a position to look." (`Lacaedemon/sparta` PR #1229, 2026-08-09.)
+
 **A manual `gh workflow run "Claude Code Review" -f pr_number=<N>` dispatch can silently run
 against `main`'s ref instead of the PR branch and post NO comment at all — a distinct, quieter
 failure than the documented stub-review pattern.** The run itself reports `success` (all three
