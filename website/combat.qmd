@@ -132,6 +132,22 @@ capped: a pile-on in a crowded press hurls a man back a few body-lengths at most
 never across the field. The uncapped force still decides whether he is knocked
 down, so a heavy hit fells as hard as ever.
 
+::: {#fig-combat-clash .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/clash.jpg">
+  <source src="media/clash.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A clash in the open: every soldier on the line is fighting their own opponent,
+each blow rolled and resolved on its own, not as one aggregate regiment-vs-regiment
+number.
+:::
+
 ## Knocked down --- and the domino
 
 A hard enough shove **knocks a soldier prone**. Bracing and mass make you harder to
@@ -159,6 +175,22 @@ braced stance), in **tight formation**, and **facing into** the blow --- the sam
 facing that lets you defend, and the support vanishes the instant the file loosens,
 opens a gap, or is hit from a side it isn't facing. A loose, flanked, or sprinting
 file dominoes and goes down; a deep, set, front-facing shield wall stands.
+
+::: {#fig-combat-knockback .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/knockback_focus.jpg">
+  <source src="media/knockback_focus.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Every landed strike shoves the target back --- here with the Knockback Focus
+stance active, which trades damage for a larger, more reliable push, making the
+shove easy to see on a single exchange.
+:::
 
 ## Why your tactics work
 
@@ -192,6 +224,22 @@ Everything tactical comes out of the rolls above:
 - **Fight fresh, fight skilled.** Skill and stamina help at *both* ends --- landing
   more, defending more, tiring slower. Rested veterans beat winded levies by more
   than the headcount suggests, so pace your commitment.
+
+::: {#fig-combat-brace .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/brace_vs_unbraced.jpg">
+  <source src="media/brace_vs_unbraced.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two identical spear lines against an identical cavalry charge. The left line is
+left merely engaged; the right line is ordered to Brace early and settles well
+before contact --- watch the two absorb the same charge very differently.
+:::
 
 ::: {.callout-note}
 The exact constants ($\beta$, $D_0$, $\tau$, the stamina costs, the knockdown
