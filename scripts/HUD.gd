@@ -13,6 +13,21 @@ const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
 const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
 const UnitRef = preload("res://scripts/Unit.gd")
 
+## Slow-motion tick-speed presets, cycled live by F5 (see _cycle_slowmo). Index 0 is
+## Engine's own default (1.0 = normal speed). Engine.time_scale is the mechanism rather
+## than a purpose-built recorder-only playback rate: verified empirically that it scales
+## the *delta* each physics tick receives, not the tick FREQUENCY -- the same number of
+## physics ticks still fire per unit of engine-loop progress (a movie-maker frame budget,
+## an awaited physics_frame count), so tick numbering, per-tick order dispatch, and any
+## RNG draw gated by tick number are unaffected. What changes is how much simulated
+## game-time each tick represents, so movement and any accumulated-delta timer (an attack
+## cooldown, a reform hold) genuinely take more ticks to cover the same simulated
+## duration -- that's the actual mechanism behind the visible slowdown, not a side effect
+## to guard against. Covers live gameplay and demo/recorder playback with one mechanism
+## (both drive Battle._physics_process the same way), with no separate recorder-scoped
+## implementation needed.
+const SLOWMO_PRESETS: Array[float] = [1.0, 0.5, 0.25, 0.1]
+
 # Stable ids for the Menu popup's items (independent of index / separators). The seven
 # MENU_FORMUP_EQUAL_*/MENU_FORMUP_CHECKERBOARD/MENU_FORMUP_ECHELON_* ids set the default
 # multi-unit form-up distribution (radio-checked); the matching MENU_FORMUP_CYCLE_* ids
@@ -58,6 +73,10 @@ var _status: Label
 var _paused_label: Label
 var _order_mode_label: Label
 var _flash_label: Label
+var _slowmo_label: Label
+# Live index into SLOWMO_PRESETS; 0 = normal speed. Transient UI state, not persisted --
+# a fresh battle (a fresh HUD instance) always starts at normal speed.
+var _slowmo_index: int = 0
 var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
@@ -278,6 +297,19 @@ func _ready() -> void:
 	_flash_label.add_theme_color_override("font_color", Color(0.55, 0.95, 0.65))
 	_flash_label.visible = false
 	add_child(_flash_label)
+
+	# Persistent slow-motion indicator, below the flash toast. Hidden at normal speed;
+	# F5 cycles SLOWMO_PRESETS and shows/updates this so a reviewer always knows the
+	# current tick speed at a glance, not just at the moment of the keypress.
+	_slowmo_label = Label.new()
+	_slowmo_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_slowmo_label.position = Vector2(-90, 128)
+	_slowmo_label.custom_minimum_size = Vector2(180, 0)
+	_slowmo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_slowmo_label.add_theme_font_size_override("font_size", 16)
+	_slowmo_label.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
+	_slowmo_label.visible = false
+	add_child(_slowmo_label)
 
 	# Menu button (top-right) gathering the global options that used to be
 	# scattered across the HUD — restart, replay loading, and the edge-scroll
@@ -576,6 +608,12 @@ func _warn_spawn_layout_mismatch() -> void:
 
 
 func _exit_tree() -> void:
+	# Engine.time_scale is a global engine singleton, not scoped to this battle -- reset it
+	# unconditionally so a battle freed mid-slow-mo (Quit to Main Menu, reload_current_scene(),
+	# or a GUT test tearing down a live Battle) can't leak a slowed-down tick rate into the
+	# next battle, the main menu, or a later test in the same headless process.
+	Engine.time_scale = 1.0
+
 	# Settings is a persistent autoload; drop our connection so it doesn't
 	# outlive this HUD (e.g. across reload_current_scene()).
 	if Settings.changed.is_connected(_sync_setting_toggles):
@@ -765,6 +803,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_tray_toggle_keypress(event):
 		Settings.show_unit_card_tray = not Settings.show_unit_card_tray
 		get_viewport().set_input_as_handled()
+	elif _is_slowmo_keypress(event):
+		_cycle_slowmo(event.shift_pressed)   # Shift+F5: cycle the other way (parallels Shift+Y)
+		get_viewport().set_input_as_handled()
 
 
 ## Shift+/ produces "?" on a standard layout; physical_keycode (the / key) keeps the
@@ -809,6 +850,33 @@ func _toggle_pause() -> void:
 	get_tree().paused = paused
 	_paused_label.visible = paused
 	get_viewport().set_input_as_handled()
+
+
+## F5 cycles slow-motion presets forward (100% -> 50% -> 25% -> 10% -> 100%, wrapping);
+## Shift+F5 cycles backward (see the shift branch in _unhandled_input). F5 is free: every
+## letter and the whole punctuation row are already order/formation hotkeys (see
+## Settings.gd's DEFAULT_ORDER_BINDINGS comments on key scarcity), and F1-F4 are already
+## claimed (tray toggle, multiple_engage, march_to_contact, brace). Uses physical_keycode
+## for the same layout-independence as the pause/shortcuts/tray-toggle keys above.
+func _is_slowmo_keypress(event: InputEvent) -> bool:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return false
+	return event.physical_keycode == KEY_F5
+
+
+func _cycle_slowmo(reverse: bool = false) -> void:
+	var size: int = SLOWMO_PRESETS.size()
+	_slowmo_index = (_slowmo_index - 1 + size) % size if reverse \
+		else (_slowmo_index + 1) % size
+	Engine.time_scale = SLOWMO_PRESETS[_slowmo_index]
+	_update_slowmo_label()
+	flash_message("Speed: %d%%" % roundi(SLOWMO_PRESETS[_slowmo_index] * 100.0))
+
+
+func _update_slowmo_label() -> void:
+	_slowmo_label.visible = _slowmo_index != 0
+	if _slowmo_label.visible:
+		_slowmo_label.text = "🐢 %d%% SPEED" % roundi(SLOWMO_PRESETS[_slowmo_index] * 100.0)
 
 
 func show_unit(u, group_count: int) -> void:

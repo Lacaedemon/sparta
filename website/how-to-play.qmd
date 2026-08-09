@@ -73,6 +73,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Zoom | **Mouse wheel** |
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
 | Active pause | <kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>) |
+| Slow motion (100% → 50% → 25% → 10%, <kbd>Shift</kbd> reverses) | <kbd>F5</kbd> |
 | All shortcuts (this list, in-game) | <kbd>?</kbd> (Shift + <kbd>/</kbd>) or **☰ Menu → Shortcuts** |
 | Quit to Main Menu | **☰ Menu → Quit to Main Menu** leaves the battle immediately and returns to the Main Menu --- the only way out of a [Parade Ground](#parade-ground) drill, which never auto-ends |
 
@@ -1123,6 +1124,29 @@ down as the unit closes. Toggle the labels off in **☰ Menu → Order distance 
 
 Order distance labels: the green move line shows the remaining march in metres,
 counting down as the regiment closes on its target.
+:::
+
+**Slow motion.** <kbd>F5</kbd> cycles a slow-motion tick-speed mode --- 100% (normal) ->
+50% -> 25% -> 10%, wrapping back to normal; <kbd>Shift</kbd> + <kbd>F5</kbd> cycles the
+other way. A persistent "N% SPEED" indicator shows above the order-mode banner whenever
+it's active. This slows the same simulation down rather than switching to a separate
+playback mode, so it works during a live battle exactly as it does for a replay ---
+useful for watching a knockback exchange, a formation reflow, or a multi-target melee
+resolution play out tick by tick instead of compressed into a blink.
+
+::: {#fig-slow-motion .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/slow_motion.jpg">
+  <source src="media/slow_motion.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A marching unit visibly covers less ground per stretch of the clip as F5 steps
+through 50%, 25%, and 10% speed.
 :::
 
 ## The battle loop

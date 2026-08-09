@@ -83,4 +83,5 @@ DEMOS=(
   "brace_vs_unbraced|demos/inputs/brace-vs-unbraced-charge.json|30|240|720|input"
   "move_cancel_on_engagement|demos/inputs/move-cancels-on-engagement.json|30|250|640|input"
   "phalanx_holds_ranks|demos/inputs/phalanx-holds-its-ranks.json|30|280|720|input"
+  "slow_motion|demos/inputs/slow-motion.json|30|320|640|input"
 )
