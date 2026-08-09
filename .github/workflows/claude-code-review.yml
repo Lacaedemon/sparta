@@ -42,18 +42,6 @@ jobs:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
       # a review on Claude's commits; empty (and ignored) for pull_request runs.
       pr-number: ${{ inputs.pr_number }}
-      # ai-config moved to the Morrison-Lab org AND its marketplace renamed itself
-      # from "d-morrison" to "Morrison-Lab" (the `name` in its own
-      # .claude-plugin/marketplace.json). gha's built-in default still installs
-      # `ai-config@d-morrison`; the clone still resolves via GitHub's transfer
-      # redirect, but that plugin ref no longer matches any marketplace name, so the
-      # install -- and with it the entire review job, before it reviews anything --
-      # hard-fails with "Failed to install plugin 'ai-config@d-morrison'". Opt out of
-      # the built-in and re-add the same plugin under the marketplace's current name.
-      # Drop these three lines and go back to the default once gha retargets its own.
-      use-ai-config: false
-      plugin-marketplaces: https://github.com/Morrison-Lab/ai-config.git
-      plugins: ai-config@Morrison-Lab
       prompt-addendum: |
         **Post line-specific findings as inline review comments** anchored to the
         relevant line(s) — use the inline-comment tool, not a prose list in the
