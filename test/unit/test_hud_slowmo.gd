@@ -1,8 +1,8 @@
 extends GutTest
-## F5 slow-motion tick-speed cycle (issue #1097): Engine.time_scale drives the mechanism
-## (see HUD.gd's SLOWMO_PRESETS doc comment for why that keeps replay determinism intact),
-## with a persistent on-screen indicator and Shift+F5 reversing the cycle. Engine.time_scale
-## is a global engine singleton -- not scoped to any one HUD/Battle instance -- so every test
+## F5 slow-motion tick-speed cycle: Engine.time_scale drives the mechanism (see HUD.gd's
+## SLOWMO_PRESETS doc comment for why that scales delta rather than tick frequency), with
+## a persistent on-screen indicator and Shift+F5 reversing the cycle. Engine.time_scale is
+## a global engine singleton -- not scoped to any one HUD/Battle instance -- so every test
 ## here restores it in after_each; otherwise a test that leaves it non-1.0 would silently
 ## affect every later test in the same suite run.
 
