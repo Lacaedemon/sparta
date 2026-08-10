@@ -523,6 +523,11 @@ func test_dispatch_key_ctrl_down_disengages_and_shift_ctrl_down_disengages_with_
 	var sm := _sm()
 	var b = BattleScript.new()
 	autofree(b)
+	# Shift+Ctrl+Down now spawns a real rearguard sub-unit, which needs a real Units
+	# container to add itself to -- a bare, tree-detached Battle never runs _ready() to
+	# resolve @onready var _units: Node2D = $Units, so set it directly.
+	b._units = Node2D.new()
+	autofree(b._units)
 	sm._battle = b
 	var u := _unit()
 	u.uid = 12
@@ -1278,6 +1283,11 @@ func test_issue_disengage_with_sacrifice_enqueues_command_for_selected_units() -
 	var sm := _sm()
 	var b = BattleScript.new()
 	autofree(b)
+	# Applying the order now spawns a rearguard sub-unit, which needs a real Units
+	# container to add itself to -- a bare, tree-detached Battle never runs _ready() to
+	# resolve @onready var _units: Node2D = $Units, so set it directly.
+	b._units = Node2D.new()
+	autofree(b._units)
 	sm._battle = b
 	var u := _seeded_unit(0)
 	u.uid = 42
