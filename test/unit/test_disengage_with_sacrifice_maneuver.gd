@@ -95,9 +95,9 @@ func test_enqueue_disengage_with_sacrifice_noops_with_no_units() -> void:
 func test_enqueue_disengage_with_sacrifice_applies_order_to_units() -> void:
 	var b = BattleScript.new()
 	autofree(b)
-	# Applying the order now spawns a rearguard sub-unit (#1041), which needs a real
-	# Units container to add itself to -- a bare, tree-detached Battle never runs _ready()
-	# to resolve @onready var _units: Node2D = $Units, so set it directly.
+	# Applying the order now spawns a rearguard sub-unit, which needs a real Units
+	# container to add itself to -- a bare, tree-detached Battle never runs _ready() to
+	# resolve @onready var _units: Node2D = $Units, so set it directly.
 	b._units = Node2D.new()
 	autofree(b._units)
 	var u := _make_unit(100)
@@ -147,8 +147,8 @@ func test_disengage_with_sacrifice_is_a_noop_with_only_one_soldier_left() -> voi
 	assert_false(u.has_move_target, "no move target armed; maneuver did nothing")
 
 
-## The pursuit slowdown itself is no longer a Unit-level property to assert here (#1041
-## removed the flat pursuit-speed multiplier this test used to check): a pursuer is now
+## The pursuit slowdown itself is no longer a Unit-level property to assert here -- the
+## flat pursuit-speed multiplier this test used to check is gone: a pursuer is now
 ## slowed because it's physically blocked and fighting a real rearguard Unit, which needs
 ## an actual Battle to spawn and simulate -- see
 ## test_disengage_with_sacrifice_rearguard.gd's live-battle proof instead.

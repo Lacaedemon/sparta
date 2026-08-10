@@ -1183,16 +1183,16 @@ const SIM_SOLDIER_ARRAY_KEYS: Array[String] = [
 ]
 
 
-## Disengage-with-sacrifice's rearguard (#1041): a genuine, separate Unit cloned from
+## Disengage-with-sacrifice's rearguard: a genuine, separate Unit cloned from
 ## `parent`'s own current type+state (to_snapshot_dict, mirroring _spawn_from_snapshot's
 ## two-phase apply), holding `soldier_count` of the parent's own soldiers at the parent's
 ## CURRENT position/facing -- the point of contact, not wherever the parent ends up after
 ## retreating. Real physics (its own melee/collision/contact resistance) is what should
-## slow a pursuer now, not a synthetic speed multiplier -- see the issue for the corrected
-## precedent (#981) this mirrors. It never chases (ORDER_HOLD, no queued orders) and
-## inherits the parent's live combat target, so it keeps fighting whoever it was already
-## engaged with. Marked is_rearguard_detachment with a `delay_sec` lifetime -- see
-## Unit._physics_process for the countdown-and-timeout-removal side of that contract.
+## slow a pursuer now, not a synthetic speed multiplier. It never chases (ORDER_HOLD, no
+## queued orders) and inherits the parent's live combat target, so it keeps fighting
+## whoever it was already engaged with. Marked is_rearguard_detachment with a
+## `delay_sec` lifetime -- see Unit._physics_process for the countdown-and-timeout-removal
+## side of that contract.
 func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: float) -> Unit:
 	var ud: Dictionary = parent.to_snapshot_dict()
 	ud["uid"] = _next_uid

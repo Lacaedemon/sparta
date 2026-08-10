@@ -166,7 +166,7 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 			"an unconsumed disengage-time peak survives a replay-seek restore -- a snapshot" \
 			+ " reload must not silently resume a guarded MOVE a straight playthrough would cancel")
 	assert_eq(restored.is_rearguard_detachment, original.is_rearguard_detachment,
-			"a rearguard detachment (#1041) keeps its identity across a snapshot round-trip --" \
+			"a rearguard detachment keeps its identity across a snapshot round-trip --" \
 			+ " it has no per-unit trace elsewhere to fall back on if this were dropped")
 	assert_almost_eq(restored._rearguard_lifetime_timer, original._rearguard_lifetime_timer, 0.001,
 			"and its removal timer survives too, or a rewound rearguard would never be cleaned up")

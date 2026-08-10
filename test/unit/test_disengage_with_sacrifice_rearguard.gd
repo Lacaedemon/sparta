@@ -1,5 +1,5 @@
 extends GutTest
-## Disengage with sacrifice's rearguard (#1041): a live-Battle proof that the sacrificed
+## Disengage with sacrifice's rearguard: a live-Battle proof that the sacrificed
 ## soldiers become a genuine, separate Unit -- spawned, fighting for real, eventually
 ## removed -- rather than the earlier flat pursuit-speed multiplier. The Unit-level
 ## contract (disengage_with_sacrifice's own return value, the retreating unit's own state)

@@ -676,13 +676,12 @@ const DISENGAGE_STEP_DISTANCE: float = 70.0   # tuned in wu, just past melee con
 # already follow, so a demo/test/campaign unit can withdraw a different distance
 # without touching the default every other unit relies on.
 var disengage_step_distance: float = DISENGAGE_STEP_DISTANCE
-# Disengage with sacrifice (rearguard detachment, #1041): default fraction of remaining
+# Disengage with sacrifice (rearguard detachment): default fraction of remaining
 # soldiers split off into a genuine rearguard Unit that stays at the point of contact and
 # keeps fighting for real, while the rest of the regiment retreats -- see
 # disengage_with_sacrifice()'s own doc. A pursuer is slowed because it is physically
-# blocked and in combat with the rearguard, not by a synthetic speed multiplier (the
-# earlier implementation's flat pursuit debuff, removed by #1041 -- see this repo's own
-# "no top-down gimmicks" design philosophy).
+# blocked and in combat with the rearguard, not by a synthetic speed multiplier -- see
+# this repo's own "no top-down gimmicks" design philosophy.
 const REARGUARD_SACRIFICE_FRAC: float = 0.10
 # Default duration (seconds) the rearguard detachment fights before being considered lost
 # if it hasn't already been destroyed in real combat -- see is_rearguard_detachment.
@@ -1005,7 +1004,7 @@ var _attack_cd: float = 0.0
 # the exposure always closes well before the next swing is even possible.
 var _pin_down_exposure_cd: float = 0.0
 var _rout_timer: float = 0.0
-# True for a rearguard detachment spawned by disengage_with_sacrifice() (#1041) -- gates
+# True for a rearguard detachment spawned by disengage_with_sacrifice() -- gates
 # the lifetime countdown below (an ordinary unit pays nothing for the check) and lets a
 # state dump/demo distinguish the sub-unit from the regiment it split off from.
 var is_rearguard_detachment: bool = false
@@ -2440,8 +2439,8 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		pace_speed = jog_speed
 	else:
 		pace_speed = walk_speed
-	# A rearguard detachment (#1041) slows a pursuer through real contact/melee physics --
-	# it's a genuine engaged Unit blocking the way, not a flat multiplier applied here.
+	# A rearguard detachment slows a pursuer through real contact/melee physics -- it's a
+	# genuine engaged Unit blocking the way, not a flat multiplier applied here.
 	# A planted close-order stance (shield wall, testudo, or the anti-cav square) caps
 	# its top pace: the men hold a locked ring/wall and only creep, so the target pace
 	# is scaled down before the ramp.
@@ -4600,7 +4599,7 @@ func disengage() -> void:
 	start_order_response()
 
 
-## Disengage with sacrifice (rearguard detachment, #1041): a deliberate rearguard
+## Disengage with sacrifice (rearguard detachment): a deliberate rearguard
 ## trade-off where a front-line detachment splits off to stay engaged and screen the
 ## advancing enemy while the surviving main body steps back to safety. Reduces this
 ## unit's own soldier count and starts its retreat; does NOT spawn the rearguard itself
