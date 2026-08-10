@@ -1,0 +1,21 @@
+{
+  "_comment": "Position-anchor gap while disengaging: team 0's Infantry gets a plain move order (no attack target) straight through team 1's held Infantry. Team 0 stays a disengage the whole time -- never is_engaged(), never strikes back -- but team 1 is only on Hold (never chases, still defends where it stands), so it attacks team 0 one-sidedly once in range; team 0 takes real casualties, identically on main and on this fix (the casualty formula is unaffected -- only the geometry differs). Before the fix, SoldierBodies.couple() still anchored team 0's own position on the whole-block centroid (empty position_anchor_indices(), since team 0 never is_engaged()), so its kinematic advance dragged the block's slot grid straight through and past the contact-resisted bodies. After the fix, position anchors on the real contact-resisted front ranks, so the block's own advance genuinely arrests at contact instead of riding through.",
+  "show_position_anchor": true,
+  "all_teams_control": true,
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 500, "y": 300, "count": 60 },
+    { "team": 1, "type": "Infantry", "x": 500, "y": 450, "count": 60 }
+  ],
+  "steps": [
+    { "tick": 5, "click": [500, 450] },
+    { "tick": 6, "key": "H", "ctrl": true },
+    { "tick": 30, "click": [500, 300] },
+    { "tick": 31, "rmb_click": [500, 700] }
+  ],
+  "camera": [ { "tick": 0, "x": 500, "y": 420, "zoom": 1.8 } ],
+  "state": [10, 40, 100, 160, 220, 280, 340, 400, 460, 520],
+  "fixed_fps": 30,
+  "max_frames": 290,
+  "fps": 15,
+  "width": 720
+}
