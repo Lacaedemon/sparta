@@ -60,6 +60,7 @@ an automatic yes.
 | [TotalWarSimulator](https://github.com/MichelangeloConserva/TotalWarSimulator) | Formation-battle research sim (Python 2D → Unity 3D) | **MIT** (see caveats below) | bundled third-party packs (varied) | ✅ | ⛔ | **Very high** — a worked 2D→3D conversion of exactly Sparta's battle layer; formation/assignment algorithms |
 | [godot-open-rts](https://github.com/lampe-games/godot-open-rts) | 3D RTS demo in Godot 4 | **MIT** | verify per asset | ✅ | verify | High — reference implementation of 3D selection, movement, and camera in Sparta's own engine |
 | [Divide et Impera](https://divideetimperamod.com/) | Total-overhaul **mod** for Total War: Rome II | proprietary (built on CA/Sega's game) | proprietary | 🚫 | 🚫 | **High for design only** — historical realism, supply/population/reform systems, 2000+ unit rosters |
+| [Renaissance Kingdom Wars](https://store.steampowered.com/app/2533020/Renaissance_Kingdom_Wars/) | Real-time strategy + grand-strategy hybrid | proprietary | proprietary | 🚫 | 🚫 | **High for design only** -- RTS tactical battles fused with a province-conquest grand-strategy layer; mercenary-to-empire progression |
 | [awesome-paradox](https://github.com/js00070/awesome-paradox) | Curated list of Paradox-related projects | n/a (link list) | n/a | — | — | Pointers to grand-strategy / **dynasty** design and OSS reimplementations |
 
 ---
@@ -192,6 +193,29 @@ and unit behaviour.
 - **Licence:** it is built on a proprietary game and its assets → 🚫 **design
   inspiration only**. We take none of its code or art; this matches PLAN.md's
   explicit "**not** commercial-game mod assets" warning.
+
+### Renaissance Kingdom Wars (Broken Rampart Interactive)
+
+A commercial hybrid of grand strategy and real-time tactical battles, set in
+1510 during the age of gunpowder and mercenaries: players rise from a
+mercenary captain to an empire ruler across 500+ provinces, evolving their
+armies from medieval weaponry to Renaissance-era arquebuses and cannons.
+Developed by Broken Rampart Interactive, a small indie studio founded
+October 2023; entered Early Access July 2024 and reached full release
+November 2024.
+
+- **Design to learn from:** the closest commercial analogue on this list to
+  Sparta's own pitch -- a grand-strategy province-conquest layer sitting
+  directly on top of real-time tactical battles, with an explicit
+  progression from small-scale mercenary command to empire management.
+  Worth studying for how it paces that campaign-to-battle handoff and how
+  weapon-technology evolution (medieval to gunpowder) is exposed to the
+  player -- relevant to Sparta's own campaign/saga arc
+  ([#126](https://github.com/Lacaedemon/sparta/issues/126)) and any future
+  weapon-tech progression.
+- **Licence:** proprietary, commercial Steam release (c) 2023-2024 Reverie
+  World Studios, Inc. → 🚫 **design inspiration only** -- same category as
+  Divide et Impera above; no code or art to take.
 
 ### awesome-paradox
 
