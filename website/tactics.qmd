@@ -1517,6 +1517,24 @@ destination.
 
 **Push stance** (<kbd>/</kbd>) is the aggressive, offensive counterpart to Give ground: an engaged unit continuously applies physical pressure to drive its opponent backwards. Where Give ground yields territory while fighting, Push stance advances into the enemy line, pushing opposing soldiers back while maintaining melee contact.
 
+::: {#fig-push-stance .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/push_stance.jpg">
+  <source src="media/push_stance.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two Infantry regiments lock in a melee standoff. The player selects their own
+unit and issues Push stance --- its front line advances into the enemy's,
+driving the opposing soldiers steadily backward while the two sides keep
+trading blows, instead of holding at the standoff distance the way a plain
+engagement would.
+:::
+
 **Disengage and step back** (<kbd>Ctrl</kbd> + <kbd>↓</kbd>) is different in kind from
 the stances above: a one-shot maneuver, not a standing order. Where Give ground keeps
 fighting while backing away, disengaging breaks the fight off entirely --- the unit
