@@ -51,10 +51,12 @@ func test_disengage_with_sacrifice_accepts_caller_configured_parameters() -> voi
 	u.target_enemy = enemy
 
 	# Override distance to 90.0, sacrifice_frac to 0.20 (20 soldiers), and delay to 3.0s
-	u.disengage_with_sacrifice(90.0, 0.20, 3.0)
+	var result: Dictionary = u.disengage_with_sacrifice(90.0, 0.20, 3.0)
 
 	assert_eq(u.soldiers, 80, "takes 20% caller-configured rearguard sacrifice casualties (20 of 100)")
-	assert_almost_eq(u._rearguard_delay_timer, 3.0, 0.001, "sets custom rearguard delay timer")
+	assert_eq(int(result["sacrifice_count"]), 20, "reports the sacrifice headcount for the caller to spawn")
+	assert_almost_eq(float(result["delay_sec"]), 3.0, 0.001,
+			"reports the custom delay for the caller's rearguard spawn")
 	var expected: Vector2 = Vector2.ZERO + Unit.disengage_offset(Vector2.DOWN, 90.0)
 	assert_true(u.move_target.is_equal_approx(expected), "steps back custom 90.0 wu distance")
 
@@ -93,6 +95,11 @@ func test_enqueue_disengage_with_sacrifice_noops_with_no_units() -> void:
 func test_enqueue_disengage_with_sacrifice_applies_order_to_units() -> void:
 	var b = BattleScript.new()
 	autofree(b)
+	# Applying the order now spawns a rearguard sub-unit (#1041), which needs a real
+	# Units container to add itself to -- a bare, tree-detached Battle never runs _ready()
+	# to resolve @onready var _units: Node2D = $Units, so set it directly.
+	b._units = Node2D.new()
+	autofree(b._units)
 	var u := _make_unit(100)
 	u.uid = 99
 	var enemy := _make_unit(100)
@@ -140,17 +147,20 @@ func test_disengage_with_sacrifice_is_a_noop_with_only_one_soldier_left() -> voi
 	assert_false(u.has_move_target, "no move target armed; maneuver did nothing")
 
 
-func test_rearguard_delay_slows_pursuing_enemy_pace_speed() -> void:
-	var target := _make_unit(100)
-	var pursuer := _make_unit(100)
-	pursuer.team = 1
-	target.state = Unit.State.FIGHTING
-	target.disengage_with_sacrifice()
+## The pursuit slowdown itself is no longer a Unit-level property to assert here (#1041
+## removed the flat pursuit-speed multiplier this test used to check): a pursuer is now
+## slowed because it's physically blocked and fighting a real rearguard Unit, which needs
+## an actual Battle to spawn and simulate -- see
+## test_disengage_with_sacrifice_rearguard.gd's live-battle proof instead.
+func test_disengage_with_sacrifice_no_longer_sets_any_state_on_the_retreating_unit_itself() -> void:
+	var u := _make_unit(100)
+	var enemy := _make_unit(100)
+	enemy.team = 1
+	u.state = Unit.State.FIGHTING
+	u.target_enemy = enemy
 
-	assert_true(target.is_rearguard_delay_active(), "rearguard delay active after maneuver")
-	pursuer.target_enemy = target
-	pursuer.order_mode = Unit.ORDER_CHASE
-	pursuer.position = Vector2(0, 300)
-	pursuer._physics_process(0.1)
-	assert_lt(pursuer._current_speed, pursuer.jog_speed, "rearguard delay screens and slows pursuing enemy speed")
+	u.disengage_with_sacrifice()
+
+	assert_false(u.is_rearguard_detachment,
+			"the retreating main body is never itself the rearguard detachment")
 

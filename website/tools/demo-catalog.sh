@@ -84,4 +84,5 @@ DEMOS=(
   "move_cancel_on_engagement|demos/inputs/move-cancels-on-engagement.json|30|250|640|input"
   "phalanx_holds_ranks|demos/inputs/phalanx-holds-its-ranks.json|30|280|720|input"
   "slow_motion|demos/inputs/slow-motion.json|30|320|640|input"
+  "disengage_sacrifice_rearguard|demos/inputs/disengage-with-sacrifice-rearguard.json|30|150|640|input"
 )

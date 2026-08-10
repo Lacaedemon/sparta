@@ -4400,3 +4400,28 @@ explicitly. Only enumerating the callers, or a test that exercises the other cal
 **When you do fix it, prove the guard bites.** Re-introduce the clearing, confirm the new
 test fails, then restore. Every guard added for the three #1196 regressions was verified
 this way; without it a regression test is a guess about what it covers.
+
+## `UnitCombat.register_casualties` never subtracts `soldiers` itself -- the caller must
+
+Its own doc comment says exactly this ("Apply the consequences of `total` casualties
+ALREADY subtracted from `u.soldiers`"), but it's easy to miss on a skim, since the
+function DOES read `u.soldiers` (to decide annihilation) and DOES look like the natural
+one-call way to "kill N soldiers." A call site that passes a live headcount without
+subtracting it first has `u.soldiers <= 0` stay false forever, so the ANNIHILATED branch
+(`u._die()`) never fires -- the unit keeps re-entering the same casualty-registration call
+every subsequent tick if the caller's own trigger condition is still true, applying morale
+erosion and dropping Fallen markers repeatedly with the unit never actually dying.
+
+The two existing call sites both subtract first: `UnitCombat.take_casualties`
+(`u.soldiers -= total` then `register_casualties(u, total, ...)`) and the original
+`disengage_with_sacrifice` (`soldiers -= sacrifice_count` then the same call). A NEW call
+site (#1041's rearguard-detachment lifetime timeout, in `Unit._physics_process`) missed
+this and called `register_casualties(self, soldiers, null, 1.0)` with `soldiers` still
+untouched -- caught immediately by
+`test_rearguard_is_removed_after_its_lifetime_if_not_destroyed_first`, which timed out
+waiting for `state == DEAD`. Fix: `var lost := soldiers; soldiers = 0;
+UnitCombat.register_casualties(self, lost, null, 1.0)`.
+
+**How to apply:** before adding a new `register_casualties` call site, grep for it first
+and read its own doc comment, not just its name -- and always zero (or reduce) `soldiers`
+yourself immediately before the call, in the same statement block.

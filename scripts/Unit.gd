@@ -676,13 +676,17 @@ const DISENGAGE_STEP_DISTANCE: float = 70.0   # tuned in wu, just past melee con
 # already follow, so a demo/test/campaign unit can withdraw a different distance
 # without touching the default every other unit relies on.
 var disengage_step_distance: float = DISENGAGE_STEP_DISTANCE
-# Disengage with sacrifice (rearguard delay): default fraction of remaining soldiers
-# sacrificed by the rearguard detachment to delay the enemy while the unit retreats.
+# Disengage with sacrifice (rearguard detachment, #1041): default fraction of remaining
+# soldiers split off into a genuine rearguard Unit that stays at the point of contact and
+# keeps fighting for real, while the rest of the regiment retreats -- see
+# disengage_with_sacrifice()'s own doc. A pursuer is slowed because it is physically
+# blocked and in combat with the rearguard, not by a synthetic speed multiplier (the
+# earlier implementation's flat pursuit debuff, removed by #1041 -- see this repo's own
+# "no top-down gimmicks" design philosophy).
 const REARGUARD_SACRIFICE_FRAC: float = 0.10
-# Default delay duration (seconds) the rearguard sacrifice screens/delays enemy pursuit.
+# Default duration (seconds) the rearguard detachment fights before being considered lost
+# if it hasn't already been destroyed in real combat -- see is_rearguard_detachment.
 const REARGUARD_DELAY_SEC: float = 2.0
-# Speed multiplier applied to pursuing enemy units while rearguard delay screens the retreat.
-const REARGUARD_DELAY_PURSUIT_SPEED_FACTOR: float = 0.5
 
 var rearguard_sacrifice_frac: float = REARGUARD_SACRIFICE_FRAC
 var rearguard_delay_sec: float = REARGUARD_DELAY_SEC
@@ -1001,7 +1005,13 @@ var _attack_cd: float = 0.0
 # the exposure always closes well before the next swing is even possible.
 var _pin_down_exposure_cd: float = 0.0
 var _rout_timer: float = 0.0
-var _rearguard_delay_timer: float = 0.0
+# True for a rearguard detachment spawned by disengage_with_sacrifice() (#1041) -- gates
+# the lifetime countdown below (an ordinary unit pays nothing for the check) and lets a
+# state dump/demo distinguish the sub-unit from the regiment it split off from.
+var is_rearguard_detachment: bool = false
+# Counts down while is_rearguard_detachment; reaching zero without the unit already having
+# been destroyed in real combat means it's considered overwhelmed -- see _physics_process.
+var _rearguard_lifetime_timer: float = 0.0
 # A ROUTING unit starts "broken" (this false): its morale still recovers and it can
 # rally back to control. If it runs out of time still in contact, or too gutted to
 # reform, it's SHATTERED (this true): it keeps fleeing but can never again recover
@@ -1167,7 +1177,19 @@ func _physics_process(delta: float) -> void:
 
 	_attack_cd = max(0.0, _attack_cd - delta)
 	_pin_down_exposure_cd = max(0.0, _pin_down_exposure_cd - delta)
-	_rearguard_delay_timer = max(0.0, _rearguard_delay_timer - delta)
+	if is_rearguard_detachment:
+		_rearguard_lifetime_timer = max(0.0, _rearguard_lifetime_timer - delta)
+		if _rearguard_lifetime_timer <= 0.0 and soldiers > 0:
+			# The delay window closed without being wiped out in real combat --
+			# eventually overwhelmed, per the maneuver's own premise (see
+			# disengage_with_sacrifice). Routes through the normal annihilation path
+			# (Fallen markers, the death cue) rather than a bespoke removal --
+			# register_casualties() applies the CONSEQUENCES of casualties already
+			# subtracted from `soldiers` (see its own doc comment); it doesn't
+			# subtract them itself, so that's done here first.
+			var lost: int = soldiers
+			soldiers = 0
+			UnitCombat.register_casualties(self, lost, null, 1.0)
 	_moved_last_frame = false
 
 	_think(delta)
@@ -2418,8 +2440,8 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		pace_speed = jog_speed
 	else:
 		pace_speed = walk_speed
-	if is_instance_valid(target_enemy) and target_enemy.is_rearguard_delay_active():
-		pace_speed *= REARGUARD_DELAY_PURSUIT_SPEED_FACTOR
+	# A rearguard detachment (#1041) slows a pursuer through real contact/melee physics --
+	# it's a genuine engaged Unit blocking the way, not a flat multiplier applied here.
 	# A planted close-order stance (shield wall, testudo, or the anti-cav square) caps
 	# its top pace: the men hold a locked ring/wall and only creep, so the target pace
 	# is scaled down before the ramp.
@@ -4578,21 +4600,26 @@ func disengage() -> void:
 	start_order_response()
 
 
-## Disengage with sacrifice (rearguard delay): a deliberate rearguard trade-off where a
-## front-line detachment stays engaged and is sacrificed as casualties (Fallen markers dropped)
-## to delay the advancing enemy while the surviving main body steps back to safety.
+## Disengage with sacrifice (rearguard detachment, #1041): a deliberate rearguard
+## trade-off where a front-line detachment splits off to stay engaged and screen the
+## advancing enemy while the surviving main body steps back to safety. Reduces this
+## unit's own soldier count and starts its retreat; does NOT spawn the rearguard itself
+## (that needs a live Battle reference this class deliberately doesn't hold -- Battle
+## calls Unit, never the reverse). Returns {"sacrifice_count": int, "delay_sec": float}
+## so the caller (Battle._apply_order_cmd, at ORDER_DISENGAGE_SACRIFICE) can spawn it via
+## Battle._spawn_rearguard_detachment with the delay this specific call actually used
+## (the default, or a caller override) -- sacrifice_count is 0 (nothing to spawn) on
+## every no-op guard below.
 func disengage_with_sacrifice(step_distance: float = disengage_step_distance,
 		sacrifice_frac: float = rearguard_sacrifice_frac,
-		delay_sec: float = rearguard_delay_sec) -> void:
+		delay_sec: float = rearguard_delay_sec) -> Dictionary:
 	if state != State.FIGHTING or order_mode == ORDER_CHASE or soldiers <= 1:
-		return
+		return {"sacrifice_count": 0, "delay_sec": delay_sec}
 	var sacrifice_count: int = maxi(1, int(round(float(soldiers) * sacrifice_frac)))
 	# Cap below `soldiers` (not at it): the maneuver's whole point is a surviving main body
 	# stepping back to safety, so the sacrifice must never annihilate the unit itself.
 	sacrifice_count = mini(sacrifice_count, soldiers - 1)
 	soldiers -= sacrifice_count
-	UnitCombat.register_casualties(self, sacrifice_count, null, 1.0)
-	_rearguard_delay_timer = delay_sec
 	set_current_order(Order.new_nudge(NUDGE_BACK))
 	target_enemy = null
 	support_target = null
@@ -4602,11 +4629,7 @@ func disengage_with_sacrifice(step_distance: float = disengage_step_distance,
 	move_target = position + disengage_offset(facing, step_distance)
 	has_move_target = true
 	start_order_response()
-
-
-## Returns true if this unit's rearguard detachment is actively screening/delaying enemy pursuit.
-func is_rearguard_delay_active() -> bool:
-	return _rearguard_delay_timer > 0.0
+	return {"sacrifice_count": sacrifice_count, "delay_sec": delay_sec}
 
 
 ## Wheel (circumductio, Aelian/Asclepiodotus): the block swings about one fixed flank file like a
@@ -6712,6 +6735,8 @@ func to_snapshot_dict() -> Dictionary:
 		"engage_turn_old_files": _engage_turn_old_files,
 		"reform_on_arrival": _reform_on_arrival,
 		"move_order_peak_engaged_fraction": _move_order_peak_engaged_fraction,
+		"is_rearguard_detachment": is_rearguard_detachment,
+		"rearguard_lifetime_timer": _rearguard_lifetime_timer,
 
 		# Unit references, resolved by uid after every unit in the snapshot is restored.
 		"target_enemy_uid": target_enemy.uid if is_instance_valid(target_enemy) else -1,
@@ -6832,6 +6857,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_engage_turn_old_files = int(d["engage_turn_old_files"])
 	_reform_on_arrival = bool(d["reform_on_arrival"])
 	_move_order_peak_engaged_fraction = float(d["move_order_peak_engaged_fraction"])
+	is_rearguard_detachment = bool(d["is_rearguard_detachment"])
+	_rearguard_lifetime_timer = float(d["rearguard_lifetime_timer"])
 
 	var restored: Array[Order] = []
 	for od in d.get("orders", []):
