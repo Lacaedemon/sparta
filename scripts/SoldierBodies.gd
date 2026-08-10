@@ -474,12 +474,13 @@ static func couple(unit: Unit, delta: float) -> void:
 	unit._step_slots_for_couple_valid = false
 	if slots.size() != n:
 		return   # arrays mid-resize this tick; couple next tick when they realign
-	# position_anchor_indices narrows the engaged-ranks selection down to the live
+	# position_anchor_indices narrows the contact-tier selection down to the live
 	# near-front ranks (Unit.ANCHOR_RANKS) once the unit has settled (see
 	# Unit.position_anchor_indices / _position_anchor_unstable) -- Square/Schiltron and any
-	# in-progress turn or reform keep the wider engaged_soldier_indices selection this
-	# always used to be.
-	var indices: PackedInt32Array = unit.position_anchor_indices(n, false)
+	# in-progress turn or reform keep the wider contact_soldier_indices selection this
+	# always used to be. Also anchors a merely-in-contact (not fighting) regiment on its real
+	# front-rank bodies, not the whole-block centroid -- see Unit._in_enemy_contact.
+	var indices: PackedInt32Array = unit.position_anchor_indices(n)
 	var body_centroid := Vector2.ZERO
 	var slot_centroid := Vector2.ZERO
 	var count: int = indices.size()
