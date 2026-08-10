@@ -214,7 +214,7 @@ November 2024.
   ([#126](https://github.com/Lacaedemon/sparta/issues/126)) and any future
   weapon-tech progression.
 - **Licence:** proprietary, commercial Steam release (c) 2023-2024 Reverie
-  World Studios, Inc. -> 🚫 **design inspiration only** -- same category as
+  World Studios, Inc. → 🚫 **design inspiration only** -- same category as
   Divide et Impera above; no code or art to take.
 
 ### awesome-paradox
