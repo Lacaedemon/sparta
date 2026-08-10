@@ -1394,6 +1394,25 @@ touching `demos/demo.json`, grep this file for the relevant section NAME right b
 final push (not just recall it from earlier context) — a 10-second grep is cheaper than a
 full review round. (`Lacaedemon/sparta` PR #1137, 2026-07-27.)
 
+**A third recurrence, this time against a cross-repo (ai-config) rule rather than a
+sparta-local one:** `pr-on-claim.md`'s "Run that `requested_reviewers` POST as the sole
+(or last) command in its Bash call" was loaded in context, and #1241's very first Copilot
+request (issued right after `gh pr create`) already followed it — a single, unpiped,
+unchained call. `hooks/no-unreviewed-pr.py` still reported "no SUCCESSFUL reviewer request
+follows" for #1241 (and #1239) at the next Stop check. Re-requesting for #1239 in a
+combined call — `POST | head -3`, then two chained `gh pr view` verification reads for
+both PRs in the same Bash call — is a clear instance of the rule's own named tell ("a pipe
+added purely to trim the output"), and the guard fired again with the identical message.
+Only reissuing BOTH POSTs as fully isolated calls (bare command, no pipe, nothing chained
+after it) cleared the guard. Exactly why the first, genuinely clean #1241 request didn't
+already satisfy it is unconfirmed — possibly the guard's discharge window doesn't reach
+back past an intervening non-conforming call, possibly something else; this records the
+observed sequence and the fix, not a verified mechanism.
+**How to apply:** don't assume a clean, isolated reviewer-request call earlier in a session
+keeps discharging the guard for a PR you touch again later — if the guard fires, re-issue
+the POST as its own isolated call right then, even if you believe an earlier request for
+the same PR was already correct. (`Lacaedemon/sparta` PRs #1239/#1241, 2026-08-10.)
+
 ## A freshly-constructed test Unit defaults to morale 100 — routing tests can auto-rally instantly
 
 `Unit.gd`'s `morale` field defaults to `100.0`. A GUT test that constructs a bare `Unit`
