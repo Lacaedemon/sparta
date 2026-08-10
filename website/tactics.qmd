@@ -1527,7 +1527,33 @@ for). It costs something too: the enemy's own attack order doesn't release just
 because you stopped fighting back, so it keeps swinging --- with the flank/rear bonus
 --- for as long as it can still reach the retreating line.
 
-**Disengage with sacrifice** (<kbd>Shift</kbd> + <kbd>Ctrl</kbd> + <kbd>↓</kbd>) is a harsher variant for heavily pressed regiments. A small rearguard detachment (~10% of remaining soldiers) stays engaged and is sacrificed as casualties to screen the main body's retreat. The rearguard's sacrifice delays the advancing enemy, slowing their pursuit while the surviving soldiers step back to safety.
+**Disengage with sacrifice** (<kbd>Shift</kbd> + <kbd>Ctrl</kbd> + <kbd>↓</kbd>) is a
+harsher variant for heavily pressed regiments.
+A small rearguard detachment (~10% of remaining soldiers) splits off at the point of
+contact as a genuine separate unit, stays on Hold, and keeps fighting for real ---
+it is not a casualty write-off or a flat pursuit-speed penalty on the pursuer.
+The main body's survivors step back and march clear immediately; the enemy is held
+up because it is physically blocked by the rearguard's own bodies, not because a
+number slowed it down.
+The rearguard fights until it is destroyed or a short lifetime expires, whichever
+comes first.
+
+::: {#fig-disengage-sacrifice-rearguard .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/disengage_sacrifice_rearguard.jpg">
+  <source src="media/disengage_sacrifice_rearguard.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A player Infantry regiment locked in melee is ordered to disengage with sacrifice. A
+small detachment splits off, stays put, and keeps trading blows with the enemy while
+the rest of the regiment marches away unimpeded --- the enemy stays engaged with the
+rearguard instead of following the retreat.
+:::
 
 ::: {#fig-disengage-under-pressure .demo}
 

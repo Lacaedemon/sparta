@@ -1172,6 +1172,57 @@ func _spawn_from_snapshot(ud: Dictionary) -> Unit:
 	return u
 
 
+## Per-soldier body array keys to_snapshot_dict() carries -- shared between
+## _spawn_rearguard_detachment (which truncates each to the rearguard's own headcount) and
+## anywhere else that needs the full field list without retyping it.
+const SIM_SOLDIER_ARRAY_KEYS: Array[String] = [
+	"sim_soldier_pos", "sim_body_vel", "sim_steer", "sim_soldier_hp",
+	"sim_soldier_weapon_id", "sim_soldier_shield_id", "sim_soldier_shield_hold_angle",
+	"sim_prone", "sim_soldier_stamina", "sim_soldier_facing", "sim_soldier_file",
+	"sim_soldier_rank", "sim_soldier_square_slot",
+]
+
+
+## Disengage-with-sacrifice's rearguard: a genuine, separate Unit cloned from
+## `parent`'s own current type+state (to_snapshot_dict, mirroring _spawn_from_snapshot's
+## two-phase apply), holding `soldier_count` of the parent's own soldiers at the parent's
+## CURRENT position/facing -- the point of contact, not wherever the parent ends up after
+## retreating. Real physics (its own melee/collision/contact resistance) is what should
+## slow a pursuer now, not a synthetic speed multiplier. It never chases (ORDER_HOLD, no
+## queued orders) and inherits the parent's live combat target, so it keeps fighting
+## whoever it was already engaged with. Marked is_rearguard_detachment with a
+## `delay_sec` lifetime -- see Unit._physics_process for the countdown-and-timeout-removal
+## side of that contract.
+func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: float) -> Unit:
+	var ud: Dictionary = parent.to_snapshot_dict()
+	ud["uid"] = _next_uid
+	_next_uid += 1
+	ud["unit_name"] = parent.unit_name + " (rearguard)"
+	ud["soldiers"] = soldier_count
+	ud["max_soldiers"] = soldier_count
+	ud["position"] = parent.position
+	ud["facing"] = parent.facing
+	ud["state"] = UnitRef.State.FIGHTING
+	ud["order_mode"] = OrderMode.HOLD   # never chase -- stand and fight where it is
+	ud["orders"] = []                   # nothing queued; it isn't going anywhere
+	ud["move_target"] = parent.position
+	ud["has_move_target"] = false
+	# Truncate every per-soldier body array to the first `soldier_count` entries -- the
+	# front-most, already-engaged soldiers are the ones staying; the rest belong to the
+	# retreating main body.
+	for key in SIM_SOLDIER_ARRAY_KEYS:
+		ud[key] = ud[key].slice(0, soldier_count)
+	var u := _spawn_from_snapshot(ud)
+	_by_uid[u.uid] = u
+	u.is_rearguard_detachment = true
+	u._rearguard_lifetime_timer = delay_sec
+	# _spawn_from_snapshot/apply_snapshot_dict never resolve target_enemy/support_target --
+	# that's a second pass restore_snapshot runs separately, over uids, once every unit in a
+	# whole-battle restore exists. Set it directly from the live parent instead.
+	u.target_enemy = parent.target_enemy
+	return u
+
+
 ## Jump playback toward `target_tick` by restoring the nearest cached snapshot at or
 ## before it, skipping resimulation of every tick before that snapshot. Landing on a
 ## snapshot still leaves (target_tick - snapshot tick) ticks of real simulation to run to
@@ -1968,7 +2019,14 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		for uid in cmd["units"]:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
-				u.disengage_with_sacrifice()
+				# Unit.disengage_with_sacrifice() only reduces the unit's own headcount and
+				# starts its retreat -- it can't spawn the rearguard itself (Battle calls
+				# Unit, never the reverse), so Battle does that half here, from the
+				# reported sacrifice count and delay.
+				var result: Dictionary = u.disengage_with_sacrifice()
+				var sacrifice_count: int = int(result["sacrifice_count"])
+				if sacrifice_count > 0:
+					_spawn_rearguard_detachment(u, sacrifice_count, float(result["delay_sec"]))
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
