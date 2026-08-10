@@ -868,9 +868,18 @@ func _cycle_slowmo(reverse: bool = false) -> void:
 	var size: int = SLOWMO_PRESETS.size()
 	_slowmo_index = (_slowmo_index - 1 + size) % size if reverse \
 		else (_slowmo_index + 1) % size
-	Engine.time_scale = SLOWMO_PRESETS[_slowmo_index]
+	var new_scale: float = SLOWMO_PRESETS[_slowmo_index]
+	Engine.time_scale = new_scale
+	# Record the change so a saved replay reproduces the same per-tick delta trajectory on
+	# playback -- see Replay._time_scale_track's own doc for why an un-recorded time_scale
+	# change would silently desync a "deterministic" replay. record_time_scale_change()
+	# itself no-ops outside RECORD, so pressing F5 while watching a replay still cycles the
+	# viewing speed live without writing anything to the recording being watched.
+	var battle := get_parent() as BattleRef
+	if battle != null:
+		Replay.record_time_scale_change(battle.current_tick(), new_scale)
 	_update_slowmo_label()
-	flash_message("Speed: %d%%" % roundi(SLOWMO_PRESETS[_slowmo_index] * 100.0))
+	flash_message("Speed: %d%%" % roundi(new_scale * 100.0))
 
 
 func _update_slowmo_label() -> void:
@@ -1268,8 +1277,10 @@ const FLASH_SECONDS := 1.3
 func flash_message(text: String) -> void:
 	_flash_label.text = text
 	_flash_label.visible = true
-	# process_always so it ticks while the sim is paused (orders/cycles work paused too).
-	var timer := get_tree().create_timer(FLASH_SECONDS, true)
+	# process_always so it ticks while the sim is paused (orders/cycles work paused too);
+	# ignore_time_scale so a toast still hides after FLASH_SECONDS of real time even while
+	# slow-motion is active, rather than lingering up to 10x longer at the slowest preset.
+	var timer := get_tree().create_timer(FLASH_SECONDS, true, false, true)
 	timer.timeout.connect(_hide_flash.bind(text))
 
 

@@ -1128,7 +1128,7 @@ counting down as the regiment closes on its target.
 
 **Slow motion.** <kbd>F5</kbd> cycles a slow-motion tick-speed mode --- 100% (normal) ->
 50% -> 25% -> 10%, wrapping back to normal; <kbd>Shift</kbd> + <kbd>F5</kbd> cycles the
-other way. A persistent "N% SPEED" indicator shows above the order-mode banner whenever
+other way. A persistent "N% SPEED" indicator shows below the order-mode banner whenever
 it's active. This slows the same simulation down rather than switching to a separate
 playback mode, so it works during a live battle exactly as it does for a replay ---
 useful for watching a knockback exchange, a formation reflow, or a multi-target melee

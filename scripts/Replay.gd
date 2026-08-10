@@ -106,6 +106,20 @@ var _pointer_index: int = 0
 # like the camera/pointer tracks).
 var _key_track: Array = []
 
+# Time-scale track: feeds the simulation directly, unlike every cosmetic track above.
+# Every Engine.time_scale change made during a live recording (the slow-motion hotkey),
+# tick-stamped. Engine.time_scale scales the `delta` each _physics_process(delta) call
+# receives -- physics still ticks once per physics frame regardless of time_scale, but a
+# scaled delta changes how far every velocity*delta integration moves that tick. An
+# un-recorded time_scale change would silently desync a "deterministic" replay: the same
+# seed and orders would integrate against a different delta sequence and diverge from what
+# was actually recorded. Each entry: { "tick": int, "value": float }. Consecutive-identical
+# values are not recorded (see record_time_scale_change). Additive and back-compatible:
+# replays without this track apply no time_scale changes during playback, exactly as before
+# this field existed.
+var _time_scale_track: Array = []
+var _time_scale_index: int = 0
+
 # Cursor moves smaller than this (world px) don't add a keyframe — drops sub-pixel jitter
 # while keeping deliberate motion. Larger than the camera track's exact dedup because the
 # cursor is a continuous signal, not the camera's occasional pan.
@@ -177,6 +191,8 @@ func start_recording() -> void:
 	_pointer_track.clear()
 	_pointer_index = 0
 	_key_track.clear()
+	_time_scale_track.clear()
+	_time_scale_index = 0
 	drive_camera = false
 	show_demo_orders = false
 	_play_index = 0
@@ -300,6 +316,14 @@ func start_playback(path: String) -> bool:
 		for s in k.get("labels", []):
 			labels.append(str(s))
 		_key_track.append({"tick": int(k.get("tick", 0)), "labels": labels})
+	# Load the optional time-scale track. Absent in replays recorded before it existed,
+	# or when no slow-motion change was ever made -- both then play at a constant 1.0,
+	# exactly the pre-existing behaviour.
+	_time_scale_track.clear()
+	_time_scale_index = 0
+	for t in data.get("time_scale", []):
+		_time_scale_track.append(
+				{"tick": int(t.get("tick", 0)), "value": float(t.get("value", 1.0))})
 	loaded_path = path
 	mode = Mode.PLAYBACK
 	return true
@@ -371,20 +395,24 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	_orders.append(entry)
 
 
-## PLAYBACK: reposition the order-read cursor so the next orders_for_tick(tick) call
-## returns exactly the orders due at `tick` onward -- neither replaying ones already
-## consumed before a rewind nor skipping ones a fast-forward jumped past. Used when a
-## derived state-snapshot restore (Battle.restore_snapshot) jumps the battle to
-## a tick other than the one the cursor naturally advanced to. `_orders` is tick-sorted (both
-## record_order's append order during a live recording and start_playback's load order
-## preserve it), so a linear scan from the front always lands correctly. No-op outside
-## playback.
+## PLAYBACK: reposition the order-read cursor (and the time-scale read cursor -- see
+## below) so the next orders_for_tick(tick)/time_scale_for_tick(tick) call returns exactly
+## what's due at `tick` onward -- neither replaying entries already consumed before a
+## rewind nor skipping ones a fast-forward jumped past. Used when a derived state-snapshot
+## restore (Battle.restore_snapshot) jumps the battle to a tick other than the one the
+## cursors naturally advanced to. Both tracks are tick-sorted (record-time append order and
+## start_playback's load order preserve it), so a linear scan from the front always lands
+## correctly. No-op outside playback.
 func rewind_cursor_to_tick(tick: int) -> void:
 	if mode != Mode.PLAYBACK:
 		return
 	_play_index = 0
 	while _play_index < _orders.size() and int(_orders[_play_index]["tick"]) < tick:
 		_play_index += 1
+	_time_scale_index = 0
+	while _time_scale_index < _time_scale_track.size() \
+			and int(_time_scale_track[_time_scale_index]["tick"]) < tick:
+		_time_scale_index += 1
 
 
 ## PLAYBACK: return all orders scheduled for `tick` (in record order), advancing
@@ -565,6 +593,37 @@ func keys_for_tick(tick: int, window: int) -> Array:
 	return out
 
 
+## RECORD: append a time_scale change at `tick`. No-op outside RECORD, and when `value`
+## matches the currently-active scale (the track's last entry, or 1.0 if none recorded
+## yet) -- mirrors the camera/pointer tracks' "drop unchanged samples" convention. Unlike
+## record_keys, this feeds the simulation on playback (see the track's own doc above); it
+## is not cosmetic.
+func record_time_scale_change(tick: int, value: float) -> void:
+	if mode != Mode.RECORD:
+		return
+	var current := 1.0
+	if not _time_scale_track.is_empty():
+		current = float(_time_scale_track[-1]["value"])
+	if is_equal_approx(value, current):
+		return
+	_time_scale_track.append({"tick": tick, "value": value})
+
+
+## PLAYBACK: the new Engine.time_scale to apply at `tick`, or -1.0 if the track has no entry
+## due this exact tick (every legitimate time_scale value is positive, so -1.0 is an unused
+## sentinel). Advances the read cursor like orders_for_tick -- call once per tick, in tick
+## order, from the same place orders_for_tick is called. Returns -1.0 outside playback.
+func time_scale_for_tick(tick: int) -> float:
+	if mode != Mode.PLAYBACK:
+		return -1.0
+	var out := -1.0
+	while _time_scale_index < _time_scale_track.size() \
+			and int(_time_scale_track[_time_scale_index]["tick"]) == tick:
+		out = float(_time_scale_track[_time_scale_index]["value"])
+		_time_scale_index += 1
+	return out
+
+
 ## PLAYBACK: form-up (drag-deploy) orders issued within `window` ticks before `tick`,
 ## each as {x, y (centre), face (radians), frontage, age, uid (the slice's unit, -1 when
 ## the order carried none)}, so the overlay can replay the dragged flank line on that
@@ -636,6 +695,10 @@ func save(result: String, duration_ticks: int) -> String:
 	# Likewise emit the keystroke track only when keys were pressed.
 	if not _key_track.is_empty():
 		payload["keys"] = _key_track
+	# Likewise emit the time-scale track only when a slow-motion change was made -- this
+	# one feeds the simulation on load (see the field's own doc), unlike the three above.
+	if not _time_scale_track.is_empty():
+		payload["time_scale"] = _time_scale_track
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		push_warning("Could not write replay to %s" % path)

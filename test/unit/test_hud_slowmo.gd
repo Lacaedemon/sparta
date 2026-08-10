@@ -17,6 +17,8 @@ func before_each() -> void:
 
 func after_each() -> void:
 	Engine.time_scale = _orig_time_scale
+	Replay.reset()
+	Replay.forced_seed = -1
 
 
 func _hud() -> CanvasLayer:
@@ -100,6 +102,32 @@ func test_label_text_reports_the_percentage() -> void:
 	hud._cycle_slowmo()
 	assert_true(hud._slowmo_label.text.contains("25%"),
 			"the indicator names the current preset's percentage")
+
+
+## The record_time_scale_change() call is gated on having a real Battle parent
+## (get_parent() as BattleRef), so every test above -- which spawns a bare, unparented HUD
+## -- never reaches it. Confirm the wiring separately, on a real Battle, so a saved replay
+## actually carries the change (see test_replay_time_scale.gd for the fuller round-trip
+## proof through save/load).
+func test_cycle_slowmo_records_the_change_when_parented_to_a_live_battle() -> void:
+	Replay.forced_seed = 33221
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.drill_mode = true
+	battle.scenario = [{"team": 0, "type": "Infantry", "x": 500, "y": 500}]
+	add_child_autofree(battle)
+	for _k in range(5):
+		await get_tree().physics_frame
+	var hud: Node = battle.get_node("HUD")
+	var tick_before: int = battle.current_tick()
+
+	hud._cycle_slowmo()
+
+	assert_eq(Replay._time_scale_track.size(), 1,
+			"the change is recorded once the HUD is parented to a real, recording battle")
+	assert_eq(int(Replay._time_scale_track[0]["tick"]), tick_before,
+			"recorded at the battle's own current tick")
+	assert_almost_eq(float(Replay._time_scale_track[0]["value"]), HUDScript.SLOWMO_PRESETS[1],
+			0.0001, "and carries the new preset's value")
 
 
 func test_exit_tree_resets_time_scale_so_it_cannot_leak_into_the_next_battle() -> void:
