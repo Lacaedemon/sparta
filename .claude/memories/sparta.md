@@ -4288,6 +4288,59 @@ The authored-versus-landed distinction is the part worth keeping: a `git log` da
 offending commit will predate the breakage by hours, which makes the timeline look
 inconsistent until you check when it merged.
 
+## A new player-facing GLOBAL state mutation needs a replay-recording check, not just a cosmetic-overlay one
+
+`Replay`'s per-tick tracks (orders, camera, pointer, keys) each capture a specific,
+already-anticipated kind of state. A genuinely NEW kind of mid-battle mutation -- one that
+touches something outside any Unit's own snapshot fields and outside those four existing
+tracks -- has no track to fall into by default, and nothing forces the question of whether
+it needs one.
+
+The concrete miss: a slow-motion hotkey (#1097) set `Engine.time_scale` live, with the
+mechanism already verified (via a throwaway GUT probe) to scale the DELTA each physics tick
+receives, not the tick frequency -- so a mid-battle change to it is exactly the kind of state
+that alters simulation OUTCOMES, not just how the battle is drawn. It shipped with no
+Replay track for it at all; caught only by review, not by the implementation, even though
+the delta-scaling mechanism had already been confirmed empirically in the same PR.
+
+**How to apply:** before shipping a new player-facing toggle/hotkey, ask explicitly: does a
+saved-and-reloaded replay of a battle that used this feature reproduce the SAME simulation,
+not just look the same? If the answer isn't obviously yes -- if the state lives outside a
+Unit's own snapshot fields and outside the existing order/camera/pointer/key tracks -- it
+needs its own tick-stamped Replay track (mirroring `_orders`' record/dispatch/rewind-cursor
+shape), not a cosmetic one; `_camera_track`/`_pointer_track`/`_key_track` are all explicitly
+documented as "never read by the simulation," which is the wrong shape to copy for state
+that IS.
+
+**Not cleanly algorithmatizable:** no static check can tell "this new global write matters
+for determinism" from "this one doesn't" without understanding what the property actually
+does -- it is a design-time question, not a decidable syntactic condition. Treat this
+section itself as the check to run by hand on the next new global/live-state feature.
+
+## A self-review comment naming "@claude" in prose can accidentally re-trigger the mention workflow
+
+After three consecutive zero-cost `claude-review` failures (per the section above -- a
+genuine hard SDK error, not quota), the documented fallback is to post a self-review and
+move on. Writing the self-review's own opening line -- something like "the automated
+`@claude` review job did not produce a verdict" -- puts the literal string `@claude` into
+the comment body, and `claude.yml`'s `issue_comment` trigger does not distinguish a mention
+used to REFER to the bot from one used to SUMMON it. The comment posts fine, and moments
+later a second workflow run fires (`event: issue_comment`), attributed to whichever mention
+pattern matched.
+
+This is harmless when the run itself then fails the same zero-cost way (it did here, so
+nothing further got posted) -- but it is not something to rely on. A run that succeeded
+would dispatch a live agent against the PR with the self-review's own text as its prompt
+context, which is not what posting a review summary is for.
+
+**How to apply:** when writing a self-review comment (or any PR/issue comment) that needs
+to refer to the bot by name rather than summon it, avoid the literal `@claude` token --
+write "the Claude review job" or similar, or if the mention is unavoidable, break it up
+(e.g. a code span: `` `@claude` ``) so it reads as a literal string rather than a mention.
+Check `gh api repos/<owner>/<repo>/issues/<N>/comments --jq '.[-1]'` for a stray
+"Picked up by workflow run" acknowledgment after posting a self-review, and read that run's
+outcome before assuming nothing happened.
+
 ## Before fixing a finding by clearing state, list every OTHER caller of the function you are clearing it in
 
 The narrow lesson --- implement exactly what a review asked for and no more --- has now

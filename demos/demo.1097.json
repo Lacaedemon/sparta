@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/slow-motion.json",
+  "caption": "Issue #1097: F5 cycles a slow-motion tick-speed mode (100% -> 50% -> 25% -> 10%, Shift+F5 reverses). Engine.time_scale scales the delta each physics tick receives rather than skipping ticks, so it's a genuine slow-down of the same simulation, not a separate playback path -- watch the marching unit visibly cover less ground per stretch of the clip as each preset is pressed, while the persistent \"N% SPEED\" indicator (top-center) tracks the current setting.",
+  "fixed_fps": 30,
+  "max_frames": 320,
+  "fps": 15,
+  "width": 640
+}

@@ -250,3 +250,49 @@ func test_seek_to_tick_is_a_noop_outside_playback() -> void:
 	assert_eq(battle.current_tick(), before, "outside PLAYBACK, seek_to_tick does nothing")
 
 	_leave_playback(prev_mode)
+
+
+## Engine.time_scale has no per-unit trace, so it has to ride in the snapshot dict itself
+## (unlike everything else this suite round-trips, which lives on a Unit) -- see
+## Battle.capture_snapshot's own doc.
+func test_capture_and_restore_round_trips_time_scale() -> void:
+	var prev_mode := _enter_playback()
+	var battle := _spawn_battle([{"team": 0, "type": "Infantry", "x": 500, "y": 500}], 25, 20)
+	battle.drill_mode = true
+	while battle.current_tick() < 40:
+		await get_tree().physics_frame
+
+	Engine.time_scale = 0.25
+	var snap: Dictionary = battle.capture_snapshot()
+	assert_almost_eq(float(snap["time_scale"]), 0.25, 0.0001,
+			"the active time_scale rides in the snapshot")
+
+	Engine.time_scale = 1.0   # diverge before restoring, like this suite's other round-trips
+	while battle.current_tick() < 80:
+		await get_tree().physics_frame
+
+	battle.restore_snapshot(snap)
+	assert_almost_eq(Engine.time_scale, 0.25, 0.0001,
+			"restoring a snapshot re-applies the time_scale that was active when it was captured")
+
+	Engine.time_scale = 1.0   # don't leak into a later test
+	_leave_playback(prev_mode)
+
+
+func test_restore_snapshot_defaults_time_scale_to_normal_for_a_pre_field_snapshot() -> void:
+	var prev_mode := _enter_playback()
+	var battle := _spawn_battle([{"team": 0, "type": "Infantry", "x": 500, "y": 500}], 25, 20)
+	battle.drill_mode = true
+	while battle.current_tick() < 30:
+		await get_tree().physics_frame
+
+	var snap: Dictionary = battle.capture_snapshot()
+	snap.erase("time_scale")   # simulate a snapshot captured before this field existed
+
+	Engine.time_scale = 0.5
+	battle.restore_snapshot(snap)
+	assert_almost_eq(Engine.time_scale, 1.0, 0.0001,
+			"a snapshot with no time_scale field restores to the normal default")
+
+	Engine.time_scale = 1.0   # don't leak into a later test
+	_leave_playback(prev_mode)

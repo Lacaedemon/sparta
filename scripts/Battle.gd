@@ -1073,8 +1073,11 @@ func _apply_starting_state(u: Unit, starting_state: int) -> void:
 ## Every live unit ("units" + "routers" -- a unit that has died and left play is in
 ## neither, so it's correctly excluded, matching how a rewind to before its death
 ## should look) plus the whole-battle bookkeeping (tick, RNG stream position, the next
-## fresh uid) needed to resume simulating from this exact moment. Opaque to callers other
-## than restore_snapshot; never written to the canonical .replay file.
+## fresh uid, and the active Engine.time_scale -- a global engine property with no
+## per-unit trace, so it has to ride in the snapshot itself rather than being derivable
+## from anything captured above) needed to resume simulating from this exact moment.
+## Opaque to callers other than restore_snapshot; never written to the canonical
+## .replay file.
 func capture_snapshot() -> Dictionary:
 	var units: Array = []
 	for group in ["units", "routers"]:
@@ -1087,6 +1090,7 @@ func capture_snapshot() -> Dictionary:
 		"rng_state": Replay.rng.state,
 		"next_uid": _next_uid,
 		"units": units,
+		"time_scale": Engine.time_scale,
 	}
 
 
@@ -1097,7 +1101,8 @@ func capture_snapshot() -> Dictionary:
 ## spawned" default, self-healing on the first tick exactly like an ordinary spawn already
 ## does -- see .claude/memories/sparta.md's frame-keyed-cache hazards this sidesteps.
 ## Restores the tick counter, the RNG stream position (so subsequent combat rolls draw
-## exactly where the original run would have), and Replay's own order-read cursor.
+## exactly where the original run would have), Replay's own order-read cursor, and the
+## active Engine.time_scale.
 func restore_snapshot(snap: Dictionary) -> void:
 	for group in ["units", "routers"]:
 		for node in get_tree().get_nodes_in_group(group):
@@ -1131,6 +1136,10 @@ func restore_snapshot(snap: Dictionary) -> void:
 	_tick = int(snap["tick"])
 	Replay.rng.state = int(snap["rng_state"])
 	Replay.rewind_cursor_to_tick(_tick)
+	# rewind_cursor_to_tick only repositions the read cursor for changes still ahead of
+	# `_tick`; a slow-motion change made before the snapshot was captured has no per-unit
+	# trace to fall back on, so the value has to come from the snapshot itself.
+	Engine.time_scale = float(snap.get("time_scale", 1.0))
 
 	# A completed replay has _ended set and the tree paused behind the end overlay
 	# (_check_victory runs during PLAYBACK too), and both _physics_process and
@@ -1209,6 +1218,13 @@ func _physics_process(_delta: float) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		for cmd in Replay.orders_for_tick(_tick):
 			_apply_order_cmd(cmd)
+		# Re-apply a recorded slow-motion change at the tick it was made, so this tick's
+		# own delta (and every later one, until the next recorded change) matches what the
+		# original recording actually integrated against -- see Replay._time_scale_track's
+		# own doc for why an un-recorded change would desync a "deterministic" replay.
+		var recorded_scale: float = Replay.time_scale_for_tick(_tick)
+		if recorded_scale > 0.0:
+			Engine.time_scale = recorded_scale
 		# Drive the camera from the recorded presentation track so the replay is framed
 		# (zoom/pan) as it was played — only when asked (the demo recorder), so in-app
 		# Watch Replay keeps free pan/zoom. No track -> static camera, as before.
