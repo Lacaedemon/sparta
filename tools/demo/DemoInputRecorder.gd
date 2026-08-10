@@ -455,6 +455,14 @@ func _schedule(steps: Array) -> void:
 			# Uses Input.parse_input_event (not _unhandled_input) so Input.is_key_pressed()
 			# reflects the held state — that's what _draw_orders() checks.
 			_at(tick, {"kind": "hold_space"})
+		else:
+			# A step matching none of the recognized action keys above is a no-op:
+			# it schedules nothing and the recording silently proceeds without it.
+			# Fail loudly instead — an unrecognized shape is almost always an
+			# authoring mistake (e.g. {"type": "click", "pos": [...]} instead of
+			# {"click": [...]}), and a silent no-op reads as "it worked" until
+			# someone dumps state and finds the scripted action never happened.
+			push_error("DemoInputRecorder: step at tick %d matches no recognized action key (%s) -- ignored" % [tick, str(step.keys())])
 
 
 ## A click = button press then release at one point, on the same tick.
