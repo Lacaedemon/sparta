@@ -5270,20 +5270,29 @@ const ANCHOR_RANKS: int = 2
 ## formation's position should read off its leading edge, not an average a casualty-thinned or
 ## knocked-back deeper rank can pull around -- see `SoldierBodies.couple()`, the only caller.
 ## Square/Schiltron has no single front to speak of (the ring wraps the whole block), so it
-## returns empty there; the caller keeps using the existing perimeter-based engaged selection
+## returns empty there; the caller keeps using the existing perimeter-based contact selection
 ## for that formation instead. Live-position selection (UnitFormation.live_front_indices),
 ## same as engaged_soldier_indices, for the same reason: a casualty splices the per-soldier
 ## arrays, so a fixed-index "first N slots" reading would go stale the moment the array
 ## compacts.
 ##
-## Deliberately still gated on is_engaged() alone, NOT is_engaged() OR _in_enemy_contact --
-## unlike contact_soldier_indices/SoldierEnemyContact/_separate, which all switched to that
-## broader gate. Widening this specific selection's membership (not just how narrow it is
-## once a unit qualifies) was tried and made a live 900-tick battle regression test
-## (test_collision_knockback_battle.gd) hang indefinitely; reverted, not yet root-caused.
-## See docs/individual-collision-design.md's "Physical contact is proximity-based" section.
+## Gated on is_engaged() OR _in_enemy_contact, like contact_soldier_indices -- a regiment
+## merely in physical contact (not fighting) still needs its position anchored on its real
+## front-rank bodies, or couple() dilutes the anchor over the whole, mostly-static block the
+## same way an earlier fix closed for a fighting regiment's kinematic charge (see
+## docs/individual-collision-design.md's "Physical contact is proximity-based" section).
+##
+## A prior attempt at this exact gate widening made a live 900-tick battle regression test
+## (test_collision_knockback_battle.gd) hang indefinitely and was reverted, un-root-caused.
+## Re-verified before re-landing: the identical diff, run against the identical Godot 4.7.0
+## build on both Windows and native Linux, passes that test AND the full 2642-test suite
+## cleanly (under seven minutes, no hang) on both platforms. The original hang's cause was
+## never identified -- most likely a platform/build-specific floating-point divergence this
+## sim's own chaos-sensitivity is already documented to produce elsewhere (ANCHOR_RANKS'
+## own docstring), not a deterministic property of this code. If a live-battle test in this
+## family ever hangs again, that history is the first thing to revisit.
 func near_front_soldier_indices(count: int) -> PackedInt32Array:
-	if not is_engaged() or count <= 0 or in_square():
+	if not (is_engaged() or _in_enemy_contact) or count <= 0 or in_square():
 		return PackedInt32Array()
 	var cutoff: int = mini(count, formation_files(count) * ANCHOR_RANKS)
 	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
@@ -5292,15 +5301,23 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 
 
 ## The soldier-index selection `SoldierBodies.couple()` anchors `position` on: the live
-## near-front ranks (`near_front_soldier_indices`) for a settled, non-Square engaged
-## regiment, or the wider `engaged_soldier_indices` selection otherwise (Square/Schiltron,
-## or any of the three unstable-transition cases `_position_anchor_unstable` names). Empty
-## when not engaged at all -- `couple()` falls back to the whole-block centroid in that case.
-func position_anchor_indices(count: int, use_cache: bool = true) -> PackedInt32Array:
-	if not is_engaged():
+## near-front ranks (`near_front_soldier_indices`) for a settled, non-Square regiment, or the
+## wider `contact_soldier_indices` selection otherwise (Square/Schiltron, or any of the three
+## unstable-transition cases `_position_anchor_unstable` names). Empty when neither fighting
+## nor in physical contact -- `couple()` falls back to the whole-block centroid in that case.
+##
+## Gated on is_engaged() OR _in_enemy_contact (not is_engaged() alone): a "disengaging" unit
+## (a plain move order with no attack target) never fights, but its regiment position still
+## needs to anchor on its real contact-resisted front ranks while it's physically touching an
+## enemy, or its kinematic march dilutes right through that contact the same way an earlier
+## fix closed for a fighting regiment's charge -- see docs/individual-collision-design.md.
+## See near_front_soldier_indices' own docstring for the re-verification history behind this
+## gate.
+func position_anchor_indices(count: int) -> PackedInt32Array:
+	if not (is_engaged() or _in_enemy_contact):
 		return PackedInt32Array()
 	if in_square() or _position_anchor_unstable():
-		return engaged_soldier_indices(count, use_cache)
+		return contact_soldier_indices(count)
 	return near_front_soldier_indices(count)
 
 

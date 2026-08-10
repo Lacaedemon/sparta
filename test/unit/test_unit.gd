@@ -3599,7 +3599,7 @@ func test_near_front_soldier_indices_is_empty_when_not_engaged() -> void:
 
 func test_near_front_soldier_indices_is_empty_when_squared() -> void:
 	# Square/Schiltron has no single front rank (the ring wraps the whole block) -- the
-	# caller (position_anchor_indices) keeps using the perimeter-based engaged selection
+	# caller (position_anchor_indices) keeps using the perimeter-based contact selection
 	# for that formation instead.
 	var u := _make_unit(24)
 	u.set_formation(Unit.FORMATION_SQUARE)
@@ -3629,9 +3629,27 @@ func test_near_front_soldier_indices_selects_anchor_ranks_worth_of_live_front_bo
 			"narrower than the full engaged-ranks selection")
 
 
-func test_position_anchor_indices_falls_back_to_engaged_selection_while_unstable() -> void:
+func test_near_front_soldier_indices_and_position_anchor_indices_work_while_merely_in_contact() -> void:
+	# The core fix: a "disengaging" unit (a plain move order with no attack target) never
+	# becomes is_engaged(), but SoldierBodies.couple() still needs to anchor its position on
+	# real contact-resisted front-rank bodies while it's physically touching an enemy -- or
+	# the anchor dilutes over the whole, mostly-static block the same way an earlier fix
+	# closed for a fighting regiment's charge (see docs/individual-collision-design.md). Both
+	# functions must return the identical, nonempty selection they would if truly engaged.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u._in_enemy_contact = true
+	assert_false(u.is_engaged(), "sanity: not combat-engaged, only in physical contact")
+	var n: int = u.soldiers
+	assert_false(u.near_front_soldier_indices(n).is_empty(),
+			"near_front_soldier_indices works from proximity alone")
+	assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n),
+			"settled, in-contact-only -> the narrower near-front selection")
+
+
+func test_position_anchor_indices_falls_back_to_contact_selection_while_unstable() -> void:
 	# _position_anchor_unstable (an in-progress order-turn, wheel, engage re-face, or reform
-	# hold) makes position_anchor_indices use the wider, more-damped engaged_soldier_indices
+	# hold) makes position_anchor_indices use the wider, more-damped contact_soldier_indices
 	# selection instead of the narrower near_front_soldier_indices -- narrowing the anchor
 	# mid-transition is exactly what destabilized the melee-lock swirl regression when
 	# tried unconditionally (see Unit.ANCHOR_RANKS' own docstring). The engage re-face
@@ -3645,12 +3663,12 @@ func test_position_anchor_indices_falls_back_to_engaged_selection_while_unstable
 	u.tick_engaged(0.0)
 	var n: int = u.soldiers
 	assert_false(u._position_anchor_unstable(), "sanity: settled, no maneuver/reform active")
-	assert_eq(u.position_anchor_indices(n, false), u.near_front_soldier_indices(n),
+	assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n),
 			"settled -> the narrower near-front selection")
 	u._engage_turn_target = Vector2(1.0, 0.0)   # an in-progress engage re-face
 	assert_true(u._position_anchor_unstable(), "sanity: a re-face turn is now in progress")
-	assert_eq(u.position_anchor_indices(n, false), u.engaged_soldier_indices(n, false),
-			"mid-turn -> falls back to the wider engaged selection")
+	assert_eq(u.position_anchor_indices(n), u.contact_soldier_indices(n),
+			"mid-turn -> falls back to the wider contact selection")
 
 
 func test_face_for_action_is_a_no_op_when_squared() -> void:
