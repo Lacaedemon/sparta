@@ -358,6 +358,13 @@ routed through `DistanceLegend`.
   framebuffer, so `--rendering-driver opengl3` is required.
   Pass the input script path via the `SPARTA_DEMO_INPUT` env var — CLI `--`
   args are not forwarded to `DemoInputRecorder`.
+  **On Windows, `xvfb-run` doesn't apply at all — there's no dummy X server to
+  wrap.** The fix is the same drop-`--headless` half only: run
+  `godot --rendering-driver opengl3 --write-movie ...` directly (a real
+  display is already present), with no `xvfb-run` prefix. The identical
+  `--headless --write-movie` crash reproduces on Windows too if `--headless`
+  is left in — the null-texture cause is the dummy renderer, not Xvfb
+  specifically, so the fix generalizes; only the wrapper differs per platform.
 
 - **`push_error()` does not set a non-zero exit code.** A `--headless` Godot run
   (or a GUT run) that calls `push_error(...)` still exits `0`, so a CI step or
