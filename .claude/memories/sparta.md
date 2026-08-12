@@ -2785,6 +2785,66 @@ library's "RTS Camera 3D" page still links `alfredbaudisch/GodotRTSCamera3D`, wh
 GitHub repo is gone. Both failure modes (moddb.com bot-403, the deleted camera repo)
 cost a red link-checker run on PR #929 after a probe pass that skipped GitHub URLs.
 
+**In a remote/web session that probe is uninformative without a control, and its
+failure mode is a confident FALSE NEGATIVE.** Claude Code on the web routes outbound
+HTTPS through an agent proxy that blocks arbitrary hosts, so the `curl` above returns
+exit 56 / `http=000` for the URL under test AND for a site that is plainly up. Read on
+its own that looks exactly like "the site is down", which is the reading that argues
+for a permanent `lychee.toml` exclusion. Probe a control host in the same command and
+compare:
+
+```bash
+for u in "$url" "https://godotengine.org/"; do
+  printf '%s ' "$u"
+  curl -s -o /dev/null -w "http=%{http_code}\n" -L --max-time 20 \
+    -A "Mozilla/5.0 (compatible; Lychee/0.15; +https://github.com/lycheeverse/lychee)" "$u"
+done
+```
+
+A control that also fails means the probe measured the proxy rather than the site, so
+it has established nothing either way -- fall back to the CI-side evidence in the
+section below. Measured 2026-08-12 from a Claude-Code-on-the-web container:
+`godotengine.org` returned exit 56 / `http=000`, identical to the URL under test, while
+`github.com` returned `http=400` from the proxy itself. Neither is a fact about the site.
+
+## A pre-existing URL that newly fails the link checker: check `main`'s own runs before excluding it
+
+The section above covers a URL you are ADDING. The commoner case is the reverse:
+`check / link-checker` goes red on an unrelated PR over a URL nobody touched, and
+`lychee.toml`'s exclusion list is this repo's standing remedy for a site lychee cannot
+reach. Reaching for a new exclusion there is wrong about as often as it is right, and
+the cost is asymmetric -- an exclusion is permanent and silently stops checking a link
+that may be perfectly fine.
+
+A TRANSIENT failure is indistinguishable from a persistent one inside a single PR's
+log, and two things make that log read as stronger evidence than it is. `max_retries
+= 3` means lychee already retried within the failing run, so the error is not a
+single-shot flake. And the failing URL sitting in a file the PR never touched proves
+only that the PR did not CAUSE it -- the check scans the whole repo on every PR, so
+scope never settles the question either way.
+
+The discriminator needs no network access of your own, which is what makes it the
+right tool in a proxy-restricted session: `check-links.yml` also runs on every push to
+`main` (and on a schedule), over the same corpus and the same config. A `main` run
+that PASSED after the PR's failure proves the URL was reachable, so the failure was a
+blip -- re-run the PR's failed job rather than changing config. Read the recent runs
+via `actions_list` / `list_workflow_runs` on `check-links.yml` and compare the newest
+`main` run's conclusion and timestamp against the PR run's failure.
+
+Every existing entry in `lychee.toml` documents a REPRODUCIBLE failure ("even after
+re-runs", "confirmed reproducible across two separate CI re-runs", a specific status
+code). Match that bar before adding one, and record the evidence in the comment the
+same way.
+
+(`Lacaedemon/sparta` PR #1237, 2026-08-12: `check / link-checker` failed on the
+scheduled benchmark-baseline refresh with exactly one error --
+`https://godotshaders.com/shader/vertex-animation-with-instancing/`, cited from
+`docs/3d-conversion-design.md`, `Network error: Connection reset by peer (os error
+104)`. The local probe was uninformative for the proxy reason above. The `main` run
+pushed 24 minutes later passed the same URL, and a re-run of the PR's own failed job
+then passed too -- so no exclusion was warranted, and adding one would have suppressed
+a live link check over a 20-minute blip.)
+
 ## Direction reversals are where the marker/body split bites: scalar speed re-aims instantly, bodies carry real momentum
 
 `_current_speed` is a scalar with no direction: any flow that flips a unit's travel
