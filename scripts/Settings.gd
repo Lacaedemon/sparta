@@ -267,10 +267,11 @@ const DEFAULT_ORDER_BINDINGS := {
 	# Every letter key, digit (control groups), and punctuation-row key is now claimed by an
 	# earlier order mode, a fixed camera/UI hotkey, or a maneuver drill (see
 	# SelectionManager.gd/HUD.gd's own key maps) -- there is no free key left on the main
-	# keyboard rows. Function keys are otherwise unused in this project (F1 is the one
-	# exception, HUD._is_tray_toggle_keypress -- see its own comment on why F-keys are the
-	# fallback once every other key is spoken for), so F2 is both free and, like F1, immune
-	# to Godot's built-in UI action bindings.
+	# keyboard rows. Function keys are otherwise unused in this project (F1 and F5 are the
+	# two exceptions -- HUD._is_tray_toggle_keypress and HUD._is_slowmo_keypress -- see
+	# their own comments on why F-keys are the fallback once every other key is spoken
+	# for), so F2 is both free and, like F1 and F5, immune to Godot's built-in UI action
+	# bindings.
 	"multiple_engage": KEY_F2,
 	# F1/F2 are already claimed (tray toggle, multiple_engage above); F3 is the next free
 	# function key.

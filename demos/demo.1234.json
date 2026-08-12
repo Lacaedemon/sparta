@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/disengage-with-sacrifice-rearguard.json",
+  "caption": "Disengage with sacrifice (#1041) now spawns a real rearguard sub-unit at the point of contact instead of applying a flat pursuit-speed multiplier. It stays behind on Hold, keeps fighting for real, and holds the enemy in place while the rest of the regiment steps back and marches clear -- the enemy is physically blocked, not slowed by a number.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 720
+}

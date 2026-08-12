@@ -20,6 +20,7 @@ const CAPTURE_TIMEOUT_SEC := 60.0
 
 var _sel: Node = null
 var _battle: Node = null
+var _hud: Node = null   # forward a scripted "key" step here too -- see _fire()'s "key" case
 var _cam: Camera2D = null
 var _camera_track: Array = []          # keyframes [{tick,x,y,zoom}], interpolated per tick; empty = default camera
 var _by_tick: Dictionary = {}          # tick -> Array of expanded input events
@@ -177,6 +178,7 @@ func _start_battle() -> void:
 		get_tree().quit(4)
 		return
 	_sel = _battle.get_node("SelectionManager")
+	_hud = _battle.get_node("HUD")
 	if _form_up_dist >= 0:
 		_sel._form_up_dist = _form_up_dist
 	_cam = _battle.get_node("Camera2D")
@@ -388,9 +390,12 @@ func _unit_record(u: Node) -> Dictionary:
 
 # --- input injection -------------------------------------------------------
 
-## Drive one expanded event into the SelectionManager. Position comes via the cursor override
-## (all selection/order logic reads _cursor_world()), so the synthesized events' own position
-## fields don't need to be accurate — only the button/key and pressed state matter.
+## Drive one expanded event into the SelectionManager (and, for a "key" event, the HUD too --
+## some hotkeys, like slow-motion's F5, are handled directly in HUD._unhandled_input rather
+## than routed through SelectionManager, matching how P/F1/Shift+/ are also HUD-only global
+## toggles). Position comes via the cursor override (all selection/order logic reads
+## _cursor_world()), so the synthesized events' own position fields don't need to be accurate
+## -- only the button/key and pressed state matter.
 func _fire(ev: Dictionary) -> void:
 	match ev["kind"]:
 		"mb":
@@ -414,6 +419,8 @@ func _fire(ev: Dictionary) -> void:
 			k.ctrl_pressed = bool(ev.get("ctrl", false))
 			k.shift_pressed = bool(ev.get("shift", false))
 			_sel._unhandled_input(k)
+			if _hud != null and is_instance_valid(_hud):
+				_hud._unhandled_input(k)
 		"hold_space":
 			# Update hardware key state so Input.is_key_pressed(KEY_SPACE) returns true
 			# for the rest of the recording — enabling the orders overlay draw path.
@@ -448,6 +455,14 @@ func _schedule(steps: Array) -> void:
 			# Uses Input.parse_input_event (not _unhandled_input) so Input.is_key_pressed()
 			# reflects the held state — that's what _draw_orders() checks.
 			_at(tick, {"kind": "hold_space"})
+		else:
+			# A step matching none of the recognized action keys above is a no-op:
+			# it schedules nothing and the recording silently proceeds without it.
+			# Fail loudly instead — an unrecognized shape is almost always an
+			# authoring mistake (e.g. {"type": "click", "pos": [...]} instead of
+			# {"click": [...]}), and a silent no-op reads as "it worked" until
+			# someone dumps state and finds the scripted action never happened.
+			push_error("DemoInputRecorder: step at tick %d matches no recognized action key (%s) -- ignored" % [tick, str(step.keys())])
 
 
 ## A click = button press then release at one point, on the same tick.

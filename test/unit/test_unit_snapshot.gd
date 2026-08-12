@@ -87,6 +87,8 @@ func _sample_unit() -> Unit:
 	u._engage_turn_old_files = 9
 	u._reform_on_arrival = true
 	u._move_order_peak_engaged_fraction = 0.55
+	u.is_rearguard_detachment = true   # non-default (defaults false), so the round-trip is provable
+	u._rearguard_lifetime_timer = 1.4
 
 	u._sim_soldier_pos = PackedVector2Array([Vector2(1, 2), Vector2(3, 4)])
 	u._sim_body_vel = PackedVector2Array([Vector2(0.1, 0.2)])
@@ -163,6 +165,11 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 			original._move_order_peak_engaged_fraction, 0.001,
 			"an unconsumed disengage-time peak survives a replay-seek restore -- a snapshot" \
 			+ " reload must not silently resume a guarded MOVE a straight playthrough would cancel")
+	assert_eq(restored.is_rearguard_detachment, original.is_rearguard_detachment,
+			"a rearguard detachment keeps its identity across a snapshot round-trip --" \
+			+ " it has no per-unit trace elsewhere to fall back on if this were dropped")
+	assert_almost_eq(restored._rearguard_lifetime_timer, original._rearguard_lifetime_timer, 0.001,
+			"and its removal timer survives too, or a rewound rearguard would never be cleaned up")
 
 	assert_eq(Array(restored._sim_soldier_pos), Array(original._sim_soldier_pos))
 	assert_eq(Array(restored._sim_soldier_hp), Array(original._sim_soldier_hp))

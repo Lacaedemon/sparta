@@ -1073,8 +1073,11 @@ func _apply_starting_state(u: Unit, starting_state: int) -> void:
 ## Every live unit ("units" + "routers" -- a unit that has died and left play is in
 ## neither, so it's correctly excluded, matching how a rewind to before its death
 ## should look) plus the whole-battle bookkeeping (tick, RNG stream position, the next
-## fresh uid) needed to resume simulating from this exact moment. Opaque to callers other
-## than restore_snapshot; never written to the canonical .replay file.
+## fresh uid, and the active Engine.time_scale -- a global engine property with no
+## per-unit trace, so it has to ride in the snapshot itself rather than being derivable
+## from anything captured above) needed to resume simulating from this exact moment.
+## Opaque to callers other than restore_snapshot; never written to the canonical
+## .replay file.
 func capture_snapshot() -> Dictionary:
 	var units: Array = []
 	for group in ["units", "routers"]:
@@ -1087,6 +1090,7 @@ func capture_snapshot() -> Dictionary:
 		"rng_state": Replay.rng.state,
 		"next_uid": _next_uid,
 		"units": units,
+		"time_scale": Engine.time_scale,
 	}
 
 
@@ -1097,7 +1101,8 @@ func capture_snapshot() -> Dictionary:
 ## spawned" default, self-healing on the first tick exactly like an ordinary spawn already
 ## does -- see .claude/memories/sparta.md's frame-keyed-cache hazards this sidesteps.
 ## Restores the tick counter, the RNG stream position (so subsequent combat rolls draw
-## exactly where the original run would have), and Replay's own order-read cursor.
+## exactly where the original run would have), Replay's own order-read cursor, and the
+## active Engine.time_scale.
 func restore_snapshot(snap: Dictionary) -> void:
 	for group in ["units", "routers"]:
 		for node in get_tree().get_nodes_in_group(group):
@@ -1131,6 +1136,10 @@ func restore_snapshot(snap: Dictionary) -> void:
 	_tick = int(snap["tick"])
 	Replay.rng.state = int(snap["rng_state"])
 	Replay.rewind_cursor_to_tick(_tick)
+	# rewind_cursor_to_tick only repositions the read cursor for changes still ahead of
+	# `_tick`; a slow-motion change made before the snapshot was captured has no per-unit
+	# trace to fall back on, so the value has to come from the snapshot itself.
+	Engine.time_scale = float(snap.get("time_scale", 1.0))
 
 	# A completed replay has _ended set and the tree paused behind the end overlay
 	# (_check_victory runs during PLAYBACK too), and both _physics_process and
@@ -1160,6 +1169,57 @@ func _spawn_from_snapshot(ud: Dictionary) -> Unit:
 	if int(ud["state"]) == UnitRef.State.ROUTING:
 		u.remove_from_group("units")
 		u.add_to_group("routers")
+	return u
+
+
+## Per-soldier body array keys to_snapshot_dict() carries -- shared between
+## _spawn_rearguard_detachment (which truncates each to the rearguard's own headcount) and
+## anywhere else that needs the full field list without retyping it.
+const SIM_SOLDIER_ARRAY_KEYS: Array[String] = [
+	"sim_soldier_pos", "sim_body_vel", "sim_steer", "sim_soldier_hp",
+	"sim_soldier_weapon_id", "sim_soldier_shield_id", "sim_soldier_shield_hold_angle",
+	"sim_prone", "sim_soldier_stamina", "sim_soldier_facing", "sim_soldier_file",
+	"sim_soldier_rank", "sim_soldier_square_slot",
+]
+
+
+## Disengage-with-sacrifice's rearguard: a genuine, separate Unit cloned from
+## `parent`'s own current type+state (to_snapshot_dict, mirroring _spawn_from_snapshot's
+## two-phase apply), holding `soldier_count` of the parent's own soldiers at the parent's
+## CURRENT position/facing -- the point of contact, not wherever the parent ends up after
+## retreating. Real physics (its own melee/collision/contact resistance) is what should
+## slow a pursuer now, not a synthetic speed multiplier. It never chases (ORDER_HOLD, no
+## queued orders) and inherits the parent's live combat target, so it keeps fighting
+## whoever it was already engaged with. Marked is_rearguard_detachment with a
+## `delay_sec` lifetime -- see Unit._physics_process for the countdown-and-timeout-removal
+## side of that contract.
+func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: float) -> Unit:
+	var ud: Dictionary = parent.to_snapshot_dict()
+	ud["uid"] = _next_uid
+	_next_uid += 1
+	ud["unit_name"] = parent.unit_name + " (rearguard)"
+	ud["soldiers"] = soldier_count
+	ud["max_soldiers"] = soldier_count
+	ud["position"] = parent.position
+	ud["facing"] = parent.facing
+	ud["state"] = UnitRef.State.FIGHTING
+	ud["order_mode"] = OrderMode.HOLD   # never chase -- stand and fight where it is
+	ud["orders"] = []                   # nothing queued; it isn't going anywhere
+	ud["move_target"] = parent.position
+	ud["has_move_target"] = false
+	# Truncate every per-soldier body array to the first `soldier_count` entries -- the
+	# front-most, already-engaged soldiers are the ones staying; the rest belong to the
+	# retreating main body.
+	for key in SIM_SOLDIER_ARRAY_KEYS:
+		ud[key] = ud[key].slice(0, soldier_count)
+	var u := _spawn_from_snapshot(ud)
+	_by_uid[u.uid] = u
+	u.is_rearguard_detachment = true
+	u._rearguard_lifetime_timer = delay_sec
+	# _spawn_from_snapshot/apply_snapshot_dict never resolve target_enemy/support_target --
+	# that's a second pass restore_snapshot runs separately, over uids, once every unit in a
+	# whole-battle restore exists. Set it directly from the live parent instead.
+	u.target_enemy = parent.target_enemy
 	return u
 
 
@@ -1209,6 +1269,13 @@ func _physics_process(_delta: float) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		for cmd in Replay.orders_for_tick(_tick):
 			_apply_order_cmd(cmd)
+		# Re-apply a recorded slow-motion change at the tick it was made, so this tick's
+		# own delta (and every later one, until the next recorded change) matches what the
+		# original recording actually integrated against -- see Replay._time_scale_track's
+		# own doc for why an un-recorded change would desync a "deterministic" replay.
+		var recorded_scale: float = Replay.time_scale_for_tick(_tick)
+		if recorded_scale > 0.0:
+			Engine.time_scale = recorded_scale
 		# Drive the camera from the recorded presentation track so the replay is framed
 		# (zoom/pan) as it was played — only when asked (the demo recorder), so in-app
 		# Watch Replay keeps free pan/zoom. No track -> static camera, as before.
@@ -1952,7 +2019,14 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		for uid in cmd["units"]:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
-				u.disengage_with_sacrifice()
+				# Unit.disengage_with_sacrifice() only reduces the unit's own headcount and
+				# starts its retreat -- it can't spawn the rearguard itself (Battle calls
+				# Unit, never the reverse), so Battle does that half here, from the
+				# reported sacrifice count and delay.
+				var result: Dictionary = u.disengage_with_sacrifice()
+				var sacrifice_count: int = int(result["sacrifice_count"])
+				if sacrifice_count > 0:
+					_spawn_rearguard_detachment(u, sacrifice_count, float(result["delay_sec"]))
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the

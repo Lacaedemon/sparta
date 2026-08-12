@@ -284,6 +284,58 @@ binary match.
   full suite has been observed passing every test, so don't assume that failure
   is still present, and don't pin an exact test total; the suite grows.
 
+## Reproducing a reported hang cross-platform: WSL gives a genuine native-Linux Godot binary
+
+CI runs on `ubuntu-latest`; local development on this machine is Windows. When
+a prior session reports a live-battle test hanging and reverts a change
+"un-root-caused," don't assume the report is stale or trust it at face value
+either — reproduce it fresh, and if the platform might matter (this repo's own
+`ANCHOR_RANKS` docstring documents at least one prior case where a chaos-
+sensitive test passed locally on Windows while failing on Linux CI), get a
+genuine native-Linux run rather than reasoning about the gap from Windows
+alone.
+
+WSL (`wsl.exe -d Ubuntu`) makes this cheap on a machine that already has it
+installed: download a Linux Godot binary directly (same version tag as the
+Windows one, so the comparison is apples-to-apples), clone the repo into WSL's
+**native filesystem** (not `/mnt/c/...` — that path is a slow 9p/DrvFs bridge
+and import/test runs on it are painfully slow), vendor GUT the same way
+`tools/check.sh` does, and run the suite there.
+
+```bash
+wsl.exe -d Ubuntu -- bash -lc "mkdir -p ~/godot && cd ~/godot && curl -fsSL -o godot.zip \
+  https://github.com/godotengine/godot/releases/download/4.7-stable/Godot_v4.7-stable_linux.x86_64.zip \
+  && python3 -c \"import zipfile; zipfile.ZipFile('godot.zip').extractall('.')\" \
+  && chmod +x Godot_v4.7-stable_linux.x86_64"
+wsl.exe -d Ubuntu -- bash -lc "cd ~ && git clone --quiet https://github.com/Lacaedemon/sparta.git sparta && cd sparta && git checkout -q <branch>"
+```
+
+Then vendor GUT (mirroring `tools/check.sh ensure_gut`) and run the same
+`godot --headless -s addons/gut/gut_cmdln.gd ...` invocation used locally.
+
+**Windows Git Bash mangles `/tmp/...` paths passed to `wsl.exe`.** MSYS
+auto-translates POSIX-looking absolute-path *arguments* to a program it treats
+as "native" (which `wsl.exe` is, from Git Bash's point of view) into a Windows
+path — so `wsl.exe -d Ubuntu -- bash /tmp/foo.sh` silently becomes
+`bash C:/Users/.../AppData/Local/Temp/foo.sh` and fails inside WSL with "no
+such file." Prefix the whole call with `MSYS_NO_PATHCONV=1` whenever a
+`wsl.exe` command line carries a `/`-rooted path as an argument (a script
+path, a directory), and prefer `/mnt/c/Users/...` (which WSL resolves without
+any translation needed on the Windows side) when handing a Windows-side file
+into a WSL command directly, rather than round-tripping it through a UNC
+copy.
+
+**This settled a real question, not just a hypothetical one.** On issue #1136
+(a reverted position-anchor fix reported to hang `test_collision_knockback_battle.gd`
+indefinitely), the identical diff reproduced cleanly on both Windows and this
+WSL-native-Linux setup — same Godot build (`4.7.stable.official.5b4e0cb0f`) on
+both, three runs each, the single test and the full 2642-test suite both
+clean in under seven minutes. That is real, falsifiable evidence the reverted
+finding wasn't a deterministic property of the diff on the builds actually
+tested — evidence a Windows-only re-check could not have produced, since a
+clean Windows run alone would leave open exactly the cross-platform
+possibility this repo has already documented once before.
+
 ## GUT's doubler breaks on void-returning methods under Godot 4.7
 
 `partial_double()`/`double()` can fail to parse under Godot 4.7 + GUT v9.7.0:
@@ -871,6 +923,20 @@ the primary checkout. (Session `gii-ffdb93`, 2026-07-16: post-#919 tidy ran the
 fallback form, double-checked-out `main`, and the primary showed nine phantom
 staged reversals of #919's own files until restored.)
 
+**With no next task queued yet, `git checkout --detach origin/main` is the
+safe substitute for "branch off origin/main."** The prevention above assumes
+a next branch is already known; when a session merges a PR and has nothing
+queued next, detaching to `origin/main`'s tip (rather than creating and
+switching to a real `main` branch ref, OR leaving the worktree sitting on the
+now-merged, about-to-be-deleted branch) tidies the worktree without touching
+any branch ref at all — a detached `HEAD` isn't a branch, so it can't collide
+with the primary checkout's own `main`. `git branch -d <merged-branch>` then
+deletes cleanly (the branch is no longer checked out anywhere). Confirm the
+detached tip really is the merge by checking the commit message names the PR
+(`git log --oneline -1`) — a squash merge lands as a new commit on `main`, so
+`origin/main`'s tip is exactly that commit, not an ancestor relationship you'd
+need `--is-ancestor` to confirm.
+
 **Post-merge tidy: `git worktree remove` on your OWN currently-active worktree
 can partially succeed and leave an empty, orphaned directory — this is
 harmless, not data loss.** After a PR merges, running `git worktree remove
@@ -1090,6 +1156,28 @@ review has reached their quota limit.` — repeatedly, across many pushes. This 
 failure mode from Claude's own quota-skip message, but the same handling applies: it's not an
 approval, don't wait on it, self-review or manually dispatch Claude instead.
 
+**A second, quieter Copilot failure mode: zero seats provisioned, which produces total
+silence rather than a quota-refusal comment.** Requesting Copilot review
+(`POST .../requested_reviewers -f 'reviewers[]=copilot-pull-request-reviewer[bot]'`) can
+return `200` with the reviewer already absent from `requested_reviewers` in the same
+response --- and after that, no check run, no comment, no review, no legacy commit status
+ever appears, even after 15+ minutes. This is *not* the same as the quota-refusal case
+above: that one at least posts a comment explaining the refusal, which is itself proof the
+request reached Copilot. Total silence with no artifact of any kind is the tell for a
+different cause --- no Copilot seat exists for the org to act under at all. Confirm
+directly rather than guessing between the two:
+
+```bash
+gh api "orgs/<org>/copilot/billing" --jq '{total: .seat_breakdown.total, setting: .seat_management_setting}'
+```
+
+`Lacaedemon` returns `{"total": 0, "setting": "unconfigured"}` --- zero seats, so the
+`copilot_code_review` branch ruleset's `review_on_push: true` has nothing to dispatch to,
+and an explicit request silently no-ops the same way. Treat this exactly like the
+quota-refusal case for handling purposes (not an approval, self-review instead), but don't
+conflate the two when explaining *why* --- one is "Copilot looked and declined", the other is
+"Copilot was never in a position to look." (`Lacaedemon/sparta` PR #1229, 2026-08-09.)
+
 **A manual `gh workflow run "Claude Code Review" -f pr_number=<N>` dispatch can silently run
 against `main`'s ref instead of the PR branch and post NO comment at all — a distinct, quieter
 failure than the documented stub-review pattern.** The run itself reports `success` (all three
@@ -1305,6 +1393,25 @@ touching `SoldierEnemyContact`/`_separate`/proximity-style contact checks, or an
 touching `demos/demo.json`, grep this file for the relevant section NAME right before the
 final push (not just recall it from earlier context) — a 10-second grep is cheaper than a
 full review round. (`Lacaedemon/sparta` PR #1137, 2026-07-27.)
+
+**A third recurrence, this time against a cross-repo (ai-config) rule rather than a
+sparta-local one:** `pr-on-claim.md`'s "Run that `requested_reviewers` POST as the sole
+(or last) command in its Bash call" was loaded in context, and #1241's very first Copilot
+request (issued right after `gh pr create`) already followed it — a single, unpiped,
+unchained call. `hooks/no-unreviewed-pr.py` still reported "no SUCCESSFUL reviewer request
+follows" for #1241 (and #1239) at the next Stop check. Re-requesting for #1239 in a
+combined call — `POST | head -3`, then two chained `gh pr view` verification reads for
+both PRs in the same Bash call — is a clear instance of the rule's own named tell ("a pipe
+added purely to trim the output"), and the guard fired again with the identical message.
+Only reissuing BOTH POSTs as fully isolated calls (bare command, no pipe, nothing chained
+after it) cleared the guard. Exactly why the first, genuinely clean #1241 request didn't
+already satisfy it is unconfirmed — possibly the guard's discharge window doesn't reach
+back past an intervening non-conforming call, possibly something else; this records the
+observed sequence and the fix, not a verified mechanism.
+**How to apply:** don't assume a clean, isolated reviewer-request call earlier in a session
+keeps discharging the guard for a PR you touch again later — if the guard fires, re-issue
+the POST as its own isolated call right then, even if you believe an earlier request for
+the same PR was already correct. (`Lacaedemon/sparta` PRs #1239/#1241, 2026-08-10.)
 
 ## A freshly-constructed test Unit defaults to morale 100 — routing tests can auto-rally instantly
 
@@ -2677,6 +2784,66 @@ listing, or another site's link can 404 because the repo was deleted -- the Godo
 library's "RTS Camera 3D" page still links `alfredbaudisch/GodotRTSCamera3D`, whose
 GitHub repo is gone. Both failure modes (moddb.com bot-403, the deleted camera repo)
 cost a red link-checker run on PR #929 after a probe pass that skipped GitHub URLs.
+
+**In a remote/web session that probe is uninformative without a control, and its
+failure mode is a confident FALSE NEGATIVE.** Claude Code on the web routes outbound
+HTTPS through an agent proxy that blocks arbitrary hosts, so the `curl` above returns
+exit 56 / `http=000` for the URL under test AND for a site that is plainly up. Read on
+its own that looks exactly like "the site is down", which is the reading that argues
+for a permanent `lychee.toml` exclusion. Probe a control host in the same command and
+compare:
+
+```bash
+for u in "$url" "https://godotengine.org/"; do
+  printf '%s ' "$u"
+  curl -s -o /dev/null -w "http=%{http_code}\n" -L --max-time 20 \
+    -A "Mozilla/5.0 (compatible; Lychee/0.15; +https://github.com/lycheeverse/lychee)" "$u"
+done
+```
+
+A control that also fails means the probe measured the proxy rather than the site, so
+it has established nothing either way -- fall back to the CI-side evidence in the
+section below. Measured 2026-08-12 from a Claude-Code-on-the-web container:
+`godotengine.org` returned exit 56 / `http=000`, identical to the URL under test, while
+`github.com` returned `http=400` from the proxy itself. Neither is a fact about the site.
+
+## A pre-existing URL that newly fails the link checker: check `main`'s own runs before excluding it
+
+The section above covers a URL you are ADDING. The commoner case is the reverse:
+`check / link-checker` goes red on an unrelated PR over a URL nobody touched, and
+`lychee.toml`'s exclusion list is this repo's standing remedy for a site lychee cannot
+reach. Reaching for a new exclusion there is wrong about as often as it is right, and
+the cost is asymmetric -- an exclusion is permanent and silently stops checking a link
+that may be perfectly fine.
+
+A TRANSIENT failure is indistinguishable from a persistent one inside a single PR's
+log, and two things make that log read as stronger evidence than it is. `max_retries
+= 3` means lychee already retried within the failing run, so the error is not a
+single-shot flake. And the failing URL sitting in a file the PR never touched proves
+only that the PR did not CAUSE it -- the check scans the whole repo on every PR, so
+scope never settles the question either way.
+
+The discriminator needs no network access of your own, which is what makes it the
+right tool in a proxy-restricted session: `check-links.yml` also runs on every push to
+`main` (and on a schedule), over the same corpus and the same config. A `main` run
+that PASSED after the PR's failure proves the URL was reachable, so the failure was a
+blip -- re-run the PR's failed job rather than changing config. Read the recent runs
+via `actions_list` / `list_workflow_runs` on `check-links.yml` and compare the newest
+`main` run's conclusion and timestamp against the PR run's failure.
+
+Every existing entry in `lychee.toml` documents a REPRODUCIBLE failure ("even after
+re-runs", "confirmed reproducible across two separate CI re-runs", a specific status
+code). Match that bar before adding one, and record the evidence in the comment the
+same way.
+
+(`Lacaedemon/sparta` PR #1237, 2026-08-12: `check / link-checker` failed on the
+scheduled benchmark-baseline refresh with exactly one error --
+`https://godotshaders.com/shader/vertex-animation-with-instancing/`, cited from
+`docs/3d-conversion-design.md`, `Network error: Connection reset by peer (os error
+104)`. The local probe was uninformative for the proxy reason above. The `main` run
+pushed 24 minutes later passed the same URL, and a re-run of the PR's own failed job
+then passed too -- so no exclusion was warranted, and adding one would have suppressed
+a live link check over a 20-minute blip.)
 
 ## Direction reversals are where the marker/body split bites: scalar speed re-aims instantly, bodies carry real momentum
 
@@ -4266,6 +4433,119 @@ The authored-versus-landed distinction is the part worth keeping: a `git log` da
 offending commit will predate the breakage by hours, which makes the timeline look
 inconsistent until you check when it merged.
 
+## A red `claude-review` can sit on top of a GENUINE, complete verdict --- read which STEP failed
+
+The entry above classifies a review that never reached the model at all.
+This is the opposite shape.
+The model ran, produced a full verdict, and posted it, and the job still went red ---
+because `claude-review` keeps going after the verdict-posting step, and a later step can
+fail on its own.
+
+`review / require-review` then fails as a pure consequence
+(`##[error]Claude review job did not succeed (result: failure).`), so the board shows two
+red review checks with a perfectly good "Ready for merge" comment sitting on the PR.
+
+**Every fingerprint this file already documents points the wrong way here.**
+It is not a stub, since a real `### Verdict` exists.
+Not the concurrency race, since the conclusion is `failure` rather than `cancelled`.
+Not the self-mod skip, since "Post a notice that self-review was skipped" is itself
+`skipped`, which is what proves the guard did not fire.
+And not the ~40s zero-cost signature --- the model step ran for over five minutes.
+
+**The tell is the job's own STEP LIST, not any of those fingerprints.**
+Read it and find which step actually failed.
+When the failing step sits DOWNSTREAM of "Post review comment", the review itself
+succeeded and the red check is reporting infrastructure noise about something else.
+On the observed run exactly one step of 27 failed, one second after the verdict landed:
+
+| # | step | result |
+|---|---|---|
+| 4 | Post a notice that self-review was skipped | skipped |
+| 11 | Run Claude Code Review | success (310s) |
+| 13 | Fail the check if the review did not complete (attempt 1) | success |
+| 14-16 | stub-review retry | skipped |
+| 20 | Post review comment | success |
+| 21 | **Post cost comment** | **failure** |
+| 24 | Re-assign reviewers after Claude finishes | success |
+
+Two things in that table do work beyond naming the culprit.
+Steps 14-16 being `skipped` rules out the stub-retry path, so the first attempt was
+accepted on its own merits.
+And step 24 succeeding shows the job kept going past the failure --- only the conclusion
+flipped, which is why nothing else about the run looks wrong.
+
+**The remedy is `rerun_failed_jobs`, exactly as for the transient link-checker failure
+above --- not a code change, not a re-dispatch, and not a self-review fallback.**
+A re-dispatch is actively wrong here: it starts a fresh review from scratch and can lose
+the race to the `claude-review-<N>` concurrency group, where a re-run replays the same
+job on the same head.
+Confirmed transient by that re-run passing on the identical commit minutes later.
+
+- **Do:** read the failing step's name before classifying a red `claude-review`, and treat
+  a failure downstream of the verdict post as infrastructure rather than review.
+- **Do:** re-run the failed jobs, then re-read the check runs to confirm.
+- **Don't:** read a red `require-review` as "no verdict" --- it only ever mirrors
+  `claude-review`'s result, so it carries no independent information.
+- **Don't:** reach for the self-review fallback while a genuine verdict is already posted.
+
+(`Lacaedemon/sparta` PR #1245, 2026-08-12: job 94049553955 posted a full "Ready for merge"
+verdict and then failed on the cost-tally step alone.
+`rerun_failed_jobs` on the same head turned both `claude-review` and `require-review`
+green, and the cost comment posted normally.)
+
+## A new player-facing GLOBAL state mutation needs a replay-recording check, not just a cosmetic-overlay one
+
+`Replay`'s per-tick tracks (orders, camera, pointer, keys) each capture a specific,
+already-anticipated kind of state. A genuinely NEW kind of mid-battle mutation -- one that
+touches something outside any Unit's own snapshot fields and outside those four existing
+tracks -- has no track to fall into by default, and nothing forces the question of whether
+it needs one.
+
+The concrete miss: a slow-motion hotkey (#1097) set `Engine.time_scale` live, with the
+mechanism already verified (via a throwaway GUT probe) to scale the DELTA each physics tick
+receives, not the tick frequency -- so a mid-battle change to it is exactly the kind of state
+that alters simulation OUTCOMES, not just how the battle is drawn. It shipped with no
+Replay track for it at all; caught only by review, not by the implementation, even though
+the delta-scaling mechanism had already been confirmed empirically in the same PR.
+
+**How to apply:** before shipping a new player-facing toggle/hotkey, ask explicitly: does a
+saved-and-reloaded replay of a battle that used this feature reproduce the SAME simulation,
+not just look the same? If the answer isn't obviously yes -- if the state lives outside a
+Unit's own snapshot fields and outside the existing order/camera/pointer/key tracks -- it
+needs its own tick-stamped Replay track (mirroring `_orders`' record/dispatch/rewind-cursor
+shape), not a cosmetic one; `_camera_track`/`_pointer_track`/`_key_track` are all explicitly
+documented as "never read by the simulation," which is the wrong shape to copy for state
+that IS.
+
+**Not cleanly algorithmatizable:** no static check can tell "this new global write matters
+for determinism" from "this one doesn't" without understanding what the property actually
+does -- it is a design-time question, not a decidable syntactic condition. Treat this
+section itself as the check to run by hand on the next new global/live-state feature.
+
+## A self-review comment naming "@claude" in prose can accidentally re-trigger the mention workflow
+
+After three consecutive zero-cost `claude-review` failures (per the section above -- a
+genuine hard SDK error, not quota), the documented fallback is to post a self-review and
+move on. Writing the self-review's own opening line -- something like "the automated
+`@claude` review job did not produce a verdict" -- puts the literal string `@claude` into
+the comment body, and `claude.yml`'s `issue_comment` trigger does not distinguish a mention
+used to REFER to the bot from one used to SUMMON it. The comment posts fine, and moments
+later a second workflow run fires (`event: issue_comment`), attributed to whichever mention
+pattern matched.
+
+This is harmless when the run itself then fails the same zero-cost way (it did here, so
+nothing further got posted) -- but it is not something to rely on. A run that succeeded
+would dispatch a live agent against the PR with the self-review's own text as its prompt
+context, which is not what posting a review summary is for.
+
+**How to apply:** when writing a self-review comment (or any PR/issue comment) that needs
+to refer to the bot by name rather than summon it, avoid the literal `@claude` token --
+write "the Claude review job" or similar, or if the mention is unavoidable, break it up
+(e.g. a code span: `` `@claude` ``) so it reads as a literal string rather than a mention.
+Check `gh api repos/<owner>/<repo>/issues/<N>/comments --jq '.[-1]'` for a stray
+"Picked up by workflow run" acknowledgment after posting a self-review, and read that run's
+outcome before assuming nothing happened.
+
 ## Before fixing a finding by clearing state, list every OTHER caller of the function you are clearing it in
 
 The narrow lesson --- implement exactly what a review asked for and no more --- has now
@@ -4325,3 +4605,82 @@ explicitly. Only enumerating the callers, or a test that exercises the other cal
 **When you do fix it, prove the guard bites.** Re-introduce the clearing, confirm the new
 test fails, then restore. Every guard added for the three #1196 regressions was verified
 this way; without it a regression test is a guess about what it covers.
+
+## `UnitCombat.register_casualties` never subtracts `soldiers` itself -- the caller must
+
+Its own doc comment says exactly this ("Apply the consequences of `total` casualties
+ALREADY subtracted from `u.soldiers`"), but it's easy to miss on a skim, since the
+function DOES read `u.soldiers` (to decide annihilation) and DOES look like the natural
+one-call way to "kill N soldiers." A call site that passes a live headcount without
+subtracting it first has `u.soldiers <= 0` stay false forever, so the ANNIHILATED branch
+(`u._die()`) never fires -- the unit keeps re-entering the same casualty-registration call
+every subsequent tick if the caller's own trigger condition is still true, applying morale
+erosion and dropping Fallen markers repeatedly with the unit never actually dying.
+
+The two existing call sites both subtract first: `UnitCombat.take_casualties`
+(`u.soldiers -= total` then `register_casualties(u, total, ...)`) and the original
+`disengage_with_sacrifice` (`soldiers -= sacrifice_count` then the same call). A NEW call
+site (#1041's rearguard-detachment lifetime timeout, in `Unit._physics_process`) missed
+this and called `register_casualties(self, soldiers, null, 1.0)` with `soldiers` still
+untouched -- caught immediately by
+`test_rearguard_is_removed_after_its_lifetime_if_not_destroyed_first`, which timed out
+waiting for `state == DEAD`. Fix: `var lost := soldiers; soldiers = 0;
+UnitCombat.register_casualties(self, lost, null, 1.0)`.
+
+**How to apply:** before adding a new `register_casualties` call site, grep for it first
+and read its own doc comment, not just its name -- and always zero (or reduce) `soldiers`
+yourself immediately before the call, in the same statement block.
+
+## Editing a source file while a background `check.sh` is still running invalidates the
+## run -- and can corrupt the `.godot/` import cache, not just the run's own results
+
+The existing "never `git checkout` in a worktree while a Godot job is still running
+there" entries above cover a branch SWITCH as a second writer. An in-place source EDIT
+(via any tool, not just a checkout) is the same hazard: the running Godot process reloads
+GDScript from disk as it goes, so editing `scripts/Unit.gd` mid-suite mixes old and new
+content into whatever that run reports.
+
+**What's new here, beyond "the run's results are unreliable":** a mid-run edit can leave
+the gitignored `.godot/` cache itself in a state that produces wrong data on the NEXT,
+otherwise-clean run too -- a fresh Godot process started well after the contaminated one
+exited reported script errors at line numbers that didn't match the current file content
+at all (`_spawn_rearguard_detachment` reported failing at line 1536; the function starts
+at line 1196 on disk). Deleting `.godot/` (gitignored, regenerated by `--headless
+--import`) and re-importing before the next run resolved it.
+
+**How to apply:** never edit a file this session is actively testing while `Get-CimInstance
+Win32_Process -Filter "Name LIKE '%Godot%'"` shows a live process -- that includes fixing a
+finding from your own self-review mid-run, not just switching branches. If you catch
+yourself having done it anyway, don't trust that run's output even if it exits 0 with no
+errors: `rm -rf .godot`, re-import, and re-run clean before acting on anything it reports.
+(`Lacaedemon/sparta` PR #1234, 2026-08-09: found and fixed a real test-fixture bug while a
+background `check.sh` run was still going; discarded that run, wiped `.godot/`, and a
+from-scratch re-run surfaced a genuine, different bug -- see the next entry.)
+
+## A NEW code path reached from `enqueue_*`/`_apply_order_cmd` needs a repo-wide grep for
+## every bare-`Battle` test fixture that could reach it, not just the file you're already
+## editing
+
+`test_disengage_with_sacrifice_maneuver.gd`'s own bare-`Battle` fixture (`BattleScript.new()`
+with no `add_child_autofree`, so `@onready var _units` never resolves) was already fixed for
+this exact reason earlier in the same PR. `test_selection_manager.gd` builds its OWN,
+separate bare-`Battle` fixtures for its `SelectionManager`-dispatch tests (many of them,
+across the file), and two of those tests dispatch `Shift+Ctrl+Down` /
+`_issue_disengage_with_sacrifice()` through to the identical `enqueue_disengage_with_sacrifice`
+code path -- so they hit the identical null-`_units` crash the moment the maneuver started
+spawning a real sub-unit, and nothing about fixing the first file's fixture touched this one.
+
+Both tests passed before this PR (the maneuver only ever mutated the ordering unit's own
+fields) and crashed only once the maneuver started calling `_units.add_child()` -- so this
+wasn't a pre-existing gap the diff exposed, it was a new crash the diff's own change caused
+in a file the diff never touches.
+
+**How to apply:** before considering a new `Unit`/`Battle`-spawning code path's test coverage
+complete, `grep -rl` the whole `test/unit/` tree for whatever entry point reaches it (the
+order-mode sentinel, the `enqueue_*` function name, the hotkey dispatcher), not just the test
+file you already wrote or already fixed -- a sibling file's own bare-`Battle` fixture can reach
+the same path through a completely different call chain (here: a hotkey dispatch test, not a
+maneuver test). This is the same "even well-documented anti-patterns get re-violated" class
+already in this file, recurring a third time on this exact fixture shape.
+(`Lacaedemon/sparta` PR #1234, 2026-08-09: caught only by a from-scratch full-suite run, not
+by the two test files the PR's own diff touched.)
