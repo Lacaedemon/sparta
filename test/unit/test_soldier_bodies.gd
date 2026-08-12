@@ -83,3 +83,52 @@ func test_front_rank_sits_toward_the_facing() -> void:
 	var slots := u.soldier_world_slots(u.soldiers)
 	var ahead: float = (slots[0] - u.position).dot(u.facing)
 	assert_true(ahead > 0.0, "the front-rank soldier sits ahead of center, toward the facing")
+
+
+# --- step() -> couple() slot handoff (performance) --------------------------
+# SoldierBodies.step() and SoldierBodies.couple() are separate per-unit passes over
+# every unit each physics tick, and both independently need soldier_world_slots(soldiers)
+# -- step() hands its own computation to couple() instead of letting it recompute the
+# identical result a moment later. See Unit._step_slots_for_couple's own doc comment.
+
+func test_step_hands_its_slots_to_couple_without_recomputing() -> void:
+	var u := _make_unit(13, 24)
+	u.seed_sim_soldiers()
+	assert_false(u._step_slots_for_couple_valid, "no handoff before step() has ever run")
+	var expected: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	SoldierBodies.step(u, 1.0 / 60.0)
+	assert_true(u._step_slots_for_couple_valid, "step() leaves a valid handoff for couple()")
+	assert_eq(u._step_slots_for_couple, expected,
+		"the handed-off slots match a fresh soldier_world_slots() computation")
+	SoldierBodies.couple(u, 1.0 / 60.0)
+	assert_false(u._step_slots_for_couple_valid,
+		"couple() consumes the handoff so a later, unrelated call can't reuse it stale")
+
+
+func test_couple_behaves_identically_whether_or_not_the_handoff_is_present() -> void:
+	# The handoff is a pure optimisation: couple()'s own outcome (how far it slides
+	# `position` toward the bodies' centroid) must not depend on whether it reused a
+	# pre-populated handoff or computed the slots itself. Populate the handoff directly
+	# (rather than by calling step(), which ALSO integrates body positions one tick --
+	# a real side effect that would legitimately change the centroid and confound this
+	# comparison) so the two fixtures start from byte-identical body positions and the
+	# ONLY difference is whether _step_slots_for_couple is present. Perturb one body off
+	# its slot after seeding (seeding alone leaves every body exactly on-slot, which would
+	# make the coupling a trivial no-op either way) so there is an actual centroid drift
+	# for coupling to react to.
+	var with_handoff := _make_unit(14, 24)
+	with_handoff.seed_sim_soldiers()
+	with_handoff._sim_soldier_pos[0] += Vector2(5.0, 0.0)
+	with_handoff._step_slots_for_couple = with_handoff.soldier_world_slots(with_handoff.soldiers)
+	with_handoff._step_slots_for_couple_valid = true
+	SoldierBodies.couple(with_handoff, 1.0 / 60.0)
+
+	var without_handoff := _make_unit(15, 24)
+	without_handoff.seed_sim_soldiers()
+	without_handoff._sim_soldier_pos[0] += Vector2(5.0, 0.0)
+	assert_false(without_handoff._step_slots_for_couple_valid,
+		"sanity: no handoff populated for this fixture")
+	SoldierBodies.couple(without_handoff, 1.0 / 60.0)
+
+	assert_eq(with_handoff.position, without_handoff.position,
+		"couple()'s coupling outcome is identical whether it reused a pre-populated handoff or fell back to computing its own slots")

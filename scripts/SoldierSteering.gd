@@ -98,8 +98,16 @@ static func accumulate(units: Array, frame: int) -> void:
 	SoldierSpatialHash.rebuild(spos, frame)
 	var steer := PackedVector2Array()
 	steer.resize(n)
+	# Work tallies for this pass, kept in locals and reported once at the end: a SimOps call
+	# per soldier (let alone per pair) would cost more than the counting is worth, and these
+	# are exact -- candidates is what the broadphase actually handed back, pairs_pushed is what
+	# actually reached _pair_push, one square root each.
+	var candidates_seen: int = 0
+	var pairs_pushed: int = 0
 	for a in range(n):
-		for b in SoldierSpatialHash.query(spos[a]):
+		var neighbours: PackedInt32Array = SoldierSpatialHash.query(spos[a])
+		candidates_seen += neighbours.size()
+		for b in neighbours:
 			if sgids[b] <= sgids[a]:
 				continue   # each pair once
 			if steams[a] != steams[b]:
@@ -112,6 +120,7 @@ static func accumulate(units: Array, frame: int) -> void:
 			# relief pair) don't shove — the exemption that used to live in _separate().
 			if owner_a._separation_exempt(owner_b):
 				continue
+			pairs_pushed += 1
 			var push: Vector2 = _pair_push(spos[a], spos[b], sgids[a], sgids[b], sradii[a] + sradii[b])
 			if push == Vector2.ZERO:
 				continue
@@ -121,6 +130,9 @@ static func accumulate(units: Array, frame: int) -> void:
 			var shares: Vector2 = _friendly_shares(owner_a, owner_b)
 			steer[a] += push * shares.x
 			steer[b] -= push * shares.y
+	SimOps.add(SimOps.GRID_CANDIDATE, candidates_seen)
+	SimOps.add(SimOps.STEER_PAIR, pairs_pushed)
+	SimOps.add(SimOps.SQRT_EVAL, pairs_pushed)
 	for k in range(n):
 		# Bounded acceleration (SoldierBodies.step's move_toward) already stops any SINGLE
 		# tick's push from snapping a body's velocity, but the summed push itself has no
@@ -156,16 +168,20 @@ static func _overlaps_friendly(u: Unit, sorted_units: Array, extents: Dictionary
 	# future partial-dict caller fall through to a cryptic null-as-float mismatch downstream.
 	assert(extents.has(u), "extents must be populated for all living units before _overlaps_friendly")
 	var reach_u: float = extents[u]
+	var lengths: int = 0   # one square root per candidate reached, reported once on exit
 	for o in sorted_units:
 		var v: Unit = o as Unit
 		if v == null or v == u or v.state == Unit.State.DEAD or v.team != u.team:
 			continue
 		var delta: Vector2 = v.position - u.position
+		lengths += 1
 		var d: float = delta.length()
 		if d >= reach_u + extents[v]:
 			continue   # cheap circumradius reject -- the blocks can't possibly overlap
 		if _oriented_overlap(delta, d, half_extents[u], angles[u], half_extents[v], angles[v]):
+			SimOps.add(SimOps.SQRT_EVAL, lengths)
 			return true
+	SimOps.add(SimOps.SQRT_EVAL, lengths)
 	return false
 
 

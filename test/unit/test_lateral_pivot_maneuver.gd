@@ -271,6 +271,11 @@ func _unit(uid: int, pos: Vector2) -> Unit:
 	u.position = pos
 	u.max_soldiers = 60
 	u.seed_sim_soldiers()
+	# No reform hold to step through -- these tests are about the lateral-pivot
+	# classification, not the reform-before-move hold (reform_before_move is a per-unit
+	# field now, defaulting true, unlike the raw cmd dict this file used to rely on
+	# defaulting to reform:false when the key was simply omitted).
+	u.reform_before_move = false
 	return u
 
 
@@ -324,3 +329,34 @@ func test_fighting_unit_does_not_arm_a_lateral_pivot() -> void:
 	assert_true(u.has_move_target, "and marches immediately instead")
 	assert_eq(u.current_order.pivot_return_angle, 0.0,
 		"no return leg is recorded when the turn never armed -- there's nothing to turn back from")
+
+
+func test_undisciplined_unit_does_not_arm_a_lateral_pivot() -> void:
+	# The lateral-pivot maneuver is a formed drill (quarter-turn, file-march, quarter-turn
+	# back) -- exactly the kind of professional maneuver an undisciplined unit should skip
+	# in favor of turning to face the destination and walking there directly. Before this
+	# fix, is_lateral_pivot's dispatch never read Unit.disciplined at all, so an
+	# undisciplined unit given a large lateral move got the same formed composite as a
+	# disciplined one.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = FACING_DOWN
+	u.disciplined = false
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": -200.0, "y": 0.0, "target": -1})
+	assert_false(u.is_order_turning(),
+		"an undisciplined unit never arms the formed quarter-turn -- it falls back to a plain march")
+	assert_true(u.has_move_target, "and marches immediately instead")
+	assert_eq(u.current_order.pivot_return_angle, 0.0,
+		"no return leg is recorded when the turn never armed -- there's nothing to turn back from")
+
+
+func test_disciplined_unit_still_arms_a_lateral_pivot() -> void:
+	# The sibling/contrast case: a disciplined unit given the identical order still takes
+	# the formed maneuver -- the new gate only changes the undisciplined branch.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = FACING_DOWN
+	u.disciplined = true
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": -200.0, "y": 0.0, "target": -1})
+	assert_true(u.is_order_turning(), "a disciplined unit still arms the in-place quarter-turn")
+	assert_false(u.has_move_target, "the march is still parked until the turn completes")

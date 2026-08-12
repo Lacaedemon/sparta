@@ -84,33 +84,13 @@ var form_up_dist_cycle: Array = [FORM_UP_DIST_EQUAL_DEPTH_SPACE, FORM_UP_DIST_EQ
 			_save()
 			changed.emit()
 
-# Walk advance: when true, units approach at their own walk pace rather than the
-# default auto-pace (walk → jog under fire → sprint near contact). Mandatory for
-# formed stances that break on a jog or sprint (shield wall, pike phalanx). Default
-# off. Applied per-order so replays reproduce behavior as recorded, regardless of
-# whether the setting is later changed.
-var walk_advance: bool = false:
-	set(value):
-		if value == walk_advance:
-			return
-		walk_advance = value
-		if not _loading:
-			_save()
-			changed.emit()
-
-# Reform before move: when true, a fresh move order makes the unit hold its position
-# for REFORM_DURATION before marching, so its ranks settle before it steps off.
-# Default on (the historical default for formed infantry). Baked into each order's
-# "reform" field so replays reproduce the behavior as recorded, regardless of whether
-# the setting is later changed.
-var reform_before_move: bool = true:
-	set(value):
-		if value == reform_before_move:
-			return
-		reform_before_move = value
-		if not _loading:
-			_save()
-			changed.emit()
+# walk_advance and reform_before_move used to live here as global, player-facing toggles
+# applied uniformly to every order. They are now genuine per-unit, persistent properties
+# (Unit.walk_advance / Unit.reform_before_move), defaulted per unit type at spawn
+# (Battle._default_loadout's "walk_advance_default"/"reform_before_move_default" keys) and
+# adjustable per-selected-unit via a checkbox in the HUD info panel
+# (SelectionManager.set_selected_walk_advance/set_selected_reform_before_move).
+# No global fallback remains.
 
 # Distance legend: a semi-translucent map-scale bar in a HUD corner, showing the
 # battlefield's real metre scale at the current camera zoom. Cosmetic only. Default on.
@@ -193,6 +173,36 @@ var show_fps: bool = false:
 			_save()
 			changed.emit()
 
+# Live performance graph overlay (rolling FPS and tick-rate history). Default off.
+var show_performance_graph: bool = false:
+	set(value):
+		if value == show_performance_graph:
+			return
+		show_performance_graph = value
+		if not _loading:
+			_save()
+			changed.emit()
+
+# Multi-row unit card tray in HUD. Default off.
+var show_unit_card_tray: bool = false:
+	set(value):
+		if value == show_unit_card_tray:
+			return
+		show_unit_card_tray = value
+		if not _loading:
+			_save()
+			changed.emit()
+
+# Whether tray row order determines placement when dragging multi-unit form-up lines. Default off.
+var tray_row_order_placement: bool = false:
+	set(value):
+		if value == tray_row_order_placement:
+			return
+		tray_row_order_placement = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Which corner the frame-rate counter renders in. Values are append-only (mirrors
 # FORM_UP_DIST_* above) so a persisted choice keeps its meaning if a corner is ever added.
 const FPS_CORNER_TOP_LEFT := 0
@@ -200,8 +210,9 @@ const FPS_CORNER_TOP_RIGHT := 1
 const FPS_CORNER_BOTTOM_LEFT := 2
 const FPS_CORNER_BOTTOM_RIGHT := 3
 const FPS_CORNER_MAX := 3
-# Top-left by default -- the one corner none of the other HUD chrome (menu button
-# top-right, info panel bottom-left, distance legend bottom-right) already occupies.
+# Top-left by default. The distance legend also lives there (on by default), so
+# HUD.gd's _sync_fps_label() offsets the frame-rate label below it -- same idea as
+# the top-right corner offsetting below the always-on Menu button.
 var fps_corner: int = FPS_CORNER_TOP_LEFT:
 	set(value):
 		var clamped: int = clampi(value, 0, FPS_CORNER_MAX)
@@ -246,6 +257,28 @@ const DEFAULT_ORDER_BINDINGS := {
 	# unclaimed punctuation-row key. Shift+this key arms/issues the "indefinite" push
 	# variant instead of the default "just clear the line" push (SelectionManager.gd).
 	"knockback_focus": KEY_EQUAL,
+	# Every letter key and the whole punctuation row to the right of the home keys
+	# (comma/semicolon/period/apostrophe/backslash/minus/equals) is already claimed by
+	# an earlier order mode above. Backtick (the key left of "1", unshifted grave
+	# accent) is the next unclaimed key on the keyboard.
+	"give_ground": KEY_QUOTELEFT,
+	# KEY_P collides with HUD._is_pause_keypress()'s pause toggle; KEY_SLASH is the next unclaimed key.
+	"push": KEY_SLASH,
+	# Every letter key, digit (control groups), and punctuation-row key is now claimed by an
+	# earlier order mode, a fixed camera/UI hotkey, or a maneuver drill (see
+	# SelectionManager.gd/HUD.gd's own key maps) -- there is no free key left on the main
+	# keyboard rows. Function keys are otherwise unused in this project (F1 and F5 are the
+	# two exceptions -- HUD._is_tray_toggle_keypress and HUD._is_slowmo_keypress -- see
+	# their own comments on why F-keys are the fallback once every other key is spoken
+	# for), so F2 is both free and, like F1 and F5, immune to Godot's built-in UI action
+	# bindings.
+	"multiple_engage": KEY_F2,
+	# F1/F2 are already claimed (tray toggle, multiple_engage above); F3 is the next free
+	# function key.
+	"march_to_contact": KEY_F3,
+	# F1/F2/F3 are already claimed (tray toggle, multiple_engage, march_to_contact above);
+	# F4 is the next free function key.
+	"brace": KEY_F4,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
@@ -361,8 +394,6 @@ func _load(path: String = SAVE_PATH) -> void:
 	var raw_cycle = cfg.get_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
 	if raw_cycle is Array:
 		form_up_dist_cycle = raw_cycle.filter(func(v) -> bool: return v is int and v >= 0 and v <= FORM_UP_DIST_MAX)
-	walk_advance = bool(cfg.get_value("gameplay", "walk_advance", walk_advance))
-	reform_before_move = bool(cfg.get_value("gameplay", "reform_before_move", reform_before_move))
 	show_distance_legend = bool(cfg.get_value("camera", "show_distance_legend", show_distance_legend))
 	show_order_distance = bool(cfg.get_value("camera", "show_order_distance", show_order_distance))
 	show_unit_speed = bool(cfg.get_value("camera", "show_unit_speed", show_unit_speed))
@@ -370,9 +401,15 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_engaged_highlight = bool(cfg.get_value("camera", "show_engaged_highlight", show_engaged_highlight))
 	show_position_anchor = bool(cfg.get_value("camera", "show_position_anchor", show_position_anchor))
 	show_fps = bool(cfg.get_value("camera", "show_fps", show_fps))
+	show_performance_graph = bool(cfg.get_value("camera", "show_performance_graph", show_performance_graph))
+	show_unit_card_tray = bool(cfg.get_value("camera", "show_unit_card_tray", show_unit_card_tray))
+	tray_row_order_placement = bool(cfg.get_value("gameplay", "tray_row_order_placement", tray_row_order_placement))
 	fps_corner = int(cfg.get_value("camera", "fps_corner", fps_corner))
 	for slug in DEFAULT_ORDER_BINDINGS:
-		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
+		var val: int = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
+		if slug == "push" and val == KEY_P:
+			val = KEY_SLASH
+		order_bindings[slug] = val
 	_loading = false
 
 
@@ -384,8 +421,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
 	cfg.set_value("gameplay", "form_up_dist_default", form_up_dist_default)
 	cfg.set_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
-	cfg.set_value("gameplay", "walk_advance", walk_advance)
-	cfg.set_value("gameplay", "reform_before_move", reform_before_move)
+	cfg.set_value("gameplay", "tray_row_order_placement", tray_row_order_placement)
 	cfg.set_value("camera", "show_distance_legend", show_distance_legend)
 	cfg.set_value("camera", "show_order_distance", show_order_distance)
 	cfg.set_value("camera", "show_unit_speed", show_unit_speed)
@@ -393,6 +429,8 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "show_engaged_highlight", show_engaged_highlight)
 	cfg.set_value("camera", "show_position_anchor", show_position_anchor)
 	cfg.set_value("camera", "show_fps", show_fps)
+	cfg.set_value("camera", "show_performance_graph", show_performance_graph)
+	cfg.set_value("camera", "show_unit_card_tray", show_unit_card_tray)
 	cfg.set_value("camera", "fps_corner", fps_corner)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))

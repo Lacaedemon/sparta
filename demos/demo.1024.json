@@ -1,0 +1,4 @@
+{
+  "input": "demos/inputs/disengage-step-back.json",
+  "caption": "Disengage and step back (issue #1014): a player Infantry regiment locks in melee with an enemy Infantry regiment, holds an even stalemate for a while, then the player selects it and presses Ctrl+Down. target_enemy clears immediately and the regiment steps DISENGAGE_STEP_DISTANCE (70wu) straight back, holding facing the whole way -- no pivot, no snap. Contact genuinely breaks (verified via dump-state.sh: 'engaged' flips false around tick ~340). The enemy's own attack order never releases just because we stopped fighting back, though, so it keeps landing hits (with the flank/rear bonus) for as long as it can still reach the retreating line -- the already-documented cost of disengaging, not something this maneuver hides."
+}

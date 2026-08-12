@@ -228,6 +228,11 @@ func _unit(uid: int, pos: Vector2) -> Unit:
 	u.max_soldiers = 60
 	u.facing = FACING_DOWN
 	u.seed_sim_soldiers()
+	# No reform hold to step through -- these tests are about the wheel-turn
+	# classification, not the reform-before-move hold (reform_before_move is a per-unit
+	# field now, defaulting true, unlike the raw cmd dict this file used to rely on
+	# defaulting to reform:false when the key was simply omitted).
+	u.reform_before_move = false
 	return u
 
 

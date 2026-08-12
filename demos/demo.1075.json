@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/spear-standoff.json",
+  "caption": "Attack cadence is now per-weapon: Infantry (gladius+scutum) swings roughly half as often as before (1.2s vs the flat 0.6s baseline every other type still uses), while Spearmen keep the old 0.6s rate. This same reach standoff already favored the spear on reach and knockback -- now it also lands strikes twice as often as the sword, so the Infantry line falls back visibly faster than it used to. The exact per-type cadence values are pinned by test_attack_interval_matches_the_decided_per_type_values, not just eyeballed here.",
+  "fixed_fps": 30,
+  "max_frames": 720,
+  "fps": 15,
+  "width": 720
+}

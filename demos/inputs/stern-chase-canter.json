@@ -1,0 +1,40 @@
+{
+  "_comment": "Stern-chase pacing: two identical 24-horse cavalry pursue the SAME withdrawing quarry from beyond the sprint window (200 wu), differing only in stance -- so the pacing counterfactual is visible inside one clip. all_teams_control hands team 1 to the script: the 70-man enemy infantry spawns already facing south (an ordered withdrawal straight ahead -- spawned facing north it burns ~4 s of clip on an about-face first) and walks away from tick ~45 (~1.3 m/s). Staging a quarry in steady flight this way avoids any rout/rally/shatter timing to race (a ROUTING quarry cannot be staged here at all: an explicit attack order needs a right-click on the unit, and _unit_at only scans the 'units' group routers have left -- while stance auto-acquisition caps at DETECTION_RANGE (190 wu), INSIDE the 200 wu sprint window, so an auto-acquired pursuit never starts far enough out to show the canter). The east cavalry gets its plain attack order FIRST -- the Chase arm is issued only after, because an armed stance rides along on the NEXT order whatever it is, and arming before both orders stamped Chase onto the contrast unit too on the first dump of this staging (its expect pins order_mode Normal to guard exactly that). The west cavalry then arms Chase (bare Backslash arms; its attack order issues it) and presses at a canter (trot, 3.5 m/s), visibly eating the gap, sprinting the last 200 wu, and catching the quarry; the east cavalry keeps the stamina-conserving AUTO walk (1.7 m/s vs the quarry's ~1.3) -- a stern chase closing at under half a metre per second, trailing far behind when the clip ends. FLAT declared map keeps pathfinding out of the arcs. Sampled ticks pin the story beats (spawn, both pursuits targeted, the mid-chase gap contrast, the sprint window, the catch); the timings and click coordinates were verified by state dump before pushing.",
+  "seed": "12345",
+  "all_teams_control": true,
+  "map": {
+    "field": [1600, 1200],
+    "terrain": [],
+    "spawn_lines": [300.0, 880.0]
+  },
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 700, "y": 340, "count": 24},
+    {"team": 0, "type": "Cavalry", "x": 900, "y": 340, "count": 24},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 620, "count": 70, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 570.0, "zoom": 0.9}
+  ],
+  "steps": [
+    {"tick": 6, "click": [800, 620]},
+    {"tick": 14, "rmb_click": [800, 1100]},
+    {"tick": 26, "click": [900, 340]},
+    {"tick": 38, "rmb_click": [800, 622]},
+    {"tick": 50, "click": [700, 340]},
+    {"tick": 62, "key": "Backslash"},
+    {"tick": 74, "rmb_click": [800, 633]}
+  ],
+  "state": [8, 120, 240, 330, 400, 440, 500],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [700.0, 340.0]},
+    {"tick": 8, "uid": 1, "field": "position", "value": [900.0, 340.0]},
+    {"tick": 8, "uid": 2, "field": "position", "value": [800.0, 620.0]},
+    {"tick": [120, 240], "uid": 0, "field": "order_mode", "value": "Chase"},
+    {"tick": [120, 240], "uid": 0, "field": "target_enemy_uid", "value": 2},
+    {"tick": [120, 240], "uid": 1, "field": "order_mode", "value": "Normal"},
+    {"tick": [120, 240], "uid": 1, "field": "target_enemy_uid", "value": 2},
+    {"tick": [330, 400], "uid": 2, "field": "state", "value": "MOVING"},
+    {"tick": [440, 500], "uid": 0, "field": "engaged", "value": true},
+    {"tick": [440, 500], "uid": 1, "field": "engaged", "value": false}
+  ]
+}

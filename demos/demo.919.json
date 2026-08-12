@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/no-hint-bar-select.json",
+  "caption": "The always-on controls hint line is gone from the top of the screen (the Shortcuts overlay -- ? or Menu -> Shortcuts -- remains the controls reference), and the unit info panel now clamps to the viewport, scrolling its content instead of growing off-screen. The clip shows a lone cavalry regiment selected in drill mode: the top edge is clean where the hint bar used to render, with the stat panel bottom-left. The clamp only binds when the expanded sheet overflows a short window -- the expand is a HUD button click the input recorder cannot drive, so the clamped, scrolling state is shown as a still in the PR description.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 720
+}

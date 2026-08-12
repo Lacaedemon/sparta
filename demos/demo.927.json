@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/routing-terrain-pathfinding.json",
+  "caption": "The trapped_routing website clip retuned so the terrain detour it documents actually plays out: a brittle cavalry unit breaks under a flank charge (staged from the flank deliberately -- a rear charge overshoots onto the flee lane and physically walls it, a contact pursuer herds the mob, and archer fire pins it prone, all verified by state dumps during the retune) and its rout bends around the hill at the unit's own clearance margin, the pursuer tracing the same corridor before running it down at the far shoulder. Verified by state dump: routs at t120, rounds the southwest corner t180-300, climbs the west side t360-620 at a ~100-wu standoff, caught at the northwest shoulder t680.",
+  "fixed_fps": 30,
+  "max_frames": 360,
+  "fps": 15,
+  "width": 640
+}

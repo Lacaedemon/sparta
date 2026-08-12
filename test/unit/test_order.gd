@@ -136,6 +136,7 @@ func test_guard_name_maps_every_known_guard() -> void:
 	assert_eq(Order.guard_name(Order.Guard.ALLY_EXHAUSTED), "ALLY_EXHAUSTED")
 	assert_eq(Order.guard_name(Order.Guard.TICKS_ELAPSED), "TICKS_ELAPSED")
 	assert_eq(Order.guard_name(Order.Guard.FLANKED), "FLANKED")
+	assert_eq(Order.guard_name(Order.Guard.ENGAGED_FRACTION_ABOVE), "ENGAGED_FRACTION_ABOVE")
 
 
 func test_guard_name_falls_back_for_an_unmapped_value() -> void:

@@ -1,0 +1,14 @@
+{
+  "_comment": "Issue #1041 (physical rearguard for disengage-with-sacrifice). Two Infantry regiments clash at close range; once engaged, the team-0 unit is selected and Shift+Ctrl+Down triggers disengage-with-sacrifice. A real rearguard sub-unit spawns at the point of contact and keeps fighting while the main body steps back and away -- watch the rearguard hold the enemy in place (no top-down pursuit-speed multiplier; the enemy is physically blocked by real bodies) while the retreating survivors open distance behind it.",
+  "seed": "24681",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 500, "y": 470, "count": 60, "facing": [0, 1] },
+    { "team": 1, "type": "Infantry", "x": 500, "y": 530, "count": 60, "facing": [0, -1] }
+  ],
+  "camera": [ { "tick": 0, "x": 500, "y": 500, "zoom": 1.4 } ],
+  "state": [20, 40, 60, 110, 160, 220, 280],
+  "steps": [
+    { "tick": 8, "click": [500, 470] },
+    { "tick": 40, "key": "Down", "ctrl": true, "shift": true }
+  ]
+}

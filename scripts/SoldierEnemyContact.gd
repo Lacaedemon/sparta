@@ -15,6 +15,15 @@ class_name SoldierEnemyContact
 ## cause and status. The regiment-circle enemy-collision branch stays in place alongside this
 ## pass until that's fixed and re-verified.
 ##
+## Each pair's contact radius is also widened by both soldiers' own formation-containment
+## margin (Unit.formation_containment_margin) -- a shield-wall-class defender (TIGHT/SQUARE/
+## SCHILTRON/SHIELD_WALL/TESTUDO) resists an attacker before their bodies would actually
+## overlap, gating how far melee intermixes with the defender's own formation_mode. NORMAL
+## gets a smaller, flat margin of its own (still unconditional -- see formation_containment_
+## margin's own doc comment for why an earlier per-soldier, prone-gated NORMAL variant was
+## reverted). LOOSE stays at zero -- deliberately, per its own "can become deeply enmeshed"
+## design intent.
+##
 ## Determinism: regiments are processed in uid order and each regiment's engaged soldiers in
 ## ascending index, so the gathered arrays are already global-soldier-id sorted; the
 ## SoldierSpatialHash query then visits candidates in a reproducible order, and every pair is
@@ -41,9 +50,20 @@ static func body_trim_scale(orig_vel: Vector2, delta: Vector2) -> float:
 ## each body's _sim_body_vel. `frame` keys the spatial hash; pass a value distinct from
 ## SoldierSteering.accumulate's own frame key (the two passes gather different position
 ## sets in the same tick, so they can't share one cached grid) -- Battle drives this via a
-## fixed odd/even offset. Only the ORIGINAL engaged tier (Unit.engaged_soldier_indices, not
-## SoldierSteering's friendly-contact-tier expansion) is gathered: enemy contact only ever
-## matters at melee range, which the engaged tier already captures.
+## fixed odd/even offset. Gathers Unit.contact_soldier_indices (not SoldierSteering's
+## friendly-contact-tier expansion, and not the combat-state-gated engaged_soldier_indices):
+## contact is a physical fact, gated on proximity (Unit._in_enemy_contact) as well as combat
+## state, so a "disengaging" unit's bodies still resist an enemy's rather than walking
+## through it -- see contact_soldier_indices' own doc comment.
+##
+## Also applies collision damage (SoldierCombat.collision_damage) for soldiers with at least
+## one pair closing fast enough to clear COLLISION_DAMAGE_MIN_SPEED: the pair loop below only
+## flags ELIGIBILITY (real closing speed, never the synthetic overlap-correction term); the
+## actual damage amount is derived AFTER the velocity pipeline resolves, from each flagged
+## soldier's real, already-bounded velocity change this tick -- reusing the pipeline's own
+## multi-pair trim and per-tick cap rather than an independent per-pair recompute (see
+## SoldierCombat.collision_damage's own doc comment for why). Deaths are reaped once per unit
+## after the full pass.
 static func accumulate(units: Array, frame: int) -> void:
 	var sorted_units: Array = units.duplicate()
 	sorted_units.sort_custom(func(x: Variant, y: Variant) -> bool: return (x as Unit).uid < (y as Unit).uid)
@@ -54,6 +74,7 @@ static func accumulate(units: Array, frame: int) -> void:
 	var sowners: Array = []          # owning Unit per entry
 	var sslots := PackedInt32Array() # local index into the owner's _sim_body_vel
 	var sradii := PackedFloat32Array()
+	var scontain := PackedFloat32Array()
 	var smass := PackedFloat32Array()
 	var sbrace := PackedFloat32Array()
 	var steams := PackedInt32Array()
@@ -64,10 +85,11 @@ static func accumulate(units: Array, frame: int) -> void:
 		var nb: int = u._sim_soldier_pos.size()
 		if nb == 0 or u._sim_body_vel.size() != nb:
 			continue
-		var idxs: PackedInt32Array = u.engaged_soldier_indices(nb)
+		var idxs: PackedInt32Array = u.contact_soldier_indices(nb)
 		if idxs.is_empty():
 			continue
 		var r: float = u.soldier_body_radius()
+		var contain: float = u.formation_containment_margin()
 		var mass: float = u.combat_profile()["mass"]
 		var brace: float = u.soldier_brace()
 		for i in idxs:
@@ -77,6 +99,7 @@ static func accumulate(units: Array, frame: int) -> void:
 			sowners.push_back(u)
 			sslots.push_back(i)
 			sradii.push_back(r)
+			scontain.push_back(contain)
 			smass.push_back(mass)
 			sbrace.push_back(brace)
 			steams.push_back(u.team)
@@ -93,14 +116,38 @@ static func accumulate(units: Array, frame: int) -> void:
 	var pair_b: PackedInt32Array = PackedInt32Array()
 	var pair_impulse_a: PackedVector2Array = PackedVector2Array()
 	var pair_impulse_b: PackedVector2Array = PackedVector2Array()
+	# Collision damage is deferred to AFTER the velocity pipeline below fully resolves each
+	# soldier's actual per-tick delta (multi-pair trim + final safety-net clamp) -- damage is
+	# then derived from that same real, already-bounded velocity change, not an independent
+	# per-pair recompute (see SoldierCombat.collision_damage's own doc comment for why). Here we
+	# only flag WHICH soldiers had at least one pair clear the real-closing-speed threshold, and
+	# remember one opposing unit per flagged soldier for reap()'s morale/fallen-direction
+	# argument -- contact is mutual, not directed like a strike, so this is the same
+	# first-opponent approximation SoldierMelee.resolve already makes elsewhere.
+	var damage_eligible := PackedByteArray()
+	damage_eligible.resize(n)
+	var contact_enemy: Array = []
+	contact_enemy.resize(n)
+	# Work tallies for this pass, reported once after the loop rather than per soldier: a
+	# SimOps call inside either loop would cost more than the counting is worth. The pairs
+	# actually RESOLVED need no tally at all -- that is pair_a.size().
+	var candidates_seen: int = 0
+	var dist_checks: int = 0
 	for a in range(n):
-		for b in SoldierSpatialHash.query(spos[a]):
+		var neighbours: PackedInt32Array = SoldierSpatialHash.query(spos[a])
+		candidates_seen += neighbours.size()
+		for b in neighbours:
 			if sgids[b] <= sgids[a]:
 				continue   # each pair once
 			if steams[a] == steams[b]:
 				continue   # friendlies don't contact-collide here -- SoldierSteering handles them
-			var min_dist: float = sradii[a] + sradii[b]
+			# Each side's own formation-containment margin widens the contact test
+			# symmetrically -- in a live clash both bodies are simultaneously "attacker" and
+			# "defender" from the other's perspective, so a's formation resists b's advance
+			# into a's ranks exactly as b's formation resists a's advance into b's.
+			var min_dist: float = sradii[a] + sradii[b] + scontain[a] + scontain[b]
 			var offset: Vector2 = spos[a] - spos[b]
+			dist_checks += 1
 			var d: float = offset.length()
 			if d >= min_dist:
 				continue   # not touching -- nothing to resolve
@@ -125,6 +172,22 @@ static func accumulate(units: Array, frame: int) -> void:
 			pair_b.push_back(b)
 			pair_impulse_a.push_back(impulses[0])
 			pair_impulse_b.push_back(impulses[1])
+
+			# Real closing speed only (never the overlap_frac term above) -- a pair that's
+			# merely interpenetrating at low relative speed causes zero collision damage. Only
+			# flags eligibility here; the actual damage amount is derived after the velocity
+			# pipeline resolves (see this function's own doc comment).
+			var closing_speed: float = maxf(0.0, -(svel[a] - svel[b]).dot(normal))
+			if SoldierCombat.is_hard_collision(closing_speed):
+				if damage_eligible[a] == 0:
+					damage_eligible[a] = 1
+					contact_enemy[a] = sowners[b]
+				if damage_eligible[b] == 0:
+					damage_eligible[b] = 1
+					contact_enemy[b] = sowners[a]
+	SimOps.add(SimOps.GRID_CANDIDATE, candidates_seen)
+	SimOps.add(SimOps.CONTACT_PAIR, pair_a.size())
+	SimOps.add(SimOps.SQRT_EVAL, dist_checks)
 
 	# Trim each body's SUMMED delta to what capped_knockback_velocity would allow it in
 	# isolation, expressed as a per-body scale factor -- reusing the existing clamp rather than
@@ -181,3 +244,28 @@ static func accumulate(units: Array, frame: int) -> void:
 			var slot: int = sslots[k]
 			owner._sim_body_vel[slot] = SoldierCombat.capped_knockback_velocity(
 				owner._sim_body_vel[slot], scaled_delta_v[k])
+
+	# Collision damage: derived from each flagged soldier's ACTUAL velocity change this tick
+	# (post-clamp velocity minus the pre-tick svel[k] snapshot) -- the fully-resolved delta the
+	# loop above just computed, already correctly bounded across multiple simultaneous contacts
+	# and per-tick. See SoldierCombat.collision_damage's own doc comment for why this is derived
+	# from the pipeline's output rather than an independent per-pair formula.
+	var killer: Dictionary = {}
+	for k in range(n):
+		if damage_eligible[k] == 0:
+			continue
+		var owner: Unit = sowners[k]
+		var slot: int = sslots[k]
+		var actual_delta_v: Vector2 = owner._sim_body_vel[slot] - svel[k]
+		if actual_delta_v == Vector2.ZERO or slot >= owner._sim_soldier_hp.size():
+			continue
+		owner._sim_soldier_hp[slot] -= SoldierCombat.collision_damage(actual_delta_v)
+		if not killer.has(owner):
+			killer[owner] = contact_enemy[k]
+
+	# Reap collision-damage deaths once per unit, after every pair this tick has resolved --
+	# mirroring SoldierMelee.resolve's own end-of-batch reap() call. reap() no-ops for a unit
+	# with zero deaths this tick, so it's safe to call unconditionally for every unit that took
+	# any collision damage, not just ones that actually lost someone.
+	for u in killer:
+		SoldierMelee.reap(u as Unit, killer[u] as Unit)

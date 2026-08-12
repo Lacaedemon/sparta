@@ -1,0 +1,4 @@
+{
+	"skip": true,
+	"reason": "Pure internal refactor: a new leaf constants script and a value-identical re-export of Battle.WORLD_UNITS_PER_METER. No simulation, rendering, or interaction change to show; exact-equality pin tests prove the value is bit-identical."
+}

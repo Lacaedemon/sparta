@@ -8,16 +8,19 @@ const SettingsScript = preload("res://scripts/Settings.gd")
 
 var _orig_show_fps: bool
 var _orig_corner: int
+var _orig_show_distance_legend: bool
 
 
 func before_each() -> void:
 	_orig_show_fps = Settings.show_fps
 	_orig_corner = Settings.fps_corner
+	_orig_show_distance_legend = Settings.show_distance_legend
 
 
 func after_each() -> void:
 	Settings.show_fps = _orig_show_fps
 	Settings.fps_corner = _orig_corner
+	Settings.show_distance_legend = _orig_show_distance_legend
 
 
 func _hud() -> CanvasLayer:
@@ -147,3 +150,84 @@ func test_tick_rate_below_target_shows_the_sim_falling_behind() -> void:
 			"a sim that only completes 20 ticks in a real second measures ~20 ticks/s")
 	assert_lt(hud._live_tick_rate, Engine.physics_ticks_per_second,
 			"...visibly below the configured target")
+
+
+func test_top_right_fps_label_sits_below_the_menu_button() -> void:
+	# The top-right corner is shared with the always-on Menu button: the label
+	# must clear the button's whole rect, not sit inside it. (The removed hint
+	# bar's fixed top clearance covered this incidentally; the clearance is now
+	# derived from the button's own rect.)
+	Settings.show_fps = true
+	Settings.fps_corner = Settings.FPS_CORNER_TOP_RIGHT
+	var hud := _hud()
+	var menu_bottom: float = hud._menu_button.position.y \
+			+ hud._menu_button.get_combined_minimum_size().y
+	assert_gte(hud._fps_label.position.y, menu_bottom,
+			"the top-right label starts below the menu button's bottom edge")
+
+
+func test_top_left_fps_label_sits_below_the_distance_legend() -> void:
+	# The distance legend (on by default) also lives in the top-left corner: the label
+	# must clear the legend's whole rect, not sit inside it -- same reasoning as the
+	# top-right/Menu-button case above.
+	Settings.show_distance_legend = true
+	Settings.show_fps = true
+	Settings.fps_corner = Settings.FPS_CORNER_TOP_LEFT
+	var hud := _hud()
+	var legend_bottom: float = hud._legend_panel.position.y \
+			+ hud._legend_panel.get_combined_minimum_size().y
+	assert_gte(hud._fps_label.position.y, legend_bottom,
+			"the top-left label starts below the distance legend's bottom edge")
+
+
+func test_top_left_fps_label_uses_the_standard_margin_with_the_legend_hidden() -> void:
+	# With the legend toggled off, nothing else occupies the top-left corner, so the
+	# label falls back to the same margin as the bottom corners.
+	Settings.show_distance_legend = false
+	Settings.show_fps = true
+	Settings.fps_corner = Settings.FPS_CORNER_TOP_LEFT
+	var hud := _hud()
+	assert_eq(hud._fps_label.position.y, HUDScript._FPS_MARGIN.y,
+			"the top-left corner needs no extra clearance once the legend is hidden")
+
+
+# --- performance graph sampling cadence ---------------------------------------
+# add_sample() must fire on a fixed real-time cadence (_PERF_GRAPH_SAMPLE_SECONDS), not once
+# per _process() call -- otherwise the graph's rolling window shrinks to history_size/fps
+# seconds at high frame rates instead of covering a consistent multi-second span.
+# Sets overlay.visible directly (not Settings.show_performance_graph) to avoid persisting to
+# the real settings.cfg -- see sparta.md, "Settings.gd setters persist to the REAL
+# user://settings.cfg in tests".
+
+func test_perf_graph_samples_once_per_fixed_interval_not_once_per_frame() -> void:
+	var hud := _hud()
+	hud._perf_graph_overlay.visible = true
+	for i in range(50):
+		hud._process(0.001)   # 50 calls at 1ms each = 0.05s real time, under the 0.1s interval
+	assert_true(hud._perf_graph_overlay.fps_history.is_empty(),
+			"no sample yet -- the fixed interval hasn't elapsed")
+
+	hud._process(0.06)   # pushes the accumulator past _PERF_GRAPH_SAMPLE_SECONDS (0.1s)
+	assert_eq(hud._perf_graph_overlay.fps_history.size(), 1,
+			"exactly one sample once the interval elapses, regardless of how many frames it took")
+
+
+func test_perf_graph_window_covers_a_multi_second_span_at_high_frame_rate() -> void:
+	var hud := _hud()
+	hud._perf_graph_overlay.visible = true
+	# Simulate ~300 fps for 3 real seconds -- each frame is far below the sample interval, so a
+	# per-frame sampler would have collapsed the graph's window to a fraction of a second.
+	var frame_dt := 1.0 / 300.0
+	for i in range(roundi(3.0 / frame_dt)):
+		hud._process(frame_dt)
+	var expected_samples: int = roundi(3.0 / HUDScript._PERF_GRAPH_SAMPLE_SECONDS)
+	assert_almost_eq(hud._perf_graph_overlay.fps_history.size(), expected_samples, 1,
+			"3s of high-fps frames fills the graph at the fixed cadence (~30 samples), not once per frame (~900)")
+
+
+func test_perf_graph_does_not_sample_while_hidden() -> void:
+	var hud := _hud()
+	hud._perf_graph_overlay.visible = false
+	hud._process(1.0)
+	assert_true(hud._perf_graph_overlay.fps_history.is_empty(),
+			"a hidden graph is never sampled, matching the fps label's own visibility gate")

@@ -1,0 +1,78 @@
+# GEMINI.md — Google Antigravity / Gemini working instructions for Sparta
+
+Orientation and standing policies for any Gemini or Google Antigravity (AGY) session working in this repo.
+Sparta is a **Godot 4.7** (GDScript, Standard build — not .NET/C#) prototype fusing dynastic grand strategy with real-time tactical battles. See `README.md` for layout and `PLAN.md` for project vision, roadmap, architecture, and verification steps — read `PLAN.md` first.
+
+## Cross-repo AI configuration (`Morrison-Lab/ai-config`)
+
+This repo pulls in [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) for portable skills and memories via the **Plugin Marketplace**.
+
+**Local / after cloning:** the submodule is already registered in `.gitmodules`; initialize it with:
+```bash
+git submodule update --init
+```
+Memories live in `.ai-config/memories/` (e.g. `@.ai-config/memories/preferences.md`).
+Skills live in `.ai-config/skills/`.
+
+## Project memories
+
+Sparta-specific working notes and gotchas, imported so they load with this file:
+
+@.claude/memories/sparta.md
+@.claude/memories/sparta-demos.md
+
+## Project at a glance
+- Godot **4.7.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
+- Main scene: `scenes/Battle.tscn`. Core scripts live in `scripts/`.
+- Issues are tracked on this repo with `P0`–`P3` labels; `PLAN.md` mirrors the roadmap.
+- Gemini skills live in `.gemini/skills/` (including `verify-via-state-dump`).
+
+## Verify before you push
+Run `tools/check.sh` to reproduce CI's gating checks locally (Godot import validation + GUT unit suite + the docs char-check; `tools/check.sh all` adds the lychee link-check). It vendors GUT on demand and needs only a Godot 4.7 binary on `PATH` (or `GODOT_BIN`). See `tools/README.md`. Prefer it over invoking individual checks by hand so local and CI results stay in sync.
+
+When the diff touches `scripts/`, also run `patch_coverage` before pushing — a local approximation of the `codecov/patch` CI check, verified to match Codecov's own numbers. Add it to the same `tools/check.sh` invocation (e.g. `tools/check.sh validate test chars comments units patch_coverage`), not a separate command afterward.
+
+## Gameplay demos in PRs
+Every PR that changes the user experience (UI elements, HUD overlays, unit cards, battle maneuvers, visual presentation, controls, or settings affecting display) needs proof a reviewer can actually see, not just a claim:
+- When the change is reachable through the scripted-input recorder's step vocabulary (`click`/`box`/`rmb_drag`/`key` — see `demos/README.md`), commit a **`demos/demo.json`** pointing at a scripted-input recording (`demos/inputs/*.json`) with the `input` field so CI records a clip and embeds it in the PR description.
+- **The recorder can only click the battlefield and press keys — it cannot open a ☰-menu popup.** A setting only reachable through a menu checkbox (no bound hotkey) can't be toggled on by a scripted clip; staging one anyway records an ordinary battle with the feature never turned on, which is worse than an honest skip. For a feature the recorder genuinely can't reach (a menu-only toggle, a screen with no entry point yet, a pure-data API with no UI at all), use `"skip": true` with the real reason, and post a hand-captured still image in the PR description instead (`demos/README.md`, "Still images for static features") — don't fabricate a clip that doesn't actually show the change just to avoid `skip: true`.
+- Before trusting any new demo, actually look at a captured frame (or the state dump) and confirm it shows what the caption claims — a clip that runs without erroring is not the same as a clip that demonstrates the feature.
+- Check every new demo against the standard defect checklist in `.gemini/skills/verify-via-state-dump/SKILL.md` (or `.claude/skills/verify-via-state-dump/SKILL.md`).
+
+### Backend-only performance PRs: graph the work, then film the result
+A PR whose point is that the sim does the same thing faster (a hot-loop rewrite, a cheaper query, a removed redundant pass — the `⚡ Bolt` family) ships two artifacts in its description:
+1. **A before/after graph of computations per tick** (y = operations, x = tick) over a representative demo, from `tools/perf/ops-before-after.sh`. Commit the PNG under `demos/shots/`, embed it by raw URL at the commit SHA, and paste the per-bucket table the tool prints. Counts, not milliseconds — they're deterministic for a scenario and seed, so the two lines differ only where the code did, while a timing chart carries CI's documented ~20–30% run-to-run swing. Full protocol: `tools/perf/README.md`.
+2. **A demo video recorded after the improvement** — a real `demos/demo.<slug>.json` clip, not `"skip": true`. "Backend-only" is the claim under review: an optimization that quietly changed the battle looks exactly like one that didn't until someone watches it.
+
+If the two lines coincide exactly, say so and explain why (the path isn't one the counters cover, or the change is cheaper-per-operation rather than fewer-operations) — never present a flat graph as a demonstrated win.
+
+## Code conventions
+
+### Parameters are caller-configurable; only real physical constants are fixed
+Any parameter value a caller could reasonably want to vary — sizes, counts, layouts, spawn geometry, timings, gameplay thresholds — enters through a function parameter, a constructor/instance field, or a data file, with today's value as the default. Never a bare literal buried in the implementation. This applies unconditionally to new code; an *existing* hard-coded constant is migrated opportunistically (only when a real task needs it varied), not via a standing audit sweep — the earlier proactive #963 effort is paused as of 2026-07-19.
+
+### Comments: no issue-number references
+Don't cite issue numbers (`#123`) in code comments. The explanation itself should stand on its own. Issue numbers belong in commit messages, PR descriptions, and `TODO`/`FIXME` comments.
+
+### Units: author in metres, store in world units, display in metric
+See `docs/units-convention.md` for full rules. Author length/speed constants as `<metres> * WorldScaleRef.WU_PER_M`, keep runtime state in world units, and render user-facing distances through `DistanceLegend`.
+
+### GDScript / Godot 4 quirks
+- `PopupMenu.set_item_metadata` takes an index, not an id. Convert with `popup.get_item_index(id)`.
+- `set_deferred("position:y", ...)` is a silent no-op. Defer the full Vector2: `set_deferred("position", Vector2(x, new_y))`.
+- Commit `.gd.uid` sidecars alongside every new `.gd` script.
+- Run `godot --headless --import` after adding new `class_name` declarations so global classes register before running GUT unit tests.
+
+## Automated PR reviews are paused (quota exhausted)
+
+Gemini/Antigravity automated pull-request review is **off** for this repo: `.gemini/config.yaml` sets `code_review.disable: true`, and the `pull_request_opened` toggles are all false. The reason is quota, not a change of policy - a quota-exhausted reviewer posts nothing (or a "could not review" stub), which is easily misread as an approval it never gave.
+
+- Don't run a PR review from an Antigravity/Gemini session while this stands, and don't re-request one on a PR that has none.
+- Claude's review (`.github/workflows/claude-code-review.yml`) and Copilot code review are unaffected and still run on every PR; a PR is still reviewed before merge.
+- To restore: set `code_review.disable: false` in `.gemini/config.yaml` and delete the `pull_request_opened` block, so the product defaults apply instead of a pinned copy that can drift (today: `help: false`, `summary: false`, `code_review: true`).
+- Scope: `.gemini/config.yaml` is the lever for the **GitHub App**. Sparta has no Actions-based Antigravity reviewer (no workflow references one, and no Gemini/Antigravity bot has posted on a recent PR), so there is nothing else in-repo to switch off - but if such a workflow is ever added, it needs disabling separately, and reviews driven from the Antigravity dashboard or IDE are toggled there rather than here.
+
+## Code review handling policy
+1. **In scope + confident + small** → fix on PR branch, commit, push.
+2. **Ambiguous or architecturally significant** → ask user before acting.
+3. **Out of scope** → create GitHub issue to track it and reply with a link to the issue.

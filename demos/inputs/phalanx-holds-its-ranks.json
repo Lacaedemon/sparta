@@ -1,0 +1,28 @@
+{
+  "_comment": "Issue #1144: SoldierBodies.step() used to pick its engaged bodies with engaged_soldier_indices(), whose depth comes from weapon REACH (engaged_ranks). A spear regiment's reach depth (6 ranks) meets or exceeds a shallow block's actual depth, so every soldier landed in the tier and the unengaged bulk -- the reference step()'s engaged branch is written against -- disappeared, leaving the block's rank/file order to churn indefinitely (soldiers visibly sliding sideways mid-melee). This stages exactly that case and shows it holding instead: two 45-man Spearmen phalanxes, 9 files wide and so only 5 ranks deep against a 6-rank reach, grind head-on for the whole clip. Team 1 is left on its own auto-advance; team 0 is ordered straight into it at tick 12 so the lines meet square rather than at an angle. The engaged-soldier highlight (Settings.show_engaged_highlight) is on, and it shows the MELEE tier, not the new body-contact one -- that dev visual reads engaged_soldier_indices(), which this change deliberately leaves alone. So the amber tint covers both whole blocks, which is correct and is itself the point: every rank of a 5-rank block really is within a 6-rank spear's reach and really can strike. What changed is invisible to that overlay, because the body-dynamics tier is consumed only by the physics step. The visible evidence is the formation itself -- watch the ranks and files stay legible through the grind, where before every man drifted across his neighbours' places.",
+  "seed": "24601",
+  "drill": false,
+  "show_engaged_highlight": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 800, "y": 300, "count": 45},
+    {"team": 1, "type": "Spearmen", "x": 800, "y": 470, "count": 45}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 385.0, "zoom": 1.45}
+  ],
+  "steps": [
+    {"tick": 8, "click": [800, 300]},
+    {"tick": 12, "rmb_click": [800, 470]}
+  ],
+  "state": [0, 60, 150, 220, 300, 380, 460, 540],
+  "frames": [150, 300, 460],
+  "expect": [
+    {"tick": 0, "uid": 0, "field": "position", "value": [800.0, 300.0]},
+    {"tick": 0, "uid": 1, "field": "position", "value": [800.0, 470.0]},
+    {"tick": [220, 300], "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": [220, 300], "uid": 0, "field": "engaged", "value": true},
+    {"tick": [380, 540], "uid": 0, "field": "engaged", "value": true}
+  ],
+  "fixed_fps": 30,
+  "max_frames": 280
+}

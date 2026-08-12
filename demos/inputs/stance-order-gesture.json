@@ -3,11 +3,49 @@
   "seed": "12345",
   "drill": true,
   "camera": [
-    {"tick": 0, "x": 500.0, "y": 300.0, "zoom": 1.6}
+    {
+      "tick": 0,
+      "x": 407.0,
+      "y": 300.0,
+      "zoom": 1.6
+    }
   ],
   "steps": [
-    {"tick": 10, "click": [500, 300]},
-    {"tick": 40, "key": "H", "ctrl": true},
-    {"tick": 90, "key": "I"}
+    {
+      "tick": 10,
+      "click": [
+        407,
+        300
+      ]
+    },
+    {
+      "tick": 40,
+      "key": "H",
+      "ctrl": true
+    },
+    {
+      "tick": 90,
+      "key": "I"
+    }
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        407.0,
+        300.0
+      ]
+    },
+    {
+      "tick": [
+        50,
+        200
+      ],
+      "uid": 0,
+      "field": "order_mode",
+      "value": "Hold"
+    }
   ]
 }

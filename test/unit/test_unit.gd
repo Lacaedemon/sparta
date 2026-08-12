@@ -842,6 +842,68 @@ func test_move_to_does_not_brake_a_combat_chase() -> void:
 		"a chase holds full pace inside the braking window -- charges don't brake")
 
 
+func test_combat_chase_pivots_gradually_for_a_disciplined_unit() -> void:
+	# An attack-approach march (formed_turn) from a disciplined unit turns onto its
+	# bearing in good order instead of snapping: a bearing under the fold-absorb
+	# threshold used to rotate the whole slot grid in one tick (no fold fires below
+	# it), sweeping flank slots far faster than any body can run -- the men scrambled
+	# across the block and the formation read as a blob for seconds (the showcase's
+	# rightmost cavalry rounding the hill). One tick now turns at most the corner-man
+	# pivot rate; PathField is nulled so the bearing under test reaches _move_to raw.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	var dir: Vector2 = Vector2.DOWN.rotated(deg_to_rad(60.0))
+	u._move_to(dir * 100000.0, 0.1, false, true)
+	var turned: float = absf(angle_difference(Vector2.DOWN.angle(), u.facing.angle()))
+	var max_step: float = minf(Unit.TURN_RATE, u.jog_speed / u._pivot_radius()) * 0.1
+	assert_gt(turned, 0.0, "the pivot has begun")
+	assert_lte(turned, max_step + 0.0001,
+		"the first tick's turn is bounded by the corner-man-paced pivot rate")
+	assert_lt(turned, deg_to_rad(60.0), "one tick does not snap onto the bearing")
+	PathField.active = old_pf
+
+
+func test_combat_chase_past_the_absorb_threshold_snaps_and_holds_the_grid() -> void:
+	# At or past the fold-absorb threshold a formed_turn approach keeps the plain snap:
+	# _face_dir folds the jump into _formation_angle, so the slot grid holds still and
+	# no soldier scrambles -- and the unit answers a rear-sector threat immediately
+	# instead of standing through a multi-second 180-degree centre pivot (the wrong
+	# drill for a turn that large; a proper about-face decomposition is future work).
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	var grid_before: float = u.facing.angle() + PI * 0.5 + u._formation_angle
+	var dir: Vector2 = Vector2.DOWN.rotated(deg_to_rad(120.0))
+	u._move_to(dir * 100000.0, 0.1, false, true)
+	assert_almost_eq(u.facing.x, dir.x, 0.0001, "facing.x snaps onto the bearing")
+	assert_almost_eq(u.facing.y, dir.y, 0.0001, "facing.y snaps onto the bearing")
+	var grid_after: float = u.facing.angle() + PI * 0.5 + u._formation_angle
+	assert_almost_eq(wrapf(grid_after - grid_before, -PI, PI), 0.0, 0.0001,
+		"the fold holds the slot grid still across the snap")
+	PathField.active = old_pf
+
+
+func test_undisciplined_chase_still_snaps_onto_its_bearing() -> void:
+	# The formed pivot is a disciplined-unit behaviour: a mob turns to face its quarry
+	# immediately and walks there directly, exactly as before.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	u.disciplined = false
+	var dir: Vector2 = Vector2.DOWN.rotated(deg_to_rad(60.0))
+	u._move_to(dir * 100000.0, 0.1, false, true)
+	assert_almost_eq(u.facing.x, dir.x, 0.0001, "facing.x snaps onto the bearing")
+	assert_almost_eq(u.facing.y, dir.y, 0.0001, "facing.y snaps onto the bearing")
+	PathField.active = old_pf
+
+
 func test_move_to_does_not_brake_before_an_intermediate_waypoint() -> void:
 	# A queued route rolls through its corners at pace: braking applies only on the
 	# route's LAST leg, so a unit closing on an intermediate waypoint holds its pace.
@@ -989,15 +1051,111 @@ func test_current_speed_survives_a_reorder_while_cruising() -> void:
 	# re-order, e.g. arrow-key nudges, to restart the accel ramp from a standstill).
 	var u := _make_unit()
 	u.position = Vector2.ZERO
-	u._current_speed = u.walk_speed   # as if it was already cruising
-	u.has_move_target = true
-	u.move_target = Vector2(0, 100000)   # far target, doesn't matter -- frozen this frame
+	u._current_speed = u.walk_speed   # as if it was already cruising...
+	u._approach_velocity = Vector2(0, u.walk_speed)   # ...toward +y, the same way the
+	u.has_move_target = true                          # re-order continues (a genuinely
+	u.move_target = Vector2(0, 100000)                # cruising unit always carries both)
 	u.start_order_response()             # simulates a fresh re-order arriving
 	assert_gt(u._order_response_timer, 0.0, "the re-order starts the response-delay freeze")
 	u._physics_process(0.016)
 	assert_false(u._moved_last_frame, "frozen by the response delay -- _move_to did not run")
 	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
 		"speed carries over through the freeze instead of hard-resetting to zero")
+
+
+func test_reversing_reorder_brakes_during_the_hold() -> void:
+	# The momentum exemption above is DIRECTIONAL (REORDER_MOMENTUM_DOT_MIN): when the
+	# held march REVERSES the current travel, the hold is the brake leg of the turn, and
+	# speed must bleed at the brake rate during it. Preserving full-pace
+	# _approach_velocity through a reversal's hold kept the soldier bodies' feed-forward
+	# flying the OLD way while the hold pivoted their slot grid underneath them -- the
+	# block compressed into genuine body overlap and overshot the turn point by tens of
+	# units before the new march ever began.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.walk_speed
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed   # cruising east
+	_stage_reform_hold(u, Vector2(-1000, 0), 0.8)         # held march: straight back west
+	u.start_order_response()
+	var before: float = u._current_speed
+	for _i in range(6):
+		u._physics_process(0.016)
+	assert_lt(u._current_speed, before - 0.001,
+		"a reversal's hold bleeds speed instead of carrying it")
+	assert_almost_eq(u._current_speed, before - u.arrival_brake_rate() * 6 * 0.016, 0.5,
+		"...at the arrival brake rate, not a hard reset")
+	assert_almost_eq(u._approach_velocity.length(), u._current_speed, 0.01,
+		"and _approach_velocity's magnitude decays in lockstep")
+
+
+func test_continuing_reorder_keeps_speed_through_the_hold() -> void:
+	# The counterpart: a held march CONTINUING the current travel keeps its momentum
+	# through both freezes -- carrying speed into a same-way leg is what the hold's
+	# momentum exemption is for (a rapid same-way re-order must not restart the ramp).
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.walk_speed
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed
+	_stage_reform_hold(u, Vector2(1000, 0), 0.8)   # held march continues east
+	u.start_order_response()
+	for _i in range(6):
+		u._physics_process(0.016)
+	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
+		"a same-way re-order's hold carries the momentum through unchanged")
+
+
+func test_held_march_direction_falls_back_to_the_move_leaf() -> void:
+	# _held_march_continues_travel's third source: a MOVE order installed but neither
+	# reform-holding nor committed to a move target yet (the response freeze on a
+	# no-reform order path) still yields its leaf's destination, so a same-way re-order
+	# keeps momentum and a reversal brakes, exactly as the committed cases do.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed
+	u.set_current_order(Order.new_move(Vector2(1000, 0)))   # continues the travel
+	u.start_order_response()
+	assert_true(u._held_march_continues_travel(),
+		"a same-way held MOVE leaf carries momentum through the response freeze")
+	u.set_current_order(Order.new_move(Vector2(-1000, 0)))  # reverses the travel
+	u.start_order_response()
+	assert_false(u._held_march_continues_travel(),
+		"a reversing held MOVE leaf brakes instead")
+
+
+func test_held_march_to_the_spot_it_stands_on_keeps_nothing() -> void:
+	# Degenerate destination: ordered to (essentially) where it already stands, there is
+	# no march direction to continue -- the hold brakes rather than carrying speed
+	# toward a point with no bearing.
+	var u := _make_unit()
+	u.position = Vector2(100, 100)
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed
+	u.set_current_order(Order.new_move(Vector2(100.2, 100.2)))
+	u.start_order_response()
+	assert_false(u._held_march_continues_travel(),
+		"a destination under the standing-on-it threshold offers no travel to continue")
+
+
+func test_reform_hold_pivot_is_corner_man_paced() -> void:
+	# The reform hold's centre-pivot toward the pending destination must pace like the
+	# marching pivot (UnitManeuver.wheel_gait_rate): the hold rotates the slot grid
+	# rigidly about the block's centre, and an unpaced TURN_RATE sweeps a wide block's
+	# flank slots faster than any body can run -- the men scramble after their slots and
+	# the block reads as a blob before the march has even begun. A low jog binds the
+	# corner-man cap far below TURN_RATE, so an unpaced pivot would step visibly faster
+	# than the bound this asserts.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u.jog_speed = 10.0
+	_stage_reform_hold(u, Vector2(0, 1000), 0.8)   # pending march is 90 deg off facing
+	var before: float = u.facing.angle()
+	u._think(0.016)
+	var step: float = absf(angle_difference(before, u.facing.angle()))
+	var cap: float = UnitManeuver.wheel_gait_rate(Unit.TURN_RATE, u.jog_speed, u._pivot_radius()) * 0.016
+	assert_lte(step, cap + 0.0001, "the hold pivot steps no faster than the corner-man bound")
+	assert_lt(step, Unit.TURN_RATE * 0.016 * 0.5,
+		"...well below the raw unpaced TURN_RATE step")
+	assert_gt(step, 0.0, "while still actually turning")
 
 
 func test_current_speed_still_ramps_from_zero_for_a_fresh_order_from_idle() -> void:
@@ -1034,16 +1192,22 @@ func test_current_speed_still_ramps_from_zero_for_a_fresh_order_from_idle() -> v
 func test_orderly_pivot_is_slower_at_speed_than_at_a_stand() -> void:
 	# The centre-pivot rate tapers down as the unit's current speed rises (real turning
 	# capacity is bounded by the lateral force a moving body can exert). Compare a pivot
-	# from a stand against an identical pivot already at full speed.
+	# from a stand against an identical pivot already at full speed. The corner-man gait
+	# bound (see test_pivot_rate_is_paced_by_the_corner_man below) would clamp both sides
+	# of a 120-man block to the same rate and mask the taper, so give the fixtures a jog
+	# far above what the pivot arc needs -- this test isolates the taper, the one below
+	# isolates the gait bound.
 	var standing := _make_unit()
 	standing.position = Vector2.ZERO
 	standing.facing = Vector2.RIGHT
+	standing.jog_speed = 100000.0
 	standing._move_to(Vector2(0, 100000), 0.1, true)   # orderly, far target, starts at rest
 	var standing_turn: float = standing.facing.angle()
 
 	var moving := _make_unit()
 	moving.position = Vector2.ZERO
 	moving.facing = Vector2.RIGHT
+	moving.jog_speed = 100000.0
 	# Seeded at full sprint, but the far target selects walk pace, so this first tick's
 	# decel step brings _current_speed to move_speed - decel*delta (~93% of sprint) by
 	# the time the taper reads it -- still strongly tapered, just not exactly 100%.
@@ -1054,6 +1218,329 @@ func test_orderly_pivot_is_slower_at_speed_than_at_a_stand() -> void:
 	assert_gt(standing_turn, moving_turn,
 		"a pivot from a stand turns further in one tick than the same pivot at full speed")
 	assert_gt(moving_turn, 0.0, "the fast-moving unit still turns, just more slowly")
+
+
+func test_pivot_rate_is_paced_by_the_corner_man() -> void:
+	# A centre pivot rotates the slot grid rigidly about the block's centre, so its rate
+	# is bounded by what the corner man (the farthest slot, at the footprint's
+	# half-diagonal) can actually run -- UnitManeuver.wheel_gait_rate with the pivot
+	# radius as the arm, the same outer-file pacing the flank wheel uses. For a real
+	# 120-man block that bound sits well under the stationary TURN_RATE, so the first
+	# tick's turn lands at exactly jog_speed / _pivot_radius() -- not at TURN_RATE.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	var expected_rate: float = u.jog_speed / u._pivot_radius()
+	assert_lt(expected_rate, Unit.TURN_RATE,
+		"the fixture block is wide enough that the corner-man bound governs")
+	u._move_to(Vector2(0, 100000), 0.1, true)
+	assert_almost_eq(u.facing.angle(), expected_rate * 0.1, 0.0001,
+		"the first tick's pivot step is the corner-man-paced rate, not raw TURN_RATE")
+
+
+func test_formed_pivot_turning_cap_does_not_bind_at_or_below_jog_pace() -> void:
+	# Regression guard for a claude-code-review finding on the PR that introduced this
+	# cap: worked through this exact fixture's own numbers (a default 120-soldier unit,
+	# the same size the review's own worked example used), the review found that
+	# applying the acceleration-based cap unconditionally makes it bind TIGHTER than the
+	# pre-existing corner-man footspeed cap already at plain WALK pace -- not just past a
+	# jog/sprint cruise as the fix's own docs claimed. That would have throttled every
+	# ordinary marching turn in the game, not only a sprinting cavalry chase. Gating the
+	# cap to only apply once current_speed exceeds jog_speed fixes this: at walk pace
+	# (always at or below jog_speed for every unit type in this game) the pivot rate must
+	# come out EXACTLY as it did before this fix existed -- the pre-existing footspeed/
+	# taper caps alone, with no contribution from the new cap at all.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._current_speed = u.walk_speed
+	u.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_WALK)
+	assert_lte(u._current_speed, u.jog_speed, "walk pace sits at or below jog pace for every unit type")
+	var pre_existing_cap: float = UnitManeuver.wheel_gait_rate(
+			Unit.TURN_RATE * lerpf(1.0, Unit.TURN_RATE_TAPER_FLOOR,
+					clampf(u._current_speed / u.move_speed, 0.0, 1.0)),
+			u.jog_speed, u._pivot_radius())
+	u._move_to(Vector2(0, 100000), 0.1, true)
+	assert_almost_eq(u.facing.angle(), pre_existing_cap * 0.1, 0.0001,
+		"at walk pace the pre-existing footspeed/taper caps alone govern -- the new " +
+			"accel-based cap must not tighten this further")
+
+
+func test_formed_pivot_is_capped_by_the_units_own_turning_acceleration_at_speed() -> void:
+	# Redirecting a body's own velocity of magnitude V at angular rate omega demands a
+	# centripetal acceleration of V * omega -- this cap only ever applies once a unit is
+	# genuinely SPRINTING (current_speed past its own jog_speed -- see _move_to's own
+	# comment for why: at or below jog pace the pre-existing footspeed cap already keeps
+	# every real formation within its own accel budget, so gating here is what keeps this
+	# new cap scoped to the fast-cruising case it exists for, not every ordinary march).
+	# jog_speed and move_speed are overridden to a moderate, deliberately chosen pair
+	# (not an unrealistically huge jog_speed, which would ALSO defeat the new gate) so
+	# the fixture cruises well past its own jog_speed while the pre-existing footspeed/
+	# taper caps stay loose, isolating this cap the same way
+	# test_orderly_pivot_is_slower_at_speed_than_at_a_stand isolates the taper.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u.jog_speed = 200.0
+	u.move_speed = 400.0
+	u._current_speed = 400.0   # cruising at full sprint, well past jog_speed
+	# An explicit SPRINT gait pins pace_speed to move_speed -- matching _current_speed
+	# already, so the ramp inside _move_to (which would otherwise decel toward the AUTO
+	# ladder's walk pace for a far destination) leaves speed exactly at move_speed for
+	# the pivot-rate computation this test isolates. haste stays false (new_move's
+	# default): this fixture tests _move_to's own cap directly, not Battle.gd's separate
+	# "an explicit RUN/SPRINT gait is haste" order-dispatch policy.
+	u.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_SPRINT)
+	var turn_body_accel: float = maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR) * Unit.TURN_ACCEL_BUDGET_FRACTION
+	var expected_rate: float = UnitManeuver.max_turn_rate_for_speed(turn_body_accel, u._current_speed)
+	var pre_existing_cap: float = UnitManeuver.wheel_gait_rate(
+			Unit.TURN_RATE * Unit.TURN_RATE_TAPER_FLOOR, u.jog_speed, u._pivot_radius())
+	assert_lt(expected_rate, pre_existing_cap,
+		"the fixture's cruising speed is high enough that this cap governs, not the pre-existing footspeed/taper caps")
+	u._move_to(Vector2(0, 100000), 0.1, true)
+	assert_almost_eq(u.facing.angle(), expected_rate * 0.1, 0.0001,
+		"the first tick's pivot step is capped by the unit's own turning acceleration, not the pre-existing caps alone")
+
+
+func test_formed_pivot_turning_cap_loosens_at_a_slower_cruise() -> void:
+	# The same body_accel affords a much sharper turn at a walk than at a sprint
+	# (UnitManeuver.max_turn_rate_for_speed's own inverse relationship), so an identical
+	# pivot started from a slower (but still past-jog-speed, so the cap is engaged for
+	# both) cruise should turn further in one tick than the same pivot at full speed.
+	var slow := _make_unit()
+	slow.position = Vector2.ZERO
+	slow.facing = Vector2.RIGHT
+	slow.jog_speed = 200.0
+	slow.move_speed = 250.0
+	slow._current_speed = 250.0   # past jog_speed, so the new cap is engaged
+	slow.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_SPRINT)
+	slow._move_to(Vector2(0, 100000), 0.1, true)
+
+	var fast := _make_unit()
+	fast.position = Vector2.ZERO
+	fast.facing = Vector2.RIGHT
+	fast.jog_speed = 200.0
+	fast.move_speed = 400.0
+	fast._current_speed = 400.0   # further past jog_speed than the "slow" fixture above
+	fast.current_order = Order.new_move(Vector2(0, 100000), 0, Unit.GAIT_SPRINT)
+	fast._move_to(Vector2(0, 100000), 0.1, true)
+
+	assert_gt(slow.facing.angle(), fast.facing.angle(),
+		"a slower cruise affords a sharper turn under the same body_accel budget")
+	assert_gt(fast.facing.angle(), 0.0, "the fast-cruising unit still turns, just more slowly")
+
+
+func test_pivot_radius_is_the_footprint_half_diagonal() -> void:
+	# 120 soldiers in the default line: formation_files gives the file count, ranks
+	# follow, and the radius is half the diagonal of the (files-1) x (ranks-1) slot
+	# grid at formation spacing. Recompute independently and compare.
+	var u := _make_unit()
+	var files: int = u.formation_files(u.soldiers)
+	var ranks: int = UnitFormation.ranks_for(u.soldiers, files)
+	var span: float = Unit.FORMATION_SPACING * u.spacing_scale
+	var expected: float = Vector2(float(files - 1), float(ranks - 1)).length() * 0.5 * span
+	assert_almost_eq(u._pivot_radius(), expected, 0.0001,
+		"pivot radius matches the slot grid's half-diagonal")
+	assert_gt(u._pivot_radius(), 0.0, "a real block has a positive pivot arm")
+
+
+func test_terrain_clearance_scales_with_the_live_footprint() -> void:
+	# The margin a block keeps off impassable terrain is its own geometry: the
+	# corner man's half-diagonal plus his body radius, read from the LIVE
+	# formation -- so a bigger block rounds an obstacle wider than a small one.
+	var u := _make_unit()
+	assert_almost_eq(u.terrain_clearance(), u._pivot_radius() + u.soldier_body_radius(),
+		0.0001, "clearance is the footprint half-diagonal plus one body radius")
+	var small := _make_unit()
+	small.soldiers = maxi(10, u.soldiers / 4)
+	assert_lt(small.terrain_clearance(), u.terrain_clearance(),
+		"a smaller block needs less terrain clearance than a bigger one")
+
+
+# --- funnel-corner routing tie-break (same-team congestion gate) -----------
+
+func test_congested_same_team_router_true_when_close_and_aligned() -> void:
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(1000, 1000)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.team = 0
+	b.position = Vector2(1010, 1000)   # a few world units away -- well inside any real clearance
+	b.facing = Vector2.DOWN
+	assert_true(a._has_congested_same_team_router(),
+		"two same-team units close together, heading the same way, are congested")
+
+
+func test_congested_same_team_router_false_when_far_apart() -> void:
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(0, 0)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.team = 0
+	b.position = Vector2(5000, 5000)   # far beyond any realistic terrain_clearance radius
+	b.facing = Vector2.DOWN
+	assert_false(a._has_congested_same_team_router(),
+		"a distant same-team unit doesn't count as congestion")
+
+
+func test_congested_same_team_router_false_across_teams() -> void:
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(1000, 1000)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.team = 1
+	b.position = Vector2(1010, 1000)
+	b.facing = Vector2.DOWN
+	assert_false(a._has_congested_same_team_router(),
+		"an enemy unit isn't a same-team router, however close")
+
+
+func test_congested_same_team_router_false_when_the_other_is_dead() -> void:
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(1000, 1000)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.team = 0
+	b.position = Vector2(1010, 1000)
+	b.facing = Vector2.DOWN
+	b.state = Unit.State.DEAD
+	assert_false(a._has_congested_same_team_router(),
+		"a dead unit can't be crowding anyone")
+
+
+func test_congested_same_team_router_false_when_heading_opposite() -> void:
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(1000, 1000)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.team = 0
+	b.position = Vector2(1010, 1000)
+	b.facing = Vector2.UP   # heading the opposite way -- not converging on the same corner
+	assert_false(a._has_congested_same_team_router(),
+		"a same-team unit heading the opposite way isn't plausibly funneling onto the same corner")
+
+
+func test_funnel_lane_offset_is_zero_with_no_pathfield_active() -> void:
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.position = Vector2(500, 500)
+	assert_eq(u.funnel_lane_offset(Vector2(1500, 500)), 0.0,
+		"no active PathField means no detour is even possible, so no tie-break offset either")
+	PathField.active = old_pf
+
+
+func test_funnel_lane_offset_is_zero_when_the_leg_is_not_blocked() -> void:
+	var old_pf: PathField = PathField.active
+	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no obstacles registered
+	var u := _make_unit()
+	u.position = Vector2(500, 500)
+	assert_eq(u.funnel_lane_offset(Vector2(1500, 500)), 0.0,
+		"a clear straight line never reaches PathField's funnel corner, so no offset applies")
+	PathField.active = old_pf
+
+
+func test_funnel_lane_offset_is_zero_for_a_solo_detouring_unit() -> void:
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
+	pf.block_rect(Rect2(1000, 0, 64, 2000))   # vertical wall the straight line must cross
+	PathField.active = pf
+	var u := _make_unit()
+	u.position = Vector2(500, 500)
+	assert_eq(u.funnel_lane_offset(Vector2(1500, 500)), 0.0,
+		"a unit detouring with no same-team unit anywhere nearby gets its exact corner back")
+	PathField.active = old_pf
+
+
+func test_funnel_lane_offset_is_nonzero_when_a_same_team_unit_is_congested_nearby() -> void:
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
+	pf.block_rect(Rect2(1000, 0, 64, 2000))   # vertical wall both units' straight line must cross
+	PathField.active = pf
+	var a := _make_unit()
+	a.uid = 8
+	a.team = 0
+	a.position = Vector2(500, 500)
+	a.facing = Vector2.RIGHT
+	var b := _make_unit()
+	b.uid = 9
+	b.team = 0
+	b.position = Vector2(520, 500)   # a few world units away -- well inside any real clearance
+	b.facing = Vector2.RIGHT
+	var offset_a: float = a.funnel_lane_offset(Vector2(1500, 500))
+	var offset_b: float = b.funnel_lane_offset(Vector2(1500, 500))
+	# uid 8 and uid 9 (the standard demo catalog's own contesting cavalry pair) land in the
+	# outermost buckets of the fixed FUNNEL_LANE_COUNT split, reproducing the original
+	# scheme's full -1/+1 magnitude for this specific pair.
+	var expected_a: float = (2.0 * float(posmod(a.uid, Unit.FUNNEL_LANE_COUNT)) / float(Unit.FUNNEL_LANE_COUNT - 1)) - 1.0
+	var expected_b: float = (2.0 * float(posmod(b.uid, Unit.FUNNEL_LANE_COUNT)) / float(Unit.FUNNEL_LANE_COUNT - 1)) - 1.0
+	assert_almost_eq(offset_a, expected_a * a.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
+		0.0001, "a genuinely congested pair still gets the deterministic per-uid tie-break offset")
+	assert_almost_eq(offset_b, expected_b * b.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
+		0.0001, "a genuinely congested pair still gets the deterministic per-uid tie-break offset")
+	assert_ne(offset_a, offset_b, "a genuinely congested pair never shares a lane")
+	PathField.active = old_pf
+
+
+func test_funnel_lane_offset_separates_same_parity_uids() -> void:
+	# A raw posmod(uid, 2) split gave uid 20 and uid 22 (both even) the identical lane --
+	# a wider fixed modulus resolves this specific pair without making the lane depend on
+	# which other units happen to be nearby right now.
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
+	pf.block_rect(Rect2(1000, 0, 64, 2000))
+	PathField.active = pf
+	var a := _make_unit()
+	a.uid = 20
+	a.team = 0
+	a.position = Vector2(500, 500)
+	a.facing = Vector2.RIGHT
+	var b := _make_unit()
+	b.uid = 22
+	b.team = 0
+	b.position = Vector2(520, 500)
+	b.facing = Vector2.RIGHT
+	var offset_a: float = a.funnel_lane_offset(Vector2(1500, 500))
+	var offset_b: float = b.funnel_lane_offset(Vector2(1500, 500))
+	assert_ne(offset_a, offset_b,
+		"two same-parity contesters must not collide on the same lane")
+	PathField.active = old_pf
+
+
+func test_funnel_lane_offset_is_a_pure_function_of_uid_not_of_who_else_is_nearby() -> void:
+	# A unit's own lane must not change depending on which OTHER same-team units happen to
+	# satisfy the congestion gate at the same instant -- only whether the gate is open or
+	# closed at all. A third unit joining or leaving the area must never shift the first
+	# unit's already-assigned lane value.
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
+	pf.block_rect(Rect2(1000, 0, 64, 2000))
+	PathField.active = pf
+	var a := _make_unit()
+	a.uid = 8
+	a.team = 0
+	a.position = Vector2(500, 500)
+	a.facing = Vector2.RIGHT
+	var b := _make_unit()
+	b.uid = 9
+	b.team = 0
+	b.position = Vector2(520, 500)
+	b.facing = Vector2.RIGHT
+	var offset_pair_only: float = a.funnel_lane_offset(Vector2(1500, 500))
+	var c := _make_unit()
+	c.uid = 100
+	c.team = 0
+	c.position = Vector2(510, 500)
+	c.facing = Vector2.RIGHT
+	var offset_with_third_unit: float = a.funnel_lane_offset(Vector2(1500, 500))
+	assert_almost_eq(offset_pair_only, offset_with_third_unit, 0.0001,
+		"a's lane must be identical whether or not a third congested unit is also nearby")
+	PathField.active = old_pf
 
 
 # --- gradual centre pivot (orderly move orders) ------------------------------
@@ -1466,7 +1953,7 @@ func test_infantry_pair_clear_at_40px_not_pushed() -> void:
 	var b := _make_unit()
 	a.position = Vector2.ZERO
 	b.position = Vector2(40.0, 0.0)
-	a._separate()
+	a._separate(1.0 / 60.0)
 	assert_almost_eq(a.position.x, 0.0, 0.001, "infantry at 40px are already clear")
 
 
@@ -1479,7 +1966,7 @@ func test_cavalry_pair_overlap_at_40px_pushed_apart() -> void:
 	b.team = 1
 	a.position = Vector2.ZERO
 	b.position = Vector2(40.0, 0.0)
-	a._separate()
+	a._separate(1.0 / 60.0)
 	assert_lt(a.position.x, 0.0, "cavalry at 40px overlap by footprint and push apart")
 
 
@@ -1509,7 +1996,7 @@ func test_spearmen_pair_overlap_at_38px_pushed_apart() -> void:
 	b.team = 1
 	a.position = Vector2.ZERO
 	b.position = Vector2(38.0, 0.0)
-	a._separate()
+	a._separate(1.0 / 60.0)
 	assert_lt(a.position.x, 0.0, "spearmen at 38px overlap by footprint and push apart")
 
 
@@ -1526,10 +2013,10 @@ func test_co_located_pair_fans_apart_by_uid() -> void:
 	b.uid = 7
 	a.position = Vector2.ZERO
 	b.position = Vector2.ZERO
-	a._separate()
+	a._separate(1.0 / 60.0)
 	var a_push: Vector2 = a.position
 	a.position = Vector2.ZERO   # reset so b sees the same co-located pair
-	b._separate()
+	b._separate(1.0 / 60.0)
 	var b_push: Vector2 = b.position
 	assert_gt(a_push.length(), 0.0, "a co-located unit is pushed off the stack")
 	assert_gt(b_push.length(), 0.0, "its partner is pushed too")
@@ -1548,7 +2035,7 @@ func test_co_located_push_matches_uid_formula() -> void:
 	b.uid = 7
 	a.position = Vector2.ZERO
 	b.position = Vector2.ZERO
-	a._separate()
+	a._separate(1.0 / 60.0)
 	# lo = min(5, 7) = 5 -> angle = 5/100 * TAU; a holds the lower uid so dir = -1.
 	# magnitude = (sep_a + sep_b) * share, share = 0.5 for two infantry enemies.
 	var magnitude: float = (a.separation_radius + b.separation_radius) * 0.5
@@ -1568,10 +2055,10 @@ func test_co_located_equal_uid_pair_still_fans_apart() -> void:
 	assert_eq(b.uid, -1, "unspawned units keep the default uid")
 	a.position = Vector2.ZERO
 	b.position = Vector2.ZERO
-	a._separate()
+	a._separate(1.0 / 60.0)
 	var a_push: Vector2 = a.position
 	a.position = Vector2.ZERO
-	b._separate()
+	b._separate(1.0 / 60.0)
 	var b_push: Vector2 = b.position
 	# Guard non-zero pushes explicitly: a dot product with a zero vector is 0 (not
 	# negative), so the opposite-direction check below can't on its own tell
@@ -1734,7 +2221,7 @@ func test_mover_passes_through_idle_friendly() -> void:
 	idle.state = Unit.State.IDLE
 	mover.position = Vector2.ZERO
 	idle.position = Vector2(10.0, 0.0)        # deep overlap (infantry floor 36)
-	mover._separate()
+	mover._separate(1.0 / 60.0)
 	assert_almost_eq(mover.position.x, 0.0, 0.001,
 		"a moving unit is not pushed off an idle friendly — it passes through")
 
@@ -1751,7 +2238,7 @@ func test_separate_leaves_friendly_pairs_to_the_soldier_layer() -> void:
 	b.state = Unit.State.IDLE
 	a.position = Vector2.ZERO
 	b.position = Vector2(10.0, 0.0)
-	a._separate()
+	a._separate(1.0 / 60.0)
 	assert_almost_eq(a.position.x, 0.0, 0.001,
 		"_separate() leaves friendlies to the soldier layer (no regiment-circle push)")
 
@@ -1765,7 +2252,7 @@ func test_mover_does_not_pass_through_idle_enemy() -> void:
 	enemy.state = Unit.State.IDLE
 	mover.position = Vector2.ZERO
 	enemy.position = Vector2(10.0, 0.0)
-	mover._separate()
+	mover._separate(1.0 / 60.0)
 	assert_lt(mover.position.x, 0.0, "an enemy is never exempt — the mover is blocked")
 
 
@@ -1780,7 +2267,7 @@ func test_idle_friendly_does_not_push_the_mover_either() -> void:
 	idle.state = Unit.State.IDLE
 	mover.position = Vector2.ZERO
 	idle.position = Vector2(10.0, 0.0)
-	idle._separate()
+	idle._separate(1.0 / 60.0)
 	assert_almost_eq(idle.position.x, 10.0, 0.001,
 		"idle does not push itself off the mover — the exemption fires from both sides")
 
@@ -1798,7 +2285,7 @@ func test_spearman_holds_line_against_enemy_cavalry() -> void:
 	cav.team = 1                          # enemy cavalry
 	spear.position = Vector2.ZERO
 	cav.position = Vector2(20.0, 0.0)     # overlapping (floor 20+24 = 44)
-	spear._separate()
+	spear._separate(1.0 / 60.0)
 	assert_almost_eq(spear.position.x, 0.0, 0.001,
 		"a spearman yields nothing to enemy cavalry — the line holds")
 
@@ -1809,7 +2296,7 @@ func test_enemy_cavalry_shoved_clear_of_spear_line() -> void:
 	cav.team = 1                          # enemy cavalry
 	spear.position = Vector2.ZERO
 	cav.position = Vector2(20.0, 0.0)
-	cav._separate()
+	cav._separate(1.0 / 60.0)
 	assert_gt(cav.position.x, 20.0,
 		"enemy cavalry takes the full push-out and is shoved clear of the spears")
 
@@ -1822,9 +2309,35 @@ func test_enemy_infantry_still_separates_softly_from_spearman() -> void:
 	inf.team = 1                          # enemy infantry (not cavalry)
 	spear.position = Vector2.ZERO
 	inf.position = Vector2(20.0, 0.0)
-	spear._separate()
+	spear._separate(1.0 / 60.0)
 	assert_lt(spear.position.x, 0.0,
 		"a spearman is only a hard wall to cavalry — infantry shoves it normally")
+
+
+func test_separate_caps_the_summed_push_across_simultaneous_overlaps() -> void:
+	# A pathologically huge separation_radius (simulating a corrupted min_dist, the
+	# case SEPARATION_SPEED_CAP exists to guard against) makes a single pair's raw
+	# push, on its own, already dwarf the cap. Three such enemies overlapping at
+	# once must still sum to no more than the cap's own single-tick budget -- not
+	# three times it -- or the cap is only bounding each pair independently while
+	# leaving the real per-tick total unbounded.
+	var a := _make_unit()
+	a.separation_radius = 2000.0
+	var delta := 1.0 / 60.0
+	var enemies: Array[Unit] = []
+	for x in [5.0, 10.0, 15.0]:
+		var e := _make_unit()
+		e.team = 1
+		e.separation_radius = 2000.0
+		e.position = Vector2(x, 0.0)
+		enemies.append(e)
+	a.position = Vector2.ZERO
+	a._separate(delta)
+	var cap_budget: float = Unit.SEPARATION_SPEED_CAP * delta
+	assert_lte(a.position.length(), cap_budget + 0.01,
+		"the total single-tick displacement from all three overlaps together stays " +
+		"within one tick's speed-cap budget, not three times it")
+	assert_gt(a.position.length(), 0.0, "the unit is still pushed, just bounded")
 
 
 # --- fatigue + line relief --------------------------------------
@@ -2182,6 +2695,73 @@ func test_formation_slots_one_per_soldier() -> void:
 	assert_eq(UnitFormation.slots(u, 120).size(), 120, "one slot per living soldier")
 	assert_eq(UnitFormation.slots(u, 1).size(), 1, "a single soldier gets one slot")
 	assert_eq(UnitFormation.slots(u, 0).size(), 0, "no soldiers -> no slots (an empty block)")
+
+
+func test_formation_slots_file_major_partial_rank_is_centred_not_edge_biased() -> void:
+	# 24 soldiers at 7 files: 3 full ranks (21) + a 3-man partial rank. Regression guard: an
+	# early implementation assigned the partial rank via raw `i % files`, which always piled
+	# the leftover onto whichever files a row-major count landed on first -- always the SAME
+	# edge of the block, so a fresh, zero-casualty spawn read as lopsided (one flank
+	# permanently a rank deeper) for any unit whose headcount isn't an exact multiple of its
+	# file count -- i.e. almost every unit in the game. The fix centres the partial rank the
+	# same way UnitFormation.block_slots' own row-major partial-rank centring already does.
+	var u := _make_unit(24)
+	u.frontage_override = 7
+	assert_true(u.file_major_reform, "sanity: file_major_reform defaults on")
+	var slots := u.formation_slots(24)
+	assert_eq(slots.size(), 24)
+	# Bucket soldiers by their local x (file) coordinate; the 3 files carrying the extra
+	# partial-rank member should be the 3 CENTRE files, not the 3 leftmost/rightmost.
+	var counts := {}
+	for s in slots:
+		var x: float = snappedf(s.x, 0.01)
+		counts[x] = counts.get(x, 0) + 1
+	var xs: Array = counts.keys()
+	xs.sort()
+	assert_eq(xs.size(), 7, "7 distinct file positions")
+	var deep_files: Array = []
+	for x in xs:
+		if counts[x] == 4:
+			deep_files.append(x)
+	assert_eq(deep_files.size(), 3, "exactly 3 files carry the extra (partial-rank) soldier")
+	assert_eq(deep_files, [xs[2], xs[3], xs[4]],
+			"the partial rank centres on the middle 3 files, not either edge")
+
+
+func test_effective_file_major_reform_auto_resolves_from_disciplined() -> void:
+	# AUTO ties to `disciplined`, not `training` (see Unit.file_major_reform_mode's own doc
+	# comment for why): a disciplined unit reflows file-major, an undisciplined one row-major.
+	var u := _make_unit(120)
+	u.file_major_reform_mode = Unit.ReformMode.AUTO
+	u.disciplined = true
+	assert_true(u._effective_file_major_reform(), "AUTO + disciplined resolves file-major")
+	u.disciplined = false
+	assert_false(u._effective_file_major_reform(), "AUTO + undisciplined resolves row-major")
+
+
+func test_effective_file_major_reform_file_major_and_row_major_ignore_disciplined() -> void:
+	# The explicit modes are unaffected by `disciplined` either way -- only AUTO defers to it.
+	var u := _make_unit(120)
+	u.file_major_reform_mode = Unit.ReformMode.FILE_MAJOR
+	u.disciplined = false
+	assert_true(u._effective_file_major_reform(), "FILE_MAJOR stays file-major even undisciplined")
+	u.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
+	u.disciplined = true
+	assert_false(u._effective_file_major_reform(), "ROW_MAJOR stays row-major even disciplined")
+
+
+func test_file_major_reform_bool_compat_property_maps_onto_the_mode() -> void:
+	# The bool compat property (every pre-AUTO call site) reads true only for FILE_MAJOR --
+	# AUTO reads false, same as ROW_MAJOR, since a plain bool can't represent "it depends".
+	var u := _make_unit(120)
+	u.file_major_reform = true
+	assert_eq(u.file_major_reform_mode, Unit.ReformMode.FILE_MAJOR,
+		"writing true sets FILE_MAJOR")
+	u.file_major_reform = false
+	assert_eq(u.file_major_reform_mode, Unit.ReformMode.ROW_MAJOR,
+		"writing false sets ROW_MAJOR")
+	u.file_major_reform_mode = Unit.ReformMode.AUTO
+	assert_false(u.file_major_reform, "reading through the bool compat property, AUTO is false")
 
 
 # --- frontage (resizable line width) ----------------------------
@@ -2555,9 +3135,229 @@ func test_engaged_soldier_indices_prefers_real_enemy_proximity_over_centroid_dis
 		"the ring soldier on the far side, with no real enemy nearby, is excluded")
 
 
+# --- engaged_ranks() (the engaged tier's reach-scaled depth) ----------------------------
+
+func test_engaged_ranks_matches_the_old_flat_default_for_a_bare_units_default_reach() -> void:
+	# A bare Unit.new() defaults to attack_range 26.0 (gladius/sword reach) and the default
+	# rank_pitch (FORMATION_SPACING, 9.0wu): ceil(26/9) = 3, exactly the old flat
+	# ENGAGED_RANKS constant this replaces -- so every test fixture that never overrides
+	# attack_range/rank_pitch keeps its existing engaged-tier depth unchanged.
+	var u := _make_unit(120)
+	assert_eq(u.engaged_ranks(), 3)
+
+
+func test_engaged_ranks_scales_up_for_a_longer_reach_unit() -> void:
+	# A spear (reach 48wu) at the default 9wu rank pitch: ceil(48/9) = 6 -- deep enough that
+	# rank-4/5 spearmen, who previously could never be selected as engaged regardless of
+	# whether they were within their own weapon's reach, are now included.
+	var u := _make_unit(120)
+	u.attack_range = 48.0
+	assert_eq(u.engaged_ranks(), 6)
+
+
+func test_engaged_ranks_scales_down_for_a_short_reach_unit() -> void:
+	# A sidearm (reach 12wu, the Archers' melee backup) at the default 9wu rank pitch:
+	# ceil(12/9) = 2.
+	var u := _make_unit(120)
+	u.attack_range = 12.0
+	assert_eq(u.engaged_ranks(), 2)
+
+
+func test_engaged_ranks_accounts_for_a_wider_rank_pitch() -> void:
+	# Cavalry spawn with a much deeper rank pitch than foot troops (a mounted soldier takes
+	# far more ground nose-to-tail) -- e.g. 30wu reach at a 60wu rank pitch: ceil(30/60) = 1,
+	# so a cavalry regiment only ever fields its front rank, reflecting how far apart its
+	# own ranks actually stand, not a flat constant blind to rank spacing.
+	var u := _make_unit(120)
+	u.attack_range = 30.0
+	u.rank_pitch = 60.0
+	assert_eq(u.engaged_ranks(), 1)
+
+
+func test_engaged_ranks_is_clamped_to_at_least_one() -> void:
+	var u := _make_unit(120)
+	u.attack_range = 0.5   # a near-zero reach would otherwise ceil to 1 anyway, but pin the floor
+	assert_eq(u.engaged_ranks(), 1)
+
+
+func test_engaged_ranks_is_clamped_to_the_cap() -> void:
+	# A hypothetical future long-reach weapon can't blow the engaged tier -- and every
+	# per-tick pass gated on it -- out to dozens of ranks.
+	var u := _make_unit(120)
+	u.attack_range = 1000.0
+	assert_eq(u.engaged_ranks(), Unit.ENGAGED_RANKS_CAP)
+
+
+func test_body_tier_ranks_is_one_at_the_standard_rank_pitch() -> void:
+	# Body contact is a BODY-geometry question, not a reach one: a 0.45m body at the standard
+	# 0.45m rank pitch spans exactly one rank, so only the front rank is physically in contact
+	# however far the unit's weapon reaches.
+	var u := _make_unit(120)
+	assert_eq(u.body_tier_ranks(), 1)
+
+
+func test_body_tier_ranks_ignores_weapon_reach() -> void:
+	# The whole point of the split: a spear's 48wu reach takes engaged_ranks() to 6 (who can
+	# STRIKE) without moving body_tier_ranks() off 1 (whose BODY is being shoved). A sixth-rank
+	# spearman strikes past five files of his own men without anything touching him.
+	var u := _make_unit(120)
+	u.attack_range = 48.0
+	assert_eq(u.engaged_ranks(), 6, "sanity: reach still drives the melee tier")
+	assert_eq(u.body_tier_ranks(), 1, "but not the body-contact tier")
+
+
+func test_body_tier_ranks_deepens_when_ranks_compress_below_a_body_diameter() -> void:
+	# TESTUDO packs ranks to 0.6 of the standard pitch (5.4wu), below a 9wu body diameter, so a
+	# second rank genuinely IS in contact: ceil(9 / 5.4) = 2.
+	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	assert_eq(u.body_tier_ranks(), 2)
+
+
+func test_body_tier_ranks_is_clamped_to_the_cap() -> void:
+	var u := _make_unit(120)
+	u.rank_pitch = 0.01   # an absurdly compressed pitch can't blow the tier out to dozens of ranks
+	assert_eq(u.body_tier_ranks(), Unit.BODY_TIER_RANKS_CAP)
+
+
+func test_body_tier_leaves_an_unengaged_bulk_when_reach_would_swallow_the_block() -> void:
+	# The defect this split fixes: a block shallower than its own reach depth had EVERY
+	# soldier in the engaged tier, so SoldierBodies.step() lost the unengaged bulk its engaged
+	# branch is written relative to. A 40-man, 9-file spear regiment is 5 ranks deep against an
+	# engaged depth of 6 -- the melee tier still (correctly) covers everyone, while the body
+	# tier keeps a real bulk in reserve.
+	var u := _make_unit(40)
+	u.attack_range = 48.0
+	u.set_frontage(9)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(1.0 / 60.0)
+	var n: int = u._sim_soldier_pos.size()
+	assert_gt(n, 0, "sanity: bodies are seeded")
+	assert_eq(u.engaged_soldier_indices(n).size(), n,
+		"sanity: reach-derived melee tier still covers the whole shallow block")
+	var body_tier: int = u.body_tier_soldier_indices(n).size()
+	assert_gt(body_tier, 0, "the body tier is never empty for an engaged unit")
+	assert_lt(body_tier, n, "the body tier always leaves an unengaged bulk")
+
+
+func test_body_tier_never_widens_the_melee_tier() -> void:
+	# The cap only ever REMOVES rear ranks; every body it drops falls back to ordinary
+	# unengaged treatment, so this can never expand what melee/contact resolution sees.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(1.0 / 60.0)
+	var n: int = u._sim_soldier_pos.size()
+	var melee: PackedInt32Array = u.engaged_soldier_indices(n)
+	var body: PackedInt32Array = u.body_tier_soldier_indices(n)
+	assert_lte(body.size(), melee.size(), "the body tier is never wider than the melee tier")
+	var melee_set := {}
+	for i in melee:
+		melee_set[i] = true
+	for i in body:
+		assert_true(melee_set.has(i), "every body-tier soldier is also in the melee tier")
+
+
+func test_body_tier_in_square_narrows_within_the_threatened_set_not_the_whole_block() -> void:
+	# A pressed square routinely has more soldiers in reach than the body tier admits, so the
+	# cap has to narrow the THREATENED set rather than re-select over the block. Ranking the
+	# whole block by centroid distance instead would return corner soldiers with nothing near
+	# them while dropping men actually in contact -- the inverse of what this selection means.
+	# Exercised here because the line-formation tests below/above never reach the square branch.
+	# SoldierEnemyProximity is keyed by Engine.get_physics_frames(), so a synchronous test
+	# shares a frame with whatever ran before it and would otherwise query a grid built from
+	# ANOTHER test's units -- which silently makes this one pass for the wrong reason (it did,
+	# until the reset was added: verified by reverting the fix and watching the full-suite run
+	# stay green while the single-test run failed).
+	SoldierEnemyProximity.reset()
+	var u := _make_unit(60)
+	u.seed_sim_soldiers()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_true(u.in_square(), "sanity: the unit is in a square")
+	var enemy := _make_unit(60)
+	enemy.team = 1
+	# Press one face only, so the threatened set is a genuine subset of the perimeter and the
+	# block's most centroid-distant soldiers include corners with nothing near them.
+	enemy.position = u.position + Vector2(0.0, u.soldier_block_extent() + 10.0)
+	enemy.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(1.0 / 60.0)
+	var n: int = u._sim_soldier_pos.size()
+	var melee: PackedInt32Array = u.engaged_soldier_indices(n)
+	var body: PackedInt32Array = u.body_tier_soldier_indices(n)
+	assert_gt(melee.size(), 0, "sanity: the square has soldiers in the melee tier")
+	assert_gt(melee.size(), u.body_tier_cap(n),
+		"sanity: this press genuinely exceeds the cap, so the narrowing path actually runs")
+	assert_lte(body.size(), melee.size(), "the body tier is never wider than the melee tier")
+	var melee_set := {}
+	for i in melee:
+		melee_set[i] = true
+	for i in body:
+		assert_true(melee_set.has(i),
+			"every body-tier soldier in a square is also in the melee tier (index %d was not)" % i)
+
+
+func test_body_tier_in_square_caps_the_perimeter_when_no_enemy_is_in_reach() -> void:
+	# The square's OTHER branch: a unit can be engaged (the linger latch outlives contact --
+	# the enemy died or was knocked clear) with nothing currently in reach, so `threatened` is
+	# empty and the selection falls to the formation's own perimeter ring. The bounded caller
+	# still has to cap that ring; the unbounded one takes it whole, which is what
+	# test_engaged_soldier_indices_is_the_whole_perimeter_when_squared already pins.
+	SoldierEnemyProximity.reset()
+	var u := _make_unit(60)
+	u.seed_sim_soldiers()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(1.0 / 60.0)
+	assert_true(u.is_engaged(), "sanity: engaged, with no enemy anywhere on the field")
+	var n: int = u._sim_soldier_pos.size()
+	var cap: int = u.body_tier_cap(n)
+	var body: PackedInt32Array = u.body_tier_soldier_indices(n)
+	var ring: PackedInt32Array = u.engaged_soldier_indices(n)
+	assert_gt(ring.size(), cap,
+		"sanity: the untrimmed perimeter genuinely exceeds the cap, so the cap actually binds")
+	assert_gt(body.size(), 0, "the body tier is never empty for an engaged unit")
+	assert_lte(body.size(), cap, "the perimeter ring is capped to the body-contact budget")
+
+
+func test_body_tier_soldier_indices_is_empty_when_not_engaged() -> void:
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	assert_false(u.is_engaged(), "sanity: a fresh unit is not engaged")
+	assert_eq(u.body_tier_soldier_indices(u._sim_soldier_pos.size()).size(), 0)
+
+
+func test_engaged_soldier_indices_reaches_beyond_the_old_flat_rank_cap_for_a_longer_reach_unit() -> void:
+	# A spear-reach unit (48wu, engaged_ranks()==6) with enough soldiers to actually fill
+	# beyond 3 ranks must have its LIVE selection reach soldiers whose true rank is >= 3 --
+	# beyond what the old flat ENGAGED_RANKS=3 constant could ever select, regardless of how
+	# deep the unit's own formation actually runs. Previously those rank-4/5 soldiers could
+	# never land a strike within their own weapon's reach, no matter how close they
+	# geometrically stood, because they were never even included in the engaged candidate
+	# set SoldierMelee.resolve searches.
+	var u := _make_unit(60)
+	u.attack_range = 48.0
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	var files: int = u.formation_files(n)
+	assert_gt(n, files * 3, "sanity: this formation genuinely runs deeper than the old 3-rank cutoff")
+	var old_cutoff: int = mini(n, files * 3)
+	var indices := u.engaged_soldier_indices(n)
+	assert_eq(indices.size(), mini(n, files * u.engaged_ranks()), "selects up to engaged_ranks() worth of ranks")
+	assert_gt(indices.size(), old_cutoff, "the new selection is strictly larger than the old flat 3-rank one")
+	var deepest_selected_rank: int = 0
+	for i in indices:
+		deepest_selected_rank = maxi(deepest_selected_rank, i / files)
+	assert_gt(deepest_selected_rank, 2,
+		"a real rank-3+ soldier (0-indexed) is included -- beyond the old flat cap of ranks 0-2")
+
+
 func test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indices() -> void:
 	# NORMAL (line) formation, not SQUARE: the front-rank selection here is index-based
-	# ("first files*ENGAGED_RANKS indices"), which SoldierMelee.reap() breaks the moment a
+	# ("first files*engaged_ranks() indices"), which SoldierMelee.reap() breaks the moment a
 	# casualty splices the per-soldier arrays -- every index after the removed soldier
 	# shifts down, so "index i is rank i/files" no longer holds. Simulate exactly that
 	# staleness (without needing a real casualty) by swapping a genuinely-front soldier's
@@ -2569,7 +3369,7 @@ func test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indi
 	u.tick_engaged(0.0)   # arm the engaged latch
 	var n: int = u._sim_soldier_pos.size()
 	var files: int = u.formation_files(n)
-	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	var cutoff: int = mini(n, files * u.engaged_ranks())
 	assert_true(cutoff < n, "sanity: the engaged budget is a genuine subset of the whole block")
 	var front_idx: int = 0        # rank 0, file 0 -- genuinely laid out at the front
 	var rear_idx: int = n - 1     # the last rank's last file -- genuinely laid out at the rear
@@ -2598,7 +3398,7 @@ func test_canonical_target_slot_indices_is_the_front_rank_for_a_normal_formation
 	u.tick_engaged(0.0)
 	var n: int = u._sim_soldier_pos.size()
 	var files: int = u.formation_files(n)
-	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	var cutoff: int = mini(n, files * u.engaged_ranks())
 	assert_true(cutoff < n, "sanity: the engaged budget is a genuine subset of the whole block")
 	var slots: PackedVector2Array = u.soldier_world_slots(n)
 	var target: PackedInt32Array = u.canonical_target_slot_indices(slots, cutoff)
@@ -2630,6 +3430,86 @@ func test_canonical_target_slot_indices_delegates_to_live_perimeter_when_squared
 	var target: PackedInt32Array = u.canonical_target_slot_indices(slots, ring_size)
 	assert_eq(target, UnitFormation.live_perimeter_indices(slots, ring_size),
 		"canonical_target_slot_indices delegates to the live-position selection for SQUARE")
+
+
+# --- contact_soldier_indices: physical collision is proximity-gated, not combat-state-gated --
+
+func test_contact_soldier_indices_is_empty_when_neither_engaged_nor_in_contact() -> void:
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	assert_false(u.is_engaged(), "sanity: a fresh unit is not engaged")
+	assert_false(u._in_enemy_contact, "sanity: a fresh unit has no recorded contact")
+	assert_eq(u.contact_soldier_indices(u._sim_soldier_pos.size()).size(), 0,
+		"no soldiers participate in contact resolution with neither signal set")
+
+
+func test_contact_soldier_indices_returns_soldiers_when_in_contact_but_not_engaged() -> void:
+	# The core fix: a "disengaging" unit (a plain move order with no attack target -- see
+	# _think()'s own disengage comment) never becomes is_engaged(), but its soldiers' BODIES
+	# must still physically resist an enemy they're touching -- contact is a proximity fact,
+	# not a combat-state choice.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.MOVING
+	u._in_enemy_contact = true
+	assert_false(u.is_engaged(), "sanity: still not engaged -- no combat decision was made")
+	var n: int = u._sim_soldier_pos.size()
+	assert_gt(u.contact_soldier_indices(n).size(), 0,
+		"soldiers still participate in physical contact resolution")
+
+
+func test_engaged_soldier_indices_stays_empty_when_only_in_contact_not_engaged() -> void:
+	# Regression guard: the COMBAT-facing selection (melee striking, steering) must NOT be
+	# widened by _in_enemy_contact -- only contact_soldier_indices (physical collision) is.
+	# A disengaging unit still deals and takes no melee damage; only its bodies resist.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.MOVING
+	u._in_enemy_contact = true
+	var n: int = u._sim_soldier_pos.size()
+	assert_eq(u.engaged_soldier_indices(n).size(), 0,
+		"melee/steering's own selection is unaffected by mere physical contact")
+
+
+func test_contact_soldier_indices_matches_engaged_soldier_indices_when_actually_engaged() -> void:
+	# Sanity: for a genuinely fighting unit, both functions select the same soldiers -- they
+	# share the same geometry (_select_near_front_indices), only the GATE differs.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var n: int = u._sim_soldier_pos.size()
+	assert_eq(u.contact_soldier_indices(n), u.engaged_soldier_indices(n),
+		"a fighting unit's contact and engaged selections are identical")
+
+
+func test_in_enemy_contact_becomes_true_from_proximity_alone_even_when_disengaging() -> void:
+	# Mirrors test_normal_unit_in_melee_contact_marches_through_the_same_hostile_control's own
+	# setup (test_march_to_contact_order.gd): a plain move order with no attack target is a
+	# disengage command, so this unit never becomes is_engaged() -- but _in_enemy_contact must
+	# still go true from proximity alone, since physical collision is not a combat decision.
+	var u := _make_unit()
+	u.team = 0
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)   # within melee contact range
+	u.has_move_target = true
+	u.move_target = Vector2(-200, 0)
+	u.target_enemy = null
+	u._think(0.1)
+	assert_true(u._in_enemy_contact,
+		"contact is recorded from proximity alone, even though this unit is disengaging")
+	assert_false(u.is_engaged(), "sanity: the unit itself never decided to fight")
+
+
+func test_in_enemy_contact_is_false_with_no_enemy_nearby() -> void:
+	var u := _make_unit()
+	u.team = 0
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(2000, 2000)   # far outside melee contact range
+	u._think(0.1)
+	assert_false(u._in_enemy_contact, "no enemy nearby -- no contact recorded")
 
 
 func test_engaged_soldier_indices_memoizes_within_the_same_physics_tick() -> void:
@@ -2691,7 +3571,7 @@ func test_engaged_soldier_indices_use_cache_false_bypasses_a_populated_cache() -
 	# genuinely-front soldier's live position with a genuinely-rear one, the same technique
 	# test_engaged_soldier_indices_selects_live_front_soldiers_not_stale_low_indices uses.
 	var files: int = u.formation_files(n)
-	var cutoff: int = mini(n, files * Unit.ENGAGED_RANKS)
+	var cutoff: int = mini(n, files * u.engaged_ranks())
 	assert_true(cutoff < n, "sanity: there's a genuine rear soldier to swap in")
 	var front_idx: int = 0
 	var rear_idx: int = n - 1
@@ -2719,7 +3599,7 @@ func test_near_front_soldier_indices_is_empty_when_not_engaged() -> void:
 
 func test_near_front_soldier_indices_is_empty_when_squared() -> void:
 	# Square/Schiltron has no single front rank (the ring wraps the whole block) -- the
-	# caller (position_anchor_indices) keeps using the perimeter-based engaged selection
+	# caller (position_anchor_indices) keeps using the perimeter-based contact selection
 	# for that formation instead.
 	var u := _make_unit(24)
 	u.set_formation(Unit.FORMATION_SQUARE)
@@ -2734,7 +3614,7 @@ func test_near_front_soldier_indices_is_empty_when_squared() -> void:
 
 func test_near_front_soldier_indices_selects_anchor_ranks_worth_of_live_front_bodies() -> void:
 	# The settled, non-Square, engaged case: ANCHOR_RANKS-worth (narrower than the full
-	# ENGAGED_RANKS depth), by live position, same as engaged_soldier_indices' own mechanism.
+	# engaged_ranks() depth), by live position, same as engaged_soldier_indices' own mechanism.
 	var u := _make_unit(120)
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING
@@ -2749,9 +3629,27 @@ func test_near_front_soldier_indices_selects_anchor_ranks_worth_of_live_front_bo
 			"narrower than the full engaged-ranks selection")
 
 
-func test_position_anchor_indices_falls_back_to_engaged_selection_while_unstable() -> void:
+func test_near_front_soldier_indices_and_position_anchor_indices_work_while_merely_in_contact() -> void:
+	# The core fix: a "disengaging" unit (a plain move order with no attack target) never
+	# becomes is_engaged(), but SoldierBodies.couple() still needs to anchor its position on
+	# real contact-resisted front-rank bodies while it's physically touching an enemy -- or
+	# the anchor dilutes over the whole, mostly-static block the same way an earlier fix
+	# closed for a fighting regiment's charge (see docs/individual-collision-design.md). Both
+	# functions must return the identical, nonempty selection they would if truly engaged.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u._in_enemy_contact = true
+	assert_false(u.is_engaged(), "sanity: not combat-engaged, only in physical contact")
+	var n: int = u.soldiers
+	assert_false(u.near_front_soldier_indices(n).is_empty(),
+			"near_front_soldier_indices works from proximity alone")
+	assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n),
+			"settled, in-contact-only -> the narrower near-front selection")
+
+
+func test_position_anchor_indices_falls_back_to_contact_selection_while_unstable() -> void:
 	# _position_anchor_unstable (an in-progress order-turn, wheel, engage re-face, or reform
-	# hold) makes position_anchor_indices use the wider, more-damped engaged_soldier_indices
+	# hold) makes position_anchor_indices use the wider, more-damped contact_soldier_indices
 	# selection instead of the narrower near_front_soldier_indices -- narrowing the anchor
 	# mid-transition is exactly what destabilized the melee-lock swirl regression when
 	# tried unconditionally (see Unit.ANCHOR_RANKS' own docstring). The engage re-face
@@ -2765,12 +3663,12 @@ func test_position_anchor_indices_falls_back_to_engaged_selection_while_unstable
 	u.tick_engaged(0.0)
 	var n: int = u.soldiers
 	assert_false(u._position_anchor_unstable(), "sanity: settled, no maneuver/reform active")
-	assert_eq(u.position_anchor_indices(n, false), u.near_front_soldier_indices(n),
+	assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n),
 			"settled -> the narrower near-front selection")
 	u._engage_turn_target = Vector2(1.0, 0.0)   # an in-progress engage re-face
 	assert_true(u._position_anchor_unstable(), "sanity: a re-face turn is now in progress")
-	assert_eq(u.position_anchor_indices(n, false), u.engaged_soldier_indices(n, false),
-			"mid-turn -> falls back to the wider engaged selection")
+	assert_eq(u.position_anchor_indices(n), u.contact_soldier_indices(n),
+			"mid-turn -> falls back to the wider contact selection")
 
 
 func test_face_for_action_is_a_no_op_when_squared() -> void:
@@ -3039,6 +3937,61 @@ func test_loose_spacing_still_widens_the_grid() -> void:
 	u.set_formation(Unit.FORMATION_LOOSE)
 	assert_almost_eq(u.spacing_scale, Unit.LOOSE_SPACING_SCALE, 0.001,
 		"loose still doubles the grid spacing")
+
+
+# --- formation_containment_margin: melee-intermixing depth gated by formation_mode --
+# Shield-wall-class formations get the full margin; NORMAL gets a smaller, FLAT margin of
+# its own; LOOSE is deliberately left at zero (can become deeply enmeshed by design). An
+# earlier per-soldier, prone-gated NORMAL variant reintroduced the melee-lock-swirl
+# regression test_residual_melee_swirl_battle.gd guards against; see
+# formation_containment_margin's own doc comment for the full story.
+
+func test_shield_wall_class_formations_have_the_full_containment_margin() -> void:
+	# TIGHT/SQUARE/SCHILTRON/SHIELD_WALL/TESTUDO all interlock shields shoulder-to-
+	# shoulder, so they share the same full margin -- "effectively no depth-wise
+	# intermixing" doesn't distinguish between them.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	var expected: float = u.soldier_body_radius() * Unit.FORMATION_CONTAINMENT_SCALE_TIGHT
+	for mode: int in [Unit.FORMATION_TIGHT, Unit.FORMATION_SQUARE, Unit.FORMATION_SCHILTRON,
+			Unit.FORMATION_SHIELD_WALL, Unit.FORMATION_TESTUDO]:
+		u.set_formation(mode)
+		assert_almost_eq(u.formation_containment_margin(), expected, 0.001,
+			"formation %d gets the full shield-wall-class containment margin" % mode)
+
+
+func test_normal_formation_has_a_smaller_containment_margin_than_shield_wall_class() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	assert_eq(u.formation_mode, Unit.FORMATION_NORMAL, "sanity: default formation is NORMAL")
+	var expected: float = u.soldier_body_radius() * Unit.FORMATION_CONTAINMENT_SCALE_NORMAL
+	assert_almost_eq(u.formation_containment_margin(), expected, 0.001,
+		"NORMAL gets its own flat, smaller-than-shield-wall-class containment margin")
+	assert_lt(u.formation_containment_margin(),
+		u.soldier_body_radius() * Unit.FORMATION_CONTAINMENT_SCALE_TIGHT,
+		"NORMAL's margin stays well under the shield-wall-class full margin -- a couple of "
+		+ "ranks deep, not effectively no intermixing")
+
+
+func test_loose_formation_has_no_containment_margin() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.set_formation(Unit.FORMATION_LOOSE)
+	assert_eq(u.formation_containment_margin(), 0.0,
+		"LOOSE contributes no containment margin -- can become deeply enmeshed by design")
+
+
+func test_cavalry_never_gets_a_containment_margin_regardless_of_formation() -> void:
+	# Mounted formations don't interlock shields -- and budgeting CAV_MARK_RADIUS's wider
+	# body would eat SoldierSpatialHash.CELL_SIZE's own headroom (see that class's
+	# invariant test), so cavalry stays at zero across every formation mode.
+	var cav := _cavalry()
+	cav.seed_sim_soldiers()
+	for mode: int in [Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT, Unit.FORMATION_SHIELD_WALL,
+			Unit.FORMATION_TESTUDO, Unit.FORMATION_LOOSE]:
+		cav.set_formation(mode)
+		assert_eq(cav.formation_containment_margin(), 0.0,
+			"cavalry formation %d still contributes no containment margin" % mode)
 
 
 func test_shielded_stances_absorb_cavalry_charge() -> void:
@@ -3676,7 +4629,7 @@ func test_marks_track_the_simulated_body_count() -> void:
 	# The render reads _sim_soldier_pos directly: one mark instance per simulated body.
 	var u := _make_unit(40)
 	u.seed_sim_soldiers()
-	u._refresh_flock_render()
+	u._refresh_flock_render(0.0)
 	assert_eq(u._mm_body.instance_count, u._sim_soldier_pos.size(),
 			"one body instance per simulated soldier")
 	assert_eq(u._mm_outline.instance_count, u._sim_soldier_pos.size(),
@@ -3688,12 +4641,83 @@ func test_dead_unit_clears_its_marks() -> void:
 	# the last frame's marks (the _process DEAD guard).
 	var u := _make_unit(40)
 	u.seed_sim_soldiers()
-	u._refresh_flock_render()
+	u._refresh_flock_render(0.0)
 	assert_gt(u._mm_body.instance_count, 0, "a living unit draws its marks")
 	u.state = Unit.State.DEAD
 	u._process(0.0)
 	assert_eq(u._mm_body.instance_count, 0, "a dead unit clears its body marks")
 	assert_eq(u._mm_outline.instance_count, 0, "a dead unit clears its outline marks")
+
+
+func test_falling_prone_eases_over_several_ticks_instead_of_snapping() -> void:
+	# The bug this guards against: a soldier's mark used to switch instantly between the
+	# standing and fully-fallen pose the moment _sim_prone[i] first ticked above 0 -- a
+	# visible "blink" rather than a fall. _render_prone_progress must instead climb toward
+	# 1.0 gradually, at PRONE_EASE_RATE, across successive _refresh_flock_render calls.
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u._refresh_flock_render(0.0)
+	assert_almost_eq(u._render_prone_progress[0], 0.0, 0.0001, "starts standing")
+
+	u._sim_prone[0] = 1.0   # soldier 0 knocked prone, 1s remaining to rise
+	u._refresh_flock_render(0.05)
+	var after_one_tick: float = u._render_prone_progress[0]
+	assert_gt(after_one_tick, 0.0, "progress starts moving toward fully-fallen")
+	assert_lt(after_one_tick, 1.0, "one small tick does not snap straight to fully-fallen")
+
+	for _i in range(50):
+		u._refresh_flock_render(0.05)
+	assert_almost_eq(u._render_prone_progress[0], 1.0, 0.0001,
+		"enough ticks converge on fully-fallen")
+
+
+func test_rising_from_prone_also_eases_instead_of_snapping() -> void:
+	# The reverse direction of the fix above: once _sim_prone decays back to 0 (the
+	# soldier rises), the render progress must ease back down, not snap upright instantly.
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u._sim_prone[0] = 1.0
+	for _i in range(50):
+		u._refresh_flock_render(0.05)
+	assert_almost_eq(u._render_prone_progress[0], 1.0, 0.0001, "fully fallen after enough ticks")
+
+	u._sim_prone[0] = 0.0   # the sim timer decayed to 0 -- soldier is standing back up
+	u._refresh_flock_render(0.05)
+	var after_one_tick: float = u._render_prone_progress[0]
+	assert_lt(after_one_tick, 1.0, "progress starts moving back toward standing")
+	assert_gt(after_one_tick, 0.0, "one small tick does not snap straight back to standing")
+
+
+func test_process_keeps_easing_prone_progress_with_no_other_refresh_trigger_active() -> void:
+	# The bug this guards against: _process only calls _refresh_flock_render when one of
+	# four OTHER conditions holds (_render_dirty from body movement, a facing change,
+	# state == FIGHTING, or an instance-count drift) -- none of which the prone timer's own
+	# decay sets. Once a knocked-down soldier's body settles to rest (clearing _render_dirty)
+	# and the unit isn't FIGHTING, the ease must still complete via _prone_easing_active,
+	# not freeze mid-transition forever (the "inert number" failure class already fixed
+	# for _current_speed/position).
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.IDLE
+	u._process(0.0)   # consume the initial _render_dirty raised by seeding
+	assert_almost_eq(u._render_prone_progress[0], 0.0, 0.0001, "starts standing")
+
+	# Soldier knocked prone. In real play the SAME tick's knockback impulse also moves the
+	# body, which sets _render_dirty and triggers the refresh that starts the ease -- simulate
+	# exactly that one kickoff refresh here, then verify every LATER tick keeps easing with
+	# nothing else to trigger it.
+	u._sim_prone[0] = 1.0
+	u._refresh_flock_render(0.05)
+	assert_gt(u._render_prone_progress[0], 0.0, "the kickoff refresh starts the ease")
+	assert_true(u._prone_easing_active, "still short of the target right after the kickoff")
+
+	assert_false(u._render_dirty, "no body-speed trigger armed -- the body has already settled")
+	assert_ne(u.state, Unit.State.FIGHTING, "not fighting -- that gate condition is not what's covering us")
+	for _i in range(60):
+		u._process(0.05)
+
+	assert_almost_eq(u._render_prone_progress[0], 1.0, 0.0001,
+		"the ease completes via _prone_easing_active even with every other trigger inactive")
 
 
 func test_render_dirty_clears_after_a_refreshing_process_tick() -> void:
@@ -3704,6 +4728,126 @@ func test_render_dirty_clears_after_a_refreshing_process_tick() -> void:
 	assert_true(u._render_dirty, "a fresh seed marks the render dirty")
 	u._process(0.0)
 	assert_false(u._render_dirty, "a process tick consumes the dirty flag")
+
+
+# --- strike lunge: docs/soldier-loadout-design.md phase 3 ---------------------
+
+func test_engaged_soldiers_ease_into_a_forward_strike_lunge() -> void:
+	# A soldier the sim treats as actively fighting (engaged_soldier_indices) renders
+	# nudged forward along its own facing, easing in rather than snapping -- the same
+	# "no snaps" render idiom _render_prone_progress already uses, applied to a lunge
+	# instead of a fall. Soldier 0 (rank 0, file 0) is genuinely laid out at the front of
+	# a NORMAL formation, so it's inside the engaged selection once the latch is armed.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u._refresh_flock_render(0.0)
+	assert_almost_eq(u._render_strike_progress[0], 0.0, 0.0001, "starts idle -- not engaged yet")
+
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch so engaged_soldier_indices returns the front rank
+	# engaged_soldier_indices() memoizes per (Engine.get_physics_frames(), count) -- a real
+	# physics tick never fires between these two synchronous calls, so without this reset
+	# the second call would hit the cache entry the FIRST _refresh_flock_render call above
+	# populated (before the latch was armed) and never see the newly-engaged state at all.
+	u._engaged_indices_cache_frame = -1
+	u._refresh_flock_render(0.05)
+	var after_one_tick: float = u._render_strike_progress[0]
+	assert_gt(after_one_tick, 0.0, "progress starts moving toward the fully-lunged target")
+	assert_lt(after_one_tick, 1.0, "one small tick does not snap straight to the lunge")
+
+	for _i in range(50):
+		u._refresh_flock_render(0.05)
+	assert_almost_eq(u._render_strike_progress[0], 1.0, 0.0001,
+		"enough ticks converge on fully lunged")
+
+
+func test_unengaged_soldiers_do_not_lunge() -> void:
+	# The last soldier in a 120-strong NORMAL formation sits well behind the engaged
+	# depth (files * engaged_ranks()), so it should stay at rest even while the unit
+	# fights.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	var rear_idx: int = u._sim_soldier_pos.size() - 1
+	var cutoff: int = mini(u._sim_soldier_pos.size(),
+			u.formation_files(u._sim_soldier_pos.size()) * u.engaged_ranks())
+	assert_lt(cutoff, u._sim_soldier_pos.size(),
+		"sanity: the engaged budget is a genuine subset of the whole block")
+	for _i in range(50):
+		u._refresh_flock_render(0.05)
+	assert_almost_eq(u._render_strike_progress[rear_idx], 0.0, 0.0001,
+		"a soldier outside the engaged selection never starts lunging")
+
+
+func test_leaving_engagement_eases_the_lunge_back_out() -> void:
+	# The reverse direction: once the soldier drops out of the engaged selection (the
+	# regiment stops fighting and ENGAGED_LINGER decays to 0), the lunge must ease back
+	# to rest, not snap upright instantly.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+	for _i in range(50):
+		u._refresh_flock_render(0.05)
+	assert_almost_eq(u._render_strike_progress[0], 1.0, 0.0001, "fully lunged after enough ticks")
+
+	u.state = Unit.State.IDLE
+	u.tick_engaged(10.0)   # ENGAGED_LINGER worth of real time -- the latch fully decays
+	u._engaged_indices_cache_frame = -1   # force a fresh read -- see the sibling test's own comment
+	u._refresh_flock_render(0.05)
+	var after_one_tick: float = u._render_strike_progress[0]
+	assert_lt(after_one_tick, 1.0, "progress starts moving back toward rest")
+	assert_gt(after_one_tick, 0.0, "one small tick does not snap straight back to rest")
+
+
+func test_process_keeps_easing_strike_progress_with_no_other_refresh_trigger_active() -> void:
+	# Mirrors test_process_keeps_easing_prone_progress_with_no_other_refresh_trigger_active:
+	# once a soldier's lunge ease is mid-transition, _process must keep advancing it via
+	# _strike_easing_active even when none of _process's OTHER refresh triggers hold -- in
+	# real play the ENGAGED_LINGER window keeps engaged_soldier_indices() returning a
+	# soldier for a beat after combat state itself moves the unit out of FIGHTING.
+	var u := _make_unit(120)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.IDLE
+	u._process(0.0)   # consume the initial _render_dirty raised by seeding
+	assert_almost_eq(u._render_strike_progress[0], 0.0, 0.0001, "starts idle")
+
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch
+	u._engaged_indices_cache_frame = -1   # force a fresh read (no real tick advances the frame
+	                                       # counter between these synchronous calls) -- see
+	                                       # test_engaged_soldiers_ease_into_a_forward_strike_lunge
+	u._refresh_flock_render(0.05)   # the same-tick kickoff refresh a real strike would trigger
+	assert_gt(u._render_strike_progress[0], 0.0, "the kickoff refresh starts the ease")
+	assert_true(u._strike_easing_active, "still short of the target right after the kickoff")
+
+	u.state = Unit.State.IDLE   # combat state moves on; ENGAGED_LINGER still holds the latch
+	assert_false(u._render_dirty, "no body-speed trigger armed -- the body has already settled")
+	assert_ne(u.state, Unit.State.FIGHTING, "not fighting -- that gate condition is not what's covering us")
+	for _i in range(60):
+		u._process(0.05)
+
+	assert_almost_eq(u._render_strike_progress[0], 1.0, 0.0001,
+		"the ease completes via _strike_easing_active even with every other trigger inactive")
+
+
+# --- _soldier_strike_offset: pure render-position helper ----------------------
+# Pure function, no live MultiMesh read-back (same reasoning as _facing_pip_transform).
+
+func test_soldier_strike_offset_is_zero_when_not_striking() -> void:
+	assert_eq(Unit._soldier_strike_offset(0.0, Vector2.RIGHT, 5.0), Vector2.ZERO)
+
+
+func test_soldier_strike_offset_scales_with_progress_along_facing() -> void:
+	assert_eq(Unit._soldier_strike_offset(1.0, Vector2.RIGHT, 5.0), Vector2(5.0, 0.0))
+	assert_eq(Unit._soldier_strike_offset(0.5, Vector2.RIGHT, 5.0), Vector2(2.5, 0.0))
+
+
+func test_soldier_strike_offset_follows_an_arbitrary_facing_direction() -> void:
+	var offset: Vector2 = Unit._soldier_strike_offset(1.0, Vector2.UP, 4.0)
+	assert_almost_eq(offset.x, 0.0, 0.0001, "no sideways component when facing straight up")
+	assert_almost_eq(offset.y, -4.0, 0.0001, "the full lunge distance, toward -y (up)")
 
 
 func test_render_alpha_fades_toward_routing_target_instead_of_snapping() -> void:
@@ -3774,6 +4918,65 @@ func test_foot_kind_matches_unit_type() -> void:
 	assert_eq(_archer_unit()._foot_kind(), UnitMeshes.FOOT_ARCHER, "ranged unit -> archer (bow)")
 
 
+func test_foot_kind_prefers_the_actual_equipped_weapon_type_over_the_flags() -> void:
+	# docs/soldier-loadout-design.md phase 3: _foot_kind reads weapon_type_id first, ahead
+	# of the coarse anti_cavalry/is_ranged flags -- a future weapon-switch order writes
+	# weapon_type_id, so the render must follow THAT, not a flag nothing else touches.
+	var u := _make_unit(4)
+	assert_eq(u._foot_kind(), UnitMeshes.FOOT_INFANTRY, "sanity: default loadout is infantry")
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	assert_eq(u._foot_kind(), UnitMeshes.FOOT_SPEAR,
+		"weapon_type_id alone (no anti_cavalry flag) selects the spear figure")
+
+	var v := _make_unit(4)
+	v.weapon_type_id = LoadoutRegistry.WEAPON_SIDEARM
+	assert_eq(v._foot_kind(), UnitMeshes.FOOT_ARCHER,
+		"weapon_type_id alone (no is_ranged flag) selects the archer figure")
+
+
+func test_weapon_rest_angle_reads_the_registry_default() -> void:
+	var u := _make_unit(4)
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	assert_almost_eq(u.weapon_rest_angle(),
+		LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPEAR).default_hold_angle, 0.0001)
+
+
+func test_weapon_rest_angle_falls_back_to_zero_for_an_unknown_id() -> void:
+	var u := _make_unit(4)
+	u.weapon_type_id = -999
+	assert_eq(u.weapon_rest_angle(), 0.0)
+
+
+func test_shield_rest_angle_reads_the_registry_default() -> void:
+	var u := _make_unit(4)
+	u.shield_type_id = LoadoutRegistry.SHIELD_SCUTUM
+	assert_almost_eq(u.shield_rest_angle(),
+		LoadoutRegistry.shield(LoadoutRegistry.SHIELD_SCUTUM).default_hold_angle, 0.0001)
+
+
+func test_shield_rest_angle_falls_back_to_zero_for_an_unknown_id() -> void:
+	var u := _make_unit(4)
+	u.shield_type_id = -999
+	assert_eq(u.shield_rest_angle(), 0.0)
+
+
+func test_figure_meshes_bake_the_unit_loadout_hold_angles() -> void:
+	# _build_figure_meshes threads weapon_rest_angle()/shield_rest_angle() through to
+	# UnitMeshes.figure_mesh, so a unit actually carrying WEAPON_SPEAR (set before _ready(),
+	# matching how Battle._spawn_unit configures a real Spearman) bakes a figure that
+	# differs from the same shape built at the neutral 0.0 default -- proving the angle
+	# actually reaches the mesh, not just that weapon_rest_angle() itself is nonzero.
+	var u: Unit = Unit.new()
+	u.anti_cavalry = true
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	add_child_autofree(u)
+	assert_gt(absf(u.weapon_rest_angle()), 0.0001,
+		"sanity: LoadoutRegistry gives the spear a nonzero rest angle")
+	var neutral := UnitMeshes.figure_mesh(false, UnitMeshes.FOOT_SPEAR, Unit.MARK_RADIUS, false, false)
+	assert_true(u._figure_body_mesh != neutral,
+		"the spawned unit's figure differs from the same shape baked at hold_angle 0.0")
+
+
 func test_foot_types_build_distinct_figure_meshes() -> void:
 	# Spearmen, archers and line infantry each carry a different held item, so their
 	# zoomed-in silhouettes are distinct meshes — the per-type read survives up close.
@@ -3841,7 +5044,7 @@ func test_facing_pip_transform_matches_soldier_facing() -> void:
 	# up) -- instead of just picking a mesh variant. Pure function, no live MultiMesh
 	# read-back (Godot's MultiMesh instance data isn't synchronously readable in
 	# headless tests, even for the already-working body/outline transforms).
-	var t: Transform2D = Unit._facing_pip_transform(false, Vector2.UP, Vector2(5, 5))
+	var t: Transform2D = Unit._facing_pip_transform(0.0, Vector2.UP, Vector2(5, 5))
 	assert_almost_eq(t.get_rotation(), Vector2.UP.angle(), 0.001,
 		"the pip rotates to the soldier's own facing, not just left/right")
 	assert_eq(t.get_origin(), Vector2(5, 5), "the pip sits at the soldier's position")
@@ -3850,11 +5053,22 @@ func test_facing_pip_transform_matches_soldier_facing() -> void:
 
 
 func test_prone_soldiers_facing_pip_collapses() -> void:
-	# A soldier on the ground has no meaningful facing to point an arrow along --
+	# A fully-fallen soldier has no meaningful facing to point an arrow along --
 	# collapse its pip to a zero-scale (invisible) transform rather than drawing one.
-	var t: Transform2D = Unit._facing_pip_transform(true, Vector2.UP, Vector2(5, 5))
+	var t: Transform2D = Unit._facing_pip_transform(1.0, Vector2.UP, Vector2(5, 5))
 	assert_almost_eq(t.get_scale().length(), 0.0, 0.001,
-		"a prone soldier's facing pip is collapsed to zero scale")
+		"a fully prone soldier's facing pip is collapsed to zero scale")
+
+
+func test_facing_pip_transform_eases_scale_at_intermediate_prone_progress() -> void:
+	# The whole point of tracking progress instead of a boolean: a soldier mid-fall (neither
+	# fully standing nor fully down) gets a partially-collapsed pip, not an instant jump
+	# straight from full scale to zero the moment _sim_prone first ticks nonzero.
+	var t: Transform2D = Unit._facing_pip_transform(0.5, Vector2.UP, Vector2(5, 5))
+	var full_scale: float = Unit._facing_pip_transform(0.0, Vector2.UP, Vector2(5, 5)).get_scale().length()
+	var mid_scale: float = t.get_scale().length()
+	assert_gt(mid_scale, 0.0, "half-fallen is not yet fully collapsed")
+	assert_lt(mid_scale, full_scale, "half-fallen is smaller than fully standing")
 
 
 # --- _soldier_render_color: the engaged-highlight debug visual (Settings.show_engaged_highlight) ----------
@@ -3862,20 +5076,117 @@ func test_prone_soldiers_facing_pip_collapses() -> void:
 
 func test_soldier_render_color_prone_wins_over_engaged_highlight() -> void:
 	# A felled soldier's dark tint is a more important signal than the debug highlight --
-	# prone always wins, even when the highlight is on and this soldier is engaged.
-	assert_eq(Unit._soldier_render_color(true, true, true), Unit.PRONE_COLOR,
-		"prone beats the engaged highlight")
+	# fully prone beats the engaged highlight, even when the highlight is on and this
+	# soldier is engaged.
+	assert_eq(Unit._soldier_render_color(1.0, true, true), Unit.PRONE_COLOR,
+		"fully prone beats the engaged highlight")
 
 
 func test_soldier_render_color_highlight_only_when_toggle_on_and_engaged() -> void:
-	assert_eq(Unit._soldier_render_color(false, true, true), Unit.ENGAGED_HIGHLIGHT_COLOR,
+	assert_eq(Unit._soldier_render_color(0.0, true, true), Unit.ENGAGED_HIGHLIGHT_COLOR,
 		"toggle on + engaged -> highlighted")
-	assert_eq(Unit._soldier_render_color(false, true, false), Color.WHITE,
+	assert_eq(Unit._soldier_render_color(0.0, true, false), Color.WHITE,
 		"toggle on but NOT engaged -> normal white")
-	assert_eq(Unit._soldier_render_color(false, false, true), Color.WHITE,
+	assert_eq(Unit._soldier_render_color(0.0, false, true), Color.WHITE,
 		"engaged but toggle off -> normal white (the debug visual is opt-in)")
-	assert_eq(Unit._soldier_render_color(false, false, false), Color.WHITE,
+	assert_eq(Unit._soldier_render_color(0.0, false, false), Color.WHITE,
 		"neither prone, toggle, nor engaged -> normal white")
+
+
+func test_soldier_render_color_eases_toward_prone_at_intermediate_progress() -> void:
+	# The whole point of tracking progress instead of a boolean: a soldier mid-fall gets a
+	# partially-darkened tint, not an instant switch to PRONE_COLOR.
+	var mid: Color = Unit._soldier_render_color(0.5, false, false)
+	assert_ne(mid, Color.WHITE, "half-fallen isn't still pure white")
+	assert_ne(mid, Unit.PRONE_COLOR, "half-fallen isn't yet the full prone tint")
+
+
+# --- _soldier_render_color: the always-on broken-formation highlight (SoldierEncirclement) ----
+
+func test_soldier_render_color_broken_wins_over_the_engaged_debug_highlight() -> void:
+	# A broken soldier is a real gameplay state change, not an opt-in debug overlay -- it
+	# takes precedence over the engaged-highlight toggle even when both would otherwise apply.
+	assert_eq(Unit._soldier_render_color(0.0, true, true, true), Unit.BROKEN_HIGHLIGHT_COLOR,
+		"broken wins over the engaged highlight")
+
+
+func test_soldier_render_color_broken_shows_even_with_the_engaged_toggle_off() -> void:
+	# Unlike the engaged highlight, the broken tint is never gated behind Settings.show_engaged_highlight.
+	assert_eq(Unit._soldier_render_color(0.0, false, false, true), Unit.BROKEN_HIGHLIGHT_COLOR,
+		"broken shows regardless of the debug toggle")
+
+
+func test_soldier_render_color_prone_wins_over_broken() -> void:
+	# A felled soldier's dark tint is a more important signal than either highlight.
+	assert_eq(Unit._soldier_render_color(1.0, false, false, true), Unit.PRONE_COLOR,
+		"fully prone beats the broken highlight too")
+
+
+func test_soldier_render_color_defaults_to_not_broken() -> void:
+	# The is_broken parameter defaults to false, so every pre-existing 3-argument call site
+	# keeps its old behavior unchanged.
+	assert_eq(Unit._soldier_render_color(0.0, false, false), Color.WHITE)
+
+
+# --- is_soldier_broken: the shared gate (breaks_under_encirclement() + the raw flag) -----
+# Both SoldierMelee.resolve's per-soldier combat-multiplier override and the render tint
+# (_soldier_is_broken_for_render below) read this one canonical check.
+
+func test_is_soldier_broken_true_for_a_broken_soldier_in_an_eligible_formation() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_true(u.is_soldier_broken(0))
+
+
+func test_is_soldier_broken_ignores_a_stale_flag_after_a_formation_change() -> void:
+	# set_formation() doesn't clear _sim_soldier_broken -- a flag left over from when the unit
+	# was still SHIELD_WALL must not still read as broken once the unit has switched away.
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	u._sim_soldier_broken = PackedByteArray([1])   # stale, from before the formation change below
+	u.set_formation(Unit.FORMATION_NORMAL)
+	assert_false(u.is_soldier_broken(0),
+		"a stale broken flag is ignored the instant the unit leaves an eligible formation")
+
+
+func test_is_soldier_broken_false_for_a_square_unit_even_with_the_flag_set() -> void:
+	# SQUARE/SCHILTRON never legitimately set this flag (SoldierEncirclement excludes them),
+	# but the gate defends against it regardless of how the flag got set.
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_false(u.is_soldier_broken(0))
+
+
+func test_is_soldier_broken_false_when_the_flag_is_zero() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	u._sim_soldier_broken = PackedByteArray([0])
+	assert_false(u.is_soldier_broken(0))
+
+
+func test_is_soldier_broken_false_when_the_array_is_too_short() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	u._sim_soldier_broken = PackedByteArray()   # never seeded -- no out-of-range read
+	assert_false(u.is_soldier_broken(0))
+
+
+# --- _soldier_is_broken_for_render: is_soldier_broken plus the far-tier exclusion --------
+
+func test_soldier_is_broken_for_render_matches_is_soldier_broken_at_close_tier() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_true(u._soldier_is_broken_for_render(0, false))
+
+
+func test_soldier_is_broken_for_render_false_at_far_tier_even_when_eligible_and_broken() -> void:
+	var u := _make_unit(1)
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	u._sim_soldier_broken = PackedByteArray([1])
+	assert_false(u._soldier_is_broken_for_render(0, true), "far-tier units have no simulated bodies to tint")
 
 
 # --- drag-to-form-up: deploy facing on arrival ----------
@@ -4112,3 +5423,313 @@ func test_cycle_charge_cornered_pull_back_fights_in_place() -> void:
 	u._think(0.1)
 	assert_false(u._cycle_recharging, "a cornered pull-back drops the recharge phase")
 	assert_eq(u.state, Unit.State.FIGHTING, "and the unit fights in place rather than freezing")
+
+
+## Shared staging for the caracole pacing tests: a cycle-charge cavalry fixture with
+## explicit gait/accel stats (so the pace assertions are exact, not fixture-default
+## dependent) and a distinct uid per fixture (a bare Unit.new() defaults to uid -1).
+func _make_caracole_unit() -> Unit:
+	var u := _make_unit()
+	u.team = 0
+	u.uid = 1
+	u.is_cavalry = true
+	u.order_mode = Unit.ORDER_CYCLE_CHARGE
+	u.position = Vector2.ZERO
+	u.walk_speed = 34.0
+	u.jog_speed = 70.0
+	u.move_speed = 170.0
+	u.accel = 40.0
+	u.decel = 40.0
+	return u
+
+
+func test_cycle_charge_pull_back_retires_at_a_trot_not_a_sprint() -> void:
+	# The peel's re-planted goal always sits inside SPRINT_START_DISTANCE, so without the
+	# recharging pace arm the plain ladder reads it as a close destination and gallops
+	# AWAY at full sprint -- the recovery leg must ride at a trot (jog) instead.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(50, 0)
+	u.target_enemy = enemy
+	u._cycle_recharging = true
+	var top_speed: float = 0.0
+	for i in range(180):
+		u._think(1.0 / 60.0)
+		top_speed = maxf(top_speed, u._current_speed)
+		if not u._cycle_recharging:
+			break
+	assert_lt(top_speed, u.move_speed - 1.0, "the pull-back must not gallop at sprint pace")
+	assert_almost_eq(top_speed, u.jog_speed, 2.0, "the pull-back rides at a trot (jog pace)")
+	PathField.active = old_pf
+
+
+func test_cycle_charge_pull_back_brakes_onto_the_standoff() -> void:
+	# The standoff is a turn-around point: a pull-back arriving there must have shed its
+	# trot down the arrival envelope (brake_arrival), not hold pace to the wire and carry
+	# it through the flip -- the soldier bodies cannot reverse a moving block in place,
+	# and the coupled regiment used to coast far past the standoff while a fleeing target
+	# opened an uncatchable lead. (Speed the peel STARTS with is a separate matter: the
+	# brake rate is honest bounded physics, so a leg too short to shed a gallop arrives
+	# with the remainder -- this test pins the pace-held-to-the-wire case instead.)
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(60, 0)
+	u.target_enemy = enemy
+	u._cycle_recharging = true
+	var ticks: int = 0
+	while u._cycle_recharging and ticks < 900:
+		u._think(1.0 / 60.0)
+		ticks += 1
+	assert_false(u._cycle_recharging, "the pull-back completes against a stationary target")
+	assert_lt(u._current_speed, 30.0, "and arrives at the standoff braked, not at pace")
+	var dist: float = u.position.distance_to(enemy.position)
+	assert_between(dist, Unit.CYCLE_CHARGE_STANDOFF - 5.0, Unit.CYCLE_CHARGE_STANDOFF + 5.0,
+		"the flip happens at the standoff itself, not far past it")
+	PathField.active = old_pf
+
+
+func test_cycle_charge_approach_canters_beyond_the_sprint_window() -> void:
+	# Between the standoff and SPRINT_START_DISTANCE the re-approach rides at a canter
+	# (jog), not a walk: a walk-pace stern chase never closes on a fleeing target moving
+	# at nearly the same speed, which silently killed the caracole loop the first time a
+	# target routed away mid-cycle.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(500, 0)   # well beyond SPRINT_START_DISTANCE
+	u.target_enemy = enemy
+	for i in range(150):
+		u._think(1.0 / 60.0)
+	assert_almost_eq(u._current_speed, u.jog_speed, 2.0,
+		"the caracole approach paces at a canter beyond the sprint window")
+	PathField.active = old_pf
+
+
+func test_chase_approach_canters_beyond_the_sprint_window() -> void:
+	# CHASE ("relentless pursuit") shares the caracole's canter arm: without it, a
+	# pursuit starting beyond SPRINT_START_DISTANCE closed on a fleeing target at
+	# walk-minus-flee pace -- a stern chase that reads as strolling after the quarry.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	u.order_mode = Unit.ORDER_CHASE
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(500, 0)   # well beyond SPRINT_START_DISTANCE
+	u.target_enemy = enemy
+	for i in range(150):
+		u._think(1.0 / 60.0)
+	assert_almost_eq(u._current_speed, u.jog_speed, 2.0,
+		"a CHASE pursuit paces at a canter beyond the sprint window")
+	PathField.active = old_pf
+
+
+func test_sweep_routers_approach_canters_beyond_the_sprint_window() -> void:
+	# SWEEP_ROUTERS is explicitly about running down routing enemies, so it canters
+	# toward its quarry beyond the sprint window like the other pursuit stances.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	u.order_mode = Unit.ORDER_SWEEP_ROUTERS
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(500, 0)   # well beyond SPRINT_START_DISTANCE
+	u.target_enemy = enemy
+	for i in range(150):
+		u._think(1.0 / 60.0)
+	assert_almost_eq(u._current_speed, u.jog_speed, 2.0,
+		"a router sweep paces at a canter beyond the sprint window")
+	PathField.active = old_pf
+
+
+func test_plain_attack_approach_still_walks_beyond_the_sprint_window() -> void:
+	# The canter arm is stance-gated: an ordinary (no-stance) attack approach keeps the
+	# stamina-conserving walk out beyond SPRINT_START_DISTANCE.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	u.order_mode = 0
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.uid = 2
+	enemy.position = Vector2(500, 0)
+	u.target_enemy = enemy
+	for i in range(150):
+		u._think(1.0 / 60.0)
+	assert_almost_eq(u._current_speed, u.walk_speed, 2.0,
+		"a plain attack approach still walks beyond the sprint window")
+	PathField.active = old_pf
+
+
+func test_cycle_charge_disengage_move_order_keeps_the_walk() -> void:
+	# The canter applies to the combat approach only: a plain disengage march (an orderly
+	# move order) under the stance paces like any other orderly move.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_caracole_unit()
+	for i in range(150):
+		u._move_to(Vector2(600, 0), 1.0 / 60.0, true)
+	assert_almost_eq(u._current_speed, u.walk_speed, 2.0,
+		"an orderly disengage march under the stance keeps the ordinary walk")
+	PathField.active = old_pf
+
+
+func test_gait_pace_maps_each_gait_to_this_units_own_stat() -> void:
+	# The pace a gait ORDERS, from this unit's own stat block: walk and the unknown
+	# fallback read walk_speed, jog reads jog_speed, and run/sprint both read the
+	# type's top pace (RUN's close-in switchover lives in _move_to, not here).
+	var u := _make_unit()
+	u.walk_speed = 40.0
+	u.jog_speed = 60.0
+	u.move_speed = 80.0
+	assert_eq(u.gait_pace(Unit.GAIT_WALK), 40.0, "walk reads walk_speed")
+	assert_eq(u.gait_pace(Unit.GAIT_JOG), 60.0, "jog reads jog_speed")
+	assert_eq(u.gait_pace(Unit.GAIT_RUN), 80.0, "run's nominal pace is the top speed")
+	assert_eq(u.gait_pace(Unit.GAIT_SPRINT), 80.0, "sprint reads the top speed")
+	assert_eq(u.gait_pace(-1), 40.0, "an unknown value falls back to walk, like _move_to")
+
+
+func test_ordered_gait_reads_only_an_explicit_move_gait() -> void:
+	var u := _make_unit()
+	assert_eq(u.ordered_gait(), -1, "no order -> the unit paces itself")
+	u.current_order = Order.new_move(Vector2(100, 100))
+	assert_eq(u.ordered_gait(), -1, "a move without an explicit gait stays AUTO")
+	u.current_order = Order.new_move(Vector2(100, 100), 0, Unit.GAIT_SPRINT)
+	assert_eq(u.ordered_gait(), Unit.GAIT_SPRINT, "an explicit move gait reads through")
+
+
+# --- block centre offset (standing frontage anchor) --------------------------
+
+func test_block_centre_offset_is_zero_for_a_centred_block() -> void:
+	var u := _make_unit()
+	assert_eq(u.block_centre_offset(), Vector2.ZERO,
+			"no standing anchor offset -> chrome centres on the regiment point")
+
+
+func test_block_centre_offset_maps_the_local_shift_through_the_block_frame() -> void:
+	# A down-facing unit's block frame rotates local +X to world -X (the same
+	# mapping soldier_world_slots applies to the slots), so a local -36 shift
+	# lands at world +36 -- the case measured on the anchored-widen demo.
+	var u := _make_unit()
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	var off: Vector2 = u.block_centre_offset()
+	assert_almost_eq(off.x, 36.0, 0.001, "local -36 maps to world +36 for a down-facing block")
+	assert_almost_eq(off.y, 0.0, 0.001, "the shift stays on the file axis")
+
+
+func test_block_centre_offset_swings_with_the_heading() -> void:
+	var u := _make_unit()
+	u.frontage_anchor_offset = 20.0
+	u.facing = Vector2.DOWN
+	var down: Vector2 = u.block_centre_offset()
+	u.facing = Vector2.UP
+	assert_almost_eq((down + u.block_centre_offset()).length(), 0.0, 0.001,
+			"opposite headings put the block centre on opposite sides of the point")
+
+
+func test_block_centre_offset_honours_the_countermarch_mirror() -> void:
+	# soldier_world_slots negates local X while _formation_mirror_x stands, so
+	# the centre must flip the same way or the chrome would frame the wrong flank.
+	var u := _make_unit()
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	var plain: Vector2 = u.block_centre_offset()
+	u._formation_mirror_x = true
+	assert_almost_eq((u.block_centre_offset() + plain).length(), 0.0, 0.001,
+			"the mirror fold flips the centre to the other flank")
+
+
+func test_block_extent_measures_about_the_shifted_centre() -> void:
+	# The chrome extent is offset-invariant: a shifted block's ring is the same
+	# size as the centred block's, not inflated to cover the offset from the
+	# regiment point -- while the default (containment) measurement still grows.
+	var u := _make_unit()
+	var centred: float = SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers))
+	u.frontage_anchor_offset = 40.0
+	var slots: PackedVector2Array = u.formation_slots(u.soldiers)
+	assert_almost_eq(
+			SoldierFlock.compute_extent(u, slots, Vector2(u.frontage_anchor_offset, 0.0)),
+			centred, 0.001,
+			"measured about its own centre, the shifted block is the same size")
+	assert_gt(SoldierFlock.compute_extent(u, slots), centred,
+			"the default from-the-regiment-point measurement still covers the shifted reach")
+
+
+func test_process_replaces_chrome_when_the_offset_stands_or_swings() -> void:
+	# The chrome centre (block_centre_offset) moves when a standing offset is set
+	# and again when the heading turns under one -- _process must notice both and
+	# re-place the shadow (and request a redraw), or the chrome freezes at the
+	# regiment point while the block stands elsewhere.
+	var u := _make_unit()
+	u.selected = true
+	u.state = Unit.State.FIGHTING   # covers the engaged ring's centred arc too
+	await get_tree().process_frame
+	u.frontage_anchor_offset = 30.0
+	await get_tree().process_frame
+	assert_eq(u._render_last_anchor_offset, 30.0,
+			"the chrome tracker syncs to the newly-set offset")
+	assert_almost_eq(u._shadow.position.x, u.block_centre_offset().x, 0.001,
+			"the shadow re-centres on the shifted block")
+	u.facing = Vector2.UP
+	await get_tree().process_frame
+	assert_almost_eq(u._shadow.position.x, u.block_centre_offset().x, 0.001,
+			"a heading turn swings the standing offset, and the shadow follows")
+
+
+func test_block_centre_offset_is_zero_while_squared() -> void:
+	# SQUARE/SCHILTRON grids ignore the standing anchor (formation_slots centres
+	# the ring on `position`) and nothing clears frontage_anchor_offset on entry,
+	# so the chrome must read a squared block as centred -- not follow the stale
+	# offset off to where the block isn't. Leaving the square re-arms it, since
+	# the wide-line grid bakes the offset back in.
+	var u := _make_unit()
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_eq(u.block_centre_offset(), Vector2.ZERO,
+			"a squared block reads as centred despite the stale offset")
+	assert_almost_eq(
+			SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers), u._slot_anchor_centre()),
+			SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers)), 0.001,
+			"the chrome extent measures the square about position, uninflated")
+	u.set_formation(Unit.FORMATION_SCHILTRON)
+	assert_eq(u.block_centre_offset(), Vector2.ZERO,
+			"the schiltron variant reads as centred too")
+	u.set_formation(Unit.FORMATION_NORMAL)
+	assert_gt(u.block_centre_offset().length(), 1.0,
+			"back in a wide-line grid, the standing offset re-arms the chrome centre")
+
+
+func test_grid_pitch_accessors_fold_the_density_scale() -> void:
+	# Every slot-geometry consumer reads the _wu accessors, so the density scale
+	# (TIGHT/LOOSE/shield wall) must be folded there once, not at each call site.
+	var u := _make_unit()
+	u.file_pitch = 20.0
+	u.rank_pitch = 60.0
+	u.spacing_scale = 0.5
+	assert_eq(u.file_pitch_wu(), 10.0, "file pitch folds the density scale")
+	assert_eq(u.rank_pitch_wu(), 30.0, "rank pitch folds the density scale")
+
+
+func test_pivot_radius_grows_with_rank_pitch() -> void:
+	# The corner man's pacing arm is the half-diagonal of the PHYSICAL footprint, so
+	# deepening the rank axis alone must lengthen it (a deep cavalry column pivots
+	# slower than a foot line of the same headcount).
+	var u := _make_unit()
+	var base: float = u._pivot_radius()
+	u.rank_pitch *= 4.0
+	assert_gt(u._pivot_radius(), base, "a deeper grid has a farther corner man to pace")

@@ -1,0 +1,30 @@
+# GDScript style lint via gdtoolkit's gdlint (tools/check.sh lint; see .gdlintrc for the
+# config, tuned to this repo's actual conventions -- see that file's own header for the
+# rationale). Whole tracked *.gd tree, not diff-scoped -- the baseline is
+# clean, so a plain checkout (no fetch-depth: 0, no base-SHA plumbing) is all this needs.
+name: Check GDScript Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: GDScript lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install gdtoolkit
+        # Pinned to the exact version tools/README.md documents, so a local
+        # `pip install gdtoolkit==4.5.0` run reproduces this job's findings.
+        run: pip install gdtoolkit==4.5.0
+
+      - name: Lint GDScript
+        run: tools/check.sh lint

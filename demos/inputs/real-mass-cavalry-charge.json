@@ -1,0 +1,14 @@
+{
+  "_comment": "Derive contact-mass scalars from real loadout masses: a stationary Infantry regiment holds ground while a Cavalry regiment charges in on its own enemy-AI order. A cavalryman's contact mass is now derived from its real body_mass_kg plus the warhorse's real mass_kg (both relative to the 80kg foot-soldier baseline, SoldierCombat.relative_mass_from_kg) instead of the old hand-tuned 2.5 scalar -- the much heavier derived mass (~6.56) makes the horse far harder to knock back or fell than before, so it holds the line and keeps grinding the infantry down instead of getting shoved apart from the clash.",
+  "seed": "31501",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 500, "y": 350, "count": 30 },
+    { "team": 1, "type": "Cavalry", "x": 500, "y": 850, "count": 20 }
+  ],
+  "camera": [ { "tick": 0, "x": 500, "y": 430, "zoom": 1.1 } ],
+  "state": [8, 300, 500, 650, 800],
+  "fixed_fps": 30,
+  "max_frames": 500,
+  "fps": 15,
+  "width": 720
+}

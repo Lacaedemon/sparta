@@ -18,6 +18,13 @@ func _unit(uid: int, team: int, n: int, pos: Vector2, face: Vector2, spear: bool
 	u.position = pos
 	u.facing = face
 	u.training = 0.5
+	# file_major_reform defaults true, and _files()'s aspect-ratio ceiling gives even a
+	# 1-soldier unit more than one file -- under file_major_reform its lone soldier centres
+	# on the FULL (multi-file) frontage rather than at exactly `position`, adding a lateral
+	# offset these geometry-sensitive tests (reach, wound scale, knockback direction) don't
+	# expect. Row-major (the pre-existing behavior) keeps the fixture's simple, centred
+	# single-soldier geometry -- set before seed_sim_soldiers() so it takes effect at seed time.
+	u.file_major_reform = false
 	if spear:
 		u.anti_cavalry = true        # spearman profile
 		u.attack_range = 48.0        # long reach (#233: 2.4 m * 20)
@@ -170,6 +177,75 @@ func test_square_attacker_inflicts_fewer_wounds_via_soldier_path() -> void:
 		0.001, "by exactly the square's offence factor")
 
 
+# --- SoldierEncirclement's per-soldier "broken" override -----------------------
+
+func test_broken_defender_loses_the_shield_wall_frontal_defense_bonus() -> void:
+	# An individually broken SHIELD_WALL defender (SoldierEncirclement._sim_soldier_broken)
+	# fights as an unmodified individual: its frontal melee defense bonus is gone, so it
+	# takes the SAME wounds as a normal-formation defender under identical seed/geometry --
+	# not merely fewer than an intact wall (that's the pre-existing test above), the FULL
+	# baseline amount.
+	Replay.rng.seed = SEED
+	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+
+	Replay.rng.seed = SEED
+	var a_wall := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d_wall := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	d_wall.set_formation(Unit.FORMATION_SHIELD_WALL)
+	d_wall._sim_soldier_broken[0] = 1   # this specific soldier has broken from the wall
+	var broken_wounds: float = _wounds_over(a_wall, d_wall, 10)
+
+	assert_gt(normal_wounds, 0.0, "the normal defender takes wounds (sanity)")
+	assert_almost_eq(broken_wounds, normal_wounds, 0.001,
+		"a broken soldier's shield-wall bonus is gone -- it takes exactly the unmodified baseline wound")
+
+
+func test_broken_attacker_loses_the_testudo_melee_penalty() -> void:
+	# An individually broken TESTUDO attacker no longer suffers the "head-down, can barely
+	# swing" penalty -- it wounds at the full baseline rate, not the reduced testudo rate.
+	Replay.rng.seed = SEED
+	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+
+	Replay.rng.seed = SEED
+	var a_test := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a_test.set_formation(Unit.FORMATION_TESTUDO)
+	a_test._sim_soldier_broken[0] = 1   # this specific soldier has broken from the roof-lock
+	var d_test := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var broken_wounds: float = _wounds_over(a_test, d_test, 10)
+
+	assert_gt(normal_wounds, 0.0, "the normal attacker lands wounds (sanity)")
+	assert_almost_eq(broken_wounds, normal_wounds, 0.001,
+		"a broken testudo soldier fights at the full unmodified rate, not the testudo penalty")
+
+
+func test_broken_flag_has_no_effect_on_square_attack_factor() -> void:
+	# formation_attack_factor (SQUARE/SCHILTRON's own offence penalty) is hoisted out of the
+	# per-strike broken check in SoldierMelee.resolve because SoldierEncirclement never marks
+	# a SQUARE/SCHILTRON soldier broken in the first place (Unit.breaks_under_encirclement
+	# excludes them) -- but even if some OTHER caller forced the flag directly, as here, the
+	# square offence penalty still applies unchanged: only formation_melee_attack_factor and
+	# melee_defense_factor vary per soldier.
+	Replay.rng.seed = SEED
+	var a_square := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a_square.set_formation(Unit.FORMATION_SQUARE)
+	var d_square := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var square_wounds: float = _wounds_over(a_square, d_square, 10)
+
+	Replay.rng.seed = SEED
+	var a_square_broken := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a_square_broken.set_formation(Unit.FORMATION_SQUARE)
+	a_square_broken._sim_soldier_broken[0] = 1
+	var d_square_broken := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
+	var square_broken_wounds: float = _wounds_over(a_square_broken, d_square_broken, 10)
+
+	assert_almost_eq(square_broken_wounds, square_wounds, 0.001,
+		"formation_attack_factor is unaffected by the broken flag -- it's SQUARE/SCHILTRON's own penalty")
+
+
 func test_schiltron_attacker_inflicts_fewer_wounds_than_orbis_via_soldier_path() -> void:
 	# Schiltron pays a DEEPER offence penalty than orbis for its harder charge brace --
 	# this must hold in the per-soldier path too, not just formation_attack_factor()
@@ -250,13 +326,14 @@ func test_in_reach_strike_shoves_the_defender_away() -> void:
 	# Newton's-laws split (SoldierCollision.bidirectional_impulse), the defender receives only
 	# its SHARE of that impulse -- weighted by the ATTACKER's effective mass over the total
 	# effective mass of both bodies -- since the rest goes to the attacker's own recoil. The
-	# attacker here is engaged and not skirmishing, so it's braced (soldier_brace() == 1.0);
-	# the defender is unbraced (skirmish).
+	# attacker here is engaged and not skirmishing, so it's at the merely-engaged baseline
+	# brace (soldier_brace() == Unit.BRACE_BASELINE_ENGAGED -- not fully set, since it was
+	# never given an explicit ORDER_BRACE to settle into); the defender is unbraced (skirmish).
 	var c: float = SoldierCombat.charge_factor(closing)
 	var min_impulse: float = SoldierCombat.knockback_impulse(1.0, c, 1.0, SoldierCombat.ETA_DEFENDED)
 	assert_gt(min_impulse, SoldierCombat.STATIC_FRICTION_THRESHOLD,
 		"sanity: this charge clears the resting defender's static-friction threshold even at the defended floor")
-	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 1.0)
+	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * Unit.BRACE_BASELINE_ENGAGED)
 	var defender_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 0.0)
 	var min_shove: float = min_impulse * attacker_m_eff / (attacker_m_eff + defender_m_eff)
 	assert_gte(b._sim_body_vel[0].y, min_shove - 1e-3,
@@ -279,7 +356,9 @@ func test_tiny_impulse_leaves_a_resting_unbraced_defender_still() -> void:
 	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
 	b.order_mode = Unit.ORDER_SKIRMISH   # unbraced
 	b._sim_soldier_hp[0] = 9999.0
-	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 1.0)
+	# a is merely engaged (no explicit ORDER_BRACE), so it sits at the "at attention"
+	# baseline (Unit.BRACE_BASELINE_ENGAGED), not the old flat 1.0.
+	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * Unit.BRACE_BASELINE_ENGAGED)
 	var defender_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 0.0)
 	var min_defended_impulse: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, SoldierCombat.ETA_DEFENDED)
 	var min_shove: float = min_defended_impulse * attacker_m_eff / (attacker_m_eff + defender_m_eff)
@@ -299,6 +378,42 @@ func test_tiny_impulse_leaves_a_resting_unbraced_defender_still() -> void:
 		"at least one sub-threshold (defended, no-charge) strike left the resting defender still")
 	assert_true(saw_shoved,
 		"at least one strike cleared the static-friction threshold and shoved the defender")
+
+
+func test_settled_brace_order_absorbs_more_than_the_merely_engaged_default() -> void:
+	# The graded soldier_brace() formula's whole point: a unit deliberately ordered to
+	# brace and given time to settle resists a charge harder than one merely engaged
+	# (the old binary switch made no distinction at all -- both used to read 1.0).
+	Replay.rng.seed = SEED
+	var closing: float = 220.0   # a real charge, well above the static-friction floor
+	var attacker := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, true)   # spear, for a high J_cap
+	attacker._approach_velocity = Vector2(0, closing)
+
+	var engaged := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, true)
+	engaged._sim_soldier_hp[0] = 9999.0
+	# default order_mode (NORMAL), merely engaged -- the "at attention" baseline.
+
+	var braced := _unit(3, 1, 1, Vector2(0, 6), Vector2.UP, true)
+	braced._sim_soldier_hp[0] = 9999.0
+	braced.order_mode = Unit.ORDER_BRACE
+	braced.tick_brace_settle(Unit.BRACE_SETTLE_TIME + 0.01)   # stationary, settled
+
+	assert_gt(braced.soldier_brace(), engaged.soldier_brace(),
+		"sanity: the settled brace order really does grade above the merely-engaged baseline")
+
+	# Re-seed identically before each resolve so both defenders face the SAME land/miss
+	# roll -- isolating the bracing effect from unrelated RNG drift between the two calls.
+	Replay.rng.seed = SEED
+	attacker.resolve_soldier_melee(engaged)
+	var attacker2 := _unit(4, 0, 1, Vector2(0, 0), Vector2.DOWN, true)
+	attacker2._approach_velocity = Vector2(0, closing)
+	Replay.rng.seed = SEED
+	attacker2.resolve_soldier_melee(braced)
+
+	var engaged_shove: float = engaged._sim_body_vel[0].length()
+	var braced_shove: float = braced._sim_body_vel[0].length()
+	assert_lte(braced_shove, engaged_shove,
+		"a settled, deliberately braced defender is shoved no harder than a merely engaged one under an identical charge")
 
 
 func test_knockback_points_away_from_the_attacker() -> void:
@@ -362,15 +477,17 @@ func _typed_defender(uid: int, pos: Vector2, face: Vector2, cavalry: bool, range
 
 
 func test_heavier_defender_is_knocked_back_less() -> void:
-	# Same infantry attacker and the same seed, striking a light archer (mass 0.9) vs a heavy
-	# cavalry body (mass 2.5): the heavy body takes a smaller impulse (J ~ 1/mass). Both
-	# defenders are set to skirmish so brace capacity doesn't absorb the blow — this tests
-	# mass alone, not the (separately tested) static-friction gate, so both start already
-	# moving -- above SoldierCombat.STATIC_FRICTION_VELOCITY_GATE, in the same direction the
-	# shove will push them -- so the strike is always in the kinetic-friction regime for both.
-	# Since the preset is identical for both and additive with the (mass-scaled) shove, the
-	# comparison between the two final speeds still isolates the mass effect. The eta can't
-	# flip in cavalry's favour: cavalry's shield (0.25) > archer's (0.05) means its p_land is
+	# Same infantry attacker and the same seed, striking a light archer (mass ~0.875) vs a
+	# heavier cavalry body (mass ~0.9375: _typed_defender never assigns a mount, so this is
+	# just the rider's own real body, not a mounted cavalryman's full contact mass): the
+	# heavier body takes a smaller impulse (J ~ 1/mass). Both defenders are set to skirmish
+	# so brace capacity doesn't absorb the blow — this tests mass alone, not the (separately
+	# tested) static-friction gate, so both start already moving -- above
+	# SoldierCombat.STATIC_FRICTION_VELOCITY_GATE, in the same direction the shove will push
+	# them -- so the strike is always in the kinetic-friction regime for both. Since the
+	# preset is identical for both and additive with the (mass-scaled) shove, the comparison
+	# between the two final speeds still isolates the mass effect. The eta can't flip in
+	# cavalry's favour: cavalry's shield (0.25) > archer's (0.05) means its p_land is
 	# strictly <= the archer's, so "cavalry lands" implies "archer lands"; the mass ratio then
 	# dominates in every reachable land/defend outcome.
 	Replay.rng.seed = SEED
@@ -473,14 +590,14 @@ func test_deep_set_file_is_knocked_back_less_than_a_lone_man() -> void:
 	atk1._approach_velocity = Vector2(0, 500.0)   # large charge — impulse clears lone brace
 	var lone := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
 	lone._sim_soldier_hp[0] = 9999.0
-	SoldierMelee.resolve(atk1, lone)
+	SoldierMelee.resolve(atk1, [lone])
 	var lone_kb: float = lone._sim_body_vel[0].length()
 
 	Replay.rng.seed = SEED
 	var atk2 := _unit(3, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	atk2._approach_velocity = Vector2(0, 500.0)
 	var deep := _deep_unit(4, 3, Vector2(0, 6), Vector2.UP)
-	SoldierMelee.resolve(atk2, deep)
+	SoldierMelee.resolve(atk2, [deep])
 	var deep_kb: float = deep._sim_body_vel[0].length()
 
 	assert_gt(lone_kb, 0.0, "the lone set man is knocked back (shove clears his lone brace capacity)")
@@ -501,7 +618,7 @@ func test_flank_blow_gets_no_bracing() -> void:
 	atk_front._approach_velocity = Vector2(0.0, charge_speed)   # same magnitude as the flank
 	var def_front := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)   # faces the attacker: phi > 0
 	def_front._sim_soldier_hp[0] = 9999.0
-	SoldierMelee.resolve(atk_front, def_front)
+	SoldierMelee.resolve(atk_front, [def_front])
 	var front_kb: float = def_front._sim_body_vel[0].length()
 
 	Replay.rng.seed = SEED
@@ -509,7 +626,7 @@ func test_flank_blow_gets_no_bracing() -> void:
 	atk_flank._approach_velocity = Vector2(charge_speed, 0.0)   # same charge magnitude, lateral
 	var def_flank := _unit(4, 1, 1, Vector2(0, 0), Vector2.DOWN, false)   # faces down: phi = 0
 	def_flank._sim_soldier_hp[0] = 9999.0
-	SoldierMelee.resolve(atk_flank, def_flank)
+	SoldierMelee.resolve(atk_flank, [def_flank])
 	var flank_kb: float = def_flank._sim_body_vel[0].length()
 
 	assert_gt(flank_kb, front_kb,
@@ -659,3 +776,190 @@ func test_reformed_block_holds_frontage_and_closes_up_after_casualties() -> void
 	for i in range(slots.size()):
 		assert_true(absf(slots[i].x) <= front_edge + 0.001,
 			"reformed slot %d stays within the block's frontage" % i)
+
+
+# --- Fallen casualty-heap anchoring: one mark per REAL fallen-soldier position ----
+
+func test_live_soldiers_near_returns_the_closest_real_positions() -> void:
+	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
+	u._sim_soldier_pos[0] = Vector2(0, 0)
+	u._sim_soldier_pos[1] = Vector2(10, 0)
+	u._sim_soldier_pos[2] = Vector2(1000, 1000)
+	u._sim_soldier_pos[3] = Vector2(-1000, -1000)
+	var near: PackedVector2Array = u.live_soldiers_near(Vector2(5, 0), 2)
+	assert_eq(near.size(), 2, "returns exactly the requested count")
+	assert_true(Vector2(0, 0) in near and Vector2(10, 0) in near,
+		"the two nearest REAL positions, ignoring the two far-flung outliers")
+
+
+func test_live_soldiers_near_is_empty_with_no_seeded_bodies() -> void:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 4
+	add_child_autofree(u)
+	assert_true(u.live_soldiers_near(Vector2.ZERO, 2).is_empty(),
+		"an unseeded soldier layer has no nearby bodies to report")
+
+
+func test_reap_anchors_the_fallen_heap_at_each_dying_soldiers_own_real_position() -> void:
+	# The cosmetic Fallen heap must drop one mark per dying soldier, at THAT soldier's own
+	# real live position -- not an averaged point, not the unit's idealized formation-slot
+	# geometry (which can have already scattered away from the live bodies mid-melee).
+	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
+	u._sim_soldier_pos[0] = Vector2(500.0, -300.0)
+	u._sim_soldier_pos[1] = Vector2(520.0, -280.0)
+	u._sim_soldier_hp[0] = 0.0
+	u._sim_soldier_hp[1] = 0.0
+	SoldierMelee.reap(u, u)
+	assert_eq(u.soldiers, 2, "two men fell")
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	assert_eq(fx._marks.size(), 2, "one mark per dying soldier")
+	var found_first := false
+	var found_second := false
+	for m in fx._marks:
+		var world: Vector2 = fx.global_position + m
+		if world.distance_to(Vector2(500.0, -300.0)) < 0.01:
+			found_first = true
+		if world.distance_to(Vector2(520.0, -280.0)) < 0.01:
+			found_second = true
+	assert_true(found_first and found_second,
+		"each mark sits exactly at its own dying soldier's real position, not an average")
+
+
+func test_register_casualties_uses_real_nearby_positions_when_no_per_death_data_but_soldiers_exist() -> void:
+	# The regiment-formula path (take_casualties) has no per-death position data -- most
+	# commonly the very first strike after fresh contact, before the engaged-tier latch
+	# sets (is_engaged() reads false for that one tick; see Unit.tick_engaged). This is
+	# NOT a rare edge case: a real bug reproduction hit exactly this path for every one of
+	# its casualty events. The unit still has a live soldier layer, so the heap must anchor
+	# on real live positions, not the idealized formation-slot edge.
+	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
+	var live_pos := Vector2(500.0, -300.0)
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] = live_pos   # every body scattered to the same live spot
+	UnitCombat.register_casualties(u, 2, null, 1.0)   # no dead_local_positions: formula path
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	assert_almost_eq(fx.global_position.distance_to(live_pos), 0.0, 0.01,
+		"with no per-death data but a live soldier layer, the heap anchors on real live positions")
+
+
+func test_register_casualties_biases_toward_soldiers_near_the_attacker_when_the_block_has_spread() -> void:
+	# A still-forming battle line (rear ranks not yet engaged) or a knockback-spread block
+	# can have live bodies far from where THIS strike actually landed. Picking real
+	# positions nearest the attacker lands the marks at the actual clash cluster, not
+	# scattered across (or averaged into the gap between) the whole spread-out block.
+	var u := _unit(1, 0, 6, Vector2(0, 0), Vector2.DOWN, false)
+	var near_clash := Vector2(0.0, 100.0)
+	var far_rear := Vector2(0.0, -900.0)
+	for i in range(3):
+		u._sim_soldier_pos[i] = near_clash   # the actual front line, fighting now
+	for i in range(3, 6):
+		u._sim_soldier_pos[i] = far_rear     # rear ranks, nowhere near this strike
+	var attacker := _unit(2, 1, 1, Vector2(0, 120), Vector2.UP, false)
+	UnitCombat.register_casualties(u, 2, attacker, 1.0)
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	for m in fx._marks:
+		assert_almost_eq((fx.global_position + m).distance_to(near_clash), 0.0, 0.01,
+			"every mark lands on the attacker-proximal cluster, not the untouched rear")
+
+
+func test_register_casualties_falls_back_to_formation_geometry_with_no_soldier_layer_at_all() -> void:
+	# A caller with NO soldier layer at all (an unseeded unit) has no real position of any
+	# kind to anchor on -- the heap keeps using the idealized formation-geometry edge.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 10
+	add_child_autofree(u)
+	u.uid = 3
+	u.team = 0
+	u.position = Vector2(200, 200)
+	u.facing = Vector2.DOWN
+	u.soldiers = 10
+	UnitCombat.register_casualties(u, 3, null, 1.0)
+	var fx: Fallen = null
+	for child in u.get_parent().get_children():
+		if child is Fallen:
+			fx = child
+	assert_not_null(fx, "a fallen heap was spawned")
+	var expected_edge: Vector2 = u.global_position + u.block_centre_offset()
+	assert_almost_eq(fx.global_position.distance_to(expected_edge), 0.0, 0.01,
+		"with no live soldier data at all, the heap still anchors on the formation-geometry edge")
+
+
+# --- multi-defender resolve: each soldier finds its own nearest enemy, across units ------
+# resolve() now takes a defenders population, not one fixed Unit -- these pin the behaviour
+# that must emerge from widening the search: casualties land on whichever defender a given
+# attacking soldier actually finds nearest within reach, the search isn't confined to (or
+# biased by) whichever defender happens to be processed first, and it stays deterministic.
+
+func test_multi_defender_resolve_each_attacking_soldier_finds_its_own_nearest_defender() -> void:
+	# Two defenders flank one attacker with two soldiers: the LEFT attacking soldier is in
+	# reach of only the left defender, the RIGHT attacking soldier is in reach of only the
+	# right defender. Proves the search spans BOTH defenders in one resolve() call, instead
+	# of being confined to whichever single unit is passed as "the" defender.
+	var a := _unit(1, 0, 2, Vector2(0, 0), Vector2.DOWN, false)
+	a._sim_soldier_pos[0] = Vector2(-15, 0)
+	a._sim_soldier_pos[1] = Vector2(15, 0)
+	var b := _unit(2, 1, 1, Vector2(-15, 6), Vector2.UP, false)   # only a's soldier 0 is in reach (dist 6 < 26)
+	var c := _unit(3, 1, 1, Vector2(15, 6), Vector2.UP, false)    # only a's soldier 1 is in reach (dist 6 < 26)
+	var b_full: float = b._sim_soldier_hp[0]
+	var c_full: float = c._sim_soldier_hp[0]
+	for _k in range(80):
+		SoldierMelee.resolve(a, [b, c])
+	assert_true(b.soldiers == 0 or b._sim_soldier_hp[0] < b_full,
+		"the left defender takes wounds from a's left soldier")
+	assert_true(c.soldiers == 0 or c._sim_soldier_hp[0] < c_full,
+		"the right defender ALSO takes wounds from a's right soldier, in the SAME resolve() calls -- no rotation needed")
+
+
+func test_multi_defender_resolve_prefers_the_nearer_defender_regardless_of_array_order() -> void:
+	# b is farther but has the LOWER uid (so it sorts and is enumerated first inside resolve());
+	# c is nearer but has the higher uid. The nearest-target search must still find c every
+	# time, proving distance decides -- not defender processing order. c's health is boosted
+	# so it survives the whole loop (matching this file's own _deep_unit-style convention) --
+	# otherwise c dying partway through would correctly (not a bug) redirect the remaining
+	# strikes onto b, since it would be the only one left in reach, muddying this specific
+	# "distance always wins while both are alive" assertion.
+	Replay.rng.seed = SEED
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(0, 20), Vector2.UP, false)   # farther, still in reach (20 < 26)
+	var c := _unit(3, 1, 1, Vector2(0, 10), Vector2.UP, false)   # nearer, in reach (10 < 26)
+	c._sim_soldier_hp[0] = 9999.0
+	var b_full: float = b._sim_soldier_hp[0]
+	var c_full: float = c._sim_soldier_hp[0]
+	for _k in range(40):
+		SoldierMelee.resolve(a, [b, c])
+	assert_almost_eq(b._sim_soldier_hp[0], b_full, 0.001,
+		"the farther defender takes no wounds at all while the nearer one is alive to absorb every strike")
+	assert_lt(c._sim_soldier_hp[0], c_full, "the nearer defender absorbs every strike instead")
+
+
+func test_multi_defender_resolve_is_deterministic_across_runs() -> void:
+	# Same seed, same fixture geometry, same number of cadence rounds -> identical outcome
+	# across two independent runs -- the wider multi-defender search draws no new RNG and
+	# introduces no order-dependent nondeterminism.
+	var results: Array = []
+	for run in range(2):
+		Replay.rng.seed = SEED
+		var a := _unit(10 + run, 0, 2, Vector2(0, 0), Vector2.DOWN, false)
+		a._sim_soldier_pos[0] = Vector2(-15, 0)
+		a._sim_soldier_pos[1] = Vector2(15, 0)
+		var b := _unit(20 + run, 1, 1, Vector2(-15, 6), Vector2.UP, false)
+		var c := _unit(30 + run, 1, 1, Vector2(15, 6), Vector2.UP, false)
+		for _k in range(60):
+			SoldierMelee.resolve(a, [b, c])
+		results.append([b.soldiers, c.soldiers, b._sim_soldier_hp, c._sim_soldier_hp])
+	assert_eq(results[0][0], results[1][0], "left defender's surviving count matches across runs")
+	assert_eq(results[0][1], results[1][1], "right defender's surviving count matches across runs")
+	assert_eq(results[0][2], results[1][2], "left defender's per-soldier health matches across runs")
+	assert_eq(results[0][3], results[1][3], "right defender's per-soldier health matches across runs")

@@ -1,0 +1,15 @@
+{
+  "_comment": "Resize grips track a marching unit (#886): select a lone spearman block, order a march south, and watch the flank grips walk with the block instead of freezing at the spawn row. Drill mode - the grips are pure selection chrome, no enemy needed.",
+  "seed": "886",
+  "drill": true,
+  "scenario": [
+    { "team": 0, "type": "Spearmen", "x": 600.0, "y": 360.0, "facing": [0, 1] }
+  ],
+  "camera": [ { "tick": 0, "x": 600.0, "y": 500.0, "zoom": 1.5 } ],
+  "steps": [
+    { "tick": 10, "click": [600, 360] },
+    { "tick": 40, "rmb_click": [600, 640] }
+  ],
+  "frames": [30, 160, 300],
+  "state": [30, 160, 300]
+}

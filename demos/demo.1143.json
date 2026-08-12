@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "The collision-damage mechanism (SoldierCombat.collision_damage) is proven precisely by unit tests (test/unit/test_soldier_combat.gd, test/unit/test_soldier_enemy_contact.gd) rather than a recorded battle. A live-battle demo needs a small-scale scenario (per .claude/memories/sparta-demos.md's 'scale to the minimum' guidance) to isolate the mechanic, but every small-scale 1v1 regiment matchup tried (cavalry vs infantry, cavalry vs cavalry, 3-12 soldiers per side) hit a pre-existing, unrelated bug: one whole regiment vanishes with zero cost to the other side, from ~65-70 world units apart -- well before real body-to-body collision contact is reached. Confirmed reproducible on unmodified main (git-stashed this PR's changes and reran), so it's out of scope here; filed as issue #1151."
+}

@@ -23,7 +23,7 @@ period-flavored rank names (a Marian-era Roman army has centurions).
 ### Today's AI is a backdoor
 
 The entire battle AI is one function: `Battle._run_enemy_ai()`, run every
-`AI_PERIOD` ticks (`const AI_PERIOD := 60` — once per second at
+`ai_period` ticks (default `AI_PERIOD` = 60 — once per second at
 `Replay.PHYSICS_TPS` 60). Each idle enemy unit finds the nearest player unit
 and takes it as a target by writing the unit's state directly:
 
@@ -47,7 +47,7 @@ state behind the queue's back is a second, hidden command channel. The first
 job of this design is to close it.
 
 What today's AI does right is worth naming, because the design keeps all of
-it: it runs on a fixed tick cadence (`_tick % AI_PERIOD == 0`), it is a pure
+it: it runs on a fixed tick cadence (`_tick % ai_period == 0`), it is a pure
 function of sim state with no RNG and no wall-clock, and playback **re-runs
 it** rather than recording it — per the comment at its call site: "Enemy AI is
 part of the deterministic sim (not player input): re-run it on the same
@@ -262,7 +262,7 @@ invariants as the orders-queue design (`docs/orders-queue-design.md`, "Two
 invariants"). Concretely, every level of the chain obeys:
 
 - **Tick cadence.** Decisions run on a fixed physics-tick cadence keyed off
-  the existing `AI_PERIOD` (60 ticks — once per second at
+  the existing `ai_period` (default 60 ticks — once per second at
   `Replay.PHYSICS_TPS` 60), exactly like `_run_enemy_ai()` today. Different
   levels may use different (fixed, serialized) cadences or offsets — a
   general deciding less often than a unit leader is fine, and staggering

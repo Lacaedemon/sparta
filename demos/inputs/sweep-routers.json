@@ -1,5 +1,5 @@
 {
-  "_comment": "Sweep routers (#693/PR #711): a lone player Cavalry ('Sweeper', uid 0) sits between two enemy targets. 'Holdout' (uid 3) is a full-strength Infantry that closes on a player Spearmen tie-down ('Anvil') and stays FIGHTING it -- close to the sweeper (~140-150 px) but never routs. 'Fleeing' (uid 4) is a weak, low-morale Infantry spawned in contact with a second player Cavalry ('Breaker'); it breaks almost immediately (ROUTING within the first few ticks) and keeps fleeing, ending up farther from the sweeper than Holdout. Giving the sweeper the SWEEP_ROUTERS stance (Ctrl+,) makes it lock onto the more distant ROUTING Fleeing and chase it, bypassing the closer, still-fighting Holdout -- the actual re-targeting choice under test. Verified by state dump: from tick ~15 onward target_enemy_uid stays 4 (Fleeing) throughout, never 3 (Holdout), even though Holdout is consistently the nearer of the two.",
+  "_comment": "Sweep routers (#693/PR #711): a lone player Cavalry ('Sweeper', uid 0) sits between two enemy targets. 'Holdout' (uid 3) is a full-strength Infantry that closes on a player Spearmen tie-down ('Anvil') and stays FIGHTING it -- close to the sweeper (~140-150 px) but never routs. 'Fleeing' (uid 4) is a weak, low-morale Infantry spawned in contact with a second player Cavalry ('Breaker'); it takes until ~tick 50 to cross the rout threshold (its starting morale is low but not zero), then ROUTS and flees. Giving the sweeper the SWEEP_ROUTERS stance (Ctrl+,) makes it lock onto Holdout at first (nothing is routing yet), then switch onto Fleeing the moment it starts routing (~tick 55-60), bypassing the closer, still-fighting Holdout -- the actual re-targeting choice under test. Because Breaker keeps pursuing under its own Hold order, Fleeing is run down and fully annihilated by ~tick 85-90, at which point the sweeper reverts to Holdout (the only enemy left in range) for the remainder of the run. Verified by state dump: target_enemy_uid is null at tick 10, 3 (Holdout) at tick 40, 4 (Fleeing) at tick 70 -- inside the router-priority window -- then 3 again from tick 100 onward once Fleeing is gone.",
   "seed": "12345",
   "scenario": [
     {"team": 0, "type": "Cavalry", "x": 800, "y": 500, "facing": [0, 1]},
@@ -17,6 +17,6 @@
     {"tick": 5, "click": [800, 500]},
     {"tick": 10, "key": "Comma", "ctrl": true}
   ],
-  "state": [10, 40, 100, 160, 220, 240],
-  "frames": [10, 100, 160, 220]
+  "state": [10, 40, 70, 100, 160, 220, 240],
+  "frames": [10, 70, 100, 160, 220]
 }

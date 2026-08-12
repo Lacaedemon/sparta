@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This slice adds declared-intent `expect` assertions to demo input scripts plus their offline evaluator -- data and a headless checker, invisible in any rendered clip. The living example (demos/inputs/attack-around-the-hill.json's new expect block) changes nothing about how that battle plays or records."
+}

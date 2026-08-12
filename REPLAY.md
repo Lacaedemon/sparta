@@ -29,7 +29,7 @@ The simulation is deterministic by construction:
   `randf_range` in `Unit._strike`, once per striking unit, in tree order).
 - **Fixed timestep.** The sim advances on the 60 Hz physics tick, never on a
   variable-framerate / wall-clock timer. The enemy AI re-evaluates on a fixed
-  tick cadence (`Battle.AI_PERIOD`) for the same reason.
+  tick cadence (`Battle.ai_period`, default `AI_PERIOD` = 60) for the same reason.
 - **Orders drive the sim; presentation rides alongside.** Only right-click orders
   change the outcome, and each references units by a stable per-battle `uid` so it
   survives a scene reload. Camera pan and zoom are also recorded, but as a separate

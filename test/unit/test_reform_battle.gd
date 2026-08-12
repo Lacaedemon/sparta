@@ -104,8 +104,12 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 	var dest := SPAWN + Vector2(0, -180)   # straight behind the DOWN-facing unit
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
 
+	# The drilled variant: reform_before_move is a per-unit field now, read straight
+	# off the unit rather than a cmd-level "reform" flag -- set it explicitly rather than
+	# relying on Spearmen's own spawn default (true) staying that way forever.
+	u.reform_before_move = true
 	_battle._apply_order_cmd({"units": [u.uid], "x": dest.x, "y": dest.y,
-		"target": -1, "mode": 0, "reform": true})
+		"target": -1, "mode": 0})
 
 	# Phase 1 -- the pure facing-flip: every body holds its OWN position (by array index)
 	# for the whole turn. This is the identity-holding invariant the true-conversio fix
@@ -211,8 +215,10 @@ func test_drilled_reform_keeps_every_soldier_on_its_own_flank() -> void:
 	for i in range(SPEARMEN_COUNT):
 		lateral_before.push_back(_lateral_offset(u, i, file_axis))
 
+	# The drilled variant (reform_before_move is a per-unit field, no longer a cmd flag).
+	u.reform_before_move = true
 	_battle._apply_order_cmd({"units": [u.uid], "x": dest.x, "y": dest.y,
-		"target": -1, "mode": 0, "reform": true})
+		"target": -1, "mode": 0})
 
 	# Run the about-face out.
 	for _i in range(_turn_budget(u)):
@@ -267,8 +273,11 @@ func test_hasty_rear_move_marches_with_the_flipped_grid_and_reforms_on_arrival()
 	var files: int = u.formation_files(u.soldiers)
 	var dest := SPAWN + Vector2(0, -80)   # short rear leg so arrival fits the tick budget
 
+	# The hasty variant: no reform hold (reform_before_move is a per-unit field now,
+	# overriding Spearmen's own spawn default of true).
+	u.reform_before_move = false
 	_battle._apply_order_cmd({"units": [u.uid], "x": dest.x, "y": dest.y,
-		"target": -1, "mode": 0, "reform": false})
+		"target": -1, "mode": 0})
 
 	for _i in range(_turn_budget(u)):
 		await get_tree().physics_frame

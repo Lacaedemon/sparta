@@ -37,8 +37,9 @@ Selecting units and issuing move/attack orders during a battle.
 | Form up | **Right-click and drag** open ground (left flank → right flank); with several units selected, the line is split among them |
 | Form up in selection order | **Shift + right-click and drag** (instead of the default left-to-right field order) |
 | Form-up split mode | <kbd>Y</kbd> cycles through enabled modes (equal-depth / equal-width); <kbd>Shift</kbd> + <kbd>Y</kbd> cycles the other way; configure which modes cycle and which is the battle default in **☰ Menu** |
-| Reform before move | **☰ Menu** or **control bar** toggles whether units pause to settle their ranks before marching (on by default) |
-| Walk advance | **☰ Menu → Walk advance** keeps units at walk speed throughout --- no jog or sprint phase. Required for formed stances (shield wall, pike phalanx) that break on a run |
+| Reform before move | A checkbox in the **unit settings panel** (bottom-left), or the **control bar**, toggles whether the selection pauses to settle its ranks before marching. Each unit type has its own default (on for most types, off for cavalry) |
+| Walk advance | A checkbox in the **unit settings panel** (bottom-left) keeps the selection at walk speed throughout --- no jog or sprint phase. Required for formed stances (shield wall, pike phalanx) that break on a run; spearmen default it on |
+| File-major reform | A button in the **unit settings panel** (bottom-left) cycles how the selection's grid reflows after a casualty: **File-major** closes the gap with a soldier's own file (column) survivors (the default for every type), **Row-major** recomputes and re-centres the whole block every tick, and **Auto** picks between the two from the unit's own discipline (see [Tactics](tactics.qmd#line-width-frontage)) |
 | Attack | **Right-click** an enemy unit |
 | Group-order mode | <kbd>X</kbd> cycles focused ↔ distributed (<kbd>Shift</kbd> + <kbd>X</kbd> cycles the other way) · or **control bar** --- spreads a multi-unit attack across nearby enemies, or a multi-unit relief across nearby engaged friendlies ([passage of lines](tactics.qmd#passage-of-lines)) |
 | Relieve a friendly | **Right-click** an engaged friendly outside the selection --- the fresh unit takes over the fight and the tired one falls back. With several fresh units selected and distributed mode on, each pairs with its own nearby engaged friendly instead of piling onto the one clicked |
@@ -56,19 +57,23 @@ Selecting units and issuing move/attack orders during a battle.
 | Countermarch (exelismos) | <kbd>Shift+V</kbd> Choral/Persian (same ground) · <kbd>Ctrl+V</kbd> Macedonian (advance) · <kbd>Ctrl+Shift+V</kbd> Laconian (withdraw) |
 | Wheel (hinge on a flank) | <kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file) |
 | Nudge (small step, holds facing) | <kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↑</kbd> forward-step · <kbd>↓</kbd> back-step (a few metres each) |
+| Disengage and step back | <kbd>Ctrl</kbd> + <kbd>↓</kbd> on a unit currently in melee: breaks contact and steps back a short distance, holding facing |
 | Merge selected units | <kbd>M</kbd> |
-| Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall |
-| Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (bottom-right, on by default) |
+| Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall. Binding a selection that's exactly the combined membership of one or more other groups (no partial overlap, no extras) nests those groups under the new one, so recalling it always reflects whatever its nested groups currently hold |
+| Delegate to AI subcommander | <kbd>Ctrl</kbd>+<kbd>Shift</kbd> + <kbd>0</kbd>-<kbd>9</kbd> hands the selection to AI subcommander group *N* (press again on the same selection to take it back); any explicit order to a delegated unit reclaims it immediately -- see [Tactics](tactics.qmd#player-delegation) |
+| Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (top-left, on by default) |
 | Order distance labels | **☰ Menu → Order distance labels** toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default) |
 | Unit speed labels | **☰ Menu → Unit speed labels** shows each unit's current speed in metres/second above it in the hold-<kbd>Space</kbd> survey (off by default) |
 | Soldier IDs (selected unit, zoom in) | **☰ Menu → Soldier IDs (selected unit, zoom in)** draws each soldier's per-body index over a selected unit at figure LOD (zoomed in); a developer debug visual (off by default) |
 | Engaged-soldier highlight | **☰ Menu → Engaged-soldier highlight** tints a unit's currently-engaged soldiers (the ones the sim actually treats as melee/contact candidates this tick) a distinct color, for every unit, at any zoom; a developer debug visual (off by default) |
 | Position-anchor marker | **☰ Menu → Position-anchor marker** draws a small dot at each unit's `position` -- the regiment's own kinematic anchor point, distinct from any individual soldier; a developer debug visual (off by default) |
 | Frame rate | **☰ Menu → Show frame rate** toggles a counter showing render FPS and the live simulation tick rate (ticks/s, which reads below the 60 Hz target if a large battle can't keep up); **☰ Menu → Frame rate corner…** picks which screen corner it renders in (top-left by default, off by default) |
+| Unit card tray | <kbd>F1</kbd> or the **Tray** button beside **☰ Menu** (or **☰ Menu → Unit card tray**) shows a panel for organizing your units into named battle lines. Each line is a fixed-width grid of cells (**+ Line**/**- Line** and **+ Column**/**- Column** resize it) -- a cell can be empty, so a line can leave gaps for a quincunx/checkerboard-style offset against the line below it. Drag a card onto another cell to swap the two (an empty target cell just moves the card there), or use its arrow buttons for the same moves -- a lone unit always has an empty neighbor cell to shift into. Click a line's name to select every unit in it at once (off by default) |
 | Pan camera | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges (all four arrows nudge instead while a unit is selected; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> always pans) |
 | Zoom | **Mouse wheel** |
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
 | Active pause | <kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>) |
+| Slow motion (100% → 50% → 25% → 10%, <kbd>Shift</kbd> reverses) | <kbd>F5</kbd> |
 | All shortcuts (this list, in-game) | <kbd>?</kbd> (Shift + <kbd>/</kbd>) or **☰ Menu → Shortcuts** |
 | Quit to Main Menu | **☰ Menu → Quit to Main Menu** leaves the battle immediately and returns to the Main Menu --- the only way out of a [Parade Ground](#parade-ground) drill, which never auto-ends |
 
@@ -90,18 +95,47 @@ Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking
   the density set plus Square; the other three stances are set from the menu or their
   direct keys.
 - **Stance** --- click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).
-- **Reform** --- toggle Reform before move (same as ☰ Menu → Reform before move).
+- **Reform** --- toggle Reform before move for the selected unit(s) (same as the checkbox
+  in the unit settings panel).
 - **Focused / Spread** --- cycle the group-order mode (same as <kbd>X</kbd>); governs both a
   multi-unit attack and a multi-unit relief.
 
 The bar updates immediately when you select a different unit or change a setting elsewhere.
 
+**Control groups can nest.** Binding a selection that's exactly the combined
+membership of one or more other groups --- no partial overlap, no extra units ---
+records the new group as a **composite** over those groups instead of a frozen
+snapshot. Recalling it always reflects whatever its nested groups currently hold:
+rebind one of the nested groups later, and the parent's next recall picks up the
+change automatically. A selection that doesn't cleanly decompose this way (a
+partial overlap with a bound group, or extra units alongside a match) just binds
+as an ordinary flat group, exactly as before.
+
+::: {#fig-nested-control-groups .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/nested_control_groups.jpg">
+  <source src="media/nested_control_groups.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+One unit is bound as group 2 and two more as group 3; selecting exactly their
+combined membership and binding it as group 1 records group 1 as nested over
+both --- recalling group 1 (after switching the selection elsewhere) reselects
+all three units and a move order lands only on them.
+:::
+
 **Pace modes (AUTO by default).** Units walk on approach, jog when a ranged enemy is
 within range (under missile fire), and accelerate to full sprint speed once within
 about 200 px of the target --- so a charge arrives at full momentum without wearing
-out the troops on the march. Toggle **☰ Menu → Walk advance** to lock units to walk
-pace throughout; this is required for formed stances like shield wall or pike phalanx
-that break if the unit breaks into a run.
+out the troops on the march. Check **Walk advance** in the unit settings panel to
+lock the selection to walk pace throughout; this is required for formed stances like
+shield wall or pike phalanx that break if the unit breaks into a run. Each unit type
+has its own default --- spearmen start with it on, everyone else off --- and the setting
+persists per unit until you (or a replayed order) change it again.
 
 **Move order sequence.** When you right-click a destination, the regiment turns to
 face it and marches there in good order: it **pivots about its centre** onto the new
@@ -133,14 +167,39 @@ The left (disciplined) one pivots gradually onto its new heading before marching
 right (undisciplined) one snaps its facing immediately and walks there directly.
 :::
 
-**Reform before move (default on).** By default, a fresh move order makes a unit hold
-its position briefly (~0.8 s) while its ranks settle into formation before it steps
-off. The unit spends this hold **pivoting in place** toward the destination, so its
-ranks are already coming onto the new heading before the first step.
-To make units move immediately without the pause, uncheck
-**☰ Menu → Reform before move** or click **Reform** in the control bar. The setting is
-baked into each recorded order, so replays reproduce whichever mode was active when
-you issued them.
+**Reform before move (default on for most types).** By default, a fresh move order
+makes a unit hold its position briefly (~0.8 s) while its ranks settle into formation
+before it steps off. The unit spends this hold **pivoting in place** toward the
+destination --- no faster than its corner man can run, so the ranks hold their
+dressing --- and its ranks are already coming onto the new heading before the first
+step. For a unit already on the march, the hold is also the **brake leg** of a sharp
+turn: a fresh order that roughly continues the current travel carries the column's
+momentum straight through, while one that turns it sharply back bleeds that speed off
+during the hold, so the block comes about from a stand instead of carrying its pace
+into the turn (@fig-reversal-march).
+To make a unit move immediately without the pause, uncheck **Reform before move** in
+its unit settings panel, or click **Reform** in the control bar --- either applies to every
+currently selected unit. Cavalry starts with the setting off (immediate
+responsiveness matters more to a mounted regiment than settling ranks); every other
+type starts with it on. The setting is a persistent property of each unit, and any
+mid-battle toggle is itself recorded, so replays reproduce whichever mode was active
+at the moment you issued each order.
+
+::: {#fig-reversal-march .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/reversal_march.jpg">
+  <source src="media/reversal_march.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A marching column ordered sharply back the way it came: it brakes during its
+reform hold, comes about no faster than its corner man can run, and steps off on
+the new heading in good order.
+:::
 
 **Side-step (small lateral moves).** A move order that only shifts a unit a short way
 to the side --- less than about its own width --- is carried out as a **side-step**: the
@@ -208,6 +267,31 @@ pans, so you never lose camera control.
 
 Arrow-key nudges: the selected regiment side-steps left, then right, then
 back-steps, then forward-steps --- each a small step that holds its facing.
+:::
+
+**Disengage and step back (<kbd>Ctrl</kbd> + <kbd>↓</kbd>).** The plain back-step nudge
+above refuses to fire on a unit currently in melee --- a drill step shouldn't yank a
+regiment out of a fight by accident. <kbd>Ctrl</kbd> + <kbd>↓</kbd> is the deliberate,
+combat-legal version: it breaks contact and steps the unit back a short distance,
+holding facing the same way. A controlled withdrawal to reset spacing, not a retreat ---
+but it isn't free: the enemy's own attack keeps landing hits (with the flank/rear bonus)
+for as long as it can still reach you, so the fight has to actually be worth walking
+away from.
+
+::: {#fig-disengage-step-back .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/disengage_step_back.jpg">
+  <source src="media/disengage_step_back.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Disengage and step back: a player regiment locked in melee is ordered to
+disengage --- it breaks contact and steps back holding facing, while the
+still-committed enemy keeps pressing after it.
 :::
 
 **Centre pivot (larger turns).** A move order that turns a unit toward a new heading makes
@@ -327,8 +411,44 @@ the standing flank file --- holds its ground while the rest of the block swings 
 like a door on a hinge, reorienting the whole line 90° while every man keeps his place in
 the ranks. Unlike the quarter-turn, this is not a standing facing change: the far flank
 actually marches an arc, so the line ends up facing a new direction *and* lying along a
-new line. Use it to refuse a flank, to swing a wing forward and take an enemy line in the
-side, or to change the front an entire wing presents without breaking its order.
+new line. The swing is paced by the outer file --- the corner man farthest from the hinge
+jogs his arc while the inner files slow proportionally --- so a wide or deep block takes
+correspondingly longer to come around. Use it to refuse a flank, to swing a wing forward
+and take an enemy line in the side, or to change the front an entire wing presents without
+breaking its order.
+
+**Moving wheel (cavalry only).** A mounted regiment doesn't need to halt for any of
+the standing maneuvers above. Give a **cavalry** unit a move order sharply off its
+current heading --- forward-oblique, to a flank, or to the rear, at any angle, even one
+that would otherwise call for a full about-face --- and it gallops through the turn in a
+single continuous wheel: the hinge advances at the unit's own march pace the whole
+swing while the outer files sweep faster to keep the line's shape, then it rides
+straight into the march with no halt at either end. A foot regiment given the
+identical order still takes the standing route above --- an about-face, an about-face
+plus flank pivot, or a lateral pivot, depending on the angle --- since only cavalry is
+fast and maneuverable enough to carve the turn without breaking stride. The same
+choice applies whether the order comes from your own click or from an AI
+subcommander's directive (a "hold this ground" / "cover this flank" order): a
+subcommander leading a cavalry group from the front can decompose its own directive
+into the same moving wheel followed by a forward march.
+
+::: {#fig-moving-wheel .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/moving_wheel.jpg">
+  <source src="media/moving_wheel.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Moving wheel vs. the standing route: a cavalry regiment (left) and an infantry
+regiment (right) are each marching, then given the same sharply off-heading
+destination. The cavalry gallops through a single continuous wheel without ever
+stopping; the infantry halts, about-faces, wheels the remaining residual, then
+marches --- visibly pausing where the cavalry never does.
+:::
 
 **Countermarch (exelismos, <kbd>Shift+V</kbd> / <kbd>Ctrl+V</kbd> / <kbd>Ctrl+Shift+V</kbd>).**
 All three variants share the about-face's <kbd>V</kbd> key, the same way <kbd>Shift+O</kbd>
@@ -401,7 +521,7 @@ tells you the type, too: a dart for spearmen, a kite for archers, and an arrow-p
 for other foot and cavalry. All three are compact directional glyphs, so a rank reads as
 arrows whichever way it faces rather than smearing into bars.
 
-**Reading distances.** A small semi-translucent scale bar sits in the bottom-right corner,
+**Reading distances.** A small semi-translucent scale bar sits in the top-left corner,
 labelled with the real metre distance it spans (e.g. "50 m") --- it rescales as you zoom,
 so you can always judge range and reach at a glance. Toggle it off in **☰ Menu → Distance
 legend** if you'd rather not see it.
@@ -450,7 +570,11 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
 Pressing a stance key alone only **arms** it for your next move/attack order ---
 it doesn't touch a unit that's already standing still. To change a selected
 unit's stance right where it stands, with no move needed, hold <kbd>Ctrl</kbd>
-while pressing the stance key; a toast confirms the write. Separately,
+while pressing the stance key; a toast confirms the write. Arming a new stance
+before <kbd>Shift</kbd>+right-clicking to queue a waypoint stamps that stance
+onto just the newly queued leg --- it takes effect once the unit's route
+reaches that leg, without touching whatever stance is already active on the
+leg the unit is currently marching. Separately,
 <kbd>I</kbd> toggles each selected unit's **rank relief** (discipline) mode ---
 the on-by-default knob behind rank cycling (see
 [Tactics](tactics.qmd#rank-cycling-trained-units)) --- with its own confirming
@@ -659,6 +783,31 @@ just starts at a different one --- spearmen deploy Tight (locked shields against
 charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry
 deploy at the plain Normal combat order.
 
+The grid each density mode scales is itself **per-type**:
+foot regiments stand at close order (about half a metre per man on both axes),
+while a cavalry regiment's grid is far roomier ---
+about a metre between files and three metres between ranks,
+the riding room a horse needs side-to-side and nose-to-tail.
+A mounted regiment therefore occupies several times the ground
+of a foot block with the same headcount,
+and its deep column takes visibly longer to wheel or pivot.
+
+::: {#fig-cavalry-grid .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/cavalry_grid.jpg">
+  <source src="media/cavalry_grid.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An 80-horse Cavalry regiment (right) on its own grid pitch beside a 120-man
+Infantry block (left) at foot close order: the mounted block stands both wider
+and far deeper, and marches as one body on that roomier grid.
+:::
+
 **Square: orbis and schiltron (anti-cavalry rings).** *Square* forms a hollow square:
 the soldiers face spears and shields outward on every side, so the unit has **no weak
 flank or rear** --- an attack from any direction lands as if it were frontal, and a
@@ -723,7 +872,56 @@ reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more me
 fighting at the front) or <kbd>[</kbd> to narrow it (deeper, fewer up front but more
 staying power). With a single unit selected, two small grips appear on its flanks ---
 **drag** a grip in or out to set the width directly, with a live preview of the new
-file count. The width holds as the unit takes casualties, and shows in the info panel.
+file count. The drag anchors the **far** flank: only the dragged edge moves, like
+resizing a window by its edge, so you can extend a line toward the flank you care
+about while the other edge holds its ground (the <kbd>[</kbd> / <kbd>]</kbd> keys
+stay symmetric about the centre). The width holds as the unit takes casualties, and
+shows in the info panel.
+
+**File-major reform (default File-major).** By default, each soldier keeps a persistent
+file (column) assignment: when a file-mate falls, only the survivors deeper in that SAME
+file step forward to close the gap, and every other file stands untouched --- a
+mauled unit's rear reads as jagged (one column can run deeper than its neighbour)
+rather than a single evenly-shrinking rear rank. Click the **File-major reform** button
+in the unit settings panel to cycle to **Row-major**, the historical behavior instead: the
+whole grid recomputes fresh from the live headcount every tick, so survivors close up
+toward the centre file by file and can shuffle sideways between files as the block
+re-knits itself (see [Tactics](tactics.qmd#line-width-frontage)). A third click cycles to
+**Auto**, which picks File-major or Row-major for you from the unit's own discipline: a
+disciplined, professional regiment reflows File-major, an undisciplined mob reflows
+Row-major --- useful for a mixed army where you'd otherwise have to set each unit by
+hand to match its own training.
+
+::: {#fig-file-major-reform-contrast .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/file_major_reform_contrast.jpg">
+  <source src="media/file_major_reform_contrast.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two identical Spearmen-vs-Infantry standoffs. The left Spearmen keeps file-major
+reform on: its rear ends up jagged, some files deeper than others. The right
+Spearmen has it off: its rear reflows and re-centres uniformly instead.
+:::
+
+::: {#fig-resize-anchor .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/resize_flank_anchor.jpg">
+  <source src="media/resize_flank_anchor.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Flank-anchored drag-resize: pulling the east grip outward extends the line east
+only, the west flank's edge holding its ground while the new files form up.
+:::
 
 **File-doubling (explicatio and duplicatio).** Where <kbd>[</kbd> / <kbd>]</kbd> nudge the
 width one file at a time, these two drill maneuvers reshape it by a whole factor at once.
@@ -928,6 +1126,29 @@ Order distance labels: the green move line shows the remaining march in metres,
 counting down as the regiment closes on its target.
 :::
 
+**Slow motion.** <kbd>F5</kbd> cycles a slow-motion tick-speed mode --- 100% (normal) ->
+50% -> 25% -> 10%, wrapping back to normal; <kbd>Shift</kbd> + <kbd>F5</kbd> cycles the
+other way. A persistent "N% SPEED" indicator shows below the order-mode banner whenever
+it's active. This slows the same simulation down rather than switching to a separate
+playback mode, so it works during a live battle exactly as it does for a replay ---
+useful for watching a knockback exchange, a formation reflow, or a multi-target melee
+resolution play out tick by tick instead of compressed into a blink.
+
+::: {#fig-slow-motion .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/slow_motion.jpg">
+  <source src="media/slow_motion.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A marching unit visibly covers less ground per stretch of the clip as F5 steps
+through 50%, 25%, and 10% speed.
+:::
+
 ## The battle loop
 
 Here is the cycle in practice, shown with a cavalry charge:
@@ -950,11 +1171,21 @@ and accelerate to full speed on contact.
 1. **Select** --- left-click a unit, or drag a box to grab several at once. The info
    panel fills with the selected unit's stats, including a flavor **Commander** rank
    (Centurion, Pilus Prior, Decurion, ...) drawn from the real Roman officer hierarchy
-   --- cosmetic only, it has no effect on combat. The panel's **Order** line shows the
-   unit's current order as a small tree when it's a composite maneuver (a move-to-the-rear's
-   turn-then-march, say): each step is indented under the maneuver it belongs to, the step
-   actually running is highlighted, and a triangle toggle expands or collapses the steps. A
-   simple order with no sub-steps still shows as the single line it always has.
+   --- cosmetic only, it has no effect on combat. Below the headline stats sit the
+   live lines --- each man's hit points (the living average, its spread, and the
+   type's full-health value), the ordered gait with the unit's own pace for it, and
+   the block's live mean speed and how fast that is changing --- updating live as
+   the unit marches and fights. The unit's **static characteristics** sit below
+   them behind a **▸ Characteristics** toggle, folded up by default (click to
+   expand): attack and defense; the armor type with its protection and weight (a
+   legionary's mail, a spearman's linothorax, an archer's padded tunic, a
+   cavalryman's scale shirt); each man's body mass in kilograms; the weapon and
+   shield types with their reach, lethality, block, and arc; and the mount (a
+   cavalry regiment's warhorse, with its own mass in kilograms and its pace ---
+   the horse's bulk behind every charge).
+   Every line carries a single stat, so the panel reads as one narrow top-to-bottom
+   column.
+   The panel's **Order** section shows the unit's active order and queued follow-up legs as a tree, with a cancel button (✕) on each top-level order to delete queued orders or interrupt the active maneuver.
 2. **Order** --- right-click to send them. Move them onto an enemy's flank, or
    right-click the enemy directly to attack. There is a brief **reaction delay**
    (~0.5 s, faster for cavalry) before units execute --- orders aren't instant.
@@ -1026,6 +1257,28 @@ opponent's own AI decisions in the way.
 All-Teams Control: both the top (team 0) and bottom (team 1) lines box-selected
 and marched forward in turn, one commanded directly by the player just like
 the other.
+:::
+
+## Custom Battle
+
+Select **Custom Battle** from the Main Menu to configure exactly which units
+face off, instead of the default line. Pick each side's faction (Sparta, Rome,
+Carthage, or Macedon) from the dropdown --- the roster below repopulates with
+that faction's own historically-named units. Use **+ Add Unit** to add more of
+a faction's units, or the **✕** next to any entry to remove it, then
+**⚔ Start Custom Battle** to deploy exactly that matchup. Each roster entry's
+historical name (e.g. "Spartan Hoplites", "Companion Cavalry") resolves to one
+of the game's four real unit types (Spearmen/Infantry/Archers/Cavalry) for its
+actual stats --- the flavor name is presentation, the resolved type is what
+fights. Start is disabled while either side's roster is empty, since a
+one-sided matchup would end the battle immediately.
+
+::: {#fig-custom-battle .demo}
+
+![](media/custom-battle-setup.png){width="700px"}
+
+Custom Battle Setup: picking Sparta vs. Rome, with each side's roster shown
+alongside its own faction dropdown.
 :::
 
 ## Campaign Map

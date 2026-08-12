@@ -5,7 +5,8 @@ class_name SelectionManager
 ##   Left click        — select one friendly unit (its block or its raised flag)
 ##   Left click + drag — box-select friendly units
 ##   Right click       — move there, or attack the enemy unit clicked (block or flag)
-##   Drag a flank grip — resize a single selected unit's frontage (line width)
+##   Drag a flank grip — resize a single selected unit's frontage (line width);
+##                       the far flank stays anchored, so only the dragged edge moves
 ##   [ / ]             — narrow / widen the selected units by one file
 
 const UnitRef = preload("res://scripts/Unit.gd")  # avoid global-class-cache dependency
@@ -150,9 +151,17 @@ var _drag_start: Vector2 = Vector2.ZERO
 var _drag_cur: Vector2 = Vector2.ZERO
 # Frontage drag-resize: active while a flank grip of a single selected unit is held.
 # _resize_files is the live target file count (drives the preview and the commit).
+# _resize_anchor is the flank held FIXED through the drag (UnitFormation.Anchor.LEFT/
+# RIGHT): the side opposite the grabbed grip, so the drag moves only the grabbed
+# flank's edge -- like resizing a window by its edge. CENTRE while no drag is live;
+# the keyboard [ / ] resize stays centre-anchored and never sets it.
 var _resizing: bool = false
 var _resize_unit = null
 var _resize_files: int = 0
+var _resize_anchor: int = UnitFormation.Anchor.CENTRE
+# Snapshot of the grip geometry's inputs as of the last redraw request, so _process
+# can spot the selected unit moving out from under its grips (see _track_grip_motion).
+var _grip_state: Array = []
 # Right-mouse drag: a press-hold-drag-release that deploys a single selected unit
 # along the dragged line (left flank -> right flank); a short press is a plain order.
 var _rmb_down: bool = false
@@ -195,6 +204,11 @@ var _click_count: int = 0
 var _click_combo_window_ms: int = 500
 # Control groups: number-key digit -> bound Array of units.
 var _groups: Dictionary = {}
+# Composite (nested) control groups: number-key digit -> Array of OTHER group numbers
+# whose current members compose it -- see _bind_group()/_group_union_match(). A group is
+# either a flat leaf (present in _groups, absent here) or a composite (present here; any
+# stale _groups entry for the same digit is cleared and never read again).
+var _group_children: Dictionary = {}
 # Armed order mode: the next right-click issues an order in this stance.
 # Selected by hotkey (rebindable via ☰ Menu → Keybindings) and shown by the
 # cursor + a HUD indicator. Stays armed (sticky) until changed or cleared (Esc).
@@ -272,7 +286,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				# anywhere else begins the usual box-select drag.
 				var grip = _resize_handle_at(_cursor_world())
 				if grip != null:
-					_begin_resize(grip)
+					_begin_resize(grip["unit"], int(grip["side"]))
 				else:
 					_dragging = true
 					_drag_start = _cursor_world()
@@ -299,7 +313,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_update_resize(_cursor_world())
 			queue_redraw()
 		elif _rmb_down:
-			if _rmb_start.distance_to(_cursor_world()) > CLICK_THRESHOLD:
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			if _rmb_start.distance_squared_to(_cursor_world()) > CLICK_THRESHOLD * CLICK_THRESHOLD:
 				_rmb_dragging = true
 			queue_redraw()
 		elif _dragging:
@@ -370,6 +385,12 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_RIGHT and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.RIGHT)   # side-step right (holds facing)
 		return true
+	elif event.keycode == KEY_DOWN and event.ctrl_pressed:
+		if event.shift_pressed:
+			_issue_disengage_with_sacrifice()   # Shift+Ctrl+Down: disengage with rearguard sacrifice
+		else:
+			_issue_disengage()   # Ctrl+Down: disengage and step back -- combat-legal even while FIGHTING
+		return true
 	elif event.keycode == KEY_DOWN and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.BACK)    # back-step (holds facing)
 		return true
@@ -439,6 +460,16 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		return true
 	elif event.keycode == GROUP_ATTACK_CYCLE_KEY:
 		_cycle_group_attack_mode()   # switch focused / distributed attack for multi-unit orders
+		return true
+	# Battle AI phase 4 (docs/battle-ai-design.md): Ctrl+Shift+<0-9> delegates/revokes the
+	# current selection to/from AI subcommander group N. Checked BEFORE _handle_group_key
+	# below, whose own Ctrl+<digit> (bind a UI control group) would otherwise fire first --
+	# every plain letter key is already claimed (see Settings.DEFAULT_ORDER_BINDINGS's own
+	# "letter key exhaustion" note) and Ctrl+<digit>/plain <digit> are already spoken for, so
+	# adding Shift is the smallest free extension of an already-learned convention.
+	var delegate_group: int = _digit_for_keycode(event.keycode)
+	if delegate_group >= 0 and event.ctrl_pressed and event.shift_pressed:
+		_toggle_delegation(delegate_group)
 		return true
 	return _handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
 
@@ -558,7 +589,7 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	# records it and applies it on the next physics tick (so live and replayed
 	# orders take exactly the same code path). Selection and camera stay live —
 	# only the simulation-affecting order is routed through the recorder.
-	var enemy = _unit_at(world_pos, _enemy_team())
+	var enemy = _unit_at(world_pos, _enemy_team(), true)
 	var target_uid: int = -1
 	# Set when the click resolves to a line-relief target (a friendly, not a SUPPORT
 	# ward) -- distinguishes it from a SUPPORT ward below, which always stays focused.
@@ -621,8 +652,9 @@ func _finish_right_button(end_pos: Vector2, append: bool) -> void:
 		# so a march can be plotted as a multi-leg path.
 		# Track multi-clicks on ground moves to determine gait (walk/jog/run/sprint).
 		var now_ms: int = Time.get_ticks_msec()
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var click_combo: bool = (now_ms - _last_right_click_ms <= _click_combo_window_ms) and \
-			end_pos.distance_to(_last_right_click_pos) < 10.0
+			end_pos.distance_squared_to(_last_right_click_pos) < 100.0
 		if click_combo:
 			_click_count += 1
 		else:
@@ -644,7 +676,7 @@ func _can_form_up(a: Vector2, b: Vector2) -> bool:
 		return false
 	if _armed_mode == BattleRef.OrderMode.SUPPORT:
 		return false
-	if _unit_at(a, _enemy_team()) != null or _unit_at(b, _enemy_team()) != null:
+	if _unit_at(a, _enemy_team(), true) != null or _unit_at(b, _enemy_team(), true) != null:
 		return false
 	# The inter-unit gaps eat MULTI_FORM_UP_GAP*(n-1) of the drag, so require that much extra
 	# on top of FORM_UP_MIN_WIDTH — otherwise a multi-unit drag could leave zero usable width
@@ -697,6 +729,21 @@ func _live_selected_units() -> Array:
 func _order_units_for_line(units: Array, a: Vector2, b: Vector2, by_selection_order: bool) -> Array:
 	if by_selection_order or units.size() < 2:
 		return units
+	if Settings.tray_row_order_placement and _hud != null and _hud.has_method("get_unit_card_tray"):
+		var tray = _hud.get_unit_card_tray()
+		if tray != null:
+			var tray_order: Array = tray.get_units_in_tray_order()
+			if not tray_order.is_empty():
+				var ordered: Array = units.duplicate()
+				var dir_vec: Vector2 = (b - a).normalized()
+				ordered.sort_custom(func(p, q):
+					var idx_p: int = tray_order.find(p)
+					var idx_q: int = tray_order.find(q)
+					if idx_p != -1 and idx_q != -1:
+						return idx_p < idx_q
+					return (p.global_position - a).dot(dir_vec) < (q.global_position - a).dot(dir_vec)
+				)
+				return ordered
 	var dir: Vector2 = (b - a).normalized()
 	var ordered: Array = units.duplicate()
 	ordered.sort_custom(func(p, q): return (p.global_position - a).dot(dir) < (q.global_position - a).dot(dir))
@@ -866,7 +913,7 @@ func _files_for_mode(units: Array, usable: float, mode: int) -> Array:
 	if units.size() == 1:
 		var u0: Unit = units[0]
 		return [UnitFormation.files_for_halfwidth(usable * 0.5, u0.max_soldiers,
-				UnitRef.FORMATION_SPACING * u0.spacing_scale)]
+				u0.file_pitch_wu())]
 	match mode:
 		FormUpDist.EQUAL_WIDTH:
 			return _equal_space_width_files(units, usable)
@@ -886,7 +933,7 @@ func _equal_space_width_files(units: Array, usable: float) -> Array:
 	var out: Array = []
 	for u in units:
 		out.append(UnitFormation.files_for_halfwidth(w * 0.5, u.max_soldiers,
-				UnitRef.FORMATION_SPACING * u.spacing_scale))
+				u.file_pitch_wu()))
 	return out
 
 
@@ -900,7 +947,7 @@ func _equal_space_width_files(units: Array, usable: float) -> Array:
 ## diverge for a genuinely mixed group, where physical frontage then differs unit to unit
 ## (a TIGHT unit's files pack narrower than a LOOSE unit's at the same shared count).
 func _equal_count_width_files(units: Array, usable: float) -> Array:
-	var effective_spacing: float = _average_spacing(units)
+	var effective_spacing: float = _average_file_pitch(units)
 	var w: float = usable / float(units.size())
 	var shared_files: int = UnitFormation.files_for_halfwidth(
 			w * 0.5, UNBOUNDED_FILES, effective_spacing)
@@ -923,7 +970,7 @@ func _equal_count_width_files(units: Array, usable: float) -> Array:
 ## LOOSE unit ends up physically deeper than a TIGHT one at that count. See
 ## _equal_space_depth_files for the mode that instead holds PHYSICAL depth equal.
 func _equal_count_depth_files(units: Array, usable: float) -> Array:
-	var effective_spacing: float = _average_spacing(units)
+	var effective_spacing: float = _average_file_pitch(units)
 	var f_target: int = maxi(units.size(), int(round(usable / effective_spacing)) + units.size())
 	var depth: int = _equal_depth_for_target(units, f_target)
 	var out: Array = []
@@ -941,24 +988,38 @@ func _equal_count_depth_files(units: Array, usable: float) -> Array:
 ## group (every unit sharing one formation mode) this produces IDENTICAL results to
 ## _equal_count_depth_files, since the per-unit conversion is then the identity.
 func _equal_space_depth_files(units: Array, usable: float) -> Array:
-	var effective_spacing: float = _average_spacing(units)
-	var f_target: int = maxi(units.size(), int(round(usable / effective_spacing)) + units.size())
-	var ref_depth: int = _equal_space_depth_for_target(units, f_target, effective_spacing)
+	# The frontage target runs along the file axis; the shared-depth search and the
+	# per-unit conversion run along the rank axis. With anisotropic pitch (cavalry)
+	# the two averages genuinely differ, so each leg reads its own axis.
+	var file_pitch_avg: float = _average_file_pitch(units)
+	var rank_pitch_avg: float = _average_rank_pitch(units)
+	var f_target: int = maxi(units.size(), int(round(usable / file_pitch_avg)) + units.size())
+	var ref_depth: int = _equal_space_depth_for_target(units, f_target, rank_pitch_avg)
 	var out: Array = []
 	for u in units:
-		var ranks_u: int = _ranks_at_reference_depth(u, ref_depth, effective_spacing)
+		var ranks_u: int = _ranks_at_reference_depth(u, ref_depth, rank_pitch_avg)
 		out.append(clampi(int(ceil(float(maxi(1, u.max_soldiers)) / float(ranks_u))), 1, maxi(1, u.max_soldiers)))
 	return out
 
 
-## The average FORMATION_SPACING-scaled pitch across `units` -- the shared reference spacing
-## both depth modes' frontage-target math uses (see _equal_count_depth_files' doc comment for
-## why an average rather than any one unit's own spacing).
-func _average_spacing(units: Array) -> float:
-	var spacing_sum: float = 0.0
+## The average file pitch (left-right slot spacing, wu) across `units` -- the shared
+## reference spacing the frontage-target math uses (see _equal_count_depth_files' doc
+## comment for why an average rather than any one unit's own spacing).
+func _average_file_pitch(units: Array) -> float:
+	var pitch_sum: float = 0.0
 	for u in units:
-		spacing_sum += u.spacing_scale
-	return UnitRef.FORMATION_SPACING * (spacing_sum / float(units.size()))
+		pitch_sum += u.file_pitch_wu()
+	return pitch_sum / float(units.size())
+
+
+## The average rank pitch (front-back slot spacing, wu) across `units` -- the shared
+## reference the EQUAL_DEPTH_SPACE physical-depth conversion uses, the depth-axis
+## counterpart to _average_file_pitch.
+func _average_rank_pitch(units: Array) -> float:
+	var pitch_sum: float = 0.0
+	for u in units:
+		pitch_sum += u.rank_pitch_wu()
+	return pitch_sum / float(units.size())
 
 
 ## `u`'s own rank count at a shared REFERENCE depth (a rank count expressed at the group's
@@ -967,8 +1028,8 @@ func _average_spacing(units: Array) -> float:
 ## equals the group average (the common same-formation-group case).
 func _ranks_at_reference_depth(u: Unit, ref_depth: int, effective_spacing: float) -> int:
 	var physical_depth: float = float(ref_depth - 1) * effective_spacing
-	var spacing_u: float = UnitRef.FORMATION_SPACING * u.spacing_scale
-	return clampi(int(round(physical_depth / spacing_u)) + 1, 1, maxi(1, u.max_soldiers))
+	var pitch_u: float = u.rank_pitch_wu()
+	return clampi(int(round(physical_depth / pitch_u)) + 1, 1, maxi(1, u.max_soldiers))
 
 
 ## The shallowest shared rank depth whose total files fit within `f_target` (so the deployed
@@ -1102,6 +1163,39 @@ func _issue_countermarch(variant: int) -> void:
 	if uids.is_empty():
 		return
 	_battle.enqueue_countermarch(uids, variant)
+	Sfx.play(&"order")
+
+
+## Disengage and step back: each selected friendly unit currently in melee
+## breaks contact and steps back a short, fixed distance, holding facing. Routed through
+## Battle so it's recorded and replays exactly, like every other order that moves the
+## regiment (Battle.enqueue_disengage). Unit.disengage() itself no-ops for a unit that
+## isn't actually fighting right now, so this can safely fire on a mixed selection.
+func _issue_disengage() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and _is_own_team(unit.team):
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_disengage(uids)
+	Sfx.play(&"order")
+
+
+## Disengage with sacrifice (rearguard delay): rearguard detachment stays engaged to delay the foe
+## while the rest of the unit retreats.
+func _issue_disengage_with_sacrifice() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and _is_own_team(unit.team):
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_disengage_with_sacrifice(uids)
 	Sfx.play(&"order")
 
 
@@ -1304,51 +1398,79 @@ func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTR
 
 
 ## Begin a drag-resize from a flank grip: seed the live target with the unit's
-## current frontage so a click without movement is a no-op.
-func _begin_resize(u) -> void:
+## current frontage so a click without movement is a no-op. `grab_side` is the
+## grabbed grip's own flank (UnitFormation.Anchor.LEFT/RIGHT); the OPPOSITE flank
+## becomes the drag's anchor, so only the grabbed edge moves.
+func _begin_resize(u, grab_side: int) -> void:
 	_resizing = true
 	_resize_unit = u
 	_resize_files = UnitFormation.frontage(u)
+	_resize_anchor = -grab_side   # Anchor.LEFT/RIGHT are -1/+1, so the far flank is the negation
 	queue_redraw()
 
 
-## Update the live resize target as the cursor drags: project the cursor onto the
-## unit's file axis for a half-width, then map it to a file count (shared helper).
+## Update the live resize target as the cursor drags: measure from the ANCHORED
+## flank's fixed edge to the cursor along the file axis for the new full width, then
+## map it to a file count (shared helper). Measuring from the far edge rather than
+## the centre is what makes the drag one-sided: the anchored edge never moves, so
+## the whole width change lands on the dragged flank.
 func _update_resize(world_pos: Vector2) -> void:
 	if not is_instance_valid(_resize_unit):
 		_resizing = false
 		return
-	var offset: Vector2 = world_pos - _resize_unit.global_position
-	var half_width: float = absf(offset.dot(_file_axis(_resize_unit)))
-	_resize_files = UnitFormation.files_for_halfwidth(half_width, _resize_unit.max_soldiers,
-			UnitRef.FORMATION_SPACING * _resize_unit.spacing_scale)
+	var cursor_x: float = (world_pos - _resize_unit.global_position).dot(_file_axis(_resize_unit))
+	var edge_x: float = _resize_anchored_edge_x(_resize_unit, _resize_anchor)
+	# Signed distance from the fixed edge toward the dragged flank, floored at zero
+	# when the cursor crosses behind the anchor (a line can't have negative width).
+	var width: float = maxf(0.0, (cursor_x - edge_x) * -float(_resize_anchor))
+	_resize_files = UnitFormation.files_for_halfwidth(width * 0.5, _resize_unit.max_soldiers,
+			_resize_unit.file_pitch_wu())
 
 
 ## Commit a drag-resize on release: enqueue the delta from the unit's current
 ## frontage to the previewed target, sharing the recorded path with the keyboard
-## resize. A zero delta (no real change) issues nothing.
+## resize -- but anchored on the far flank, so the change extends one-sided toward
+## the dragged grip. A zero delta (no real change) issues nothing.
 func _finish_resize() -> void:
 	var u = _resize_unit
+	var anchor: int = _resize_anchor
 	_resizing = false
 	_resize_unit = null
+	_resize_anchor = UnitFormation.Anchor.CENTRE
 	if not is_instance_valid(u) or Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var delta: int = _resize_files - UnitFormation.frontage(u)
 	if delta != 0:
-		_battle.enqueue_frontage([u.uid], delta)
+		_battle.enqueue_frontage([u.uid], delta, anchor)
 		Sfx.play(&"order")
 	_refresh_hud()
 
 
-## The selected unit whose flank resize-grip is under `world_pos`, or null.
+## The flank grip under `world_pos` on the selected unit, as {"unit": u, "side":
+## UnitFormation.Anchor.LEFT/RIGHT} naming the grabbed grip's own flank in the
+## unit's local frame -- or null when no grip is there.
 func _resize_handle_at(world_pos: Vector2):
 	var u = _single_selected_unit()
 	if u == null:
 		return null
-	for hp in _resize_handle_positions(u):
-		if world_pos.distance_to(hp) <= RESIZE_HANDLE_HIT:
-			return u
+	var hs: Array = _resize_handle_positions(u)
+	for i in range(hs.size()):
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		if world_pos.distance_squared_to(hs[i]) <= RESIZE_HANDLE_HIT * RESIZE_HANDLE_HIT:
+			# hs[0] sits out along +file-axis -- the block's local +X flank
+			# (Anchor.RIGHT); hs[1] is its mirror (Anchor.LEFT).
+			var side: int = UnitFormation.Anchor.RIGHT if i == 0 else UnitFormation.Anchor.LEFT
+			return {"unit": u, "side": side}
 	return null
+
+
+## Local-X (file-axis) coordinate of a flank's edge at the unit's CURRENT committed
+## shape: its standing anchor offset plus the signed half-width. This is the edge an
+## anchored drag holds fixed -- the dragged width and the preview line both measure
+## from it. Pure, so the drag-start "no jump" invariant is directly testable.
+func _resize_anchored_edge_x(u, anchor: int) -> float:
+	return u.frontage_anchor_offset \
+			+ float(anchor) * _resize_preview_half_width(u, UnitFormation.frontage(u))
 
 
 ## The sole live selected unit, or null when the selection isn't exactly one (or a
@@ -1363,11 +1485,13 @@ func _single_selected_unit():
 
 
 ## World positions of a unit's two flank resize grips: out along its file axis, just
-## past the block extent, on each side.
+## past the block extent, on each side -- of the block's actual footprint centre,
+## which a standing anchor offset shifts off the regiment point.
 func _resize_handle_positions(u) -> Array:
 	var right: Vector2 = _file_axis(u)
+	var block_centre: Vector2 = u.global_position + u.block_centre_offset()
 	var reach: float = u.render_block_extent() + RESIZE_HANDLE_GAP
-	return [u.global_position + right * reach, u.global_position - right * reach]
+	return [block_centre + right * reach, block_centre - right * reach]
 
 
 ## Unit vector along a regiment's file (width) axis in world space: its facing turned
@@ -1426,52 +1550,66 @@ func _friend_team() -> int:
 	return 1 - _enemy_team()
 
 
-func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
+# Node groups to scan for _unit_at's `include_routers` argument. A routing unit has left
+# "units" for "routers" (Unit._rout()); scanning both is what lets an attack-order click
+# resolve a fleeing enemy, matching COMBAT_GROUPS' role in the demo state-dump path.
+const _ATTACKABLE_GROUPS := ["units", "routers"]
+
+
+func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> UnitRef:
 	# Nearest unit on `team` under the cursor (callers pass whichever team they want — the
 	# player's own for selection, the enemy's for attack orders — or TEAM_ANY_OWN for "any
-	# team the player currently controls", used by plain click/box selection).
+	# team the player currently controls", used by plain click/box selection). `include_routers`
+	# also scans routing units (see _ATTACKABLE_GROUPS) -- set by callers resolving an ATTACK
+	# click on the enemy team, since routing units are valid combat targets but a plain
+	# "units"-only scan can't resolve a click on one at all.
 	var best = null
-	var best_d: float = UnitRef.RADIUS + BODY_PICK_PAD
+	var best_d_sq: float = (UnitRef.RADIUS + BODY_PICK_PAD) * (UnitRef.RADIUS + BODY_PICK_PAD)
 	# Fallback: the unit whose raised standard (flag + pole) is under the cursor, so the
 	# flag is clickable just like the body. A body hit always wins; the standard only
 	# resolves the click when no block is under the cursor. Nearest flag breaks ties.
 	var flag_best = null
-	var flag_best_d: float = INF
-	for node in get_tree().get_nodes_in_group("units"):
-		var unit = node as UnitRef
-		# A unit that died this frame is still valid and in the group until
-		# queue_free() prunes it; skip it so a click on its last position can't
-		# select/target a dead node — matching box-select, type-select and the
-		# control-group recall guards. (A dead unit also draws no flag.)
-		if unit == null or unit.state == UnitRef.State.DEAD:
-			continue
-		if team == TEAM_ANY_OWN:
-			if not _is_own_team(unit.team):
+	var flag_best_d_sq: float = INF
+	var groups: Array = _ATTACKABLE_GROUPS if include_routers else ["units"]
+	for group in groups:
+		for node in get_tree().get_nodes_in_group(group):
+			var unit = node as UnitRef
+			# A unit that died this frame is still valid and in the group until
+			# queue_free() prunes it; skip it so a click on its last position can't
+			# select/target a dead node — matching box-select, type-select and the
+			# control-group recall guards. (A dead unit also draws no flag.)
+			if unit == null or unit.state == UnitRef.State.DEAD:
 				continue
-		elif unit.team != team:
-			continue
-		var d: float = unit.global_position.distance_to(world_pos)
-		if d < best_d:
-			best_d = d
-			best = unit
-		var fd: float = _flag_pick_distance(unit, world_pos)
-		if fd >= 0.0 and fd < flag_best_d:
-			flag_best_d = fd
-			flag_best = unit
+			if team == TEAM_ANY_OWN:
+				if not _is_own_team(unit.team):
+					continue
+			elif unit.team != team:
+				continue
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			var d_sq: float = unit.global_position.distance_squared_to(world_pos)
+			if d_sq < best_d_sq:
+				best_d_sq = d_sq
+				best = unit
+			var fd_sq: float = _flag_pick_distance_squared(unit, world_pos)
+			if fd_sq >= 0.0 and fd_sq < flag_best_d_sq:
+				flag_best_d_sq = fd_sq
+				flag_best = unit
 	return best if best != null else flag_best
 
 
-## Distance from `world_pos` to the centre of `u`'s raised standard when the cursor falls
+## Squared distance from `world_pos` to the centre of `u`'s raised standard when the cursor falls
 ## within its (padded) bounds, else -1.0 for "not on the flag". Used as the flag-click
 ## fallback in `_unit_at`; the standard's geometry comes from UnitSprites so the hit region
 ## tracks what's drawn. The standard is drawn in an unrotated screen frame about the unit
 ## centre, so the cursor maps in by a plain translation (no facing rotation).
-func _flag_pick_distance(u, world_pos: Vector2) -> float:
+func _flag_pick_distance_squared(u, world_pos: Vector2) -> float:
 	var local: Vector2 = world_pos - u.global_position
-	var box: Rect2 = UnitSprites.standard_bounds(u.render_block_extent()).grow(FLAG_HIT_PAD)
+	var box: Rect2 = UnitSprites.standard_bounds(u.render_block_extent(),
+			u.block_centre_offset()).grow(FLAG_HIT_PAD)
 	if box.has_point(local):
 		# grow() preserves the centre, so this tiebreak distance is independent of FLAG_HIT_PAD.
-		return local.distance_to(box.get_center())
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		return local.distance_squared_to(box.get_center())
 	return -1.0
 
 
@@ -1515,8 +1653,36 @@ func _process(_delta: float) -> void:
 	if showing_orders or _was_showing_orders:
 		queue_redraw()
 	_was_showing_orders = showing_orders
+	_track_grip_motion()
 	if _cursor_sprite.visible:
 		_cursor_sprite.position = get_viewport().get_mouse_position()
+
+
+## Redraw when the selected unit slides out from under its resize grips. The grips are
+## drawn by this node but anchored to the unit's live transform, and a unit keeps moving
+## with no further input (marching an order, body-coupling drift, a reform, casualties
+## shrinking the block) — so watch the inputs the grip geometry reads and redraw whenever
+## any of them changed since the last request. Idle units change nothing, so this stays
+## a cheap comparison outside the frames where something actually moved.
+## Returns whether a redraw was requested, so the motion test can assert on it directly.
+func _track_grip_motion() -> bool:
+	var now := _current_grip_state()
+	if now == _grip_state:
+		return false
+	_grip_state = now
+	queue_redraw()
+	return true
+
+
+## The grip geometry's current inputs: everything _resize_handle_positions reads
+## (position, facing, block extent, and the block's centre offset -- which moves
+## when an anchored drag commits or a standing offset swings with the heading),
+## or empty when no grips are showing.
+func _current_grip_state() -> Array:
+	var u = _single_selected_unit()
+	if u == null:
+		return []
+	return [u.global_position, u.facing, u.render_block_extent(), u.block_centre_offset()]
 
 
 # --- control groups --------------------------------------------------------
@@ -1541,26 +1707,150 @@ func _digit_for_keycode(keycode: Key) -> int:
 	return -1
 
 
-## Bind the current selection to a control group (a snapshot of live members).
+## Bind the current selection to a control group. If the alive selection is exactly the
+## union of one or more OTHER already-bound groups' current members (see
+## _group_union_match()), records `n` as a COMPOSITE (nested) group over those children
+## instead of a flat snapshot -- so recalling `n` later live-resolves to whatever its
+## children currently hold, rather than freezing today's membership. Any other selection
+## (a partial overlap with a bound group, extra units, or no match at all) falls back to
+## the ordinary flat snapshot bind, unchanged from before composite groups existed.
 func _bind_group(n: int) -> void:
 	var members: Array = []
 	for u in _selected:
 		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
 			members.append(u)
+	var children: Array = _group_union_match(n, members)
+	if not children.is_empty():
+		_group_children[n] = children
+		_groups.erase(n)   # a stale flat snapshot for n would never be read again
+		return
+	_group_children.erase(n)   # a re-bind as a flat group overrides any old composite
 	_groups[n] = members
+
+
+## Whether `selection` (already alive-filtered, the pending bind for group `n`) is exactly
+## the union of the CURRENT live members of some subset of already-bound groups OTHER than
+## `n` -- the "clean union, no partial overlap" precondition _bind_group() uses to decide
+## whether to record `n` as a composite group. A group only counts as a candidate child
+## when ALL of its current members are in `selection`; a group with only SOME of its
+## members selected is a partial overlap, so it's excluded here, which in turn leaves its
+## overlapping members uncovered by the final check below -- this is what makes a partial
+## overlap fall through to an ordinary flat bind rather than a silent error. Returns the
+## matched group numbers (ascending), or `[]` when no clean decomposition exists --
+## including when `selection` is empty or matches no bound group at all.
+func _group_union_match(n: int, selection: Array) -> Array:
+	if selection.is_empty():
+		return []
+	var children: Array = []
+	var covered: Dictionary = {}
+	for g in range(10):
+		if g == n or not has_group(g):
+			continue
+		var members: Array = group_members(g)
+		if members.is_empty():
+			continue
+		var fully_contained := true
+		for u in members:
+			if not selection.has(u):
+				fully_contained = false
+				break
+		if not fully_contained:
+			continue
+		children.append(g)
+		for u in members:
+			covered[u] = true
+	if children.is_empty():
+		return []
+	for u in selection:
+		if not covered.has(u):
+			return []
+	return children
 
 
 ## Replace the selection with a control group's still-alive members.
 func _recall_group(n: int) -> void:
-	if not _groups.has(n):
+	if not has_group(n):
 		return
 	_clear_selection()
-	for u in _groups[n]:
-		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
-			_select(u)
+	for u in group_members(n):
+		_select(u)
 	if not _selected.is_empty():
 		Sfx.play(&"select")   # parity with click / box / type-select feedback
 	_refresh_hud()
+
+
+## The live (not dead, still valid) members of control group `n`, or `[]` if unbound (or
+## if every bound member -- direct or, for a composite, transitive -- has since died).
+## Shared with _recall_group() above, which used to duplicate this same live-filtering
+## loop. Delegates to _group_members_visited() for the composite-recursion cycle guard.
+func group_members(n: int) -> Array:
+	return _group_members_visited(n, {})
+
+
+## group_members()'s recursive worker. `visited` tracks the group numbers already expanded
+## earlier in the current call chain, so a composite group that (directly or transitively)
+## names itself as one of its own children resolves that branch to `[]` instead of
+## recursing forever. _bind_group() only ever records a composite from OTHER groups' state
+## at bind time (never `n` itself), but two groups can still end up mutually composite if
+## each is (re)bound as a composite of the other in turn -- in that case every affected
+## group's members resolve to `[]` rather than looping or erroring.
+func _group_members_visited(n: int, visited: Dictionary) -> Array:
+	var out: Array = []
+	if _group_children.has(n):
+		if visited.has(n):
+			return out
+		var next_visited: Dictionary = visited.duplicate()
+		next_visited[n] = true
+		var seen: Dictionary = {}
+		for child in _group_children[n]:
+			for u in _group_members_visited(child, next_visited):
+				if not seen.has(u):
+					seen[u] = true
+					out.append(u)
+		return out
+	if not _groups.has(n):
+		return out
+	for u in _groups[n]:
+		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
+			out.append(u)
+	return out
+
+
+## Whether control group `n` has ever been bound (Ctrl+0-9) -- either as a flat snapshot or
+## as a composite (nested) group over other groups, see _bind_group() -- distinct from
+## group_members(n) returning `[]`, which is ambiguous between "never bound" and "bound,
+## but every member (or, for a composite, every child) has since died/emptied out." A
+## caller that wants to distinguish those two cases (e.g. falling back to "no group
+## selected" behavior only for the former) checks this first.
+func has_group(n: int) -> bool:
+	return _groups.has(n) or (_group_children.has(n) and not _group_children[n].is_empty())
+
+
+# --- battle AI player delegation (phase 4, docs/battle-ai-design.md) -------
+
+## Ctrl+Shift+<0-9>: delegate the current selection to AI subcommander group `group_id`, or
+## revoke (take manual control back) if every selected friendly unit is already delegated to
+## that exact group -- the same toggle-back-on-the-same-key convention _toggle_square/
+## _toggle_shield_wall/_toggle_testudo already use for a direct-select stance. Routed through
+## Battle.enqueue_delegation so the toggle is recorded and replays exactly; the resulting AI
+## orders themselves are re-derived (never recorded), like every other AI decision.
+func _toggle_delegation(group_id: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	var all_already_this_group := true
+	for u in _selected:
+		if is_instance_valid(u) and u.state != UnitRef.State.DEAD and u.player_group_id != group_id:
+			all_already_this_group = false
+			break
+	var target_group: int = Unit.UNDELEGATED if all_already_this_group else group_id
+	_battle.enqueue_delegation(uids, target_group)
+	if _hud != null:
+		_hud.flash_message("Delegation revoked" if target_group == Unit.UNDELEGATED \
+				else "Delegated to subcommander group %d" % group_id)
+	Sfx.play(&"order")
 
 
 # --- order modes -----------------------------------------------------
@@ -1601,6 +1891,94 @@ func get_group_attack_mode() -> int:
 ## Cycle the group-attack distribution mode (called from the control bar).
 func toggle_group_attack_mode() -> void:
 	_cycle_group_attack_mode()
+
+
+# --- per-unit settings (walk_advance / reform_before_move / file_major_reform_mode) ------
+
+## Set walk_advance on every currently selected friendly unit (called from the info panel
+## checkbox). Routed through Battle.enqueue_unit_settings so the toggle itself -- not just
+## its downstream effect -- is recorded and replays exactly, the same way _issue_stance's
+## rank-relief toggle already is.
+func set_selected_walk_advance(value: bool) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	var toggle: int = BattleRef.UnitSettingToggle.ON if value else BattleRef.UnitSettingToggle.OFF
+	_battle.enqueue_unit_settings(uids, toggle, BattleRef.UnitSettingToggle.LEAVE)
+	Sfx.play(&"order")
+
+
+## Cancel the order at `index` on the unit whose queue the info panel is actually showing.
+##
+## Deliberately NOT every selected unit, unlike its siblings in this file. `index` is a row
+## position in the order tree the HUD rendered, and that tree is built from a single unit --
+## `_hud.show_unit(_selected[0], ...)`. Two selected units generally have differently-shaped
+## queues, so the same index means a different order in each; applying it across the selection
+## would cancel orders the player never saw. The cancel button is per-row, so its scope is the
+## row's own unit.
+func cancel_selected_order_at(index: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var shown: Unit = _selected[0] if not _selected.is_empty() else null
+	if shown == null or not is_instance_valid(shown):
+		return
+	if _battle != null and _battle.has_method("enqueue_cancel_order"):
+		_battle.enqueue_cancel_order([shown.uid], index)
+	else:
+		shown.cancel_order_at(index)
+
+
+
+## Set reform_before_move on every currently selected friendly unit (called from the info
+## panel checkbox and the control bar's Reform quick-toggle). See set_selected_walk_advance.
+func set_selected_reform_before_move(value: bool) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	var toggle: int = BattleRef.UnitSettingToggle.ON if value else BattleRef.UnitSettingToggle.OFF
+	_battle.enqueue_unit_settings(uids, BattleRef.UnitSettingToggle.LEAVE, toggle)
+	Sfx.play(&"order")
+
+
+## The order the info panel's file-major-reform button cycles through on each click
+## (File-major -> Row-major -> Auto -> File-major). Kept as an explicit list, like
+## FORMATION_CYCLE above, so an unrecognized current mode falls back cleanly to the front.
+const REFORM_MODE_CYCLE: Array[int] = [
+	Unit.ReformMode.FILE_MAJOR, Unit.ReformMode.ROW_MAJOR, Unit.ReformMode.AUTO,
+]
+
+
+## The reform mode one step past `current` in REFORM_MODE_CYCLE (wrapping at the end).
+## Static + pure so the cycle order is directly testable, mirroring next_formation above.
+static func next_reform_mode(current: int) -> int:
+	var idx: int = REFORM_MODE_CYCLE.find(current)
+	return REFORM_MODE_CYCLE[(idx + 1) % REFORM_MODE_CYCLE.size()]
+
+
+## Cycle file_major_reform_mode (File-major -> Row-major -> Auto -> File-major) on every
+## currently selected friendly unit -- called from the info panel's cycle button. A 3-value
+## mode doesn't fit the ON/OFF checkbox shape set_selected_walk_advance/
+## set_selected_reform_before_move use (see set_selected_walk_advance), so this instead reads
+## the LEAD selected unit's own current mode and issues the NEXT one in REFORM_MODE_CYCLE for
+## the whole selection, mirroring _cycle_formation's lead-unit-drives-the-step shape. Routed
+## through Battle.enqueue_unit_settings so the cycle step itself -- not just its downstream
+## effect -- rides the replay stream, like the other per-unit settings above.
+func cycle_selected_file_major_reform_mode() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if _selected.is_empty() or not is_instance_valid(_selected[0]):
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	var next: int = next_reform_mode(_selected[0].file_major_reform_mode)
+	_battle.enqueue_unit_settings(uids, BattleRef.UnitSettingToggle.LEAVE,
+			BattleRef.UnitSettingToggle.LEAVE, next)
+	Sfx.play(&"order")
 
 
 func _exit_tree() -> void:
@@ -1669,6 +2047,11 @@ func _order_mode_color(mode: int) -> Color:
 		BattleRef.OrderMode.CHASE: return Color(0.55, 0.43, 0.95)
 		BattleRef.OrderMode.ALL_OUT_ATTACK: return Color(1.0, 0.25, 0.69)
 		BattleRef.OrderMode.KNOCKBACK_FOCUS: return Color(0.95, 0.75, 0.1)
+		BattleRef.OrderMode.GIVE_GROUND: return Color(0.65, 0.65, 0.7)
+		BattleRef.OrderMode.PUSH: return Color(0.9, 0.45, 0.2)
+		BattleRef.OrderMode.MULTIPLE_ENGAGE: return Color(0.75, 0.2, 0.85)
+		BattleRef.OrderMode.MARCH_TO_CONTACT: return Color(0.5, 0.75, 0.45)
+		BattleRef.OrderMode.BRACE: return Color(0.75, 0.55, 0.25)
 		_: return Color.WHITE
 
 
@@ -1720,7 +2103,7 @@ func _draw_form_up_preview() -> void:
 	var font := ThemeDB.fallback_font
 	for slice in _form_up_slices(units, _rmb_start, end_pos, _form_up_dist):
 		_draw_form_up_line(slice["center"], face, slice["files"], FORM_UP_COLOR,
-				slice["unit"].spacing_scale)
+				slice["unit"].file_pitch_wu())
 		# Centre the file-count label over the slice (width -1 ignores CENTER alignment, so
 		# offset by half the text width, as the keystroke overlay does).
 		var label: String = UnitFormation.files_label(slice["files"])
@@ -1751,22 +2134,25 @@ func _draw_resize_handles() -> void:
 
 
 ## Half-width (world units) of a resize preview line for `files` files on `u`'s own
-## grid pitch -- `u.spacing_scale`-aware, matching UnitFormation.files_for_halfwidth's
+## grid pitch -- `u.file_pitch_wu()`-aware, matching UnitFormation.files_for_halfwidth's
 ## inverse mapping (and UnitFormation.slots' actual layout) so a LOOSE unit's preview
 ## line spans its real formed-up width instead of the plain NORMAL-order spacing. Pure,
 ## so the drag-start "no jump" invariant (matches _resize_handle_positions' extent when
 ## `files` hasn't changed yet) is directly testable.
 func _resize_preview_half_width(u, files: int) -> float:
-	return float(files - 1) * 0.5 * UnitRef.FORMATION_SPACING * u.spacing_scale
+	return float(files - 1) * 0.5 * u.file_pitch_wu()
 
 
 ## Preview the dragged frontage: a line spanning the target width and the file count
-## as text, so the player sees the new line before releasing.
+## as text, so the player sees the new line before releasing. The line grows ONE-SIDED
+## from the anchored flank's fixed edge -- matching what the commit does -- so the
+## player sees exactly which flank will move; the file-count label rides the moving
+## (dragged) end.
 func _draw_resize_preview(u) -> void:
 	var right: Vector2 = _file_axis(u)
-	var half: float = _resize_preview_half_width(u, _resize_files)
-	var a: Vector2 = u.global_position - right * half
-	var b: Vector2 = u.global_position + right * half
+	var width: float = _resize_preview_half_width(u, _resize_files) * 2.0
+	var a: Vector2 = u.global_position + right * _resize_anchored_edge_x(u, _resize_anchor)
+	var b: Vector2 = a + right * width * -float(_resize_anchor)
 	draw_line(a, b, RESIZE_HANDLE_COLOR, 2.0)
 	draw_string(ThemeDB.fallback_font, b + Vector2(8.0, -6.0), UnitFormation.files_label(_resize_files),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, RESIZE_HANDLE_COLOR)
@@ -1811,6 +2197,22 @@ func take_keys_this_tick() -> Array:
 	return k
 
 
+## Replace active selection with `units`.
+func select_units(units: Array) -> void:
+	_clear_selection()
+	for u in units:
+		if u != null and is_instance_valid(u) and _is_own_team(u.team) and u.state != UnitRef.State.DEAD:
+			_select(u)
+	if not _selected.is_empty():
+		Sfx.play(&"select")
+	_refresh_hud()
+
+
+## Return a copy of the currently selected units array.
+func get_selected_units() -> Array:
+	return _selected.duplicate()
+
+
 ## Buffer a pressed-key label for this tick's keystroke recording.
 func _note_key(label: String) -> void:
 	if label != "":
@@ -1850,7 +2252,8 @@ func _draw_demo_pointer() -> void:
 	for uid in p["sel"]:
 		var u: UnitRef = _battle.unit_by_uid(int(uid))
 		if u != null and u.state != UnitRef.State.DEAD:
-			draw_arc(u.global_position, u.render_block_extent() + 4.0, 0.0, TAU, 36, DEMO_SELECT_COLOR, 2.0)
+			draw_arc(u.global_position + u.block_centre_offset(),
+					u.render_block_extent() + 4.0, 0.0, TAU, 36, DEMO_SELECT_COLOR, 2.0)
 
 	# Drag-box: the marquee from its recorded start corner to the (gliding) cursor.
 	if bool(p["drag"]):
@@ -1884,7 +2287,7 @@ func _draw_demo_pointer() -> void:
 	for fu in Replay.form_ups_for_tick(tick, DEMO_FORMUP_WINDOW):
 		var fade: float = 1.0 - float(int(fu["age"])) / float(DEMO_FORMUP_WINDOW)
 		var fu_unit = _battle.unit_by_uid(int(fu.get("uid", -1)))
-		var fu_pitch: float = fu_unit.spacing_scale if fu_unit != null else 1.0
+		var fu_pitch: float = fu_unit.file_pitch_wu() if fu_unit != null else UnitRef.FORMATION_SPACING
 		_draw_form_up_line(Vector2(fu["x"], fu["y"]), float(fu["face"]), int(fu["frontage"]),
 				Color(FORM_UP_COLOR, FORM_UP_COLOR.a * fade), fu_pitch)
 
@@ -1895,12 +2298,12 @@ func _draw_demo_pointer() -> void:
 ## Draw a form-up's flank line (left dot + line) and forward-facing arrow about its
 ## centre, used both for the live preview and the demo replay. `face` is the deploy
 ## facing in radians; the line spans the frontage along the perpendicular file axis, on
-## the unit's own grid pitch (`pitch_scale` = its spacing_scale) -- the density-blind
-## pitch drew a loose unit's line at half its real formed-up width.
+## the unit's own file pitch (`file_pitch` = its file_pitch_wu(), in wu) -- a
+## density-blind pitch drew a loose unit's line at half its real formed-up width.
 func _draw_form_up_line(center: Vector2, face: float, files: int, color: Color,
-		pitch_scale: float = 1.0) -> void:
+		file_pitch: float = UnitRef.FORMATION_SPACING) -> void:
 	var file_axis: Vector2 = Vector2.from_angle(face + PI * 0.5)   # left -> right along the front
-	var half: float = float(files - 1) * 0.5 * UnitRef.FORMATION_SPACING * pitch_scale
+	var half: float = float(files - 1) * 0.5 * file_pitch
 	var a: Vector2 = center - file_axis * half
 	var b: Vector2 = center + file_axis * half
 	draw_line(a, b, color, 2.0)

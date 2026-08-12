@@ -105,6 +105,23 @@ func test_duplicatio_deepens_the_line() -> void:
 		"the reshape moves the formation, not the regiment centre")
 
 
+## The block's extreme slot positions along the file axis (world X here, since these units
+## face along Y). Geometric, so no assumption about which array index holds which cell --
+## see the anchored-flank test below for which of the two is the unit's own right flank.
+func _max_slot_x(slots: PackedVector2Array) -> float:
+	var best: float = -INF
+	for s in slots:
+		best = maxf(best, s.x)
+	return best
+
+
+func _min_slot_x(slots: PackedVector2Array) -> float:
+	var best: float = INF
+	for s in slots:
+		best = minf(best, s.x)
+	return best
+
+
 func test_explicatio_right_anchored_holds_the_right_flank_in_place() -> void:
 	# The asymmetric variant (Shift+B in SelectionManager): anchoring RIGHT should hold
 	# the right-flank SLOT in its world position while the block widens entirely off
@@ -113,6 +130,13 @@ func test_explicatio_right_anchored_holds_the_right_flank_in_place() -> void:
 	# not live soldier-body positions -- widening relabels which body occupies which
 	# slot index, so a body's own eased position doesn't track "the right flank" the
 	# way the slot it's walking toward does.
+	#
+	# For the same reason the flanks are picked GEOMETRICALLY, as the extreme slot
+	# positions along the file axis, rather than by array index. Index frontage-1 named
+	# the rightmost slot only while the file assignment was dealt in array order; a
+	# reshape now deals it by lateral proximity, so that index is just some interior man.
+	# The block's own left and right edges are what "the flank" means here, and they are
+	# a property of the grid rather than of who is labelled where.
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	add_child_autofree(battle)
 	for _k in range(40):                      # spawn the armies and let the bodies settle
@@ -124,8 +148,12 @@ func test_explicatio_right_anchored_holds_the_right_flank_in_place() -> void:
 
 	var start_frontage: int = UnitFormation.frontage(target)
 	var start_slots := target.soldier_world_slots(target.soldiers)
-	var right_flank_start: Vector2 = start_slots[start_frontage - 1]   # front-rank rightmost slot
-	var left_flank_start: Vector2 = start_slots[0]                     # front-rank leftmost slot
+	# Anchor.RIGHT holds the block's own LOCAL +X edge (UnitFormation.frontage_anchor_shift
+	# returns a negative shift for it), and this unit faces along +Y, which maps local +X onto
+	# world -X. So the anchored flank is the world MINIMUM x edge, and the free one is the
+	# maximum.
+	var right_flank_start: float = _min_slot_x(start_slots)
+	var left_flank_start: float = _max_slot_x(start_slots)
 	battle.enqueue_file_double([target.uid], 1, UnitFormation.Anchor.RIGHT)   # asymmetric explicatio
 	var new_frontage: int = UnitFormation.frontage(target)
 	assert_eq(new_frontage, start_frontage * 2,
@@ -138,12 +166,12 @@ func test_explicatio_right_anchored_holds_the_right_flank_in_place() -> void:
 	# an expected side effect of ranks changing, not the anchor. The anchor is about
 	# the LATERAL axis only, so compare X (the unit's file axis), not the full 2D point.
 	var new_slots := target.soldier_world_slots(target.soldiers)
-	var right_flank_end: Vector2 = new_slots[new_frontage - 1]   # new front-rank rightmost slot
-	var left_flank_end: Vector2 = new_slots[0]                   # new front-rank leftmost slot
+	var right_flank_end: float = _min_slot_x(new_slots)
+	var left_flank_end: float = _max_slot_x(new_slots)
 
-	assert_almost_eq(right_flank_end.x, right_flank_start.x, 0.5,
+	assert_almost_eq(right_flank_end, right_flank_start, 0.5,
 		"the anchored (right) flank slot's lateral position stays fixed as the block widens")
-	assert_gt(absf(left_flank_end.x - left_flank_start.x), CENTRE_SETTLE_TOLERANCE_PX,
+	assert_gt(absf(left_flank_end - left_flank_start), CENTRE_SETTLE_TOLERANCE_PX,
 		"the opposite (left) flank slot's lateral position moves as the whole widen lands on that side")
 
 	# The bodies still ease toward the new slots at velocity -- no teleport -- exactly

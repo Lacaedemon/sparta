@@ -59,6 +59,8 @@ static func seed(unit: Unit) -> void:
 	unit._sim_soldier_stamina = PackedFloat32Array()
 	unit._sim_soldier_stamina.resize(unit._sim_soldier_pos.size())
 	unit._sim_soldier_stamina.fill(unit.combat_profile()["max_stamina"])
+	unit._sim_soldier_broken = PackedByteArray()
+	unit._sim_soldier_broken.resize(unit._sim_soldier_pos.size())   # 0 = holding formation
 	# Loadout type ids: every soldier carries its unit's interned weapon/shield
 	# type (see LoadoutRegistry) — an id into the shared registry, not an object.
 	unit._sim_soldier_weapon_id = PackedInt32Array()
@@ -90,6 +92,10 @@ static func seed(unit: Unit) -> void:
 ## by the fixed physics delta, so it reproduces on replay.
 static func step(unit: Unit, delta: float) -> void:
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
+	# Hand this tick's slots to couple() (see Unit._step_slots_for_couple's own doc) so it
+	# doesn't redo the identical computation moments later in the same tick.
+	unit._step_slots_for_couple = slots
+	unit._step_slots_for_couple_valid = true
 	var n: int = slots.size()
 	var old_n: int = unit._sim_soldier_pos.size()
 	if old_n != n:
@@ -113,6 +119,8 @@ static func step(unit: Unit, delta: float) -> void:
 			unit._sim_soldier_hp[j] = maxhp
 	if unit._sim_prone.size() != n:
 		unit._sim_prone.resize(n)   # index-aligned; a fresh tail body stands (0)
+	if unit._sim_soldier_broken.size() != n:
+		unit._sim_soldier_broken.resize(n)   # index-aligned; a fresh tail body starts holding formation (0)
 	var maxs: float = unit.combat_profile()["max_stamina"]
 	if unit._sim_soldier_stamina.size() != n:
 		# Keep the stamina pool index-aligned; any newly-added body arrives at full stamina.
@@ -165,7 +173,13 @@ static func step(unit: Unit, delta: float) -> void:
 			unit._sim_soldier_stamina[p] + SoldierCombat.RHO_STAMINA * delta
 				- (SoldierCombat.KAPPA_P if just_rose else 0.0),
 			0.0, maxs)
-	var engaged_indices: PackedInt32Array = unit.engaged_soldier_indices(n)
+	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but
+	# capped so it never covers the whole block. Everything below this line -- the dropped
+	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged
+	# bulk that still tracks the formation's own slots (see this file's class doc), so a tier
+	# that swallowed every rank would leave those behaviours with no reference to work
+	# against. See Unit.body_tier_soldier_indices / body_tier_ranks.
+	var engaged_indices: PackedInt32Array = unit.body_tier_soldier_indices(n)
 	# Membership test for the per-soldier loop below, as a packed bool array instead of a
 	# Dictionary -- every tick, every unit builds one of these (engaged or not), so a
 	# Dictionary's per-entry hashing/boxing overhead here is pure per-tick waste versus a
@@ -354,6 +368,9 @@ static func step(unit: Unit, delta: float) -> void:
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
 			unit._render_dirty = true
+	# One arrival integration per body, each with exactly one `to_slot.length()`.
+	SimOps.add(SimOps.BODY_STEP, n)
+	SimOps.add(SimOps.SQRT_EVAL, n)
 
 
 ## Cap a stationary/reforming body's velocity to its unit's jog pace, but to the slower
@@ -446,16 +463,24 @@ static func couple(unit: Unit, delta: float) -> void:
 	# alone brings the bodies onto the arc, and coupling resumes once the wheel completes.
 	if unit.is_wheeling() or unit.frontage_anchor_offset != 0.0:
 		unit._body_follow_vel = Vector2.ZERO
+		unit._step_slots_for_couple_valid = false   # this tick's handoff goes unused
 		return
-	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
+	var slots: PackedVector2Array
+	if unit._step_slots_for_couple_valid and unit._step_slots_for_couple.size() == n:
+		# step() computed this exact tick's slots already -- reuse instead of recomputing.
+		slots = unit._step_slots_for_couple
+	else:
+		slots = unit.soldier_world_slots(unit.soldiers)
+	unit._step_slots_for_couple_valid = false
 	if slots.size() != n:
 		return   # arrays mid-resize this tick; couple next tick when they realign
-	# position_anchor_indices narrows the engaged-ranks selection down to the live
+	# position_anchor_indices narrows the contact-tier selection down to the live
 	# near-front ranks (Unit.ANCHOR_RANKS) once the unit has settled (see
 	# Unit.position_anchor_indices / _position_anchor_unstable) -- Square/Schiltron and any
-	# in-progress turn or reform keep the wider engaged_soldier_indices selection this
-	# always used to be.
-	var indices: PackedInt32Array = unit.position_anchor_indices(n, false)
+	# in-progress turn or reform keep the wider contact_soldier_indices selection this
+	# always used to be. Also anchors a merely-in-contact (not fighting) regiment on its real
+	# front-rank bodies, not the whole-block centroid -- see Unit._in_enemy_contact.
+	var indices: PackedInt32Array = unit.position_anchor_indices(n)
 	var body_centroid := Vector2.ZERO
 	var slot_centroid := Vector2.ZERO
 	var count: int = indices.size()

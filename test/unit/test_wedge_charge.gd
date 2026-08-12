@@ -82,6 +82,9 @@ func test_target_wedge_charge_penalizes_only_defense_mult() -> void:
 # --- end-to-end: strike() actually moves casualty counts for the exposed defense -----
 
 func test_wedge_charge_defender_takes_more_melee_damage_when_engaged() -> void:
+	# The two pairs sit far apart -- SoldierMelee.resolve now fights every unit its
+	# attacker is genuinely adjacent to (see Unit.resolve_soldier_melee), so co-located
+	# pairs would cross-contaminate each other's casualty counts.
 	var attacker_a := _make_engaged_unit(100, Vector2(0, 0), Vector2.DOWN)
 	attacker_a.team = 0
 	var defender_wedge := _make_engaged_unit(100, Vector2(0, 10), Vector2.UP)
@@ -89,9 +92,9 @@ func test_wedge_charge_defender_takes_more_melee_damage_when_engaged() -> void:
 	defender_wedge.order_mode = Unit.ORDER_WEDGE_CHARGE
 	var before_a: int = defender_wedge.soldiers
 
-	var attacker_b := _make_engaged_unit(100, Vector2(0, 0), Vector2.DOWN)
+	var attacker_b := _make_engaged_unit(100, Vector2(10000, 0), Vector2.DOWN)
 	attacker_b.team = 0
-	var defender_normal := _make_engaged_unit(100, Vector2(0, 10), Vector2.UP)
+	var defender_normal := _make_engaged_unit(100, Vector2(10000, 10), Vector2.UP)
 	defender_normal.team = 1
 	var before_b: int = defender_normal.soldiers
 

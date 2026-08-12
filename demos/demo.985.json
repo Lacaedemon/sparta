@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/give-ground.json",
+  "caption": "Give ground (#983): two equal-reach Infantry regiments lock in melee. Once engaged, the player selects their own unit and issues Ctrl+backtick (Give ground) -- it backs steadily away from the enemy line at a constant rate while the two sides keep trading blows, instead of holding its ground the way the passive reach standoff (#981) would.",
+  "fixed_fps": 30,
+  "max_frames": 660,
+  "fps": 15,
+  "width": 640
+}

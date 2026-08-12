@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Architectural-correctness refactor: converts Unit._separate()'s regiment-overlap resolution from a direct position write to a capped velocity impulse. Empirically confirmed behaviorally identical in every measured and test-constructed scenario (the full GUT suite passes unchanged, including exact-value separation assertions), so there is nothing new to show on screen -- a recorded clip would look identical to one recorded on main."
+}

@@ -1,8 +1,10 @@
 extends CanvasLayer
-## On-screen UI, built in code (no .tscn needed):
-##   - top hint bar
-##   - top-right Menu button: restart the battle plus global options
-##   - selected-unit info panel (bottom-left)
+## On-screen UI, built in code (no .tscn needed). Panels sit on the screen margins:
+##   - top-left: distance legend
+##   - top-right: Menu button (restart the battle plus global options) + tray toggle
+##   - center-left: selected-unit info panel (stat sheet, characteristics, order tree)
+##   - bottom-left: selected-unit settings (walk advance / reform before move / file-major reform)
+##   - bottom-right: unit card tray
 ##   - victory/defeat overlay with a restart button
 
 const BattleRef = preload("res://scripts/Battle.gd")
@@ -10,6 +12,21 @@ const BuildInfoRef = preload("res://scripts/BuildInfo.gd")
 const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
 const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
 const UnitRef = preload("res://scripts/Unit.gd")
+
+## Slow-motion tick-speed presets, cycled live by F5 (see _cycle_slowmo). Index 0 is
+## Engine's own default (1.0 = normal speed). Engine.time_scale is the mechanism rather
+## than a purpose-built recorder-only playback rate: verified empirically that it scales
+## the *delta* each physics tick receives, not the tick FREQUENCY -- the same number of
+## physics ticks still fire per unit of engine-loop progress (a movie-maker frame budget,
+## an awaited physics_frame count), so tick numbering, per-tick order dispatch, and any
+## RNG draw gated by tick number are unaffected. What changes is how much simulated
+## game-time each tick represents, so movement and any accumulated-delta timer (an attack
+## cooldown, a reform hold) genuinely take more ticks to cover the same simulated
+## duration -- that's the actual mechanism behind the visible slowdown, not a side effect
+## to guard against. Covers live gameplay and demo/recorder playback with one mechanism
+## (both drive Battle._physics_process the same way), with no separate recorder-scoped
+## implementation needed.
+const SLOWMO_PRESETS: Array[float] = [1.0, 0.5, 0.25, 0.1]
 
 # Stable ids for the Menu popup's items (independent of index / separators). The seven
 # MENU_FORMUP_EQUAL_*/MENU_FORMUP_CHECKERBOARD/MENU_FORMUP_ECHELON_* ids set the default
@@ -22,21 +39,44 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_CYCLE_DEPTH_SPACE, MENU_FORMUP_CYCLE_DEPTH,
 		MENU_FORMUP_CYCLE_WIDTH, MENU_FORMUP_CYCLE_WIDTH_COUNT, MENU_FORMUP_CYCLE_CHECKERBOARD,
 		MENU_FORMUP_CYCLE_ECHELON_RIGHT, MENU_FORMUP_CYCLE_ECHELON_LEFT,
-		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
+		MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
 		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_POSITION_ANCHOR, MENU_SHOW_FPS,
+		MENU_PERFORMANCE_GRAPH, MENU_UNIT_CARD_TRAY,
 		MENU_FPS_CORNER_TOP_LEFT, MENU_FPS_CORNER_TOP_RIGHT, MENU_FPS_CORNER_BOTTOM_LEFT,
 		MENU_FPS_CORNER_BOTTOM_RIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
 		MENU_QUIT_TO_MENU }
 
-var _hint: Label
 var _info: Label
+# Static unit characteristics (attack/defense/panoply/body mass/weapon/shield/
+# mount): their own label under a fold toggle, COLLAPSED by default -- the
+# default panel shows only the live state, and the rows that never change
+# mid-battle stay one click away. Transient UI state: a fresh battle (a fresh
+# HUD instance) folds again; nothing persists to Settings.
+var _chars_toggle: Button
+var _info_static: Label
+var _chars_expanded: bool = false
+# Per-unit settings: walk_advance / reform_before_move (plain on/off checkboxes) and
+# file_major_reform_mode (a 3-value mode, so a click-to-cycle button instead -- see
+# _REFORM_MODE_NAMES below) for the shown unit, changeable live -- see show_unit()/
+# clear_unit() and the _on_*_toggled/_on_file_major_reform_pressed handlers.
+var _walk_advance_check: CheckBox
+var _reform_before_move_check: CheckBox
+var _file_major_reform_btn: Button
+# Own panel (bottom-left) housing the three controls above -- kept separate from the
+# unit info panel (center-left) per the screen-margins layout; see _build_settings_panel.
+var _settings_panel: PanelContainer
 var _overlay: ColorRect
 var _overlay_label: Label
 var _menu_button: MenuButton
+var _tray_toggle_btn: Button
 var _status: Label
 var _paused_label: Label
 var _order_mode_label: Label
 var _flash_label: Label
+var _slowmo_label: Label
+# Live index into SLOWMO_PRESETS; 0 = normal speed. Transient UI state, not persisted --
+# a fresh battle (a fresh HUD instance) always starts at normal speed.
+var _slowmo_index: int = 0
 var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
@@ -51,14 +91,26 @@ var _legend_bar: ColorRect
 var _legend_label: Label
 var _legend_last_zoom: float = -1.0   # forces a first sync; _process re-syncs only on change
 var _fps_label: Label
+var _perf_graph_overlay: Control
+var _unit_card_tray: UnitCardTray
 # Live-measured physics tick rate (distinct from Engine.physics_ticks_per_second, the
 # configured TARGET): counts physics_frame emissions over a rolling real-time window, so it
 # reads below target if the sim can't keep up with a large battle. See _on_physics_tick.
 var _tick_count: int = 0
 var _tick_rate_window: float = 0.0
 var _live_tick_rate: float = Engine.physics_ticks_per_second   # sane value before the first sample
-const PANEL_MIN := Vector2(240, 90)
-const PANEL_BOTTOM_GAP := 20.0   # clearance between info panel and screen edge
+# Perf graph samples on a fixed real-time cadence (below), independent of render frame rate --
+# see _PERF_GRAPH_SAMPLE_SECONDS.
+var _perf_graph_sample_window: float = 0.0
+# One semantic item per info line keeps the panel narrow, so the minimum width only
+# needs to cover the widest single stat (a weapon line), not three stats packed abreast.
+# PANEL_MIN also floors the bottom-left settings panel's height; PANEL_BOTTOM_GAP/
+# PANEL_TOP_GAP are the two screen-edge clearances the center-anchored info panel budgets
+# against (see _info_panel_available_height) and PANEL_BOTTOM_GAP alone anchors the
+# settings panel to the bottom edge.
+const PANEL_MIN := Vector2(150, 90)
+const PANEL_BOTTOM_GAP := 20.0   # clearance between a panel and the screen's bottom edge
+const PANEL_TOP_GAP := 8.0       # clearance between the info panel and the viewport's top edge
 
 # Single source of truth for the rebindable stance modes shown in the control-bar
 # dropup. Each entry carries the popup item id, the OrderMode it maps to, the
@@ -81,6 +133,13 @@ const _STANCE_ENTRIES := [
 	{"id": 11, "mode": BattleRef.OrderMode.CHASE, "label": "Chase", "slug": "chase"},
 	{"id": 12, "mode": BattleRef.OrderMode.WEDGE_CHARGE, "label": "Wedge charge", "slug": "wedge_charge"},
 	{"id": 13, "mode": BattleRef.OrderMode.KNOCKBACK_FOCUS, "label": "Knockback focus", "slug": "knockback_focus"},
+	{"id": 14, "mode": BattleRef.OrderMode.GIVE_GROUND, "label": "Give ground", "slug": "give_ground"},
+	{"id": 15, "mode": BattleRef.OrderMode.PUSH, "label": "Push", "slug": "push"},
+	{"id": 16, "mode": BattleRef.OrderMode.MULTIPLE_ENGAGE, "label": "Multiple engage",
+		"slug": "multiple_engage"},
+	{"id": 17, "mode": BattleRef.OrderMode.MARCH_TO_CONTACT, "label": "March to contact",
+		"slug": "march_to_contact"},
+	{"id": 18, "mode": BattleRef.OrderMode.BRACE, "label": "Brace", "slug": "brace"},
 ]
 
 # The multi-unit form-up distribution modes, in menu order (the default, EQUAL_DEPTH_SPACE,
@@ -141,6 +200,14 @@ const _FORMATION_MENU_ORDER := [
 	UnitRef.FORMATION_TESTUDO,
 ]
 
+# Display names for every file-major-reform mode, shared by the info panel's cycle button
+# label so the button text and Unit.ReformMode never drift apart.
+const _REFORM_MODE_NAMES := {
+	UnitRef.ReformMode.FILE_MAJOR: "File-major",
+	UnitRef.ReformMode.ROW_MAJOR: "Row-major",
+	UnitRef.ReformMode.AUTO: "Auto",
+}
+
 var _ctrl_bar: PanelContainer
 var _ctrl_formation_btn: MenuButton
 var _ctrl_stance_btn: MenuButton
@@ -148,6 +215,12 @@ var _ctrl_reform_btn: Button
 var _ctrl_group_attack_btn: Button
 var _sel_mgr = null
 var _info_panel: PanelContainer
+# The panel's content column sits inside a ScrollContainer so its height can be
+# clamped to the viewport (see _clamp_info_panel); with everything visible the
+# scroll sizes itself to the content exactly and the scrollbar stays hidden.
+var _info_scroll: ScrollContainer
+var _info_col: VBoxContainer
+var _info_margin: MarginContainer
 var _order_tree_box: VBoxContainer
 # Expand/collapse state for the order-tree rows below the info label, keyed by
 # "<unit instance id>:<path>" where `path` is a dot-joined chain of child indices from the
@@ -172,15 +245,6 @@ const _ORDER_TREE_ACTIVE_COLOR := Color(1.0, 0.78, 0.35)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS   # stays responsive when paused
-
-	# Controls hint. The order-mode keys are rendered from the live Settings bindings
-	# so the bar stays accurate after a rebind; _refresh_hint re-renders on change.
-	_hint = Label.new()
-	_hint.position = Vector2(14, 10)
-	_hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
-	_hint.add_theme_font_size_override("font_size", 14)
-	add_child(_hint)
-	_refresh_hint()
 
 	# Recording / replay status (top-center).
 	_status = Label.new()
@@ -234,6 +298,19 @@ func _ready() -> void:
 	_flash_label.visible = false
 	add_child(_flash_label)
 
+	# Persistent slow-motion indicator, below the flash toast. Hidden at normal speed;
+	# F5 cycles SLOWMO_PRESETS and shows/updates this so a reviewer always knows the
+	# current tick speed at a glance, not just at the moment of the keypress.
+	_slowmo_label = Label.new()
+	_slowmo_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_slowmo_label.position = Vector2(-90, 128)
+	_slowmo_label.custom_minimum_size = Vector2(180, 0)
+	_slowmo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_slowmo_label.add_theme_font_size_override("font_size", 16)
+	_slowmo_label.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
+	_slowmo_label.visible = false
+	add_child(_slowmo_label)
+
 	# Menu button (top-right) gathering the global options that used to be
 	# scattered across the HUD — restart, replay loading, and the edge-scroll
 	# toggle. Its popup is PROCESS_MODE_ALWAYS so it stays usable while the
@@ -246,6 +323,21 @@ func _ready() -> void:
 	_menu_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_menu_button.position = Vector2(-menu_width - 6.0, 6)
 	add_child(_menu_button)
+
+	# Persistent tray toggle, beside the Menu button -- the unit card tray was previously
+	# only reachable by digging into the ☰ menu's "Unit card tray" check item (still there,
+	# and stays in sync with this button), with nothing on screen hinting it exists.
+	_tray_toggle_btn = Button.new()
+	_tray_toggle_btn.text = "Tray"
+	_tray_toggle_btn.toggle_mode = true
+	var tray_btn_width := 70.0
+	_tray_toggle_btn.custom_minimum_size = Vector2(tray_btn_width, 0)
+	_tray_toggle_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_tray_toggle_btn.position = Vector2(-menu_width - tray_btn_width - 12.0, 6)
+	_tray_toggle_btn.tooltip_text = "Show/hide the unit card tray"
+	_tray_toggle_btn.toggled.connect(func(pressed: bool):
+		Settings.show_unit_card_tray = pressed)
+	add_child(_tray_toggle_btn)
 
 	var popup := _menu_button.get_popup()
 	popup.process_mode = Node.PROCESS_MODE_ALWAYS   # usable while paused
@@ -271,8 +363,6 @@ func _ready() -> void:
 	for entry in _FORMUP_ENTRIES:
 		popup.add_check_item(entry["label"], entry["cycle_id"])
 	popup.add_separator()
-	popup.add_check_item("Reform before move", MENU_REFORM_BEFORE_MOVE)
-	popup.add_check_item("Walk advance (no jog/sprint)", MENU_WALK_ADVANCE)
 	popup.add_check_item("Distance legend (map scale)", MENU_DISTANCE_LEGEND)
 	popup.add_check_item("Order distance labels", MENU_ORDER_DISTANCE)
 	popup.add_check_item("Unit speed labels", MENU_UNIT_SPEED)
@@ -280,6 +370,8 @@ func _ready() -> void:
 	popup.add_check_item("Engaged-soldier highlight", MENU_ENGAGED_HIGHLIGHT)
 	popup.add_check_item("Position-anchor marker", MENU_POSITION_ANCHOR)
 	popup.add_check_item("Show frame rate", MENU_SHOW_FPS)
+	popup.add_check_item("Performance graph overlay", MENU_PERFORMANCE_GRAPH)
+	popup.add_check_item("Unit card tray", MENU_UNIT_CARD_TRAY)
 	popup.add_separator("Frame rate corner…")
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.add_radio_check_item(entry["label"], entry["id"])
@@ -296,8 +388,6 @@ func _ready() -> void:
 	# torn down in _exit_tree() — otherwise it would dangle on the persistent
 	# Settings autoload after reload_current_scene() frees this HUD.
 	Settings.changed.connect(_sync_setting_toggles)
-	# Same lifetime concern: keep the hint's order-mode keys in sync after a rebind.
-	Settings.changed.connect(_refresh_hint)
 	# Keep the stance dropup labels in sync after a rebind (see _ctrl_bar_refresh_stance_popup).
 	Settings.changed.connect(_ctrl_bar_refresh_stance_popup)
 	# Counts physics steps for the frame-rate counter's tick-rate readout. A tree-level
@@ -338,6 +428,12 @@ func _ready() -> void:
 				% [mismatched_sha, BuildInfoRef.COMMIT_SHA]
 		_error_dialog.popup_centered()
 
+	# The spawn-layout mismatch (Replay.last_load_spawn_mismatch) is set by Battle._ready AFTER
+	# it spawns -- which runs after this HUD._ready, since HUD is a child of Battle -- so it
+	# isn't set yet here. Defer the check one idle frame, once Battle._ready has finished.
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		_warn_spawn_layout_mismatch.call_deferred()
+
 	# Offered on every exit that would otherwise silently discard an unsaved recording
 	# (Quit to Main Menu, Return to Campaign) -- see _confirm_exit_with_unsaved_replay.
 	_save_replay_dialog = ConfirmationDialog.new()
@@ -359,55 +455,84 @@ func _ready() -> void:
 	_shortcuts_dialog = preload("res://scripts/ShortcutsOverlay.gd").new()
 	add_child(_shortcuts_dialog)
 
-	# Selected-unit info panel, pinned above the bottom-left corner. The top
-	# offset is derived from the panel's own min-height + bottom margin (not a
-	# hand-tuned magic number), and grow_vertical = BEGIN lets it expand UPWARD
-	# if a content row or a larger font is added — so it never clips past the
-	# screen's bottom edge. offset_left/offset_top/offset_bottom are set directly
-	# (not via `position`) since this Control is anchored bottom-left
-	# (anchor_top == anchor_bottom == 1): offset_top/offset_bottom are the true
-	# pixel distances from that anchor line, while `position` resolves anchors
-	# against whatever the parent size happens to be AT THE MOMENT it's set —
-	# see _info_panel_raise()/_info_panel_lower()'s doc comment for how that bit
-	# every later per-frame reposition. offset_top/offset_bottom are set once here
-	# to their at-rest values; _info_panel_raise()/_info_panel_lower() move both by
-	# the same amount later so the panel translates as a rigid rectangle instead of
-	# stretching.
+	# Selected-unit info panel, centered on the left margin. The offsets are
+	# derived from the panel's own min-height (not a hand-tuned magic number), and
+	# grow_vertical = BOTH lets it expand symmetrically up and down as content grows
+	# -- so it never clips past either screen edge. offset_left/offset_top/offset_bottom
+	# are set directly (not via `position`) since this Control is anchored center-left
+	# (anchor_top == anchor_bottom == 0.5): offset_top/offset_bottom are the true pixel
+	# distances from that anchor line, while `position` resolves anchors against
+	# whatever the parent size happens to be AT THE MOMENT it's set -- see
+	# _clamp_info_panel()'s doc comment for how that bit every later per-frame
+	# reposition. offset_top/offset_bottom are set once here to their at-rest values;
+	# _clamp_info_panel() recomputes both together (via _info_panel_recenter) so the
+	# panel stays centered on the same point as it grows or shrinks with content.
 	_info_panel = PanelContainer.new()
 	_info_panel.custom_minimum_size = PANEL_MIN
-	_info_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_info_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_info_panel.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	_info_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_info_panel.offset_left = 14.0
-	_info_panel.offset_top = -(PANEL_MIN.y + PANEL_BOTTOM_GAP)
-	_info_panel.offset_bottom = -PANEL_BOTTOM_GAP
+	_info_panel.offset_top = -PANEL_MIN.y * 0.5
+	_info_panel.offset_bottom = PANEL_MIN.y * 0.5
 	add_child(_info_panel)
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	_info_panel.add_child(margin)
+	_info_margin = MarginContainer.new()
+	_info_margin.add_theme_constant_override("margin_left", 10)
+	_info_margin.add_theme_constant_override("margin_right", 10)
+	_info_margin.add_theme_constant_override("margin_top", 8)
+	_info_margin.add_theme_constant_override("margin_bottom", 8)
+	_info_panel.add_child(_info_margin)
 
-	var info_col := VBoxContainer.new()
-	info_col.add_theme_constant_override("separation", 2)
-	margin.add_child(info_col)
+	# The scroll layer between the margin and the content column is the panel's
+	# height guard: _clamp_info_panel sizes it to the content while the content
+	# fits, and pins it to the available viewport height (scrollbar shown) when
+	# a tall stat sheet -- expanded characteristics plus a deep order tree on a
+	# short window -- would otherwise grow the panel off either edge of the screen.
+	_info_scroll = ScrollContainer.new()
+	_info_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_info_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_info_margin.add_child(_info_scroll)
+
+	_info_col = VBoxContainer.new()
+	_info_col.add_theme_constant_override("separation", 2)
+	_info_scroll.add_child(_info_col)
 
 	_info = Label.new()
 	_info.text = "No unit selected"
-	info_col.add_child(_info)
+	_info_col.add_child(_info)
+
+	_build_settings_panel()
+
+	# The static-characteristics fold: a triangle toggle row (the order tree's own
+	# expand/collapse idiom, same glyphs) over the static stat lines, collapsed by
+	# default. Hidden entirely while no unit is shown.
+	_chars_toggle = Button.new()
+	_chars_toggle.flat = true
+	_chars_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_chars_toggle.add_theme_font_size_override("font_size", 13)
+	_chars_toggle.text = "▸ Characteristics"
+	_chars_toggle.visible = false
+	_chars_toggle.pressed.connect(_on_chars_toggle)
+	_info_col.add_child(_chars_toggle)
+
+	_info_static = Label.new()
+	_info_static.visible = false
+	_info_col.add_child(_info_static)
 
 	# Order-tree rows (see _rebuild_order_tree): rebuilt fresh each show_unit() call, right
 	# below the stats block. Empty/hidden until a unit with a current_order is shown.
 	_order_tree_box = VBoxContainer.new()
 	_order_tree_box.add_theme_constant_override("separation", 1)
 	_order_tree_box.visible = false
-	info_col.add_child(_order_tree_box)
+	_info_col.add_child(_order_tree_box)
 
 	_sel_mgr = get_node_or_null("../SelectionManager")
 	_build_ctrl_bar()
 	_build_distance_legend()
 	_build_fps_label()
+	_build_performance_graph()
+	_build_unit_card_tray()
+	_clamp_info_panel()
 
 	# End-of-battle overlay.
 	_overlay = ColorRect.new()
@@ -466,13 +591,33 @@ func _ready() -> void:
 		box.add_child(load_saved)
 
 
+## Warn once, after Battle._ready has spawned, when a loaded replay's stamped spawn layout no
+## longer matches this build's -- a genuine desync (orders target unit positions this build no
+## longer produces), the harder counterpart to the commit_sha heads-up above. Deferred from
+## _ready because Battle sets the flag after this HUD's own _ready (HUD is a child of Battle).
+## One-shot: clear the flag so a restart of the same replay re-warns.
+func _warn_spawn_layout_mismatch() -> void:
+	if Replay.last_load_spawn_mismatch == "":
+		return
+	Replay.last_load_spawn_mismatch = ""
+	_error_dialog.title = "Replay"
+	_error_dialog.dialog_text = ("This replay was recorded against a different spawn layout " +
+			"than this build produces (unit types or positions changed since it was recorded). " +
+			"Its orders may target the wrong units, so the battle can desync.")
+	_error_dialog.popup_centered()
+
+
 func _exit_tree() -> void:
+	# Engine.time_scale is a global engine singleton, not scoped to this battle -- reset it
+	# unconditionally so a battle freed mid-slow-mo (Quit to Main Menu, reload_current_scene(),
+	# or a GUT test tearing down a live Battle) can't leak a slowed-down tick rate into the
+	# next battle, the main menu, or a later test in the same headless process.
+	Engine.time_scale = 1.0
+
 	# Settings is a persistent autoload; drop our connection so it doesn't
 	# outlive this HUD (e.g. across reload_current_scene()).
 	if Settings.changed.is_connected(_sync_setting_toggles):
 		Settings.changed.disconnect(_sync_setting_toggles)
-	if Settings.changed.is_connected(_refresh_hint):
-		Settings.changed.disconnect(_refresh_hint)
 	if Settings.changed.is_connected(_ctrl_bar_refresh_stance_popup):
 		Settings.changed.disconnect(_ctrl_bar_refresh_stance_popup)
 	if get_tree() != null and get_tree().physics_frame.is_connected(_on_physics_tick):
@@ -510,10 +655,6 @@ func _sync_setting_toggles() -> void:
 		for entry in _FORMUP_ENTRIES:
 			popup.set_item_checked(popup.get_item_index(entry["cycle_id"]),
 					Settings.form_up_dist_cycle.has(entry["mode"]))
-	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
-			Settings.reform_before_move)
-	popup.set_item_checked(popup.get_item_index(MENU_WALK_ADVANCE),
-			Settings.walk_advance)
 	popup.set_item_checked(popup.get_item_index(MENU_DISTANCE_LEGEND),
 			Settings.show_distance_legend)
 	popup.set_item_checked(popup.get_item_index(MENU_ORDER_DISTANCE),
@@ -527,25 +668,16 @@ func _sync_setting_toggles() -> void:
 	popup.set_item_checked(popup.get_item_index(MENU_POSITION_ANCHOR),
 			Settings.show_position_anchor)
 	popup.set_item_checked(popup.get_item_index(MENU_SHOW_FPS), Settings.show_fps)
+	popup.set_item_checked(popup.get_item_index(MENU_PERFORMANCE_GRAPH), Settings.show_performance_graph)
+	popup.set_item_checked(popup.get_item_index(MENU_UNIT_CARD_TRAY), Settings.show_unit_card_tray)
+	_tray_toggle_btn.set_pressed_no_signal(Settings.show_unit_card_tray)
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.set_item_checked(popup.get_item_index(entry["id"]),
 				Settings.fps_corner == entry["corner"])
 	_sync_distance_legend_visibility()
 	_sync_fps_label()
-	_ctrl_bar_sync_settings()
-
-
-## Rebuild the controls hint, rendering the order-mode keys from the live Settings
-## bindings so the bar reflects rebinds instead of the hardcoded defaults.
-func _refresh_hint() -> void:
-	if _hint == null:
-		return
-	var keys: String = ""
-	for entry in BattleRef.ORDER_MODE_HOTKEYS:
-		if keys != "":
-			keys += "/"
-		keys += OS.get_keycode_string(Settings.order_binding(entry["slug"]))
-	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Square/Normal)   •   O orbis / Shift+O schiltron   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
+	_sync_performance_graph()
+	_sync_unit_card_tray_visibility()
 
 
 ## Dispatch a Menu popup selection by its stable item id.
@@ -579,10 +711,6 @@ func _on_menu_id(id: int) -> void:
 			Settings.edge_scroll = not Settings.edge_scroll
 		MENU_SFX:
 			Settings.sfx_enabled = not Settings.sfx_enabled
-		MENU_REFORM_BEFORE_MOVE:
-			Settings.reform_before_move = not Settings.reform_before_move
-		MENU_WALK_ADVANCE:
-			Settings.walk_advance = not Settings.walk_advance
 		MENU_DISTANCE_LEGEND:
 			# Settings.changed -> _sync_setting_toggles -> _sync_distance_legend_visibility,
 			# same as every other menu toggle here.
@@ -599,6 +727,10 @@ func _on_menu_id(id: int) -> void:
 			Settings.show_position_anchor = not Settings.show_position_anchor
 		MENU_SHOW_FPS:
 			Settings.show_fps = not Settings.show_fps
+		MENU_PERFORMANCE_GRAPH:
+			Settings.show_performance_graph = not Settings.show_performance_graph
+		MENU_UNIT_CARD_TRAY:
+			Settings.show_unit_card_tray = not Settings.show_unit_card_tray
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 		MENU_SHORTCUTS:
@@ -632,6 +764,10 @@ func _toggle_form_up_cycle(mode: int) -> void:
 
 
 const _TICK_RATE_SAMPLE_SECONDS := 1.0
+# Fixed real-time cadence for perf-graph samples, decoupled from render frame rate: sampling
+# every _process() call would shrink the graph's effective rolling window to
+# history_size / fps seconds (e.g. ~0.2s at 300 fps) instead of a consistent multi-second span.
+const _PERF_GRAPH_SAMPLE_SECONDS := 0.1
 
 
 func _process(delta: float) -> void:
@@ -641,7 +777,14 @@ func _process(delta: float) -> void:
 		_live_tick_rate = _tick_count / _tick_rate_window
 		_tick_count = 0
 		_tick_rate_window = 0.0
+		# Piggyback the tray's live-battle refresh on the same once-a-second cadence: casualties,
+		# routs, and reinforcements otherwise only surface when an unrelated Settings toggle fires.
+		_sync_unit_card_tray_visibility()
 	_update_fps_label()
+	_perf_graph_sample_window += delta
+	if _perf_graph_sample_window >= _PERF_GRAPH_SAMPLE_SECONDS:
+		_perf_graph_sample_window = 0.0
+		_sample_performance_graph()
 
 
 func _on_physics_tick() -> void:
@@ -657,6 +800,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_shortcuts_keypress(event) and not _overlay.visible:
 		_shortcuts_dialog.popup_centered()
 		get_viewport().set_input_as_handled()
+	elif _is_tray_toggle_keypress(event):
+		Settings.show_unit_card_tray = not Settings.show_unit_card_tray
+		get_viewport().set_input_as_handled()
+	elif _is_slowmo_keypress(event):
+		_cycle_slowmo(event.shift_pressed)   # Shift+F5: cycle the other way (parallels Shift+Y)
+		get_viewport().set_input_as_handled()
 
 
 ## Shift+/ produces "?" on a standard layout; physical_keycode (the / key) keeps the
@@ -666,6 +815,21 @@ func _is_shortcuts_keypress(event: InputEvent) -> bool:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return false
 	return event.physical_keycode == KEY_SLASH and event.shift_pressed
+
+
+## F1 toggles the unit card tray. NOT Tab: Tab is Godot's own built-in ui_focus_next action,
+## consumed by GUI input handling on whatever Control currently holds keyboard focus (every
+## HUD Button defaults to FOCUS_ALL, so clicking almost any HUD button -- including the Tray
+## button itself -- would leave it focused and hijack the next Tab press for UI navigation
+## instead of _unhandled_input ever seeing it). Every single letter is already a stance/order
+## hotkey or a fixed WASD/arrow camera-pan key (see Settings.gd's own "next unclaimed key"
+## notes for that scarcity), and function keys are otherwise unused in this project, so F1
+## is both free and immune to Godot's built-in UI action bindings. Uses physical_keycode for
+## the same layout-independence as the pause/shortcuts keys above.
+func _is_tray_toggle_keypress(event: InputEvent) -> bool:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return false
+	return event.physical_keycode == KEY_F1
 
 
 func _is_pause_keypress(event: InputEvent) -> bool:
@@ -688,6 +852,42 @@ func _toggle_pause() -> void:
 	get_viewport().set_input_as_handled()
 
 
+## F5 cycles slow-motion presets forward (100% -> 50% -> 25% -> 10% -> 100%, wrapping);
+## Shift+F5 cycles backward (see the shift branch in _unhandled_input). F5 is free: every
+## letter and the whole punctuation row are already order/formation hotkeys (see
+## Settings.gd's DEFAULT_ORDER_BINDINGS comments on key scarcity), and F1-F4 are already
+## claimed (tray toggle, multiple_engage, march_to_contact, brace). Uses physical_keycode
+## for the same layout-independence as the pause/shortcuts/tray-toggle keys above.
+func _is_slowmo_keypress(event: InputEvent) -> bool:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return false
+	return event.physical_keycode == KEY_F5
+
+
+func _cycle_slowmo(reverse: bool = false) -> void:
+	var size: int = SLOWMO_PRESETS.size()
+	_slowmo_index = (_slowmo_index - 1 + size) % size if reverse \
+		else (_slowmo_index + 1) % size
+	var new_scale: float = SLOWMO_PRESETS[_slowmo_index]
+	Engine.time_scale = new_scale
+	# Record the change so a saved replay reproduces the same per-tick delta trajectory on
+	# playback -- see Replay._time_scale_track's own doc for why an un-recorded time_scale
+	# change would silently desync a "deterministic" replay. record_time_scale_change()
+	# itself no-ops outside RECORD, so pressing F5 while watching a replay still cycles the
+	# viewing speed live without writing anything to the recording being watched.
+	var battle := get_parent() as BattleRef
+	if battle != null:
+		Replay.record_time_scale_change(battle.current_tick(), new_scale)
+	_update_slowmo_label()
+	flash_message("Speed: %d%%" % roundi(new_scale * 100.0))
+
+
+func _update_slowmo_label() -> void:
+	_slowmo_label.visible = _slowmo_index != 0
+	if _slowmo_label.visible:
+		_slowmo_label.text = "🐢 %d%% SPEED" % roundi(SLOWMO_PRESETS[_slowmo_index] * 100.0)
+
+
 func show_unit(u, group_count: int) -> void:
 	if u == null or not is_instance_valid(u):
 		clear_unit()
@@ -702,30 +902,214 @@ func show_unit(u, group_count: int) -> void:
 		kind = "Archers"
 	else:
 		kind = "Infantry"
-	var cohesion_text: String = "" if u.cohesion >= 1.0 \
-			else "  Cohesion: %d%%" % mini(roundi(u.cohesion * 100.0), 99)
-	var training_text: String = "" if u.training <= 0.0 \
-			else "  Training: %d%%" % clampi(roundi(u.training * 100.0), 1, 100)
-	_info.text = "%s%s\nType: %s  Commander: %s\nSoldiers: %d / %d\nMorale: %d  Fatigue: %d%%%s%s\nFormation: %s  Width: %s  Order: %s" % [
-		u.unit_name, extra, kind, OfficerRank.title_for(u), u.soldiers, u.max_soldiers, int(u.morale), int(u.fatigue),
-		cohesion_text, training_text, u.formation_summary(), UnitFormation.files_label(UnitFormation.frontage(u)),
-		u.order_summary()
-	]
+	# One semantic item per line: the panel reads top-to-bottom as a stat sheet and
+	# stays narrow (the point of the split), instead of packing unrelated stats
+	# abreast and stretching the panel to the widest packed row.
+	var lines: Array = ["%s%s" % [u.unit_name, extra]]
+	lines.append("Type: %s" % kind)
+	lines.append("Commander: %s" % OfficerRank.title_for(u))
+	lines.append("Soldiers: %d / %d" % [u.soldiers, u.max_soldiers])
+	lines.append("Morale: %d" % int(u.morale))
+	lines.append("Fatigue: %d%%" % int(u.fatigue))
+	if u.cohesion < 1.0:
+		lines.append("Cohesion: %d%%" % mini(roundi(u.cohesion * 100.0), 99))
+	if u.training > 0.0:
+		lines.append("Training: %d%%" % clampi(roundi(u.training * 100.0), 1, 100))
+	lines.append("Formation: %s" % u.formation_summary())
+	lines.append("Width: %s" % UnitFormation.files_label(UnitFormation.frontage(u)))
+	lines.append("Order: %s" % u.order_summary())
+	# Battle AI phase 4 (docs/battle-ai-design.md): a delegated unit's period-flavored
+	# subcommander rank, resolved from the player's own doctrine profile at delegation time
+	# (Unit.subcommander_rank_title). Absent entirely for a non-delegated unit, matching the
+	# "Cohesion"/"Training" lines above that only appear when they apply.
+	if u.is_delegated():
+		lines.append("Delegated to: %s (Group %d)" % [u.subcommander_rank_title, u.player_group_id])
+	lines.append(_dynamic_stats(u))
+	_info.text = "\n".join(lines)
+	# The static characteristics live behind the fold; the toggle row appears
+	# whenever a unit is shown, the block itself only while expanded.
+	_info_static.text = _static_stats(u)
+	_chars_toggle.visible = true
+	_sync_chars_fold()
+	# Per-unit settings: reflect the FIRST selected unit's own values (u, per the
+	# group_count/"+N more" convention above); a toggle/click applies to every selected unit
+	# (see SelectionManager.set_selected_walk_advance/set_selected_reform_before_move/
+	# cycle_selected_file_major_reform_mode). set_pressed_no_signal avoids re-firing
+	# `toggled` (and issuing a redundant order) just from syncing the display to a
+	# newly-shown unit; the cycle button has no such signal to guard since its own label
+	# is just resynced text, not a pressed-state that would echo back an order.
+	_walk_advance_check.visible = true
+	_walk_advance_check.set_pressed_no_signal(u.walk_advance)
+	_reform_before_move_check.visible = true
+	_reform_before_move_check.set_pressed_no_signal(u.reform_before_move)
+	_file_major_reform_btn.visible = true
+	_file_major_reform_btn.text = "Reform: %s" \
+			% _REFORM_MODE_NAMES.get(u.file_major_reform_mode, "?")
 	_rebuild_order_tree(u)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = true
-		_info_panel_raise()
+		_settings_panel_raise()
+		_tray_raise()
 		_ctrl_bar_update_formation(u)
+		_ctrl_bar_update_reform(u)
 		_ctrl_bar_update_stance(_sel_mgr.get_armed_mode() if _sel_mgr != null else 0)
 		update_group_attack_mode(_sel_mgr.get_group_attack_mode() if _sel_mgr != null else 0)
+	_clamp_info_panel()
 
 
 func clear_unit() -> void:
 	_info.text = "No unit selected"
+	_chars_toggle.visible = false
+	_info_static.visible = false
+	_walk_advance_check.visible = false
+	_reform_before_move_check.visible = false
+	_file_major_reform_btn.visible = false
 	_rebuild_order_tree(null)
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = false
-		_info_panel_lower()
+		_settings_panel_lower()
+		_tray_lower()
+	_clamp_info_panel()
+
+
+# Selected-unit acceleration readout: the change per second of the shown unit's mean
+# soldier speed, sampled once per physics tick (so the derivative reads in sim time,
+# holding its last value while the game is paused). Keyed by unit uid so switching
+# the shown unit reseeds instead of differencing across two different regiments.
+# Display-only state -- nothing in the simulation reads it.
+var _accel_uid: int = -1
+var _accel_prev_mps: float = 0.0
+var _accel_prev_frame: int = -1
+var _accel_mps2: float = 0.0
+
+
+## The LIVE tail of the stat block: per-soldier hit points (mean, spread, and the
+## type's full-health value), the ordered gait with this unit's own pace for it,
+## and the block's live mean soldier speed and its acceleration -- the lines that
+## change as the unit marches and fights, so they stay visible above the
+## characteristics fold. One semantic item per line; speeds render in metric via
+## DistanceLegend, per the units convention -- no raw world-unit number reaches
+## the player.
+func _dynamic_stats(u) -> String:
+	var profile: Dictionary = u.combat_profile()
+	var hp: Vector2 = UnitStats.mean_sd_positive(u._sim_soldier_hp)
+	var mean_mps: float = DistanceLegend.mps_for_world_speed(
+			UnitStats.mean_body_speed(u._sim_body_vel, u._sim_soldier_hp),
+			BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
+	_track_accel(u, mean_mps)
+	var gait: int = u.ordered_gait()
+	var gait_text: String = "Auto"
+	if gait >= 0:
+		var gait_mps: float = DistanceLegend.mps_for_world_speed(
+				u.gait_pace(gait), BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
+		gait_text = "%s (%s)" % [UnitRef.GAIT_NAMES.get(gait, "Auto"),
+				DistanceLegend.speed_label_text(gait_mps)]
+	return "\n".join([
+		"HP per man: %.0f ±%.0f of %.0f" % [hp.x, hp.y, profile["max_health"]],
+		"Gait: %s" % gait_text,
+		"Speed: %s" % DistanceLegend.speed_label_text(mean_mps),
+		# Snap sub-display-precision values to zero so the readout can't show "-0.0".
+		"Accel: %+.1f m/s²" % (0.0 if absf(_accel_mps2) < 0.05 else _accel_mps2),
+	])
+
+
+## The STATIC unit characteristics -- attack/defense, the panoply item, body mass,
+## and the weapon/shield/mount rows: fixed for the battle's whole lifetime, so they
+## sit behind the collapsed-by-default Characteristics fold. One semantic item per
+## line; the weapon/shield/mount rows each stay whole (one ITEM with its
+## attributes). All masses report in absolute kilograms, never the sim's relative
+## contact scalar -- the units convention applied to mass.
+func _static_stats(u) -> String:
+	var profile: Dictionary = u.combat_profile()
+	var weapon: Weapon = LoadoutRegistry.weapon(u.weapon_type_id)
+	var shield: Shield = LoadoutRegistry.shield(u.shield_type_id)
+	var armor: Armor = LoadoutRegistry.armor(u.armor_type_id)
+	var mount: Mount = LoadoutRegistry.mount(u.mount_type_id)
+	# The armor line is the panoply ITEM (name + its stats), like the weapon/shield
+	# rows below — the shown percentage is profile["armour"], the value combat
+	# actually uses, which the registry type resolves. An unknown armor id falls
+	# back to the bare percentage so the effective protection always shows.
+	var armor_line: String = "Armour: %d%%" % roundi(profile["armour"] * 100.0)
+	if armor != null:
+		armor_line = "%s: protection %d%%, %.0f kg" % [armor.display_name,
+				roundi(profile["armour"] * 100.0), armor.weight_kg]
+	var lines: Array = [
+		"Attack: %d" % u.attack,
+		"Defense: %d" % u.defense,
+		armor_line,
+		"Body mass: %.0f kg" % profile["body_mass_kg"],
+		"%s: reach %.1f m, lethality %.2f" % [weapon.display_name, weapon.reach_m,
+				weapon.lethality],
+		"%s: block %d%%, arc %d°" % [shield.display_name,
+				roundi(shield.block_value * 100.0), roundi(shield.arc_deg)],
+	]
+	# The mount is a real interned type even on foot (MOUNT_NONE), shown uniformly
+	# like SHIELD_NONE's "Unshielded" row; only an unknown id drops the line. Its
+	# mass reports the animal's real kilograms (absolute, like the body-mass line),
+	# never the sim's relative contact scalar.
+	if mount != null:
+		lines.append("%s: %.0f kg, pace %.1f m/s" % [mount.display_name,
+				mount.mass_kg, mount.top_speed_mps])
+	return "\n".join(lines)
+
+
+## Flip the characteristics fold and reapply it.
+func _on_chars_toggle() -> void:
+	_chars_expanded = not _chars_expanded
+	_sync_chars_fold()
+	_clamp_info_panel()
+
+
+## Apply the current fold state: the toggle's triangle glyph mirrors the order
+## tree's expand/collapse idiom, and the static block shows only while expanded
+## AND a unit is on display (the toggle itself is hidden by clear_unit).
+func _sync_chars_fold() -> void:
+	_chars_toggle.text = "▾ Characteristics" if _chars_expanded else "▸ Characteristics"
+	_info_static.visible = _chars_expanded and _chars_toggle.visible
+
+
+## Info-panel checkbox handler: write walk_advance on the whole current selection.
+func _on_walk_advance_toggled(pressed: bool) -> void:
+	if _sel_mgr != null:
+		_sel_mgr.set_selected_walk_advance(pressed)
+
+
+## Info-panel checkbox handler: write reform_before_move on the whole current
+## selection, and keep the ctrl bar's own quick-toggle button in sync with it.
+func _on_reform_before_move_toggled(pressed: bool) -> void:
+	if _sel_mgr != null:
+		_sel_mgr.set_selected_reform_before_move(pressed)
+	if _ctrl_reform_btn != null:
+		_ctrl_reform_btn.set_pressed_no_signal(pressed)
+
+
+## Info-panel button handler: cycle file_major_reform_mode (File-major -> Row-major -> Auto
+## -> File-major) on the whole current selection -- a 3-value mode doesn't fit a checkbox,
+## so this button click-to-cycles instead, mirroring the control bar's own quick-toggle
+## buttons. The button's own label is resynced from the live unit every frame by show_unit(),
+## so there's nothing to update here beyond issuing the order.
+func _on_file_major_reform_pressed() -> void:
+	if _sel_mgr != null:
+		_sel_mgr.cycle_selected_file_major_reform_mode()
+
+
+## Advance the acceleration sample toward this tick's mean speed. Same-tick repeat
+## calls (the HUD refreshes every rendered frame, physics ticks come slower) keep
+## the last derivative; a different unit reseeds it to zero.
+func _track_accel(u, mean_mps: float) -> void:
+	var frame: int = Engine.get_physics_frames()
+	if u.uid != _accel_uid:
+		_accel_uid = u.uid
+		_accel_prev_mps = mean_mps
+		_accel_prev_frame = frame
+		_accel_mps2 = 0.0
+		return
+	if frame == _accel_prev_frame:
+		return
+	var dt: float = float(frame - _accel_prev_frame) / float(Replay.PHYSICS_TPS)
+	_accel_mps2 = (mean_mps - _accel_prev_mps) / dt
+	_accel_prev_mps = mean_mps
+	_accel_prev_frame = frame
 
 
 # --- Order-tree display (docs/atomic-order-decomposition-design.md, "HUD: the tree
@@ -740,20 +1124,20 @@ func clear_unit() -> void:
 # an order actually decomposes.
 
 ## Flattens the order tree rooted at `order` into display rows, depth-first pre-order: each
-## row is {"order": Order, "depth": int, "path": String, "has_children": bool}. `path` is a
+## row is {"order": Order, "depth": int, "path": String, "has_children": bool, "order_index": int}. `path` is a
 ## dot-joined chain of child indices from the root ("0", "0.1", "0.1.0", ...) -- a stable key
 ## into `expanded` that survives the per-frame rebuild _rebuild_order_tree does (unlike the
 ## transient Order/Control instances). A composite node collapsed in `expanded` stops the
 ## walk there -- its children are omitted from the returned rows entirely, not just hidden.
 ## Pure and UI-free so it's directly unit-testable against plain Order trees.
-func _order_tree_rows(order, expanded: Dictionary, depth: int = 0, path: String = "0") -> Array:
+func _order_tree_rows(order, expanded: Dictionary, depth: int = 0, path: String = "0", order_index: int = 0) -> Array:
 	if order == null:
 		return []
 	var has_children: bool = not order.children.is_empty()
-	var rows: Array = [{"order": order, "depth": depth, "path": path, "has_children": has_children}]
+	var rows: Array = [{"order": order, "depth": depth, "path": path, "has_children": has_children, "order_index": order_index}]
 	if has_children and expanded.get(path, true):
 		for i in order.children.size():
-			rows.append_array(_order_tree_rows(order.children[i], expanded, depth + 1, "%s.%d" % [path, i]))
+			rows.append_array(_order_tree_rows(order.children[i], expanded, depth + 1, "%s.%d" % [path, i], order_index))
 	return rows
 
 
@@ -770,24 +1154,21 @@ func _order_tree_row_signature(rows: Array, leaf) -> Array:
 	var sig: Array = []
 	for row: Dictionary in rows:
 		var order = row["order"]
-		sig.append([row["path"], row["has_children"], order.describe(), order == leaf])
+		sig.append([row["path"], row["has_children"], order.describe(), order == leaf, row.get("order_index", 0)])
 	return sig
 
 
-## Rebuilds the order-tree rows against `u.current_order` -- called every time show_unit()/
+## Rebuilds the order-tree rows against `u.orders` -- called every time show_unit()/
 ## clear_unit() runs (SelectionManager._refresh_hud() drives that every frame for the selected
-## unit), so the tree always reflects the live _active_child cursor. Actually tearing down and
-## recreating the row Controls is skipped whenever the rows would render identically to last
-## time (see _order_tree_row_signature): rebuilding on every one of those per-frame calls
-## regardless of whether anything changed would queue_free() and recreate the expand/collapse
-## toggle Buttons even when nothing about the tree changed. Since a real mouse click's
-## press-then-release can straddle more than one frame, and Godot's BaseButton only fires
-## `pressed` when both land on the SAME Button instance, doing that would silently break the
-## toggle: the down click's instance is gone by the time the up click lands on its freshly
-## rebuilt replacement, so `pressed` never fires. Skipping the rebuild when nothing changed
-## keeps the toggle Buttons -- and every other row Control -- alive across those frames.
+## unit), so the tree always reflects the live _active_child cursor and all queued orders.
+## Actually tearing down and recreating the row Controls is skipped whenever the rows would render
+## identically to last time (see _order_tree_row_signature): rebuilding on every one of those
+## per-frame calls regardless of whether anything changed would queue_free() and recreate the
+## expand/collapse toggle Buttons even when nothing about the tree changed. Skipping the rebuild
+## when nothing changed keeps the toggle Buttons -- and every other row Control -- alive across
+## those frames.
 func _rebuild_order_tree(u) -> void:
-	if u == null or not is_instance_valid(u) or u.current_order == null:
+	if u == null or not is_instance_valid(u) or u.current_order == null or u.orders.is_empty():
 		if _order_tree_last_signature == null:
 			return   # already empty/hidden from a previous call (or never built) -- nothing to do
 		for row_node in _order_tree_box.get_children():
@@ -796,8 +1177,10 @@ func _rebuild_order_tree(u) -> void:
 		_order_tree_last_signature = null
 		return
 	var leaf = u.active_leaf()
-	var root_path := "%d:0" % u.get_instance_id()
-	var rows: Array = _order_tree_rows(u.current_order, _order_tree_expanded, 0, root_path)
+	var rows: Array = []
+	for i in u.orders.size():
+		var root_path := "%d:%d" % [u.get_instance_id(), i]
+		rows.append_array(_order_tree_rows(u.orders[i], _order_tree_expanded, 0, root_path, i))
 	var signature := _order_tree_row_signature(rows, leaf)
 	if signature == _order_tree_last_signature:
 		return   # would render identically to what's already there -- keep the existing Controls
@@ -811,15 +1194,16 @@ func _rebuild_order_tree(u) -> void:
 		row_node.queue_free()
 	_order_tree_box.visible = true
 	for row: Dictionary in rows:
-		_order_tree_box.add_child(_build_order_tree_row(row, leaf))
+		_order_tree_box.add_child(_build_order_tree_row(row, leaf, u))
 
 
 ## One row: depth-indent spacer, an expand/collapse toggle for a composite node (a same-width
 ## blank spacer for a leaf, so every row's label lines up in the same column regardless of
-## whether its siblings have children), then the describe() label -- highlighted in the same
+## whether its siblings have children), the describe() label -- highlighted in the same
 ## amber _order_mode_label uses for "the order currently in effect" when `order` is the
-## active leaf Unit._think is actually driving.
-func _build_order_tree_row(row: Dictionary, leaf) -> Control:
+## active leaf Unit._think is actually driving -- and a cancel button (✕) to delete the order
+## from the queue.
+func _build_order_tree_row(row: Dictionary, leaf, u = null) -> Control:
 	var order = row["order"]
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 4)
@@ -847,7 +1231,29 @@ func _build_order_tree_row(row: Dictionary, leaf) -> Control:
 	if is_active_leaf:
 		lbl.add_theme_color_override("font_color", _ORDER_TREE_ACTIVE_COLOR)
 	hbox.add_child(lbl)
+
+	var depth: int = int(row.get("depth", 0))
+	if depth == 0:
+		var cancel_btn := Button.new()
+		cancel_btn.flat = true
+		cancel_btn.text = "✕"
+		cancel_btn.tooltip_text = "Cancel order"
+		cancel_btn.add_theme_font_size_override("font_size", 11)
+		cancel_btn.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
+		var order_idx: int = int(row.get("order_index", 0))
+		cancel_btn.pressed.connect(_on_cancel_order_pressed.bind(u, order_idx))
+		hbox.add_child(cancel_btn)
+
 	return hbox
+
+
+func _on_cancel_order_pressed(u, order_index: int) -> void:
+	if _sel_mgr != null and _sel_mgr.has_selection():
+		_sel_mgr.cancel_selected_order_at(order_index)
+	elif u != null and is_instance_valid(u):
+		u.cancel_order_at(order_index)
+	if u != null and is_instance_valid(u):
+		_rebuild_order_tree(u)
 
 
 func _on_order_tree_toggle(path: String) -> void:
@@ -871,8 +1277,10 @@ const FLASH_SECONDS := 1.3
 func flash_message(text: String) -> void:
 	_flash_label.text = text
 	_flash_label.visible = true
-	# process_always so it ticks while the sim is paused (orders/cycles work paused too).
-	var timer := get_tree().create_timer(FLASH_SECONDS, true)
+	# process_always so it ticks while the sim is paused (orders/cycles work paused too);
+	# ignore_time_scale so a toast still hides after FLASH_SECONDS of real time even while
+	# slow-motion is active, rather than lingering up to 10x longer at the slowest preset.
+	var timer := get_tree().create_timer(FLASH_SECONDS, true, false, true)
 	timer.timeout.connect(_hide_flash.bind(text))
 
 
@@ -897,17 +1305,9 @@ func update_group_attack_mode(mode: int) -> void:
 	_ctrl_group_attack_btn.text = labels.get(mode, "Group mode")
 
 
-func _ctrl_bar_sync_settings() -> void:
-	if _ctrl_reform_btn == null:
-		return
-	_ctrl_reform_btn.button_pressed = Settings.reform_before_move
-
-
 # --- Distance legend (map scale bar, #364) ----------------------------------
-# A small semi-translucent panel in the bottom-right corner showing the battlefield's
-# real metre scale at the current camera zoom (DistanceLegend has the pure math). Bottom-
-# left is the selected-unit info panel and bottom-center is the control bar, so bottom-
-# right is the free corner.
+# A small semi-translucent panel in the top-left corner showing the battlefield's
+# real metre scale at the current camera zoom (DistanceLegend has the pure math).
 
 const _LEGEND_MARGIN := Vector2(14.0, 14.0)
 const _LEGEND_BAR_HEIGHT := 6.0
@@ -915,10 +1315,10 @@ const _LEGEND_PAD := 10.0
 
 func _build_distance_legend() -> void:
 	_legend_panel = PanelContainer.new()
-	_legend_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_legend_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_legend_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_legend_panel.position = -_LEGEND_MARGIN   # offset off the corner; grows up-and-left from here
+	_legend_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_legend_panel.grow_horizontal = Control.GROW_DIRECTION_END
+	_legend_panel.grow_vertical = Control.GROW_DIRECTION_END
+	_legend_panel.position = _LEGEND_MARGIN   # offset off the corner; grows down-and-right from here
 	_legend_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Semi-translucent panel background (distinct from the opaque default panel style),
 	# per #364's spec -- the battlefield should stay visible through it.
@@ -979,10 +1379,6 @@ func _update_distance_legend() -> void:
 # in any of the four screen corners (Settings.fps_corner / _FPS_CORNER_ENTRIES above).
 
 const _FPS_MARGIN := Vector2(14.0, 10.0)
-# The always-on controls hint (top-left, single line at y=10, font size 14) runs the full
-# width of the top edge, so a top-anchored FPS label needs to clear it vertically or the
-# two overlap the instant the counter is turned on.
-const _FPS_TOP_MARGIN_Y := 34.0
 
 
 func _build_fps_label() -> void:
@@ -997,7 +1393,7 @@ func _build_fps_label() -> void:
 ## Show/hide the frame-rate label and (re)anchor it to Settings.fps_corner. Grow direction
 ## is set opposite the anchored edge on each axis so the label doesn't drift as its digit
 ## count changes ("9" -> "144") -- same reasoning as the distance legend's grow_horizontal/
-## grow_vertical = GROW_DIRECTION_BEGIN for its bottom-right anchor.
+## grow_vertical = GROW_DIRECTION_END for its top-left anchor.
 func _sync_fps_label() -> void:
 	if _fps_label == null:
 		return
@@ -1015,17 +1411,143 @@ func _sync_fps_label() -> void:
 			break
 	_fps_label.grow_horizontal = Control.GROW_DIRECTION_END if left else Control.GROW_DIRECTION_BEGIN
 	_fps_label.grow_vertical = Control.GROW_DIRECTION_END if top else Control.GROW_DIRECTION_BEGIN
-	var top_margin: float = _FPS_TOP_MARGIN_Y if top else _FPS_MARGIN.y
+	var top_margin: float = _FPS_MARGIN.y
+	if top and not left and _menu_button != null:
+		# The top-right corner is shared with the always-on ☰ Menu button, so the
+		# label sits just below it instead of inside it. Derived from the button's
+		# own rect rather than a tuned clearance constant, so a menu resize can't
+		# silently reintroduce the overlap.
+		top_margin = _menu_button.position.y \
+				+ _menu_button.get_combined_minimum_size().y + 6.0
+	elif top and left and _legend_panel != null and _legend_panel.visible:
+		# The top-left corner is shared with the distance legend (on by default), so
+		# the label sits just below it instead of on top of it -- same reasoning as
+		# the top-right/Menu-button case above, derived from the legend's own rect.
+		top_margin = _legend_panel.position.y \
+				+ _legend_panel.get_combined_minimum_size().y + 6.0
 	_fps_label.position = Vector2(
 			_FPS_MARGIN.x if left else -_FPS_MARGIN.x,
 			top_margin if top else -_FPS_MARGIN.y)
 	_update_fps_label()
 
 
-func _update_fps_label() -> void:
-	if _fps_label == null or not _fps_label.visible:
+func _build_performance_graph() -> void:
+	_perf_graph_overlay = PerformanceGraphOverlay.new()
+	_perf_graph_overlay.name = "PerformanceGraphOverlay"
+	_perf_graph_overlay.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_perf_graph_overlay.position = Vector2(14.0, -120.0)
+	_perf_graph_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_perf_graph_overlay)
+	_sync_performance_graph()
+
+
+func _sync_performance_graph() -> void:
+	if _perf_graph_overlay == null:
 		return
-	_fps_label.text = "%d FPS · %d ticks/s" % [Engine.get_frames_per_second(), roundi(_live_tick_rate)]
+	_perf_graph_overlay.visible = Settings.show_performance_graph
+
+
+func _build_unit_card_tray() -> void:
+	_unit_card_tray = UnitCardTray.new()
+	_unit_card_tray.name = "UnitCardTray"
+	_unit_card_tray.custom_minimum_size = Vector2(500.0, 0)
+	_unit_card_tray.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_unit_card_tray.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_unit_card_tray.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	# offset_left/offset_right, not `position`: with a fixed known width, setting them
+	# explicitly (like the settings/info panels do) keeps the right edge pinned 14px off
+	# the corner regardless of load order -- `position` derives its offsets from whatever
+	# size the Control happened to have at the moment it was set, which for a freshly
+	# constructed node is (0, 0), not the 500px custom_minimum_size assigned right after.
+	_unit_card_tray.offset_right = -14.0
+	_unit_card_tray.offset_left = -(500.0 + 14.0)
+	_unit_card_tray.offset_top = -14.0
+	_unit_card_tray.offset_bottom = -14.0
+	_unit_card_tray.set_selection_manager(_sel_mgr)
+	_unit_card_tray.group_changed.connect(_on_unit_card_tray_group_changed)
+	add_child(_unit_card_tray)
+	_sync_unit_card_tray_visibility()
+
+
+func _sync_unit_card_tray_visibility() -> void:
+	if _unit_card_tray == null:
+		return
+	_unit_card_tray.visible = Settings.show_unit_card_tray
+	if _unit_card_tray.visible:
+		_resync_unit_card_tray()
+
+
+## The group selector changed -- unlike the periodic/visibility resync above, this discards
+## the tray's current line/grid layout, since a different group's units don't belong in the
+## previous group's arrangement (see UnitCardTray.reset_and_sync).
+func _on_unit_card_tray_group_changed(_n: int) -> void:
+	if _unit_card_tray == null:
+		return
+	_unit_card_tray.reset_and_sync(_tray_source_units())
+
+
+## Pushes the tray's current source-unit set. sync_units() only prunes dead/freed units --
+## it never drops a still-living one that's simply no longer in the list -- so a plain
+## sync_units() call here would leave stale, out-of-scope cards on screen if the desired
+## set narrowed for a reason OTHER than a group switch (the case _on_unit_card_tray_group_
+## changed already handles): binding Ctrl+<n> to a fresh, smaller membership while group
+## `n` is already the tray's selected group, for instance. Detect that and fall back to a
+## full reset_and_sync(); otherwise take the cheap incremental sync_units() path.
+func _resync_unit_card_tray() -> void:
+	var desired: Array = _tray_source_units()
+	if _tray_shows_a_unit_outside(desired):
+		_unit_card_tray.reset_and_sync(desired)
+	else:
+		_unit_card_tray.sync_units(desired)
+
+
+func _tray_shows_a_unit_outside(desired: Array) -> bool:
+	var desired_ids: Dictionary = {}
+	for u in desired:
+		desired_ids[u.get_instance_id()] = true
+	for u in _unit_card_tray.get_units_in_tray_order():
+		if not desired_ids.has(u.get_instance_id()):
+			return true
+	return false
+
+
+## Units the tray should currently offer. Scopes to the tray's selected control group
+## (Ctrl+0-9, SelectionManager._groups) once that group has ever been bound; falls back to
+## every own-team unit -- today's behavior -- for a player who's never used control groups,
+## so picking up the tray doesn't go blank by default.
+func _tray_source_units() -> Array:
+	if (_sel_mgr != null and _unit_card_tray != null
+			and _sel_mgr.has_group(_unit_card_tray.current_group)):
+		return _sel_mgr.group_members(_unit_card_tray.current_group)
+	return _own_team_units()
+
+
+## Units the tray should ever offer -- the player's own side only, so the tray organizes the
+## player's own battle lines rather than the enemy's, respecting all_teams_control the same
+## way every other own-team check in the game does (a debug/all-teams session controls both).
+func _own_team_units() -> Array:
+	var out: Array = []
+	if _sel_mgr == null:
+		return out
+	for node in get_tree().get_nodes_in_group("units"):
+		var u := node as UnitRef
+		if u != null and _sel_mgr._is_own_team(u.team):
+			out.append(u)
+	return out
+
+
+func get_unit_card_tray() -> UnitCardTray:
+	return _unit_card_tray
+
+
+func _update_fps_label() -> void:
+	if _fps_label != null and _fps_label.visible:
+		_fps_label.text = "%d FPS · %d ticks/s" % [Engine.get_frames_per_second(), roundi(_live_tick_rate)]
+
+
+func _sample_performance_graph() -> void:
+	if _perf_graph_overlay != null and _perf_graph_overlay.visible:
+		_perf_graph_overlay.add_sample(float(Engine.get_frames_per_second()), _live_tick_rate)
 
 
 func _ctrl_bar_refresh_stance_popup() -> void:
@@ -1041,6 +1563,16 @@ func _ctrl_bar_update_formation(unit) -> void:
 	if _ctrl_formation_btn == null or unit == null or not is_instance_valid(unit):
 		return
 	_ctrl_formation_btn.text = _FORMATION_NAMES.get(unit.formation_mode, "Formation") + " ▾"
+
+
+## Reflect the shown unit's OWN reform_before_move (no longer a global setting) on
+## the ctrl bar's quick-toggle button, mirroring _ctrl_bar_update_formation above. Uses
+## set_pressed_no_signal so re-syncing after a toggle (or a selection change) doesn't
+## re-fire `toggled` and issue a redundant order.
+func _ctrl_bar_update_reform(unit) -> void:
+	if _ctrl_reform_btn == null or unit == null or not is_instance_valid(unit):
+		return
+	_ctrl_reform_btn.set_pressed_no_signal(unit.reform_before_move)
 
 
 func _ctrl_bar_update_stance(mode: int) -> void:
@@ -1099,7 +1631,6 @@ func _build_ctrl_bar() -> void:
 	hbox.add_child(VSeparator.new())
 	hbox.add_child(_build_ctrl_section("Options", _build_ctrl_option_buttons()))
 
-	_ctrl_bar_sync_settings()
 	update_group_attack_mode(BattleRef.GroupAttackMode.FOCUSED)
 
 
@@ -1168,11 +1699,84 @@ func _on_stance_popup_id(id: int) -> void:
 		_sel_mgr.arm_order_mode(mode)
 
 
-func _info_panel_raise() -> void:
-	if _info_panel == null or _ctrl_bar == null:
+## Builds the bottom-left settings panel: the walk_advance / reform_before_move
+## checkboxes and the file_major_reform_mode cycle button, split out from the
+## (now center-left) unit info panel so each sits on its own screen margin. Anchored
+## bottom-left with the same "derived at-rest height, grow toward the control bar"
+## pattern the info panel used to use when it lived here -- see _settings_panel_raise()
+## for why this panel (not the info panel) still needs to clear the control bar.
+func _build_settings_panel() -> void:
+	_settings_panel = PanelContainer.new()
+	_settings_panel.custom_minimum_size = PANEL_MIN
+	_settings_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_settings_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_settings_panel.offset_left = 14.0
+	_settings_panel.offset_top = -(PANEL_MIN.y + PANEL_BOTTOM_GAP)
+	_settings_panel.offset_bottom = -PANEL_BOTTOM_GAP
+	add_child(_settings_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	_settings_panel.add_child(margin)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	margin.add_child(col)
+
+	# Per-unit settings checkboxes: walk_advance ("no jog/sprint" -- mandatory for
+	# formed stances that break on a jog or sprint) and reform_before_move (hold to settle
+	# ranks before marching). Hidden until a unit is shown (show_unit()/clear_unit()), and
+	# reflect the FIRST selected unit's own value; toggling applies to every currently
+	# selected unit (SelectionManager.set_selected_walk_advance/
+	# set_selected_reform_before_move) -- the same "shows the lead unit, writes the whole
+	# selection" convention _ctrl_bar_update_formation's quick-toggle buttons already use.
+	_walk_advance_check = CheckBox.new()
+	_walk_advance_check.text = "Walk advance (no jog/sprint)"
+	_walk_advance_check.visible = false
+	_walk_advance_check.toggled.connect(_on_walk_advance_toggled)
+	col.add_child(_walk_advance_check)
+
+	_reform_before_move_check = CheckBox.new()
+	_reform_before_move_check.text = "Reform before move"
+	_reform_before_move_check.visible = false
+	_reform_before_move_check.toggled.connect(_on_reform_before_move_toggled)
+	col.add_child(_reform_before_move_check)
+
+	# file_major_reform_mode (a casualty only closes up its own file instead of cascading
+	# the whole block, or the historical cascade, or Auto -- deferring to the unit's own
+	# `disciplined` flag) has THREE values, so it doesn't fit a checkbox: a plain Button
+	# that cycles File-major -> Row-major -> Auto -> File-major on each click, mirroring
+	# the control bar's Group-mode/Formation quick-toggle buttons' click-to-cycle shape.
+	# Same "shows the lead unit, writes the whole selection" convention as the two
+	# checkboxes above (SelectionManager.cycle_selected_file_major_reform_mode).
+	_file_major_reform_btn = Button.new()
+	_file_major_reform_btn.text = "Reform: File-major"
+	_file_major_reform_btn.visible = false
+	_file_major_reform_btn.pressed.connect(_on_file_major_reform_pressed)
+	col.add_child(_file_major_reform_btn)
+
+
+## How far above its at-rest position a bottom-anchored panel must sit to clear the
+## control bar: its height plus a small gap while the bar is shown, zero otherwise.
+## Shared by every bottom panel's raise math (settings panel, unit card tray) so they
+## never disagree with each other about where the control bar's top edge is. The
+## control bar grows both directions from the screen's horizontal center and can reach
+## a fair way toward either side margin, so BOTH the bottom-left settings panel and the
+## bottom-right unit card tray need this clearance, not just whichever one happens to
+## be closer to center.
+func _ctrl_bar_clearance() -> float:
+	if _ctrl_bar == null or not _ctrl_bar.visible:
+		return 0.0
+	return _ctrl_bar.get_combined_minimum_size().y + 8.0
+
+
+func _settings_panel_raise() -> void:
+	if _settings_panel == null or _ctrl_bar == null:
 		return
-	var bar_h := _ctrl_bar.get_combined_minimum_size().y
-	# offset_top/offset_bottom, not position: _info_panel is anchored bottom-left
+	# offset_top/offset_bottom, not position: _settings_panel is anchored bottom-left
 	# (anchor_top == anchor_bottom == 1), so offset_top/offset_bottom ARE the pixel
 	# distances from that anchor line -- exactly what this raise/lower math wants
 	# ("translate the whole panel N px above the bottom edge"). Control.position, in
@@ -1188,16 +1792,96 @@ func _info_panel_raise() -> void:
 	# are moved by the same raise_amount here so the panel translates as a rigid
 	# rectangle -- clearing the control bar beneath it -- rather than stretching
 	# taller with its bottom edge fixed.
-	var raise_amount := bar_h + 8.0
-	_info_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP + raise_amount))
-	_info_panel.set_deferred("offset_bottom", -(PANEL_BOTTOM_GAP + raise_amount))
+	var raise_amount := _ctrl_bar_clearance()
+	_settings_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP + raise_amount))
+	_settings_panel.set_deferred("offset_bottom", -(PANEL_BOTTOM_GAP + raise_amount))
 
 
-func _info_panel_lower() -> void:
-	if _info_panel == null:
+func _settings_panel_lower() -> void:
+	if _settings_panel == null:
 		return
-	_info_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
-	_info_panel.set_deferred("offset_bottom", -PANEL_BOTTOM_GAP)
+	_settings_panel.set_deferred("offset_top", -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
+	_settings_panel.set_deferred("offset_bottom", -PANEL_BOTTOM_GAP)
+
+
+## The unit card tray (bottom-right) sits close enough to the screen's horizontal
+## center, at the default 1280px viewport width, that the control bar's own width can
+## reach into it -- confirmed by a direct screenshot while both were visible. Raise it
+## clear of the control bar the same way the settings panel already does.
+func _tray_raise() -> void:
+	if _unit_card_tray == null or _ctrl_bar == null:
+		return
+	var raise_amount := _ctrl_bar_clearance()
+	_unit_card_tray.set_deferred("offset_top", -(14.0 + raise_amount))
+	_unit_card_tray.set_deferred("offset_bottom", -(14.0 + raise_amount))
+
+
+func _tray_lower() -> void:
+	if _unit_card_tray == null:
+		return
+	_unit_card_tray.set_deferred("offset_top", -14.0)
+	_unit_card_tray.set_deferred("offset_bottom", -14.0)
+
+
+## The tallest the (center-left, symmetrically-growing) info panel may grow before
+## it reaches either the screen edge OR one of the other panels sharing its left-margin
+## column -- the legend above it (top-left) and the settings panel below it
+## (bottom-left). No longer depends on the control bar directly -- that clearance is
+## folded into the settings panel's own reserved footprint (_ctrl_bar_clearance() is
+## what the settings panel itself raises by).
+func _info_panel_available_height() -> float:
+	var viewport_h: float = _info_panel.get_viewport_rect().size.y
+	var top_reserved: float = PANEL_TOP_GAP
+	if _legend_panel != null and _legend_panel.visible:
+		top_reserved = maxf(top_reserved,
+				_legend_panel.position.y + _legend_panel.get_combined_minimum_size().y + PANEL_TOP_GAP)
+	var bottom_reserved: float = PANEL_BOTTOM_GAP
+	if _settings_panel != null:
+		var settings_height: float = maxf(PANEL_MIN.y, _settings_panel.get_combined_minimum_size().y)
+		bottom_reserved = maxf(bottom_reserved,
+				settings_height + PANEL_BOTTOM_GAP + _ctrl_bar_clearance())
+	# The panel grows symmetrically (GROW_DIRECTION_BOTH), so both edges share the
+	# larger of the two reservations -- a smaller one on just one side would still let
+	# the panel's OTHER half grow that far, reaching whichever panel is closer.
+	var edge_gap: float = maxf(top_reserved, bottom_reserved)
+	return viewport_h - 2.0 * edge_gap
+
+
+## Sets offset_top/offset_bottom symmetrically around the panel's anchor line (the
+## viewport's vertical center) so a `total_height`-tall panel stays centered as it
+## grows or shrinks with content, instead of drifting toward one edge.
+func _info_panel_recenter(total_height: float) -> void:
+	var half := maxf(total_height, PANEL_MIN.y) * 0.5
+	_info_panel.set_deferred("offset_top", -half)
+	_info_panel.set_deferred("offset_bottom", half)
+
+
+## Size the scroll layer so the panel is exactly content-tall while the content
+## fits, and pinned to the available height (content scrolls) when it doesn't --
+## the guard that keeps a tall stat sheet from growing off either edge of a short
+## viewport. Runs on every content change (show_unit/clear_unit each HUD
+## refresh, the characteristics toggle), so a viewport resize is picked up by
+## the next refresh.
+func _clamp_info_panel() -> void:
+	if _info_scroll == null or _info_col == null:
+		return
+	var content: Vector2 = _info_col.get_combined_minimum_size()
+	# The panel's fixed vertical overhead around the scroll layer: the panel
+	# style's own borders plus the margin container's constants, read live so a
+	# margin tweak can't silently desync this clamp.
+	var overhead: float = _info_panel.get_theme_stylebox("panel").get_minimum_size().y \
+			+ float(_info_margin.get_theme_constant("margin_top")) \
+			+ float(_info_margin.get_theme_constant("margin_bottom"))
+	var available: float = maxf(_info_panel_available_height() - overhead, 0.0)
+	var clamped: bool = content.y > available
+	var w: float = content.x
+	if clamped:
+		# Leave room for the scrollbar so it doesn't overlap the text (horizontal
+		# scrolling is disabled, so the column is forced to the inside width).
+		w += _info_scroll.get_v_scroll_bar().get_combined_minimum_size().x
+	var scroll_h: float = minf(content.y, available)
+	_info_scroll.custom_minimum_size = Vector2(w, scroll_h)
+	_info_panel_recenter(scroll_h + overhead)
 
 
 func _build_ctrl_option_buttons() -> Control:
@@ -1209,8 +1893,16 @@ func _build_ctrl_option_buttons() -> Control:
 	_ctrl_reform_btn.toggle_mode = true
 	_ctrl_reform_btn.custom_minimum_size = Vector2(68, 28)
 	_ctrl_reform_btn.add_theme_font_size_override("font_size", 13)
-	_ctrl_reform_btn.pressed.connect(func():
-		Settings.reform_before_move = not Settings.reform_before_move)
+	# reform_before_move is a per-unit setting now, not a global one -- this quick
+	# toggle applies to the whole current selection, same as the Formation/Stance buttons
+	# beside it (SelectionManager.set_selected_reform_before_move).
+	_ctrl_reform_btn.toggled.connect(func(pressed: bool):
+		if _sel_mgr != null:
+			_sel_mgr.set_selected_reform_before_move(pressed)
+		# Keep the settings panel's own checkbox in sync (bidirectional -- either control can
+		# drive the same per-unit setting; set_pressed_no_signal avoids a feedback loop).
+		if _reform_before_move_check != null:
+			_reform_before_move_check.set_pressed_no_signal(pressed))
 	hbox.add_child(_ctrl_reform_btn)
 
 	_ctrl_group_attack_btn = Button.new()

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/chrome-on-shifted-block.json",
+  "caption": "Selection chrome now centres on the block's true footprint while a standing anchor offset holds it off the regiment point. A lone Spearmen regiment is widened by dragging its east flank grip east (the drag holds the west edge fixed, leaving the block standing east of the regiment point); as the men walk onto the widened grid, the selection ring hugs the block's own centre instead of inflating around the old point, and both resize grips sit just past the block's actual edges -- previously the anchored-side grip floated about twice the offset out from the edge, with the block sitting visibly off-centre in an oversized ring.",
+  "fixed_fps": 30,
+  "max_frames": 210,
+  "fps": 15,
+  "width": 720
+}

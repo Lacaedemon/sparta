@@ -13,12 +13,18 @@ const START_SCALE := 0.45       # ring starts at this fraction of the full radiu
 
 var _radius: float = 140.0
 var _color: Color = Color.WHITE
+var _gradient_steps: int = GRADIENT_STEPS
+var _start_scale: float = START_SCALE
 
 
 ## Spawn a ripple centred at `at` (world-space) reaching `radius`, tinted by `color`.
-static func spawn(parent: Node, at: Vector2, radius: float, color: Color) -> void:
+static func spawn(parent: Node, at: Vector2, radius: float, color: Color,
+		lifetime: float = LIFETIME, gradient_steps: int = GRADIENT_STEPS,
+		start_scale: float = START_SCALE) -> void:
 	var fx := RoutShockwave.new()
-	fx._lifetime = LIFETIME
+	fx._lifetime = lifetime
+	fx._gradient_steps = gradient_steps
+	fx._start_scale = start_scale
 	parent.add_child(fx)
 	fx.global_position = at
 	fx._radius = radius
@@ -27,12 +33,12 @@ static func spawn(parent: Node, at: Vector2, radius: float, color: Color) -> voi
 
 
 func _draw() -> void:
-	var t: float = clampf(_age / LIFETIME, 0.0, 1.0)
-	var r: float = _radius * (START_SCALE + (1.0 - START_SCALE) * t)   # expands outward
+	var t: float = clampf(_age / _lifetime, 0.0, 1.0)
+	var r: float = _radius * (_start_scale + (1.0 - _start_scale) * t)   # expands outward
 	var fade: float = 1.0 - t                                          # whole ripple fades
 	# Soft radial gradient: stacked translucent discs accumulate toward the centre.
-	for i in range(GRADIENT_STEPS):
-		var disc_r: float = r * (1.0 - float(i) / float(GRADIENT_STEPS))
+	for i in range(_gradient_steps):
+		var disc_r: float = r * (1.0 - float(i) / float(_gradient_steps))
 		draw_circle(Vector2.ZERO, disc_r, Color(_color, fade * 0.1))
 	# Brighter leading ring so the expanding edge reads clearly.
 	draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, Color(_color, fade * 0.6), 2.0)

@@ -9,9 +9,11 @@ class_name SoldierCombat
 ## Condition factors q(h), g(sigma) (health x stamina) enter through the cond_a /
 ## cond_d parameters; callers pass 1 where a factor isn't modelled yet.
 
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
 # Land contest (opposed roll): p_land = clip(L(beta*(A - D)), p_min, p_max), where
 #   A = s_A * cond_A + mu * c                  (attacker offence + charge-to-hit)
-#   D = phi_D * (s_D + lambda * b_D) * cond_D   (defender active defence, facing-gated)
+#   D = phi_D * (s_D + lambda * b_D * s_D) * cond_D  (defender active defence, facing-gated)
 # and L is the logistic. See docs/combat-model.md "The land contest".
 const HIT_SHARPNESS: float = 3.0          # beta: how sharply the skill gap swings the odds
 const CHARGE_HIT_WEIGHT: float = 0.5      # mu: closing speed's weight in the attack
@@ -27,7 +29,7 @@ const DAMAGE_SCALE: float = 34.0
 # Reference gallop speed (world units/sec) the charge term normalises against, so
 # c ~ 1 at a full charge. Mirrors Unit.CHARGE_REFERENCE_SPEED (the regiment-level
 # charge), kept here too so the per-soldier model is self-contained.
-const CHARGE_REFERENCE_SPEED: float = 170.0
+const CHARGE_REFERENCE_SPEED: float = 8.5 * WorldScaleRef.WU_PER_M
 
 # Floor of the health condition factor q(h): a near-dead soldier still fights, at this
 # fraction of full effectiveness. q scales both offence and active defence.
@@ -54,7 +56,7 @@ const ETA_DEFENDED: float = 0.35              # eta for a defended (not landed) 
 # recovery halts it -- a shove of body-lengths, never a flight. The UNCAPPED impulse still
 # drives the prone roll, so a monster hit's felling power is unchanged; only the velocity
 # the body carries away is bounded.
-const KNOCKBACK_SPEED_MAX: float = 60.0
+const KNOCKBACK_SPEED_MAX: float = 3.0 * WorldScaleRef.WU_PER_M
 
 # Knockback focus (UnitCombat.KNOCKBACK_FOCUS_DAMAGE_MULT's counterpart): the stance trades
 # damage for a much bigger, more probable shove. Scales the raw impulse BEFORE the speed cap
@@ -71,7 +73,7 @@ const KNOCKBACK_FOCUS_IMPULSE_MULT: float = 2.5
 # SoldierBodies.BODY_ACCEL_FLOOR's arrival recovery takes several times longer to arrest it,
 # so the shove clearly outruns the "just clear the line" variant's clear_line_speed_cap.
 # 3.3x KNOCKBACK_SPEED_MAX (so ~11x the coast distance, since distance scales with v^2).
-const KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP: float = 200.0
+const KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP: float = 10.0 * WorldScaleRef.WU_PER_M
 
 # Going prone (docs/combat-model.md "Going prone and getting up"): a knockback impulse J
 # large enough to clear a mass- and bracing-raised threshold can fell the defender.
@@ -85,24 +87,75 @@ const PRONE_CHANCE_MAX: float = 0.6        # p_prone_max: no single blow is a su
 const PRONE_RISE_TIME: float = 1.2         # T_up (seconds) a felled soldier needs to stand
 
 
+## The baseline body mass (kilograms) the sim's relative contact-mass scalar of 1.0
+## represents: the heavy-foot soldier's own body_mass_kg (infantry and spearmen both
+## weigh in at this figure). Chosen as the baseline specifically so the two heavy-foot
+## types keep their relative mass at exactly 1.0 by construction -- traceable to a real,
+## already-defined body_mass_kg below, not an invented magic number.
+const CONTACT_MASS_BASELINE_KG: float = 80.0
+
+
+## The sim's relative contact-mass scalar for a real mass in kilograms: a simple ratio
+## against CONTACT_MASS_BASELINE_KG. Pure and static; the single source every relative
+## "mass" figure in a combat profile derives from, replacing what used to be a set of
+## separately-tuned relative constants living alongside (and able to drift from) the
+## real kg data. Because it is linear, relative_mass_from_kg(a) + relative_mass_from_kg(b)
+## == relative_mass_from_kg(a + b) -- summing two components' relative masses (a rider's
+## body plus its mount) is equivalent to deriving the relative mass of their combined
+## real weight.
+static func relative_mass_from_kg(mass_kg: float) -> float:
+	return mass_kg / CONTACT_MASS_BASELINE_KG
+
+
 ## Per-type combat profile (docs/combat-model.md "Soldier attributes"): skill is the
-## unit's training; armour, mass, and the health/stamina pools are per type. Weapon
-## lethality and the shield's own block value live on the interned types
-## (LoadoutRegistry) and are read at strike time through the per-soldier id arrays.
+## unit's training; the health/stamina pools are per type. Weapon lethality and the
+## shield's own block value live on the interned types (LoadoutRegistry) and are
+## read at strike time through the per-soldier id arrays.
 ## shield_residual is the non-shield remainder of the defensive shield weight b —
 ## stance and training deflection a soldier keeps with no shield in hand (the
 ## spearman's braced anti-cavalry footing, the archer's unshielded dodge) — and the
 ## land contest composes b = shield_residual + Shield.block_value, bit-for-bit the
 ## pre-split per-type weight. Pure and static so it is testable without a live node.
-static func profile_for(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool, p_training: float) -> Dictionary:
+##
+## armour and mass now come from the typed loadout when ids are given: a registered
+## Armor's protection replaces the row's legacy armour scalar, and mass is always the
+## relative_mass_from_kg of the soldier's own body_mass_kg, plus (when a registered
+## Mount resolves) the relative_mass_from_kg of the mount's own real mass_kg -- so a
+## mounted cavalryman's contact mass is a real ~525 kg rider+horse relative to the
+## 80 kg foot-soldier baseline, not a separately-tuned scalar. An unknown armor id
+## keeps the legacy armour row value; an unknown/absent mount id (MOUNT_NONE resolves
+## to a real, zero-mass, zero-contribution type, so this only bites a raw call with no
+## id at all) leaves mass at the bare body-only figure. Registry lookups are interned
+## dictionary reads (no allocation, no RNG), so this stays replay-safe.
+static func profile_for(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool, p_training: float,
+		p_armor_id: int = 0, p_mount_id: int = 0) -> Dictionary:
 	var skill: float = clampf(p_training, 0.0, 1.0)
+	var prof: Dictionary
+	var body_mass_kg: float
+	# body_mass_kg is the soldier's own real body mass in kilograms — the absolute
+	# figure the HUD reports, per the units convention, AND the single source of
+	# truth the relative "mass" contact scalar below is derived from.
 	if p_is_cavalry:
-		return {"skill": skill, "armour": 0.40, "shield_residual": 0.0, "max_health": 140.0, "max_stamina": 120.0, "mass": 2.5}
-	if p_anti_cavalry:
-		return {"skill": skill, "armour": 0.35, "shield_residual": 0.05, "max_health": 100.0, "max_stamina": 100.0, "mass": 1.0}
-	if p_is_ranged:
-		return {"skill": skill, "armour": 0.10, "shield_residual": 0.05, "max_health": 80.0, "max_stamina": 90.0, "mass": 0.9}
-	return {"skill": skill, "armour": 0.45, "shield_residual": 0.0, "max_health": 110.0, "max_stamina": 100.0, "mass": 1.0}
+		prof = {"skill": skill, "armour": 0.40, "shield_residual": 0.0, "max_health": 140.0, "max_stamina": 120.0}
+		body_mass_kg = 75.0
+	elif p_anti_cavalry:
+		prof = {"skill": skill, "armour": 0.35, "shield_residual": 0.05, "max_health": 100.0, "max_stamina": 100.0}
+		body_mass_kg = 80.0
+	elif p_is_ranged:
+		prof = {"skill": skill, "armour": 0.10, "shield_residual": 0.05, "max_health": 80.0, "max_stamina": 90.0}
+		body_mass_kg = 70.0
+	else:
+		prof = {"skill": skill, "armour": 0.45, "shield_residual": 0.0, "max_health": 110.0, "max_stamina": 100.0}
+		body_mass_kg = 80.0
+	prof["body_mass_kg"] = body_mass_kg
+	prof["mass"] = relative_mass_from_kg(body_mass_kg)
+	var armor: Armor = LoadoutRegistry.armor(p_armor_id)
+	if armor != null:
+		prof["armour"] = armor.protection
+	var mount: Mount = LoadoutRegistry.mount(p_mount_id)
+	if mount != null:
+		prof["mass"] = relative_mass_from_kg(body_mass_kg) + relative_mass_from_kg(mount.mass_kg)
+	return prof
 
 
 ## The charge factor c from a closing speed (world units/sec) along the strike axis:
@@ -125,12 +178,12 @@ static func facing_gate(defender_facing: Vector2, attack_from_dir: Vector2) -> f
 
 
 ## The land-contest probability that an attacker's strike lands: the opposed roll of
-## offence (skill + charge) against facing-gated active defence (skill + shield),
+## offence (skill + charge) against facing-gated active defence (skill + skill * shield),
 ## squashed through the logistic and clipped to [p_min, p_max]. `cond_a`/`cond_d` are
 ## the attacker's/defender's condition factors q*g. See docs/combat-model.md.
 static func land_chance(skill_a: float, skill_d: float, shield_d: float, phi_d: float, c: float, cond_a: float = 1.0, cond_d: float = 1.0) -> float:
 	var offence: float = skill_a * cond_a + CHARGE_HIT_WEIGHT * maxf(0.0, c)
-	var defence: float = phi_d * (skill_d + SHIELD_DEFENSE_WEIGHT * shield_d) * cond_d
+	var defence: float = phi_d * (skill_d + SHIELD_DEFENSE_WEIGHT * shield_d * skill_d) * cond_d
 	var x: float = HIT_SHARPNESS * (offence - defence)
 	var p: float = 1.0 / (1.0 + exp(-x))
 	return clampf(p, LAND_MIN, LAND_MAX)
@@ -214,7 +267,31 @@ static func prone_chance(impulse_j: float, defender_mass: float, brace_d: float 
 # A knockback below C_i is absorbed (the charge breaks on the braced depth); only the surplus
 # moves the front man. The depth-brace sum also raises his prone threshold.
 const ZETA: float = 0.5             # per-rank support-transmission efficiency (0..1]
-const BRACE_CAPACITY: float = 50.0  # J_cap: impulse a fully-set man (br = 1) absorbs
+const BRACE_CAPACITY: float = 50.0  # J_cap: shield/body-friction baseline (Infantry)
+
+# Bracing capacity varies by TYPE, not just posture: a spear/pike square braces via a
+# grounded, angled shaft -- an independent leveraged strut into the earth, largely
+# decoupled from body friction -- so it resists far more than a shield-only soldier's
+# friction/mass-stacking alone (FRICTION_BRACING_MULTIPLIER's effective-mass channel is
+# shared by every type; only this ceiling differs). Mirrors profile_for's own
+# is_cavalry/anti_cavalry/is_ranged branching so the two per-type tables can't drift
+# apart in shape. Values are tunable, playtest-adjustable starting points.
+const BRACE_CAPACITY_ANTI_CAV: float = 65.0   # J_cap: grounded, angled spear/pike shaft
+const BRACE_CAPACITY_RANGED: float = 30.0     # J_cap: light, unshielded
+const BRACE_CAPACITY_CAVALRY: float = 35.0    # J_cap: mounted -- a lesser case, low priority to tune
+
+
+## The bracing capacity J_cap for a soldier type, mirroring profile_for's own
+## is_cavalry/anti_cavalry/is_ranged branching (docs/combat-model.md "Soldier attributes").
+## Pure and static, like the rest of this file's per-type dispatch.
+static func brace_capacity_for_type(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool) -> float:
+	if p_is_cavalry:
+		return BRACE_CAPACITY_CAVALRY
+	elif p_anti_cavalry:
+		return BRACE_CAPACITY_ANTI_CAV
+	elif p_is_ranged:
+		return BRACE_CAPACITY_RANGED
+	return BRACE_CAPACITY
 
 
 ## Depth-buttressed brace sum down a file: file_braces[0] is the struck man's brace, [1..] the
@@ -230,9 +307,11 @@ static func brace_depth(file_braces: PackedFloat32Array) -> float:
 	return total
 
 
-## Impulse the struck man's set file can absorb: J_cap times the depth-brace sum.
-static func brace_capacity(file_braces: PackedFloat32Array) -> float:
-	return BRACE_CAPACITY * brace_depth(file_braces)
+## Impulse the struck man's set file can absorb: J_cap times the depth-brace sum. `j_cap`
+## defaults to the Infantry/shield baseline; callers with a known soldier type pass
+## brace_capacity_for_type()'s result instead to get the weapon-differentiated ceiling.
+static func brace_capacity(file_braces: PackedFloat32Array, j_cap: float = BRACE_CAPACITY) -> float:
+	return j_cap * brace_depth(file_braces)
 
 
 # Collision friction (Newton's laws, bidirectional impulses): When soldiers collide or
@@ -244,6 +323,69 @@ static func brace_capacity(file_braces: PackedFloat32Array) -> float:
 # Effective mass includes bracing: m_eff = m_type * (1 + FRICTION_BRACING_MULTIPLIER * br)
 # This makes a braced defender recoil less and impart more recoil to the attacker.
 const FRICTION_BRACING_MULTIPLIER: float = 0.5  # bracing raises effective mass by up to 50%
+
+
+## The bracing-scaled effective mass m_eff = m * (1 + FRICTION_BRACING_MULTIPLIER * br) used
+## throughout SoldierCollision.gd's momentum-split math (bidirectional_impulse,
+## overcomes_static_friction, enemy_contact_impulse) -- extracted here so the three call
+## sites share one definition instead of repeating the formula inline. Pure; never negative.
+static func effective_mass(mass: float, brace: float) -> float:
+	return maxf(0.0, mass) * (1.0 + FRICTION_BRACING_MULTIPLIER * maxf(0.0, brace))
+
+
+# Collision damage: SoldierCollision.enemy_contact_impulse resolves closing velocity FULLY
+# INELASTICALLY (no bounce-back), which genuinely dissipates kinetic energy every tick two
+# enemy bodies are in contact -- but only a genuinely hard, fast impact converts that
+# dissipation into damage; ordinary sustained pushing (the synthetic overlap-correction term,
+# not real closing speed) never does. Scoped to real closing speed alone -- see
+# enemy_contact_impulse's own doc comment for the overlap-vs-closing distinction.
+#
+# Below this speed the dissipated KE is small (two lines merely meeting, not a charge) and
+# causes no damage. 0.5x CHARGE_REFERENCE_SPEED -- half of what the existing charge-bonus math
+# already calls "a full charge" -- so a collision only counts as damaging once it's carrying
+# real momentum, not an arbitrary unrelated number.
+const COLLISION_DAMAGE_MIN_SPEED: float = 0.5 * CHARGE_REFERENCE_SPEED
+
+# TUNED (needs playtesting): calibrated so two equal-mass, unbraced infantry soldiers meeting
+# at exactly COLLISION_DAMAGE_MIN_SPEED (85 wu/s) -- one tick's worth of the velocity pipeline's
+# own per-tick KNOCKBACK_SPEED_MAX cap (60 wu/s effective closing speed, since 85 exceeds the
+# per-tick cap) -- take a velocity change of ~30 wu/s each, dealing ~27 damage
+# (COLLISION_DAMAGE_SCALE * 30^2), comparable to one landed strike's baseline (`wound()`'s
+# DAMAGE_SCALE). A harder or more prolonged impact (several ticks to fully arrest a fast
+# charge, or an asymmetric mass pairing) scales up from there via collision_damage's own
+# quadratic-in-velocity-change formula.
+const COLLISION_DAMAGE_SCALE: float = 0.03
+
+
+## Whether a pair's real closing speed clears the threshold for collision damage to apply at
+## all -- gates on REAL closing speed only, never the synthetic overlap-correction term (see
+## SoldierEnemyContact.accumulate's own doc comment for why). `min_speed` defaults to
+## COLLISION_DAMAGE_MIN_SPEED; a caller (a test, a future balance pass) can override it --
+## matching capped_knockback_velocity's own speed_cap parameter shape, per CLAUDE.md's
+## caller-configurable-parameters convention. Pure.
+static func is_hard_collision(closing_speed: float, min_speed: float = COLLISION_DAMAGE_MIN_SPEED) -> bool:
+	return closing_speed >= min_speed
+
+
+## Health lost from a soldier's ACTUAL velocity change this tick -- the fully-resolved,
+## multi-pair-trimmed, per-tick-capped delta SoldierEnemyContact.accumulate's existing velocity
+## pipeline already computes (`owner._sim_body_vel[slot]` before vs. after this tick's contact
+## resolution), not an independently re-derived "if fully stopped from the current closing
+## speed" calculation. Deliberately reuses the pipeline's own output rather than re-deriving a
+## parallel formula from mass/closing-speed: the velocity pipeline already correctly caps a
+## soldier's summed delta across multiple simultaneous contacts (`body_trim_scale` + the final
+## safety-net clamp) and per-tick (`KNOCKBACK_SPEED_MAX`) -- collision damage inherits both
+## bounds automatically this way, with no separate bookkeeping (and no separate bugs) of its
+## own. Scales with the SQUARE of the velocity change (how hard the body was actually jerked --
+## a deceleration-based severity measure, the same shape real crash-injury metrics use, rather
+## than a literal kinetic-energy split): since a heavier/braced body already receives a SMALLER
+## velocity change from the same contact (enemy_contact_impulse's own effective-mass split),
+## it automatically takes less damage too -- no separate asymmetry formula needed, and no risk
+## of the split direction inverting the way an independent mass-weighted split could.
+## `scale` defaults to COLLISION_DAMAGE_SCALE. Pure; never negative.
+static func collision_damage(delta_v: Vector2, scale: float = COLLISION_DAMAGE_SCALE) -> float:
+	return maxf(0.0, scale) * delta_v.length_squared()
+
 
 # Static friction: a body at rest (v < STATIC_FRICTION_VELOCITY_GATE below -- a much lower
 # bar than KINETIC_FRICTION_VELOCITY_REFERENCE, which instead governs how fast the
@@ -269,7 +411,7 @@ const KINETIC_FRICTION_DAMPING: float = 0.08  # decay rate per second
 # treated as nearly-stationary and receive extra friction (damping), while bodies at or
 # above this speed experience the base kinetic friction. Simulates the transition from
 # static to kinetic friction regimes.
-const KINETIC_FRICTION_VELOCITY_REFERENCE: float = 50.0  # ~jog speed (wu/s)
+const KINETIC_FRICTION_VELOCITY_REFERENCE: float = 2.5 * WorldScaleRef.WU_PER_M  # ~jog speed
 
 # Stationary boost: extra friction damping added to slow-moving bodies (v < v_ref).
 # A body slowing from a knockback will decelerate faster than a body at sustained speed.

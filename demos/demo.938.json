@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/cavalry-spacing.json",
+  "caption": "Cavalry now forms on its own grid pitch -- about a metre between files and three between ranks, the riding room a horse needs -- so the 80-horse regiment (right) stands wider and far deeper (220x360 world units at spawn) than the 120-man Infantry block (left, unchanged close order, 126x63). Both march a short leg forward; the deep column moves as one body and settles cleanly on its grid (the defect scan's misslot check reads 0.0).",
+  "fixed_fps": 30,
+  "max_frames": 270,
+  "fps": 15,
+  "width": 720
+}

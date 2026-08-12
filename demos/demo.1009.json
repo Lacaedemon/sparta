@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure non-visual refactor: Unit.gd's ROUT_TIME/SHATTER_STRENGTH_FRAC/RALLY_MORALE_THRESHOLD consts become caller-configurable instance fields (rout_time/shatter_strength_frac/rally_morale_threshold), each defaulting to the same value, and FarTierFormation/FarTierRules now read the per-unit field instead of the global const. At every default-value call site (every existing demo/scenario) rout/rally/shatter behavior is byte-identical -- nothing about a recorded battle looks or plays any differently."
+}

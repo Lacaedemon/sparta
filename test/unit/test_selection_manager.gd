@@ -15,7 +15,6 @@ const BattleScript = preload("res://scripts/Battle.gd")
 var _orig_bindings: Dictionary
 var _orig_form_up_default: int
 var _orig_form_up_cycle: Array
-var _orig_reform_before_move: bool
 var _orig_show_unit_speed: bool
 
 
@@ -23,7 +22,6 @@ func before_each() -> void:
 	_orig_bindings = Settings.order_bindings.duplicate()
 	_orig_form_up_default = Settings.form_up_dist_default
 	_orig_form_up_cycle = Settings.form_up_dist_cycle.duplicate()
-	_orig_reform_before_move = Settings.reform_before_move
 	_orig_show_unit_speed = Settings.show_unit_speed
 	# Pin the default cycle; a developer's persisted cfg can deviate and break these tests locally.
 	Settings.form_up_dist_cycle = [EQUAL_DEPTH, EQUAL_WIDTH]
@@ -33,7 +31,6 @@ func after_each() -> void:
 	Settings.order_bindings = _orig_bindings.duplicate()
 	Settings.form_up_dist_default = _orig_form_up_default
 	Settings.form_up_dist_cycle = _orig_form_up_cycle.duplicate()
-	Settings.reform_before_move = _orig_reform_before_move
 	Settings.show_unit_speed = _orig_show_unit_speed
 
 
@@ -271,9 +268,70 @@ func test_resize_handle_at_grabs_a_grip_and_ignores_empty_space() -> void:
 	u.position = Vector2(50, 50)
 	sm._select(u)
 	var grip: Vector2 = sm._resize_handle_positions(u)[0]
-	assert_eq(sm._resize_handle_at(grip), u, "a cursor on a grip grabs that unit for resizing")
+	var hit = sm._resize_handle_at(grip)
+	assert_not_null(hit, "a cursor on a grip grabs that unit for resizing")
+	assert_eq(hit["unit"], u, "the grabbed grip names its unit")
 	assert_null(sm._resize_handle_at(u.global_position + Vector2(9999, 0)),
 			"a cursor far from any grip grabs nothing")
+
+
+func test_resize_handle_at_reports_the_grabbed_flank() -> void:
+	# The grip list is [+file-axis, -file-axis]; the first is the block's local +X
+	# flank (Anchor.RIGHT), the second its mirror. The drag anchors the OPPOSITE
+	# side, so misreporting the side would flip which flank stays put.
+	var sm := _sm()
+	var u := _unit()
+	u.facing = Vector2.UP   # file axis = world +X, so "right flank" reads naturally
+	u.position = Vector2(50, 50)
+	sm._select(u)
+	var hs: Array = sm._resize_handle_positions(u)
+	assert_eq(int(sm._resize_handle_at(hs[0])["side"]), UnitFormation.Anchor.RIGHT,
+			"the +file-axis grip is the local right flank")
+	assert_eq(int(sm._resize_handle_at(hs[1])["side"]), UnitFormation.Anchor.LEFT,
+			"the -file-axis grip is the local left flank")
+
+
+func test_track_grip_motion_redraws_when_the_selected_unit_moves() -> void:
+	# The grips anchor to the unit's live transform, but a unit marching an order
+	# moves with no further input — _process must notice and request a redraw, or
+	# the grips freeze at the last input-driven draw while the unit walks away.
+	var sm := _sm()
+	var u := _unit()
+	sm._selected = [u]
+	assert_true(sm._track_grip_motion(), "the first look at a selection seeds the snapshot")
+	assert_false(sm._track_grip_motion(), "a still unit requests nothing")
+	u.global_position += Vector2(30, 0)
+	assert_true(sm._track_grip_motion(), "the unit moving out from under its grips redraws")
+	u.facing = u.facing.rotated(PI * 0.25)
+	assert_true(sm._track_grip_motion(), "a facing change swings the grips, so it redraws too")
+	assert_false(sm._track_grip_motion(), "settled again -> quiet again")
+
+
+func test_track_grip_motion_redraws_once_when_the_selection_empties() -> void:
+	# Deselecting drops the grips entirely; that last transition needs one redraw
+	# to wipe them, then an empty selection stays quiet.
+	var sm := _sm()
+	var u := _unit()
+	sm._selected = [u]
+	sm._track_grip_motion()
+	sm._selected = []
+	assert_true(sm._track_grip_motion(), "losing the grips is itself a visible change")
+	assert_false(sm._track_grip_motion(), "no selection, nothing to track")
+
+
+func test_current_grip_state_reads_exactly_what_the_grip_geometry_reads() -> void:
+	# The snapshot must cover every input _resize_handle_positions consumes —
+	# position, facing, and block extent — or a change to the missed one goes stale.
+	var sm := _sm()
+	var u := _unit()
+	sm._selected = [u]
+	var state: Array = sm._current_grip_state()
+	assert_eq(state,
+			[u.global_position, u.facing, u.render_block_extent(), u.block_centre_offset()],
+			"the snapshot mirrors the grip geometry's inputs")
+	sm._selected = [u, _unit()]
+	assert_eq(sm._current_grip_state(), [],
+			"a multi-selection shows no grips, so there is nothing to snapshot")
 
 
 func test_resize_preview_half_width_scales_with_the_unit_own_spacing() -> void:
@@ -308,6 +366,7 @@ func test_draw_resize_preview_runs_under_a_real_draw_notification() -> void:
 	sm._resizing = true
 	sm._resize_unit = u
 	sm._resize_files = UnitFormation.frontage(u)
+	sm._resize_anchor = UnitFormation.Anchor.LEFT   # a live drag always has a flank anchored
 	sm.queue_redraw()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -329,6 +388,90 @@ func test_resize_frontage_routes_an_absolute_command_to_battle() -> void:
 	assert_eq(UnitFormation.frontage(u), start + 1, "the keyboard widen steps the line out one file")
 	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_FRONTAGE_ONLY,
 			"routed as a recorded frontage command")
+
+
+func test_drag_resize_holds_the_far_flank_edge_fixed() -> void:
+	# Dragging the right grip extends/narrows the line rightward only: the left (far)
+	# flank's edge -- standing offset minus half-width, in the unit's local X -- must
+	# read identical before and after the commit, so the whole width change lands on
+	# the dragged flank, like resizing a window by its edge.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 21
+	u.max_soldiers = 80
+	u.facing = Vector2.UP   # file axis = world +X, so local right is screen right
+	u.position = Vector2(300, 300)
+	b._by_uid[21] = u
+	sm._select(u)
+	var spacing: float = UnitScript.FORMATION_SPACING * u.spacing_scale
+	var start: int = UnitFormation.frontage(u)
+	var left_edge: float = u.frontage_anchor_offset - float(start - 1) * 0.5 * spacing
+	sm._begin_resize(u, UnitFormation.Anchor.RIGHT)
+	assert_eq(sm._resize_anchor, UnitFormation.Anchor.LEFT,
+			"grabbing the right grip anchors the far (left) flank")
+	# Pull the cursor two files' width past the block's current right edge.
+	var right_edge: float = -left_edge
+	sm._update_resize(u.global_position + Vector2(right_edge + 2.0 * spacing, 0.0))
+	assert_eq(sm._resize_files, start + 2, "the previewed width follows the dragged edge")
+	sm._finish_resize()
+	assert_eq(UnitFormation.frontage(u), start + 2, "the commit applies the previewed width")
+	var new_left_edge: float = u.frontage_anchor_offset - float(start + 1) * 0.5 * spacing
+	assert_almost_eq(new_left_edge, left_edge, 0.001,
+			"the anchored left edge stays put -- the width change is one-sided")
+	assert_eq(sm._resize_anchor, UnitFormation.Anchor.CENTRE,
+			"the anchor resets once the drag commits")
+
+
+func test_drag_resize_composes_with_a_standing_anchor_offset() -> void:
+	# A unit already carrying an anchor shift (a prior anchored resize or asymmetric
+	# explicatio) must keep its held edge where it ACTUALLY is now: the drag's new
+	# shift adds to the standing offset rather than recomputing from a centred block.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 22
+	u.max_soldiers = 80
+	u.facing = Vector2.UP
+	u.position = Vector2(300, 300)
+	b._by_uid[22] = u
+	sm._select(u)
+	var spacing: float = UnitScript.FORMATION_SPACING * u.spacing_scale
+	var start: int = UnitFormation.frontage(u)
+	u.set_frontage(start, 2.0 * spacing)   # a standing shift from an earlier anchored op
+	var left_edge: float = u.frontage_anchor_offset - float(start - 1) * 0.5 * spacing
+	sm._begin_resize(u, UnitFormation.Anchor.RIGHT)
+	var right_edge: float = u.frontage_anchor_offset + float(start - 1) * 0.5 * spacing
+	sm._update_resize(u.global_position + Vector2(right_edge + spacing, 0.0))
+	assert_eq(sm._resize_files, start + 1, "the drag measures from the SHIFTED fixed edge")
+	sm._finish_resize()
+	var new_left_edge: float = u.frontage_anchor_offset \
+			- float(UnitFormation.frontage(u) - 1) * 0.5 * spacing
+	assert_almost_eq(new_left_edge, left_edge, 0.001,
+			"the held edge stays at its actual (shifted) place, not a recomputed centre")
+
+
+func test_keyboard_resize_recentres_a_standing_anchor_offset() -> void:
+	# The [ / ] keyboard resize stays centre-anchored: it re-centres the block and
+	# discards any standing anchor shift -- the pre-existing contract the drag's new
+	# anchoring must not disturb.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 23
+	u.max_soldiers = 80
+	b._by_uid[23] = u
+	sm._select(u)
+	u.set_frontage(UnitFormation.frontage(u), 27.0)
+	sm._resize_frontage(1)
+	assert_eq(u.frontage_anchor_offset, 0.0,
+			"a keyboard resize re-centres the block, clearing the standing shift")
 
 
 # --- keystroke overlay capture --------------------------
@@ -374,6 +517,84 @@ func test_dispatch_key_routes_resize_and_reports_handled() -> void:
 	assert_true(sm._dispatch_key(_key_event(KEY_BRACKETRIGHT)), "] is a handled hotkey")
 	assert_eq(UnitFormation.frontage(u), start + 1, "and widens the selected unit")
 	assert_false(sm._dispatch_key(_key_event(KEY_P)), "an unbound key is not handled")
+
+
+func test_dispatch_key_ctrl_down_disengages_and_shift_ctrl_down_disengages_with_sacrifice() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	# Shift+Ctrl+Down now spawns a real rearguard sub-unit, which needs a real Units
+	# container to add itself to -- a bare, tree-detached Battle never runs _ready() to
+	# resolve @onready var _units: Node2D = $Units, so set it directly.
+	b._units = Node2D.new()
+	autofree(b._units)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 12
+	u.state = Unit.State.FIGHTING
+	b._by_uid[12] = u
+	sm._select(u)
+
+	var ctrl_down := InputEventKey.new()
+	ctrl_down.pressed = true
+	ctrl_down.keycode = KEY_DOWN
+	ctrl_down.ctrl_pressed = true
+
+	assert_true(sm._dispatch_key(ctrl_down), "Ctrl+Down is handled")
+	assert_eq(b._pending_orders.size(), 1, "queues plain disengage order")
+
+	var shift_ctrl_down := InputEventKey.new()
+	shift_ctrl_down.pressed = true
+	shift_ctrl_down.keycode = KEY_DOWN
+	shift_ctrl_down.ctrl_pressed = true
+	shift_ctrl_down.shift_pressed = true
+
+	assert_true(sm._dispatch_key(shift_ctrl_down), "Shift+Ctrl+Down is handled")
+	assert_eq(b._pending_orders.size(), 2, "queues disengage with sacrifice order")
+
+
+func test_ctrl_shift_digit_delegates_the_selection_then_toggles_it_back_off() -> void:
+	# Battle AI phase 4 (docs/battle-ai-design.md): Ctrl+Shift+<0-9> delegates the current
+	# selection to AI subcommander group N, and toggles it back off (revokes) when pressed
+	# again on the same, already-delegated selection.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 20
+	b._by_uid[20] = u
+	sm._select(u)
+
+	var delegate_key := InputEventKey.new()
+	delegate_key.pressed = true
+	delegate_key.keycode = KEY_5
+	delegate_key.ctrl_pressed = true
+	delegate_key.shift_pressed = true
+
+	assert_true(sm._dispatch_key(delegate_key), "Ctrl+Shift+5 is handled")
+	assert_eq(u.player_group_id, 5, "delegates the selection to subcommander group 5")
+
+	assert_true(sm._dispatch_key(delegate_key), "the same combo on the same selection toggles")
+	assert_false(u.is_delegated(), "pressing it again revokes delegation")
+
+
+func test_ctrl_digit_without_shift_still_only_binds_a_control_group() -> void:
+	# The pre-existing Ctrl+<0-9> control-group bind must stay unaffected by the new
+	# Ctrl+Shift+<0-9> delegation gesture -- checked BEFORE it in _dispatch_key's own
+	# dispatch order, so plain Ctrl+<digit> must still fall through to _handle_group_key.
+	var sm := _sm()
+	var u := _unit()
+	sm._select(u)
+
+	var ctrl5 := InputEventKey.new()
+	ctrl5.pressed = true
+	ctrl5.keycode = KEY_5
+	ctrl5.ctrl_pressed = true
+
+	assert_true(sm._dispatch_key(ctrl5), "Ctrl+5 is still handled")
+	assert_true(sm.has_group(5), "as the ordinary UI control-group bind")
+	assert_false(u.is_delegated(), "and never touches AI delegation")
 
 
 func test_dispatch_key_shift_b_issues_right_anchored_explicatio() -> void:
@@ -569,6 +790,155 @@ func test_ctrl_stance_key_and_rank_relief_toggle_are_disabled_during_playback() 
 	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
 
 
+# --- per-unit settings (walk_advance / reform_before_move / file_major_reform_mode) ------
+
+func test_set_selected_walk_advance_writes_every_selected_unit() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u1 := _unit()
+	u1.uid = 10
+	u1.walk_advance = false
+	var u2 := _unit()
+	u2.uid = 11
+	u2.walk_advance = false
+	b._by_uid[10] = u1
+	b._by_uid[11] = u2
+	sm._select(u1)
+	sm._select(u2)   # _select appends -- both land in the selection
+	sm.set_selected_walk_advance(true)
+	assert_true(u1.walk_advance, "the toggle applies to every selected unit")
+	assert_true(u2.walk_advance, "not just the lead one")
+	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+			"routed as a recorded unit-settings-only command")
+	assert_eq(int(b._pending_orders[-1]["reform_toggle"]), BattleScript.UnitSettingToggle.LEAVE,
+			"the walk_advance-only call never touches reform_before_move")
+
+
+func test_set_selected_reform_before_move_writes_every_selected_unit() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 12
+	u.reform_before_move = true
+	b._by_uid[12] = u
+	sm._select(u)
+	sm.set_selected_reform_before_move(false)
+	assert_false(u.reform_before_move, "the toggle writes reform_before_move off")
+	assert_eq(int(b._pending_orders[-1]["walk_advance_toggle"]), BattleScript.UnitSettingToggle.LEAVE,
+			"the reform-only call never touches walk_advance")
+
+
+func test_set_selected_walk_advance_does_nothing_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	sm.set_selected_walk_advance(true)
+	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
+
+
+func test_set_selected_reform_before_move_does_nothing_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	sm.set_selected_reform_before_move(false)
+	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
+
+
+func test_next_reform_mode_cycles_file_major_row_major_auto_and_wraps() -> void:
+	assert_eq(SelectionManagerScript.next_reform_mode(UnitScript.ReformMode.FILE_MAJOR),
+		UnitScript.ReformMode.ROW_MAJOR, "File-major steps to Row-major")
+	assert_eq(SelectionManagerScript.next_reform_mode(UnitScript.ReformMode.ROW_MAJOR),
+		UnitScript.ReformMode.AUTO, "Row-major steps to Auto")
+	assert_eq(SelectionManagerScript.next_reform_mode(UnitScript.ReformMode.AUTO),
+		UnitScript.ReformMode.FILE_MAJOR, "Auto wraps back to File-major")
+
+
+func test_cycle_selected_file_major_reform_mode_writes_every_selected_unit() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u1 := _unit()
+	u1.uid = 14
+	u1.file_major_reform_mode = UnitScript.ReformMode.FILE_MAJOR
+	var u2 := _unit()
+	u2.uid = 15
+	u2.file_major_reform_mode = UnitScript.ReformMode.FILE_MAJOR
+	b._by_uid[14] = u1
+	b._by_uid[15] = u2
+	sm._select(u1)
+	sm._select(u2)
+	sm.cycle_selected_file_major_reform_mode()
+	assert_eq(u1.file_major_reform_mode, UnitScript.ReformMode.ROW_MAJOR,
+		"the cycle step (one step past the LEAD unit's FILE_MAJOR) applies to every selected unit")
+	assert_eq(u2.file_major_reform_mode, UnitScript.ReformMode.ROW_MAJOR, "not just the lead one")
+	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+			"routed as a recorded unit-settings-only command")
+	assert_eq(int(b._pending_orders[-1]["walk_advance_toggle"]), BattleScript.UnitSettingToggle.LEAVE,
+			"the file_major_reform_mode-only call never touches walk_advance")
+	assert_eq(int(b._pending_orders[-1]["reform_toggle"]), BattleScript.UnitSettingToggle.LEAVE,
+			"or reform_before_move")
+	assert_eq(int(b._pending_orders[-1]["file_major_reform_mode_toggle"]), UnitScript.ReformMode.ROW_MAJOR,
+			"the resolved next mode itself rides the queued command")
+
+
+func test_cycle_selected_file_major_reform_mode_wraps_from_auto_back_to_file_major() -> void:
+	# The companion of the ON-step-above test: proves the cycle wraps at the end
+	# (Auto -> File-major), not just steps forward once.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 16
+	u.file_major_reform_mode = UnitScript.ReformMode.AUTO
+	b._by_uid[16] = u
+	sm._select(u)
+	sm.cycle_selected_file_major_reform_mode()
+	assert_eq(u.file_major_reform_mode, UnitScript.ReformMode.FILE_MAJOR,
+		"Auto wraps back around to File-major")
+
+
+func test_cycle_selected_file_major_reform_mode_does_nothing_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	sm.cycle_selected_file_major_reform_mode()
+	assert_true(b._pending_orders.is_empty(), "no selection -> no command queued")
+
+
+func test_selected_settings_toggles_are_disabled_during_playback() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 13
+	u.walk_advance = false
+	u.reform_before_move = true
+	u.file_major_reform_mode = UnitScript.ReformMode.FILE_MAJOR
+	b._by_uid[13] = u
+	sm._select(u)
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm.set_selected_walk_advance(true)
+	sm.set_selected_reform_before_move(false)
+	sm.cycle_selected_file_major_reform_mode()
+	Replay.mode = prev_mode
+	assert_false(u.walk_advance, "no walk_advance write during playback")
+	assert_true(u.reform_before_move, "no reform_before_move write during playback")
+	assert_eq(u.file_major_reform_mode, UnitScript.ReformMode.FILE_MAJOR,
+		"no file_major_reform_mode write during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
 # --- drag-to-form-up ------------------------------------
 
 func test_form_up_facing_is_perpendicular_to_the_flank_line() -> void:
@@ -618,11 +988,11 @@ func test_flag_pick_distance_hits_the_standard_and_misses_the_body_and_empty_spa
 	# The standard's local centre, from the same geometry UnitSprites draws.
 	var center: Vector2 = UnitSprites.standard_bounds(u.render_block_extent()).get_center()
 	var flag_world: Vector2 = u.global_position + center
-	assert_almost_eq(sm._flag_pick_distance(u, flag_world), 0.0, 0.001,
+	assert_almost_eq(sm._flag_pick_distance_squared(u, flag_world), 0.0, 0.001,
 			"a cursor on the standard's centre is zero distance from it")
-	assert_eq(sm._flag_pick_distance(u, u.global_position), -1.0,
+	assert_eq(sm._flag_pick_distance_squared(u, u.global_position), -1.0,
 			"the body centre is well below the raised standard, so not a flag hit")
-	assert_eq(sm._flag_pick_distance(u, u.global_position + Vector2(9999, 0)), -1.0,
+	assert_eq(sm._flag_pick_distance_squared(u, u.global_position + Vector2(9999, 0)), -1.0,
 			"empty space far from the standard is not a flag hit")
 
 
@@ -840,6 +1210,93 @@ func test_issue_countermarch_noops_with_no_own_team_units_selected() -> void:
 	sm._issue_countermarch(Unit.CountermarchVariant.MACEDONIAN)
 	assert_eq(enemy.countermarch_variant(), -1, "an all-enemy selection issues nothing")
 	assert_true(b._pending_orders.is_empty(), "no command queued for an empty own-team uid list")
+
+
+## Same shape as the countermarch guard tests above, for _issue_disengage's own two early
+## returns (SelectionManager's copy of the playback/empty-selection guard every recorded
+## order respects -- Battle.enqueue_disengage's OWN internal copies of the same two guards
+## are covered directly in test_disengage_maneuver.gd, since this method's playback check
+## short-circuits before ever reaching them).
+func test_issue_disengage_noops_during_playback() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 40
+	b._by_uid[40] = u
+	sm._selected = [u]
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm._issue_disengage()
+	Replay.mode = prev_mode
+	assert_null(u.current_order, "no disengage order issued during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_issue_disengage_noops_with_no_own_team_units_selected() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var enemy := _seeded_unit(1)
+	enemy.uid = 41
+	b._by_uid[41] = enemy
+	sm._selected = [enemy]
+	sm._issue_disengage()
+	assert_null(enemy.current_order, "an all-enemy selection issues nothing")
+	assert_true(b._pending_orders.is_empty(), "no command queued for an empty own-team uid list")
+
+
+func test_issue_disengage_with_sacrifice_noops_during_playback() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 40
+	b._by_uid[40] = u
+	sm._selected = [u]
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm._issue_disengage_with_sacrifice()
+	Replay.mode = prev_mode
+	assert_null(u.current_order, "no disengage_with_sacrifice order issued during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_issue_disengage_with_sacrifice_noops_with_no_own_team_units_selected() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var enemy := _seeded_unit(1)
+	enemy.uid = 41
+	b._by_uid[41] = enemy
+	sm._selected = [enemy]
+	sm._issue_disengage_with_sacrifice()
+	assert_null(enemy.current_order, "an all-enemy selection issues nothing")
+	assert_true(b._pending_orders.is_empty(), "no command queued for an empty own-team uid list")
+
+
+func test_issue_disengage_with_sacrifice_enqueues_command_for_selected_units() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	# Applying the order now spawns a rearguard sub-unit, which needs a real Units
+	# container to add itself to -- a bare, tree-detached Battle never runs _ready() to
+	# resolve @onready var _units: Node2D = $Units, so set it directly.
+	b._units = Node2D.new()
+	autofree(b._units)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 42
+	u.state = Unit.State.FIGHTING
+	b._by_uid[42] = u
+	sm._selected = [u]
+	sm._issue_disengage_with_sacrifice()
+	assert_eq(b._pending_orders.size(), 1, "queues one command")
+	assert_eq(b._pending_orders[0]["target"], BattleScript.ORDER_DISENGAGE_SACRIFICE)
 
 
 func test_dispatch_key_shift_v_issues_choral_countermarch() -> void:
@@ -1215,6 +1672,44 @@ func test_form_up_equal_depth_space_matches_equal_depth_for_a_same_density_group
 			"same-density group: equal-depth and equal-depth-space agree (big unit)")
 	assert_eq(int(count_slices[1]["files"]), int(space_slices[1]["files"]),
 			"same-density group: equal-depth and equal-depth-space agree (small unit)")
+
+
+func test_form_up_equal_depth_space_reads_the_rank_axis_for_an_anisotropic_unit() -> void:
+	# A cavalry-pitched unit (ranks three times deeper than a foot unit's) forming up
+	# beside a foot unit under EQUAL_DEPTH_SPACE packs FEWER ranks (so more files)
+	# into the same physical depth -- the conversion must read the rank axis. The
+	# fixture holds the FILE pitch at the foot value to isolate the two axes.
+	var sm := _sm()
+	var foot := _unit()
+	foot.max_soldiers = 100
+	var horse := _unit()
+	horse.max_soldiers = 100
+	horse.rank_pitch = UnitScript.FORMATION_SPACING * 3.0
+	var slices: Array = sm._form_up_slices(
+			[foot, horse], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH_SPACE)
+	var ranks_foot: int = int(ceil(100.0 / float(slices[0]["files"])))
+	var ranks_horse: int = int(ceil(100.0 / float(slices[1]["files"])))
+	assert_gt(ranks_foot, ranks_horse,
+			"the deep-ranked unit fits fewer ranks into the same physical depth")
+	var depth_foot: float = float(ranks_foot - 1) * foot.rank_pitch_wu()
+	var depth_horse: float = float(ranks_horse - 1) * horse.rank_pitch_wu()
+	assert_almost_eq(depth_foot, depth_horse, horse.rank_pitch_wu(),
+			"both units land within one deep rank of the same physical depth")
+
+
+func test_form_up_equal_width_reads_the_file_axis_for_an_anisotropic_unit() -> void:
+	# EQUAL_WIDTH gives each unit the same physical share of the drag; a unit with a
+	# wide file pitch packs FEWER files into that share than a foot unit does.
+	var sm := _sm()
+	var foot := _unit()
+	foot.max_soldiers = 100
+	var horse := _unit()
+	horse.max_soldiers = 100
+	horse.file_pitch = UnitScript.FORMATION_SPACING * 2.0
+	var slices: Array = sm._form_up_slices(
+			[foot, horse], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH)
+	assert_gt(int(slices[0]["files"]), int(slices[1]["files"]),
+			"the wide-filed unit fits fewer files into the same physical share")
 
 
 func test_form_up_single_unit_slice_fills_the_whole_line() -> void:
@@ -1776,3 +2271,232 @@ func test_demo_overlay_redraws_a_recorded_form_up_on_the_units_own_pitch() -> vo
 	Replay.mode = prev_mode
 	Replay.show_demo_orders = prev_flag
 	pass_test("the overlay resolved the recorded uid and drew the pitch-aware line")
+
+
+func test_resize_handles_centre_on_the_shifted_block_footprint() -> void:
+	# While a standing anchor offset holds the block off the regiment point, the
+	# grips straddle the block's actual footprint, not the raw point -- without
+	# this the anchored-side grip floats about twice the offset outside the edge.
+	var sm := _sm()
+	var u := _unit()
+	u.facing = Vector2.DOWN
+	u.position = Vector2(100, 100)
+	u.frontage_anchor_offset = -36.0
+	var hs: Array = sm._resize_handle_positions(u)
+	var mid: Vector2 = (hs[0] + hs[1]) * 0.5
+	assert_almost_eq(mid.distance_to(u.global_position + u.block_centre_offset()), 0.0, 0.001,
+			"the grips are centred on the block's footprint centre")
+	assert_gt(mid.distance_to(u.global_position), 1.0,
+			"...which a standing offset moves off the regiment point")
+
+
+func test_flag_pick_tracks_the_shifted_standard() -> void:
+	# The flag is drawn above the block's footprint centre; the hit test must
+	# follow it there and stop answering at the old, unshifted spot.
+	var sm := _sm()
+	var u := _unit()
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	var shifted_box: Rect2 = UnitSprites.standard_bounds(
+			u.render_block_extent(), u.block_centre_offset())
+	var hit_at: Vector2 = u.global_position + shifted_box.get_center()
+	assert_gte(sm._flag_pick_distance_squared(u, hit_at), 0.0,
+			"a click on the shifted standard picks the unit")
+	var old_box: Rect2 = UnitSprites.standard_bounds(u.render_block_extent())
+	var stale_spot: Vector2 = u.global_position + old_box.get_center()
+	assert_eq(sm._flag_pick_distance_squared(u, stale_spot), -1.0,
+			"the old, unshifted spot no longer answers for the flag")
+
+
+func test_demo_overlay_halo_rings_the_shifted_block_footprint() -> void:
+	# The replay-overlay selection halo mirrors the live selection ring, so it too
+	# centres on the block's footprint rather than the raw regiment point. Render
+	# smoke through the real _draw() path with a staged pointer keyframe whose
+	# selection names a unit carrying a standing anchor offset.
+	var battle := _StubBattleWithUnitLookup.new()
+	add_child_autofree(battle)
+	var sm = SelectionManagerScript.new()
+	battle.add_child(sm)
+
+	var u := UnitScript.new()
+	battle.add_child(u)
+	u.add_to_group("units")
+	u.team = 0
+	u.uid = 9
+	u.facing = Vector2.DOWN
+	u.frontage_anchor_offset = -36.0
+	battle.lookup[9] = u
+
+	var prev_mode = Replay.mode
+	var prev_flag := Replay.show_demo_orders
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.show_demo_orders = true
+	Replay._pointer_track.append({"tick": 0, "x": 0.0, "y": 0.0, "drag": false,
+			"sel": [9], "mode": 0})
+
+	sm.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	Replay._pointer_track.pop_back()
+	Replay.mode = prev_mode
+	Replay.show_demo_orders = prev_flag
+	pass_test("the overlay halo drew about the shifted block without error")
+
+
+# --- attack orders on a routing enemy -----------------------------------------
+
+func test_unit_at_ignores_a_routing_enemy_by_default() -> void:
+	# A routing unit has left "units" for "routers" (Unit._rout()); a plain scan
+	# (own-team selection, or an attack-team scan with include_routers left false)
+	# must not resolve it, matching every other _unit_at caller's existing behaviour.
+	var sm := _sm()
+	var router := _unit()
+	router.team = 1
+	router.position = Vector2(700, 200)
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	assert_null(sm._unit_at(router.global_position, 1),
+			"a routing enemy resolves to nothing without include_routers")
+
+
+func test_unit_at_include_routers_resolves_a_routing_enemy() -> void:
+	var sm := _sm()
+	var router := _unit()
+	router.team = 1
+	router.position = Vector2(700, 200)
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	assert_eq(sm._unit_at(router.global_position, 1, true), router,
+			"include_routers resolves a click on a routing enemy")
+
+
+func test_unit_at_include_routers_still_excludes_a_dead_router() -> void:
+	# A DEAD unit is still valid and group-resident until queue_free() prunes it
+	# (the same guard the plain "units" scan already has) -- a click on its last
+	# position must not resolve it just because the router group is now included.
+	var sm := _sm()
+	var dead := _unit()
+	dead.team = 1
+	dead.position = Vector2(700, 200)
+	dead.state = Unit.State.DEAD
+	dead.remove_from_group("units")
+	dead.add_to_group("routers")
+	assert_null(sm._unit_at(dead.global_position, 1, true),
+			"a dead unit in the routers group still resolves to nothing")
+
+
+func test_unit_at_include_routers_respects_team() -> void:
+	var sm := _sm()
+	var router := _unit()
+	router.team = 1
+	router.position = Vector2(700, 200)
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	assert_null(sm._unit_at(router.global_position, 0, true),
+			"include_routers still filters by team -- a team-0 query ignores a team-1 router")
+
+
+func test_unit_at_include_routers_resolves_a_routing_enemys_flag() -> void:
+	var sm := _sm()
+	var router := _unit()
+	router.team = 1
+	router.position = Vector2(700, 200)
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	var flag_world: Vector2 = router.global_position \
+			+ UnitSprites.standard_bounds(router.render_block_extent()).get_center()
+	assert_eq(sm._unit_at(flag_world, 1, true), router,
+			"the flag-click fallback also resolves a routing enemy's flag")
+
+
+func test_can_form_up_treats_a_routing_enemy_endpoint_as_an_attack() -> void:
+	# _can_form_up must not deploy a formation line onto a routing enemy: an attack-team
+	# endpoint check that missed routers used to let a drag ending on a fleeing enemy
+	# read as "no enemy here" and form up on top of it instead of attacking.
+	var sm := _sm()
+	var a := _unit()
+	sm._select(a)
+	var router := _unit()
+	router.team = 1
+	router.position = Vector2(100, 0)
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	assert_false(sm._can_form_up(Vector2.ZERO, router.global_position),
+			"a drag ending on a routing enemy is an attack, not a form-up")
+
+
+class MockBattle:
+	var cancel_calls: Array = []
+	func enqueue_cancel_order(uids: Array, index: int) -> void:
+		cancel_calls.append({"uids": uids, "index": index})
+
+
+func test_cancel_selected_order_at_enqueues_command_or_cancels_directly() -> void:
+	var sm := _sm()
+	sm._battle = null
+	var u := _unit()
+	u.set_current_order(Order.new_move(Vector2(100, 100)))
+	u.append_order(Order.new_move(Vector2(200, 200)))
+	sm._selected = [u]
+
+	# 1. With _battle == null, cancels directly on selected units
+	sm.cancel_selected_order_at(1)
+	assert_eq(u.orders.size(), 1, "cancels queued order at index 1 directly when no battle")
+
+	# 2. With playback mode, returns early (noop)
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm.cancel_selected_order_at(0)
+	assert_eq(u.orders.size(), 1, "playback mode returns early without cancelling")
+	Replay.mode = prev_mode
+
+	# 3. With no selection, returns early (noop)
+	sm._selected = []
+	sm.cancel_selected_order_at(0)
+
+	# 4. With _battle set, enqueues order cancellation
+	var battle := MockBattle.new()
+	sm._battle = battle
+	sm._selected = [u]
+	sm.cancel_selected_order_at(0)
+	assert_eq(battle.cancel_calls.size(), 1, "enqueues cancel order command when battle is present")
+	assert_eq(battle.cancel_calls[0]["index"], 0, "order cancel index passed to battle")
+
+
+
+func test_cancel_selected_order_at_scopes_to_the_unit_the_panel_shows() -> void:
+	# The order tree the cancel button lives in is built from _selected[0]
+	# (_hud.show_unit(_selected[0], ...)), so `index` is a row in THAT unit's queue. Two
+	# selected units generally have differently-shaped queues, so applying the index across
+	# the selection would cancel orders the player never saw.
+	var sm := _sm()
+	var battle := MockBattle.new()
+	sm._battle = battle
+	var shown := _unit()
+	shown.uid = 7
+	var other := _unit()
+	other.uid = 8
+	sm._selected = [shown, other]
+	sm.cancel_selected_order_at(1)
+	assert_eq(battle.cancel_calls.size(), 1, "one cancel command is issued")
+	assert_eq(battle.cancel_calls[0]["uids"], [7],
+			"only the displayed unit's uid is cancelled, not every selected uid")
+
+
+func test_cancel_selected_order_at_is_a_no_op_with_no_selection() -> void:
+	var sm := _sm()
+	var battle := MockBattle.new()
+	sm._battle = battle
+	sm._selected = []
+	sm.cancel_selected_order_at(0)
+	assert_true(battle.cancel_calls.is_empty(), "nothing selected -- no command issued")
+
+
+func test_cancel_order_at_ignores_an_out_of_range_index() -> void:
+	var u := _unit()
+	u.set_current_order(Order.new_move(Vector2(100, 100)))
+	u.cancel_order_at(5)
+	assert_eq(u.orders.size(), 1, "an index past the queue end is ignored")
+	u.cancel_order_at(-1)
+	assert_eq(u.orders.size(), 1, "a negative index is ignored")

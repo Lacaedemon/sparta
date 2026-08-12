@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/custom-map-defile.json",
+  "caption": "Per-battle map definitions: demo scripts (and replays) can now declare their own battlefield instead of every battle running on the one hard-coded map. This clip's input script carries a map block -- a tall, narrow 800x1000 field with two custom hill walls forming a mid-field defile -- and a lone regiment ordered through it threads the gap dead-centre under its own clearance margin, on terrain that exists only in this demo's map. The field rect, terrain table, and spawn-line anchors are now caller-configurable instance data with the old constants as the default map; replays record a non-default map in their header so playback rebuilds the same battlefield. First application of the new caller-configurable-parameters convention (the audit of remaining hard-coded tunables is tracked separately).",
+  "fixed_fps": 30,
+  "max_frames": 440,
+  "fps": 15,
+  "width": 640
+}

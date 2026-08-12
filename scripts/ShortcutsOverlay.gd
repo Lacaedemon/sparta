@@ -1,10 +1,9 @@
 extends AcceptDialog
 ## Read-only reference overlay listing every keyboard/mouse shortcut, opened with
 ## <kbd>?</kbd> (Shift+/) or ☰ Menu → Shortcuts. Rebindable order-mode stance keys
-## (hold/flank/rear/skirmish/support) are read live from the Settings autoload, the
-## same way HUD._refresh_hint() renders the top hint bar, so a rebind made via
-## ☰ Menu → Keybindings is reflected here too -- this is purely a display list, not
-## an editor.
+## (hold/flank/rear/skirmish/support) are read live from the Settings autoload, so
+## a rebind made via ☰ Menu → Keybindings is reflected here too -- this is purely
+## a display list, not an editor.
 ##
 ## Everything else here is a fixed, non-rebindable key, so those rows are built once
 ## in _ready() from a plain data table.
@@ -38,6 +37,7 @@ const _ROWS: Array = [
 	["Asymmetric explicatio (hold right / left flank fixed)", "Shift+B / Ctrl+B"],
 	["Form-up split mode", "Y (Shift+Y reverses)"],
 	["Nudge (small drill step, holds facing)", "Arrow keys"],
+	["Disengage and step back (breaks contact, holds facing)", "Ctrl+Down"],
 	["About-face (180° in place)", "V"],
 	["Quarter-turn left / right (90° in place)", "Q / E"],
 	["Wheel left / right (90° hinge on flank)", "Z / C"],
@@ -52,6 +52,8 @@ const _ROWS: Array = [
 	["Zoom", "Mouse wheel / pinch"],
 	["Show all orders + formation preview", "Hold Space"],
 	["Active pause", "P or Shift+Space"],
+	["Slow motion (cycle 100%/50%/25%/10%, Shift reverses)", "F5"],
+	["Unit card tray (organize units into battle lines)", "F1"],
 	["— Help —", ""],
 	["This shortcuts list", "? (Shift+/)"],
 ]

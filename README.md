@@ -69,7 +69,7 @@ scripts/
   Unit.gd              Regiment: stats, movement, melee, flanking, morale, routing
   SelectionManager.gd  Click + drag-box selection, move/attack orders
   CameraController.gd  WASD / edge pan, wheel zoom
-  HUD.gd               Hint bar, unit info panel, victory/defeat overlay
+  HUD.gd               Unit info panel, victory/defeat overlay
   MainMenu.gd          Title screen UI (built in code)
   campaign/            M2 campaign map (#70):
     CampaignState.gd     Province/turn/combat rules — pure logic, unit-tested

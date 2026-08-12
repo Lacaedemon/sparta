@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/weapon-aware-draw-pose.json",
+  "caption": "Phase 3 (closes #538): the soldier draw pose now reads the real equipped weapon/shield type instead of a coarse type flag. The Spearmen's spear glyph is presented at LoadoutRegistry.WEAPON_SPEAR's rest hold angle (a forward cant) instead of the old fixed vertical bake, and the Infantry's shield glyph is raised to SHIELD_SCUTUM's rest angle (a forward guard) instead of hanging straight down. Once the lines close and the front ranks make contact, each engaged soldier's render position eases forward into a \"strike lunge\" -- purely cosmetic (nothing in the simulation itself changes), so unengaged rear-rank soldiers stay put while the front rank visibly pushes into the clash.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

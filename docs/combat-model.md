@@ -5,9 +5,10 @@ Status: **phase 4 of individual-soldier collision — largely implemented** (see
 probabilistic model that resolves combat between individual soldiers; it is now wired
 into **engaged melee**, which is soldier-authoritative (`SoldierMelee.resolve`). The
 per-slice `> Implemented` notes below track what has landed (the land contest, wound,
-knockback, prone, bracing, and stamina) and what is deferred (posture-graded bracing,
-the domino cascade, and enemy collision → #201). The player-facing version lives at
-[`website/combat.qmd`](../website/combat.qmd) — keep the two in sync.
+knockback, prone, graded bracing, and stamina) and what is deferred (the full posture
+enum/stamina-regen system, the domino cascade, and enemy collision → #201). The
+player-facing version lives at [`website/combat.qmd`](../website/combat.qmd) — keep the
+two in sync.
 
 The guiding principle is **emergence, not modifiers**. We do not bolt a "flanking
 bonus" or an "out-of-formation debuff" onto regiment combat. Instead each soldier
@@ -45,8 +46,8 @@ A starting table (tunable; maps onto the existing loadout types):
 |---|---|---|---|---|---|---|---|---|
 | Spearmen | 0.75 | 0.35 | 0.65 | 0.85 | long (2.4 m) | 1.0 | 100 | 100 |
 | Infantry | 0.50 | 0.45 | 0.60 | 1.00 | medium (1.3 m) | 1.0 | 110 | 100 |
-| Archers  | 0.30 | 0.10 | 0.05 | 0.50 | short (0.6 m) | 0.9 |  80 |  90 |
-| Cavalry  | 0.60 | 0.40 | 0.25 | 1.10 | medium (1.5 m) | 2.5 | 140 | 120 |
+| Archers  | 0.30 | 0.10 | 0.05 | 0.50 | short (0.6 m) | 0.875 |  80 |  90 |
+| Cavalry  | 0.60 | 0.40 | 0.25 | 1.10 | medium (1.5 m) | 6.5625 | 140 | 120 |
 
 As implemented, $b$ and $\ell$ resolve at strike time through the soldier's
 loadout ids (see `docs/soldier-loadout-design.md`): $\ell$ is the equipped
@@ -54,6 +55,14 @@ weapon type's `lethality`, and $b$ composes as the equipped shield type's
 `block_value` (scutum 0.60, round 0.25, none 0) plus a per-type stance
 residual (`shield_residual`: Spearmen 0.05 braced footing, Archers 0.05
 unshielded deflection, otherwise 0), summing bit-for-bit to the table's $b$.
+
+$m$ is likewise derived, not a separately-tuned figure:
+`SoldierCombat.relative_mass_from_kg` divides a real mass in kilograms by
+the 80 kg heavy-foot baseline, so Spearmen and Infantry (both 80 kg) land on exactly
+1.0, Archers' lighter 70 kg body on 0.875, and a mounted Cavalryman's rider
+(75 kg) plus warhorse (450 kg) on 6.5625 — a real ~525 kg rider-and-horse
+relative to a foot soldier, not a hand-tuned "cavalry hits like 2.5 men"
+scalar.
 
 ### Two condition factors
 
@@ -100,11 +109,41 @@ Two consequences fall straight out of this table and matter everywhere below:
   game of receiving a charge: a line ordered to brace in time holds; one caught
   *at ease* or still shuffling into position is ridden down before it can plant.
 
+> **Implemented (#1105), simplified:** the closing term $c$ (below) already reads real
+> velocity, so "motion is the charge" was already true. What #1105 adds is the *brace* half:
+> a new `ORDER_BRACE` order plus a `BRACE_SETTLE_TIME` ($T_{\mathrm{post}}$) held-still timer
+> before the full braced bonus applies — see the `> Implemented` note under "Bracing and the
+> knockback chain" below. The full seven-way posture table above (`at ease` / `at attention` /
+> `advancing` / `jogging` / `sprinting` / `braced` / `prone`, each with its own stamina-regen
+> rate) is **not** implemented as a discrete state machine — bracing instead reads a
+> continuous penalty from the regiment's own `current_speed`, not a named gait. `prone` is
+> implemented separately (see "Going prone and getting up" below).
+
 ## One strike: attacker $A$ on defender $D$
 
 A strike happens when $A$'s soldier has $D$'s within reach $r_A$ on $A$'s attack
 cadence. We resolve it as: a closing term, an **opposed** land contest, a wound to
 health, a stamina cost on both sides, and a knockback impulse.
+
+**Attack cadence** is a per-weapon-type stat, `Weapon.attack_interval_s`: seconds
+between damage ticks, aggregated at the regiment level (one tick stands for the
+whole engaged front rank trading blows over that span, not a literal per-soldier
+swing — see `Unit.ATTACK_INTERVAL`'s own doc comment). Every type keeps the flat
+0.6 s baseline except gladius+scutum (Infantry), tuned to 1.2 s following a
+2026-07-24/25 discussion that the flat rate felt unrealistically fast even as a
+short burst. The gladius value's qualitative grounding is
+[a Roman-Britain educational overview](https://www.romanobritain.org/8-military/mil_roman_soldier_sword.php)
+of legionary gladius technique — not an academic or HEMA source, so treat it as
+illustrative rather than rigorously sourced. It describes a thrust-focused
+"scutum, gladius, scutum, gladius" drill (shield punch, then sword thrust,
+alternating) and claims a thrusting rate as high as four stabs per second against
+one slash every two seconds for a cutting motion. That peak figure is not used
+directly here: even the old flat 0.6 s (100 attacks/minute) already read as
+unsustainably fast as a *sustained* rate, so the source only supports two things —
+differentiating cadence by weapon *mechanic* (thrust vs. slash is a real
+asymmetry), and treating whatever number a type lands on as a sustained baseline,
+with any peak-burst behaviour handled separately rather than folded into the
+default rate. The other types' own values are follow-up tuning, not yet done.
 
 Notation used throughout: a subscript $A$ or $D$ tags the attacker's or defender's
 value (so $s_A$ is the attacker's skill, $a_D$ the defender's armour); a hat marks a
@@ -153,12 +192,16 @@ shield, deflection). Active defence only works against blows the defender can se
 and meet:
 
 $$\mathcal{A} = s_A\,q(h_A)\,g(\sigma_A) + \mu\,c,$$
-$$\mathcal{D} = \phi_D\,\big(s_D + \lambda\,b_D\big)\,q(h_D)\,g(\sigma_D),
+$$\mathcal{D} = \phi_D\,\big(s_D + \lambda\,b_D\,s_D\big)\,q(h_D)\,g(\sigma_D),
 \qquad
 \phi_D = \big(\hat{n}_D \cdot \hat{u}_{D\to A}\big)_+ .$$
 
 Here $\mu \ge 0$ weights closing speed into the attack (how much a charge helps it
-land), and $\lambda \ge 0$ weights the shield into active defence. $\phi_D$ is the
+land), and $\lambda \ge 0$ weights the shield into active defence. The shield term
+is multiplied by the defender's own skill $s_D$ rather than added independently of
+it, so a shield is worth nothing to an untrained defender and worth progressively
+more as training rises: the shield is something the defender *uses*, not armour
+that protects regardless. $\phi_D$ is the
 **facing gate**: the dot of the defender's facing with the
 direction the blow comes from, clamped to non-negative. A blow from the front
 ($\phi_D \to 1$) meets full active defence; a blow from the flank meets little; a
@@ -339,16 +382,27 @@ non-negative — the *same* facing that gates active defence). A loose, flanked,
 file has $\mathrm{br}\to 0$, dominoes, and goes down; a *braced*, tight,
 front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 
-> **Implemented (#201 slice C):** `SoldierCombat.brace_depth` and `brace_capacity` compute
-> the depth-buttressed column capacity $C_i$. `Unit.soldier_brace()` returns `BRACE_SET` (1)
-> when the regiment is engaged and not a skirmish line, 0 otherwise (binary; graded posture
-> is the posture slice). In `SoldierMelee.resolve` the struck soldier's file column is walked
-> rearward (front-facing blows only — $\phi = 0$ gives no buttress), and the sub-capacity
-> shove is absorbed before applying velocity; `brace_depth` is also passed to `prone_chance`
-> to raise the knockdown threshold for a set phalanx. **Deferred:** the rearward domino
-> cascade ($J_{i+1} = \tau(J_i - C_i)_+$, surplus toppling rear ranks) is a follow-up. The
-> graded `br` formula above (posture weights $b_{\mathrm{post}}$, $w_f$, $w_d$) is also
-> deferred to the posture slice; `br` is binary here.
+> **Implemented (#201 slice C, graded in #1105):** `SoldierCombat.brace_depth` and
+> `brace_capacity` compute the depth-buttressed column capacity $C_i$. `Unit.soldier_brace()`
+> is graded, not binary: a merely-engaged, non-skirmish regiment sits at a baseline ("at
+> attention," `BRACE_BASELINE_ENGAGED`); ordering `ORDER_BRACE` and holding still
+> (`current_speed` at or below `BRACE_STILL_SPEED`) for `BRACE_SETTLE_TIME` seconds — the
+> doc's $T_{\mathrm{post}}$, "you must be set before it arrives" — adds the full
+> `BRACE_SET_BONUS`, and a tight formation adds a further `BRACE_TIGHT_BONUS` ($w_f$ above);
+> motion still under way subtracts a penalty scaled by `current_speed`. `ORDER_SKIRMISH`
+> still forces 0. The $w_d$ facing term is deliberately not folded into this formula — it is
+> already enforced at the call site (`SoldierMelee.resolve`'s front-facing-only rearward file
+> walk), so adding it here would double-count it. `SoldierCombat.brace_capacity_for_type` also
+> grades $J_{\mathrm{cap}}$ itself by weapon: a grounded, angled spear/pike (anti-cavalry)
+> resists via an independent leveraged strut into the earth, so its column capacity exceeds a
+> shield-only soldier's friction/mass-stacking baseline. In `SoldierMelee.resolve` the struck
+> soldier's file column is walked rearward (front-facing blows only — $\phi = 0$ gives no
+> buttress), and the sub-capacity shove is absorbed before applying velocity; `brace_depth` is
+> also passed to `prone_chance` to raise the knockdown threshold for a set phalanx.
+> **Deferred:** the rearward domino cascade ($J_{i+1} = \tau(J_i - C_i)_+$, surplus toppling
+> rear ranks) and the full posture enum/stamina-regen table (`at ease` / `advancing` /
+> `jogging` / `sprinting` distinguished as separate gaits, not just a motion-scaled penalty)
+> remain follow-up work.
 
 > **Implemented (#201 slice D):** `SoldierCombat.stamina_factor` ($g(\sigma)$) and the
 > per-soldier `_sim_soldier_stamina` pool. In `SoldierMelee.resolve`, `cond_a`/`cond_d`
@@ -408,7 +462,10 @@ opposed rolls, the prone threshold, and the bracing chain acting together.
   same shared $c$, over meeting it horse-to-horse.
 - **Shields and armour** turn would-be wounds into blocked shoves (shield, from the
   front) or glancing hits (armour, from any angle), so a heavy, shielded line
-  grinds slowly and survives; light troops caught in the press evaporate.
+  grinds slowly and survives; light troops caught in the press evaporate. The two
+  differ in who benefits: armour protects whoever wears it, while the shield's
+  contribution to active defence scales with the defender's own skill, so issuing
+  shields to a raw levy buys far less than issuing them to veterans.
 - **Skill and freshness** compound at both ends — landing more, defending more,
   tiring slower — so rested veterans beat raw or winded levies out of proportion to
   their numbers. Pace the fight: a line that has been holding all battle defends

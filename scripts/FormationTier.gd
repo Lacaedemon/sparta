@@ -21,8 +21,9 @@ const TIER_NAMES := {
 # Promotion/demotion thresholds, in world units — TUNED against the tools/benchmark/
 # measurements (the recorded numbers live in docs/large-scale-simulation-design.md,
 # "Validating tier thresholds"). Two constraints pin PROMOTE_RANGE from both sides:
-# - Floor (correctness): it must exceed auto-acquisition (Unit.DETECTION_RANGE, 190)
-#   plus the charge runway (Unit.SPRINT_START_DISTANCE, 200), so a formation is back at
+# - Floor (correctness): it must exceed auto-acquisition (Unit.DETECTION_RANGE, 190 --
+#   the default a unit's own caller-configurable detection_range field starts at) plus
+#   the charge runway (Unit.SPRINT_START_DISTANCE, 200), so a formation is back at
 #   individual fidelity before it can detect, shoot at, or charge anything.
 # - Ceiling (budget): the benchmark puts the reference engaged front (~1,700 soldiers,
 #   all close-tier) right at the 16.67ms/tick budget on the dev PC, and doubling it
@@ -48,10 +49,12 @@ static func tier_name(value: int) -> String:
 ## closes within PROMOTE_RANGE. Deliberately a pure predicate over two already-serialized
 ## positions — no camera/attention signal — so replay determinism can't depend on rendering.
 static func should_promote(formation_pos: Vector2, nearest_enemy_pos: Vector2) -> bool:
-	return formation_pos.distance_to(nearest_enemy_pos) < PROMOTE_RANGE
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	return formation_pos.distance_squared_to(nearest_enemy_pos) < PROMOTE_RANGE * PROMOTE_RANGE
 
 
 ## Placeholder demote trigger: the mirror check against the farther DEMOTE_RANGE. Between
 ## the two thresholds neither predicate fires, so the formation keeps its current tier.
 static func should_demote(formation_pos: Vector2, nearest_enemy_pos: Vector2) -> bool:
-	return formation_pos.distance_to(nearest_enemy_pos) > DEMOTE_RANGE
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	return formation_pos.distance_squared_to(nearest_enemy_pos) > DEMOTE_RANGE * DEMOTE_RANGE

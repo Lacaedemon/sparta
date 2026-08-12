@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/moving-wheel-vs-standing.json",
+  "caption": "Moving wheel (#922): a cavalry unit (left) marching mid-way is ordered onto a sharply off-heading destination and gallops through a single continuous wheel, never coming to a full stop -- its state stays MOVING throughout. An infantry unit (right), given the same kind of order, still takes the existing path: it halts, about-faces in place, standing-wheels the remaining residual, then marches -- its state visibly drops to IDLE during that whole sequence. Both units first march straight ahead to build real cruising speed before the sharp turn is ordered, matching the issue's own framing of a unit 'already marching' being able to wheel while continuing to advance.",
+  "fixed_fps": 30,
+  "max_frames": 330,
+  "fps": 12,
+  "width": 800
+}

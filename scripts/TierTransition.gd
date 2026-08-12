@@ -97,6 +97,16 @@ static func demote(u: Unit) -> void:
 	u._sim_soldier_shield_hold_angle = PackedFloat32Array()
 	u._sim_soldier_facing = PackedVector2Array()
 	u._per_soldier_facing = false
+	# file_major_reform's persistent file assignment goes with every other per-soldier
+	# array: dropped here, lazily rebuilt fresh on promotion (Unit._ensure_file_assignment,
+	# triggered by the size mismatch against promote()'s own soldier_world_slots() call).
+	u._sim_soldier_file = PackedInt32Array()
+	u._sim_soldier_rank = PackedInt32Array()
+	u._file_assignment_files = -1
+	# Same for the square slot pairing: it is meaningless without bodies to pair, and
+	# promote() rebuilds the bodies FROM the slots, so it re-pairs to identity there.
+	u._sim_soldier_square_slot = PackedInt32Array()
+	u._square_slot_files = -1
 	u._render_dirty = true   # the render swaps to the aggregate (formation-grid) marks
 
 
@@ -123,7 +133,7 @@ static func promote(u: Unit, tick: int, battle_seed: int) -> void:
 	var slots: PackedVector2Array = u.soldier_world_slots(n)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = promotion_seed(u.uid, tick, battle_seed)
-	var scatter_r: float = Unit.FORMATION_SPACING * u.spacing_scale * SCATTER_FRACTION
+	var scatter_r: float = minf(u.file_pitch_wu(), u.rank_pitch_wu()) * SCATTER_FRACTION
 	var profile: Dictionary = u.combat_profile()
 	var max_health: float = profile["max_health"]
 	var wound_cap: float = 0.0

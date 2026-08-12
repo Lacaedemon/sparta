@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/flank-anchored-resize.json",
+  "caption": "Flank-anchored drag-resize: pulling the east flank grip outward extends the line eastward only -- the west flank's edge stays anchored while the new files form up on the dragged side (previously the block widened symmetrically about its centre).",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 720
+}

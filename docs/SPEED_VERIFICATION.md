@@ -85,7 +85,8 @@ above do — flagged as an open question rather than asserted as verified.
 ## Unit Geometry Verification
 
 **Soldier spacing in formation:**
-- `FORMATION_SPACING = 9.0` world units = 0.45 m (`scripts/Unit.gd`).
+- `FORMATION_SPACING = 0.45 * WorldScaleRef.WU_PER_M` (`scripts/Unit.gd`) -- authored
+  in metres since the #440 migration, folding to 9.0 world units at parse time.
 - The Hellenistic phalanx had **three** density tiers, not two, and it's easy
   to conflate the middle one with the tightest: **open order** (~1.8–2 m/man),
   **close order** / *pyknosis* (~0.9–1 m/man — this is Polybius's "3 feet"

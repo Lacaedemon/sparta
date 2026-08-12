@@ -26,7 +26,7 @@
 # the author contract.
 #
 # Why a separate workflow (not claude.yml): claude.yml only *calls* an external
-# reusable workflow (d-morrison/gha), so recording steps can't be added there.
+# reusable workflow (Morrison-Lab/gha), so recording steps can't be added there.
 #
 # How the GIF gets inline without GitHub's browser-only attachment CDN: the GIF is
 # pushed to a long-lived media branch ($MEDIA_BRANCH) and embedded by raw URL. That
@@ -66,8 +66,8 @@ permissions:
   pull-requests: write   # update the PR description with the demo section, and post/update the state-transcript comment
 
 env:
-  GODOT_VERSION: 4.7.0
-  GUT_VERSION: v9.7.0
+  # GODOT_VERSION/GUT_VERSION pins now live as the composite action's own
+  # defaults (.github/actions/setup-godot-project/action.yml).
   MEDIA_BRANCH: demo-media
 
 jobs:
@@ -248,22 +248,15 @@ jobs:
             echo "$DELIM"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Set up Godot ${{ env.GODOT_VERSION }}
+      # Set up Godot + GUT + import as one unit (composite action). Reordered
+      # relative to the old inline steps to sit right after "Resolve demo
+      # source": Xvfb/ffmpeg install has no ordering dependency on the Godot
+      # setup/import (headless import needs no display server), so folding
+      # setup-godot/GUT/import into a single call and running Xvfb/ffmpeg
+      # after it is behavior-preserving.
+      - name: Set up Godot project
         if: steps.demo.outputs.record == 'true'
-        uses: chickensoft-games/setup-godot@v2
-        with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false
-
-      - name: Install GUT ${{ env.GUT_VERSION }}
-        # The project's test files extend GutTest, so GUT must be present or the
-        # import below fails to resolve that class (same as godot-ci.yml).
-        if: steps.demo.outputs.record == 'true'
-        run: |
-          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
-          mkdir -p addons
-          rm -rf addons/gut
-          cp -r /tmp/gut/addons/gut addons/gut
+        uses: ./.github/actions/setup-godot-project
 
       - name: Install Xvfb + ffmpeg
         # Movie Maker renders frames (software GL via Xvfb is fine — no GPU needed);
@@ -272,16 +265,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb ffmpeg
-
-      - name: Import & validate project
-        if: steps.demo.outputs.record == 'true'
-        run: |
-          set -o pipefail
-          godot --headless --import --verbose 2>&1 | tee import.log
-          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
-            echo "::error::Godot reported script/resource errors during import"
-            exit 1
-          fi
 
       - name: Record demo
         if: steps.demo.outputs.record == 'true'
@@ -395,6 +378,54 @@ jobs:
             echo "State transcript ready."
           else
             echo "::warning::transcript artifacts empty; posting the demo without a transcript."
+          fi
+
+      - name: Demo defect scan
+        # The algorithmic half of demo review: a FULL state dump of the same input
+        # script, run through the DemoDefects metrics plus the script's own declared
+        # `expect` assertions (see demos/README.md, "Algorithmic defect scan"). This
+        # step only COMPUTES and reports -- the enforcement step after the publish is
+        # what fails the job -- so a defect verdict never blocks the GIF/transcript the
+        # author needs to debug it. Exit 2 (unusable input) degrades to a warning:
+        # absence of data is not a defect.
+        id: defects
+        if: steps.demo.outputs.record == 'true' && steps.demo.outputs.dump_state == 'true'
+        timeout-minutes: 5
+        env:
+          SOURCE: ${{ steps.demo.outputs.source }}
+          STATE_TICKS: ${{ steps.demo.outputs.state_ticks }}
+        run: |
+          set -uo pipefail
+          echo "failed=false" >> "$GITHUB_OUTPUT"
+          FULL_DIR=/tmp/state-full
+          rm -rf "$FULL_DIR"; mkdir -p "$FULL_DIR"
+          if ! SPARTA_DEMO_STATE_FULL=1 \
+               tools/demo/dump-state.sh "$SOURCE" "$STATE_TICKS" "$FULL_DIR"; then
+            echo "::warning::full state dump failed; skipping the defect scan."
+            exit 0
+          fi
+          rc=0
+          godot --headless --path . -s tools/demo/analyze_transcript.gd -- \
+            "$FULL_DIR" --script "$SOURCE" | tee /tmp/defects.txt || rc=$?
+          # Fold the verdict table into the transcript comment when one is being posted,
+          # so reviewers see the machine verdicts next to the per-tick tables.
+          if [ -s /tmp/transcript.md ] && [ -s /tmp/defects.txt ]; then
+            {
+              printf '\n**Defect scan** (deterministic verdicts -- see demos/README.md):\n\n```\n'
+              cat /tmp/defects.txt
+              printf '```\n'
+            } >> /tmp/transcript.md
+          fi
+          if [ "$rc" -eq 1 ]; then
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+            echo "::error::demo defect scan found failing verdicts (see the transcript comment / log above)."
+          elif [ "$rc" -eq 3 ]; then
+            # Malformed declarations mean NOTHING was judged for this clip -- gate on it
+            # rather than letting a typo silently disable every metric behind a green check.
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+            echo "::error::malformed expect/defect_exemptions block in $SOURCE -- nothing was scanned."
+          elif [ "$rc" -ne 0 ]; then
+            echo "::warning::defect scan input unusable (rc=$rc); nothing gated."
           fi
 
       - name: Publish GIF and update PR description
@@ -534,6 +565,15 @@ jobs:
             tools/ci/upsert-pr-comment.sh \
               "${{ github.repository }}" "$PR" "$TRANSCRIPT_MARKER" "$TRANSCRIPT_BODY" "state transcript comment"
           fi
+
+      - name: Enforce demo defect scan
+        # The gate half of the defect scan above, deliberately AFTER the publish: the
+        # GIF, transcript, and verdict table all post first so the author has the
+        # artifacts to debug, and only then does the job go red on a failing verdict.
+        if: steps.defects.outputs.failed == 'true'
+        run: |
+          echo "::error::demo defect scan failed -- see the state-transcript comment's verdict table."
+          exit 1
 
       - name: Post 'no clip applies' note
         # The author marked this change as not demonstrable by a recorded battle

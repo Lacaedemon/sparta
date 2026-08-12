@@ -1,0 +1,93 @@
+# Shared composite action for the Godot-install + GUT-vendor + project-import
+# sequence that used to be copy-pasted (with its own "keep in sync" comment)
+# across every workflow that needs a working Godot/GUT environment (see #988).
+#
+# `godot-version`/`gut-version` default to the pins this repo currently uses;
+# bumping a version now means editing these two defaults once, here, instead
+# of hand-editing up to 8 workflow files and hoping none are missed.
+name: Set up Godot project
+description: >-
+  Installs the pinned Godot editor, optionally vendors GUT into addons/gut,
+  and optionally imports the project -- failing the step if Godot reports a
+  script/resource error during import.
+inputs:
+  godot-version:
+    description: >-
+      Godot version to install (passed to chickensoft-games/setup-godot).
+      Keep in sync with config/features in project.godot (Standard /
+      GDScript build -- gl_compatibility, no C#/.NET).
+    required: false
+    default: '4.7.0'
+  gut-version:
+    description: Pinned GUT (bitwes/Gut) release tag matching the Godot version above.
+    required: false
+    default: v9.7.0
+  install-gut:
+    description: >-
+      Whether to clone GUT at gut-version and copy addons/gut into the
+      project. The project's test files extend GutTest, so GUT must be
+      present before any import step resolves that class. Set to 'false' for
+      a workflow that never runs GUT-based tests (e.g. release.yml's
+      export-only job).
+    required: false
+    default: 'true'
+  run-import:
+    description: >-
+      Whether to run `godot --headless --import --verbose` and fail the step
+      if the import log contains a script/resource error marker (Godot
+      doesn't reliably exit non-zero on a script error, so this greps the
+      log itself). Set to 'false' when the caller's own tooling performs its
+      own import instead (e.g. website-demo-diff.yml / publish-site.yml,
+      whose scripts import each tree/build themselves).
+    required: false
+    default: 'true'
+outputs:
+  godot-version:
+    description: >-
+      The Godot version actually used (the godot-version input, or its
+      default when not overridden) -- lets a caller that needs the pin for
+      something outside this action's own steps (e.g. a second checkout
+      tree) read it back instead of hand-copying the value.
+    value: ${{ inputs.godot-version }}
+  gut-version:
+    description: >-
+      The GUT version actually used (the gut-version input, or its default),
+      whether or not install-gut actually vendored it. Same rationale as
+      godot-version above.
+    value: ${{ inputs.gut-version }}
+runs:
+  using: composite
+  steps:
+    - name: Set up Godot ${{ inputs.godot-version }}
+      uses: chickensoft-games/setup-godot@v2
+      with:
+        version: ${{ inputs.godot-version }}
+        use-dotnet: false   # Standard build, not the .NET/C# build
+
+    - name: Install GUT ${{ inputs.gut-version }}
+      # Vendored at run time (pinned tag) so the framework isn't committed to
+      # the repo. Local dev installs it the same way (test/README.md).
+      if: inputs.install-gut == 'true'
+      shell: bash
+      env:
+        GUT_VERSION: ${{ inputs.gut-version }}
+      run: |
+        git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
+        mkdir -p addons
+        rm -rf addons/gut
+        cp -r /tmp/gut/addons/gut addons/gut
+
+    - name: Import & validate project
+      # `--import` loads the whole project (autoloads, class_name globals and
+      # cross-script references all resolve) and reports compile/import
+      # errors. Godot doesn't reliably exit non-zero on script errors, so
+      # fail the step if any error marker shows up in the import log.
+      if: inputs.run-import == 'true'
+      shell: bash
+      run: |
+        set -o pipefail
+        godot --headless --import --verbose 2>&1 | tee import.log
+        if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
+          echo "::error::Godot reported script/resource errors during import"
+          exit 1
+        fi

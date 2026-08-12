@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "A persistent HUD toggle button is UI chrome the scripted-input recorder can't click -- its click step is hard-wired to SelectionManager._unhandled_input (world-space unit selection), bypassing Godot's normal UI input routing that would let it reach a Button node. Same limitation the recorder already has with the menu checkbox this button mirrors. See the before/after screenshots in the PR description instead."
+}

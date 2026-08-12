@@ -117,6 +117,18 @@ script under `demos/inputs/`:
     `how-to-play.qmd`) or `"shift": true` to chord it with Shift (e.g.
     `{"key": "O", "shift": true}` jumps straight to the schiltron stance, sharing
     orbis's O key — see "Square: orbis and schiltron" in `how-to-play.qmd`).
+- `map` (optional) — **declare the demo's own battlefield** instead of the default map:
+  `{"field": [w, h], "terrain": [{"rect": [x, y, w, h], "type": "hill", "kind": "block"},
+  {"rect": [...], "type": "forest", "kind": "slow", "speed": 0.6}], "spawn_lines":
+  [attacker_y, defender_y]}`. Every key is optional — an absent key keeps the default
+  map's value (the `Battle.FIELD`/`TERRAIN`/`SPAWN_LINE_YS` consts). Applied before the
+  battle spawns, like `drill`/`scenario` above, so the camera bounds, routing grid, rout
+  margins, and default-line spawns all rebuild on the declared battlefield. Strict like
+  `steps`/`scenario`: a malformed block fails the recording loudly (map geometry decides
+  WHAT battle runs). Use it to isolate a mechanic on purpose-built terrain rather than
+  contorting a staging around the default map's fixed forest and hill — and note a replay
+  recorded on a custom map carries it in its header, so playback reconstructs the same
+  battlefield (`demos/inputs/custom-map-defile.json` is the worked example).
 - `drill` (optional bool, **default it to `true` unless the demo needs an enemy**) — solo/
   no-opponent rehearsal: only the player army (team 0) deploys and the battle never auto-ends
   on "no enemies", so a unit can rehearse a maneuver with no combat. Set `"drill": true` for
@@ -167,6 +179,10 @@ script under `demos/inputs/`:
     `3` Square, `4` Shield Wall, `5` Testudo). Square is the anti-cavalry ring; the two
     shielded stances plant and barely move but blunt missile fire (testudo from all
     sides, shield wall from the front).
+  - `atomic_response_s` (optional) — seconds the unit holds between a drill command
+    (wheel, about-face, quarter-turn, countermarch) and the men starting the evolution
+    (default 0.2, `Unit.atomic_response_delay`). Lower stages an elite regiment's
+    snappier drill; higher a raw levy's sluggish one.
   - `starting_state` (optional) — force the unit's initial `Unit.State` on spawn, for
     staging a state a normal battle can't otherwise reach: `3` (`ROUTING`) starts the
     unit already fleeing/recovering — routing is normally only reachable as a side
@@ -190,6 +206,19 @@ script under `demos/inputs/`:
   at, for AI verification (see [Verifying a demo by state](#verifying-a-demo-by-state-ai-verification)).
   The `SPARTA_DEMO_STATE` env var adds to this list, so a reviewer can dump state from any demo
   without editing its script. Ignored during a normal movie recording.
+- `spawn_fingerprint` (optional string) — a **stale-artifact guard**. A scripted-input demo clicks
+  fixed world coordinates, so a change to the spawn table (issue #926 re-spaced every unit's x by
+  tens of world units) can silently move a unit out from under a click, leaving the gesture a
+  no-op with no error. Stamp the script with the layout's fingerprint (`SpawnFingerprint`, a digest
+  of every unit's type, roster size, and rounded spawn position) and the recorder fails **loudly**
+  (a `push_error` + non-zero exit) when it no longer matches this build's spawn — instead of
+  recording a clip whose clicks land on empty ground. **Opt-in**: an unstamped script isn't gated
+  (existing scripts keep working). To stamp a new script, run it once and copy the
+  `[demo-input] spawn fingerprint: <hex>` line the recorder always prints into a
+  `"spawn_fingerprint": "<hex>"` field. A `scenario`-array script gets its own scenario's
+  fingerprint (self-contained, so it never drifts); a default-spawn script gets the default layout's
+  (which does drift). Replays carry the same stamp automatically (written by `Replay.save`, checked
+  on load — a mismatch warns the player and desyncs are flagged rather than silently mis-targeting).
 
 A malformed `camera`, `frames`, or `state` field (a non-array value, e.g. `"state": "8,60"`)
 **degrades instead of failing** in the recorder, which warns and ignores the field. CI's
@@ -294,6 +323,15 @@ set, the two lists are merged (an empty env value falls back to the script's lis
 merge rule as `frames`). Dumping is **env-gated**: with the env var unset — the CI movie-recording
 path — it never arms, so normal recording and the frame-capture path are both unchanged.
 
+**Replay playback dumps state the same way.** A `SPARTA_DEMO_REPLAY` run
+(`tools/demo/DemoRunner.tscn`) honors the same `SPARTA_DEMO_STATE` /
+`SPARTA_DEMO_STATE_DIR` / `SPARTA_DEMO_STATE_FULL` env vars via
+`tools/demo/DemoStateSink.gd` — a root-level node that survives the runner's scene swap
+and writes the identical snapshot shape (both paths share `DemoState.build_snapshot`).
+The one difference: a replay file carries no `"state"` array, so the tick list comes from
+the env var alone. This is what lets the website demo-diff workflow transcript-sweep the
+catalog's `type=replay` rows, not just the scripted-input ones.
+
 Unlike frame capture, the dump reads **sim state, not the drawn frame**, so it runs under
 `--headless` (no real renderer needed) — faster, and no window opens.
 
@@ -308,24 +346,28 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | --- | --- |
 | `uid`, `name`, `team` | Stable unit id, display name, side (0 player / 1 enemy). |
 | `position`, `facing` | World-space `[x, y]` pairs (rounded). |
+| `position_m` | `position` mirrored in metres (`WorldScale.WU_PER_M`), so a reviewer reads real distances without dividing by the world scale by hand. |
 | `morale` | Current morale (100 = fresh; a rout triggers at 0). |
 | `state` | Readable `State` name — `IDLE` / `MOVING` / `FIGHTING` / `ROUTING` / `DEAD`. |
 | `formation` | Readable formation — `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE` / `SHIELD_WALL` / `TESTUDO` / `SCHILTRON`. |
 | `frontage` | Current file count — the durable width a `FRONTAGE` order last wrote, or the type-derived default when none has. |
 | `soldiers` | Living soldier count (drops as the unit takes casualties). |
 | `current_speed` | Current movement speed (world units/s). |
+| `current_speed_mps` | The same speed in m/s (folding in `Battle.SPEED_SCALE`, so it reads back as the loadout's declared figure). |
 | `order_mode` | Readable order stance (`Normal`, `Hold`, `Attack flank`, …). |
 | `rank_relief` | Whether the intra-unit rank-relief mode is on (rear ranks rotate forward to relieve their own fighting line; written by a stance order). |
 | `current_order` | The head of the unit's orders queue — readable `Order.Type` name (`MOVE`, `ATTACK`, `RELIEF`, `WHEEL`, …), or `null` when idle. |
-| `order_phase` | The current order's active phase (`NONE`, or `TURN` / `REFORM` / `MARCH` / `RETURN_TURN` / `WHEEL`), or `null` when idle. `REFORM` covers BOTH a phased rear-move/lateral-pivot's interstitial hold and an ordinary move/form-up's reform-before-move pause (`Settings.reform_before_move`, default on) — both hold on a REFORM leaf order and read identically here. `RETURN_TURN` is a lateral pivot's closing quarter-turn back to its original facing; `WHEEL` is a wheel-turn composite's flank-pivot phase, between its opening about-face and its march. |
-| `order_guard` | The current order's pending terminal condition — readable `Order.Guard` name (`ENEMY_IN_RANGE`, `CONTACT_MADE`, `MORALE_BELOW`, `ALLY_EXHAUSTED`, `TICKS_ELAPSED`, `FLANKED`), or `null` when the order carries no guard (or there is no current order). |
+| `order_phase` | The current order's active phase (`NONE`, or `TURN` / `REFORM` / `MARCH` / `RETURN_TURN` / `WHEEL`), or `null` when idle. `REFORM` covers BOTH a phased rear-move/lateral-pivot's interstitial hold and an ordinary move/form-up's reform-before-move pause (`Unit.reform_before_move`, a per-unit field defaulting on for most types) — both hold on a REFORM leaf order and read identically here. `RETURN_TURN` is a lateral pivot's closing quarter-turn back to its original facing; `WHEEL` is a wheel-turn composite's flank-pivot phase, between its opening about-face and its march. |
+| `order_guard` | The current order's pending terminal condition — readable `Order.Guard` name (`ENEMY_IN_RANGE`, `CONTACT_MADE`, `MORALE_BELOW`, `ALLY_EXHAUSTED`, `TICKS_ELAPSED`, `FLANKED`, `ENGAGED_FRACTION_ABOVE`), or `null` when the order carries no guard (or there is no current order). |
 | `queue_tail` | The not-yet-current queued orders behind `current_order`, as an array of `Order.Type` names in queue order — `[]` (not `null`) when nothing is queued. |
 | `target_enemy_uid` | The uid this unit is attacking, or `null`. |
-| `engaged` | Whether the regiment is in the engaged tier (front ranks in/just-out of melee). |
+| `engaged` | Whether the regiment is in the engaged tier (front ranks in/just-out of melee) — a COMBAT-state decision (see `Unit.is_engaged()`). |
+| `in_enemy_contact` | Whether ANY live enemy regiment is within melee contact range, from proximity alone, regardless of combat state (`Unit._in_enemy_contact`). A "disengaging" unit (a plain move order with no attack target) can read `in_enemy_contact: true, engaged: false` at once — physical contact still holds even though it never decided to fight. |
 | `maneuver` | A single readable label for the in-progress drill/maneuver — `IDLE` / `MARCHING` / `FIGHTING` / `CONVERSIO` / `QUARTER_TURN` / `WHEELING` / `FILE_DOUBLE_DEEPEN` / `FILE_DOUBLE_WIDEN` / `NUDGE_SIDESTEP` / `NUDGE_BACKSTEP` / `NUDGE_FORWARD_STEP` / `CYCLE_CHARGE` / `COUNTERMARCH`. Consolidates `current_order`/`order_phase`/`order_mode` into one field, so e.g. a conversio and a centre-pivot (both otherwise `MOVE`/`TURN` vs `QUARTER_TURN`) are distinguishable directly. `FILE_DOUBLE_DEEPEN`/`WIDEN` only show on the exact tick the reshape order applied — the order itself retires the same tick. See `Unit.current_maneuver()`. |
 | `countermarch_variant` | Which exelismos variant a `maneuver: "COUNTERMARCH"` is running — `MACEDONIAN` / `LACONIAN` / `CHORAL`, or `null` when the unit isn't countermarching (`maneuver` alone can't distinguish the three). See `Unit.countermarch_variant()`. |
 | `tier` | The formation's **simulation tier** — `CLOSE` (full per-soldier arrays) or `FAR` (aggregate record, no individual bodies). See `docs/large-scale-simulation-design.md`. |
-| `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count}` — a compact digest, **not** the full per-soldier arrays. **Close-tier units only.** |
+| `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count, broken_count}` — a compact digest, **not** the full per-soldier arrays. `broken_count` is how many soldiers have individually broken from a SHIELD_WALL/TESTUDO stance under encirclement (`Unit._sim_soldier_broken` / `SoldierEncirclement`) — always 0 for a formation that can't break (`NORMAL`/`TIGHT`/`LOOSE`/`SQUARE`/`SCHILTRON`). **Close-tier units only.** |
+| `soldier_summary_m` | The summary's `{centroid_m, bbox_m}` mirrored in metres, derived from the same positions so the two can never disagree. Close-tier only, like its wu sibling. |
 
 A `tier: "FAR"` record carries **no per-soldier payload at all** — no `soldier_summary`, no
 `soldiers_full` — because a far-tier formation has no individual bodies to derive them from.
@@ -333,8 +375,143 @@ The explicit `tier` field is what tells that apart from "per-soldier detail not 
 (a close-tier dump without the full flag, which still gets the summary).
 
 Set `SPARTA_DEMO_STATE_FULL=1` to also dump `soldiers_full` — the raw per-soldier arrays
-(`pos`, `facing`, `hp`, `prone`, `stamina`) — for deep debugging. Off by default (the summary is
-what a reviewer needs; the full arrays are ~20x larger).
+(`pos`, `facing`, `slots`, `hp`, `prone`, `stamina`, `broken`) — for deep debugging. Off by default (the
+summary is what a reviewer needs; the full arrays are ~20x larger). `slots` is the unit's
+canonical slot grid (`Unit.soldier_world_slots`) at the same tick — the *ordered* shape the
+bodies chase — and a `motion_ref` dict rides alongside with the per-unit constants an offline
+analyzer derives thresholds from (`formation_spacing`, the per-axis pitches,
+`soldier_body_radius` — the physical-contact basis for the blob/overlap floors, distinct
+from the grid pitch — the three gait speeds, `pivot_radius`, `turn_rate`), so analysis
+reads the sim's own tuning rather than hardcoding a copy.
+
+### Declared expectations (`expect`)
+
+An input script can declare its own intent as data — an optional `expect` list of
+`{"tick": N, "uid": U, "field": F, "value": V}` entries (tick may be a `[lo, hi]` range for
+drift-tolerant claims: the expectation passes when ANY snapshot inside the range matches).
+Fields are the compact per-unit record fields every dump carries (`state`, `current_order`,
+`order_mode`, `formation`, `engaged`, `target_enemy_uid`, ...). On a dump run the recorder
+automatically arms a state snapshot at every expect tick, so declaring an expectation is
+enough to make the data it checks exist; the analyzer evaluates them offline:
+
+```sh
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> \
+    --script demos/inputs/<name>.json
+```
+
+An expectation that cannot be checked (no snapshot in range, no such unit, no such field)
+FAILS rather than skips — an uncheckable claim is an authoring error. This is how a demo
+that stops demonstrating its own caption (a rebound hotkey arming the wrong stance, a rally
+where a flee was staged) turns into a red exit code instead of an eyeball catch.
+
+### Algorithmic defect scan
+
+`tools/demo/DemoDefects.gd` turns a FULL dump into deterministic defect verdicts — the
+machine-checkable core of the demo-review checklist (blob/compression, soldier overlap,
+shape scramble via an ordered-vs-actual best-fit decomposition, facing whipsaw, sustained
+super-physical speed, and crossing routes). Run it headless over a dump directory:
+
+```sh
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json]
+```
+
+Exit `0` = clean, `1` = at least one defect (the verdict lines name the unit, metric, worst
+value, and threshold), `2` = unusable input (e.g. the dump wasn't taken with
+`SPARTA_DEMO_STATE_FULL=1`), `3` = the script's own `expect`/`defect_exemptions` block is
+malformed. `2` and `3` differ in whether anything could have been judged: `2` means the data
+is absent, so callers warn and move on, while `3` means an authoring typo stopped the scan
+before it computed a single metric — CI gates on that, since otherwise one bad character in
+a declaration would silently disable every check for the clip. Post-contact samples are exempt from the spacing/shape checks —
+melee press legitimately compresses a block — and the sustained checks are
+convergence-aware: a long transition (a reshape, a big commanded turn) that steadily
+improves toward tolerance is read as healthy, while the same magnitude holding flat or
+worsening is a defect. Slot-misassignment only counts once the men are actually standing on
+the grid (identity is noise mid-transit).
+
+`path_crossing` is the one metric that scores the ROUTE rather than the destination, and it
+exists because every other check above is blind in exactly the same place. Misslot is
+switched off while a block is in transit, and the sustained checks forgive a series that
+steadily converges — so a reshape that reaches a perfectly correct end state by an absurd
+route (men walking clear across their own formation and swapping sides on the way) passes
+every one of them. Between two consecutive judged samples this metric removes the block's
+own rigid motion, leaving each soldier's travel *within* his formation, and counts the men
+whose residual paths cross. An assignment minimizing total travel provably has no crossing
+straight-line paths, so the reading measures how far a reshape's slot assignment sits from
+optimal rather than standing in for it; a rigid turn or march leaves every residual empty
+and cannot register. It deliberately does **not** use the convergence-aware sustain rule,
+which would forgive precisely the defect it is built to catch. Sub-floor travel is dropped
+first, so ordinary press-jitter cannot accumulate into a verdict.
+
+What it cannot do is read intent. A counter-march, an about-face, and a form-up all move
+men across their own block on purpose, and geometry alone does not distinguish a drill
+that reorders the ranks deliberately from a reshape that does it by accident. So a script
+whose maneuver legitimately trips a metric declares an exemption, naming the units it
+covers and stating why:
+
+```json
+"defect_exemptions": {
+  "path_crossing": {
+    "uids": [0],
+    "reason": "The exelismos marches files through each other by design; see #123."
+  }
+}
+```
+
+Both fields are mandatory. The `uids` list keeps the claim as narrow as the maneuver
+behind it: most clips carry several units, and a metric-wide exemption would forgive every
+one of them, including a unit whose failure of that same metric is genuine and unrelated.
+The reason is mandatory because an exemption with no argument is indistinguishable from
+silencing a real defect, and the point of a deterministic scan is that suppressing it has
+to be justified in writing. Exemptions never hide: the verdict still prints, as `EXEMPT`
+with its reason attached, and one whose metric has started passing on its own prints as
+`STALE` so it gets deleted rather than outliving the problem it was written for. A stale
+exemption is reported, not failed — failing it would redden the very PR that fixed the
+underlying defect.
+
+CI runs this scan on every PR demo (the demo workflow's "Demo defect scan" step, with the
+script's own `expect` assertions included) and appends the verdict table to the posted
+state-transcript comment; a failing verdict fails the job **after** the GIF and transcript
+publish, so the artifacts you need to debug are always there. Run it pre-push with
+`tools/check.sh demo_defects` — it scans exactly the input scripts your diff adds or edits.
+
+### Per-tick hash stream (`hash_stream.jsonl`)
+
+Every armed dump run also streams a per-tick, two-tier hash of the sim state into the
+same directory (`tools/demo/DemoStateHash.gd`, adapted from 0 A.D.'s replay state hash):
+a **cheap** tier every tick (unit + soldier positions, hashed as raw float bits), and a
+**full** tier every 20 ticks (the cheap fields plus facings, morale/state/order fields,
+the per-soldier hp/prone/stamina arrays, and the replay RNG state). Nothing needs arming
+beyond the state dump itself — the stream rides along wherever `SPARTA_DEMO_STATE` is set.
+
+Two streams from different runs of the same clip localize a divergence to the exact tick
+it first appears, replacing an eyeball diff of full field-level dumps:
+
+```sh
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir-a>     --compare-hashes <dump-dir-b>
+```
+
+Exit `0` = the common tick range is hash-identical, `1` = divergent (the output names the
+first divergent tick and tier: a `cheap` divergence is positional, a `full`-only one means
+non-position state — morale, orders, the RNG — moved first), `2` = a stream is missing.
+Compare streams from the SAME dump path (recorder vs recorder, sink vs sink): the two
+paths sample the tick at slightly different points in the frame, so their streams are
+only comparable to themselves across runs. This is the diagnostic for "when did two runs
+of this clip diverge" (local vs CI, headless vs rendered — both known to drift late in
+long battles); it diagnoses drift, it does not fix it.
+
+The **whole-catalog** counterpart drives `website-demo-diff.yml`'s hash-first pre-filter:
+
+```sh
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <base-tree>     --compare-hash-trees <pr-tree>
+```
+
+It prints one `HASHCMP<TAB><clip><TAB>SAME|CHANGED|ADDED|REMOVED|UNKNOWN[<TAB>tick<TAB>tier]`
+line per clip (robust against Godot's banner, and always exits 0 — the verdict is per-line).
+The CI diff runs this first over both transcript trees: because the every-tick hash stream is a
+strict digest, a clip it calls `SAME` is genuinely unchanged and skips the expensive per-tick
+`jq` field-level compare entirely, so the field analysis runs only for the clips the hash flagged
+— each reported with its exact first divergent tick and tier. `UNKNOWN` (a tree lacking a stream,
+e.g. one predating the hashing) falls back to the full `jq` compare.
 
 ### The wrapper
 
@@ -492,7 +669,7 @@ each stamped with the physics `tick` it fires on.
 To get the timing right you need the default battle's layout. A standard 5v5
 (seed `"12345"`, no campaign) spawns these units, by `uid`:
 
-| Unit | Team 0 (player, top, `y=300`) | Team 1 (enemy, bottom, `y=700`) |
+| Unit | Team 0 (player, top, `y=300`) | Team 1 (enemy, bottom, `y=880`) |
 | --- | --- | --- |
 | Spearmen | 0 | 5 |
 | Infantry | 1 | 6 |
@@ -500,19 +677,28 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 3 | 8 |
 | Cavalry | 4 | 9 |
 
-Both lines center on the `1600 × 1000` field, so they start **400 px** apart
-vertically. The horizontal spacing is no longer a flat 150 px per unit (issue
+The field is `1600 × 1200`, and the lines start **580 px** apart vertically —
+the deepest deployment that keeps both armies inside the close-tier band
+(`FormationTier.DEMOTE_RANGE`) from the first tick. The horizontal spacing is no longer a flat 150 px per unit (issue
 #677: a flat spacing let a wide LOOSE-order Archers regiment overlap its
 Infantry neighbour) — each adjacent pair's gap widens to fit their actual
 formation widths, so the standard 5v5's `x` positions are:
 
 | uid | Type | `x` |
 | --- | --- | --- |
-| 0 / 5 | Spearmen | 476.75 |
-| 1 / 6 | Infantry | 626.75 |
-| 2 / 7 | Archers | 806.75 |
-| 3 / 8 | Cavalry | 973.25 |
-| 4 / 9 | Cavalry | 1123.25 |
+| 0 / 5 | Spearmen | 407.0 |
+| 1 / 6 | Infantry | 557.0 |
+| 2 / 7 | Archers | 736.99 |
+| 3 / 8 | Cavalry | 963.95 |
+| 4 / 9 | Cavalry | 1193.07 |
+
+Cavalry rows sit on their own wider grid pitch (1.0 m between files, 3.0 m
+between ranks), so each cavalry block is ~218 px wide and **360 px deep**
+(`y` roughly 120–480 for the player line) — the line re-spaced around those
+wider blocks, which is why every unit's `x` shifted from the pre-pitch values.
+A scripted click aimed at a unit must use the coordinates above; a click at a
+unit's old position can land in dead ground and silently select nothing (see
+the input-script contract's warning about silent no-op gestures).
 
 Each unit's sprint speed is stated
 in the loadout in **metres/second** (`sprint_mps`); effective px/s is
@@ -532,10 +718,12 @@ engage **must** issue a move (or attack) order early — for example the tick-12
 order in `demos/scenarios/line-relief.json` and `charge_demo.json`. Forget it and
 the clip records the player line standing still while only the enemy closes.
 
-With both sides closing over the 400 px gap, a head-on meet takes roughly
-`400 / (sum of the two effective speeds)` seconds: about 3.6 s for
-spearmen-vs-spearmen (`56 + 56`), about 1.2 s for cavalry-vs-cavalry (`170 + 170`).
-These are approximations — the enemy AI re-targets only every `AI_PERIOD` (1 s),
+With both sides closing over the 580 px gap, a head-on meet takes roughly
+`580 / (sum of the two effective speeds)` seconds: about 5.2 s for
+spearmen-vs-spearmen (`56 + 56`), about 1.7 s for cavalry-vs-cavalry (`170 + 170`)
+— and substantially longer when either side only walks (the enemy AI's default
+advance pace), so budget windows from the walk speeds, not the sprint table.
+These are approximations — the enemy AI re-targets only every `ai_period` (default 1 s),
 and cavalry carry a 0.3 s order-response delay — so work the timing out on paper
 **before** spending a CI run on it; a mistimed scenario silently records the
 wrong moment.

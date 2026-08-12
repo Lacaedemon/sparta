@@ -24,3 +24,13 @@ func test_ripple_frees_itself_after_its_lifetime() -> void:
 	assert_false(fx.is_queued_for_deletion(), "a fresh ripple is still alive")
 	fx._process(RoutShockwave.LIFETIME)   # age past its lifetime
 	assert_true(fx.is_queued_for_deletion(), "an expired ripple frees itself")
+
+
+func test_spawn_accepts_caller_configured_parameters() -> void:
+	var parent := Node2D.new()
+	add_child_autofree(parent)
+	RoutShockwave.spawn(parent, Vector2.ZERO, 100.0, Color.WHITE, 1.2, 10, 0.2)
+	var fx: RoutShockwave = parent.get_child(0)
+	assert_eq(fx._lifetime, 1.2, "custom lifetime is set")
+	assert_eq(fx._gradient_steps, 10, "custom gradient_steps is set")
+	assert_eq(fx._start_scale, 0.2, "custom start_scale is set")

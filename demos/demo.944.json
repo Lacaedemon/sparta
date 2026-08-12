@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/funnel-hug-lanes.json",
+  "caption": "Funnel string-pulling: a wide 120-man battle line and a narrow 30-man squad round the same hill's west side, each walking its OWN lane --- the drawn hillside plus exactly its own clearance margin. The wide line swings out around the shoulder on its ~75 wu margin while the squad tucks in tight on its ~39, where both used to converge onto the same coarse routing-cell corridor lane regardless of width.",
+  "fixed_fps": 60,
+  "max_frames": 1080,
+  "fps": 30,
+  "width": 640
+}

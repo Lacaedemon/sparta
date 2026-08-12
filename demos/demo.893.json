@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/info-panel-stat-sheet.json",
+  "caption": "Unit info panel full stat sheet (#893): selecting a unit now also shows its attack/defense/armour, per-man hit points (mean, spread, and the type's full-health value), the ordered gait with this unit's own pace for it, the block's live mean soldier speed with its acceleration, and the weapon and shield types with their stats. The dynamic lines update as the ordered march winds up.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 720
+}

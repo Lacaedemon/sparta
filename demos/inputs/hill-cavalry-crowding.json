@@ -1,0 +1,30 @@
+{
+  "_comment": "Fresh scenario for the funnel-routing crowding fix (#979): two friendly Cavalry regiments spawn side by side south of the DEFAULT hill (same spawn x positions the default 5v5 battle uses for its own uid8/uid9 -- x=963.95 west of the hill, x=1193.07 inside the hill's own x-range -- see demos/README.md's spawn table), each given an explicit MOVE order to a point just north of the hill (y=350, clearing the hill's own y-range of 380-580 -- NOT a point inside the hill rect itself, which silently no-ops a right-click move order). Unlike an earlier version of this demo (which let the default battle's enemy AI drive both units via a shared, continuously-re-targeted ATTACK order, and used a much farther destination), this version uses a short, fixed MOVE order so each unit's funnel corner is recomputed against a STABLE target every tick and the march completes quickly -- isolating the funnel-corner lane-offset mechanism from two compounding factors that made the demo's own defect-scan margins knife-edge-sensitive: the AI's live-target-chasing behavior, and a periodic formation-compression transient that recurred throughout a much longer march (verified separately: a bare, unfixed funnel corner -- FUNNEL_LANE_SEPARATION_FRACTION temporarily zeroed -- reproduces the underlying bug on this exact scenario, with uid0 stalling for hundreds of ticks around y~750-810 while uid1 completes cleanly). drill mode (no enemy needed -- this demonstrates routing, not combat). World coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 963.95, "y": 880, "facing": [0, -1]},
+    {"team": 0, "type": "Cavalry", "x": 1193.07, "y": 880, "facing": [0, -1]}
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1030.0,
+      "y": 600.0,
+      "zoom": 0.62
+    }
+  ],
+  "steps": [
+    {"tick": 5, "click": [963.95, 880]},
+    {"tick": 10, "rmb_click": [963.95, 350]},
+    {"tick": 60, "click": [1193.07, 880]},
+    {"tick": 65, "rmb_click": [1193.07, 350]}
+  ],
+  "state": [8, 120, 300, 540, 780, 900],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 8, "uid": 1, "field": "state", "value": "IDLE"},
+    {"tick": [780, 900], "uid": 0, "field": "state", "value": "MOVING"},
+    {"tick": [780, 900], "uid": 1, "field": "state", "value": "MOVING"}
+  ]
+}

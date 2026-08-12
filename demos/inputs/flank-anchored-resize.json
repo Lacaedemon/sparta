@@ -1,0 +1,17 @@
+{
+  "_comment": "Flank-anchored drag-resize: a lone Infantry regiment (drill mode, no opponent) is selected, then widened by dragging its EAST flank grip further east. The far (west) flank's edge must hold its ground through the whole gesture: the preview line grows one-sided from that anchored edge, and on release the extra files form up on the dragged side only -- like resizing a window by its edge. The unit faces south (facing [0,1]), so the file axis runs east-west; the east grip is the block's local LEFT flank and the anchored far flank is the west (local RIGHT) edge. Grip coordinates derive from the spawn geometry: 60 Infantry at (600, 420) form 11 files (half-width 45) by 6 ranks (half-depth 22.5), block extent sqrt(45^2 + 22.5^2) + mark radius 4.5 + 2 ~ 56.8, so the east grip sits ~10 px past that at ~(667, 420). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "885",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 600, "y": 420, "count": 60, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 630.0, "y": 430.0, "zoom": 1.5}
+  ],
+  "steps": [
+    {"tick": 12, "click": [600, 420]},
+    {"tick": 30, "box": {"from": [666, 420], "to": [716, 420]}}
+  ],
+  "state": [0, 12, 29, 38, 47, 60, 100, 160, 240],
+  "frames": [12, 40, 47, 160, 240]
+}

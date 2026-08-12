@@ -51,8 +51,8 @@ static func bidirectional_impulse(
 ) -> Array:
 	# Effective mass includes bracing: m_eff = m * (1 + k_br * br)
 	# Higher bracing = higher inertia = harder to move.
-	var m_a_eff: float = attacker_mass * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * attacker_brace)
-	var m_d_eff: float = defender_mass * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * defender_brace)
+	var m_a_eff: float = SoldierCombat.effective_mass(attacker_mass, attacker_brace)
+	var m_d_eff: float = SoldierCombat.effective_mass(defender_mass, defender_brace)
 
 	# Split a fixed total momentum P = impulse_magnitude * mu (mu = reduced mass) between the
 	# two bodies via each one's own effective mass (delta_v = P / m_eff), computed directly as
@@ -129,7 +129,7 @@ static func overcomes_static_friction(
 		return true
 
 	# Standing body: compare impulse against effective-mass-scaled threshold.
-	var m_eff: float = mass * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * brace)
+	var m_eff: float = SoldierCombat.effective_mass(mass, brace)
 	var threshold: float = SoldierCombat.STATIC_FRICTION_THRESHOLD * m_eff
 	return impulse_magnitude > threshold
 
@@ -190,8 +190,8 @@ static func enemy_contact_impulse(
 	mass_b: float, brace_b: float,
 	normal: Vector2, overlap_frac: float
 ) -> Array:
-	var m_a_eff: float = mass_a * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * brace_a)
-	var m_b_eff: float = mass_b * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * brace_b)
+	var m_a_eff: float = SoldierCombat.effective_mass(mass_a, brace_a)
+	var m_b_eff: float = SoldierCombat.effective_mass(mass_b, brace_b)
 	if m_a_eff < 0.01 or m_b_eff < 0.01:
 		return [Vector2.ZERO, Vector2.ZERO]
 	var rel_along_normal: float = (vel_a - vel_b).dot(normal)

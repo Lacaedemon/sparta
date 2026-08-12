@@ -86,6 +86,7 @@ func test_soldier_summary_empty_is_zeroed() -> void:
 	assert_eq(s["centroid"], [0.0, 0.0])
 	assert_eq(s["bbox"], [0.0, 0.0])
 	assert_eq(s["prone_count"], 0, "a routed/empty unit still serializes without error")
+	assert_eq(s["broken_count"], 0)
 
 
 func test_soldier_summary_centroid_and_bbox() -> void:
@@ -114,3 +115,60 @@ func test_soldier_summary_shorter_prone_array_is_safe() -> void:
 	var s: Dictionary = DemoState.soldier_summary(pos, prone)
 	assert_eq(s["count"], 3)
 	assert_eq(s["prone_count"], 1, "missing prone entries treated as standing, no out-of-range read")
+
+
+func test_soldier_summary_defaults_broken_count_to_zero_when_omitted() -> void:
+	# Every pre-existing 2-argument call site keeps reading broken_count as 0.
+	var pos := PackedVector2Array([Vector2(0, 0), Vector2(1, 0)])
+	var s: Dictionary = DemoState.soldier_summary(pos, PackedFloat32Array())
+	assert_eq(s["broken_count"], 0)
+
+
+func test_soldier_summary_counts_broken() -> void:
+	var pos := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(2, 0)])
+	var broken := PackedByteArray([1, 0, 1])
+	var s: Dictionary = DemoState.soldier_summary(pos, PackedFloat32Array(), broken)
+	assert_eq(s["broken_count"], 2, "counts soldiers individually broken from their stance")
+
+
+func test_soldier_summary_shorter_broken_array_is_safe() -> void:
+	var pos := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(2, 0)])
+	var broken := PackedByteArray([1])   # only index 0
+	var s: Dictionary = DemoState.soldier_summary(pos, PackedFloat32Array(), broken)
+	assert_eq(s["count"], 3)
+	assert_eq(s["broken_count"], 1, "missing broken entries treated as holding formation, no out-of-range read")
+
+
+func test_metric_mirrors_convert_via_the_world_scale() -> void:
+	assert_eq(DemoState.vec2_pair_m(Vector2(500.0, 380.0), 20.0), [25.0, 19.0])
+	assert_eq(DemoState.mps(170.0, 20.0, 1.0), 8.5)
+	assert_eq(DemoState.mps(170.0, 20.0, 2.0), 4.25,
+		"speed_scale mirrors the loadout conversion, so the figure reads back as declared m/s")
+
+
+func test_metric_soldier_summary_derives_from_the_same_positions() -> void:
+	var pos := PackedVector2Array([Vector2(0, 0), Vector2(20, 0), Vector2(20, 40)])
+	var m: Dictionary = DemoState.soldier_summary_m(pos, 20.0)
+	assert_eq(m["bbox_m"], [1.0, 2.0])
+	assert_eq(m["centroid_m"], [0.667, 0.667])
+
+
+func test_metric_soldier_summary_zeroes_for_an_empty_body_list() -> void:
+	var m: Dictionary = DemoState.soldier_summary_m(PackedVector2Array(), 20.0)
+	assert_eq(m["centroid_m"], [0.0, 0.0])
+	assert_eq(m["bbox_m"], [0.0, 0.0])
+
+
+func test_motion_ref_reports_both_grid_pitches_and_their_min() -> void:
+	# The analyzer derives its blob/misslot thresholds from formation_spacing, which
+	# must be the TIGHTER of the two axes so an anisotropic grid (cavalry's deep
+	# ranks) keeps the thresholds conservative rather than triple-wide.
+	var u: Unit = Unit.new()
+	autofree(u)
+	u.file_pitch = 20.0
+	u.rank_pitch = 60.0
+	var ref: Dictionary = DemoState.motion_ref(u)
+	assert_eq(float(ref["file_pitch"]), 20.0, "file pitch dumped as-is")
+	assert_eq(float(ref["rank_pitch"]), 60.0, "rank pitch dumped as-is")
+	assert_eq(float(ref["formation_spacing"]), 20.0,
+			"the threshold base is the tighter axis")

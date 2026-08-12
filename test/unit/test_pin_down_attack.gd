@@ -50,8 +50,11 @@ func test_pin_down_strike_arms_the_slower_cooldown() -> void:
 
 
 func test_normal_strike_still_arms_the_baseline_cooldown() -> void:
-	# Contrast: the same contact without PIN_DOWN arms the normal (faster) cooldown --
-	# confirming the slower interval is specific to the stance, not the test geometry.
+	# Contrast: the same contact without PIN_DOWN arms the unit's own (faster) melee
+	# cooldown -- confirming the slower interval is specific to the stance, not the
+	# test geometry. The baseline is the unit's own weapon cadence (melee_attack_interval),
+	# not the flat ATTACK_INTERVAL constant -- a bare unit defaults to the gladius, whose
+	# own cadence is slower than that flat baseline.
 	var u := _make_unit()
 	u.team = 0
 	u.position = Vector2.ZERO   # order_mode defaults to NORMAL
@@ -60,8 +63,8 @@ func test_normal_strike_still_arms_the_baseline_cooldown() -> void:
 	enemy.position = Vector2(0, u.attack_range + Unit.RADIUS + enemy.RADIUS - 2.0)
 	u.target_enemy = enemy
 	u._think(0.1)
-	assert_almost_eq(u._attack_cd, Unit.ATTACK_INTERVAL, 0.001,
-		"a normal-stance strike arms the baseline ATTACK_INTERVAL")
+	assert_almost_eq(u._attack_cd, u.melee_attack_interval(), 0.001,
+		"a normal-stance strike arms the unit's own melee cadence")
 
 
 func test_pin_down_ranged_shot_arms_the_slower_cooldown() -> void:

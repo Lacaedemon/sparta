@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/multiple-engage-target-cycling.json",
+  "caption": "Multiple engage now cycles its strike target: once genuinely fighting 2+ adjacent enemy regiments at once (around tick 320-340 here), target_enemy rotates from the first to the second so both take casualties -- the first enemy drops 20 to 13 soldiers, then holds there once the cycle moves on; the second holds at 24 untouched, then drops to 21 -- instead of the second sitting untouched forever.",
+  "fixed_fps": 30,
+  "max_frames": 450,
+  "fps": 15,
+  "width": 720
+}

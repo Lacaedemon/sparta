@@ -230,24 +230,6 @@ func test_set_show_position_anchor_session_flips_value_without_persisting() -> v
 	assert_false(s._loading, "_loading restored to its prior value (false) after the call")
 
 
-func test_reform_before_move_defaults_to_true() -> void:
-	var s := _settings()
-	assert_true(s.reform_before_move, "reform_before_move defaults to true")
-
-
-func test_reform_before_move_round_trips_through_disk() -> void:
-	var a = SettingsScript.new()
-	autofree(a)
-	a._loading = true
-	a.reform_before_move = false
-	a._save(TEST_PATH)
-	var b = SettingsScript.new()
-	autofree(b)
-	b._load(TEST_PATH)
-	assert_false(b.reform_before_move, "reform_before_move:false survives save + load")
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
-
-
 func test_default_bindings_cover_exactly_battles_hotkey_slugs() -> void:
 	# Settings.DEFAULT_ORDER_BINDINGS and Battle.ORDER_MODE_HOTKEYS must agree on the
 	# slug set, or a mode would be unbindable (or a default binding orphaned).

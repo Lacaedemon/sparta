@@ -20,6 +20,7 @@ const CAPTURE_TIMEOUT_SEC := 60.0
 
 var _sel: Node = null
 var _battle: Node = null
+var _hud: Node = null   # forward a scripted "key" step here too -- see _fire()'s "key" case
 var _cam: Camera2D = null
 var _camera_track: Array = []          # keyframes [{tick,x,y,zoom}], interpolated per tick; empty = default camera
 var _by_tick: Dictionary = {}          # tick -> Array of expanded input events
@@ -33,6 +34,9 @@ var _all_teams_control: bool = false
 # from the input script's optional "doctrine" field (a DoctrineRegistry id). Empty string ==
 # "don't override" -- Battle keeps its own default (see Battle.ai_doctrine's own doc comment).
 var _doctrine: String = ""
+# Parsed per-demo map overrides (BattleMap.parse's shape) from the input script's
+# optional "map" field. Empty == run on the default map.
+var _map: Dictionary = {}
 # Live SelectionManager override for the multi-unit form-up distribution mode (a
 # SelectionManager.FormUpDist value), from the input script's optional "form_up_dist"
 # field. -1 (default) means "don't override" -- SelectionManager keeps reading
@@ -40,6 +44,12 @@ var _doctrine: String = ""
 # instance (not via a Settings session setter) since this is a live-battle behavior
 # override, not a HUD/render toggle -- see _start_battle.
 var _form_up_dist: int = -1
+# Optional spawn-layout stamp (SpawnFingerprint) from the input script's "spawn_fingerprint"
+# field. "" (default) = unstamped, so the load check is skipped -- the additive-field,
+# opt-in convention every other script field follows. A stamped script that no longer matches
+# this build's spawn layout fails the recording LOUDLY (the silent spawn-drift failure mode:
+# a re-spaced spawn line leaves the script's fixed clicks landing on empty ground).
+var _spawn_fingerprint: String = ""
 var _frame_ticks: Array = []           # ticks to save a viewport PNG at (frame capture; empty = off)
 var _frame_dir: String = ""            # output dir for captured frames
 var _captured: Dictionary = {}         # tick -> true, so each frame is saved at most once
@@ -47,6 +57,8 @@ var _state_ticks: Array = []           # ticks to dump a JSON game-state snapsho
 var _state_dir: String = ""            # output dir for state snapshots
 var _state_full: bool = false          # also dump the raw per-soldier arrays (deep debugging)
 var _state_dumped: Dictionary = {}     # tick -> true, so each snapshot is written at most once
+var _hash_stream: FileAccess = null    # per-tick state-hash stream (armed with the state dump)
+var _hash_last_tick: int = -1          # last tick hashed, so a frozen tick writes one line only
 
 
 func _ready() -> void:
@@ -101,9 +113,31 @@ func _ready() -> void:
 	_scenario = script.get("scenario", [])
 	_doctrine = str(script.get("doctrine", ""))
 	_all_teams_control = bool(script.get("all_teams_control", false))
+	# The optional per-demo map block (field size, terrain patches, spawn lines).
+	# Strict like steps/scenario: map geometry decides WHAT battlefield the demo
+	# simulates, so a malformed block must fail the recording loudly rather than
+	# silently record the wrong battle on the default map.
+	if script.has("map"):
+		_map = BattleMap.parse(script["map"])
+		if _map.has("error"):
+			push_error("[demo-input] bad map block: %s" % _map["error"])
+			get_tree().quit(2)
+			return
 	_form_up_dist = int(script.get("form_up_dist", -1))
+	_spawn_fingerprint = str(script.get("spawn_fingerprint", ""))
 	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
-	_arm_state_dump(DemoFrames.script_array(script, "state"))
+	# Declared expectations (the `expect` list) are checked offline against dumped
+	# snapshots, so every expect tick joins the state-dump defaults -- declaring an
+	# expectation is enough to make the data it checks exist on a dump run. A
+	# malformed (non-array) `expect` is ignored here rather than crashing the
+	# recorder; the analyzer's own --script validation is where authoring errors
+	# get their loud failure.
+	var raw_expect = script.get("expect", [])
+	var state_defaults: Array = DemoFrames.script_array(script, "state")
+	for t in DemoDefects.expect_ticks(raw_expect if raw_expect is Array else []):
+		if not state_defaults.has(t):
+			state_defaults.append(t)
+	_arm_state_dump(state_defaults)
 	print("[demo-input] %d scripted input events over %d ticks%s%s%s" % [
 		_count_events(), _max_tick(), " (drill mode)" if _drill else "",
 		" (scenario: %d units)" % _scenario.size() if not _scenario.is_empty() else "",
@@ -119,10 +153,32 @@ func _start_battle() -> void:
 	_battle.drill_mode = _drill   # set before add_child so Battle._ready reads it (no team-1 spawn)
 	_battle.scenario = _scenario  # likewise: a custom matchup replaces the default line spawn
 	_battle.all_teams_control = _all_teams_control   # likewise: relaxes team checks, no team-1 AI
+	# Map overrides, likewise before add_child: every map consumer runs in _ready.
+	if _map.has("field"):
+		_battle.field = _map["field"]
+	if _map.has("terrain"):
+		_battle.terrain = _map["terrain"]
+	if _map.has("spawn_lines"):
+		_battle.spawn_line_ys = _map["spawn_lines"]
 	if _doctrine != "":
 		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
 	add_child(_battle)
+	# Battle._ready spawns synchronously during add_child, so every unit is on the field now.
+	# Print the layout's fingerprint (so a new script can be stamped by copying it) and, when the
+	# script declared one, fail LOUDLY on a mismatch rather than recording a clip whose scripted
+	# clicks land on empty ground where a unit used to be (the silent spawn-drift failure mode).
+	var live_fingerprint: String = SpawnFingerprint.of_tree(get_tree())
+	print("[demo-input] spawn fingerprint: %s" % live_fingerprint)
+	if _spawn_fingerprint != "" and _spawn_fingerprint != live_fingerprint:
+		push_error(("[demo-input] spawn-layout mismatch: script declares spawn_fingerprint %s " +
+				"but this build spawns %s. The spawn table changed since this script was authored, " +
+				"so its scripted clicks may no longer land on the intended units. Re-verify the " +
+				"coordinates and update (or drop) the spawn_fingerprint field.") %
+				[_spawn_fingerprint, live_fingerprint])
+		get_tree().quit(4)
+		return
 	_sel = _battle.get_node("SelectionManager")
+	_hud = _battle.get_node("HUD")
 	if _form_up_dist >= 0:
 		_sel._form_up_dist = _form_up_dist
 	_cam = _battle.get_node("Camera2D")
@@ -139,6 +195,12 @@ func _on_physics_frame() -> void:
 	_apply_camera(tick)
 	for ev in _by_tick.get(tick, []):
 		_fire(ev)
+	# Stream the per-tick state hash (armed with the state dump). The tick guard makes a
+	# frozen tick -- the sim stops advancing once the battle ends -- write one line, not one
+	# per remaining physics frame.
+	if _hash_stream != null and tick != _hash_last_tick:
+		_hash_last_tick = tick
+		DemoStateHash.write_tick(_hash_stream, get_tree(), tick, Replay.rng.state)
 	if _state_ticks.has(tick) and not _state_dumped.has(tick):
 		_state_dumped[tick] = true
 		_dump_state(tick)
@@ -279,6 +341,13 @@ func _arm_state_dump(script_state: Array) -> void:
 	if _state_dir == "":
 		_state_dir = OS.get_temp_dir().path_join("sparta_demo_state")
 	DirAccess.make_dir_recursive_absolute(_state_dir)
+	# An armed dump run also streams the per-tick two-tier state hash (DemoStateHash) into
+	# the same directory -- every tick, not just the snapshot ticks, so two runs of the same
+	# clip can be compared to the exact tick they first diverge.
+	_hash_stream = DemoHashStream.open_stream(_state_dir)
+	if _hash_stream == null:
+		push_warning("[demo-input] could not open hash_stream.jsonl in %s (err %d)"
+				% [_state_dir, FileAccess.get_open_error()])
 	print("[demo-input] state dump armed at ticks %s -> %s%s" % [
 		str(_state_ticks), _state_dir, " (full per-soldier arrays)" if _state_full else ""])
 	# Same safety net as capture: quit after a generous wall time so a tick past the battle's
@@ -287,10 +356,10 @@ func _arm_state_dump(script_state: Array) -> void:
 	get_tree().create_timer(CAPTURE_TIMEOUT_SEC).timeout.connect(_on_capture_timeout)
 
 
-## Write a readable JSON snapshot of the authoritative game state at `tick`. Walks every combat
-## unit still on the field, pulls each unit's fields, and hands the per-soldier arrays to
-## DemoState.soldier_summary for a compact summary. No await / renderer needed — this reads sim
-## state, not the drawn frame, so it works even under --headless.
+## Write a readable JSON snapshot of the authoritative game state at `tick`. The snapshot
+## content comes from DemoState.build_snapshot — shared with the replay path's DemoStateSink,
+## so both dump paths' transcripts are identical in shape. No await / renderer needed — this
+## reads sim state, not the drawn frame, so it works even under --headless.
 func _dump_state(tick: int) -> void:
 	var snapshot: Dictionary = _build_snapshot(tick)
 	var path: String = "%s/state_%05d.json" % [_state_dir.trim_suffix("/"), tick]
@@ -303,144 +372,30 @@ func _dump_state(tick: int) -> void:
 	print("[demo-input] dumped state at tick %d -> %s (%d units)" % [tick, path, snapshot["units"].size()])
 
 
-## Build the snapshot Dictionary for `tick`: battle-level tick plus a per-unit record. Walks the
-## "units" + "routers" union (DemoState.COMBAT_GROUPS) so a ROUTING unit — which has left "units"
-## for "routers" and may yet rally — still appears in every snapshot with its state, morale, and
-## position; its record is distinguished by `state: "ROUTING"`. Records are sorted by uid so the
-## order stays stable while units change groups mid-rout/rally. Separated from the file write so
-## it's directly inspectable; the recorder is the only caller.
+## Build the snapshot Dictionary for `tick`. Thin wrapper over the shared
+## DemoState.build_snapshot (see there for the walk/sort semantics), feeding it this
+## battle's own name tables and the recorder's full-arrays flag. Kept as its own method so
+## it stays directly inspectable from tests, as before the extraction.
 func _build_snapshot(tick: int) -> Dictionary:
-	var units_out: Array = []
-	for group in DemoState.COMBAT_GROUPS:
-		for u in get_tree().get_nodes_in_group(group):
-			units_out.append(_unit_record(u))
-	return {"tick": tick, "units": DemoState.sort_records_by_uid(units_out)}
+	return DemoState.build_snapshot(get_tree(), tick, _battle.ORDER_MODE_NAMES,
+			_battle.SPEED_SCALE, _state_full)
 
 
-## One unit's readable record. Reads Unit fields directly and maps the enum ints to names via
-## DemoState (State/formation) and Battle.ORDER_MODE_NAMES (order_mode). target_enemy is dumped
-## as its uid (or null) so a snapshot references units by the same stable id, not a node path.
+## One unit's readable record: the shared DemoState.unit_record, fed this battle's own
+## name tables and the recorder's full-arrays flag. Kept as a method so tests can build a
+## single unit's record directly, as before the extraction.
 func _unit_record(u: Node) -> Dictionary:
-	var target_uid = u.target_enemy.uid if u.target_enemy != null and is_instance_valid(u.target_enemy) else null
-	var rec: Dictionary = {
-		"uid": u.uid,
-		"name": u.unit_name,
-		"team": u.team,
-		"position": DemoState.vec2_pair(u.position),
-		"facing": DemoState.vec2_pair(u.facing),
-		"morale": DemoState.round_to(u.morale, 1),
-		"state": DemoState.state_name(u.state),
-		"formation": DemoState.formation_name(u.formation_mode),
-		# Durable frontage (phase 5): the file count a FRONTAGE order last wrote (or the
-		# type-derived default when none has). Like formation/order_mode/rank_relief, this is
-		# mode-layer state a completed order writes and that then persists as queryable Unit
-		# state -- UnitFormation.frontage is the same pure lookup the sim itself uses.
-		"frontage": UnitFormation.frontage(u),
-		"soldiers": u.soldiers,
-		"current_speed": DemoState.round_to(u._current_speed, 1),
-		"order_mode": DemoState.order_mode_name(_battle.ORDER_MODE_NAMES, u.order_mode),
-		# Intra-unit rank-relief mode (phase 3): whether rear ranks rotate forward to
-		# relieve their own fighting line. A durable mode like formation, so a stance
-		# order's write is verifiable straight off the transcript.
-		"rank_relief": u.rank_relief,
-		"target_enemy_uid": target_uid,
-		"engaged": u.is_engaged(),
-		# A single readable label for the in-progress drill/maneuver, consolidating
-		# current_order/order_phase/order_mode into one field a verifier can read directly --
-		# e.g. a conversio and a centre-pivot both otherwise read as current_order: "MOVE"/
-		# order_phase: "TURN" or current_order: "QUARTER_TURN" respectively, so this spares a
-		# reader from reconstructing the distinction by hand. See Unit.current_maneuver().
-		"maneuver": DemoState.maneuver_name(u.current_maneuver()),
-		# Which exelismos variant a "maneuver": "COUNTERMARCH" is running (null otherwise) --
-		# maneuver alone can't distinguish Macedonian/Laconian/Choral. See
-		# Unit.countermarch_variant().
-		"countermarch_variant": DemoState.countermarch_variant_name(u.countermarch_variant()) \
-				if u.countermarch_variant() >= 0 else null,
-		# The formation's simulation tier (docs/large-scale-simulation-design.md): CLOSE runs
-		# the full per-soldier arrays, FAR is the aggregate record with no individual bodies.
-		# Serialized as the readable name via FormationTier's own stable table.
-		"tier": FormationTier.tier_name(u.tier),
-		# Phase 1 of the unified orders-queue design (#516): the head of the orders queue -- the
-		# single, transcript-visible source of truth for "what is this unit doing right now,"
-		# including its active phase for a phased order (e.g. a move-to-rear about-face vs its
-		# march). null when the unit is idle (no current order).
-		"current_order": Order.type_name(u.current_order.type) if u.current_order != null else null,
-		# effective_phase_name(), not a plain phase_name(phase) read: a rear-move/lateral-
-		# pivot composite's TURN/MARCH/RETURN_TURN now lives in which child of the order
-		# tree is active (docs/atomic-order-decomposition-design.md), not in `phase`
-		# itself, so this bridges back to the same reported vocabulary the transcript has
-		# always used.
-		"order_phase": u.current_order.effective_phase_name() if u.current_order != null else null,
-		# The current order's pending terminal condition, e.g. "Hold: until
-		# enemy_in_range" from the design doc becomes order_guard: "ENEMY_IN_RANGE" here --
-		# null when the order carries no guard (or there is no current order at all), so a
-		# reader can tell "unconditional order" apart from "guard not yet satisfied."
-		"order_guard": Order.guard_name(u.current_order.guard) \
-				if u.current_order != null and u.current_order.guard != Order.Guard.NONE else null,
-		# Phase 5: the not-yet-current queued orders behind current_order, for full
-		# plan legibility (the design doc's "optionally the queue tail"). Each entry is just
-		# the order's type name -- current_order/order_phase/order_guard already cover the
-		# one that's actually executing, so the tail only needs to answer "and then what."
-		# Empty (not null) when nothing is queued, so a reader doesn't have to special-case
-		# "no current order" (current_order null) vs "current order, nothing queued behind
-		# it" (queue_tail []).
-		"queue_tail": _queue_tail(u),
-	}
-	# A far-tier formation has no individual bodies, so its record carries NO per-soldier
-	# payload at all -- not even a zeroed summary. The explicit `tier` field above is what
-	# lets a reader tell "no soldiers to summarize" (FAR) apart from "per-soldier detail not
-	# requested" (a close-tier dump without SPARTA_DEMO_STATE_FULL, which still gets the
-	# compact soldier_summary but no soldiers_full arrays).
-	if u.tier != FormationTier.FAR:
-		rec["soldier_summary"] = DemoState.soldier_summary(u._sim_soldier_pos, u._sim_prone)
-		if _state_full:
-			rec["soldiers_full"] = _soldier_arrays(u)
-	return rec
-
-
-## Type names of the queued orders BEHIND u.current_order, in queue order (u.orders[0] is
-## current_order itself, already reported separately -- see DemoState.sort_records_by_uid's
-## sibling note on why records stay stable: orders[1:] is a plain array slice, no group
-## reshuffling to guard against here). Mirrors Unit.queued_move_points' "everything after
-## the head" shape but reports every order kind, not just MOVE legs.
-func _queue_tail(u: Node) -> Array:
-	var tail: Array = []
-	for i in range(1, u.orders.size()):
-		tail.append(Order.type_name(u.orders[i].type))
-	return tail
-
-
-## The raw per-soldier arrays for one unit, for --full deep debugging. Positions and facings are
-## world-space Vector2s flattened to [x, y] pairs; hp/prone/stamina are index-aligned floats.
-func _soldier_arrays(u: Node) -> Dictionary:
-	var positions: Array = []
-	for p in u._sim_soldier_pos:
-		positions.append(DemoState.vec2_pair(p))
-	var facings: Array = []
-	for fdir in u._sim_soldier_facing:
-		facings.append(DemoState.vec2_pair(fdir))
-	return {
-		"pos": positions,
-		"facing": facings,
-		"hp": _floats(u._sim_soldier_hp),
-		"prone": _floats(u._sim_prone),
-		"stamina": _floats(u._sim_soldier_stamina),
-	}
-
-
-## A PackedFloat32Array -> a plain Array of rounded floats, for JSON.
-func _floats(arr: PackedFloat32Array) -> Array:
-	var out: Array = []
-	for v in arr:
-		out.append(DemoState.round_to(v, 2))
-	return out
+	return DemoState.unit_record(u, _battle.ORDER_MODE_NAMES, _battle.SPEED_SCALE, _state_full)
 
 
 # --- input injection -------------------------------------------------------
 
-## Drive one expanded event into the SelectionManager. Position comes via the cursor override
-## (all selection/order logic reads _cursor_world()), so the synthesized events' own position
-## fields don't need to be accurate — only the button/key and pressed state matter.
+## Drive one expanded event into the SelectionManager (and, for a "key" event, the HUD too --
+## some hotkeys, like slow-motion's F5, are handled directly in HUD._unhandled_input rather
+## than routed through SelectionManager, matching how P/F1/Shift+/ are also HUD-only global
+## toggles). Position comes via the cursor override (all selection/order logic reads
+## _cursor_world()), so the synthesized events' own position fields don't need to be accurate
+## -- only the button/key and pressed state matter.
 func _fire(ev: Dictionary) -> void:
 	match ev["kind"]:
 		"mb":
@@ -464,6 +419,8 @@ func _fire(ev: Dictionary) -> void:
 			k.ctrl_pressed = bool(ev.get("ctrl", false))
 			k.shift_pressed = bool(ev.get("shift", false))
 			_sel._unhandled_input(k)
+			if _hud != null and is_instance_valid(_hud):
+				_hud._unhandled_input(k)
 		"hold_space":
 			# Update hardware key state so Input.is_key_pressed(KEY_SPACE) returns true
 			# for the rest of the recording — enabling the orders overlay draw path.
@@ -498,6 +455,14 @@ func _schedule(steps: Array) -> void:
 			# Uses Input.parse_input_event (not _unhandled_input) so Input.is_key_pressed()
 			# reflects the held state — that's what _draw_orders() checks.
 			_at(tick, {"kind": "hold_space"})
+		else:
+			# A step matching none of the recognized action keys above is a no-op:
+			# it schedules nothing and the recording silently proceeds without it.
+			# Fail loudly instead — an unrecognized shape is almost always an
+			# authoring mistake (e.g. {"type": "click", "pos": [...]} instead of
+			# {"click": [...]}), and a silent no-op reads as "it worked" until
+			# someone dumps state and finds the scripted action never happened.
+			push_error("DemoInputRecorder: step at tick %d matches no recognized action key (%s) -- ignored" % [tick, str(step.keys())])
 
 
 ## A click = button press then release at one point, on the same tick.

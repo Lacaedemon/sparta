@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This PR relocates walk_advance/reform_before_move from a global ☰ Menu checkbox to a per-unit checkbox in the selected-unit info panel, and adds per-type spawn defaults. The underlying sim behavior each setting drives (locked walk pace, the reform-before-move hold) is unchanged and already demonstrated by existing website demos (pace_modes, reversal_march) -- a recorded clip of this PR would only show a checkbox appearing in the info panel, not a new mechanic."
+}

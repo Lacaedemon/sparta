@@ -16,9 +16,11 @@ is soldier-level (phase 5 slice 1).
 not derived from soldier state), and **enemy** soldier-vs-soldier collision + retiring the
 regiment circle — the last is deferred to **#201** (stopping a charge needs momentum/mass;
 see the phase-5 note below and #296). #201's momentum physics landed (#749), but a live
-empirical test (#296) found it does NOT yet arrest a charge on its own — see #783 for the
-root cause. Retiring the regiment circle stays blocked on #783. Posture/graded bracing and
-the rearward domino cascade are also deferred. The design decisions are settled (see
+empirical test (#296) found it does NOT yet arrest a charge on its own; #783 was the root
+cause, and #784 fixed it. Retiring the regiment circle stays blocked, but on the residual
+first-contact overshoot transient recorded in #296's own thread — not on #783, which is
+closed. Posture/graded bracing and the rearward domino cascade are also deferred. The
+design decisions are settled (see
 "Decisions" below).
 
 Tracks [#164](https://github.com/Lacaedemon/sparta/issues/164) (collision at the
@@ -96,8 +98,9 @@ verified before the next phase builds on it.
 2. **[DONE] Soldier-level separation, engaged tier, within AND across regiments.**
    `_separate()`'s penetration/`_push_share` math is carried down to soldiers via the
    shared `_soldier_pair_push` helper (so the spear-vs-cavalry hard block falls out
-   for free) and run for *engaged* soldiers only (front `ENGAGED_RANKS`, with linger
-   hysteresis). One global, deterministic pass (`Unit.separate_engaged_global`,
+   for free) and run for *engaged* soldiers only (front `Unit.engaged_ranks()` -- a
+   depth scaled to the unit's own weapon reach and rank spacing, not a flat constant --
+   with linger hysteresis). One global, deterministic pass (`Unit.separate_engaged_global`,
    orchestrated by `Battle` on `physics_frame`) gathers engaged soldiers across all
    regiments in soldier-id order, buckets them in the soldier-sized
    `SoldierSpatialHash`, and applies a Jacobi accumulate-then-apply step — so enemy
@@ -158,7 +161,7 @@ verified before the next phase builds on it.
      layer up; the enemy front-rank closeup and the spear-vs-cavalry hard block are
      unchanged. Soldiers separate substantially (not yet to a perfect zero-overlap; the last
      residual is a later tuning refinement).
-   - **Enemy collision — deferred to #201, still blocked (see #296, #783).** The next slice
+   - **Enemy collision — deferred to #201, still blocked (see #296; #783 is fixed).** The next slice
      (move the not-both-engaged enemy separation + the spear-vs-cavalry hard block to the
      soldier level) hit a wall: the regiment's `_move_to` advances the charge (~170 u/s)
      independently of the soldier layer, and a velocity-only soldier push + the bounded
@@ -166,11 +169,12 @@ verified before the next phase builds on it.
      a spear line even at extreme tuning. Stopping a charge on a braced line is a
      **momentum/mass** problem, which is exactly what **#201** layers onto the soldier
      bodies (landed as #749). **#749 alone is not sufficient, though: a live-battle test
-     (#296) found the charge still rides through — see #783 for the root cause
+     (#296) found the charge still rode through — #783 was the root cause
      (`SoldierBodies.couple()` averages drift over every soldier, diluting the resisted
-     front rank's signal against the unengaged bulk).** So enemy collision (and then
-     retiring the regiment circle entirely, plus the `_push_share` / intermixing helpers it
-     still uses) stays blocked on #783, not just #201/#749. Until then the regiment circle
+     front rank's signal against the unengaged bulk), and #784 fixed it.** So enemy
+     collision (and then retiring the regiment circle entirely, plus the `_push_share` /
+     intermixing helpers it still uses) stays blocked — no longer on #783, but on the
+     residual first-contact overshoot transient #296's own thread records. Until then the regiment circle
      keeps resolving enemy collision (the `_front_depth` closeup and the hard block),
      unchanged. Friendly collision stays soldier-level (slice 1).
 
@@ -229,10 +233,205 @@ don't flap between tiers at the threshold — shipped in phase 2.
 Phases 1-4 are live: the soldiers are simulated, separated across regiments, rendered at
 their simulated positions, and **engaged melee resolves per-soldier and drives regiment
 strength/morale** (the first gameplay change). The per-soldier reach model gives a longer
-weapon the opening-strike advantage on the approach; the fully *sustained* asymmetric
-standoff of #240 (a spear holding a swordsman at bay while locked) still needs enemy
-soldier-level positioning, which stays blocked on #783 (the regiment circle still
-collapses enemy fronts to the separation floor once locked — see the phase-5 note above
-for why #749's momentum physics alone wasn't enough). The next authority slices are
-ranged casualties (kill soldiers in the health pool) and morale-from-soldier-state; enemy
-collision and retiring the regiment circle move once #783 is fixed and re-verified.
+weapon the opening-strike advantage on the approach (#233); the fully *sustained*
+asymmetric standoff of **#240 has now landed too**, via `SoldierMeleeStandoff.gd`: a
+soldier that already outreaches (or matches) its nearest enemy holds its ground and never
+gets a synthetic bias — the existing landed-strike knockback (`SoldierMelee`/
+`SoldierCombat`) is already a real, physically-motivated push-back mechanism, so a longer
+reach's opening-strike advantage carries straight through the sustained case on its own,
+with no extra force layered on top (an earlier version of this pass DID add a
+backing-away bias for the longer-reach side; it was removed as exactly the kind of
+top-down gimmick this design's "no regiment-level kite" stance already argued against).
+The pass instead supplies only the other half: a per-soldier velocity bias, composed
+additively into `_sim_steer` alongside `SoldierSteering`'s friendly-avoidance bias,
+presses a shorter-reach soldier forward until it closes inside ITS OWN reach, so the
+outreached side doesn't just stand and trade free hits for nothing. `Unit._press_into` and
+`Unit._separate()`'s reach-independent front-depth floor are untouched, and the pass
+composes with the existing physics (formation arrival, friendly steering, enemy contact,
+knockback) rather than replacing any of it. The engaged tier's own depth is now also
+reach-scaled (`Unit.engaged_ranks()`, replacing a flat 3-rank constant) — a 48wu-reach
+spear regiment at the historical 9wu rank pitch now fields up to 6 ranks able to strike
+within their own weapon's reach, instead of being capped at 3 regardless of how deep the
+formation actually runs. Measured on a 24 v 24 Spearmen-vs-Infantry demo
+(`demos/inputs/spear-standoff.json`): the spear regiment holds its ground through the
+whole clash rather than retreating; both sides trade losses as the sword presses in to
+close the reach gap, but the spear's reach and rank-depth advantage give it a real edge
+over the course of the clash (by tick 740, the spear holds 12/24 soldiers against the
+sword's 10/24, neither side yet routing). The "give ground to hold reach distance" order
+that follow-up promised has now landed too (#983), as `Unit.ORDER_GIVE_GROUND` /
+`SoldierMeleeStandoff.give_ground_bias`: an explicit player-facing withdrawal, not the
+passive default — an engaged unit under this order backs away from its nearest enemy at a
+constant rate REGARDLESS of reach comparison (no ramp, no reach gate), and overrides the
+passive outreached-press bias above for the same soldier when both would otherwise apply.
+The next authority slices are ranged casualties (kill soldiers in the
+health pool) and morale-from-soldier-state; retiring the regiment circle's enemy-collision
+branches is unblocked on the momentum/mass side (#783 closed via #784's engaged-weighted
+body coupling — see the phase-5 note above) but still needs its own residual-transient fix
+before that retirement is safe (tracked on #296).
+
+## Melee-intermixing depth is gated by the defender's formation_mode
+
+Two enemy regiments in sustained melee previously had no formation-mode-aware limit on
+how deep the fighting could intermix: the regiment circle's engaged-vs-engaged closeup
+(`Unit._separate`) only bounds the two blocks' *centres*, and the soldier-level contact
+pass (`SoldierEnemyContact.accumulate`/`SoldierCollision.enemy_contact_impulse`) only
+resolves actual body-radius overlaps — so an attacker able to find (or open) a seam
+between neighbouring defenders could press arbitrarily deep into the defending formation
+regardless of how tightly that formation was packed. `Unit.formation_containment_margin`
+closes that gap for the shield-wall-class tier: each defending soldier's own formation
+widens the enemy-contact test radius that `SoldierEnemyContact.accumulate` resolves
+against.
+
+- **Shield-wall-class** (TIGHT/SQUARE/SCHILTRON/SHIELD_WALL/TESTUDO): the full margin
+  (`FORMATION_CONTAINMENT_SCALE_TIGHT = 1.0`), unconditionally, so the front ranks hold
+  contact with effectively no depth-wise intermixing — a fallen defender's live neighbours
+  still cover the gap.
+- **NORMAL**: a smaller, also-unconditional margin
+  (`FORMATION_CONTAINMENT_SCALE_NORMAL = 0.4`) — "a couple of ranks deep", not a full
+  block (see below for why it's flat rather than knockback-reactive).
+- **LOOSE**: stays at zero — the design intent is explicitly that a loose formation "can
+  become deeply enmeshed."
+
+Cavalry never contribute a margin (mounted formations don't interlock shields, and
+`CAV_MARK_RADIUS`'s wider body would eat most of `SoldierSpatialHash.CELL_SIZE`'s own
+headroom over the raw separation floor it's pinned against). The margin is scaled off
+`soldier_body_radius()` rather than a flat metre value, so it stays proportionate to the
+body it protects.
+
+**Why NORMAL's margin is flat rather than knockback-reactive.** An earlier version of this
+fix gave NORMAL a smaller margin that zeroed out for a specific body while that soldier was
+prone — letting a felled defender's own slot briefly cede ground to the attacker who felled
+him, matching "a couple of ranks deep, as a knockback consequence, not a standing
+steady-state overlap" more literally. That made the enemy-contact contact-*pair set* vary
+per soldier, per tick, depending on which individual bodies happened to be prone — and
+`SoldierEnemyContact`'s contact-pair geometry is already the documented dominant source
+of the "melee-lock swirl" torque bias (`.claude/memories/sparta.md`; see also
+`test_residual_melee_swirl_battle.gd`'s regression guard and the `ANCHOR_RANKS` doc
+comment on `Unit.gd`). That per-soldier heterogeneity measurably reintroduced the swirl
+on CI (Linux) even though the guard test stayed under its threshold locally on Windows —
+this sim is only deterministic *within* a build/platform, not bit-exact across them (see
+"Decisions" above), so a chaotic-sensitive regression like this one can clear a local run
+and still fail CI. Reverted, then replaced with the flat value used here: every NORMAL
+soldier gets the identical margin regardless of prone state or tick, so the contact-pair
+set never varies over time — the same structural shape as TIGHT's own always-on margin,
+which is not itself a swirl source. A regiment-level, knockback-reactive refinement (e.g.
+an aggregate of how many engaged soldiers are currently prone, applied uniformly rather
+than body-by-body) is still a possible follow-up if the reactive nuance is worth
+pursuing.
+
+## Physical contact is proximity-based, not combat-state-based
+
+Both the margin above and the underlying soldier-level pass it widens
+(`SoldierEnemyContact.accumulate`) used to gather soldiers via
+`Unit.engaged_soldier_indices()` — gated entirely on `is_engaged()`, a COMBAT-state
+decision (`state == FIGHTING`, with a short linger). That conflated two genuinely
+different questions: "is this regiment fighting" (a gameplay/order choice) and "is this
+regiment's body touching an enemy's" (a physical fact). A unit under a plain move order
+with no attack target deliberately never fights an enemy it walks into — `_think()`'s own
+"disengage" comment: "Fight when in contact, UNLESS the player gave a plain move order
+with no explicit attack target — that's a disengage command." But that combat decision
+was ALSO silently disabling every soldier-level collision check for that unit: with
+`engaged_soldier_indices()` empty, none of its soldiers ever entered
+`SoldierEnemyContact.accumulate`'s pooled array, so its bodies had zero physical
+resistance against an enemy they were geometrically inside of — the regiment marched
+straight through, no different from an obstacle-free field. (The regiment-circle backstop
+in `_separate()` had the same gap on its tighter, engaged-only `_front_depth()` floor.)
+
+Fixed by decoupling the two: `Unit._in_enemy_contact` is a PURE PROXIMITY flag — true
+whenever any live enemy regiment is within melee contact range (`attack_range + both
+RADII`), computed unconditionally every tick in `_think()` (mirroring the existing
+`_under_fire` check, before any order-branch early return, so it's fresh regardless of
+which branch a given tick takes). `Unit.contact_soldier_indices()` is a new selection,
+sharing the exact same near-front geometry as `engaged_soldier_indices()`
+(`_select_near_front_indices`) but gated on `is_engaged() OR _in_enemy_contact` rather
+than `is_engaged()` alone. `SoldierEnemyContact.accumulate` and `_separate()`'s enemy
+branch both switched to this proximity-inclusive gate; `engaged_soldier_indices()` itself
+— and everything downstream of it (melee striking, `SoldierSteering`) — is untouched, so a
+disengaging unit still deals and takes no melee damage and its morale is unaffected by the
+brush; only its bodies now physically resist.
+
+**The regiment's own position anchor had the same gap, and closing it took two attempts.**
+#783 (SoldierBodies.couple() averaging position drift over every soldier body, diluting a
+fighting regiment's resisted front rank against its unengaged bulk — the "charge rides
+through a braced line" bug) was already fixed by #784, which weighted `couple()`'s anchor
+toward `Unit.position_anchor_indices()`'s narrower live-front selection instead of the
+whole-block centroid. But `position_anchor_indices()` (and the `near_front_soldier_indices()`
+it calls) gated on `is_engaged()` alone, same as everything else above did before this PR —
+so a disengaging unit's `couple()` call still fell through to the whole-block-centroid
+average, and its position (and therefore every soldier's formation-slot target) diluted
+right through contact the same way #783 documented for a charging regiment, just never
+fixed for a merely-marching one.
+
+Extending both functions to `is_engaged() OR _in_enemy_contact` (mirroring the exact
+decoupling this PR applies everywhere else) was tried and reverted first, tracked as
+[#1136](https://github.com/Lacaedemon/sparta/issues/1136): it made
+`test_collision_knockback_battle.gd`'s live 900-tick showcase-scenario regression guard
+hang indefinitely (reproduced in isolation, not a flake — a plain, no-coverage run of just
+that one test never completed). Not root-caused at the time; the position anchor is a much
+more sensitive piece of code than the contact-resolution/`_separate()` changes above — its
+own doc comments and this file's "Decisions" section already record a history of subtle
+swirl/instability regressions from narrowing its selection, and widening WHICH units
+qualify for it (not just how narrow the selection is once they do) was an untested new axis.
+
+Landed on the second attempt, with the identical diff: reproducing on a from-scratch clone
+(both the single hanging test and the FULL 2642-test suite, on both Windows and native
+Linux, same Godot 4.7.0 build) found no hang at all — every run completed cleanly, well
+under any CI timeout. The original hang's cause was never identified; the working
+hypothesis is a platform/build-specific floating-point divergence rather than a
+deterministic property of this code, consistent with the chaos-sensitivity this file's own
+"Decisions" section already documents for a sibling test. If a live-battle test in this
+family hangs again, that history — and this note — are the first things to revisit before
+assuming a fresh regression.
+
+**This does not fully close the underlying issue either way.** Verified empirically against
+the site's showcase clip
+(`demos/showcase.json`, seed 12345): a "disengaging" unit now visibly takes real contact
+resistance (and casualties, since the enemy's own attack still lands) it took none of
+before, but `_move_to()` — the code driving that unit's own kinematic march toward its
+destination — is still not itself gated by contact at all. It keeps commanding `position`
+forward at full march speed every tick regardless; the soldier/regiment-level resistance
+above only pushes back afterward, bounded, each tick — a tug-of-war between an unbounded
+kinematic drive and a bounded physical response, not the drive itself yielding to contact.
+Closing it fully needs `_move_to()` itself (or the regiment's overall kinematic advance) to
+yield to contact, not just be resisted after the fact — a change to core movement code
+shared by every unit in the game, deliberately out of scope here.
+
+## Collision damage: hard contact converts dissipated kinetic energy into health loss
+
+`SoldierCollision.enemy_contact_impulse` resolves closing velocity **fully inelastically**
+(no bounce-back — see its own doc comment) whenever two enemy soldier bodies are in
+contact. That resolution genuinely dissipates kinetic energy every tick, but until this
+section landed nothing attached a consequence to it beyond the existing skill-roll-driven
+strike damage (`SoldierCombat.wound`) — a fast, hard impact and a gentle graze arrested the
+same way as far as health was concerned.
+
+`SoldierCombat.collision_damage(delta_v)` converts a soldier's actual velocity change this
+tick into health loss (`COLLISION_DAMAGE_SCALE * delta_v.length_squared()`) — a deceleration-
+based severity measure (the same shape real crash-injury metrics use), not a literal
+kinetic-energy split. An earlier version derived damage independently from each pair's raw
+closing speed and effective masses (a `0.5 * mu * closing_speed^2` reduced-mass split); review
+on the introducing PR found three compounding bugs in that approach — no cap across a
+soldier's simultaneous contacts (mirroring the exact "multi-pair force accumulation" bug this
+file's own "Decisions" section already documents for the velocity pipeline), full KE
+recomputed from scratch every tick during a multi-tick arrest (overcounting total damage
+1.4-2x for a realistic charge), and a mass-split formula that made a **braced/heavier**
+defender take **more** absolute damage against a much heavier attacker, not less — inverting
+what bracing is supposed to do.
+
+**Fixed by deriving damage from the velocity pipeline's own output instead of an independent
+recompute.** `SoldierEnemyContact.accumulate` flags which soldiers had at least one pair clear
+`SoldierCombat.is_hard_collision`'s real-closing-speed threshold (`COLLISION_DAMAGE_MIN_SPEED`
+— never the synthetic overlap-correction term, so ordinary sustained pushing between two
+packed lines causes zero extra damage), then — AFTER the existing multi-pair trim and
+per-tick `KNOCKBACK_SPEED_MAX` cap have fully resolved each soldier's actual velocity change
+for the tick — computes damage from that real, already-bounded delta. This automatically
+inherits both of the velocity pipeline's existing correctness properties (the multi-pair cap
+and the per-tick bound) with no separate bookkeeping, and automatically gets the bracing
+direction right: a heavier/braced body always receives a *smaller* velocity change from the
+same contact (`enemy_contact_impulse`'s own effective-mass split), so it always takes less
+damage too — no separate asymmetry formula to get backwards.
+
+`COLLISION_DAMAGE_MIN_SPEED` and `COLLISION_DAMAGE_SCALE` are tunable constants, threaded as
+overridable parameters on `is_hard_collision`/`collision_damage` respectively (see
+`SoldierCombat.gd`'s own comments for the calibration reasoning); both need playtesting, not
+just derivation.

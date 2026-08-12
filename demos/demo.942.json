@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/cavalry-figure.json",
+  "caption": "The mounted figure silhouette now spans a real warhorse's ~2.6 m nose to tail (it was ~1.8 m, about two-thirds size) -- the per-type grid pitch from the spacing change gives each horse the room, so a cavalry regiment up close reads as full-length horses in open files rather than pony-sized figures. The contact shadow scales with the figure to stay under the hooves. Render-only: the sim, grid, and mark LOD are untouched.",
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 15,
+  "width": 720
+}

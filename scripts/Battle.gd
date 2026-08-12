@@ -8,28 +8,61 @@ const UnitRef = preload("res://scripts/Unit.gd")
 const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 const ParadeGround = preload("res://scripts/ParadeGround.gd")
 const AllTeamsControl = preload("res://scripts/AllTeamsControl.gd")
+const CustomMatchup = preload("res://scripts/CustomMatchup.gd")
+const FactionRef = preload("res://scripts/Faction.gd")
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+const BattleMapRef = preload("res://scripts/BattleMap.gd")
 
-const FIELD := Rect2(0, 0, 1600, 1000)
+# 80 x 60 m at 20 wu/m. Deep enough that the two default lines deploy with real
+# ground between them (see _spawn_line's y anchors below): the field grew downward
+# from its original 1600x1000, keeping the origin, team 0's line, and the terrain
+# band at their long-standing coordinates so custom scenarios stay valid. The
+# line gap is deliberately capped just inside FormationTier.DEMOTE_RANGE so the
+# default battle still opens at close-tier fidelity; deploying at genuinely
+# historical distances means far-tier openings and a paced advance, a separate
+# design step.
+const FIELD := Rect2(0, 0, 1600, 1200)
 
-# Extra room beyond FIELD that a ROUTING unit may flee into before it's removed from play
-# (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn once
-# as a visible margin strip at battle start (see _draw()). Sized to the game's maximum
+# Extra room beyond the field that a ROUTING unit may flee into before it's removed from
+# play (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn
+# once as a visible margin strip at battle start (see _draw()). Sized to the game's maximum
 # visual range — the longest ranged attack (RANGED_RANGE) and the farthest a unit can
-# currently be noticed at (DETECTION_RANGE, the closest existing stand-in for a
+# currently be noticed at BY DEFAULT (DETECTION_RANGE, the closest existing stand-in for a
 # fog-of-war vision range, which this game doesn't have yet) — so a fleeing unit stays a
-# plausible target for as long as it's still visible, rather than vanishing early.
-var ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
-var FIELD_WITH_MARGIN: Rect2 = FIELD.grow(ROUT_MARGIN)
+# plausible target for as long as it's still visible, rather than vanishing early. Reads the
+# class constant, not any one unit's own (caller-configurable) detection_range field, since
+# this margin is a single battle-wide strip, not sized per unit.
+const ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
+var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
 
 # Terrain patches; type keys into TERRAIN_COLOR. kind="block" is impassable; kind="slow" is a speed zone.
 const TERRAIN: Array = [
 	{"rect": Rect2(200,  380, 250, 200), "type": "forest", "kind": "slow", "speed": 0.6},
 	{"rect": Rect2(1150, 380, 250, 200), "type": "hill",   "kind": "block"},
 ]
+# Default spawn-line anchors for the standard two-army battle: team 0's line and team 1's.
+# See _spawn_line's call sites for the deployment-gap reasoning behind the values.
+const SPAWN_LINE_YS: Array = [300.0, 880.0]
+
+# The live per-battle MAP: battlefield rect, terrain patches, and spawn-line anchors, as
+# instance data a caller may override BEFORE the node enters the tree (the same
+# set-before-_ready contract drill_mode/scenario/ai_doctrine already follow). The consts
+# above are the DEFAULT map's values — kept as consts so the many external readers
+# (tests, docs) keep a stable reference — and these fields are what the battle actually
+# runs on: parameters a caller could reasonably want to vary are caller-configurable
+# with today's values as defaults (see CLAUDE.md's code conventions). The demo recorder
+# sets them from an input script's `map` block; a replay restores them from its header
+# (Replay.map) so playback reconstructs the battlefield it was recorded on.
+var field: Rect2 = FIELD
+var terrain: Array = TERRAIN
+var spawn_line_ys: Array = SPAWN_LINE_YS
 const TERRAIN_COLOR := {
 	"forest": Color(0.12, 0.28, 0.10),
 	"hill":   Color(0.55, 0.48, 0.32),
 }
+# Base grass green: the palette anchor for the field's procedural texture, its flat
+# fallback, and the dimmer retreat margin -- one constant so they can't drift apart.
+const FIELD_COLOR := Color(0.34, 0.42, 0.27)
 
 # Sentinel order target: a move order carrying this as its `target` appends
 # its destination to the units' waypoint queue instead of replacing the route.
@@ -74,11 +107,53 @@ enum RankRelief { LEAVE = 0, ON = 1, OFF = 2 }
 # conversio/quarter-turn drills, a Macedonian/Laconian countermarch moves the regiment (position
 # AND facing), which the sim reads, so it IS recorded and replayed like a move (see ORDER_WHEEL).
 const ORDER_COUNTERMARCH := -8
+# Sentinel for a unit-settings-only order (no movement, no target): writes the durable
+# per-unit walk_advance, reform_before_move, and/or file_major_reform_mode flags, leaving all
+# movement/formation/stance state untouched. Mirrors ORDER_STANCE_ONLY's shape, but for the
+# settings the player toggles per-unit from the info panel (SelectionManager.
+# set_selected_walk_advance/set_selected_reform_before_move/
+# cycle_selected_file_major_reform_mode) rather than the order-mode stance -- see
+# enqueue_unit_settings. walk_advance/reform_before_move each ride their own tri-state
+# UnitSettingToggle field ("walk_advance_toggle"/"reform_toggle"), so a mixed selection's
+# untouched setting isn't silently forced to one value; file_major_reform_mode rides its own
+# "file_major_reform_mode_toggle" field (see REFORM_MODE_TOGGLE_LEAVE below) since it's a
+# 3-value mode, not a plain on/off.
+const ORDER_UNIT_SETTINGS_ONLY := -9
+# Tri-state toggle values for a unit-settings order's "walk_advance_toggle"/"reform_toggle"
+# fields, mirroring RankRelief's LEAVE/ON/OFF shape above.
+enum UnitSettingToggle { LEAVE = 0, ON = 1, OFF = 2 }
+# Sentinel for a unit-settings order's "file_major_reform_mode_toggle" field: leaves
+# Unit.file_major_reform_mode untouched. Can't reuse UnitSettingToggle.LEAVE (0) the way
+# walk_advance_toggle/reform_toggle do, because 0 is a legitimate Unit.ReformMode value
+# (FILE_MAJOR) here, not a spare sentinel slot -- so this toggle uses -1 for "leave it alone"
+# and the raw Unit.ReformMode ordinal (0/1/2) to set that mode.
+const REFORM_MODE_TOGGLE_LEAVE := -1
 # How far a single arrow-key nudge shifts the unit (world units). 30 wu is ~1.5 m
 # (WORLD_UNITS_PER_METER = 20) — a few soldier-widths, and under the side-step
 # distance ceiling (UnitManeuver.SIDESTEP_MAX_DISTANCE) so a lateral nudge always
 # reads as a shuffle rather than a turn-and-march.
 const NUDGE_DISTANCE := 30.0
+# Sentinel for a disengage-and-step-back order: a melee-engaged unit breaks
+# contact with its current opponent(s) and marches a short, fixed distance straight back,
+# holding facing -- the combat-legal counterpart to the arrow-key NUDGE back-step above,
+# which refuses to fire on a FIGHTING unit (see ORDER_NUDGE's own "don't yank a unit out
+# of melee with a drill step" guard). Unit.disengage() creates and installs its own order
+# when the unit stands FIGHTING, and no-ops otherwise -- the same refusal contract
+# Unit.wheel()/countermarch() already have, just inverted (idle refuses; engaged
+# requires). Moves the regiment (position), which the sim reads, so it IS recorded and
+# replayed like a move (see ORDER_WHEEL).
+const ORDER_DISENGAGE := -10
+# Sentinel for a disengage-with-sacrifice order: a rearguard detachment stays engaged
+# to delay the enemy while the rest of the unit retreats.
+const ORDER_DISENGAGE_SACRIFICE := -11
+# Sentinel for a player-delegation-only order (no movement, no target): phase 4 of the
+# chain-of-command battle AI (docs/battle-ai-design.md). Writes the durable Unit.
+# player_group_id (and, for a fresh delegation, Unit.subcommander_rank_title) on each unit,
+# leaving all movement/formation/stance state untouched -- mirrors ORDER_STANCE_ONLY's shape.
+# The delegated group id (Unit.UNDELEGATED to revoke, or a player-chosen id >= 0) rides the
+# existing "frontage" field, so the replay format is unchanged (see enqueue_delegation).
+const ORDER_DELEGATION_ONLY := -12
+const ORDER_CANCEL_ONLY := -13
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -86,7 +161,7 @@ const NUDGE_DISTANCE := 30.0
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE, KNOCKBACK_FOCUS }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE, KNOCKBACK_FOCUS, GIVE_GROUND, PUSH, MULTIPLE_ENGAGE, MARCH_TO_CONTACT, BRACE }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
 ## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
@@ -96,6 +171,46 @@ enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYC
 ## RUN has no speed of its own, it's jog while far from the target and sprint once
 ## inside SPRINT_START_DISTANCE (see Unit._move_to).
 enum Gait { WALK, JOG, RUN, SPRINT }
+
+## The engaged-fraction threshold for a plain MOVE's disengage-time policy
+## (Order.Guard.ENGAGED_FRACTION_ABOVE; the decision itself is
+## Unit._resolve_disengage_move_order(), not a per-tick guard check -- see that function and
+## the enum member's own doc comment for why).
+##
+## Two corrections to what this threshold might look like it does, from how it actually
+## behaves in practice:
+##
+## - This order is issued with target_enemy == null, which Unit._think()'s melee-contact gate
+##   deliberately treats as a disengage command -- the unit marches off immediately and never
+##   re-enters State.FIGHTING for this order, it does NOT pause while still fighting. What
+##   actually delays the resume-vs-cancel decision by ~ENGAGED_LINGER (0.5s) is that latch
+##   decaying on an ALREADY-MARCHING unit, not a fight holding the order in place.
+## - OrderGuards.current_engaged_fraction() reuses engaged_soldier_indices(), a formation-SHAPE
+##   selection, not a measure of fight intensity -- for any realistic formation this resolves
+##   to exactly 0.0 or 1.0, never a graded value (confirmed: a 40-soldier Spearmen unit in
+##   TIGHT formation is always "0% or 100% engaged", never something between). So in practice
+##   there is no reachable "light graze" tier that resumes purely on threshold: the real
+##   policy is "any engagement at all, once the destination is occupied by a living enemy,
+##   cancels the order; otherwise it resumes" -- a genuine graded engagement-intensity signal
+##   is a deferred idea, tracked separately, if the binary behavior ever proves unsatisfying.
+##
+## What ships today:
+##
+## - The unit was never engaged at all during this move (no fight happened): the march
+##   resumes automatically once _move_order_peak_engaged_fraction's tracking finds nothing to
+##   act on.
+## - It was engaged, but the destination is still clear of any living enemy: the march
+##   resumes anyway -- a real fight happened, but the original plan is still valid, so the
+##   commander isn't forced to re-decide something that isn't actually stale.
+## - It was engaged AND the destination now sits inside a living enemy's own footprint: the
+##   order cancels outright, rather than blindly marching into ground the enemy now holds --
+##   the actual motivating case for gating a plain move on engagement at all.
+##
+## Only a NORMAL-stance plain move gets this guard (see _apply_order_cmd's two
+## Order.new_move call sites): HOLD, CHASE, MARCH_TO_CONTACT, and every other non-NORMAL
+## order_mode already represent a deliberate, already-committed decision to fight (or to
+## hold ground / press an attack) that this default should not second-guess.
+const ENGAGED_FRACTION_CANCELS_MOVE: float = 0.10
 
 ## How a multi-unit attack or line-relief order distributes its target among the
 ## ordered units. Focused (default): every unit attacks the same enemy, or (for a
@@ -132,6 +247,11 @@ const ORDER_MODE_NAMES := {
 	OrderMode.CHASE: "Chase",
 	OrderMode.WEDGE_CHARGE: "Wedge charge",
 	OrderMode.KNOCKBACK_FOCUS: "Knockback focus",
+	OrderMode.GIVE_GROUND: "Give ground",
+	OrderMode.PUSH: "Push",
+	OrderMode.MULTIPLE_ENGAGE: "Multiple engage",
+	OrderMode.MARCH_TO_CONTACT: "March to contact",
+	OrderMode.BRACE: "Brace",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -153,6 +273,11 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.CHASE, "slug": "chase"},
 	{"mode": OrderMode.WEDGE_CHARGE, "slug": "wedge_charge"},
 	{"mode": OrderMode.KNOCKBACK_FOCUS, "slug": "knockback_focus"},
+	{"mode": OrderMode.GIVE_GROUND, "slug": "give_ground"},
+	{"mode": OrderMode.PUSH, "slug": "push"},
+	{"mode": OrderMode.MULTIPLE_ENGAGE, "slug": "multiple_engage"},
+	{"mode": OrderMode.MARCH_TO_CONTACT, "slug": "march_to_contact"},
+	{"mode": OrderMode.BRACE, "slug": "brace"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
@@ -165,20 +290,40 @@ const SPEED_SCALE := 1.0
 # convert them to the world units the sim runs in. These are WORLD units, not
 # screen pixels: Godot renders the fixed FIELD onto any window via the viewport
 # stretch (canvas_items / expand) and the Camera2D zoom, so the display
-# resolution is independent of this scale. At 20 u/m the 1600x1000 field is an
-# 80 m x 50 m engagement frontage. It's a single named knob, so the world's
-# unit scale can be rebased here without hunting down hard-coded distances.
-const WORLD_UNITS_PER_METER := 20.0
+# resolution is independent of this scale. At 20 u/m the 1600x1200 field is an
+# 80 m x 60 m engagement frontage. It's a single named knob, so the world's
+# unit scale can be rebased here without hunting down hard-coded distances --
+# WorldScale.gd is that knob's single home; this name is a re-export so the many
+# existing consumers (HUD, SelectionManager, tests, docs) compile unmodified.
+const WORLD_UNITS_PER_METER := WorldScaleRef.WU_PER_M
 
 # Enemy AI re-evaluates on a fixed tick cadence (not a wall-clock timer) so the
 # simulation is deterministic and replayable. 60 ticks == 1 second at 60 Hz.
+# This is the DEFAULT cadence -- ai_period below is the live instance field a
+# caller may override (see its own comment).
 const AI_PERIOD := 60
+
+# Live enemy-AI re-evaluation cadence, in ticks -- a caller-configurable parameter
+# (CLAUDE.md's code conventions) defaulting to AI_PERIOD above. Settable BEFORE the
+# node enters the tree, the same set-before-_ready contract drill_mode/scenario/
+# ai_doctrine already follow, so a demo/test/campaign battle can run its AI on a
+# different cadence without touching the default every other caller relies on.
+var ai_period: int = AI_PERIOD
 
 # Fraction of the remaining distance the demo camera closes toward its recorded
 # target each tick (exponential smoothing). < 1 low-passes any jitter in the
 # recorded presentation track so the clip glides instead of snapping keyframe to
 # keyframe; ~0.15/tick at 60 Hz settles a step in ~0.3 s — smooth but responsive.
+# This is the DEFAULT smoothing -- camera_smoothing below is the live instance
+# field a caller may override (see its own comment).
 const CAMERA_SMOOTHING := 0.15
+
+# Live camera-smoothing factor -- a caller-configurable parameter (CLAUDE.md's code
+# conventions) defaulting to CAMERA_SMOOTHING above. Settable BEFORE the node enters
+# the tree, the same set-before-_ready contract drill_mode/scenario/ai_doctrine/
+# ai_period already follow, so a demo/test can trade a snappier or looser camera
+# without touching the default every other caller relies on.
+var camera_smoothing: float = CAMERA_SMOOTHING
 
 @onready var _units: Node2D = $Units
 @onready var _hud = $HUD
@@ -188,6 +333,13 @@ const CAMERA_SMOOTHING := 0.15
 # Fixed-step clock driving the whole simulation; also the timeline for replays.
 var _tick: int = 0
 var _ended: bool = false
+# Procedural ground/terrain art (TerrainArt), built once in _ready. Render-only: the
+# textures are a pure function of a fixed art seed and the TERRAIN table, never of any
+# sim/replay RNG, so no battle state or transcript shifts with them. Null until built --
+# _draw falls back to the flat placeholder rects when they aren't (a bare-instanced
+# battle in a test).
+var _ground_texture: ImageTexture = null
+var _terrain_textures: Array = []
 
 # Drill / solo mode: deploy only the player army (team 0) and never auto-end on "no enemies",
 # so a unit can rehearse a maneuver with no combat. Set BEFORE the node enters the tree (the
@@ -227,6 +379,18 @@ var _snapshot_cache: ReplaySnapshotCache = null
 # resolves to {} from DoctrineRegistry, and General.decide_army falls back to phase 2's own
 # single-group/no-reserves/pursue-routers behaviour for an empty doctrine.
 var ai_doctrine: String = "aggressive"
+
+# Battle AI phase 4 (docs/battle-ai-design.md): which doctrine profile (DoctrineRegistry id)
+# flavors a PLAYER-delegated group's subcommander rank title (Unit.subcommander_rank_title,
+# written by _apply_order_cmd's ORDER_DELEGATION_ONLY branch -- see PlayerDelegation.
+# subcommander_rank_title). Unlike ai_doctrine, this never drives an autonomous army-level
+# decision for team 0 (plan selection, reserves) -- the player IS the general for their own
+# delegated groups, per the design doc's phase-4 scope ("give group-level directives as the
+# general" is satisfied by the player choosing which units to delegate, not by a second AI
+# General auto-managing team 0). Settable BEFORE the node enters the tree (like ai_doctrine
+# above), so a demo/test can force a specific rank flavor; the default is a normal, playable
+# choice like ai_doctrine's own default.
+var player_doctrine: String = "aggressive"
 
 # Units deployed per side when this is a campaign-launched battle; used to
 # scale survivors back to campaign army strength when the battle ends.
@@ -268,7 +432,12 @@ func _ready() -> void:
 			and UnitRef.ORDER_ALL_OUT_ATTACK == OrderMode.ALL_OUT_ATTACK \
 			and UnitRef.ORDER_CHASE == OrderMode.CHASE \
 			and UnitRef.ORDER_WEDGE_CHARGE == OrderMode.WEDGE_CHARGE \
-			and UnitRef.ORDER_KNOCKBACK_FOCUS == OrderMode.KNOCKBACK_FOCUS,
+			and UnitRef.ORDER_KNOCKBACK_FOCUS == OrderMode.KNOCKBACK_FOCUS \
+			and UnitRef.ORDER_GIVE_GROUND == OrderMode.GIVE_GROUND \
+			and UnitRef.ORDER_PUSH == OrderMode.PUSH \
+			and UnitRef.ORDER_MULTIPLE_ENGAGE == OrderMode.MULTIPLE_ENGAGE \
+			and UnitRef.ORDER_MARCH_TO_CONTACT == OrderMode.MARCH_TO_CONTACT \
+			and UnitRef.ORDER_BRACE == OrderMode.BRACE,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 	# Same mirror-and-assert pattern for Unit's NUDGE_* constants (Battle.NudgeDir).
 	assert(UnitRef.NUDGE_LEFT == NudgeDir.LEFT \
@@ -287,9 +456,31 @@ func _ready() -> void:
 	# the seed loaded from the file, so we leave it alone.
 	if Replay.mode != Replay.Mode.PLAYBACK:
 		Replay.start_recording()
+		# Publish the live map to the recording when it isn't the default one, so
+		# the saved replay can reconstruct the same battlefield on playback. A
+		# default-map battle records no map at all — its replay file stays exactly
+		# the pre-map shape, and old replays keep playing unchanged.
+		if BattleMapRef.differs_from_default(field, terrain, spawn_line_ys,
+				FIELD, TERRAIN, SPAWN_LINE_YS):
+			Replay.map = BattleMapRef.serialize(field, terrain, spawn_line_ys)
+	else:
+		# Playback: restore the recorded map (empty = the default map) BEFORE any
+		# of the map consumers below run, so camera bounds, the routing grid, and
+		# the spawns all rebuild the battlefield the replay was recorded on.
+		if not Replay.map.is_empty():
+			var parsed: Dictionary = BattleMapRef.parse(Replay.map)
+			if parsed.has("error"):
+				push_warning("Replay map block invalid (%s); using the default map." % parsed["error"])
+			else:
+				field = parsed.get("field", field)
+				terrain = parsed.get("terrain", terrain)
+				spawn_line_ys = parsed.get("spawn_lines", spawn_line_ys)
 
-	_camera.bounds = FIELD
-	_camera.position = FIELD.position + FIELD.size * 0.5
+	# The rout margin tracks the live field, not the default const.
+	field_with_margin = field.grow(ROUT_MARGIN)
+
+	_camera.bounds = field
+	_camera.position = field.position + field.size * 0.5
 	# When the demo recorder replays a presentation track, start already framed on the
 	# first keyframe so the smoothing below has nothing to glide in from.
 	if Replay.mode == Replay.Mode.PLAYBACK and Replay.drive_camera and Replay.has_camera_track():
@@ -302,13 +493,31 @@ func _ready() -> void:
 	ProjectileField.active = ProjectileField.new()
 
 	# Register terrain patches as PathField obstacles or speed zones; cleared in _exit_tree().
-	PathField.active = PathField.new(FIELD)
-	for patch in TERRAIN:
+	PathField.active = PathField.new(field)
+	for patch in terrain:
 		if patch.get("kind", "block") == "slow":
 			assert(patch.has("speed"), "slow terrain patch missing required 'speed' key")
 			PathField.active.set_speed_rect(patch["rect"], float(patch["speed"]))
 		else:
 			PathField.active.block_rect(patch["rect"])
+
+	# Build the procedural ground/terrain art (TerrainArt; render-only, fixed art seed --
+	# see the _ground_texture field docs). Built here once; _draw only ever samples them.
+	_ground_texture = ImageTexture.create_from_image(
+			TerrainArt.field_image(field.size, TerrainArt.ART_SEED, FIELD_COLOR))
+	_terrain_textures.clear()
+	for patch in terrain:
+		var col: Color = TERRAIN_COLOR.get(patch["type"], Color(0.4, 0.4, 0.4))
+		var rect: Rect2 = patch["rect"]
+		var img: Image
+		match patch["type"]:
+			"forest":
+				img = TerrainArt.forest_image(rect.size, TerrainArt.ART_SEED, col)
+			"hill":
+				img = TerrainArt.hill_image(rect.size, TerrainArt.ART_SEED, col)
+			_:
+				img = TerrainArt.field_image(rect.size, TerrainArt.ART_SEED, col)
+		_terrain_textures.append(ImageTexture.create_from_image(img))
 
 	# The main menu's "Parade Ground" button requests drill mode across the scene swap the
 	# same way CampaignBattle ferries a clash's config (Godot's change_scene_to_file can't
@@ -349,13 +558,37 @@ func _ready() -> void:
 	# the line spawn entirely rather than layering on top.
 	if not scenario.is_empty():
 		_spawn_scenario(scenario)
+	elif CustomMatchup.pending():
+		# A custom battle configured via PrebattleScreen replaces the default two-line
+		# spawn with the player's own chosen rosters, same as a demo scenario does.
+		_spawn_scenario(_custom_matchup_scenario(CustomMatchup.pending_team_0, CustomMatchup.pending_team_1))
 	else:
 		# Player army (team 0) deploys along the top, facing down.
-		_spawn_line(0, Vector2.DOWN, 300, atk_count)
+		_spawn_line(0, Vector2.DOWN, float(spawn_line_ys[0]), atk_count)
 		# Enemy army (team 1) deploys along the bottom, facing up — skipped in drill mode,
-		# where the player army rehearses alone.
+		# where the player army rehearses alone. The 580-wu line gap (29 m, ~20 m front
+		# to front with today's block depths) is the deepest deployment that stays
+		# inside FormationTier.DEMOTE_RANGE, so both armies keep individual-soldier
+		# fidelity from the first tick while no longer starting at spitting distance.
 		if not drill_mode:
-			_spawn_line(1, Vector2.UP, 700, dfn_count)
+			_spawn_line(1, Vector2.UP, float(spawn_line_ys[1]), dfn_count)
+
+	# Now that every unit has deployed, stamp (RECORD) or verify (PLAYBACK) the spawn-layout
+	# fingerprint, so a replay can fail loudly if a later build's spawn table no longer matches
+	# the layout its orders were recorded against (the silent spawn-drift failure mode: a
+	# re-spaced spawn line leaves recorded orders pointing at positions no unit occupies now).
+	var live_fingerprint: String = SpawnFingerprint.of_tree(get_tree())
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		# A stamped replay whose fingerprint no longer matches this build's spawn will desync
+		# (orders target unit positions this build no longer produces). Surface it loudly; HUD
+		# shows the flag, and push_warning puts it in the log for a headless replay run too.
+		# Unstamped replays (loaded_spawn_fingerprint == "") skip the check, like pre-map ones.
+		if Replay.loaded_spawn_fingerprint != "" and Replay.loaded_spawn_fingerprint != live_fingerprint:
+			Replay.last_load_spawn_mismatch = Replay.loaded_spawn_fingerprint
+			push_warning("Replay spawn layout mismatch: recorded fingerprint %s, this build spawns %s. Orders may target the wrong units." %
+					[Replay.loaded_spawn_fingerprint, live_fingerprint])
+	else:
+		Replay.spawn_fingerprint = live_fingerprint
 
 	# Drive the parallel individual-soldier layer once per tick. physics_frame
 	# fires AFTER every unit's _physics_process, so the seed reads settled
@@ -398,19 +631,31 @@ func _exit_tree() -> void:
 
 
 func _draw() -> void:
-	# The retreat margin (see FIELD_WITH_MARGIN) drawn first, under the field, so it reads
+	# The retreat margin (see field_with_margin) drawn first, under the field, so it reads
 	# as a dimmer strip of ground beyond the playable edge — where a routing unit may still
 	# be fleeing (and still fightable) before it's gone for good.
-	draw_rect(FIELD_WITH_MARGIN, Color(0.34, 0.42, 0.27).darkened(0.3))
-	# Simple grass field + a center line, so the world is readable before art.
-	draw_rect(FIELD, Color(0.34, 0.42, 0.27))
-	draw_rect(FIELD, Color(0.2, 0.25, 0.16), false, 4.0)
-	draw_line(Vector2(0, FIELD.size.y * 0.5), Vector2(FIELD.size.x, FIELD.size.y * 0.5),
+	draw_rect(field_with_margin, FIELD_COLOR.darkened(0.3))
+	# Textured grass field (seeded procedural art built once in _ready; render-only, so
+	# nothing the sim reads changes). The flat-colour rects remain as the fallback for a
+	# battle whose textures never built (a test poking _draw without a full _ready).
+	if _ground_texture != null:
+		draw_texture_rect(_ground_texture, field, false)
+	else:
+		draw_rect(field, FIELD_COLOR)
+	draw_rect(field, Color(0.2, 0.25, 0.16), false, 4.0)
+	draw_line(Vector2(0, field.size.y * 0.5), Vector2(field.size.x, field.size.y * 0.5),
 		Color(1, 1, 1, 0.08), 2.0)
-	# Terrain patches — drawn over the field, under units (Battle is the parent).
-	for patch in TERRAIN:
+	# Terrain patches — drawn over the field, under units (Battle is the parent). Each
+	# patch keeps its outline so the boundary (the part the sim actually enforces) stays
+	# crisp over the textured fill.
+	for i in range(terrain.size()):
+		var patch: Dictionary = terrain[i]
 		var col: Color = TERRAIN_COLOR.get(patch["type"], Color(0.4, 0.4, 0.4))
-		draw_rect(patch["rect"], col)
+		var tex: ImageTexture = _terrain_textures[i] if i < _terrain_textures.size() else null
+		if tex != null:
+			draw_texture_rect(tex, patch["rect"], false)
+		else:
+			draw_rect(patch["rect"], col)
 		draw_rect(patch["rect"], col.darkened(0.35), false, 2.0)
 
 
@@ -464,35 +709,50 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# than trotting it backward, so it sits lowest of all. Optional per entry --
 	# _spawn_unit falls back to the Unit.gd default (0.5) when a loadout omits it.
 	var loadout := _default_loadout()
-	# Tighten the BASE spacing as the line grows so even a max stack stays on the field --
-	# but never let it collapse below what keeps a wide neighbour's formation block from
-	# overlapping the unit next to it. A flat per-unit spacing assumed a
-	# roughly-uniform unit width that doesn't hold once soldier counts / formation density
-	# vary per type in the cycling loadout above -- e.g. a 90-soldier LOOSE-order Archers
-	# block (UnitFormation.half_width_for_soldiers, scaled by Unit.spacing_scale_for_mode)
-	# is far wider than a same-count TIGHT block, so the old flat spacing let it overlap
-	# whichever neighbour it cycled next to. Each adjacent pair's minimum gap is instead the
-	# sum of their own half-widths plus a soldier-file's worth of daylight (FORMATION_SPACING),
-	# so no two blocks so much as touch, regardless of composition.
-	var base_spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
 	var half_widths: Array[float] = []
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
-		var d_spacing: float = Unit.FORMATION_SPACING \
-				* Unit.spacing_scale_for_mode(d.get("formation", Unit.FORMATION_NORMAL))
-		half_widths.append(UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing))
+		half_widths.append(_line_half_width(d))
+	var xs: Array[float] = _line_x_offsets(half_widths, field.size.x)
+	var start_x: float = field.size.x * 0.5 - (xs[xs.size() - 1] * 0.5 if not xs.is_empty() else 0.0)
 
-	# The no-overlap gap above guarantees adjacent blocks never touch, but it makes no
-	# promise about the TOTAL line width -- a max-size campaign stack (CampaignBattle.
-	# MAX_UNITS) cycling several wide LOOSE-order types back to back can need more total
-	# width than FIELD has room for, which would push the outer units off the playable
-	# field entirely (the no-overlap fix's own follow-up finding). So sum the no-overlap
-	# gaps first; if that sum would overflow the same FIELD budget the old flat spacing
-	# always respected, scale every gap down proportionally until the line fits. This
-	# accepts a little unavoidable overlap only in that rare wide/high-count extreme --
-	# normal-size battles (the standard 5v5 demo, and any count whose no-overlap gaps
-	# already fit) are untouched, since the scale factor is 1.0 whenever the raw sum is
-	# already within budget.
+	for i in range(count):
+		var d: Dictionary = loadout[i % loadout.size()]
+		var pos := Vector2(start_x + xs[i], y)
+		_spawn_unit(d, team, facing, pos, "%s %d" % [d["name"], i + 1])
+
+
+## A loadout entry's own half-width in a spawn line: its per-type FILE pitch (metres to wu;
+## cavalry files sit ~1 m apart vs the 0.45 m foot floor) scaled by the formation-mode density,
+## so a wide cavalry block's spawn gap accounts for the ground its horses actually cover.
+## Shared by _spawn_line and a custom matchup's own line-up (_custom_matchup_scenario).
+func _line_half_width(d: Dictionary) -> float:
+	var d_spacing: float = float(d.get("file_pitch_m", 0.45)) * WorldScaleRef.WU_PER_M \
+			* Unit.spacing_scale_for_mode(d.get("formation", Unit.FORMATION_NORMAL))
+	return UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing)
+
+
+## Given each unit's own half-width (already formation-density-scaled, see _line_half_width)
+## in a left-to-right line, returns each unit's x-offset from the line's own left edge (index
+## 0 is always 0.0). Tightens the BASE spacing as the line grows so even a max stack stays on
+## the field, but never lets it collapse below what keeps a wide neighbour's formation block
+## from overlapping the unit next to it -- a flat per-unit spacing assumed a roughly-uniform
+## unit width that doesn't hold once soldier counts / formation density vary per type, so each
+## adjacent pair's minimum gap is instead the sum of their own half-widths plus a soldier-file's
+## worth of daylight (FORMATION_SPACING), so no two blocks so much as touch regardless of
+## composition. That no-overlap gap makes no promise about the TOTAL line width, though -- a
+## max-size stack cycling several wide LOOSE-order types back to back can need more total width
+## than the field has room for, which would push the outer units off the playable field
+## entirely. So the no-overlap gaps are summed first; if that sum would overflow the same field
+## budget the old flat spacing always respected, every gap is uniformly shrunk until the line
+## fits (accepting a little unavoidable overlap only in that rare wide/high-count extreme).
+## Pure -- no Unit/scene access -- so both the default line spawn and a custom matchup
+## (a variable, non-cycling roster) share it and it's directly unit-testable.
+func _line_x_offsets(half_widths: Array[float], field_width: float) -> Array[float]:
+	var count: int = half_widths.size()
+	if count == 0:
+		return []
+	var base_spacing: float = minf(150.0, (field_width - 200.0) / maxf(1.0, count - 1))
 	var gaps: Array[float] = []
 	var raw_total_width: float = 0.0
 	for i in range(count - 1):
@@ -500,23 +760,15 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 				half_widths[i] + half_widths[i + 1] + Unit.FORMATION_SPACING)
 		gaps.append(gap)
 		raw_total_width += gap
-	var field_budget: float = FIELD.size.x - 200.0
+	var field_budget: float = field_width - 200.0
 	if raw_total_width > field_budget and raw_total_width > 0.0:
 		var shrink: float = field_budget / raw_total_width
 		for i in range(gaps.size()):
 			gaps[i] *= shrink
-
-	# xs[i] is unit i's x-offset from the line's own left edge (xs[0] == 0.0); the whole
-	# line is then centred on the field below, same as the old uniform-spacing layout.
 	var xs: Array[float] = [0.0]
 	for i in range(count - 1):
 		xs.append(xs[i] + gaps[i])
-	var start_x: float = FIELD.size.x * 0.5 - xs[xs.size() - 1] * 0.5
-
-	for i in range(count):
-		var d: Dictionary = loadout[i % loadout.size()]
-		var pos := Vector2(start_x + xs[i], y)
-		_spawn_unit(d, team, facing, pos, "%s %d" % [d["name"], i + 1])
+	return xs
 
 
 ## The default battle loadout: spearmen, infantry, archers, cavalry, cavalry. A line
@@ -550,14 +802,43 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 ## Unit.back_speed_fraction) -- heavier kit backs up proportionally slower, same reasoning
 ## as the pace speeds above. Optional; _spawn_unit falls back to the Unit.gd default (0.5)
 ## for a loadout entry that omits it.
+##
+## `walk_advance_default`/`reform_before_move_default` are this type's starting
+## values for the two per-unit settings a player can later toggle from the info panel
+## checkbox (Unit.walk_advance/Unit.reform_before_move) -- both optional, defaulting to
+## `false`/`true` respectively (the old global settings' own defaults) for a loadout entry
+## that omits them. Spearmen default walk_advance ON: holding the shield-wall/phalanx
+## presentation matters more than closing speed for a formed pike line. Cavalry defaults
+## reform_before_move OFF: a fast, loosely-formed regiment gains more from immediate
+## responsiveness than from settling ranks before it steps off.
+##
+## `file_major_reform_default` is this type's starting value for Unit.file_major_reform_mode --
+## optional, defaulting to `true` (Unit.ReformMode.FILE_MAJOR: a soldier keeps its own file
+## assignment, so a casualty only shortens that file's rear) for a loadout entry that omits
+## it. Also accepts `false` (ROW_MAJOR, the historical whole-block recompute) or the string
+## `"auto"` (AUTO: resolves to file-major/row-major from the unit's own `disciplined` flag --
+## see Unit.file_major_reform_mode's own doc comment). Every type keeps the FILE_MAJOR default
+## today; no entry below overrides it.
 func _default_loadout() -> Array:
 	return [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "shield": LoadoutRegistry.SHIELD_SCUTUM, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "back_fraction": 0.55, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT, "walk_advance_default": true},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_HAMATA, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "back_fraction": 0.55, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "armor": LoadoutRegistry.ARMOR_TUNIC, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false},
 	]
+
+
+## Parses a loadout/scenario "file_major_reform_default" (or scenario spec "file_major_reform")
+## value into a Unit.ReformMode ordinal. Accepts a bool (true -> FILE_MAJOR, false -> ROW_MAJOR,
+## matching the field's historical on/off shape) or the case-insensitive string "auto" (->
+## AUTO); any other value falls back to FILE_MAJOR, matching bool(...)'s own historical
+## default. A plain `Variant` parameter (not `bool`) so callers can pass either shape through
+## unconverted -- see _spawn_scenario, which no longer force-casts the spec value to bool.
+static func _parse_reform_mode(value) -> int:
+	if typeof(value) == TYPE_STRING and String(value).to_lower() == "auto":
+		return Unit.ReformMode.AUTO
+	return Unit.ReformMode.FILE_MAJOR if bool(value) else Unit.ReformMode.ROW_MAJOR
 
 
 ## Build one unit from a loadout dict `d` at `pos`, facing `facing`, on `team`, register it,
@@ -578,6 +859,12 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.max_soldiers = d["soldiers"]
 	u.attack = d["atk"]
 	u.defense = d["def"]
+	# Per-type formation pitch: real-world metres between files and between ranks ->
+	# world units. Foot troops default to the synaspismos floor on both axes; cavalry
+	# rows carry a wider file pitch and a much deeper rank pitch (a warhorse stands
+	# ~0.7 m wide but ~3 m of ground nose-to-tail).
+	u.file_pitch = float(d.get("file_pitch_m", 0.45)) * WORLD_UNITS_PER_METER
+	u.rank_pitch = float(d.get("rank_pitch_m", 0.45)) * WORLD_UNITS_PER_METER
 	# Real-world m/s -> world units, times the global movement multiplier.
 	u.walk_speed = d["walk_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 	u.jog_speed = d["jog_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
@@ -601,15 +888,36 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 			u.attack_range = weapon_type.reach_m * WORLD_UNITS_PER_METER
 	if d.has("shield"):
 		u.shield_type_id = d["shield"]
+	# Armor and mount types: unit-level interned ids (combat_profile() resolves the
+	# armour scalar and contact mass through them). A dict without the keys (a bare
+	# test unit) keeps the Unit defaults (mail on foot), matching the weapon/shield
+	# fallback above.
+	if d.has("armor"):
+		u.armor_type_id = d["armor"]
+	if d.has("mount"):
+		u.mount_type_id = d["mount"]
 	u.training = d.get("training", 0.0)
 	u.disciplined = d.get("disciplined", true)
+	# Per-type starting values for the player-togglable settings; a loadout entry
+	# that omits a key keeps that setting's own default (walk_advance off, reform_before_move
+	# on, file_major_reform_mode FILE_MAJOR) -- see _default_loadout's own doc comment for
+	# which types override them and why.
+	u.walk_advance = bool(d.get("walk_advance_default", false))
+	u.reform_before_move = bool(d.get("reform_before_move_default", true))
+	u.file_major_reform_mode = _parse_reform_mode(d.get("file_major_reform_default", true))
 	# Cavalry respond faster — more mobile and battle-conditioned.
 	if d["cav"]:
 		u.order_response_delay = 0.3
+	# Optional drill snappiness override (seconds): how long the regiment holds between a
+	# drill command and the men starting the evolution (see Unit.atomic_response_delay).
+	# Lets a loadout or scenario give an elite regiment a bonus (lower) or a raw levy a
+	# malus (higher); a dict without the key keeps the Unit default.
+	if d.has("atomic_response_s"):
+		u.atomic_response_delay = float(d["atomic_response_s"])
 	u.facing = facing
 	u.position = pos
-	u.field_bounds = FIELD   # so a skirmisher kites without backing off the map
-	u.retreat_bounds = FIELD_WITH_MARGIN   # a router may flee this far before it escapes
+	u.field_bounds = field   # so a skirmisher kites without backing off the map
+	u.retreat_bounds = field_with_margin   # a router may flee this far before it escapes
 	_units.add_child(u)
 	# Set after add_child() so _ready() has already established the type's base
 	# separation_radius for set_formation() to scale from, and set soldiers from
@@ -650,8 +958,30 @@ func _spawn_scenario(specs: Array) -> void:
 			d["starting_state"] = int(spec["starting_state"])
 		if spec.has("disciplined"):
 			d["disciplined"] = bool(spec["disciplined"])
+		if spec.has("atomic_response_s"):
+			d["atomic_response_s"] = float(spec["atomic_response_s"])
+		if spec.has("training"):
+			# Skill, normally a per-type constant. A scenario isolating a
+			# skill-dependent mechanic needs two otherwise-identical units that
+			# differ only here; contrasting two different TYPES instead would vary
+			# attack, defence, weapon and armour at the same time.
+			d["training"] = float(spec["training"])
+		# Per-unit overrides for the type-defaulted settings (Battle._default_loadout's own
+		# "walk_advance_default"/"reform_before_move_default"/"file_major_reform_default"
+		# keys) -- a demo/test scenario that specifically needs a NON-default value on one
+		# spawned unit (e.g. to isolate a different mechanic than the type's own default is
+		# about) can request it here, same shape as "disciplined" above.
+		if spec.has("walk_advance"):
+			d["walk_advance_default"] = bool(spec["walk_advance"])
+		if spec.has("reform_before_move"):
+			d["reform_before_move_default"] = bool(spec["reform_before_move"])
+		if spec.has("file_major_reform"):
+			# Passed through RAW (not force-cast to bool): _parse_reform_mode accepts either a
+			# bool (true/false -> FILE_MAJOR/ROW_MAJOR) or the string "auto" (-> AUTO), and a
+			# bool cast here would turn "auto" into `true` before it ever reached that parse.
+			d["file_major_reform_default"] = spec["file_major_reform"]
 		var team := int(spec.get("team", 0))
-		var pos := Vector2(float(spec.get("x", FIELD.size.x * 0.5)), float(spec.get("y", FIELD.size.y * 0.5)))
+		var pos := Vector2(float(spec.get("x", field.size.x * 0.5)), float(spec.get("y", field.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
 		# line spawn, unless the spec pins an explicit non-degenerate facing vector [x, y].
 		var facing := Vector2.DOWN if team == 0 else Vector2.UP
@@ -673,6 +1003,44 @@ func _loadout_for_type(loadout: Array, type_name: String) -> Dictionary:
 		if str(d["name"]) == type_name:
 			return d
 	return {}
+
+
+## Builds a `scenario` spec array (see _spawn_scenario) for a custom battle configured via
+## PrebattleScreen: each team's roster (a list of Faction.FACTION_ROSTERS historical names,
+## e.g. "Spartan Hoplites") resolves through Faction.get_unit_type() to its real spawnable
+## loadout type, then lines up along that team's own spawn line using the same half-width-based
+## spacing _spawn_line uses -- generalized here since a custom roster isn't a fixed-composition
+## cycle. A roster name Faction doesn't recognize (get_unit_type returns "") is skipped with a
+## warning rather than spawning something with no known stats.
+func _custom_matchup_scenario(team_0_names: Array, team_1_names: Array) -> Array:
+	var loadout := _default_loadout()
+	var specs: Array = []
+	for team in [0, 1]:
+		var names: Array = team_0_names if team == 0 else team_1_names
+		var facing := Vector2.DOWN if team == 0 else Vector2.UP
+		var y: float = float(spawn_line_ys[team])
+		var dicts: Array[Dictionary] = []
+		for roster_name in names:
+			var type_name: String = FactionRef.get_unit_type(str(roster_name))
+			var d: Dictionary = _loadout_for_type(loadout, type_name)
+			if d.is_empty():
+				push_warning("[battle] custom matchup roster entry '%s' has no known unit type; skipping." % roster_name)
+				continue
+			dicts.append(d)
+		var half_widths: Array[float] = []
+		for d in dicts:
+			half_widths.append(_line_half_width(d))
+		var xs: Array[float] = _line_x_offsets(half_widths, field.size.x)
+		var start_x: float = field.size.x * 0.5 - (xs[xs.size() - 1] * 0.5 if not xs.is_empty() else 0.0)
+		for i in range(dicts.size()):
+			specs.append({
+				"team": team,
+				"type": str(dicts[i]["name"]),
+				"x": start_x + xs[i],
+				"y": y,
+				"facing": [facing.x, facing.y],
+			})
+	return specs
 
 
 ## Apply a starting state to a unit (ROUTING for demos/tests). For demo tooling only;
@@ -705,8 +1073,11 @@ func _apply_starting_state(u: Unit, starting_state: int) -> void:
 ## Every live unit ("units" + "routers" -- a unit that has died and left play is in
 ## neither, so it's correctly excluded, matching how a rewind to before its death
 ## should look) plus the whole-battle bookkeeping (tick, RNG stream position, the next
-## fresh uid) needed to resume simulating from this exact moment. Opaque to callers other
-## than restore_snapshot; never written to the canonical .replay file.
+## fresh uid, and the active Engine.time_scale -- a global engine property with no
+## per-unit trace, so it has to ride in the snapshot itself rather than being derivable
+## from anything captured above) needed to resume simulating from this exact moment.
+## Opaque to callers other than restore_snapshot; never written to the canonical
+## .replay file.
 func capture_snapshot() -> Dictionary:
 	var units: Array = []
 	for group in ["units", "routers"]:
@@ -719,6 +1090,7 @@ func capture_snapshot() -> Dictionary:
 		"rng_state": Replay.rng.state,
 		"next_uid": _next_uid,
 		"units": units,
+		"time_scale": Engine.time_scale,
 	}
 
 
@@ -729,7 +1101,8 @@ func capture_snapshot() -> Dictionary:
 ## spawned" default, self-healing on the first tick exactly like an ordinary spawn already
 ## does -- see .claude/memories/sparta.md's frame-keyed-cache hazards this sidesteps.
 ## Restores the tick counter, the RNG stream position (so subsequent combat rolls draw
-## exactly where the original run would have), and Replay's own order-read cursor.
+## exactly where the original run would have), Replay's own order-read cursor, and the
+## active Engine.time_scale.
 func restore_snapshot(snap: Dictionary) -> void:
 	for group in ["units", "routers"]:
 		for node in get_tree().get_nodes_in_group(group):
@@ -763,6 +1136,10 @@ func restore_snapshot(snap: Dictionary) -> void:
 	_tick = int(snap["tick"])
 	Replay.rng.state = int(snap["rng_state"])
 	Replay.rewind_cursor_to_tick(_tick)
+	# rewind_cursor_to_tick only repositions the read cursor for changes still ahead of
+	# `_tick`; a slow-motion change made before the snapshot was captured has no per-unit
+	# trace to fall back on, so the value has to come from the snapshot itself.
+	Engine.time_scale = float(snap.get("time_scale", 1.0))
 
 	# A completed replay has _ended set and the tree paused behind the end overlay
 	# (_check_victory runs during PLAYBACK too), and both _physics_process and
@@ -792,6 +1169,57 @@ func _spawn_from_snapshot(ud: Dictionary) -> Unit:
 	if int(ud["state"]) == UnitRef.State.ROUTING:
 		u.remove_from_group("units")
 		u.add_to_group("routers")
+	return u
+
+
+## Per-soldier body array keys to_snapshot_dict() carries -- shared between
+## _spawn_rearguard_detachment (which truncates each to the rearguard's own headcount) and
+## anywhere else that needs the full field list without retyping it.
+const SIM_SOLDIER_ARRAY_KEYS: Array[String] = [
+	"sim_soldier_pos", "sim_body_vel", "sim_steer", "sim_soldier_hp",
+	"sim_soldier_weapon_id", "sim_soldier_shield_id", "sim_soldier_shield_hold_angle",
+	"sim_prone", "sim_soldier_stamina", "sim_soldier_facing", "sim_soldier_file",
+	"sim_soldier_rank", "sim_soldier_square_slot",
+]
+
+
+## Disengage-with-sacrifice's rearguard: a genuine, separate Unit cloned from
+## `parent`'s own current type+state (to_snapshot_dict, mirroring _spawn_from_snapshot's
+## two-phase apply), holding `soldier_count` of the parent's own soldiers at the parent's
+## CURRENT position/facing -- the point of contact, not wherever the parent ends up after
+## retreating. Real physics (its own melee/collision/contact resistance) is what should
+## slow a pursuer now, not a synthetic speed multiplier. It never chases (ORDER_HOLD, no
+## queued orders) and inherits the parent's live combat target, so it keeps fighting
+## whoever it was already engaged with. Marked is_rearguard_detachment with a
+## `delay_sec` lifetime -- see Unit._physics_process for the countdown-and-timeout-removal
+## side of that contract.
+func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: float) -> Unit:
+	var ud: Dictionary = parent.to_snapshot_dict()
+	ud["uid"] = _next_uid
+	_next_uid += 1
+	ud["unit_name"] = parent.unit_name + " (rearguard)"
+	ud["soldiers"] = soldier_count
+	ud["max_soldiers"] = soldier_count
+	ud["position"] = parent.position
+	ud["facing"] = parent.facing
+	ud["state"] = UnitRef.State.FIGHTING
+	ud["order_mode"] = OrderMode.HOLD   # never chase -- stand and fight where it is
+	ud["orders"] = []                   # nothing queued; it isn't going anywhere
+	ud["move_target"] = parent.position
+	ud["has_move_target"] = false
+	# Truncate every per-soldier body array to the first `soldier_count` entries -- the
+	# front-most, already-engaged soldiers are the ones staying; the rest belong to the
+	# retreating main body.
+	for key in SIM_SOLDIER_ARRAY_KEYS:
+		ud[key] = ud[key].slice(0, soldier_count)
+	var u := _spawn_from_snapshot(ud)
+	_by_uid[u.uid] = u
+	u.is_rearguard_detachment = true
+	u._rearguard_lifetime_timer = delay_sec
+	# _spawn_from_snapshot/apply_snapshot_dict never resolve target_enemy/support_target --
+	# that's a second pass restore_snapshot runs separately, over uids, once every unit in a
+	# whole-battle restore exists. Set it directly from the live parent instead.
+	u.target_enemy = parent.target_enemy
 	return u
 
 
@@ -841,6 +1269,13 @@ func _physics_process(_delta: float) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		for cmd in Replay.orders_for_tick(_tick):
 			_apply_order_cmd(cmd)
+		# Re-apply a recorded slow-motion change at the tick it was made, so this tick's
+		# own delta (and every later one, until the next recorded change) matches what the
+		# original recording actually integrated against -- see Replay._time_scale_track's
+		# own doc for why an un-recorded change would desync a "deterministic" replay.
+		var recorded_scale: float = Replay.time_scale_for_tick(_tick)
+		if recorded_scale > 0.0:
+			Engine.time_scale = recorded_scale
 		# Drive the camera from the recorded presentation track so the replay is framed
 		# (zoom/pan) as it was played — only when asked (the demo recorder), so in-app
 		# Watch Replay keeps free pan/zoom. No track -> static camera, as before.
@@ -852,8 +1287,8 @@ func _physics_process(_delta: float) -> void:
 				# into a smooth glide.
 				var target_pos := Vector2(cam["x"], cam["y"])
 				var target_zoom := Vector2(cam["zoom"], cam["zoom"])
-				_camera.position = _camera.position.lerp(target_pos, CAMERA_SMOOTHING)
-				_camera.zoom = _camera.zoom.lerp(target_zoom, CAMERA_SMOOTHING)
+				_camera.position = _camera.position.lerp(target_pos, camera_smoothing)
+				_camera.zoom = _camera.zoom.lerp(target_zoom, camera_smoothing)
 	else:
 		for o in _pending_orders:
 			Replay.record_order(_tick, o["units"], Vector2(o["x"], o["y"]), o["target"],
@@ -862,9 +1297,11 @@ func _physics_process(_delta: float) -> void:
 					int(o.get("frontage", 0)),
 					float(o.get("face", INF)),
 					int(o.get("group_attack", GroupAttackMode.FOCUSED)),
-					bool(o.get("walk_advance", false)),
 					float(o.get("anchor_offset", 0.0)),
-					int(o.get("form_up_group", -1)))
+					int(o.get("form_up_group", -1)),
+					int(o.get("walk_advance_toggle", UnitSettingToggle.LEAVE)),
+					int(o.get("reform_toggle", UnitSettingToggle.LEAVE)),
+					int(o.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -896,9 +1333,14 @@ func _physics_process(_delta: float) -> void:
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
 	# the same cadence during playback so it reaches the same decisions. Skipped entirely
 	# under all-teams control -- the player is commanding team 1 directly, so nothing
-	# should also be deciding for it.
-	if _tick % AI_PERIOD == 0 and not all_teams_control:
-		_run_enemy_ai()
+	# should also be deciding for it. Player delegation (phase 4) is orthogonal to
+	# all_teams_control (a team-1-only debug flag) and always runs on the same cadence --
+	# a delegated team-0 group is the player's own choice, not something all_teams_control
+	# governs.
+	if _tick % ai_period == 0:
+		if not all_teams_control:
+			_run_enemy_ai()
+		_run_player_delegated_ai()
 
 	_check_victory()
 	_tick += 1
@@ -934,6 +1376,21 @@ func _on_soldier_tick() -> void:
 	var delta: float = get_physics_process_delta_time()
 	var frame: int = Engine.get_physics_frames()
 	SoldierSteering.accumulate(units, frame)
+	# Reach-asymmetric melee standoff: ADDS its bias into _sim_steer, so it must run
+	# after SoldierSteering (which clears+rewrites the array with the friendly-avoidance
+	# bias -- this composes on top, it doesn't replace it) and before the enemy-contact/step
+	# passes below read _sim_steer as this tick's feed-forward. Gathers only the engaged
+	# tier into its own SoldierEngagedEnemyProximity grid (see that class's doc comment),
+	# distinct from SoldierEnemyProximity's whole-battle-scan grid a SQUARE unit's own
+	# engaged_soldier_indices() call may also rebuild elsewhere this tick -- the two never
+	# share a cache key, so `frame` here doesn't need to match or offset against that one.
+	SoldierMeleeStandoff.accumulate(units, frame)
+	# Per-soldier encirclement (breaks a SHIELD_WALL/TESTUDO soldier to individual melee once
+	# it's genuinely surrounded): ADDS its own retreat bias into `_sim_steer`, same composition
+	# rule as SoldierMeleeStandoff just above -- must run after it and before the enemy-contact/
+	# step passes below read `_sim_steer` as this tick's feed-forward. Own dedicated spatial-hash
+	# cache (SoldierEncirclementProximity), so `frame` here needs no offset against anything else.
+	SoldierEncirclement.accumulate(units, frame)
 	# Distinct (always-negative) cache key: SoldierSpatialHash.rebuild is idempotent per key
 	# within a tick, and this pass gathers a different position set (cross-team engaged
 	# pairs, no friendly-contact-tier expansion) than SoldierSteering's own rebuild above, so
@@ -980,8 +1437,6 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"y": world_pos.y,
 		"target": target_uid,
 		"mode": order_mode,
-		"reform": Settings.reform_before_move,
-		"walk_advance": Settings.walk_advance,
 		"group_attack": group_attack,
 		"gait": gait,
 		"knockback_indefinite": knockback_indefinite,
@@ -1041,14 +1496,31 @@ func enqueue_stance(uids: Array, stance: int = -1, rank_relief: int = RankRelief
 ## target (so a mixed selection keeps its relative widths), emitting one command per
 ## unit. The absolute (not relative) target is recorded so replays stay exact and
 ## keeps the command safe to re-derive from any starting frontage.
-func enqueue_frontage(uids: Array, delta: int) -> void:
+##
+## `anchor` (UnitFormation.Anchor) picks which flank stays fixed, exactly as on
+## enqueue_file_double: CENTRE (default -- the [ / ] keyboard resize) widens/narrows
+## symmetrically and RE-CENTRES the block, discarding any earlier anchor shift; LEFT/
+## RIGHT hold that edge in place so the whole width change lands on the opposite
+## flank (the grip drag-resize anchors the flank opposite the grabbed grip this way,
+## so dragging a grip moves only that grip's own edge). A LEFT/RIGHT anchor composes
+## anchor_shift on top of the unit's CURRENT offset rather than replacing it, for the
+## same reason enqueue_file_double does -- anchor_shift only ever computes one step
+## from a centred block, so treating it as absolute across repeated anchored resizes
+## would let the held flank drift.
+func enqueue_frontage(uids: Array, delta: int,
+		anchor: int = UnitFormation.Anchor.CENTRE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	for uid in uids:
 		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
 			continue
-		var files: int = clampi(UnitFormation.frontage(u) + delta, 1, maxi(1, u.max_soldiers))
+		var current: int = UnitFormation.frontage(u)
+		var files: int = clampi(current + delta, 1, maxi(1, u.max_soldiers))
+		var anchor_offset: float = 0.0
+		if anchor != UnitFormation.Anchor.CENTRE:
+			anchor_offset = u.frontage_anchor_offset + UnitFormation.anchor_shift(
+					current, files, u.file_pitch_wu(), anchor)
 		var cmd := {
 			"units": [uid],
 			"x": 0.0,
@@ -1056,6 +1528,7 @@ func enqueue_frontage(uids: Array, delta: int) -> void:
 			"target": ORDER_FRONTAGE_ONLY,
 			"mode": OrderMode.NORMAL,
 			"frontage": files,
+			"anchor_offset": anchor_offset,
 		}
 		_pending_orders.append(cmd)
 		_apply_order_live(cmd)
@@ -1121,7 +1594,7 @@ func enqueue_file_double(uids: Array, direction: int,
 		else:
 			files = UnitFormation.narrowed_files(current)
 		files = clampi(files, 1, maxi(1, u.max_soldiers))
-		var spacing: float = Unit.FORMATION_SPACING * u.spacing_scale
+		var spacing: float = u.file_pitch_wu()
 		var anchor_offset: float
 		if anchor == UnitFormation.Anchor.CENTRE:
 			anchor_offset = 0.0
@@ -1175,6 +1648,47 @@ func enqueue_countermarch(uids: Array, variant: int) -> void:
 	_apply_order_live(cmd)
 
 
+## Disengage and step back: each selected friendly unit currently in melee
+## breaks contact and steps back a short, fixed distance, holding facing. Unlike
+## enqueue_wheel/enqueue_countermarch, no per-unit geometry needs computing here --
+## Unit.disengage() derives the step entirely from each unit's own live facing, so this
+## just names which units to try it on. Recorded (same reasoning as ORDER_WHEEL: it moves
+## the regiment, which the sim reads) and applied immediately for zero-latency feedback
+## like every other order.
+func enqueue_disengage(uids: Array) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if uids.is_empty():
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_DISENGAGE,
+		"mode": OrderMode.NORMAL,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
+## Disengage with sacrifice: a rearguard detachment stays engaged to delay the enemy
+## while the surviving main body retreats.
+func enqueue_disengage_with_sacrifice(uids: Array) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if uids.is_empty():
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_DISENGAGE_SACRIFICE,
+		"mode": OrderMode.NORMAL,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
 ## World-space offset for a nudge of `dir` given a unit's `facing`. LEFT / RIGHT
 ## are perpendicular to facing (a side-step); BACK is straight opposite facing (a
 ## back-step); FORWARD is straight along facing (a forward step). Each is
@@ -1218,8 +1732,6 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"mode": order_mode,
 		"frontage": frontage,
 		"face": face,
-		"reform": Settings.reform_before_move,
-		"walk_advance": Settings.walk_advance,
 		"knockback_indefinite": knockback_indefinite,
 	}
 	if form_up_group >= 0:
@@ -1228,10 +1740,131 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 	_apply_order_live(cmd)
 
 
-## Apply one order (move or attack) to its units. Shared by live play and
-## playback so both produce identical results.
-func _apply_order_cmd(cmd: Dictionary) -> void:
+## Set the durable per-unit walk_advance, reform_before_move, and/or file_major_reform_mode
+## fields on a set of units in place -- no movement, no target (mirrors enqueue_stance's
+## shape). walk_advance_toggle/reform_toggle are each a UnitSettingToggle (LEAVE keeps each
+## unit's current value; ON/OFF write it); file_major_reform_mode_toggle is
+## REFORM_MODE_TOGGLE_LEAVE (-1, keeps each unit's current mode) or a Unit.ReformMode ordinal
+## (0/1/2) to write -- a plain on/off doesn't fit a 3-value mode, see REFORM_MODE_TOGGLE_LEAVE's
+## own doc comment. So a mixed selection's untouched setting is never forced to one value.
+## Recorded so replays stay exact: unlike the old order-baked "walk_advance"/"reform" cmd
+## fields this replaces, these are genuine persistent unit state a mid-battle toggle can
+## change, so the toggle itself -- not just its downstream effect -- has to ride the replay
+## stream, the same way enqueue_stance's rank-relief toggle already does.
+func enqueue_unit_settings(uids: Array, walk_advance_toggle: int = UnitSettingToggle.LEAVE,
+		reform_toggle: int = UnitSettingToggle.LEAVE,
+		file_major_reform_mode_toggle: int = REFORM_MODE_TOGGLE_LEAVE) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if walk_advance_toggle == UnitSettingToggle.LEAVE and reform_toggle == UnitSettingToggle.LEAVE \
+			and file_major_reform_mode_toggle == REFORM_MODE_TOGGLE_LEAVE:
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_UNIT_SETTINGS_ONLY,
+		"mode": OrderMode.NORMAL,
+		"walk_advance_toggle": walk_advance_toggle,
+		"reform_toggle": reform_toggle,
+		"file_major_reform_mode_toggle": file_major_reform_mode_toggle,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
+## Battle AI phase 4 (docs/battle-ai-design.md): delegate (group_id >= 0) or revoke
+## (Unit.UNDELEGATED) player-controlled units to/from an AI subcommander group. Mirrors
+## enqueue_unit_settings's shape -- a durable per-unit toggle, no movement, no target -- and
+## reuses the existing "frontage" field to carry the group id, so the replay format is
+## unchanged (the same reuse ORDER_STANCE_ONLY/ORDER_NUDGE already make of that field for
+## their own, equally unrelated, per-sentinel-type payload). Recorded (like
+## enqueue_unit_settings) since delegation is genuine persistent unit state a mid-battle
+## toggle changes -- unlike the AI's own resulting orders, which are re-derived on replay and
+## never recorded (see Battle._run_player_delegated_ai / _apply_order_cmd's own from_player
+## parameter).
+##
+## Encoded as group_id + 1, NOT the raw group_id: Replay.record_order OMITS "frontage" from
+## the recorded entry whenever the value is exactly 0 (its own "old replays stay compact"
+## convention -- see its doc comment), and a bare 0 group id is a perfectly legitimate
+## delegation target here (Ctrl+Shift+0), not a spare sentinel slot -- the same "0 is a real
+## value, not LEAVE" hazard REFORM_MODE_TOGGLE_LEAVE's own comment names for exactly this
+## reason. Shifting by 1 makes every real group id (0-9) round-trip through record/replay as
+## a nonzero, always-recorded "frontage" (1-10), while UNDELEGATED (-1) shifts to 0 -- which
+## is what an omitted key already decodes back to via _apply_order_cmd's own
+## `cmd.get("frontage", 0)`, so a revoke needs no explicit recorded entry at all. See
+## _apply_order_cmd's ORDER_DELEGATION_ONLY branch for the matching decode.
+func enqueue_delegation(uids: Array, group_id: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if uids.is_empty():
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_DELEGATION_ONLY,
+		"mode": OrderMode.NORMAL,
+		"frontage": group_id + 1,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
+## Enqueue an order-cancellation command for the given units. Recorded so replays reproducible
+## cancel queued orders or active maneuvers at the exact tick they were issued.
+func enqueue_cancel_order(uids: Array, order_index: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if uids.is_empty():
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_CANCEL_ONLY,
+		"mode": OrderMode.NORMAL,
+		"frontage": order_index,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
+## Apply one order (move or attack) to its units. Shared by live play and playback so both
+## produce identical results. `from_player` distinguishes a genuine player-issued command (the
+## default -- every enqueue_* call and every recorded order drained from the replay stream)
+## from an AI-issued one (Battle._run_enemy_ai / _run_player_delegated_ai pass false): a
+## player order to a delegated unit always overrides its subcommander's directive (the design
+## doc's phase-4 "take manual control back at any time" contract), but the AI's OWN orders for
+## a unit it was just delegated must not immediately un-delegate it again on the very same
+## tick. See Unit.player_group_id's own doc comment.
+func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	var target_uid: int = int(cmd["target"])
+	if from_player and target_uid != ORDER_DELEGATION_ONLY:
+		_revoke_delegation(cmd["units"])
+	if target_uid == ORDER_CANCEL_ONLY:
+		var idx: int = int(cmd.get("frontage", 0))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null and u.state != UnitRef.State.DEAD:
+				u.cancel_order_at(idx)
+		return
+	# Player-delegation-only: write each unit's player_group_id (and, for a fresh delegation,
+	# its subcommander_rank_title from the player's own doctrine profile), leaving all
+	# movement/formation/stance state untouched. "frontage" is group_id + 1 (see
+	# enqueue_delegation's own doc comment for why) -- an omitted key (an old/malformed
+	# replay entry) defaults to 0, decoding to UNDELEGATED, the safe fallback.
+	if target_uid == ORDER_DELEGATION_ONLY:
+		var group_id: int = int(cmd.get("frontage", 0)) - 1
+		var doctrine: Dictionary = DoctrineRegistry.doctrine(player_doctrine)
+		var rank_title: String = PlayerDelegation.subcommander_rank_title(doctrine)
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u == null or u.state == UnitRef.State.DEAD:
+				continue
+			u.player_group_id = group_id
+			u.subcommander_rank_title = rank_title if group_id != Unit.UNDELEGATED else ""
+		return
 	# Formation-change-only: update each unit's formation and separation footprint,
 	# leaving all movement and order-mode state untouched.
 	if target_uid == ORDER_FORMATION_ONLY:
@@ -1248,10 +1881,10 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.set_current_order(Order.new_formation(fm))
 		return
 	# Frontage-resize-only: set each unit's file count (and anchor shift, for an
-	# asymmetric explicatio/duplicatio -- 0.0 for the plain [ / ] resize) to the
-	# absolute target, leaving movement and order-mode state untouched. Absolute so
-	# re-applying the pending order on the tick is a no-op (idempotent), matching
-	# move/formation.
+	# asymmetric explicatio/duplicatio or a flank-anchored grip drag -- 0.0 for the
+	# plain centred [ / ] resize) to the absolute target, leaving movement and
+	# order-mode state untouched. Absolute so re-applying the pending order on the
+	# tick is a no-op (idempotent), matching move/formation.
 	if target_uid == ORDER_FRONTAGE_ONLY:
 		var files: int = int(cmd.get("frontage", 0))
 		if files > 0:
@@ -1298,6 +1931,31 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				u.rank_relief = false
 			if u.current_order == null:
 				u.set_current_order(Order.new_stance(stance, rank_toggle))
+		return
+	# Unit-settings-only: write the durable walk_advance, reform_before_move, and/or
+	# file_major_reform_mode fields on each unit, leaving all movement/formation/stance state
+	# untouched. Same instantaneous-write shape as the stance branch above, minus any
+	# queue/order-tree interaction -- these are plain unit fields, not something a replay
+	# transcript needs to show as an order.
+	if target_uid == ORDER_UNIT_SETTINGS_ONLY:
+		var walk_toggle: int = int(cmd.get("walk_advance_toggle", UnitSettingToggle.LEAVE))
+		var reform_toggle: int = int(cmd.get("reform_toggle", UnitSettingToggle.LEAVE))
+		var file_major_mode_toggle: int = \
+				int(cmd.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u == null:
+				continue
+			if walk_toggle == UnitSettingToggle.ON:
+				u.walk_advance = true
+			elif walk_toggle == UnitSettingToggle.OFF:
+				u.walk_advance = false
+			if reform_toggle == UnitSettingToggle.ON:
+				u.reform_before_move = true
+			elif reform_toggle == UnitSettingToggle.OFF:
+				u.reform_before_move = false
+			if file_major_mode_toggle != REFORM_MODE_TOGGLE_LEAVE:
+				u.file_major_reform_mode = file_major_mode_toggle
 		return
 	# Arrow-key nudge: each unit steps a small fixed distance to its own side/rear,
 	# holding facing (ordered_facing set), leaving stance and formation untouched. A
@@ -1348,6 +2006,28 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			if u != null:
 				u.countermarch(variant)
 		return
+	# Disengage and step back: each unit peels off its current fight and steps back a
+	# short distance, holding facing. Unit.disengage() creates its own order and no-ops
+	# unless the unit is actually FIGHTING right now -- see ORDER_DISENGAGE.
+	if target_uid == ORDER_DISENGAGE:
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null:
+				u.disengage()
+		return
+	if target_uid == ORDER_DISENGAGE_SACRIFICE:
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null:
+				# Unit.disengage_with_sacrifice() only reduces the unit's own headcount and
+				# starts its retreat -- it can't spawn the rearguard itself (Battle calls
+				# Unit, never the reverse), so Battle does that half here, from the
+				# reported sacrifice count and delay.
+				var result: Dictionary = u.disengage_with_sacrifice()
+				var sacrifice_count: int = int(result["sacrifice_count"])
+				if sacrifice_count > 0:
+					_spawn_rearguard_detachment(u, sacrifice_count, float(result["delay_sec"]))
+		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
 	# disambiguator). Handle it first, then fall through to attack/relief/move.
@@ -1396,8 +2076,8 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				attack_targets.append(candidate)
 		var ref_pos: Vector2 = target_unit.position
 		attack_targets.sort_custom(func(a: Unit, b: Unit) -> bool:
-			var da: float = a.position.distance_to(ref_pos)
-			var db: float = b.position.distance_to(ref_pos)
+			var da: float = a.position.distance_squared_to(ref_pos)
+			var db: float = b.position.distance_squared_to(ref_pos)
 			return da < db if da != db else a.uid < b.uid)
 	# Distributed relief mirrors distributed attack: pre-sort every engaged friendly
 	# near the clicked target so each fresh unit can take over a DIFFERENT tired
@@ -1434,8 +2114,8 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				relief_targets.append(candidate)
 			var relief_ref_pos: Vector2 = target_unit.position
 			relief_targets.sort_custom(func(a: Unit, b: Unit) -> bool:
-				var da: float = a.position.distance_to(relief_ref_pos)
-				var db: float = b.position.distance_to(relief_ref_pos)
+				var da: float = a.position.distance_squared_to(relief_ref_pos)
+				var db: float = b.position.distance_squared_to(relief_ref_pos)
 				return da < db if da != db else a.uid < b.uid)
 	var relieved: bool = false
 	var relief_foe: Unit = null
@@ -1455,7 +2135,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# issuing a move/attack is the normal way to use it).
 			if mode == OrderMode.KNOCKBACK_FOCUS:
 				u.knockback_push_indefinite = bool(cmd.get("knockback_indefinite", false))
-			u.walk_advance = bool(cmd.get("walk_advance", false))
+			# walk_advance is no longer re-injected from the order -- it's the unit's
+			# own persistent field, set at spawn / by an explicit player toggle, and simply
+			# read here (via _move_to's own `walk_advance` check), not overwritten.
 			u.support_target = null
 			# A fresh order restarts the cycle-charge loop in its charging phase, so a
 			# newly-ordered unit drives in rather than resuming a stale pull-back.
@@ -1535,10 +2217,28 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# busy one continues its current order and the leg commits when it is
 				# promoted (retire_current_order -> _start_promoted_move).
 				var leg := Order.new_move(point, mode, gait, false)
+				# Only a NORMAL-stance plain move gets the disengage-time policy -- see
+				# ENGAGED_FRACTION_CANCELS_MOVE's own doc comment.
+				if mode == OrderMode.NORMAL:
+					leg.with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, ENGAGED_FRACTION_CANCELS_MOVE)
 				u.append_order(leg)
-				if u.current_order == leg and not u.has_move_target:
-					u.move_target = point
-					u.has_move_target = true
+				if u.current_order == leg:
+					# Reset the peak tracker only once this leg actually becomes current: an
+					# idle unit has nothing running to inherit from, so this is a genuine fresh
+					# start for it. A busy unit's leg stays queued behind whatever order is
+					# still running -- resetting unconditionally would clobber that OTHER,
+					# still-current order's own unconsumed peak (it's tracked per-unit, but
+					# logically belongs to whichever order is actually current). A queued leg
+					# does NOT get a reset when it's later promoted either: the peak accumulated
+					# while it waited legitimately carries over (see
+					# _move_order_peak_engaged_fraction's own doc comment and
+					# Unit._start_promoted_move's, for why resetting there would silently erase
+					# a real fight the disengage decision still needs).
+					if mode == OrderMode.NORMAL:
+						u._move_order_peak_engaged_fraction = 0.0
+					if not u.has_move_target:
+						u.move_target = point
+						u.has_move_target = true
 			else:
 				# Choose the drill maneuver for a plain move (a form-up commands its own
 				# facing, so it never side-steps). A small lateral shift holds facing and
@@ -1553,11 +2253,23 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 						and UnitManeuver.is_backstep(u.facing, move_vec)
 				if side_step or back_step:
 					u.ordered_facing = u.facing
+				# A cavalry unit's move sharply off its current heading -- forward-oblique,
+				# lateral, or rear, any angle, potentially past 180° -- gallops through a
+				# single continuous moving wheel (hinge translating forward the whole swing)
+				# straight into the march, superseding the rear-move/lateral-pivot/wheel-turn
+				# composites below: a mounted unit doesn't need to halt first the way a foot
+				# regiment's drilled maneuvers do. A side-step/back-step nudge is unaffected --
+				# there's no turn to avoid on a move that short.
+				var moving_wheel_turn: bool = not cmd.has("face") and not side_step and not back_step \
+						and u.state != UnitRef.State.FIGHTING \
+						and UnitManeuver.is_moving_wheel_turn(u.is_cavalry, u.facing, move_vec)
 				# A longer move into the rear sector about-faces (conversio) in place, then
 				# marches to the destination facing it -- rather than pivoting the whole
-				# block 180° about its centre. A form-up, a side-step, a back-step, and a
-				# fighting unit (conversio is blocked in melee) all keep the normal march.
+				# block 180° about its centre. A form-up, a side-step, a back-step, a moving-
+				# wheel cavalry turn, and a fighting unit (conversio is blocked in melee) all
+				# keep the normal march.
 				var rear_move: bool = not cmd.has("face") and not side_step and not back_step \
+						and not moving_wheel_turn \
 						and u.state != UnitRef.State.FIGHTING \
 						and UnitManeuver.is_rear_move(u.facing, move_vec)
 				# An oblique rear-sector move -- one where the about-face's own 180°
@@ -1571,9 +2283,15 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# place, marches sideways to it keeping its pre-turn footprint, then
 				# quarter-turns back to the original facing on arrival -- a file march,
 				# not a repointed unit that ends up permanently facing the new direction.
+				# This is a professional drill maneuver in the same sense _move_to's own
+				# pivot_as_formation gate already treats a centre-pivot: an undisciplined
+				# unit (disciplined == false) skips it and falls straight through to the
+				# plain-march branch below, same as a fighting unit that can't turn in
+				# place -- it just turns to face the destination immediately and walks
+				# there directly.
 				var lateral_pivot: bool = not cmd.has("face") and not side_step \
-						and not back_step and not rear_move \
-						and u.state != UnitRef.State.FIGHTING \
+						and not back_step and not rear_move and not moving_wheel_turn \
+						and u.state != UnitRef.State.FIGHTING and u.disciplined \
 						and UnitManeuver.is_lateral_pivot(u.facing, move_vec)
 				# Drag-to-form-up: apply frontage/facing immediately so soldiers begin
 				# adjusting during the reform phase rather than after the march starts.
@@ -1596,17 +2314,30 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# its heading in Unit (turning in place during the reform hold and as it
 				# marches), so the ranks come onto the new bearing in good order rather
 				# than the whole line flipping its facing at order time.
-				# Reform timing rides the recorded "reform" field on the Order: for a plain
-				# move it arms the reform-before-move hold below; for a rear move it times
-				# the composite's reform phase (see Unit._finish_order_turn). A lateral
+				# Reform timing rides the unit's OWN persistent reform_before_move field
+				# (no longer a per-order cmd flag) via the Order's "reform" copy: for a
+				# plain move it arms the reform-before-move hold below; for a rear move it
+				# times the composite's reform phase (see Unit._finish_order_turn). A lateral
 				# pivot never reforms -- it keeps its pre-turn footprint for the whole march
 				# by design (the file-march character of the maneuver), so it forces reform
-				# off regardless of what the player's own command requested. A wheel-turn
-				# likewise never reforms between its turn phases and the march -- it reforms
-				# on arrival instead (Unit._finish_wheel), same as a plain rear move's own
-				# un-checked default.
+				# off regardless of the unit's own setting. A wheel-turn likewise never
+				# reforms between its turn phases and the march -- it reforms on arrival
+				# instead (Unit._finish_wheel), same as a plain rear move's own un-checked
+				# default. A moving wheel never reforms at all -- there's no about-face to
+				# leave a partial rank at the front, and a hold before the wheel even starts
+				# would defeat the whole point of a continuous, no-halt maneuver.
 				var order := Order.new_move(point, mode, gait, gait >= UnitRef.GAIT_RUN)
-				order.reform = bool(cmd.get("reform", false)) and not lateral_pivot and not wheel_turn
+				# Only a NORMAL-stance plain move gets the disengage-time policy -- see
+				# ENGAGED_FRACTION_CANCELS_MOVE's own doc comment. Set on the top-level `order`
+				# (current_order), not a REFORM/march child leaf split off it below --
+				# Unit._resolve_disengage_move_order() only ever reads current_order.guard.
+				# Reset the peak tracker here too: a fresh order's own decision must not
+				# inherit a stale reading from whatever this unit was doing before this order.
+				if mode == OrderMode.NORMAL:
+					order.with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, ENGAGED_FRACTION_CANCELS_MOVE)
+					u._move_order_peak_engaged_fraction = 0.0
+				order.reform = u.reform_before_move and not lateral_pivot and not wheel_turn \
+						and not moving_wheel_turn
 				# A multi-unit drag-line form-up: tag this order as one member of the shared
 				# group (docs/atomic-order-decomposition-design.md) instead of the standalone
 				# order every other move is. The group node itself is built once per id and
@@ -1627,7 +2358,17 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# ground -- live play and playback take this same path.
 				u.set_current_order(order)
 				var turn_armed: bool = false
-				if rear_move:
+				if moving_wheel_turn:
+					# A single continuous wheel straight from the current facing to the
+					# destination bearing, immediately followed by the march -- no about-face,
+					# no reform hold. begin_moving_wheel refuses the same way begin_pivot does
+					# (fighting, or bodies not seeded yet) -- fall back to a plain march then,
+					# same as every other composite above.
+					u.has_move_target = false
+					var moving_wheel_angle: float = UnitManeuver.moving_wheel_turn_angle(u.facing, move_vec)
+					var moving_wheel_dir: int = 1 if moving_wheel_angle >= 0.0 else -1
+					turn_armed = u.begin_moving_wheel(order, moving_wheel_dir, moving_wheel_angle)
+				elif rear_move:
 					# Park the destination on the order and about-face in place; _think
 					# starts the march when the turn completes. has_move_target stays false
 					# so the turn isn't cancelled. begin_about_face(_with_wheel) refuses
@@ -1691,6 +2432,21 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.has_move_target = true
 		if not append:
 			u.start_order_response()
+
+
+## Battle AI phase 4 (docs/battle-ai-design.md): clear player_group_id (and its resolved
+## subcommander_rank_title) for each of `uids` that is currently delegated -- the actuation
+## behind "a manual player order to a delegated unit always overrides the subcommander's
+## directive" (design doc, phase-4 acceptance criteria). Called once, at the top of
+## _apply_order_cmd, only when the incoming command is player-issued (from_player) and isn't
+## itself the delegation toggle (which sets its own final player_group_id right after, making
+## a revoke-then-set here redundant but harmless -- see _apply_order_cmd's own guard).
+func _revoke_delegation(uids: Array) -> void:
+	for uid in uids:
+		var u: Unit = _unit_by_uid(int(uid))
+		if u != null and u.is_delegated():
+			u.player_group_id = Unit.UNDELEGATED
+			u.subcommander_rank_title = ""
 
 
 func _uids_contain(uids: Array, target: int) -> bool:
@@ -1792,16 +2548,16 @@ func _tick_tier_transitions() -> void:
 		if u == null or u.state == UnitRef.State.DEAD:
 			continue
 		var nearest_pos := Vector2.ZERO
-		var nearest_dist: float = INF
+		var nearest_dist_sq: float = INF
 		for other in all_units:
 			var e = other as UnitRef
 			if e == null or e.team == u.team or e.state == UnitRef.State.DEAD:
 				continue
-			var d: float = u.position.distance_to(e.position)
-			if d < nearest_dist:
-				nearest_dist = d
+			var d_sq: float = u.position.distance_squared_to(e.position)
+			if d_sq < nearest_dist_sq:
+				nearest_dist_sq = d_sq
 				nearest_pos = e.position
-		if nearest_dist == INF:
+		if nearest_dist_sq == INF:
 			continue   # no enemy in play: hold the current tier (the victory check ends the battle)
 		if u.tier == FormationTier.FAR:
 			if FormationTier.should_promote(u.position, nearest_pos):
@@ -1847,7 +2603,39 @@ func _run_enemy_ai() -> void:
 		var directive: Dictionary = directives.get(u.uid, {})
 		var cmd: Dictionary = UnitLeader.decide(u, all_units, directive, pursue_routers)
 		if not cmd.is_empty():
-			_apply_order_cmd(cmd)
+			_apply_order_cmd(cmd, false)   # AI-issued: never recorded, never revokes delegation
+
+
+## Battle AI phase 4 (docs/battle-ai-design.md): player delegation. Mirrors _run_enemy_ai's own
+## shape above, pointed at whichever team-0 units the player has delegated to an AI
+## subcommander group (Unit.player_group_id, written only by enqueue_delegation) instead of at
+## team 1's whole roster. A non-delegated team-0 unit is invisible to this function entirely
+## (PlayerDelegation.delegated_groups only returns delegated units), so it keeps behaving
+## exactly as an ordinary player unit always has -- untouched by any AI decision. Every group
+## runs through the SAME Subcommander.decide_group/UnitLeader.decide pipeline team 1 uses, so
+## a delegated group's resulting orders are structurally indistinguishable from hand-issued
+## ones in the transcript (the design doc's own phase-4 acceptance criterion) -- and, like
+## team 1's AI, this runs un-recorded (from_player=false into _apply_order_cmd) and is
+## re-derived on replay from the same recorded delegation toggles, never itself recorded.
+##
+## pursue_routers is hardcoded true here (unlike team 1, which threads it from the doctrine's
+## own rout-exploitation flag): there is no AI General standing up team-0's plan/reserves --
+## the player IS the general for a delegated group, choosing group membership directly (see
+## PlayerDelegation's own class doc) -- so this stays at the phase-1/phase-2 default rather
+## than reading a doctrine-driven decision the design scopes to phase 3's General, which this
+## phase deliberately does not stand up for team 0.
+func _run_player_delegated_ai() -> void:
+	var all_units: Array = get_tree().get_nodes_in_group("units")
+	var team0: Array = _team_units(0)
+	var groups: Dictionary = PlayerDelegation.delegated_groups(team0)
+	for group_id in groups:
+		var group: Array = groups[group_id]
+		var group_directives: Dictionary = Subcommander.decide_group(group, all_units)
+		for u in group:
+			var directive: Dictionary = group_directives.get(u.uid, {})
+			var cmd: Dictionary = UnitLeader.decide(u, all_units, directive, true)
+			if not cmd.is_empty():
+				_apply_order_cmd(cmd, false)   # AI-issued: never recorded, never revokes delegation
 
 
 func _team_units(team: int) -> Array:
@@ -1915,8 +2703,9 @@ func _check_victory() -> void:
 		return
 	# A team is still contesting the battle while it has any body on the field — a
 	# fightable unit or a routing one that might rally. Waiting on routers is bounded:
-	# each rout resolves (rally or shatter) within ROUT_TIME, so a both-sides-only-routers
-	# state can't stall the outcome — it just defers the call until the routers settle.
+	# each rout resolves (rally or shatter) within its own rout_time (default ROUT_TIME), so a
+	# both-sides-only-routers state can't stall the outcome — it just defers the call until
+	# the routers settle.
 	var p_alive: bool = _team_in_play(0)
 	var e_alive: bool = _team_in_play(1)
 	if not p_alive and not e_alive:

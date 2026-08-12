@@ -187,3 +187,56 @@ func test_wheel_after_quarter_turn_still_hinges_on_the_standing_flank() -> void:
 		"after a quarter-turn, the standing flank still holds (hinge %.1f vs far %.1f)"
 			% [hinge_travel, far_travel])
 	assert_gt(far_travel, 20.0, "the far end swings a real arc")
+
+
+func test_outer_file_never_exceeds_its_jog_gait_through_the_swing() -> void:
+	# The wheel is paced by its OUTER file (UnitManeuver.wheel_gait_rate): the corner man
+	# farthest from the hinge covers rate x radius per second, and the effective rate is
+	# derived so that arc pace never exceeds the unit's jog. Before this cap a fixed
+	# angular rate ran the outer man at a multiple of his own sprint on any wide block.
+	var u := _make_unit(1, 40)
+	u.seed_sim_soldiers()
+	u.wheel(1)
+	assert_true(u.is_wheeling(), "the wheel armed")
+	var delta := 1.0 / 60.0
+	var worst: float = 0.0
+	var ticks := 0
+	while u.is_wheeling() and ticks < 400:
+		var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+		u._physics_process(delta)
+		u.step_sim_soldiers(delta)
+		for i in range(before.size()):
+			worst = maxf(worst, before[i].distance_to(u._sim_soldier_pos[i]) / delta)
+		ticks += 1
+	assert_false(u.is_wheeling(), "the gait-paced wheel still completes within budget")
+	# 10% headroom over jog: the rigid rotation itself is exact, but residual body
+	# velocity (rotated through each step) can add a whisker on top.
+	assert_lt(worst, u.jog_speed * 1.1,
+		"no soldier outruns his own jog through the swing (worst %.1f wu/s vs jog %.1f)"
+			% [worst, u.jog_speed])
+	# And the cap actually binds for this block: the outer man paces NEAR jog, rather
+	# than the ceiling rate having quietly governed (which would leave a wide margin).
+	assert_gt(worst, u.jog_speed * 0.5,
+		"the outer file genuinely paces the swing (worst %.1f wu/s vs jog %.1f)"
+			% [worst, u.jog_speed])
+
+
+func test_wheel_outer_radius_reads_the_live_bodies_with_a_slot_fallback() -> void:
+	var u := _make_unit(1, 40)
+	u.seed_sim_soldiers()
+	var hinge: Vector2 = u._wheel_pivot_point(1)
+	var expected: float = 0.0
+	for p in u._sim_soldier_pos:
+		expected = maxf(expected, hinge.distance_to(p))
+	assert_almost_eq(u._wheel_outer_radius(hinge), expected, 0.001,
+		"seeded bodies pace the wheel by where the men actually stand")
+	# Unseeded: fall back to the formation slots so a bare unit still gets a real radius.
+	var bare := _make_unit(2, 40)
+	var bare_hinge: Vector2 = bare._wheel_pivot_point(1)
+	var slot_expected: float = 0.0
+	for s in bare.soldier_world_slots(bare.soldiers):
+		slot_expected = maxf(slot_expected, bare_hinge.distance_to(s))
+	assert_almost_eq(bare._wheel_outer_radius(bare_hinge), slot_expected, 0.001,
+		"an unseeded unit paces by its slot grid instead of returning zero")
+	assert_gt(bare._wheel_outer_radius(bare_hinge), 0.0,
+		"the fallback yields a real radius, not a degenerate zero")

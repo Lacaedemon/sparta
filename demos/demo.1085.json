@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/real-mass-cavalry-charge.json",
+  "caption": "Cavalry's contact mass is now derived from real kilograms (its own body_mass_kg plus the warhorse's real mass_kg, relative to the 80kg foot-soldier baseline) instead of a hand-tuned 2.5 scalar -- the derived figure (~6.56) is over 2.6x heavier. Watch the clash: the cavalry (red) holds its ground and keeps grinding through the melee instead of getting shoved around, while the infantry (blue) is eventually ground down and routs (translucent, final frame). Verified with dump-state.sh: an old-vs-new before/after comparison of this exact scenario shows both sides taking identical casualties (30->18 infantry, 20->13 cavalry) up through the initial clash, then diverging -- with the old 2.5 mass the fight petered out with both sides disengaging around 18/13 soldiers; with the new derived ~6.56 mass the infantry is fully routed (5 soldiers left, morale -60) while the cavalry stays engaged and dominant. A separate no-cavalry Spearmen-vs-Infantry battle (demos/inputs/spear-standoff.json) was dumped before/after and is byte-for-byte identical across 15 ticks, confirming foot-troop-only combat is completely unaffected.",
+  "fixed_fps": 30,
+  "max_frames": 500,
+  "fps": 15,
+  "width": 720
+}

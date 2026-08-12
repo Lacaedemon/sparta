@@ -59,12 +59,18 @@ var forced_seed: int = -1
 #                   an asymmetric (anchored) -4 resize; omitted when 0.0 = the plain centred
 #                   resize every other frontage change already uses),
 #               "face"?: float (deploy facing in radians for a drag-to-form-up move),
-#               "walk_advance"?: bool (omitted when false),
 #               "group_attack"?: int (Battle.GroupAttackMode; omitted when 0 = FOCUSED),
 #               "form_up_group"?: int (the shared id every per-unit order from the same
 #                   multi-unit drag-line form-up carries, so Battle._apply_order_cmd can
 #                   rebuild the same Order.Type.FORM_UP grouping on replay as it did live;
-#                   omitted for a single-unit form-up and every other order kind) }.
+#                   omitted for a single-unit form-up and every other order kind),
+#               "walk_advance_toggle"?: int (Battle.UnitSettingToggle; a
+#                   Battle.ORDER_UNIT_SETTINGS_ONLY order's walk_advance write, omitted
+#                   when 0 = LEAVE -- see enqueue_unit_settings),
+#               "reform_toggle"?: int (same shape, for reform_before_move),
+#               "file_major_reform_mode_toggle"?: int (a Unit.ReformMode ordinal to write,
+#                   omitted when -1 = Battle.REFORM_MODE_TOGGLE_LEAVE -- can't reuse 0 the
+#                   way the two toggles above do, since 0 is a legitimate ReformMode value) }.
 var _orders: Array = []
 var _play_index: int = 0
 
@@ -100,6 +106,20 @@ var _pointer_index: int = 0
 # like the camera/pointer tracks).
 var _key_track: Array = []
 
+# Time-scale track: feeds the simulation directly, unlike every cosmetic track above.
+# Every Engine.time_scale change made during a live recording (the slow-motion hotkey),
+# tick-stamped. Engine.time_scale scales the `delta` each _physics_process(delta) call
+# receives -- physics still ticks once per physics frame regardless of time_scale, but a
+# scaled delta changes how far every velocity*delta integration moves that tick. An
+# un-recorded time_scale change would silently desync a "deterministic" replay: the same
+# seed and orders would integrate against a different delta sequence and diverge from what
+# was actually recorded. Each entry: { "tick": int, "value": float }. Consecutive-identical
+# values are not recorded (see record_time_scale_change). Additive and back-compatible:
+# replays without this track apply no time_scale changes during playback, exactly as before
+# this field existed.
+var _time_scale_track: Array = []
+var _time_scale_index: int = 0
+
 # Cursor moves smaller than this (world px) don't add a keyframe — drops sub-pixel jitter
 # while keeping deliberate motion. Larger than the camera track's exact dedup because the
 # cursor is a continuous signal, not the camera's occasional pan.
@@ -114,6 +134,14 @@ var drive_camera: bool = false
 # Off by default — in-app Watch Replay keeps the orders on the Space-held survey only;
 # the demo recorder (DemoRunner) turns it on. Cosmetic, never touches the sim.
 var show_demo_orders: bool = false
+
+# The battle's MAP block (BattleMap.serialize's shape) when the recorded battle ran on a
+# non-default map: Battle publishes it at record time, save() writes it, start_playback()
+# loads it, and Battle._ready() applies it before rebuilding the battlefield. Empty ==
+# the default map: nothing is written to the file, so default-map replays (and every
+# pre-map replay) keep the exact old shape — an additive field, no version bump, the same
+# back-compatibility pattern as the camera/pointer/key tracks above.
+var map: Dictionary = {}
 # Bumped per save so two battles finishing in the same wall-clock second don't
 # overwrite each other (the timestamp only has second precision).
 var _save_counter: int = 0
@@ -129,6 +157,20 @@ var last_saved_path: String = ""
 # commits don't touch anything replay-affecting, so refusing to play would be too strict.
 # HUD._ready() shows and clears this once per scene load (see there for why).
 var last_load_sha_mismatch: String = ""
+
+# The spawn-layout fingerprint (SpawnFingerprint.of_tree) of the battle this recording ran
+# on. Battle publishes it after spawning, exactly like `map` above, so save() can stamp the
+# replay with the layout it was recorded against. Empty until Battle sets it (and on a replay
+# that predates this field), in which case nothing is written and the load check is skipped.
+var spawn_fingerprint: String = ""
+# start_playback() loads the recorded replay's stamped fingerprint here; Battle._ready compares
+# it against the freshly-spawned layout after re-spawning. Empty = the replay carried no stamp.
+var loaded_spawn_fingerprint: String = ""
+# Set by Battle._ready (after spawn) when a loaded replay's stamped spawn_fingerprint differs
+# from the layout this build actually spawns -- a genuine desync signal (orders were recorded
+# against unit positions this build no longer produces), unlike the softer commit_sha heads-up.
+# "" when they match or the replay carried no stamp. HUD surfaces and clears it once per load.
+var last_load_spawn_mismatch: String = ""
 
 
 ## Begin capturing a fresh live battle. Picks a random seed and clears history.
@@ -149,9 +191,15 @@ func start_recording() -> void:
 	_pointer_track.clear()
 	_pointer_index = 0
 	_key_track.clear()
+	_time_scale_track.clear()
+	_time_scale_index = 0
 	drive_camera = false
 	show_demo_orders = false
 	_play_index = 0
+	map = {}
+	# Cleared for the fresh recording; Battle republishes it after spawning (like `map`).
+	spawn_fingerprint = ""
+	last_load_spawn_mismatch = ""
 	loaded_path = ""
 	# Drop the previous battle's save path so a failed save() this battle can't
 	# fall back to replaying the wrong one.
@@ -188,6 +236,14 @@ func start_playback(path: String) -> bool:
 	# precision on a full 64-bit seed, silently desyncing the replay.
 	seed_value = int(str(data.get("seed", "0")))
 	rng.seed = seed_value
+	# The optional map block (absent in pre-map and default-map replays, which
+	# then rebuild the default battlefield). Applied by Battle._ready().
+	map = data.get("map", {})
+	# The optional spawn-layout stamp (absent in pre-stamp replays, which skip the check).
+	# Battle._ready compares it against the freshly-spawned layout and sets
+	# last_load_spawn_mismatch on a divergence -- cleared here so a re-load re-checks cleanly.
+	loaded_spawn_fingerprint = str(data.get("spawn_fingerprint", ""))
+	last_load_spawn_mismatch = ""
 	_orders.clear()
 	for o in data.get("orders", []):
 		var uids: Array = []
@@ -209,12 +265,16 @@ func start_playback(path: String) -> bool:
 			entry["anchor_offset"] = float(o["anchor_offset"])
 		if o.has("face"):
 			entry["face"] = float(o["face"])
-		if o.has("walk_advance"):
-			entry["walk_advance"] = bool(o["walk_advance"])
 		if o.has("group_attack"):
 			entry["group_attack"] = int(o["group_attack"])
 		if o.has("form_up_group"):
 			entry["form_up_group"] = int(o["form_up_group"])
+		if o.has("walk_advance_toggle"):
+			entry["walk_advance_toggle"] = int(o["walk_advance_toggle"])
+		if o.has("reform_toggle"):
+			entry["reform_toggle"] = int(o["reform_toggle"])
+		if o.has("file_major_reform_mode_toggle"):
+			entry["file_major_reform_mode_toggle"] = int(o["file_major_reform_mode_toggle"])
 		_orders.append(entry)
 	_play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
@@ -256,6 +316,14 @@ func start_playback(path: String) -> bool:
 		for s in k.get("labels", []):
 			labels.append(str(s))
 		_key_track.append({"tick": int(k.get("tick", 0)), "labels": labels})
+	# Load the optional time-scale track. Absent in replays recorded before it existed,
+	# or when no slow-motion change was ever made -- both then play at a constant 1.0,
+	# exactly the pre-existing behaviour.
+	_time_scale_track.clear()
+	_time_scale_index = 0
+	for t in data.get("time_scale", []):
+		_time_scale_track.append(
+				{"tick": int(t.get("tick", 0)), "value": float(t.get("value", 1.0))})
 	loaded_path = path
 	mode = Mode.PLAYBACK
 	return true
@@ -278,8 +346,9 @@ func replays_dir() -> String:
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		order_mode: int = 0, formation: int = 0, frontage: int = 0, face: float = INF,
-		group_attack: int = 0, walk_advance: bool = false, anchor_offset: float = 0.0,
-		form_up_group: int = -1) -> void:
+		group_attack: int = 0, anchor_offset: float = 0.0,
+		form_up_group: int = -1, walk_advance_toggle: int = 0, reform_toggle: int = 0,
+		file_major_reform_mode_toggle: int = -1) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
@@ -303,8 +372,6 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# (a plain move), so any real angle -- including 0 -- is recorded.
 	if not is_inf(face):
 		entry["face"] = face
-	if walk_advance:
-		entry["walk_advance"] = true
 	# 0 = GroupAttackMode.FOCUSED (the default); omit it so old replays stay valid.
 	if group_attack != 0:
 		entry["group_attack"] = group_attack
@@ -313,23 +380,39 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# stay exactly as compact.
 	if form_up_group >= 0:
 		entry["form_up_group"] = form_up_group
+	# 0 = Battle.UnitSettingToggle.LEAVE (the default -- no write); a Battle.
+	# ORDER_UNIT_SETTINGS_ONLY order's walk_advance/reform_before_move toggle, omitted for
+	# every other order kind so old replays stay valid.
+	if walk_advance_toggle != 0:
+		entry["walk_advance_toggle"] = walk_advance_toggle
+	if reform_toggle != 0:
+		entry["reform_toggle"] = reform_toggle
+	# -1 = Battle.REFORM_MODE_TOGGLE_LEAVE (the default -- no write; can't reuse 0 the way the
+	# two toggles above do, since 0 is a legitimate Unit.ReformMode value -- FILE_MAJOR -- not
+	# a spare sentinel). Omitted for every other order kind so old replays stay valid.
+	if file_major_reform_mode_toggle != -1:
+		entry["file_major_reform_mode_toggle"] = file_major_reform_mode_toggle
 	_orders.append(entry)
 
 
-## PLAYBACK: reposition the order-read cursor so the next orders_for_tick(tick) call
-## returns exactly the orders due at `tick` onward -- neither replaying ones already
-## consumed before a rewind nor skipping ones a fast-forward jumped past. Used when a
-## derived state-snapshot restore (Battle.restore_snapshot) jumps the battle to
-## a tick other than the one the cursor naturally advanced to. `_orders` is tick-sorted (both
-## record_order's append order during a live recording and start_playback's load order
-## preserve it), so a linear scan from the front always lands correctly. No-op outside
-## playback.
+## PLAYBACK: reposition the order-read cursor (and the time-scale read cursor -- see
+## below) so the next orders_for_tick(tick)/time_scale_for_tick(tick) call returns exactly
+## what's due at `tick` onward -- neither replaying entries already consumed before a
+## rewind nor skipping ones a fast-forward jumped past. Used when a derived state-snapshot
+## restore (Battle.restore_snapshot) jumps the battle to a tick other than the one the
+## cursors naturally advanced to. Both tracks are tick-sorted (record-time append order and
+## start_playback's load order preserve it), so a linear scan from the front always lands
+## correctly. No-op outside playback.
 func rewind_cursor_to_tick(tick: int) -> void:
 	if mode != Mode.PLAYBACK:
 		return
 	_play_index = 0
 	while _play_index < _orders.size() and int(_orders[_play_index]["tick"]) < tick:
 		_play_index += 1
+	_time_scale_index = 0
+	while _time_scale_index < _time_scale_track.size() \
+			and int(_time_scale_track[_time_scale_index]["tick"]) < tick:
+		_time_scale_index += 1
 
 
 ## PLAYBACK: return all orders scheduled for `tick` (in record order), advancing
@@ -510,6 +593,37 @@ func keys_for_tick(tick: int, window: int) -> Array:
 	return out
 
 
+## RECORD: append a time_scale change at `tick`. No-op outside RECORD, and when `value`
+## matches the currently-active scale (the track's last entry, or 1.0 if none recorded
+## yet) -- mirrors the camera/pointer tracks' "drop unchanged samples" convention. Unlike
+## record_keys, this feeds the simulation on playback (see the track's own doc above); it
+## is not cosmetic.
+func record_time_scale_change(tick: int, value: float) -> void:
+	if mode != Mode.RECORD:
+		return
+	var current := 1.0
+	if not _time_scale_track.is_empty():
+		current = float(_time_scale_track[-1]["value"])
+	if is_equal_approx(value, current):
+		return
+	_time_scale_track.append({"tick": tick, "value": value})
+
+
+## PLAYBACK: the new Engine.time_scale to apply at `tick`, or -1.0 if the track has no entry
+## due this exact tick (every legitimate time_scale value is positive, so -1.0 is an unused
+## sentinel). Advances the read cursor like orders_for_tick -- call once per tick, in tick
+## order, from the same place orders_for_tick is called. Returns -1.0 outside playback.
+func time_scale_for_tick(tick: int) -> float:
+	if mode != Mode.PLAYBACK:
+		return -1.0
+	var out := -1.0
+	while _time_scale_index < _time_scale_track.size() \
+			and int(_time_scale_track[_time_scale_index]["tick"]) == tick:
+		out = float(_time_scale_track[_time_scale_index]["value"])
+		_time_scale_index += 1
+	return out
+
+
 ## PLAYBACK: form-up (drag-deploy) orders issued within `window` ticks before `tick`,
 ## each as {x, y (centre), face (radians), frontage, age, uid (the slice's unit, -1 when
 ## the order carried none)}, so the overlay can replay the dragged flank line on that
@@ -553,6 +667,16 @@ func save(result: String, duration_ticks: int) -> String:
 		"commit_sha": BuildInfoRef.COMMIT_SHA,
 		"orders": _orders,
 	}
+	# A non-default map rides in the header so playback reconstructs the same
+	# battlefield; absent for default-map battles (see the `map` field's doc).
+	if not map.is_empty():
+		payload["map"] = map
+	# Stamp the spawn-layout fingerprint so playback can fail loudly if a later build's
+	# spawn table no longer matches the layout these orders were recorded against (the
+	# silent spawn-drift failure mode). Absent when Battle never published one (a battle
+	# that spawned no units, or a caller that didn't set it) -- the load check then skips.
+	if spawn_fingerprint != "":
+		payload["spawn_fingerprint"] = spawn_fingerprint
 	# Only emit a dirty-worktree note when the live checkout actually has uncommitted
 	# changes worth flagging -- a dev-only best-effort signal (BuildInfo.git_dirty_status(),
 	# see its own doc comment), omitted on an exported build or a clean tree so the common
@@ -571,6 +695,10 @@ func save(result: String, duration_ticks: int) -> String:
 	# Likewise emit the keystroke track only when keys were pressed.
 	if not _key_track.is_empty():
 		payload["keys"] = _key_track
+	# Likewise emit the time-scale track only when a slow-motion change was made -- this
+	# one feeds the simulation on load (see the field's own doc), unlike the three above.
+	if not _time_scale_track.is_empty():
+		payload["time_scale"] = _time_scale_track
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		push_warning("Could not write replay to %s" % path)

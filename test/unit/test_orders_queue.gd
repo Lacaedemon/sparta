@@ -470,6 +470,62 @@ func test_ticks_elapsed_guard_fires_after_the_configured_tick_count() -> void:
 	assert_null(u.current_order, "the third tick reaches the configured count")
 
 
+# --- ENGAGED_FRACTION_ABOVE guard (disengage-time policy on a heavily-engaged MOVE) -----
+#
+# Reworked (see docs/orders-queue-design.md's guard section and Battle
+# .ENGAGED_FRACTION_CANCELS_MOVE's own doc comment): this guard no longer self-terminates
+# via the generic satisfied()-dispatch _update_current_order() runs for every other guard
+# (test_order_guards.gd's own test_satisfied_never_fires_for_engaged_fraction_above_even_
+# when_heavily_engaged covers that directly). The actual resume-vs-cancel decision is
+# Unit._resolve_disengage_move_order(), covered end to end (never-crossed resumes;
+# crossed-but-clear resumes; crossed-and-stale cancels) by
+# test_engaged_fraction_cancels_move.gd. This file's own remaining stake in the feature is
+# just the two things that still live in _update_current_order()'s and the queue's own
+# territory: the guard doesn't retire the order there, and the peak-engaged-fraction
+## tracker keeps accumulating regardless of what current_order actually is.
+
+## frontage_override fixes the file count so engaged_ranks() (3, a bare Unit's default) *
+## files lands on an exact, predictable fraction of `total` -- see
+## test_order_guards.gd's own _make_engaged_unit for the same fixture, restated here (not
+## reused directly) since this file's own bare-Unit convention is _make_unit(uid).
+func _make_engaged_unit(uid: int, total: int, files: int) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = total
+	add_child_autofree(u)
+	u.uid = uid
+	u.soldiers = total
+	u.frontage_override = files
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)   # arm the engaged latch
+	return u
+
+
+func test_engaged_fraction_guard_does_not_retire_via_update_current_order() -> void:
+	# 4 files * 3 engaged ranks = 12 of 100 (12%), well over a 10% threshold -- the OLD
+	# unconditional-cancel behavior would have retired this order right here.
+	var u := _make_engaged_unit(1, 100, 4)
+	var o := Order.new_move(Vector2(1000, 0)).with_guard(Order.Guard.ENGAGED_FRACTION_ABOVE, 0.10)
+	u.set_current_order(o)
+	u.has_move_target = true
+	u.move_target = Vector2(1000, 0)
+	u._update_current_order()
+	assert_eq(u.current_order, o,
+		"the disengage-time decision lives in _resolve_disengage_move_order(), not here")
+	assert_true(u.has_move_target)
+
+
+func test_update_current_order_raises_the_peak_engaged_fraction_regardless_of_guard() -> void:
+	# The tracker must accumulate even while current_order carries NO guard at all -- the
+	# case where a guarded MOVE leg sits queued behind an active ATTACK order, and the fight
+	# happens under that ATTACK, not the not-yet-current leg.
+	var u := _make_engaged_unit(1, 100, 4)   # 12% engaged
+	u.set_current_order(Order.new_attack(2))   # no guard
+	assert_eq(u._move_order_peak_engaged_fraction, 0.0, "nothing observed yet")
+	u._update_current_order()
+	assert_almost_eq(u._move_order_peak_engaged_fraction, 0.12, 0.001)
+
+
 # --- queued route (waypoints as queued MOVE legs) ----------------------------
 
 func test_queued_move_points_lists_the_route_after_the_current_order() -> void:

@@ -27,9 +27,8 @@ permissions:
   pull-requests: write
 
 env:
-  # Keep in sync with benchmark.yml / godot-ci.yml.
-  GODOT_VERSION: 4.7.0
-  GUT_VERSION: v9.7.0
+  # GODOT_VERSION/GUT_VERSION pins now live as the composite action's own
+  # defaults (.github/actions/setup-godot-project/action.yml).
   # Same CI-tuned measurement window benchmark.yml itself uses (not run-benchmark.sh's local
   # 120/600 defaults) -- the whole point is to match the conditions the regression check runs
   # under.
@@ -50,32 +49,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           # Persist a push-capable token so open-sync-pr can push without putting the token
-          # in the remote URL (mirrors d-morrison/gha's bump-submodule.yml).
+          # in the remote URL (mirrors Morrison-Lab/gha's bump-submodule.yml).
           token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
 
-      - name: Set up Godot ${{ env.GODOT_VERSION }}
-        uses: chickensoft-games/setup-godot@v2
-        with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false
-
-      - name: Install GUT ${{ env.GUT_VERSION }}
-        # The project's test files extend GutTest, so GUT must be present before --import
-        # resolves the whole project (same requirement as benchmark.yml / godot-ci.yml).
-        run: |
-          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
-          mkdir -p addons
-          rm -rf addons/gut
-          cp -r /tmp/gut/addons/gut addons/gut
-
-      - name: Import & validate project
-        run: |
-          set -o pipefail
-          godot --headless --import --verbose 2>&1 | tee import.log
-          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
-            echo "::error::Godot reported script/resource errors during import"
-            exit 1
-          fi
+      - name: Set up Godot project
+        uses: ./.github/actions/setup-godot-project
 
       - name: Run benchmark twice
         env:
@@ -131,8 +109,8 @@ jobs:
           base = reports[0]
           comment = (
               "CI-RUNNER baseline for .github/workflows/benchmark.yml's relative regression "
-              "check. This is NOT the 60fps/reference-hardware target from PLAN.md (a 2022 "
-              "MacBook Air M2 24GB and the developer's PC) -- GitHub Actions runners are "
+              "check. This is NOT the 60fps/reference-hardware target from PLAN.md (the "
+              "developer's PC with a discrete GPU) -- GitHub Actions runners are "
               "different, variable-speed hardware; see tools/benchmark/README.md. Established "
               "as the MEAN of two consecutive, functionally-identical 'Refresh benchmark "
               f"baseline' workflow runs at {run_url} (mean {means[0]:.3f}ms/p95 {p95s[0]:.3f}ms/"
@@ -186,7 +164,7 @@ jobs:
           PY
 
       - name: Open PR if the baseline changed
-        uses: d-morrison/gha/open-sync-pr@v2
+        uses: Morrison-Lab/gha/open-sync-pr@v2
         with:
           branch: automated/refresh-benchmark-baseline
           base: main

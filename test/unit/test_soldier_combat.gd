@@ -8,6 +8,31 @@ extends GutTest
 
 const TOL: float = 1e-4
 
+# --- relative_mass_from_kg (the derived contact-mass scalar) ------------------
+
+func test_relative_mass_from_kg_baseline_is_one() -> void:
+	# CONTACT_MASS_BASELINE_KG is exactly the heavy-foot body_mass_kg (80), so a
+	# soldier weighing the baseline gets the sim's canonical relative mass of 1.0.
+	assert_eq(SoldierCombat.relative_mass_from_kg(80.0), 1.0)
+
+
+func test_relative_mass_from_kg_scales_linearly() -> void:
+	assert_almost_eq(SoldierCombat.relative_mass_from_kg(70.0), 0.875, TOL,
+		"a 70 kg archer is 7/8 of the baseline")
+	assert_almost_eq(SoldierCombat.relative_mass_from_kg(450.0), 5.625, TOL,
+		"the warhorse's own real mass, relative to the baseline")
+	assert_eq(SoldierCombat.relative_mass_from_kg(0.0), 0.0, "no mass, no relative mass")
+
+
+func test_relative_mass_from_kg_is_additive_across_components() -> void:
+	# Linear in its input, so summing two components' relative masses equals the
+	# relative mass of their combined real weight (rider + mount composition
+	# relies on exactly this property).
+	var rider: float = SoldierCombat.relative_mass_from_kg(75.0)
+	var horse: float = SoldierCombat.relative_mass_from_kg(450.0)
+	assert_almost_eq(rider + horse, SoldierCombat.relative_mass_from_kg(525.0), TOL)
+
+
 # --- Per-type combat profile (docs/combat-model.md "Soldier attributes") ------
 
 func test_profile_skill_is_training() -> void:
@@ -57,6 +82,100 @@ func test_profile_infantry_is_the_default() -> void:
 	assert_almost_eq(p["shield_residual"], 0.0, TOL)
 	assert_almost_eq(p["max_health"], 110.0, TOL)
 	assert_almost_eq(p["max_stamina"], 100.0, TOL)
+
+
+func test_profile_typed_panoply_armour_matches_the_legacy_rows_bit_for_bit() -> void:
+	# Every roster type's default armor id must reproduce the legacy row's armour
+	# EXACTLY — the typed loadout renames the scalar's home, it must not move
+	# combat outcomes by any amount. Mass is covered separately below: unlike
+	# armour, it is now DERIVED from real body/mount kilograms rather than a
+	# renamed literal, so most types are unchanged but cavalry and archers are not
+	# (see test_profile_typed_panoply_mass_is_derived_from_real_kilograms).
+	var inf: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5,
+			LoadoutRegistry.ARMOR_HAMATA, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(inf["armour"], 0.45, "typed infantry armour == the legacy literal")
+	var spear: Dictionary = SoldierCombat.profile_for(false, true, false, 0.75,
+			LoadoutRegistry.ARMOR_LINOTHORAX, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(spear["armour"], 0.35, "typed spearman armour == the legacy literal")
+	var arch: Dictionary = SoldierCombat.profile_for(false, false, true, 0.3,
+			LoadoutRegistry.ARMOR_TUNIC, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(arch["armour"], 0.10, "typed archer armour == the legacy literal")
+	var cav: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6,
+			LoadoutRegistry.ARMOR_SQUAMATA, LoadoutRegistry.MOUNT_WARHORSE)
+	assert_eq(cav["armour"], 0.40, "typed cavalry armour == the legacy literal")
+
+
+func test_profile_typed_panoply_mass_is_derived_from_real_kilograms() -> void:
+	# Mass is relative_mass_from_kg(body_mass_kg) [+ relative_mass_from_kg(mount.mass_kg)
+	# when mounted] — no separately-tuned relative constant anywhere. Infantry and
+	# spearmen both weigh the 80 kg baseline, so their mass is unchanged at 1.0.
+	# Archers (70 kg) and cavalry (75 kg rider + 450 kg warhorse) genuinely change
+	# from the old tuned literals (0.9 and 2.5) to the values real body/mount
+	# kilograms actually derive.
+	var inf: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5,
+			LoadoutRegistry.ARMOR_HAMATA, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(inf["mass"], 1.0, "80 kg infantry over an 80 kg baseline is unchanged")
+	var spear: Dictionary = SoldierCombat.profile_for(false, true, false, 0.75,
+			LoadoutRegistry.ARMOR_LINOTHORAX, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(spear["mass"], 1.0, "80 kg spearmen over an 80 kg baseline is unchanged")
+	var arch: Dictionary = SoldierCombat.profile_for(false, false, true, 0.3,
+			LoadoutRegistry.ARMOR_TUNIC, LoadoutRegistry.MOUNT_NONE)
+	assert_almost_eq(arch["mass"], 0.875, TOL, "70 kg archers, derived (was the tuned 0.9)")
+	var cav: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6,
+			LoadoutRegistry.ARMOR_SQUAMATA, LoadoutRegistry.MOUNT_WARHORSE)
+	assert_almost_eq(cav["mass"], 6.5625, TOL,
+		"75 kg rider + 450 kg warhorse, derived (was the tuned 2.5)")
+
+
+func test_profile_zero_ids_keep_the_legacy_armour_fallback() -> void:
+	# A bare profile_for(flags, training) call — and any unknown armor id — keeps
+	# the hard-coded armour row value, so old call sites and stray ids can't shift
+	# combat. Mass has no equivalent "legacy" fallback anymore (see the next test):
+	# with no mount id, mass correctly falls back to just the soldier's own real
+	# body mass, not an assumption that a mount is present.
+	var bare: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6)
+	assert_eq(bare["armour"], 0.40, "no armor id -> the legacy cavalry armour")
+	var unknown: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6, 999, 999)
+	assert_eq(unknown["armour"], 0.40, "an unknown armor id keeps the legacy armour")
+
+
+func test_profile_zero_mount_id_falls_back_to_the_body_alone() -> void:
+	# With no mount id resolving (a bare call, or an unknown id), mass derives from
+	# body_mass_kg alone — "no mount" now genuinely means "just this soldier's own
+	# body", not the old hard-coded literal that implicitly assumed a mount was
+	# present. This is a deliberate, judged consequence of deriving mass from real
+	# kilograms end to end rather than keeping a second, separately-tuned fallback.
+	var bare: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6)
+	assert_almost_eq(bare["mass"], 75.0 / 80.0, TOL,
+		"no mount id -> just the rider's own 75 kg body, no horse")
+	var unknown: Dictionary = SoldierCombat.profile_for(true, false, false, 0.6, 999, 999)
+	assert_almost_eq(unknown["mass"], 75.0 / 80.0, TOL,
+		"an unknown mount id -> just the rider's own body, no horse")
+
+
+func test_profile_typed_panoply_can_diverge_from_the_type_default() -> void:
+	# The point of the typed loadout: a unit can wear a DIFFERENT panoply than its
+	# type's default, and the profile follows the worn type, not the flags.
+	var mailed_archer: Dictionary = SoldierCombat.profile_for(false, false, true, 0.3,
+			LoadoutRegistry.ARMOR_HAMATA, LoadoutRegistry.MOUNT_NONE)
+	assert_eq(mailed_archer["armour"], 0.45, "an archer in mail protects like mail")
+	var mounted_infantry: Dictionary = SoldierCombat.profile_for(false, false, false, 0.5,
+			LoadoutRegistry.ARMOR_HAMATA, LoadoutRegistry.MOUNT_WARHORSE)
+	assert_almost_eq(mounted_infantry["mass"], 6.625, TOL,
+		"a mounted foot profile carries the horse's real mass: 80 kg body + 450 kg warhorse")
+
+
+func test_profile_reports_real_body_mass_in_kilograms() -> void:
+	# body_mass_kg is the ABSOLUTE real mass the HUD reports — a separate datum
+	# from the tuned relative "mass" contact scalar, which stays sim-internal.
+	assert_eq(SoldierCombat.profile_for(false, false, false, 0.5)["body_mass_kg"], 80.0,
+		"heavy infantry: 80 kg of man")
+	assert_eq(SoldierCombat.profile_for(false, true, false, 0.75)["body_mass_kg"], 80.0,
+		"spearmen match the heavy-foot body mass")
+	assert_eq(SoldierCombat.profile_for(false, false, true, 0.3)["body_mass_kg"], 70.0,
+		"archers are lighter men, matching their lighter relative scalar")
+	assert_eq(SoldierCombat.profile_for(true, false, false, 0.6)["body_mass_kg"], 75.0,
+		"a cavalry rider's own body, without the horse")
 
 
 func test_instance_profile_reads_own_flags() -> void:
@@ -145,6 +264,23 @@ func test_land_shield_lowers_the_chance() -> void:
 	assert_lt(shielded, no_shield, "a shield turns more blows")
 
 
+func test_land_shield_effectiveness_scales_with_defender_skill() -> void:
+	# A skilled defender gains a larger active defense boost from a shield than a less skilled one.
+	var high_skill_no_shield: float = SoldierCombat.land_chance(0.5, 0.8, 0.0, 1.0, 0.0)
+	var high_skill_shielded: float = SoldierCombat.land_chance(0.5, 0.8, 0.5, 1.0, 0.0)
+	var high_skill_diff: float = high_skill_no_shield - high_skill_shielded
+
+	var low_skill_no_shield: float = SoldierCombat.land_chance(0.5, 0.2, 0.0, 1.0, 0.0)
+	var low_skill_shielded: float = SoldierCombat.land_chance(0.5, 0.2, 0.5, 1.0, 0.0)
+	var low_skill_diff: float = low_skill_no_shield - low_skill_shielded
+
+	assert_gt(high_skill_diff, low_skill_diff, "more skilled defender derives greater active defense benefit from a shield")
+	# Zero-skill defender gets zero active shield block benefit.
+	var zero_skill_no_shield: float = SoldierCombat.land_chance(0.5, 0.0, 0.0, 1.0, 0.0)
+	var zero_skill_shielded: float = SoldierCombat.land_chance(0.5, 0.0, 0.5, 1.0, 0.0)
+	assert_almost_eq(zero_skill_no_shield, zero_skill_shielded, 1e-5, "untrained defender gets zero active shield block")
+
+
 func test_land_charge_raises_the_chance() -> void:
 	var standing: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 0.0)
 	var charging: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 1.0)
@@ -216,10 +352,119 @@ func test_math_is_deterministic() -> void:
 # --- mass + knockback impulse -----------------------------------
 
 func test_profiles_carry_per_type_mass() -> void:
-	assert_almost_eq(SoldierCombat.profile_for(true, false, false, 0.5)["mass"], 2.5, 1e-6, "cavalry are heavy")
+	# Bare calls (no mount id) resolve mass from body_mass_kg alone — a cavalry
+	# RIDER's own body (75 kg) is actually lighter than the 80 kg baseline; the
+	# unit only reads as "heavy" once its real mount is composed in (see
+	# test_profile_typed_panoply_mass_is_derived_from_real_kilograms above).
+	assert_almost_eq(SoldierCombat.profile_for(true, false, false, 0.5)["mass"], 75.0 / 80.0, 1e-6,
+		"a bare cavalry profile is just the rider's own body, no mount")
 	assert_almost_eq(SoldierCombat.profile_for(false, true, false, 0.5)["mass"], 1.0, 1e-6, "spearmen baseline mass")
 	assert_almost_eq(SoldierCombat.profile_for(false, false, false, 0.5)["mass"], 1.0, 1e-6, "infantry baseline mass")
-	assert_almost_eq(SoldierCombat.profile_for(false, false, true, 0.5)["mass"], 0.9, 1e-6, "archers are light")
+	assert_almost_eq(SoldierCombat.profile_for(false, false, true, 0.5)["mass"], 0.875, 1e-6, "archers are light")
+
+
+# --- effective mass (bracing) --------------------------------------------------
+
+func test_effective_mass_no_brace_is_bare_mass() -> void:
+	assert_almost_eq(SoldierCombat.effective_mass(2.0, 0.0), 2.0, TOL)
+
+
+func test_effective_mass_full_brace_raises_it_by_the_multiplier() -> void:
+	var expected: float = 2.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER)
+	assert_almost_eq(SoldierCombat.effective_mass(2.0, 1.0), expected, TOL,
+		"full bracing raises effective mass by FRICTION_BRACING_MULTIPLIER")
+
+
+func test_effective_mass_never_negative() -> void:
+	assert_almost_eq(SoldierCombat.effective_mass(-5.0, -1.0), 0.0, TOL,
+		"out-of-range inputs clamp, never a negative mass")
+
+
+# --- is_hard_collision (real-closing-speed gate for collision damage) ---------
+
+func test_is_hard_collision_false_below_the_default_threshold() -> void:
+	assert_false(SoldierCombat.is_hard_collision(SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 0.5))
+
+
+func test_is_hard_collision_true_at_and_above_the_default_threshold() -> void:
+	assert_true(SoldierCombat.is_hard_collision(SoldierCombat.COLLISION_DAMAGE_MIN_SPEED))
+	assert_true(SoldierCombat.is_hard_collision(SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 2.0))
+
+
+func test_is_hard_collision_threads_a_caller_supplied_threshold() -> void:
+	# A caller-overridden min_speed changes the verdict at a speed where the default wouldn't --
+	# the CLAUDE.md caller-configurable-parameters shape, matching capped_knockback_velocity's
+	# own speed_cap parameter.
+	assert_false(SoldierCombat.is_hard_collision(40.0, 50.0))
+	assert_true(SoldierCombat.is_hard_collision(40.0, 30.0))
+
+
+# --- collision damage (a hard, fast contact converts a real velocity change into damage) -
+
+func test_collision_damage_scales_with_the_square_of_the_velocity_change() -> void:
+	var single: float = SoldierCombat.collision_damage(Vector2(10.0, 0.0))
+	var doubled: float = SoldierCombat.collision_damage(Vector2(20.0, 0.0))
+	assert_almost_eq(doubled, single * 4.0, TOL, "damage scales with the square of the velocity change")
+
+
+func test_collision_damage_matches_the_scale_formula() -> void:
+	var delta_v := Vector2(30.0, 40.0)   # length 50
+	var expected: float = SoldierCombat.COLLISION_DAMAGE_SCALE * 50.0 * 50.0
+	assert_almost_eq(SoldierCombat.collision_damage(delta_v), expected, TOL)
+
+
+func test_collision_damage_is_direction_independent() -> void:
+	# Only the MAGNITUDE of the velocity change matters, not which way it points.
+	var a: float = SoldierCombat.collision_damage(Vector2(50.0, 0.0))
+	var b: float = SoldierCombat.collision_damage(Vector2(0.0, -50.0))
+	assert_almost_eq(a, b, TOL)
+
+
+func test_collision_damage_zero_delta_is_zero() -> void:
+	assert_almost_eq(SoldierCombat.collision_damage(Vector2.ZERO), 0.0, TOL)
+
+
+func test_collision_damage_threads_a_caller_supplied_scale() -> void:
+	var default_scale: float = SoldierCombat.collision_damage(Vector2(10.0, 0.0))
+	var doubled_scale: float = SoldierCombat.collision_damage(Vector2(10.0, 0.0), SoldierCombat.COLLISION_DAMAGE_SCALE * 2.0)
+	assert_almost_eq(doubled_scale, default_scale * 2.0, TOL,
+		"a caller-overridden scale changes the result -- CLAUDE.md caller-configurable-parameters shape")
+
+
+func test_collision_damage_never_negative() -> void:
+	# A negative scale is the only way this could go negative; guarded at the source.
+	assert_almost_eq(SoldierCombat.collision_damage(Vector2(10.0, 0.0), -1.0), 0.0, TOL)
+
+
+func test_collision_damage_composed_with_enemy_contact_impulse_favors_the_heavier_side() -> void:
+	# Regression: an earlier version of collision_damage split a shared total by
+	# jn^2/mass_i_eff, which could make a BRACED/heavier defender take MORE absolute damage
+	# than an unbraced one against a much heavier attacker -- inverting what bracing is supposed
+	# to do. Deriving damage from each side's own ACTUAL velocity change (this function's
+	# design) fixes that automatically: a heavier/braced body always receives a SMALLER
+	# velocity change from the same contact (SoldierCollision.enemy_contact_impulse's own
+	# effective-mass split), so it always takes less damage too -- composing the two functions
+	# directly (mirroring how SoldierEnemyContact.accumulate actually uses them) proves this
+	# holds for a realistic heavy-attacker-vs-light-defender pairing.
+	var closing_speed: float = SoldierCombat.COLLISION_DAMAGE_MIN_SPEED * 2.0
+	var vel_a := Vector2(closing_speed, 0.0)   # heavy attacker closing on b
+	var vel_b := Vector2.ZERO                  # stationary defender
+	var heavy_mass: float = 6.5                # a mounted cavalry-scale effective mass
+	var light_mass: float = 1.0                # an unbraced infantry-scale effective mass
+	var impulses: Array = SoldierCollision.enemy_contact_impulse(
+		vel_a, vel_b, heavy_mass, 0.0, light_mass, 0.0, Vector2(-1.0, 0.0), 0.0)
+	var damage_heavy: float = SoldierCombat.collision_damage(impulses[0])
+	var damage_light: float = SoldierCombat.collision_damage(impulses[1])
+	assert_lt(damage_heavy, damage_light,
+		"the heavier side takes less damage than the lighter side it struck")
+
+	# Now brace the light side (raise its effective mass via brace_b) and confirm its OWN
+	# damage drops relative to unbraced -- the property the earlier formula got backwards.
+	var braced_impulses: Array = SoldierCollision.enemy_contact_impulse(
+		vel_a, vel_b, heavy_mass, 0.0, light_mass, 1.0, Vector2(-1.0, 0.0), 0.0)
+	var damage_light_braced: float = SoldierCombat.collision_damage(braced_impulses[1])
+	assert_lt(damage_light_braced, damage_light,
+		"bracing reduces the defender's own absolute damage, not just its share of the total")
 
 
 func test_knockback_impulse_baseline() -> void:
@@ -359,6 +604,42 @@ func test_brace_capacity_deep_file_exceeds_lone() -> void:
 	var three: PackedFloat32Array = PackedFloat32Array([1.0, 1.0, 1.0])
 	assert_gt(SoldierCombat.brace_capacity(three), SoldierCombat.brace_capacity(lone),
 		"a 3-deep file absorbs more than a lone man")
+
+
+# --- weapon-differentiated brace capacity (docs/combat-model.md "Bracing") -----------
+
+func test_brace_capacity_for_type_anti_cav_exceeds_infantry_baseline() -> void:
+	# A grounded, angled spear/pike shaft is an independent leveraged strut into the
+	# earth, so it resists more than a shield-only soldier's friction/mass-stacking alone.
+	var anti_cav: float = SoldierCombat.brace_capacity_for_type(false, true, false)
+	var infantry: float = SoldierCombat.brace_capacity_for_type(false, false, false)
+	assert_gt(anti_cav, infantry, "a grounded spear/pike braces harder than a shield-only soldier")
+	assert_almost_eq(infantry, SoldierCombat.BRACE_CAPACITY, TOL,
+		"the plain-infantry case matches the flat baseline every prior caller used")
+
+
+func test_brace_capacity_for_type_matches_named_constants() -> void:
+	assert_almost_eq(SoldierCombat.brace_capacity_for_type(false, true, false),
+		SoldierCombat.BRACE_CAPACITY_ANTI_CAV, TOL)
+	assert_almost_eq(SoldierCombat.brace_capacity_for_type(false, false, true),
+		SoldierCombat.BRACE_CAPACITY_RANGED, TOL)
+	assert_almost_eq(SoldierCombat.brace_capacity_for_type(true, false, false),
+		SoldierCombat.BRACE_CAPACITY_CAVALRY, TOL)
+
+
+func test_brace_capacity_for_type_cavalry_takes_priority_over_anti_cav() -> void:
+	# A mounted anti-cavalry flag combination shouldn't occur in practice, but the
+	# dispatch order should still be well-defined: cavalry is checked first, matching
+	# profile_for's own branch order.
+	assert_almost_eq(SoldierCombat.brace_capacity_for_type(true, true, false),
+		SoldierCombat.BRACE_CAPACITY_CAVALRY, TOL)
+
+
+func test_brace_capacity_threads_a_type_specific_j_cap() -> void:
+	var lone: PackedFloat32Array = PackedFloat32Array([1.0])
+	var anti_cav_cap: float = SoldierCombat.brace_capacity(lone, SoldierCombat.BRACE_CAPACITY_ANTI_CAV)
+	assert_almost_eq(anti_cav_cap, SoldierCombat.BRACE_CAPACITY_ANTI_CAV, TOL,
+		"a lone set man's capacity is exactly the passed-in j_cap")
 
 
 # --- stamina factor g(sigma) (docs/combat-model.md "Stamina") ------------------

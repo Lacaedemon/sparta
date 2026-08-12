@@ -34,13 +34,16 @@ func test_trapped_routing_unit_fights_instead_of_fleeing() -> void:
 	unit._rout()  # sets state + _rout_timer together, unlike a bare state assignment
 	unit.position = Vector2(640, 360)  # middle of the field
 
-	# Create a PathField with a tight cage around the unit.
+	# Create a PathField with a sealed ring around the unit: four thick walls
+	# forming a closed box with clear ground inside. (The old staging -- four
+	# 30x30 corner blocks with open gaps between them -- only read as a trap
+	# under cell-inflated footprints; with exact footprints those gaps are
+	# genuinely escapable, so the trap must actually seal.)
 	var pf := PathField.new(battle.FIELD)
-	# Block all escape directions with terrain patches around the unit.
-	pf.block_rect(Rect2(600, 300, 30, 30))   # upper-left corner
-	pf.block_rect(Rect2(650, 300, 30, 30))   # upper-right corner
-	pf.block_rect(Rect2(600, 400, 30, 30))   # lower-left corner
-	pf.block_rect(Rect2(650, 400, 30, 30))   # lower-right corner
+	pf.block_rect(Rect2(520, 240, 240, 60))   # top wall
+	pf.block_rect(Rect2(520, 420, 240, 60))   # bottom wall
+	pf.block_rect(Rect2(520, 240, 60, 240))   # left wall
+	pf.block_rect(Rect2(700, 240, 60, 240))   # right wall
 
 	var old_pf := PathField.active
 	PathField.active = pf

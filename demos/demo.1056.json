@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This changes the sampling RATE of an already-existing debug overlay (the perf graph now samples every 0.1s of real time instead of every render frame), not anything a single frame or a short clip can show. The effect only manifests as a difference in the graph's rolling window duration over several seconds, which the new unit tests in test/unit/test_hud_fps.gd verify directly and precisely."
+}

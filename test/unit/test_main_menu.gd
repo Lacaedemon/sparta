@@ -8,11 +8,13 @@ extends GutTest
 
 const ParadeGround = preload("res://scripts/ParadeGround.gd")
 const AllTeamsControl = preload("res://scripts/AllTeamsControl.gd")
+const CustomMatchup = preload("res://scripts/CustomMatchup.gd")
 
 
 func after_each() -> void:
 	ParadeGround.clear()   # don't leak a pending request into a later test
 	AllTeamsControl.clear()
+	CustomMatchup.clear()
 
 
 func _menu() -> Control:
@@ -43,11 +45,20 @@ func test_all_teams_control_button_is_present() -> void:
 		"an 'All-Teams Control' button sits alongside 'Tactical Battle'")
 
 
+func test_custom_battle_button_is_present() -> void:
+	var menu := _menu()
+	assert_not_null(_find_button(menu, "Custom Battle"),
+		"a 'Custom Battle' button sits alongside 'Tactical Battle'")
+
+
 func test_ready_clears_any_stale_pending_request() -> void:
 	ParadeGround.pending = true
 	AllTeamsControl.pending = true
+	CustomMatchup.pending_team_0 = ["Spartan Hoplites"]
 	_menu()
 	assert_false(ParadeGround.pending,
 		"loading the main menu forgets a leftover drill request, like CampaignBattle.clear()")
 	assert_false(AllTeamsControl.pending,
 		"loading the main menu forgets a leftover all-teams-control request too")
+	assert_false(CustomMatchup.pending(),
+		"loading the main menu forgets a leftover custom-matchup request too")

@@ -17,7 +17,7 @@ Decision 3 assumes** — measured, not assumed, by re-running
 
 (`tools/benchmark/run-benchmark.sh benchmarks/scenarios/large-battle.json <scale>`, 300
 measured ticks after a 60-tick warmup, this session's CI-class container — absolute numbers
-aren't the Mac/PC target per `tools/benchmark/README.md`, but the *scaling shape* is what
+aren't the reference-PC target per `tools/benchmark/README.md`, but the *scaling shape* is what
 matters here.)
 
 Doubling soldier count **more than tripled (3.5x)** mean tick time. That's clearly

@@ -6,12 +6,12 @@ fusing dynastic grand strategy with real-time tactical battles. See
 `README.md` for layout and `PLAN.md` for project vision, roadmap, architecture,
 and verification steps — read `PLAN.md` first.
 
-## Cross-repo AI configuration (`d-morrison/ai-config`)
+## Cross-repo AI configuration (`Morrison-Lab/ai-config`)
 
-This repo pulls in [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+This repo pulls in [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config)
 for portable skills and memories via the **Plugin Marketplace**.
 
-`.claude/settings.json` registers the `d-morrison` marketplace and enables the
+`.claude/settings.json` registers the `Morrison-Lab` marketplace and enables the
 `ai-config` plugin, so Claude Code installs it at session start — skills are
 available as `/ai-config:<name>` (e.g. `/ai-config:ardi`, `/ai-config:remember`).
 
@@ -47,11 +47,17 @@ lychee link-check). It vendors GUT on demand and needs only a Godot 4.7 binary o
 `PATH` (or `GODOT_BIN`). See `tools/README.md`. Prefer it over invoking the
 individual checks by hand so local and CI results stay in sync.
 
-When the diff touches `scripts/`, also run `tools/check.sh patch_coverage`
-before pushing — a local approximation of the `codecov/patch` CI check,
-verified to match Codecov's own numbers. Catching a shortfall locally saves a
-~15–20 min CI round trip; see "Checking patch coverage before you push" in
-`tools/README.md`.
+When the diff touches `scripts/`, also run `patch_coverage` before pushing —
+a local approximation of the `codecov/patch` CI check, verified to match
+Codecov's own numbers. Catching a shortfall locally saves a ~15–20 min CI
+round trip; see "Checking patch coverage before you push" in
+`tools/README.md`. **Add it to the same `tools/check.sh` invocation as the
+other checks** (e.g. `tools/check.sh validate test chars comments units
+patch_coverage`), not a separate command afterward — `patch_coverage`
+already re-runs the full GUT suite via `coverage`, and `check.sh` dedupes
+that against a same-invocation `test` automatically; a second, separate
+`tools/check.sh patch_coverage` call pays for the whole suite again since
+that dedup state doesn't survive across process invocations.
 
 ## Gameplay demos in PRs
 When your change is **user-visible** — it affects how the game looks or plays
@@ -120,6 +126,32 @@ media.
   can't film, `skip` the clip (above) and rely on the
   image.
 
+### Backend-only performance PRs: graph the work, then film the result
+
+A PR whose point is that the simulation does the **same thing faster** — a hot-loop
+rewrite, a cheaper query, a removed redundant pass, anything in the `⚡ Bolt` family
+— ships two artifacts, both in the PR description:
+
+1. **A before/after graph of computations per tick** (y = operations, x = tick) over a
+   representative demo, from `tools/perf/ops-before-after.sh`. Commit the PNG under
+   `demos/shots/` and embed it by raw URL at the commit SHA, alongside the
+   per-bucket table the tool prints. Counts, not milliseconds: they're deterministic
+   for a given scenario and seed, so the two lines differ only where the code did —
+   a timing chart at CI's documented ~20–30% run-to-run swing can hide a real win or
+   invent a fake one. `tools/perf/README.md` has the full protocol.
+2. **A demo video recorded after the improvement** — a real `demos/demo.<slug>.json`
+   clip, not `"skip": true`. "Backend-only" is the claim under review, not a licence
+   to skip the clip: an optimization that quietly changed the battle it was
+   optimizing looks exactly like one that didn't until someone watches it. Reuse a
+   scenario that actually exercises the path you touched, and check it against the
+   standard defect checklist like any other demo.
+
+If the graph shows the two lines exactly coincident, say so plainly and explain why
+(the path you optimized isn't one the counters cover, or the change is
+cheaper-per-operation rather than fewer-operations) — don't present a flat graph as
+if it demonstrated a win. Same for a wall-clock-only claim: pair it with the graph
+rather than substituting for it.
+
 ## Website updates in user-facing PRs
 
 When a PR changes **how the game looks or plays** — mechanics, controls, UI,
@@ -138,8 +170,9 @@ architecture, and CI changes are exempt.
   creates strategic decisions (terrain types, order delay, unit interactions, etc.).
 - Other pages (`website/index.qmd`, `website/roadmap.qmd`) when the change is
   milestone-level.
-- `website/tools/record-demos.sh` — the `DEMOS` list controls which website
-  video clips get recorded at deploy time. When your PR adds a mechanic or
+- `website/tools/demo-catalog.sh` — the `DEMOS` list controls which website
+  video clips get recorded at deploy time (via `record-demos.sh`) and which
+  clips the per-PR state-transcript diff sweeps. When your PR adds a mechanic or
   visual that isn't visible in any existing scenario, append a row to `DEMOS`
   and a matching `<video>` embed on the page that covers that mechanic (follow
   the pattern in `website/how-to-play.qmd` or `website/index.qmd`).
@@ -200,6 +233,32 @@ current PR when it's in scope, or file a follow-up issue otherwise.
 
 ## Code conventions
 
+### Parameters are caller-configurable; only real physical constants are fixed
+Any parameter value a caller could reasonably want to vary — sizes, counts,
+layouts, spawn geometry, timings, gameplay thresholds — enters through a
+function parameter, a constructor/instance field, or a data file, with
+today's value as the default. Never a bare literal buried in the
+implementation: the battlefield size was hard-coded for months and changing
+it forced a 19-clip demo sweep that per-battle map data would have avoided.
+The exemptions are empirically known physical constants and unit conversions
+(the units convention's territory), true mathematical constants, and solver
+epsilons/convergence tolerances (see the units convention's "deliberately
+NOT metric" list — those aren't gameplay parameters). A const remains the
+right home for the DEFAULT value; the instance/parameter is what the battle
+actually runs on (`Battle.field`/`terrain`/`spawn_line_ys` vs the `FIELD`/
+`TERRAIN`/`SPAWN_LINE_YS` consts is the worked example). In review, a new
+hard-coded tunable in a NEW function/diff is a standard finding, the same
+weight as the units-convention checks — new code externalizes by default,
+unconditionally.
+
+**Existing functions are migrated opportunistically, not via a standing
+audit sweep.** #963 tracked a proactive migrate-incrementally-one-slice-
+per-PR effort; that's paused as of 2026-07-19 (owner directive) — don't
+pick a new slice off #963 just because it's open. Migrate an existing
+hard-coded constant to caller-configurable only when a real task actually
+needs it varied (a demo/test needs a non-default value, a bug fix needs
+per-caller control) — on the fly, driven by need, not swept wholesale.
+
 ### Comments: no issue-number references
 Don't cite issue numbers (`#123`) in code comments. The explanation itself
 should stand on its own; a reader shouldn't need to open a tracker to understand
@@ -207,6 +266,21 @@ the code, and the reference rots as issues close and renumber. Issue numbers
 belong in commit messages, PR descriptions, and `TODO`/`FIXME` comments (where a
 `TODO(#123):` link to outstanding work is useful) — not in ordinary explanatory
 comments or docstrings.
+
+### Units: author in metres, store in world units, display in metric
+See `docs/units-convention.md` for the full rules; `tools/check.sh units`
+lints each diff's added lines. In short: a physically-derived length/speed
+constant is written as `<metres> * WorldScaleRef.WU_PER_M` (parse-time-folded,
+bit-exact-pinned by a test; `WorldScaleRef` is the script's own
+`preload("res://scripts/WorldScale.gd")` alias — declare it with the other
+preloads), runtime state stays world units end to end (no
+conversions in hot loops), and any user-facing length/distance/speed renders
+through `DistanceLegend`'s wu→metric helpers — a raw world-unit number is
+never shown to the player. Deliberately unit-tuned knobs and solver epsilons
+keep their wu literal, marked `# tuned in wu`. In review, treat as standard
+findings: a new metric-looking bare literal, a runtime `WU_PER_M`
+multiplication outside the boundary files, or a player-visible number not
+routed through `DistanceLegend`.
 
 ### GDScript / Godot 4 quirks
 
@@ -289,6 +363,13 @@ comments or docstrings.
   framebuffer, so `--rendering-driver opengl3` is required.
   Pass the input script path via the `SPARTA_DEMO_INPUT` env var — CLI `--`
   args are not forwarded to `DemoInputRecorder`.
+  **On Windows, `xvfb-run` doesn't apply at all — there's no dummy X server to
+  wrap.** The fix is the same drop-`--headless` half only: run
+  `godot --rendering-driver opengl3 --write-movie ...` directly (a real
+  display is already present), with no `xvfb-run` prefix. The identical
+  `--headless --write-movie` crash reproduces on Windows too if `--headless`
+  is left in — the null-texture cause is the dummy renderer, not Xvfb
+  specifically, so the fix generalizes; only the wrapper differs per platform.
 
 - **`push_error()` does not set a non-zero exit code.** A `--headless` Godot run
   (or a GUT run) that calls `push_error(...)` still exits `0`, so a CI step or

@@ -1,0 +1,8 @@
+{
+  "replay": "demos/showcase.json",
+  "caption": "Deeper battlefield: the field grew from 1600x1000 to 1600x1200 and the default deployment gap from 400 to 580 wu (29 m) -- the deepest deployment that keeps both armies at close-tier per-soldier fidelity from the first tick -- so the armies open at roughly 20 m front to front instead of 11 m, visibly two forces approaching rather than a brawl already in progress. The showcase battle now opens both lines advancing to meet mid-field (the player line carries its own move orders), pressing into melee, and one side breaking.",
+  "fixed_fps": 30,
+  "max_frames": 650,
+  "fps": 15,
+  "width": 800
+}

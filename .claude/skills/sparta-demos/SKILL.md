@@ -13,6 +13,29 @@ older hand-authored/recorded `replay` path (documented in the main `sparta.md`
 quick reuse of `demos/showcase.json`, but prefer scripted input for anything that
 shows a specific player gesture.
 
+## Standing rule: "not legible in a compressed clip" is never a valid reason to skip
+
+Don't reach for `demos/demo.<slug>.json`'s `skip: true` because the change "isn't
+legible in a compressed clip" or is "too subtle to show at demo scale." That
+excuse doesn't hold up: if a bug was found (or could be found) by zooming into a
+specific frame — exactly how many of the incidents in this file and `sparta.md`
+were actually diagnosed (frame-by-frame video review, cropped/upscaled PNG
+comparisons, `SPARTA_DEMO_FRAMES` captures at precise ticks) — the FIX is provable
+the same way. A compressed auto-recorded GIF at normal playback speed is the
+wrong tool for a subtle positional/cosmetic change; a **before/after crop pair**
+(one frame from `main`, one from the branch, at the exact tick the effect is
+visible, cropped/upscaled to the relevant few dozen pixels, per "Upscale crops to
+verify few-pixel render detail" above) usually is not. Reach for that — embedded
+in the PR description per CLAUDE.md's "Static features: images in the PR
+description" section — before concluding a change genuinely can't be shown.
+
+Reserve `skip: true` for changes with no rendered manifestation at all (an
+internal refactor, a data-model change nothing draws differently, a CI/tooling
+change) — never for "the difference exists on screen but is small." (Corrected
+directly by the user on PR #1074, 2026-07-24: the fix's own bug report was found
+by zooming into a specific video frame; the fix needed the same treatment, not a
+skip.)
+
 ## Standing rule: always check a demo thoroughly for unnatural behavior, not just the claimed feature
 
 Before treating a demo/recording as verified, watch (or dump-state) the **whole
@@ -74,36 +97,68 @@ growing the PR — but never let it pass unrecorded.
 
 ### Every clip the website demo-diff flags gets a manual review, documented in the PR description
 
-`.github/workflows/website-demo-diff.yml` re-records the site's ENTIRE demo
-catalog on any PR touching game-visible code and posts a PR COMMENT listing
-which clips' rendered output changed vs. the last published main build. Its
-own header says a diff means either the PR intentionally changed what a clip
-shows, or it unintentionally regressed something that clip exercises — so a
-changed-clips list is a work item, not an FYI. Do NOT wave the list through
-with a blanket "differences attributable to rendering jitter"; that
-classification is only ever a per-clip conclusion, reached after looking.
+`.github/workflows/website-demo-diff.yml` dumps per-tick SIM STATE TRANSCRIPTS
+for the site's ENTIRE demo catalog (`website/tools/demo-catalog.sh`) on any PR
+touching game-visible code — for both the PR head and its merge-base, generated
+in-job — and posts a PR COMMENT naming exactly which clips' sim content
+changed, with the first divergent tick and the fields that differ there.
+Transcripts are deterministic (verified byte-identical across same-commit
+runs), so every listed clip is a REAL behavioral change: either the PR's
+intended effect or an unintended regression. A listed clip is a work item, not
+an FYI.
+
+(The workflow previously compared the RENDERED clips by byte hash/size; the
+encode is not byte-deterministic, so it flagged ~every clip on ~every PR and
+the list carried no signal — replaced in #905/PR #906. Two consequences: an
+EMPTY changed list is now a genuinely meaningful all-clear, and "benign
+rendering jitter" is no longer a classification that exists — the transcript
+diff never sees the render layer at all. The flip side: render-only
+regressions — chrome, LOD, draw order — are outside this net; the PR's own
+demo review and frame captures remain the check for those.)
 
 **For each clip the comment lists as changed:**
 
-1. Look at the actual footage. The workflow discards its fresh recordings
-   when the job ends (it only ever downloads the baseline artifact; it never
-   uploads its own), so re-record the specific clip locally — its `DEMOS` row
-   in `website/tools/record-demos.sh`, or frame-capture/state-dump its input
-   file per the sections below — and compare against the published clip on
-   the live site.
-2. Classify it: (a) **intended** — the PR's own change, visible as designed;
-   (b) **benign nondeterminism** — rendering jitter with no sim-state
-   difference (confirm with a state dump when unsure, don't eyeball it);
-   (c) **unintended regression** — stop and fix, or file+link an issue if
-   genuinely out of scope.
-3. Document the nature of each changed clip's change in the PR
-   **description** (a "Website demo diff" subsection): clip name, class, and
-   one line on what actually differs — e.g. "formations_wheel: intended —
-   the block now hinges on the standing flank's front corner". The
-   description is where reviewers look; the diff comment alone scrolls away.
+1. Understand the divergence: the comment names the first differing tick and
+   fields; regenerate the transcript locally when more detail is needed
+   (`website/tools/dump-demo-states.sh`, or `tools/demo/dump-state.sh` on the
+   clip's own source file with chosen ticks) and, for anything visual,
+   re-record the clip's footage (its row in `website/tools/demo-catalog.sh`).
+2. Classify it: (a) **intended** — the PR's own change, playing out as
+   designed; (b) **unintended regression** — stop and fix, or file+link an
+   issue if genuinely out of scope.
+3. Document each changed clip in the PR **description** (a "Website demo
+   diff" subsection): clip name, class, and one line on what actually differs
+   — e.g. "formations_wheel: intended — the block now hinges on the standing
+   flank's front corner". The description is where reviewers look; the diff
+   comment alone scrolls away.
 
 The thoroughness and super-physical rules above apply to each clip reviewed
 this way, exactly as they do to the PR's own demo.
+
+**Classifying a WIDE diff (20+ clips flagged by one sim change) without a week
+of work** -- the procedure that worked for PR #924's 28-clip diff:
+
+1. The CI job generates both transcript sets in-job and uploads no artifacts,
+   so regenerate the BRANCH side locally for just the flagged clips: source
+   `website/tools/demo-catalog.sh`, filter `DEMOS` to the flagged names, and
+   run each through the same headless dump `dump-demo-states.sh` uses (~30-60 s
+   per clip). No merge-base run yet.
+2. Judge each clip against its OWN documented intent (the input file's
+   `_comment`, the catalog row), not against merge-base numbers: read the
+   final-tick transcript and check the demonstrated outcome still occurs
+   (square still holds, relief swap still runs, router still gets swept). A
+   small analyzer that prints every unit's final state/soldiers/order per clip
+   answers this for the whole set in one pass.
+3. Only for clips whose OUTCOME looks changed or wrong (a unit wiped, a rally
+   missing), dump the MERGE-BASE side too -- a throwaway `git worktree add` at
+   the merge-base SHA, import once, dump just those clips -- and compare
+   outcome trajectories. On PR #924 this reduced 28 clips to 2 needing the
+   base-side run (`cycle_charge`: same wipe both sides, just reordered;
+   `trapped_routing`: identical no-flee behaviour both sides).
+4. A clip whose problem reproduces at the merge-base is PRE-EXISTING drift,
+   not the PR's regression: file it as its own issue (the clip no longer
+   demonstrates its caption -- e.g. #927) and say so in the PR's
+   classification section, rather than absorbing it into the PR.
 
 ## Author a scripted-input demo (the standard path)
 
@@ -129,15 +184,28 @@ etc.) — don't reflexively `skip` them.
 
 **Standard 5v5 (`seed "12345"`):** player uids 0-4 =
 Spearmen(140)/Infantry(120)/Archers(90)/Cavalry(80)/Cavalry(80) at
-x=476.75/626.75/806.75/973.25/1123.25, y=300; enemies 5-9 at y=700 (issue #677:
-the x's are no longer an even 500/650/800/950/1100 -- `Battle._spawn_line` now
-widens each adjacent pair's gap to fit their actual formation widths instead of a
-flat 150 px, so a wide LOOSE-order regiment like Archers can't overlap its
-neighbour; see `demos/README.md` for the per-unit table and the derivation).
-Spawn positions are seed-independent, so clicks land regardless. For a form-up
-facing the enemy (+y/down), drag **right→left** (start point on the right).
-Box-select a horizontal row with e.g. `{from:[450,270], to:[850,330]}` (grabs
-uids 0/1/2 -- still valid since it only needs to bracket the row, not exact x's).
+x=407/557/737/963.95/1193.07, y=300; enemies 5-9 at y=880 (the battlefield-depth
+change moved the enemy line down from its long-standing y=700 — another silent
+breaker for any older script that clicked the enemy band). The x's re-space
+whenever a type's formation footprint changes -- `Battle._spawn_line` widens
+each adjacent pair's gap to fit their actual formation widths (issue #677), and
+the cavalry grid-pitch change (issue #926) re-spaced the whole line around the
+much wider mounted blocks, which silently broke every input script clicking the
+pre-#926 coordinates (a click in dead ground selects nothing and the gesture
+no-ops with no error). **Don't trust this paragraph's x values either -- treat
+`demos/README.md`'s per-unit table as the source of truth, verify with a
+tick-8 state dump, and pin your script's subject with a
+`{"tick": 8, "uid": N, "field": "position", "value": [x, y]}` expect entry** so
+any future spawn re-spacing fails `tools/check.sh demo_defects` loudly, naming
+the clip, instead of recording a silent no-op. As of PR #938 the pins cover
+only the scripts that PR touched -- the twelve retargeted ones plus
+`parade-ground.json` -- not the whole catalog; older input scripts predate the
+convention, so add the pin whenever you edit one.
+Spawn positions are seed-independent, so clicks land regardless of seed. For a
+form-up facing the enemy (+y/down), drag **right→left** (start point on the
+right). Box-select a horizontal row by bracketing the row generously in y and
+the intended units' current x's -- and re-check the bracket against the current
+spawn table, not an old script's numbers.
 Pick infantry (pointer marks) for facing-maneuver demos — they read cleanly
 under rotation. Demo click coords are **world** coords (cursor override), not
 screen.
@@ -177,6 +245,42 @@ axis** (front-reach ≤ the infantry pointer's span); elongating it just trades
 horizontal stripes for vertical ones when a packed rank rotates. Distinguish unit
 types by *silhouette* (dart/kite/pointer), keeping team colour pure — a per-type
 colour tint muddies the block's team-colour `modulate`.
+
+## `DemoInputRecorder`'s scripted "key" step now also reaches `HUD` -- but a "click"/"box" step still only reaches `SelectionManager`
+
+**Update (PR #1231, 2026-08-09):** the "key"-step half of the gap this section
+originally documented is fixed. `_fire()`'s `"key"` case now forwards the
+synthesized `InputEventKey` to `_hud._unhandled_input(k)` too (a `_hud` node
+reference, resolved from `_battle.get_node("HUD")` right after `_sel` is, in
+`_start_battle()`), in addition to the existing `_sel._unhandled_input(k)`
+call -- so a HUD-only global hotkey (F1 tray toggle, F5 slow-motion, in
+principle P/Shift+/ too) is now scriptable in an `input.json`, exactly like
+any `SelectionManager`-routed hotkey. Verified working end to end for F5
+(`demos/inputs/slow-motion.json`).
+
+The **mouse**-step half of the original gap is unchanged and still real:
+`tools/demo/DemoInputRecorder.gd`'s per-tick event dispatch calls
+`_sel._unhandled_input(mb)` for "click"/"box"/"rmb_drag" steps only --
+bypassing Godot's GUI input layer entirely (no `_gui_input` routing), so a
+scripted click can never actually press an HUD `Button`, drag-and-drop a
+tray card, or otherwise reach anything besides world-space unit
+selection/orders, which is what `_sel`'s own `_unhandled_input` is built to
+interpret. This is easy to misdiagnose as a bug in the FEATURE being demoed
+rather than a limitation of the recorder itself.
+
+**How to apply:** a HUD-level **keyboard** hotkey (global toggle, menu
+shortcut) is now scriptable via a plain `{"key": "..."}` step -- no special
+casing needed, it just works. A HUD-level **mouse** interaction (a button
+press, a checkbox toggle, drag-and-drop) is still NOT reachable through the
+recorder: drive it directly instead, via the **throwaway tool-scene
+screenshot** recipe above, building the HUD (or the specific Control) in
+code and calling its methods / setting its state directly. Routing mouse
+events through Godot's real GUI layer would be a further, separate change.
+(`Lacaedemon/sparta` PR #1057, 2026-07-23: an `F1` step in a staged
+screenshot's input script never toggled the tray on, back when the key path
+was also HUD-blind; PR #1058's tray-grid screenshot was built as a throwaway
+tool scene instead, for the mouse-step reason that still applies today --
+the grid's own interactions are button clicks and drag-and-drop.)
 
 ## Verify a demo by exact game-state values (state dump)
 
@@ -227,6 +331,53 @@ funcs in `tools/demo/DemoState.gd` (a `class_name`, unit-tested in
   enum member surfaces as a greppable token. A merge that adds enum members (e.g.
   main adding SHIELD_WALL/TESTUDO) leaves the map STALE even when conflict-free —
   update the map + its test + the README field row.
+
+## A charge-vs-braced-line demo can outrun issue #296's kinematic gap — check soldier CENTROID, not just regiment position, across the whole clip
+
+A cavalry charge into a genuinely braced (stationary, high-resistance) line can
+produce a real, visible artifact distinct from anything covered above: the
+*charging* regiment's own soldier-body centroid can cross PAST the defending
+regiment's centroid — the cavalry visually rides through/around the line — even
+while both units correctly stay `FIGHTING`/`engaged` and take real casualties
+the whole time. This is issue #296 (a charging regiment's `_move_to`-driven
+kinematic position isn't fully bound by its own soldiers' contact resistance),
+not a bug in whatever bracing/knockback mechanic the demo is meant to show —
+per-soldier melee resolution (casualties, knockback, brace-capacity absorption)
+was verified correct in the case this was found; only the regiment-level
+position anchor outran it.
+
+**Why a state-dump `position`-only check misses this:** the regiment's own
+`position` field can look plausible (small, contained displacement) while the
+underlying soldier bodies' `soldier_summary.centroid` has already moved past
+the other unit's centroid — the two diverge under fast, heavy contact. Compare
+`soldier_summary.centroid`, not just `position`, between the attacker and
+defender at each sampled tick once contact begins.
+
+**How to catch it before publishing a demo:** dump `SPARTA_DEMO_STATE_FULL=1`
+at dense ticks (every 10-20) spanning the whole post-contact window (not just
+the committed sparse sample points — same blind spot the "dense tick sweep"
+entry above warns about for caption claims) and check whether the charging
+unit's centroid Y ever crosses past the defender's, specifically for a
+STATIONARY defender (a held/braced line) — a defender that's also moving
+(pressing forward, chasing) doesn't show the same crossover, since there's no
+fixed point for the charger to overshoot.
+
+**Fix, since #296 itself is out of scope for most PRs:** shorten `max_frames`
+(remember the fixed_fps-to-physics-tick conversion — `physics_tick =
+max_frames * (60 / fixed_fps)`) to end the clip cleanly before the crossover,
+and adjust the caption to describe only what the shortened clip actually shows
+— don't claim "the charge stalls" if the clip cuts off before proving it holds
+indefinitely. State the cutoff reason in the caption rather than silently
+picking a suspiciously short `max_frames`, so a reviewer doesn't have to
+rediscover the gap independently. (`Lacaedemon/sparta` PR #1106,
+`demos/inputs/brace-vs-unbraced-charge.json`, 2026-07-27: a braced-vs-unbraced
+spear-line demo's cavalry centroid crossed the braced spearman's centroid
+between tick ~495 and ~505; `max_frames` cut from 280 to 240 -- 480 physics
+ticks -- with margin. Caught independently by the user watching the posted
+GIF AND by an automated review cross-checking the PR's own commit message
+against `website/tools/demo-catalog.sh`'s separately-recorded row, which still
+specified the old, unsafe frame count — grep every catalog/manifest copy of a
+demo's `max_frames` after changing it, not just the one you edited first.)
 
 ## A unified "all artifacts done" quit-check must guard on armed
 
@@ -377,6 +528,74 @@ isolated recovery case above is a GUT-test-only regression guard for now, not
 also a recordable website demo clip — sparta#657 tracks the follow-up to make
 it recordable. (`Lacaedemon/sparta` PR #654, 2026-07-04.)
 
+## Scale a demo to the minimum that still demonstrates the phenomenon
+
+Beyond isolating the phenomenon from unrelated confounds (above), also minimize the
+demo's SCALE — soldier count, unit count, formation size — to whatever is smallest
+and still shows the mechanic. A phenomenon that's fundamentally pairwise or
+per-soldier (a collision between two bodies, a single strike landing, a knockback)
+doesn't need a 100-vs-100 regiment clash to demonstrate it: two soldiers (or the
+smallest scenario the engine's spawn path supports) colliding is both easier to
+verify (fewer confounding casualties/array-compaction hazards, per this file's other
+entries on that failure mode) and easier for a reviewer to read at a glance than
+picking one interaction out of a hundred-soldier melee.
+
+Reach for a larger-scale scenario only when the phenomenon ITSELF is about scale —
+formation-wide behavior (a whole rank's morale, a regiment's shape eroding under
+casualties, inter-unit crowding) that a small scenario can't exercise at all. For a
+per-soldier physics mechanic (collision damage, a single knockback, a prone check),
+default to the smallest scenario, not the standard 5v5/100v100 battle layout.
+
+**Caveat, discovered building the collision-damage demo (#1142/PR #1143): a genuine
+1-vs-1 (or few-soldier) matchup can be TOO minimal for a mechanic gated on actual
+body-to-body proximity, because melee STRIKE engagement fires at a much longer range
+first.** The strike/engagement gate in `Unit._think()` triggers at `attack_range +
+RADIUS + enemy.RADIUS` — roughly 60-70 world units for common types, one-sided (only
+the querying unit's own `attack_range`), since `Unit.RADIUS` is a flat per-REGIMENT
+footprint constant (18 wu), not a per-soldier body radius. (This is a DIFFERENT check
+from `Unit._in_enemy_contact`, which correctly uses `maxf(attack_range,
+u.attack_range) + RADIUS + u.RADIUS` — see "A symmetric 'is X near Y' contact check
+needs BOTH sides' own range" in `sparta.md` — `_in_enemy_contact` gates physical
+collision selection, not the strike path.) A lone or small-count target's whole HP
+pool is thin enough that a single charge-bonus-amplified strike at THAT range
+*could* wipe it out entirely with zero cost to the attacker, long before the two
+soldiers' actual `_sim_soldier_pos` values ever converge to the much tighter
+distance (`sradii[a]+sradii[b]+containment`, typically ~10-20 wu) genuine
+collision-physics contact (`SoldierEnemyContact.accumulate`) requires — **but the
+exact mechanism behind the observed wipe is UNCONFIRMED** (see #1151, still open):
+the symptom (a symmetric 10v10 Cavalry matchup, one whole regiment vanishing in one
+tick with the OTHER side reporting zero HP loss) doesn't cleanly fit a single-strike
+story either, so a still-regiment-level casualty/morale-authority path or a
+`_check_victory()` edge case remain live alternative explanations.
+
+**The reproducible OBSERVATION, precisely:** five cavalry-involving configurations
+reached real contact, and every one of them wiped identically —
+Cavalry(1) vs Infantry(1) at a 110wu spawn gap; Cavalry(6) vs Infantry(6) at 110wu
+(re-confirmed pre-existing on unmodified `main` via `git stash`); Infantry(10) vs
+Cavalry(4) at 100wu; Infantry(12) vs Cavalry(3) at 150wu; and Cavalry(10) vs
+Cavalry(10) at 150wu (the symmetric, zero-cost-to-attacker case documented in
+#1151's own body). Two OTHER attempts — the same Cavalry(1)/Infantry(1) and
+Infantry(10)/Cavalry(4) pairings, but at a wider 200-220wu spawn gap — never reached
+contact within the recording's wall-clock budget at all; those two are inconclusive,
+not evidence either way, and are NOT counted among the five above. Only the CAUSE is
+still open — every configuration that actually reached contact wiped, with zero
+exceptions.
+
+**How to apply:** before committing to a "smallest possible" scenario for a mechanic
+gated on genuine body PROXIMITY (not just being in the SAME battle), check whether
+the fight could resolve entirely before proximity is ever reached — particularly for
+any matchup involving a charge-bonus attacker (cavalry). Don't assume adding depth or
+spacing avoids it: every configuration that actually reached contact wiped, across
+soldier counts from 1 to 12 per side and both cavalry-vs-infantry and
+cavalry-vs-cavalry matchups (see the precise enumeration above) — there is currently
+no known small-scale cavalry-involving configuration CONFIRMED to reach genuine
+body-proximity contact. Until #1151 resolves, the working options are: skip the
+live-battle demo entirely and rely on unit tests (what PR #1143 itself did), or use a
+matchup that never triggers a charge bonus at all (e.g. two slow-closing
+Infantry-only regiments, which reach real contact fine per the
+`normal-formation-melee-contact.json` precedent — just at a scale/duration too large
+to call "minimal").
+
 ## A hotkey rebind (merge-conflict collision fix) has THREE copies to sync, not one
 
 When resolving an `OrderMode`-enum merge collision (see `sparta.md`'s
@@ -437,6 +656,114 @@ ACTIVE, not just armed, must script `{"key": "<letter>", "ctrl": true}` — veri
 any other scripted key. (`Lacaedemon/sparta` PR #749, 2026-07-11: `{"key": "H"}` alone left
 `order_mode` reading `Normal` through the whole recording, letting a `HOLD`-intended
 defender auto-chase the approaching charger — fixed by adding `"ctrl": true`.)
+
+## A `box` step spans DRAG_TICKS (16) ticks — a key that depends on the selection must wait for the release
+
+`DemoInputRecorder._drag` spreads a scripted `box` (and `rmb_drag`) over `DRAG_TICKS := 16`
+ticks — press at the step's tick, interpolated motion, release (which is what commits the
+box-selection) at `tick + 16`. A key scripted inside that window fires mid-drag with NOTHING
+selected, and it no-ops silently: the recording completes, no error, the state dump just
+shows the drill/order never happening. This presents identically to a wrong keycode or a
+wrong hotkey, so it's easy to misdiagnose — the tell is that swapping the `box` for a
+single `click` (selection commits immediately) makes the same key work.
+
+**How to apply:** schedule any key that acts on a box-selection at
+`box_tick + DRAG_TICKS + margin` (a few ticks); when a scripted key silently does nothing,
+check the selection-commit timing before suspecting the key name or the dispatch code.
+(`Lacaedemon/sparta` PR #899, 2026-07-15: `drill-response-beat.json` scripted `Q` at tick 24
+after a `box` at tick 10 — the release lands at tick 26, so the command hit an empty
+selection; moved to tick 40.)
+
+## A tightly-drawn `box` can silently exclude a unit sitting right at its edge
+
+`DemoInputRecorder._drag`'s interpolated motion steps only reach `from.lerp(to, 15.0/16.0)`
+— `for i in range(1, DRAG_TICKS)` with `DRAG_TICKS := 16` stops at `i = 15`, one short of a
+full `i = 16`. The box-selection rectangle SelectionManager actually queries against is
+whatever the last `InputEventMouseMotion` set, so the effective drag corner is 15/16 of the
+way to the scripted `to`, not `to` itself — the button-up event at `tick + DRAG_TICKS` does
+carry the true `to` position, but it's an `InputEventMouseButton`, not a motion event, and
+doesn't update the box rectangle. A box drawn to just barely enclose a unit at its edge can
+therefore exclude that unit, with no error — the recording completes normally and the
+composite/group/order the script expects just silently has one fewer member than intended.
+
+**How to apply:** pad `box`/`rmb_drag` corner coordinates generously past any unit you need
+included — don't draw the box tightly to a unit's exact position. If a scripted box-select
+demo comes up short by exactly one unit at a boundary, check this 15/16 shortfall before
+suspecting the unit's spawn coordinates or the selection logic itself.
+(`Lacaedemon/sparta` PR #1088, 2026-07-26: `nested-control-groups.json`'s box-select for
+group 3 needed padding past its intended two units for this reason.)
+
+## Staging a rout-pursuit demo: the constraint map (four dumped failures)
+
+Retuning the trapped_routing clip surveyed the pursuit-dynamics staging space;
+every rejected staging is a reusable constraint for any future rout/chase demo:
+
+- **A rear charge overshoots onto the flee lane and physically walls it.** The
+  charge carries the attacker THROUGH the contact and past it -- parking it on
+  the router's escape vector. The fleeing mob's bodies push into the pursuer
+  and get knocked back the way they came; the dumped track shows the "fleeing"
+  unit drifting the OPPOSITE direction from its flee vector. Stage breakers
+  from a FLANK: the overshoot then lands beside the flee lane, not on it.
+- **A cavalry pursuer that keeps contact herds and grinds the mob in place**
+  (41 -> 2 men in 100 ticks) -- no flee geometry ever forms. Fast pursuit only
+  reads as "chasing" when the router is faster (a broken CAVALRY unit outruns
+  its pursuers; a foot router cannot break cavalry contact at all).
+- **Archer fire pins a fleeing mob prone into a crawl** (~14 wu/s vs the
+  ~100+ flee pace) -- arrow knockdowns dominate the mob's coupled position, so
+  the "flee" becomes 25 seconds of being carved. Ranged pressure cannot drive
+  a watchable rout arc.
+- **The morale hover band: ~2-8 morale under weak pressure never routs.**
+  Combat morale recovery offsets weak incoming shock, so a unit hovering in
+  that band fights indefinitely (a 100-man unit at morale 8 held morale 2-3
+  against a lone cavalry for 700+ ticks). A staged rout needs starting morale
+  BELOW the band (3 or less works only with real shock incoming) or an
+  overwhelming first strike.
+
+The staging that works for "break, flee, detour around terrain, get run
+down": brittle player CAVALRY (fast router), one enemy cavalry charging from
+the FLANK (overshoot lands clear of the flee lane), terrain dead ahead of the
+flee vector so the clearance detour is the visual centrepiece.
+
+## A pursuing cavalry's own formation disintegrates over a long chase
+
+Any long gallop chase progressively deforms the pursuer's block: monotonic
+shape-residual growth (3 -> 43+ wu RMS over 500 ticks) with nearest-neighbour
+distance collapsing toward genuine body interpenetration, zero casualties
+involved. It is a tracked open sim investigation (data posted from the
+trapped_routing retune); until it resolves, a demo whose declared checks
+sample a mid-gallop pursuer will fail the defect scan on readings the demo
+author cannot stage away. Pin the SUBJECT unit's story beats and the
+engagement moments (engaged samples are exempt), and disclose the sampling
+choice in the script comment rather than burying the signal.
+
+## all_teams_control is the staging tool for a genuinely stationary enemy
+
+The team-1 battle AI regroups its units (archers pull back to screen their
+own line), so no mid-lane enemy firing position survives long enough to
+matter -- and there is no HOLD doctrine. `"all_teams_control": true` turns
+team-1's AI off entirely while unit-level combat behaviour (stop-and-shoot,
+auto-engagement) keeps running: enemies stand where posted and still fight.
+That is what makes flank-fire staging possible at all. Related geometry
+constraint: RANGED_RANGE (160 wu) is SHORTER than SPRINT_START_DISTANCE
+(200 wu), so archers at or behind a march's destination can never produce a
+jog leg (sprint pre-empts the under-fire pace) -- a visible walk/jog/sprint
+sequence needs the fire coming from the LANE'S SHOULDER, far from the
+destination, with the beaten zone ending before charge distance begins.
+
+## A timing-difference demo needs a large-motion maneuver, not an in-place turn
+
+When a demo's point is that two units START the same evolution at different times (e.g. a
+per-unit response-delay characteristic), pick a maneuver whose progress is unmistakable in
+motion — a wheel's sweeping arc — rather than an in-place turn. A quarter-turn/conversio
+preserves the block's footprint (that's the point of those drills — see "Footprint-preserving
+maneuvers are inherently subtle" below), so two blocks staggered by half a second read as
+"nothing happening twice": neither silhouette changes, and at mark LOD the only signal is a
+few-pixel glyph rotation. The same stagger staged on a wheel reads instantly — one block
+visibly swinging while the other still stands square. (`Lacaedemon/sparta` PR #899,
+2026-07-15: the response-beat demo was authored twice as a quarter-turn — first at figure
+LOD, then at mark LOD per the footprint-preserving recipe — and both stills read as
+identical blocks; rewritten as a wheel, where the tick-80 frame shows the veteran mid-swing
+beside a still-square levy.)
 
 ## Movie Maker's `fixed_fps` sets the VIDEO frame rate, not the physics tick rate — don't assume 1:1
 
@@ -551,6 +878,45 @@ against it line by line. When delegating demo authorship to a subagent, state th
 explicitly in the brief up front — both recurrences were from agents who verified locally, wrote
 a confident caption from that, and never diffed it against what CI would actually record.
 
+**The rule above is scoped to a demo CAPTION, and the same figures pasted into a PR COMMENT
+are the same error with nothing pointing at it.**
+Every statement of it so far -- the heading, the how-to-apply, the recurrence paragraph --
+says "caption", so a session about to quote survivor counts into a review reply, an ARD
+disposition table, or a PR description does not see itself in it.
+The artifact does not change the physics: a local Windows `dump-state.sh` run and CI's Linux
+transcript diverge in a long battle whichever document you quote them into, and a PR comment
+is read by the human deciding whether to merge.
+So read this rule as governing any artifact that publishes a precise per-tick number, not
+only the caption.
+
+What makes the wrong figure feel safe to write is that the QUALITATIVE conclusion survives
+the substitution intact.
+A demo staged to show a dramatic contrast stays dramatic under either set of numbers, so
+nothing about the claim reads as wrong afterwards -- only the pinned digits were ever false,
+and they are the part a reader quotes onward.
+Treat an intact conclusion as the reason to check the digits, never as evidence they hold.
+
+- **Do:** cross-check against CI's own posted transcript for the shipping commit before
+  putting a precise per-tick number in ANY artifact -- caption, PR comment, PR description,
+  or review reply.
+- **Do:** word a claim qualitatively when the point is a contrast, and let CI's transcript
+  supply whatever has to be exact.
+- **Don't:** read "the conclusion is unchanged" as licence to leave local figures standing;
+  the conclusion was never the part that was wrong.
+- **Don't:** assume the caption framing exempts a comment -- the divergence is a property of
+  the run, not of the document it lands in.
+
+(`Lacaedemon/sparta` PR #1199, 2026-08-05: a round-1 disposition comment reported the raw-levy
+defender ending at 17/40 with morale 48.3, taken from a local Windows `dump-state.sh` run of a
+~800-tick four-regiment melee.
+CI's own posted transcript for the same PR reports 21/40 and morale 57.3 at that tick.
+This file's rule had been on the books since 2026-07-12 and was loaded in that session;
+it was read as governing the demo's caption -- which was written qualitatively and needed no
+change -- while the comment quoting exact figures went unchecked.
+The qualitative claim held either way, which is why it read as safe: the veteran loses 4 men
+where the levy loses 19 on CI's numbers, and the contrast was just as stark on the local ones.
+Corrected in a follow-up comment on the same PR.)
+
 ## Footprint-preserving maneuvers are inherently subtle on screen — stage for legibility, verify by per-region pixel-diff
 
 A footprint-preserving maneuver — the conversio/about-face (#394), where the block reverses 180°
@@ -608,6 +974,48 @@ PR's demo section, check the manifest actually lives in *this* PR's diff (`git s
 GIF is present and a caption reads plausibly — a fluent caption describing the wrong PR is not
 self-evidently wrong from the text alone. (`Lacaedemon/sparta` PR #831, 2026-07-13.)
 
+**This applies to any PR we didn't author the manifest for — a third-party bot's PR (Jules,
+Dependabot) never reads `demos/README.md` at all, so it's the same gap with nobody to brief.**
+Check it as part of reviewing such a PR, the same way you'd check a delegated agent's. When the
+change is genuinely non-visual, the fix is a skip manifest, not a clip:
+`demos/demo.skip.example.json` names "a non-visual refactor" as a sanctioned reason.
+
+**But a demo-diff reporting 0 sim-content changes does NOT by itself establish "non-visual" --
+it is necessary, not sufficient.** Per the demo-diff section above, that tool never sees the
+render layer at all, so a purely render-side change (a shader tweak, HUD layout, draw order,
+LOD) reports 0 sim-content changes while being *fully* visible -- exactly the kind of change
+that most needs a clip. Treating the count alone as a skip justification would license skipping
+there. Pair it with a check that the diff touches no render path at all (grep the diff for
+`_draw`/`_refresh_flock_render`-style calls, per this file's own "caption claiming an ON-SCREEN
+effect must be checked against the render path" rule); only when BOTH hold is "non-visual"
+actually supported. Then quote both in the `reason`, so the skip is auditable instead of
+asserted. (`Lacaedemon/sparta` PR #1176, 2026-07-29: a Jules perf PR's description advertised
+an unrelated shield-wall melee-depth clip from #1094 for a `distance_to` -> `distance_squared_to`
+swap in AI targeting math -- 0 sim changes across 73 clips AND no render path in the diff, so
+genuinely skippable on both counts.)
+
+## A skip manifest that exists but uses the wrong schema fails exactly as silently as a missing one
+
+The entry above covers a *missing* `demos/demo.<slug>.json`. A **present but wrongly-shaped**
+one is just as silent a failure: `demo-video.yml`'s "Resolve demo source" step reads the
+manifest with a flat, top-level `jq -r '.skip // false'` lookup. A file that nests `skip`/
+`reason` one level deeper — e.g. `{"manifest": {"skip": true, "reason": "..."}}` instead of the
+documented flat `{"skip": true, "reason": "..."}` (see `demos/demo.skip.example.json` and any
+existing `demo.<N>.json` with `skip: true`) — makes that lookup evaluate to `false`. CI then
+silently falls through past the skip branch and records the generic `demos/showcase.json`
+fallback with the caption "Gameplay demo for this PR.", exactly the misleading-fallback outcome
+the skip manifest exists to prevent. Nothing errors: the file is valid JSON, CI runs green, and
+a PR comment claiming "added a skip manifest" reads as true because the file genuinely exists —
+only the actual posted demo section (or the raw `jq` lookup) reveals it never took effect.
+
+**How to apply:** after adding or editing any `demos/demo.<slug>.json` with `skip: true`, don't
+stop at confirming the file exists — check the posted PR description's demo section actually
+shows the skip note ("🚫 No gameplay clip for this PR — `<reason>`"), not a rendered GIF with a
+generic caption. If it shows the fallback GIF instead, the manifest's shape is wrong, not the
+demo pipeline. (`Lacaedemon/sparta` PR #1070, 2026-07-27: an automated agent's `demo.1070.json`
+nested `skip`/`reason` under a stray `"manifest"` key; caught by a Claude review round after an
+earlier PR comment had already (wrongly) asserted the skip manifest was "confirmed present.")
+
 ## A "wait then quit" helper reachable from multiple recorder modes needs a mode-guarded await
 
 The demo-video CI job's state-transcript step (drives `DemoInputRecorder` in state-only mode)
@@ -628,3 +1036,353 @@ that signal is guaranteed to fire on every code path reaching the function — h
 (frame capture, real renderer) always fires it, another (state-only, `--headless` dummy
 renderer) doesn't. A shared fallback timer isn't enough if its own logic assumes "done implies no
 work left." (PR #519; `demo` CI job dropped from a 6-min timeout to ~1m20s.)
+
+## An expect tick-RANGE's bounds become armed sample ticks -- they can re-trip the defect gate
+
+The defect gate (`tools/check.sh demo_defects`) arms a state snapshot at every tick an
+`expect` entry references -- and for a `[lo, hi]` RANGE entry that means BOTH bounds
+become sampled ticks, in addition to the script's own `state` list. A sampling plan
+carefully tuned to avoid a known-deformed window can be silently un-tuned by an expect
+range whose bounds land inside it: the scan then judges those extra ticks and fails on
+readings the state list deliberately avoided. Anchor expect ranges on ticks that are
+ALREADY in the `state` list (the range's ANY-match semantics still gives drift tolerance
+across the in-list samples), or keep them point ticks. (PR #968's
+`cycle-charge-flee.json`: a `[320, 350]` rout-state range armed ticks 320 and 350, whose
+samples re-created a consecutive shape-residual violation pair the state list had been
+chosen to break up; re-anchored to `[300, 330]` -- both already sampled -- and the gate
+passed.)
+
+## Gate mechanics for sampling design: shape/blob need SUSTAINED violations; overlap fails on a single sample
+
+Empirically (probing the analyzer on snapshot subsets): `shape_residual` and `blob` only
+FAIL when at least two CONSECUTIVE judged samples violate their floors -- a single spiked
+sample passes -- while `overlap` fails on ANY single judged sample below its floor. Two
+consequences for sampling design: never sample two adjacent story beats that both sit in
+a known transient-deformation window (they become a sustained pair), and never sample ANY
+tick where two bodies genuinely interpenetrate below the overlap floor, however briefly.
+The fast way to tune a sampling: dump FULL state at dense candidate ticks once, then run
+`analyze_transcript.gd` on per-tick / per-window SUBSETS of the snapshot files (copied
+into scratch dirs) to get per-tick verdicts without re-running the sim. (PRs #968/#970.)
+
+## Same-machine headless vs rendered runs of one seed diverge late, like cross-platform runs do
+
+The "precise-tick caption claim" entry above warns that local and CI runs diverge past
+some point in long battles. It extends to ONE machine: a `--headless` dump run and a
+real-renderer frame-capture run of the identical input script and seed agreed exactly
+through ~t900, then diverged (different casualty counts at a second strike: 40 vs 49
+survivors). Treat ANY two runs under different renderer configs as potentially divergent
+late-battle, not just Windows-vs-Linux; verify precise-tick caption claims against the CI
+transcript, and don't be alarmed when a local frame capture's late-battle counts differ
+from the local dump that motivated it. (PR #968's second-strike window, 2026-07-17.)
+
+## A two-unit melee scenario spawned too close together gang-piles casualties before any mechanic gets to matter
+
+When staging a `scenario`-only two-unit clash meant to demonstrate a SUSTAINED effect (a
+standoff, a knockback balance, anything that needs the fight to run for a while at a
+stable state), don't spawn the two regiments already overlapping/interpenetrating at
+melee range. A vertical gap that's merely smaller than one side's own `attack_range`
+(e.g. 50 world units between block CENTRES for a 48wu-reach spear regiment) can still put
+MOST of both formations' front ranks within reach of each other simultaneously, once each
+side's own formation DEPTH is added on top of the centre-to-centre gap -- not just the
+front-rank pair. The result: dozens of attackers can all have a handful of defenders in
+reach on the very first tick, delivering enough simultaneous strikes to kill several
+defenders (at full, untouched HP -- no accumulated-wound survivors) before the clip has
+shown anything about the mechanic under test. This reads as instant, unrealistic
+casualties in the first ~10 ticks and swamps whatever slower dynamic (a standoff settling,
+a knockback trading) the demo was staged to show.
+
+**Fix:** spawn the two sides far enough apart that neither is in contact range at tick 0
+(gap > either side's own `attack_range + 2*RADIUS`, not just visually "close"), and let
+the enemy AI's own march (`_run_enemy_ai`, real order commands, no scripted steps needed)
+close the distance naturally. This also avoids needing any scripted `steps` at all for a
+stationary-defender-vs-marching-attacker demo: team 0 stays put by default, and team 1's
+AI walks it into contact on its own. Verify with `dump-state.sh` at an early tick (e.g.
+tick 10) that soldier counts on BOTH sides still match their spawned `count` before trusting
+any later tick's numbers as representative of the sustained mechanic. (`Lacaedemon/sparta`
+PR #981, `demos/inputs/spear-standoff.json`: an initial 50wu-gap two-formation spawn lost 5
+of 30 Infantry soldiers, all at full HP, within the first 10 ticks -- re-staged with a
+200wu gap and no scripted steps, letting the enemy AI march in instead.)
+
+**The same spacing rule applies to two FRIENDLY units spawned side by side, not just
+opposing ones -- but the defect shows up differently.** Two same-team regiments whose
+bounding boxes overlap at spawn (a formation's own bbox width, ~120 wu for a 120-soldier
+Infantry NORMAL formation, easily exceeds a "looks fine at a glance" gap between their
+centres) trip cross-unit friendly-crowding/avoidance forces at the touching edge -- but
+since the two units never fight each other, the defect scan's `overlap` metric (nearest-
+neighbour distance WITHIN one unit's own soldier array, `DemoDefects.nnd_stats`) flags it
+as each unit's OWN internal ranks compressing, not a cross-unit collision metric (there
+isn't one). This can look like a Subcommander/AI bug at first glance -- confirm it isn't by
+staging an ISOLATED single-unit control scenario (same type, no neighbor at all): if nnd
+stays rock-stable there and only degrades once a second friendly unit is added nearby, the
+mechanism is cross-unit crowding, not anything specific to whatever feature the two units
+are demonstrating. **Fix:** widen the gap between the two friendly units' spawn centres
+well past the sum of their two formation half-widths (not just "wider than it was"), and
+re-verify with the exact `state`/`expect` ticks the demo actually declares -- `tools/check.sh
+demo_defects` scans precisely those, so a fix that only clears a WIDER diagnostic tick set
+than the demo's own declared ticks doesn't prove anything. (`Lacaedemon/sparta` PR #1082,
+`demos/inputs/player-delegation.json`: two Infantry units 100 wu apart (x=500/600, each
+~120 wu wide) showed `overlap` failing on both at tick 42 -- widening to 300 wu (x=450/750)
+cleared it; an earlier facing-reversal hypothesis for the same symptom was disproven by the
+same isolated-unit control test, since the compressed unit's facing never actually changed.)
+
+## A per-soldier reach-standoff bias can splay a formation once the enemy scatters into routing stragglers -- SUPERSEDED, see below
+
+**Update: this is now resolved as a side effect of a mid-PR design correction, not a
+follow-up fix.** The entry below described the FIRST version of `SoldierMeleeStandoff`
+(backing away for the longer-reach side, whole-living-battle proximity lookup including
+routers). Both premises changed on the same PR before merge: (1) the longer-reach side
+was changed to NEVER bias at all (equal-or-longer reach is unconditionally zero -- the
+existing landed-strike knockback does the push-back instead, per the "no top-down
+gimmicks" philosophy), so the WINNING side described below structurally cannot splay via
+this mechanism anymore, regardless of how scattered the losing side gets; and (2) the
+nearest-enemy lookup was rescoped from a whole-living-battle scan to the ENGAGED tier
+only (a dedicated `SoldierEngagedEnemyProximity` grid, gathered fresh each tick from
+`Unit.engaged_soldier_indices()`) -- a routing unit drops out of the engaged tier
+`ENGAGED_LINGER` (0.5s) after it stops being FIGHTING, so scattered routing stragglers
+stop being valid standoff candidates for ANYONE shortly after they break, not just for
+the (now nonexistent) backing-away branch. Kept here rather than deleted since the
+`shape_residual`-blind-spot lesson (a formation can drift/rotate as a whole away from its
+canonical slots while staying internally coherent, so the demo-defect scan's scramble
+check won't catch it) is still a real, reusable diagnostic technique for any FUTURE
+per-soldier bias that reads live enemy positions -- re-run this same
+`soldiers_full.pos` vs `soldiers_full.slots` per-soldier distance check against any new
+mechanic in this family before assuming a clean `shape_residual` verdict means no drift.
+
+---
+
+`SoldierMeleeStandoff`'s per-soldier bias (#240 phase 2) looks up each engaged soldier's
+OWN nearest living enemy independently (`SoldierEnemyProximity.nearest_enemy`), including a
+ROUTING enemy's soldiers (routers stay in the cross-team proximity grid so a Square/Schiltron
+can still treat them as a threat -- see `SoldierEnemyProximity`'s own class doc). Late in a
+lopsided battle, once one side is ground down to a handful of scattered, fleeing stragglers,
+different soldiers on the winning side end up backing away from (or pressing toward)
+DIFFERENT, increasingly far-apart stragglers -- there's no shared regiment-level target, only
+each soldier's own locally-nearest enemy. Over several hundred ticks this measurably splays
+the winning formation's actual body positions well outside its own canonical formation grid
+(observed: a 16-soldier Spearmen block's `soldier_summary.bbox` grew from ~54wu wide (stable
+through the core sustained-standoff window) to ~101wu wide by the time the enemy was reduced
+to 4 survivors and routing -- nearly double, while the CANONICAL slot grid computed from the
+same tick's `position`/`facing` stayed ~54wu the whole time, confirming the bodies were
+genuinely displaced off their own formation, not just a wider intentional reshape).
+`shape_residual` (the demo-defect scan's scramble check) does NOT catch this -- it measures
+internal shape after a best-fit rigid alignment, so a formation that stays internally
+coherent but drifts/rotates as a whole away from its canonical slots reads as near-zero
+residual regardless. A raw `soldiers_full.pos` vs `soldiers_full.slots` per-soldier distance
+check is what actually surfaces it (12-44wu per-soldier deviation from slot at the affected
+tick, in the case observed). Visually this reads as a crescent/encirclement shape around the
+last defenders -- not obviously broken, but a real, measurable formation-integrity cost that
+only manifests once the losing side has scattered, well past the CORE sustained-standoff
+window (#240's issue and design doc; unaffected in the ticks where both sides are still
+substantially intact). Filed as a known limitation rather than fixed in #981 itself: excluding
+routing enemies from the standoff lookup would need `SoldierEnemyProximity` to carry a
+per-soldier owner-state, and its rebuild is cache-shared (by exact `frame` key) with the
+SQUARE/Schiltron engaged-set selection, which DOES want routing enemies treated as threats --
+so a scoped fix isn't a one-line change. (`Lacaedemon/sparta` PR #981, 2026-07-18.)
+
+## Scripting a shift+right-click waypoint append: there's no direct step type -- use a zero-length `rmb_drag` with `shift: true`
+
+`DemoInputRecorder._schedule` only exposes `click`/`shift_click` (both forced LEFT button),
+`rmb_click` (forced `shift: false`), and `rmb_drag` (the only step type that accepts an
+explicit `shift` field). There is **no `shift_rmb_click`** step -- a `shift_click` step is a
+Shift+LEFT-click (multi-select), not a waypoint append, and using it where an append was
+intended silently does nothing order-related (no error, no queued leg -- the click is consumed
+by selection instead). Confirmed no existing demo in this repo has ever scripted a waypoint
+append before hitting this: every prior `rmb_drag` usage is a genuine multi-hundred-wu form-up
+drag, never an append.
+
+**Fix:** script a **zero-length `rmb_drag`** (`from` == `to`) with `"shift": true`. The
+recorder's `_drag()` still emits press/interpolated-motion/release, but since every
+interpolated position equals `from`, `_rmb_dragging` never flips true (distance never exceeds
+`CLICK_THRESHOLD`), so `_finish_right_button` takes the plain-click branch with the shift flag
+preserved (`_rmb_shift` is captured at PRESS, matching a real Shift+right-click). This exercises
+the exact same `Battle._apply_order_cmd` append path (`ORDER_APPEND_WAYPOINT`) a real
+Shift+right-click does. Like a genuine drag, the release lands `DRAG_TICKS` (16) after the
+scripted tick -- budget for that the same way a `box` step's release does (see the box-step
+entry above).
+
+**Verify the append actually landed** before trusting a scenario's later ticks: dump state a
+few ticks after the drag's release and check `queue_tail` is non-empty (`["MOVE"]`) --
+`current_order`/`queue_tail` staying exactly as they were before the step is the tell that a
+`shift_click` (or any other malformed append attempt) silently no-opped instead of queuing a
+leg. (`Lacaedemon/sparta` PR #1002, `demos/inputs/queued-leg-hold-stance.json`, 2026-07-19: a
+first attempt used `shift_click` for the append and produced a scenario that looked plausible
+end-to-end but never actually queued the second leg at all.)
+
+## A caption claiming persistence "throughout" a window needs a DENSE tick sweep across that whole window -- the committed sparse `state`/`frames` samples can hide a flatly wrong claim indefinitely
+
+When a caption asserts a value holds continuously across a stretch of the clip (e.g. "target_enemy_uid stays 4 from tick ~15 onward, never 3"), the committed `state`/`frames` tick lists are usually a handful of widely-spaced points chosen for legibility, not for covering every phase of the mechanic. If none of those sparse points happen to fall inside the window where the claim is actually FALSE, the wrong caption survives every review round indefinitely -- nothing in CI's own transcript comment or a reviewer's spot-check ever contradicts it, because nobody ever sampled the disproving tick.
+
+**How to apply:** before trusting (or writing) a "throughout"/"never"/"always" caption claim, dump state at a DENSE tick interval (every 10-20 ticks) across the entire window the claim covers, not just the committed sparse sample points -- the same technique the "long/chaotic battle" entry above uses for precise-tick claims, but applied here to find a hidden sub-window the sparse samples never touched, not to check platform drift. Once the true phase boundaries are known, pick a new sample tick that actually falls inside the disputed phase and add it to `state`/`frames` so future review can see it directly instead of re-discovering it by chance.
+
+**Triage shortcut -- check for an existing unit test before assuming a game-logic bug.** When a caption's claim conflicts with a reproduced state dump, first check whether a dedicated deterministic GUT test (`test/unit/test_*.gd`) already covers the same mechanic. If one exists and passes, the discrepancy is much more likely a demo-authoring problem (stale caption, sparse/misaligned sample ticks) than a game-logic bug -- the unit test is a stronger, environment-independent signal than one demo's committed samples. Confirm by reproducing the actual behavior via `dump-state.sh` before concluding either way; don't rely on the unit test's existence alone.
+
+**Concrete case:** `demos/inputs/sweep-routers.json`'s caption claimed the sweeper's `target_enemy_uid` "stays 4 (Fleeing) throughout" from tick ~15, "never 3 (Holdout)". A dense sweep (every ~10 ticks) showed the real sequence is null -> 3 -> **4** (only ~tick 55-85, while Fleeing is alive and routing) -> 3 again (once Fleeing is annihilated by the pursuing Breaker, ~tick 85-90) -- the "never 3" claim was wrong from authoring, not stale drift. The demo's own committed `state`/`frames` ticks (`10, 40, 100, 160, 220, 240` / `10, 100, 160, 220`) all landed outside the ~30-tick window where target==4, so the wrong claim was unfalsifiable by anyone only looking at the committed artifacts. `test/unit/test_sweep_routers_order.gd` already proved the underlying `SWEEP_ROUTERS` targeting logic correct (routing-priority + fallback), which is what pointed the investigation at the demo's authoring rather than `UnitTargeting.gd`/`Unit.gd`. Fixed by rewriting the caption to the true three-phase behavior and adding tick 70 (confirmed inside the router-priority window) to `state`/`frames`. (`Lacaedemon/sparta` issue #1005, PR #1006, 2026-07-19.)
+
+## `all_teams_control` only silences the STRATEGIC AI (`_run_enemy_ai`) -- each unit's own per-tick auto-advance still runs for every team
+
+The existing "all_teams_control is the staging tool for a genuinely stationary enemy" entry in
+`sparta.md` is only half the story. Turning off team 1's AI this way stops it from receiving
+FRESH orders, but it does **not** touch `Unit._think()`'s own per-tick, per-UNIT
+auto-advance-on-a-detected-enemy branch (`elif enemy != null and order_mode != ORDER_HOLD:
+_move_to(enemy.position, ...)`), which runs identically for every team regardless of
+`all_teams_control`. A freshly-spawned `scenario` unit with no order and the default
+`order_mode` (`Normal`) will happily march itself toward ANY detected enemy within
+`Unit.DETECTION_RANGE` (190 wu) the moment one comes close enough -- including a unit you meant
+to leave passively "stationary" as a backdrop for staging a DIFFERENT unit's behavior.
+
+**How to apply:** if a demo needs a genuinely inert/stationary opposing unit under
+`all_teams_control` (not just "AI won't issue it new orders"), explicitly put THAT unit on Hold
+too (select it, `Ctrl+H`) before the scenario's real action starts -- don't assume spawning it
+passively and never selecting it is enough. Verify by dumping its `position` across the whole
+clip: if it drifts at all despite never being an explicit script target, it auto-advanced on
+its own. (`Lacaedemon/sparta` PR #1002: a first staging attempt left the "stationary" enemy on
+its default Normal stance under `all_teams_control`; it auto-advanced toward the mover and the
+two met in the middle regardless of the mover's own stance, defeating the whole point of the
+demo until the enemy was also explicitly put on Hold.)
+
+## Every demo defect check is diff- or delta-scoped -- nothing ever scans a clip absolutely
+
+Worth knowing before concluding "the checks would have caught it." All three layers ask
+what a PR *changed*, never "is this clip defective, full stop":
+
+- `tools/check.sh demo_defects` -- only `demos/inputs/*.json` files CHANGED in the diff
+  (`git diff --name-only $base HEAD`). Skips entirely when nothing changed. Gating.
+- `demo-video.yml`'s *Demo defect scan* -- only the ONE PR-tailored clip named by
+  `demos/demo.<slug>.json`. Gating.
+- `website-demo-diff.yml` -- sweeps the full `website/tools/demo-catalog.sh` catalog, but
+  dumps PR-head vs MERGE-BASE and runs DemoDefects only over clips whose transcript
+  CHANGED. `continue-on-error`, informational comment, never blocks.
+
+So a defect present identically on both sides of a diff -- a pre-existing one, or one that
+predates the scan -- is invisible to every layer. The delta design was the right call for
+what `website-demo-diff.yml` was built to do (#905, replacing a byte-hash comparison that
+flagged ~every clip on ~every PR), but it means the site's 70+ published clips have never
+been checked in absolute terms.
+
+Practical consequence: when a clip on the live docs site looks wrong, do NOT reason "CI is
+green, so this must be intended." Check whether any PR has actually changed that clip since
+the scan existed -- `git log --oneline -- demos/inputs/<name>.json` -- and whether the
+script even carries an `expect` block (most don't). Absent both, the clip has never been
+judged by anything. (Found on the `square` clip, `anti-cav-square.json`, untouched since
+#749: a real reform defect sat on the published site indefinitely. Filed as #1146; the
+whole-catalog absolute sweep as #1147.)
+
+## The identity checks are real, but they are blind DURING a reshape -- which is when a bad route happens
+
+`DemoDefects` DOES read per-soldier identity, and it is easy to talk yourself out of
+believing that. `misslotted_count` compares `positions[i]` against `slots[i]` BY ARRAY
+INDEX and counts a soldier only when some other man's slot is strictly nearer;
+`test_misslotted_count_zero_on_slots_and_full_on_a_swap` proves it catches a two-man swap.
+`kabsch_fit` is index-paired at both the angle-fit and the residual stage, so it is NOT
+permutation-invariant either -- `test_kabsch_fit_reports_scramble_as_residual_not_rotation`
+scrambles a point set and asserts a large residual. Only a permutation that is ITSELF a
+rigid motion (an array reverse on a centred grid = a 180-degree rotation) fits with zero
+residual. Do not hand-duplicate these checks believing they don't exist.
+
+The real gap is narrower and entirely about TIMING:
+
+- **`misslotted` is deliberately switched off while the block is in transit.** It is
+  recorded as `0.0` unless the mean nearest-any-slot distance is within
+  `MISSLOT_SETTLED_FRAC` (0.25) of the spacing, because mid-reshape every body is between
+  slots and "whose slot is nearest" is genuinely noise. So during a reform it reports
+  nothing -- and once the block settles, the men ARE on their correct new slots, so it
+  legitimately reports nothing then either.
+- **`shape_residual` does fire, and gets excused.** `_sustained_verdict`'s
+  `CONVERGING_IMPROVEMENT_FRAC` (0.05) resets the run whenever a failing sample improves
+  more than 5% on its predecessor, so a steadily-converging transition never reaches
+  `MIN_SUSTAIN`. Its docstring names the intent: a legitimate reshape "reads far out of
+  tolerance for many samples while steadily converging."
+- **`judged_mask`** additionally exempts engaged, routing, post-casualty, and
+  engagement-adjacent samples.
+
+Net effect, measured on the `square` clip (`anti-cav-square.json`) in a full-catalog sweep:
+`shape_residual worst=48.72 threshold=6.75` -> PASS, `misslotted worst=0.34 threshold=0.25`
+-> PASS. The only FAIL was an unrelated `overlap` sample. So the scan genuinely does not
+catch #1146 -- but because every metric asks about the END STATE and that end state is
+correct, not because identity is unmeasured. #1146 is a bad ROUTE to a right answer, and
+nothing scores routes.
+
+**How to apply:** when verifying a maneuver whose whole point is WHERE INDIVIDUAL MEN END
+UP -- a reform, an about-face, a countermarch, a frontage change, a formation switch -- a
+green scan tells you the destination was right, not the path. Do the per-index comparison
+by hand: dump `soldiers_full.pos` at a settled tick before AND after, de-rotate both into
+the unit's local frame, and compare BY ARRAY INDEX.
+
+The de-rotation angle must match `soldier_world_slots`' own:
+`ang = facing.angle() + PI/2 + _formation_angle`. **The `_formation_angle` term is not
+optional here** -- a completed about-face folds it to +/-PI and a quarter-turn to +/-PI/2,
+which are exactly the maneuvers this check is for, so omitting it de-rotates into the wrong
+frame for the cases that need it most. It cancels only when comparing two ticks that share
+the same facing AND the same fold (a pure in-place reshape with no turn, e.g. the square
+case above); confirm that before relying on the shortcut. `_formation_angle` is not in the
+state dump, so read it live or pick a window where no turn occurs.
+
+Check two things the settled-state metrics can't: per-index travel distance, and whether
+the local lateral coordinate flips sign (the soldier crossed its own centreline). Restrict
+the window to one with no casualties, or `reap()`'s array compaction invalidates
+index-as-identity. A useful second number: compare total travel against a greedy
+nearest-slot pairing over the same start positions and target slots -- greedy is an upper
+bound on optimal, so if the actual assignment costs ~2x greedy, most of the movement is
+churn rather than geometry. (Recurred as #541 about-face, #668 countermarch, #802
+target-slot cadence, #1146 square reform. Route-aware metric tracked as #1149.)
+
+## A caption claiming an ON-SCREEN effect must be checked against the render path, not inferred from the sim change
+
+The existing caption-accuracy entries cover claims about per-tick SIM values (verify against the
+transcript, not a local dump). A distinct and easier mistake: asserting that a change will look
+a particular way on screen, when nothing in the diff touches the code that draws it.
+
+Concretely: a demo staged with `Settings.show_engaged_highlight` was captioned as showing the
+amber tint "sitting on the contact rank instead of covering both blocks end to end" -- describing
+a newly narrowed physics tier. But that overlay is fed by `engaged_soldier_indices()` inside
+`Unit._refresh_flock_render()`, which the change deliberately left alone, so the tint kept
+covering both whole blocks exactly as before. The claim was invented from what the sim change
+did, never checked against what the renderer reads. Caught by review.
+
+**How to apply:** before writing any caption sentence about what a viewer will SEE, grep the diff
+for the render path that produces it (`git diff <base>...HEAD -- scripts/ | grep -c
+'_refresh_flock_render\|show_engaged_highlight\|_draw'`). A zero count means the visual is
+unchanged and the caption must not claim otherwise. When the change genuinely has no on-screen
+representation, say so plainly and point at what IS visible instead -- here, the formation's own
+rank/file order. Rewiring a dev overlay to make a caption true is the wrong fix: it changes what
+an existing debug visual means, for the sake of prose.
+
+## Read the website demo-diff's WHOLE defect-delta table, not just the flagged rows
+
+`website-demo-diff.yml` flags only clips where a defect fires on the PR side but not the
+merge-base -- by construction, only the rows that got WORSE. Reading just those gives a
+systematically pessimistic view of a change that moves sim behaviour broadly, and can make a
+net improvement look like a regression.
+
+Concretely: a core melee-dynamics change was flagged with 4 candidate-regression clips. Tallying
+every row instead showed 10 defect instances CLEARED across 7 clips (three going fully clean)
+against 6 added across 4 -- net 4 fewer, 7 improved vs 4 degraded. That accounting was also the
+strongest available evidence against a specific regression hypothesis: a systematic force acting
+from first contact would degrade broadly and in one direction, and could not clear ten instances
+across seven unrelated clips. Per-clip before/after sampling had been suggestive; the whole-table
+tally was decisive.
+
+**How to apply:** when the diff flags several clips, tally cleared-vs-added across the full table
+before classifying anything, and put the net accounting in the PR description. The flagged rows
+tell you where to look first, not what the change did overall.
+
+## Every defect-delta row is post-divergence -- read the Diverges column as its weight
+
+Structural, not incidental: the delta's two sides are bit-identical up to the first divergent
+tick, because that tick comes from a hash covering each unit's `position` and its whole
+`_sim_soldier_pos` array, written every tick -- the same data the position metrics read. So a
+difference can only ever appear AFTER divergence, and no bound produces an "attributable"
+delta; bounding to the pre-divergence range empties the comparison rather than narrowing it
+(tried and reverted in PR #1180).
+
+What the divergence tick is good for is weighting. The table's `Diverges` column reports it
+plus how much of the clip sits after it: a row diverging at tick 960 of 1300 had only the last
+quarter to grow a difference in and is weak evidence, while one diverging at tick 60 was
+restructured wholesale and its delta is far more likely to be real. Two rows that previously
+read identically as "candidate regression" are now distinguishable at a glance -- which is the
+calibration #1167 had to be derived by hand, after being filed as a suspected regression it
+turned out not to be.
+
+**How to apply:** never read a candidate-regression row without its `Diverges` value, and do
+not chase a late-divergence row as a regression before checking whether the difference lives
+entirely in the chaotic tail.

@@ -1,0 +1,20 @@
+{
+  "_comment": "Terrain-art tour: a wide static frame holds the whole battlefield -- the mottled procedural grass, the forest canopy on the west flank, the shaded hill on the east -- while a lone player Cavalry regiment (drill mode, no opponent) is ordered on a short eastward march across the open ground between them. The march is there to give the still ground a moving reference: the block's team colour and crisp formation read clearly against all three textures. The leg is kept short (250 wu at a walk) so the arrival lands well inside the clip. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 750, "y": 480, "facing": [1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 490.0, "zoom": 0.7}
+  ],
+  "steps": [
+    {"tick": 10, "click": [750, 480]},
+    {"tick": 25, "rmb_click": [1000, 480]}
+  ],
+  "state": [8, 120, 300, 480, 620],
+  "expect": [
+    {"tick": [80, 200], "uid": 0, "field": "state", "value": "MOVING"},
+    {"tick": [480, 620], "uid": 0, "field": "state", "value": "IDLE"}
+  ]
+}

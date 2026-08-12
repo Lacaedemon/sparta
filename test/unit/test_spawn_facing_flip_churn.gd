@@ -39,6 +39,15 @@ func _unit(uid: int, team: int, pos: Vector2, face: Vector2) -> Unit:
 	return u
 
 
+## Stage a REFORM-leaf hold on `u` -- mirrors test_unit.gd's own helper of the same name
+## (docs/atomic-order-decomposition-design.md, Slice 1): a MOVE order to `dest`, marked as
+## the interstitial reform-before-move pause, with `timer` seconds left before it commits.
+func _stage_reform_hold(u: Unit, dest: Vector2, timer: float) -> void:
+	u.set_current_order(Order.new_move(dest))
+	u.current_order.phase = Order.Phase.REFORM
+	u.current_order.reform_timer = timer
+
+
 func test_large_facing_snap_keeps_every_body_on_its_own_slot() -> void:
 	# Spawn facing north, then snap to facing ~south (a ~167 degree flip, matching the
 	# issue's repro) in a single call -- exactly what the auto-advance chase path used to
@@ -151,6 +160,85 @@ func test_degenerate_zero_length_dir_leaves_facing_unchanged() -> void:
 	u._face_dir(Vector2.ZERO)
 	assert_true(u.facing.is_equal_approx(Vector2.DOWN), "facing is untouched by a zero dir")
 	assert_eq(u._formation_angle, 0.0, "nothing to absorb from a no-op snap")
+
+
+# --- the other _face_dir call sites, exercised through their real caller ------------------
+#
+# The tests above prove the _face_dir MECHANISM is caller-independent: it's a pure function
+# of (self, dir) that folds any large jump into _formation_angle, so nothing about which
+# caller invokes it can break the invariant UNLESS that caller also touches _formation_angle,
+# _formation_mirror_x, or _sim_soldier_pos itself around the same call -- which a full read of
+# every _face_dir call site (Unit.gd:1626, 1640, 2298, 2346, 2399, 2540, 5311) confirmed none
+# of them do. _process_rout (5311) already has direct coverage above. _face_for_action (2540)
+# only ever calls _face_dir with an offset <= ENGAGE_TURN_THRESHOLD (== FACING_SNAP_ABSORB_
+# THRESHOLD by construction -- see Unit.gd:3437), so it never exercises the large-snap-absorb
+# branch at all; nothing new to verify there beyond the small-correction case above. _face()
+# (2399) is a one-line wrapper with no side effects of its own. That leaves two real call
+# paths that CAN trigger a large snap and hadn't been exercised end to end: _move_to's
+# non-pivoting branch (an undisciplined/in-haste unit's first order) and the reform-hold
+# pivot fallback's form-up branch (a drag-to-form-up order's deploy_facing).
+
+func test_move_to_non_pivoting_branch_keeps_every_body_on_its_own_slot() -> void:
+	# An undisciplined unit's first order, facing sharply away from its destination. pivot_as_
+	# formation = (orderly or formed_turn) and disciplined and not _is_move_order_in_haste()
+	# (Unit.gd:2283) -- orderly=true (the real "obey a move order" call, Unit.gd:1938) clears
+	# the first clause, so disciplined=false is what actually forces the non-pivoting branch
+	# here; a bare two-arg call would already take that branch regardless of disciplined (that
+	# shape matches a different real caller instead, the skirmish-kite retreat at Unit.gd:1778).
+	# The branch itself (Unit.gd:2346) calls _face_dir(steer_dir) with no threshold gate at all,
+	# unlike _face_for_action's small-offset-only snap.
+	var u := _unit(1, 0, Vector2(500, 500), Vector2.UP)
+	u.disciplined = false
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	var start_bbox: Vector2 = _bbox(u._sim_soldier_pos)
+
+	u._move_to(Vector2(500, 1500), 1.0 / 60.0, true)   # orderly: straight south, ~180 deg flip from UP
+
+	assert_true(absf(angle_difference(Vector2.UP.angle(), u.facing.angle())) > deg_to_rad(90.0),
+		"sanity: the move order did flip facing by more than 90 degrees")
+	for i in range(before.size()):
+		assert_eq(u._sim_soldier_pos[i], before[i],
+			"the facing snap inside _move_to must not move body %d" % i)
+	assert_ne(u._formation_angle, 0.0,
+		"the large snap absorbs into _formation_angle, same as a direct _face_dir call")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		assert_almost_eq(slots[i].x, u._sim_soldier_pos[i].x, 0.5)
+		assert_almost_eq(slots[i].y, u._sim_soldier_pos[i].y, 0.5)
+
+	for _i in range(90):
+		u._move_to(Vector2(500, 1500), 1.0 / 60.0, true)
+		SoldierBodies.step(u, 1.0 / 60.0)
+	var mid_bbox: Vector2 = _bbox(u._sim_soldier_pos)
+	assert_almost_eq(mid_bbox.x, start_bbox.x, 1.0,
+		"the block width does not collapse after an undisciplined unit's first-order flip")
+	assert_almost_eq(mid_bbox.y, start_bbox.y, 1.0,
+		"the block depth does not collapse after an undisciplined unit's first-order flip")
+
+
+func test_reform_hold_form_up_deploy_facing_keeps_every_body_on_its_own_slot() -> void:
+	# A drag-to-form-up order's deploy_facing SNAPS on the very first reform-hold tick
+	# (Unit.gd:1625-1626) rather than gradually pivoting, because the frontage is already
+	# reshaping synchronously at order time -- see that branch's own comment. Confirm the
+	# snap itself still doesn't move a single body, same as every other _face_dir call site.
+	var u := _unit(1, 0, Vector2(500, 500), Vector2.UP)
+	_stage_reform_hold(u, Vector2(500, 500), Unit.REFORM_DURATION)   # dest is irrelevant here
+	u.deploy_facing = Vector2(0.23, 0.97)   # a ~167 degree flip from UP, same as the issue's repro
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+
+	u._think(0.01)   # small delta: the reform timer stays running past this one tick
+
+	assert_true(u.facing.is_equal_approx(Vector2(0.23, 0.97).normalized()),
+		"sanity: the reform-hold branch snapped facing to deploy_facing")
+	for i in range(before.size()):
+		assert_eq(u._sim_soldier_pos[i], before[i],
+			"the deploy-facing snap during the reform hold must not move body %d" % i)
+	assert_ne(u._formation_angle, 0.0,
+		"the large deploy-facing snap absorbs into _formation_angle, same as a direct call")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		assert_almost_eq(slots[i].x, u._sim_soldier_pos[i].x, 0.5)
+		assert_almost_eq(slots[i].y, u._sim_soldier_pos[i].y, 0.5)
 
 
 # --- live Battle replay of the issue's repro (demos/inputs/spawn-facing-flip-fixed.json) --

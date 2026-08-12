@@ -24,7 +24,10 @@ func _sample_unit() -> Unit:
 	u.attack_range = 60.0
 	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
 	u.shield_type_id = LoadoutRegistry.SHIELD_SCUTUM
+	u.armor_type_id = LoadoutRegistry.ARMOR_TUNIC       # non-default, so the round-trip is provable
+	u.mount_type_id = LoadoutRegistry.MOUNT_WARHORSE    # non-default, so the round-trip is provable
 	u.order_response_delay = 0.5
+	u.atomic_response_delay = 0.35
 	u.training = 0.75
 	u.disciplined = true
 	u.field_bounds = Rect2(0, 0, 1600, 1000)
@@ -47,6 +50,8 @@ func _sample_unit() -> Unit:
 	u.knockback_push_indefinite = true
 	u.formation_mode = Unit.FORMATION_SQUARE
 	u.rank_relief = false
+	u.player_group_id = 3   # non-default (defaults Unit.UNDELEGATED), so the round-trip is provable
+	u.subcommander_rank_title = "Tribune"
 	u.engage_reshape_mode = Unit.EngageReshapeMode.RECREATE_WIDTH
 	u.tier = FormationTier.FAR
 	u.frontage_override = 6
@@ -59,6 +64,9 @@ func _sample_unit() -> Unit:
 	u.deploy_facing = Vector2(1, 0)
 	u.ordered_facing = Vector2(0, 1)
 	u.walk_advance = true
+	u.reform_before_move = false   # non-default (the field defaults true), so the round-trip is provable
+	u.file_major_reform_mode = Unit.ReformMode.AUTO   # non-default (defaults FILE_MAJOR); also
+	# proves the round-trip carries the full 3-state mode, not just the bool compat view
 	u._under_fire = true
 	u._attack_cd = 0.2
 	u._pin_down_exposure_cd = 0.1
@@ -66,6 +74,7 @@ func _sample_unit() -> Unit:
 	u._shattered = true
 	u._order_response_timer = 0.4
 	u._engaged_linger = 0.35
+	u._brace_settled_time = 0.6
 	u._moved_last_frame = true
 	u._approach_velocity = Vector2(5, -5)
 	u._current_speed = 44.0
@@ -77,6 +86,9 @@ func _sample_unit() -> Unit:
 	u._engage_turn_start_facing = Vector2(0, -1)
 	u._engage_turn_old_files = 9
 	u._reform_on_arrival = true
+	u._move_order_peak_engaged_fraction = 0.55
+	u.is_rearguard_detachment = true   # non-default (defaults false), so the round-trip is provable
+	u._rearguard_lifetime_timer = 1.4
 
 	u._sim_soldier_pos = PackedVector2Array([Vector2(1, 2), Vector2(3, 4)])
 	u._sim_body_vel = PackedVector2Array([Vector2(0.1, 0.2)])
@@ -88,6 +100,8 @@ func _sample_unit() -> Unit:
 	u._sim_prone = PackedFloat32Array([0.0, 1.5])
 	u._sim_soldier_stamina = PackedFloat32Array([80.0, 60.0])
 	u._sim_soldier_facing = PackedVector2Array([Vector2(0, -1), Vector2(0, -1)])
+	u._sim_soldier_file = PackedInt32Array([0, 1])
+	u._file_assignment_files = 2   # non-default (the field defaults -1), so the round-trip is provable
 
 	var move := Order.new_move(Vector2(700, 300))
 	move.phase = Order.Phase.MARCH
@@ -109,6 +123,11 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.max_soldiers, original.max_soldiers)
 	assert_eq(restored.attack_range, original.attack_range)
 	assert_eq(restored.weapon_type_id, original.weapon_type_id)
+	assert_eq(restored.armor_type_id, original.armor_type_id)
+	assert_eq(restored.mount_type_id, original.mount_type_id)
+	assert_almost_eq(restored.order_response_delay, original.order_response_delay, 0.001)
+	assert_almost_eq(restored.atomic_response_delay, original.atomic_response_delay, 0.001,
+		"a spawn-customized drill beat survives a replay-seek snapshot restore")
 	assert_eq(restored.disciplined, original.disciplined)
 	assert_eq(restored.field_bounds, original.field_bounds)
 	assert_eq(restored.retreat_bounds, original.retreat_bounds)
@@ -122,16 +141,35 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.has_move_target, original.has_move_target)
 	assert_eq(restored.order_mode, original.order_mode)
 	assert_eq(restored.formation_mode, original.formation_mode)
+	assert_eq(restored.player_group_id, original.player_group_id,
+		"Battle AI phase 4: player delegation survives a snapshot round-trip")
+	assert_eq(restored.subcommander_rank_title, original.subcommander_rank_title)
+	assert_eq(restored.walk_advance, original.walk_advance)
+	assert_eq(restored.reform_before_move, original.reform_before_move)
+	assert_eq(restored.file_major_reform_mode, original.file_major_reform_mode)
+	assert_eq(restored.file_major_reform, original.file_major_reform)
+	assert_eq(restored._file_assignment_files, original._file_assignment_files)
 	assert_eq(restored.frontage_override, original.frontage_override)
 	assert_eq(restored._formation_angle, original._formation_angle)
 	assert_eq(restored._shattered, original._shattered)
 	assert_eq(restored._rout_timer, original._rout_timer)
 	assert_eq(restored._engaged_linger, original._engaged_linger,
 		"the engaged afterglow window survives a restore -- is_engaged() must not flip")
+	assert_eq(restored._brace_settled_time, original._brace_settled_time,
+		"the brace settle timer survives a restore -- soldier_brace() must not flip")
 	assert_eq(restored._approach_velocity, original._approach_velocity)
 	assert_eq(restored.current_speed, original.current_speed)
 	assert_eq(restored._engage_turn_target, original._engage_turn_target)
 	assert_eq(restored._engage_turn_old_files, original._engage_turn_old_files)
+	assert_almost_eq(restored._move_order_peak_engaged_fraction,
+			original._move_order_peak_engaged_fraction, 0.001,
+			"an unconsumed disengage-time peak survives a replay-seek restore -- a snapshot" \
+			+ " reload must not silently resume a guarded MOVE a straight playthrough would cancel")
+	assert_eq(restored.is_rearguard_detachment, original.is_rearguard_detachment,
+			"a rearguard detachment keeps its identity across a snapshot round-trip --" \
+			+ " it has no per-unit trace elsewhere to fall back on if this were dropped")
+	assert_almost_eq(restored._rearguard_lifetime_timer, original._rearguard_lifetime_timer, 0.001,
+			"and its removal timer survives too, or a rewound rearguard would never be cleaned up")
 
 	assert_eq(Array(restored._sim_soldier_pos), Array(original._sim_soldier_pos))
 	assert_eq(Array(restored._sim_soldier_hp), Array(original._sim_soldier_hp))
@@ -139,6 +177,7 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(Array(restored._sim_soldier_stamina), Array(original._sim_soldier_stamina))
 	assert_eq(Array(restored._sim_soldier_facing), Array(original._sim_soldier_facing))
 	assert_eq(Array(restored._sim_soldier_weapon_id), Array(original._sim_soldier_weapon_id))
+	assert_eq(Array(restored._sim_soldier_file), Array(original._sim_soldier_file))
 
 	assert_eq(restored.orders.size(), 1)
 	assert_eq(restored.orders[0].type, Order.Type.MOVE)

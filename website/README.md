@@ -19,6 +19,26 @@ The pages re-present content whose source of truth lives in the repo root
 (`README.md`, `PLAN.md`, `REPLAY.md`, `ASSETS.md`, `docs/`). Each page links back to
 its source — keep them in sync when the originals change.
 
+## Quarto extensions
+
+`_extensions/` holds the site's Quarto extensions, installed with `quarto add` and
+**committed as plain files** in the `_extensions/<publisher>/<name>/` layout that
+`_quarto.yml` references by `<publisher>/<name>`.
+
+Checking them in is what Quarto asks for: extensions are
+[treated as source code](https://quarto.org/docs/extensions/managing.html) so the
+project renders far into the future without depending on an external package
+manager still being reachable. They are deliberately **not** submodules -- a
+submodule would reintroduce exactly the fetch dependency that checking the files
+in exists to avoid.
+
+| extension | upstream | installed with | vendored at |
+|---|---|---|---|
+| `d-morrison/equation-anchors` | [d-morrison/equation-anchors](https://github.com/d-morrison/equation-anchors) `9d0ff89` | `quarto add d-morrison/equation-anchors` | `_extensions/d-morrison/equation-anchors/` |
+
+To refresh one, re-run its `quarto add` command and update the pinned commit above
+so the recorded version stays accurate.
+
 ## Demo clips
 
 The `<video>` embeds point at `media/showcase.mp4` and `media/clash.mp4` (with
@@ -46,14 +66,15 @@ show their poster / fallback text — the site still builds fine.
 
 To feature a **specific tactic** (a flank charge, a rout), play that battle in-game,
 copy the saved replay from `user://replays/` into `demos/`, and add a row to the
-`DEMOS` list in `website/tools/record-demos.sh`.
+`DEMOS` list in `website/tools/demo-catalog.sh` (shared by `record-demos.sh` and the
+per-PR state-transcript diff, so a new clip joins both automatically).
 
 ## Deployment
 
 Pushing to `main` (touching `website/**` or game code) triggers `publish-site.yml`.
 Its `demos` job records the clips and uploads them as an artifact; its `publish`
 job calls the shared reusable workflow
-[`d-morrison/gha/.github/workflows/quarto-publish.yml@v2`](https://github.com/d-morrison/gha),
+[`Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2`](https://github.com/Morrison-Lab/gha),
 which pulls that artifact into `website/media`, renders the Quarto project, and
 deploys to the `gh-pages` branch. The render/deploy logic lives in `gha` (reused
 across SERG Quarto repos), not hand-rolled here.

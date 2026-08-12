@@ -24,21 +24,23 @@ static func current_target(u: Unit) -> Unit:
 	return nearest_enemy(u)
 
 
-## Nearest threat for normal auto-acquisition: centred on the unit, within DETECTION_RANGE.
+## Nearest threat for normal auto-acquisition: centred on the unit, within its own
+## detection_range (a caller-configurable field, default Unit.DETECTION_RANGE).
 ## Includes routing enemies --- see nearest_enemy_to's include_routing.
 static func nearest_enemy(u: Unit) -> Unit:
-	return nearest_enemy_to(u, u.position, Unit.DETECTION_RANGE, true)
+	return nearest_enemy_to(u, u.position, u.detection_range, true)
 
 
 ## Nearest routing enemy for SWEEP_ROUTERS stance: the closest routing (broken/shattered)
-## enemy within DETECTION_RANGE, or null if none is routing. Returns null rather than
-## falling back to the nearest non-routing enemy --- the caller (Unit._think) only
-## overwrites target_enemy when this returns non-null, so a null result leaves
-## current_target()/nearest_enemy() to own the ordinary no-router targeting, preserving
-## the "relentless pursuit" persistence invariant when the stance has nothing to prioritize.
+## enemy within u's own detection_range (default Unit.DETECTION_RANGE), or null if none is
+## routing. Returns null rather than falling back to the nearest non-routing enemy --- the
+## caller (Unit._think) only overwrites target_enemy when this returns non-null, so a null
+## result leaves current_target()/nearest_enemy() to own the ordinary no-router targeting,
+## preserving the "relentless pursuit" persistence invariant when the stance has nothing to
+## prioritize.
 static func nearest_routing_enemy(u: Unit) -> Unit:
 	var best_router: Unit = null
-	var best_router_d: float = Unit.DETECTION_RANGE
+	var best_router_d_sq: float = u.detection_range * u.detection_range
 
 	for o in u.get_tree().get_nodes_in_group("routers"):
 		var other: Unit = o as Unit
@@ -47,9 +49,10 @@ static func nearest_routing_enemy(u: Unit) -> Unit:
 		if other.state != Unit.State.ROUTING:
 			continue
 
-		var d: float = u.position.distance_to(other.position)
-		if d < best_router_d:
-			best_router_d = d
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		var d_sq: float = u.position.distance_squared_to(other.position)
+		if d_sq < best_router_d_sq:
+			best_router_d_sq = d_sq
 			best_router = other
 
 	return best_router
@@ -67,11 +70,11 @@ static func roll_the_line_target(u: Unit) -> Unit:
 			and t.state != Unit.State.ROUTING:
 		return t
 	u.target_enemy = null
-	return nearest_enemy_to(u, u.position, Unit.DETECTION_RANGE, false)
+	return nearest_enemy_to(u, u.position, u.detection_range, false)
 
 
 ## Nearest living enemy within `radius` of `center`. Backs both normal auto-acquisition
-## (centred on this unit, DETECTION_RANGE, routing enemies included) and the support
+## (centred on this unit, u.detection_range, routing enemies included) and the support
 ## stance, which scans around the WARD's position so a supporter meets threats closing on
 ## its charge rather than only ones near itself.
 ##
@@ -85,7 +88,7 @@ static func roll_the_line_target(u: Unit) -> Unit:
 static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 		include_routing: bool = false) -> Unit:
 	var best: Unit = null
-	var best_d: float = radius
+	var best_d_sq: float = radius * radius
 	var groups: Array = ["units", "routers"] if include_routing else ["units"]
 	for group in groups:
 		for o in u.get_tree().get_nodes_in_group(group):
@@ -94,9 +97,10 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 				continue
 			if other.state == Unit.State.DEAD:
 				continue
-			var d: float = center.distance_to(other.position)
-			if d < best_d:
-				best_d = d
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			var d_sq: float = center.distance_squared_to(other.position)
+			if d_sq < best_d_sq:
+				best_d_sq = d_sq
 				best = other
 	return best
 

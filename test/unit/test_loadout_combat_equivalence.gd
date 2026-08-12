@@ -94,6 +94,48 @@ func test_spawned_soldiers_strike_inputs_match_the_old_table() -> void:
 	assert_gt(checked, 0, "the battle spawned roster units to check")
 
 
+## The typed armor/mount split (per-unit ids -> profile_for) must leave every
+## spawned roster unit's armour bit-identical to the pre-registry hard-coded
+## rows, the same equivalence bar the weapon/shield split above already meets.
+## Contact mass is a deliberate exception: it is now derived from the real
+## spawned body/mount kilograms (docs/soldier-loadout-design.md's contact-mass
+## derivation) rather than a separately-tuned relative constant, so it is no
+## longer expected to match the pre-registry literal for every type.
+func test_spawned_units_armour_and_mass_match_the_old_table() -> void:
+	# Armour still matches the pre-registry literals bit-for-bit. Mass no longer
+	# does for every type: it is now SoldierCombat.relative_mass_from_kg of the
+	# real spawned body/mount kilograms, not a separately-tuned relative constant.
+	# Spearmen and Infantry both weigh the 80 kg baseline, so their mass is
+	# unchanged; Archers (70 kg) and Cavalry (75 kg rider + 450 kg warhorse, real
+	# spawned units always carry LoadoutRegistry.MOUNT_WARHORSE) genuinely change
+	# from the old tuned 0.9 and 2.5 to the values real kilograms actually derive.
+	Replay.forced_seed = SEED
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+	var expected: Dictionary = {
+		"Spearmen": {"armour": 0.35, "mass": 1.0},
+		"Infantry": {"armour": 0.45, "mass": 1.0},
+		"Archers": {"armour": 0.10, "mass": 0.875},
+		"Cavalry": {"armour": 0.40, "mass": 6.5625},
+	}
+	var checked: int = 0
+	for node in get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u == null:
+			continue
+		var type_name: String = u.unit_name.split(" ")[0]
+		if not expected.has(type_name):
+			continue
+		var prof: Dictionary = u.combat_profile()
+		assert_eq(prof["armour"], float(expected[type_name]["armour"]),
+			"%s spawned armour equals the pre-registry literal" % u.unit_name)
+		assert_almost_eq(prof["mass"], float(expected[type_name]["mass"]), 0.0001,
+			"%s spawned contact mass is derived from its real body/mount kilograms" % u.unit_name)
+		checked += 1
+	assert_gt(checked, 0, "the battle spawned roster units to check")
+
+
 # --- helper fallbacks: an out-of-sync read still resolves to real stats ------
 
 func test_out_of_range_index_falls_back_to_the_units_own_type() -> void:
@@ -133,6 +175,21 @@ func test_unresolvable_unit_type_falls_back_to_baseline_stats() -> void:
 		"a fully unresolvable weapon read returns the baseline lethality")
 	assert_eq(u.soldier_shield_block(0), 0.0,
 		"a fully unresolvable shield read blocks nothing")
+
+
+func test_melee_attack_interval_reads_the_units_own_weapon_type() -> void:
+	var u: Unit = _bare_unit(4)
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	assert_eq(u.melee_attack_interval(),
+		LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPEAR).attack_interval_s,
+		"a spear-armed unit's cadence matches its own weapon's attack_interval_s")
+
+
+func test_melee_attack_interval_falls_back_to_the_flat_baseline_when_unresolvable() -> void:
+	var u: Unit = _bare_unit(5)
+	u.weapon_type_id = 999   # nothing resolves: falls back to the flat constant
+	assert_eq(u.melee_attack_interval(), Unit.ATTACK_INTERVAL,
+		"a fully unresolvable weapon type falls back to the flat ATTACK_INTERVAL baseline")
 
 
 func _bare_unit(uid: int) -> Unit:

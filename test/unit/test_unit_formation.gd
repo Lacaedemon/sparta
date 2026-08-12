@@ -40,6 +40,33 @@ func test_block_slots_spacing_scales_the_grid() -> void:
 	assert_almost_eq(slots[0].distance_to(slots[1]), 5.0, 0.001, "files are one spacing apart")
 
 
+func test_block_slots_rank_pitch_deepens_only_the_rank_axis() -> void:
+	# An anisotropic grid (cavalry: ranks far deeper than files are wide) keeps the
+	# file axis on `spacing` while the rank axis steps by `rank_pitch`, still centred.
+	var slots := UnitFormation.block_slots(6, 3, 10.0, 30.0)
+	assert_almost_eq(slots[1].x - slots[0].x, 10.0, 0.001, "files stay one file pitch apart")
+	assert_almost_eq(slots[0].y, -15.0, 0.001, "front rank sits half the rank pitch forward")
+	assert_almost_eq(slots[3].y - slots[0].y, 30.0, 0.001, "ranks are one rank pitch apart")
+
+
+func test_block_slots_negative_rank_pitch_falls_back_to_isotropic() -> void:
+	# The default sentinel (-1.0) must reproduce the isotropic grid exactly, so
+	# every pre-existing caller that omits the argument is bit-for-bit unchanged.
+	var plain := UnitFormation.block_slots(40, 8, 5.0)
+	var sentinel := UnitFormation.block_slots(40, 8, 5.0, -1.0)
+	for i in range(plain.size()):
+		assert_eq(sentinel[i], plain[i], "slot %d matches the isotropic grid" % i)
+
+
+func test_anchored_block_slots_carries_rank_pitch() -> void:
+	# The anchored variant threads the same rank pitch through to the grid it lays out.
+	var plain := UnitFormation.block_slots(6, 3, 10.0, 30.0)
+	var anchored := UnitFormation.anchored_block_slots(6, 3, 3, 10.0,
+			UnitFormation.Anchor.CENTRE, 30.0)
+	for i in range(plain.size()):
+		assert_eq(anchored[i], plain[i], "anchored slot %d matches at centre" % i)
+
+
 func test_block_slots_partial_last_rank_stays_laterally_centred() -> void:
 	# 10 soldiers, 4 files -> ranks of 4, 4, 2. Each rank is centred on its own count, so the
 	# short last rank doesn't pull the block sideways: the X-centroid stays on the origin.
@@ -454,6 +481,58 @@ func test_live_perimeter_indices_degenerate_inputs() -> void:
 		"target_count beyond the array size is clamped to the array size")
 
 
+func test_most_exposed_among_only_ever_returns_candidates() -> void:
+	# The whole point of the restricted form: index 0 is by far the most centroid-distant
+	# point, but it is not a candidate, so it must never be picked no matter how exposed it
+	# is. Ranking over the whole array instead would return it -- the bug this replaced.
+	var positions := PackedVector2Array([
+		Vector2(100, 0), Vector2(1, 0), Vector2(4, 0), Vector2(-1, 0), Vector2(-2, 0)])
+	var candidates := PackedInt32Array([1, 2, 3, 4])
+	var out := UnitFormation.most_exposed_among(positions, candidates, 2)
+	assert_eq(out.size(), 2, "returns exactly target_count")
+	for i in out:
+		assert_ne(i, 0, "the non-candidate outlier is never selected")
+		assert_true(candidates.has(i), "every returned index came from the candidate set")
+
+
+func test_most_exposed_among_picks_the_farthest_within_the_candidate_set() -> void:
+	# Exposure is still measured from the WHOLE block's centroid, not the candidates' own --
+	# the subset filters who may be picked, it does not move the middle.
+	var positions := PackedVector2Array([
+		Vector2(0, 0), Vector2(1, 0), Vector2(2, 0), Vector2(3, 0), Vector2(10, 0)])
+	var centroid := Vector2.ZERO
+	for p in positions:
+		centroid += p
+	centroid /= float(positions.size())
+	# Candidates exclude the farthest point (index 4); among the rest, index 0 sits farthest
+	# from that whole-array centroid (3.2, 0).
+	var out := UnitFormation.most_exposed_among(positions, PackedInt32Array([0, 1, 2, 3]), 1)
+	assert_eq(out.size(), 1)
+	assert_eq(out[0], 0, "the most centroid-distant CANDIDATE wins")
+
+
+func test_most_exposed_among_skips_out_of_range_candidate_indices() -> void:
+	# A candidate list built before a casualty compaction can name indices that no longer
+	# exist; those are skipped rather than read out of bounds, degrading to a smaller
+	# selection instead of crashing.
+	var positions := PackedVector2Array([Vector2(1, 0), Vector2(2, 0), Vector2(3, 0)])
+	var out := UnitFormation.most_exposed_among(
+		positions, PackedInt32Array([-1, 0, 2, 7, 99]), 5)
+	assert_eq(out.size(), 2, "only the two in-range candidates survive")
+	for i in out:
+		assert_true(i >= 0 and i < positions.size(), "no out-of-range index is returned")
+
+
+func test_most_exposed_among_degenerate_inputs() -> void:
+	var positions := PackedVector2Array([Vector2(1, 0), Vector2(2, 0)])
+	assert_eq(UnitFormation.most_exposed_among(
+		PackedVector2Array(), PackedInt32Array([0]), 2).size(), 0, "no positions -> nothing")
+	assert_eq(UnitFormation.most_exposed_among(
+		positions, PackedInt32Array([0, 1]), 0).size(), 0, "target_count <= 0 -> nothing")
+	assert_eq(UnitFormation.most_exposed_among(
+		positions, PackedInt32Array(), 2).size(), 0, "no candidates -> nothing")
+
+
 func test_live_perimeter_indices_matches_a_brute_force_full_sort() -> void:
 	# The real implementation is a bounded min-heap (O(n log target_count)), not a full sort
 	# of every soldier -- differential test against a brute-force reference (sort every index
@@ -614,3 +693,129 @@ func test_sort_indices_by_angle_breaks_ties_by_index() -> void:
 	var positions := PackedVector2Array([Vector2(5, 0), Vector2(10, 0)])
 	assert_eq(UnitFormation.sort_indices_by_angle(PackedInt32Array([1, 0]), positions, Vector2.ZERO),
 		PackedInt32Array([0, 1]), "tied angles: lower index wins")
+
+
+# --- file_major_block_slots: file-major casualty reflow ---------------------
+# Unlike block_slots (soldier i's cell is a pure function of the live array index i, so
+# ANY casualty anywhere reflows the whole grid), file_major_block_slots takes each
+# soldier's own PERSISTENT file assignment and lays each file out as an independent
+# column -- a casualty only shortens ITS OWN file's rear; every other file is untouched.
+
+func test_file_major_block_slots_has_one_slot_per_soldier() -> void:
+	var file_ids := PackedInt32Array([0, 1, 2, 0, 1, 2])
+	assert_eq(UnitFormation.file_major_block_slots(file_ids, 3, 3.4).size(), 6,
+		"one slot per soldier")
+
+
+func test_file_major_block_slots_matches_row_major_with_no_casualties_and_full_ranks() -> void:
+	# 6 soldiers, 3 files -> two FULL ranks, no partial rear rank -- the one case where
+	# block_slots' per-rank "close toward centre" narrowing never kicks in, so a fresh
+	# row-major file assignment (file_ids[i] = i % files) lays out identically to the
+	# ordinary row-major grid.
+	var files := 3
+	var file_ids := PackedInt32Array([0, 1, 2, 0, 1, 2])
+	var file_major := UnitFormation.file_major_block_slots(file_ids, files, 4.0)
+	var row_major := UnitFormation.block_slots(6, files, 4.0)
+	for i in range(6):
+		assert_true(file_major[i].is_equal_approx(row_major[i]),
+			"slot %d matches the row-major grid when every rank is full" % i)
+
+
+func test_file_major_block_slots_casualty_only_shifts_its_own_files_later_ranks() -> void:
+	# 9 soldiers, 3 files, fresh row-major assignment: file0={0,3,6} file1={1,4,7} file2={2,5,8}.
+	var files := 3
+	var spacing := 4.0
+	var before_ids := PackedInt32Array([0, 1, 2, 0, 1, 2, 0, 1, 2])
+	var before := UnitFormation.file_major_block_slots(before_ids, files, spacing)
+
+	# Kill index 4 (file1's own rank-1 member, the middle of that file) -- mirrors
+	# SoldierMelee.reap() trimming every per-soldier array at the dead soldier's index.
+	var after_ids := PackedInt32Array(before_ids)
+	after_ids.remove_at(4)
+	var after := UnitFormation.file_major_block_slots(after_ids, files, spacing)
+
+	# file0's survivors (original indices 0, 3, 6) are entirely unaffected: index 6 shifts
+	# down to 5 in the compacted array, but its SLOT (file + rank) is byte-identical.
+	assert_true(after[0].is_equal_approx(before[0]), "file0 rank0 untouched")
+	assert_true(after[3].is_equal_approx(before[3]), "file0 rank1 untouched")
+	assert_true(after[5].is_equal_approx(before[6]), "file0 rank2 (shifted to index 5) untouched")
+
+	# file2's survivors (original indices 2, 5, 8) are likewise entirely unaffected.
+	assert_true(after[2].is_equal_approx(before[2]), "file2 rank0 untouched")
+	assert_true(after[4].is_equal_approx(before[5]), "file2 rank1 (shifted to index 4) untouched")
+	assert_true(after[7].is_equal_approx(before[8]), "file2 rank2 (shifted to index 7) untouched")
+
+	# file1's rank-0 survivor (original index 1) is untouched -- it was ahead of the
+	# casualty, so nothing about its own file position changes.
+	assert_true(after[1].is_equal_approx(before[1]), "file1 rank0 (ahead of the casualty) untouched")
+
+	# file1's rank-2 survivor (original index 7, now at index 6) steps FORWARD to close the
+	# gap: it now occupies the slot the dead soldier (rank1) used to stand on, not its own
+	# old rank-2 slot.
+	assert_true(after[6].is_equal_approx(before[4]),
+		"file1's deeper survivor advances into the gap left by its dead file-mate")
+	assert_false(after[6].is_equal_approx(before[7]),
+		"the advancing survivor does NOT stay at its own old (now-vacated) rank")
+
+
+func test_file_major_block_slots_a_wiped_out_file_has_a_shallower_occupied_depth() -> void:
+	# 6 soldiers, 2 files, 3 ranks deep each. Wipe out file1 entirely except its front-rank
+	# member: file0 keeps its full 3-rank depth, file1 is left with only a single front-rank
+	# survivor -- a jagged rear, not a reflowed narrower block.
+	var files := 2
+	var spacing := 4.0
+	var before_ids := PackedInt32Array([0, 1, 0, 1, 0, 1])   # file0={0,2,4} file1={1,3,5}
+	# Kill file1's rank1 and rank2 members (indices 3 and 5), high-to-low like reap() does.
+	var after_ids := PackedInt32Array(before_ids)
+	after_ids.remove_at(5)
+	after_ids.remove_at(3)
+	assert_eq(after_ids, PackedInt32Array([0, 1, 0, 0]), "sanity: file1 now has only its rank0 member")
+
+	var after := UnitFormation.file_major_block_slots(after_ids, files, spacing, 6.0)
+	# file0 still spans its full original depth (ranks 0, 1, 2); file1's lone survivor sits
+	# only at the front-most row -- its "column" never reaches the depth file0's does.
+	var file0_max_y: float = -INF
+	var file1_max_y: float = -INF
+	for i in range(after_ids.size()):
+		if after_ids[i] == 0:
+			file0_max_y = maxf(file0_max_y, after[i].y)
+		else:
+			file1_max_y = maxf(file1_max_y, after[i].y)
+	assert_lt(file1_max_y, file0_max_y,
+		"the wiped-out file's remaining survivor occupies a shallower depth than the untouched file")
+
+
+func test_file_major_block_slots_files_are_centred_on_the_full_frontage() -> void:
+	# A file's lateral (X) position depends only on its own id and the FULL file count --
+	# never on how deep any OTHER file currently is -- so it never moves even as neighboring
+	# files gain or lose survivors. Two soldiers both in file 0, one alone, one alongside a
+	# full neighboring file, land at the same X.
+	var files := 3
+	var spacing := 4.0
+	var lonely := UnitFormation.file_major_block_slots(PackedInt32Array([0]), files, spacing)
+	var crowded := UnitFormation.file_major_block_slots(
+		PackedInt32Array([0, 1, 2, 1, 2]), files, spacing)
+	assert_almost_eq(lonely[0].x, crowded[0].x, 0.001,
+		"file 0's lateral position is the same whether or not its neighbors are full")
+
+
+func test_file_major_block_slots_out_of_range_file_id_clamps_defensively() -> void:
+	# A stale/misaligned file id (out of [0, files-1]) must never crash -- clamp instead.
+	var slots := UnitFormation.file_major_block_slots(PackedInt32Array([-1, 5]), 3, 4.0)
+	assert_eq(slots.size(), 2, "still produces one slot per entry")
+
+
+func test_file_major_block_slots_empty_for_nonpositive_inputs() -> void:
+	assert_eq(UnitFormation.file_major_block_slots(PackedInt32Array(), 3, 3.4).size(), 0,
+		"no soldiers -> no slots")
+	assert_eq(UnitFormation.file_major_block_slots(PackedInt32Array([0, 0]), 0, 3.4).size(), 0,
+		"no files -> no slots")
+
+
+func test_file_major_block_slots_rank_pitch_deepens_only_the_rank_axis() -> void:
+	# Mirrors block_slots' own anisotropic-grid test: the file axis stays on `spacing`
+	# while the rank axis steps by the independent `rank_pitch`.
+	var file_ids := PackedInt32Array([0, 1, 2, 0, 1, 2])
+	var slots := UnitFormation.file_major_block_slots(file_ids, 3, 10.0, 30.0)
+	assert_almost_eq(slots[1].x - slots[0].x, 10.0, 0.001, "files stay one file pitch apart")
+	assert_almost_eq(slots[3].y - slots[0].y, 30.0, 0.001, "ranks are one rank pitch apart")

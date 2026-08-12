@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/wheel.json",
-  "caption": "Orders-queue phase 2 (#523): the movement maneuvers now execute off the Order queue -- the wheel's swing goal and hinge, a rear move's about-face phase and parked march, and the drill turns all live on current_order instead of scattered Unit flags. The clip is the standard wheel drill (select the infantry block, C wheels it right, Z wheels it back left) driven through the real controls: the maneuver itself must look exactly as before (the standing flank plants, the line swings like a door), which is the point -- the migration preserves behaviour. What IS new on screen: the info panel now reads the maneuver straight off the queue, reporting 'Wheeling' while the swing runs where it used to say 'Holding position'. Verified tick-by-tick in the GUT suite: the #517 conversio holds every body frozen through the full turn, and the #521 nudge covers the full NUDGE_DISTANCE, both read from exact game state.",
+  "input": "demos/inputs/shield-wall-holds-depth.json",
+  "caption": "Melee-intermixing depth gated by formation looseness (#1094): a Shield Wall Infantry regiment (28) holds its ground against a larger attacking Infantry regiment (40) marching in under its own AI order. The attacker's front line presses flush against the defender's front rank and holds there -- it doesn't scatter into or bleed past the defender's own rear ranks the way an un-gated clash would.",
   "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
-  "width": 640
+  "max_frames": 720,
+  "fps": 15,
+  "width": 720
 }

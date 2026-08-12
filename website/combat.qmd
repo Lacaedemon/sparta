@@ -18,14 +18,17 @@ shoves the struck soldier back -- harder on a clean landing or at charge speed, 
 against a heavy soldier like cavalry), **knockdown** (a hard enough hit can knock a soldier
 flat: while down it has no active defence and can't strike until it scrambles up),
 **bracing** (an engaged, set file buttresses the front man with the whole column's footing --
-a deep phalanx absorbs a shove that would throw a lone man back, and is far harder to fell),
+a deep phalanx absorbs a shove that would throw a lone man back, and is far harder to fell;
+bracing is graded and takes time to set, not an instant switch -- order **Brace** and hold
+still before the charge lands, or a moving/merely-engaged line gets only partial credit),
 and **stamina and exhaustion** (every strike thrown and every blow met drains stamina;
 a soldier under sustained pressure tires, their defence collapses, and then blows land
 freely -- surround and exhaust is real, not a modifier).
-**Coming:** the posture/stance system (graded brace from sprinting to set) and the rearward
-domino cascade (a blow that punches through the front rank topples men rearward until the
-impulse is spent). The sections below describe the whole model; where a piece isn't live yet,
-it soon will be.
+**Coming:** the full posture/stance system (distinct named gaits -- *at ease*, *advancing*,
+*jogging*, *sprinting* -- each with its own stamina-regen rate, rather than a continuous
+speed-scaled penalty) and the rearward domino cascade (a blow that punches through the front
+rank topples men rearward until the impulse is spent). The sections below describe the whole
+model; where a piece isn't live yet, it soon will be.
 :::
 
 ## What each soldier carries
@@ -38,13 +41,17 @@ Every soldier has live state that combat reads and changes moment to moment:
 - **Stance** --- from *at ease*, through *advancing* and *sprinting*, to *braced*
   (set to receive a hit), or knocked **prone**. Stance sets how hard you hit on the
   move, how well you hold your ground, and how fast you tire --- and changing it
-  takes time, so you must be set *before* the blow arrives.
+  takes time, so you must be set *before* the blow arrives. Order **Brace**
+  (`Ctrl+F4`) and hold a line still to set it deliberately; a merely-engaged line
+  that never got the order is only partly set, and one still moving is barely
+  set at all.
 
 and fixed traits from their regiment:
 
 - **Skill** $s$ --- training. Lands blows, parries, beats shields, tires slower.
 - **Armour** $a$ --- soaks part of a landed blow, from *any* angle.
-- **Shield** $b$ --- blocks blows, but only ones you face.
+- **Shield** $b$ --- blocks blows, but only ones you face, and only as well as
+  your skill lets you use it.
 - **Lethality** $\ell$ --- how deadly the weapon is.
 - **Reach** $r$ --- how far the weapon strikes (a spear out-reaches a sword).
 - **Mass** $m$ --- how hard they are to shove or knock down (a horse is heavy).
@@ -56,7 +63,10 @@ to put down --- so wounds and fatigue snowball.
 ## One blow, step by step
 
 When a soldier swings at the enemy in front of them, the game resolves a closing
-speed, a contest, a wound, a stamina cost, and a shove.
+speed, a contest, a wound, a stamina cost, and a shove. How *often* they get to
+swing depends on the weapon: a legionary's gladius lands a blow roughly every 1.2
+seconds, slower than the 0.6-second baseline every other weapon still uses --- a
+short sword-and-shield exchange is a deliberate, telegraphed affair, not a flurry.
 
 The formulas below are sketches: a subscript $A$ or $D$ means the **attacker's** or
 **defender's** value (so $a_D$ is the defender's armour), and a trailing $\cdots$
@@ -78,13 +88,15 @@ shield. Crucially, you can only actively defend what you can **see**:
 
 $$p_{\mathrm{land}} = L\big(\beta\,(\mathcal{A} - \mathcal{D})\big),
 \qquad
-\mathcal{D} = \phi\,(s_D + \lambda\,b_D)\cdots$$
+\mathcal{D} = \phi\,(s_D + \lambda\,b_D\,s_D)\cdots$$
 
 Here $\mathcal{A}$ and $\mathcal{D}$ are the attacker's and defender's scores, $L$
 turns the gap between them into a hit chance (an even gap is even odds), and $\beta$
 sets how sharply skill tells. $\phi$ is your **facing** against the incoming blow:
 full to the front, little to the flank, **zero to the back** --- and $\lambda$ is how
-much a shield ($b_D$) adds to a defence you can actually bring to bear. A blow to a
+much a shield ($b_D$) multiplies the defence your *training* already buys. A shield
+is something a soldier uses, not armour that works regardless: it is worth almost
+nothing to a raw recruit and more the better trained they are. A blow to a
 soldier's back meets no parry and no shield --- only armour. Skill, shields, and
 footwork all live on the front. Wound the attacker or wind the defender and these
 scores shift; nothing is ever a guaranteed hit or miss.
@@ -120,6 +132,22 @@ capped: a pile-on in a crowded press hurls a man back a few body-lengths at most
 never across the field. The uncapped force still decides whether he is knocked
 down, so a heavy hit fells as hard as ever.
 
+::: {#fig-combat-clash .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/clash.jpg">
+  <source src="media/clash.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A clash in the open: every soldier on the line is fighting their own opponent,
+each blow rolled and resolved on its own, not as one aggregate regiment-vs-regiment
+number.
+:::
+
 ## Knocked down --- and the domino
 
 A hard enough shove **knocks a soldier prone**. Bracing and mass make you harder to
@@ -148,6 +176,22 @@ facing that lets you defend, and the support vanishes the instant the file loose
 opens a gap, or is hit from a side it isn't facing. A loose, flanked, or sprinting
 file dominoes and goes down; a deep, set, front-facing shield wall stands.
 
+::: {#fig-combat-knockback .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/knockback_focus.jpg">
+  <source src="media/knockback_focus.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Every landed strike shoves the target back --- here with the Knockback Focus
+stance active, which trades damage for a larger, more reliable push, making the
+shove easy to see on a single exchange.
+:::
+
 ## Why your tactics work
 
 Everything tactical comes out of the rolls above:
@@ -172,12 +216,30 @@ Everything tactical comes out of the rolls above:
   ridden down), keep it **deep** (a shallow braced line can be punched through), and
   a heavy enough charge topples men even when braced. Never take a charge loose or in
   the flank; never send horse into set spears.
-- **Armour and shields buy time.** Heavy, shielded troops turn wounds into blocked
-  shoves and glancing hits --- they grind slowly and endure. Light troops caught in
-  the press evaporate.
+- **Armour and shields buy time --- but shields only for troops who can use them.**
+  Heavy, shielded troops turn wounds into blocked shoves and glancing hits, so they
+  grind slowly and endure, and light troops caught in the press evaporate. Armour
+  protects whoever wears it; a shield's worth scales with training, so handing
+  shields to a raw levy buys far less than handing them to veterans.
 - **Fight fresh, fight skilled.** Skill and stamina help at *both* ends --- landing
   more, defending more, tiring slower. Rested veterans beat winded levies by more
   than the headcount suggests, so pace your commitment.
+
+::: {#fig-combat-brace .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/brace_vs_unbraced.jpg">
+  <source src="media/brace_vs_unbraced.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two identical spear lines against an identical cavalry charge. The left line is
+left merely engaged; the right line is ordered to Brace early and settles well
+before contact --- watch the two absorb the same charge very differently.
+:::
 
 ::: {.callout-note}
 The exact constants ($\beta$, $D_0$, $\tau$, the stamina costs, the knockdown

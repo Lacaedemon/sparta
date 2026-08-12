@@ -10,6 +10,12 @@ class_name UnitMeshes
 # The figure outline is a slightly larger copy of the body silhouette, drawn behind it.
 const FIGURE_OUTLINE_SCALE: float = 1.22
 
+# The mounted silhouette authored in _horse_figure_polys spans ~3.62 mark radii nose
+# to tail (~1.8 m at the 0.5 m cavalry mark radius) -- about two-thirds of a real
+# warhorse's 2.4-3.0 m. Scaling the assembled figure by this factor lifts the span to
+# ~2.6 m; the per-type formation grid (1.0 m files, 3.0 m ranks) has the room for it.
+const MOUNT_FIGURE_SCALE: float = 1.44
+
 # Foot-figure render kinds — the per-type held item that keeps foot soldiers distinct
 # up close (and matches each type's flat mark shape). Cavalry ignores it. `Unit._foot_kind`
 # maps a unit's type flags onto one of these.
@@ -136,30 +142,110 @@ static func kite_mesh(radius: float) -> ArrayMesh:
 ## scaled-up rim copy; `flip` mirrors it left-right so the figure faces the unit's march
 ## direction (MultiMesh 2D can't store a reflected instance transform, so we bake two
 ## meshes and swap). Built by fan-triangulating the figure's convex polygon parts.
-static func figure_mesh(is_cav: bool, foot_kind: int, mark_r: float, outline: bool, flip: bool) -> ArrayMesh:
+##
+## `weapon_hold_angle`/`shield_hold_angle` (docs/soldier-loadout-design.md phase 3, radians)
+## orient the held-item glyph the unit's actual equipped Weapon/Shield type carries --
+## resolved by the caller (Unit._build_figure_meshes) via LoadoutRegistry, never invented
+## here. Both default to 0.0, which reproduces the originally-authored orientation
+## bit-for-bit (see _rotate_polys_about), so a caller that omits them (every pre-phase-3
+## call site, and the bow/cavalry figures below, which have no matching registry type to
+## read a hold angle from) is unaffected. Included in the cache key like every other
+## shape parameter, so distinct hold angles bake distinct meshes rather than colliding.
+static func figure_mesh(is_cav: bool, foot_kind: int, mark_r: float, outline: bool, flip: bool,
+		weapon_hold_angle: float = 0.0, shield_hold_angle: float = 0.0) -> ArrayMesh:
 	var who: String = "cav" if is_cav else "foot%d" % foot_kind
-	var key: String = "fig_%s_%s%s_%.2f" % [who, "o" if outline else "b", "f" if flip else "", mark_r]
+	var key: String = "fig_%s_%s%s_%.2f_%.4f_%.4f" % [who, "o" if outline else "b", "f" if flip else "",
+			mark_r, weapon_hold_angle, shield_hold_angle]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var polys: Array = _horse_figure_polys(mark_r) if is_cav else _foot_figure_polys(foot_kind, mark_r)
+	var polys: Array = _horse_figure_polys(mark_r) if is_cav \
+			else _foot_figure_polys(foot_kind, mark_r, weapon_hold_angle, shield_hold_angle)
+	var shades: Array = []
+	if not outline:
+		# BODY meshes carry per-part vertex-colour shading (values around white, so the
+		# per-instance team tint still multiplies through and team colour stays the
+		# dominant read) plus a soft contact-shadow ellipse as the FIRST part -- parts
+		# render in index order, so the same figure's body always overdraws its own
+		# shadow. The outline stays a flat rim: no shadow (a scaled shadow would ring
+		# the figure) and no shading.
+		shades = _horse_figure_shades() if is_cav else _foot_figure_shades(foot_kind)
+		# The cavalry shadow tracks the figure's MOUNT_FIGURE_SCALE lift so it stays
+		# under the hooves; the foot figure is unscaled, so its shadow is too.
+		var cav_shadow_r: float = mark_r * MOUNT_FIGURE_SCALE
+		var shadow_centre := Vector2(0.0, 1.3 * cav_shadow_r) if is_cav else Vector2(0.0, 1.62 * mark_r)
+		var shadow_radii := Vector2(1.6, 0.5) * cav_shadow_r if is_cav else Vector2(1.05, 0.42) * mark_r
+		# Cavalry shadows overlap their neighbours at the current formation spacing (the
+		# horse body is wider than the slot pitch), so theirs run much lighter -- stacked
+		# pairs stay a subtle contact shade instead of multiplying into a dark band.
+		var shadow_alpha: float = 0.12 if is_cav else 0.30
+		polys.insert(0, _ellipse_poly(shadow_centre, shadow_radii))
+		shades.insert(0, Color(0, 0, 0, shadow_alpha))
 	if outline:
 		polys = _scale_polys(polys, FIGURE_OUTLINE_SCALE)
 	if flip:
 		polys = _mirror_polys_x(polys)
-	var mesh := _mesh_from_polys(polys)
+	var mesh := _mesh_from_polys(polys, shades)
 	_mesh_cache[key] = mesh
 	return mesh
 
 
+## Per-part shading for _foot_figure_polys, ORDER-MATCHED to its output (torso, left
+## leg, right leg, head, then the kind's held-item parts). _mesh_from_polys asserts
+## the counts agree, so a part added to one side without the other fails loudly.
+static func _foot_figure_shades(kind: int) -> Array:
+	var shades: Array = [_shade(1.0), _shade(0.78), _shade(0.78), _shade(1.18)]
+	match kind:
+		FOOT_SPEAR:
+			shades.append_array([_shade(0.88), _shade(1.18)])   # shaft, spearhead
+		FOOT_ARCHER:
+			for i in range(6):
+				shades.append(_shade(0.9))                       # bow limb arc quads
+			shades.append(_shade(1.05))                          # bowstring
+		_:
+			shades.append(_shade(1.08))                          # shield face
+	return shades
+
+
+## Per-part shading for _horse_figure_polys, ORDER-MATCHED to its output (mount body,
+## neck, head, tail, four legs, rider torso, rider head).
+static func _horse_figure_shades() -> Array:
+	var shades: Array = [_shade(1.0), _shade(1.06), _shade(1.12), _shade(0.9)]
+	for i in range(4):
+		shades.append(_shade(0.76))
+	shades.append_array([_shade(1.06), _shade(1.16)])
+	return shades
+
+
+static func _shade(v: float) -> Color:
+	return Color(v, v, v, 1.0)
+
+
+## A flattened ellipse polygon -- the figure contact shadow.
+static func _ellipse_poly(centre: Vector2, radii: Vector2, segments: int = 12) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in range(segments):
+		var a: float = TAU * float(i) / float(segments)
+		out.push_back(centre + Vector2(cos(a) * radii.x, sin(a) * radii.y))
+	return out
+
+
 ## Combine a list of convex polygons (each a PackedVector2Array) into one ArrayMesh
-## surface, fan-triangulating each from its first vertex.
-static func _mesh_from_polys(polys: Array) -> ArrayMesh:
+## surface, fan-triangulating each from its first vertex. When `shades` is non-empty
+## it must parallel `polys` one Color per part; every vertex of that part carries it
+## as a vertex colour (multiplying with the instance/modulate tint at draw time).
+static func _mesh_from_polys(polys: Array, shades: Array = []) -> ArrayMesh:
+	assert(shades.is_empty() or shades.size() == polys.size(),
+			"shades must parallel polys part for part")
 	var verts := PackedVector2Array()
+	var colors := PackedColorArray()
 	var idx := PackedInt32Array()
-	for poly in polys:
+	for p in range(polys.size()):
+		var poly: PackedVector2Array = polys[p]
 		var base: int = verts.size()
 		for v in poly:
 			verts.push_back(v)
+			if not shades.is_empty():
+				colors.push_back(shades[p])
 		for i in range(1, poly.size() - 1):
 			idx.push_back(base)
 			idx.push_back(base + i)
@@ -167,6 +253,8 @@ static func _mesh_from_polys(polys: Array) -> ArrayMesh:
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
+	if not shades.is_empty():
+		arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_INDEX] = idx
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
@@ -182,6 +270,24 @@ static func _scale_polys(polys: Array, s: float) -> Array:
 		for v in poly:
 			scaled.push_back(v * s)
 		out.push_back(scaled)
+	return out
+
+
+## Rotate every vertex of every polygon about `pivot` by `angle` radians -- used to
+## orient a held item (spear, shield) to its weapon/shield type's hold angle without
+## re-authoring the polygon's own shape. An angle of exactly 0.0 is a no-op (returns
+## the input `polys` unchanged, not a rotated copy), so a type left at
+## LoadoutRegistry's neutral default renders identically to the pre-phase-3 baked
+## orientation.
+static func _rotate_polys_about(polys: Array, pivot: Vector2, angle: float) -> Array:
+	if is_zero_approx(angle):
+		return polys
+	var out: Array = []
+	for poly in polys:
+		var rotated := PackedVector2Array()
+		for v in poly:
+			rotated.push_back(pivot + (v - pivot).rotated(angle))
+		out.push_back(rotated)
 	return out
 
 
@@ -212,15 +318,18 @@ static func _disc_poly(c: Vector2, radius: float, segments: int = 8) -> PackedVe
 ## (screen-up = -y): a head, a tapering torso and two legs, plus a per-type held
 ## item (`kind`) on one flank so spearmen / archers / infantry stay distinct up
 ## close. Sizes scale with the mark radius so the figure tracks the mark it replaces.
-static func _foot_figure_polys(kind: int, r: float) -> Array:
+## `weapon_hold_angle`/`shield_hold_angle` orient the held item -- see figure_mesh's
+## own doc comment for where they come from and why the bow ignores its param.
+static func _foot_figure_polys(kind: int, r: float, weapon_hold_angle: float = 0.0,
+		shield_hold_angle: float = 0.0) -> Array:
 	var parts: Array = _foot_body_polys(r)
 	match kind:
 		FOOT_SPEAR:
-			parts.append_array(_spear_polys(r))
+			parts.append_array(_spear_polys(r, weapon_hold_angle))
 		FOOT_ARCHER:
 			parts.append_array(_bow_polys(r))
 		_:
-			parts.append_array(_shield_polys(r))
+			parts.append_array(_shield_polys(r, shield_hold_angle))
 	return parts
 
 
@@ -244,8 +353,11 @@ static func _foot_body_polys(r: float) -> Array:
 
 
 ## A spear held upright on the figure's right: a thin shaft rising above the head
-## with a small triangular head, protruding past the body silhouette.
-static func _spear_polys(r: float) -> Array:
+## with a small triangular head, protruding past the body silhouette. `hold_angle`
+## (radians, docs/soldier-loadout-design.md phase 3 -- Weapon.default_hold_angle)
+## rotates the whole spear about a pivot near the gripping hand (hip height); 0.0
+## reproduces the originally-authored dead-vertical orientation bit-for-bit.
+static func _spear_polys(r: float, hold_angle: float = 0.0) -> Array:
 	var shaft := PackedVector2Array([
 		Vector2(0.78 * r, -2.0 * r), Vector2(1.0 * r, -2.0 * r),
 		Vector2(1.0 * r, 1.55 * r), Vector2(0.78 * r, 1.55 * r),
@@ -254,7 +366,8 @@ static func _spear_polys(r: float) -> Array:
 		Vector2(0.89 * r, -2.6 * r), Vector2(1.22 * r, -1.9 * r),
 		Vector2(0.56 * r, -1.9 * r),
 	])
-	return [shaft, head]
+	var grip := Vector2(0.9 * r, 0.45 * r)
+	return _rotate_polys_about([shaft, head], grip, hold_angle)
 
 
 ## A bow held on the figure's right: a curved limb (an arc strip) with a straight
@@ -272,14 +385,18 @@ static func _bow_polys(r: float) -> Array:
 
 
 ## A heater shield held on the figure's left: a convex pentagon protruding past
-## the torso so the silhouette reads as a shield-bearer.
-static func _shield_polys(r: float) -> Array:
+## the torso so the silhouette reads as a shield-bearer. `hold_angle` (radians,
+## docs/soldier-loadout-design.md phase 3 -- Shield.default_hold_angle) rotates the
+## shield about a pivot near the shield arm's grip (the inner edge, chest height);
+## 0.0 reproduces the originally-authored orientation bit-for-bit.
+static func _shield_polys(r: float, hold_angle: float = 0.0) -> Array:
 	var shield := PackedVector2Array([
 		Vector2(-1.3 * r, -0.7 * r), Vector2(-0.5 * r, -0.7 * r),
 		Vector2(-0.5 * r, 0.25 * r), Vector2(-0.9 * r, 0.7 * r),
 		Vector2(-1.3 * r, 0.25 * r),
 	])
-	return [shield]
+	var grip := Vector2(-0.5 * r, -0.2 * r)
+	return _rotate_polys_about([shield], grip, hold_angle)
 
 
 ## A curved strip — an arc of `radius` about `c` from angle `a0` to `a1`, `thickness`
@@ -349,4 +466,6 @@ static func _horse_figure_polys(r: float) -> Array:
 	])
 	parts.push_back(rider_torso)
 	parts.push_back(_disc_poly(Vector2(-0.05 * r, -1.3 * r), 0.42 * r))
-	return parts
+	# Lift the whole assembled figure to real warhorse dimensions in one place, so
+	# the authored part vertices above keep their readable mark-radius proportions.
+	return _scale_polys(parts, MOUNT_FIGURE_SCALE)

@@ -1,13 +1,56 @@
 {
-  "_comment": "Move-order ghost preview per-formation geometry: hold Space so the orders overlay is live, select the Spearmen (seed 12345, ~500,300), form Square (O), then right-click to march them. Before the fix, the ghost preview always drew the wide 2:1 line grid (UnitFormation.slots) even for a squared unit; after the fix it reads formation_slots(), so the ghost matches the real square footprint the unit is actually standing in -- compare the live block's shape to the ghost dots at the destination.",
+  "_comment": "Move-order ghost preview per-formation geometry: hold Space so the orders overlay is live, select the Spearmen (seed 12345, ~407,300), form Square (O), then right-click to march them. Before the fix, the ghost preview always drew the wide 2:1 line grid (UnitFormation.slots) even for a squared unit; after the fix it reads formation_slots(), so the ghost matches the real square footprint the unit is actually standing in -- compare the live block's shape to the ghost dots at the destination.",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 500.0, "y": 430.0, "zoom": 1.5}
+    {
+      "tick": 0,
+      "x": 407.0,
+      "y": 430.0,
+      "zoom": 1.5
+    }
   ],
   "steps": [
-    {"tick": 2,  "hold_space": true},
-    {"tick": 8,  "click": [500, 300]},
-    {"tick": 16, "key": "O"},
-    {"tick": 30, "rmb_click": [500, 580]}
+    {
+      "tick": 2,
+      "hold_space": true
+    },
+    {
+      "tick": 8,
+      "click": [
+        407,
+        300
+      ]
+    },
+    {
+      "tick": 16,
+      "key": "O"
+    },
+    {
+      "tick": 30,
+      "rmb_click": [
+        407,
+        580
+      ]
+    }
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        407.0,
+        300.0
+      ]
+    },
+    {
+      "tick": [
+        40,
+        300
+      ],
+      "uid": 0,
+      "field": "formation",
+      "value": "SQUARE"
+    }
   ]
 }

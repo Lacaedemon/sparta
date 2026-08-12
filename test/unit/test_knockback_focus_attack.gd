@@ -239,7 +239,7 @@ func test_knockback_focus_pushes_the_defender_back_harder_than_a_normal_attacker
 	defender_normal.order_mode = Unit.ORDER_SKIRMISH
 	for i in range(defender_normal._sim_soldier_hp.size()):
 		defender_normal._sim_soldier_hp[i] = 9999.0
-	SoldierMelee.resolve(attacker_normal, defender_normal)
+	SoldierMelee.resolve(attacker_normal, [defender_normal])
 	var speed_normal: float = _max_body_speed(defender_normal)
 
 	Replay.rng.seed = 12345
@@ -250,7 +250,7 @@ func test_knockback_focus_pushes_the_defender_back_harder_than_a_normal_attacker
 	defender_clear.order_mode = Unit.ORDER_SKIRMISH
 	for i in range(defender_clear._sim_soldier_hp.size()):
 		defender_clear._sim_soldier_hp[i] = 9999.0
-	SoldierMelee.resolve(attacker_clear, defender_clear)
+	SoldierMelee.resolve(attacker_clear, [defender_clear])
 	var speed_clear: float = _max_body_speed(defender_clear)
 
 	Replay.rng.seed = 12345
@@ -261,7 +261,7 @@ func test_knockback_focus_pushes_the_defender_back_harder_than_a_normal_attacker
 	defender_indefinite.order_mode = Unit.ORDER_SKIRMISH
 	for i in range(defender_indefinite._sim_soldier_hp.size()):
 		defender_indefinite._sim_soldier_hp[i] = 9999.0
-	SoldierMelee.resolve(attacker_indefinite, defender_indefinite)
+	SoldierMelee.resolve(attacker_indefinite, [defender_indefinite])
 	var speed_indefinite: float = _max_body_speed(defender_indefinite)
 
 	assert_gt(speed_clear, speed_normal,

@@ -8,6 +8,7 @@ const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
 const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 const ParadeGround = preload("res://scripts/ParadeGround.gd")
 const AllTeamsControl = preload("res://scripts/AllTeamsControl.gd")
+const CustomMatchup = preload("res://scripts/CustomMatchup.gd")
 
 
 func _ready() -> void:
@@ -18,6 +19,7 @@ func _ready() -> void:
 	CampaignBattle.clear()
 	ParadeGround.clear()
 	AllTeamsControl.clear()
+	CustomMatchup.clear()
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.11, 0.12, 0.15)
@@ -65,6 +67,13 @@ func _ready() -> void:
 		AllTeamsControl.pending = true
 		get_tree().change_scene_to_file("res://scenes/Battle.tscn"))
 	box.add_child(all_teams_btn)
+
+	# Pick each side's roster from any of the four factions, then launch a battle with
+	# that exact matchup instead of the default line — see PrebattleMenu/CustomMatchup.
+	var custom_btn := _menu_button("Custom Battle")
+	custom_btn.pressed.connect(func():
+		get_tree().change_scene_to_file("res://scenes/Prebattle.tscn"))
+	box.add_child(custom_btn)
 
 	# One button per registered campaign: selecting it records the map path,
 	# then opens the shared campaign scene which loads that data file.

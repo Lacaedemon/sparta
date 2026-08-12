@@ -13,14 +13,6 @@ const UnitScript = preload("res://scripts/Unit.gd")
 
 const FACING_RIGHT := Vector2.RIGHT
 
-var _orig_reform: bool
-
-func before_each() -> void:
-	_orig_reform = Settings.reform_before_move
-
-func after_each() -> void:
-	Settings.reform_before_move = _orig_reform
-
 
 # --- pure classifier -------------------------------------------------------
 
@@ -68,6 +60,10 @@ func _unit(uid: int, pos: Vector2) -> Unit:
 	add_child_autofree(u)   # runs _ready(): joins groups, sets the footprint
 	u.uid = uid
 	u.position = pos
+	# No reform hold to step through -- these tests are about the backstep classification,
+	# not the reform-before-move hold (reform_before_move is a per-unit field now, no
+	# longer a global Settings default a raw cmd dict falls back to).
+	u.reform_before_move = false
 	return u
 
 
@@ -80,7 +76,6 @@ func _battle(units: Array) -> Node:
 
 
 func test_short_backward_move_holds_facing_as_a_backstep() -> void:
-	Settings.reform_before_move = false
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.RIGHT
 	var b := _battle([u])
@@ -91,7 +86,6 @@ func test_short_backward_move_holds_facing_as_a_backstep() -> void:
 
 
 func test_long_backward_move_does_not_backstep() -> void:
-	Settings.reform_before_move = false
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.RIGHT
 	var b := _battle([u])

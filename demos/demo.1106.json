@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/brace-vs-unbraced-charge.json",
+  "caption": "Two identical Spearmen lines face an identical cavalry charge. The right line is ordered to Brace (Ctrl+F4) early, so it settles well before contact; the left line is left at the merely-engaged default (no Hold/Brace order). Through the clip, the left line auto-advances toward the approaching cavalry on its own -- neither Hold nor Brace was ordered, so nothing suppresses that -- while the right line stays put and meets the charge in a tight, contained clash right where it stood. soldier_brace() is no longer binary: the same graded value that lets Brace hold a line still also raises its knockback/knockdown resistance and its weapon-differentiated brace capacity once it's actually set. The clip cuts off shortly after the right line's contact begins, before a known, pre-existing kinematic gap (issue #296: a charging regiment's own movement can outrun its soldiers' contact resistance) becomes visible for that pairing -- that gap predates this change and isn't part of it.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 15,
+  "width": 720
+}

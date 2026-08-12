@@ -24,6 +24,13 @@ class_name DoctrineRegistry
 ##                              reserves until the line is close to breaking.
 ##   pursue_routers             whether UnitLeader's fallback targeting chases down a routing
 ##                              enemy (true) or leaves it be, holding the line instead (false).
+##   subcommander_rank          phase 4 (docs/battle-ai-design.md): the period/faction rank
+##                              title a group's AI subcommander is known by when the player
+##                              delegates a unit group to it (e.g. a Marian-era Roman army's
+##                              "Tribune") -- pure flavor text, read by PlayerDelegation.
+##                              subcommander_rank_title and shown in the HUD's unit info panel
+##                              (see OfficerRank.title_for for the per-unit, non-doctrine-driven
+##                              analogue this complements).
 ##
 ## Doctrine data has no runtime dependency beyond plain JSON -- LLMs may draft it offline (see
 ## the design doc's "Doctrine profiles are data; LLMs stay offline" section), but the runtime
@@ -33,7 +40,7 @@ const DOCTRINE_DIR := "res://data/doctrines/"
 
 const REQUIRED_KEYS := [
 	"name", "plans", "envelop_ratio_threshold", "reserve_fraction",
-	"reserve_commit_morale_threshold", "pursue_routers",
+	"reserve_commit_morale_threshold", "pursue_routers", "subcommander_rank",
 ]
 
 ## Cache: doctrine id (filename stem, e.g. "aggressive") -> parsed Dictionary. Built lazily on
@@ -96,6 +103,7 @@ static func parse_doctrine(raw: Dictionary) -> Dictionary:
 		"reserve_fraction": clampf(float(raw["reserve_fraction"]), 0.0, 1.0),
 		"reserve_commit_morale_threshold": float(raw["reserve_commit_morale_threshold"]),
 		"pursue_routers": bool(raw["pursue_routers"]),
+		"subcommander_rank": str(raw["subcommander_rank"]),
 	}
 
 

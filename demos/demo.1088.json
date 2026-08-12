@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/nested-control-groups.json",
+  "caption": "Control groups now nest. Selecting unit 0 binds it as group 2, then units 1+2 bind as group 3. Selecting exactly {0, 1, 2} -- the clean union of groups 2 and 3, no leftovers -- and Ctrl+1 records group 1 as a COMPOSITE over groups 2 and 3, instead of a frozen snapshot. After switching the selection to the lone unit 3 (a control unit, never grouped), pressing 1 alone recalls group 1 and a move order lands only on units 0/1/2 -- unit 3 stays put -- proving the recall live-resolved to the nested union.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

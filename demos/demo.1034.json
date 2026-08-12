@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Performance graph overlay is a HUD UI overlay option toggled via the View menu best validated by unit GUT test suite in test/unit/test_performance_graph_overlay.gd"
+}

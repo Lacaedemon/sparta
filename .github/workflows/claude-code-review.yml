@@ -1,7 +1,7 @@
 # Copy to .github/workflows/claude-code-review.yml in your repo.
 # NOTE: requires the CLAUDE_CODE_OAUTH_TOKEN repository secret. It is passed
 # explicitly (not via `secrets: inherit`) because the reusable workflow lives
-# in a different account's repo (d-morrison/gha) — `inherit` only forwards
+# in a different account's repo (Morrison-Lab/gha) — `inherit` only forwards
 # secrets to reusable workflows within the SAME owner/org, so across owners it
 # silently passes an empty token and the action aborts. The workflow_dispatch
 # path lets claude.yml re-dispatch a review after an @claude run pushes commits
@@ -34,7 +34,7 @@ jobs:
       actions: read
     # Pinned to the @v2 moving major tag — the upstream-recommended consumer pin
     # (v2 includes the Claude caller workflows).
-    uses: d-morrison/gha/.github/workflows/claude-code-review.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

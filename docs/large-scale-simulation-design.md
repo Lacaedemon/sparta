@@ -27,8 +27,8 @@ array-based/SoA for performance. That architecture is efficient, but it is
 still fundamentally **O(soldiers) state and, per the evidence below,
 worse-than-linear per-tick cost**. Simulating 100,000+ soldiers, each with
 real physics, combat, and orders, is very unlikely to fit the 60fps budget on
-the reference hardware (`PLAN.md`'s target: a 2022 MacBook Air M2 24GB and the
-developer's usual PC).
+the reference hardware (`PLAN.md`'s target: the developer's PC with a
+discrete GPU).
 
 ### The evidence (from #551's benchmark, merged)
 

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/terrain-art-tour.json",
+  "caption": "The battlefield ground is now seeded procedural texture -- mottled grass with worn-earth patches, a forest canopy of individual lit treetops on the west flank, a shaded hill with rock flecks on the east -- generated at battle load from a fixed art seed (no bundled assets, no sim RNG consumed). A lone cavalry troop crosses the open ground between them; unit team colours stay the dominant read against all three textures. Before/after stills are embedded in the PR description.",
+  "fixed_fps": 30,
+  "max_frames": 320,
+  "fps": 15,
+  "width": 720
+}

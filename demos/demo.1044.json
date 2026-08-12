@@ -1,0 +1,4 @@
+{
+  "input": "demos/inputs/disengage-sacrifice-survivor.json",
+  "caption": "Disengage with sacrifice: a heavily outnumbered Infantry regiment (down to 5 of its 15 soldiers) is ordered to disengage. It sacrifices a 1-soldier rearguard to screen the retreat and steps back with the survivors -- never fully wiped out, which is the specific bug this PR fixes (sacrificing a unit's last soldier used to trigger _die()). The unit's morale later breaks under continued pursuit and it routs (a normal outcome, not an annihilation) -- the HUD unit card tray fix in this PR isn't independently demonstrable by a recorded clip, since the tray is only toggled via a menu checkbox the scripted-input recorder can't click; see test/unit/test_hud_unit_card_tray.gd."
+}

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/march-to-contact.json",
+  "caption": "New order stance: March to contact. A plain move order under NORMAL pushes straight through any hostile it crosses (the deliberate default); under March to contact (F3, then a right-click move order) the same move order stops the unit to fight anything it meets along the way, then resumes toward its original destination once the fight ends. Here a 50-strong Infantry regiment is ordered under March to contact toward a point beyond a weaker 12-strong hostile sitting in its path: it halts and fights on contact (info panel still reads \"Order: Moving to (500, 650)\" throughout, so the queued move was never cleared), routs the weaker foe, then marches on and arrives at its original destination, going idle. Verified tick by tick via dump-state.sh (state MOVING -> FIGHTING -> MOVING -> IDLE, order_mode holding March to contact throughout).",
+  "fixed_fps": 30,
+  "max_frames": 370,
+  "fps": 15,
+  "width": 640
+}

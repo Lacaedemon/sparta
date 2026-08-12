@@ -1,0 +1,21 @@
+{
+  "_comment": "Square reform slot pairing: one 120-man Infantry regiment, no enemy, drilling the NORMAL -> SQUARE reform on its own so nothing else on screen competes for attention. The regiment is selected at tick 8 and presses O at tick 40 to form square; the block is fully settled again by tick 160, and the clip runs to tick 240 so it ends on a still square rather than mid-fold. The wide line is 15 files across and the square is 11, so the block genuinely has to narrow and deepen -- what changed is WHO walks where. Previously each man was handed the grid cell matching his array index, which sent 51 of the 120 across their own centreline and cost 4939 wu of travel against a 1772 wu greedy nearest-slot reference; the men filed through each other to reach the far side. Now the cells are paired by proximity, so the block folds inward along its own files: 1738 wu of travel and zero centreline crossings, both re-measured from this clip's own state dump. Camera holds still and close (zoom 2.0, figure LOD) throughout so the individual soldiers stay readable.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 640, "y": 380, "count": 120}
+  ],
+  "camera": [
+    {"tick": 0, "x": 640.0, "y": 380.0, "zoom": 2.0}
+  ],
+  "steps": [
+    {"tick": 8, "click": [640, 380]},
+    {"tick": 40, "key": "O"}
+  ],
+  "state": [8, 40, 70, 110, 160, 240],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [640.0, 380.0]},
+    {"tick": 8, "uid": 0, "field": "formation", "value": "NORMAL"},
+    {"tick": [160, 240], "uid": 0, "field": "formation", "value": "SQUARE"}
+  ]
+}

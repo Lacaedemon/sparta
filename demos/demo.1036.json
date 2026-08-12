@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Faction definition system and historical naming API is best validated by unit GUT test suite in test/unit/test_faction.gd"
+}

@@ -1,0 +1,19 @@
+{
+  "_comment": "Auto reform mode (#997): two Spearmen-vs-Infantry standoffs, side by side, both Spearmen set to file_major_reform: \"auto\" -- the unit-level AI decides file-major vs row-major from each regiment's own disciplined flag, not a fixed player choice. The LEFT Spearmen keeps its default disciplined: true, so AUTO resolves to file-major (a casualty only closes the gap in its own file, leaving a real flank column shallow). The RIGHT Spearmen has disciplined: false (a scenario override, simulating a mob/levy), so AUTO resolves to row-major instead (the grid recomputes fresh from the live headcount every tick, always closing toward the centre column regardless of which files actually took losses). Both Infantry attackers march in and lock melee under their own enemy-AI order -- no scripted steps needed. Verified via dump-state.sh (soldiers_full.slots, de-rotated into each unit's own local frame, bucketed by file): once the deepest-file set narrows to one late in the clip, the LEFT (disciplined, auto->file-major) regiment's shallow file settles on a real flank column, tracking actual casualty history, while the RIGHT (undisciplined, auto->row-major) regiment's shallow file settles on the dead-centre column instead, exactly mirroring PR #995's own file-major-reform-contrast.json findings -- just derived automatically from disciplined instead of chosen explicitly.",
+  "seed": "997001",
+  "scenario": [
+    { "team": 0, "type": "Spearmen", "x": 350, "y": 400, "count": 24, "file_major_reform": "auto" },
+    { "team": 1, "type": "Infantry", "x": 350, "y": 600, "count": 24 },
+    { "team": 0, "type": "Spearmen", "x": 750, "y": 400, "count": 24, "file_major_reform": "auto", "disciplined": false },
+    { "team": 1, "type": "Infantry", "x": 750, "y": 600, "count": 24 }
+  ],
+  "camera": [ { "tick": 0, "x": 550, "y": 460, "zoom": 1.1 } ],
+  "steps": [
+    { "tick": 8, "box": { "from": [280, 350], "to": [420, 450] } }
+  ],
+  "state": [60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 800, 900, 1000, 1080],
+  "fixed_fps": 30,
+  "max_frames": 1080,
+  "fps": 15,
+  "width": 720
+}

@@ -1,4 +1,4 @@
-# lychee config for the Check Links workflow (overrides d-morrison/gha's bundled
+# lychee config for the Check Links workflow (overrides Morrison-Lab/gha's bundled
 # default; passed via `lychee-config: lychee.toml`). Mirrors that default and
 # adds repo-specific exclusions.
 
@@ -17,6 +17,10 @@ exclude = [
   "https://localhost.*",
   "http://127.0.0.1.*",
   "https://127.0.0.1.*",
+  # moddb.com blocks automated requests with HTTP 403 (the page works in a
+  # browser) — a false positive for the link checker, so skip it. Linked as a
+  # citation from docs/3d-conversion-design.md (0 A.D. pathfinding article).
+  "^https://www\\.moddb\\.com",
   # pixabay blocks automated requests with HTTP 403 (the page works in a
   # browser) — a false positive for the link checker, so skip it.
   "^https://pixabay\\.com",
@@ -61,4 +65,18 @@ exclude = [
   # loads again, or replace the citation with primary sources (Livy VIII.8,
   # Polybius VI.25).
   "^https://imperiumromanum\\.pl",
+  # romanobritain.org rejects lychee's automated request with HTTP 415
+  # (Unsupported Media Type) as of 2026-07-27, even though the page loads
+  # fine in a browser — the same false-positive pattern as spotterup.com/
+  # bandaarcgeophysics.co.uk/marathonhandbook.com above. Linked as a citation
+  # from docs/combat-model.md.
+  "^https://www\\.romanobritain\\.org",
+  # codecov.io's own badge.svg generation endpoint (linked from README.md's
+  # coverage badge) intermittently returns HTTP 503 Service Unavailable —
+  # confirmed reproducible across two separate CI re-runs within minutes of
+  # each other on 2026-07-28, unrelated to any PR's own content (README.md's
+  # badge line never changes). A dynamically-generated status badge isn't
+  # meaningful link-check content anyway; skip it rather than reddening
+  # every PR on a third-party rate-limit/outage this repo doesn't control.
+  "^https://codecov\\.io/gh/[^/]+/[^/]+/graph/badge\\.svg",
 ]

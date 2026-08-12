@@ -8,20 +8,18 @@ extends GutTest
 const BattleScript = preload("res://scripts/Battle.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
 
-var _orig_reform: bool
-
-func before_each() -> void:
-	_orig_reform = Settings.reform_before_move
-
-func after_each() -> void:
-	Settings.reform_before_move = _orig_reform
-
 
 func _unit(uid: int, pos: Vector2) -> Unit:
 	var u: Unit = UnitScript.new()
 	add_child_autofree(u)   # runs _ready(): joins groups, sets the footprint
 	u.uid = uid
 	u.position = pos
+	# reform_before_move is a per-unit field now, read straight off the unit rather
+	# than a cmd-level "reform" flag or Settings.reform_before_move -- default it off so a
+	# bare _apply_order_cmd() call in a test not otherwise concerned with the reform hold
+	# still marches immediately, matching this suite's long-standing convention (a raw cmd
+	# dict here never carried a "reform" key, which used to default to false the same way).
+	u.reform_before_move = false
 	return u
 
 
@@ -55,7 +53,6 @@ func test_rear_move_arms_the_about_face_and_parks_the_march() -> void:
 	u.facing = Vector2.DOWN
 	u.seed_sim_soldiers()   # conversio needs seeded soldier bodies
 	var b := _battle([u])
-	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # straight behind
 	assert_true(u.is_order_turning(), "the about-face is armed on the order")
 	assert_eq(u.current_order.type, Order.Type.MOVE)
@@ -104,7 +101,6 @@ func test_enqueue_order_applies_exactly_once_across_the_tick_drain() -> void:
 	u.facing = Vector2.DOWN
 	u.seed_sim_soldiers()
 	var b := _battle([u])
-	Settings.reform_before_move = false
 	b.enqueue_order([1], Vector2(0, -200), -1)   # rear move: applies live, tags the cmd
 	assert_true(u.is_order_turning(), "the about-face armed on the live apply")
 	var order_after_live: Order = u.current_order
@@ -128,7 +124,6 @@ func test_order_once_vs_twice_yields_identical_unit_state() -> void:
 	single.facing = Vector2.DOWN
 	single.seed_sim_soldiers()
 	var b1 := _battle([single])
-	Settings.reform_before_move = false
 	b1._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})
 
 	var live := _unit(2, Vector2.ZERO)
@@ -156,7 +151,6 @@ func test_rear_move_holds_footprint_while_facings_reverse() -> void:
 	u.facing = Vector2.DOWN
 	u.seed_sim_soldiers()
 	var b := _battle([u])
-	Settings.reform_before_move = false
 	var start_bbox := _soldier_bbox(u)
 	var start_facing := u._sim_soldier_facing[0]
 	b.enqueue_order([1], Vector2(0, -200), -1)
@@ -195,7 +189,6 @@ func test_nudge_applied_once_targets_its_full_distance() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.DOWN   # so LEFT nudge steps in world +x (perp to facing)
 	var b := _battle([u])
-	Settings.reform_before_move = false
 	b.enqueue_nudge([1], BattleScript.NudgeDir.LEFT)
 	_drain_pending(b)
 	assert_true(u.has_move_target, "the nudge sets a move target")
@@ -222,7 +215,6 @@ func test_forward_move_does_not_arm_an_about_face() -> void:
 	u.facing = Vector2.DOWN
 	u.seed_sim_soldiers()
 	var b := _battle([u])
-	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 200.0, "target": -1})   # straight ahead
 	assert_false(u.is_order_turning(), "a forward move does not about-face")
 	assert_true(u.current_order.children.is_empty(), "the move order stayed a plain leaf, unphased")
@@ -236,7 +228,6 @@ func test_rear_move_falls_back_to_a_plain_march_when_bodies_unseeded() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.DOWN
 	var b := _battle([u])
-	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})
 	assert_false(u.is_order_turning(), "no about-face armed without seeded bodies")
 	assert_true(u.current_order.children.is_empty(), "and nothing is parked in a turn phase")
@@ -257,7 +248,6 @@ func test_rear_move_during_an_in_progress_about_face_preempts_the_drill() -> voi
 	u.conversio()                                   # the standing about-face is now turning
 	assert_true(u.is_order_turning(), "the standing about-face is in progress")
 	var b := _battle([u])
-	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # rear move
 	assert_eq(u.current_order.type, Order.Type.MOVE, "the fresh order replaced the drill")
 	assert_eq(u.current_order.effective_phase_name(), "TURN", "and runs its own about-face composite")
@@ -276,7 +266,6 @@ func test_rear_move_during_an_in_progress_wheel_preempts_the_swing() -> void:
 	u.wheel(1)                                      # the wheel is now swinging
 	assert_true(u.is_wheeling(), "the wheel is in progress")
 	var b := _battle([u])
-	Settings.reform_before_move = false
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # rear move
 	assert_false(u.is_wheeling(), "the fresh order dropped the wheel where it stood")
 	assert_eq(u.current_order.type, Order.Type.MOVE, "and replaced it on the queue")
@@ -446,6 +435,7 @@ func test_enqueue_order_carries_the_mode() -> void:
 
 func test_append_preserves_the_existing_stance() -> void:
 	var u := _unit(1, Vector2.ZERO)
+	u.set_current_order(Order.new_move(Vector2(200, 0)))
 	u.move_target = Vector2(200, 0)
 	u.has_move_target = true
 	u.order_mode = BattleScript.OrderMode.HOLD
@@ -454,6 +444,44 @@ func test_append_preserves_the_existing_stance() -> void:
 		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.NORMAL})
 	assert_eq(u.order_mode, BattleScript.OrderMode.HOLD,
 		"a waypoint append leaves the unit's stance unchanged")
+
+
+func test_appended_leg_applies_its_own_stance_once_promoted() -> void:
+	# A leg appended under a DIFFERENT armed mode than the unit's current stance carries
+	# that mode forward on the Order itself (see test_append_preserves_the_existing_stance
+	# above -- the append does not touch order_mode immediately), and only takes effect
+	# once the queue actually reaches it: this is the "newly queued orders carry their own
+	# stance" half of the order-queue-editing feature.
+	var u := _unit(1, Vector2.ZERO)
+	u.set_current_order(Order.new_move(Vector2(200, 0)))
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	u.order_mode = BattleScript.OrderMode.HOLD
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 400.0, "y": 0.0,
+		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.CHASE})
+	assert_eq(u.order_mode, BattleScript.OrderMode.HOLD,
+		"the appended leg's mode has no effect yet -- the unit is still on its first leg")
+	assert_eq(u.queued_move_points().size(), 1, "sanity: the CHASE leg is queued behind the first")
+	# The first leg finishes and retires; the queued CHASE leg is promoted behind it (the same
+	# retire_current_order -> promotion path _think's own route-leg arrival handler drives).
+	u.retire_current_order()
+	assert_eq(u.current_order.type, Order.Type.MOVE, "the queued leg is promoted")
+	assert_eq(u.order_mode, BattleScript.OrderMode.CHASE,
+		"promoting the queued leg applies the stance it was appended under")
+
+
+func test_append_to_idle_unit_applies_its_own_armed_mode() -> void:
+	# An append to an idle unit promotes immediately (test_append_to_idle_unit_starts_it_marching)
+	# -- that promotion must apply the armed mode too, same as a promotion from the queue.
+	var u := _unit(1, Vector2.ZERO)
+	u.has_move_target = false
+	u.order_mode = BattleScript.OrderMode.HOLD
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 150.0, "y": 0.0,
+		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.SKIRMISH})
+	assert_eq(u.order_mode, BattleScript.OrderMode.SKIRMISH,
+		"the immediately-promoted leg's own armed mode takes effect right away")
 
 
 # --- stance-change-only orders (phase 3) ------------------------------
@@ -572,6 +600,266 @@ func test_enqueue_stance_records_and_applies_once() -> void:
 	assert_eq(int(cmd["target"]), BattleScript.ORDER_STANCE_ONLY, "queued for recording")
 	assert_true(bool(cmd.get("applied_live", false)),
 		"and tagged so the tick drain records without a second apply")
+
+
+# --- unit-settings-only orders (walk_advance / reform_before_move) --------------
+
+func test_unit_settings_order_writes_walk_advance_and_reform_in_place() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = false
+	u.reform_before_move = true
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"walk_advance_toggle": BattleScript.UnitSettingToggle.ON,
+		"reform_toggle": BattleScript.UnitSettingToggle.OFF})
+	assert_true(u.walk_advance, "the ON toggle writes walk_advance")
+	assert_false(u.reform_before_move, "the OFF toggle writes reform_before_move")
+	assert_true(u.has_move_target, "movement state is untouched")
+	assert_eq(u.move_target, Vector2(200, 0), "the march continues to the same point")
+
+
+func test_unit_settings_order_leave_toggle_keeps_the_current_value() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = true
+	u.reform_before_move = false
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"walk_advance_toggle": BattleScript.UnitSettingToggle.LEAVE,
+		"reform_toggle": BattleScript.UnitSettingToggle.LEAVE})
+	assert_true(u.walk_advance, "LEAVE keeps walk_advance as it was")
+	assert_false(u.reform_before_move, "LEAVE keeps reform_before_move as it was")
+
+
+func test_ai_directive_shaped_move_reads_the_units_own_reform_before_move() -> void:
+	# UnitLeader._move_directive_cmd (a subcommander HOLD_LINE/COVER_FLANK directive) builds
+	# a minimal cmd -- {"units", "x", "y", "target": -1} -- with no "mode"/"reform" key at
+	# all, unlike a player order (enqueue_order/enqueue_form_up). Before this migration,
+	# order.reform read cmd.get("reform", false), which always defaulted false for this
+	# AI-shaped cmd regardless of Settings.reform_before_move -- an AI directive move never
+	# got the reform hold. Now order.reform reads the unit's OWN reform_before_move field
+	# directly, so an AI-controlled unit gets the same reform hold a player-ordered unit
+	# with the same setting would. Deliberate, tested consequence of the per-unit migration,
+	# not an oversight -- see the PR description for the design rationale.
+	var on := _unit(1, Vector2.ZERO)
+	on.reform_before_move = true
+	var b_on := _battle([on])
+	b_on._apply_order_cmd({"units": [1], "x": 0.0, "y": 200.0, "target": -1})   # AI-directive shape
+	assert_true(on.current_order.reform,
+		"an AI-directive move on a unit with reform_before_move=true now arms the reform hold")
+
+	var off := _unit(2, Vector2.ZERO)
+	off.reform_before_move = false
+	var b_off := _battle([off])
+	b_off._apply_order_cmd({"units": [2], "x": 0.0, "y": 200.0, "target": -1})
+	assert_false(off.current_order.reform,
+		"and a unit with reform_before_move=false (e.g. Cavalry's own type default) still skips it")
+
+
+func test_unit_settings_order_can_toggle_just_one_field() -> void:
+	# A mixed selection's untouched setting isn't forced to a single value: only the
+	# named field's toggle needs to be non-LEAVE.
+	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = false
+	u.reform_before_move = false
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"walk_advance_toggle": BattleScript.UnitSettingToggle.ON})
+	assert_true(u.walk_advance, "walk_advance is written")
+	assert_false(u.reform_before_move, "reform_before_move (omitted -> LEAVE) is untouched")
+
+
+func test_unit_settings_order_can_write_the_opposite_pair_of_toggles() -> void:
+	# The companion of test_unit_settings_order_writes_walk_advance_and_reform_in_place:
+	# that test only exercises walk_advance ON / reform_before_move OFF, so this one covers
+	# the other two branches (walk_advance OFF / reform_before_move ON).
+	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = true
+	u.reform_before_move = false
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"walk_advance_toggle": BattleScript.UnitSettingToggle.OFF,
+		"reform_toggle": BattleScript.UnitSettingToggle.ON})
+	assert_false(u.walk_advance, "the OFF toggle writes walk_advance off")
+	assert_true(u.reform_before_move, "the ON toggle writes reform_before_move on")
+
+
+func test_unit_settings_order_skips_an_unresolvable_uid() -> void:
+	# A uid that doesn't resolve to a live unit (e.g. the unit died between the order being
+	# queued and drained) is skipped rather than erroring -- same contract as every other
+	# per-unit order branch (stance-only, formation-only, ...).
+	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = false
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1, 999], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"walk_advance_toggle": BattleScript.UnitSettingToggle.ON})
+	assert_true(u.walk_advance, "the resolvable unit in the same order still gets written")
+
+
+func test_unit_settings_order_writes_file_major_reform_mode_in_place() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.file_major_reform_mode = UnitScript.ReformMode.ROW_MAJOR
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"file_major_reform_mode_toggle": UnitScript.ReformMode.FILE_MAJOR})
+	assert_eq(u.file_major_reform_mode, UnitScript.ReformMode.FILE_MAJOR,
+		"the toggle writes file_major_reform_mode")
+	assert_true(u.has_move_target, "movement state is untouched")
+	assert_eq(u.move_target, Vector2(200, 0), "the march continues to the same point")
+
+
+func test_unit_settings_order_writes_file_major_reform_mode_to_auto() -> void:
+	# The companion of the FILE_MAJOR case above: covers writing AUTO specifically, not just
+	# the two modes the field's old bool shape could already represent.
+	var u := _unit(1, Vector2.ZERO)
+	u.file_major_reform_mode = UnitScript.ReformMode.FILE_MAJOR
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"file_major_reform_mode_toggle": UnitScript.ReformMode.AUTO})
+	assert_eq(u.file_major_reform_mode, UnitScript.ReformMode.AUTO,
+		"the toggle writes file_major_reform_mode to AUTO")
+
+
+func test_unit_settings_order_leave_toggle_keeps_file_major_reform_mode_as_it_was() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.file_major_reform_mode = UnitScript.ReformMode.AUTO
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+		"file_major_reform_mode_toggle": BattleScript.REFORM_MODE_TOGGLE_LEAVE})
+	assert_eq(u.file_major_reform_mode, UnitScript.ReformMode.AUTO,
+		"LEAVE keeps file_major_reform_mode as it was")
+	# An omitted key defaults to LEAVE the same way walk_advance_toggle/reform_toggle do.
+	var u2 := _unit(2, Vector2.ZERO)
+	u2.file_major_reform_mode = UnitScript.ReformMode.ROW_MAJOR
+	var b2 := _battle([u2])
+	b2._apply_order_cmd({"units": [2], "x": 0.0, "y": 0.0,
+		"target": BattleScript.ORDER_UNIT_SETTINGS_ONLY})
+	assert_eq(u2.file_major_reform_mode, UnitScript.ReformMode.ROW_MAJOR,
+		"an omitted file_major_reform_mode_toggle key also defaults to LEAVE")
+
+
+func test_enqueue_unit_settings_records_and_applies_once() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = false
+	var b := _battle([u])
+	b.enqueue_unit_settings([1], BattleScript.UnitSettingToggle.ON)
+	assert_true(u.walk_advance, "applied live")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_UNIT_SETTINGS_ONLY, "queued for recording")
+	assert_true(bool(cmd.get("applied_live", false)),
+		"and tagged so the tick drain records without a second apply")
+
+
+func test_enqueue_unit_settings_with_both_toggles_leave_is_a_no_op() -> void:
+	# Nothing to write -- SelectionManager only calls this with at least one real toggle,
+	# but a bare all-LEAVE call (every default) shouldn't queue an empty order.
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_unit_settings([1])
+	assert_true(b._pending_orders.is_empty(), "an all-LEAVE call queues no order")
+
+
+func test_enqueue_unit_settings_writes_file_major_reform_mode_toggle() -> void:
+	# The third toggle (file_major_reform_mode), on its own -- proving a call that only sets
+	# THIS toggle (walk_advance_toggle/reform_toggle left at their LEAVE defaults) is not
+	# swallowed by the all-LEAVE no-op check above.
+	var u := _unit(1, Vector2.ZERO)
+	u.file_major_reform_mode = UnitScript.ReformMode.FILE_MAJOR
+	var b := _battle([u])
+	b.enqueue_unit_settings([1], BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.UnitSettingToggle.LEAVE, UnitScript.ReformMode.ROW_MAJOR)
+	assert_eq(u.file_major_reform_mode, UnitScript.ReformMode.ROW_MAJOR, "applied live")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_UNIT_SETTINGS_ONLY, "queued for recording")
+	assert_eq(int(cmd["file_major_reform_mode_toggle"]), UnitScript.ReformMode.ROW_MAJOR,
+		"the toggle itself rides the queued command")
+
+
+func test_enqueue_unit_settings_is_disabled_during_playback() -> void:
+	# Live-play-only, like every other order-issuing enqueue_* function: a replay's
+	# recorded commands drive playback, so a synthesized toggle during Watch Replay must
+	# not queue a second, unrecorded command.
+	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = false
+	var b := _battle([u])
+	var prev_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	b.enqueue_unit_settings([1], BattleScript.UnitSettingToggle.ON)
+	Replay.mode = prev_mode
+	assert_false(u.walk_advance, "no write during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+# --- player delegation (Battle AI phase 4, docs/battle-ai-design.md) -----------------------
+
+func test_enqueue_delegation_applies_live_and_queues_for_recording() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	assert_eq(u.player_group_id, 5, "applied live")
+	assert_eq(u.subcommander_rank_title,
+		PlayerDelegation.subcommander_rank_title(DoctrineRegistry.doctrine(b.player_doctrine)),
+		"the rank title resolves from the battle's own player_doctrine")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_DELEGATION_ONLY, "queued for recording")
+	assert_eq(int(cmd["frontage"]), 6, "the group id (5) rides the queued command, +1 encoded")
+
+
+func test_enqueue_delegation_revoke_clears_group_id_and_rank_title() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	b.enqueue_delegation([1], Unit.UNDELEGATED)
+	assert_false(u.is_delegated())
+	assert_eq(u.subcommander_rank_title, "")
+
+
+func test_enqueue_delegation_is_a_no_op_with_no_units() -> void:
+	var b := _battle([])
+	b.enqueue_delegation([], 5)
+	assert_true(b._pending_orders.is_empty(), "nothing to delegate -- no command queued")
+
+
+func test_enqueue_delegation_is_disabled_during_playback() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	var prev_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	b.enqueue_delegation([1], 5)
+	Replay.mode = prev_mode
+	assert_false(u.is_delegated(), "no write during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_ai_issued_order_does_not_revoke_the_delegation_it_was_just_given() -> void:
+	# _apply_order_cmd's from_player=false path (Battle._run_player_delegated_ai's own call
+	# shape) must not clear the very delegation that produced the order -- only a genuinely
+	# player-issued command does that (see the next test).
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	b._apply_order_cmd({"units": [1], "x": 900.0, "y": 900.0, "target": -1}, false)
+	assert_true(u.is_delegated(), "an AI-issued order leaves the delegation that produced it intact")
+
+
+func test_player_issued_order_revokes_an_existing_delegation() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	b._apply_order_cmd({"units": [1], "x": 900.0, "y": 900.0, "target": -1})   # from_player defaults true
+	assert_false(u.is_delegated(),
+		"a genuine player order to a delegated unit always overrides its subcommander")
 
 
 # --- support / defend ------------------------------------------------
@@ -713,51 +1001,81 @@ func test_forest_is_not_blocked() -> void:
 	assert_false(pf.is_blocked(center), "the forest patch is passable (slow, not blocked)")
 
 
-# --- reform-before-move ------------------------------------------------
+# --- reform-before-move / walk_advance: read from the unit, not the cmd --------
+# Both are persistent per-unit fields now, not global settings baked into each order's cmd
+# dict -- _apply_order_cmd reads Unit.reform_before_move/Unit.walk_advance directly, and a
+# stale "reform"/"walk_advance" key left on a cmd dict (an old replay, a hand-built test
+# cmd) is simply ignored.
 
-func test_reform_cmd_starts_reform_timer_not_move_target() -> void:
-	# "reform": true → destination stored on the REFORM leaf's target_pos, timer started,
-	# has_move_target stays false. Straight ahead of the unit's default (DOWN) facing -- a
-	# large lateral destination is a lateral pivot, which this test isn't about (that maneuver
-	# forces reform off, overriding the cmd, since it never reforms -- see
+func test_reform_before_move_true_starts_reform_timer_not_move_target() -> void:
+	# u.reform_before_move = true → destination stored on the REFORM leaf's target_pos,
+	# timer started, has_move_target stays false. Straight ahead of the unit's default
+	# (DOWN) facing -- a large lateral destination is a lateral pivot, which this test
+	# isn't about (that maneuver forces reform off, since it never reforms -- see
 	# test_lateral_pivot_maneuver.gd).
 	var u := _unit(1, Vector2.ZERO)
+	u.reform_before_move = true
 	var b := _battle([u])
-	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1, "reform": true})
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1})
 	assert_false(u.has_move_target,
-		"a reform order doesn't set has_move_target until the timer expires")
+		"reform_before_move doesn't set has_move_target until the timer expires")
 	assert_gt(u.active_leaf().reform_timer, 0.0, "the reform timer starts counting")
 	assert_eq(u.active_leaf().target_pos, Vector2(0, 50), "the destination is stored for later commit")
 
 
-func test_no_reform_cmd_sets_move_target_directly() -> void:
-	# "reform": false (or absent) → old behaviour: has_move_target set immediately.
-	# Straight ahead of the unit's default (DOWN) facing, so it isn't a lateral pivot
-	# (that maneuver forces reform off unconditionally, which this test isn't about).
+func test_reform_before_move_false_sets_move_target_directly() -> void:
+	# u.reform_before_move = false (the _unit() helper's own default) → has_move_target
+	# set immediately. Straight ahead of the unit's default (DOWN) facing, so it isn't a
+	# lateral pivot (that maneuver forces reform off unconditionally, which this test
+	# isn't about).
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
-	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1, "reform": false})
-	assert_true(u.has_move_target, "reform:false sets has_move_target immediately")
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1})
+	assert_true(u.has_move_target, "reform_before_move:false sets has_move_target immediately")
 	assert_eq(u.move_target, Vector2(0, 50))
 	assert_false(u._reform_holding(), "no reform hold is started")
 
 
-func test_reform_cmd_absent_sets_move_target_directly() -> void:
-	# Old replay logs without the "reform" key default to false (no reform).
+func test_move_order_ignores_a_stale_reform_key_on_the_cmd_dict() -> void:
+	# A "reform" key on the cmd dict (an old replay recorded before this migration, or a
+	# hand-built test cmd) no longer has any effect -- only the unit's OWN reform_before_move field
+	# governs. Set the field to false and pass a cmd carrying "reform": true: the order
+	# still commits immediately, proving the cmd key is dead.
 	var u := _unit(1, Vector2.ZERO)
+	u.reform_before_move = false
 	var b := _battle([u])
-	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1})
-	assert_true(u.has_move_target, "missing reform key behaves as reform:false")
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1, "reform": true})
+	assert_true(u.has_move_target,
+		"a stale cmd-level 'reform' key is ignored -- the unit's own field (false) governs")
 	assert_false(u._reform_holding())
 
 
-func test_fresh_order_cancels_in_progress_reform() -> void:
-	# A second plain order clears the pending reform from the first.
+func test_move_order_ignores_a_stale_walk_advance_key_on_the_cmd_dict() -> void:
+	# Same regression as above, for walk_advance: Battle._apply_order_cmd used to overwrite
+	# u.walk_advance from cmd.get("walk_advance", false) on every fresh order. Now it's read
+	# straight off the unit and never re-injected -- a stale "walk_advance" cmd key changes
+	# nothing.
 	var u := _unit(1, Vector2.ZERO)
+	u.walk_advance = true
 	var b := _battle([u])
-	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1, "reform": true})
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1, "walk_advance": false})
+	assert_true(u.walk_advance,
+		"a stale cmd-level 'walk_advance' key is ignored -- the unit's own field (true) survives")
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 100.0, "target": -1, "walk_advance": true})
+	assert_true(u.walk_advance, "and a second order with the opposite stale key still doesn't touch it")
+
+
+func test_fresh_order_cancels_in_progress_reform() -> void:
+	# A second plain order clears the pending reform from the first. Each order reads
+	# u.reform_before_move at ITS OWN apply time, so toggling the field between the two
+	# orders simulates a mid-battle player toggle.
+	var u := _unit(1, Vector2.ZERO)
+	u.reform_before_move = true
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 50.0, "target": -1})
 	assert_gt(u.active_leaf().reform_timer, 0.0, "first reform order starts the timer")
-	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 200.0, "target": -1, "reform": false})
+	u.reform_before_move = false
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 200.0, "target": -1})
 	assert_false(u._reform_holding(), "a fresh order cancels the pending reform")
 	assert_true(u.has_move_target, "and the new destination is committed immediately")
 	assert_eq(u.move_target, Vector2(0, 200))
@@ -767,16 +1085,20 @@ func test_current_speed_survives_the_reform_hold_while_cruising() -> void:
 	# Companion to the order-response-freeze regression in test_unit.gd: a unit that's
 	# already cruising and gets re-ordered with reform_before_move on is frozen twice in
 	# a row -- first by order_response_delay, then (once that expires) by the
-	# reform-before-move hold itself (a REFORM leaf's own reform_timer, started here via
-	# "reform": true). _move_to() doesn't run during either freeze, so
-	# Unit._physics_process's end-of-frame idle-clear must not mistake the reform hold for
-	# genuine idleness and zero the speed once the order-response timer alone has drained.
+	# reform-before-move hold itself (a REFORM leaf's own reform_timer). _move_to() doesn't
+	# run during either freeze, so Unit._physics_process's end-of-frame idle-clear must not
+	# mistake the reform hold for genuine idleness and zero the speed once the
+	# order-response timer alone has drained.
 	var u := _unit(1, Vector2.ZERO)
-	u._current_speed = u.walk_speed   # as if it was already cruising
+	u.reform_before_move = true
+	u._current_speed = u.walk_speed   # as if it was already cruising...
+	u._approach_velocity = Vector2(0, u.walk_speed)   # ...toward +y, the same way the
+	# re-order continues (a genuinely cruising unit always carries both; the hold's
+	# momentum exemption is directional -- see Unit.REORDER_MOMENTUM_DOT_MIN).
 	var b := _battle([u])
 	# Straight ahead of the unit's default (DOWN) facing, so it isn't a lateral pivot
 	# (that maneuver forces reform off unconditionally, which this test isn't about).
-	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 500.0, "target": -1, "reform": true})
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 500.0, "target": -1})
 	assert_gt(u.active_leaf().reform_timer, 0.0, "the reform order starts the reform-hold timer")
 	# Drain only the order-response timer (not the longer reform hold) so the unit is
 	# still frozen by the reform hold alone on the final tick.
@@ -787,20 +1109,17 @@ func test_current_speed_survives_the_reform_hold_while_cruising() -> void:
 		"speed survives the reform hold too, not just the order-response freeze")
 
 
-func test_enqueue_order_embeds_reform_setting() -> void:
-	# enqueue_order stamps the live Settings.reform_before_move into the command.
+func test_enqueue_order_no_longer_embeds_a_reform_or_walk_advance_key() -> void:
+	# enqueue_order used to stamp the live Settings.reform_before_move/Settings.walk_advance
+	# into the command; both are per-unit fields now, so the recorded cmd carries
+	# neither key at all -- Battle._apply_order_cmd reads the unit's own fields instead.
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
-	var orig: bool = Settings.reform_before_move
-	Settings.reform_before_move = true
 	b.enqueue_order([1], Vector2(50, 0), -1)
-	assert_true(bool(b._pending_orders[-1].get("reform", false)),
-		"with reform_before_move on, the command carries reform:true")
-	Settings.reform_before_move = false
-	b.enqueue_order([1], Vector2(50, 0), -1)
-	assert_false(bool(b._pending_orders[-1].get("reform", false)),
-		"with reform_before_move off, the command carries reform:false")
-	Settings.reform_before_move = orig
+	assert_false(b._pending_orders[-1].has("reform"),
+		"the recorded command no longer carries a 'reform' key")
+	assert_false(b._pending_orders[-1].has("walk_advance"),
+		"the recorded command no longer carries a 'walk_advance' key")
 
 
 func test_forest_slows_movement() -> void:
@@ -874,6 +1193,52 @@ func test_enqueue_frontage_clamps_at_the_extremes() -> void:
 	assert_eq(UnitFormation.frontage(u), 1, "narrowing can't go below a single file")
 	b.enqueue_frontage([1], 999)
 	assert_eq(UnitFormation.frontage(u), 40, "widening can't exceed max_soldiers")
+
+
+func test_enqueue_frontage_anchored_holds_the_named_flank() -> void:
+	# A RIGHT-anchored widen holds the +X edge (standing offset + half-width) fixed,
+	# landing the whole width change on the left flank -- the drag-resize gesture's
+	# far-flank anchoring, riding the same recorded command as the centred resize.
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 60
+	var start: int = UnitFormation.frontage(u)
+	var spacing: float = UnitScript.FORMATION_SPACING * u.spacing_scale
+	var right_edge: float = u.frontage_anchor_offset + float(start - 1) * 0.5 * spacing
+	var b := _battle([u])
+	b.enqueue_frontage([1], 2, UnitFormation.Anchor.RIGHT)
+	assert_eq(UnitFormation.frontage(u), start + 2, "the anchored widen still resizes")
+	assert_almost_eq(u.frontage_anchor_offset + float(start + 1) * 0.5 * spacing,
+			right_edge, 0.001, "the anchored right edge stays put")
+	assert_almost_eq(float(b._pending_orders[-1]["anchor_offset"]), u.frontage_anchor_offset,
+			0.001, "the absolute composed offset rides the recorded command")
+
+
+func test_enqueue_frontage_anchored_composes_with_a_standing_offset() -> void:
+	# Repeated anchored resizes ADD each step's shift to the standing offset --
+	# anchor_shift computes one step from a centred block, so treating it as absolute
+	# would let the held flank drift (the enqueue_file_double contract, shared here).
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 60
+	var b := _battle([u])
+	b.enqueue_frontage([1], 2, UnitFormation.Anchor.LEFT)
+	var off_one: float = u.frontage_anchor_offset
+	assert_ne(off_one, 0.0, "an anchored widen carries a shift")
+	b.enqueue_frontage([1], 2, UnitFormation.Anchor.LEFT)
+	var spacing: float = UnitScript.FORMATION_SPACING * u.spacing_scale
+	assert_almost_eq(u.frontage_anchor_offset, off_one + spacing, 0.001,
+			"the second step adds its own shift on top of the first")
+
+
+func test_enqueue_frontage_centre_recentres_the_block() -> void:
+	# The default (keyboard) resize is centre-anchored and RE-CENTRES the block,
+	# discarding any standing anchor shift -- the pre-existing contract, now pinned.
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 60
+	u.set_frontage(UnitFormation.frontage(u), 13.5)
+	var b := _battle([u])
+	b.enqueue_frontage([1], 1)
+	assert_eq(u.frontage_anchor_offset, 0.0,
+			"a centre-anchored resize clears the standing shift")
 
 
 func test_enqueue_frontage_steps_each_unit_from_its_own_width() -> void:
@@ -971,6 +1336,10 @@ func test_file_double_apply_is_idempotent_under_reapplication() -> void:
 func test_enqueue_form_up_sets_destination_facing_and_width() -> void:
 	var u := _unit(1, Vector2(0, 100))
 	u.max_soldiers = 120
+	# A form-up reforms before stepping off by default (the field's own default), unlike
+	# this file's other tests -- the _unit() helper's own false default is a test-suite
+	# convenience, not the game's real default.
+	u.reform_before_move = true
 	var b := _battle([u])
 	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20)   # face 0 = facing right
 	assert_eq(u.active_leaf().target_pos, Vector2(500, 500),
@@ -1056,8 +1425,9 @@ func test_plain_move_does_not_snap_facing_at_order_time() -> void:
 func test_reform_move_does_not_snap_facing_at_order_time() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.DOWN
+	u.reform_before_move = true
 	var b := _battle([u])
-	b._apply_order_cmd({"units": [1], "x": 100.0, "y": 0.0, "target": -1, "reform": true})
+	b._apply_order_cmd({"units": [1], "x": 100.0, "y": 0.0, "target": -1})
 	assert_eq(u.facing, Vector2.DOWN,
 		"the unit pivots in place during the reform hold (in _think), not at order time")
 
@@ -1067,7 +1437,6 @@ func test_reform_move_does_not_snap_facing_at_order_time() -> void:
 func test_small_lateral_move_holds_facing_as_a_sidestep() -> void:
 	# A unit facing +x ordered a short shift along +/-y should side-step: it keeps
 	# its facing and the move branch records the held heading in ordered_facing.
-	Settings.reform_before_move = false
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.RIGHT
 	var b := _battle([u])
@@ -1077,7 +1446,6 @@ func test_small_lateral_move_holds_facing_as_a_sidestep() -> void:
 
 
 func test_forward_move_does_not_set_a_sidestep_facing() -> void:
-	Settings.reform_before_move = false
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.RIGHT
 	var b := _battle([u])
@@ -1087,7 +1455,6 @@ func test_forward_move_does_not_set_a_sidestep_facing() -> void:
 
 
 func test_a_fresh_order_clears_a_prior_sidestep_hold() -> void:
-	Settings.reform_before_move = false
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.RIGHT
 	var b := _battle([u])
@@ -1104,7 +1471,6 @@ func test_form_up_order_holds_its_deploy_facing_not_the_units_current_one() -> v
 	# direction -- the block would otherwise reorient toward wherever it's walking, then snap
 	# back to the commanded facing on arrival). The distinguishing signal is deploy_facing
 	# itself: ordered_facing equals it, not the unit's own (unrelated) current facing.
-	Settings.reform_before_move = false
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.RIGHT
 	var b := _battle([u])
@@ -1165,3 +1531,222 @@ func test_bare_unit_without_loadout_keeps_default_back_speed_fraction() -> void:
 	add_child_autofree(u)
 	assert_almost_eq(u.back_speed_fraction, 0.5, 0.0001,
 		"a bare unit with no loadout falls back to the Unit.gd default")
+
+
+# --- per-type walk_advance / reform_before_move spawn defaults ---------
+
+func test_units_spawn_with_their_type_walk_advance_and_reform_before_move_defaults() -> void:
+	# A live-spawned unit's walk_advance/reform_before_move come from its type's loadout
+	# entry (walk_advance_default/reform_before_move_default), mirroring how
+	# back_speed_fraction is already set at spawn. Spearmen default walk_advance ON
+	# (holding the phalanx presentation matters more than closing speed); Cavalry defaults
+	# reform_before_move OFF (immediate responsiveness beats settling ranks); every other
+	# type/field combination keeps the old global settings' own defaults (false / true).
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	await get_tree().physics_frame   # one tick to let _spawn_line run
+
+	var seen_walk_advance: Dictionary = {}
+	var seen_reform: Dictionary = {}
+	var seen_file_major: Dictionary = {}
+	for u in get_tree().get_nodes_in_group("units"):
+		var unit: Unit = u as Unit
+		if unit == null or unit.team != 0:
+			continue
+		var type_name: String = unit.unit_name.split(" ")[0]
+		if not seen_walk_advance.has(type_name):
+			seen_walk_advance[type_name] = unit.walk_advance
+			seen_reform[type_name] = unit.reform_before_move
+			seen_file_major[type_name] = unit.file_major_reform
+
+	assert_true(seen_walk_advance.get("Spearmen", false),
+		"Spearmen spawn with walk_advance on (holding the phalanx presentation)")
+	assert_false(seen_walk_advance.get("Infantry", true),
+		"Infantry keeps the old global default (walk_advance off)")
+	assert_false(seen_walk_advance.get("Archers", true),
+		"Archers keeps the old global default (walk_advance off)")
+	assert_false(seen_walk_advance.get("Cavalry", true),
+		"Cavalry keeps the old global default (walk_advance off)")
+
+	assert_false(seen_reform.get("Cavalry", true),
+		"Cavalry spawns with reform_before_move off (immediate responsiveness over settling ranks)")
+	assert_true(seen_reform.get("Spearmen", false),
+		"Spearmen keeps the old global default (reform_before_move on)")
+	assert_true(seen_reform.get("Infantry", false),
+		"Infantry keeps the old global default (reform_before_move on)")
+	assert_true(seen_reform.get("Archers", false),
+		"Archers keeps the old global default (reform_before_move on)")
+
+	# file_major_reform has no per-type override today -- every type spawns with it on.
+	assert_true(seen_file_major.get("Spearmen", false), "Spearmen default file_major_reform on")
+	assert_true(seen_file_major.get("Infantry", false), "Infantry default file_major_reform on")
+	assert_true(seen_file_major.get("Archers", false), "Archers default file_major_reform on")
+	assert_true(seen_file_major.get("Cavalry", false), "Cavalry default file_major_reform on")
+
+
+func test_bare_unit_without_loadout_keeps_default_walk_advance_and_reform_before_move() -> void:
+	# A hand-rolled Unit (no loadout dict at all) keeps Unit.gd's own field defaults --
+	# Battle._spawn_unit only overrides them when the loadout dict carries the
+	# "walk_advance_default"/"reform_before_move_default" keys.
+	var u: Unit = UnitScript.new()
+	add_child_autofree(u)
+	assert_false(u.walk_advance, "a bare unit with no loadout falls back to the Unit.gd default")
+	assert_true(u.reform_before_move, "a bare unit with no loadout falls back to the Unit.gd default")
+
+
+## enqueue_cancel_order -- the replay-recorded route for the HUD's per-order cancel button.
+## SelectionManager.cancel_selected_order_at() goes through here rather than calling
+## Unit.cancel_order_at() directly, so a cancellation lands in the replay track at the tick it
+## was issued, like every other order-queue mutation.
+
+func test_enqueue_cancel_order_applies_live_and_queues_for_recording() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.append_order(Order.new_move(Vector2(200, 0)))
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 1)
+	assert_eq(u.orders.size(), 1, "the queued leg is cancelled live")
+	assert_eq(u.orders[0].target_pos, Vector2(100, 0), "the surviving order is the current one")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_CANCEL_ONLY, "queued for recording")
+	assert_eq(int(cmd["frontage"]), 1, "the cancelled index rides the queued command")
+
+
+func test_enqueue_cancel_order_at_index_zero_promotes_the_next_leg() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.append_order(Order.new_move(Vector2(200, 0)))
+	u.has_move_target = true
+	u.move_target = Vector2(100, 0)
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.orders.size(), 1, "the queued leg behind it is promoted, not dropped")
+	assert_eq(u.orders[0].target_pos, Vector2(200, 0), "the promoted order is the next leg")
+	# retire_current_order() -> _start_promoted_move() commits the promoted leg's march, so the
+	# cancelled destination is replaced rather than merely cleared -- the unit marches on to the
+	# next waypoint instead of stopping where it stood.
+	assert_true(u.has_move_target, "the promoted leg commits its own march")
+	assert_eq(u.move_target, Vector2(200, 0),
+			"the march retargets to the promoted leg, not the cancelled one")
+
+
+func test_enqueue_cancel_order_at_index_zero_with_nothing_queued_stops_the_march() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.has_move_target = true
+	u.move_target = Vector2(100, 0)
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_true(u.orders.is_empty(), "the queue empties")
+	assert_null(u.current_order, "and nothing is promoted behind it")
+	assert_false(u.has_move_target,
+			"with no leg to promote, cancelling the current order stops the march")
+	assert_eq(u.move_target, Vector2.ZERO, "and clears the stale destination")
+
+
+func test_enqueue_cancel_order_skips_dead_units() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.state = UnitScript.State.DEAD
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.orders.size(), 1, "a dead unit's queue is left alone")
+
+
+func test_enqueue_cancel_order_is_a_no_op_with_no_units() -> void:
+	var b := _battle([])
+	b.enqueue_cancel_order([], 0)
+	assert_true(b._pending_orders.is_empty(), "nothing to cancel -- no command queued")
+
+
+func test_enqueue_cancel_order_is_disabled_during_playback() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	var b := _battle([u])
+	var prev_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	b.enqueue_cancel_order([1], 0)
+	Replay.mode = prev_mode
+	assert_eq(u.orders.size(), 1, "no write during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_enqueue_cancel_order_preserves_the_promoted_legs_engagement_peak() -> void:
+	# Regression guard: _interrupt_current_order() must not reset
+	# _move_order_peak_engaged_fraction. It runs immediately before retire_current_order()
+	# promotes the queued leg, and that field's doc requires a fight counted while the leg was
+	# only QUEUED to survive promotion -- otherwise the promoted move's
+	# ENGAGED_FRACTION_ABOVE disengage guard is defeated and the unit marches into ground it
+	# should be held out of.
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_attack(9))
+	u.append_order(Order.new_move(Vector2(200, 0)))
+	u._move_order_peak_engaged_fraction = 0.75
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.orders.size(), 1, "the queued move is promoted")
+	assert_almost_eq(u._move_order_peak_engaged_fraction, 0.75, 0.0001,
+			"the engagement peak carried over to the promoted leg, not reset by the interrupt")
+
+
+func test_a_fresh_attack_order_on_a_busy_unit_keeps_its_target() -> void:
+	# Regression guard: _interrupt_current_order() must not clear target_enemy/support_target.
+	# It is reached from set_current_order(), and Battle._apply_order_cmd writes the target
+	# immediately BEFORE that call -- so clearing it there nulls the brand-new order's own
+	# target, and _update_current_order() retires the order on the next tick. The unit would
+	# silently go idle instead of attacking, for any unit that was not already idle.
+	var u := _unit(1, Vector2(0, 100))
+	var enemy := _unit(2, Vector2(0, 300))
+	enemy.team = 1
+	var b := _battle([u, enemy])
+	b._apply_order_cmd({"units": [1], "x": 500.0, "y": 500.0, "target": -1})   # busy: a move
+	assert_not_null(u.current_order, "the unit is now busy, so the interrupt path is live")
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0, "target": 2})        # then attack
+	assert_eq(u.target_enemy, enemy,
+			"the fresh attack order keeps the target Battle just assigned it")
+	assert_eq(u.current_order.type, Order.Type.ATTACK, "and the order itself is the attack")
+
+
+func test_a_fresh_support_order_on_a_busy_unit_keeps_its_target() -> void:
+	var u := _unit(1, Vector2(0, 100))
+	var friend := _unit(2, Vector2(0, 300))
+	var b := _battle([u, friend])
+	b._apply_order_cmd({"units": [1], "x": 500.0, "y": 500.0, "target": -1})   # busy: a move
+	# A same-team target only takes the SUPPORT branch when the order carries that mode;
+	# without it Battle routes to relief instead, which never sets support_target.
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0, "target": 2,
+			"mode": BattleScript.OrderMode.SUPPORT})
+	assert_eq(u.support_target, friend,
+			"the fresh support order keeps the target Battle just assigned it")
+
+
+func test_enqueue_cancel_order_revokes_delegation_like_any_other_player_order() -> void:
+	# A cancel is an ordinary player action. The ORDER_DELEGATION_ONLY exemption on the
+	# revoke check exists only because delegation is self-referential -- the AI's own
+	# delegating order must not immediately un-delegate. A cancel has no such reason, and
+	# _apply_order_cmd's doc states the contract: a player order to a delegated unit always
+	# overrides its subcommander. Without revocation, _run_player_delegated_ai re-issues a
+	# directive within ai_period ticks and the player never regains manual control.
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	var b := _battle([u])
+	b.enqueue_delegation([1], 5)
+	assert_true(u.is_delegated(), "delegated first")
+	b.enqueue_cancel_order([1], 0)
+	assert_false(u.is_delegated(), "cancelling takes manual control back")
+
+
+func test_enqueue_cancel_order_clears_the_maneuver_hold_state() -> void:
+	# Side-step/back-step park ordered_facing, form-up parks deploy_facing, a reform parks
+	# _reform_on_arrival. Left set past a cancel they lock facing and force walk pace for the
+	# promoted leg. Every other order-terminating path clears them; so does this one.
+	var u := _unit(1, Vector2.ZERO)
+	u.append_order(Order.new_move(Vector2(100, 0)))
+	u.ordered_facing = Vector2.RIGHT
+	u.deploy_facing = Vector2.UP
+	u._reform_on_arrival = true
+	var b := _battle([u])
+	b.enqueue_cancel_order([1], 0)
+	assert_eq(u.ordered_facing, Vector2.ZERO, "the side-step facing hold is dropped")
+	assert_eq(u.deploy_facing, Vector2.ZERO, "the form-up deploy facing is dropped")
+	assert_false(u._reform_on_arrival, "the parked on-arrival reform is dropped")

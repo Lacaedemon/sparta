@@ -1,0 +1,37 @@
+{
+  "_comment": "March to contact stance: a plain move order that stops to fight anything it meets along the way, then resumes toward its original destination once the fight ends -- unlike NORMAL's push-through default. A lone player Infantry (team 0, 50 soldiers) at (500,300) is ordered under March to contact to (500,650); a weak enemy Infantry (team 1, 12 soldiers, Hold-ordered so it never advances on its own) sits directly in the path at (500,430). all_teams_control lets the script Hold the hostile in place first, isolating the player unit's own stance behavior from any enemy-side decision-making. drill is set purely so Battle._check_victory's normal auto-end-on-last-enemy-gone doesn't pause the sim once the weak hostile is fully beaten -- there IS real combat here, this is not a no-opponent rehearsal. Verified via dump-state.sh: the unit halts and fights on contact (state FIGHTING) instead of marching through, presses into and routs the weaker hostile, then resumes marching once the foe breaks free -- reaching its original (500,650) destination and going IDLE -- with has_move_target never having been cleared in between. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "all_teams_control": true,
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 500, "y": 300, "count": 50},
+    {"team": 1, "type": "Infantry", "x": 500, "y": 430, "count": 12}
+  ],
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 470.0, "zoom": 0.8}
+  ],
+  "steps": [
+    {"tick": 5,  "click": [500, 430]},
+    {"tick": 8,  "key": "H", "ctrl": true},
+    {"tick": 14, "click": [500, 300]},
+    {"tick": 18, "key": "F3"},
+    {"tick": 24, "rmb_click": [500, 650]},
+    {"tick": 30, "rmb_click": [500, 650]},
+    {"tick": 36, "rmb_click": [500, 650]}
+  ],
+  "frames": [24, 130, 200, 260, 330, 600, 700],
+  "state": [24, 60, 90, 130, 160, 190, 200, 250, 300, 320, 330, 600, 660, 700, 720],
+  "expect": [
+    {"tick": [24, 700], "uid": 0, "field": "order_mode", "value": "March to contact"},
+    {"tick": 160, "uid": 0, "field": "state", "value": "MOVING"},
+    {"tick": [200, 300], "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": [200, 300], "uid": 0, "field": "current_order", "value": "MOVE"},
+    {"tick": 330, "uid": 0, "field": "state", "value": "MOVING"},
+    {"tick": 700, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": [700, 720], "uid": 0, "field": "current_order", "value": null}
+  ],
+  "fixed_fps": 30,
+  "max_frames": 370,
+  "fps": 15,
+  "width": 640
+}

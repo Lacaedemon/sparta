@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/player-delegation.json",
+  "caption": "Battle AI phase 4 (player delegation, #587): box-selecting the two team-0 Infantry and pressing Ctrl+Shift+5 delegates them to AI subcommander group 5 (a 'Tribune', per the aggressive doctrine's rank flavor) -- they then march on and attack the lone enemy unaided, no further player orders. At tick 220, with the same selection still active, Ctrl+H reclaims manual control: player_group_id drops back to undelegated immediately (verified against the state transcript), exactly the design doc's 'a manual player order always overrides the subcommander's directive'. The Hold stance itself only suppresses a FUTURE auto-engagement -- it doesn't interrupt the chase already in flight, so the pair keeps closing on the enemy after the hand-off, same as an ordinary Hold order on any other unit.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 640
+}

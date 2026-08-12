@@ -1,0 +1,27 @@
+{
+  "_comment": "Multiple engage target cycling (#1084): UnitCombat.strike() only ever damages whichever ONE enemy target_enemy currently resolves to, so a MULTIPLE_ENGAGE unit genuinely fighting 2+ distinct adjacent enemy regiments at once used to keep every strike locked onto whichever one it engaged first -- the other sat in FIGHTING state taking zero casualties indefinitely. One player Infantry regiment (team 0, uid 0, 58 soldiers) starts near-stationary and centred; two enemy Infantry regiments (team 1, uid 1 'Holdout North', 20 soldiers, and uid 2 'Holdout East', 24 soldiers) auto-advance on it from different bearings -- one from due south, one from the east-south-east. At tick 8, before either reaches contact, the player selects the unit and issues Ctrl+F2 (Multiple engage). Verified via dump-state.sh: uid 1 reaches contact first (~tick 170) and target_enemy_uid locks onto it (1); both regiments become simultaneously adjacent for a window around tick 320-340, and target_enemy_uid then switches to uid 2 (2) and stays there. uid 1's soldier count drops 20 -> 13 while it's the active target, then holds steady at 13 once the cycle moves on; uid 2's count holds at 24 while untouched, then drops 24 -> 21 across the rest of the clip once it becomes the active target -- both regiments end up damaged instead of only the first one engaged. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "seed": "108401",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 500, "y": 450, "count": 58 },
+    { "team": 1, "type": "Infantry", "x": 500, "y": 595, "count": 20 },
+    { "team": 1, "type": "Infantry", "x": 710, "y": 515, "count": 24 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 580, "y": 520, "zoom": 0.72 }
+  ],
+  "steps": [
+    { "tick": 5, "click": [500, 450] },
+    { "tick": 8, "key": "F2", "ctrl": true }
+  ],
+  "frames": [10, 170, 340, 600, 900],
+  "state": [10, 100, 170, 200, 260, 300, 340, 450, 600, 700, 800, 900],
+  "expect": [
+    { "tick": [10, 900], "uid": 0, "field": "order_mode", "value": "Multiple engage" },
+    { "tick": 300, "uid": 0, "field": "target_enemy_uid", "value": 1 },
+    { "tick": 900, "uid": 0, "field": "target_enemy_uid", "value": 2 }
+  ],
+  "fixed_fps": 30,
+  "max_frames": 450,
+  "fps": 20,
+  "width": 720
+}

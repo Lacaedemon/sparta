@@ -1,0 +1,27 @@
+{
+  "_comment": "Battle AI phase 4 (docs/battle-ai-design.md): player delegation. A custom 2-vs-1 scenario (not the default 5v5 line) so the delegated pair and the single enemy read clearly at this zoom. Team 0 spawns at the SMALLER y (Battle._spawn_scenario always faces team 0 Vector2.DOWN, toward +y) with the enemy at a LARGER y below it, matching the game's standard team0-above/team1-below layout, so both units march straight toward the enemy with no facing reversal. The two team-0 units are 300 wu apart (x=450/750) -- an Infantry formation's own bbox is ~120 wu wide, so anything much narrower than that leaves the two blocks physically overlapping at spawn; CI's demo-defect scan caught exactly that on an earlier staging that placed them only 100 wu apart (x=500/600), which showed up as each unit's OWN soldier-body overlap metric failing (cross-unit friendly-crowding pressure at the touching edge compresses each unit's own adjacent ranks, not a Subcommander/delegation bug -- confirmed by an isolated single-unit control scenario, which shows zero drift with no neighbor nearby). Box-selects both team-0 units, delegates them to AI subcommander group 5 (Ctrl+Shift+5) so they advance and engage the enemy on their own -- no further orders from the player -- then, with the same selection still active, issues an immediate Hold stance (Ctrl+H) to take manual control back, per the design doc's 'a manual player order to a delegated unit always overrides the subcommander's directive'. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 450, "y": 300 },
+    { "team": 0, "type": "Infantry", "x": 750, "y": 300 },
+    { "team": 1, "type": "Infantry", "x": 600, "y": 700 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 600, "y": 500, "zoom": 0.95 }
+  ],
+  "steps": [
+    { "tick": 8, "box": { "from": [330, 250], "to": [870, 350] } },
+    { "tick": 40, "key": "5", "ctrl": true, "shift": true },
+    { "tick": 220, "key": "H", "ctrl": true }
+  ],
+  "state": [8, 42, 100, 180, 222, 260],
+  "expect": [
+    { "tick": 8, "uid": 0, "field": "delegated_group_id", "value": null },
+    { "tick": 42, "uid": 0, "field": "delegated_group_id", "value": 5 },
+    { "tick": 42, "uid": 1, "field": "delegated_group_id", "value": 5 },
+    { "tick": [100, 180], "uid": 0, "field": "current_order", "value": "ATTACK" },
+    { "tick": [100, 180], "uid": 1, "field": "current_order", "value": "ATTACK" },
+    { "tick": 222, "uid": 0, "field": "order_mode", "value": "Hold" },
+    { "tick": 222, "uid": 1, "field": "order_mode", "value": "Hold" }
+  ]
+}

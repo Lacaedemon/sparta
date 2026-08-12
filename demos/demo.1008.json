@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Pure non-visual refactor: Battle.gd's CAMERA_SMOOTHING const becomes a caller-configurable camera_smoothing instance field, defaulting to the same value (0.15). At every default-value call site (every existing demo/scenario) the camera eases at the identical rate -- nothing about a recorded battle looks any differently."
+}

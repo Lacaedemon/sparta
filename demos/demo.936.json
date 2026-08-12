@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/shaded-figures.json",
+  "caption": "Soldier figures at close zoom now carry per-part shading -- lit heads and spearheads, darker legs, kit contrast on shields and bows -- and a soft contact shadow under every man and mount, all baked as vertex colour so each unit's team tint still multiplies through unchanged. A spearmen regiment marches a short leg while cavalry stand alongside as the mounted comparison. Render-only: the state transcript and every sim value are untouched.",
+  "fixed_fps": 30,
+  "max_frames": 290,
+  "fps": 15,
+  "width": 720
+}
