@@ -1,8 +1,8 @@
 ---
 name: sparta-demos
-description: "Authoring, recording, and machine-verifying Sparta PR demo clips — the scripted-input recorder is the standard path"
-metadata:
-  type: feedback
+description: Author, record, and verify a Sparta gameplay demo clip for a PR -- writing a scripted-input file (demos/inputs/*.json), pointing a per-PR manifest (demos/demo.<N>.json) at it, choosing drill vs combat scenarios, capturing frames locally, dumping per-tick state, and checking the clip for unnatural motion before calling it verified. Use whenever a change touches scenes/, scripts/, assets/, or project.godot and needs a demo; when writing or debugging a demos/inputs script; when a clip records the wrong thing, cuts off early, or shows a stale hotkey/caption; or when deciding whether a demo can legitimately be skipped.
+user-invocable: true
+allowed-tools: Bash, Read, Grep, Glob, Write, Edit
 ---
 
 # Sparta — demo authoring & verification
