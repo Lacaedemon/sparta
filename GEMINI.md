@@ -5,14 +5,7 @@ Sparta is a **Godot 4.7** (GDScript, Standard build — not .NET/C#) prototype f
 
 ## Cross-repo AI configuration (`Morrison-Lab/ai-config`)
 
-This repo pulls in [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) for portable skills and memories via the **Plugin Marketplace**.
-
-**Local / after cloning:** the submodule is already registered in `.gitmodules`; initialize it with:
-```bash
-git submodule update --init
-```
-Memories live in `.ai-config/memories/` (e.g. `@.ai-config/memories/preferences.md`).
-Skills live in `.ai-config/skills/`.
+This repo pulls in [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) for portable skills and memories.
 
 ## Project memories
 

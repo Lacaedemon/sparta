@@ -915,8 +915,8 @@ the stale-files symptom of the branch-repoint hazard above, with no error
 anywhere. Recovery: move the session worktree onto a new branch
 (`git switch -c <next-branch>`), then in the primary restore ONLY the
 phantom-diff files (`git restore --staged --worktree <files>` — not a blanket
-`reset --hard`, which would clobber unrelated local state like a `.ai-config`
-submodule pointer). Prevention: after a merge, don't "return to main" in a
+`reset --hard`, which would clobber unrelated local state like untracked files
+or uncommitted work). Prevention: after a merge, don't "return to main" in a
 session worktree at all — fetch and branch the next task's branch directly off
 `origin/main` (`git switch -c <branch> origin/main`), leaving `main` itself to
 the primary checkout. (Session `gii-ffdb93`, 2026-07-16: post-#919 tidy ran the
@@ -976,8 +976,8 @@ Rebutting with that distinction is fine — verify the citation, don't just comp
 
 ## `git worktree remove` needs `--force` on a worktree containing a submodule
 
-sparta vendors `.ai-config` as a git submodule,
-so any `.claude/worktrees/<name>` worktree with it checked out
+When a repository vendors a git submodule (historically `.ai-config` in sparta),
+any `.claude/worktrees/<name>` worktree with it checked out
 refuses the plain removal:
 `fatal: working trees containing submodules cannot be moved or removed`.
 
