@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Error-reporting path inside the demo recorder itself (DemoInputRecorder._schedule()) -- nothing a recorded clip renders. Every existing demos/inputs/*.json already uses a recognized step key, so the change is purely additive with no visible effect on any existing demo."
+}

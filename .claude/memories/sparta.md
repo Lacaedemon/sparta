@@ -284,6 +284,58 @@ binary match.
   full suite has been observed passing every test, so don't assume that failure
   is still present, and don't pin an exact test total; the suite grows.
 
+## Reproducing a reported hang cross-platform: WSL gives a genuine native-Linux Godot binary
+
+CI runs on `ubuntu-latest`; local development on this machine is Windows. When
+a prior session reports a live-battle test hanging and reverts a change
+"un-root-caused," don't assume the report is stale or trust it at face value
+either — reproduce it fresh, and if the platform might matter (this repo's own
+`ANCHOR_RANKS` docstring documents at least one prior case where a chaos-
+sensitive test passed locally on Windows while failing on Linux CI), get a
+genuine native-Linux run rather than reasoning about the gap from Windows
+alone.
+
+WSL (`wsl.exe -d Ubuntu`) makes this cheap on a machine that already has it
+installed: download a Linux Godot binary directly (same version tag as the
+Windows one, so the comparison is apples-to-apples), clone the repo into WSL's
+**native filesystem** (not `/mnt/c/...` — that path is a slow 9p/DrvFs bridge
+and import/test runs on it are painfully slow), vendor GUT the same way
+`tools/check.sh` does, and run the suite there.
+
+```bash
+wsl.exe -d Ubuntu -- bash -lc "mkdir -p ~/godot && cd ~/godot && curl -fsSL -o godot.zip \
+  https://github.com/godotengine/godot/releases/download/4.7-stable/Godot_v4.7-stable_linux.x86_64.zip \
+  && python3 -c \"import zipfile; zipfile.ZipFile('godot.zip').extractall('.')\" \
+  && chmod +x Godot_v4.7-stable_linux.x86_64"
+wsl.exe -d Ubuntu -- bash -lc "cd ~ && git clone --quiet https://github.com/Lacaedemon/sparta.git sparta && cd sparta && git checkout -q <branch>"
+```
+
+Then vendor GUT (mirroring `tools/check.sh ensure_gut`) and run the same
+`godot --headless -s addons/gut/gut_cmdln.gd ...` invocation used locally.
+
+**Windows Git Bash mangles `/tmp/...` paths passed to `wsl.exe`.** MSYS
+auto-translates POSIX-looking absolute-path *arguments* to a program it treats
+as "native" (which `wsl.exe` is, from Git Bash's point of view) into a Windows
+path — so `wsl.exe -d Ubuntu -- bash /tmp/foo.sh` silently becomes
+`bash C:/Users/.../AppData/Local/Temp/foo.sh` and fails inside WSL with "no
+such file." Prefix the whole call with `MSYS_NO_PATHCONV=1` whenever a
+`wsl.exe` command line carries a `/`-rooted path as an argument (a script
+path, a directory), and prefer `/mnt/c/Users/...` (which WSL resolves without
+any translation needed on the Windows side) when handing a Windows-side file
+into a WSL command directly, rather than round-tripping it through a UNC
+copy.
+
+**This settled a real question, not just a hypothetical one.** On issue #1136
+(a reverted position-anchor fix reported to hang `test_collision_knockback_battle.gd`
+indefinitely), the identical diff reproduced cleanly on both Windows and this
+WSL-native-Linux setup — same Godot build (`4.7.stable.official.5b4e0cb0f`) on
+both, three runs each, the single test and the full 2642-test suite both
+clean in under seven minutes. That is real, falsifiable evidence the reverted
+finding wasn't a deterministic property of the diff on the builds actually
+tested — evidence a Windows-only re-check could not have produced, since a
+clean Windows run alone would leave open exactly the cross-platform
+possibility this repo has already documented once before.
+
 ## GUT's doubler breaks on void-returning methods under Godot 4.7
 
 `partial_double()`/`double()` can fail to parse under Godot 4.7 + GUT v9.7.0:
@@ -871,6 +923,20 @@ the primary checkout. (Session `gii-ffdb93`, 2026-07-16: post-#919 tidy ran the
 fallback form, double-checked-out `main`, and the primary showed nine phantom
 staged reversals of #919's own files until restored.)
 
+**With no next task queued yet, `git checkout --detach origin/main` is the
+safe substitute for "branch off origin/main."** The prevention above assumes
+a next branch is already known; when a session merges a PR and has nothing
+queued next, detaching to `origin/main`'s tip (rather than creating and
+switching to a real `main` branch ref, OR leaving the worktree sitting on the
+now-merged, about-to-be-deleted branch) tidies the worktree without touching
+any branch ref at all — a detached `HEAD` isn't a branch, so it can't collide
+with the primary checkout's own `main`. `git branch -d <merged-branch>` then
+deletes cleanly (the branch is no longer checked out anywhere). Confirm the
+detached tip really is the merge by checking the commit message names the PR
+(`git log --oneline -1`) — a squash merge lands as a new commit on `main`, so
+`origin/main`'s tip is exactly that commit, not an ancestor relationship you'd
+need `--is-ancestor` to confirm.
+
 **Post-merge tidy: `git worktree remove` on your OWN currently-active worktree
 can partially succeed and leave an empty, orphaned directory — this is
 harmless, not data loss.** After a PR merges, running `git worktree remove
@@ -1327,6 +1393,25 @@ touching `SoldierEnemyContact`/`_separate`/proximity-style contact checks, or an
 touching `demos/demo.json`, grep this file for the relevant section NAME right before the
 final push (not just recall it from earlier context) — a 10-second grep is cheaper than a
 full review round. (`Lacaedemon/sparta` PR #1137, 2026-07-27.)
+
+**A third recurrence, this time against a cross-repo (ai-config) rule rather than a
+sparta-local one:** `pr-on-claim.md`'s "Run that `requested_reviewers` POST as the sole
+(or last) command in its Bash call" was loaded in context, and #1241's very first Copilot
+request (issued right after `gh pr create`) already followed it — a single, unpiped,
+unchained call. `hooks/no-unreviewed-pr.py` still reported "no SUCCESSFUL reviewer request
+follows" for #1241 (and #1239) at the next Stop check. Re-requesting for #1239 in a
+combined call — `POST | head -3`, then two chained `gh pr view` verification reads for
+both PRs in the same Bash call — is a clear instance of the rule's own named tell ("a pipe
+added purely to trim the output"), and the guard fired again with the identical message.
+Only reissuing BOTH POSTs as fully isolated calls (bare command, no pipe, nothing chained
+after it) cleared the guard. Exactly why the first, genuinely clean #1241 request didn't
+already satisfy it is unconfirmed — possibly the guard's discharge window doesn't reach
+back past an intervening non-conforming call, possibly something else; this records the
+observed sequence and the fix, not a verified mechanism.
+**How to apply:** don't assume a clean, isolated reviewer-request call earlier in a session
+keeps discharging the guard for a PR you touch again later — if the guard fires, re-issue
+the POST as its own isolated call right then, even if you believe an earlier request for
+the same PR was already correct. (`Lacaedemon/sparta` PRs #1239/#1241, 2026-08-10.)
 
 ## A freshly-constructed test Unit defaults to morale 100 — routing tests can auto-rally instantly
 
