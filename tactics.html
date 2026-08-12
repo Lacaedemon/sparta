@@ -51,9 +51,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-6e386759ed7038fd20ed58b807885a2d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-d83ae64c6879cdce09d7cf420b496824.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-6e386759ed7038fd20ed58b807885a2d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-0d18f0dfac312b9a8eb238ea32915223.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-f5209645f978859cdd860952f647b33b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-0d18f0dfac312b9a8eb238ea32915223.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -500,7 +500,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-08-10</p>
+      <p class="date">Last updated: 2026-08-12</p>
     </div>
   </div>
   
@@ -1259,6 +1259,20 @@ Figure&nbsp;28: A player Infantry regiment is ordered under March to contact tow
 </figure>
 </div>
 <p><strong>Push stance</strong> (<kbd>/</kbd>) is the aggressive, offensive counterpart to Give ground: an engaged unit continuously applies physical pressure to drive its opponent backwards. Where Give ground yields territory while fighting, Push stance advances into the enemy line, pushing opposing soldiers back while maintaining melee contact.</p>
+<div id="fig-push-stance" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-push-stance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/push_stance.jpg">
+  <source src="media/push_stance.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-push-stance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;29: Two Infantry regiments lock in a melee standoff. The player selects their own unit and issues Push stance — its front line advances into the enemy’s, driving the opposing soldiers steadily backward while the two sides keep trading blows, instead of holding at the standoff distance the way a plain engagement would.
+</figcaption>
+</figure>
+</div>
 <p><strong>Disengage and step back</strong> (<kbd>Ctrl</kbd> + <kbd>↓</kbd>) is different in kind from the stances above: a one-shot maneuver, not a standing order. Where Give ground keeps fighting while backing away, disengaging breaks the fight off entirely — the unit stops striking back and steps a short, fixed distance to the rear, holding facing. Use it to pull a unit out of a fight that isn’t worth finishing, so it can regroup or be redirected elsewhere, rather than to hold a losing line (that’s what Give ground is for). It costs something too: the enemy’s own attack order doesn’t release just because you stopped fighting back, so it keeps swinging — with the flank/rear bonus — for as long as it can still reach the retreating line.</p>
 <p><strong>Disengage with sacrifice</strong> (<kbd>Shift</kbd> + <kbd>Ctrl</kbd> + <kbd>↓</kbd>) is a harsher variant for heavily pressed regiments. A small rearguard detachment (~10% of remaining soldiers) splits off at the point of contact as a genuine separate unit, stays on Hold, and keeps fighting for real — it is not a casualty write-off or a flat pursuit-speed penalty on the pursuer. The main body’s survivors step back and march clear immediately; the enemy is held up because it is physically blocked by the rearguard’s own bodies, not because a number slowed it down. The rearguard fights until it is destroyed or a short lifetime expires, whichever comes first.</p>
 <div id="fig-disengage-sacrifice-rearguard" class="demo quarto-float quarto-figure quarto-figure-center anchored">
@@ -1271,7 +1285,7 @@ Figure&nbsp;28: A player Infantry regiment is ordered under March to contact tow
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-disengage-sacrifice-rearguard-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;29: A player Infantry regiment locked in melee is ordered to disengage with sacrifice. A small detachment splits off, stays put, and keeps trading blows with the enemy while the rest of the regiment marches away unimpeded — the enemy stays engaged with the rearguard instead of following the retreat.
+Figure&nbsp;30: A player Infantry regiment locked in melee is ordered to disengage with sacrifice. A small detachment splits off, stays put, and keeps trading blows with the enemy while the rest of the regiment marches away unimpeded — the enemy stays engaged with the rearguard instead of following the retreat.
 </figcaption>
 </figure>
 </div>
@@ -1285,7 +1299,7 @@ Figure&nbsp;29: A player Infantry regiment locked in melee is ordered to disenga
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-disengage-under-pressure-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;30: Two evenly-matched Infantry regiments hold a stalemate in melee. The player disengages their own unit — it clears its target and steps back, holding facing, while the enemy (still committed to the fight) keeps pressing after it.
+Figure&nbsp;31: Two evenly-matched Infantry regiments hold a stalemate in melee. The player disengages their own unit — it clears its target and steps back, holding facing, while the enemy (still committed to the fight) keeps pressing after it.
 </figcaption>
 </figure>
 </div>
@@ -1309,7 +1323,7 @@ Figure&nbsp;30: Two evenly-matched Infantry regiments hold a stalemate in melee.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;31: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;32: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
@@ -1353,7 +1367,7 @@ Table&nbsp;3: Terrain patches and their movement effects.
 </figure>
 </div>
 <p>Units automatically path around impassable terrain when ordered to move. A formed regiment takes the detour in good order: it steers by the corridor’s long-run direction and pivots onto it no faster than its corner man can run, so the block holds rank-and-file around the turn instead of smearing into a crowd. The forest is a different trade-off: going <em>around</em> it costs distance; going <em>through</em> it costs time. Generally it is faster to push cavalry or fast-moving infantry through rather than around a narrow forest.</p>
-<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;33</a>).</p>
+<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;34</a>).</p>
 <div id="fig-terrain-exact-footprint" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1364,7 +1378,7 @@ Table&nbsp;3: Terrain patches and their movement effects.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;32: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
+Figure&nbsp;33: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
 </figcaption>
 </figure>
 </div>
@@ -1378,7 +1392,7 @@ Figure&nbsp;32: A 30-man squad ordered straight down the lane just west of the h
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-funnel-lanes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;33: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
+Figure&nbsp;34: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
 </figcaption>
 </figure>
 </div>
@@ -1435,7 +1449,7 @@ Figure&nbsp;33: Two widths, two lanes: a wide battle line and a narrow squad rou
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-move-cancel-on-engagement-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;34: Redirecting an engaged unit: a mid-fight move order marches the unit off right away, but once its engagement with the enemy dies down the destination is checked one last time — if the enemy still holds that ground, the order cancels outright and the unit falls back into the fight instead of marching into occupied territory.
+Figure&nbsp;35: Redirecting an engaged unit: a mid-fight move order marches the unit off right away, but once its engagement with the enemy dies down the destination is checked one last time — if the enemy still holds that ground, the order cancels outright and the unit falls back into the fight instead of marching into occupied territory.
 </figcaption>
 </figure>
 </div>
