@@ -4433,6 +4433,66 @@ The authored-versus-landed distinction is the part worth keeping: a `git log` da
 offending commit will predate the breakage by hours, which makes the timeline look
 inconsistent until you check when it merged.
 
+## A red `claude-review` can sit on top of a GENUINE, complete verdict --- read which STEP failed
+
+The entry above classifies a review that never reached the model at all.
+This is the opposite shape.
+The model ran, produced a full verdict, and posted it, and the job still went red ---
+because `claude-review` keeps going after the verdict-posting step, and a later step can
+fail on its own.
+
+`review / require-review` then fails as a pure consequence
+(`##[error]Claude review job did not succeed (result: failure).`), so the board shows two
+red review checks with a perfectly good "Ready for merge" comment sitting on the PR.
+
+**Every fingerprint this file already documents points the wrong way here.**
+It is not a stub, since a real `### Verdict` exists.
+Not the concurrency race, since the conclusion is `failure` rather than `cancelled`.
+Not the self-mod skip, since "Post a notice that self-review was skipped" is itself
+`skipped`, which is what proves the guard did not fire.
+And not the ~40s zero-cost signature --- the model step ran for over five minutes.
+
+**The tell is the job's own STEP LIST, not any of those fingerprints.**
+Read it and find which step actually failed.
+When the failing step sits DOWNSTREAM of "Post review comment", the review itself
+succeeded and the red check is reporting infrastructure noise about something else.
+On the observed run exactly one step of 27 failed, one second after the verdict landed:
+
+| # | step | result |
+|---|---|---|
+| 4 | Post a notice that self-review was skipped | skipped |
+| 11 | Run Claude Code Review | success (310s) |
+| 13 | Fail the check if the review did not complete (attempt 1) | success |
+| 14-16 | stub-review retry | skipped |
+| 20 | Post review comment | success |
+| 21 | **Post cost comment** | **failure** |
+| 24 | Re-assign reviewers after Claude finishes | success |
+
+Two things in that table do work beyond naming the culprit.
+Steps 14-16 being `skipped` rules out the stub-retry path, so the first attempt was
+accepted on its own merits.
+And step 24 succeeding shows the job kept going past the failure --- only the conclusion
+flipped, which is why nothing else about the run looks wrong.
+
+**The remedy is `rerun_failed_jobs`, exactly as for the transient link-checker failure
+above --- not a code change, not a re-dispatch, and not a self-review fallback.**
+A re-dispatch is actively wrong here: it starts a fresh review from scratch and can lose
+the race to the `claude-review-<N>` concurrency group, where a re-run replays the same
+job on the same head.
+Confirmed transient by that re-run passing on the identical commit minutes later.
+
+- **Do:** read the failing step's name before classifying a red `claude-review`, and treat
+  a failure downstream of the verdict post as infrastructure rather than review.
+- **Do:** re-run the failed jobs, then re-read the check runs to confirm.
+- **Don't:** read a red `require-review` as "no verdict" --- it only ever mirrors
+  `claude-review`'s result, so it carries no independent information.
+- **Don't:** reach for the self-review fallback while a genuine verdict is already posted.
+
+(`Lacaedemon/sparta` PR #1245, 2026-08-12: job 94049553955 posted a full "Ready for merge"
+verdict and then failed on the cost-tally step alone.
+`rerun_failed_jobs` on the same head turned both `claude-review` and `require-review`
+green, and the cost comment posted normally.)
+
 ## A new player-facing GLOBAL state mutation needs a replay-recording check, not just a cosmetic-overlay one
 
 `Replay`'s per-tick tracks (orders, camera, pointer, keys) each capture a specific,
