@@ -133,6 +133,7 @@ static func accumulate(units: Array, frame: int) -> void:
 	# actually RESOLVED need no tally at all -- that is pair_a.size().
 	var candidates_seen: int = 0
 	var dist_checks: int = 0
+	var sqrt_evals: int = 0
 	for a in range(n):
 		var neighbours: PackedInt32Array = SoldierSpatialHash.query(spos[a])
 		candidates_seen += neighbours.size()
@@ -148,9 +149,12 @@ static func accumulate(units: Array, frame: int) -> void:
 			var min_dist: float = sradii[a] + sradii[b] + scontain[a] + scontain[b]
 			var offset: Vector2 = spos[a] - spos[b]
 			dist_checks += 1
-			var d: float = offset.length()
-			if d >= min_dist:
+			# OPTIMIZATION: Use length_squared() instead of length() to avoid expensive sqrt
+			var d_sq: float = offset.length_squared()
+			if d_sq >= min_dist * min_dist:
 				continue   # not touching -- nothing to resolve
+			sqrt_evals += 1
+			var d: float = sqrt(d_sq)
 			var normal: Vector2
 			var overlap_frac: float
 			if d > 0.01:
@@ -187,7 +191,7 @@ static func accumulate(units: Array, frame: int) -> void:
 					contact_enemy[b] = sowners[a]
 	SimOps.add(SimOps.GRID_CANDIDATE, candidates_seen)
 	SimOps.add(SimOps.CONTACT_PAIR, pair_a.size())
-	SimOps.add(SimOps.SQRT_EVAL, dist_checks)
+	SimOps.add(SimOps.SQRT_EVAL, sqrt_evals)
 
 	# Trim each body's SUMMED delta to what capped_knockback_velocity would allow it in
 	# isolation, expressed as a per-body scale factor -- reusing the existing clamp rather than
