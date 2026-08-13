@@ -15,14 +15,6 @@ for portable skills and memories via the **Plugin Marketplace**.
 `ai-config` plugin, so Claude Code installs it at session start — skills are
 available as `/ai-config:<name>` (e.g. `/ai-config:ardi`, `/ai-config:remember`).
 
-**Local / after cloning:** the submodule is already registered in `.gitmodules`;
-initialize it with:
-```bash
-git submodule update --init
-```
-Memories live in `.ai-config/memories/` (e.g. `@.ai-config/memories/preferences.md`).
-Skills live in `.ai-config/skills/`.
-
 ## Project memories
 
 Sparta-specific working notes and gotchas, imported so they load with this file:

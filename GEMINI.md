@@ -5,14 +5,9 @@ Sparta is a **Godot 4.7** (GDScript, Standard build — not .NET/C#) prototype f
 
 ## Cross-repo AI configuration (`Morrison-Lab/ai-config`)
 
-This repo pulls in [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) for portable skills and memories via the **Plugin Marketplace**.
+Claude Code sessions get the portable skills and memories from [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) through the **Plugin Marketplace**, registered in `.claude/settings.json`.
 
-**Local / after cloning:** the submodule is already registered in `.gitmodules`; initialize it with:
-```bash
-git submodule update --init
-```
-Memories live in `.ai-config/memories/` (e.g. `@.ai-config/memories/preferences.md`).
-Skills live in `.ai-config/skills/`.
+**Gemini and AGY sessions do not.** The `.ai-config` submodule that used to supply them was removed (#1249), and there is no marketplace equivalent, so a Gemini session in this repo sees only the skills and memories under `.gemini/` and `.claude/` (per `.gemini/config.json`). Issue #1250 tracks whether to give Gemini a route back to the shared corpus or to accept the narrower context deliberately.
 
 ## Project memories
 
