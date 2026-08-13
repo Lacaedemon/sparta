@@ -4684,3 +4684,27 @@ maneuver test). This is the same "even well-documented anti-patterns get re-viol
 already in this file, recurring a third time on this exact fixture shape.
 (`Lacaedemon/sparta` PR #1234, 2026-08-09: caught only by a from-scratch full-suite run, not
 by the two test files the PR's own diff touched.)
+
+## Mentioning Jules in a PR comment does not start a Jules dev round from this session's identity
+
+The Jules bot (`google-labs-jules[bot]`) does not react to an @-mention posted
+by this session, however the request is phrased.
+Observed on PR #1227 (2026-08-13): a comment explicitly asking Jules to
+iterate on its own Bolt PR (comment 5276108300) drew zero reactions, no
+reply, and no push over several hours -- the branch head stayed at the
+pre-comment commit until this session pushed its own work.
+
+The likely mechanism (inferred, not verified against Jules's docs): comments
+from an agent session post under the repo owner's `d-morrison` login, while
+this repo's Jules tasks are started by a different account (`dem-extra1`) --
+and Jules only acts on instructions from the account that owns its repo
+connection, ignoring everyone else as a security gate.
+
+**How to apply:** don't spend an ARDIA round posting or re-posting "Jules,
+please address the review" comments and waiting -- there is no evidence any
+number of them works from this identity.
+Either surface to the user that a Jules round needs THEM to start a task
+(from the Jules console, or a mention from the integration-owner account), or
+implement the review findings directly on the bot's branch yourself, which is
+the fallback that worked on #1227 (demo authored, loop-hoist folded in,
+driven to a clean verdict, merged).
