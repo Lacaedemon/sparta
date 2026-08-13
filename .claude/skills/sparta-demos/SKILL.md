@@ -1,14 +1,14 @@
 ---
 name: sparta-demos
-description: "Authoring, recording, and machine-verifying Sparta PR demo clips — the scripted-input recorder is the standard path"
-metadata:
-  type: feedback
+description: Author, record, and verify a Sparta gameplay demo clip for a PR -- writing a scripted-input file (demos/inputs/*.json), pointing a per-PR manifest (demos/demo.<N>.json) at it, choosing drill vs combat scenarios, capturing frames locally, dumping per-tick state, and checking the clip for unnatural motion before calling it verified. Use whenever a change touches scenes/, scripts/, assets/, or project.godot and needs a demo; when writing or debugging a demos/inputs script; when a clip records the wrong thing, cuts off early, or shows a stale hotkey/caption; or when deciding whether a demo can legitimately be skipped.
+user-invocable: true
+allowed-tools: Bash, Read, Grep, Glob, Write, Edit
 ---
 
 # Sparta — demo authoring & verification
 
 The scripted-input recorder is the **standard** demo path as of #318/#321. The
-older hand-authored/recorded `replay` path (documented in the main `sparta.md`
+older hand-authored/recorded `replay` path (documented in the main `.claude/memories/sparta.md`
 "Authoring & verifying demo scenarios" section) still works and is fine for a
 quick reuse of `demos/showcase.json`, but prefer scripted input for anything that
 shows a specific player gesture.
@@ -18,7 +18,7 @@ shows a specific player gesture.
 Don't reach for `demos/demo.<slug>.json`'s `skip: true` because the change "isn't
 legible in a compressed clip" or is "too subtle to show at demo scale." That
 excuse doesn't hold up: if a bug was found (or could be found) by zooming into a
-specific frame — exactly how many of the incidents in this file and `sparta.md`
+specific frame — exactly how many of the incidents in this file and `.claude/memories/sparta.md`
 were actually diagnosed (frame-by-frame video review, cropped/upscaled PNG
 comparisons, `SPARTA_DEMO_FRAMES` captures at precise ticks) — the FIX is provable
 the same way. A compressed auto-recorded GIF at normal playback speed is the
@@ -54,7 +54,7 @@ reached the moment its own caption described (#623, "A stalled approach").
 **How to apply:**
 - Watch/dump the full clip end to end (per-tick `facing`, position, and
   `order_mode`, not just a few widely-spaced sample ticks — see "Bbox-settling
-  checks alone miss a mid-march swirl" in `sparta.md`) and ask "does anything
+  checks alone miss a mid-march swirl" in `.claude/memories/sparta.md`) and ask "does anything
   here look wrong," not only "does the claimed thing happen."
 - Extend the trace window if a rotation/drift looks like it might still be
   accelerating rather than settling — a 300-tick sample can look stable while
@@ -223,7 +223,7 @@ SPARTA_DEMO_INPUT="res://demos/inputs/<name>.json" "$GODOT_BIN" \
 then `Read` a frame PNG. (The live `_draw()` renders the form-up preview during
 the drag, so the gesture shows.) Drop `--headless` on Windows — it crashes Movie
 Maker. Run `--headless --import` first in a fresh worktree. See the
-"Local testing" section of `sparta.md` for the binary.
+"Local testing" section of `.claude/memories/sparta.md` for the binary.
 
 **Throwaway tool-scene screenshots** — for a state a recorded battle can't easily
 reach, write a one-off `tools/demo/_shot_<n>.gd` + `.tscn` (a `Node` that loads
@@ -555,7 +555,7 @@ the querying unit's own `attack_range`), since `Unit.RADIUS` is a flat per-REGIM
 footprint constant (18 wu), not a per-soldier body radius. (This is a DIFFERENT check
 from `Unit._in_enemy_contact`, which correctly uses `maxf(attack_range,
 u.attack_range) + RADIUS + u.RADIUS` — see "A symmetric 'is X near Y' contact check
-needs BOTH sides' own range" in `sparta.md` — `_in_enemy_contact` gates physical
+needs BOTH sides' own range" in `.claude/memories/sparta.md` — `_in_enemy_contact` gates physical
 collision selection, not the strike path.) A lone or small-count target's whole HP
 pool is thin enough that a single charge-bonus-amplified strike at THAT range
 *could* wipe it out entirely with zero cost to the attacker, long before the two
@@ -598,7 +598,7 @@ to call "minimal").
 
 ## A hotkey rebind (merge-conflict collision fix) has THREE copies to sync, not one
 
-When resolving an `OrderMode`-enum merge collision (see `sparta.md`'s
+When resolving an `OrderMode`-enum merge collision (see `.claude/memories/sparta.md`'s
 "Battle.gd merge" section) forces a stance's default hotkey to change —
 e.g. `all_out_attack` rebinding off a colliding `KEY_COMMA` to a free
 `KEY_PERIOD` — the code fix (`Settings.gd`'s `DEFAULT_ORDER_BINDINGS`,
@@ -833,7 +833,7 @@ way any new scenario needs verification, per the sections above. (`Lacaedemon/sp
 
 ## A precise-tick caption claim on a LONG battle: verify against CI's own posted transcript, not a local `dump-state.sh` run
 
-The "verify before claiming" convention above (and the demo-state-dump entries in `sparta.md`)
+The "verify before claiming" convention above (and the demo-state-dump entries in `.claude/memories/sparta.md`)
 assumes a local `dump-state.sh` run is an authoritative stand-in for what CI will show. That
 holds for short/simple scenarios, but breaks down for a **long, chaotic** battle (many soldiers
 colliding over 700+ ticks): a local Windows headless run and CI's Linux run of the **identical
@@ -923,7 +923,7 @@ A footprint-preserving maneuver — the conversio/about-face (#394), where the b
 in place, front rank becoming rear, keeping its exact footprint — barely moves the block
 silhouette; only the internal rank order flips. A naive eyeball of a few sampled frames wrongly
 reads it as "static" (exactly what happened on PR #465's first CI clip). Quarter-turns (#371) and
-file-doubling share the trap. This is the *perceptual* counterpart to sparta.md's "Verify
+file-doubling share the trap. This is the *perceptual* counterpart to .claude/memories/sparta.md's "Verify
 maneuvers tick by tick" entry (that's about sim correctness): the sim can be perfectly correct
 while the clip still fails the "the demo must SHOW the change" bar.
 
@@ -1221,7 +1221,7 @@ When a caption asserts a value holds continuously across a stretch of the clip (
 ## `all_teams_control` only silences the STRATEGIC AI (`_run_enemy_ai`) -- each unit's own per-tick auto-advance still runs for every team
 
 The existing "all_teams_control is the staging tool for a genuinely stationary enemy" entry in
-`sparta.md` is only half the story. Turning off team 1's AI this way stops it from receiving
+`.claude/memories/sparta.md` is only half the story. Turning off team 1's AI this way stops it from receiving
 FRESH orders, but it does **not** touch `Unit._think()`'s own per-tick, per-UNIT
 auto-advance-on-a-detected-enemy branch (`elif enemy != null and order_mode != ORDER_HOLD:
 _move_to(enemy.position, ...)`), which runs identically for every team regardless of

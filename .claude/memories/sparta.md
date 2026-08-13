@@ -915,8 +915,8 @@ the stale-files symptom of the branch-repoint hazard above, with no error
 anywhere. Recovery: move the session worktree onto a new branch
 (`git switch -c <next-branch>`), then in the primary restore ONLY the
 phantom-diff files (`git restore --staged --worktree <files>` — not a blanket
-`reset --hard`, which would clobber unrelated local state like a `.ai-config`
-submodule pointer). Prevention: after a merge, don't "return to main" in a
+`reset --hard`, which would clobber unrelated local state like untracked files
+or uncommitted work). Prevention: after a merge, don't "return to main" in a
 session worktree at all — fetch and branch the next task's branch directly off
 `origin/main` (`git switch -c <branch> origin/main`), leaving `main` itself to
 the primary checkout. (Session `gii-ffdb93`, 2026-07-16: post-#919 tidy ran the
@@ -976,8 +976,8 @@ Rebutting with that distinction is fine — verify the citation, don't just comp
 
 ## `git worktree remove` needs `--force` on a worktree containing a submodule
 
-sparta vendors `.ai-config` as a git submodule,
-so any `.claude/worktrees/<name>` worktree with it checked out
+When a repository vendors a git submodule (historically `.ai-config` in sparta),
+any `.claude/worktrees/<name>` worktree with it checked out
 refuses the plain removal:
 `fatal: working trees containing submodules cannot be moved or removed`.
 
@@ -3503,7 +3503,7 @@ explicit `custom_minimum_size` (or any other size-affecting property) set
 after the position — if so, use explicit offsets instead. And always
 confirm a new/moved HUD panel's ACTUAL on-screen position with a real
 screenshot (a throwaway tool scene + `--rendering-driver opengl3`, per
-"Throwaway tool-scene screenshots" in `sparta-demos.md`) before considering
+"Throwaway tool-scene screenshots" in `.claude/skills/sparta-demos/SKILL.md`) before considering
 a layout change done — a GUT test asserting anchor/grow-direction
 properties (as `test_hud_layout.gd` does) proves the CONFIGURATION is
 correct but says nothing about where the Control actually renders.
@@ -3657,7 +3657,7 @@ ownership) would subsume the whole family.
 
 Verification technique for any fix here is the per-index, local-frame comparison described
 under "The identity checks are real, but they are blind DURING a reshape" in
-`sparta-demos.md`. The scan's identity metrics do exist and work, but they only judge a
+`.claude/skills/sparta-demos/SKILL.md`. The scan's identity metrics do exist and work, but they only judge a
 SETTLED block -- and every one of these bugs reaches a correct end state by a wrong route,
 which is why all four instances were caught by eye rather than by a check.
 
