@@ -40,8 +40,9 @@ class_name SoldierEnemyContact
 ## to the pre-skip version rather than merely equivalent to it: the squared comparison never
 ## decides a pair's fate, it only decides whether the square root is worth computing.
 ##
-## Sized about three orders of magnitude above the ~1.2e-7 relative gap a single-precision
-## square root can introduce, so the skip's safety does not rest on a tight bound. It is a
+## A squared band of 1.0001 is a relative DISTANCE margin of sqrt(1.0001) - 1, about 5.0e-5 --
+## roughly 420x the 1.19e-7 float32 epsilon that bounds the gap between the two square roots,
+## so the skip's safety does not rest on a tight bound. It is a
 ## numerical-safety epsilon rather than a gameplay tunable -- nothing about a battle changes
 ## when it moves -- so it stays a const, per the units convention's own carve-out for solver
 ## epsilons.
