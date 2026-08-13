@@ -1,0 +1,124 @@
+{
+  "_comment": "PR-specific demo for the distance-squared optimization: SelectionManager._can_form_up, one of the three call sites converted from distance_to to distance_squared_to, is the check that decides whether this right-drag deploys the selection along the dragged line. Two Infantry regiments are box-selected (box release lands DRAG_TICKS=16 after its tick), then a 280 wu right-to-left drag at y=440 (facing +y) clears the two-unit threshold of FORM_UP_MIN_WIDTH + MULTI_FORM_UP_GAP = 36 wu by a wide margin, so both units deploy along the line. Drill mode: the player gesture is the subject, no enemy needed. Replay.record_pointer, the second optimized call site, dedups the pointer track this recording writes.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 400,
+      "y": 300,
+      "count": 24
+    },
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 600,
+      "y": 300,
+      "count": 24
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 500,
+      "y": 400,
+      "zoom": 1.7
+    }
+  ],
+  "steps": [
+    {
+      "tick": 10,
+      "box": {
+        "from": [
+          300,
+          220
+        ],
+        "to": [
+          700,
+          380
+        ]
+      }
+    },
+    {
+      "tick": 40,
+      "rmb_drag": {
+        "from": [
+          640,
+          440
+        ],
+        "to": [
+          360,
+          440
+        ]
+      }
+    }
+  ],
+  "state": [
+    8,
+    50,
+    70,
+    140,
+    300,
+    520,
+    600
+  ],
+  "frames": [
+    50,
+    250,
+    600
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        400.0,
+        300.0
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "position",
+      "value": [
+        600.0,
+        300.0
+      ]
+    },
+    {
+      "tick": [
+        140,
+        300
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    },
+    {
+      "tick": [
+        140,
+        300
+      ],
+      "uid": 1,
+      "field": "state",
+      "value": "MOVING"
+    },
+    {
+      "tick": 600,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": [
+        520,
+        600
+      ],
+      "uid": 1,
+      "field": "state",
+      "value": "IDLE"
+    }
+  ]
+}

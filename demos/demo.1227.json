@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/form-up-drag-width.json",
+  "caption": "The drag-width check this PR optimizes, exercised end to end: two Infantry regiments are box-selected, then a right-drag deploys them along the dragged line. SelectionManager._can_form_up gates that deploy by comparing the drag's length against FORM_UP_MIN_WIDTH + MULTI_FORM_UP_GAP -- one of the three distance_to comparisons this PR converts to squared distance (Replay.record_pointer, which dedups the recorded pointer track driving this clip, is another). Behavior is identical; the saving is the dropped sqrt per evaluation.",
+  "fixed_fps": 30,
+  "max_frames": 310,
+  "fps": 15,
+  "width": 720
+}

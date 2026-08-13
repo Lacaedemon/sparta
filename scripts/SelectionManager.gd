@@ -2062,13 +2062,16 @@ func _order_cursor_texture(color: Color) -> ImageTexture:
 	var img := Image.create(CURSOR_SIZE, CURSOR_SIZE, false, Image.FORMAT_RGBA8)
 	var c := Vector2(CURSOR_SIZE / 2.0, CURSOR_SIZE / 2.0)
 	var r: float = CURSOR_SIZE / 2.0 - 1.0
+	var r_sq: float = r * r
+	var r_inner: float = r - 3.0
+	var r_inner_sq: float = r_inner * r_inner
 	for y in CURSOR_SIZE:
 		for x in CURSOR_SIZE:
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt in inner loop
 			var d_sq: float = Vector2(x + 0.5, y + 0.5).distance_squared_to(c)
-			if d_sq <= (r - 3.0) * (r - 3.0):
+			if d_sq <= r_inner_sq:
 				img.set_pixel(x, y, color)
-			elif d_sq <= r * r:
+			elif d_sq <= r_sq:
 				img.set_pixel(x, y, Color.WHITE)   # rim for contrast on any background
 	return ImageTexture.create_from_image(img)
 
