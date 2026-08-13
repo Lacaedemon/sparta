@@ -28,7 +28,12 @@ Skills live in `.ai-config/skills/`.
 Sparta-specific working notes and gotchas, imported so they load with this file:
 
 @.claude/memories/sparta.md
-@.claude/memories/sparta-demos.md
+
+Demo authoring and verification notes are **not** imported here -- they load on
+demand as the `sparta-demos` skill (`.claude/skills/sparta-demos/SKILL.md`).
+Invoke it whenever you author, record, or verify a demo clip; the "Gameplay
+demos in PRs" section below is the always-loaded summary of when a demo is
+required.
 
 ## Project at a glance
 - Godot **4.7.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.

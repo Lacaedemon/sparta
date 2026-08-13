@@ -15,7 +15,7 @@ extends GutTest
 const AI_PERIOD: int = 60
 
 ## Empirically verified (tools/demo/dump-state.sh against the showcase seed's default 5v5
-## battle, no scenario override -- see .claude/memories/sparta-demos.md's "verify before
+## battle, no scenario override -- see .claude/skills/sparta-demos/SKILL.md's "verify before
 ## claiming" convention): the *replay-determinism* check below covers this many ticks of the
 ## default battle. Left wide so the determinism comparison is meaningful, independent of
 ## whether any SUPPORT directive happens to fire along the way.

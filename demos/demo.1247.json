@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation/context-loading change only (closes #1247): the demo authoring notes move from an always-imported memory file to an on-demand skill at .claude/skills/sparta-demos/SKILL.md, and 18 citations of the old path across 16 files are repointed. This diff touches demos/inputs/*.json only inside _comment fields -- no scenario, no input step, no timing, and no game code changes -- so a recorded battle would be byte-identical to main's and would show nothing about the change."
+}

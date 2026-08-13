@@ -3503,7 +3503,7 @@ explicit `custom_minimum_size` (or any other size-affecting property) set
 after the position — if so, use explicit offsets instead. And always
 confirm a new/moved HUD panel's ACTUAL on-screen position with a real
 screenshot (a throwaway tool scene + `--rendering-driver opengl3`, per
-"Throwaway tool-scene screenshots" in `sparta-demos.md`) before considering
+"Throwaway tool-scene screenshots" in `.claude/skills/sparta-demos/SKILL.md`) before considering
 a layout change done — a GUT test asserting anchor/grow-direction
 properties (as `test_hud_layout.gd` does) proves the CONFIGURATION is
 correct but says nothing about where the Control actually renders.
@@ -3657,7 +3657,7 @@ ownership) would subsume the whole family.
 
 Verification technique for any fix here is the per-index, local-frame comparison described
 under "The identity checks are real, but they are blind DURING a reshape" in
-`sparta-demos.md`. The scan's identity metrics do exist and work, but they only judge a
+`.claude/skills/sparta-demos/SKILL.md`. The scan's identity metrics do exist and work, but they only judge a
 SETTLED block -- and every one of these bugs reaches a correct end state by a wrong route,
 which is why all four instances were caught by eye rather than by a check.
 

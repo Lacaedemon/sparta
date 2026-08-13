@@ -19,7 +19,7 @@ Skills live in `.ai-config/skills/`.
 Sparta-specific working notes and gotchas, imported so they load with this file:
 
 @.claude/memories/sparta.md
-@.claude/memories/sparta-demos.md
+@.claude/skills/sparta-demos/SKILL.md
 
 ## Project at a glance
 - Godot **4.7.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
