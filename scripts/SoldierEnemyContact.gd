@@ -32,6 +32,23 @@ class_name SoldierEnemyContact
 ## end). No RNG, no instance-id/wall-clock -- replay-safe like the rest of the soldier layer.
 
 
+## Squared-distance safety factor for accumulate()'s square-root skip. A pair whose squared
+## separation reaches this multiple of min_dist^2 sits far enough outside contact that no
+## rounding difference between `offset.length()` and the squared comparison could put it back
+## inside, so its square root can be skipped outright. Every pair INSIDE the band still takes
+## the exact `offset.length() >= min_dist` test, which is what keeps this pass bit-identical
+## to the pre-skip version rather than merely equivalent to it: the squared comparison never
+## decides a pair's fate, it only decides whether the square root is worth computing.
+##
+## A squared band of 1.0001 is a relative DISTANCE margin of sqrt(1.0001) - 1, about 5.0e-5 --
+## roughly 420x the 1.19e-7 float32 epsilon that bounds the gap between the two square roots,
+## so the skip's safety does not rest on a tight bound. It is a
+## numerical-safety epsilon rather than a gameplay tunable -- nothing about a battle changes
+## when it moves -- so it stays a const, per the units convention's own carve-out for solver
+## epsilons.
+const SQRT_SKIP_BAND: float = 1.0001
+
+
 ## The per-body scale factor a summed contact delta must be trimmed by to match what
 ## capped_knockback_velocity would allow this body in isolation -- reusing that existing clamp
 ## rather than solving the exact per-body quadratic, a deliberate simplification. Returns 1.0
@@ -147,9 +164,14 @@ static func accumulate(units: Array, frame: int) -> void:
 			# into a's ranks exactly as b's formation resists a's advance into b's.
 			var min_dist: float = sradii[a] + sradii[b] + scontain[a] + scontain[b]
 			var offset: Vector2 = spos[a] - spos[b]
-			# OPTIMIZATION: Use length_squared() instead of length() to avoid expensive sqrt
-			# A small slack band prevents floating point discrepancies between square-rooted min_dist and d
-			if offset.length_squared() >= min_dist * min_dist * 1.0001:
+			# Most candidate pairs are nowhere near touching, and the square root only ever
+			# mattered for the ones that are. Skip it for pairs the squared comparison places
+			# unambiguously outside contact (see SQRT_SKIP_BAND), and let the exact test below
+			# decide every pair that survives -- so this is a cheaper route to the SAME answer,
+			# not a different answer. `sqrt(offset.length_squared())` would NOT be that: it
+			# rounds differently from `offset.length()`, and the gap feeds overlap_frac's own
+			# subtraction, which is what turns a last-bit difference into a divergent battle.
+			if offset.length_squared() >= min_dist * min_dist * SQRT_SKIP_BAND:
 				continue   # unambiguously out of contact -- no square root needed
 			sqrt_evals += 1
 			var d: float = offset.length()
