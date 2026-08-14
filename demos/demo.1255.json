@@ -1,8 +1,0 @@
-{
-  "input": "demos/inputs/shield-wall-holds-depth.json",
-  "caption": "Enemy-contact distance check skips the square root for pairs that are unambiguously out of contact (#1255). This clash is the code path that change touches -- a Shield Wall Infantry regiment (28) held by a larger attacking Infantry regiment (40) locking front-to-front around tick 220, so every tick afterwards runs the contact accumulation over a dense candidate set. The battle it records is bit-identical to main's: state dumps at 16 ticks between 60 and 740, plus the per-tick hash stream, come back 17/17 byte-identical against main (340815 bytes on each side), while the same comparison against the pre-fix commit differs in 3 of those files. Nothing in this clip should look different from main -- that is the claim being made.",
-  "fixed_fps": 30,
-  "max_frames": 720,
-  "fps": 15,
-  "width": 720
-}
