@@ -432,7 +432,7 @@ replaces two independently tuned knobs:
 
 $$J_{\mathrm{fall}} \;=\; \Lambda\,J_{\mathrm{anchor}} \;=\; \frac{d_b}{\mu_s\,z_b}\,J_{\mathrm{anchor}}.$$
 
-> **Not yet implemented, and two separate things still need pinning down.**
+> **Not yet implemented, and each of the following still needs pinning down.**
 >
 > *The scale of $J$.* The geometry above constrains the **form** of the relation
 > between the two thresholds, not the absolute scale of $J$ itself, which is a
