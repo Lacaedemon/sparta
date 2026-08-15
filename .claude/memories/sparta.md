@@ -4850,5 +4850,7 @@ enforces.
 
 (`Lacaedemon/sparta` PR #1255, 2026-08-14: `9045331` at 00:04Z, restored by `d243fb0`
 at 00:10Z.
-Third `google-labs-jules[bot]` incident in this file after #1176 and #1194,
-and the first whose failure shape the existing checks miss.)
+Fourth `google-labs-jules[bot]` incident in this file, after #1176, #1194,
+and #1227 -- the third where a Jules PUSH damaged content, since #1227 is the
+same bot's non-response failure mode rather than a push, and the first whose
+failure shape the existing checks miss.)
