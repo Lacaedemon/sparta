@@ -756,6 +756,11 @@ check_chars() {
   lsq="$(printf '\342\200\230')"; rsq="$(printf '\342\200\231')"
   ldq="$(printf '\342\200\234')"; rdq="$(printf '\342\200\235')"
   endash="$(printf '\342\200\223')"; emdash="$(printf '\342\200\224')"
+  # U+00D7 MULTIPLICATION SIGN. CI's own check-chars bans it too (its remediation
+  # legend names it explicitly), so omitting it here let 19 of them accumulate in
+  # website/*.qmd behind a locally-green run -- the local check must reproduce CI's
+  # set, not a subset of it, or a PASS here means nothing.
+  times="$(printf '\303\227')"
 
   # Collect the tracked docs null-delimited (handles spaces/newlines) and skip
   # cleanly when there are none — avoids relying on GNU xargs' -r and stops grep
@@ -772,13 +777,14 @@ check_chars() {
   local out
   out="$(cd "$PROJECT_ROOT" && grep -nF \
       -e "$lsq" -e "$rsq" -e "$ldq" -e "$rdq" -e "$endash" -e "$emdash" \
+      -e "$times" \
       "${files[@]}" 2>/dev/null)"
   if [ -n "$out" ]; then
-    err "Non-standard characters found (use straight quotes and ASCII '-'):"
+    err "Non-standard characters found (use straight quotes, ASCII '-', and &times;):"
     printf '%s\n' "$out" >&2
     return 1
   fi
-  info "Docs are free of curly quotes / en-em dashes."
+  info "Docs are free of curly quotes / en-em dashes / multiplication signs."
 }
 
 # resolve_comments_base — print the first candidate commit-ish that both (a) is
