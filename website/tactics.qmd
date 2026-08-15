@@ -16,9 +16,9 @@ frontal clash:
 
 | Attack angle | Multiplier |
 | --- | --- |
-| Front | ×1.0 |
-| Side (flank) | **×1.5** |
-| Rear | **×2.0** |
+| Front | &times;1.0 |
+| Side (flank) | **&times;1.5** |
+| Rear | **&times;2.0** |
 
 Damage and morale multipliers by attack angle.
 :::
@@ -618,7 +618,7 @@ When horse threatens a unit's flank or rear and you have no spear screen to spar
 form a hollow **square** at once: <kbd>O</kbd> (for *orbis*) jumps straight to the
 Square stance, and <kbd>T</kbd> also reaches it by cycling through Tight and Loose. The
 soldiers face outward on every side, so the unit presents **no weak facing**: an
-attack from any direction lands as if it were frontal (the usual ×1.5 flank / ×2 rear
+attack from any direction lands as if it were frontal (the usual &times;1.5 flank / &times;2 rear
 bonus is gone), and a cavalry charge into the ring is braced and **backfires** whether
 it hits the front, a flank, or the rear. There is no open side for the horse to
 exploit. The soldiers' own outward-facing marks around the block's perimeter make the
@@ -1259,7 +1259,7 @@ It sits between the two in-place turns and the centre pivot:
   spinning in place --- the near flank barely moves while the far flank marches a wide arc.
 
 That hinge is what makes it a battle-line maneuver. Wheel a wing forward to take an enemy
-line in the **flank** --- the ×1.5 side bonus (or ×2 in the rear) is the whole point of
+line in the **flank** --- the &times;1.5 side bonus (or &times;2 in the rear) is the whole point of
 getting around them. Wheel a wing back to **refuse a flank** when the enemy laps around
 your end, presenting a fresh front instead of an exposed side. Because the far flank has
 to march an arc, a wheel takes time and covers ground: order it before contact, not in the
@@ -1297,7 +1297,7 @@ into different tools:
 - **Hold** (<kbd>H</kbd>) --- the unit stands its ground instead of chasing bait.
   Anchor a line, or keep a screen in place while your cavalry swings wide.
 - **Attack flank** (<kbd>F</kbd>) / **Attack rear** (<kbd>R</kbd>) --- the unit
-  maneuvers for the side or back rather than the front, cashing in the ×1.5 / ×2
+  maneuvers for the side or back rather than the front, cashing in the &times;1.5 / &times;2
   multipliers above. Pair it with a frontal pin.
 - **Skirmish** (<kbd>K</kbd>) --- a ranged unit kites: it backs off when a threat
   closes inside its firing range, trading ground to keep shooting rather than being
@@ -1739,7 +1739,7 @@ you retreat a battered regiment or redeploy cavalry to a fresh flank.
 ::: {.callout-warning}
 ## Disengaging exposes your back
 While a unit marches away it shows its **rear** to whatever it left --- so that enemy
-gets free **rear hits (×2)** until your unit is clear. Pull out at the right moment,
+gets free **rear hits (&times;2)** until your unit is clear. Pull out at the right moment,
 or pull out into a disaster.
 :::
 

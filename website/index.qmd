@@ -60,7 +60,7 @@ units *can't* pass through or stack on one another.
 
 ::: {.g-col-12 .g-col-md-6}
 ### 🛡️ Flanking & morale
-Hit a unit from the side (×1.5) or rear (×2) for far more damage and morale loss.
+Hit a unit from the side (&times;1.5) or rear (&times;2) for far more damage and morale loss.
 Units that lose enough soldiers or take flank hits **rout** --- and routs spread to
 nearby allies.
 :::
