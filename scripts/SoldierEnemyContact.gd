@@ -40,12 +40,22 @@ class_name SoldierEnemyContact
 ## to the pre-skip version rather than merely equivalent to it: the squared comparison never
 ## decides a pair's fate, it only decides whether the square root is worth computing.
 ##
-## A squared band of 1.0001 is a relative DISTANCE margin of sqrt(1.0001) - 1, about 5.0e-5 --
-## roughly 420x the 1.19e-7 float32 epsilon that bounds the gap between the two square roots,
-## so the skip's safety does not rest on a tight bound. It is a
-## numerical-safety epsilon rather than a gameplay tunable -- nothing about a battle changes
-## when it moves -- so it stays a const, per the units convention's own carve-out for solver
-## epsilons.
+## The skip is exact rather than merely well-padded, and needs no epsilon accounting to be so.
+## `Vector2.length()` is `sqrt(x * x + y * y)` over the identical sub-expression
+## `length_squared()` returns -- both evaluated in float32, neither widening -- and `Math::sqrt`
+## resolves to the platform `std::sqrt`, which IEEE-754 requires to be correctly rounded and
+## therefore monotonic. The value on the guard's left is thus the very one the square root
+## would consume, so `d_sq >= min_dist * min_dist * SQRT_SKIP_BAND` implies
+## `d >= min_dist * sqrt(SQRT_SKIP_BAND) > min_dist` outright.
+##
+## The band's size is therefore headroom rather than a bound the argument rests on: a squared
+## band of 1.0001 is a relative DISTANCE margin of sqrt(1.0001) - 1, about 5.0e-5, or roughly
+## 420x the 1.19e-7 float32 epsilon. That headroom is what keeps the skip sound even where a
+## build leaves FP contraction on (the engine pins it off on desktop and mobile, but a web
+## export inherits the toolchain default), since such a divergence is a ULP or two against a
+## measured worst-case margin of ~419. It is a numerical-safety epsilon rather than a gameplay
+## tunable -- nothing about a battle changes when it moves -- so it stays a const, per the
+## units convention's own carve-out for solver epsilons.
 const SQRT_SKIP_BAND: float = 1.0001
 
 
