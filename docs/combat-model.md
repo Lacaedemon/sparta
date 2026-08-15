@@ -405,11 +405,26 @@ torque trying to fell him first.
 $J_{\mathrm{anchor}}$ is written separately from $J_{\mathrm{slip}}$ deliberately,
 because the velocity bypass must not carry over.
 A moving man is not exempt from being toppled --- he is *easier* to topple, having
-less of his weight settled over his base --- so $J_{\mathrm{anchor}}$ falls to the
-kinetic-friction capacity once he is moving rather than to zero.
-Bypassing the gate entirely, as the shipped code does, sends a moving body's whole
-impulse into translation and none into rotation, which is the least physical case
-of all and the one that produces the widest slide-while-standing window.
+less of his weight settled over his base --- so $J_{\mathrm{anchor}}$ falls once he
+is moving rather than vanishing:
+
+$$J_{\mathrm{anchor}} =
+\begin{cases}
+J_{\mathrm{slip}} & \text{at rest,}\\
+\kappa\,J_{\mathrm{slip}} & \text{in motion,}
+\end{cases}
+\qquad 0 < \kappa < 1.$$
+
+$J_{\mathrm{slip}}$ is the impulse-domain counterpart of $F_{\mathrm{slip}}$ above:
+the shipped at-rest gate, `STATIC_FRICTION_THRESHOLD` scaled by the defender's
+effective mass, which is $20\,m_D$ at $\mathrm{br}_D = 0$.
+$\kappa$ is the kinetic-to-static ratio, and it is a **new** quantity --- the
+existing `KINETIC_FRICTION_*` constants are a continuous per-tick damping rate,
+not an impulse-threshold capacity, so there is nothing shipped to reuse for it.
+Bypassing the gate entirely, as the shipped code does, is the $\kappa = 0$ corner:
+it sends a moving body's whole impulse into translation and none into rotation,
+which is the least physical case of all and the one that produces the widest
+slide-while-standing window.
 
 Under the partition $J_{\mathrm{fall}}$ stops being a free parameter.
 It is the anchoring capacity scaled by the stance geometry, so a single ratio
@@ -438,8 +453,16 @@ $$J_{\mathrm{fall}} \;=\; \Lambda\,J_{\mathrm{anchor}} \;=\; \frac{d_b}{\mu_s\,z
 > What survives the whole band is the ordering $\Lambda < 1$, which is what the
 > partition actually rests on.
 >
+> *The anchoring capacity.* $J_{\mathrm{anchor}}$ is pinned at rest, where it is
+> the shipped `STATIC_FRICTION_THRESHOLD` gate, and unpinned in motion: $\kappa$
+> has no shipped counterpart to inherit, since the existing kinetic-friction
+> constants are a damping rate rather than a capacity.
+> A physical starting point is that kinetic friction typically runs somewhat below
+> static, so $\kappa$ near $0.8$ is a plausible opening guess --- but it is a guess,
+> and it belongs in the calibration rather than in this specification.
+>
 > Landing this therefore needs $J_0$, $J_{\mathrm{scale}}$,
-> $p_{\mathrm{prone}}^{\max}$ and $\Lambda$ itself re-derived together, with the
+> $p_{\mathrm{prone}}^{\max}$, $\Lambda$ and $\kappa$ re-derived together, with the
 > demo catalog's own defect sweep as the check that a melee still looks like a
 > melee.
 > Tracked separately; the equations here are the specification that work
