@@ -49,7 +49,7 @@ below.
 
 | Pack | Use for | Licence | Link |
 | --- | --- | :---: | --- |
-| Toen's Medieval Strategy Sprite Pack (16×16) | Soldiers, cavalry, siege, banners | CC0 | [OpenGameArt](https://opengameart.org/content/toens-medieval-strategy-sprite-pack-v10-16x16) |
+| Toen's Medieval Strategy Sprite Pack (16x16) | Soldiers, cavalry, siege, banners | CC0 | [OpenGameArt](https://opengameart.org/content/toens-medieval-strategy-sprite-pack-v10-16x16) |
 | Kenney --- game assets | UI buttons, panels, fonts, tiles | CC0 | [kenney.nl](https://kenney.nl/assets) |
 | OpenGameArt --- CC0 collection | Terrain, grass/dirt tiles, props | CC0 (verify each) | [OpenGameArt search](https://opengameart.org/art-search-advanced?keys=&field_art_licenses_tid%5B%5D=4) |
 | game-icons.net | Ability / unit / status icons (4000+) | CC-BY 3.0 🅰 | [game-icons.net](https://game-icons.net/) |
