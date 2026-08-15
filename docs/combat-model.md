@@ -328,6 +328,81 @@ its feet.
 > (figure LOD) via per-instance MultiMesh transforms and tinting. The stamina cost of rising
 > (`κ_p`) is in slice D. (Bracing `br_D` wired in slice C.)
 
+### Coupling the slide and the fall: a friction-anchored pivot
+
+The two outcomes above are drawn **independently** off the same scalar $J$: the
+knockback branch shoves the body, and $p_{\mathrm{prone}}$ rolls separately.
+Nothing stops both from landing at once, so a soldier can take the full
+multi-body-length slide *and* keep his feet, sailing backward while upright.
+That is not what a blow above the feet does to a standing man.
+
+A standing human is not a free body.
+His feet are friction-anchored to the ground, and a melee blow lands well above
+them --- chest or shoulder height, never at the ankles.
+So the impulse does not translate the whole body cleanly backward; it acts on a
+lever arm and **torques him about his own footing**.
+Two thresholds govern which way the energy goes, and they are not independent:
+
+$$F_{\mathrm{slip}} = \mu\,m\,g, \qquad F_{\mathrm{tip}} = \frac{m\,g\,d}{h},$$
+
+where $h$ is the height the blow lands at, $d$ the horizontal distance from the
+centre of mass to the toppling edge of the base of support, and $\mu$ the
+boot-on-earth static friction coefficient.
+Their ratio is the **pivot advantage**, and it carries no mass and no gravity:
+
+$$\Lambda \;=\; \frac{F_{\mathrm{tip}}}{F_{\mathrm{slip}}} \;=\; \frac{d}{\mu\,h}.$$
+
+For a fighting stance ($h \approx 1.2$ m, $d \approx 0.15$ m, $\mu \approx 0.6$)
+this is $\Lambda \approx 0.21$: toppling a man takes roughly **a fifth** of the
+force needed to slide him.
+Tipping is the low threshold and sliding is the high one, which is why a real
+fighter goes down rather than skating backward --- by the time a blow is hard
+enough to break his feet loose, it has long since been hard enough to fell him.
+
+The shipped constants invert exactly this.
+$J_{\mathrm{fall}}$ is `PRONE_FALL_THRESHOLD` $= 55$ and the slide's own gate is
+`STATIC_FRICTION_THRESHOLD` $= 20$; at $\mathrm{br}_D = 0$ both scale by $m_D$
+alone, so they are directly comparable and the model asks for **2.75x more**
+impulse to fell a man than to slide him.
+Against $\Lambda \approx 0.21$ that is the ratio inverted by a factor of about
+13, and it is the mechanism behind the reported symptom: the window between the
+two thresholds, which physically should not exist, is precisely the band in
+which a soldier slides while standing.
+
+The fix is a **partition**, not a retune of either roll.
+One impulse arrives; the feet either hold it or do not, and each share drives one
+outcome:
+
+$$J_{\mathrm{rot}} = \min(J,\, J_{\mathrm{slip}}), \qquad
+J_{\mathrm{trans}} = \big(J - J_{\mathrm{slip}}\big)_+, \qquad
+J_{\mathrm{rot}} + J_{\mathrm{trans}} = J.$$
+
+The anchored share $J_{\mathrm{rot}}$ is what the footing holds, so it turns into
+torque about the pivot and drives the fall, amplified by $1/\Lambda$.
+Only the surplus $J_{\mathrm{trans}}$ --- the part that actually breaks the feet
+loose --- translates the body.
+Nothing is double-counted, and the two outcomes stop being independent: a blow
+big enough to slide a man has already spent a full $J_{\mathrm{slip}}$ worth of
+torque trying to fell him first.
+
+$J_{\mathrm{fall}}$ then stops being a free parameter.
+It is $J_{\mathrm{slip}}$ scaled by the stance geometry, so a single physical
+ratio replaces two independently tuned knobs:
+
+$$J_{\mathrm{fall}} \;=\; \Lambda\,J_{\mathrm{slip}} \;=\; \frac{d}{\mu\,h}\,J_{\mathrm{slip}}.$$
+
+> **Not yet implemented.** The geometry above fixes the *ratio* of the two
+> thresholds but not the absolute scale of $J$ itself, which is a tuned quantity
+> (`KNOCKBACK_IMPULSE_SCALE`, calibrated to a pre-mass flat-knockback feel rather
+> than to newton-seconds). Substituting $\Lambda$ naively takes $J_{\mathrm{fall}}$
+> from 55 to about 4.2, which fells a man on roughly 40% of ordinary blows --- a
+> physically-correct ratio hung off an uncalibrated scale. Landing this therefore
+> needs $J_0$, $J_{\mathrm{scale}}$ and $p_{\mathrm{prone}}^{\max}$ re-derived
+> together against the partition, with the demo catalog's own defect sweep as the
+> check that a melee still looks like a melee. Tracked separately; the equations
+> here are the specification that work implements, not a description of shipped
+> behaviour.
+
 ## Bracing and the knockback chain (domino)
 
 A knocked-back soldier collides with whoever is behind it. Two things resist the
