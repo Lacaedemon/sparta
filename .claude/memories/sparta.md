@@ -4708,3 +4708,147 @@ Either surface to the user that a Jules round needs THEM to start a task
 implement the review findings directly on the bot's branch yourself, which is
 the fallback that worked on #1227 (demo authored, loop-hoist folded in,
 driven to a clean verdict, merged).
+
+## Two spellings of a square root are not interchangeable -- `overlap_frac` amplifies the last bit
+
+`Vector2.length()` computes `sqrtf()` at float32.
+GDScript's global `sqrt()` takes and returns a GDScript `float`, which is a double,
+so `sqrt(offset.length_squared())` widens the float32 sum and rounds the root in
+double instead.
+The two agree to about 1 ULP of float32 and disagree in the last bit -- which reads
+as "algebraically identical, therefore interchangeable" right up until a battle
+diverges.
+
+What makes this sim unusually sensitive is where that bit lands.
+`SoldierEnemyContact.accumulate` computes `overlap_frac = (min_dist - d) / min_dist`
+for every touching pair, and at a shallow first-contact overlap `min_dist - d` is the
+difference of two nearly-equal numbers.
+That is catastrophic cancellation: a last-bit change in `d` becomes a large relative
+change in `overlap_frac`, which feeds `SoldierCollision.enemy_contact_impulse`, so the
+two runs' velocities part company on the tick contact is made and every later tick
+compounds it.
+
+`CLAUDE.md`'s backend-only-performance section already says "'Backend-only' is the
+claim under review, not a licence to skip the clip".
+This is the mechanism behind that stance rather than a second instance of it: the
+claim fails here not because the rewrite was careless but because **the same value**
+and **the same bits** are different claims, and only the second one keeps a replay
+deterministic.
+So a rewrite of a distance, an angle, a normalization, or any other quantity feeding
+a subtraction of near-equals owes a bit-identity check, not a reasoning pass.
+
+The cheapest such check is the one #1255 used: run the same scenario on the branch and
+on the merge-base and compare the per-tick state hashes
+(`DemoStateHash`/`DemoHashStream`, via `tools/demo/analyze_transcript.gd
+--compare-hashes`), which reports the first diverging tick rather than a plausible-looking
+"looks the same" verdict.
+
+- **Do:** treat any change to how a physical quantity is COMPUTED as bit-affecting
+  until a hash comparison says otherwise, even when the algebra is unchanged.
+- **Do:** look specifically for a subtraction of near-equals downstream of the value
+  you changed -- that is what converts a last-bit difference into a visible one.
+- **Don't:** substitute `sqrt(v.length_squared())` for `v.length()`; they round in
+  different precisions and this sim reads the difference.
+- **Don't:** accept "same math, so same result" for a float path -- that argument is
+  about the reals, and the sim runs on floats.
+
+(`Lacaedemon/sparta` PR #1255, 2026-08-13: `9045331`'s predecessor `33abeda` made
+exactly this substitution as a backend-only speedup; the divergence is what commit
+`c60de6d` was written to fix.
+The float32-versus-double mechanism is recorded in issue #1256;
+PR #1257 separately verified against Godot's own 4.7-stable source that
+`Vector2::length()` is `Math::sqrt()` over the identical sub-expression
+`length_squared()` returns, with no widening between them, and re-checked it in-engine
+with 2M probes.)
+
+## When a cheap test GATES an exact one, fix the PREDICATE, not the VALUE
+
+The obvious repair for the entry above is to recompute the exact value on whatever
+survives the cheap test -- take `offset.length()` again for pairs the squared
+comparison let through.
+That fixes the **value** and leaves the **predicate** wrong: a squared comparison is
+still deciding WHICH pairs survive, and at the boundary it can disagree with the exact
+test about that.
+A pair the exact test would call touching can be dropped before the exact test ever
+runs, and no amount of recomputing on the survivors recovers it.
+
+The shipped fix makes the cheap test **one-sided** instead: `SQRT_SKIP_BAND` scales the
+squared threshold so the guard only ever skips pairs the exact test would also reject,
+and every pair inside the band still takes `d >= min_dist` unchanged.
+That is what makes the pass bit-identical to the pre-skip version rather than merely
+equivalent to it -- the cheap comparison never decides a pair's fate, it only decides
+whether the square root is worth computing.
+
+The general shape is worth carrying past this one function, because the repo is full of
+cheap-test-in-front-of-exact-test pairs.
+`SoldierSpatialHash.query`'s neighbourhood lookup is one, in this very loop -- it hands
+`accumulate` a candidate set that the pair tests then filter exactly.
+`analyze_transcript.gd --compare-hash-trees` is another, and its own docstring names it
+as such: it is "website-demo-diff.yml's fast pre-filter", where a per-tick hash compare
+decides which clips get the expensive field-level analysis.
+In every such pair the cheap test is sound only if it is proven one-sided in the
+direction that cannot lose a member.
+Sizing its slack is then headroom rather than the argument -- see `SQRT_SKIP_BAND`'s own
+doc comment, whose first version sized the band against a rounding gap and had to be
+rewritten (#1256/#1257) once the one-sidedness was argued from monotonicity directly.
+
+- **Do:** ask which pairs a new fast path REMOVES from consideration, separately from
+  what value it computes for the ones it keeps.
+- **Do:** state the direction the cheap test is allowed to err in, and make its slack
+  large enough that the error can only fall that way.
+- **Don't:** treat "the exact test still runs on the survivors" as proving equivalence
+  -- that is a claim about the value, and the survivor set is the other half.
+- **Don't:** tune a prefilter's slack until the observed outputs match; a band chosen
+  that way is a bound nobody has argued, and the next input distribution moves it.
+
+(`Lacaedemon/sparta` PR #1255, review rounds 2-4, 2026-08-13/14.)
+
+## A bot push can drop what earlier REVIEW ROUNDS added, and the trial-merge check cannot see it
+
+The `main`-revert entry above (PR #1194) says to trial-merge a bot-pushed head onto
+`main` and treat a large deletion count as a revert.
+That is the right check for the failure it describes and it is structurally blind to
+this one, so the two need keeping apart rather than collapsing into "check Jules's
+pushes".
+
+On PR #1255, `google-labs-jules[bot]` pushed `9045331` mid-review, re-implementing the
+same square-root skip from scratch.
+It silently replaced the named `SQRT_SKIP_BAND` const with a bare `1.0001` literal, and
+deleted `demos/demo.1255.json`.
+Both had been added by that PR's own earlier review rounds -- so neither had ever
+existed on `main`, and `main` had nothing to lose.
+Measured against the merge-base `6427bb0`:
+
+| comparison | diffstat |
+| --- | --- |
+| merge-base -> bad head `9045331` | 2 files, **7 insertions, 3 deletions** |
+| merge-base -> good head `d243fb0` | 3 files, 37 insertions, 3 deletions |
+| previous head `7ac2901` -> bad head `9045331` | 2 files, **3 insertions, 33 deletions** |
+
+Three deletions against `main`, on a head that reads as an entirely ordinary
+optimization.
+The instrument that does catch it is in the third row: **diff the new head against the
+PREVIOUS head**, which is the one comparison that can see content the branch used to
+have.
+
+The previous head is a SHA you already hold -- it is whatever your last round verified,
+and the PR's own commit list has it if you did not write it down.
+Note also that the loss here was not a behaviour change: the mechanism `9045331`
+shipped was the same one, so a hash comparison, the tests, and CI would all have passed.
+What went missing was a named constant, an explanatory comment, and a required demo
+manifest -- exactly the class of thing review rounds add and nothing downstream
+enforces.
+
+- **Do:** diff a bot-pushed head against the head your last review round verified, not
+  only against `main`.
+- **Do:** re-check that this PR's own review-round artifacts are still present -- the
+  demo manifest, named constants, the comments a finding asked for.
+- **Don't:** read a small, plausible diffstat against `main` as evidence nothing was
+  dropped; content added on the branch is invisible to that comparison by construction.
+- **Don't:** treat this as covered by the #1194 trial-merge rule -- that one detects a
+  revert of MERGED content, and this is a revert of REVIEWED content.
+
+(`Lacaedemon/sparta` PR #1255, 2026-08-14: `9045331` at 00:04Z, restored by `d243fb0`
+at 00:10Z.
+Third `google-labs-jules[bot]` incident in this file after #1176 and #1194,
+and the first whose failure shape the existing checks miss.)
