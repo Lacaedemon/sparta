@@ -1304,9 +1304,9 @@ parentheses (for example, Rome's banner reads "Rome (Julius Caesar)").
 
 | Trait | War threshold | Peace threshold |
 | --- | --- | --- |
-| Normal | Attacks at 1.5× strength advantage | Sues for peace below 0.6× |
-| Aggressive | Attacks at 1.25× advantage | Fights longer (sues below 0.33×) |
-| Defensive | Needs a 2× advantage to attack | Sues for peace sooner (below 0.8×) |
+| Normal | Attacks at 1.5&times; strength advantage | Sues for peace below 0.6&times; |
+| Aggressive | Attacks at 1.25&times; advantage | Fights longer (sues below 0.33&times;) |
+| Defensive | Needs a 2&times; advantage to attack | Sues for peace sooner (below 0.8&times;) |
 
 Ruler traits and the strength ratios at which each declares war or sues for peace.
 :::
