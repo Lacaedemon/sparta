@@ -4995,3 +4995,75 @@ untrustworthy, CI's own clean-runner `Validate & test` / `Coverage` are the auth
 this file's orphaned-process entry already prescribes for a different contamination cause.
 
 Tracked as #1271.
+
+## Both LOD layers carry the weapon silhouette -- rebuilding one is not rebuilding the block
+
+`Unit` draws its soldiers through two independently-built mesh pairs, and BOTH derive their
+shape from `_foot_kind()`, which is weapon-dependent as of the phase-4 switch work:
+
+- `_build_figure_meshes` -- the detailed, zoomed-in silhouette (shaft glyph, rest-pose cant).
+- `_build_mark_meshes` -- the flat, zoomed-out mark outline (dart/kite/pointer).
+
+`_detailed_lod` defaults to **false**, so the mark layer is the DEFAULT render state rather than
+an edge case. Both pairs are built once in `_setup_flock_renderer()`, so anything changing a
+unit's weapon or type mid-battle has to rebuild both.
+
+Rebuilding the mesh RESOURCES is still not enough. The MultiMeshes hold their own reference to
+whichever pair they were last handed, and `_apply_lod_meshes()` -- the only code that re-hands
+them -- is normally reached only when the LOD level or the facing side FLIPS. A weapon switch
+does neither, so without an explicit re-application the block goes on drawing the weapon it just
+put away until the camera happens to cross a zoom threshold; at mark LOD nothing re-hands it at
+all.
+
+**How this was missed, and it is the transferable half.** PR #1274 shipped the figure-mesh
+rebuild plus the `_apply_lod_meshes()` re-application, having found the stale-handoff bug by
+frame capture (the pre- and post-switch block regions were byte-identical). It fixed the
+REPORTED INSTANCE and not the CLASS: `_build_mark_meshes` had exactly one call site against
+`_build_figure_meshes`' two, and `_foot_kind()` drives both. Review caught the mark half. Worse,
+the `_apply_lod_meshes()` call had been nested INSIDE the `if _figure_body_mesh != null` guard,
+so it could not have fired for a mark-only rebuild anyway -- the two halves of the finding were
+entangled, and fixing only the reported one would not have worked.
+
+**How to apply:** when a fix rebuilds derived render state for one LOD layer, grep the OTHER
+layer's builder for its call sites before calling the fix complete (`grep -n "_build_.*_meshes"
+scripts/Unit.gd` settles it in seconds). More generally, after fixing a render-staleness bug
+found by frame capture, ask which other consumers read the same `_foot_kind()`-style selector: a
+frame capture only ever proves the ONE zoom it recorded, and demos record at zoom 3.5 (figure
+LOD), so the DEFAULT render state is exactly the one no clip exercises.
+(`Lacaedemon/sparta` PR #1274, 2026-08-16.)
+
+## Requesting `d-morrison` as a PR reviewer always 422s here -- it is a self-request
+
+The `request-pr-review` convention (and the `gh pr edit --add-reviewer d-morrison` step several
+skills carry) has no satisfiable target in this repo. Agent sessions post under the `d-morrison`
+login, so every PR an agent opens has `author: d-morrison`, and GitHub rejects a review request
+naming a PR's own author with `422 Unprocessable Entity`. This is not a permissions or token
+problem, and no retry fixes it.
+
+Combined with `Lacaedemon`'s zero provisioned Copilot seats (documented above), that leaves
+`claude-code-review.yml` firing on `ready_for_review`/`synchronize` as the ONLY automated
+reviewer this repo actually has -- and it fires on its own, so nothing needs requesting.
+
+**How to apply:** don't spend a round diagnosing a 422 on `requested_reviewers` here, and don't
+report a PR as blocked on a reviewer request. Confirm the author (`gh pr view <N> --json author`,
+or the raw API's `user.login`); if it matches the login this session posts under, it is a
+self-request and the real reviewer is the workflow. (`Lacaedemon/sparta` PR #1274, 2026-08-16.)
+
+## Never pipe `tools/check.sh` through `tail` -- it discards the patch-coverage breakdown
+
+`check_patch_coverage` prints its per-file coverable/covered/missing table BEFORE the run
+summary, so `bash tools/check.sh patch_coverage | tail -60` keeps the summary and throws away the
+actual answer -- after paying ~18 minutes for it. What survives is the project-wide total
+(`93.4% Total Coverage: 8637/9244 lines`), a different number that reads convincingly as the
+patch figure. Redirect to a file instead of piping.
+
+Recovering without a re-run is cheap, because `coverage/lcov.info` is already written by then:
+intersect its zero-hit `DA:` entries with the diff's added lines against the merge-base, per the
+codecov-gap section above. On PR #1274 that reproduced Codecov's own figure EXACTLY -- local
+65/66 = 98.48%, against codecov[bot]'s posted `98.48485%` naming the same single missing line in
+`Battle.gd` -- so the lcov intersection is a genuine substitute for a CI round trip rather than an
+approximation of one.
+
+Note also that a piped invocation reports the PIPELINE's exit code (`tail`'s), so a `check.sh`
+that FAILED is reported by the harness as `exit code 0`. Read the printed `== summary ==` block,
+never the task's exit status. (`Lacaedemon/sparta` PR #1274, 2026-08-16.)
