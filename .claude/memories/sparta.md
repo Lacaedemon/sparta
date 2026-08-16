@@ -161,6 +161,20 @@ pass, plus #1110, addressed to the Jules bot.
 All four rank as core mechanics under the section above, and none is grabbable,
 which is the rule this entry states.
 
+Issue #1152 has since closed, and reads `COMPLETED` to anyone who follows the
+citation --- but it was not resolved.
+PR #1259, a spec-only design pass whose own body says "#1152 stays open to carry
+the implementation", auto-closed it two seconds after merging
+(`02:16:36Z` and `02:16:38Z`), via a `(closes #1152)` keyword left in its
+squashed claim commit.
+That is the keyword hazard this file documents further down, landing on this
+entry's own worked example, so the citation is kept with this note rather than
+dropped.
+Note that GitHub's own `closed_by_pull_requests` names **#1276** rather than the
+PR that performed the close, since #1276 quotes the offending keyword line while
+documenting it --- so the linkage field points at the PR that described the
+auto-close instead of the one that did it.
+
 The conclusion drawn from them was **wrong**, and the way it was wrong is worth
 keeping, because it is the failure mode a grabbability check invites.
 "The tractable unclaimed backlog is thin" was reported on the strength of those
