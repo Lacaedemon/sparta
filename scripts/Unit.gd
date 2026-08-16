@@ -1793,6 +1793,13 @@ func equip_weapon(type_id: int) -> bool:
 	# _setup_flock_renderer will build them from the new type when it runs.
 	if _figure_body_mesh != null:
 		_build_figure_meshes(CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS)
+		# Rebuilding the mesh resources is not enough on its own: the MultiMeshes hold their
+		# own reference to whichever pair they were last handed, and _apply_lod_meshes is
+		# normally reached only when the LOD level or the facing side FLIPS -- neither of
+		# which a weapon switch does. Without this re-application the block keeps drawing
+		# the old silhouette until the camera happens to cross a zoom threshold.
+		if _mm_body != null:
+			_apply_lod_meshes()
 	return true
 
 

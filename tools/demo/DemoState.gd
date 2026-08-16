@@ -91,6 +91,14 @@ static func maneuver_name(value: int) -> String:
 	return name_from(MANEUVER_NAMES, value, "MANEUVER")
 
 
+## A weapon type id as the registry's own display name. Unlike the enum-name helpers around
+## it there is no parallel name table to keep in step: the interned Weapon already carries the
+## display name every other surface shows, so the transcript reads the same word the HUD does.
+static func weapon_name(type_id: int) -> String:
+	var w: Weapon = LoadoutRegistry.weapon(type_id)
+	return w.display_name if w != null else "WEAPON_%d" % type_id
+
+
 static func countermarch_variant_name(value: int) -> String:
 	return name_from(COUNTERMARCH_VARIANT_NAMES, value, "COUNTERMARCH_VARIANT")
 
@@ -262,6 +270,13 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# relieve their own fighting line. A durable mode like formation, so a stance
 		# order's write is verifiable straight off the transcript.
 		"rank_relief": u.rank_relief,
+		# The weapon this regiment is HOLDING right now, by display name. Durable mode-layer
+		# state in the same sense as rank_relief and formation above: a switch-weapon order
+		# rewrites it and it then persists, so the order's write is verifiable straight off
+		# the transcript rather than only from the rendered silhouette. Reads the held weapon,
+		# not the deployed one -- a regiment that has drawn its second carried weapon reads
+		# that weapon here while its spawn fingerprint keeps hashing what it deployed with.
+		"weapon": weapon_name(u.weapon_type_id),
 		# Battle AI phase 4 (docs/battle-ai-design.md): which AI subcommander group (if any)
 		# this unit is currently delegated to, and the rank title resolved from the player's
 		# own doctrine profile at delegation time. Both null for a non-delegated (ordinary

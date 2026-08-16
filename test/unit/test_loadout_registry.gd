@@ -11,6 +11,7 @@ const ROSTER_WEAPONS: Array = [
 	LoadoutRegistry.WEAPON_GLADIUS,
 	LoadoutRegistry.WEAPON_SIDEARM,
 	LoadoutRegistry.WEAPON_SPATHA,
+	LoadoutRegistry.WEAPON_PILUM,
 ]
 const ROSTER_SHIELDS: Array = [
 	LoadoutRegistry.SHIELD_SCUTUM,

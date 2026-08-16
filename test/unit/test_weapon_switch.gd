@@ -174,6 +174,34 @@ func test_other_order_types_leave_the_weapon_field_unset() -> void:
 	assert_eq(Order.new_formation(0).weapon, 0, "a formation order carries no weapon")
 
 
+## The render half, and the one a state dump can't see: at the figure LOD the MultiMeshes
+## hold their own reference to the silhouette pair they were last handed, and the code that
+## re-hands it (_apply_lod_meshes) normally runs only when the LOD level or the facing side
+## FLIPS -- neither of which a weapon switch does. So rebuilding the mesh resources alone
+## leaves the block drawing the weapon it just put away until the camera happens to cross a
+## zoom threshold. Asserted on `mesh` identity, the one MultiMesh property that does read
+## back in a headless test (per-instance transforms don't).
+func test_switching_at_figure_lod_re_hands_the_new_silhouette_to_the_multimesh() -> void:
+	var u: Unit = _bare_unit(1, 0, 12)
+	u.weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	u.seed_sim_soldiers()
+	# Stand in for a zoomed-in camera: _update_lod needs a real viewport camera, so pin the
+	# level directly and hand the figure pair over the way an LOD flip would.
+	u._detailed_lod = true
+	u._apply_lod_meshes()
+	var gladius_mesh: Mesh = u._mm_body.mesh
+	assert_eq(gladius_mesh, u._figure_body_mesh, "the block is drawing the figure silhouette")
+
+	assert_true(u.equip_weapon(LoadoutRegistry.WEAPON_PILUM), "the pilum is a registered type")
+
+	assert_ne(u._mm_body.mesh, gladius_mesh,
+		"the drawn silhouette changed -- the shaft is not still the old shield glyph")
+	assert_eq(u._mm_body.mesh, u._figure_body_mesh,
+		"and it is the pair the switch just rebuilt, not some other stale resource")
+	assert_eq(u._mm_outline.mesh, u._figure_outline_mesh,
+		"the outline follows the body, so the silhouette doesn't render half-swapped")
+
+
 func _bare_unit(uid: int, team: int, n: int) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = n

@@ -1,0 +1,130 @@
+{
+  "_comment": "Weapon switching (loadout phase 4): one Infantry regiment, camera close enough for the detailed figure LOD, standing still so the loadout is the only thing that changes. Shift+I draws the second carried weapon -- the legionary's pilum -- and every soldier's silhouette picks up the shaft; pressing it again sheathes the pilum and the block goes back to gladius-and-shield. Drill: the switch is the whole subject, and an enemy would only add noise. The block holds position across both switches, which is the point of re-equipping in place rather than reforming.",
+  "seed": "1274",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "count": 40,
+      "x": 800,
+      "y": 400,
+      "facing": [
+        0,
+        1
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 800,
+      "y": 400,
+      "zoom": 3.5
+    }
+  ],
+  "steps": [
+    {
+      "tick": 10,
+      "click": [
+        800,
+        400
+      ]
+    },
+    {
+      "tick": 60,
+      "key": "I",
+      "shift": true
+    },
+    {
+      "tick": 300,
+      "key": "I",
+      "shift": true
+    }
+  ],
+  "state": [
+    30,
+    90,
+    280,
+    340,
+    430
+  ],
+  "expect": [
+    {
+      "tick": 30,
+      "uid": 0,
+      "field": "weapon",
+      "value": "Gladius"
+    },
+    {
+      "tick": 90,
+      "uid": 0,
+      "field": "weapon",
+      "value": "Pilum"
+    },
+    {
+      "tick": 280,
+      "uid": 0,
+      "field": "weapon",
+      "value": "Pilum"
+    },
+    {
+      "tick": 340,
+      "uid": 0,
+      "field": "weapon",
+      "value": "Gladius"
+    },
+    {
+      "tick": 430,
+      "uid": 0,
+      "field": "weapon",
+      "value": "Gladius"
+    },
+    {
+      "tick": 30,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        800.0,
+        400.0
+      ]
+    },
+    {
+      "tick": 90,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        800.0,
+        400.0
+      ]
+    },
+    {
+      "tick": 430,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        800.0,
+        400.0
+      ]
+    },
+    {
+      "tick": [
+        30,
+        430
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": [
+        30,
+        430
+      ],
+      "uid": 0,
+      "field": "soldiers",
+      "value": 40
+    }
+  ],
+  "show_soldier_ids": false
+}
