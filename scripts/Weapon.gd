@@ -12,7 +12,7 @@ const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 
 @export var id: int
 @export var display_name: String
-# Effective melee reach in metres — the authored value, kept as the metric one the
+# Effective melee reach in metres -- the authored value, kept as the metric one the
 # stat tables and the HUD speak in. A longer-reach weapon strikes while a
 # shorter-weapon enemy is still closing the gap.
 @export var reach_m: float
