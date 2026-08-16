@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Design note only (docs/subunit-structure-design.md) --- no scene, script, asset or project.godot change, so the simulation this PR describes behaves exactly as it did before it. There is nothing to film: a clip would show the pre-existing behaviour and imply it was a demo of this change."
+}
