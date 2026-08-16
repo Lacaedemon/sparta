@@ -5288,3 +5288,118 @@ perfectly plausible and does nothing --- the supported keys are `count`, `morale
 inventing a key, and confirm the effect in a state dump rather than assuming it applied.
 
 (`Lacaedemon/sparta` PR #1275, 2026-08-16.)
+
+## A `/tmp` file written by MSYS bash is unreadable from native Windows Python
+
+On Windows Git Bash the two tools resolve `/tmp` to different directories,
+so a file handed from one to the other goes missing.
+This sequence fails:
+
+```bash
+some_command > /tmp/added.txt
+python -c "open('/tmp/added.txt')"     # FileNotFoundError
+```
+
+The redirection writes to **MSYS's own `/tmp`**, which on this machine is
+`%LOCALAPPDATA%\Temp` (`pwd -W` inside `/tmp` reports
+`C:/Users/dougm/AppData/Local/Temp`, the same mapping the `MSYS_NO_PATHCONV` entry
+above already records).
+The `python` on `PATH` is a **native Windows** interpreter (`C:\Python313\python.exe`),
+which resolves the literal string `/tmp/added.txt` against the current drive as
+`C:\tmp\added.txt`.
+
+**The discriminator is whether MSYS can SEE the path, not which tool reads it.**
+MSYS translates a `/`-rooted path that appears as a bare **argument**, so the same
+interpreter reads the same file perfectly well when the path is passed rather than
+embedded.
+Measured, all in one Git Bash session:
+
+| form | what Python receives | result |
+| --- | --- | --- |
+| `python /tmp/probe.py` | `C:/Users/dougm/AppData/Local/Temp/probe.py` | runs |
+| `python -c "...open(sys.argv[1])" /tmp/probe.txt` | same, translated | reads |
+| `python -c "...open('/tmp/probe.txt')"` | `/tmp/probe.txt` verbatim | `FileNotFoundError` |
+
+The path embedded inside the `-c` program text is invisible to the translator, and only
+that form breaks.
+The same applies to any path MSYS cannot see as an argument, such as one written into a
+config file or a JSON manifest that some later step reads.
+
+**Neither tool reports the mismatch.**
+Bash exits 0 and reads the file back fine itself, and Python raises a plain missing-file
+error, so the pair reads as "the command produced nothing" rather than "these two tools
+disagree about the root".
+That is the expensive part, because the natural diagnosis is that the upstream command
+failed, which sends you to debug a pipeline that was working.
+
+**The sharper variant raises no error at all.**
+`C:\tmp` is a real directory on this machine, already holding generic-named leftovers from
+earlier sessions (`pr_body_payload.json`, `prbody2.md`, `doc_cmd.sh`).
+A same-named file there is read INSTEAD of the one bash just wrote.
+Measured: with `STALE-FROM-AN-EARLIER-SESSION` in `C:\tmp\probe.txt` and
+`FRESH-FROM-THIS-COMMAND` written by bash to `/tmp/probe.txt`, `cat` printed the fresh line
+while the embedded-path `open()` printed the stale one.
+A missing file is at least loud; this is wrong data wearing a successful read.
+
+**Fix: keep the handoff on a path both tools resolve identically.**
+A relative path inside the repo working directory works for both, and deleting it
+afterwards keeps the tree clean.
+Better still, keep the whole operation inside one tool and skip the file entirely by
+piping into `python -c` on stdin.
+Both verified:
+
+```bash
+some_command > ./added.txt && python -c "print(open('added.txt').read())"; rm -f ./added.txt
+some_command | python -c "import sys; print(sys.stdin.read())"
+```
+
+**Relationship to the `MSYS_NO_PATHCONV` entry above** (in the WSL cross-platform section):
+same translation mechanism, opposite directions, so do not reach for that fix here.
+There translation **happens and hurts**, because MSYS rewrites a `/`-rooted argument to
+`wsl.exe`, which would have resolved the POSIX path correctly itself.
+Here translation **does not happen, and its absence hurts**, because the path is hidden
+inside a string where nothing can rewrite it.
+So `MSYS_NO_PATHCONV=1` does nothing for this case, and would break the bare-argument form
+in the table above that currently works.
+
+- **Do:** hand a file between MSYS bash and a native Windows interpreter on a relative path
+  inside the repo, or pipe it on stdin and skip the file.
+- **Do:** pass a path as an argument rather than embedding it in `-c` program text when a
+  temp file is unavoidable, so MSYS can translate it.
+- **Do:** run `python -c "import os; print(os.path.abspath('/tmp/x'))"` when a just-written
+  file reads as missing, since it names the wrong root immediately.
+- **Don't:** diagnose a missing `/tmp` handoff as the upstream command having produced
+  nothing; `cat` it from bash first, which reads the real file.
+- **Don't:** trust a SUCCESSFUL read of a `/tmp` path from native Python either, since a
+  same-named file in `C:\tmp` is returned silently in place of the fresh one.
+- **Don't:** reach for `MSYS_NO_PATHCONV=1` here; it addresses the opposite failure.
+
+(`Lacaedemon/sparta` PR #1292, 2026-08-16: reproduced deliberately in a Git Bash session on
+this machine against `C:\Python313\python.exe`; every figure above is from that run.)
+
+## `docs/related-games.md` is a living document with its own contribution contract
+
+When reviewing an external project as a source of ideas for sparta, append to
+`docs/related-games.md` rather than creating a new `docs/<project>-review.md`.
+The doc calls itself a "running review" and a "living document", and its closing
+**"Adding a game to this list"** section spells out the procedure: find the code licence
+and the art/data licence **separately**, tag each with the legend symbols it shares with
+`docs/asset-sources.md`, add a shortlist table row with links, then write the per-game
+notes.
+Its framing already covers closed-source subjects, via the rule that proprietary projects
+and commercial-game mods give us design lessons only (no code, no art), so a
+non-open-source subject is not a reason to start a separate file.
+
+Three reviews have gone through it, so this is established practice rather than a
+preference: PR #208 created it (closes #204), PR #1233 appended Renaissance Kingdom Wars,
+and PR #1283 appends M2TWEOP for issue #1201 (open at the time of writing).
+A parallel per-project file would fragment the licence legend and the **Bottom line**
+summary, which are what make the doc worth consulting at all, since both rank every game
+against each other and neither survives being split.
+
+- **Do:** append a new per-game section plus a shortlist row, following the doc's own
+  four-step "Adding a game to this list" procedure.
+- **Don't:** create `docs/<project>-review.md` for a one-off review, since the comparison
+  value lives in the single ranked list.
+
+(`Lacaedemon/sparta` PR #1292, 2026-08-16, recorded from PR #1283's review of M2TWEOP.)
