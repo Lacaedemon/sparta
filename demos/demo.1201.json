@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation only: appends an M2TWEOP review to docs/related-games.md. No scenes, scripts, assets, or project settings change, so there is no gameplay behaviour for a recorded battle to show."
+}
