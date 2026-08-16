@@ -115,6 +115,84 @@ CI/tooling issues are polish or infrastructure, not core mechanics specifically
 (infrastructure still gets its own tie-breaker per `pr-prioritization.md`, applied
 before this one when the candidates are CI/tooling rather than gameplay UI/art).
 
+## GII grabbability is a separate axis from priority: a design-blocked issue is not grabbable
+
+The section above orders candidates that are all workable.
+It says nothing about whether a candidate is workable at all, and in a GII sweep
+that is the question that actually decides the pick --- because GII's terminal
+action is a PR driven to a clean review verdict, and an issue whose next step is
+an unmade **design decision** cannot reach one.
+
+That is not the same thing as being low priority.
+A design-blocked issue is frequently core mechanics and frequently the highest
+thing on the board, so the mechanics-over-polish rule ranks it first and the
+grabbability check rules it out --- two axes, evaluated separately, in that
+order.
+Collapsing them produces the wrong move in both directions: grabbing an issue
+that cannot be closed, or demoting one whose design question is already settled.
+
+The tell is in the issue body rather than in its labels.
+Phrases like "needs a design pass", "we should decide whether", "owner directive
+pending", or a body that enumerates options without picking one all say the next
+artifact is a **decision**, which is human-gated (see `daytb`/`mwc` scope), not a
+diff.
+An issue addressed to a specific bot or person by name is the same shape for a
+different reason --- it is claimed, so GII's unclaimed-only rule already excludes
+it.
+
+What to do with one rather than silently skipping it: say in the session report
+which issues were ruled out and on what grounds, so the thin-backlog condition is
+visible instead of looking like a stalled sweep.
+A design question worth answering is worth surfacing to the owner as a question,
+which is a real deliverable even though it is not a PR.
+
+- **Do:** run the grabbability check before the priority ordering, and report
+  which candidates it removed.
+- **Do:** surface a blocking design question to the owner rather than picking a
+  lower-priority issue silently.
+- **Don't:** grab an issue whose next step is a decision --- GII cannot deliver
+  one, so the loop stalls with a claim posted and nothing to push.
+- **Don't:** read "core mechanics" as implying grabbable; the two axes are
+  independent, and the highest-priority item is often the one that is blocked.
+
+(GII session, 2026-08-16: after PR #1257 merged, four candidates were looked at
+--- #1152, #1095, and #1134, each stating in its own body that it needs a design
+pass, plus #1110, addressed to the Jules bot.
+All four rank as core mechanics under the section above, and none is grabbable,
+which is the rule this entry states.
+
+Issue #1152 has since closed, and reads `COMPLETED` to anyone who follows the
+citation --- but it was not resolved.
+PR #1259, a spec-only design pass whose own body says "#1152 stays open to carry
+the implementation", auto-closed it two seconds after merging
+(`02:16:36Z` and `02:16:38Z`), via a `(closes #1152)` keyword left in its
+squashed claim commit.
+That is the keyword hazard this file documents further down, landing on this
+entry's own worked example, so the citation is kept with this note rather than
+dropped.
+Note that GitHub's own `closed_by_pull_requests` names **#1276** rather than the
+PR that performed the close, since #1276 quotes the offending keyword line while
+documenting it --- so the linkage field points at the PR that described the
+auto-close instead of the one that did it.
+
+The conclusion drawn from them was **wrong**, and the way it was wrong is worth
+keeping, because it is the failure mode a grabbability check invites.
+"The tractable unclaimed backlog is thin" was reported on the strength of those
+four, and a later derived list returned **91 open issues**, of which #1279
+(orphaned `.gd.uid` sidecars), #1277 (weapon-switch flash message), #1271
+(`check.sh` versus `config/features`), and #1269 (banned-glyph set drift) are
+each bounded, unclaimed, and grabbable --- confirmed unclaimed by intersecting
+against the six open PRs at that moment, none of which referenced them.
+
+So run the grabbability check over a **derived** candidate set, not over the
+handful you happened to open.
+Ruling four issues out says nothing about the eighty-seven you did not look at,
+and "the backlog is thin" is a claim about the population --- see
+[`derive-dont-enumerate`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/derive-dont-enumerate.md)'s
+own section on asserting a set is empty.
+Report the examined count alongside the removed count, so a genuinely thin
+backlog stays distinguishable from a narrow look at a deep one.)
+
 ## Pending: migrate to gha quarto-publish `@v2` (branch deploy)
 
 Sparta is the registered `quarto-publish` consumer in gha's `REVDEPS.md`, and
@@ -283,6 +361,59 @@ binary match.
   appears it's that known quirk, not a regression. Since the #420 upgrade the
   full suite has been observed passing every test, so don't assume that failure
   is still present, and don't pin an exact test total; the suite grows.
+
+## A `cd` in one shell call resolves the NEXT call's `res://`, and Godot reports it as a missing file
+
+The Bash tool's working directory **persists between calls** while its
+environment does not, so a `cd` typed for one purpose silently becomes the
+launch directory for every command after it.
+Godot finds the project by walking up from the directory it was started in, so a
+later `godot ... res://tools/demo/DemoRunner.tscn` run from anywhere outside the
+checkout resolves `res://` against a different root, or none, and fails with a
+**File not found** naming the path.
+
+The message points at the wrong half of the problem, which is the whole
+difficulty.
+The path is correct, the file exists, and the checkout is the right one --- so
+the natural next move is to re-derive the path, verify the scene, or suspect the
+import cache, none of which can find anything wrong.
+Nothing in the error mentions the working directory, because from Godot's side
+there is nothing to mention: it looked where it was standing.
+
+This is not one of the worktree hazards elsewhere in this file.
+Those are all about **which checkout** a path names --- a fake worktree, a
+double-checked-out branch, a stale sibling.
+Here there is one checkout, it is correct, and the only wrong thing is the
+directory the process was launched from.
+So the worktree checks (`git worktree list`, `ls -la .git`) all come back clean
+and settle nothing.
+
+Two habits remove it outright.
+Pass the project explicitly rather than relying on where you happen to be ---
+`godot --path /home/user/sparta ...` --- so the resolution is stated in the
+command.
+And treat a trailing `cd` as a side effect on the session rather than a
+convenience: a status sweep or a `/tmp` inspection that ends by leaving the
+shell somewhere else has changed the meaning of every later relative path and
+every later `res://`, minutes or hours afterwards, with nothing to connect the
+two.
+
+- **Do:** pass `--path <checkout>` to Godot, so `res://` resolves from the
+  command rather than from the session's history.
+- **Do:** run `pwd` before a command whose paths are relative or `res://`-rooted,
+  when anything earlier in the session may have moved the shell.
+- **Don't:** read a `res://` "File not found" as a fact about the path --- check
+  the working directory before re-deriving the path or suspecting the import
+  cache.
+- **Don't:** end a Bash call with a bare `cd`; the next call inherits it, and the
+  failure it causes surfaces far from the command that set it.
+
+(GII session, 2026-08-16: a `cd /tmp` in an earlier call left the shell outside
+the checkout, and a later `DemoRunner.tscn` invocation reported the scene
+missing; the same command re-run from the project root worked unchanged.
+The persistence itself is documented in the Bash tool's own description --- "Working
+directory persists between calls" --- so the gap is not the fact but its
+consequence for `res://`, which no error message connects back to it.)
 
 ## Reproducing a reported hang cross-platform: WSL gives a genuine native-Linux Godot binary
 
@@ -4882,6 +5013,51 @@ PR #1257 separately verified against Godot's own 4.7-stable source that
 `length_squared()` returns, with no widening between them, and re-checked it in-engine
 with 2M probes.)
 
+### A verification probe must name the precision domain, or it measures the rejected design
+
+The entry above is the fact.
+This is what the fact does to any probe written to CHECK it, and the failure is
+worse than not probing at all, because it returns a confident **REFUTED** against
+a design that is correct.
+
+The mechanism is that the two spellings are not merely different --- one of them
+is the one the codebase deliberately does not use.
+So a probe reaching for the natural GDScript form, `sqrt(...)`, is computing in
+**double**, which is the rejected path.
+It is then comparing a double-precision result against a float32 threshold and
+reporting the disagreement as a defect in the shipped code.
+Every part of that run is real: the probe executes, the numbers are genuine, and
+the verdict is about a computation nobody ships.
+
+Nothing about the output says so, which is what makes it expensive.
+A refutation reads as the strongest possible finding, so the natural response is
+to reopen the design rather than to reread the probe --- and the probe is where
+the error is.
+
+State the domain in the claim itself, not in the code that tests it.
+"`Vector2.length()` is monotonic in `length_squared()` across the band" names
+float32 and is checkable; "the square root of the squared distance stays within
+the band" names nothing and will be implemented in whichever precision the
+language makes convenient.
+
+- **Do:** write the precision domain into the claim, so a probe that drifts out
+  of it is visibly answering a different question.
+- **Do:** prefer a claim about the operation actually shipped (`Vector2.length()`,
+  `length_squared()`) over one about the mathematical quantity it approximates.
+- **Don't:** reach for global `sqrt()` in a probe verifying float32 behaviour ---
+  it is a double, and it is specifically the spelling the entry above rejects.
+- **Don't:** reopen a design on a single REFUTED verdict without re-reading which
+  precision the probe ran in; that check costs one line and the reopening does
+  not.
+
+(`Lacaedemon/sparta` PR #1257, 2026-08-16: the first cut of the band's
+verification specified claim 1 as a statement about the square root rather than
+about `Vector2.length()`, implemented it with global `sqrt()`, and returned
+REFUTED.
+Re-specified as monotonicity of `Vector2.length()` against `length_squared()`,
+the same 2M-probe run verified with 0 inversions and a worst-case margin of about
+419 float32 ULP.)
+
 ## When a cheap test GATES an exact one, fix the PREDICATE, not the VALUE
 
 The obvious repair for the entry above is to recompute the exact value on whatever
@@ -5562,3 +5738,41 @@ More than three means a real conflict is still unresolved.
 (Verified 2026-08-16 at `4aee29b9`: exactly three markers, at lines 741, 743 and 745, all inside
 the fenced example under the `record-demos.sh` DEMOS-conflicts heading.
 Noticed while checking this same file over the real append-collision the entry above records.)
+## `pair_slots_by_lateral_file` is order-preserving, not identity-preserving -- so bound TRAVEL, never count movers
+
+The slot-assignment family above ("Formation slot assignment is by ARRAY INDEX") explains why a
+reshape relabels men onto distant cells. This is the measured consequence for anyone writing a
+regression test against one of those paths, and it is the reason a mover COUNT is the wrong
+metric there.
+
+`UnitFormation.pair_slots_by_lateral_file` sorts each file's group by ascending y and assigns to
+column cells in depth order. That preserves ORDER within a file; it does not preserve which man
+holds which cell. On a partial-rank square the two come apart badly. Measured on a 60-man,
+8-file square at 9.0 wu pitch, `moved` counting men displaced more than half a pitch:
+
+| path | moved | farthest | mean |
+| --- | ---: | ---: | ---: |
+| in-sync reform | 4 | 63.0 | 4.20 |
+| out-of-sync, composed twice (the bug) | 58 | 68.54 | 30.74 |
+| out-of-sync, rebuild used as-is (the fix) | 51 | 28.46 | 13.44 |
+| **out-of-sync, no reform at all** | **51** | 20.12 | 10.19 |
+
+The last row is the one to keep. A bare rebuild with NO reform already churns 51 of 60 with
+nothing else changing, so `moved` cannot discriminate the fix from the bug on that path at all --
+the fixed and do-nothing readings are identical. Only `farthest` and `mean` separate (28.46/13.44
+against 20.12/10.19), and `mean` separates most cleanly.
+
+**How to apply:** when testing any out-of-sync or rebuild path in the slot-assignment family,
+bound MEAN TRAVEL against a quantity derived from the block's own geometry (e.g.
+`(ranks_for(n, files) - 1) * file_pitch_wu() / 3.0`), not a mover count and not a hand-picked
+constant. A count-based assertion there is vacuous by construction, and a constant drifts as the
+churn floor moves. The shipped guard in
+`test_square_hold_ground_reform_holds_its_ground_from_an_out_of_sync_assignment` does exactly
+this, and mutation-verifies at `[30.74] expected to be < than [21.0]` with the guard removed.
+
+Related, and the reason the out-of-sync path exists at all: `_slot_frame_positions` reads
+`_formation_mirror_x`, which `reform_ranks` arms BEFORE calling `_apply_square_slot_reflection`.
+So when the assignment is stale and `_ensure_square_slot_assignment` rebuilds from live bodies,
+that rebuild already lands men in the render frame -- the depth reflection is baked in, and
+composing the pairing on top applies it twice. Snapshot the in-sync answer before the ensure call
+can overwrite it. (`Lacaedemon/sparta` PR #1282, 2026-08-16.)
