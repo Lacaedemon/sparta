@@ -744,9 +744,10 @@ check_patch_coverage() {
 }
 
 check_chars() {
-  # Flag curly quotes and en/em dashes in the Quarto docs, which are kept
-  # plain-ASCII so pandoc's smart typography renders them. The flagged characters
-  # are U+2018/2019 (' '), U+201C/201D (" "), U+2013/2014 (en/em dash).
+  # Flag curly quotes, en/em dashes, and the multiplication sign in the Quarto
+  # docs, which are kept plain-ASCII so pandoc's smart typography renders them.
+  # The flagged characters are U+2018/2019 (' '), U+201C/201D (" "),
+  # U+2013/2014 (en/em dash), and U+00D7 (multiplication sign).
   #
   # Matching is done with `grep -F` over the literal UTF-8 byte sequences (built
   # via printf's octal escapes) rather than `grep -P '\x{...}'`: -P is a GNU
