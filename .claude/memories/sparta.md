@@ -5089,10 +5089,30 @@ branch: run 31936557788 (`5d974233`, actor `d-morrison`) succeeded and posted a 
 Reading the CALLER settles nothing -- it carries no path filter and no job `if:` at all. The gate
 is in the callee at its pinned ref, so clone `Morrison-Lab/gha` at `v2` and read it there.
 
-**The fix is a `workflow_dispatch`, whose branch of that `if:` is unconditional.** Pass `ref` =
-the PR branch (a dispatch that resolves against `main` reviews nothing and posts no comment), and
-`pr_number` as the caller's input name. The dispatch guard only blocks fork and `dependabot[bot]`
-PRs, so an ordinary same-repo PR passes.
+**The skip is scoped to the `opened` event, and the NEXT PUSH heals it by itself.** A `git push`
+goes out over the git proxy, which is the `d-morrison` identity, so the resulting `synchronize`
+event has `sender.type == 'User'` and passes the gate untouched. Measured on this branch: run
+31937946023, `pull_request` on `c8a19450`, actor `d-morrison`, `gather-context` success and
+`claude-review` running -- against the `opened` run that skipped all three. So the ordinary
+review-round rhythm repairs this on its own, and the ONLY genuinely stranded case is a PR whose
+`opened` event skipped and which then needs a verdict with no further push to make.
+
+**Reach for a `workflow_dispatch` only in that stranded case, and never while a `pull_request`
+run is in flight.** Its branch of the `if:` is unconditional, so it does bypass the gate: pass
+`ref` = the PR branch (a dispatch resolving against `main` reviews nothing and posts no comment)
+and `pr_number` as the caller's input name; the dispatch guard blocks only fork and
+`dependabot[bot]` PRs. But the `claude-review-<N>` concurrency group makes a redundant dispatch
+actively HARMFUL. The section above on manual dispatches records the race in the direction where
+an automated re-dispatch cancels a queued manual one; it runs the other way too, and that
+direction costs a check: a dispatch QUEUED while a `pull_request` run is already in progress
+cancels that in-flight run, and a cancelled `claude-review` fails `require-review` outright
+(cancelled != skipped, unlike the by-design skip). Measured minutes apart on `c8a19450`: dispatch
+31938015445 queued, run 31937946023 went `cancelled`, and its `require-review` reported `failure`.
+
+Two corollaries. Cancelling the dispatch afterwards does not undo it, because the run it cancelled
+stays cancelled -- so check for an already-running review BEFORE dispatching, not after. And a
+`require-review` failure whose run conclusion is `cancelled` is self-inflicted bookkeeping rather
+than a review finding: read the RUN's conclusion before treating it as one.
 
 **Dispatching needs the MCP tool, not the raw API.** `POST .../workflows/<f>/dispatches` with the
 raw `GH_TOKEN` returns `403 Forbidden` (no `actions: write`), while
@@ -5102,8 +5122,9 @@ therefore a wrong-client error, not an absent capability: reach for the other cl
 reporting the review unreachable or falling back to a self-review.
 
 **How to apply:** after opening a PR, check the review workflow's newest run for
-`conclusion: skipped` with `actor` a Bot, rather than waiting on a verdict that will never come.
-(`Lacaedemon/sparta` PR #1278, 2026-08-16.)
+`conclusion: skipped` with `actor` a Bot. If the round has any push left in it, just push --
+that heals the gate and costs nothing. Dispatch only when it does not, and only after confirming
+no `pull_request` run is already in progress. (`Lacaedemon/sparta` PR #1278, 2026-08-16.)
 
 ## Never pipe `tools/check.sh` through `tail` -- it discards the patch-coverage breakdown
 
