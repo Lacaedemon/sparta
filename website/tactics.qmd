@@ -54,7 +54,10 @@ fightable --- for as long as it's plausibly still in view.
   men, its recovering morale carries it over the rally threshold and it **returns to
   your control**, ready to fight again. It re-squares its ranks **where it stands**
   --- the flight leaves the grid flipped, so the short rank ends up leading, and only
-  the under-strength files step up one rank to close it. Unlike an ordered
+  the men the flip can't leave in place have to move: under **File-major** reform
+  (the default) the under-strength files step up one rank to close it, and under
+  **Row-major** the handful whose rank is a different width from the one it pairs
+  with across the flip hold their file and swap ends. Either way, unlike an ordered
   about-face, the men don't counter-march through the block to do it, so a rallied
   unit is back in fighting shape almost at once rather than spending seconds
   shuffling through itself.
@@ -89,6 +92,26 @@ enemy anywhere on the field, so pursuit and further casualties can't factor in. 
 nerve steadies as it flees, morale climbs back over the rally threshold, and it
 returns to your control. (The regression guard for this behavior is
 `test_morale_recovery_demo_scenario.gd`.)
+:::
+
+::: {#fig-row-major-rally-reform .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/row_major_rally_reform.jpg">
+  <source src="media/row_major_rally_reform.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+The same recovery for a **Row-major** regiment, where re-squaring the ranks is the
+harder case. The flight leaves the grid flipped, and a row-major block carries no
+per-soldier file to step up, so the flip has to be undone by naming slots directly.
+Each man takes the slot whose flipped position is the ground he already holds, so
+almost the whole block stands still &mdash; only the six front-rank men with no
+counterpart across the flip (an 11-wide rank pairing against a centred 5-wide one)
+hold their file and swap ends.
 :::
 
 ::: {#fig-rout-rally .demo}

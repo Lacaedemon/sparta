@@ -1,0 +1,55 @@
+{
+  "_comment": "Row-major hold-ground reform on rally. A ROW-MAJOR player infantry block (60 men at 11 files -- five full ranks plus a centred 5-man rear rank -- with file_major_reform false) is staged already routing, with the enemy still a long way off. Staged that way deliberately: a rout that happens IN contact gets pinned by enemy soldier-body pressure and ground down rather than pulling clear, so it shatters instead of rallying -- rout-rally-recover.json and last-unit-rally.json are both that case. Here nothing is inside the rally-contact radius, so its morale climbs back toward the rout baseline and it re-forms where it stands, around tick 334 on the 60 Hz state-dump basis. The flee turn is a 180 from its spawn facing, so _face_dir's snap-absorb folds _formation_angle to PI and the rally's reform_ranks(hold_ground = true) takes the about-face branch: the depth reflection that re-squares the grid. Under the old raw index-order assignment that relabelled the whole block, so all 60 men walked the block's depth through the oncoming half to reach slots other men were vacating in the same tick. With the slot pairing only the six men whose rank has no same-width counterpart across the reflection have anywhere to go, and they hold their file and swap ends. A second, safe player unit well out of the rout-shock radius keeps the battle from declaring defeat while the infantry is routing.",
+  "seed": "12345",
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 800,
+      "y": 700,
+      "count": 60,
+      "morale": 5.0,
+      "file_major_reform": false,
+      "starting_state": 3
+    },
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 260,
+      "y": 260,
+      "count": 60,
+      "morale": 100.0
+    },
+    {
+      "team": 1,
+      "type": "Spearmen",
+      "x": 800,
+      "y": 1150,
+      "count": 80
+    }
+  ],
+  "steps": [],
+  "state": [
+    30,
+    120,
+    240,
+    300,
+    330,
+    345,
+    375,
+    405,
+    450
+  ],
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720,
+  "camera": [
+    {
+      "tick": 0,
+      "x": 800.0,
+      "y": 630.0,
+      "zoom": 1.35
+    }
+  ]
+}

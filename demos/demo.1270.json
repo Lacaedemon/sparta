@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/row-major-rally-reform.json",
+  "caption": "Rallying no longer marches a row-major block through itself (#1270). A routing 60-man Infantry regiment reforms on the spot: its flight folded the slot grid a half-turn, and the rally re-squares it with a depth reflection. The reflection used to be applied in raw array order, so every one of the 60 men was relabelled onto a slot on the far side of the block and walked its whole depth through the oncoming half to get there. Now each man takes the cell whose reflected position is the ground he already holds, so only the six with no counterpart across the reflection -- the outer men of the front rank, whose 11-wide rank pairs against a centred 5-wide rear rank -- move at all, holding their file and swapping ends. Measured over the same rally, on the same seed: 6 of 60 soldiers relocate instead of 60, mean travel 5.2 world units instead of 21.4.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
