@@ -980,6 +980,13 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	# keeps the Unit defaults, NONE and 0.
 	u.subunit_structure = _parse_subunit_structure(d.get("subunit_structure", "none"))
 	u.subunit_size = int(d.get("subunit_size", 0))
+	# NONE and LATERAL_HALVES carry no headcount, so pin the size to 0 rather than trusting every
+	# caller to omit it. An unrecognised spelling falls back to NONE while leaving whatever size
+	# accompanied it, which is the reachable way to land a pairing Unit.subunit_size's own doc
+	# comment says cannot occur.
+	if u.subunit_structure == Unit.SubunitStructure.NONE \
+			or u.subunit_structure == Unit.SubunitStructure.LATERAL_HALVES:
+		u.subunit_size = 0
 	# Cavalry respond faster — more mobile and battle-conditioned.
 	if d["cav"]:
 		u.order_response_delay = 0.3
@@ -1131,8 +1138,9 @@ func _custom_matchup_scenario(team_0_names: Array, team_1_names: Array) -> Array
 				"y": y,
 				"facing": [facing.x, facing.y],
 			}
-			# merge() without overwrite: the roster's keys are new to this spec, and a false
-			# here would let a later change to the literal above silently win over the override.
+			# merge() WITH overwrite: the roster's keys are new to this spec today, so true and
+			# false agree right now, but a false here would let a later change to the literal
+			# above silently win over the override.
 			spec.merge(overrides[i], true)
 			specs.append(spec)
 	return specs

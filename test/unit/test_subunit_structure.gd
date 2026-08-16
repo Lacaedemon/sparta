@@ -221,6 +221,46 @@ func test_a_size_only_override_keeps_the_types_declared_kind() -> void:
 	assert_eq(u.subunit_size, 32, "the spec's size applies")
 
 
+func test_an_unrecognised_kind_zeroes_a_size_that_accompanied_it() -> void:
+	# The reachable way to land a pairing Unit.subunit_size's doc comment forbids: a typo'd
+	# spelling falls back to NONE, and without the spawn path's own normalization the size that
+	# came with it would survive as a headcount for a kind that declares none.
+	Replay.forced_seed = 12345
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = true
+	_battle.scenario = [
+		{"team": 0, "type": "Spearmen", "x": 400.0, "y": 400.0, "count": 40,
+			"subunit_structure": "enomotiai", "subunit_size": 32},
+	]
+	add_child(_battle)
+
+	var u: Unit = _first_team_0_unit()
+	assert_not_null(u, "the scenario spawned a unit")
+	assert_eq(u.subunit_structure, UnitScript.SubunitStructure.NONE,
+		"precondition: an unrecognised spelling falls back to undeclared")
+	assert_eq(u.subunit_size, 0,
+		"the accompanying size is dropped, so NONE never carries a headcount")
+
+
+func test_lateral_halves_zeroes_a_size_that_accompanied_it() -> void:
+	# The other no-headcount kind: halves are two by definition, so a declared size would be a
+	# second, contradictory source of truth for the same part count rather than a refinement.
+	Replay.forced_seed = 12345
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = true
+	_battle.scenario = [
+		{"team": 0, "type": "Spearmen", "x": 400.0, "y": 400.0, "count": 40,
+			"subunit_structure": "lateral_halves", "subunit_size": 20},
+	]
+	add_child(_battle)
+
+	var u: Unit = _first_team_0_unit()
+	assert_not_null(u, "the scenario spawned a unit")
+	assert_eq(u.subunit_structure, UnitScript.SubunitStructure.LATERAL_HALVES,
+		"precondition: the spec's kind applied")
+	assert_eq(u.subunit_size, 0, "a size declared alongside halves is dropped")
+
+
 func test_a_roster_name_override_reaches_the_spawn_spec() -> void:
 	# Faction.ROSTER_UNIT_TYPES maps five roster names onto "Spearmen", so the type name the
 	# spec carries has already thrown away which roster it came from -- the override has to be
