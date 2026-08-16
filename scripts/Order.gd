@@ -63,8 +63,12 @@ enum Type {
 	              ## never a leaf and never any Unit's own current_order -- purely the shared
 	              ## parent tagging a multi-unit form-up's per-unit MOVE orders as one
 	              ## conceptual command (children holds those orders; each child's own
-	              ## `parent` points back here). Appended last so recorded transcripts keep
-	              ## every other type's value stable.
+	              ## `parent` points back here).
+	SWITCH_WEAPON, ## Standalone weapon switch (docs/soldier-loadout-design.md phase 4):
+	              ## re-equips the regiment to another LoadoutRegistry weapon type, rewriting
+	              ## the per-soldier weapon ids so combat resolves through the new type at
+	              ## once. Instantaneous, like FORMATION/FRONTAGE/STANCE. Appended last so
+	              ## recorded transcripts keep every other type's value stable.
 }
 
 ## An order's internal choreography, for the phased case that already exists: a move into a
@@ -148,6 +152,7 @@ const TYPE_NAMES := {
 	Type.QUARTER_TURN: "QUARTER_TURN",
 	Type.STANCE: "STANCE",
 	Type.FORM_UP: "FORM_UP",
+	Type.SWITCH_WEAPON: "SWITCH_WEAPON",
 }
 
 const PHASE_NAMES := {
@@ -277,6 +282,11 @@ var stance: int = -1
 ## setting, ON/OFF write it. Rides the recorded command's "frontage" field, like the
 ## nudge direction, so the replay format is unchanged.
 var rank_relief: int = 0
+## SWITCH_WEAPON target weapon type (a LoadoutRegistry weapon id). 0 is the registry's
+## reserved-invalid id, so it doubles as "unset" for every other order type. Rides the
+## recorded command's "mode" field, like the stance does, so the replay format is
+## unchanged (a weapon switch carries no order_mode of its own).
+var weapon: int = 0
 
 # --- Maneuver execution state (phase 2) --------------------------------------
 # Owned by the order: Unit._think reads and advances these off current_order instead of off
@@ -605,6 +615,13 @@ static func new_stance(stance_mode: int, rank_relief_toggle: int = 0) -> Order:
 	o.type = Type.STANCE
 	o.stance = stance_mode
 	o.rank_relief = rank_relief_toggle
+	return o
+
+
+static func new_switch_weapon(weapon_type_id: int) -> Order:
+	var o := Order.new()
+	o.type = Type.SWITCH_WEAPON
+	o.weapon = weapon_type_id
 	return o
 
 
