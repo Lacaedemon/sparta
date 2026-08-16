@@ -52,7 +52,12 @@ fightable --- for as long as it's plausibly still in view.
   --- morale climbs back toward a baseline, fast at first and levelling off. If it
   **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
   men, its recovering morale carries it over the rally threshold and it **returns to
-  your control**, ready to fight again.
+  your control**, ready to fight again. It re-squares its ranks **where it stands**
+  --- the flight leaves the grid flipped, so the short rank ends up leading, and only
+  the under-strength files step up one rank to close it. Unlike an ordered
+  about-face, the men don't counter-march through the block to do it, so a rallied
+  unit is back in fighting shape almost at once rather than spending seconds
+  shuffling through itself.
 - **Keep pressing it and it "shatters" instead** --- still in contact when its time
   runs out, or gutted past reforming. A shattered unit does NOT vanish: it stays on the
   field, still routing, but can never again recover morale or rally. From there it
