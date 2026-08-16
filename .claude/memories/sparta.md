@@ -5125,6 +5125,54 @@ run's `actor`). Don't reason about which identity you are from a probe.
 
 (`Lacaedemon/sparta` PRs #1274 and #1278, 2026-08-16.)
 
+## An empty `reviewRequests` DURING a claude-review run is the workflow stashing them, not a failed request
+
+`Morrison-Lab/gha`'s reusable `claude-code-review.yml` --- the one sparta's own
+`claude-code-review.yml` delegates to --- deliberately clears the pending-reviewer list while it
+runs and restores it afterwards.
+Two of its steps say so by name:
+
+| step | name |
+| --- | --- |
+| 8 | Stash and clear reviewers; record starting head SHA |
+| 24 | Re-assign reviewers after Claude finishes |
+
+So a reviewer request that reads back as an empty `reviewRequests` moments later is behaving
+exactly as designed, provided a review run was in flight at the time.
+Re-POSTing changes nothing, and reading the empty list as a failure sends a session diagnosing a
+request that never failed.
+
+**This is the specific explanation ai-config's `pr-on-claim.md` says it does not have.**
+That fragment establishes at length that a vanished pending request "establishes nothing either
+way", and warns against re-POSTing on the strength of it --- the right default for a repo where
+no mechanism is known.
+Here there is one, and it is readable in a single call, so read the review job's own step list
+before concluding anything about a disappeared reviewer:
+
+```bash
+gh api repos/Lacaedemon/sparta/actions/jobs/<job-id> \
+  --jq '.steps[] | "\(.number) \(.name) => \(.status)/\(.conclusion)"'
+```
+
+Note what this does NOT establish: an empty list is still not evidence the request LANDED.
+The zero-Copilot-seats case documented above produces the identical empty read for an entirely
+different reason.
+The stashing behaviour only rules out "the request failed" as the automatic reading, and whether
+a `claude-review` run was in flight is what separates the two causes.
+
+Adjacent, and the reason the REST path is in use at all: `gh pr edit <N> --add-reviewer` fails in
+this environment with the projectCards GraphQL deprecation error before applying the edit, so
+`POST .../requested_reviewers` is the working path rather than a workaround.
+
+- **Do:** read the review job's step list before treating a disappeared reviewer request as failed.
+- **Do:** check whether a `claude-review` run was in flight at the moment the list read empty.
+- **Don't:** re-POST a reviewer request because `reviewRequests` came back empty.
+- **Don't:** read the stashing as proof the request landed --- an empty list has more than one
+  cause in this repo.
+
+(Measured 2026-08-16 on PR #1281, job 95198545509: steps 8 and 24 as named above, both
+`completed/success`.)
+
 ## A PR opened via the raw API is opened by a Bot, and the review workflow's own gate silently skips it
 
 `claude-code-review.yml` delegates to `Morrison-Lab/gha`'s reusable workflow, whose `gather-context`
@@ -5288,3 +5336,50 @@ perfectly plausible and does nothing --- the supported keys are `count`, `morale
 inventing a key, and confirm the effect in a state dump rather than assuming it applied.
 
 (`Lacaedemon/sparta` PR #1275, 2026-08-16.)
+
+## `Battle._default_loadout()` is an ARMY ROSTER, and its two Cavalry entries are byte-identical
+
+It returns five entries --- Spearmen, Infantry, Archers, Cavalry, Cavalry --- and `_spawn_line`
+walks them with `loadout[i % loadout.size()]`.
+That is what makes the default battle 5v5 with TWO cavalry regiments, rather than a four-type
+registry spawned once each.
+
+The duplicate is deliberate, and the docstring already says so: it opens
+"The default battle loadout: spearmen, infantry, archers, cavalry, cavalry."
+It has said that since PR #478, so do not read the repeat as a typo and do not delete it.
+
+**The hazard is that a new per-type key must be set on BOTH Cavalry entries.**
+Set it on one and it applies to only one of the two spawned regiments, so the default battle runs
+with two supposedly-identical cavalry regiments that quietly behave differently.
+The two entries are byte-identical today, and that is the property to preserve.
+
+**`_loadout_for_type()` hides such an omission from any test that goes through it.**
+It returns the FIRST entry whose `name` matches, so it answers with entry 4 and never reads entry
+5 --- a test asserting "Cavalry's new key is X" passes whether or not entry 5 carries it.
+A test routed through that lookup is therefore not evidence the roster is consistent, which is
+the same first-match blindness this file already records for other selectors.
+
+Derive the check instead of eyeballing the two lines:
+
+```bash
+awk '/^func _default_loadout/,/^\t\]/' scripts/Battle.gd \
+  | grep '"name": "Cavalry"' > /tmp/cav.txt
+echo "entries=$(wc -l < /tmp/cav.txt) unique=$(sort -u /tmp/cav.txt | wc -l)"
+```
+
+`entries=2 unique=1` is the healthy answer, and it proves both halves at once: two Cavalry
+entries exist, and they are the same line.
+`unique=2` means the two have diverged, whatever a `_loadout_for_type()`-based test reports.
+The `awk` range is safe here because `^func _default_loadout` matches exactly once, per this
+repo's own caution about a repeated start anchor silently widening a range.
+
+- **Do:** set a new per-type key on both Cavalry entries in the same edit, then re-run the check
+  above.
+- **Do:** assert against the roster array itself when a test cares that both spawned regiments got
+  the key.
+- **Don't:** read `_loadout_for_type()`'s answer as evidence about the whole roster; it stops at
+  the first match.
+- **Don't:** "fix" the duplicate Cavalry entry --- the default 5v5 battle depends on it.
+
+(Verified 2026-08-16 at `cee465f6`: five entries, `entries=2 unique=1` for Cavalry, and the
+docstring's own first line naming cavalry twice.)
