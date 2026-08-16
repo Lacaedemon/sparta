@@ -744,18 +744,24 @@ check_patch_coverage() {
 }
 
 check_chars() {
-  # Flag curly quotes and en/em dashes in the Quarto docs, which are kept
-  # plain-ASCII so pandoc's smart typography renders them. The flagged characters
-  # are U+2018/2019 (' '), U+201C/201D (" "), U+2013/2014 (en/em dash).
+  # Flag curly quotes, en/em dashes, and the multiplication sign in the Quarto
+  # docs, which are kept plain-ASCII so pandoc's smart typography renders them.
+  # The flagged characters are U+2018/2019 (' '), U+201C/201D (" "),
+  # U+2013/2014 (en/em dash), and U+00D7 (multiplication sign).
   #
   # Matching is done with `grep -F` over the literal UTF-8 byte sequences (built
   # via printf's octal escapes) rather than `grep -P '\x{...}'`: -P is a GNU
   # extension absent from the BSD grep that ships on macOS, whereas fixed-string
   # byte matching is portable and needs no special locale.
-  local lsq rsq ldq rdq endash emdash
+  local lsq rsq ldq rdq endash emdash times
   lsq="$(printf '\342\200\230')"; rsq="$(printf '\342\200\231')"
   ldq="$(printf '\342\200\234')"; rdq="$(printf '\342\200\235')"
   endash="$(printf '\342\200\223')"; emdash="$(printf '\342\200\224')"
+  # U+00D7 MULTIPLICATION SIGN. CI's own check-chars bans it too (its remediation
+  # legend names it explicitly), so omitting it here let 19 of them accumulate in
+  # website/*.qmd behind a locally-green run -- the local check must reproduce CI's
+  # set, not a subset of it, or a PASS here means nothing.
+  times="$(printf '\303\227')"
 
   # Collect the tracked docs null-delimited (handles spaces/newlines) and skip
   # cleanly when there are none — avoids relying on GNU xargs' -r and stops grep
@@ -772,13 +778,18 @@ check_chars() {
   local out
   out="$(cd "$PROJECT_ROOT" && grep -nF \
       -e "$lsq" -e "$rsq" -e "$ldq" -e "$rdq" -e "$endash" -e "$emdash" \
+      -e "$times" \
       "${files[@]}" 2>/dev/null)"
   if [ -n "$out" ]; then
-    err "Non-standard characters found (use straight quotes and ASCII '-'):"
+    # Two file types, two remedies for U+00D7: this scans *.R as well as *.qmd, and
+    # &times; is only meaningful in the latter. Pandoc renders a \uXXXX escape literally
+    # in .qmd prose, so that is NOT a valid substitute there -- but it is the right form
+    # in an R string literal.
+    err "Non-standard characters found (straight quotes and ASCII '-'; for U+00D7: x or * in .R, &times; in .qmd prose):"
     printf '%s\n' "$out" >&2
     return 1
   fi
-  info "Docs are free of curly quotes / en-em dashes."
+  info "Docs are free of curly quotes / en-em dashes / multiplication signs."
 }
 
 # resolve_comments_base — print the first candidate commit-ish that both (a) is
