@@ -42,7 +42,10 @@ tools/check.sh && git push
   Bash needed); uses only POSIX/BSD-compatible tool flags.
 - **Godot 4.7 (Standard build)** on `PATH`, or point `GODOT_BIN` at it
   (e.g. `/Applications/Godot.app/Contents/MacOS/Godot` on macOS). See the README's
-  "Running Godot headlessly" snippet for a Linux download.
+  "Running Godot headlessly" snippet for a Linux download. Every Godot-driving
+  check compares that binary's `major.minor` against the version `project.godot`
+  targets (`config/features`) and refuses to run on a mismatch -- see
+  "A Godot version mismatch fails fast" below.
 - **GUT** is vendored on demand into `addons/gut/` the first time `validate`/`test`
   runs (it isn't committed); no manual install needed.
 - **lychee** only for the optional `links` check.
@@ -58,6 +61,7 @@ tools/check.sh && git push
 |---|---|---|
 | `GODOT_BIN` | `godot` | Godot 4.7 binary to invoke. |
 | `GUT_VERSION` | `v9.7.0` | GUT release to vendor when `addons/gut/` is missing. Keep in sync with `godot-ci.yml` and `test/README.md`. |
+| `SPARTA_ALLOW_GODOT_VERSION_MISMATCH` | _(unset)_ | Set to `1` to run even when `GODOT_BIN`'s `major.minor` differs from the version `project.godot` targets. Off by default -- see "A Godot version mismatch fails fast" below. |
 | `NO_COLOR` | _(unset)_ | Set to disable coloured output. |
 | `SPARTA_CHECK_VALIDATE_TIMEOUT` | `900` | Hard timeout (s) for the `validate` Godot run. |
 | `SPARTA_CHECK_TEST_TIMEOUT` | `1800` | Hard timeout (s) for the `test` Godot run. |
@@ -66,6 +70,42 @@ tools/check.sh && git push
 | `SPARTA_CHECK_PATCH_COVERAGE_BASE` | _(unset)_ | Same, for the `patch_coverage` check's diff base. |
 | `SPARTA_CHECK_PATCH_COVERAGE_TARGET` | _(unset)_ | Fixed pass/fail threshold (percent) for `patch_coverage`. Unset mirrors `codecov/patch`'s `target: auto`: the project-wide line coverage from the regenerated `coverage/lcov.info`. |
 | `SPARTA_GODOT_PREFLIGHT_LIMIT` | `5` | Warn when more Godot processes than this are already running before the checks start. |
+
+## A Godot version mismatch fails fast
+
+Every Godot-driving check (`validate`, `test`, `coverage`, `patch_coverage`,
+`demo_defects`) compares `GODOT_BIN`'s `major.minor` against the version
+`project.godot` declares in `config/features`, and refuses to run when they
+differ:
+
+```
+[ERR] Godot 4.6.3.stable.official.7d41c59c4 found at 'godot', but project.godot targets 4.7.
+[ERR]   Point GODOT_BIN at a 4.7 binary -- see tools/README.md and README.md.
+[ERR]   Left to run, this surfaces as parse errors from addons/gut/, not as a version error.
+[ERR]   Set SPARTA_ALLOW_GODOT_VERSION_MISMATCH=1 to run across versions deliberately.
+```
+
+**Why a hard failure rather than a warning.** A mismatch does not fail cleanly
+on its own. The vendored GUT release is pinned to match the targeted engine, so
+an older binary cannot parse GUT's own singleton shim -- under a 4.6 binary,
+GUT v9.7.0's reference to `AccessibilityServer` (a 4.7 addition) produces
+`SCRIPT ERROR` lines from `addons/gut/`, which `has_script_errors()` matches and
+reports as a plain `FAIL test` / `FAIL patch_coverage`. From the summary that is
+indistinguishable from a real defect in the diff, and the backtrace points at
+files the author never touched -- so the natural response is to go hunting
+through their own changes. Failing at the version probe instead names the actual
+cause, and costs a `--version` call rather than the suite's twenty-odd minutes.
+
+**Major.minor only.** A 4.7.1 binary against a 4.7 target passes; pinning the
+patch level would make the guard itself the nuisance.
+
+**Either version being unreadable stands the check down** with a warning rather
+than blocking a run over a probe that could not answer -- a `project.godot` with
+no version-shaped entry in `config/features`, or a binary whose `--version` this
+does not recognize.
+
+**Deliberate cross-version runs** set
+`SPARTA_ALLOW_GODOT_VERSION_MISMATCH=1`, which skips the comparison entirely.
 
 ## Checking patch coverage before you push
 
