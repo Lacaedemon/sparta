@@ -3957,10 +3957,24 @@ bytes. Nothing in the MCP response says a field was elided.
 So edit a PR body through the **raw API**, never through the MCP round-trip: fetch the body with
 `curl`/`urllib` against `api.github.com`, do a surgical `str.replace` on a paragraph well away
 from the markers, and **assert before PATCHing** --- open count 1, close count 1, the demo asset
-URL still present, and the body no shorter than it started. A token for this is normally already
-in the environment (`GH_TOKEN`), even in sessions with no `gh` on `PATH`; test it with a cheap
-`GET /user` rather than assuming, since its length is no guide to whether it authenticates (the
-one here is 14 characters and works fine).
+URL still present, and the body no shorter than it started.
+
+**Don't try to verify the credential first, and don't reason about `GH_TOKEN` at all: in a
+remote/web session the agent proxy authenticates the request and the `Authorization` header is
+ignored.** Measured 2026-08-16 in this container, three calls to `https://api.github.com/user`:
+no header at all, `Bearer not-a-real-token`, and `Bearer $GH_TOKEN` each returned **200** with
+`login: d-morrison`. So a `GET /user` probe returns success under every hypothesis and has no
+discriminating power --- it tests the proxy, never the token. `GH_TOKEN` and `GITHUB_TOKEN` are
+both set here, identical, and **14 characters**, which is shorter than any real GitHub credential
+format (classic PATs are 40 hex; `ghp_`/`github_pat_` run longer), so the variable is a
+placeholder rather than the credential that actually reaches GitHub.
+
+Two things follow. Authenticated writes work from a session with no `gh` on `PATH` and no usable
+token in the environment, so don't conclude a PATCH is impossible from the token looking wrong ---
+just make the call. And this is the negative-control rule in `fail-fast` arriving in a new place:
+a check whose pass path and failure path are indistinguishable is not a check, so before trusting
+any auth probe, run it once with a deliberately bogus credential and confirm that FAILS. If it
+does not, the probe is measuring something else.
 
 - **Do:** patch a PR body from the raw API, with marker-count assertions guarding the PATCH.
 - **Do:** re-check the count again after CI's *next* demo run, per the timing rule above --- the
