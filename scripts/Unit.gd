@@ -1782,24 +1782,42 @@ func equip_weapon(type_id: int) -> bool:
 		return false
 	if type_id == weapon_type_id:
 		return true
+	# A regiment may only ever hold one of the two weapons its own soldiers carry: the one
+	# it deployed with, or the one stowed beside it. Registry membership alone is too weak
+	# a test, because a switch order carries ONE weapon id for a whole selection and that
+	# id is derived from the selection's lead unit -- so without this guard a box-selected
+	# Cavalry regiment would take an Infantry lead's pilum, overwrite every per-soldier id
+	# with it, and have no way back to its own spatha, since the return leg reads the lead's
+	# deployed weapon too. Refusing here rather than at the call site keeps the invariant
+	# true for every caller, the replayed order path included, and leaves a mixed selection
+	# switching exactly the units the id is genuinely valid for.
+	if type_id != spawn_weapon_type_id and type_id != sidearm_type_id:
+		return false
 	weapon_type_id = type_id
 	attack_range = w.reach_wu
 	if not _sim_soldier_weapon_id.is_empty():
 		_sim_soldier_weapon_id.fill(type_id)
-	# The figure silhouette carries the held weapon (_foot_kind picks the shaft glyph for
-	# the shafted types) and its rest-pose cant, both built once at setup -- so a switch
-	# has to rebuild them or the man keeps brandishing the weapon he just put away. Null
-	# meshes mean the renderer was never set up (a bare Unit.new() in a test), and
-	# _setup_flock_renderer will build them from the new type when it runs.
+	# BOTH silhouettes carry the held weapon: the figure meshes pick the shaft glyph and its
+	# rest-pose cant for the shafted types, and the flat mark meshes pick their own outline
+	# from the same _foot_kind() call. Both are built once at setup, so a switch has to
+	# rebuild both or the man keeps brandishing the weapon he just put away at whichever
+	# zoom the rebuild missed -- and mark LOD is the DEFAULT, so missing it there is the
+	# common case rather than the rare one. Null meshes mean the renderer was never set up
+	# (a bare Unit.new() in a test), and _setup_flock_renderer builds them from the new type
+	# when it runs.
+	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+	if _mark_body_mesh != null:
+		_build_mark_meshes(mark_r)
 	if _figure_body_mesh != null:
-		_build_figure_meshes(CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS)
-		# Rebuilding the mesh resources is not enough on its own: the MultiMeshes hold their
-		# own reference to whichever pair they were last handed, and _apply_lod_meshes is
-		# normally reached only when the LOD level or the facing side FLIPS -- neither of
-		# which a weapon switch does. Without this re-application the block keeps drawing
-		# the old silhouette until the camera happens to cross a zoom threshold.
-		if _mm_body != null:
-			_apply_lod_meshes()
+		_build_figure_meshes(mark_r)
+	# Rebuilding the mesh resources is not enough on its own: the MultiMeshes hold their
+	# own reference to whichever pair they were last handed, and _apply_lod_meshes is
+	# normally reached only when the LOD level or the facing side FLIPS -- neither of
+	# which a weapon switch does. Without this re-application the block keeps drawing the
+	# old silhouette until the camera happens to cross a zoom threshold, and at mark LOD
+	# nothing re-hands it at all: that branch would go on handing back the stale pair.
+	if _mm_body != null:
+		_apply_lod_meshes()
 	return true
 
 
@@ -6801,6 +6819,12 @@ func to_snapshot_dict() -> Dictionary:
 		"back_speed_fraction": back_speed_fraction, "accel": accel, "decel": decel,
 		"attack_range": attack_range,
 		"weapon_type_id": weapon_type_id, "shield_type_id": shield_type_id,
+		# The deployed weapon and the carried second one travel with the clone too: a
+		# rearguard detachment inherits its parent's loadout, and dropping these would
+		# reset both to the class defaults -- silently making the detachment unable to
+		# switch at all, and contradicting spawn_weapon_type_id's own fixed-for-life
+		# contract for any parent whose weapon differs from that default.
+		"spawn_weapon_type_id": spawn_weapon_type_id, "sidearm_type_id": sidearm_type_id,
 		"armor_type_id": armor_type_id, "mount_type_id": mount_type_id,
 		"order_response_delay": order_response_delay,
 		"atomic_response_delay": atomic_response_delay,
@@ -6900,6 +6924,11 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	attack_range = float(d["attack_range"])
 	weapon_type_id = int(d["weapon_type_id"])
 	shield_type_id = int(d["shield_type_id"])
+	# Defaulted rather than required: a snapshot written before these fields existed still
+	# applies, falling back to the weapon the clone is already holding (which is the right
+	# answer for a pre-switch snapshot) and to no second weapon.
+	spawn_weapon_type_id = int(d.get("spawn_weapon_type_id", weapon_type_id))
+	sidearm_type_id = int(d.get("sidearm_type_id", 0))
 	armor_type_id = int(d["armor_type_id"])
 	mount_type_id = int(d["mount_type_id"])
 	order_response_delay = float(d["order_response_delay"])

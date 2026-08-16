@@ -458,6 +458,7 @@ func to_dict() -> Dictionary:
 		"haste": haste,
 		"stance": stance,
 		"rank_relief": rank_relief,
+		"weapon": weapon,
 		"turn_target": turn_target,
 		"turn_start_facing": turn_start_facing,
 		"pivot": pivot,
@@ -500,6 +501,7 @@ static func from_dict(d: Dictionary) -> Order:
 	o.haste = bool(d.get("haste", false))
 	o.stance = int(d.get("stance", -1))
 	o.rank_relief = int(d.get("rank_relief", 0))
+	o.weapon = int(d.get("weapon", 0))
 	o.turn_target = d.get("turn_target", Vector2.ZERO)
 	o.turn_start_facing = d.get("turn_start_facing", Vector2.ZERO)
 	o.pivot = d.get("pivot", Vector2.ZERO)

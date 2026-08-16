@@ -1519,10 +1519,12 @@ func enqueue_stance(uids: Array, stance: int = -1, rank_relief: int = RankRelief
 ## its unit-level type, and its derived reach (Unit.equip_weapon), so strike-time combat
 ## and the engaged-tier depth follow the new type from the next tick.
 ##
-## An id that is not a registered weapon is refused per-unit by equip_weapon rather than
-## here, so a mixed selection still switches every unit the id IS valid for -- there is no
-## such case under today's roster (one id for the whole selection), but refusing per-unit
-## keeps the branch honest if a future caller derives the id per unit.
+## One id is issued for the whole selection, and a selection is filtered only by team and
+## liveness -- a box-select can hold Infantry beside Cavalry. So the id is refused per-unit
+## by equip_weapon, which accepts only a weapon that unit's own soldiers actually carry,
+## and a mixed selection switches exactly the units the id is genuinely valid for while
+## leaving the rest on what they were holding. Refusing there rather than here keeps that
+## invariant true for the replayed order path too, not just this live one.
 func enqueue_switch_weapon(uids: Array, weapon_type_id: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return

@@ -208,4 +208,165 @@ func _bare_unit(uid: int, team: int, n: int) -> Unit:
 	add_child_autofree(u)   # _ready() sets soldiers = max_soldiers, joins groups
 	u.uid = uid
 	u.team = team
+	# Infantry-shaped: the gladius in hand with a pilum stowed. That is the only roster
+	# shape today that carries a second weapon at all, and it is the shape equip_weapon's
+	# carried-set guard is written against -- a fixture left on the bare defaults carries
+	# no sidearm, so every switch in this file would be refused for the right reason but
+	# the wrong one, and the tests would pass while proving nothing.
+	u.weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	u.spawn_weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	u.sidearm_type_id = LoadoutRegistry.WEAPON_PILUM
 	return u
+
+
+## A switch order names uids, and by the time the tick drains one of them may have died or
+## left play. Skip those rather than faulting, so one stale uid cannot cost the rest of the
+## selection its switch.
+func test_a_switch_order_skips_dead_and_unknown_units() -> void:
+	var b = BattleScript.new()
+	autofree(b)
+	var alive: Unit = _bare_unit(1, 0, 12)
+	alive.weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	var dead: Unit = _bare_unit(2, 0, 12)
+	dead.weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	dead.state = Unit.State.DEAD
+	b._by_uid[1] = alive
+	b._by_uid[2] = dead
+
+	b.enqueue_switch_weapon([1, 2, 99], LoadoutRegistry.WEAPON_PILUM)
+
+	assert_eq(alive.weapon_type_id, LoadoutRegistry.WEAPON_PILUM,
+		"the living unit still draws the new weapon")
+	assert_eq(dead.weapon_type_id, LoadoutRegistry.WEAPON_GLADIUS,
+		"a dead unit is left alone rather than re-equipped")
+	assert_null(dead.current_order, "and it is not handed an order it can never run")
+
+
+## equip_weapon refuses an id the registry does not know. The order branch must then leave
+## the queue alone too -- parking a switch order that never happened would make the
+## transcript claim a change the unit never made.
+func test_a_switch_order_with_an_unregistered_id_parks_no_order() -> void:
+	var b = BattleScript.new()
+	autofree(b)
+	var u: Unit = _bare_unit(1, 0, 12)
+	u.weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	b._by_uid[1] = u
+
+	b.enqueue_switch_weapon([1], 9999)
+
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_GLADIUS,
+		"the unit keeps the weapon it was holding")
+	assert_null(u.current_order,
+		"and no order is parked claiming a switch that was refused")
+
+
+## A switch order carries ONE weapon id for a whole selection, and a selection is filtered
+## only by team and liveness -- box-select can put Cavalry behind an Infantry lead. The
+## unit itself is the authority on what it may hold, so the Cavalry keeps its spatha
+## instead of taking a pilum it never carried and could never put down again.
+func test_a_unit_refuses_a_weapon_its_own_soldiers_do_not_carry() -> void:
+	var cav: Unit = _bare_unit(1, 0, 12)
+	cav.weapon_type_id = LoadoutRegistry.WEAPON_SPATHA
+	cav.spawn_weapon_type_id = LoadoutRegistry.WEAPON_SPATHA
+	cav.sidearm_type_id = 0   # cavalry carries no second weapon
+	cav.seed_sim_soldiers()
+
+	assert_false(cav.equip_weapon(LoadoutRegistry.WEAPON_PILUM),
+		"a registered weapon this unit does not carry is still refused")
+
+	assert_eq(cav.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA,
+		"it keeps the weapon it deployed with")
+	var mismatched: int = 0
+	for i in range(cav._sim_soldier_weapon_id.size()):
+		if cav._sim_soldier_weapon_id[i] != LoadoutRegistry.WEAPON_SPATHA:
+			mismatched += 1
+	assert_eq(mismatched, 0, "and no per-soldier id was overwritten")
+
+
+## The mixed selection end to end: one order, one id, and only the unit that carries that
+## weapon takes it.
+func test_a_mixed_selection_switches_only_the_units_that_carry_the_weapon() -> void:
+	var b = BattleScript.new()
+	autofree(b)
+	var inf: Unit = _bare_unit(1, 0, 12)
+	var cav: Unit = _bare_unit(2, 0, 12)
+	cav.weapon_type_id = LoadoutRegistry.WEAPON_SPATHA
+	cav.spawn_weapon_type_id = LoadoutRegistry.WEAPON_SPATHA
+	cav.sidearm_type_id = 0
+	b._by_uid[1] = inf
+	b._by_uid[2] = cav
+
+	b.enqueue_switch_weapon([1, 2], LoadoutRegistry.WEAPON_PILUM)
+
+	assert_eq(inf.weapon_type_id, LoadoutRegistry.WEAPON_PILUM,
+		"the infantry draws the pilum it carries")
+	assert_eq(cav.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA,
+		"the cavalry is untouched rather than mis-equipped")
+	assert_null(cav.current_order,
+		"and is not parked with an order claiming a switch it refused")
+
+
+## _foot_kind() drives BOTH silhouettes, and mark LOD is the default zoom level, so a
+## switch that rebuilds only the figure meshes leaves the common case stale forever --
+## _apply_lod_meshes' mark branch would go on re-handing the same old pair.
+func test_switching_rebuilds_the_mark_silhouette_as_well_as_the_figure() -> void:
+	var u: Unit = _bare_unit(1, 0, 12)
+	u.seed_sim_soldiers()
+	u._setup_flock_renderer()
+	var gladius_mark: Mesh = u._mark_body_mesh
+	var gladius_mark_outline: Mesh = u._mark_outline_mesh
+	assert_not_null(gladius_mark, "the mark meshes were built at setup")
+
+	assert_true(u.equip_weapon(LoadoutRegistry.WEAPON_PILUM), "the pilum is carried")
+
+	assert_ne(u._mark_body_mesh, gladius_mark,
+		"the flat mark silhouette was rebuilt for the newly held weapon")
+	assert_ne(u._mark_outline_mesh, gladius_mark_outline,
+		"and its outline followed, so the mark doesn't render half-swapped")
+
+
+## A rearguard detachment clones its parent through the snapshot dict. Dropping these two
+## would reset the clone to the class defaults -- leaving it unable to switch at all, and
+## making spawn_weapon_type_id's fixed-for-life contract false for the clone.
+func test_the_snapshot_round_trips_the_deployed_and_carried_weapons() -> void:
+	var parent: Unit = _bare_unit(1, 0, 12)
+	parent.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	parent.spawn_weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	parent.sidearm_type_id = LoadoutRegistry.WEAPON_PILUM
+
+	var clone: Unit = _bare_unit(2, 0, 12)
+	clone.apply_snapshot_dict(parent.to_snapshot_dict())
+
+	assert_eq(clone.spawn_weapon_type_id, LoadoutRegistry.WEAPON_SPEAR,
+		"the clone remembers what its parent deployed holding")
+	assert_eq(clone.sidearm_type_id, LoadoutRegistry.WEAPON_PILUM,
+		"and that it carries a second weapon it can switch to")
+
+
+## A snapshot written before these fields existed still applies: the deployed weapon falls
+## back to whatever the clone is holding, which is the right answer for a pre-switch
+## snapshot, rather than to an unrelated class default.
+func test_an_older_snapshot_without_the_new_fields_still_applies() -> void:
+	var u: Unit = _bare_unit(1, 0, 12)
+	var d: Dictionary = u.to_snapshot_dict()
+	d["weapon_type_id"] = LoadoutRegistry.WEAPON_SPEAR
+	d.erase("spawn_weapon_type_id")
+	d.erase("sidearm_type_id")
+
+	var clone: Unit = _bare_unit(2, 0, 12)
+	clone.apply_snapshot_dict(d)
+
+	assert_eq(clone.spawn_weapon_type_id, LoadoutRegistry.WEAPON_SPEAR,
+		"the deployed weapon falls back to the one being held")
+	assert_eq(clone.sidearm_type_id, 0, "and no second weapon is invented")
+
+
+## The order's own payload round-trips like its sibling fields (stance, rank_relief,
+## frontage). Nothing reads Order.weapon back today, so this pins consistency rather than
+## a live behaviour -- which is exactly when a field is easiest to drop unnoticed.
+func test_the_switch_order_round_trips_its_weapon_through_a_dict() -> void:
+	var o: Order = Order.new_switch_weapon(LoadoutRegistry.WEAPON_PILUM)
+	var back: Order = Order.from_dict(o.to_dict())
+	assert_eq(back.weapon, LoadoutRegistry.WEAPON_PILUM,
+		"the target weapon survives the round trip")
+	assert_eq(back.type, o.type, "and so does the order type beside it")
