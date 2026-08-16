@@ -41,7 +41,7 @@ static func make(p_id: int, p_name: String, p_reach_m: float, p_lethality: float
 	w.id = p_id
 	w.display_name = p_name
 	w.reach_m = p_reach_m
-	w.reach_wu = p_reach_m * WorldScaleRef.WU_PER_M
+	w.reach_wu = WorldScaleRef.m_to_wu(p_reach_m)
 	w.lethality = p_lethality
 	w.attack_interval_s = p_attack_interval_s
 	w.default_hold_angle = p_hold_angle
