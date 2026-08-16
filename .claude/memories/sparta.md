@@ -5019,10 +5019,20 @@ all.
 rebuild plus the `_apply_lod_meshes()` re-application, having found the stale-handoff bug by
 frame capture (the pre- and post-switch block regions were byte-identical). It fixed the
 REPORTED INSTANCE and not the CLASS: `_build_mark_meshes` had exactly one call site against
-`_build_figure_meshes`' two, and `_foot_kind()` drives both. Review caught the mark half. Worse,
-the `_apply_lod_meshes()` call had been nested INSIDE the `if _figure_body_mesh != null` guard,
-so it could not have fired for a mark-only rebuild anyway -- the two halves of the finding were
-entangled, and fixing only the reported one would not have worked.
+`_build_figure_meshes`' two, and `_foot_kind()` drives both. Review caught the mark half.
+
+The same round also hoisted `_apply_lod_meshes()` out of the `if _figure_body_mesh != null`
+guard it had been nested inside. That reads like a second, load-bearing half of the fix and is
+NOT one: `_setup_flock_renderer` calls `_build_mark_meshes` and `_build_figure_meshes`
+unconditionally, back to back, and nothing anywhere nulls one mesh without the other -- so the
+two guards are the SAME condition for any live unit, and both are false only for a bare
+`Unit.new()` fixture that never ran setup. Adding the missing `_build_mark_meshes()` call alone
+would still have reached `_apply_lod_meshes()` through the pre-existing figure guard. The hoist
+is worth keeping for clarity (the guard now says "re-hand if there is a MultiMesh" rather than
+being coincidentally nested), but claiming it was required overstates the finding. Caught in
+review on PR #1278, which is itself the lesson: a plausible coupling between two adjacent null
+guards is a claim about the code, and `grep -n "_build_.*_meshes\|_mark_body_mesh\s*=\|
+_figure_body_mesh\s*=" scripts/Unit.gd` settles it in one command.
 
 **How to apply:** when a fix rebuilds derived render state for one LOD layer, grep the OTHER
 layer's builder for its call sites before calling the fix complete (`grep -n "_build_.*_meshes"
@@ -5056,11 +5066,20 @@ reviewer this repo has either way.
 
 **`GET /user` is NOT a usable identity probe in this session -- it disagrees with the writes the
 same token makes.** With the raw `GH_TOKEN` it returns `login: d-morrison`, while a PR created
-with that identical token is authored by `claude[bot]`. The agent proxy authenticates outbound
-calls, so that probe is measuring the egress path rather than the credential, exactly as
-ai-config's "don't gate a write on verifying the credential first" rule warns. The only reliable
-reading is the **attributed author of a write you actually made**: `pulls/<N>` -> `user.login`, or
-the workflow run's `actor`. Don't reason about which identity you are from a probe.
+with that identical token is authored by `claude[bot]`.
+
+**The mechanism behind that split is unconfirmed, and the obvious explanation does not fit.**
+"The agent proxy re-authenticates outbound calls" cannot be the whole story, because both calls
+are raw `urllib` requests over the same token and the same egress path -- a uniform rewrite would
+have made them agree. Something distinguishes the read from the write (a proxy that re-signs
+POST/PATCH but passes GET through would do it), but that was not established, so don't repeat it
+as fact. This matches the file's own convention elsewhere for an observed effect with an
+unverified cause, and ai-config's "don't gate a write on verifying the credential first" rule
+reaches the same practical conclusion from a different direction.
+
+What IS measured is the disagreement itself, and it is enough: the only reliable reading is the
+**attributed author of a write you actually made** (`pulls/<N>` -> `user.login`, or the workflow
+run's `actor`). Don't reason about which identity you are from a probe.
 
 (`Lacaedemon/sparta` PRs #1274 and #1278, 2026-08-16.)
 
@@ -5126,21 +5145,34 @@ reporting the review unreachable or falling back to a self-review.
 that heals the gate and costs nothing. Dispatch only when it does not, and only after confirming
 no `pull_request` run is already in progress. (`Lacaedemon/sparta` PR #1278, 2026-08-16.)
 
-## Never pipe `tools/check.sh` through `tail` -- it discards the patch-coverage breakdown
+## Never pipe `tools/check.sh` through `tail` -- the exit code becomes `tail`'s
 
-`check_patch_coverage` prints its per-file coverable/covered/missing table BEFORE the run
-summary, so `bash tools/check.sh patch_coverage | tail -60` keeps the summary and throws away the
-actual answer -- after paying ~18 minutes for it. What survives is the project-wide total
-(`93.4% Total Coverage: 8637/9244 lines`), a different number that reads convincingly as the
-patch figure. Redirect to a file instead of piping.
+The exit-code half is the load-bearing one, and it holds unconditionally: a piped invocation
+reports the PIPELINE's status, so a `check.sh` that FAILED is reported by the harness as
+`exit code 0`. Read the printed `== summary ==` block, never the task's exit status. Redirect to
+a file rather than piping, so nothing is truncated either.
+
+**A "Total Coverage" line with no "Patch coverage:" line after it means the run returned EARLY,
+not that `tail` cut the breakdown.** The print order runs the other way from the intuitive
+reading: `check_patch_coverage` calls `check_coverage` first (`tools/check.sh:633`), whose
+instrumented ~2600-test suite log ends in the addon's own `...% Total Coverage: N/M lines`; the
+per-file breakdown prints much LATER at `:707`, and `Patch coverage: X/Y = Z%` at `:735`, just
+before the summary. So `tail -N` preserves the late patch answer and cuts the early total.
+
+The failure path is what produces the confusing output. `:633` is `check_coverage || return 1`,
+so when coverage itself fails -- on this machine, the Godot 4.6.3 spurious GUT failure documented
+above -- `check_patch_coverage` returns there and `:707`/`:735` never run at all. The tail then
+shows the end of the suite log ending in `93.4% Total Coverage: 8637/9244 lines`, a project-wide
+number that reads convincingly as the patch figure, with no breakdown anywhere. Diagnose that as
+"coverage failed and the patch step never ran", not as "the pipe ate the breakdown". (An earlier
+revision of this entry made exactly that misreading, generalizing one failed run's output into a
+claim about print order; corrected in review on PR #1278.)
 
 Recovering without a re-run is cheap, because `coverage/lcov.info` is already written by then:
 intersect its zero-hit `DA:` entries with the diff's added lines against the merge-base, per the
 codecov-gap section above. On PR #1274 that reproduced Codecov's own figure EXACTLY -- local
 65/66 = 98.48%, against codecov[bot]'s posted `98.48485%` naming the same single missing line in
 `Battle.gd` -- so the lcov intersection is a genuine substitute for a CI round trip rather than an
-approximation of one.
-
-Note also that a piped invocation reports the PIPELINE's exit code (`tail`'s), so a `check.sh`
-that FAILED is reported by the harness as `exit code 0`. Read the printed `== summary ==` block,
-never the task's exit status. (`Lacaedemon/sparta` PR #1274, 2026-08-16.)
+approximation of one. That recovery is the right move for BOTH causes above: whether the patch
+figure was truncated away or never computed, `lcov.info` is on disk either way.
+(`Lacaedemon/sparta` PR #1274, corrected on PR #1278, 2026-08-16.)
