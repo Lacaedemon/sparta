@@ -5176,3 +5176,73 @@ codecov-gap section above. On PR #1274 that reproduced Codecov's own figure EXAC
 approximation of one. That recovery is the right move for BOTH causes above: whether the patch
 figure was truncated away or never computed, `lcov.info` is on disk either way.
 (`Lacaedemon/sparta` PR #1274, corrected on PR #1278, 2026-08-16.)
+
+## The manual 5-item demo checklist is NOT the 7-verdict automated scan -- run `demo_defects`
+
+CLAUDE.md's standing demo requirement points at the "Standard demo defect checklist"
+(blobbing, pulsing, flank-swapping, rank-swapping, facing whipsaw/rotation/reshape surge),
+and it is easy to work that list by hand, find it clean, and call the demo verified. CI runs
+a **different and wider** instrument: `tools/demo/analyze_transcript.gd` emits seven
+deterministic verdicts, and two of them (`overlap`, `path_crossing`) have no counterpart in
+the manual list at all.
+
+**The two lists disagree in a way hand-verification structurally cannot close.** `blob` reads
+`nnd_med` and `overlap` reads `nnd_min`, against the same `two_bodies` reference. A median
+cannot see one interpenetrating pair, so a block can be a textbook lattice on every manual
+metric while two men share ground. `overlap` also fires on **any single judged sample**
+(`MIN_SUSTAIN` 1, unlike the sustain-gated `blob`), so a one-instant crossing is enough.
+
+Worked instance: PR #1275's rally demo. The hand checklist reported nnd 9.00 throughout with a
+7.33 dip, clean on all five, and that reading was correct --- it was measuring the wrong
+quantity. CI reported `FAIL uid0 overlap worst=1.4599609375 threshold=2.25`.
+
+**Run `tools/check.sh demo_defects` before pushing any new or edited `demos/inputs/*.json`.**
+It scans exactly the input scripts your diff adds or edits, and it is minutes rather than the
+suite's ~7. Skipping it costs a full review round, since CI reports the same verdict either
+way.
+
+**When a maneuver legitimately trips a metric, the sanctioned answer is a `defect_exemptions`
+block in the input script, not a red check and not a reshaped scenario.** `demos/README.md`
+carries the contract: `uids` and `reason` are both mandatory, the `uids` list keeps the claim
+as narrow as the maneuver behind it, and exemptions never hide --- the verdict still prints, as
+`EXEMPT` with the reason attached, and one whose metric has started passing prints as `STALE`
+so it gets deleted rather than outliving its cause. A stale exemption is reported, not failed.
+
+Word the reason for what it actually claims. "Expected under the current assignment, tracked
+in #N" is honest where "correct by design" would not be, and the contract explicitly
+anticipates a `see #N` pointer (its own example is the exelismos marching files through each
+other).
+
+- **Do:** run `tools/check.sh demo_defects` pre-push on every changed demo input.
+- **Do:** exempt per-uid with a written reason when the trip is the maneuver doing its job.
+- **Don't:** read a clean hand checklist as covering the automated scan --- it omits two
+  metrics outright and reads a different statistic for a third.
+- **Don't:** retick or restage a scenario to dodge a verdict; that is the one response the
+  contract exists to prevent.
+
+## Staging a demo that actually reaches a RALLY needs `starting_state`
+
+No existing sparta scenario rallies. A rout that happens **in contact** gets pinned by enemy
+soldier-body pressure and ground down rather than pulling clear, so it shatters ---
+`rout-rally-recover.json` and `last-unit-rally.json` are both that case, and all three existing
+rout demos end in annihilation. Three staging attempts failed this way before the mechanism was
+clear: infantry-vs-infantry in contact (annihilated by tick 540), a slower Spearmen pursuer (the
+router's `position` moved 753 -> 734 over 180 ticks, because the bodies are pinned and
+`couple()` drags `position` back), and morale 0.5 with a distant enemy (never routed at all ---
+morale climbed at +2/s, and `_rout()` is only reachable from `UnitCombat.register_casualties` or
+`_apply_starting_state`).
+
+**The tool is `Battle._apply_starting_state` via the `starting_state` scenario key**
+(`Unit.State.ROUTING` is `3`), which is documented for demo tooling only. Spawn the unit already
+routing at low morale with the enemy well outside the rally-contact radius, and its morale climbs
+back toward the rout baseline and it re-forms where it stands --- deterministic at tick 334 for
+`row-major-rally-reform.json`. Add a second, safe friendly unit outside the rout-shock radius, or
+`_check_victory` ends the battle while the router is still routing.
+
+**`_spawn_scenario` silently ignores keys it does not know.** A `"frontage": 8` override reads as
+perfectly plausible and does nothing --- the supported keys are `count`, `morale`, `formation`,
+`starting_state`, `disciplined`, `atomic_response_s`, `training`, `walk_advance`,
+`reform_before_move`, `file_major_reform`, `team`, `x`, `y`, `facing`. Read the function before
+inventing a key, and confirm the effect in a state dump rather than assuming it applied.
+
+(`Lacaedemon/sparta` PR #1275, 2026-08-16.)
