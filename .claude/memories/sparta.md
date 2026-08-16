@@ -1780,12 +1780,15 @@ being claimed, grep its own history before merging, and edit the squash body at
 merge time if a keyword is already there.
 
 ```bash
-git log origin/main..HEAD --format=%B | grep -niE '(clos|fix|resolv)e[sd]? #'
+git log origin/main..HEAD --format=%B | grep -niE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?) #'
 ```
 
-The upstream fix landed in ai-config: the claim-commit template now writes
-`refs #<N>`, keeping the closing keyword on the PR body, which is the surface
-each review round re-reads.
+The upstream fix is proposed in `Morrison-Lab/ai-config#1500`, open as of
+2026-08-16: the claim-commit template would write `refs #<N>`, keeping the
+closing keyword on the PR body, which is the surface each review round
+re-reads.
+Its own body invites a veto rather than absorption, so treat the template as
+unchanged until that PR merges.
 
 ## A new physics-frame-keyed static cache needs an explicit `reset()` in any test that constructs its own fixture data
 
