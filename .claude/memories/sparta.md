@@ -3960,14 +3960,14 @@ from the markers, and **assert before PATCHing** --- open count 1, close count 1
 URL still present, and the body no shorter than it started.
 
 **Don't gate a write on verifying the credential first --- and don't assume a `GET /user` probe
-behaves the same way in every session, because it does not.** Measured 2026-08-16 in this
-container, three calls to `https://api.github.com/user` --- no `Authorization` header at all,
+behaves the same way in every session, because it does not.** Measured 2026-08-16 in PR #1273's
+own session, three calls to `https://api.github.com/user` --- no `Authorization` header at all,
 `Bearer not-a-real-token`, and `Bearer $GH_TOKEN` --- each returned **200** with
-`login: d-morrison`, so here the agent proxy authenticates the request and the header is ignored.
-The automated reviewer on this very PR ran the first two of those probes from its own environment
-and reported **401** for both. Both readings can hold at once: whether an outbound call is
-proxy-authenticated is a property of the SESSION's egress configuration rather than of the GitHub
-API, so neither result generalizes to the next session.
+`login: d-morrison`, so in that session the agent proxy authenticates the request and the header
+is ignored. The automated reviewer on PR #1273 ran the first two of those probes from its own
+environment and reported **401** for both. Both readings can hold at once: whether an outbound
+call is proxy-authenticated is a property of the SESSION's egress configuration rather than of
+the GitHub API, so neither result generalizes to the next session.
 
 That environment-dependence IS the lesson, and it is `fail-fast`'s negative-control rule arriving
 in a new place: a check whose pass path and failure path are indistinguishable is not a check. So
@@ -3975,12 +3975,12 @@ before trusting any auth probe, run it once with a deliberately bogus credential
 the probe discriminates and you can rely on it; a **200** means it is measuring your egress path
 rather than your token, and it will report success whatever the credential is.
 
-`GH_TOKEN` and `GITHUB_TOKEN` were both set here, identical, and **14 characters** (re-measured
-on the same day), which is shorter than any real GitHub credential format --- classic PATs are 40
-hex, and `ghp_`/`github_pat_` run longer. In a proxy-authenticated session like this one that is
+`GH_TOKEN` and `GITHUB_TOKEN` were both set in that session, identical, and **14 characters**
+(re-measured the same day), which is shorter than any real GitHub credential format --- classic
+PATs are 40 hex, and `ghp_`/`github_pat_` run longer. In a proxy-authenticated session that is
 consistent with a placeholder; in a session where the header IS honoured the same value would
 simply be a broken token, so the length alone does not tell you which. The practical consequence
-is the same either way: authenticated writes worked here from a session with no `gh` on `PATH`
+is the same either way: authenticated writes worked there from a session with no `gh` on `PATH`
 and a token that looks wrong, so don't conclude a PATCH is impossible by inspecting the variable
 --- make the call and read the status.
 
@@ -3989,8 +3989,8 @@ and a token that looks wrong, so don't conclude a PATCH is impossible by inspect
   two checks catch different halves, and this one does not replace it.
 - **Don't:** pass an MCP-fetched body back to `update_pull_request`; the markers are already gone
   from the string, so the assertions have nothing left to protect.
-- **Don't:** carry this container's proxy-authentication over to another session --- run the
-  bogus-credential control there and let it decide.
+- **Don't:** carry one session's proxy-authentication over to another --- run the
+  bogus-credential control in the session you are in and let it decide.
 
 ## An umbrella issue at 5/5 children can still have unshipped scope its own phases named
 
