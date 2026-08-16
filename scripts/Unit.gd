@@ -4459,7 +4459,11 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 	# reflection, so a hold-ground reform re-squares to the same footprint without marching
 	# the block through itself. Row-major has no per-soldier depth array to reverse, so it
 	# keeps the traversal for now; that needs its own slot pairing and is tracked separately.
-	if hold_ground and is_about_face_fold and _effective_file_major_reform():
+	# A squared block is excluded for the same reason formation_slots() excludes it: the
+	# square branch runs before the file-major one and never touches the file arrays, so
+	# calling _ensure_file_assignment here would commit a square-derived file count that
+	# nothing invalidates when the unit later leaves square. Square holds its own gap.
+	if hold_ground and is_about_face_fold and not in_square() and _effective_file_major_reform():
 		_ensure_file_assignment(soldiers, files)
 		_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
 				_sim_soldier_file, _sim_soldier_rank)

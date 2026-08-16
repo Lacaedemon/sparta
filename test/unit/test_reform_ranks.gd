@@ -409,6 +409,42 @@ func test_rally_reforms_without_marching_the_block_through_itself() -> void:
 		"no man is sent further than one rank pitch to re-square")
 
 
+## A squared block takes the square slot branch, which never reads the per-soldier file
+## arrays -- so the hold-ground reversal must not touch them either. Calling
+## _ensure_file_assignment here would commit a file count derived from square_files(), and
+## nothing invalidates that when the unit later leaves square, so the stale count would
+## force a lateral re-deal on the next ordinary layout.
+func test_hold_ground_reform_leaves_a_squared_units_file_assignment_untouched() -> void:
+	# 50 at 10 files: square_files(50) is 8, so the square count can't coincide with the
+	# line's and hide a stale commit behind a matching number.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 50
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	u.frontage_override = 10
+	u.seed_sim_soldiers()
+	var line_files: int = u._file_assignment_files
+	assert_eq(line_files, 10, "precondition: the line layout dealt a 10-file assignment")
+
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_true(u.in_square(), "precondition: the unit is squared")
+	assert_eq(u.formation_files(u.soldiers), 8,
+		"precondition: square derives a different file count than the line did")
+	assert_eq(u._file_assignment_files, line_files,
+		"precondition: squaring alone leaves the line's assignment in place")
+	assert_true(u._effective_file_major_reform(),
+		"precondition: the file-major mode the guard sits beside is otherwise on")
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+
+	assert_true(u.reform_ranks(true), "a squared block still re-squares its folded grid")
+
+	assert_eq(u._formation_angle, 0.0, "the fold is dropped as usual")
+	assert_eq(u._file_assignment_files, line_files,
+		"no square-derived file count is committed for a later layout to inherit")
+
+
 ## How many SLOTS (not bodies) sit in the unit's front row: within half a rank pitch of the
 ## front-most slot, measured by projection onto facing. The slot-side counterpart of
 ## _front_row_count, so the grid can be checked before the bodies have marched onto it.
