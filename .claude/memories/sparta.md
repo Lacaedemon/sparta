@@ -155,12 +155,29 @@ which is a real deliverable even though it is not a PR.
 - **Don't:** read "core mechanics" as implying grabbable; the two axes are
   independent, and the highest-priority item is often the one that is blocked.
 
-(GII session, 2026-08-16: after PR #1257 merged, the unclaimed sparta backlog
-surveyed as #1152, #1095, and #1134 --- each stating in its own body that it
-needs a design pass --- plus #1110, addressed to the Jules bot.
+(GII session, 2026-08-16: after PR #1257 merged, four candidates were looked at
+--- #1152, #1095, and #1134, each stating in its own body that it needs a design
+pass, plus #1110, addressed to the Jules bot.
 All four rank as core mechanics under the section above, and none is grabbable,
-so the correct report was "the tractable unclaimed backlog is thin" rather than a
-pick further down the list.)
+which is the rule this entry states.
+
+The conclusion drawn from them was **wrong**, and the way it was wrong is worth
+keeping, because it is the failure mode a grabbability check invites.
+"The tractable unclaimed backlog is thin" was reported on the strength of those
+four, and a later derived list returned **91 open issues**, of which #1279
+(orphaned `.gd.uid` sidecars), #1277 (weapon-switch flash message), #1271
+(`check.sh` versus `config/features`), and #1269 (banned-glyph set drift) are
+each bounded, unclaimed, and grabbable --- confirmed unclaimed by intersecting
+against the six open PRs at that moment, none of which referenced them.
+
+So run the grabbability check over a **derived** candidate set, not over the
+handful you happened to open.
+Ruling four issues out says nothing about the eighty-seven you did not look at,
+and "the backlog is thin" is a claim about the population --- see
+[`derive-dont-enumerate`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/derive-dont-enumerate.md)'s
+own section on asserting a set is empty.
+Report the examined count alongside the removed count, so a genuinely thin
+backlog stays distinguishable from a narrow look at a deep one.)
 
 ## Pending: migrate to gha quarto-publish `@v2` (branch deploy)
 
