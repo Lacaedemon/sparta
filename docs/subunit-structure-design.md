@@ -98,7 +98,127 @@ is unowned: no type asked for 8, and no type can ask for anything else.
 
 ## The design calls
 
-*(pending)*
+The issue deliberately leaves these open. This note makes the calls so that
+implementation is unblocked; each is revisable if a phase disproves it.
+
+### Does a structure attach to the loadout type, or to the roster name?
+
+**To the loadout type, with a per-roster override.**
+
+The game has four spawnable loadout types and seventeen roster names.
+`Faction.ROSTER_UNIT_TYPES` maps every name onto one of the four, and the
+mapping is many-to-one in exactly the place that matters: Spartan Hoplites,
+Triarii, the Sacred Band, Libyan Spearmen and the Pezhetairoi Phalanx are all
+`Spearmen`. Attaching structure to the loadout type alone would give a Spartan
+file and a Macedonian file the same declared depth, which is precisely the
+distinction #1218 exists to capture.
+
+Attaching it to the roster name instead would mean seventeen answers, most of
+them guesses, and would strand any scenario that spawns a bare `Infantry` with
+no faction flavour.
+
+So: the loadout type carries the default, and a roster name may override it.
+This is the layering `Battle` already uses --- `_default_loadout()` supplies the
+type default and `_spawn_scenario` applies per-unit overrides on top --- so it
+needs no new mechanism, only a new key threaded the way `file_major_reform_default`
+already is.
+
+**Implementation trap for whoever takes this.** `_default_loadout()` is an army
+roster iterated with `loadout[i % loadout.size()]`, not a type registry: it holds
+five entries, of which **two are byte-identical `Cavalry` entries**, so the
+default battle fields five units a side with two cavalry regiments. A structural
+key added to only the first `Cavalry` entry will apply to only one of the two
+spawned regiments, and `_loadout_for_type()`'s first-match lookup will hide the
+omission from every test that goes through it. Set the key on both, or dedupe
+the entries first as separate work.
+
+### What is the structural primitive?
+
+**A subunit is a contiguous group of men with a stable id, an internal order,
+and a declared target size.** That is exactly what `_sim_soldier_file` plus
+`_sim_soldier_rank` already are, minus the declared size.
+
+So the primitive is not new. The generalisation is:
+
+- `_sim_soldier_file` becomes *which subunit a man belongs to*.
+- `_sim_soldier_rank` becomes *his index within it*.
+- A new per-type declaration supplies the **target size** and the **shape** the
+  subunit takes when laid out (a column, a row, a block).
+
+Keeping the existing arrays and widening their meaning matters more than the
+naming. They are already dealt deterministically, trimmed index-aligned on a
+death by `SoldierMelee.reap`, serialized into the state dump, and read by the
+one layout path that preserves identity. A parallel `_sim_soldier_subunit`
+array alongside a surviving `_sim_soldier_file` would double the state that has
+to stay consistent through a casualty, for no gain. Rename in place, in one
+mechanical commit, or leave the names alone and widen the docstrings --- but do
+not carry two.
+
+This also keeps the standing performance rule in `PLAN.md`: per-soldier state
+stays in `Packed*Array` slots, and no per-soldier heap object is introduced.
+
+### Does the declared size become an input, or stay an output?
+
+**An input, with the derived value kept as the fallback.**
+
+This is the inversion above, stated as a change: a type declares its subunit
+size, the unit fields `ceil(live / size)` subunits, and the frontage follows
+from that count. `_files()` stays as the answer for any unit whose type declares
+nothing, and as the degenerate case when the live count is smaller than a single
+subunit.
+
+Two consequences worth stating plainly, because they are behaviour changes
+rather than refactors:
+
+- **Frontage stops being constant as casualties mount.** Today the width is
+  pinned to `max_soldiers` and depth absorbs the losses. Under a declared depth,
+  a unit that loses a subunit's worth of men fields one fewer subunit, so the
+  width steps down --- continuously, in subunit-sized notches, rather than once
+  at the close-ranks threshold. The existing `_ranks_closed` notch and this
+  behaviour overlap and one of them should go; deciding which belongs to the
+  phase that implements it, not to this note.
+- **The player-facing frontage control needs a meaning.** `frontage_override`
+  currently sets a file count directly, and the drag-resize handle
+  (`files_for_halfwidth`) maps a dragged width onto one. Under declared subunits
+  the honest reading is that the player sets a *subunit count*, and the width
+  follows. That is a HUD and input change, not just a layout one.
+
+### What does "implemented through subunit-level behaviours" buy?
+
+**A measured reduction in how far men walk to reform, and the removal of a
+recurring bug family.** This is not speculative --- the codebase already contains
+one worked example of the transformation, and it is worth quoting because it
+sets the standard the rest should be judged against.
+
+`Unit.reform_ranks(hold_ground)` re-squares the block by reflecting it in depth.
+Done as a whole-block relabel, every man walks the block's full depth to reach a
+slot another man is vacating on the same tick. Done as a per-subunit operation
+--- `UnitFormation.reversed_ranks_within_files` reverses each file's *internal*
+order, which exactly cancels the reflection for every full-depth file --- only
+the men in short files move at all. That function's own docstring records the
+measurement: **for 80 men on 12 files, 24 men step one rank pitch, against all
+80 crossing the block** under the index-order relabel.
+
+That is the shape #1218 is asking to generalise, and it gives the phases below a
+falsifiable acceptance test: for each maneuver converted, count the men who move
+and the distance they cover, before and against after.
+
+The second payoff is structural. `docs/square-formation-design.md` already
+argues that subunit-based reform **subsumes** the array-index identity-swap bug
+family rather than fixing it one maneuver at a time --- a family that has
+recurred at least four times ([#541](https://github.com/Lacaedemon/sparta/issues/541),
+[#668](https://github.com/Lacaedemon/sparta/issues/668),
+[#802](https://github.com/Lacaedemon/sparta/issues/802),
+[#1146](https://github.com/Lacaedemon/sparta/issues/1146)), each caught by a
+human noticing something wrong in a clip. If subunits move as bodies, "a man
+crossed his own formation" stops being a thing that has to be detected.
+
+The issue's own example --- converting a flank file into a back rank by marching
+it around the edge of the unit --- is a third case, and it is the one that most
+clearly cannot be expressed today: there is no way to say "this file, as a
+body, takes that route". It needs a subunit to be addressable as a thing that
+receives an order, which is where this note meets
+[#547](https://github.com/Lacaedemon/sparta/issues/547).
 
 ## Phased plan
 
