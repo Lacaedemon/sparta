@@ -907,6 +907,55 @@ the horses themselves, not just on the spearmen holding their ground --- the hea
 set defenders absorb most of the shove and hand a proportionally bigger kick back to
 the lighter attacker.
 
+## Drawing the other weapon
+
+Some troops carry two weapons and deploy holding one of them. Legionary Infantry march
+with the **gladius** drawn and a **pilum** stowed; press <kbd>Shift+I</kbd> and the whole
+selection draws the other one, with a second press putting it away again. You can see the
+change on the men themselves once you're zoomed in far enough for the figure silhouettes:
+the shaft appears in every soldier's hand, and the shield-forward stance returns when the
+pilum is stowed.
+
+Switching is an **in-place order** --- the block doesn't march, wheel or reform to do it,
+so it costs you nothing positionally and can be done in contact.
+
+What it does cost is throughput, because the two weapons sit at opposite ends of the
+reach-versus-rate trade the section above describes:
+
+::: {#tbl-pilum-gladius}
+
+| Weapon | Reach | Blow every | Sustained killing rate |
+| --- | --- | --- | --- |
+| Gladius | 1.3 m | 1.2 s | 0.83 |
+| Pilum | 2.0 m | 1.5 s | 0.40 |
+
+The two weapons a legionary carries, and the trade between them.
+:::
+
+The pilum reaches most of the way to a spear's 2.4 m, so a regiment holding it lands the
+opening strikes of a clash and can field more ranks in its engaged tier --- but it swings
+slower and wounds less when it lands, so a line that keeps holding it once the fight is
+locked kills at roughly half the rate it would with the blade. The historical use follows
+from that: draw the pilum as an enemy closes, then switch to the gladius when the lines
+actually meet. Leave it too late and you've spent the approach with the wrong weapon;
+switch too early and you throw away the reach you were carrying it for.
+
+::: {#fig-weapon-switch .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/weapon_switch.jpg">
+  <source src="media/weapon_switch.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An Infantry regiment draws its pilum and then stows it again. Every soldier's silhouette
+picks up the shaft and then drops back to the shield, and the block holds its ground
+throughout --- re-equipping never moves or reforms it.
+:::
+
 ## Movement speed
 
 Units move at **realistic real-world speeds**, measured in metres per second, with

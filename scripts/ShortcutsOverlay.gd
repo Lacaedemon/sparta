@@ -27,6 +27,7 @@ const _ROWS: Array = [
 	["STANCES", ""],
 	["Set stance in place (no move needed)", "Ctrl + stance key"],
 	["Toggle rank relief (discipline)", "I"],
+	["Draw the other carried weapon (pilum / gladius)", "Shift+I"],
 	["Group attack mode (focused/distributed)", "X (Shift+X reverses)"],
 	["— Formation & drill —", ""],
 	["Formation (Normal/Tight/Loose/Square)", "T (Shift+T reverses)"],

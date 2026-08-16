@@ -1,6 +1,6 @@
 # Design note: soldier weapon/shield loadout
 
-Status: **phases 1-3 implemented** (#536, #537, #538): the `Weapon`/`Shield` type
+Status: **phases 1-4 implemented** (#536, #537, #538, #539): the `Weapon`/`Shield` type
 classes, the interned `LoadoutRegistry`, the per-soldier id arrays, and the
 per-soldier shield hold-angle state are in the code, with the weapon type as
 the single source of truth for spawn-time reach. The strike-time combat-read
@@ -15,7 +15,9 @@ type's `default_hold_angle` (`Unit.weapon_rest_angle()`/`shield_rest_angle()`
 -> `UnitMeshes.figure_mesh`), and eases a per-soldier render-only "strike lunge"
 forward along facing while a soldier sits in `engaged_soldier_indices()` (see
 phase 3 below for the details and what's still out of scope). Phase 4
-(#539) is design-only so far.
+(#539) is implemented too: a regiment can draw the other weapon its
+soldiers carry mid-battle, via `Order.Type.SWITCH_WEAPON` and
+`Unit.equip_weapon`.
 
 The registry has since grown two more type families on the same contract
 (interned, immutable, disjoint id ranges): `Armor` (protection — the scalar
@@ -322,8 +324,13 @@ Each phase: scope, dependencies, done-check, behavior-change label.
     directly in a test, which sets the flags but keeps `Unit`'s default
     `WEAPON_GLADIUS`. Under today's roster every real spawned unit's
     `weapon_type_id` and flags agree, so this is a behavior-preserving remap
-    of the old flag-only logic; the id read is what makes a future weapon
-    switch (#516 phase 4) reflect in the render immediately. `_build_mark_meshes`
+    of the old flag-only logic; the id read is what lets a weapon switch
+    (phase 4) reach the render at all. It is not sufficient on its own,
+    though, and phase 4 found out the hard way: the figure meshes are built
+    once and handed to the `MultiMesh`es, which keep their own reference
+    until an LOD or facing flip re-hands them, so `equip_weapon` has to
+    rebuild *and* re-apply them or the block goes on drawing the weapon it
+    just put away. `_build_mark_meshes`
     now switches on `_foot_kind()` too, instead of duplicating the flag logic.
   - `UnitMeshes.figure_mesh` (and `_foot_figure_polys`/`_spear_polys`/
     `_shield_polys`) gained optional `weapon_hold_angle`/`shield_hold_angle`
@@ -353,10 +360,25 @@ Each phase: scope, dependencies, done-check, behavior-change label.
   by a website-demo-diff transcript showing zero changed sim content).
 - **Behavior change:** **new capability** (visual), no change to sim outcomes.
 
-### Phase 4 — gameplay layer: weapon switching
-- **Scope:** `SwitchWeaponOrder` (from #516) writes `_sim_soldier_weapon_id`;
-  add any additional weapon types needed for a real switch (e.g.
-  `WEAPON_PILUM` for a javelin-then-sword legionary).
+### Phase 4 -- gameplay layer: weapon switching (implemented, #539)
+- **Scope, as implemented:**
+  - `WEAPON_PILUM` joins the registry, and the Infantry roster row carries it
+    as a `sidearm` while still *deploying* the gladius -- so spawn combat is
+    unchanged and no existing demo, transcript or test outcome shifts.
+  - `Order.Type.SWITCH_WEAPON` (appended last, so recorded transcripts keep
+    their existing type values) plus `Battle.ORDER_SWITCH_WEAPON` and
+    `enqueue_switch_weapon`, which rides the already-recorded `mode` field
+    rather than adding one to the replay format. `Shift+I` in
+    `SelectionManager` toggles between the deployed weapon and the sidearm.
+  - `Unit.equip_weapon` rewrites the unit-level id, the per-soldier array and
+    the derived `attack_range` together. Two consumers had to follow it: the
+    three sites that refill per-soldier entries from `weapon_type_id` on a
+    casualty/growth resize (`SoldierBodies`, `TierTransition`), and
+    `SpawnFingerprint`, which now reads a spawn-pinned
+    `spawn_weapon_type_id` so a mid-battle switch can't re-stamp a demo
+    artifact's digest.
+  - Reach is converted metres -> world units once per *type*
+    (`Weapon.reach_wu`, via `WorldScale.m_to_wu`) rather than per equip.
 - **Dependencies:** #516's orders-queue phases need to be far enough along
   that a concrete `Order` subtype can exist; this phase cannot start before
   #516 has at least its phase-1 skeleton (`current_order` + `orders` queue).
