@@ -5093,10 +5093,24 @@ minutes apart:
 | --- | --- |
 | GitHub MCP tools (`create_pull_request`, ...) | `d-morrison` (User) |
 | raw API with `GH_TOKEN` (`urllib`, `curl`) | `claude[bot]` (Bot) |
+| the `gh` CLI (`gh pr create`, `gh api`) | `dem-extra1` (User) |
 
 PR #1274 was opened through the MCP tool and is authored by `d-morrison`; PR #1278 was opened
 through raw `urllib` with the same `GH_TOKEN` and is authored by `claude[bot]`. Two consequences,
 and the second is the expensive one.
+
+**The `gh` row was added later, and it is the one that behaves sanely.**
+PR #1293 was opened with `gh pr create` and is authored by `dem-extra1` (User), which is also what
+`gh api user` returns and what `git log` records as the commit author --- so on this path the
+identity probe and the write AGREE, unlike the raw-API row above.
+Two consequences follow, both in the good direction.
+The review workflow's `github.event.sender.type != 'Bot'` gate passes, so a `gh`-opened PR gets
+its automatic review on the `opened` event with no push needed to heal it.
+And a `d-morrison` reviewer request does not name the PR's own author, so the 422 below does not
+arise on this path.
+Three write paths therefore yield three different identities from one session, which is the whole
+point of the section: do not generalize any row to a client you did not measure.
+(Measured 2026-08-16 on PR #1293.)
 
 **Requesting `d-morrison` as a reviewer 422s on a `d-morrison`-authored PR.** GitHub rejects a
 review request naming a PR's own author with `422 Unprocessable Entity`. That is not a
@@ -5124,6 +5138,110 @@ What IS measured is the disagreement itself, and it is enough: the only reliable
 run's `actor`). Don't reason about which identity you are from a probe.
 
 (`Lacaedemon/sparta` PRs #1274 and #1278, 2026-08-16.)
+
+## An empty `reviewRequests` DURING a claude-review run is the workflow stashing them, not a failed request
+
+`Morrison-Lab/gha`'s reusable `claude-code-review.yml` --- the one sparta's own
+`claude-code-review.yml` delegates to --- deliberately clears the pending-reviewer list while it
+runs and restores it afterwards.
+Two of its steps say so by name:
+
+| step | name |
+| --- | --- |
+| 8 | Stash and clear reviewers; record starting head SHA |
+| 24 | Re-assign reviewers after Claude finishes |
+
+So a reviewer request that reads back as an empty `reviewRequests` moments later is behaving
+exactly as designed, provided a review run was in flight at the time.
+Re-POSTing changes nothing, and reading the empty list as a failure sends a session diagnosing a
+request that never failed.
+
+**This is the specific explanation ai-config's `pr-on-claim` family says it does not have.**
+Its rationale sibling argues at length that a vanished pending request "has established nothing
+either way", and warns against re-POSTing on the strength of it --- the right default for a repo
+where no mechanism is known.
+
+Cite `shared/workflow/pr-on-claim.rationale.md` for that quote, not `pr-on-claim.md`.
+ai-config splits its heaviest fragments into `<name>.md` for the rule statement plus
+`<name>.rationale.md` for the argument, so a phrase you remember sitting inline in the main file
+may now live in the sibling.
+An auto-loaded copy of the pre-split text sends you to the wrong file, and the main file returns
+zero hits for the phrase, which reads as the quote being invented rather than merely relocated.
+Grep both siblings, whitespace-normalized, before citing a phrase from that corpus.
+Here there is one, and it is readable in a single call, so read the review job's own step list
+before concluding anything about a disappeared reviewer:
+
+```bash
+gh api repos/Lacaedemon/sparta/actions/jobs/<job-id> \
+  --jq '.steps[] | "\(.number) \(.name) => \(.status)/\(.conclusion)"'
+```
+
+Note what this does NOT establish: an empty list is still not evidence the request LANDED.
+The zero-Copilot-seats case documented above produces the identical empty read for an entirely
+different reason.
+The stashing behaviour only rules out "the request failed" as the automatic reading, and whether
+a `claude-review` run was in flight is what separates the two causes.
+
+**The full cycle is measured, and the window is narrow enough to time your own POST against it.**
+Two observations, on two PRs, from opposite sides of step 8:
+
+| PR | POST relative to step 8 | read during the run | read after the run |
+| --- | --- | --- | --- |
+| #1281 | before the run started | `[]` | `["d-morrison"]` |
+| #1293 | 5m18s after the clear, step 11 still running | `["d-morrison"]` | `["d-morrison"]` |
+
+On #1293 step 8 completed at `17:25:49Z` and the PR's own `review_requested` timeline event is
+stamped `17:31:07Z`, with step 24 still `pending`, so that request went in after the clear and
+read back present rather than empty.
+
+An empty read therefore dates your POST relative to step 8 rather than reporting a failure.
+A request pending when the job reaches step 8 vanishes for the duration and returns at step 24;
+one made after step 8 is added to an already-cleared list and looks normal throughout.
+"Reviewer present while a review is running" consequently does not disprove the stashing either.
+Both readings are the same mechanism seen from either side of one step, which is why the step list
+settles it and a bare reviewer read never does.
+
+Take the timeline event rather than trusting recollection of when you POSTed:
+
+```bash
+gh api repos/Lacaedemon/sparta/issues/<N>/timeline \
+  --jq '.[] | select(.event=="review_requested") | "\(.created_at) \(.requested_reviewer.login)"'
+```
+
+**Step 24's restore ADDS rather than overwrites, so a mid-run request survives the run.**
+This was the obvious way for the mechanism to bite and it does not.
+The restore could plausibly have written back the stashed list wholesale --- empty on #1293 ---
+silently dropping any reviewer added since.
+It does not: step 24 completed `success` on that run and the list still read `["d-morrison"]`
+afterwards, so the reviewer requested at `17:31:07Z` was still there when the job finished.
+Nothing therefore needs re-requesting after a run, on either side of step 8.
+
+Adjacent, and the reason the REST path is in use at all: `gh pr edit` fails in this environment
+with the projectCards GraphQL deprecation error before applying the edit, so
+`POST .../requested_reviewers` is the working path rather than a workaround.
+Two flags are individually attested, from separate sessions on separate PRs ---
+`gh pr edit <N> --add-reviewer d-morrison` and `gh pr edit <N> --body-file <path>` --- each exiting
+1 with a `GraphQL: Projects (classic) is being deprecated` error naming
+`(repository.pullRequest.projectCards)`.
+So treat it as affecting `gh pr edit` generally rather than as a one-flag quirk.
+
+- **Do:** read the review job's step list before treating a disappeared reviewer request as failed.
+- **Do:** check whether a `claude-review` run was in flight at the moment the list read empty, and
+  where in the step list it was.
+- **Don't:** re-POST a reviewer request because `reviewRequests` came back empty.
+- **Don't:** read the stashing as proof the request landed --- an empty list has more than one
+  cause in this repo.
+- **Don't:** read a reviewer that IS present mid-run as evidence against the stashing.
+  A mid-run POST lands after the clear.
+- **Don't:** re-request a reviewer once the run finishes.
+  Step 24 adds rather than overwrites, so both sides of step 8 end up present.
+
+(Measured 2026-08-16 across two PRs.
+PR #1281, job 95198545509: steps 8 and 24 both `completed/success`, with the reviewer requested
+before the run, `[]` mid-run, and restored afterwards.
+PR #1293, run 31961543081 / job 95200181495: step 8 `completed/success` at `17:25:49Z`, a
+`review_requested` timeline event at `17:31:07Z` while step 24 was still `pending` and reading
+back present, then step 24 `completed/success` with the list still `["d-morrison"]`.)
 
 ## A PR opened via the raw API is opened by a Bot, and the review workflow's own gate silently skips it
 
@@ -5289,6 +5407,54 @@ inventing a key, and confirm the effect in a state dump rather than assuming it 
 
 (`Lacaedemon/sparta` PR #1275, 2026-08-16.)
 
+## `Battle._default_loadout()` is an ARMY ROSTER, and its two Cavalry entries are byte-identical
+
+It returns five entries --- Spearmen, Infantry, Archers, Cavalry, Cavalry --- and `_spawn_line`
+walks them with `loadout[i % loadout.size()]`.
+That is what makes the default battle 5v5 with TWO cavalry regiments, rather than a four-type
+registry spawned once each.
+
+The duplicate is deliberate, and the docstring already says so: it opens
+"The default battle loadout: spearmen, infantry, archers, cavalry, cavalry."
+It has said that since PR #478, so do not read the repeat as a typo and do not delete it.
+
+**The hazard is that a new per-type key must be set on BOTH Cavalry entries.**
+Set it on one and it applies to only one of the two spawned regiments, so the default battle runs
+with two supposedly-identical cavalry regiments that quietly behave differently.
+The two entries are byte-identical today, and that is the property to preserve.
+
+**`_loadout_for_type()` hides such an omission from any test that goes through it.**
+It returns the FIRST entry whose `name` matches, so it answers with entry 4 and never reads entry
+5 --- a test asserting "Cavalry's new key is X" passes whether or not entry 5 carries it.
+A test routed through that lookup is therefore not evidence the roster is consistent, which is
+the same first-match blindness this file already records for other selectors.
+
+Derive the check instead of eyeballing the two lines:
+
+```bash
+awk '/^func _default_loadout/,/^\t\]/' scripts/Battle.gd \
+  | grep '"name": "Cavalry"' > /tmp/cav.txt
+echo "entries=$(wc -l < /tmp/cav.txt) unique=$(sort -u /tmp/cav.txt | wc -l)"
+```
+
+`entries=2 unique=1` is the healthy answer, and it proves both halves at once: two Cavalry
+entries exist, and they are the same line.
+`unique=2` means the two have diverged, whatever a `_loadout_for_type()`-based test reports.
+The `awk` range is safe here because `^func _default_loadout` matches exactly once, per this
+repo's own caution about a repeated start anchor silently widening a range.
+
+- **Do:** set a new per-type key on both Cavalry entries in the same edit, then re-run the check
+  above.
+- **Do:** assert against the roster array itself when a test cares that both spawned regiments got
+  the key.
+- **Don't:** read `_loadout_for_type()`'s answer as evidence about the whole roster; it stops at
+  the first match.
+- **Don't:** "fix" the duplicate Cavalry entry --- the default 5v5 battle depends on it.
+
+(Verified 2026-08-16 at `cee465f6`: five entries, `entries=2 unique=1` for Cavalry, and the
+docstring's own first line naming cavalry twice.)
+
+
 ## A `/tmp` file written by MSYS bash is unreadable from native Windows Python
 
 On Windows Git Bash the two tools resolve `/tmp` to different directories,
@@ -5403,3 +5569,4 @@ against each other and neither survives being split.
   value lives in the single ranked list.
 
 (`Lacaedemon/sparta` PR #1292, 2026-08-16, recorded from PR #1283's review of M2TWEOP.)
+
