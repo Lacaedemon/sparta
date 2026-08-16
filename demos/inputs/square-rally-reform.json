@@ -1,0 +1,61 @@
+{
+  "_comment": "Square hold-ground reform on rally. A SQUARE player infantry block (60 men, which square_files lays out at 8 files -- seven full ranks plus a centred 4-man rear rank) is staged already routing, with the enemy still a long way off. Same staging as row-major-rally-reform.json and for the same reason: a rout that happens IN contact gets pinned by enemy soldier-body pressure and ground down rather than pulling clear, so it shatters instead of rallying. Here nothing is inside the rally-contact radius, so its morale climbs back toward the rout baseline and it re-forms where it stands. The flee turn folds _formation_angle to PI, and the rally's reform_ranks(hold_ground = true) then arms the depth reflection. The square branch used to have nothing cancelling that reflection -- its slots come from _sim_soldier_square_slot rather than the row-major array, so neither the file-major rank reversal nor the row-major cell pairing applied -- and every man walked the block's full depth through the oncoming half. The square grid is built by the same block_slots generator, so the same cell pairing cancels it on the square's own assignment array: 56 of the 60 hold their ground, and only the four men whose lateral position has no counterpart in the centred 4-man rank swap ends. A second, safe player unit well out of the rout-shock radius keeps the battle from declaring defeat while the infantry is routing.",
+  "seed": "12345",
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 800,
+      "y": 700,
+      "count": 60,
+      "morale": 5.0,
+      "formation": 3,
+      "starting_state": 3
+    },
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 260,
+      "y": 260,
+      "count": 60,
+      "morale": 100.0
+    },
+    {
+      "team": 1,
+      "type": "Spearmen",
+      "x": 800,
+      "y": 1150,
+      "count": 80
+    }
+  ],
+  "steps": [],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [0],
+      "reason": "Same residual as row-major-rally-reform.json, on the square's own assignment array: the four men whose lateral position has no counterpart in the centred 4-man rank have no cell to pair with, so they swap ends and cross the stationary ranks between. One judged sample catches that traverse (nnd_min 0.26 wu at tick 405, pair 0/32). Expected under the current assignment rather than correct -- whether an unpaired man should swap ends at all is open in #1280, and this clip is a third instance of it. Measured against origin/main on the same seed, the pre-fix code fails this metric at every post-rally sample and never recovers (0.51 / 0.46 / 0.82 wu at ticks 375 / 405 / 450), where this settles to a 9.0 median lattice by tick 450 (8.37 wu closest pair). Tick 405 is the one sample where the fix reads tighter than the pre-fix code (0.26 against 0.46): pairing the other 56 men holds them still for the four to walk past, instead of scattering everyone."
+    }
+  },
+  "state": [
+    30,
+    120,
+    240,
+    300,
+    330,
+    345,
+    375,
+    405,
+    450
+  ],
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720,
+  "camera": [
+    {
+      "tick": 0,
+      "x": 800.0,
+      "y": 630.0,
+      "zoom": 1.35
+    }
+  ]
+}
