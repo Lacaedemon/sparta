@@ -5174,18 +5174,61 @@ different reason.
 The stashing behaviour only rules out "the request failed" as the automatic reading, and whether
 a `claude-review` run was in flight is what separates the two causes.
 
-Adjacent, and the reason the REST path is in use at all: `gh pr edit <N> --add-reviewer` fails in
-this environment with the projectCards GraphQL deprecation error before applying the edit, so
+**The full cycle is measured, and the window is narrow enough to time your own POST against it.**
+Two observations, on two PRs, from opposite sides of step 8:
+
+| PR | POST relative to step 8 | read during the run | read after the run |
+| --- | --- | --- | --- |
+| #1281 | before the run started | `[]` | `["d-morrison"]` |
+| #1293 | 5m18s after the clear, step 11 still running | `["d-morrison"]` | unmeasured |
+
+On #1293 step 8 completed at `17:25:49Z` and the PR's own `review_requested` timeline event is
+stamped `17:31:07Z`, with step 24 still `pending`, so that request went in after the clear and
+read back present rather than empty.
+
+An empty read therefore dates your POST relative to step 8 rather than reporting a failure.
+A request pending when the job reaches step 8 vanishes for the duration and returns at step 24;
+one made after step 8 is added to an already-cleared list and looks normal throughout.
+"Reviewer present while a review is running" consequently does not disprove the stashing either.
+Both readings are the same mechanism seen from either side of one step, which is why the step list
+settles it and a bare reviewer read never does.
+
+Take the timeline event rather than trusting recollection of when you POSTed:
+
+```bash
+gh api repos/Lacaedemon/sparta/issues/<N>/timeline \
+  --jq '.[] | select(.event=="review_requested") | "\(.created_at) \(.requested_reviewer.login)"'
+```
+
+One gap stays open, and it is the cell marked unmeasured above.
+Whether step 24's restore PRESERVES a mid-run addition or overwrites it with the stashed list was
+not observed, since the only PR carrying a mid-run request had not reached step 24.
+So do not assume a mid-run reviewer request survives to the end of the run; re-read the list once
+the job completes.
+
+Adjacent, and the reason the REST path is in use at all: `gh pr edit` fails in this environment
+with the projectCards GraphQL deprecation error before applying the edit, so
 `POST .../requested_reviewers` is the working path rather than a workaround.
+Two flags are individually attested, from separate sessions on separate PRs ---
+`gh pr edit <N> --add-reviewer d-morrison` and `gh pr edit <N> --body-file <path>` --- each exiting
+1 with a `GraphQL: Projects (classic) is being deprecated` error naming
+`(repository.pullRequest.projectCards)`.
+So treat it as affecting `gh pr edit` generally rather than as a one-flag quirk.
 
 - **Do:** read the review job's step list before treating a disappeared reviewer request as failed.
-- **Do:** check whether a `claude-review` run was in flight at the moment the list read empty.
+- **Do:** check whether a `claude-review` run was in flight at the moment the list read empty, and
+  where in the step list it was.
 - **Don't:** re-POST a reviewer request because `reviewRequests` came back empty.
 - **Don't:** read the stashing as proof the request landed --- an empty list has more than one
   cause in this repo.
+- **Don't:** read a reviewer that IS present mid-run as evidence against the stashing; a mid-run
+  POST lands after the clear.
+- **Don't:** assume a mid-run request survives step 24 --- that cell is still unmeasured.
 
-(Measured 2026-08-16 on PR #1281, job 95198545509: steps 8 and 24 as named above, both
-`completed/success`.)
+(Measured 2026-08-16. PR #1281, job 95198545509: steps 8 and 24 both `completed/success`, with
+the reviewer requested before the run, `[]` mid-run, and restored afterwards. PR #1293, run
+31961543081 / job 95200181495: step 8 `completed/success` at `17:25:49Z`, step 24 `pending`, and a
+`review_requested` timeline event at `17:31:07Z` reading back present.)
 
 ## A PR opened via the raw API is opened by a Bot, and the review workflow's own gate silently skips it
 
