@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation only: this PR appends two lessons to .claude/memories/sparta.md and changes no game code, scene, or asset, so a recorded battle would show nothing related to it."
+}
