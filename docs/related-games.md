@@ -60,6 +60,7 @@ an automatic yes.
 | [TotalWarSimulator](https://github.com/MichelangeloConserva/TotalWarSimulator) | Formation-battle research sim (Python 2D → Unity 3D) | **MIT** (see caveats below) | bundled third-party packs (varied) | ✅ | ⛔ | **Very high** — a worked 2D→3D conversion of exactly Sparta's battle layer; formation/assignment algorithms |
 | [godot-open-rts](https://github.com/lampe-games/godot-open-rts) | 3D RTS demo in Godot 4 | **MIT** | verify per asset | ✅ | verify | High — reference implementation of 3D selection, movement, and camera in Sparta's own engine |
 | [Divide et Impera](https://divideetimperamod.com/) | Total-overhaul **mod** for Total War: Rome II | proprietary (built on CA/Sega's game) | proprietary | 🚫 | 🚫 | **High for design only** — historical realism, supply/population/reform systems, 2000+ unit rosters |
+| [M2TWEOP](https://github.com/EOP-Labs/M2TWEOP-library) | Engine-overhaul **mod framework** for Medieval II: Total War | GPL-3.0 | game data proprietary (CA/Sega) | ⛔ | 🚫 | **High for design only** -- a published schema of a shipped Total War title's runtime state: morale and combat-status ladders, a battle-event taxonomy, an army-plan vocabulary |
 | [Renaissance Kingdom Wars](https://store.steampowered.com/app/2533020/Renaissance_Kingdom_Wars/) | Real-time strategy + grand-strategy hybrid | proprietary | proprietary | 🚫 | 🚫 | **High for design only** -- RTS tactical battles fused with a province-conquest grand-strategy layer; mercenary-to-empire progression |
 | [awesome-paradox](https://github.com/js00070/awesome-paradox) | Curated list of Paradox-related projects | n/a (link list) | n/a | — | — | Pointers to grand-strategy / **dynasty** design and OSS reimplementations |
 
@@ -194,6 +195,108 @@ and unit behaviour.
   inspiration only**. We take none of its code or art; this matches PLAN.md's
   explicit "**not** commercial-game mod assets" warning.
 
+### M2TWEOP (M2TW Engine Overhaul Project)
+
+Not a game, and not a library you build against: an **in-memory patcher** for the
+retail *Medieval II: Total War* binary.
+It attaches through a proxy `d3d9.dll`, reverse-engineers the engine's live
+structures, and re-exposes them to mod authors as a Lua API.
+Most of its stated feature set is limit-breaking and re-exposure rather than new
+mechanics -- raising the unit-roster cap, unlocking console commands, fixing
+engine bugs.
+
+That makes it a different **kind** of entry from every other row here.
+We are not reading it for its own design.
+Its generated Lua reference (`docs/_static/LuaLib/index.html`) is in effect a
+**published schema of a shipped Total War title's runtime state**: an itemised
+list of what a mature grand-strategy game decided was worth modelling.
+
+**The finding that frames everything else:** the API exposes **no per-soldier
+accessor of any kind**.
+Searching the reference for `soldierPos`, `getSoldierAt`, or `soldierIndex`
+returns nothing, and every soldier-related field is an aggregate count
+(`soldierCount`, `soldiersLost`, `soldiersKilled`, `soldiersEnd`).
+Medieval II's model bottoms out at the regiment, so **Sparta already simulates a
+layer it does not have**.
+Nothing here is a template for our core physics.
+The value is entirely in the layers *above* it -- perception, morale
+classification, command, and reporting -- which is where Sparta is thinnest.
+
+- **Morale is a seven-rung ladder, not a scalar plus a rout flag.**
+  `moraleStatus` is `berserk, impetuous, high, firm, shaken, wavering, routing`.
+  Sparta's `morale` is a float and `Unit.State` (`scripts/Unit.gd:12`) is
+  `IDLE, MOVING, FIGHTING, ROUTING, DEAD`, so our model is effectively
+  fine-or-routing.
+  The ladder is a *classification of a quantity we already have* rather than a
+  modifier layered on top, so it costs the physics nothing and buys legibility:
+  `shaken` and `wavering` are visible pre-rout states a player can react to.
+  Note it is two-sided -- `berserk` and `impetuous` sit above `high`, so
+  over-eagerness is modelled as a morale state, not as disobedience.
+- **Each unit carries a perceived local combat outcome.**
+  `combatStatus` is `notInCombat, victoryCertain, victoryAlmostCertain,
+  victoryDistinct, balanced, defeatDistinct, defeatAlmostCertain, defeatCertain`.
+  This is the highest-value item here, because it is the one place we can do
+  better rather than merely catch up: Medieval II must *estimate* a local
+  balance-of-fight from stats, whereas a soldier-physics sim can **derive** one
+  honestly from casualty differential, contact frontage, and engaged counts it
+  already computes every tick.
+- **The morale inputs we lack are all local observations**, not modifiers:
+  nearby friendly and enemy counts, engaged-unit counts, and who is currently
+  shooting at you.
+  Sparta has `fatigue` (`scripts/UnitMorale.gd:13`) and `_under_fire`
+  (`scripts/Unit.gd:779`) but **no local force-ratio input at all** -- morale
+  moves on casualties and a friendly-shock contagion (`scripts/Unit.gd:6042`).
+  Being locally outnumbered is a classic reason real formations break, and we
+  cannot currently express it.
+- **A battle-event taxonomy**, including `onBattleTideofBattle` ("A different
+  team is now the strongest"), `onBattleArmyTired`, `onBattleArmyHalfDestroyed`,
+  `onBattleUnitGoesBerserk`, and `onBattleGeneralRouted`.
+  Sparta declares four signals across `scripts/`, all UI plumbing.
+  The value is the list itself: a shipped title's considered answer to what is
+  worth telling the player about.
+- **An army-plan vocabulary.**
+  `battleAI.gtaPlan` enumerates `DO_NOTHING, ATTACK_ALL, DEFEND, DEFEND_FEATURE,
+  HIDE, AMBUSH, SCOUT, WITHDRAW` plus three settlement plans, and a plan
+  decomposes into prioritised objectives with units assigned to each.
+  `scripts/General.gd:46` defines exactly two, `PLAN_ADVANCE_LINE` and
+  `PLAN_ENVELOP`.
+  Our General/Subcommander split beneath that is arguably the better structure;
+  what is missing is variety at the top, and an army that can only advance or
+  envelop cannot fight a defensive battle.
+- **Smaller items worth a look:** formation spacing is four numbers per unit type
+  (front-to-back and side-to-side, in both close and loose order) alongside
+  `mass`, `width`, and `height`; the battle-to-campaign result record tracks
+  prisoners taken and caught separately, friendly-fire casualties, withdrawal as
+  distinct from defeat, and a qualitative margin (`close, average, clear,
+  crushing`); and there is a 16-value ground taxonomy whose `mud`/`mudRoad` and
+  `grassShort`/`grassLong` splits are the kind of distinction you only reach by
+  shipping.
+
+**What to take care NOT to take.**
+The engine pairs that ground taxonomy with per-unit-type terrain modifiers
+(`statHeat`, `statScrub`, `statSand`, `statForest`, `statSnow`) -- a lookup table
+saying this unit is some percentage worse in scrub.
+That is exactly the top-down shortcut our design philosophy rejects: mud should
+slow a heavy man more than a light one because of mass and friction, not because
+of a table entry.
+The same caution applies to `onCalculateUnitValue`, one scalar per unit type
+whose own documentation says it drives the combat readout, recruitment, army
+strength evaluation, auto-resolve, and the campaign AI at once.
+One number feeding five subsystems is the definitional top-down abstraction.
+It is still the right shape for *AI and campaign code*, which legitimately needs
+a cheap comparable number, so the rule worth adopting is that such a scalar may
+be read by planners and never by combat resolution or by anything the player
+reads as an outcome.
+
+- **Licence:** the project's own code is **GPL-3.0** and Sparta is MIT, so its
+  source is ⛔ reference-only; the game data model it documents belongs to
+  Creative Assembly / Sega, so that half is 🚫 design-only.
+  In practice neither gates much, because what transfers here is knowledge of
+  *which quantities a shipped title tracks*, which is not code.
+  Its vendored `M2TWEOP Code/3rd/` tree is mostly permissive (MIT, BSD, zlib) but
+  also carries LGPL FFmpeg and BeaEngine and a proprietary Autodesk FBX SDK; none
+  of it is usable from GDScript, so the question is moot.
+
 ### Renaissance Kingdom Wars (Broken Rampart Interactive)
 
 A commercial hybrid of grand strategy and real-time tactical battles, set in
@@ -272,6 +375,12 @@ art:
 - **Highest design value for Sparta specifically:** **0 A.D.** (real-time ancient
   tactics, formations, collision/pathing — our core pillar) and **Divide et Impera**
   (historical realism: supply, population, rosters, believable unit behaviour).
+- **Best source for the layers *above* the physics:** **M2TWEOP**, which is less a
+  design to copy than a published schema of what a shipped Total War title tracks.
+  Its API bottoms out at the regiment and has no per-soldier accessor at all, so it
+  offers nothing for our core sim and a great deal for morale classification,
+  per-unit perception, army planning, and battle reporting -- the parts of Sparta
+  that are thinnest precisely because the physics has had all the attention.
 
 ## Adding a game to this list
 
