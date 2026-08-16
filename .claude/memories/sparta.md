@@ -5510,9 +5510,11 @@ is genuinely empty --- derived afterwards with the command above.
 #1292 hit `Pull Request has merge conflicts` anyway, against #1293, a PR opened and merged by a
 different session, which touches `.claude/memories/sparta.md` and nothing else.
 #1293 merged at 18:36:59Z, ahead of #1283's own 18:38:43Z, and #1292 absorbed it with a `main`
-merge at 18:41:43Z.
-Four PRs --- #1281, #1282, #1283 and #1293 --- landed on `main` while the session ran, so the
-population the comparison should have covered grew four times after the claim was first made.)
+merge at 18:41:43Z --- replaying that merge with `git merge-tree` reports exactly one conflicted
+path, `.claude/memories/sparta.md`, so the collision is measured rather than inferred.
+Four PRs landed on `main` inside four minutes --- #1293 at 18:36:59Z, #1281 at 18:37:50Z, #1283 at
+18:38:43Z and #1282 at 18:40:31Z --- so the population any such comparison had to cover was moving
+the whole time.)
 
 ## `.claude/memories/sparta.md` contains literal conflict markers as documentation
 
