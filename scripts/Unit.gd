@@ -1767,9 +1767,10 @@ func melee_attack_interval() -> float:
 ##     tail resize, and TierTransition refill NEW per-soldier entries from. Leaving it
 ##     stale would quietly re-arm the old weapon on the next casualty resize or tier
 ##     transition, so the per-soldier array alone is not enough;
-##   - attack_range, the world-unit reach derived from the type's reach_m. soldier_reach()
-##     returns it directly, so engaged_ranks() and the melee standoff pick the new reach
-##     up on the next tick with nothing else to update.
+##   - attack_range, which is just the type's own world-unit reach (converted once when
+##     the registry built the type, not here -- runtime state stays world units).
+##     soldier_reach() returns it directly, so engaged_ranks() and the melee standoff pick
+##     the new reach up on the next tick with nothing else to update.
 ##
 ## Returns false, changing nothing, for an id that is not a registered weapon -- a
 ## malformed order can't strand the regiment holding a type nothing resolves.
@@ -1782,7 +1783,7 @@ func equip_weapon(type_id: int) -> bool:
 	if type_id == weapon_type_id:
 		return true
 	weapon_type_id = type_id
-	attack_range = w.reach_m * WorldScaleRef.WU_PER_M
+	attack_range = w.reach_wu
 	if not _sim_soldier_weapon_id.is_empty():
 		_sim_soldier_weapon_id.fill(type_id)
 	# The figure silhouette carries the held weapon (_foot_kind picks the shaft glyph for

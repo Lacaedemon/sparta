@@ -892,7 +892,12 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 		u.weapon_type_id = d["weapon"]
 		var weapon_type: Weapon = LoadoutRegistry.weapon(u.weapon_type_id)
 		if weapon_type != null:
-			u.attack_range = weapon_type.reach_m * WORLD_UNITS_PER_METER
+			# reach_wu is reach_m * WORLD_UNITS_PER_METER, converted once when the
+			# registry built the type -- the same float, from the same operands, so
+			# spawn reach is bit-identical to the pre-registry literal. Reading it here
+			# rather than re-converting keeps one source of truth with equip_weapon,
+			# which sets the same field on a mid-battle switch.
+			u.attack_range = weapon_type.reach_wu
 	# The deployed weapon, pinned for the unit's life: a phase-4 switch moves
 	# weapon_type_id but never this, so SpawnFingerprint keeps hashing a stable value and
 	# the switch toggle keeps somewhere to return to. Read from the live field rather than
