@@ -5156,10 +5156,18 @@ exactly as designed, provided a review run was in flight at the time.
 Re-POSTing changes nothing, and reading the empty list as a failure sends a session diagnosing a
 request that never failed.
 
-**This is the specific explanation ai-config's `pr-on-claim.md` says it does not have.**
-That fragment establishes at length that a vanished pending request "establishes nothing either
-way", and warns against re-POSTing on the strength of it --- the right default for a repo where
-no mechanism is known.
+**This is the specific explanation ai-config's `pr-on-claim` family says it does not have.**
+Its rationale sibling argues at length that a vanished pending request "has established nothing
+either way", and warns against re-POSTing on the strength of it --- the right default for a repo
+where no mechanism is known.
+
+Cite `shared/workflow/pr-on-claim.rationale.md` for that quote, not `pr-on-claim.md`.
+ai-config splits its heaviest fragments into `<name>.md` for the rule statement plus
+`<name>.rationale.md` for the argument, so a phrase you remember sitting inline in the main file
+may now live in the sibling.
+An auto-loaded copy of the pre-split text sends you to the wrong file, and the main file returns
+zero hits for the phrase, which reads as the quote being invented rather than merely relocated.
+Grep both siblings, whitespace-normalized, before citing a phrase from that corpus.
 Here there is one, and it is readable in a single call, so read the review job's own step list
 before concluding anything about a disappeared reviewer:
 
