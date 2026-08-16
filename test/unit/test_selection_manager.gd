@@ -2500,3 +2500,157 @@ func test_cancel_order_at_ignores_an_out_of_range_index() -> void:
 	assert_eq(u.orders.size(), 1, "an index past the queue end is ignored")
 	u.cancel_order_at(-1)
 	assert_eq(u.orders.size(), 1, "a negative index is ignored")
+
+
+# --- Shift+I: draw the other carried weapon ---------------------------
+
+## Stand-in for the HUD. _toggle_weapon only ever calls flash_message on it, and
+## SelectionManager's _hud is untyped (an @onready get_node_or_null), so a bare
+## RefCounted with the one method exercises the messaging branches without building the
+## real HUD scene.
+class _StubHud:
+	var messages: Array = []
+
+	func flash_message(text: String) -> void:
+		messages.append(text)
+
+
+## Build a selection manager wired to a bare Battle plus one Infantry-shaped unit: a
+## gladius in hand and a pilum carried, which is the only roster shape today that has a
+## second weapon at all.
+func _sm_with_armed_unit() -> Array:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var hud := _StubHud.new()
+	sm._hud = hud
+	var u := _unit()
+	u.uid = 7
+	u.unit_name = "Infantry 1"
+	u.weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	u.spawn_weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	u.sidearm_type_id = LoadoutRegistry.WEAPON_PILUM
+	b._by_uid[7] = u
+	sm._select(u)
+	return [sm, b, u, hud]
+
+
+func test_shift_i_draws_the_second_carried_weapon() -> void:
+	var f := _sm_with_armed_unit()
+	var sm = f[0]
+	var b = f[1]
+	var u: Unit = f[2]
+	var hud = f[3]
+
+	assert_true(sm._dispatch_key(_key_event(KEY_I, false, true)), "Shift+I is a handled hotkey")
+
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_PILUM,
+			"the regiment is now holding the weapon it had stowed")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_SWITCH_WEAPON,
+			"routed as a recorded weapon-switch command")
+	assert_eq(int(cmd["mode"]), LoadoutRegistry.WEAPON_PILUM,
+			"the target weapon id rides the mode field, so the replay format is unchanged")
+	var pilum: Weapon = LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_PILUM)
+	assert_eq(hud.messages[-1], "Drew: %s" % pilum.display_name,
+			"the player is told which weapon is now in hand")
+
+
+## Plain I must still reach the rank-relief toggle: the two share the key, so a regression
+## in the branch order would silently swallow one of them.
+func test_plain_i_still_toggles_rank_relief_rather_than_the_weapon() -> void:
+	var f := _sm_with_armed_unit()
+	var sm = f[0]
+	var u: Unit = f[2]
+
+	assert_true(sm._dispatch_key(_key_event(KEY_I)), "plain I is still a handled hotkey")
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_GLADIUS,
+			"the unmodified key never touches the weapon")
+
+
+## The return leg reads spawn_weapon_type_id rather than remembering what was held, so a
+## second press has to land back on the deployed weapon exactly.
+func test_a_second_press_returns_to_the_deployed_weapon() -> void:
+	var f := _sm_with_armed_unit()
+	var sm = f[0]
+	var u: Unit = f[2]
+
+	sm._dispatch_key(_key_event(KEY_I, false, true))
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_PILUM, "out to the pilum")
+	sm._dispatch_key(_key_event(KEY_I, false, true))
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_GLADIUS,
+			"and back to the gladius it deployed holding")
+
+
+func test_shift_i_refuses_a_unit_carrying_no_second_weapon() -> void:
+	var f := _sm_with_armed_unit()
+	var sm = f[0]
+	var b = f[1]
+	var u: Unit = f[2]
+	var hud = f[3]
+	u.sidearm_type_id = 0   # every roster type but Infantry
+	var before: int = b._pending_orders.size()
+
+	assert_true(sm._dispatch_key(_key_event(KEY_I, false, true)), "the key is still handled")
+
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_GLADIUS, "nothing is drawn")
+	assert_eq(b._pending_orders.size(), before, "and no order is recorded")
+	assert_eq(hud.messages[-1], "Infantry 1 carries no second weapon",
+			"the refusal explains itself rather than reading as an unbound key")
+
+
+## Replay playback replays the recorded order stream; a live keypress must not inject a
+## fresh order into it.
+func test_shift_i_is_inert_during_playback() -> void:
+	var f := _sm_with_armed_unit()
+	var sm = f[0]
+	var b = f[1]
+	var u: Unit = f[2]
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm._dispatch_key(_key_event(KEY_I, false, true))
+	Replay.mode = prev_mode
+
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_GLADIUS, "the weapon is untouched")
+	assert_eq(b._pending_orders.size(), 0, "and no order is recorded")
+
+
+func test_shift_i_is_inert_with_no_selection() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+
+	assert_true(sm._dispatch_key(_key_event(KEY_I, false, true)), "the key is still handled")
+	assert_eq(b._pending_orders.size(), 0, "but there is nobody to re-equip")
+
+
+## _selected can hold a unit that has since died; _selected_uids drops it, leaving no
+## recipients even though the selection itself is non-empty.
+func test_shift_i_is_inert_when_the_selection_is_all_dead() -> void:
+	var f := _sm_with_armed_unit()
+	var sm = f[0]
+	var b = f[1]
+	var u: Unit = f[2]
+	u.state = Unit.State.DEAD
+
+	sm._dispatch_key(_key_event(KEY_I, false, true))
+
+	assert_eq(b._pending_orders.size(), 0, "a dead selection issues nothing")
+
+
+## The return leg can name an id the registry does not know if spawn_weapon_type_id was
+## never pinned to a real type. Refuse rather than enqueue an order nothing can apply.
+func test_shift_i_is_inert_when_the_return_target_is_unregistered() -> void:
+	var f := _sm_with_armed_unit()
+	var sm = f[0]
+	var b = f[1]
+	var u: Unit = f[2]
+	u.weapon_type_id = LoadoutRegistry.WEAPON_PILUM   # already holding the sidearm
+	u.spawn_weapon_type_id = 0                        # so the return target is invalid
+
+	assert_true(sm._dispatch_key(_key_event(KEY_I, false, true)), "the key is still handled")
+
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_PILUM, "the held weapon is unchanged")
+	assert_eq(b._pending_orders.size(), 0, "and no unappliable order is recorded")
