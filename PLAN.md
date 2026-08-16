@@ -102,6 +102,17 @@ then grow outward.
      recurring array-index identity-swap bug family (#541/#668/#802/#1146) by making "a man
      crossed his own formation" structurally unrepresentable. Ships independently of #547,
      which only the optional last phase uses.
+   - **Per-type subunit structure (#1218, design in `docs/subunit-structure-design.md`):**
+     a unit type declares the subunit it is organised into, instead of every type getting a
+     file count derived from its roster size by `ceil(sqrt(n * 1.7))`.
+     The sources put the four types on genuinely different footings --- a file of declared
+     size for the phalanx,
+     a lateral left/right century for Roman-style infantry, a ten-man group inside a
+     selectable wedge/rhomboid/square for cavalry, and no attested structure at all for
+     light troops.
+     Separates *type* structure (doctrine) from *formation* structure (the square's four
+     faces), and re-expresses unit-level reforms as subunit-level operations, the way
+     `reversed_ranks_within_files` already does for the countermarch reform.
    - **Rout/discipline (#529, in flight as PR #533):** stays at the current unit-level morale-scalar
      architecture for now — a candidate for later, not scoped now. Individual soldier morale/fear
      (nearby casualties, whether neighbors are routing, commander proximity) aggregating into
