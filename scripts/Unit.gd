@@ -763,6 +763,41 @@ var reform_before_move: bool = true
 # Never applies to a squared formation (in_square()) -- see formation_slots().
 enum ReformMode { FILE_MAJOR, ROW_MAJOR, AUTO }
 var file_major_reform_mode: int = ReformMode.FILE_MAJOR
+
+# The subunit this regiment's doctrine organises it into, and how many men that subunit holds.
+# DECLARATION ONLY -- nothing reads either field for layout. Every unit's frontage still comes
+# from UnitFormation.frontage/_files(max_soldiers) exactly as before, so these two fields are
+# inert by construction: see docs/subunit-structure-design.md, whose phased plan ships the
+# declaration on its own so the data question is reviewable apart from the behaviour question.
+#
+# The primitive is a SIZE plus a KIND, not a depth. That is the design note's central historical
+# finding: Asclepiodotus 2.1 records file depth as a matter of practice ("some have formed the
+# file of eight men, others of ten, others of twelve, and yet others of sixteen"), and Thucydides
+# 5.68.3 has the Spartan enomotia standing four wide and about eight deep -- a body of roughly
+# fixed headcount whose battlefield array was a choice. So the headcount is what a type declares
+# and the frontage/depth it takes are formation-time outputs.
+#
+# NONE means this type declares no subunit, which is a positive statement rather than a gap: the
+# record for light troops does not support a number (see the note's "pattern of silences"), so
+# they fall back to the derived width and the fallback is the honest answer.
+# FILE_GROUP is a contiguous group laid out as a file or a small block of files -- the phalanx
+# lochos and the Spartan enomotia are both this kind at different sizes.
+# LATERAL_HALVES divides along a different AXIS instead of declaring a headcount: Polybius 6.24
+# splits the maniple into a right and a left century under two centurions, so subunit_size stays
+# 0 and the count of parts (two) is what the kind itself carries.
+# GROUP is a small body that is not file-shaped -- the ten-man cavalry group of Xenophon
+# Hipparchicus 4.9-10 and Polybius 6.25, which sits inside a separately-chosen squadron shape.
+#
+# Defaulted per unit type at spawn (Battle._default_loadout's "subunit_structure"/"subunit_size"
+# keys), overridable per scenario unit and per roster name -- see Faction.ROSTER_SUBUNIT_OVERRIDES
+# for why a roster override is needed at all. Same persistent-per-unit treatment as the three
+# settings above, so it rides Unit.to_snapshot_dict/apply_snapshot_dict rather than being
+# re-derived on a restore.
+enum SubunitStructure { NONE, FILE_GROUP, LATERAL_HALVES, GROUP }
+var subunit_structure: int = SubunitStructure.NONE
+# Target headcount for one subunit, or 0 when the declared kind carries no headcount (NONE, and
+# LATERAL_HALVES whose part count is fixed at two). Never read for layout; see above.
+var subunit_size: int = 0
 # Backward-compatible bool view of file_major_reform_mode, for every call site that predates
 # the AUTO option and only ever reads/writes a plain on/off (Battle._default_loadout's bool
 # scenario-spec path, most existing tests). Reading is true only for FILE_MAJOR -- AUTO reads
@@ -6990,6 +7025,10 @@ func to_snapshot_dict() -> Dictionary:
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
 		"walk_advance": walk_advance, "reform_before_move": reform_before_move,
 		"file_major_reform_mode": file_major_reform_mode,
+		# Declared subunit structure. Rides the snapshot like the three settings above rather
+		# than being re-derived: a restore that dropped it would silently reset every unit to
+		# the class default (NONE/0), losing the per-type declaration the spawn path applied.
+		"subunit_structure": subunit_structure, "subunit_size": subunit_size,
 		"file_assignment_files": _file_assignment_files,
 		"square_slot_files": _square_slot_files,
 		"row_slot_files": _row_slot_files,
@@ -7113,6 +7152,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	walk_advance = bool(d["walk_advance"])
 	reform_before_move = bool(d["reform_before_move"])
 	file_major_reform_mode = int(d["file_major_reform_mode"])
+	subunit_structure = int(d["subunit_structure"])
+	subunit_size = int(d["subunit_size"])
 	_file_assignment_files = int(d["file_assignment_files"])
 	_square_slot_files = int(d["square_slot_files"])
 	_row_slot_files = int(d.get("row_slot_files", -1))
