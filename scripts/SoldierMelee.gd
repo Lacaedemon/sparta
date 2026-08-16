@@ -358,6 +358,13 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				# mid-fight -- see UnitFormation.drop_slot_assignment.
 				unit._sim_soldier_square_slot = UnitFormation.drop_slot_assignment(
 						unit._sim_soldier_square_slot, i)
+			if i < unit._sim_soldier_row_slot.size():
+				# Same trim for the row-major pairing a hold-ground reform leaves behind, and
+				# for the same reason: a man who held his ground through the reflection keeps
+				# holding it as the block takes losses, rather than the whole grid re-pairing
+				# the moment someone dies. Normally empty, so this is usually a no-op.
+				unit._sim_soldier_row_slot = UnitFormation.drop_slot_assignment(
+						unit._sim_soldier_row_slot, i)
 			if i < unit._sim_soldier_broken.size():
 				unit._sim_soldier_broken.remove_at(i)   # and the encirclement-broken flag
 			dead += 1

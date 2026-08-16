@@ -819,3 +819,94 @@ func test_file_major_block_slots_rank_pitch_deepens_only_the_rank_axis() -> void
 	var slots := UnitFormation.file_major_block_slots(file_ids, 3, 10.0, 30.0)
 	assert_almost_eq(slots[1].x - slots[0].x, 10.0, 0.001, "files stay one file pitch apart")
 	assert_almost_eq(slots[3].y - slots[0].y, 30.0, 0.001, "ranks are one rank pitch apart")
+
+
+## The depth-reflection pairing is what lets a ROW-MAJOR hold-ground reform cancel its own
+## mirror. It must be a permutation for every grid, or a cell ends up doubly-claimed.
+func test_depth_reflection_pairing_is_a_permutation_over_the_whole_range() -> void:
+	var bad_size: int = 0
+	var not_a_permutation: int = 0
+	var checked: int = 0
+	for n in range(1, 121):
+		for files in range(1, 41):
+			checked += 1
+			var p: PackedInt32Array = UnitFormation.depth_reflection_pairing(n, files)
+			if p.size() != n:
+				bad_size += 1
+				continue
+			var seen := {}
+			for c in p:
+				if c < 0 or c >= n or seen.has(c):
+					not_a_permutation += 1
+					break
+				seen[c] = true
+	assert_eq(checked, 4800, "the sweep actually ran over the whole range")
+	assert_eq(bad_size, 0, "one entry per soldier, always")
+	assert_eq(not_a_permutation, 0, "every cell claimed exactly once, for every (n, files)")
+
+
+## Applying it twice returns every man to his own cell -- which is what makes a second
+## hold-ground reform undo the first rather than compounding into a third layout.
+func test_depth_reflection_pairing_is_an_involution() -> void:
+	var failures: int = 0
+	for n in range(1, 121):
+		for files in range(1, 41):
+			var p: PackedInt32Array = UnitFormation.depth_reflection_pairing(n, files)
+			for c in range(p.size()):
+				if p[p[c]] != c:
+					failures += 1
+					break
+	assert_eq(failures, 0, "pairing twice is the identity, for every (n, files)")
+
+
+## The geometric claim the pairing exists to make: a PAIRED cell's target, once the grid is
+## reflected in depth, sits exactly where the original cell was. Checked against block_slots
+## itself rather than re-deriving the arithmetic the pairing already encodes.
+func test_depth_reflection_pairing_holds_its_ground_under_the_mirror() -> void:
+	var mismatches: int = 0
+	var paired_seen: int = 0
+	for n in range(1, 121):
+		for files in range(1, 41):
+			var p: PackedInt32Array = UnitFormation.depth_reflection_pairing(n, files)
+			var grid: PackedVector2Array = UnitFormation.block_slots(n, files, 10.0)
+			for c in range(p.size()):
+				if p[c] == c:
+					continue   # the unmatched case: holds its file, swaps ends
+				paired_seen += 1
+				var tgt: Vector2 = grid[p[c]]
+				if grid[c].distance_to(Vector2(tgt.x, -tgt.y)) > 0.001:
+					mismatches += 1
+	assert_gt(paired_seen, 0, "the sweep actually exercised paired cells, not just fixed ones")
+	assert_eq(mismatches, 0, "a paired cell's reflected target is the ground it already held")
+
+
+## A FULL grid is centre-symmetric, so the reflection already fronts a full rank and every man
+## pairs. reform_ranks' own early return skips these, but the pairing must still be total.
+func test_depth_reflection_pairing_pairs_every_cell_of_a_full_grid() -> void:
+	var p: PackedInt32Array = UnitFormation.depth_reflection_pairing(24, 8)
+	var grid: PackedVector2Array = UnitFormation.block_slots(24, 8, 10.0)
+	var held: int = 0
+	for c in range(p.size()):
+		var tgt: Vector2 = grid[p[c]]
+		if grid[c].distance_to(Vector2(tgt.x, -tgt.y)) <= 0.001:
+			held += 1
+	assert_eq(held, 24, "every man of a 3x8 block holds his ground under the mirror")
+
+
+## The partial-rank case, which is the one reform_ranks actually reaches. Only the men whose
+## lateral position has no counterpart in the shorter rank opposite them have to move.
+func test_depth_reflection_pairing_moves_only_the_outer_files_of_a_partial_grid() -> void:
+	# 60 at 8 files = 7 full ranks + a centred 4-man rear rank.
+	var p: PackedInt32Array = UnitFormation.depth_reflection_pairing(60, 8)
+	var grid: PackedVector2Array = UnitFormation.block_slots(60, 8, 10.0)
+	var held: int = 0
+	for c in range(p.size()):
+		var tgt: Vector2 = grid[p[c]]
+		if grid[c].distance_to(Vector2(tgt.x, -tgt.y)) <= 0.001:
+			held += 1
+	assert_eq(held, 56, "56 of 60 hold their ground; only the front rank's outer four move")
+
+
+func test_depth_reflection_pairing_is_empty_for_nonpositive_inputs() -> void:
+	assert_eq(UnitFormation.depth_reflection_pairing(0, 8).size(), 0, "no soldiers -> no pairing")
+	assert_eq(UnitFormation.depth_reflection_pairing(60, 0).size(), 0, "no files -> no pairing")

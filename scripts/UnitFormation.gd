@@ -360,6 +360,66 @@ static func pair_slots_by_lateral_file(positions: PackedVector2Array,
 	return perm
 
 
+## The cell pairing that cancels a hold-ground reform's DEPTH REFLECTION on a row-major
+## grid: entry `c` is the cell whose post-reflection world position equals cell `c`'s
+## pre-reflection one, so a soldier holding `c` and reassigned to `out[c]` stands on the
+## ground he already held instead of walking the block's depth to reach it.
+##
+## This is the row-major counterpart of `reversed_ranks_within_files`, which cancels the
+## same reflection for the file-major layout by reversing each file's own rank order. Row
+## major has no per-soldier depth array to reverse, so the pairing is computed instead --
+## and it needs no proximity search and no live-body read at all, because `block_slots`'
+## geometry is exact integer arithmetic over the grid. That keeps it deterministic and
+## replay-safe, and it works before the bodies seed.
+##
+## The derivation, from `block_slots` above. Cell `c` sits at rank `r = c / files`, file
+## `f = c % files`, in a rank holding `rc = min(files, n - r*files)` men laid out from
+## `rx0 = -(rc-1)/2 * spacing` -- so its lateral position is `(f - (rc-1)/2) * spacing`.
+## The reflection maps it to rank `r2 = ranks-1-r`, holding `rc2` men, and leaves lateral
+## position alone. Equating the two lateral positions gives `g = f + (rc2 - rc)/2`, i.e.
+## `g = f - d/2` for `d = rc - rc2`. That lands on a real cell only when `d` is even and
+## `g` falls inside `[0, rc2)`; otherwise the man's own lateral position simply does not
+## exist in the rank opposite him.
+##
+## An unmatched soldier keeps his own cell, which under the reflection means he holds his
+## file and swaps ends. That is not a leftover case to apologise for -- it is exactly
+## right, because the unmatched-soldier set and the unclaimed-cell set are the SAME set:
+## the pairing is symmetric under the involution `r <-> ranks-1-r`, so nothing else ever
+## claims the cell he keeps, and the result is a permutation for every (n, files).
+##
+## Worked example, the 60/8 grid the tests use: 7 full ranks of 8 plus a 4-man partial.
+## Ranks 1..6 pair straight across (d = 0). The front rank's middle four pair into the
+## partial rear rank, and the partial rank's four pair back -- 56 of 60 men hold their
+## ground. Only the front rank's four OUTER men move, because their lateral positions
+## fall in the gap beside the centred 4-man rank and exist nowhere in it.
+static func depth_reflection_pairing(n: int, files: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	if n <= 0 or files <= 0:
+		return out
+	var ranks: int = ranks_for(n, files)
+	out.resize(n)
+	for c in range(n):
+		# Default: keep the cell. Under the reflection that is the swap-ends case, and it
+		# is what every unmatched soldier correctly gets (see the involution note above).
+		out[c] = c
+		var r: int = c / files
+		var f: int = c % files
+		var rc: int = mini(files, n - r * files)
+		var r2: int = ranks - 1 - r
+		var rc2: int = mini(files, n - r2 * files)
+		var d: int = rc - rc2
+		# An odd difference means the two ranks are centred half a spacing apart, so no
+		# man in one stands on a lateral position the other offers.
+		if d % 2 != 0:
+			continue
+		# GDScript truncates toward zero, so a negative even `d` halves exactly here too.
+		var g: int = f - d / 2
+		if g < 0 or g >= rc2:
+			continue
+		out[c] = r2 * files + g
+	return out
+
+
 ## `slots` relabelled by `perm` (perm[i] = the cell soldier i occupies), so the returned
 ## array is index-aligned with the live soldier arrays like every other slot array in the
 ## sim. A `perm` of the wrong size returns `slots` untouched -- the historical index-order
