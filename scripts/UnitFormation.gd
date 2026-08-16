@@ -553,6 +553,51 @@ static func drop_rank_assignment(ranks: PackedInt32Array, file_ids: PackedInt32A
 	return out
 
 
+## Every file's rank order REVERSED: the man standing at his file's front takes its rear
+## rank and vice versa, ranks still contiguous from 0 within each file. Index-aligned with
+## `file_ids`, so it drops straight back into Unit._sim_soldier_rank.
+##
+## This is the file-major half of a countermarch reform (Unit.reform_ranks arming
+## _formation_mirror_x). That reform re-squares the grid by reflecting it in DEPTH: a man
+## keeps his own lateral position and his slot's depth negates, so the block's front and
+## rear swap ends. Reversing his file's rank order cancels exactly that negation for every
+## man in a FULL-DEPTH file -- he ends the reform standing where he already stood. Without
+## it the reflection relabels the whole block and each man walks its entire depth to reach a
+## slot another man is vacating in the same tick, the whole regiment crossing through itself
+## for a shape change only its shortest files actually need.
+##
+## The men in a SHORT file (one the partial rear rank never reached) do move, forward by one
+## rank pitch per missing rank -- that is the reform's actual point, since bringing a full
+## rank to the front is precisely moving the partial rank from the front of the block to its
+## rear. For 80 men on 12 files that is 24 men stepping one pitch, against all 80 crossing
+## the block under the index-order relabel.
+##
+## `ranks` absent or wrong-sized falls back to the array-order depth every file-major layout
+## derives when no explicit rank array is stored (a soldier's rank is how many EARLIER array
+## entries share his file id), so the reversal is well defined either way. A rank at or past
+## its own file's depth (a stale array) clamps to 0 rather than going negative. Pure and
+## deterministic in (file_ids, ranks), so a replay reverses identically.
+static func reversed_ranks_within_files(file_ids: PackedInt32Array,
+		ranks: PackedInt32Array) -> PackedInt32Array:
+	var n: int = file_ids.size()
+	var out := PackedInt32Array()
+	if n <= 0:
+		return out
+	var depth: Dictionary = {}
+	for f in file_ids:
+		depth[f] = int(depth.get(f, 0)) + 1
+	var explicit: bool = ranks.size() == n
+	var seen: Dictionary = {}
+	out.resize(n)
+	for i in range(n):
+		var file: int = file_ids[i]
+		var derived: int = int(seen.get(file, 0))
+		seen[file] = derived + 1
+		var rank: int = ranks[i] if explicit else derived
+		out[i] = maxi(0, int(depth[file]) - 1 - rank)
+	return out
+
+
 # --- Square / orbis grid (real hollow/solid square footprint) ---------------
 # The anti-cavalry square is a genuine square block, not the standard wide-line
 # frontage: it uses its own file count (files ~= ranks, so the bbox aspect is ~1)

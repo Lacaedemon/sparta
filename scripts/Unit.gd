@@ -4406,10 +4406,20 @@ func _finish_order_turn() -> void:
 ## CURRENT heading by dropping the folded maneuver rotation, so soldier_world_slots lays the
 ## front rank -- always a full one, by block_slots' construction -- toward `facing` again.
 ## The bodies then march themselves onto the re-squared slots under the normal arrival
-## dynamics, a countermarch: after an about-face this brings the original front-rank men back
-## to the front and returns the short/partial rank to the rear, instead of leaving whatever
-## the flip put in front (the depleted rear rank) to lead. No body teleports and no
-## index-aligned array is relabelled, so per-soldier identity/state is untouched.
+## dynamics, a countermarch: the depleted rank the flip left leading returns to the rear and
+## a full one fronts the heading in its place. No body teleports, and nothing but the
+## file-major DEPTH assignment is relabelled -- per-soldier identity, health and combat state
+## are untouched, exactly as under a frontage reshape's own slot pairing.
+##
+## `hold_ground` re-squares to the SAME footprint without that traversal, for a caller that
+## needs the fold dropped rather than the drill performed -- a rally, where nothing ordered a
+## countermarch and the fold is only bookkeeping the flight left behind. Under the file-major
+## layout the depth reflection is then cancelled per file by reversing each file's own rank
+## order, so the men in a full-depth file stand on the ground they already hold and only the
+## SHORT files -- the ones the partial rear rank never reached -- step forward one rank pitch
+## to close the line. The resulting grid is identical either way; only which man holds which
+## slot differs, so this buys the same shape for a step instead of a march through the block.
+## Default false: an ordered rear-move or countermarch means the drill, and keeps it.
 ##
 ## No-ops (returns false) when there is nothing to bring forward: the grid is already square
 ## to the heading (its front rank is full by construction), or it is flipped a half-turn but
@@ -4429,7 +4439,7 @@ func _finish_order_turn() -> void:
 ## a single centred rank really is a no-op (it's still the same row, just read backwards), but
 ## a QUARTER-turn is not -- the grid axis is genuinely rotated relative to facing even with
 ## only one rank, so it still needs _formation_angle dropped to re-square the line.
-func reform_ranks() -> bool:
+func reform_ranks(hold_ground: bool = false) -> bool:
 	var angle: float = wrapf(_formation_angle, -PI, PI)
 	if absf(angle) < 0.01:
 		return false
@@ -4444,6 +4454,19 @@ func reform_ranks() -> bool:
 		return false
 	_formation_angle = 0.0
 	_formation_mirror_x = is_about_face_fold
+	# The mirror reflects the grid in depth, which negates every man's slot depth while
+	# leaving his lateral position alone. Reversing each file's own rank order cancels that
+	# reflection, so a hold-ground reform re-squares to the same footprint without marching
+	# the block through itself. Row-major has no per-soldier depth array to reverse, so it
+	# keeps the traversal for now; that needs its own slot pairing and is tracked separately.
+	# A squared block is excluded for the same reason formation_slots() excludes it: the
+	# square branch runs before the file-major one and never touches the file arrays, so
+	# calling _ensure_file_assignment here would commit a square-derived file count that
+	# nothing invalidates when the unit later leaves square. Square holds its own gap.
+	if hold_ground and is_about_face_fold and not in_square() and _effective_file_major_reform():
+		_ensure_file_assignment(soldiers, files)
+		_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
+				_sim_soldier_file, _sim_soldier_rank)
 	_render_dirty = true
 	return true
 
@@ -5965,7 +5988,10 @@ func _rally() -> void:
 	# established mechanism for dropping that fold back to zero -- unlike a raw
 	# `_formation_angle = 0.0`, it correctly arms _formation_mirror_x for an exact
 	# about-face fold instead of point-reflecting the whole block.
-	reform_ranks()
+	# Hold-ground: nothing ordered a countermarch here. The fold is bookkeeping the flight
+	# left behind, so the ranks re-square where the men are standing rather than marching the
+	# whole block through itself to reach the same footprint.
+	reform_ranks(true)
 	# The orders queue (route legs included) was already dropped by _rout()'s
 	# clear_orders(), so a rallied unit reforms with no orders.
 	remove_from_group("routers")

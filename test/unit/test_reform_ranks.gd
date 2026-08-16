@@ -50,6 +50,16 @@ func _front_row_count(u: Unit) -> int:
 	return count
 
 
+## True when body `index` stands in the unit's FRONT row (within half a spacing of the
+## front-most body's projection onto facing) -- the mirror of _in_rear_row below.
+func _in_front_row(u: Unit, index: int) -> bool:
+	var best: float = -INF
+	for p in u._sim_soldier_pos:
+		best = maxf(best, (p - u.position).dot(u.facing))
+	var d: float = (u._sim_soldier_pos[index] - u.position).dot(u.facing)
+	return best - d < Unit.FORMATION_SPACING * 0.5
+
+
 ## True when body `index` stands in the unit's REAR row (within half a spacing of the
 ## rear-most body's projection onto facing).
 func _in_rear_row(u: Unit, index: int) -> bool:
@@ -295,3 +305,166 @@ func test_face_dir_snap_absorb_does_not_disturb_an_active_countermarch_mirror() 
 	for i in range(before.size()):
 		assert_true(before[i].is_equal_approx(after[i]),
 			"soldier %d's slot must not move: the snap-absorb fold holds ang constant" % i)
+
+
+# --- hold-ground reform (a rally, not an ordered drill) ---------------------
+# reform_ranks(true) owes the same re-squared FOOTPRINT as the drill without marching the
+# block through itself to reach it: re-squaring is a depth reflection, and reversing each
+# file's own rank order cancels it. A rally takes this variant -- nothing ordered a
+# countermarch there, the fold is only bookkeeping the flight left behind.
+
+
+## Men in a file the partial rear rank reached are already standing where the re-squared
+## grid wants them, so their slots must not move at all.
+func test_hold_ground_reform_leaves_the_full_depth_files_standing_still() -> void:
+	var u := _make_partial_unit()   # 60 at 8 files: files 2-5 are 8 deep, 0/1/6/7 are 7
+	assert_true(u._effective_file_major_reform(),
+		"precondition: units default to the file-major layout this reform reverses")
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	assert_true(u.reform_ranks(true), "a flipped partial grid reforms")
+
+	var after: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var pitch: float = u.rank_pitch_wu()
+	var still: int = 0
+	var stepped: int = 0
+	for i in range(before.size()):
+		var moved: float = before[i].distance_to(after[i])
+		if moved < 0.001:
+			still += 1
+		else:
+			stepped += 1
+			assert_almost_eq(moved, pitch, 0.001,
+				"soldier %d closes up by exactly one rank pitch, not the block's depth" % i)
+	assert_eq(still, 32, "the four 8-deep files (32 men) hold the ground they are on")
+	assert_eq(stepped, 28, "only the four short files close up behind them")
+
+
+## The reversal must not cost the reform its purpose: a FULL rank still ends up leading,
+## which is the shape change the short files step forward to produce.
+func test_hold_ground_reform_still_brings_a_full_rank_to_the_front() -> void:
+	var u := _make_partial_unit()
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	assert_eq(_front_slot_count(u), 4,
+		"precondition: the flip leaves the 4-man partial rank leading")
+	assert_true(u.reform_ranks(true), "a flipped partial grid reforms")
+	assert_eq(_front_slot_count(u), 8, "a full 8-man rank fronts the re-squared grid")
+
+
+## The two variants must reach the SAME footprint -- only which man holds which slot
+## differs. Anything else would make this a shape change rather than a relabel.
+func test_hold_ground_reform_reaches_the_same_footprint_as_the_drill() -> void:
+	var drill := _make_partial_unit()
+	drill.facing = Vector2.UP
+	drill._formation_angle = PI
+	assert_true(drill.reform_ranks(), "the ordered drill reforms")
+	var held := _make_partial_unit()
+	held.facing = Vector2.UP
+	held._formation_angle = PI
+	assert_true(held.reform_ranks(true), "so does the hold-ground variant")
+
+	assert_eq(_sorted_slot_keys(drill), _sorted_slot_keys(held),
+		"identical set of occupied slots; the men holding them are what differs")
+
+
+## Default false: an ORDERED rear-move or countermarch still performs the drill, marching
+## the men through the block. Scoping the reversal to the rally is the whole point -- an
+## exelismos the player asked for is meant to move the files.
+func test_plain_reform_still_marches_the_block_through_itself() -> void:
+	var u := _make_partial_unit()
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	assert_true(u.reform_ranks(), "a flipped partial grid reforms")
+
+	var after: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var farthest: float = 0.0
+	for i in range(before.size()):
+		farthest = maxf(farthest, before[i].distance_to(after[i]))
+	assert_gt(farthest, u.rank_pitch_wu() * 5.0,
+		"the drill still carries men most of the block's depth, unlike hold-ground")
+
+
+## The rally takes the hold-ground variant: a unit that steadied its nerve reforms where it
+## stands rather than countermarching, which is what stopped the whole block scrambling
+## through itself the moment its rout timer expired.
+func test_rally_reforms_without_marching_the_block_through_itself() -> void:
+	var u := _make_partial_unit()
+	u.facing = Vector2.UP
+	u._rout()
+	u._formation_angle = PI   # the flee turn re-folded the grid via _face_dir's snap-absorb
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+
+	u._rally()
+
+	assert_eq(u.state, Unit.State.IDLE, "the unit rallied")
+	assert_eq(u._formation_angle, 0.0, "and re-squared the grid to its heading")
+	var after: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var farthest: float = 0.0
+	for i in range(before.size()):
+		farthest = maxf(farthest, before[i].distance_to(after[i]))
+	assert_almost_eq(farthest, u.rank_pitch_wu(), 0.001,
+		"no man is sent further than one rank pitch to re-square")
+
+
+## A squared block takes the square slot branch, which never reads the per-soldier file
+## arrays -- so the hold-ground reversal must not touch them either. Calling
+## _ensure_file_assignment here would commit a file count derived from square_files(), and
+## nothing invalidates that when the unit later leaves square, so the stale count would
+## force a lateral re-deal on the next ordinary layout.
+func test_hold_ground_reform_leaves_a_squared_units_file_assignment_untouched() -> void:
+	# 50 at 10 files: square_files(50) is 8, so the square count can't coincide with the
+	# line's and hide a stale commit behind a matching number.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 50
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	u.frontage_override = 10
+	u.seed_sim_soldiers()
+	var line_files: int = u._file_assignment_files
+	assert_eq(line_files, 10, "precondition: the line layout dealt a 10-file assignment")
+
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_true(u.in_square(), "precondition: the unit is squared")
+	assert_eq(u.formation_files(u.soldiers), 8,
+		"precondition: square derives a different file count than the line did")
+	assert_eq(u._file_assignment_files, line_files,
+		"precondition: squaring alone leaves the line's assignment in place")
+	assert_true(u._effective_file_major_reform(),
+		"precondition: the file-major mode the guard sits beside is otherwise on")
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+
+	assert_true(u.reform_ranks(true), "a squared block still re-squares its folded grid")
+
+	assert_eq(u._formation_angle, 0.0, "the fold is dropped as usual")
+	assert_eq(u._file_assignment_files, line_files,
+		"no square-derived file count is committed for a later layout to inherit")
+
+
+## How many SLOTS (not bodies) sit in the unit's front row: within half a rank pitch of the
+## front-most slot, measured by projection onto facing. The slot-side counterpart of
+## _front_row_count, so the grid can be checked before the bodies have marched onto it.
+func _front_slot_count(u: Unit) -> int:
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var best: float = -INF
+	for p in slots:
+		best = maxf(best, (p - u.position).dot(u.facing))
+	var count: int = 0
+	for p in slots:
+		if best - (p - u.position).dot(u.facing) < u.rank_pitch_wu() * 0.5:
+			count += 1
+	return count
+
+
+## The unit's occupied slots as an order-independent, rounded key list, so two layouts can
+## be compared on FOOTPRINT alone without caring which soldier index holds which cell.
+func _sorted_slot_keys(u: Unit) -> Array:
+	var keys: Array = []
+	for p in u.soldier_world_slots(u.soldiers):
+		keys.append("%.2f,%.2f" % [p.x, p.y])
+	keys.sort()
+	return keys
