@@ -5032,22 +5032,78 @@ frame capture only ever proves the ONE zoom it recorded, and demos record at zoo
 LOD), so the DEFAULT render state is exactly the one no clip exercises.
 (`Lacaedemon/sparta` PR #1274, 2026-08-16.)
 
-## Requesting `d-morrison` as a PR reviewer always 422s here -- it is a self-request
+## A session writes under TWO identities here, and which one decides both the reviewer request and whether the review runs at all
 
-The `request-pr-review` convention (and the `gh pr edit --add-reviewer d-morrison` step several
-skills carry) has no satisfiable target in this repo. Agent sessions post under the `d-morrison`
-login, so every PR an agent opens has `author: d-morrison`, and GitHub rejects a review request
-naming a PR's own author with `422 Unprocessable Entity`. This is not a permissions or token
-problem, and no retry fixes it.
+The client makes the identity, not the session. Measured 2026-08-16, same session, same branch,
+minutes apart:
 
-Combined with `Lacaedemon`'s zero provisioned Copilot seats (documented above), that leaves
-`claude-code-review.yml` firing on `ready_for_review`/`synchronize` as the ONLY automated
-reviewer this repo actually has -- and it fires on its own, so nothing needs requesting.
+| write path | attributed author |
+| --- | --- |
+| GitHub MCP tools (`create_pull_request`, ...) | `d-morrison` (User) |
+| raw API with `GH_TOKEN` (`urllib`, `curl`) | `claude[bot]` (Bot) |
 
-**How to apply:** don't spend a round diagnosing a 422 on `requested_reviewers` here, and don't
-report a PR as blocked on a reviewer request. Confirm the author (`gh pr view <N> --json author`,
-or the raw API's `user.login`); if it matches the login this session posts under, it is a
-self-request and the real reviewer is the workflow. (`Lacaedemon/sparta` PR #1274, 2026-08-16.)
+PR #1274 was opened through the MCP tool and is authored by `d-morrison`; PR #1278 was opened
+through raw `urllib` with the same `GH_TOKEN` and is authored by `claude[bot]`. Two consequences,
+and the second is the expensive one.
+
+**Requesting `d-morrison` as a reviewer 422s on a `d-morrison`-authored PR.** GitHub rejects a
+review request naming a PR's own author with `422 Unprocessable Entity`. That is not a
+permissions or token problem and no retry fixes it, so don't spend a round diagnosing it and
+don't report the PR as blocked on a reviewer request. It does NOT hold for a `claude[bot]`-authored
+PR, where the request is merely useless rather than rejected -- combined with `Lacaedemon`'s zero
+provisioned Copilot seats (documented above), `claude-code-review.yml` is the only automated
+reviewer this repo has either way.
+
+**`GET /user` is NOT a usable identity probe in this session -- it disagrees with the writes the
+same token makes.** With the raw `GH_TOKEN` it returns `login: d-morrison`, while a PR created
+with that identical token is authored by `claude[bot]`. The agent proxy authenticates outbound
+calls, so that probe is measuring the egress path rather than the credential, exactly as
+ai-config's "don't gate a write on verifying the credential first" rule warns. The only reliable
+reading is the **attributed author of a write you actually made**: `pulls/<N>` -> `user.login`, or
+the workflow run's `actor`. Don't reason about which identity you are from a probe.
+
+(`Lacaedemon/sparta` PRs #1274 and #1278, 2026-08-16.)
+
+## A PR opened via the raw API is opened by a Bot, and the review workflow's own gate silently skips it
+
+`claude-code-review.yml` delegates to `Morrison-Lab/gha`'s reusable workflow, whose `gather-context`
+job gate reads:
+
+```yaml
+if: >-
+  github.event_name == 'workflow_dispatch' ||
+  (
+    github.event.pull_request.draft == false &&
+    github.event.pull_request.head.repo.full_name == github.repository &&
+    github.event.sender.type != 'Bot'
+  )
+```
+
+That last clause is the trap. A PR opened through the raw API has `sender.type == 'Bot'` (see the
+identity table above), so `gather-context`, `claude-review`, and `require-review` ALL skip -- with
+no annotation, no output, and no summary. A skipped review is indistinguishable from one that has
+not run yet, and `require-review` skipping means nothing turns red either. Measured on the same
+branch: run 31936557788 (`5d974233`, actor `d-morrison`) succeeded and posted a verdict; run
+31937729790 (`8163977d`, actor `claude[bot]`) skipped all three jobs.
+
+Reading the CALLER settles nothing -- it carries no path filter and no job `if:` at all. The gate
+is in the callee at its pinned ref, so clone `Morrison-Lab/gha` at `v2` and read it there.
+
+**The fix is a `workflow_dispatch`, whose branch of that `if:` is unconditional.** Pass `ref` =
+the PR branch (a dispatch that resolves against `main` reviews nothing and posts no comment), and
+`pr_number` as the caller's input name. The dispatch guard only blocks fork and `dependabot[bot]`
+PRs, so an ordinary same-repo PR passes.
+
+**Dispatching needs the MCP tool, not the raw API.** `POST .../workflows/<f>/dispatches` with the
+raw `GH_TOKEN` returns `403 Forbidden` (no `actions: write`), while
+`mcp__github__actions_run_trigger` with `method: run_workflow` returns `204` for the identical
+call -- a second place the two identities differ in SCOPE and not just in name. A 403 here is
+therefore a wrong-client error, not an absent capability: reach for the other client before
+reporting the review unreachable or falling back to a self-review.
+
+**How to apply:** after opening a PR, check the review workflow's newest run for
+`conclusion: skipped` with `actor` a Bot, rather than waiting on a verdict that will never come.
+(`Lacaedemon/sparta` PR #1278, 2026-08-16.)
 
 ## Never pipe `tools/check.sh` through `tail` -- it discards the patch-coverage breakdown
 
