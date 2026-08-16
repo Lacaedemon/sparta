@@ -5093,10 +5093,24 @@ minutes apart:
 | --- | --- |
 | GitHub MCP tools (`create_pull_request`, ...) | `d-morrison` (User) |
 | raw API with `GH_TOKEN` (`urllib`, `curl`) | `claude[bot]` (Bot) |
+| the `gh` CLI (`gh pr create`, `gh api`) | `dem-extra1` (User) |
 
 PR #1274 was opened through the MCP tool and is authored by `d-morrison`; PR #1278 was opened
 through raw `urllib` with the same `GH_TOKEN` and is authored by `claude[bot]`. Two consequences,
 and the second is the expensive one.
+
+**The `gh` row was added later, and it is the one that behaves sanely.**
+PR #1293 was opened with `gh pr create` and is authored by `dem-extra1` (User), which is also what
+`gh api user` returns and what `git log` records as the commit author --- so on this path the
+identity probe and the write AGREE, unlike the raw-API row above.
+Two consequences follow, both in the good direction.
+The review workflow's `github.event.sender.type != 'Bot'` gate passes, so a `gh`-opened PR gets
+its automatic review on the `opened` event with no push needed to heal it.
+And a `d-morrison` reviewer request does not name the PR's own author, so the 422 below does not
+arise on this path.
+Three write paths therefore yield three different identities from one session, which is the whole
+point of the section: do not generalize any row to a client you did not measure.
+(Measured 2026-08-16 on PR #1293.)
 
 **Requesting `d-morrison` as a reviewer 422s on a `d-morrison`-authored PR.** GitHub rejects a
 review request naming a PR's own author with `422 Unprocessable Entity`. That is not a
