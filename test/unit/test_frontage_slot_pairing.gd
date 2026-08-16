@@ -471,3 +471,45 @@ func test_lateral_order_is_a_strict_total_order() -> void:
 	])
 	assert_eq(Array(UnitFormation.lateral_order(positions)), [2, 1, 3, 0] as Array,
 		"x first, then depth, then array index -- no ambiguity left for a replay to resolve")
+
+
+# --- The countermarch rank reversal ------------------------------------------
+# UnitFormation.reversed_ranks_within_files: the file-major half of Unit.reform_ranks'
+# depth reflection, exercised directly.
+
+
+func test_reversed_ranks_within_files_flips_each_file_independently() -> void:
+	# File 0 is three deep, file 1 only two -- so they reverse over different depths.
+	var files := PackedInt32Array([0, 0, 0, 1, 1])
+	var ranks := PackedInt32Array([0, 1, 2, 0, 1])
+	assert_eq(Array(UnitFormation.reversed_ranks_within_files(files, ranks)),
+		[2, 1, 0, 1, 0] as Array,
+		"each file reverses over its OWN depth, not the block's deepest")
+
+
+func test_reversed_ranks_within_files_is_its_own_inverse() -> void:
+	var files := PackedInt32Array([0, 1, 0, 1, 0, 2])
+	var ranks := PackedInt32Array([0, 0, 1, 1, 2, 0])
+	var once: PackedInt32Array = UnitFormation.reversed_ranks_within_files(files, ranks)
+	assert_eq(Array(UnitFormation.reversed_ranks_within_files(files, once)), Array(ranks),
+		"reversing twice restores the original depths -- a reflection, not a rotation")
+
+
+func test_reversed_ranks_within_files_derives_depth_from_array_order_when_unset() -> void:
+	# The file-major layout's own fallback: a soldier's rank is how many EARLIER array
+	# entries share his file id. An empty rank array must reverse the same block.
+	var files := PackedInt32Array([0, 1, 0, 1, 0])
+	assert_eq(Array(UnitFormation.reversed_ranks_within_files(files, PackedInt32Array())),
+		[2, 1, 1, 0, 0] as Array,
+		"array order IS the depth order when no explicit rank array is stored")
+
+
+func test_reversed_ranks_within_files_degrades_on_a_stale_rank() -> void:
+	# A rank at or past its own file's depth would reverse to a negative one.
+	var files := PackedInt32Array([0, 0])
+	assert_eq(Array(UnitFormation.reversed_ranks_within_files(files,
+			PackedInt32Array([0, 9]))), [1, 0] as Array,
+		"an out-of-range rank clamps to the front instead of going negative")
+	assert_eq(Array(UnitFormation.reversed_ranks_within_files(
+			PackedInt32Array(), PackedInt32Array())), [] as Array,
+		"an empty block reverses to an empty block")
