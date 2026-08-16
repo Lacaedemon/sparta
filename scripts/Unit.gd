@@ -4655,15 +4655,34 @@ func _apply_row_slot_reflection(count: int, files: int) -> void:
 ## permanent -- strictly worse than the traversal being fixed here. So a still-invalid count
 ## after the ensure means the bodies genuinely cannot be read this tick, and the right answer
 ## is to leave the assignment alone and let the next in-sync query pair it properly.
+##
+## A rebuild that DOES succeed is the answer on its own, though, so the composition below is
+## skipped in that case -- see the comment at that return for why composing onto a fresh
+## pairing applies the reflection twice.
 func _apply_square_slot_reflection(count: int, files: int) -> void:
-	if count <= 0 or files <= 0:
-		return
+	# One guard rather than two. depth_reflection_pairing returns an empty array for a
+	# non-positive count or file count and an exactly-count-sized one otherwise, so a
+	# separate `files <= 0` check ahead of it could never fail on its own -- it would be
+	# unreachable, and so permanently uncovered. Comparing the size instead still bounds
+	# the index read below if that contract ever loosens, and both ways in are reachable.
 	var pairing: PackedInt32Array = UnitFormation.depth_reflection_pairing(count, files)
-	if pairing.size() != count:
+	if count <= 0 or pairing.size() != count:
 		return
+	# Whether an assignment is already in hand decides whether the reflection is wanted at all,
+	# so read it BEFORE the ensure below overwrites the answer. This mirrors that function's own
+	# early-out condition exactly; the two have to agree, or this reads "already paired" for a
+	# tick the ensure decided to rebuild.
+	var in_sync: bool = _sim_soldier_square_slot.size() == count and _square_slot_files == files
 	var grid: PackedVector2Array = UnitFormation.block_slots(count, files, file_pitch_wu())
 	_ensure_square_slot_assignment(count, files, grid)
 	if _sim_soldier_square_slot.size() != count or _square_slot_files != files:
+		return
+	# A rebuild has already done this job. _slot_frame_positions reads the mirror that the
+	# caller armed a moment ago, so a pairing computed from live bodies lands them in the frame
+	# the render will actually use -- the depth reflection is baked into it. Composing again
+	# would undo it and leave the bare lateral mirror standing, which walks the whole block
+	# through itself: the exact defect this reflection exists to prevent.
+	if not in_sync:
 		return
 	var out := PackedInt32Array()
 	out.resize(count)

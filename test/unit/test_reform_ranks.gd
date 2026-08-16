@@ -803,3 +803,74 @@ func test_square_reflection_declines_to_commit_a_placeholder_assignment() -> voi
 	assert_true(u.reform_ranks(true), "the reform still drops the fold and arms the mirror")
 	assert_eq(u._square_slot_files, -1,
 		"no file count is committed, so the next in-sync query re-pairs properly")
+	# The file count alone cannot discriminate: it starts at -1 and the placeholder guard leaves
+	# it there, so a build with no square branch at all reads -1 too and the assertion above
+	# passes against the very bug it is meant to catch. The assignment array separates them --
+	# only a build that reaches the square branch has a placeholder to decline to compose onto.
+	assert_eq(u._sim_soldier_square_slot.size(), u.soldiers,
+		"the square branch really was reached, so the -1 above is the guard and not its absence")
+
+
+## The merged guard's two ways in. depth_reflection_pairing returns an empty array for a
+## non-positive count or file count and an exactly-count-sized one otherwise, so a
+## non-positive count trips the first half of the condition and a non-positive file count
+## trips the size comparison. Both reach the same return, and neither may disturb an
+## assignment already in hand. Kept as two tests rather than one because they enter the
+## guard by different halves, and a single case would leave the other permanently uncovered
+## -- which is exactly the dead-branch problem that merged the two guards in the first place.
+func test_square_reflection_declines_a_non_positive_count() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u._sim_soldier_square_slot = PackedInt32Array([3, 1, 2, 0])
+	u._square_slot_files = 2
+
+	u._apply_square_slot_reflection(0, 2)
+
+	assert_eq(u._sim_soldier_square_slot, PackedInt32Array([3, 1, 2, 0]),
+		"a non-positive count leaves the assignment exactly as it stood")
+	assert_eq(u._square_slot_files, 2, "and leaves its committed file count alone")
+
+
+func test_square_reflection_declines_a_non_positive_file_count() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u._sim_soldier_square_slot = PackedInt32Array([3, 1, 2, 0])
+	u._square_slot_files = 2
+
+	u._apply_square_slot_reflection(4, 0)
+
+	assert_eq(u._sim_soldier_square_slot, PackedInt32Array([3, 1, 2, 0]),
+		"a non-positive file count yields an empty pairing, so the size check returns")
+	assert_eq(u._square_slot_files, 2, "and leaves its committed file count alone")
+
+
+## The out-of-sync rebuild path. When the square assignment is not in sync with the bodies,
+## _apply_square_slot_reflection's own _ensure_square_slot_assignment call re-pairs from live
+## positions first -- and _slot_frame_positions reads the mirror the reform armed a moment
+## earlier, so that rebuild already lands the men in the frame the render will use. Composing
+## the depth reflection on top of it applies the reflection a second time and marches the
+## block through itself.
+##
+## The bound is on MEAN travel rather than the moved count, because a rebuild re-pairs by
+## proximity rather than preserving identity: a plain rebuild with no reform at all already
+## moves 51 of these 60 men by more than half a pitch, so the count cannot separate the two
+## builds. Measured on this fixture (60 men, 8 files, 9.0 pitch, so a 63.0 wu depth span):
+## composing gives mean 30.74 and a farthest of 68.5 -- a man crossing more than the whole
+## block -- against mean 13.44 and a farthest of 28.5 once the composition is skipped. The
+## no-reform rebuild's own churn is mean 10.19, so what is left here is the pairing
+## function's fidelity on a partial-rank square, not this reflection.
+func test_square_hold_ground_reform_holds_its_ground_from_an_out_of_sync_assignment() -> void:
+	var u := _make_square_unit()
+	var before: PackedVector2Array = _fold_half_turn(u)
+	# Drop the freshness key without touching the pairing: what a formation change or a
+	# non-casualty count jump leaves behind, so the next query has to rebuild rather than
+	# early-out on an assignment it already holds.
+	u._square_slot_files = -1
+
+	assert_true(u.reform_ranks(true), "a flipped partial square reforms")
+
+	var t: Dictionary = _slot_travel(before, u.soldier_world_slots(u.soldiers),
+			u.file_pitch_wu())
+	var depth_span: float = float(UnitFormation.ranks_for(u.soldiers, 8) - 1) * u.file_pitch_wu()
+	assert_lt(float(t["mean"]), depth_span / 3.0,
+		"the rebuild does not double-apply the reflection and march the block through itself")
