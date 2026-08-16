@@ -355,11 +355,13 @@ left half and a right half, not a column.
 
 **One consequence to state before anyone designs against it: a maniple cannot
 relieve itself.** Its two centuries stand side by side, so the split offers no
-front-and-rear rotation. Every clearly attested Roman line change works the
-other way --- Scipio at Zama recalled the hastati *by trumpet* and moved the
-principes and triarii onto the wings, extending the line sideways rather than
-passing one line through another. Relief is a manoeuvre between *units*, which
-is [#819](https://github.com/Lacaedemon/sparta/issues/819)'s territory, not
+front-and-rear rotation.
+Every clearly attested Roman line change works the other way --- Scipio at Zama
+recalled the hastati *by trumpet* and moved the principes and triarii onto the
+wings, extending the line sideways rather than passing one line through
+another.
+Relief is a manoeuvre between *units*, which is
+[#819](https://github.com/Lacaedemon/sparta/issues/819)'s territory, not
 something a subunit structure delivers on its own.
 
 The *contubernium* is the tempting answer and should be resisted.
