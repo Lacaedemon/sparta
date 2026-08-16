@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/square-rally-reform.json",
+  "caption": "Rallying no longer marches a squared block through itself (#1272). A routing 60-man Infantry regiment in SQUARE reforms on the spot: its flight folded the slot grid a half-turn, and the rally re-squares it with a depth reflection. A square carries its own assignment of men to cells, so neither the file-major rank reversal (#1258) nor the row-major cell pairing (#1275) reached it, and the reflection was left standing -- every man was relabelled onto a cell on the far side of the block and walked its whole depth through the oncoming half to get there. The square grid comes from the same block_slots generator as the row-major one, so the same cell pairing cancels it once it is applied to the square's own array. Measured over this rally, on the same seed: the mean distance from a man's ground to the cell the reform hands him drops from 33.6 to 5.2 world units, and 3.5 seconds later the block has stopped moving entirely (0 of 60 men still short of their cell, against 52 of 60 before). The pairing itself leaves 56 of the 60 exactly where they stand; test_reform_ranks.gd asserts that count directly.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

@@ -4572,12 +4572,16 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 	# leaving his lateral position alone. Reversing each file's own rank order cancels that
 	# reflection, so a hold-ground reform re-squares to the same footprint without marching
 	# the block through itself.
-	# A squared block is excluded for the same reason formation_slots() excludes it: the
-	# square branch runs before the file-major one and never touches the file arrays, so
-	# calling _ensure_file_assignment here would commit a square-derived file count that
-	# nothing invalidates when the unit later leaves square. Square holds its own gap.
-	if hold_ground and is_about_face_fold and not in_square():
-		if _effective_file_major_reform():
+	# A squared block cancels the reflection on its OWN assignment array. It must not reach
+	# either branch below: the square grid never touches the file arrays, so
+	# _ensure_file_assignment here would commit a square-derived file count that nothing
+	# invalidates when the unit later leaves square, and the row-major branch would commit
+	# the same contaminated count one array over. Its grid comes from the same block_slots
+	# generator, so the same cell pairing applies -- only which array holds it differs.
+	if hold_ground and is_about_face_fold:
+		if in_square():
+			_apply_square_slot_reflection(soldiers, files)
+		elif _effective_file_major_reform():
 			_ensure_file_assignment(soldiers, files)
 			_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
 					_sim_soldier_file, _sim_soldier_rank)
@@ -4625,6 +4629,66 @@ func _apply_row_slot_reflection(count: int, files: int) -> void:
 		out[i] = pairing[clampi(cell, 0, count - 1)]
 	_sim_soldier_row_slot = out
 	_row_slot_files = files
+
+
+## Cancel a hold-ground reform's depth reflection for a SQUARED block, on the square's own
+## per-soldier assignment (_sim_soldier_square_slot) rather than the row-major one.
+##
+## Same cancellation, same primitive, different array. The square grid is
+## `block_slots(count, square_files(count), ...)` -- the very generator
+## depth_reflection_pairing's derivation is stated against -- so the cell pairing that
+## cancels the reflection for a row-major grid cancels it here unchanged. The pairing is
+## exact integer arithmetic over (count, files) alone, so the square's differing pitch (it
+## passes no separate rank_pitch, making depth equal file spacing) scales the geometry
+## without touching which cell pairs with which.
+##
+## Only the ARRAY differs, and it has to: writing the row-major array for a squared unit
+## would commit a square-derived file count into _row_slot_files, which is exactly the
+## contamination the old `not in_square()` guard existed to prevent -- just moved one array
+## over. Square keeps its own gap, as it always has.
+##
+## Re-pairs first rather than assuming an assignment is in hand, because
+## _ensure_square_slot_assignment deliberately leaves _square_slot_files invalid (-1) on a
+## tick whose body layer could not be read, so that a placeholder never satisfies its own
+## early-out forever after. Composing onto that placeholder would defeat the very guard
+## that keeps it re-pairable, and committing `files` alongside it would make the placeholder
+## permanent -- strictly worse than the traversal being fixed here. So a still-invalid count
+## after the ensure means the bodies genuinely cannot be read this tick, and the right answer
+## is to leave the assignment alone and let the next in-sync query pair it properly.
+##
+## A rebuild that DOES succeed is the answer on its own, though, so the composition below is
+## skipped in that case -- see the comment at that return for why composing onto a fresh
+## pairing applies the reflection twice.
+func _apply_square_slot_reflection(count: int, files: int) -> void:
+	# One guard rather than two. depth_reflection_pairing returns an empty array for a
+	# non-positive count or file count and an exactly-count-sized one otherwise, so a
+	# separate `files <= 0` check ahead of it could never fail on its own -- it would be
+	# unreachable, and so permanently uncovered. Comparing the size instead still bounds
+	# the index read below if that contract ever loosens, and both ways in are reachable.
+	var pairing: PackedInt32Array = UnitFormation.depth_reflection_pairing(count, files)
+	if count <= 0 or pairing.size() != count:
+		return
+	# Whether an assignment is already in hand decides whether the reflection is wanted at all,
+	# so read it BEFORE the ensure below overwrites the answer. This mirrors that function's own
+	# early-out condition exactly; the two have to agree, or this reads "already paired" for a
+	# tick the ensure decided to rebuild.
+	var in_sync: bool = _sim_soldier_square_slot.size() == count and _square_slot_files == files
+	var grid: PackedVector2Array = UnitFormation.block_slots(count, files, file_pitch_wu())
+	_ensure_square_slot_assignment(count, files, grid)
+	if _sim_soldier_square_slot.size() != count or _square_slot_files != files:
+		return
+	# A rebuild has already done this job. _slot_frame_positions reads the mirror that the
+	# caller armed a moment ago, so a pairing computed from live bodies lands them in the frame
+	# the render will actually use -- the depth reflection is baked into it. Composing again
+	# would undo it and leave the bare lateral mirror standing, which walks the whole block
+	# through itself: the exact defect this reflection exists to prevent.
+	if not in_sync:
+		return
+	var out := PackedInt32Array()
+	out.resize(count)
+	for i in range(count):
+		out[i] = pairing[clampi(_sim_soldier_square_slot[i], 0, count - 1)]
+	_sim_soldier_square_slot = out
 
 
 ## True when every soldier body stands within REFORM_SETTLE_EPS of its formation slot --

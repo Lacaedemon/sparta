@@ -634,3 +634,243 @@ func test_file_major_hold_ground_reform_holds_no_row_pairing() -> void:
 	assert_true(u.reform_ranks(true), "a flipped partial grid reforms")
 	assert_eq(u._sim_soldier_row_slot.size(), 0,
 		"the file-major branch leaves the row-major pairing untouched")
+
+
+## --- The SQUARE layout -------------------------------------------------------
+## A squared block folds to +/-PI on a rout and re-squares on rally exactly as a line does,
+## but its slots come from _sim_soldier_square_slot rather than the row-major array. The
+## grid is still block_slots, so the same cell pairing cancels the same reflection -- only
+## which array carries it differs.
+
+
+## A seeded SQUARED unit with a PARTIAL last rank. square_files(60) is 8, so this grid is
+## 7 full ranks of 8 plus a 4-man rear rank -- deliberately the same 60/8 shape the
+## row-major fixture builds, so the two layouts are directly comparable.
+func _make_square_unit(count: int = 60, mode: int = Unit.FORMATION_SQUARE) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = count
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	u.set_formation(mode)
+	return u
+
+
+## Fold the grid the way a rout does: _face_dir's snap-absorb reverses facing AND folds
+## _formation_angle together, which leaves the rendered grid invariant, so the men do not
+## move while fleeing. Anything the reform then does is the reform's own doing.
+func _fold_half_turn(u: Unit) -> PackedVector2Array:
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	var after: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(before.size()):
+		assert_almost_eq(before[i].x, after[i].x, 0.01,
+			"precondition: the absorbed fold does not move body %d laterally" % i)
+		assert_almost_eq(before[i].y, after[i].y, 0.01,
+			"precondition: the absorbed fold does not move body %d in depth" % i)
+	return after
+
+
+## The bug this fixes. The square branch armed _formation_mirror_x with nothing cancelling
+## it, so every man's slot reflected in depth and the whole block walked through itself.
+func test_square_hold_ground_reform_leaves_the_block_where_it_stands() -> void:
+	var u := _make_square_unit()
+	assert_true(u.in_square(), "precondition: the fixture really is squared")
+	assert_eq(u.formation_files(u.soldiers), 8, "precondition: square derives 8 files")
+	var before: PackedVector2Array = _fold_half_turn(u)
+
+	assert_true(u.reform_ranks(true), "a flipped partial square reforms")
+	assert_true(u._formation_mirror_x, "the depth reflection is armed, as for any about-face")
+
+	var t: Dictionary = _slot_travel(before, u.soldier_world_slots(u.soldiers),
+			u.file_pitch_wu())
+	# Identical to the row-major 60/8 result, and for the identical reason: 56 of 60 pair
+	# straight across, and only the front rank's four outer men have no counterpart in the
+	# centred 4-man rear rank.
+	assert_eq(int(t["moved"]), 4, "only the four unpairable men move; the other 56 hold")
+
+
+## The cancellation must not cost the reform its purpose: a FULL rank still ends up leading.
+func test_square_hold_ground_reform_still_brings_a_full_rank_to_the_front() -> void:
+	var u := _make_square_unit()
+	_fold_half_turn(u)
+	assert_true(u.reform_ranks(true), "a flipped partial square reforms")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var best: float = -INF
+	for p in slots:
+		best = maxf(best, (p - u.position).dot(u.facing))
+	var front: int = 0
+	for p in slots:
+		if best - (p - u.position).dot(u.facing) < u.file_pitch_wu() * 0.5:
+			front += 1
+	assert_eq(front, 8, "a full 8-man rank fronts the re-squared grid")
+
+
+## Same footprint as the DRILL reaches -- only WHICH man holds which cell differs. Anything
+## else would make the hold-ground variant a shape change rather than a relabel.
+##
+## Deliberately not compared against the pre-reform footprint, which genuinely does change:
+## bringing a full rank forward moves the partial rank from the block's front to its rear,
+## and that is the reform doing its job rather than a defect.
+func test_square_hold_ground_reform_reaches_the_same_footprint_as_the_drill() -> void:
+	var drill := _make_square_unit()
+	_fold_half_turn(drill)
+	assert_true(drill.reform_ranks(), "the ordered drill reforms")
+	var held := _make_square_unit()
+	_fold_half_turn(held)
+	assert_true(held.reform_ranks(true), "so does the hold-ground variant")
+
+	assert_eq(_sorted_slot_keys(drill), _sorted_slot_keys(held),
+		"identical set of occupied slots; the men holding them are what differs")
+
+
+## The pairing is an involution, so a second hold-ground reform undoes the first exactly.
+## This is what makes composing onto the held assignment correct rather than overwriting it.
+func test_square_hold_ground_reform_twice_returns_every_man_to_his_own_cell() -> void:
+	var u := _make_square_unit()
+	_fold_half_turn(u)
+	var first: PackedInt32Array = u._sim_soldier_square_slot.duplicate()
+	assert_true(u.reform_ranks(true), "the first reform runs")
+	var once: PackedInt32Array = u._sim_soldier_square_slot.duplicate()
+	assert_ne(once, first, "precondition: the first reform actually changed the assignment")
+
+	u.facing = Vector2.DOWN
+	u._formation_angle = PI
+	assert_true(u.reform_ranks(true), "the second reform runs")
+	assert_eq(u._sim_soldier_square_slot, first,
+		"a second hold-ground reform returns every man to the cell he started on")
+
+
+## SCHILTRON is the other in_square() variant and must behave identically -- the guard keys
+## off in_square(), not off the orbis specifically.
+func test_schiltron_hold_ground_reform_holds_its_ground_like_the_orbis() -> void:
+	var u := _make_square_unit(60, Unit.FORMATION_SCHILTRON)
+	assert_true(u.in_square(), "precondition: schiltron counts as squared")
+	var before: PackedVector2Array = _fold_half_turn(u)
+	assert_true(u.reform_ranks(true), "a flipped partial schiltron reforms")
+	var t: Dictionary = _slot_travel(before, u.soldier_world_slots(u.soldiers),
+			u.file_pitch_wu())
+	assert_eq(int(t["moved"]), 4, "schiltron holds its ground exactly as the orbis does")
+
+
+## Scope pin. A square whose count divides its own file count is centre-symmetric, so the
+## half-turn already fronts a full rank and reform_ranks declines before arming anything.
+## Such a block was never affected, and must not start being reformed by this change.
+func test_a_full_square_declines_the_reform_entirely() -> void:
+	var u := _make_square_unit(64)
+	assert_eq(u.formation_files(u.soldiers), 8, "precondition: 64 men lay out at 8 files")
+	assert_eq(u.soldiers % u.formation_files(u.soldiers), 0,
+		"precondition: the grid is full, with no partial rank")
+	var before: PackedVector2Array = _fold_half_turn(u)
+
+	assert_false(u.reform_ranks(true), "a full square has nothing to bring forward")
+	assert_false(u._formation_mirror_x, "no reflection is armed")
+	var t: Dictionary = _slot_travel(before, u.soldier_world_slots(u.soldiers),
+			u.file_pitch_wu())
+	assert_eq(int(t["moved"]), 0, "not one man moves")
+
+
+## The square branch must keep its cancellation on its OWN array. Writing the row-major one
+## would commit a square-derived file count for a later line layout to inherit, which is the
+## contamination the branch has always been kept clear of.
+func test_square_hold_ground_reform_holds_no_row_pairing() -> void:
+	var u := _make_square_unit()
+	_fold_half_turn(u)
+	assert_true(u.reform_ranks(true), "a flipped partial square reforms")
+	assert_eq(u._sim_soldier_row_slot.size(), 0,
+		"the square branch leaves the row-major pairing untouched")
+	assert_eq(u._row_slot_files, -1, "and commits no file count for the line layout")
+
+
+## The placeholder guard. _ensure_square_slot_assignment leaves the file count invalid on a
+## tick whose bodies cannot be read, precisely so the placeholder never satisfies its own
+## early-out forever after. The reflection must respect that rather than composing onto it
+## and committing a count, which would make the placeholder permanent.
+func test_square_reflection_declines_to_commit_a_placeholder_assignment() -> void:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 60
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_true(u._sim_soldier_pos.is_empty(),
+		"precondition: no bodies seeded, so the body layer cannot be read")
+
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	assert_true(u.reform_ranks(true), "the reform still drops the fold and arms the mirror")
+	assert_eq(u._square_slot_files, -1,
+		"no file count is committed, so the next in-sync query re-pairs properly")
+	# The file count alone cannot discriminate: it starts at -1 and the placeholder guard leaves
+	# it there, so a build with no square branch at all reads -1 too and the assertion above
+	# passes against the very bug it is meant to catch. The assignment array separates them --
+	# only a build that reaches the square branch has a placeholder to decline to compose onto.
+	assert_eq(u._sim_soldier_square_slot.size(), u.soldiers,
+		"the square branch really was reached, so the -1 above is the guard and not its absence")
+
+
+## The merged guard's two ways in. depth_reflection_pairing returns an empty array for a
+## non-positive count or file count and an exactly-count-sized one otherwise, so a
+## non-positive count trips the first half of the condition and a non-positive file count
+## trips the size comparison. Both reach the same return, and neither may disturb an
+## assignment already in hand. Kept as two tests rather than one because they enter the
+## guard by different halves, and a single case would leave the other permanently uncovered
+## -- which is exactly the dead-branch problem that merged the two guards in the first place.
+func test_square_reflection_declines_a_non_positive_count() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u._sim_soldier_square_slot = PackedInt32Array([3, 1, 2, 0])
+	u._square_slot_files = 2
+
+	u._apply_square_slot_reflection(0, 2)
+
+	assert_eq(u._sim_soldier_square_slot, PackedInt32Array([3, 1, 2, 0]),
+		"a non-positive count leaves the assignment exactly as it stood")
+	assert_eq(u._square_slot_files, 2, "and leaves its committed file count alone")
+
+
+func test_square_reflection_declines_a_non_positive_file_count() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u._sim_soldier_square_slot = PackedInt32Array([3, 1, 2, 0])
+	u._square_slot_files = 2
+
+	u._apply_square_slot_reflection(4, 0)
+
+	assert_eq(u._sim_soldier_square_slot, PackedInt32Array([3, 1, 2, 0]),
+		"a non-positive file count yields an empty pairing, so the size check returns")
+	assert_eq(u._square_slot_files, 2, "and leaves its committed file count alone")
+
+
+## The out-of-sync rebuild path. When the square assignment is not in sync with the bodies,
+## _apply_square_slot_reflection's own _ensure_square_slot_assignment call re-pairs from live
+## positions first -- and _slot_frame_positions reads the mirror the reform armed a moment
+## earlier, so that rebuild already lands the men in the frame the render will use. Composing
+## the depth reflection on top of it applies the reflection a second time and marches the
+## block through itself.
+##
+## The bound is on MEAN travel rather than the moved count, because a rebuild re-pairs by
+## proximity rather than preserving identity: a plain rebuild with no reform at all already
+## moves 51 of these 60 men by more than half a pitch, so the count cannot separate the two
+## builds. Measured on this fixture (60 men, 8 files, 9.0 pitch, so a 63.0 wu depth span):
+## composing gives mean 30.74 and a farthest of 68.5 -- a man crossing more than the whole
+## block -- against mean 13.44 and a farthest of 28.5 once the composition is skipped. The
+## no-reform rebuild's own churn is mean 10.19, so what is left here is the pairing
+## function's fidelity on a partial-rank square, not this reflection.
+func test_square_hold_ground_reform_holds_its_ground_from_an_out_of_sync_assignment() -> void:
+	var u := _make_square_unit()
+	var before: PackedVector2Array = _fold_half_turn(u)
+	# Drop the freshness key without touching the pairing: what a formation change or a
+	# non-casualty count jump leaves behind, so the next query has to rebuild rather than
+	# early-out on an assignment it already holds.
+	u._square_slot_files = -1
+
+	assert_true(u.reform_ranks(true), "a flipped partial square reforms")
+
+	var t: Dictionary = _slot_travel(before, u.soldier_world_slots(u.soldiers),
+			u.file_pitch_wu())
+	var depth_span: float = float(UnitFormation.ranks_for(u.soldiers, 8) - 1) * u.file_pitch_wu()
+	assert_lt(float(t["mean"]), depth_span / 3.0,
+		"the rebuild does not double-apply the reflection and march the block through itself")

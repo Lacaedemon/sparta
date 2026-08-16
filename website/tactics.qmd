@@ -57,7 +57,11 @@ fightable --- for as long as it's plausibly still in view.
   the men the flip can't leave in place have to move: under **File-major** reform
   (the default) the under-strength files step up one rank to close it, and under
   **Row-major** the handful whose rank is a different width from the one it pairs
-  with across the flip hold their file and swap ends. Either way, unlike an ordered
+  with across the flip hold their file and swap ends.
+  A unit rallying in **square** (orbis or schiltron) keeps its own assignment of men
+  to cells and re-squares on that,
+  so a broken square recovers without marching itself inside out.
+  Whichever it is, unlike an ordered
   about-face, the men don't counter-march through the block to do it, so a rallied
   unit is back in fighting shape almost at once rather than spending seconds
   shuffling through itself.
@@ -112,6 +116,27 @@ Each man takes the slot whose flipped position is the ground he already holds, s
 almost the whole block stands still &mdash; only the six front-rank men with no
 counterpart across the flip (an 11-wide rank pairing against a centred 5-wide one)
 hold their file and swap ends.
+:::
+
+::: {#fig-square-rally-reform .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/square_rally_reform.jpg">
+  <source src="media/square_rally_reform.mp4" type="video/mp4">
+  Your browser can't play this clip &mdash; see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+The same recovery once more, for a regiment holding **square**.
+A square keeps its own assignment of men to cells,
+which neither the file-major step-up nor the row-major pairing reaches,
+so undoing the flip has to name that third assignment directly.
+Measured over this rally, the average distance from a man's ground to the
+cell the reform hands him falls from 34 to 5 world units, and three and a half
+seconds later the block has stopped moving altogether &mdash; no man still short of
+his cell, where before the fix 52 of the 60 were still shuffling.
 :::
 
 ::: {#fig-rout-rally .demo}
