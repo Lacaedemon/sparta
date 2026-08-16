@@ -752,7 +752,7 @@ check_chars() {
   # via printf's octal escapes) rather than `grep -P '\x{...}'`: -P is a GNU
   # extension absent from the BSD grep that ships on macOS, whereas fixed-string
   # byte matching is portable and needs no special locale.
-  local lsq rsq ldq rdq endash emdash
+  local lsq rsq ldq rdq endash emdash times
   lsq="$(printf '\342\200\230')"; rsq="$(printf '\342\200\231')"
   ldq="$(printf '\342\200\234')"; rdq="$(printf '\342\200\235')"
   endash="$(printf '\342\200\223')"; emdash="$(printf '\342\200\224')"
@@ -780,7 +780,11 @@ check_chars() {
       -e "$times" \
       "${files[@]}" 2>/dev/null)"
   if [ -n "$out" ]; then
-    err "Non-standard characters found (use straight quotes, ASCII '-', and &times;):"
+    # Two file types, two remedies for U+00D7: this scans *.R as well as *.qmd, and
+    # &times; is only meaningful in the latter. Pandoc renders a \uXXXX escape literally
+    # in .qmd prose, so that is NOT a valid substitute there -- but it is the right form
+    # in an R string literal.
+    err "Non-standard characters found (straight quotes and ASCII '-'; for U+00D7: x or * in .R, &times; in .qmd prose):"
     printf '%s\n' "$out" >&2
     return 1
   fi
