@@ -468,3 +468,169 @@ func _sorted_slot_keys(u: Unit) -> Array:
 		keys.append("%.2f,%.2f" % [p.x, p.y])
 	keys.sort()
 	return keys
+
+
+# --- Row-major hold-ground reform -------------------------------------------------------
+# The file-major branch cancels the hold-ground depth reflection by reversing each file's own
+# rank order. Row major carries no per-soldier depth to reverse, so it cancels the same
+# reflection with a slot pairing instead. Reachable in real play two ways: the unit-settings
+# panel's own cycle, and AUTO on an undisciplined unit.
+
+
+## A seeded ROW-MAJOR unit with a PARTIAL last rank: 60 men at 8 files = 7 full ranks + 4.
+func _make_row_major_unit() -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 60
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	u.frontage_override = 8
+	u.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
+	u.seed_sim_soldiers()
+	return u
+
+
+## How far the FARTHEST man's slot moves, and how many move at all -- the two numbers that
+## separate "re-squared where it stands" from "marched the block through itself".
+func _slot_travel(before: PackedVector2Array, after: PackedVector2Array,
+		pitch: float) -> Dictionary:
+	var moved: int = 0
+	var farthest: float = 0.0
+	var total: float = 0.0
+	for i in range(before.size()):
+		var d: float = before[i].distance_to(after[i])
+		total += d
+		farthest = maxf(farthest, d)
+		if d > pitch * 0.5:
+			moved += 1
+	return {"moved": moved, "farthest": farthest, "mean": total / maxf(1.0, before.size())}
+
+
+## The bug this fixes: under raw index-order assignment the depth reflection relabelled the
+## whole block, so every man walked the block's full depth through the oncoming half.
+func test_row_major_hold_ground_reform_leaves_the_block_where_it_stands() -> void:
+	var u := _make_row_major_unit()
+	assert_false(u._effective_file_major_reform(),
+		"precondition: this fixture really is on the row-major branch")
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	assert_true(u.reform_ranks(true), "a flipped partial grid reforms")
+
+	var t: Dictionary = _slot_travel(before, u.soldier_world_slots(u.soldiers), u.rank_pitch_wu())
+	# 56 of 60 pair exactly; only the front rank's four outer men have no counterpart in the
+	# centred 4-man rear rank, so they hold their file and swap ends.
+	assert_eq(int(t["moved"]), 4, "only the four unpairable men move; the other 56 hold")
+
+
+## The reversal must not cost the reform its purpose: a FULL rank still ends up leading.
+func test_row_major_hold_ground_reform_still_brings_a_full_rank_to_the_front() -> void:
+	var u := _make_row_major_unit()
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	assert_eq(_front_slot_count(u), 4,
+		"precondition: the flip leaves the 4-man partial rank leading")
+	assert_true(u.reform_ranks(true), "a flipped partial grid reforms")
+	assert_eq(_front_slot_count(u), 8, "a full 8-man rank fronts the re-squared grid")
+
+
+## Same footprint as the drill -- only WHICH man holds which cell differs. Anything else
+## would make the hold-ground variant a shape change rather than a relabel.
+func test_row_major_hold_ground_reform_reaches_the_same_footprint_as_the_drill() -> void:
+	var drill := _make_row_major_unit()
+	drill.facing = Vector2.UP
+	drill._formation_angle = PI
+	assert_true(drill.reform_ranks(), "the ordered drill reforms")
+	var held := _make_row_major_unit()
+	held.facing = Vector2.UP
+	held._formation_angle = PI
+	assert_true(held.reform_ranks(true), "so does the hold-ground variant")
+
+	assert_eq(_sorted_slot_keys(drill), _sorted_slot_keys(held),
+		"identical set of occupied slots; the men holding them are what differs")
+
+
+## Default false is unchanged: an ORDERED rear-move or countermarch still means the drill,
+## and still marches the men through the block. Scoping the pairing to the rally is the point.
+func test_row_major_plain_reform_still_marches_the_block_through_itself() -> void:
+	var u := _make_row_major_unit()
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	assert_true(u.reform_ranks(), "a flipped partial grid reforms")
+
+	var t: Dictionary = _slot_travel(before, u.soldier_world_slots(u.soldiers), u.rank_pitch_wu())
+	assert_eq(int(t["moved"]), 60, "the drill still relabels the whole block")
+	assert_gt(float(t["farthest"]), u.rank_pitch_wu() * 5.0,
+		"and still carries men most of the block's depth, unlike hold-ground")
+
+
+## The pairing is an involution, so a second hold-ground reform returns every man to the cell
+## he started on rather than compounding into a third layout.
+func test_row_major_hold_ground_reform_twice_returns_every_man_to_his_own_cell() -> void:
+	var u := _make_row_major_unit()
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	assert_true(u.reform_ranks(true), "first hold-ground reform")
+	var once: PackedInt32Array = u._sim_soldier_row_slot.duplicate()
+	assert_eq(once.size(), 60, "the pairing is held after the first reform")
+
+	u._formation_angle = PI
+	assert_true(u.reform_ranks(true), "second hold-ground reform")
+	for i in range(u._sim_soldier_row_slot.size()):
+		assert_eq(u._sim_soldier_row_slot[i], i,
+			"soldier %d is back on his own cell" % i)
+
+
+## A casualty trims the pairing at the dead man's own index, exactly like every other
+## per-soldier array, so the survivors keep the cells they already held.
+func test_row_major_pairing_survives_a_casualty_index_aligned() -> void:
+	var u := _make_row_major_unit()
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	assert_true(u.reform_ranks(true), "a flipped partial grid reforms")
+	var before: PackedInt32Array = u._sim_soldier_row_slot.duplicate()
+
+	var dropped: int = 3
+	var trimmed: PackedInt32Array = UnitFormation.drop_slot_assignment(before, dropped)
+	assert_eq(trimmed.size(), before.size() - 1, "one entry leaves with the dead man")
+	var seen := {}
+	for c in trimmed:
+		assert_false(seen.has(c), "still a permutation after the trim")
+		seen[c] = true
+	assert_eq(trimmed.size(), seen.size(), "every remaining cell claimed exactly once")
+
+
+## A genuine reshape changes what the cells MEAN, so a pairing computed against the old
+## frontage is dropped rather than reinterpreted against the new one.
+func test_row_major_pairing_is_dropped_when_the_frontage_reshapes() -> void:
+	var u := _make_row_major_unit()
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	assert_true(u.reform_ranks(true), "a flipped partial grid reforms")
+	assert_eq(u._row_slot_files, 8, "the pairing records the frontage it was computed for")
+
+	# Compared at formation_slots(), which is where the guard lives -- soldier_world_slots()
+	# would additionally apply the still-armed _formation_mirror_x and rotate into world
+	# space, neither of which is what this test is about.
+	u.frontage_override = 10
+	assert_eq(u.formation_files(u.soldiers), 10, "precondition: the grid really did reshape")
+	var reshaped: PackedVector2Array = u.formation_slots(u.soldiers)
+	var plain: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
+	assert_eq(reshaped.size(), plain.size(), "same soldier count either way")
+	for i in range(reshaped.size()):
+		assert_eq(reshaped[i], plain[i],
+			"soldier %d falls back to the identity layout on the new grid" % i)
+
+
+## The row-major pairing must not leak into the file-major branch, which cancels the same
+## reflection its own way and would otherwise have the mirror applied twice.
+func test_file_major_hold_ground_reform_holds_no_row_pairing() -> void:
+	var u := _make_partial_unit()
+	assert_true(u._effective_file_major_reform(),
+		"precondition: the default fixture is file-major")
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	assert_true(u.reform_ranks(true), "a flipped partial grid reforms")
+	assert_eq(u._sim_soldier_row_slot.size(), 0,
+		"the file-major branch leaves the row-major pairing untouched")

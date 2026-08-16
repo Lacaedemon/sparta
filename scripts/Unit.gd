@@ -3715,6 +3715,31 @@ var _sim_soldier_square_slot: PackedInt32Array = PackedInt32Array()
 # formation change (see set_formation) -- either way the next query pairs fresh.
 var _square_slot_files: int = -1
 
+# Persistent per-soldier ROW-MAJOR slot assignment, index-aligned with _sim_soldier_pos:
+# _sim_soldier_row_slot[i] is the cell, within the wide-line grid UnitFormation.slots lays
+# out, that soldier i occupies. EMPTY is the normal state and means the historical identity
+# layout (soldier i takes cell i) -- unlike the square and file-major assignments, this one
+# is not maintained continuously, because row-major's whole character is that it recomputes
+# from the live count every tick.
+#
+# It is populated by exactly one event: a HOLD-GROUND reform's depth reflection, which would
+# otherwise relabel the entire block and march every man through the oncoming half to reach a
+# slot another man is vacating in the same tick. The pairing that cancels it
+# (UnitFormation.depth_reflection_pairing) is exact integer arithmetic over the grid, so
+# unlike the square pairing this needs no live-body read and no proximity search -- it is
+# deterministic, replay-safe, and correct before the bodies seed.
+#
+# Carried through a casualty by SoldierMelee.reap()'s index-aligned trim, exactly like
+# _sim_soldier_square_slot, so a man who held his ground keeps holding it as the block takes
+# losses.
+var _sim_soldier_row_slot: PackedInt32Array = PackedInt32Array()
+# The file count _sim_soldier_row_slot was paired against. A mismatch against the current
+# formation_files(count) means the grid has genuinely reshaped (a frontage change, an
+# explicatio/duplicatio), so the cells the pairing names no longer mean what they did and the
+# assignment is dropped back to identity rather than reinterpreted against a different grid.
+# -1 = no pairing held, which is the ordinary state.
+var _row_slot_files: int = -1
+
 # Per-soldier facing (the drill-maneuver foundation), index-aligned with
 # _sim_soldier_pos. By default every body faces the unit heading (kept synced each
 # tick in SoldierBodies.step). A per-soldier maneuver -- about-face (conversio),
@@ -3928,7 +3953,14 @@ func formation_slots(count: int) -> PackedVector2Array:
 		var out := UnitFormation.file_major_block_slots(
 				_sim_soldier_file, files, file_pitch_wu(), rank_pitch_wu(), _sim_soldier_rank)
 		return UnitFormation.apply_frontage_anchor_offset(out, frontage_anchor_offset)
-	return UnitFormation.slots(self, count)
+	var row_grid: PackedVector2Array = UnitFormation.slots(self, count)
+	# A hold-ground reform leaves a pairing here that cancels its own depth reflection; with
+	# none held (the ordinary case) this is the historical identity layout, cell i for
+	# soldier i. The file-count guard drops a pairing whose grid has since reshaped rather
+	# than reinterpreting its cell ids against a frontage they were never computed for.
+	if _sim_soldier_row_slot.size() == count and _row_slot_files == formation_files(count):
+		return UnitFormation.permute_slots(row_grid, _sim_soldier_row_slot)
+	return row_grid
 
 
 ## Rebuild the persistent per-soldier file-major assignment (_sim_soldier_file) FRESH
@@ -4539,18 +4571,60 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 	# The mirror reflects the grid in depth, which negates every man's slot depth while
 	# leaving his lateral position alone. Reversing each file's own rank order cancels that
 	# reflection, so a hold-ground reform re-squares to the same footprint without marching
-	# the block through itself. Row-major has no per-soldier depth array to reverse, so it
-	# keeps the traversal for now; that needs its own slot pairing and is tracked separately.
+	# the block through itself.
 	# A squared block is excluded for the same reason formation_slots() excludes it: the
 	# square branch runs before the file-major one and never touches the file arrays, so
 	# calling _ensure_file_assignment here would commit a square-derived file count that
 	# nothing invalidates when the unit later leaves square. Square holds its own gap.
-	if hold_ground and is_about_face_fold and not in_square() and _effective_file_major_reform():
-		_ensure_file_assignment(soldiers, files)
-		_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
-				_sim_soldier_file, _sim_soldier_rank)
+	if hold_ground and is_about_face_fold and not in_square():
+		if _effective_file_major_reform():
+			_ensure_file_assignment(soldiers, files)
+			_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
+					_sim_soldier_file, _sim_soldier_rank)
+		else:
+			# Row-major has no per-soldier depth array to reverse, so the same cancellation
+			# is expressed as a slot pairing instead: each man takes the cell whose reflected
+			# position is the one he already stands on. Composed onto whatever pairing is
+			# already held (identity, normally) rather than overwriting it, so a second
+			# hold-ground reform undoes the first exactly -- the pairing is an involution.
+			_apply_row_slot_reflection(soldiers, files)
 	_render_dirty = true
 	return true
+
+
+## Cancel a hold-ground reform's depth reflection for the ROW-MAJOR layout, by composing the
+## reflection's own cell pairing onto this unit's persistent slot assignment.
+##
+## The file-major branch cancels the same reflection by reversing each file's rank order, which
+## it can do because that layout already carries a per-soldier depth. Row major carries nothing
+## -- soldier i takes cell i -- so the cancellation has to name cells directly.
+##
+## COMPOSES rather than overwrites. A soldier currently holding cell `a[i]` stands on that
+## cell's pre-reflection ground, so to keep standing there he must now hold the cell that
+## inherits that ground, `pairing[a[i]]`. Overwriting with the bare pairing would instead be
+## correct only from the identity layout, and would silently corrupt a unit that already holds
+## one -- and since the pairing is an involution, composing also makes a second hold-ground
+## reform undo the first exactly, which is what the maneuver means.
+##
+## An out-of-sync held assignment (a reshape changed the file count, or the array size drifted)
+## is treated as identity rather than reinterpreted: its cell ids were computed against a grid
+## that no longer exists. That is the same judgment formation_slots() makes when it declines to
+## apply such an assignment, kept consistent here so the two never disagree about which layout
+## is in force.
+func _apply_row_slot_reflection(count: int, files: int) -> void:
+	if count <= 0 or files <= 0:
+		return
+	var pairing: PackedInt32Array = UnitFormation.depth_reflection_pairing(count, files)
+	if pairing.size() != count:
+		return
+	var held: bool = _sim_soldier_row_slot.size() == count and _row_slot_files == files
+	var out := PackedInt32Array()
+	out.resize(count)
+	for i in range(count):
+		var cell: int = _sim_soldier_row_slot[i] if held else i
+		out[i] = pairing[clampi(cell, 0, count - 1)]
+	_sim_soldier_row_slot = out
+	_row_slot_files = files
 
 
 ## True when every soldier body stands within REFORM_SETTLE_EPS of its formation slot --
@@ -6854,6 +6928,7 @@ func to_snapshot_dict() -> Dictionary:
 		"file_major_reform_mode": file_major_reform_mode,
 		"file_assignment_files": _file_assignment_files,
 		"square_slot_files": _square_slot_files,
+		"row_slot_files": _row_slot_files,
 		"under_fire": _under_fire, "in_enemy_contact": _in_enemy_contact,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
@@ -6897,6 +6972,7 @@ func to_snapshot_dict() -> Dictionary:
 		"sim_soldier_file": _sim_soldier_file.duplicate(),
 		"sim_soldier_rank": _sim_soldier_rank.duplicate(),
 		"sim_soldier_square_slot": _sim_soldier_square_slot.duplicate(),
+		"sim_soldier_row_slot": _sim_soldier_row_slot.duplicate(),
 	}
 
 
@@ -6975,6 +7051,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	file_major_reform_mode = int(d["file_major_reform_mode"])
 	_file_assignment_files = int(d["file_assignment_files"])
 	_square_slot_files = int(d["square_slot_files"])
+	_row_slot_files = int(d.get("row_slot_files", -1))
 	_under_fire = bool(d["under_fire"])
 	_in_enemy_contact = bool(d["in_enemy_contact"])
 	_attack_cd = float(d["attack_cd"])
@@ -7020,3 +7097,5 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_soldier_rank = (d["sim_soldier_rank"] as PackedInt32Array).duplicate()
 	_sim_soldier_square_slot = \
 			(d["sim_soldier_square_slot"] as PackedInt32Array).duplicate()
+	_sim_soldier_row_slot = \
+			(d.get("sim_soldier_row_slot", PackedInt32Array()) as PackedInt32Array).duplicate()
