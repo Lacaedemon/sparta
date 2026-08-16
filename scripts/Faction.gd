@@ -43,6 +43,31 @@ const ROSTER_UNIT_TYPES := {
 	"Agrianian Peltasts": "Archers",
 }
 
+## Roster names whose attested subunit differs from the loadout type's own declaration
+## (Battle._default_loadout's "subunit_structure"/"subunit_size"). Keys are the same
+## FACTION_ROSTERS names ROSTER_UNIT_TYPES maps; each value is a partial override merged over the
+## type's declaration, so an entry naming only "subunit_size" keeps the type's declared kind.
+##
+## This dict exists because ROSTER_UNIT_TYPES is many-to-one exactly where it matters: five
+## roster names (Spartan Hoplites, Triarii, Sacred Band, Libyan Spearmen, Pezhetairoi Phalanx)
+## all resolve to "Spearmen", and a Macedonian file and a Spartan enomotia are both attested and
+## different. Without a per-name layer the type declaration would flatten that distinction, which
+## is precisely what docs/subunit-structure-design.md set out to capture.
+##
+## Only the one attested divergence is declared. Thucydides 5.68.3 puts the Spartan enomotia at
+## four men wide and about eight deep -- roughly 32, a small block of files rather than a single
+## file -- and the arithmetic self-checks (7 lochoi x 4 x 4 x 4 = 448, the front-rank total the
+## same passage gives). The remaining four Spearmen rosters stay on the type default because the
+## design note gives them no number, and inventing one would be the opposite of what the
+## deliberately-undeclared Archers row establishes. Triarii is the near miss worth naming: they
+## were maniples, and Polybius 6.24 divides every class into companies under two centurions, so
+## "lateral_halves" is a real candidate -- but the note stops short of making that call for a
+## spear-armed type, so this does too rather than reading an inference in as testimony.
+const ROSTER_SUBUNIT_OVERRIDES := {
+	"Spartan Hoplites": {"subunit_size": 32},
+}
+
+
 const HISTORICAL_FORMATIONS := {
 	Type.ROME: {
 		UnitRef.FORMATION_NORMAL: "acies",
@@ -79,6 +104,16 @@ static func get_roster(faction_id: int) -> Array:
 ## up the actual stat block, since Battle._loadout_for_type() matches on the plain type name.
 static func get_unit_type(roster_name: String) -> String:
 	return str(ROSTER_UNIT_TYPES.get(roster_name, ""))
+
+
+## The subunit-structure override for a roster name, as a scenario-spec fragment ready to merge
+## over the loadout type's own declaration -- empty for a name with no divergence, which is every
+## name but one today. Returns a COPY: ROSTER_SUBUNIT_OVERRIDES' values are shared dictionaries
+## (GDScript's `const` freezes the binding, not the object), so handing the stored dict straight
+## to a caller that merges into it would edit the table for every later spawn.
+static func get_subunit_override(roster_name: String) -> Dictionary:
+	var d: Dictionary = ROSTER_SUBUNIT_OVERRIDES.get(roster_name, {})
+	return d.duplicate()
 
 
 static func get_formation_display_name(faction_id: int, formation_mode: int, plain_name: String) -> String:
