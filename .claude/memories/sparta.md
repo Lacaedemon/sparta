@@ -5632,9 +5632,16 @@ docstring's own first line naming cavalry twice.)
 
 ## A "disjoint, no merge-order constraint" claim must be DERIVED, and the candidate set is live
 
-`CLAUDE.md`'s merge-order section already says to derive both file sets with
-`gh pr diff <N> --name-only` and intersect them, rather than recalling what each PR is "about".
-That rule was known and was not followed: the claim was made twice, from recollection, with no
+The rule already exists, and it is worth naming its home precisely: it lives in
+`Morrison-Lab/ai-config`'s own `CLAUDE.md`, the corpus-wide file loaded into every session --- NOT
+in this repo's `CLAUDE.md`, which says nothing about merge order at all.
+Its "Surface merge-order constraints" section states it outright:
+
+> But "disjoint" is a claim about their file *sets*, so derive both sets and check the intersection
+> before asserting it --- `gh pr diff <N> --name-only` on each PR, and confirm no path appears in
+> both --- rather than recalling what each PR is "about".
+
+That rule was loaded and was not followed: the claim was made twice, from recollection, with no
 derivation run either time.
 
 Two failures stack here, and only the first is the one that rule covers.
@@ -5696,8 +5703,15 @@ the whole time.)
 
 The section on `record-demos.sh` DEMOS conflicts being ADDITIVE quotes a real merge conflict
 verbatim inside a fenced code block, so `<<<<<<< HEAD`, `=======` and `>>>>>>> origin/main` sit in
-this file as **content** --- at lines 741, 743 and 745 as of `4aee29b9`, and moving every time the
-file grows.
+this file as **content** --- at lines 741, 743 and 745 as of `4aee29b9`.
+
+**Those numbers move faster than an append-only reader expects, because entries land mid-file as
+well as at the end.**
+Across just two merges on the same day, `4aee29b9` to `18ec2919`, the markers moved to 872, 874
+and 876: PR #1294 inserted 78 lines at line 115 and 53 more at line 284, and that 131-line total
+is exactly the drift.
+So anchor on the section heading, never on a line number quoted anywhere --- including the ones in
+this paragraph.
 
 Consequence: resolving a genuine conflict in this file by stripping every conflict-marker line,
 or by any editor "accept ours / accept theirs" pass that scans for markers globally, silently
@@ -5737,7 +5751,12 @@ More than three means a real conflict is still unresolved.
 
 (Verified 2026-08-16 at `4aee29b9`: exactly three markers, at lines 741, 743 and 745, all inside
 the fenced example under the `record-demos.sh` DEMOS-conflicts heading.
-Noticed while checking this same file over the real append-collision the entry above records.)
+Exercised for real on the very PR that records it: merging `origin/main` in raised a genuine
+append-collision in this file, so the grep returned SIX markers --- 872/874/876 documented,
+5633/5742/5781 real.
+Deleting only the second triple by line number kept both sides' new sections and left the example
+intact, and a heading-set comparison confirmed the merge lost nothing in either direction:
+147 headings on the branch, 148 on `main`, 150 merged.)
 ## `pair_slots_by_lateral_file` is order-preserving, not identity-preserving -- so bound TRAVEL, never count movers
 
 The slot-assignment family above ("Formation slot assignment is by ARRAY INDEX") explains why a
