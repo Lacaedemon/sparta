@@ -25,7 +25,11 @@ static func record_of(u) -> Dictionary:
 		"uid": int(u.uid),
 		"team": int(u.team),
 		"type": String(u.unit_name),
-		"weapon": int(u.weapon_type_id),
+		# The DEPLOYED weapon, not the held one: a phase-4 weapon switch rewrites
+		# weapon_type_id mid-battle, which would re-stamp this digest and fail an
+		# artifact's own load check for a spawn layout that never moved. Same value as
+		# weapon_type_id at spawn, so every existing stamp still matches.
+		"weapon": int(u.spawn_weapon_type_id),
 		"shield": int(u.shield_type_id),
 		"mount": int(u.mount_type_id),
 		"soldiers": int(u.max_soldiers),

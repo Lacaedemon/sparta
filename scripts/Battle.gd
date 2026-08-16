@@ -154,6 +154,13 @@ const ORDER_DISENGAGE_SACRIFICE := -11
 # existing "frontage" field, so the replay format is unchanged (see enqueue_delegation).
 const ORDER_DELEGATION_ONLY := -12
 const ORDER_CANCEL_ONLY := -13
+# Sentinel for a standalone weapon-switch order (no movement, no target): re-equips each
+# unit to another LoadoutRegistry weapon type (docs/soldier-loadout-design.md phase 4),
+# rewriting the per-soldier weapon ids so strike-time combat resolves through the new
+# type from the next tick. The target weapon id rides the existing "mode" field -- a
+# weapon switch carries no order_mode of its own, and "mode" is always recorded -- so the
+# replay format is unchanged. Handled like the stance-only order.
+const ORDER_SWITCH_WEAPON := -14
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -822,7 +829,7 @@ func _line_x_offsets(half_widths: Array[float], field_width: float) -> Array[flo
 func _default_loadout() -> Array:
 	return [
 		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT, "walk_advance_default": true},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_HAMATA, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "sidearm": LoadoutRegistry.WEAPON_PILUM, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_HAMATA, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
 		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "back_fraction": 0.55, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "armor": LoadoutRegistry.ARMOR_TUNIC, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
 		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false},
 		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false},
@@ -885,7 +892,23 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 		u.weapon_type_id = d["weapon"]
 		var weapon_type: Weapon = LoadoutRegistry.weapon(u.weapon_type_id)
 		if weapon_type != null:
-			u.attack_range = weapon_type.reach_m * WORLD_UNITS_PER_METER
+			# reach_wu is reach_m * WORLD_UNITS_PER_METER, converted once when the
+			# registry built the type -- the same float, from the same operands, so
+			# spawn reach is bit-identical to the pre-registry literal. Reading it here
+			# rather than re-converting keeps one source of truth with equip_weapon,
+			# which sets the same field on a mid-battle switch.
+			u.attack_range = weapon_type.reach_wu
+	# The deployed weapon, pinned for the unit's life: a phase-4 switch moves
+	# weapon_type_id but never this, so SpawnFingerprint keeps hashing a stable value and
+	# the switch toggle keeps somewhere to return to. Read from the live field rather than
+	# the dict so a bare test unit (no "weapon" key) pins Unit's own default instead of 0.
+	u.spawn_weapon_type_id = u.weapon_type_id
+	# The second weapon these soldiers carry, if any (docs/soldier-loadout-design.md phase
+	# 4). Absent for every roster type but Infantry, whose legionaries carry a pilum beside
+	# the gladius they deploy holding; a row without the key keeps Unit's 0 default, which
+	# equip_weapon refuses -- so those units have no switch available, which is correct.
+	if d.has("sidearm"):
+		u.sidearm_type_id = d["sidearm"]
 	if d.has("shield"):
 		u.shield_type_id = d["shield"]
 	# Armor and mount types: unit-level interned ids (combat_profile() resolves the
@@ -1491,6 +1514,31 @@ func enqueue_stance(uids: Array, stance: int = -1, rank_relief: int = RankRelief
 	_apply_order_live(cmd)
 
 
+## Re-equip a set of units to `weapon_type_id` (a LoadoutRegistry weapon id) mid-battle:
+## docs/soldier-loadout-design.md phase 4. Each unit rewrites its per-soldier weapon ids,
+## its unit-level type, and its derived reach (Unit.equip_weapon), so strike-time combat
+## and the engaged-tier depth follow the new type from the next tick.
+##
+## One id is issued for the whole selection, and a selection is filtered only by team and
+## liveness -- a box-select can hold Infantry beside Cavalry. So the id is refused per-unit
+## by equip_weapon, which accepts only a weapon that unit's own soldiers actually carry,
+## and a mixed selection switches exactly the units the id is genuinely valid for while
+## leaving the rest on what they were holding. Refusing there rather than here keeps that
+## invariant true for the replayed order path too, not just this live one.
+func enqueue_switch_weapon(uids: Array, weapon_type_id: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_SWITCH_WEAPON,
+		"mode": weapon_type_id,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
 ## Widen (delta > 0) or narrow (delta < 0) the frontage of a set of units by
 ## `delta` files each. Each unit steps from its OWN current frontage to an absolute
 ## target (so a mixed selection keeps its relative widths), emitting one command per
@@ -1931,6 +1979,25 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				u.rank_relief = false
 			if u.current_order == null:
 				u.set_current_order(Order.new_stance(stance, rank_toggle))
+		return
+	# Weapon-switch-only: re-equip each unit to the target weapon type, leaving all
+	# movement, formation and stance state untouched. Instantaneous like the stance branch
+	# above (the re-equip IS the completion), so the queue is only occupied when the unit
+	# is idle -- a live order keeps running and the switch is already transcript-visible
+	# through the units' own weapon ids.
+	if target_uid == ORDER_SWITCH_WEAPON:
+		var weapon_id: int = int(cmd.get("mode", 0))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u == null or u.state == UnitRef.State.DEAD:
+				continue
+			# Refused for an unregistered id: leave the unit on its current weapon AND
+			# leave the queue alone, so a malformed order records as a no-op rather than
+			# parking an order that claims a switch which never happened.
+			if not u.equip_weapon(weapon_id):
+				continue
+			if u.current_order == null:
+				u.set_current_order(Order.new_switch_weapon(weapon_id))
 		return
 	# Unit-settings-only: write the durable walk_advance, reform_before_move, and/or
 	# file_major_reform_mode fields on each unit, leaving all movement/formation/stance state

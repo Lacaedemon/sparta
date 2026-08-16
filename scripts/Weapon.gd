@@ -8,12 +8,19 @@ extends Resource
 ## equipped, hold state) lives in per-soldier arrays on Unit, not here.
 ## See docs/soldier-loadout-design.md.
 
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
 @export var id: int
 @export var display_name: String
-# Effective melee reach in metres. Battle converts it to world units at spawn
-# (reach_m * WORLD_UNITS_PER_METER -> Unit.attack_range): a longer-reach weapon
-# strikes while a shorter-weapon enemy is still closing the gap.
+# Effective melee reach in metres -- the authored value, kept as the metric one the
+# stat tables and the HUD speak in. A longer-reach weapon strikes while a
+# shorter-weapon enemy is still closing the gap.
 @export var reach_m: float
+# The same reach in WORLD UNITS, converted once when the registry builds this type.
+# Unit.attack_range is set from this (at spawn, and again on a phase-4 weapon switch),
+# so the metre->world conversion happens once per TYPE rather than once per equip:
+# runtime state stays world units end to end, per docs/units-convention.md.
+@export var reach_wu: float
 # Wounding power: the per-type lethality factor SoldierCombat.wound() scales by.
 @export var lethality: float
 # Rest pose: the angle (radians, relative to the soldier's facing) the weapon
@@ -34,6 +41,7 @@ static func make(p_id: int, p_name: String, p_reach_m: float, p_lethality: float
 	w.id = p_id
 	w.display_name = p_name
 	w.reach_m = p_reach_m
+	w.reach_wu = WorldScaleRef.m_to_wu(p_reach_m)
 	w.lethality = p_lethality
 	w.attack_interval_s = p_attack_interval_s
 	w.default_hold_angle = p_hold_angle

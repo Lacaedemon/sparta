@@ -20,6 +20,7 @@ const WEAPON_SPEAR: int = 1
 const WEAPON_GLADIUS: int = 2
 const WEAPON_SIDEARM: int = 3
 const WEAPON_SPATHA: int = 4
+const WEAPON_PILUM: int = 5
 
 const SHIELD_SCUTUM: int = 101
 const SHIELD_ROUND: int = 102
@@ -53,18 +54,33 @@ const MOUNT_WARHORSE: int = 302
 # default_hold_angle (phase 3, docs/soldier-loadout-design.md): the rest-pose angle
 # UnitMeshes.figure_mesh's held-item geometry rotates about its grip pivot from the
 # originally-authored orientation (angle 0.0 reproduces that orientation bit-for-bit --
-# see UnitMeshes._rotate_polys_about). Only WEAPON_SPEAR's angle is read today
+# see UnitMeshes._rotate_polys_about). Only the two SHAFTED types' angles are read today
 # (Unit._build_figure_meshes -> Unit.weapon_rest_angle(), threaded into the FOOT_SPEAR
-# figure's spear glyph): the spear is presented at a slight forward cant rather than
-# dead vertical, a deliberate ready-stance choice. The other three carry no rendered
-# held-item glyph today (Infantry's figure shows its shield, not the gladius; the
-# archer's bow isn't a registry weapon type; cavalry ignores foot figures entirely),
-# so their angles stay at the neutral 0.0 default pending a future glyph.
+# figure's shaft glyph, which Unit._foot_kind() selects for WEAPON_SPEAR and
+# WEAPON_PILUM alike): both are presented at a slight forward cant rather than dead
+# vertical, a deliberate ready-stance choice, and they share the cant because a
+# shouldered pilum and a couched spear read the same way at this scale. The other three
+# carry no rendered held-item glyph today (Infantry's figure shows its shield, not the
+# gladius; the archer's bow isn't a registry weapon type; cavalry ignores foot figures
+# entirely), so their angles stay at the neutral 0.0 default pending a future glyph.
+#
+# WEAPON_PILUM is the first type no unit spawns with: it exists to be switched INTO
+# and out of (docs/soldier-loadout-design.md phase 4), so its numbers are chosen to
+# make that switch a real decision rather than a strict upgrade either way. A pilum is
+# a heavy javelin the legionary holds as the lines close and discards for his gladius
+# once the melee is joined, so against the gladius it trades sustained killing power
+# for reach: 2.0 m of shaft (against the gladius's 1.3) buys engaged ranks and lets a
+# man strike before a swordsman can answer, while 0.6 lethality on a slow 1.5 s cadence
+# makes it a poor weapon to actually fight a melee with -- it is unbalanced for
+# thrusting and built to bend on impact, not to be fenced with. The resulting sustained
+# rate is 0.40 lethality/s against the gladius's 0.83, so holding the pilum too long
+# costs real casualties and switching too early throws away the reach.
 static var _weapons: Dictionary = {
 	WEAPON_SPEAR: Weapon.make(WEAPON_SPEAR, "Spear", 2.4, 0.85, 0.6, deg_to_rad(15.0)),
 	WEAPON_GLADIUS: Weapon.make(WEAPON_GLADIUS, "Gladius", 1.3, 1.0, 1.2),
 	WEAPON_SIDEARM: Weapon.make(WEAPON_SIDEARM, "Sidearm", 0.6, 0.5, 0.6),
 	WEAPON_SPATHA: Weapon.make(WEAPON_SPATHA, "Spatha", 1.5, 1.1, 0.6),
+	WEAPON_PILUM: Weapon.make(WEAPON_PILUM, "Pilum", 2.0, 0.6, 1.5, deg_to_rad(15.0)),
 }
 
 # block_value: the shield's OWN contribution to the defensive shield weight.

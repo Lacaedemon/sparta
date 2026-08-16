@@ -344,6 +344,17 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		else:
 			_set_armed_mode(mode)   # arm a smart-order stance
 		return true
+	elif event.keycode == KEY_I and event.shift_pressed:
+		# Shift+I: swap to the other weapon these soldiers carry (the legionary's pilum
+		# beside his gladius). Shares I with the rank-relief toggle below because every
+		# plain letter and punctuation key is already spoken for (see Settings.gd's own
+		# key-exhaustion notes on the stance bindings), and of the fixed keys I is the
+		# closest fit -- it already owns the "intra-unit drill the regiment performs
+		# without moving" slot, which is exactly what a weapon switch is. Same
+		# reuse-with-a-modifier convention as Shift+O (schiltron) and the V countermarch
+		# variants.
+		_toggle_weapon()
+		return true
 	elif event.keycode == KEY_I:
 		_toggle_rank_relief()   # I: toggle the intra-unit rank-relief (discipline) mode
 		return true
@@ -1266,6 +1277,44 @@ func _toggle_rank_relief() -> void:
 	_battle.enqueue_stance(uids, -1, toggle)
 	if _hud != null:
 		_hud.flash_message("Rank relief: %s" % ("On" if turning_on else "Off"))
+	Sfx.play(&"order")
+
+
+## Swap the selection between the two weapons its soldiers carry: the held one and the
+## sidearm (docs/soldier-loadout-design.md phase 4). The target is derived per press from
+## the LEAD unit and issued to the whole selection, matching how _toggle_rank_relief and
+## the formation toggles already read one unit's state to pick a direction for all of them
+## -- a mixed selection follows the lead unit rather than each unit flipping its own way,
+## so repeated presses keep the group in step instead of scattering it.
+##
+## The return leg reads spawn_weapon_type_id rather than remembering what was held: once
+## the sidearm is in hand, "the other weapon" is by definition the deployed one, and a
+## field that cannot drift beats a second piece of live state to keep in sync.
+##
+## No-ops for a selection whose lead unit carries no second weapon (sidearm_type_id 0 --
+## every roster type but Infantry today), with a message saying so rather than a silent
+## nothing: an unbound-feeling key is worse than a refusal that explains itself.
+func _toggle_weapon() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if _selected.is_empty() or not is_instance_valid(_selected[0]):
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	var lead: Unit = _selected[0]
+	if LoadoutRegistry.weapon(lead.sidearm_type_id) == null:
+		if _hud != null:
+			_hud.flash_message("%s carries no second weapon" % lead.unit_name)
+		return
+	var target_id: int = lead.spawn_weapon_type_id if lead.weapon_type_id == lead.sidearm_type_id \
+			else lead.sidearm_type_id
+	var target: Weapon = LoadoutRegistry.weapon(target_id)
+	if target == null:
+		return
+	_battle.enqueue_switch_weapon(uids, target_id)
+	if _hud != null:
+		_hud.flash_message("Drew: %s" % target.display_name)
 	Sfx.play(&"order")
 
 
