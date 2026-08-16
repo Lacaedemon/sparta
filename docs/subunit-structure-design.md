@@ -27,12 +27,23 @@ applied to organisation.
 
 ## What we do today (verified against the code)
 
-- **One grouping exists, and it is the file.** `_sim_soldier_file` and
-  `_sim_soldier_rank` (`scripts/Unit.gd`) are persistent per-soldier ids ---
+- **One *doctrinal* grouping exists, and it is the file.** `_sim_soldier_file`
+  and `_sim_soldier_rank` (`scripts/Unit.gd`) are persistent per-soldier ids ---
   which column a man belongs to, and how deep he stands in it.
   They are dealt by `_ensure_file_assignment`, maintained through a death by
   `SoldierMelee.reap`, and serialized into the state dump, so they already
   survive casualties and replay.
+- **But there are now three persistent per-soldier slot arrays, and the other
+  two are pairings rather than membership.** Alongside the file pair sit
+  `_sim_soldier_square_slot` (which man stands on which cell of the square
+  grid, paired by proximity) and `_sim_soldier_row_slot` (added by
+  [#1275](https://github.com/Lacaedemon/sparta/pull/1275), which lets a
+  hold-ground reform cancel its own depth reflection on the row-major path).
+  Each answers "which slot does this man hold", none answers "which body does
+  this man belong to", and no two of them agree on a representation.
+  That is the case for one generalised membership concept stated from the
+  opposite direction: the codebase is accumulating per-soldier identity arrays
+  one branch at a time.
 - **No unit type declares a structure.** A type is a dictionary literal in
   `Battle._default_loadout()`.
   It already carries structural *geometry* --- `file_pitch_m`, `rank_pitch_m`,
@@ -52,7 +63,9 @@ applied to organisation.
   `Unit.formation_slots()` dispatches three ways: the square branch pairs men
   onto a `ceil(sqrt(n))` grid by proximity and bypasses file identity entirely;
   the file-major branch is the one that keeps it; the row-major fallback
-  recomputes from the live count every tick and reassigns by raw array index.
+  recomputes from the live count every tick and, unless a hold-ground reform
+  has left a `_sim_soldier_row_slot` pairing behind, hands cell `i` to soldier
+  `i` by raw array index.
   Every loadout type defaults to FILE_MAJOR and `disciplined` defaults to true,
   so the fallback is reached only by an explicit scenario override.
 
