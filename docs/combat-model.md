@@ -328,6 +328,146 @@ its feet.
 > (figure LOD) via per-instance MultiMesh transforms and tinting. The stamina cost of rising
 > (`κ_p`) is in slice D. (Bracing `br_D` wired in slice C.)
 
+### Coupling the slide and the fall: a friction-anchored pivot
+
+The two outcomes above are drawn **independently** off the same scalar $J$: the
+knockback branch shoves the body, and $p_{\mathrm{prone}}$ rolls separately.
+Nothing stops both from landing at once, so a soldier can take the full
+multi-body-length slide *and* keep his feet, sailing backward while upright.
+That is not what a blow above the feet does to a standing man.
+
+A standing human is not a free body.
+His feet are friction-anchored to the ground, and a melee blow lands well above
+them --- chest or shoulder height, never at the ankles.
+So the impulse does not translate the whole body cleanly backward; it acts on a
+lever arm and **torques him about his own footing**.
+
+Write $z_b$ for the height the blow lands at, $d_b$ for the horizontal distance
+from the centre of mass to the toppling edge of the base of support, $\mu_s$ for
+the boot-on-earth static friction coefficient, and $g_0$ for gravitational
+acceleration.
+(These are local to this section.
+Elsewhere in this document $h$ is health, $\mu$ weights closing speed into the
+attack contest, and $g(\sigma)$ is the fatigue factor.)
+Two thresholds then compete, and they are not independent:
+
+$$F_{\mathrm{slip}} = \mu_s\,m\,g_0, \qquad F_{\mathrm{tip}} = \frac{m\,g_0\,d_b}{z_b}.$$
+
+Their ratio is the **pivot advantage**, and it carries no mass and no gravity:
+
+$$\Lambda \;=\; \frac{F_{\mathrm{tip}}}{F_{\mathrm{slip}}} \;=\; \frac{d_b}{\mu_s\,z_b}.$$
+
+For a fighting stance ($z_b \approx 1.2$ m, $d_b \approx 0.15$ m,
+$\mu_s \approx 0.6$) this is $\Lambda \approx 0.21$: toppling a man takes roughly
+**a fifth** of the force needed to slide him.
+The load-bearing claim is the **ordering**, $\Lambda < 1$, which holds across
+every plausible value of the three; the specific magnitude is an estimate and is
+hedged below.
+Tipping being the low threshold is why a real fighter goes down rather than
+skating backward --- by the time a blow is hard enough to break his feet loose,
+it has long since been hard enough to fell him.
+
+The shipped constants invert exactly this ordering.
+$J_{\mathrm{fall}}$ is `PRONE_FALL_THRESHOLD` $= 55$ and the slide's own gate is
+`STATIC_FRICTION_THRESHOLD` $= 20$; at $\mathrm{br}_D = 0$ both scale by $m_D$
+alone, so they are directly comparable and the model asks for **2.75x more**
+impulse to fell a man than to slide him.
+That is the physical ordering reversed, and the window it opens --- impulses that
+slide a man without threatening to fell him --- is where a soldier slides while
+standing.
+
+For a body **at rest** that window is exactly $[20\,m_D,\; 55\,m_D)$.
+For a body already in motion it is wider still, and the spec has to say so:
+`SoldierCollision.overcomes_static_friction` returns `true` outright once
+`body_velocity_magnitude` exceeds `STATIC_FRICTION_VELOCITY_GATE` (1.0 wu/s,
+about 0.05 m/s), so a jostling or still-coasting soldier --- the common case in
+an active melee --- passes no lower gate at all and the window widens to
+$(0,\; 55\,m_D)$.
+The shipped behaviour is therefore somewhat worse than the at-rest comparison
+alone suggests.
+
+The fix is a **partition**, not a retune of either roll.
+One impulse arrives; the footing either holds it or does not, and each share
+drives one outcome:
+
+$$J_{\mathrm{rot}} = \min(J,\, J_{\mathrm{anchor}}), \qquad
+J_{\mathrm{trans}} = \big(J - J_{\mathrm{anchor}}\big)_+, \qquad
+J_{\mathrm{rot}} + J_{\mathrm{trans}} = J.$$
+
+The anchored share $J_{\mathrm{rot}}$ is what the footing holds, so it turns into
+torque about the pivot and drives the fall, amplified by $1/\Lambda$.
+Only the surplus $J_{\mathrm{trans}}$ --- the part that actually breaks the feet
+loose --- translates the body.
+Nothing is double-counted, and the two outcomes stop being independent: a blow
+big enough to slide a man has already spent a full $J_{\mathrm{anchor}}$ worth of
+torque trying to fell him first.
+
+$J_{\mathrm{anchor}}$ is written separately from $J_{\mathrm{slip}}$ deliberately,
+because the velocity bypass must not carry over.
+A moving man is not exempt from being toppled --- he is *easier* to topple, having
+less of his weight settled over his base --- so $J_{\mathrm{anchor}}$ falls once he
+is moving rather than vanishing:
+
+$$J_{\mathrm{anchor}} =
+\begin{cases}
+J_{\mathrm{slip}} & \text{at rest,}\\
+\kappa\,J_{\mathrm{slip}} & \text{in motion,}
+\end{cases}
+\qquad 0 < \kappa < 1.$$
+
+$J_{\mathrm{slip}}$ is the impulse-domain counterpart of $F_{\mathrm{slip}}$ above:
+the shipped at-rest gate, `STATIC_FRICTION_THRESHOLD` scaled by the defender's
+effective mass, which is $20\,m_D$ at $\mathrm{br}_D = 0$.
+$\kappa$ is the kinetic-to-static ratio, and it is a **new** quantity --- the
+existing `KINETIC_FRICTION_*` constants are a continuous per-tick damping rate,
+not an impulse-threshold capacity, so there is nothing shipped to reuse for it.
+Bypassing the gate entirely, as the shipped code does, is the $\kappa = 0$ corner:
+it sends a moving body's whole impulse into translation and none into rotation,
+which is the least physical case of all and the one that produces the widest
+slide-while-standing window.
+
+Under the partition $J_{\mathrm{fall}}$ stops being a free parameter.
+It is the anchoring capacity scaled by the stance geometry, so a single ratio
+replaces two independently tuned knobs:
+
+$$J_{\mathrm{fall}} \;=\; \Lambda\,J_{\mathrm{anchor}} \;=\; \frac{d_b}{\mu_s\,z_b}\,J_{\mathrm{anchor}}.$$
+
+> **Not yet implemented, and each of the following still needs pinning down.**
+>
+> *The scale of $J$.* The geometry above constrains the **form** of the relation
+> between the two thresholds, not the absolute scale of $J$ itself, which is a
+> tuned quantity (`KNOCKBACK_IMPULSE_SCALE`, calibrated to a pre-mass
+> flat-knockback feel rather than to newton-seconds).
+> Substituting $\Lambda \approx 0.21$ naively takes $J_{\mathrm{fall}}$ from 55 to about 4.2,
+> which fells a man on roughly 40% of ordinary blows --- a physically-sound
+> ordering hung off an uncalibrated scale.
+>
+> *The value of $\Lambda$.* The three stance constants are estimates, not
+> measurements, and $\Lambda$ is linear in $d_b$ and inverse-linear in $\mu_s$ and
+> $z_b$, so it is more sensitive than a single quoted figure suggests.
+> Across a tight plausible band ($\mu_s\ 0.5$--$0.7$, $d_b\ 0.12$--$0.20$ m,
+> $z_b\ 1.1$--$1.3$ m) $\Lambda$ spans about $0.13$--$0.36$, a 2.8x swing ---
+> comparable to the 2.75x inversion diagnosed above.
+> Every figure derived from it inherits that spread, the "roughly a fifth" and
+> the "about 4.2" included.
+> What survives the whole band is the ordering $\Lambda < 1$, which is what the
+> partition actually rests on.
+>
+> *The anchoring capacity.* $J_{\mathrm{anchor}}$ is pinned at rest, where it is
+> the shipped `STATIC_FRICTION_THRESHOLD` gate, and unpinned in motion: $\kappa$
+> has no shipped counterpart to inherit, since the existing kinetic-friction
+> constants are a damping rate rather than a capacity.
+> A physical starting point is that kinetic friction typically runs somewhat below
+> static, so $\kappa$ near $0.8$ is a plausible opening guess --- but it is a guess,
+> and it belongs in the calibration rather than in this specification.
+>
+> Landing this therefore needs $J_0$, $J_{\mathrm{scale}}$,
+> $p_{\mathrm{prone}}^{\max}$, $\Lambda$ and $\kappa$ re-derived together, with the
+> demo catalog's own defect sweep as the check that a melee still looks like a
+> melee.
+> Tracked separately; the equations here are the specification that work
+> implements, not a description of shipped behaviour.
+
 ## Bracing and the knockback chain (domino)
 
 A knocked-back soldier collides with whoever is behind it. Two things resist the
