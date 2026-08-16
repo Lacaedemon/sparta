@@ -5630,6 +5630,133 @@ repo's own caution about a repeated start anchor silently widening a range.
 (Verified 2026-08-16 at `cee465f6`: five entries, `entries=2 unique=1` for Cavalry, and the
 docstring's own first line naming cavalry twice.)
 
+## A "disjoint, no merge-order constraint" claim must be DERIVED, and the candidate set is live
+
+The rule already exists, and it is worth naming its home precisely: it lives in
+`Morrison-Lab/ai-config`'s own `CLAUDE.md`, the corpus-wide file loaded into every session --- NOT
+in this repo's `CLAUDE.md`, which says nothing about merge order at all.
+Its "Surface merge-order constraints" section states it outright:
+
+> But "disjoint" is a claim about their file *sets*, so derive both sets and check the intersection
+> before asserting it --- `gh pr diff <N> --name-only` on each PR, and confirm no path appears in
+> both --- rather than recalling what each PR is "about".
+
+That rule was loaded and was not followed: the claim was made twice, from recollection, with no
+derivation run either time.
+
+Two failures stack here, and only the first is the one that rule covers.
+
+**The process failure is that the sets were recalled rather than derived.**
+One command per PR settles it, and it answers a question about PATHS where recollection answers
+one about TOPICS.
+Note that a correct conclusion is not evidence the derivation ran --- the two PRs really were
+disjoint, and the claim was still unsupported at the moment it was made.
+
+**The scope failure is that a two-PR intersection answers a question about two PRs.**
+Any OTHER open PR touching the same file collides just as hard, so the set of candidates is not
+the set you happen to have in mind.
+This is the harder half, because running the derivation correctly does not fix it: the
+derivation would have been scoped to a population that was already incomplete.
+
+So derive the population as well as each member's files:
+
+```bash
+for n in $(gh pr list -R <owner>/<repo> --state open --json number --jq '.[].number'); do
+  printf '%s: ' "$n"
+  gh pr diff "$n" -R <owner>/<repo> --name-only | tr '\n' ' '
+  echo
+done
+```
+
+**And treat the answer as expiring.**
+This file already records that `main` moves during a session, and that an append-collision on a
+shared file recurs once per merge in a cascade rather than resolving permanently --- see
+"Battle.gd merge: order-sentinel and same-name-local collisions" above, whose whole point is that
+resolving once settles nothing while siblings keep landing.
+A disjointness claim inherits that liveness.
+It is a measurement of a live population, true when taken and capable of being false by merge
+time, so re-derive it at merge time rather than citing the reading taken when the PRs were opened.
+
+- **Do:** derive each candidate's file set with `gh pr diff <N> --name-only`, and intersect them.
+- **Do:** derive the candidate set itself from `gh pr list --state open`, rather than from the
+  PRs this session happens to know about.
+- **Do:** re-derive at merge time, and say when the reading was taken.
+- **Don't:** report "disjoint, merge in any order" from what each PR is for --- that is a claim
+  about topic, and a conflict is a claim about paths.
+- **Don't:** read a correct conclusion as evidence the derivation ran.
+
+(`Lacaedemon/sparta`, 2026-08-16: PR #1283 touches `demos/demo.1201.json` and
+`docs/related-games.md`, and PR #1292 touches `.claude/memories/sparta.md` and
+`demos/demo.1292.json`.
+The two were declared "disjoint, merge in any order" twice from recollection, and the intersection
+is genuinely empty --- derived afterwards with the command above.
+#1292 hit `Pull Request has merge conflicts` anyway, against #1293, a PR opened and merged by a
+different session, which touches `.claude/memories/sparta.md` and nothing else.
+#1293 merged at 18:36:59Z, ahead of #1283's own 18:38:43Z, and #1292 absorbed it with a `main`
+merge at 18:41:43Z --- replaying that merge with `git merge-tree` reports exactly one conflicted
+path, `.claude/memories/sparta.md`, so the collision is measured rather than inferred.
+Four PRs landed on `main` inside four minutes --- #1293 at 18:36:59Z, #1281 at 18:37:50Z, #1283 at
+18:38:43Z and #1282 at 18:40:31Z --- so the population any such comparison had to cover was moving
+the whole time.)
+
+## `.claude/memories/sparta.md` contains literal conflict markers as documentation
+
+The section on `record-demos.sh` DEMOS conflicts being ADDITIVE quotes a real merge conflict
+verbatim inside a fenced code block, so `<<<<<<< HEAD`, `=======` and `>>>>>>> origin/main` sit in
+this file as **content** --- at lines 741, 743 and 745 as of `4aee29b9`.
+
+**Those numbers move faster than an append-only reader expects, because entries land mid-file as
+well as at the end.**
+Across just two merges on the same day, `4aee29b9` to `18ec2919`, the markers moved to 872, 874
+and 876: PR #1294 inserted 78 lines at line 115 and 53 more at line 284, and that 131-line total
+is exactly the drift.
+So anchor on the section heading, never on a line number quoted anywhere --- including the ones in
+this paragraph.
+
+Consequence: resolving a genuine conflict in this file by stripping every conflict-marker line,
+or by any editor "accept ours / accept theirs" pass that scans for markers globally, silently
+deletes three lines out of that documentation block.
+A `grep -n` for the markers during a resolution returns those three alongside the real ones and
+cannot separate them --- same text, same column, and the grep output carries no surrounding
+context to tell one from the other.
+
+**Nothing downstream catches the loss.**
+`tools/check.sh chars` and the `check-non-standard-chars` workflow both scan `*.qmd` and `*.R`
+only, and this repo runs no Markdown linter at all, so a corrupted block reaches `main` with every
+check green --- reading correctly everywhere except one code fence that has quietly become
+nonsense.
+
+So resolve by LINE NUMBER rather than by pattern.
+Read the markers' line numbers, work out which fall inside the fenced example by anchoring on the
+section heading rather than on the numbers quoted above (they move as the file grows), and edit
+only the ranges outside it.
+Then re-run the grep and count what survived:
+
+```bash
+grep -n '^<<<<<<<\|^=======\|^>>>>>>>' .claude/memories/sparta.md
+```
+
+Three hits, consecutive within five lines and under the `record-demos.sh` heading, is the healthy
+answer.
+Zero means the resolution ate the documented example.
+More than three means a real conflict is still unresolved.
+
+- **Do:** resolve a conflict in this file by editing the real markers' line ranges, identified by
+  number and confirmed against the `record-demos.sh` heading.
+- **Do:** re-run the marker grep afterwards, and expect exactly three survivors.
+- **Don't:** strip conflict markers from this file by pattern, and don't accept an editor's
+  global ours/theirs pass over it.
+- **Don't:** expect a check to catch the loss --- the chars scan does not read `.md`, and no
+  Markdown linter runs in this repo.
+
+(Verified 2026-08-16 at `4aee29b9`: exactly three markers, at lines 741, 743 and 745, all inside
+the fenced example under the `record-demos.sh` DEMOS-conflicts heading.
+Exercised for real on the very PR that records it: merging `origin/main` in raised a genuine
+append-collision in this file, so the grep returned SIX markers --- 872/874/876 documented,
+5633/5742/5781 real.
+Deleting only the second triple by line number kept both sides' new sections and left the example
+intact, and a heading-set comparison confirmed the merge lost nothing in either direction:
+147 headings on the branch, 148 on `main`, 150 merged.)
 ## `pair_slots_by_lateral_file` is order-preserving, not identity-preserving -- so bound TRAVEL, never count movers
 
 The slot-assignment family above ("Formation slot assignment is by ARRAY INDEX") explains why a
