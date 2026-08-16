@@ -3940,6 +3940,61 @@ correcting two stale claims was checked immediately afterwards and read exactly 
 round-5 review then found 2, from CI's own re-upsert in between. The rule above was followed to
 the letter and still missed it, which is why the timing needs saying rather than the check.)
 
+**The GitHub MCP tools STRIP HTML comments from a PR body, so round-tripping the body through
+them destroys the markers outright.** The entry above is about an edit that merely disturbs the
+whitespace *around* the markers. This is worse and quieter: `mcp__github__pull_request_read`
+(method `get`) returns a body with `<!-- sparta-demo -->` / `<!-- /sparta-demo -->` already gone,
+so the natural read-modify-write --- fetch with that tool, edit the prose, pass the result to
+`mcp__github__update_pull_request` --- publishes a body with no markers at all. CI's next upsert
+then has nothing to match and appends a whole second block, and unlike the whitespace case there
+is no partial damage to notice: the markers were never in the string you edited.
+
+The tell is a byte-count mismatch between the two surfaces. Measured on PR #1263, 2026-08-16: the
+MCP `get` body carried `### 🎬 Gameplay demo` with **zero** markers, while the same body fetched
+raw from `https://api.github.com/repos/<owner>/<repo>/pulls/<N>` had 1 open + 1 close at 6782
+bytes. Nothing in the MCP response says a field was elided.
+
+So edit a PR body through the **raw API**, never through the MCP round-trip: fetch the body with
+`curl`/`urllib` against `api.github.com`, do a surgical `str.replace` on a paragraph well away
+from the markers, and **assert before PATCHing** --- open count 1, close count 1, the demo asset
+URL still present, and the body no shorter than it started. A token for this is normally already
+in the environment (`GH_TOKEN`), even in sessions with no `gh` on `PATH`; test it with a cheap
+`GET /user` rather than assuming, since its length is no guide to whether it authenticates (the
+one here is 14 characters and works fine).
+
+- **Do:** patch a PR body from the raw API, with marker-count assertions guarding the PATCH.
+- **Do:** re-check the count again after CI's *next* demo run, per the timing rule above --- the
+  two checks catch different halves, and this one does not replace it.
+- **Don't:** pass an MCP-fetched body back to `update_pull_request`; the markers are already gone
+  from the string, so the assertions have nothing left to protect.
+
+## An umbrella issue at 5/5 children can still have unshipped scope its own phases named
+
+An umbrella's `sub_issues_summary` reaching `percent_completed: 100` is a fact about how many
+child issues got closed, not about what shipped. A phase issue can be closed as `completed` while
+part of the scope written in its own body was quietly deferred elsewhere --- so before closing an
+umbrella, grep `scripts/` for the concrete symbols its taxonomy and its phases name, and let the
+code decide.
+
+Worked instance (#516, closed 2026-08-16). All five phases (#522-#526) read closed/completed, and
+the design landed as `docs/orders-queue-design.md`. But #516's own taxonomy and #524's scope both
+name `SwitchWeaponOrder`, and `git grep -n "switch_weapon\|SwitchWeapon\|active_weapon" -- scripts/`
+returns **nothing** on `main`: `Order.Type` carries twelve kinds (`MOVE`, `ATTACK`, `RELIEF`,
+`SUPPORT`, `WHEEL`, `NUDGE`, `FORMATION`, `FRONTAGE`, `ABOUT_FACE`, `QUARTER_TURN`, `STANCE`,
+`FORM_UP`) and no `SWITCH_WEAPON`.
+
+The resolution turned on **which tree the deferred item belongs to**, which is worth checking
+before either closing or holding an umbrella open. Here it was not unfinished #516 work at all:
+weapon switching is phase 4 of the loadout series (#535), tracked as **#539**, which names #516 as
+*its* dependency rather than the reverse. So #516 was genuinely complete and closable, and the
+comment recording that is what stops the next reader re-deriving it. Had #539 been a child of
+#516, the same evidence would have argued for leaving it open instead.
+
+- **Do:** grep for the named symbols before closing an umbrella, and say in the closing comment
+  where any deferred taxonomy item actually lives.
+- **Don't:** read `percent_completed: 100` as "the stated scope shipped" --- it counts closed
+  children, and a child can close with part of its own body deferred.
+
 ## An `.import` diff that reads as deletion is a headless-Godot rewrite, not a removal
 
 `.jules/bolt.md`'s own 2024-11-20 entry already says to revert `.import` sidecars a headless run
@@ -4854,3 +4909,65 @@ Fourth `google-labs-jules[bot]` incident in this file, after #1176, #1194,
 and #1227 -- the third where a Jules PUSH damaged content, since #1227 is the
 same bot's non-response failure mode rather than a push, and the first whose
 failure shape the existing checks miss.)
+
+## A guard test's fixture goes vacuous when two DERIVED counts coincide by accident
+
+This file already documents a guard test that is vacuous only under full-suite ordering (a
+frame-keyed static cache serving it another test's data). Here is a second, unrelated mechanism
+for the same outcome, and it bites in a SINGLE-test run where that one does not: the test asserts
+that some value is still `X` rather than the `Y` the bug would have written, and the fixture
+happens to make `X == Y`. Both branches then satisfy the assertion, so the test passes against the
+bug and against the fix alike while reading as a precise regression guard.
+
+It is specifically a hazard for a guard whose two sides are **derived** from the fixture rather
+than written into it, because then nothing in the test spells either number out. `Unit`'s file
+counts are the worked case: `_file_assignment_files` holds the line frontage, and the bug would
+overwrite it with `UnitFormation.square_files(count)`. On the existing 60-man / 8-file fixture in
+`test_reform_ranks.gd`, `square_files(60) = ceil(sqrt(60)) = 8` --- the same 8 --- so the guard
+had nothing to detect. Rebuilding at 50 men / 10 files, where `square_files(50) = 8` cannot equal
+10, made it discriminate.
+
+**Assert the two counts differ as an explicit precondition, and prove the guard bites.** The
+precondition is what caught this: the fixture's own `assert_eq(u._file_assignment_files, -1, ...)`
+failed with `[8] expected to equal [-1]` and exposed that `seed_sim_soldiers()` had already dealt
+an assignment, which is what led to noticing the coincidence at all. Then remove the guard and
+confirm the failure names the right two numbers --- here `[8] expected to equal [10]`, which reads
+as the square count displacing the line count and could not be produced by any other defect.
+
+- **Do:** pick fixture numbers where the two derived counts provably differ, and assert that
+  difference in the test as a precondition.
+- **Do:** read a failing precondition as information about the fixture rather than an obstacle
+  to edit past --- it is frequently reporting exactly this.
+- **Don't:** trust a guard test whose two sides are derived and never spelled out, until you have
+  seen it fail with both numbers visible in the message.
+
+(`Lacaedemon/sparta` PR #1263, 2026-08-16:
+`test_hold_ground_reform_leaves_a_squared_units_file_assignment_untouched`.)
+
+## Local Godot here is 4.6.3 while the repo targets 4.7 -- `check.sh` reports a spurious FAIL
+
+The container's `/usr/local/bin/godot` is **4.6.3**, and `project.godot` commits
+`config/features=PackedStringArray("4.7")`. The visible consequence is not a game-code failure:
+vendored GUT v9.7.0 references `AccessibilityServer`, a 4.7 singleton, so it cannot parse itself
+under 4.6.3 and emits `SCRIPT ERROR` lines from `addons/gut/`. `tools/check.sh`'s
+`has_script_errors()` matches those and reports **FAIL test** / **FAIL patch_coverage** even when
+the suite is entirely green.
+
+Read the run's own totals rather than `check.sh`'s verdict when this happens. Driving GUT directly
+sidesteps the wrapper and gives the real answer:
+
+```bash
+godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://test -ginclude_subdirs -gexit
+```
+
+Measured 2026-08-16 on PR #1263: `check.sh` reported FAIL while that invocation reported
+**2652/2652 passing across 187 scripts**, with all four `SCRIPT ERROR`s inside `addons/gut/` and
+none from `scripts/`. So check where the errors point before believing the verdict.
+
+Two practical notes. `-gselect=<file>.gd -gunit_test_name=<substring>` runs a single test in well
+under a second, against roughly seven minutes for the full suite --- which is what makes the
+revert-and-confirm-it-bites habit cheap enough to do on every guard. And when the local wrapper is
+untrustworthy, CI's own clean-runner `Validate & test` / `Coverage` are the authority, exactly as
+this file's orphaned-process entry already prescribes for a different contamination cause.
+
+Tracked as #1271.
