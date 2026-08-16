@@ -1748,6 +1748,48 @@ closing keyword) can trigger an auto-close on merge. Treat ANY issue-number ment
 anywhere in a PR's commits OR its description as a close risk, not just literal
 `closes #N` phrasing — check the mentioned issue's state immediately after every merge.
 
+**A THIRD occurrence confirms the mechanism for one of these shapes, and it is
+systematic rather than mysterious: our own `pr-on-claim` claim commit.**
+PR #1259 (2026-08-15) was spec-only, said `Refs #1152` in its body and in all four
+of its later commit messages, and still closed #1152 at the merge instant.
+The cause is readable in the merge commit itself.
+`f913d5d6` on `main` opens with the squashed claim commit's own line,
+`* start: couple knockback slide with the prone/fall roll (closes #1152)`.
+That is the ordinary commit-message-keyword auto-close, not the unexplained shape
+the entry above describes.
+`pr-on-claim`'s template writes `(closes #<N>)` into the empty claim commit at
+claim time, when the PR IS still expected to close the issue.
+A squash merge then concatenates every commit message on the branch, so the
+keyword reaches `main` however the scope ended up.
+Switching the BODY to `Refs #N` does not undo it, because GitHub reads commit
+messages independently of the body.
+This retro-explains the #782/#296 case the entry above already notes
+("#782's first commit read ...closes #296") as the same systematic cause.
+It does NOT explain #758/#752 or #981/#296, which carried no keyword anywhere
+and stay unconfirmed.
+
+**The tell before merging is a closure risk with no PR linkage.**
+#1152 came back `closed_by_pull_requests: {"total_count": 0, "references": []}`,
+correct since the body closed nothing, while still landing
+`state_reason: "completed"` with `closed_by` naming the merger.
+So the empty linkage array reads reassuringly and is silent about what the
+branch's own commit messages say.
+
+**How to apply:** whenever a sparta PR narrows to spec-only or partial after
+being claimed, grep its own history before merging, and edit the squash body at
+merge time if a keyword is already there.
+
+```bash
+git log origin/main..HEAD --format=%B | grep -niE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?) #'
+```
+
+The upstream fix is proposed in `Morrison-Lab/ai-config#1500`, open as of
+2026-08-16: the claim-commit template would write `refs #<N>`, keeping the
+closing keyword on the PR body, which is the surface each review round
+re-reads.
+Its own body invites a veto rather than absorption, so treat the template as
+unchanged until that PR merges.
+
 ## A new physics-frame-keyed static cache needs an explicit `reset()` in any test that constructs its own fixture data
 
 This generalizes the existing `PathField.active is a global static` entry above beyond
