@@ -582,118 +582,122 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 <td><kbd>I</kbd> toggles rank cycling for the selection (on by default; see <a href="./tactics.html#rank-cycling-trained-units">Tactics</a>)</td>
 </tr>
 <tr class="odd">
+<td>Draw the other carried weapon</td>
+<td><kbd>Shift+I</kbd> re-equips the selection to the second weapon its soldiers carry, and back again. Only some troops carry a second one — legionaries deploy holding the gladius with a pilum stowed (see <a href="./tactics.html#drawing-the-other-weapon">Tactics</a>)</td>
+</tr>
+<tr class="even">
 <td>Formation</td>
 <td><kbd>T</kbd> (cycles Normal / Tight / Loose / Square; <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way) · or <strong>control bar</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Anti-cavalry square</td>
 <td><kbd>O</kbd> jumps straight to Square / orbis (press again to drop back to Normal) · or click <strong>Square (Orbis)</strong> in the control bar</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Schiltron</td>
 <td><kbd>Shift</kbd> + <kbd>O</kbd> jumps straight to Schiltron, the harder-bracing anti-cavalry variant (press again to drop back to Normal) · or click <strong>Schiltron</strong> in the control bar</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Shielded stances</td>
 <td><kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or the <strong>control bar</strong> menu</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Line width</td>
 <td><kbd>[</kbd> narrower · <kbd>]</kbd> wider, or <strong>drag a flank grip</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>File-doubling</td>
 <td><kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) · <kbd>Shift+B</kbd> / <kbd>Ctrl+B</kbd> anchored explicatio (right / left flank held fixed)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Drill turn in place</td>
 <td><kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Countermarch (exelismos)</td>
 <td><kbd>Shift+V</kbd> Choral/Persian (same ground) · <kbd>Ctrl+V</kbd> Macedonian (advance) · <kbd>Ctrl+Shift+V</kbd> Laconian (withdraw)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Wheel (hinge on a flank)</td>
 <td><kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Nudge (small step, holds facing)</td>
 <td><kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↑</kbd> forward-step · <kbd>↓</kbd> back-step (a few metres each)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Disengage and step back</td>
 <td><kbd>Ctrl</kbd> + <kbd>↓</kbd> on a unit currently in melee: breaks contact and steps back a short distance, holding facing</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Merge selected units</td>
 <td><kbd>M</kbd></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Control groups</td>
 <td><kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall. Binding a selection that’s exactly the combined membership of one or more other groups (no partial overlap, no extras) nests those groups under the new one, so recalling it always reflects whatever its nested groups currently hold</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Delegate to AI subcommander</td>
 <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd> + <kbd>0</kbd>-<kbd>9</kbd> hands the selection to AI subcommander group <em>N</em> (press again on the same selection to take it back); any explicit order to a delegated unit reclaims it immediately – see <a href="./tactics.html#player-delegation">Tactics</a></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Distance legend</td>
 <td><strong>☰ Menu → Distance legend</strong> toggles the map-scale bar (top-left, on by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Order distance labels</td>
 <td><strong>☰ Menu → Order distance labels</strong> toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Unit speed labels</td>
 <td><strong>☰ Menu → Unit speed labels</strong> shows each unit’s current speed in metres/second above it in the hold-<kbd>Space</kbd> survey (off by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Soldier IDs (selected unit, zoom in)</td>
 <td><strong>☰ Menu → Soldier IDs (selected unit, zoom in)</strong> draws each soldier’s per-body index over a selected unit at figure LOD (zoomed in); a developer debug visual (off by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Engaged-soldier highlight</td>
 <td><strong>☰ Menu → Engaged-soldier highlight</strong> tints a unit’s currently-engaged soldiers (the ones the sim actually treats as melee/contact candidates this tick) a distinct color, for every unit, at any zoom; a developer debug visual (off by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Position-anchor marker</td>
 <td><strong>☰ Menu → Position-anchor marker</strong> draws a small dot at each unit’s <code>position</code> – the regiment’s own kinematic anchor point, distinct from any individual soldier; a developer debug visual (off by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Frame rate</td>
 <td><strong>☰ Menu → Show frame rate</strong> toggles a counter showing render FPS and the live simulation tick rate (ticks/s, which reads below the 60 Hz target if a large battle can’t keep up); <strong>☰ Menu → Frame rate corner…</strong> picks which screen corner it renders in (top-left by default, off by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Unit card tray</td>
 <td><kbd>F1</kbd> or the <strong>Tray</strong> button beside <strong>☰ Menu</strong> (or <strong>☰ Menu → Unit card tray</strong>) shows a panel for organizing your units into named battle lines. Each line is a fixed-width grid of cells (<strong>+ Line</strong>/<strong>- Line</strong> and <strong>+ Column</strong>/<strong>- Column</strong> resize it) – a cell can be empty, so a line can leave gaps for a quincunx/checkerboard-style offset against the line below it. Drag a card onto another cell to swap the two (an empty target cell just moves the card there), or use its arrow buttons for the same moves – a lone unit always has an empty neighbor cell to shift into. Click a line’s name to select every unit in it at once (off by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Pan camera</td>
 <td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges (all four arrows nudge instead while a unit is selected; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> always pans)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Zoom</td>
 <td><strong>Mouse wheel</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Show all orders + formation preview</td>
 <td>hold <kbd>Space</kbd></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Active pause</td>
 <td><kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Slow motion (100% → 50% → 25% → 10%, <kbd>Shift</kbd> reverses)</td>
 <td><kbd>F5</kbd></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>All shortcuts (this list, in-game)</td>
 <td><kbd>?</kbd> (Shift + <kbd>/</kbd>) or <strong>☰ Menu → Shortcuts</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Quit to Main Menu</td>
 <td><strong>☰ Menu → Quit to Main Menu</strong> leaves the battle immediately and returns to the Main Menu — the only way out of a <a href="#parade-ground">Parade Ground</a> drill, which never auto-ends</td>
 </tr>
