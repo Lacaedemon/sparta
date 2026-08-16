@@ -5202,8 +5202,8 @@ gh api repos/Lacaedemon/sparta/issues/<N>/timeline \
 
 **Step 24's restore ADDS rather than overwrites, so a mid-run request survives the run.**
 This was the obvious way for the mechanism to bite and it does not.
-The restore could plausibly have written back the stashed list wholesale, which was empty on
-#1293, silently dropping a reviewer added since.
+The restore could plausibly have written back the stashed list wholesale --- empty on #1293 ---
+silently dropping any reviewer added since.
 It does not: step 24 completed `success` on that run and the list still read `["d-morrison"]`
 afterwards, so the reviewer requested at `17:31:07Z` was still there when the job finished.
 Nothing therefore needs re-requesting after a run, on either side of step 8.
