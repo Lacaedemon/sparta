@@ -5453,3 +5453,42 @@ repo's own caution about a repeated start anchor silently widening a range.
 
 (Verified 2026-08-16 at `cee465f6`: five entries, `entries=2 unique=1` for Cavalry, and the
 docstring's own first line naming cavalry twice.)
+
+## `pair_slots_by_lateral_file` is order-preserving, not identity-preserving -- so bound TRAVEL, never count movers
+
+The slot-assignment family above ("Formation slot assignment is by ARRAY INDEX") explains why a
+reshape relabels men onto distant cells. This is the measured consequence for anyone writing a
+regression test against one of those paths, and it is the reason a mover COUNT is the wrong
+metric there.
+
+`UnitFormation.pair_slots_by_lateral_file` sorts each file's group by ascending y and assigns to
+column cells in depth order. That preserves ORDER within a file; it does not preserve which man
+holds which cell. On a partial-rank square the two come apart badly. Measured on a 60-man,
+8-file square at 9.0 wu pitch, `moved` counting men displaced more than half a pitch:
+
+| path | moved | farthest | mean |
+| --- | ---: | ---: | ---: |
+| in-sync reform | 4 | 63.0 | 4.20 |
+| out-of-sync, composed twice (the bug) | 58 | 68.54 | 30.74 |
+| out-of-sync, rebuild used as-is (the fix) | 51 | 28.46 | 13.44 |
+| **out-of-sync, no reform at all** | **51** | 20.12 | 10.19 |
+
+The last row is the one to keep. A bare rebuild with NO reform already churns 51 of 60 with
+nothing else changing, so `moved` cannot discriminate the fix from the bug on that path at all --
+the fixed and do-nothing readings are identical. Only `farthest` and `mean` separate (28.46/13.44
+against 20.12/10.19), and `mean` separates most cleanly.
+
+**How to apply:** when testing any out-of-sync or rebuild path in the slot-assignment family,
+bound MEAN TRAVEL against a quantity derived from the block's own geometry (e.g.
+`(ranks_for(n, files) - 1) * file_pitch_wu() / 3.0`), not a mover count and not a hand-picked
+constant. A count-based assertion there is vacuous by construction, and a constant drifts as the
+churn floor moves. The shipped guard in
+`test_square_hold_ground_reform_holds_its_ground_from_an_out_of_sync_assignment` does exactly
+this, and mutation-verifies at `[30.74] expected to be < than [21.0]` with the guard removed.
+
+Related, and the reason the out-of-sync path exists at all: `_slot_frame_positions` reads
+`_formation_mirror_x`, which `reform_ranks` arms BEFORE calling `_apply_square_slot_reflection`.
+So when the assignment is stale and `_ensure_square_slot_assignment` rebuilds from live bodies,
+that rebuild already lands men in the render frame -- the depth reflection is baked in, and
+composing the pairing on top applies it twice. Snapshot the in-sync answer before the ensure call
+can overwrite it. (`Lacaedemon/sparta` PR #1282, 2026-08-16.)
