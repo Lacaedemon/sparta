@@ -4995,3 +4995,184 @@ untrustworthy, CI's own clean-runner `Validate & test` / `Coverage` are the auth
 this file's orphaned-process entry already prescribes for a different contamination cause.
 
 Tracked as #1271.
+
+## Both LOD layers carry the weapon silhouette -- rebuilding one is not rebuilding the block
+
+`Unit` draws its soldiers through two independently-built mesh pairs, and BOTH derive their
+shape from `_foot_kind()`, which is weapon-dependent as of the phase-4 switch work:
+
+- `_build_figure_meshes` -- the detailed, zoomed-in silhouette (shaft glyph, rest-pose cant).
+- `_build_mark_meshes` -- the flat, zoomed-out mark outline (dart/kite/pointer).
+
+`_detailed_lod` defaults to **false**, so the mark layer is the DEFAULT render state rather than
+an edge case. Both pairs are built once in `_setup_flock_renderer()`, so anything changing a
+unit's weapon or type mid-battle has to rebuild both.
+
+Rebuilding the mesh RESOURCES is still not enough. The MultiMeshes hold their own reference to
+whichever pair they were last handed, and `_apply_lod_meshes()` -- the only code that re-hands
+them -- is normally reached only when the LOD level or the facing side FLIPS. A weapon switch
+does neither, so without an explicit re-application the block goes on drawing the weapon it just
+put away until the camera happens to cross a zoom threshold; at mark LOD nothing re-hands it at
+all.
+
+**How this was missed, and it is the transferable half.** PR #1274 shipped the figure-mesh
+rebuild plus the `_apply_lod_meshes()` re-application, having found the stale-handoff bug by
+frame capture (the pre- and post-switch block regions were byte-identical). It fixed the
+REPORTED INSTANCE and not the CLASS: `_build_mark_meshes` had exactly one call site against
+`_build_figure_meshes`' two, and `_foot_kind()` drives both. Review caught the mark half.
+
+The same round also hoisted `_apply_lod_meshes()` out of the `if _figure_body_mesh != null`
+guard it had been nested inside. That reads like a second, load-bearing half of the fix and is
+NOT one: `_setup_flock_renderer` calls `_build_mark_meshes` and `_build_figure_meshes`
+unconditionally, back to back, and nothing anywhere nulls one mesh without the other -- so the
+two guards are the SAME condition for any live unit, and both are false only for a bare
+`Unit.new()` fixture that never ran setup. Adding the missing `_build_mark_meshes()` call alone
+would still have reached `_apply_lod_meshes()` through the pre-existing figure guard. The hoist
+is worth keeping for clarity (the guard now says "re-hand if there is a MultiMesh" rather than
+being coincidentally nested), but claiming it was required overstates the finding. Caught in
+review on PR #1278, which is itself the lesson: a plausible coupling between two adjacent null
+guards is a claim about the code, and `grep -n "_build_.*_meshes\|_mark_body_mesh\s*=\|
+_figure_body_mesh\s*=" scripts/Unit.gd` settles it in one command.
+
+**How to apply:** when a fix rebuilds derived render state for one LOD layer, grep the OTHER
+layer's builder for its call sites before calling the fix complete (`grep -n "_build_.*_meshes"
+scripts/Unit.gd` settles it in seconds). More generally, after fixing a render-staleness bug
+found by frame capture, ask which other consumers read the same `_foot_kind()`-style selector: a
+frame capture only ever proves the ONE zoom it recorded, and demos record at zoom 3.5 (figure
+LOD), so the DEFAULT render state is exactly the one no clip exercises.
+(`Lacaedemon/sparta` PR #1274, 2026-08-16.)
+
+## A session writes under TWO identities here, and which one decides both the reviewer request and whether the review runs at all
+
+The client makes the identity, not the session. Measured 2026-08-16, same session, same branch,
+minutes apart:
+
+| write path | attributed author |
+| --- | --- |
+| GitHub MCP tools (`create_pull_request`, ...) | `d-morrison` (User) |
+| raw API with `GH_TOKEN` (`urllib`, `curl`) | `claude[bot]` (Bot) |
+
+PR #1274 was opened through the MCP tool and is authored by `d-morrison`; PR #1278 was opened
+through raw `urllib` with the same `GH_TOKEN` and is authored by `claude[bot]`. Two consequences,
+and the second is the expensive one.
+
+**Requesting `d-morrison` as a reviewer 422s on a `d-morrison`-authored PR.** GitHub rejects a
+review request naming a PR's own author with `422 Unprocessable Entity`. That is not a
+permissions or token problem and no retry fixes it, so don't spend a round diagnosing it and
+don't report the PR as blocked on a reviewer request. It does NOT hold for a `claude[bot]`-authored
+PR, where the request is merely useless rather than rejected -- combined with `Lacaedemon`'s zero
+provisioned Copilot seats (documented above), `claude-code-review.yml` is the only automated
+reviewer this repo has either way.
+
+**`GET /user` is NOT a usable identity probe in this session -- it disagrees with the writes the
+same token makes.** With the raw `GH_TOKEN` it returns `login: d-morrison`, while a PR created
+with that identical token is authored by `claude[bot]`.
+
+**The mechanism behind that split is unconfirmed, and the obvious explanation does not fit.**
+"The agent proxy re-authenticates outbound calls" cannot be the whole story, because both calls
+are raw `urllib` requests over the same token and the same egress path -- a uniform rewrite would
+have made them agree. Something distinguishes the read from the write (a proxy that re-signs
+POST/PATCH but passes GET through would do it), but that was not established, so don't repeat it
+as fact. This matches the file's own convention elsewhere for an observed effect with an
+unverified cause, and ai-config's "don't gate a write on verifying the credential first" rule
+reaches the same practical conclusion from a different direction.
+
+What IS measured is the disagreement itself, and it is enough: the only reliable reading is the
+**attributed author of a write you actually made** (`pulls/<N>` -> `user.login`, or the workflow
+run's `actor`). Don't reason about which identity you are from a probe.
+
+(`Lacaedemon/sparta` PRs #1274 and #1278, 2026-08-16.)
+
+## A PR opened via the raw API is opened by a Bot, and the review workflow's own gate silently skips it
+
+`claude-code-review.yml` delegates to `Morrison-Lab/gha`'s reusable workflow, whose `gather-context`
+job gate reads:
+
+```yaml
+if: >-
+  github.event_name == 'workflow_dispatch' ||
+  (
+    github.event.pull_request.draft == false &&
+    github.event.pull_request.head.repo.full_name == github.repository &&
+    github.event.sender.type != 'Bot'
+  )
+```
+
+That last clause is the trap. A PR opened through the raw API has `sender.type == 'Bot'` (see the
+identity table above), so `gather-context`, `claude-review`, and `require-review` ALL skip -- with
+no annotation, no output, and no summary. A skipped review is indistinguishable from one that has
+not run yet, and `require-review` skipping means nothing turns red either. Measured on the same
+branch: run 31936557788 (`5d974233`, actor `d-morrison`) succeeded and posted a verdict; run
+31937729790 (`8163977d`, actor `claude[bot]`) skipped all three jobs.
+
+Reading the CALLER settles nothing -- it carries no path filter and no job `if:` at all. The gate
+is in the callee at its pinned ref, so clone `Morrison-Lab/gha` at `v2` and read it there.
+
+**The skip is scoped to the `opened` event, and the NEXT PUSH heals it by itself.** A `git push`
+goes out over the git proxy, which is the `d-morrison` identity, so the resulting `synchronize`
+event has `sender.type == 'User'` and passes the gate untouched. Measured on this branch: run
+31937946023, `pull_request` on `c8a19450`, actor `d-morrison`, `gather-context` success and
+`claude-review` running -- against the `opened` run that skipped all three. So the ordinary
+review-round rhythm repairs this on its own, and the ONLY genuinely stranded case is a PR whose
+`opened` event skipped and which then needs a verdict with no further push to make.
+
+**Reach for a `workflow_dispatch` only in that stranded case, and never while a `pull_request`
+run is in flight.** Its branch of the `if:` is unconditional, so it does bypass the gate: pass
+`ref` = the PR branch (a dispatch resolving against `main` reviews nothing and posts no comment)
+and `pr_number` as the caller's input name; the dispatch guard blocks only fork and
+`dependabot[bot]` PRs. But the `claude-review-<N>` concurrency group makes a redundant dispatch
+actively HARMFUL. The section above on manual dispatches records the race in the direction where
+an automated re-dispatch cancels a queued manual one; it runs the other way too, and that
+direction costs a check: a dispatch QUEUED while a `pull_request` run is already in progress
+cancels that in-flight run, and a cancelled `claude-review` fails `require-review` outright
+(cancelled != skipped, unlike the by-design skip). Measured minutes apart on `c8a19450`: dispatch
+31938015445 queued, run 31937946023 went `cancelled`, and its `require-review` reported `failure`.
+
+Two corollaries. Cancelling the dispatch afterwards does not undo it, because the run it cancelled
+stays cancelled -- so check for an already-running review BEFORE dispatching, not after. And a
+`require-review` failure whose run conclusion is `cancelled` is self-inflicted bookkeeping rather
+than a review finding: read the RUN's conclusion before treating it as one.
+
+**Dispatching needs the MCP tool, not the raw API.** `POST .../workflows/<f>/dispatches` with the
+raw `GH_TOKEN` returns `403 Forbidden` (no `actions: write`), while
+`mcp__github__actions_run_trigger` with `method: run_workflow` returns `204` for the identical
+call -- a second place the two identities differ in SCOPE and not just in name. A 403 here is
+therefore a wrong-client error, not an absent capability: reach for the other client before
+reporting the review unreachable or falling back to a self-review.
+
+**How to apply:** after opening a PR, check the review workflow's newest run for
+`conclusion: skipped` with `actor` a Bot. If the round has any push left in it, just push --
+that heals the gate and costs nothing. Dispatch only when it does not, and only after confirming
+no `pull_request` run is already in progress. (`Lacaedemon/sparta` PR #1278, 2026-08-16.)
+
+## Never pipe `tools/check.sh` through `tail` -- the exit code becomes `tail`'s
+
+The exit-code half is the load-bearing one, and it holds unconditionally: a piped invocation
+reports the PIPELINE's status, so a `check.sh` that FAILED is reported by the harness as
+`exit code 0`. Read the printed `== summary ==` block, never the task's exit status. Redirect to
+a file rather than piping, so nothing is truncated either.
+
+**A "Total Coverage" line with no "Patch coverage:" line after it means the run returned EARLY,
+not that `tail` cut the breakdown.** The print order runs the other way from the intuitive
+reading: `check_patch_coverage` calls `check_coverage` first (`tools/check.sh:633`), whose
+instrumented ~2600-test suite log ends in the addon's own `...% Total Coverage: N/M lines`; the
+per-file breakdown prints much LATER at `:707`, and `Patch coverage: X/Y = Z%` at `:735`, just
+before the summary. So `tail -N` preserves the late patch answer and cuts the early total.
+
+The failure path is what produces the confusing output. `:633` is `check_coverage || return 1`,
+so when coverage itself fails -- on this machine, the Godot 4.6.3 spurious GUT failure documented
+above -- `check_patch_coverage` returns there and `:707`/`:735` never run at all. The tail then
+shows the end of the suite log ending in `93.4% Total Coverage: 8637/9244 lines`, a project-wide
+number that reads convincingly as the patch figure, with no breakdown anywhere. Diagnose that as
+"coverage failed and the patch step never ran", not as "the pipe ate the breakdown". (An earlier
+revision of this entry made exactly that misreading, generalizing one failed run's output into a
+claim about print order; corrected in review on PR #1278.)
+
+Recovering without a re-run is cheap, because `coverage/lcov.info` is already written by then:
+intersect its zero-hit `DA:` entries with the diff's added lines against the merge-base, per the
+codecov-gap section above. On PR #1274 that reproduced Codecov's own figure EXACTLY -- local
+65/66 = 98.48%, against codecov[bot]'s posted `98.48485%` naming the same single missing line in
+`Battle.gd` -- so the lcov intersection is a genuine substitute for a CI round trip rather than an
+approximation of one. That recovery is the right move for BOTH causes above: whether the patch
+figure was truncated away or never computed, `lcov.info` is on disk either way.
+(`Lacaedemon/sparta` PR #1274, corrected on PR #1278, 2026-08-16.)
