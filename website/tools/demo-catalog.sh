@@ -33,6 +33,7 @@ DEMOS=(
   "last_unit_rally|demos/inputs/last-unit-rally.json|30|650|640|input"
   "morale_recovery|demos/inputs/morale-recovery.json|30|270|640|input"
   "row_major_rally_reform|demos/inputs/row-major-rally-reform.json|30|300|640|input"
+  "square_rally_reform|demos/inputs/square-rally-reform.json|30|300|640|input"
   "testudo_under_fire|demos/inputs/testudo-under-fire.json|30|300|640|input"
   "shielded_stances|demos/inputs/shielded-stance-visuals.json|30|180|640|input"
   "decel_arrival|demos/inputs/decel-arrival.json|30|300|640|input"
