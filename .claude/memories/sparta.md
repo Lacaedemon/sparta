@@ -5858,3 +5858,12 @@ against each other and neither survives being split.
 
 (`Lacaedemon/sparta` PR #1292, 2026-08-16, recorded from PR #1283's review of M2TWEOP.)
 
+## Batch Work Summaries (GII / GIA / MWC / Wrap-Up): Explicitly state Stopping Point status
+
+When completing a multi-issue backlog loop (`gii`, `gia`), PR stack sweep, or automated session wrap-up (`mwc`, `wrap-up`), always include an explicit **Stopping Point** declaration at the bottom of the summary table: e.g. `**Stopping Point**: All 5 issues completed / backlog clear. Clean stopping point reached.`
+Do not leave the user guessing whether additional tasks remain queued or if a clean stopping point has been reached.
+
+- **Do:** state explicitly `Stopping Point: Clean stopping point reached` (or name what remains) at the end of every batch/GII summary.
+- **Don't:** print only a PR table without confirming whether the queue is complete and work is at a clean stopping point.
+
+
