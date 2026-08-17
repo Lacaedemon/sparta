@@ -74,6 +74,11 @@
 #   GUT_VERSION  GUT release vendored into addons/gut when it's missing
 #                (default: v9.7.0). Keep in sync with godot-ci.yml and
 #                test/README.md.
+#   SPARTA_ALLOW_GODOT_VERSION_MISMATCH
+#                Set to 1 to run even when GODOT_BIN's major.minor differs from
+#                the version project.godot targets. Off by default, because a
+#                mismatch reports as parse errors from the vendored GUT rather
+#                than as a version problem -- see require_matching_godot_version.
 #   SPARTA_CHECK_VALIDATE_TIMEOUT / SPARTA_CHECK_TEST_TIMEOUT /
 #   SPARTA_CHECK_COVERAGE_TIMEOUT
 #                Per-check hard timeouts in seconds for the Godot runs (defaults
@@ -201,6 +206,69 @@ require_godot() {
   if ! have "$GODOT_BIN"; then
     err "Godot binary '$GODOT_BIN' not found. Install Godot 4.7 (Standard) or set GODOT_BIN."
     err "See README.md ('Running Godot headlessly') for the download snippet."
+    return 1
+  fi
+  require_matching_godot_version || return 1
+}
+
+# The major.minor the project targets, read out of project.godot's config/features
+# line (`PackedStringArray("4.7")` -> `4.7`). That array can carry non-version
+# entries beside the version, so take the first version-shaped one. Prints nothing
+# when the line is absent or holds none, which stands the guard below down rather
+# than inventing a mismatch out of an unreadable file.
+project_target_godot_version() {
+  grep -m1 '^config/features=' "$PROJECT_ROOT/project.godot" 2>/dev/null \
+    | grep -oE '"[0-9]+\.[0-9]+"' | head -n1 | tr -d '"'
+}
+
+# The full version string GODOT_BIN reports (`4.7.stable.official.5b4e0cb0f`),
+# kept whole so the mismatch message can name the build the user actually has.
+# Prints nothing if the binary won't report a version this recognizes.
+running_godot_version() {
+  "$GODOT_BIN" --version 2>/dev/null | grep -oE '^[0-9]+\.[0-9]+[^[:space:]]*' | head -n1
+}
+
+# The leading major.minor of a version string (`4.6.3.stable.official.7d41c59c4`
+# -> `4.6`), which is the granularity the guard below compares at.
+major_minor() {
+  printf '%s' "$1" | grep -oE '^[0-9]+\.[0-9]+'
+}
+
+# Refuse to run Godot at a different major.minor than the project targets.
+#
+# A mismatch does not fail cleanly. The vendored GUT release is pinned to match
+# the targeted engine, so an older binary cannot parse GUT's own singleton shim,
+# and the run dies with SCRIPT ERROR lines from addons/gut/ that
+# has_script_errors() reports as a plain FAIL. From the summary that is
+# indistinguishable from a real defect in the diff -- the backtrace even points at
+# a file the author never touched -- so the natural response is to go hunting
+# through their own changes. Failing here instead names the actual cause, and
+# costs a version probe rather than the suite's twenty-odd minutes.
+#
+# Major.minor only: a 4.7.1 binary against a 4.7 target is fine, and pinning the
+# patch level would make the guard itself the nuisance. Either version being
+# unreadable stands the check down with a warning rather than blocking a run over
+# a probe that could not answer.
+require_matching_godot_version() {
+  if [ "${SPARTA_ALLOW_GODOT_VERSION_MISMATCH:-0}" = "1" ]; then
+    return 0
+  fi
+  local target running
+  target="$(project_target_godot_version)"
+  running="$(running_godot_version)"
+  if [ -z "$target" ]; then
+    warn "No target version in project.godot's config/features; skipping the Godot version check."
+    return 0
+  fi
+  if [ -z "$running" ]; then
+    warn "'$GODOT_BIN' --version reported no recognizable version; skipping the Godot version check."
+    return 0
+  fi
+  if [ "$target" != "$(major_minor "$running")" ]; then
+    err "Godot $running found at '$GODOT_BIN', but project.godot targets $target."
+    err "  Point GODOT_BIN at a $target binary -- see tools/README.md and README.md."
+    err "  Left to run, this surfaces as parse errors from addons/gut/, not as a version error."
+    err "  Set SPARTA_ALLOW_GODOT_VERSION_MISMATCH=1 to run across versions deliberately."
     return 1
   fi
 }
