@@ -71,3 +71,8 @@ Gemini/Antigravity automated pull-request review is **off** for this repo: `.gem
 1. **In scope + confident + small** → fix on PR branch, commit, push.
 2. **Ambiguous or architecturally significant** → ask user before acting.
 3. **Out of scope** → create GitHub issue to track it and reply with a link to the issue.
+
+## Main session acts as orchestrator
+
+The main agentic session should always act as an orchestrator: delegate heavy research, multi-file searches, complex sub-tasks, or parallel branch operations to subagents (`invoke_subagent`) or background tasks (`run_command`), keeping the main session's context clean and focused on high-level direction, triage, and review.
+
