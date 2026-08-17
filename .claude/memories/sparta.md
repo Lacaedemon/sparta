@@ -3166,38 +3166,11 @@ BEFORE issuing the east cavalry's plain attack order, and the dump showed both u
 reading `order_mode: Chase` instead of the intended contrast -- fixed by reordering so
 the plain attack order is issued first and Chase is armed last.)
 
-## Line endings are MIXED across this repo's own files -- a multi-line Edit `old_string` copied from Read's numbered output can silently fail to match
+## Leading tabs vs. Read separator tab hazard -- Edit tool `old_string` matching
 
-Some `scripts/*.gd` files are CRLF (`Battle.gd`, confirmed via `od -c`), others are LF
-(`test/unit/test_soldier_enemy_proximity.gd`) -- there's no single repo-wide convention,
-likely from different authoring tools over time. `git config core.autocrlf` is `true`,
-so `git diff`/`git status` always normalize and never surface this as noise -- it's
-invisible from git's own tooling.
+When copying text from Read output, Read's `NNNN\t<content>` separator tab is visually indistinguishable from a file's own leading indentation tab. An accidental extra leading tab (or missed tab) in `old_string` causes "String to replace not found in file". `sed -n 'N,Mp' <file> | cat -A | sed 's/\^I/[TAB]/g'` is a fast way to inspect exact tab counts when an Edit target fails to match despite visual appearance.
 
-The Edit tool's `old_string` match is exact-byte, and a multi-line `old_string` typed
-with plain `\n` between lines never matches a CRLF file's actual `\r\n` line endings --
-it fails with a generic "String to replace not found in file" error that gives no hint
-the cause is line endings specifically (indistinguishable from a genuine typo or a
-stale read). This bit repeatedly on `Battle.gd`: even a SINGLE-line `old_string` failed
-at first, traced to accidentally including an extra leading tab (visually
-indistinguishable when reading Read's `NNNN\t<content>` numbered-line output, since
-the line-number/content separator tab and the file's own leading indentation tab look
-identical at a glance).
-
-**How to apply:** if an Edit call fails with "String to replace not found" on a target
-you can SEE in a fresh Read of the exact same file, don't assume it's a stale read or a
-transcription typo first -- check `git show HEAD:<path> | grep -c $'\r'` (or `od -c` on
-the specific line) for CRLF before spending time re-comparing characters by eye. Once
-confirmed CRLF, split the edit into single-line `old_string`/`new_string` pairs (a
-single line never contains an embedded `\n`, so CRLF-vs-LF never matters within it) --
-the `new_string` can still be multi-line; only `old_string` needs to stay within one
-line when the file is CRLF. `sed -n 'N,Mp' <file> | cat -A | sed 's/\^I/[TAB]/g'` is the
-fastest way to confirm exact tab counts before retyping an `old_string` that failed for
-this reason. A pure trailing-content deletion (no replacement text) is safe via
-`head -n N file > tmp && cp tmp file` instead, since it copies raw bytes and never
-needs to match multi-line content at all. (`Lacaedemon/sparta` PR #981, 2026-07-18:
-lost real time on this before isolating the cause via `od -c` and a string of
-single-line control edits.)
+**Historical Note (Line Endings):** `Lacaedemon/sparta` PR #981 (2026-07-18) previously documented mixed CRLF/LF line endings and instructed sessions to split multi-line Edit anchors on `Battle.gd`. On 2026-07-29 (PR #1177), `.gitattributes` added `* text=auto eol=lf`, normalizing all repository files to LF across all checkouts. Standing instructions to split multi-line anchors for CRLF reasons are obsolete; only the leading-tab hazard remains active.
 
 ## `tools/check.sh`: a wrapping check needs a dedicated result key to short-circuit its wrapped check safely
 
@@ -5186,33 +5159,17 @@ as the square count displacing the line count and could not be produced by any o
 (`Lacaedemon/sparta` PR #1263, 2026-08-16:
 `test_hold_ground_reform_leaves_a_squared_units_file_assignment_untouched`.)
 
-## Local Godot here is 4.6.3 while the repo targets 4.7 -- `check.sh` reports a spurious FAIL
+## If local Godot version differs from project target -- check versions before diagnosing test failures
 
-The container's `/usr/local/bin/godot` is **4.6.3**, and `project.godot` commits
-`config/features=PackedStringArray("4.7")`. The visible consequence is not a game-code failure:
-vendored GUT v9.7.0 references `AccessibilityServer`, a 4.7 singleton, so it cannot parse itself
-under 4.6.3 and emits `SCRIPT ERROR` lines from `addons/gut/`. `tools/check.sh`'s
-`has_script_errors()` matches those and reports **FAIL test** / **FAIL patch_coverage** even when
-the suite is entirely green.
+Godot binary major.minor version is a property of the local container/environment, not a global invariant. If the local binary major.minor differs from `project.godot`'s `config/features` (e.g. 4.6.x vs 4.7), vendored GUT v9.7.0 may fail to parse `AccessibilityServer` (a 4.7 singleton) and emit `SCRIPT ERROR` lines.
 
-Read the run's own totals rather than `check.sh`'s verdict when this happens. Driving GUT directly
-sidesteps the wrapper and gives the real answer:
-
+To check version compatibility in one command:
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://test -ginclude_subdirs -gexit
+godot --version                       # or "$GODOT_BIN" --version
+grep '^config/features=' project.godot
 ```
 
-Measured 2026-08-16 on PR #1263: `check.sh` reported FAIL while that invocation reported
-**2652/2652 passing across 187 scripts**, with all four `SCRIPT ERROR`s inside `addons/gut/` and
-none from `scripts/`. So check where the errors point before believing the verdict.
-
-Two practical notes. `-gselect=<file>.gd -gunit_test_name=<substring>` runs a single test in well
-under a second, against roughly seven minutes for the full suite --- which is what makes the
-revert-and-confirm-it-bites habit cheap enough to do on every guard. And when the local wrapper is
-untrustworthy, CI's own clean-runner `Validate & test` / `Coverage` are the authority, exactly as
-this file's orphaned-process entry already prescribes for a different contamination cause.
-
-Tracked as #1271.
+PR #1305 (closing #1271) added an explicit version check to `tools/check.sh`, which now compares the local binary version directly against `config/features` and fails fast with a version error if they mismatch. Therefore, any `FAIL test` returned by `check.sh` after #1305 is a real failure (not a hidden version mismatch).
 
 ## Both LOD layers carry the weapon silhouette -- rebuilding one is not rebuilding the block
 
@@ -5267,26 +5224,16 @@ minutes apart:
 
 | write path | attributed author |
 | --- | --- |
-| GitHub MCP tools (`create_pull_request`, ...) | `d-morrison` (User) |
+| GitHub MCP tools (`create_pull_request`, ...) | `dem-extra1` (User) (formerly `d-morrison` in earlier environments) |
 | raw API with `GH_TOKEN` (`urllib`, `curl`) | `claude[bot]` (Bot) |
 | the `gh` CLI (`gh pr create`, `gh api`) | `dem-extra1` (User) |
 
-PR #1274 was opened through the MCP tool and is authored by `d-morrison`; PR #1278 was opened
-through raw `urllib` with the same `GH_TOKEN` and is authored by `claude[bot]`. Two consequences,
-and the second is the expensive one.
+PR #1283 and #1308 were opened through MCP / CLI tools and are authored by `dem-extra1` (User); PR #1278 was opened through raw `urllib` with `GH_TOKEN` and is authored by `claude[bot]`.
 
-**The `gh` row was added later, and it is the one that behaves sanely.**
-PR #1293 was opened with `gh pr create` and is authored by `dem-extra1` (User), which is also what
-`gh api user` returns and what `git log` records as the commit author --- so on this path the
-identity probe and the write AGREE, unlike the raw-API row above.
-Two consequences follow, both in the good direction.
-The review workflow's `github.event.sender.type != 'Bot'` gate passes, so a `gh`-opened PR gets
-its automatic review on the `opened` event with no push needed to heal it.
-And a `d-morrison` reviewer request does not name the PR's own author, so the 422 below does not
-arise on this path.
-Three write paths therefore yield three different identities from one session, which is the whole
-point of the section: do not generalize any row to a client you did not measure.
-(Measured 2026-08-16 on PR #1293.)
+**MCP and `gh` CLI paths behave sanely as User (`dem-extra1`).**
+PRs opened via MCP tools (`create_pull_request`) or `gh pr create` are authored by `dem-extra1` (User). Two consequences follow:
+1. The review workflow's `github.event.sender.type != 'Bot'` gate passes, so the PR gets its automatic review on the `opened` event without needing a follow-up push.
+2. A `d-morrison` reviewer request does not name the PR's own author (`dem-extra1`), so `422 Unprocessable Entity` self-review errors do not arise on these PRs.
 
 **Requesting `d-morrison` as a reviewer 422s on a `d-morrison`-authored PR.** GitHub rejects a
 review request naming a PR's own author with `422 Unprocessable Entity`. That is not a
@@ -5496,8 +5443,7 @@ per-file breakdown prints much LATER at `:707`, and `Patch coverage: X/Y = Z%` a
 before the summary. So `tail -N` preserves the late patch answer and cuts the early total.
 
 The failure path is what produces the confusing output. `:633` is `check_coverage || return 1`,
-so when coverage itself fails -- on this machine, the Godot 4.6.3 spurious GUT failure documented
-above -- `check_patch_coverage` returns there and `:707`/`:735` never run at all. The tail then
+so when coverage itself fails -- e.g. on a version-mismatched binary or a test error -- `check_patch_coverage` returns there and `:707`/`:735` never run at all. The tail then
 shows the end of the suite log ending in `93.4% Total Coverage: 8637/9244 lines`, a project-wide
 number that reads convincingly as the patch figure, with no breakdown anywhere. Diagnose that as
 "coverage failed and the patch step never ran", not as "the pipe ate the breakdown". (An earlier
