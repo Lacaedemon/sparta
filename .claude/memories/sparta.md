@@ -5873,5 +5873,13 @@ Whenever a session creates or updates AI capabilities, memories, or skill defini
 - **Do:** branch, commit, push, open a PR, and ARDI to clean immediately upon applying memory or skill edits.
 - **Don't:** leave `cai` or memory edits uncommitted in the local working tree without pushing them.
 
+## `mergeable_state: clean` is NOT Fully Clean
+
+GitHub API's `mergeable_state: clean` / `mergeStateStatus: CLEAN` indicates ONLY that git merge will succeed without merge conflicts. It does NOT mean CI has passed or that an AI/human review has approved the PR. NEVER merge a PR based on `mergeable_state: clean` without verifying both (1) all CI check runs are green, AND (2) an authentic clean review verdict evaluating the HEAD SHA has been received (triggering `@claude review` / `claude-code-review.yml` first in repos like `ai-config` where reviews do not auto-dispatch).
+
+- **Do:** verify that all CI check runs are green AND latest review is clean before merging.
+- **Don't:** treat `mergeable_state: clean` from GitHub API as a clean CI or review verdict.
+
+
 
 
