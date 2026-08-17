@@ -1,0 +1,47 @@
+{
+  "_comment": "Canonical list of non-standard characters banned in .qmd and .R files. Synchronized with Morrison-Lab/gha/check-non-standard-chars.",
+  "banned_characters": [
+    {
+      "codepoint": "U+201C",
+      "char": "“",
+      "name": "Left double quotation mark",
+      "replacement": "\""
+    },
+    {
+      "codepoint": "U+201D",
+      "char": "”",
+      "name": "Right double quotation mark",
+      "replacement": "\""
+    },
+    {
+      "codepoint": "U+2018",
+      "char": "‘",
+      "name": "Left single quotation mark",
+      "replacement": "'"
+    },
+    {
+      "codepoint": "U+2019",
+      "char": "’",
+      "name": "Right single quotation mark",
+      "replacement": "'"
+    },
+    {
+      "codepoint": "U+2013",
+      "char": "–",
+      "name": "En dash",
+      "replacement": "-"
+    },
+    {
+      "codepoint": "U+2014",
+      "char": "—",
+      "name": "Em dash",
+      "replacement": "-"
+    },
+    {
+      "codepoint": "U+00D7",
+      "char": "×",
+      "name": "Multiplication sign",
+      "replacement": "x or * in .R, &times; in .qmd"
+    }
+  ]
+}

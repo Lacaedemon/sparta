@@ -749,6 +749,9 @@ check_chars() {
   # The flagged characters are U+2018/2019 (' '), U+201C/201D (" "),
   # U+2013/2014 (en/em dash), and U+00D7 (multiplication sign).
   #
+  # The canonical list of banned characters is defined in tools/ci/banned_chars.json,
+  # keeping local check.sh and CI (Morrison-Lab/gha/check-non-standard-chars) in sync.
+  #
   # Matching is done with `grep -F` over the literal UTF-8 byte sequences (built
   # via printf's octal escapes) rather than `grep -P '\x{...}'`: -P is a GNU
   # extension absent from the BSD grep that ships on macOS, whereas fixed-string
@@ -757,11 +760,15 @@ check_chars() {
   lsq="$(printf '\342\200\230')"; rsq="$(printf '\342\200\231')"
   ldq="$(printf '\342\200\234')"; rdq="$(printf '\342\200\235')"
   endash="$(printf '\342\200\223')"; emdash="$(printf '\342\200\224')"
-  # U+00D7 MULTIPLICATION SIGN. CI's own check-chars bans it too (its remediation
-  # legend names it explicitly), so omitting it here let 19 of them accumulate in
-  # website/*.qmd behind a locally-green run -- the local check must reproduce CI's
-  # set, not a subset of it, or a PASS here means nothing.
+  # U+00D7 MULTIPLICATION SIGN. Defined in tools/ci/banned_chars.json.
   times="$(printf '\303\227')"
+
+  # Run the synchronization check if python3 is available
+  if have python3; then
+    if ! python3 "$PROJECT_ROOT/tools/ci/verify_banned_chars.py" >/dev/null 2>&1; then
+      warn "banned_chars sync check reported a mismatch in tools/ci/banned_chars.json"
+    fi
+  fi
 
   # Collect the tracked docs null-delimited (handles spaces/newlines) and skip
   # cleanly when there are none — avoids relying on GNU xargs' -r and stops grep
@@ -789,7 +796,7 @@ check_chars() {
     printf '%s\n' "$out" >&2
     return 1
   fi
-  info "Docs are free of curly quotes / en-em dashes / multiplication signs."
+  info "Docs are free of curly quotes / en-em dashes / multiplication signs (verified against tools/ci/banned_chars.json)."
 }
 
 # resolve_comments_base — print the first candidate commit-ish that both (a) is
