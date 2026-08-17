@@ -1314,8 +1314,32 @@ func _toggle_weapon() -> void:
 		return
 	_battle.enqueue_switch_weapon(uids, target_id)
 	if _hud != null:
-		_hud.flash_message("Drew: %s" % target.display_name)
+		_hud.flash_message(_weapon_switch_message(target, target_id))
 	Sfx.play(&"order")
+
+
+## The flash text for a switch order: what the order actually achieved, not what it was
+## issued for. Unit.equip_weapon refuses an id a regiment's own soldiers do not carry, and
+## that refusal is silent by design -- so a mixed selection following an Infantry lead draws
+## the pilum on the Infantry and correctly leaves the Cavalry on its spatha. Reporting a
+## flat success there would claim a switch for regiments that never made one.
+##
+## Named the same way the no-sidearm refusal above is: keyed on the outcome rather than on
+## the gesture. The count is omitted when every live regiment took the weapon, so the common
+## single-type selection reads exactly as before rather than carrying a "1 of 1" the player
+## has no use for.
+func _weapon_switch_message(target: Weapon, target_id: int) -> String:
+	var drew: int = 0
+	var live: int = 0
+	for u in _selected:
+		if not is_instance_valid(u) or u.state == UnitRef.State.DEAD:
+			continue
+		live += 1
+		if u.can_equip_weapon(target_id):
+			drew += 1
+	if drew >= live:
+		return "Drew: %s" % target.display_name
+	return "Drew: %s (%d of %d regiments)" % [target.display_name, drew, live]
 
 
 ## Whether any friendly unit is currently selected. The camera reads this so the

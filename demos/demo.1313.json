@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "HUD-text-only change (#1277): the weapon-switch flash is reworded from a flat 'Drew: X' to report what the switch order actually achieved -- 'Drew: X (N of M regiments)' when a mixed selection following an Infantry lead can only re-equip some of its regiments, since Unit.equip_weapon silently refuses a weapon a regiment's own soldiers never carried. The sim is byte-identical (this PR's website-demo-diff reports 0 of 79 clips changed), so a recorded battle plays out exactly as before; the only new thing to see is a transient one-frame HUD toast, and its exact '(N of M)' count -- the substance of the fix -- is pinned precisely by test_shift_i_on_a_mixed_selection_reports_how_many_regiments_drew (and the omit-count / exclude-dead siblings) rather than legibly by a clip. Prefer that skip over CI's unrelated generic demo."
+}

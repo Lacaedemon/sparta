@@ -3,7 +3,7 @@ extends GutTest
 ## (SoldierSpatialHash). It buckets record INDICES by world position; the pass
 ## queries the 3x3 cell block to get a superset of every soldier within the
 ## separation floor. Determinism (id-ordered insertion + fixed 3x3 traversal) is
-## exercised by the cross-regiment tests in test_soldier_separation.gd; here we
+## exercised by the cross-regiment tests in test_soldier_steering.gd; here we
 ## pin the grid's own contract: framing, supersets, and boundary straddling.
 
 

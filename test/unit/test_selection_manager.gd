@@ -2654,3 +2654,103 @@ func test_shift_i_is_inert_when_the_return_target_is_unregistered() -> void:
 
 	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_PILUM, "the held weapon is unchanged")
 	assert_eq(b._pending_orders.size(), 0, "and no unappliable order is recorded")
+
+
+## Like _sm_with_armed_unit but with a second, Cavalry-shaped regiment behind the Infantry
+## lead: a box-selection the switch order reaches but only the lead can act on. Cavalry
+## carries a spatha and no sidearm, so it is exactly the unit equip_weapon (and thus the
+## flash count) refuses the lead's pilum. _selected is set directly, the way _toggle_weapon
+## and _selected_uids read it.
+func _sm_with_mixed_selection() -> Array:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var hud := _StubHud.new()
+	sm._hud = hud
+	var inf := _unit()
+	inf.uid = 7
+	inf.unit_name = "Infantry 1"
+	inf.weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	inf.spawn_weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	inf.sidearm_type_id = LoadoutRegistry.WEAPON_PILUM
+	var cav := _unit()
+	cav.uid = 8
+	cav.unit_name = "Cavalry 1"
+	cav.weapon_type_id = LoadoutRegistry.WEAPON_SPATHA
+	cav.spawn_weapon_type_id = LoadoutRegistry.WEAPON_SPATHA
+	cav.sidearm_type_id = 0
+	b._by_uid[7] = inf
+	b._by_uid[8] = cav
+	sm._selected = [inf, cav]
+	return [sm, b, inf, cav, hud]
+
+
+## The whole point of the fix: the flash reports what the switch achieved, not what it was
+## issued for. The order reaches both regiments, but the Cavalry cannot hold the lead's pilum
+## and is silently left on its spatha -- so the flash says "1 of 2" rather than claiming a
+## switch the Cavalry never made. This is the mixed-selection branch codecov flags.
+func test_shift_i_on_a_mixed_selection_reports_how_many_regiments_drew() -> void:
+	var f := _sm_with_mixed_selection()
+	var sm = f[0]
+	var inf: Unit = f[2]
+	var cav: Unit = f[3]
+	var hud = f[4]
+
+	assert_true(sm._dispatch_key(_key_event(KEY_I, false, true)), "Shift+I is a handled hotkey")
+
+	assert_eq(inf.weapon_type_id, LoadoutRegistry.WEAPON_PILUM,
+			"the lead Infantry drew the weapon the id names")
+	assert_eq(cav.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA,
+			"the Cavalry kept its spatha -- equip_weapon refused a weapon it never carried")
+	var pilum: Weapon = LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_PILUM)
+	assert_eq(hud.messages[-1], "Drew: %s (1 of 2 regiments)" % pilum.display_name,
+			"the flash counts only the regiments that actually took the weapon")
+
+
+## The common single-type selection reads exactly as it did before the count existed: when
+## every live regiment can take the weapon, the "(N of M)" is omitted rather than reading as
+## a redundant "1 of 1" / "2 of 2".
+func test_the_weapon_switch_message_omits_the_count_when_every_regiment_can_draw() -> void:
+	var f := _sm_with_mixed_selection()
+	var sm = f[0]
+	var inf: Unit = f[2]
+	var cav: Unit = f[3]
+	# Make the Cavalry able to draw the pilum too, so the whole selection can switch.
+	cav.weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	cav.spawn_weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	cav.sidearm_type_id = LoadoutRegistry.WEAPON_PILUM
+	var pilum: Weapon = LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_PILUM)
+
+	var msg: String = sm._weapon_switch_message(pilum, LoadoutRegistry.WEAPON_PILUM)
+
+	assert_eq(msg, "Drew: %s" % pilum.display_name,
+			"a fully-equippable selection reads as a bare 'Drew: X' with no count")
+	assert_true(inf.can_equip_weapon(LoadoutRegistry.WEAPON_PILUM)
+			and cav.can_equip_weapon(LoadoutRegistry.WEAPON_PILUM),
+			"precondition: both regiments genuinely can draw the weapon")
+
+
+## A dead regiment left in _selected must not pad the denominator: the count is 'of the live
+## regiments', matching _selected_uids' own live filter, so the message can never claim more
+## recipients than the order actually reaches. Were the dead unit counted, this would read
+## '1 of 3' instead of '1 of 2'.
+func test_the_weapon_switch_message_excludes_dead_regiments_from_the_count() -> void:
+	var f := _sm_with_mixed_selection()
+	var sm = f[0]
+	var inf: Unit = f[2]
+	var cav: Unit = f[3]
+	var dead := _unit()
+	dead.uid = 9
+	dead.unit_name = "Infantry 2"
+	dead.weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	dead.spawn_weapon_type_id = LoadoutRegistry.WEAPON_GLADIUS
+	dead.sidearm_type_id = LoadoutRegistry.WEAPON_PILUM
+	dead.state = Unit.State.DEAD
+	sm._selected = [inf, cav, dead]
+	var pilum: Weapon = LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_PILUM)
+
+	var msg: String = sm._weapon_switch_message(pilum, LoadoutRegistry.WEAPON_PILUM)
+
+	assert_eq(msg, "Drew: %s (1 of 2 regiments)" % pilum.display_name,
+			"the dead regiment is excluded from both the numerator and the denominator")

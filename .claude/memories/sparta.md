@@ -7,6 +7,18 @@ metadata:
 
 # Sparta — working notes
 
+## Standing AI Workflow & Orchestration Rules (All AI Models)
+
+Our lab's work rules encoded throughout `ai-config` apply unconditionally to all AI models and agents (Gemini, Claude Code, Codex, Copilot, etc.) across all repositories and sessions:
+
+
+1. **Main session acts as orchestrator**: Delegate heavy research, multi-file searches, complex sub-tasks, or parallel branch operations to subagents (`invoke_subagent`) or background tasks (`run_command`), keeping main context clean and focused on high-level direction, triage, and review.
+2. **Proactive corrective actions & PR workflow**: Whenever a gap, missing PR, or workflow instruction is identified:
+   - **Act immediately without asking**: Never wait for a user prompt or ask "Should I do X?" when the requirement is clear — branch, commit, open the PR, request review from `d-morrison`, and drive to clean in the exact same response turn.
+   - **Auto-merge under `mwc`**: If `mwc` is active for the session, once CI passes and review is clean, execute the merge and post-merge wrap-up immediately without stopping.
+3. **Mandatory Timers for Async Work**: Whenever waiting on in-flight CI runs, background tasks, or subagents before completing a task or merge, **ALWAYS** schedule a timer (`schedule`) or proceed to other active work. Never end a turn waiting on asynchronous execution without a scheduled wakeup handle.
+4. **Memory & Skill PR Discipline**: Every addition or update to memories, instructions, or skills (including `cai`, `memorize`, and `push-memory`) **MUST** be delivered via a branch + PR with requested reviewer (`d-morrison`) and driven to clean. Never edit configuration or memory files directly on `main` or disk without a PR.
+
 ## Standing design philosophy: bottom-up physics, no top-down gimmicks
 
 Sparta's combat/movement sim is built **bottom-up from individual-level physics**
@@ -1900,11 +1912,13 @@ It does NOT explain #758/#752 or #981/#296, which carried no keyword anywhere
 and stay unconfirmed.
 
 **The tell before merging is a closure risk with no PR linkage.**
-#1152 came back `closed_by_pull_requests: {"total_count": 0, "references": []}`,
+As of the 2026-08-16 measurement, #1152 came back `closed_by_pull_requests: {"total_count": 0, "references": []}`,
 correct since the body closed nothing, while still landing
 `state_reason: "completed"` with `closed_by` naming the merger.
 So the empty linkage array reads reassuringly and is silent about what the
-branch's own commit messages say.
+branch's own commit messages say. (Note: `closed_by_pull_requests` later came to
+reference #1276 because #1276's description quoted the commit line containing `(closes #1152)`
+while documenting the mechanism.)
 
 **How to apply:** whenever a sparta PR narrows to spec-only or partial after
 being claimed, grep its own history before merging, and edit the squash body at
@@ -3166,38 +3180,11 @@ BEFORE issuing the east cavalry's plain attack order, and the dump showed both u
 reading `order_mode: Chase` instead of the intended contrast -- fixed by reordering so
 the plain attack order is issued first and Chase is armed last.)
 
-## Line endings are MIXED across this repo's own files -- a multi-line Edit `old_string` copied from Read's numbered output can silently fail to match
+## Leading tabs vs. Read separator tab hazard -- Edit tool `old_string` matching
 
-Some `scripts/*.gd` files are CRLF (`Battle.gd`, confirmed via `od -c`), others are LF
-(`test/unit/test_soldier_enemy_proximity.gd`) -- there's no single repo-wide convention,
-likely from different authoring tools over time. `git config core.autocrlf` is `true`,
-so `git diff`/`git status` always normalize and never surface this as noise -- it's
-invisible from git's own tooling.
+When copying text from Read output, Read's `NNNN\t<content>` separator tab is visually indistinguishable from a file's own leading indentation tab. An accidental extra leading tab (or missed tab) in `old_string` causes "String to replace not found in file". `sed -n 'N,Mp' <file> | cat -A | sed 's/\^I/[TAB]/g'` is a fast way to inspect exact tab counts when an Edit target fails to match despite visual appearance.
 
-The Edit tool's `old_string` match is exact-byte, and a multi-line `old_string` typed
-with plain `\n` between lines never matches a CRLF file's actual `\r\n` line endings --
-it fails with a generic "String to replace not found in file" error that gives no hint
-the cause is line endings specifically (indistinguishable from a genuine typo or a
-stale read). This bit repeatedly on `Battle.gd`: even a SINGLE-line `old_string` failed
-at first, traced to accidentally including an extra leading tab (visually
-indistinguishable when reading Read's `NNNN\t<content>` numbered-line output, since
-the line-number/content separator tab and the file's own leading indentation tab look
-identical at a glance).
-
-**How to apply:** if an Edit call fails with "String to replace not found" on a target
-you can SEE in a fresh Read of the exact same file, don't assume it's a stale read or a
-transcription typo first -- check `git show HEAD:<path> | grep -c $'\r'` (or `od -c` on
-the specific line) for CRLF before spending time re-comparing characters by eye. Once
-confirmed CRLF, split the edit into single-line `old_string`/`new_string` pairs (a
-single line never contains an embedded `\n`, so CRLF-vs-LF never matters within it) --
-the `new_string` can still be multi-line; only `old_string` needs to stay within one
-line when the file is CRLF. `sed -n 'N,Mp' <file> | cat -A | sed 's/\^I/[TAB]/g'` is the
-fastest way to confirm exact tab counts before retyping an `old_string` that failed for
-this reason. A pure trailing-content deletion (no replacement text) is safe via
-`head -n N file > tmp && cp tmp file` instead, since it copies raw bytes and never
-needs to match multi-line content at all. (`Lacaedemon/sparta` PR #981, 2026-07-18:
-lost real time on this before isolating the cause via `od -c` and a string of
-single-line control edits.)
+**Historical Note (Line Endings):** `Lacaedemon/sparta` PR #981 (2026-07-18) previously documented mixed CRLF/LF line endings and instructed sessions to split multi-line Edit anchors on `Battle.gd`. On 2026-07-29 (PR #1177), `.gitattributes` added `* text=auto eol=lf`, normalizing all repository files to LF across all checkouts. Standing instructions to split multi-line anchors for CRLF reasons are obsolete; only the leading-tab hazard remains active.
 
 ## `tools/check.sh`: a wrapping check needs a dedicated result key to short-circuit its wrapped check safely
 
@@ -5186,33 +5173,17 @@ as the square count displacing the line count and could not be produced by any o
 (`Lacaedemon/sparta` PR #1263, 2026-08-16:
 `test_hold_ground_reform_leaves_a_squared_units_file_assignment_untouched`.)
 
-## Local Godot here is 4.6.3 while the repo targets 4.7 -- `check.sh` reports a spurious FAIL
+## If local Godot version differs from project target -- check versions before diagnosing test failures
 
-The container's `/usr/local/bin/godot` is **4.6.3**, and `project.godot` commits
-`config/features=PackedStringArray("4.7")`. The visible consequence is not a game-code failure:
-vendored GUT v9.7.0 references `AccessibilityServer`, a 4.7 singleton, so it cannot parse itself
-under 4.6.3 and emits `SCRIPT ERROR` lines from `addons/gut/`. `tools/check.sh`'s
-`has_script_errors()` matches those and reports **FAIL test** / **FAIL patch_coverage** even when
-the suite is entirely green.
+Godot binary major.minor version is a property of the local container/environment, not a global invariant. If the local binary major.minor differs from `project.godot`'s `config/features` (e.g. 4.6.x vs 4.7), vendored GUT v9.7.0 may fail to parse `AccessibilityServer` (a 4.7 singleton) and emit `SCRIPT ERROR` lines.
 
-Read the run's own totals rather than `check.sh`'s verdict when this happens. Driving GUT directly
-sidesteps the wrapper and gives the real answer:
-
+To check version compatibility in one command:
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://test -ginclude_subdirs -gexit
+godot --version                       # or "$GODOT_BIN" --version
+grep '^config/features=' project.godot
 ```
 
-Measured 2026-08-16 on PR #1263: `check.sh` reported FAIL while that invocation reported
-**2652/2652 passing across 187 scripts**, with all four `SCRIPT ERROR`s inside `addons/gut/` and
-none from `scripts/`. So check where the errors point before believing the verdict.
-
-Two practical notes. `-gselect=<file>.gd -gunit_test_name=<substring>` runs a single test in well
-under a second, against roughly seven minutes for the full suite --- which is what makes the
-revert-and-confirm-it-bites habit cheap enough to do on every guard. And when the local wrapper is
-untrustworthy, CI's own clean-runner `Validate & test` / `Coverage` are the authority, exactly as
-this file's orphaned-process entry already prescribes for a different contamination cause.
-
-Tracked as #1271.
+PR #1305 (closing #1271) added an explicit version check to `tools/check.sh`, which now compares the local binary version directly against `config/features` and fails fast with a version error if they mismatch. Therefore, any `FAIL test` returned by `check.sh` after #1305 is a real failure (not a hidden version mismatch).
 
 ## Both LOD layers carry the weapon silhouette -- rebuilding one is not rebuilding the block
 
@@ -5267,26 +5238,16 @@ minutes apart:
 
 | write path | attributed author |
 | --- | --- |
-| GitHub MCP tools (`create_pull_request`, ...) | `d-morrison` (User) |
+| GitHub MCP tools (`create_pull_request`, ...) | `dem-extra1` (User) (formerly `d-morrison` in earlier environments) |
 | raw API with `GH_TOKEN` (`urllib`, `curl`) | `claude[bot]` (Bot) |
 | the `gh` CLI (`gh pr create`, `gh api`) | `dem-extra1` (User) |
 
-PR #1274 was opened through the MCP tool and is authored by `d-morrison`; PR #1278 was opened
-through raw `urllib` with the same `GH_TOKEN` and is authored by `claude[bot]`. Two consequences,
-and the second is the expensive one.
+PR #1283 and #1308 were opened through MCP / CLI tools and are authored by `dem-extra1` (User); PR #1278 was opened through raw `urllib` with `GH_TOKEN` and is authored by `claude[bot]`.
 
-**The `gh` row was added later, and it is the one that behaves sanely.**
-PR #1293 was opened with `gh pr create` and is authored by `dem-extra1` (User), which is also what
-`gh api user` returns and what `git log` records as the commit author --- so on this path the
-identity probe and the write AGREE, unlike the raw-API row above.
-Two consequences follow, both in the good direction.
-The review workflow's `github.event.sender.type != 'Bot'` gate passes, so a `gh`-opened PR gets
-its automatic review on the `opened` event with no push needed to heal it.
-And a `d-morrison` reviewer request does not name the PR's own author, so the 422 below does not
-arise on this path.
-Three write paths therefore yield three different identities from one session, which is the whole
-point of the section: do not generalize any row to a client you did not measure.
-(Measured 2026-08-16 on PR #1293.)
+**MCP and `gh` CLI paths behave sanely as User (`dem-extra1`).**
+PRs opened via MCP tools (`create_pull_request`) or `gh pr create` are authored by `dem-extra1` (User). Two consequences follow:
+1. The review workflow's `github.event.sender.type != 'Bot'` gate passes, so the PR gets its automatic review on the `opened` event without needing a follow-up push.
+2. A `d-morrison` reviewer request does not name the PR's own author (`dem-extra1`), so `422 Unprocessable Entity` self-review errors do not arise on these PRs.
 
 **Requesting `d-morrison` as a reviewer 422s on a `d-morrison`-authored PR.** GitHub rejects a
 review request naming a PR's own author with `422 Unprocessable Entity`. That is not a
@@ -5496,8 +5457,7 @@ per-file breakdown prints much LATER at `:707`, and `Patch coverage: X/Y = Z%` a
 before the summary. So `tail -N` preserves the late patch answer and cuts the early total.
 
 The failure path is what produces the confusing output. `:633` is `check_coverage || return 1`,
-so when coverage itself fails -- on this machine, the Godot 4.6.3 spurious GUT failure documented
-above -- `check_patch_coverage` returns there and `:707`/`:735` never run at all. The tail then
+so when coverage itself fails -- e.g. on a version-mismatched binary or a test error -- `check_patch_coverage` returns there and `:707`/`:735` never run at all. The tail then
 shows the end of the suite log ending in `93.4% Total Coverage: 8637/9244 lines`, a project-wide
 number that reads convincingly as the patch figure, with no breakdown anywhere. Diagnose that as
 "coverage failed and the patch step never ran", not as "the pipe ate the breakdown". (An earlier
@@ -5911,4 +5871,44 @@ against each other and neither survives being split.
   value lives in the single ranked list.
 
 (`Lacaedemon/sparta` PR #1292, 2026-08-16, recorded from PR #1283's review of M2TWEOP.)
+
+## Batch Work Summaries (GII / GIA / MWC / Wrap-Up): Explicitly state Stopping Point status
+
+When completing a multi-issue backlog loop (`gii`, `gia`), PR stack sweep, or automated session wrap-up (`mwc`, `wrap-up`), always include an explicit **Stopping Point** declaration at the bottom of the summary table: e.g. `**Stopping Point**: All 5 issues completed / backlog clear. Clean stopping point reached.`
+Do not leave the user guessing whether additional tasks remain queued or if a clean stopping point has been reached.
+
+- **Do:** state explicitly `Stopping Point: Clean stopping point reached` (or name what remains) at the end of every batch/GII summary.
+- **Don't:** print only a PR table without confirming whether the queue is complete and work is at a clean stopping point.
+
+## AI Capability & Memory Changes (`cai` / `ca`): Always Push immediately via PR
+
+Whenever a session creates or updates AI capabilities, memories, or skill definitions (`cai`, `ca`, `ums`), immediately branch off `main`, commit, push to origin, open a PR, request review, and drive to clean (or merge under `mwc`). Never leave capability or memory edits sitting uncommitted in the local working directory or wait for the user to prompt for a push.
+
+- **Do:** branch, commit, push, open a PR, and ARDI to clean immediately upon applying memory or skill edits.
+- **Don't:** leave `cai` or memory edits uncommitted in the local working tree without pushing them.
+
+## `mergeable_state: clean` is NOT Fully Clean
+
+GitHub API's `mergeable_state: clean` / `mergeStateStatus: CLEAN` indicates ONLY that git merge will succeed without merge conflicts. It does NOT mean CI has passed or that an AI/human review has approved the PR. NEVER merge a PR based on `mergeable_state: clean` without verifying both (1) all CI check runs are green, AND (2) an authentic clean review verdict evaluating the HEAD SHA has been received (triggering `@claude review` / `claude-code-review.yml` first in repos like `ai-config` where reviews do not auto-dispatch).
+
+- **Do:** verify that all CI check runs are green AND latest review is clean before merging.
+- **Don't:** treat `mergeable_state: clean` from GitHub API as a clean CI or review verdict.
+
+## Always Keep a Scheduled Monitor Timer Running for In-Flight Work
+
+Whenever ending a turn while background CI, `@claude review`, or async jobs are executing on active PRs under `mwc` / `ARDI`, ALWAYS launch a `schedule` timer (e.g. 120s) before ending the turn. Never finish a turn leaving in-flight PRs unmonitored without an active scheduled timer.
+
+- **Do:** set a `schedule` timer (e.g. 120s) before ending any turn while background PR checks or reviews are in flight.
+- **Don't:** end a turn leaving in-flight PRs unmonitored without a scheduled timer running.
+
+## Always State Clean Stopping Point When Stopping Work
+
+Whenever ending a session, completing a turn, or wrapping up work (whether finishing a single task, a multi-issue backlog loop like `gii`/`gia`, a PR stack sweep, or an automated session wrap-up like `mwc`/`wrap-up`), ALWAYS include an explicit `**Stopping Point**` declaration stating whether or not the session is at a clean stopping point (e.g. `**Stopping Point**: Clean stopping point reached` or `**Stopping Point**: Not a clean stopping point / work remains queued: ...`). Never leave the user guessing whether additional tasks remain queued or if a clean stopping point has been reached.
+
+- **Do:** state explicitly whether or not the session is at a clean stopping point whenever stopping work.
+- **Don't:** leave the user guessing about stopping point status when ending a turn or session.
+
+
+
+
 
