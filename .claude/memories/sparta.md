@@ -5866,4 +5866,12 @@ Do not leave the user guessing whether additional tasks remain queued or if a cl
 - **Do:** state explicitly `Stopping Point: Clean stopping point reached` (or name what remains) at the end of every batch/GII summary.
 - **Don't:** print only a PR table without confirming whether the queue is complete and work is at a clean stopping point.
 
+## AI Capability & Memory Changes (`cai` / `ca`): Always Push immediately via PR
+
+Whenever a session creates or updates AI capabilities, memories, or skill definitions (`cai`, `ca`, `ums`), immediately branch off `main`, commit, push to origin, open a PR, request review, and drive to clean (or merge under `mwc`). Never leave capability or memory edits sitting uncommitted in the local working directory or wait for the user to prompt for a push.
+
+- **Do:** branch, commit, push, open a PR, and ARDI to clean immediately upon applying memory or skill edits.
+- **Don't:** leave `cai` or memory edits uncommitted in the local working tree without pushing them.
+
+
 
