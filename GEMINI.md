@@ -74,7 +74,7 @@ Gemini/Antigravity automated pull-request review is **off** for this repo: `.gem
 
 ## Standing AI Workflow & Orchestration Rules (All AI Models)
 
-Applies unconditionally to all AI models and agents working in this repository (Gemini, Claude Code, Codex, Copilot, etc.):
+Our lab's work rules encoded throughout `ai-config` apply unconditionally to all AI models and agents (Gemini, Claude Code, Codex, Copilot, etc.) across all repositories and sessions:
 
 1. **Main session acts as orchestrator**: Delegate heavy research, multi-file searches, complex sub-tasks, or parallel branch operations to subagents (`invoke_subagent`) or background tasks (`run_command`), keeping main context clean and focused on high-level direction, triage, and review.
 2. **Proactive corrective actions & PR workflow**: Whenever a gap, missing PR, or workflow instruction is identified:
@@ -82,5 +82,6 @@ Applies unconditionally to all AI models and agents working in this repository (
    - **Auto-merge under `mwc`**: If `mwc` is active for the session, once CI passes and review is clean, execute the merge and post-merge wrap-up immediately without stopping.
 3. **Mandatory Timers for Async Work**: Whenever waiting on in-flight CI runs, background tasks, or subagents before completing a task or merge, **ALWAYS** schedule a timer (`schedule`) or proceed to other active work. Never end a turn waiting on asynchronous execution without a scheduled wakeup handle.
 4. **Memory & Skill PR Discipline**: Every addition or update to memories, instructions, or skills (including `cai`, `memorize`, and `push-memory`) **MUST** be delivered via a branch + PR with requested reviewer (`d-morrison`) and driven to clean. Never edit configuration or memory files directly on `main` or disk without a PR.
+
 
 

@@ -9,7 +9,8 @@ metadata:
 
 ## Standing AI Workflow & Orchestration Rules (All AI Models)
 
-Applies unconditionally to all AI models and agents working in this repository (Gemini, Claude Code, Codex, Copilot, etc.):
+Our lab's work rules encoded throughout `ai-config` apply unconditionally to all AI models and agents (Gemini, Claude Code, Codex, Copilot, etc.) across all repositories and sessions:
+
 
 1. **Main session acts as orchestrator**: Delegate heavy research, multi-file searches, complex sub-tasks, or parallel branch operations to subagents (`invoke_subagent`) or background tasks (`run_command`), keeping main context clean and focused on high-level direction, triage, and review.
 2. **Proactive corrective actions & PR workflow**: Whenever a gap, missing PR, or workflow instruction is identified:
