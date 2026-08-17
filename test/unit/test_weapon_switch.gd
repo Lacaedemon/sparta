@@ -370,3 +370,28 @@ func test_the_switch_order_round_trips_its_weapon_through_a_dict() -> void:
 	assert_eq(back.weapon, LoadoutRegistry.WEAPON_PILUM,
 		"the target weapon survives the round trip")
 	assert_eq(back.type, o.type, "and so does the order type beside it")
+
+
+## can_equip_weapon is the predicate equip_weapon consumes and the switch-order flash reads,
+## so the two can never disagree about which switches are valid. It accepts exactly the ids a
+## regiment can legitimately hold -- the one in hand, the one it deployed with, the stowed
+## sidearm -- and rejects a registered weapon its own soldiers never carried as well as an id
+## the registry does not know at all.
+func test_can_equip_weapon_accepts_only_the_regiments_own_two_weapons() -> void:
+	var u: Unit = _bare_unit(1, 0, 12)   # gladius in hand, gladius deployed, pilum stowed
+
+	assert_true(u.can_equip_weapon(LoadoutRegistry.WEAPON_GLADIUS),
+		"the weapon in hand is equippable")
+	assert_true(u.can_equip_weapon(LoadoutRegistry.WEAPON_PILUM),
+		"the stowed sidearm is equippable")
+	assert_false(u.can_equip_weapon(LoadoutRegistry.WEAPON_SPATHA),
+		"a registered weapon this regiment's soldiers never carried is refused")
+	assert_false(u.can_equip_weapon(9999),
+		"an id the registry does not know is refused")
+
+	# The deployed-weapon branch is distinct from the held-weapon branch: once the sidearm is
+	# in hand, the gladius must stay equippable via spawn_weapon_type_id rather than only
+	# because it happens to be the one currently held.
+	u.weapon_type_id = LoadoutRegistry.WEAPON_PILUM
+	assert_true(u.can_equip_weapon(LoadoutRegistry.WEAPON_GLADIUS),
+		"the deployed weapon stays equippable through the spawn-weapon branch once stowed")
