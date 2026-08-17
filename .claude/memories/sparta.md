@@ -3166,38 +3166,11 @@ BEFORE issuing the east cavalry's plain attack order, and the dump showed both u
 reading `order_mode: Chase` instead of the intended contrast -- fixed by reordering so
 the plain attack order is issued first and Chase is armed last.)
 
-## Line endings are MIXED across this repo's own files -- a multi-line Edit `old_string` copied from Read's numbered output can silently fail to match
+## Leading tabs vs. Read separator tab hazard -- Edit tool `old_string` matching
 
-Some `scripts/*.gd` files are CRLF (`Battle.gd`, confirmed via `od -c`), others are LF
-(`test/unit/test_soldier_enemy_proximity.gd`) -- there's no single repo-wide convention,
-likely from different authoring tools over time. `git config core.autocrlf` is `true`,
-so `git diff`/`git status` always normalize and never surface this as noise -- it's
-invisible from git's own tooling.
+When copying text from Read output, Read's `NNNN\t<content>` separator tab is visually indistinguishable from a file's own leading indentation tab. An accidental extra leading tab (or missed tab) in `old_string` causes "String to replace not found in file". `sed -n 'N,Mp' <file> | cat -A | sed 's/\^I/[TAB]/g'` is a fast way to inspect exact tab counts when an Edit target fails to match despite visual appearance.
 
-The Edit tool's `old_string` match is exact-byte, and a multi-line `old_string` typed
-with plain `\n` between lines never matches a CRLF file's actual `\r\n` line endings --
-it fails with a generic "String to replace not found in file" error that gives no hint
-the cause is line endings specifically (indistinguishable from a genuine typo or a
-stale read). This bit repeatedly on `Battle.gd`: even a SINGLE-line `old_string` failed
-at first, traced to accidentally including an extra leading tab (visually
-indistinguishable when reading Read's `NNNN\t<content>` numbered-line output, since
-the line-number/content separator tab and the file's own leading indentation tab look
-identical at a glance).
-
-**How to apply:** if an Edit call fails with "String to replace not found" on a target
-you can SEE in a fresh Read of the exact same file, don't assume it's a stale read or a
-transcription typo first -- check `git show HEAD:<path> | grep -c $'\r'` (or `od -c` on
-the specific line) for CRLF before spending time re-comparing characters by eye. Once
-confirmed CRLF, split the edit into single-line `old_string`/`new_string` pairs (a
-single line never contains an embedded `\n`, so CRLF-vs-LF never matters within it) --
-the `new_string` can still be multi-line; only `old_string` needs to stay within one
-line when the file is CRLF. `sed -n 'N,Mp' <file> | cat -A | sed 's/\^I/[TAB]/g'` is the
-fastest way to confirm exact tab counts before retyping an `old_string` that failed for
-this reason. A pure trailing-content deletion (no replacement text) is safe via
-`head -n N file > tmp && cp tmp file` instead, since it copies raw bytes and never
-needs to match multi-line content at all. (`Lacaedemon/sparta` PR #981, 2026-07-18:
-lost real time on this before isolating the cause via `od -c` and a string of
-single-line control edits.)
+**Historical Note (Line Endings):** `Lacaedemon/sparta` PR #981 (2026-07-18) previously documented mixed CRLF/LF line endings and instructed sessions to split multi-line Edit anchors on `Battle.gd`. On 2026-07-29 (PR #1177), `.gitattributes` added `* text=auto eol=lf`, normalizing all repository files to LF across all checkouts. Standing instructions to split multi-line anchors for CRLF reasons are obsolete; only the leading-tab hazard remains active.
 
 ## `tools/check.sh`: a wrapping check needs a dedicated result key to short-circuit its wrapped check safely
 
