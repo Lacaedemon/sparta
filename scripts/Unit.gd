@@ -1807,27 +1807,42 @@ func melee_attack_interval() -> float:
 ##     soldier_reach() returns it directly, so engaged_ranks() and the melee standoff pick
 ##     the new reach up on the next tick with nothing else to update.
 ##
-## Returns false, changing nothing, for an id that is not a registered weapon -- a
-## malformed order can't strand the regiment holding a type nothing resolves.
-## Switching to the type already equipped is a no-op that reports success: re-issuing
-## the same order must not churn the figure meshes.
-func equip_weapon(type_id: int) -> bool:
-	var w: Weapon = LoadoutRegistry.weapon(type_id)
-	if w == null:
+## Whether equip_weapon would accept `type_id`: a registered weapon that is either the one
+## this regiment already holds, the one it deployed with, or the sidearm stowed beside it.
+##
+## A regiment may only ever hold one of the two weapons its own soldiers carry. Registry
+## membership alone is too weak a test, because a switch order carries ONE weapon id for a
+## whole selection and that id is derived from the selection's lead unit -- so without this
+## guard a box-selected Cavalry regiment would take an Infantry lead's pilum, overwrite every
+## per-soldier id with it, and have no way back to its own spatha, since the return leg reads
+## the lead's deployed weapon too. Deciding it here rather than at each call site keeps the
+## invariant true for every caller, the replayed order path included, and leaves a mixed
+## selection switching exactly the units the id is genuinely valid for.
+##
+## Split out of equip_weapon so the rule has one home and two readers: equip_weapon is the
+## authority and consumes it below, and the order feedback the player sees reads it to say
+## how much of a mixed selection a switch will actually reach, instead of reporting success
+## for every unit the order was issued to. A shared predicate rather than a second copy of
+## the condition, so the two can never drift into disagreeing about which switches are valid.
+func can_equip_weapon(type_id: int) -> bool:
+	if LoadoutRegistry.weapon(type_id) == null:
 		return false
 	if type_id == weapon_type_id:
 		return true
-	# A regiment may only ever hold one of the two weapons its own soldiers carry: the one
-	# it deployed with, or the one stowed beside it. Registry membership alone is too weak
-	# a test, because a switch order carries ONE weapon id for a whole selection and that
-	# id is derived from the selection's lead unit -- so without this guard a box-selected
-	# Cavalry regiment would take an Infantry lead's pilum, overwrite every per-soldier id
-	# with it, and have no way back to its own spatha, since the return leg reads the lead's
-	# deployed weapon too. Refusing here rather than at the call site keeps the invariant
-	# true for every caller, the replayed order path included, and leaves a mixed selection
-	# switching exactly the units the id is genuinely valid for.
-	if type_id != spawn_weapon_type_id and type_id != sidearm_type_id:
+	return type_id == spawn_weapon_type_id or type_id == sidearm_type_id
+
+
+## Returns false, changing nothing, for any id can_equip_weapon rejects -- a malformed
+## order can't strand the regiment holding a type nothing resolves, and a selection-wide
+## id can't force a regiment onto a weapon its own soldiers never carried.
+## Switching to the type already equipped is a no-op that reports success: re-issuing
+## the same order must not churn the figure meshes.
+func equip_weapon(type_id: int) -> bool:
+	if not can_equip_weapon(type_id):
 		return false
+	if type_id == weapon_type_id:
+		return true
+	var w: Weapon = LoadoutRegistry.weapon(type_id)
 	weapon_type_id = type_id
 	attack_range = w.reach_wu
 	if not _sim_soldier_weapon_id.is_empty():
