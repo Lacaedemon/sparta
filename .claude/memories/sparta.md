@@ -5159,33 +5159,17 @@ as the square count displacing the line count and could not be produced by any o
 (`Lacaedemon/sparta` PR #1263, 2026-08-16:
 `test_hold_ground_reform_leaves_a_squared_units_file_assignment_untouched`.)
 
-## Local Godot here is 4.6.3 while the repo targets 4.7 -- `check.sh` reports a spurious FAIL
+## If local Godot version differs from project target -- check versions before diagnosing test failures
 
-The container's `/usr/local/bin/godot` is **4.6.3**, and `project.godot` commits
-`config/features=PackedStringArray("4.7")`. The visible consequence is not a game-code failure:
-vendored GUT v9.7.0 references `AccessibilityServer`, a 4.7 singleton, so it cannot parse itself
-under 4.6.3 and emits `SCRIPT ERROR` lines from `addons/gut/`. `tools/check.sh`'s
-`has_script_errors()` matches those and reports **FAIL test** / **FAIL patch_coverage** even when
-the suite is entirely green.
+Godot binary major.minor version is a property of the local container/environment, not a global invariant. If the local binary major.minor differs from `project.godot`'s `config/features` (e.g. 4.6.x vs 4.7), vendored GUT v9.7.0 may fail to parse `AccessibilityServer` (a 4.7 singleton) and emit `SCRIPT ERROR` lines.
 
-Read the run's own totals rather than `check.sh`'s verdict when this happens. Driving GUT directly
-sidesteps the wrapper and gives the real answer:
-
+To check version compatibility in one command:
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://test -ginclude_subdirs -gexit
+godot --version                       # or "$GODOT_BIN" --version
+grep '^config/features=' project.godot
 ```
 
-Measured 2026-08-16 on PR #1263: `check.sh` reported FAIL while that invocation reported
-**2652/2652 passing across 187 scripts**, with all four `SCRIPT ERROR`s inside `addons/gut/` and
-none from `scripts/`. So check where the errors point before believing the verdict.
-
-Two practical notes. `-gselect=<file>.gd -gunit_test_name=<substring>` runs a single test in well
-under a second, against roughly seven minutes for the full suite --- which is what makes the
-revert-and-confirm-it-bites habit cheap enough to do on every guard. And when the local wrapper is
-untrustworthy, CI's own clean-runner `Validate & test` / `Coverage` are the authority, exactly as
-this file's orphaned-process entry already prescribes for a different contamination cause.
-
-Tracked as #1271.
+PR #1305 (closing #1271) added an explicit version check to `tools/check.sh`, which now compares the local binary version directly against `config/features` and fails fast with a version error if they mismatch. Therefore, any `FAIL test` returned by `check.sh` after #1305 is a real failure (not a hidden version mismatch).
 
 ## Both LOD layers carry the weapon silhouette -- rebuilding one is not rebuilding the block
 
@@ -5469,8 +5453,7 @@ per-file breakdown prints much LATER at `:707`, and `Patch coverage: X/Y = Z%` a
 before the summary. So `tail -N` preserves the late patch answer and cuts the early total.
 
 The failure path is what produces the confusing output. `:633` is `check_coverage || return 1`,
-so when coverage itself fails -- on this machine, the Godot 4.6.3 spurious GUT failure documented
-above -- `check_patch_coverage` returns there and `:707`/`:735` never run at all. The tail then
+so when coverage itself fails -- e.g. on a version-mismatched binary or a test error -- `check_patch_coverage` returns there and `:707`/`:735` never run at all. The tail then
 shows the end of the suite log ending in `93.4% Total Coverage: 8637/9244 lines`, a project-wide
 number that reads convincingly as the patch figure, with no breakdown anywhere. Diagnose that as
 "coverage failed and the patch step never ran", not as "the pipe ate the breakdown". (An earlier
