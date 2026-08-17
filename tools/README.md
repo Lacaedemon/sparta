@@ -79,11 +79,14 @@ Every Godot-driving check (`validate`, `test`, `coverage`, `patch_coverage`,
 differ:
 
 ```
-[ERR] Godot 4.6.3.stable.official.7d41c59c4 found at 'godot', but project.godot targets 4.7.
-[ERR]   Point GODOT_BIN at a 4.7 binary -- see tools/README.md and README.md.
-[ERR]   Left to run, this surfaces as parse errors from addons/gut/, not as a version error.
-[ERR]   Set SPARTA_ALLOW_GODOT_VERSION_MISMATCH=1 to run across versions deliberately.
+Godot 4.6.3.stable.official.7d41c59c4 found at 'godot', but project.godot targets 4.7.
+  Point GODOT_BIN at a 4.7 binary -- see tools/README.md and README.md.
+  Left to run, this surfaces as parse errors from addons/gut/, not as a version error.
+  Set SPARTA_ALLOW_GODOT_VERSION_MISMATCH=1 to run across versions deliberately.
 ```
+
+(printed in red on stderr, via the same `err()` helper every other check uses --
+no severity tag is prefixed.)
 
 **Why a hard failure rather than a warning.** A mismatch does not fail cleanly
 on its own. The vendored GUT release is pinned to match the targeted engine, so
