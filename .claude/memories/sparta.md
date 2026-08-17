@@ -1900,11 +1900,13 @@ It does NOT explain #758/#752 or #981/#296, which carried no keyword anywhere
 and stay unconfirmed.
 
 **The tell before merging is a closure risk with no PR linkage.**
-#1152 came back `closed_by_pull_requests: {"total_count": 0, "references": []}`,
+As of the 2026-08-16 measurement, #1152 came back `closed_by_pull_requests: {"total_count": 0, "references": []}`,
 correct since the body closed nothing, while still landing
 `state_reason: "completed"` with `closed_by` naming the merger.
 So the empty linkage array reads reassuringly and is silent about what the
-branch's own commit messages say.
+branch's own commit messages say. (Note: `closed_by_pull_requests` later came to
+reference #1276 because #1276's description quoted the commit line containing `(closes #1152)`
+while documenting the mechanism.)
 
 **How to apply:** whenever a sparta PR narrows to spec-only or partial after
 being claimed, grep its own history before merging, and edit the squash body at
