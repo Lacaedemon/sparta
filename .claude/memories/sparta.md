@@ -5858,3 +5858,43 @@ against each other and neither survives being split.
 
 (`Lacaedemon/sparta` PR #1292, 2026-08-16, recorded from PR #1283's review of M2TWEOP.)
 
+## Batch Work Summaries (GII / GIA / MWC / Wrap-Up): Explicitly state Stopping Point status
+
+When completing a multi-issue backlog loop (`gii`, `gia`), PR stack sweep, or automated session wrap-up (`mwc`, `wrap-up`), always include an explicit **Stopping Point** declaration at the bottom of the summary table: e.g. `**Stopping Point**: All 5 issues completed / backlog clear. Clean stopping point reached.`
+Do not leave the user guessing whether additional tasks remain queued or if a clean stopping point has been reached.
+
+- **Do:** state explicitly `Stopping Point: Clean stopping point reached` (or name what remains) at the end of every batch/GII summary.
+- **Don't:** print only a PR table without confirming whether the queue is complete and work is at a clean stopping point.
+
+## AI Capability & Memory Changes (`cai` / `ca`): Always Push immediately via PR
+
+Whenever a session creates or updates AI capabilities, memories, or skill definitions (`cai`, `ca`, `ums`), immediately branch off `main`, commit, push to origin, open a PR, request review, and drive to clean (or merge under `mwc`). Never leave capability or memory edits sitting uncommitted in the local working directory or wait for the user to prompt for a push.
+
+- **Do:** branch, commit, push, open a PR, and ARDI to clean immediately upon applying memory or skill edits.
+- **Don't:** leave `cai` or memory edits uncommitted in the local working tree without pushing them.
+
+## `mergeable_state: clean` is NOT Fully Clean
+
+GitHub API's `mergeable_state: clean` / `mergeStateStatus: CLEAN` indicates ONLY that git merge will succeed without merge conflicts. It does NOT mean CI has passed or that an AI/human review has approved the PR. NEVER merge a PR based on `mergeable_state: clean` without verifying both (1) all CI check runs are green, AND (2) an authentic clean review verdict evaluating the HEAD SHA has been received (triggering `@claude review` / `claude-code-review.yml` first in repos like `ai-config` where reviews do not auto-dispatch).
+
+- **Do:** verify that all CI check runs are green AND latest review is clean before merging.
+- **Don't:** treat `mergeable_state: clean` from GitHub API as a clean CI or review verdict.
+
+## Always Keep a Scheduled Monitor Timer Running for In-Flight Work
+
+Whenever ending a turn while background CI, `@claude review`, or async jobs are executing on active PRs under `mwc` / `ARDI`, ALWAYS launch a `schedule` timer (e.g. 120s) before ending the turn. Never finish a turn leaving in-flight PRs unmonitored without an active scheduled timer.
+
+- **Do:** set a `schedule` timer (e.g. 120s) before ending any turn while background PR checks or reviews are in flight.
+- **Don't:** end a turn leaving in-flight PRs unmonitored without a scheduled timer running.
+
+## Always State Clean Stopping Point When Stopping Work
+
+Whenever ending a session, completing a turn, or wrapping up work (whether finishing a single task, a multi-issue backlog loop like `gii`/`gia`, a PR stack sweep, or an automated session wrap-up like `mwc`/`wrap-up`), ALWAYS include an explicit `**Stopping Point**` declaration stating whether or not the session is at a clean stopping point (e.g. `**Stopping Point**: Clean stopping point reached` or `**Stopping Point**: Not a clean stopping point / work remains queued: ...`). Never leave the user guessing whether additional tasks remain queued or if a clean stopping point has been reached.
+
+- **Do:** state explicitly whether or not the session is at a clean stopping point whenever stopping work.
+- **Don't:** leave the user guessing about stopping point status when ending a turn or session.
+
+
+
+
+
