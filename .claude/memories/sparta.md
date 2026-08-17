@@ -5880,6 +5880,14 @@ GitHub API's `mergeable_state: clean` / `mergeStateStatus: CLEAN` indicates ONLY
 - **Do:** verify that all CI check runs are green AND latest review is clean before merging.
 - **Don't:** treat `mergeable_state: clean` from GitHub API as a clean CI or review verdict.
 
+## Always Keep a Scheduled Monitor Timer Running for In-Flight Work
+
+Whenever ending a turn while background CI, `@claude review`, or async jobs are executing on active PRs under `mwc` / `ARDI`, ALWAYS launch a `schedule` timer (e.g. 120s) before ending the turn. Never finish a turn leaving in-flight PRs unmonitored without an active scheduled timer.
+
+- **Do:** set a `schedule` timer (e.g. 120s) before ending any turn while background PR checks or reviews are in flight.
+- **Don't:** end a turn leaving in-flight PRs unmonitored without a scheduled timer running.
+
+
 
 
 
