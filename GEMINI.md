@@ -76,3 +76,10 @@ Gemini/Antigravity automated pull-request review is **off** for this repo: `.gem
 
 The main agentic session should always act as an orchestrator: delegate heavy research, multi-file searches, complex sub-tasks, or parallel branch operations to subagents (`invoke_subagent`) or background tasks (`run_command`), keeping the main session's context clean and focused on high-level direction, triage, and review.
 
+## Proactive corrective actions & PR workflow
+
+Whenever a gap, missing PR, or workflow requirement is identified, or when a capability/memory instruction is given:
+1. **Act immediately**: Never wait for a user follow-up prompt to take corrective action. Branch, commit, open the PR, request review from `d-morrison`, and drive to clean in the exact same response.
+2. **Auto-merge under `mwc`**: If `mwc` is active for the session, once CI passes and review is clean, execute the merge and post-merge wrap-up immediately without stopping.
+
+
