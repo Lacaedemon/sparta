@@ -5887,6 +5887,13 @@ Whenever ending a turn while background CI, `@claude review`, or async jobs are 
 - **Do:** set a `schedule` timer (e.g. 120s) before ending any turn while background PR checks or reviews are in flight.
 - **Don't:** end a turn leaving in-flight PRs unmonitored without a scheduled timer running.
 
+## Always State Clean Stopping Point When Stopping Work
+
+Whenever ending a session, completing a turn, or wrapping up work (whether finishing a single task, a multi-issue backlog loop like `gii`/`gia`, a PR stack sweep, or an automated session wrap-up like `mwc`/`wrap-up`), ALWAYS include an explicit `**Stopping Point**` declaration stating whether or not the session is at a clean stopping point (e.g. `**Stopping Point**: Clean stopping point reached` or `**Stopping Point**: Not a clean stopping point / work remains queued: ...`). Never leave the user guessing whether additional tasks remain queued or if a clean stopping point has been reached.
+
+- **Do:** state explicitly whether or not the session is at a clean stopping point whenever stopping work.
+- **Don't:** leave the user guessing about stopping point status when ending a turn or session.
+
 
 
 
