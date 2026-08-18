@@ -33,6 +33,26 @@ const OUTNUMBERED_MORALE_EROSION_PER_SEC: float = 2.0
 const UNDER_FIRE_MORALE_EROSION_PER_SEC: float = 1.5
 const LOCAL_SUPERIORITY_MORALE_BOOST_PER_SEC: float = 1.0
 
+enum CombatStatus { NOT_IN_COMBAT, WINNING_DECISIVELY, WINNING, BALANCED, LOSING, LOSING_DECISIVELY }
+
+const COMBAT_STATUS_NAMES := {
+	CombatStatus.NOT_IN_COMBAT: "not_in_combat",
+	CombatStatus.WINNING_DECISIVELY: "winning_decisively",
+	CombatStatus.WINNING: "winning",
+	CombatStatus.BALANCED: "balanced",
+	CombatStatus.LOSING: "losing",
+	CombatStatus.LOSING_DECISIVELY: "losing_decisively",
+}
+
+# Local combat balance thresholds (ratio of friendly force / engaged enemy force)
+const COMBAT_BALANCE_WINNING_DECISIVELY: float = 2.0
+const COMBAT_BALANCE_WINNING: float = 1.25
+const COMBAT_BALANCE_BALANCED: float = 0.8
+const COMBAT_BALANCE_LOSING: float = 0.5
+
+const LOSING_COMBAT_MORALE_EROSION_PER_SEC: float = 1.0
+const LOSING_DECISIVELY_COMBAT_MORALE_EROSION_PER_SEC: float = 2.5
+
 
 ## Classifies a morale scalar (and routing state) into one of the 7 rungs of the morale ladder.
 static func classify(morale: float, is_routing: bool = false) -> Ladder:
@@ -55,6 +75,47 @@ static func classify(morale: float, is_routing: bool = false) -> Ladder:
 ## Returns the human-readable string name for the current morale rung.
 static func ladder_name(morale: float, is_routing: bool = false) -> String:
 	return LADDER_NAMES[classify(morale, is_routing)]
+
+
+## Derives a unit's local combat status from its melee engagement state, engaged enemy strength, and force ratio.
+static func classify_combat_status(u: Unit, local_force_ratio: float = 1.0) -> CombatStatus:
+	var engaged_enemies: Array = []
+	if u.has_method("_adjacent_engaged_enemy_units"):
+		engaged_enemies = u._adjacent_engaged_enemy_units()
+	elif "_engaged_units" in u:
+		engaged_enemies = u._engaged_units
+
+	if (u.state != Unit.State.FIGHTING and not (u.has_method("is_engaged") and u.is_engaged())) or engaged_enemies.is_empty():
+		return CombatStatus.NOT_IN_COMBAT
+
+	var engaged_friendly: int = u.soldiers
+	var engaged_enemy: int = 0
+	for enemy in engaged_enemies:
+		if enemy != null and "soldiers" in enemy and "state" in enemy:
+			if enemy.state != Unit.State.DEAD and enemy.state != Unit.State.ROUTING:
+				engaged_enemy += enemy.soldiers
+
+	if engaged_enemy <= 0:
+		return CombatStatus.WINNING_DECISIVELY
+
+	var engaged_ratio: float = float(engaged_friendly) / float(engaged_enemy)
+	var balance: float = engaged_ratio * local_force_ratio
+
+	if balance >= COMBAT_BALANCE_WINNING_DECISIVELY:
+		return CombatStatus.WINNING_DECISIVELY
+	elif balance >= COMBAT_BALANCE_WINNING:
+		return CombatStatus.WINNING
+	elif balance >= COMBAT_BALANCE_BALANCED:
+		return CombatStatus.BALANCED
+	elif balance >= COMBAT_BALANCE_LOSING:
+		return CombatStatus.LOSING
+	else:
+		return CombatStatus.LOSING_DECISIVELY
+
+
+## Returns the human-readable string name for the current combat status.
+static func combat_status_name(u: Unit, local_force_ratio: float = 1.0) -> String:
+	return COMBAT_STATUS_NAMES[classify_combat_status(u, local_force_ratio)]
 
 
 ## Fatigue builds while fighting and recovers while resting. Well-trained melee units
@@ -123,6 +184,13 @@ static func tick_morale(u: Unit, delta: float) -> void:
 	elif local_force_ratio >= 1.5 and u.morale < 100.0 and u.state != Unit.State.FIGHTING:
 		var boost := LOCAL_SUPERIORITY_MORALE_BOOST_PER_SEC * delta
 		u.morale = minf(100.0, u.morale + boost)
+
+	# Local combat status erosion:
+	var combat_status := classify_combat_status(u, local_force_ratio)
+	if combat_status == CombatStatus.LOSING:
+		u.morale = maxf(0.0, u.morale - LOSING_COMBAT_MORALE_EROSION_PER_SEC * delta)
+	elif combat_status == CombatStatus.LOSING_DECISIVELY:
+		u.morale = maxf(0.0, u.morale - LOSING_DECISIVELY_COMBAT_MORALE_EROSION_PER_SEC * delta)
 
 	# Incoming fire erosion:
 	if u._under_fire:

@@ -28,6 +28,7 @@ func test_unit_range_constants_hold_their_exact_world_unit_values() -> void:
 	assert_eq(UnitScript.RANGED_RANGE, 160.0)
 	assert_eq(UnitScript.RALLY_CONTACT_RADIUS, 160.0)
 	assert_eq(UnitScript.ROUT_SHOCK_RADIUS, 140.0)
+	assert_eq(UnitMorale.LOCAL_FORCE_RADIUS_SQ, 14400.0)
 
 
 func test_speed_constants_hold_their_exact_world_unit_values() -> void:

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/morale-recovery.json",
+  "caption": "Per-unit local combat status derived from physics (#1284): local combat status ('winning_decisively'...'losing_decisively') is exported in the unit snapshot dict and surfaced in HUD info panel.",
+  "fixed_fps": 30,
+  "max_frames": 360,
+  "fps": 15,
+  "width": 720
+}

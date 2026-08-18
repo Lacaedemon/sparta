@@ -135,6 +135,8 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 
 	assert_eq(restored.soldiers, original.soldiers)
 	assert_almost_eq(restored.morale, original.morale, 0.001)
+	assert_eq(d["morale_ladder"], original.morale_ladder_name())
+	assert_eq(d["combat_status"], original.combat_status_name())
 	assert_eq(restored.state, original.state)
 	assert_eq(restored.facing, original.facing)
 	assert_eq(restored.position, original.position)

@@ -910,6 +910,8 @@ func show_unit(u, group_count: int) -> void:
 	lines.append("Commander: %s" % OfficerRank.title_for(u))
 	lines.append("Soldiers: %d / %d" % [u.soldiers, u.max_soldiers])
 	lines.append("Morale: %d (%s)" % [int(u.morale), u.morale_ladder_name()])
+	if u.combat_status_name() != "not_in_combat":
+		lines.append("Combat: %s" % u.combat_status_name().replace("_", " ").capitalize())
 	lines.append("Fatigue: %d%%" % int(u.fatigue))
 	if u.cohesion < 1.0:
 		lines.append("Cohesion: %d%%" % mini(roundi(u.cohesion * 100.0), 99))

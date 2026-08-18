@@ -970,6 +970,11 @@ const MORALE_CRUMBLE_RATIO_THRESHOLD: float = 0.4
 ## Returns the human-readable 7-rung morale ladder name for this unit.
 func morale_ladder_name() -> String:
 	return UnitMorale.ladder_name(morale, state == State.ROUTING)
+
+
+## Returns the human-readable combat status name for this unit.
+func combat_status_name() -> String:
+	return UnitMorale.combat_status_name(self)
 # Base per-casualty morale erosion (UnitCombat.register_casualties) is FRACTION-of-force
 # scaled, not a flat per-head amount: losing `total` soldiers costs
 # `(total / max_soldiers) * MORALE_LOSS_PER_FULL_LOSS` morale, so a percentage loss costs
@@ -2781,6 +2786,8 @@ var _adjacent_engaged_cache_frame: int = -1
 func _adjacent_engaged_enemy_units() -> Array[Unit]:
 	var frame: int = Engine.get_physics_frames()
 	if _adjacent_engaged_cache_frame == frame:
+		return _adjacent_engaged_cache
+	if not is_inside_tree():
 		return _adjacent_engaged_cache
 	var out: Array[Unit] = []
 	for o in _separation_candidates():
@@ -7029,7 +7036,7 @@ func to_snapshot_dict() -> Dictionary:
 		"team_color": team_color,
 
 		# Mutable runtime state.
-		"soldiers": soldiers, "morale": morale, "morale_ladder": morale_ladder_name(), "fatigue": fatigue, "cohesion": cohesion,
+		"soldiers": soldiers, "morale": morale, "morale_ladder": morale_ladder_name(), "combat_status": combat_status_name(), "fatigue": fatigue, "cohesion": cohesion,
 		"state": state, "facing": facing, "position": position,
 		"move_target": move_target, "has_move_target": has_move_target,
 		"order_mode": order_mode, "knockback_push_indefinite": knockback_push_indefinite,
