@@ -1,10 +1,9 @@
 {
-  "input": "demos/inputs/spearmen-declared-frontage.json",
-  "caption": "Subunits Phase 2 layout inputs (#1289): Spearmen unit frontage is derived from declared subunit size (16, lochos) rather than roster-wide aspect ratio, automatically fielding 9 files at full strength (140 men) in drill mode.",
+  "input": "demos/inputs/cavalry-squadron-structureless.json",
+  "caption": "Subunits Phase 3 cavalry squadron layout (#1290): Cavalry frontage derives from cavalry_files (Asclepiodotus 7.4 square/oblong squadron: ceil(sqrt(80)) = 9 columns) rather than line-infantry files (12), operating structureless with cohesive row-major reflow.",
 
   "fixed_fps": 30,
   "max_frames": 280,
   "fps": 15,
   "width": 720
 }
-

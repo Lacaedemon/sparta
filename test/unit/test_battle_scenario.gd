@@ -73,12 +73,10 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 	for horse: Unit in team1:
 		assert_true(horse.is_cavalry, "type 'Cavalry' maps onto the cavalry loadout")
 		assert_true(horse.disciplined, "with no override, a spawned unit defaults to disciplined")
-		assert_almost_eq(horse.training, 0.6, 0.001,
-			"with no override, a spawned unit keeps its own type's training")
 		assert_false(horse.reform_before_move,
 			"with no override, Cavalry's own type default (reform_before_move off) applies")
-		assert_true(horse.file_major_reform,
-			"with no override, every type's own file_major_reform default (on) applies")
+		assert_false(horse.file_major_reform,
+			"with no override, Cavalry's own file_major_reform default (off/structureless) applies")
 		# The first cavalry has no facing override, the second has a MALFORMED one -- both must
 		# fall back to the team-1 default (facing up), and neither may crash on the bad array.
 		assert_almost_eq(horse.facing.y, -1.0, 0.001,

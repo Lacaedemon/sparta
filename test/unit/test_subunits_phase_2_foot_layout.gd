@@ -77,13 +77,12 @@ func test_other_types_keep_derived_width() -> void:
 	arch.subunit_size = 0
 	assert_eq(UnitFormation.frontage(arch), UnitFormation._files(90), "Archers keeps derived aspect ratio width")
 
-	# Cavalry (80, GROUP)
+	# Cavalry (80, is_cavalry)
 	var cav := Unit.new()
+	cav.is_cavalry = true
 	cav.max_soldiers = 80
 	cav.soldiers = 80
-	cav.subunit_structure = Unit.SubunitStructure.GROUP
-	cav.subunit_size = 10
-	assert_eq(UnitFormation.frontage(cav), UnitFormation._files(80), "Cavalry keeps derived aspect ratio width")
+	assert_eq(UnitFormation.frontage(cav), UnitFormation.cavalry_files(80), "Cavalry derives squadron frontage (9 files)")
 
 
 func test_frontage_override_wins_over_subunit_size() -> void:

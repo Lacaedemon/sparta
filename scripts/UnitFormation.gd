@@ -55,6 +55,13 @@ static func auto_files_for_subunit_size(count: int, size: int) -> int:
 	return maxi(1, int(ceil(float(count) / float(size))))
 
 
+## Number of columns (frontage) for `n` cavalry soldiers in a squadron block (Asclepiodotus 7.4).
+## Unlike heavy infantry, cavalry does not derive its frontage from the line-infantry FORMATION_ASPECT.
+## A square/oblong squadron fields ceil(sqrt(n)) columns. Pure of n.
+static func cavalry_files(n: int) -> int:
+	return maxi(1, int(ceil(sqrt(float(n)))))
+
+
 ## The regiment's stable file count (frontage).
 ##
 ## Under declared subunit size (`FILE_GROUP` with `subunit_size > 0`), a unit fields
@@ -64,13 +71,14 @@ static func auto_files_for_subunit_size(count: int, size: int) -> int:
 ## auto frontage steps down to `auto_files_for_subunit_size(ceil(max_soldiers * 0.5), subunit_size)`
 ## (the fixed 50%-of-max-strength count) so the mauled survivors reform into fewer subunit columns
 ## -- resolving the `_ranks_closed` overlap explicitly without multi-step narrowing during melee.
-## For types without a declared subunit size (NONE, LATERAL_HALVES, GROUP), frontage uses `_files(max_soldiers)`
+## For cavalry (Phase 3 interim: structureless squadron block), frontage derives from `cavalry_files(max_soldiers)`
+## (Asclepiodotus 7.4 square/oblong squadron) at full strength and `narrowed_files()` when `_ranks_closed`.
+## For other foot types without a declared subunit size (NONE, LATERAL_HALVES), frontage uses `_files(max_soldiers)`
 ## at full strength and `narrowed_files()` when `_ranks_closed` is true.
 ##
 ## A player-set `frontage_override` (> 0) wins over the auto width in all cases, clamped to
 ## [1, max_soldiers]. Player frontage overrides and drag handle resizes specify direct file counts.
 static func frontage(u: Unit) -> int:
-
 	if u.frontage_override > 0:
 		return clampi(u.frontage_override, 1, maxi(1, u.max_soldiers))
 	if u.subunit_structure == Unit.SubunitStructure.FILE_GROUP and u.subunit_size > 0:
@@ -78,9 +86,13 @@ static func frontage(u: Unit) -> int:
 		if u._ranks_closed:
 			var half_count: int = int(ceil(float(u.max_soldiers) * CLOSE_RANKS_CONTRACT_FRAC))
 			var closed: int = auto_files_for_subunit_size(half_count, u.subunit_size)
-
 			return mini(full, closed)
 		return full
+	if u.is_cavalry:
+		var full_cav: int = cavalry_files(u.max_soldiers)
+		if u._ranks_closed:
+			return narrowed_files(full_cav)
+		return full_cav
 	var full_files: int = _files(u.max_soldiers)
 	if u._ranks_closed:
 		return narrowed_files(full_files)
@@ -91,11 +103,14 @@ static func frontage(u: Unit) -> int:
 ## formation block -- `_half_width` at FULL frontage, before any ranks-closed narrowing or
 ## player frontage_override apply. `spacing` is the formation's world-unit FILE pitch.
 ## Optional `subunit_structure` and `subunit_size` allow pre-spawn calculation for types with
-## declared subunit sizes (Spearmen).
-static func half_width_for_soldiers(count: int, spacing: float, subunit_structure: int = 0, subunit_size: int = 0) -> float:
+## declared subunit sizes (Spearmen). `is_cavalry` allows pre-spawn calculation for cavalry
+## squadron frontage (Asclepiodotus 7.4 square/oblong).
+static func half_width_for_soldiers(count: int, spacing: float, subunit_structure: int = 0, subunit_size: int = 0, is_cavalry: bool = false) -> float:
 	var files: int
 	if subunit_structure == Unit.SubunitStructure.FILE_GROUP and subunit_size > 0:
 		files = auto_files_for_subunit_size(count, subunit_size)
+	elif is_cavalry:
+		files = cavalry_files(count)
 	else:
 		files = _files(count)
 	return (files - 1) * 0.5 * spacing
