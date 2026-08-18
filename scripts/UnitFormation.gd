@@ -779,9 +779,11 @@ static func subunit_reform_files(file_ids: PackedInt32Array, ranks: PackedInt32A
 	retained_counts.resize(new_files)
 	var relocated_indices: Array[int] = []
 
+	var old_files: int = 0
 	for i in range(n):
 		var f: int = file_ids[i]
 		var r: int = current_ranks[i]
+		old_files = maxi(old_files, f + 1)
 		if f < new_files and r < new_capacities[f]:
 			out_files[i] = f
 			out_ranks[i] = r
@@ -789,19 +791,42 @@ static func subunit_reform_files(file_ids: PackedInt32Array, ranks: PackedInt32A
 		else:
 			relocated_indices.push_back(i)
 
-	relocated_indices.sort_custom(func(a: int, b: int) -> bool:
-		if file_ids[a] != file_ids[b]:
-			return file_ids[a] < file_ids[b]
-		return current_ranks[a] < current_ranks[b])
+	if new_files < old_files:
+		# Narrowing (flank fold to rear): fold flank files into the nearest retained files' rear.
+		# Sort relocated soldiers by file_ids descending, then current_ranks ascending.
+		relocated_indices.sort_custom(func(a: int, b: int) -> bool:
+			if file_ids[a] != file_ids[b]:
+				return file_ids[a] > file_ids[b]
+			return current_ranks[a] < current_ranks[b])
 
-	var relocated_ptr: int = 0
-	for f in range(new_files):
-		while retained_counts[f] < new_capacities[f] and relocated_ptr < relocated_indices.size():
-			var idx: int = relocated_indices[relocated_ptr]
-			relocated_ptr += 1
-			out_files[idx] = f
-			out_ranks[idx] = retained_counts[f]
-			retained_counts[f] += 1
+		var relocated_ptr: int = relocated_indices.size()
+		for f in range(new_files - 1, -1, -1):
+			var needed: int = new_capacities[f] - retained_counts[f]
+			if needed <= 0 or relocated_ptr <= 0:
+				continue
+			var start_idx: int = maxi(0, relocated_ptr - needed)
+			var batch_count: int = relocated_ptr - start_idx
+			for k in range(batch_count):
+				var idx: int = relocated_indices[start_idx + k]
+				out_files[idx] = f
+				out_ranks[idx] = retained_counts[f] + k
+			retained_counts[f] += batch_count
+			relocated_ptr = start_idx
+	else:
+		# Widening (rear peel to flank): peel rear ranks to form new flank files.
+		relocated_indices.sort_custom(func(a: int, b: int) -> bool:
+			if file_ids[a] != file_ids[b]:
+				return file_ids[a] < file_ids[b]
+			return current_ranks[a] < current_ranks[b])
+
+		var relocated_ptr: int = 0
+		for f in range(new_files):
+			while retained_counts[f] < new_capacities[f] and relocated_ptr < relocated_indices.size():
+				var idx: int = relocated_indices[relocated_ptr]
+				relocated_ptr += 1
+				out_files[idx] = f
+				out_ranks[idx] = retained_counts[f]
+				retained_counts[f] += 1
 
 	return {"file_ids": out_files, "ranks": out_ranks}
 

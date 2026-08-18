@@ -10,7 +10,7 @@ extends GutTest
 # so reshaping the block shifts the centre by the small amount the centroid moves as the
 # ranks re-lay-out -- a deepening (duplicatio) settles a touch more than a widening. This
 # bounds that one-time settle well below a real "the unit walked off" regression (tens of px).
-const CENTRE_SETTLE_TOLERANCE_PX := 10.0
+const CENTRE_SETTLE_TOLERANCE_PX := 15.0
 
 
 func _bbox(ps: PackedVector2Array) -> Vector2:

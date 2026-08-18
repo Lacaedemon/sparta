@@ -173,3 +173,88 @@ func test_live_spearmen_unit_narrowing_preserves_file_identity() -> void:
 				retained_unchanged += 1
 
 	assert_eq(retained_unchanged, 64, "all 64 men in retained files 0..3 preserved their exact file and rank")
+
+
+func test_fold_flank_to_rear_maps_nearest_rear_ranks_first() -> void:
+	var count := 80
+	var old_files := 5
+	var new_files := 4
+	var old_capacities: PackedInt32Array = UnitFormation.file_capacities(count, old_files)
+	var initial_files: PackedInt32Array = UnitFormation.file_ids_in_index_order(old_capacities)
+	var initial_ranks: PackedInt32Array = PackedInt32Array()
+	initial_ranks.resize(count)
+	var seen := {}
+	for i in range(count):
+		var f: int = initial_files[i]
+		var d: int = int(seen.get(f, 0))
+		seen[f] = d + 1
+		initial_ranks[i] = d
+
+	var res: Dictionary = UnitFormation.fold_flank_to_rear(initial_files, initial_ranks, new_files)
+	var out_files: PackedInt32Array = res["file_ids"]
+	var out_ranks: PackedInt32Array = res["ranks"]
+
+	# Check the 16 soldiers from folded file 4:
+	# File 4 ranks 12..15 (already near rear) should map to adjacent File 3 ranks 16..19
+	for i in range(count):
+		if initial_files[i] != 4:
+			continue
+		var old_r: int = initial_ranks[i]
+		var new_f: int = out_files[i]
+		var new_r: int = out_ranks[i]
+		if old_r >= 12:
+			assert_eq(new_f, 3, "file 4 rank %d maps to adjacent file 3" % old_r)
+			assert_eq(new_r, 16 + (old_r - 12), "file 4 rank %d maps to file 3 rank %d" % [old_r, 16 + (old_r - 12)])
+		elif old_r >= 8:
+			assert_eq(new_f, 2, "file 4 rank %d maps to file 2" % old_r)
+			assert_eq(new_r, 16 + (old_r - 8), "file 4 rank %d maps to file 2 rank %d" % [old_r, 16 + (old_r - 8)])
+		elif old_r >= 4:
+			assert_eq(new_f, 1, "file 4 rank %d maps to file 1" % old_r)
+			assert_eq(new_r, 16 + (old_r - 4), "file 4 rank %d maps to file 1 rank %d" % [old_r, 16 + (old_r - 4)])
+		else:
+			assert_eq(new_f, 0, "file 4 rank %d maps to file 0" % old_r)
+			assert_eq(new_r, 16 + old_r, "file 4 rank %d maps to file 0 rank %d" % [old_r, 16 + old_r])
+
+
+func test_live_spearmen_reform_routes_around_formation_block() -> void:
+	Replay.forced_seed = 912
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = true
+	_battle.scenario = [
+		{"team": 0, "type": "Spearmen", "x": SPAWN.x, "y": SPAWN.y,
+			"count": 80, "facing": [0, 1]}
+	]
+	add_child_autofree(_battle)
+	for _i in range(10):
+		await get_tree().physics_frame
+
+	var u: Unit = _battle._units.get_child(0)
+	var spacing: float = u.file_pitch_wu()
+	var depth: float = u.rank_pitch_wu()
+	if depth < 0.0:
+		depth = spacing
+	var rx_min_retained: float = -(4 - 1) * 0.5 * spacing
+	var rx_max_retained: float = (4 - 1) * 0.5 * spacing
+	var y_rear: float = (16 - 1) * 0.5 * depth
+	var folded_soldier_indices: Array[int] = []
+	for i in range(u.soldiers):
+		if u._sim_soldier_file[i] == 4:
+			folded_soldier_indices.push_back(i)
+	assert_eq(folded_soldier_indices.size(), 16, "exactly 16 soldiers in folded file 4")
+
+	u.set_frontage(4)
+
+	# Track all 16 soldiers from the folded flank file during reform
+	for _frame in range(120):
+		await get_tree().physics_frame
+		var ang: float = u.soldier_block_world_angle()
+		for i in folded_soldier_indices:
+			var pos: Vector2 = u._sim_soldier_pos[i]
+			var p_local: Vector2 = (pos - u.position).rotated(-ang)
+			# If the soldier's lateral position is within the retained files (files 0..3):
+			# the soldier must be in the rear corridor or rear ranks (y >= y_rear - spacing * 1.5),
+			# never cutting through the interior front/mid ranks!
+			if p_local.x >= rx_min_retained - spacing * 0.2 and p_local.x <= rx_max_retained - spacing * 0.2:
+				assert_gte(p_local.y, y_rear - spacing * 1.5,
+						"soldier %d during reform routes around rear corridor instead of penetrating interior (y=%.1f, y_rear=%.1f)" % [i, p_local.y, y_rear])
+
