@@ -440,6 +440,23 @@ Cavalry regiments field a square/oblong squadron block rather than line-infantry
 An 80-horse Cavalry regiment formed up into a 9-column squadron block in drill mode. Frontage derives from squadron geometry rather than line-infantry files, operating structureless with cohesive row-major reflow.
 :::
 
+When a file-grouped unit reforms to a narrower or wider frontage, the reform operates at the subunit level rather than as a whole-block relabeling (@fig-subunits-phase-4-reform). Retained files keep their existing soldiers and internal ranks without criss-crossing the formation; only the flank file peels off to march into the rear ranks of the remaining files.
+
+::: {#fig-subunits-phase-4-reform .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/subunits_phase_4_reform.jpg">
+  <source src="media/subunits_phase_4_reform.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An 80-man Spearmen regiment (5 files of 16 men) narrows frontage by one file to 4 files of 20 men in drill mode. The 64 men in files 0--3 stay in their exact files and ranks without displacement, while the 16 men from the folded flank file march into the rear ranks.
+:::
+
+
 
 
 **Close the ranks.** Left on auto, though, a regiment that's lost half its strength

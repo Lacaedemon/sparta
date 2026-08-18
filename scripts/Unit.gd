@@ -4099,8 +4099,14 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 		_sim_soldier_file = UnitFormation.file_ids_in_index_order(capacities)
 		_sim_soldier_rank = PackedInt32Array()   # array order IS the depth order here
 	else:
-		_sim_soldier_file = UnitFormation.deal_file_ids_by_lateral_order(live, capacities)
-		_sim_soldier_rank = UnitFormation.deal_ranks_by_depth(live, _sim_soldier_file)
+		if subunit_structure == SubunitStructure.FILE_GROUP and _file_assignment_files > 0 and _sim_soldier_file.size() == count:
+			var reformed: Dictionary = UnitFormation.subunit_reform_files(
+					_sim_soldier_file, _sim_soldier_rank, files)
+			_sim_soldier_file = reformed["file_ids"]
+			_sim_soldier_rank = reformed["ranks"]
+		else:
+			_sim_soldier_file = UnitFormation.deal_file_ids_by_lateral_order(live, capacities)
+			_sim_soldier_rank = UnitFormation.deal_ranks_by_depth(live, _sim_soldier_file)
 	# _slot_frame_positions returns nothing unless the body layer holds at least `count`
 	# entries, so a reshape can find FEWER bodies than live soldiers -- `count` having run
 	# ahead of the bodies, as a reinforcement does before SoldierBodies.step resizes them to

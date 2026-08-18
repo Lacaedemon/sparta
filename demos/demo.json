@@ -1,9 +1,8 @@
 {
-  "input": "demos/inputs/cavalry-squadron-structureless.json",
-  "caption": "Subunits Phase 3 cavalry squadron layout (#1290): Cavalry frontage derives from cavalry_files (Asclepiodotus 7.4 square/oblong squadron: ceil(sqrt(80)) = 9 columns) rather than line-infantry files (12), operating structureless with cohesive row-major reflow.",
-
+  "input": "demos/inputs/subunits-phase-4-reform.json",
+  "caption": "Subunits Phase 4 reform (#1291): Narrowing frontage by 1 file operates as a subunit flank fold where retained files keep their exact soldiers and ranks without cross-block shuffling, and only the flank file moves to the rear rank.",
   "fixed_fps": 30,
-  "max_frames": 280,
+  "max_frames": 320,
   "fps": 15,
   "width": 720
 }
