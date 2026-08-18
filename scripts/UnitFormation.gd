@@ -69,8 +69,8 @@ static func auto_files_for_subunit_size(count: int, size: int) -> int:
 ##
 ## A player-set `frontage_override` (> 0) wins over the auto width in all cases, clamped to
 ## [1, max_soldiers]. Player frontage overrides and drag handle resizes specify direct file counts.
-
 static func frontage(u: Unit) -> int:
+
 	if u.frontage_override > 0:
 		return clampi(u.frontage_override, 1, maxi(1, u.max_soldiers))
 	if u.subunit_structure == Unit.SubunitStructure.FILE_GROUP and u.subunit_size > 0:
