@@ -15,5 +15,3 @@ on:
 jobs:
   check:
     uses: Morrison-Lab/gha/.github/workflows/check-non-standard-chars.yml@v2
-    with:
-      extensions: '.qmd, .R'
