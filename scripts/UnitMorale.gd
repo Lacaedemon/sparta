@@ -79,21 +79,17 @@ static func ladder_name(morale: float, is_routing: bool = false) -> String:
 
 ## Derives a unit's local combat status from its melee engagement state, engaged enemy strength, and force ratio.
 static func classify_combat_status(u: Unit, local_force_ratio: float = 1.0) -> CombatStatus:
-	var engaged_enemies: Array = []
-	if u.has_method("_adjacent_engaged_enemy_units"):
+	var engaged_enemies: Array[Unit] = []
+	if u.is_inside_tree():
 		engaged_enemies = u._adjacent_engaged_enemy_units()
-	elif "_engaged_units" in u:
-		engaged_enemies = u._engaged_units
-
-	if (u.state != Unit.State.FIGHTING and not (u.has_method("is_engaged") and u.is_engaged())) or engaged_enemies.is_empty():
+	if (u.state != Unit.State.FIGHTING and not u.is_engaged()) or engaged_enemies.is_empty():
 		return CombatStatus.NOT_IN_COMBAT
 
 	var engaged_friendly: int = u.soldiers
 	var engaged_enemy: int = 0
 	for enemy in engaged_enemies:
-		if enemy != null and "soldiers" in enemy and "state" in enemy:
-			if enemy.state != Unit.State.DEAD and enemy.state != Unit.State.ROUTING:
-				engaged_enemy += enemy.soldiers
+		if enemy != null and enemy.state != Unit.State.DEAD and enemy.state != Unit.State.ROUTING:
+			engaged_enemy += enemy.soldiers
 
 	if engaged_enemy <= 0:
 		return CombatStatus.WINNING_DECISIVELY
