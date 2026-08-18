@@ -3,7 +3,7 @@
 The source for Sparta's [Quarto](https://quarto.org/) website, published to GitHub
 Pages at **<https://lacaedemon.github.io/sparta/>**.
 
-It's pure-markdown Quarto — every page is a plain `.qmd`, so building it needs only
+It's pure-markdown Quarto -- every page is a plain `.qmd`, so building it needs only
 the Quarto CLI (no R, no Python). Templated on
 [UCD-SERG/qwt](https://github.com/UCD-SERG/qwt), trimmed to the website essentials.
 
@@ -17,7 +17,7 @@ quarto render       # one-shot build into website/_site
 
 The pages re-present content whose source of truth lives in the repo root
 (`README.md`, `PLAN.md`, `REPLAY.md`, `ASSETS.md`, `docs/`). Each page links back to
-its source — keep them in sync when the originals change.
+its source -- keep them in sync when the originals change.
 
 ## Quarto extensions
 
@@ -42,7 +42,7 @@ so the recorded version stays accurate.
 ## Demo clips
 
 The `<video>` embeds point at `media/showcase.mp4` and `media/clash.mp4` (with
-`.jpg` posters). These are **not committed** — they're recorded fresh at deploy time
+`.jpg` posters). These are **not committed** -- they're recorded fresh at deploy time
 by [`.github/workflows/publish-site.yml`](../.github/workflows/publish-site.yml),
 which runs:
 
@@ -62,7 +62,7 @@ quarto preview      # now the clips show locally
 ```
 
 If the clips are absent (e.g. a plain local render), the `<video>` elements simply
-show their poster / fallback text — the site still builds fine.
+show their poster / fallback text -- the site still builds fine.
 
 To feature a **specific tactic** (a flank charge, a rout), play that battle in-game,
 copy the saved replay from `user://replays/` into `demos/`, and add a row to the
