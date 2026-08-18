@@ -853,7 +853,7 @@ func _line_x_offsets(half_widths: Array[float], field_width: float) -> Array[flo
 ##   Infantry -- "lateral_halves"    (Polybius 6.24: the maniple's right and left centuries)
 ##   Cavalry  -- undeclared          (Phase 3 interim: structureless squadron block; drops
 ##                                    line-infantry file derivation and persistent file
-##                                    identity without blocking on #820 leader model)
+##                                    identity without blocking on the future leader model)
 ##   Archers  -- undeclared          (the record does not support a number -- saying so is the
 ##                                    point rather than a gap; see the note's "pattern of
 ##                                    silences" section)

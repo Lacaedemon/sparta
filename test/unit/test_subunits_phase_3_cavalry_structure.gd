@@ -1,7 +1,7 @@
 extends GutTest
-## Unit tests for Subunits Phase 3: stop laying cavalry out as line-infantry files (#1290).
+## Unit tests for Subunits Phase 3: stop laying cavalry out as line-infantry files.
 ##
-## Under the interim approach (does not block on #820 leader model):
+## Under the interim approach (does not block on the future leader model):
 ## - Cavalry derives its frontage from cavalry_files (Asclepiodotus 7.4 square/oblong squadron:
 ##   ceil(sqrt(n))) instead of line-infantry FORMATION_ASPECT _files(n).
 ## - Cavalry declares itself structureless (NONE, size 0).
