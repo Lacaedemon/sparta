@@ -20,12 +20,12 @@ soldiers carry mid-battle, via `Order.Type.SWITCH_WEAPON` and
 `Unit.equip_weapon`.
 
 The registry has since grown two more type families on the same contract
-(interned, immutable, disjoint id ranges): `Armor` (protection — the scalar
-`profile_for()`'s rows used to hard-code — plus a provisional panoply
+(interned, immutable, disjoint id ranges): `Armor` (protection -- the scalar
+`profile_for()`'s rows used to hard-code -- plus a provisional panoply
 `weight_kg`) and `Mount` (the animal's real `mass_kg` plus a provisional
 `top_speed_mps`). Player-facing mass always reports in absolute kilograms
 (the mount's `mass_kg`, and the per-type `body_mass_kg` in `profile_for()`'s
-rows), never the sim's relative contact scalar — the units convention's "no
+rows), never the sim's relative contact scalar -- the units convention's "no
 raw sim number reaches the player," applied to mass.
 
 **The contact-mass derivation is now done.**
@@ -33,47 +33,47 @@ raw sim number reaches the player," applied to mass.
 figure by `CONTACT_MASS_BASELINE_KG` (80 kg, the heavy-foot body mass), and
 `profile_for()` composes a soldier's relative contact mass as
 `relative_mass_from_kg(body_mass_kg)` plus, when mounted,
-`relative_mass_from_kg(mount.mass_kg)` — real body-plus-mount kilograms end
+`relative_mass_from_kg(mount.mass_kg)` -- real body-plus-mount kilograms end
 to end, not a separately-tuned relative scalar living alongside them. This
 changes combat: Spearmen and Infantry both weigh the 80 kg baseline, so
 their mass is unchanged at 1.0, but Archers' 70 kg body now derives to
 0.875 (was the tuned 0.9) and a mounted Cavalryman's 75 kg rider plus a
-450 kg warhorse now derives to 6.5625 (was the tuned 2.5) — a real ~525 kg
+450 kg warhorse now derives to 6.5625 (was the tuned 2.5) -- a real ~525 kg
 rider-and-horse relative to a foot soldier, not a hand-picked "cavalry hits
 like 2.5 men" figure. `Mount` no longer carries a separate
 `mass_contribution` field; `mass_kg` is the only source. Unlike
 weapons/shields, `Armor`/`Mount` are referenced per UNIT
-(`Unit.armor_type_id` / `Unit.mount_type_id`), not per soldier — nothing
+(`Unit.armor_type_id` / `Unit.mount_type_id`), not per soldier -- nothing
 varies per soldier for them yet; the per-soldier array move is a natural
 follow-on if a phase ever needs mixed panoplies inside one regiment.
 
 ## Motivation
 
 The combat model (`docs/combat-model.md`) already gives each soldier type fixed
-attributes — skill, armour, shield, lethality, reach, mass — but before phase 1
+attributes -- skill, armour, shield, lethality, reach, mass -- but before phase 1
 they lived as magic numbers and dictionary keys: `_default_loadout()` in
 `scripts/Battle.gd` was an `Array` of untyped `Dictionary` literals
 (`"reach_m": 2.4`, `"atk": 11`), and `Battle._spawn_unit` read them into scalar
 fields defined on `Unit` (`attack`, `defense`, `attack_range`) at spawn time.
-There was no `Weapon` or `Shield` object anywhere — "spear" was a string name
+There was no `Weapon` or `Shield` object anywhere -- "spear" was a string name
 plus a handful of loose numbers, not a thing.
 
 The owner's directive: model weapons and shields as **concrete classed
-objects** — real fields and methods, not an enum or a dictionary of magic
-numbers — because "we want to keep making our object taxonomy more and more
+objects** -- real fields and methods, not an enum or a dictionary of magic
+numbers -- because "we want to keep making our object taxonomy more and more
 concrete."
 
 The catch: **soldiers themselves are not objects.** Per-soldier state lives in
-parallel `Packed*Array`s on `Unit` — `_sim_soldier_pos`, `_sim_body_vel`,
+parallel `Packed*Array`s on `Unit` -- `_sim_soldier_pos`, `_sim_body_vel`,
 `_sim_steer`, `_sim_soldier_facing` (four `PackedVector2Array`s, 8 bytes each)
 and `_sim_soldier_hp`, `_sim_prone`, `_sim_soldier_stamina` (three
-`PackedFloat32Array`s, 4 bytes each) — deliberately, for performance: roughly
+`PackedFloat32Array`s, 4 bytes each) -- deliberately, for performance: roughly
 `4*8 + 3*4 = 44` bytes/soldier by this author's count of `Unit.gd`'s current
-`_sim_*` arrays (not a cited figure from CLAUDE.md — CLAUDE.md documents the
+`_sim_*` arrays (not a cited figure from CLAUDE.md -- CLAUDE.md documents the
 SoA pattern and its rationale, but not this byte count), feeding `MultiMesh`
 rendering, sized for hundreds of soldiers per unit across many units per
 battle. A literal "one `Weapon` object + one `Shield` object per soldier"
-instantiates two extra heap `RefCounted`s per soldier — real allocation and
+instantiates two extra heap `RefCounted`s per soldier -- real allocation and
 cache-locality cost the array-of-structs design exists to avoid. Concreteness
 and the SoA hot loop pull in opposite directions, so this
 doc resolves the tension before any code changes.
@@ -83,22 +83,22 @@ doc resolves the tension before any code changes.
 Split what's genuinely per-*type* from what's genuinely per-*soldier*:
 
 - **`Weapon` and `Shield` are real GDScript classes** (`class_name Weapon`,
-  `class_name Shield`) with concrete fields and methods — reach, damage
-  profile, defense/block value, default hold pose — but as **shared, interned
+  `class_name Shield`) with concrete fields and methods -- reach, damage
+  profile, defense/block value, default hold pose -- but as **shared, interned
   type definitions**. One instance per weapon/shield *type*
   (`WEAPON_SPEAR`, `SHIELD_SCUTUM`, ...), not one per soldier. Godot `Resource`
   semantics: loaded once at startup, referenced by id many times, never
   mutated after load.
-- **Each soldier references its active loadout by id**, not by object — new
+- **Each soldier references its active loadout by id**, not by object -- new
   parallel arrays on `Unit`, index-aligned with `_sim_soldier_pos` exactly like
   the existing `_sim_soldier_hp` / `_sim_soldier_stamina`:
   - `_sim_soldier_weapon_id: PackedInt32Array`
   - `_sim_soldier_shield_id: PackedInt32Array`
 - **Per-soldier STATE that genuinely varies** also lives in parallel arrays,
   never inside the shared type object (putting mutable per-soldier state on
-  the type object would defeat interning — two soldiers carrying the same
+  the type object would defeat interning -- two soldiers carrying the same
   scutum must not be able to fight over one shared "current hold angle"):
-  - `_sim_soldier_shield_hold_angle: PackedFloat32Array` — current hold
+  - `_sim_soldier_shield_hold_angle: PackedFloat32Array` -- current hold
     angle/offset relative to the body: resting, bracing, raised.
   - a bracing/active-weapon flag array where a soldier can carry more than
     one weapon (phase 4; not needed for phase 1's single-weapon-per-type
@@ -107,7 +107,7 @@ Split what's genuinely per-*type* from what's genuinely per-*soldier*:
 The type classes hold what's fixed per type (reach, damage, defense, default
 hold pose); the per-soldier arrays hold what varies per instance (which type
 is currently equipped, current hold state). This mirrors the pattern already
-used for per-type combat/movement stats on `Battle._default_loadout` — the
+used for per-type combat/movement stats on `Battle._default_loadout` -- the
 data doesn't get duplicated per soldier there either, it gets read once at
 spawn and stored as a scalar on `Unit`. The new piece is that the *type* data
 itself becomes a real object instead of a dictionary literal, and the
@@ -130,7 +130,7 @@ func effective_reach(terrain_speed_multiplier: float) -> float:
     return reach_m * terrain_speed_multiplier
 ```
 
-(Sparta has no `Terrain` class — terrain is a plain `Array` of `Dictionary`
+(Sparta has no `Terrain` class -- terrain is a plain `Array` of `Dictionary`
 patches, `Battle.TERRAIN`, and a speed multiplier at a position is looked up
 via `PathField.active.speed_at(position) -> float`, as `Unit.gd:884` already
 does for movement. `effective_reach` would take that same multiplier as a
@@ -154,7 +154,7 @@ func covers(attack_angle: float, hold_angle: float) -> bool:
 ```
 
 `SHIELD_NONE` is a real interned instance too (`block_value = 0.0`,
-`arc_deg = 0.0`), not a null check scattered through combat — Archers carry
+`arc_deg = 0.0`), not a null check scattered through combat -- Archers carry
 it today (see the registry sketch below: Cavalry get the lighter
 `SHIELD_ROUND`, not `SHIELD_NONE`), so callers already need a "no shield"
 case; giving it an object keeps `covers()` uniform instead of an
@@ -162,13 +162,13 @@ case; giving it an object keeps `covers()` uniform instead of an
 
 ## Type registry sketch
 
-`scripts/Battle.gd`'s `_default_loadout()` fields four unit types —
-Spearmen, Infantry, Archers, Cavalry — each with one
+`scripts/Battle.gd`'s `_default_loadout()` fields four unit types --
+Spearmen, Infantry, Archers, Cavalry -- each with one
 melee weapon (a `reach_m`) and an implicit shield weight already hardcoded per
 type in `SoldierCombat.profile_for()` (`scripts/SoldierCombat.gd:63-71`): a
 `"shield"` value of 0.65 for Spearmen (anti-cavalry), 0.60 for Infantry, 0.05
 for Archers (ranged), 0.25 for Cavalry. That gradient is exactly what
-motivates the table below — Spearmen/Infantry already carry a large shield's
+motivates the table below -- Spearmen/Infantry already carry a large shield's
 worth of block value, Archers next to none, Cavalry something in between.
 Phase 1 does not invent new unit types or new weapons; it names what already
 exists concretely:
@@ -180,7 +180,7 @@ exists concretely:
 | `WEAPON_SIDEARM` | archer's melee backup (dagger/knife) | 0.6 | Archers |
 | `WEAPON_SPATHA` | cavalry longsword | 1.5 | Cavalry |
 
-Archers' bow itself is not a `reach_m`-bearing melee weapon today — ranged
+Archers' bow itself is not a `reach_m`-bearing melee weapon today -- ranged
 attacks use a fixed `RANGED_RANGE` constant (160 world units,
 `scripts/Unit.gd:310`), not `attack_range`/`reach_m`. The 0.6 m reach (now
 `WEAPON_SIDEARM`'s `reach_m`) is the archer's melee sidearm reach, used only
@@ -197,7 +197,7 @@ phase 1.
 | `SHIELD_ROUND` | light shield | Cavalry |
 | `SHIELD_NONE` | no shield | Archers |
 
-(`WEAPON_PILUM`/javelin is named in the issue as a plausible future addition —
+(`WEAPON_PILUM`/javelin is named in the issue as a plausible future addition --
 a thrown weapon distinct from the melee sidearm a legionary switches to after
 the volley. It is not in the current roster; phase 1 does not add it. It is a
 natural phase-4 addition once #516's `SwitchWeaponOrder` exists to model the
@@ -205,7 +205,7 @@ javelin→sword transition.)
 
 The registry itself is a small `Dictionary[int, Weapon]` / `Dictionary[int,
 Shield]` populated once, keyed by the same `int` constants the per-soldier
-arrays store. Lookup is `registry[id]` — O(1), no allocation. As implemented
+arrays store. Lookup is `registry[id]` -- O(1), no allocation. As implemented
 it is a `class_name LoadoutRegistry` (`scripts/LoadoutRegistry.gd`) whose
 dictionaries are `static var`s built at class load: pure immutable data needs
 no scene-tree presence, so a static class does the interning without an
@@ -219,7 +219,7 @@ turned out to be more machinery than the data needs).
   no RNG, no per-call allocation, identical on every replay.
 - **Per-soldier arrays follow the existing pure-array-mutation pattern.**
   Writing `_sim_soldier_weapon_id[i] = new_id` is the same shape as the
-  existing `_sim_soldier_hp[i] -= damage` — an in-place `Packed*Array` write,
+  existing `_sim_soldier_hp[i] -= damage` -- an in-place `Packed*Array` write,
   no object churn, index-aligned with `_sim_soldier_pos`.
 - Type objects are never mutated after registry load. If a future phase needs
   a *soldier-specific* variant of a type (e.g. a wounded weapon), that is new
@@ -238,17 +238,17 @@ turned out to be more machinery than the data needs).
   (`profile_for()`'s `shield_residual`) plus the struck soldier's
   `_sim_soldier_shield_id` -> `Shield.block_value`
   (`Unit.soldier_shield_block`). The split is what makes the re-express
-  behavior-preserving — Spearmen (0.65) and Infantry (0.60) carry the same
+  behavior-preserving -- Spearmen (0.65) and Infantry (0.60) carry the same
   scutum, so the scutum carries the shared 0.60 and the spearmen keep a 0.05
   braced-footing residual (archers: 0.05 unshielded-deflection residual, no
   shield); every composition equals the pre-split per-type weight bit-for-bit
   (`test/unit/test_loadout_combat_equivalence.gd`). The defence math stays the
   continuous dot-product facing gate (`SoldierCombat.facing_gate()` +
-  `land_chance()`), not a discrete arc check — the
+  `land_chance()`), not a discrete arc check -- the
   `Shield.covers(attack_angle, hold_angle)` sketch above remains illustrative
   shape data nothing reads for gameplay yet; the wound formula is unchanged
   behaviorally throughout.
-- **Rendering** (implemented, phase 3) — the soldier's `MultiMesh` draw pose
+- **Rendering** (implemented, phase 3) -- the soldier's `MultiMesh` draw pose
   reads `weapon_id` (`Unit._foot_kind()`, which mesh/sprite) and each type's
   `default_hold_angle` (`Unit.weapon_rest_angle()`/`shield_rest_angle()`,
   where to draw the held item relative to the body). The per-soldier
@@ -258,14 +258,14 @@ turned out to be more machinery than the data needs).
   phase 3 below.
 - **#530's formation geometry** (PR #534, open as of this writing) wants
   exactly the "shield relative to body" data this issue's per-soldier hold
-  angle provides — a shield-wall or testudo restructure reads
+  angle provides -- a shield-wall or testudo restructure reads
   `_sim_soldier_shield_hold_angle` to lock shields into an overlapping wall or
   a raised roof. #534 does not depend on this issue landing first (it can ship
   its geometry restructure against today's scalar stats), but once both land,
   #534's geometry code becomes a consumer of the hold-angle array introduced
   here in phase 2, and should be revisited to read it.
 - **#516's future `SwitchWeaponOrder`** writes `_sim_soldier_weapon_id[i]` to
-  the id of the newly active weapon type — the concrete registry this issue
+  the id of the newly active weapon type -- the concrete registry this issue
   builds is exactly what a switch order needs to switch *to* (a real id
   resolving to a real `Weapon`, not a magic number). This is a phase 4
   consumer; #516 itself is still in the design stage.
@@ -274,7 +274,7 @@ turned out to be more machinery than the data needs).
 
 Each phase: scope, dependencies, done-check, behavior-change label.
 
-### Phase 1 — type classes + registry + array wiring (no behavior change)
+### Phase 1 -- type classes + registry + array wiring (no behavior change)
 - **Scope:** Define `Weapon`/`Shield` classes (`scripts/Weapon.gd`,
   `scripts/Shield.gd`) and a small interned registry covering today's roster
   (`WEAPON_SPEAR`, `WEAPON_GLADIUS`, `WEAPON_SIDEARM`, `WEAPON_SPATHA`,
@@ -283,28 +283,28 @@ Each phase: scope, dependencies, done-check, behavior-change label.
   `Battle._spawn_unit`'s loadout. The weapon type's `reach_m` becomes the
   single source of truth for `attack_range` at spawn (the `"reach_m"`
   dictionary literals are gone). *As implemented*, the strike-time re-express
-  — combat reading lethality/block through the id arrays instead of
-  `profile_for()`'s per-type literals — split out to a follow-up (#571):
+  -- combat reading lethality/block through the id arrays instead of
+  `profile_for()`'s per-type literals -- split out to a follow-up (#571):
   the per-type shield weights fold stance factors beyond the shield itself
   (Spearmen 0.65 vs Infantry 0.60 for the same scutum), so that drop-in is
   not behavior-preserving until the shield-vs-stance split is decided. The
   follow-up then landed the split as `shield_residual` (per type, in
   `profile_for()`) + `block_value` (per shield type), composed at strike time
-  — see the combat-math consumer bullet above.
-- **Dependencies:** none — builds on current `main`.
+  -- see the combat-math consumer bullet above.
+- **Dependencies:** none -- builds on current `main`.
 - **Done-check:** existing GUT suite (`tools/check.sh`) passes unchanged, plus
   a targeted equivalence test asserting combat outcomes are bit-for-bit
   identical to pre-refactor `main` on a fixed-seed battle (reach, block
   chance, damage numbers unchanged for every existing unit type).
 - **Behavior change:** **none.** Pure representation refactor.
 
-### Phase 2 — shield hold-angle/state per soldier
+### Phase 2 -- shield hold-angle/state per soldier
 - **Scope:** Add `_sim_soldier_shield_hold_angle` (and any bracing flag phase
   1 didn't need) to `Unit.gd`. Default every soldier to `Shield.default_hold_angle`
   at spawn; update it wherever posture/bracing already changes today (braced
   stance, testudo/shield-wall formation entry once #530's geometry work
   defines what "locked" means spatially).
-- **Dependencies:** #530 (PR #534) — this phase's hold-angle array is the data
+- **Dependencies:** #530 (PR #534) -- this phase's hold-angle array is the data
   #534's shield-wall/testudo geometry wants to read/write. Land after #534
   merges (or coordinate directly if both are in flight) so the two don't
   redefine the same concept independently.
@@ -312,10 +312,10 @@ Each phase: scope, dependencies, done-check, behavior-change label.
   soldier; a targeted test asserts the array stays index-aligned with
   `_sim_soldier_pos` through spawn, reverse, and formation changes (mirroring
   the existing `_sim_soldier_hp.reverse()` pattern in `Unit.gd`).
-- **Behavior change:** **none to combat outcomes** — this phase only makes the
+- **Behavior change:** **none to combat outcomes** -- this phase only makes the
   data available; nothing reads it for gameplay yet (rendering is phase 3).
 
-### Phase 3 — rendering reads weapon/shield type + hold state (implemented, #538)
+### Phase 3 -- rendering reads weapon/shield type + hold state (implemented, #538)
 - **Scope, as implemented:**
   - `Unit._foot_kind()` (the figure/mark archetype selector) now reads
     `weapon_type_id` first (`WEAPON_SPEAR` -> spear, `WEAPON_SIDEARM` ->
@@ -384,13 +384,13 @@ Each phase: scope, dependencies, done-check, behavior-change label.
   #516 has at least its phase-1 skeleton (`current_order` + `orders` queue).
 - **Done-check:** a soldier can switch weapon type mid-battle, combat math
   immediately reflects the new type's stats, deterministic on replay.
-- **Behavior change:** **new capability** (gameplay) — the first phase in this
+- **Behavior change:** **new capability** (gameplay) -- the first phase in this
   series that changes what a battle can do, not just how it's represented.
 
 ## Acceptance (mirrors #535)
-- `Weapon`/`Shield` are real GDScript classes with concrete fields/methods —
+- `Weapon`/`Shield` are real GDScript classes with concrete fields/methods --
   not an enum, not a dictionary of magic numbers.
-- No per-soldier heap allocation for weapon/shield data — type objects are
+- No per-soldier heap allocation for weapon/shield data -- type objects are
   shared/interned, referenced by id from per-soldier `Packed*Array`s.
 - Existing combat/render performance is not regressed (spot-check with the
   existing formation/battle test suite + a stress scenario).

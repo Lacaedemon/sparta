@@ -10,7 +10,7 @@ This document compiles historical sources on how disciplined infantry units refo
 
 **Historical Practice:**
 - When a unit suffered casualties, survivors would close gaps created by dead/wounded, pulling toward the center files
-- The file (column) was the unit of cohesion in ancient formations—the file-leader at front and the file-closer (ouragos in Greek, centurion in Roman) at rear maintained discipline
+- The file (column) was the unit of cohesion in ancient formations--the file-leader at front and the file-closer (ouragos in Greek, centurion in Roman) at rear maintained discipline
 - Rather than maintaining the original frontage with thin depth, units would narrow their width and increase depth for better cohesion and morale
 
 **Sources:**

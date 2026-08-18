@@ -5,7 +5,7 @@ metadata:
   type: feedback
 ---
 
-# Sparta — working notes
+# Sparta -- working notes
 
 ## Standing AI Workflow & Orchestration Rules (All AI Models)
 
@@ -14,7 +14,7 @@ Our lab's work rules encoded throughout `ai-config` apply unconditionally to all
 
 1. **Main session acts as orchestrator**: Delegate heavy research, multi-file searches, complex sub-tasks, or parallel branch operations to subagents (`invoke_subagent`) or background tasks (`run_command`), keeping main context clean and focused on high-level direction, triage, and review.
 2. **Proactive corrective actions & PR workflow**: Whenever a gap, missing PR, or workflow instruction is identified:
-   - **Act immediately without asking**: Never wait for a user prompt or ask "Should I do X?" when the requirement is clear — branch, commit, open the PR, request review from `d-morrison`, and drive to clean in the exact same response turn.
+   - **Act immediately without asking**: Never wait for a user prompt or ask "Should I do X?" when the requirement is clear -- branch, commit, open the PR, request review from `d-morrison`, and drive to clean in the exact same response turn.
    - **Auto-merge under `mwc`**: If `mwc` is active for the session, once CI passes and review is clean, execute the merge and post-merge wrap-up immediately without stopping.
 3. **Mandatory Timers for Async Work**: Whenever waiting on in-flight CI runs, background tasks, or subagents before completing a task or merge, **ALWAYS** schedule a timer (`schedule`) or proceed to other active work. Never end a turn waiting on asynchronous execution without a scheduled wakeup handle.
 4. **Memory & Skill PR Discipline**: Every addition or update to memories, instructions, or skills (including `cai`, `memorize`, and `push-memory`) **MUST** be delivered via a branch + PR with requested reviewer (`d-morrison`) and driven to clean. Never edit configuration or memory files directly on `main` or disk without a PR.
@@ -31,25 +31,25 @@ modifier or an instant state switch that ignores it. Concretely:
   (acceleration/friction), never jump there in one frame. #738/#739 fixed
   `Unit._current_speed` bleeding off via friction instead of snapping to 0 (merged).
   #740/#741 applies the same fix to routing translucency, fading it instead of
-  switching instantly (merged) — scoped to the regimental flag only, per design
+  switching instantly (merged) -- scoped to the regimental flag only, per design
   feedback: the per-soldier marks and other chrome stay fully opaque.
 - **No inert numbers.** A quantity that represents real motion must actually cause
-  motion — a decaying speed that doesn't move the unit is a display artifact, not
+  motion -- a decaying speed that doesn't move the unit is a display artifact, not
   physics. #742/#743 (merged) made residual `_current_speed` coast the unit
   forward as it decelerates, instead of counting down while `position` sits
   frozen; the fix consolidates onto `_approach_velocity` (the unit's actual travel
-  velocity, already read by the soldier-body feed-forward and combat charge bonus —
+  velocity, already read by the soldier-body feed-forward and combat charge bonus --
   never truly combat-only, just under-documented as one) rather than adding a
   parallel velocity field. #747 (merged) fixed a gap #743's own tests never
   exercised: `UnitCombat`'s "spend the charge" strike reset zeroed
   `_approach_velocity` on the exact tick a unit's last opponent died, leaving the
-  idle-coast guard with no travel direction — see "A prior PR's own claimed
+  idle-coast guard with no travel direction -- see "A prior PR's own claimed
   verification can be wrong even after merge" below. #749 (merged, closes #745's
   first slice) went further: added real soldier-to-soldier enemy-contact collision
   physics (`SoldierCollision.enemy_contact_impulse` /
   `SoldierEnemyContact.accumulate`), and made the regiment's own `position` a pure
   function of its soldier bodies' actual positions (`SoldierBodies.couple`) rather
-  than an independently-controlled point the bodies must return to — see "Regiment
+  than an independently-controlled point the bodies must return to -- see "Regiment
   position is a pure function of body positions" below. #752 tracks the remaining
   gap in that slice (Square/Schiltron's engaged-soldier selection is still
   index-based, not live-proximity-based, under multi-attacker chaos).
@@ -62,7 +62,7 @@ modifier or an instant state switch that ignores it. Concretely:
   outcome.** A DIFFERENT failure mode than a flat type-bonus above: PR #981 (#240,
   sustained melee standoff) first shipped a longer-reach soldier ACTIVELY BACKING AWAY
   once a shorter-reach enemy closed in, to hold its reach distance. Caught in review: the
-  push-back this was meant to deliver already exists — every landed strike already
+  push-back this was meant to deliver already exists -- every landed strike already
   applies real, physically-motivated knockback (`SoldierMelee`/`SoldierCombat`), so a
   longer-reach side's opening-strike advantage (it lands hits before the enemy is even in
   range) already carries through the sustained case via that existing mechanism. Adding a
@@ -73,10 +73,10 @@ modifier or an instant state switch that ignores it. Concretely:
   actively presses in, since closing the gap to negate a real disadvantage isn't
   redundant with anything else already in the sim. A genuine "fighting retreat" as a
   deliberate PLAYER-COMMANDED tactic (not the passive default) is still a legitimate
-  mechanic — tracked separately as its own order/stance (#983) rather than folded into
+  mechanic -- tracked separately as its own order/stance (#983) rather than folded into
   the default per-soldier physics. Before adding a new per-soldier bias/force, check
   whether an existing mechanism (knockback, reach-based hit resolution, contact impulses)
-  already produces the intended outcome as a side effect — if so, the new mechanic should
+  already produces the intended outcome as a side effect -- if so, the new mechanic should
   do LESS, not add a parallel force alongside it.
 - **No top-down RESOLUTION AUTHORITY either, not just no top-down mechanics.** The
   bullets above are all about a mechanic's *effect* (a flat modifier, a snap, an inert
@@ -104,14 +104,14 @@ When picking which open issue to grab next (`gi`/`gii`/`gia`/`gip`), prefer **co
 mechanics** work over **polish**, all else equal. Core mechanics is anything that
 changes the actual simulation a battle runs on: combat/collision physics, movement
 and maneuvers, formations, morale/routing, AI decision-making, or the campaign
-layer's own rules — the kind of work the "bottom-up physics" philosophy above
+layer's own rules -- the kind of work the "bottom-up physics" philosophy above
 governs. Polish is everything that makes the existing simulation more presentable or
 more convenient without changing what it computes: rendering/art/asset quality,
 camera behavior, HUD/UI layout, new platforms (3D mode, mobile), demo/tooling
 convenience, or documentation-only issues with no mechanic attached.
 
 This mirrors ai-config's own infra-over-feature tie-breaker (`pr-prioritization.md`)
-— a priority nudge, not an override: an explicit `P0`-`P3` label, a blocking
+-- a priority nudge, not an override: an explicit `P0`-`P3` label, a blocking
 relationship, or a direct instruction from the user still ranks above it. Apply it
 only when candidates are otherwise close in priority, the same scope the
 infra-over-feature tie-breaker uses.
@@ -120,7 +120,7 @@ Concretely, from the backlog as surveyed 2026-07-11: #164/#296 (individual-level
 collision), #240 (weapon-reach standoff), #453/#458/#480/#718 (maneuvers,
 formations, move-order types, disciplined-vs-undisciplined march behavior), #724
 (engage-turn swirl bug), and #750 (crowding-pressure evaluation) are core mechanics.
-#69 (3D mode), #131 (smartphone version), #386 (terrain art), #414 (fog of war —
+#69 (3D mode), #131 (smartphone version), #386 (terrain art), #414 (fog of war --
 mostly a rendering/visibility-of-information feature once the underlying detection
 already exists), #467 (demo options), #496 (comb wikipedia for ideas), and #756-style
 CI/tooling issues are polish or infrastructure, not core mechanics specifically
@@ -224,7 +224,7 @@ on a stacked PR, write docs only for features whose code is on the *current bran
 ancestry, not for a sibling branch's feature.
 
 This is the sparta instance of the general rule in `preferences.md` ("only document
-features present on the current branch's ancestry — grep first").
+features present on the current branch's ancestry -- grep first").
 
 **Concrete case:** in the terrain-speed PR (#185), website docs were written for the
 order-response delay feature (from `feat/order-response-delay`, a separate branch also
@@ -233,50 +233,50 @@ reviewer correctly flagged it as a "hallucinated feature." Before documenting a 
 `grep` for its symbol/constant (e.g. `order_response_delay`) on the current branch; if
 it's absent, move the docs to the branch where the code lives.
 
-## Demo scenario design — team 0 is stationary by default
+## Demo scenario design -- team 0 is stationary by default
 
 Only team 1 (enemy AI, `_run_enemy_ai()`) auto-advances. Team 0 (player units) stays
 **stationary** until given an explicit order, so any hand-authored
 `demos/scenarios/*.json` replay that needs team 0 engaged must issue a move (or attack)
-order early — at tick 0 or close to it. This bit the line-relief scenario (PR #200): the
+order early -- at tick 0 or close to it. This bit the line-relief scenario (PR #200): the
 relief order fired before any engagement because the player unit never advanced.
 
 After writing a scenario, work out the engagement timing on paper before relying on the
-CI clip to confirm it — a mistimed scenario wastes a CI run and may silently record an
+CI clip to confirm it -- a mistimed scenario wastes a CI run and may silently record an
 unrelated moment.
 
-The reference tables a scenario author needs — spawn positions and UIDs, effective unit
-speeds, and the order `target`-field semantics — live with the code in sparta's
+The reference tables a scenario author needs -- spawn positions and UIDs, effective unit
+speeds, and the order `target`-field semantics -- live with the code in sparta's
 `demos/README.md` and `REPLAY.md`, not here. A memory copy of constants like
 `SPEED_SCALE` and the spawn layout would rot silently when the game changes them.
 
-## Demo camera path — record it like a human operator
+## Demo camera path -- record it like a human operator
 
 When recording the camera presentation track for a demo (the track played back by
 `tools/demo/DemoRunner.gd`), move the camera the way a person would, not a robot.
 Repeated reviewer feedback on PR #232:
 
-- **Don't chase the unit centroid recomputed every frame** — it drifts both ways as
+- **Don't chase the unit centroid recomputed every frame** -- it drifts both ways as
   units shuffle and die, so the pan constantly *reverses direction* and reads as
   jerky even when smoothed. Sample a fixed focus point **once**, or don't anchor to
   the centroid at all.
-- **Hold, then move once in one direction, then hold** — script holds plus single
+- **Hold, then move once in one direction, then hold** -- script holds plus single
   eased (smoothstep) moves; aim for ~1 direction-reversal per axis over the whole
   clip.
-- **End on a multi-second stable hold** — finish all camera motion well before the
+- **End on a multi-second stable hold** -- finish all camera motion well before the
   recording ends (set `max_frames` to cover the motion *plus* the hold) so the clip
   doesn't cut off mid-move.
-- **Raise the framerate for a moving camera** — `fixed_fps` 30 / GIF `fps` 12 suit a
+- **Raise the framerate for a moving camera** -- `fixed_fps` 30 / GIF `fps` 12 suit a
   static-camera battle, but a panning/zooming camera looks choppy at 12 fps. Use
   `"fixed_fps": 60, "fps": 30` and bump `max_frames` to keep the duration.
 
 Playback also low-passes the track (`Battle.camera_smoothing`, default `CAMERA_SMOOTHING`), but that smooths
-magnitude, not direction — fix the *path*, not just the filter. Verify by logging
+magnitude, not direction -- fix the *path*, not just the filter. Verify by logging
 the played-back camera and counting velocity sign-changes and per-tick jerk, not by
 eyeballing one frame. The committed `demos/camera-showcase.json` is baked keyframes
 (no centroid logic); author the recorder as a throwaway off-screen scene.
 
-## Demo media in PRs — inline play-once GIF + link to the MP4
+## Demo media in PRs -- inline play-once GIF + link to the MP4
 
 The demo workflow posts the PR clip as an **inline GIF that plays once** (ffmpeg
 `-loop -1`, freezes on the final frame) plus a **link to the MP4 with sound**
@@ -299,7 +299,7 @@ optional `camera` track) and verifying it locally:
 
 - **The replay loader requires `version: 1` and `physics_tps: 60`.** Without both,
   `Replay.start_playback` returns false *silently* and `DemoRunner` falls back to a
-  fresh random battle — so the clip records the wrong thing (units at spawn, no
+  fresh random battle -- so the clip records the wrong thing (units at spawn, no
   orders, default camera) with no error. Always include them (see `showcase.json`).
 - **A HOLD order does NOT keep an enemy unit stationary.** The enemy AI
   (`Battle._run_enemy_ai`) sets `target_enemy` directly every `AI_PERIOD`, and
@@ -321,14 +321,14 @@ optional `camera` track) and verifying it locally:
   at `--fixed-fps 60`. This lets you verify a demo frame-by-frame before pushing.
 
 Verify timing on paper first (unit speeds in `demos/README.md`), then confirm by
-recording + extracting a few frames — don't trust a CI run to catch a mistimed
+recording + extracting a few frames -- don't trust a CI run to catch a mistimed
 scenario.
 
-## Release workflow — tag-gated publish, and the NSIS installer path
+## Release workflow -- tag-gated publish, and the NSIS installer path
 
 The `Release builds` workflow (`.github/workflows/release.yml`) builds on
 `push: tags: v*` **and** on manual `workflow_dispatch`. A dispatch run builds
-every artifact — including the NSIS installer step — and only the final
+every artifact -- including the NSIS installer step -- and only the final
 *publish to the GitHub Release* is tag-gated. So you can validate the installer
 build without cutting a release; just don't expect a dispatch run to publish one.
 A bug in the tag-only publish path, though, only surfaces when you actually tag.
@@ -336,32 +336,32 @@ A bug in the tag-only publish path, though, only surfaces when you actually tag.
 - **The relative `OutFile` in `tools/installer/sparta.nsi` landed in the `.nsi`'s
   own directory (`tools/installer/`), not the workflow's working dir.** makensis
   ran from the repo root with the script path, yet the built installer wasn't in
-  the repo root — a `mv "sparta-…setup.exe" build/` from there failed with
+  the repo root -- a `mv "sparta-…setup.exe" build/` from there failed with
   *cannot stat*. (NSIS docs are muddy on whether a relative `OutFile` is cwd- or
-  script-relative, and it varies — don't rely on either.) This was the first tag
+  script-relative, and it varies -- don't rely on either.) This was the first tag
   to run the installer step (added after v0.1.0). Fix pattern: make the path an
   overridable define (`!ifndef OUTFILE` / `!define OUTFILE …` / `!endif`) and pass
   an absolute `-DOUTFILE="$(pwd)/build/…"` from the workflow, matching how
-  `EXE_PATH` is already absolute — then makensis writes straight into `build/`
+  `EXE_PATH` is already absolute -- then makensis writes straight into `build/`
   regardless.
 - **The release workflow runs from the *tagged* tree.** Fixing `main` is not
   enough: re-point the tag at the fixed commit (`git tag -f -a v0.2.0 <sha>` +
   `git push origin v0.2.0 --force`) to re-trigger. Reusing a tag is fine when no
   release ever published under it.
 - **A backgrounded `gh run watch … ; echo EXIT $?` exits 0 even when the run
-  failed** — the wrapper's exit code is the `echo`'s, not the run's. Read the run
+  failed** -- the wrapper's exit code is the `echo`'s, not the run's. Read the run
   `conclusion` explicitly afterward; don't trust the task's exit code.
 
-## Local testing — repo targets Godot 4.7 (no more 4.6 dance)
+## Local testing -- repo targets Godot 4.7 (no more 4.6 dance)
 
 As of PR #420 ("Upgrade engine target from Godot 4.6.x to Godot 4.7", merged
-2026-06-30), Sparta **targets Godot 4.7** — `project.godot`'s `config/features`
+2026-06-30), Sparta **targets Godot 4.7** -- `project.godot`'s `config/features`
 is committed as `"4.7"` on `main`. Local machines run 4.7 too, so target and
 binary match.
 
 - **No more 4.6↔4.7 bump/restore.** The old workflow (bump `config/features`
   4.6→4.7 before a local run, then `git checkout project.godot` to restore 4.6)
-  is **obsolete and now actively wrong** — restoring to 4.6 regresses the
+  is **obsolete and now actively wrong** -- restoring to 4.6 regresses the
   committed target. Run the suite directly; leave `project.godot` alone.
 - **Getting the binary:** point `GODOT_BIN` at a 4.7 binary (the `_console`
   variant gives terminal output on Windows), e.g.
@@ -369,7 +369,7 @@ binary match.
   straight: `<binary> --headless -s addons/gut/gut_cmdln.gd -gdir=res://test
   -ginclude_subdirs -gexit`.
 - **The `test_settings.gd` doubler quirk** is the same GUT-on-4.7 issue
-  described just below — if a lone `test_settings.gd` doubler parse error
+  described just below -- if a lone `test_settings.gd` doubler parse error
   appears it's that known quirk, not a regression. Since the #420 upgrade the
   full suite has been observed passing every test, so don't assume that failure
   is still present, and don't pin an exact test total; the suite grows.
@@ -432,7 +432,7 @@ consequence for `res://`, which no error message connects back to it.)
 CI runs on `ubuntu-latest`; local development on this machine is Windows. When
 a prior session reports a live-battle test hanging and reverts a change
 "un-root-caused," don't assume the report is stale or trust it at face value
-either — reproduce it fresh, and if the platform might matter (this repo's own
+either -- reproduce it fresh, and if the platform might matter (this repo's own
 `ANCHOR_RANKS` docstring documents at least one prior case where a chaos-
 sensitive test passed locally on Windows while failing on Linux CI), get a
 genuine native-Linux run rather than reasoning about the gap from Windows
@@ -441,7 +441,7 @@ alone.
 WSL (`wsl.exe -d Ubuntu`) makes this cheap on a machine that already has it
 installed: download a Linux Godot binary directly (same version tag as the
 Windows one, so the comparison is apples-to-apples), clone the repo into WSL's
-**native filesystem** (not `/mnt/c/...` — that path is a slow 9p/DrvFs bridge
+**native filesystem** (not `/mnt/c/...` -- that path is a slow 9p/DrvFs bridge
 and import/test runs on it are painfully slow), vendor GUT the same way
 `tools/check.sh` does, and run the suite there.
 
@@ -459,7 +459,7 @@ Then vendor GUT (mirroring `tools/check.sh ensure_gut`) and run the same
 **Windows Git Bash mangles `/tmp/...` paths passed to `wsl.exe`.** MSYS
 auto-translates POSIX-looking absolute-path *arguments* to a program it treats
 as "native" (which `wsl.exe` is, from Git Bash's point of view) into a Windows
-path — so `wsl.exe -d Ubuntu -- bash /tmp/foo.sh` silently becomes
+path -- so `wsl.exe -d Ubuntu -- bash /tmp/foo.sh` silently becomes
 `bash C:/Users/.../AppData/Local/Temp/foo.sh` and fails inside WSL with "no
 such file." Prefix the whole call with `MSYS_NO_PATHCONV=1` whenever a
 `wsl.exe` command line carries a `/`-rooted path as an argument (a script
@@ -471,11 +471,11 @@ copy.
 **This settled a real question, not just a hypothetical one.** On issue #1136
 (a reverted position-anchor fix reported to hang `test_collision_knockback_battle.gd`
 indefinitely), the identical diff reproduced cleanly on both Windows and this
-WSL-native-Linux setup — same Godot build (`4.7.stable.official.5b4e0cb0f`) on
+WSL-native-Linux setup -- same Godot build (`4.7.stable.official.5b4e0cb0f`) on
 both, three runs each, the single test and the full 2642-test suite both
 clean in under seven minutes. That is real, falsifiable evidence the reverted
 finding wasn't a deterministic property of the diff on the builds actually
-tested — evidence a Windows-only re-check could not have produced, since a
+tested -- evidence a Windows-only re-check could not have produced, since a
 clean Windows run alone would leave open exactly the cross-platform
 possibility this repo has already documented once before.
 
@@ -484,11 +484,11 @@ possibility this repo has already documented once before.
 `partial_double()`/`double()` can fail to parse under Godot 4.7 + GUT v9.7.0:
 some generated wrapper methods still emit an invalid `return` for void-returning
 or default-parameter methods, which 4.7's stricter return-type checking now
-rejects ("A void function cannot return a value"). This is bitwes/Gut#816 — GUT
+rejects ("A void function cannot return a value"). This is bitwes/Gut#816 -- GUT
 9.7.0's fix for the underlying Godot change doesn't cover every method shape.
 Hit while migrating to 4.7 (#420): `test_settings.gd`'s one `partial_double()`
 use on `Settings.gd` (which has several void methods and default-valued params)
-failed this way. Fix: skip the doubler for the affected script — write a small
+failed this way. Fix: skip the doubler for the affected script -- write a small
 hand-rolled subclass that overrides just the method you need to spy on (GDScript
 dispatches it virtually from the base class's own calls), e.g. a counter in an
 overridden `_save()` instead of `assert_not_called`. Check before reaching for
@@ -497,7 +497,7 @@ GUT's doubler on any script with void or default-valued-param methods.
 ## Verify maneuvers/soldier bodies tick by tick, not by eyeballing GIFs
 
 For maneuver/soldier-body work, **verify by stepping the simulation tick by tick
-— in the real Battle scene — and asserting on actual body positions**, not by
+-- in the real Battle scene -- and asserting on actual body positions**, not by
 watching demo GIFs/frames.
 
 **Why:** during the quarter-turn (#371) work, demo GIFs at 50px blocks were
@@ -514,7 +514,7 @@ couple + combat).
 **How to apply:**
 - Write a live-battle tick-by-tick test (see
   `test/unit/test_quarter_turn_battle.gd`) asserting no per-tick surge / no
-  footprint drift / no reposition. Make it permanent — it's the regression guard.
+  footprint drift / no reposition. Make it permanent -- it's the regression guard.
 - Treat demo GIFs as a *presentation* check only, never the correctness signal.
   A clean tick-by-tick test + a bad-looking GIF means the bug is in rendering,
   not the sim.
@@ -524,12 +524,12 @@ couple + combat).
 `Settings.gd`'s setter methods (`set_order_binding`, and the property setters
 like `edge_scroll =`, `show_unit_speed =`, `form_up_dist_default =`) all call
 `_save()` internally, which writes the **real** `user://settings.cfg` on whatever
-machine runs the test — GUT tests are not sandboxed. A test that calls a setter
+machine runs the test -- GUT tests are not sandboxed. A test that calls a setter
 to trigger `Settings.changed` (e.g. to verify a UI element repaints on a live
 rebind) persists that change to the developer's actual config, contaminating real
 gameplay and every later test run until manually fixed.
 
-**Why this matters:** caught on `test_shortcuts_overlay.gd` — a test called
+**Why this matters:** caught on `test_shortcuts_overlay.gd` -- a test called
 `Settings.set_order_binding("skirmish", KEY_J)` to verify the overlay repaints;
 this silently rewrote the `skirmish=` binding from the default (KEY_K) to KEY_J.
 The editor and later playtests then loaded skirmish bound to J. Required manually
@@ -538,7 +538,7 @@ editing `settings.cfg` to restore.
 **How to apply:**
 - To trigger `Settings.changed` **without** the disk write, mutate the backing
   dict/property directly and emit by hand:
-  `Settings.order_bindings["slug"] = KEY_X; Settings.changed.emit()` — NOT
+  `Settings.order_bindings["slug"] = KEY_X; Settings.changed.emit()` -- NOT
   `Settings.set_order_binding(...)`. Mirrors the safe pattern in
   `test_selection_manager.gd` (`Settings.order_bindings["hold"] = KEY_Z`).
 - After writing/reviewing a GUT test that touches `Settings`, grep the diff for
@@ -557,18 +557,18 @@ the checkout path, so `godot --headless --import`, `tools/check.sh test`, and
 which `.claude/worktrees/pr-<N>/` they're invoked from. Running a merge
 resolution's test suite in one worktree while verifying a demo's keybinding
 via `dump-state.sh` in a different worktree at the same time can silently
-clobber the second run's keybindings mid-verification — the state dump then
+clobber the second run's keybindings mid-verification -- the state dump then
 shows the WRONG stance armed (or none at all), looking exactly like a code
 bug in the just-resolved merge, when the actual cause is the other worktree's
 concurrent GUT run persisting its own (possibly test-scrambled) keybinding
 overrides to the same shared file. If a state-dump result looks wrong right
 after a merge-conflict resolution, `rm -f
 ~/.local/share/godot/app_userdata/Sparta/settings.cfg` and re-run the dump
-before concluding the fix itself is broken — don't trust a single dump when
+before concluding the fix itself is broken -- don't trust a single dump when
 another worktree's Godot process could have been running concurrently.
 (Session running parallel background agents across `pr-704`/`pr-707`/`pr-713`
 worktrees, 2026-07-10: a `sweep-routers.json` sanity dump showed
-`order_mode: "All-out attack"` — a completely unrelated PR's stance — at the
+`order_mode: "All-out attack"` -- a completely unrelated PR's stance -- at the
 exact tick its own `Ctrl+,` should have armed `Sweep routers`, traced to a
 `settings.cfg` on disk holding scrambled keybinding values from a concurrent
 test run in a sibling worktree.)
@@ -577,13 +577,13 @@ test run in a sibling worktree.)
 Godot suite (test/coverage) anywhere while one is still running.** Two
 background `tools/check.sh` runs in the SAME worktree share not just
 `settings.cfg` but the `.godot` import cache and the single
-`coverage/lcov.info` output path — the second run's results are garbage
+`coverage/lcov.info` output path -- the second run's results are garbage
 without erroring (a coverage report that silently reflects a stale test set,
 a spurious single-test failure elsewhere in the suite). The contamination
 tell in `settings.cfg` is keybinding overrides holding scrambled values
 (e.g. `chase=65`/'A', `sweep_routers=87`/'W'); delete the file and rerun
 alone before believing any failure. One Godot process at a time, machine-wide
-— treat a running background check task as a lock. (GII batch endgame,
+-- treat a running background check task as a lock. (GII batch endgame,
 2026-07-15: launched a patch_coverage rerun while the prior one was still
 going in the same worktree; the "rerun" reported the pre-edit coverage
 number, and a later full-suite run failed one unrelated test until the
@@ -591,7 +591,7 @@ scrambled `settings.cfg` was deleted.)
 
 **An orphaned Godot process (e.g. a `bash tools/check.sh | head -N` pipe
 SIGPIPE-killing the wrapper script but leaving its spawned Godot child
-running detached) is a lock the same way a live foreground run is — and this
+running detached) is a lock the same way a live foreground run is -- and this
 repo's own `tools/kill-orphan-godot.ps1`/`.sh` cleanup tool (dry-run by
 default) can be BLOCKED OUTRIGHT by the Claude Code auto-mode permission
 classifier on the name alone, even in dry-run mode.** Don't fight that block
@@ -610,7 +610,7 @@ unable to guarantee a local run is uncontaminated, fall back to CI's own
 clean-runner results (`gh pr checks`) as the authoritative signal instead of
 trusting a local re-verify. (`Lacaedemon/sparta` PR #1106, 2026-07-27.)
 
-**The contending process isn't always yours — a GENUINELY EXTERNAL Godot
+**The contending process isn't always yours -- a GENUINELY EXTERNAL Godot
 process on the same dev machine (a different session, a different tool, an
 unrelated scheduled job) can collide the exact same way, and it's easy to
 mistake for your own stray/orphaned run at first.** `Get-CimInstance
@@ -634,7 +634,7 @@ real regression. (`Lacaedemon/sparta` PR #1137, 2026-07-27.)
 worktree while a Godot job is still running there.** The suite (and the
 coverage/patch_coverage runs especially) reloads scripts from disk as it
 goes, so checking out a different branch mid-run swaps the source out from
-under the running process — the results are silently a mix of two trees and
+under the running process -- the results are silently a mix of two trees and
 must be discarded, even though nothing errors. Treat a running background
 check as locking the CHECKOUT, not just the Godot binary: no branch
 switches, no file edits in that tree, until the task completes or is
@@ -648,20 +648,20 @@ to be killed and CI's checks used as the authority instead.)
 ## An axis computed by folding `_formation_angle` must re-pick the facing-aligned frame after a conversio
 
 `_wheel_pivot_point` folds `_formation_angle` into the slot-grid axes so a
-wheel hinges against the grid as physically laid out — required for chained
+wheel hinges against the grid as physically laid out -- required for chained
 quarter turns (±PI/2 folds). But a completed conversio folds
 `_formation_angle` to ±PI, which spins BOTH axes 180°: "front" points at the
 physical rear and the `signf(dir)` flank flips, so the hinge lands at the
 rear corner of the WRONG flank and the whole block wheels BACKWARD around it
 (every soldier backpedaling, cos(facing) = -0.99 across the swing). The
 rectangular lattice is identical under a 180° spin, so the fix is to re-pick
-the other representative when the folded front axis opposes facing — and the
+the other representative when the folded front axis opposes facing -- and the
 threshold must be `dot < -0.5`, NOT `< 0.0`: a quarter-turn fold's dot is
 zero only mathematically, and in 32-bit float the sign is noise, so a bare
 sign check mirrors the tested chained-quarter-turn hinge at random (the full
 suite caught exactly that on the first attempt; the file's own 16 wheel tests
 all passed over the backward wheel because none asserted hinge POSITION).
-Watching the recorded demo caught what the tests missed — the user asked why
+Watching the recorded demo caught what the tests missed -- the user asked why
 soldier 8 was backpedaling. Any new consumer that folds `_formation_angle`
 into a direction calculation needs the same ±PI re-pick, a hinge/anchor
 POSITION assertion in its tests, and edge-case runs at both fold values.
@@ -671,7 +671,7 @@ POSITION assertion in its tests, and edge-case runs at both fold values.
 
 `MultiMesh.set_instance_transform_2d(i, t)` followed immediately by
 `get_instance_transform_2d(i)` in a headless GUT test returns identity, not the
-value just set — even for `Unit._mm_body`, whose write path is proven correct in
+value just set -- even for `Unit._mm_body`, whose write path is proven correct in
 production. `instance_count` reads back fine; only the per-instance transform
 buffer doesn't sync back to the CPU-side getter without a render/RenderingServer
 sync point headless tests never reach.
@@ -684,7 +684,7 @@ test asserts on `get_instance_transform_2d()`; they check `instance_count` and
 
 **How to apply:** don't test by setting a MultiMesh instance transform and
 reading it back. Extract the transform computation into a small pure `static
-func` (plain values in, `Transform2D` out) and unit-test *that* — e.g.
+func` (plain values in, `Transform2D` out) and unit-test *that* -- e.g.
 `Unit._facing_pip_transform(prone, sf, pos) -> Transform2D`. This is also
 better-factored code, so the fix pays for itself.
 
@@ -698,7 +698,7 @@ resolving a `Battle.gd` merge:
 - **Order-sentinel constant collision.** Order types are encoded as negative
   sentinels in the `target` field (`ORDER_APPEND_WAYPOINT -2`,
   `ORDER_FORMATION_ONLY -3`, `ORDER_FRONTAGE_ONLY -4`, …). Two branches each grab
-  the *next* free value independently — e.g. #469 added `ORDER_NUDGE := -5` and
+  the *next* free value independently -- e.g. #469 added `ORDER_NUDGE := -5` and
   main's #474 added `ORDER_WHEEL := -5`. If both keep `-5`, the two
   `if target_uid == …` dispatch arms alias each other and one order silently runs
   the other's handler. **Fix:** keep main's value, renumber the incoming PR's
@@ -713,21 +713,21 @@ resolving a `Battle.gd` merge:
   (e.g. main's wheel arm to `var wheel_dir`).
 
 **Verify the resolve with `tools/check.sh validate`** (Godot import) before
-trusting the merge — a redeclaration or shadow surfaces only at parse time.
+trusting the merge -- a redeclaration or shadow surfaces only at parse time.
 Learned resyncing #469 (arrow-key nudge) after main merged #474 (wheel).
 
 **At cascade scale: resolving once doesn't mean the sentinel collision is
-over — merging ANY sibling into `main` re-conflicts every OTHER sibling a
+over -- merging ANY sibling into `main` re-conflicts every OTHER sibling a
 second time.** When several `OrderMode`-adding PRs are open at once (five,
 2026-07-10: `ALL_OUT_ATTACK` #704, `PIN_DOWN` #707, `ROLL_THE_LINE` #708,
 `SWEEP_ROUTERS` #711, `CHASE` #713), each one independently claims the next
 free enum value/hotkey against whatever `main` looked like when it was last
-resynced — so resolving PR A against PR B's already-merged value doesn't
+resynced -- so resolving PR A against PR B's already-merged value doesn't
 settle anything permanently. The moment PR B (or C, or D) itself merges to
 `main`, every other still-open sibling's `mergeable_state` flips back to
 `dirty`, because `main` just moved again and picked up yet another occupied
 enum/hotkey slot. This isn't a one-time fan-out to absorb; it's a recurring
-tax that hits once per merge in the cascade — expect to re-run this same
+tax that hits once per merge in the cascade -- expect to re-run this same
 renumbering exercise on every remaining sibling after each individual
 sibling lands, not just once at the start. Re-check every open PR's
 `mergeable_state` right after any one of them merges (the `post-merge`
@@ -740,14 +740,14 @@ each independently rebind onto the same free key after a shared ancestor
 merge (e.g. both #704's `ALL_OUT_ATTACK` and #713's `CHASE` picked
 `KEY_APOSTROPHE` after #707's `PIN_DOWN` merge forced both off
 `KEY_PERIOD`), it's safe to edit one sibling's still-open branch directly and
-rebind it to a different free key — a hotkey is just an integer with no
+rebind it to a different free key -- a hotkey is just an integer with no
 cross-branch invariant, so this permanently removes that specific collision
 regardless of merge order. **Don't try the same trick on the enum value**
 (e.g. reserving `CHASE = 11` on one branch so it won't collide with
 `ALL_OUT_ATTACK = 10` on the other): `test_hud_stance.gd`'s
 `test_stance_entry_ids_are_sequential_and_unique` asserts each branch's own
 `HUD._STANCE_ENTRIES` ids run `0..N-1` with no gaps, so a branch can only
-place its newest stance at exactly `(highest existing value) + 1` — it can't
+place its newest stance at exactly `(highest existing value) + 1` -- it can't
 reserve a future slot for a sibling it can't see. That half of the collision
 stays real and can only resolve at actual merge time, via the normal cascade
 process above. (`Lacaedemon/sparta` PR #713, 2026-07-10: attempted
@@ -756,7 +756,7 @@ process above. (`Lacaedemon/sparta` PR #713, 2026-07-10: attempted
 `[0..9, 11] != [0..9, 10]`; reverted the enum change, kept the hotkey
 rebind to `KEY_BACKSLASH`.)
 
-## Routing units early-return in `_physics_process` — merge-isolated
+## Routing units early-return in `_physics_process` -- merge-isolated
 
 In `scripts/Unit.gd`, `_physics_process` takes an **early return** for a routing
 unit:
@@ -774,16 +774,16 @@ Routers run only `_process_rout` + `_separate` and skip the entire normal path:
 movement/re-facing/formation logic below the return.
 
 **Merge implication.** When resyncing the routing/rally branch (#460, #434)
-against a `main` that landed new movement features — engage/attack re-facing
+against a `main` that landed new movement features -- engage/attack re-facing
 (#402/#476), file doubling (#373), anti-cav square (#487), shielded close order
-(#485) — git auto-merged `Unit.gd`/`Battle.gd` cleanly, and the auto-merge was
+(#485) -- git auto-merged `Unit.gd`/`Battle.gd` cleanly, and the auto-merge was
 **also semantically correct**: those features all live in the `_think`/movement
 path routers never reach, so they can't interact with rout/rally state.
 
 General rule: a state that early-returns from `_physics_process` (ROUTING, DEAD)
 is isolated from any feature added to the normal think/movement path, so a clean
 git auto-merge of the two branches is usually clean semantically too. Still run
-the full suite (`tools/check.sh test`) to confirm — that's the real signal.
+the full suite (`tools/check.sh test`) to confirm -- that's the real signal.
 
 ## `_check_victory` counts routers in play (last-unit rally)
 
@@ -810,7 +810,7 @@ last fightable unit ended the battle instantly and froze the router mid-rout.
 - **The rally window is bounded**, so waiting on routers can't stall the outcome:
   each rout resolves (rally→IDLE or shatter→removed) within `ROUT_TIME`.
 - **No AI change was needed.** The enemy AI advances on `_team_units(0)` (the
-  `"units"` group only), so it already halts when the last player unit routs —
+  `"units"` group only), so it already halts when the last player unit routs --
   don't add a separate "halt" hook.
 - **Known gap, tracked in #504:** `_report_campaign_result()` still counts
   survivors with `_team_units(0).size()`, which EXCLUDES still-routing units.
@@ -822,7 +822,7 @@ last fightable unit ended the battle instantly and froze the router mid-rout.
 **Superseded for the shield-wall/testudo/square case by #753:** the owner
 decided the schematic overlay this pattern originally shipped
 (`scripts/UnitShields.gd`, added by #486/#487/#623) was the wrong call for
-those stances specifically — since #534 already restructures the real
+those stances specifically -- since #534 already restructures the real
 soldier-block geometry per formation (a tight edge-to-edge grid for shield
 wall/testudo, a real outward-facing square for orbis/schiltron), drawing a
 second schematic on top duplicated what the physical soldier positions
@@ -831,7 +831,7 @@ top of this file. #753 removed `UnitShields.gd` and its call site entirely;
 these formations are now read purely from the soldiers' own positions. The
 pattern below is kept as a still-valid recipe for a genuinely different
 future case (an effect the soldier positions truly can't convey on their
-own), not as a template to reach for reflexively — check whether the real
+own), not as a template to reach for reflexively -- check whether the real
 per-soldier geometry already tells the story before adding a schematic
 overlay on top of it.
 
@@ -845,11 +845,11 @@ conflict-free with the many in-flight PRs that DO touch that code.
 1. **Pure geometry helper** in its own `class_name` script (e.g. the former
    `scripts/UnitShields.gd`, removed by #753 -- see the pattern in
    `scripts/UnitSprites.gd` instead for a still-live example). Static funcs taking plain shape inputs
-   (frontage/ranks/spacing/mark_r) returning local-frame polygons — a function of
+   (frontage/ranks/spacing/mark_r) returning local-frame polygons -- a function of
    block shape ONLY, nothing reads or writes the sim. Directly unit-testable and
    replay-safe. Keep block geometry consistent with the formation grid:
    half-width `= (files-1)/2 * spacing`, half-depth `= (ranks-1)/2 * spacing`,
-   front rank toward **-Y** (local forward), files span X — same frame
+   front rank toward **-Y** (local forward), files span X -- same frame
    `UnitFormation.slots` / the emblem use.
 2. **A `draw(u, body, dark, lite)` dispatcher** that switches on the state
    (`u.formation_mode`) and is a **no-op** for every other value.
@@ -860,21 +860,21 @@ conflict-free with the many in-flight PRs that DO touch that code.
    `RADIUS`. Use the team-tinted `body_c/dark_c/lite_c` already computed in
    `_draw`.
 
-**LOD decision — differs from the emblem.** The centre emblem hides at figure LOD
+**LOD decision -- differs from the emblem.** The centre emblem hides at figure LOD
 (`if not _detailed_lod`) because the per-soldier silhouettes carry the type. A
 shield overlay does the OPPOSITE: draw it at BOTH mark and figure LOD, because
 the raised/overhead shields are exactly what the individual figures don't show.
 Put the overlay OUTSIDE the `if not _detailed_lod` guard and note why.
 
 **Coverage gotcha.** The pure geometry helpers get covered by GUT tests, but the
-draw-only `draw()` / `_draw_*` funcs don't — `codecov/patch` fails on them.
+draw-only `draw()` / `_draw_*` funcs don't -- `codecov/patch` fails on them.
 Calling `unit._draw()` directly from a test errors ("Drawing is only allowed
 inside this node's `_draw()`"). Instead drive it the way the engine does: add the
 unit to the tree, set the stance, `queue_redraw()`, and
-`await get_tree().process_frame` twice — that runs `_draw` under the real draw
+`await get_tree().process_frame` twice -- that runs `_draw` under the real draw
 notification and covers the dispatch.
 
-## `record-demos.sh` DEMOS conflicts are ADDITIVE — keep both rows
+## `record-demos.sh` DEMOS conflicts are ADDITIVE -- keep both rows
 
 `website/tools/record-demos.sh` holds a `DEMOS=( ... )` bash array, one row per
 demo clip. Every feature PR that adds a website demo appends a new row at the end.
@@ -889,7 +889,7 @@ When two such PRs land, git conflicts on the adjacent lines:
 ```
 
 This is an **additive** conflict, not a genuine either/or. Resolve by keeping
-**both** rows — each PR's demo should survive. Don't pick a side.
+**both** rows -- each PR's demo should survive. Don't pick a side.
 
 Distinct from the `demos/demo.json` conflict (below / CLAUDE.md), where you keep
 only YOUR PR's version because that file names the single clip CI posts for the
@@ -907,12 +907,12 @@ Concrete case (PR #495 last-unit-rally vs main's #460 rout-rally): both rewrote
 the "Morale & routing" section and each added rally prose + a demo video.
 Resolution that worked:
 
-- **Intro paragraph** — keep the richer of the two, drop the thinner one.
-- **Bullets** — keep the general-mechanic bullets ("A routing unit can rally" /
+- **Intro paragraph** -- keep the richer of the two, drop the thinner one.
+- **Bullets** -- keep the general-mechanic bullets ("A routing unit can rally" /
   "shatters instead"), DROP your own now-redundant duplicate of that same
   explanation, and KEEP only your PR's *unique* angle (the last-unit case: "the
   battle isn't over while a side is only routing").
-- **Demo videos** — this IS additive: keep BOTH `<figure>` blocks (general
+- **Demo videos** -- this IS additive: keep BOTH `<figure>` blocks (general
   mechanic first, then the specific case), each in its own ` ```{=html} ` fence.
 
 Rule of thumb: two docs describing the same feature → merge into one coherent
@@ -921,7 +921,7 @@ embeds* → keep both. Read the merged section end-to-end afterward to confirm i
 doesn't say the same thing twice. `&mdash;` in figcaptions is an HTML entity, so
 it passes `tools/check.sh chars` (only literal curly quotes / en-em dashes fail).
 
-## This repo runs sessions in `.claude/worktrees/` — edit the worktree path
+## This repo runs sessions in `.claude/worktrees/` -- edit the worktree path
 
 A Sparta session's working dir is often a git **worktree**
 (`…\sparta\.claude\worktrees\<name>`), separate from the main checkout
@@ -937,7 +937,7 @@ clean while the main checkout shows the edits).
 **How to apply:**
 - Do **all** file operations on the **worktree path**
   (`…\.claude\worktrees\<name>\…`), matching where the branch is checked out.
-  Bash cwd already resets to the worktree — keep tool paths consistent with it.
+  Bash cwd already resets to the worktree -- keep tool paths consistent with it.
 - If edits don't seem to take effect, run `git status --short` in **both** the
   worktree and the main checkout to find where they landed.
 - To move stray edits from the main checkout onto the worktree branch:
@@ -945,19 +945,19 @@ clean while the main checkout shows the edits).
   (the stash is shared via the common `.git`). `-u` includes untracked files.
 - **`gh` commands are cwd-sensitive the same way.** Running `gh pr create` from
   the main checkout (on `main`) fails with `must be on a branch named differently
-  than "main"`, even though the feature branch is pushed — `gh` reads the current
+  than "main"`, even though the feature branch is pushed -- `gh` reads the current
   directory's checked-out branch. Run `gh pr create` (and branch-scoped
   `git push`) from the **worktree** dir.
 
 **A second, distinct hazard: reusing a PR branch name for a NEW worktree when a
 `wave5-*`-style dispatch worktree already has it checked out.** This repo's
 wave-based backlog sweeps leave many named worktrees behind
-(`.claude/worktrees/wave5-<slug>`), each tracking one PR's branch — they don't
+(`.claude/worktrees/wave5-<slug>`), each tracking one PR's branch -- they don't
 get cleaned up until the PR merges and someone runs a sweep. If a later task
 (e.g. resolving a fresh merge conflict on that same PR) creates a *second*
 worktree for the same branch instead of reusing the existing one, git can
 silently repoint the shared branch ref out from under the first worktree
-rather than refusing outright — the first worktree then shows a wall of
+rather than refusing outright -- the first worktree then shows a wall of
 spurious modified/deleted files (not real data loss, just its checked-out
 files diffing against the ref's new tip). Always `git worktree list | grep
 <branch>` before adding a new worktree for a PR branch; if one already exists,
@@ -965,7 +965,7 @@ reuse it (`git fetch` + `git reset --hard origin/<branch>`) rather than adding
 a second on the same name.
 
 **Recovery if it already happened:** the first worktree's checked-out files are
-not lost — they're just diffing against the branch ref's new tip. Don't try to
+not lost -- they're just diffing against the branch ref's new tip. Don't try to
 merge or reconcile the two worktrees' contents. Pick the worktree that actually
 has the commit you want to keep, confirm it with `git log --oneline -1` in
 each, then `git worktree remove` the stale one and `git fetch` + `git reset
@@ -974,22 +974,22 @@ agree again. (Hit on PR #626, 2026-07-03.)
 
 **A third, distinct hazard: the assigned `.claude/worktrees/<name>` directory
 can look like a worktree without actually being one.** The section above
-assumes the session's working directory is a genuine `git worktree` — but a
+assumes the session's working directory is a genuine `git worktree` -- but a
 harness-assigned path under `.claude/worktrees/` isn't guaranteed to have had
 `git worktree add` actually run for it. Symptom: the directory has **no
 `.git`** file/folder of its own, and it's **absent from `git worktree list`**
-run from the main checkout — every `git` command issued from inside it just
+run from the main checkout -- every `git` command issued from inside it just
 walks up the directory tree and finds the main checkout's `.git`, so it's
 silently operating on the SAME shared repository as the main checkout and
 every *other* branch checked out there, not an isolated copy.
 
 **Why this is dangerous, concretely:** checking out a second branch from
 inside this fake "worktree" (`git checkout -b other-branch origin/main`)
-switches the ONE shared checkout's active branch — it does not create an
+switches the ONE shared checkout's active branch -- it does not create an
 independent working tree. Any other work in flight on the branch that was
 previously checked out (your own later commands, or a delegated subagent
 mid-task) silently has its working-directory files yanked out from under it.
-The subagent doesn't error — it just ends up running against whatever branch
+The subagent doesn't error -- it just ends up running against whatever branch
 is now checked out, which can be a completely different (even pre-refactor)
 version of the code, and the resulting output can look plausible without
 being about the branch it was asked to investigate.
@@ -998,7 +998,7 @@ being about the branch it was asked to investigate.
 - Before checking out a second branch or delegating a subagent to do file/git
   work, verify the working directory is real: check for a `.git` entry
   (`ls -la .git`) and cross-check `git worktree list` from the main checkout
-  path — the assigned directory should appear in that list. If it's absent
+  path -- the assigned directory should appear in that list. If it's absent
   and has no `.git`, treat it as a plain subdirectory of the main checkout,
   not an isolated worktree.
 - If it's fake and you need to work on more than one branch concurrently
@@ -1009,14 +1009,14 @@ being about the branch it was asked to investigate.
   continue one). Do this from whichever path IS the real main checkout.
 - Only ever have ONE branch checked out at a time in a fake/shared path. If
   you must switch, finish and push (or stash) whatever's in flight there
-  first — don't assume "it's just a directory switch" is harmless.
+  first -- don't assume "it's just a directory switch" is harmless.
 - A subagent given a directory to work in has no way to know it's fake unless
-  told to check — if you suspect this hazard might be live (concurrent
+  told to check -- if you suspect this hazard might be live (concurrent
   branch work in the same session), tell the subagent explicitly to verify
   its own working directory is a real worktree before trusting its output, or
   give it a directory you've already confirmed with `git worktree add`
-  yourself. (Hit on PR #831, 2026-07-13: `.claude/worktrees/gii-ffdb93` — the
-  session's assigned directory — had no `.git` and didn't appear in `git
+  yourself. (Hit on PR #831, 2026-07-13: `.claude/worktrees/gii-ffdb93` -- the
+  session's assigned directory -- had no `.git` and didn't appear in `git
   worktree list`; checking out a second branch there for a concurrent PR
   silently switched the one shared checkout away from PR #831's branch mid-
   investigation by a delegated subagent, which only caught the problem
@@ -1024,9 +1024,9 @@ being about the branch it was asked to investigate.
   expected and re-pinning its own investigation to an explicit `git worktree
   add ... 443972a`.)
 
-## GII / multi-session scope — unclaimed issues, own worktree only
+## GII / multi-session scope -- unclaimed issues, own worktree only
 
-GII (grab issues iteratively) means picking up **unclaimed** open issues — no
+GII (grab issues iteratively) means picking up **unclaimed** open issues -- no
 existing PR, no in-progress branch. Do NOT continue another session's in-progress
 PRs as part of the GII loop; those belong to their own sessions.
 
@@ -1044,7 +1044,7 @@ PRs as part of the GII loop; those belong to their own sessions.
 "check for a prior claim before starting" rule lives in ai-config.)
 
 **Post-merge tidy: never `git checkout main` (or `checkout -B main origin/main`)
-inside a session worktree — the `-B` form silently bypasses git's
+inside a session worktree -- the `-B` form silently bypasses git's
 already-checked-out-elsewhere guard and double-checks-out `main` against the
 primary checkout.** The plain `git checkout main` correctly refuses when the
 primary checkout holds `main`, but a scripted fallback like
@@ -1052,15 +1052,15 @@ primary checkout holds `main`, but a scripted fallback like
 swallowed) lands on the `-B` path, which re-points the shared `main` ref and
 checks it out here anyway. Both worktrees then claim `[main]` in
 `git worktree list`, and the next `git pull` in the session worktree moves the
-shared ref out from under the primary's working tree — the primary then shows a
+shared ref out from under the primary's working tree -- the primary then shows a
 wall of phantom staged diffs (the just-merged PR's changes, reversed), exactly
 the stale-files symptom of the branch-repoint hazard above, with no error
 anywhere. Recovery: move the session worktree onto a new branch
 (`git switch -c <next-branch>`), then in the primary restore ONLY the
-phantom-diff files (`git restore --staged --worktree <files>` — not a blanket
+phantom-diff files (`git restore --staged --worktree <files>` -- not a blanket
 `reset --hard`, which would clobber unrelated local state like untracked files
 or uncommitted work). Prevention: after a merge, don't "return to main" in a
-session worktree at all — fetch and branch the next task's branch directly off
+session worktree at all -- fetch and branch the next task's branch directly off
 `origin/main` (`git switch -c <branch> origin/main`), leaving `main` itself to
 the primary checkout. (Session `gii-ffdb93`, 2026-07-16: post-#919 tidy ran the
 fallback form, double-checked-out `main`, and the primary showed nine phantom
@@ -1072,35 +1072,35 @@ a next branch is already known; when a session merges a PR and has nothing
 queued next, detaching to `origin/main`'s tip (rather than creating and
 switching to a real `main` branch ref, OR leaving the worktree sitting on the
 now-merged, about-to-be-deleted branch) tidies the worktree without touching
-any branch ref at all — a detached `HEAD` isn't a branch, so it can't collide
+any branch ref at all -- a detached `HEAD` isn't a branch, so it can't collide
 with the primary checkout's own `main`. `git branch -d <merged-branch>` then
 deletes cleanly (the branch is no longer checked out anywhere). Confirm the
 detached tip really is the merge by checking the commit message names the PR
-(`git log --oneline -1`) — a squash merge lands as a new commit on `main`, so
+(`git log --oneline -1`) -- a squash merge lands as a new commit on `main`, so
 `origin/main`'s tip is exactly that commit, not an ancestor relationship you'd
 need `--is-ancestor` to confirm.
 
 **Post-merge tidy: `git worktree remove` on your OWN currently-active worktree
-can partially succeed and leave an empty, orphaned directory — this is
+can partially succeed and leave an empty, orphaned directory -- this is
 harmless, not data loss.** After a PR merges, running `git worktree remove
 .claude/worktrees/<name>` from the main checkout while THIS session is still
 running inside that worktree (its Bash tool cwd pinned there) can fail with
 `Permission denied` at the final `rmdir` step, but only *after* it already
-deleted every file inside — Windows won't let git remove the directory itself
+deleted every file inside -- Windows won't let git remove the directory itself
 while some process (the harness's own shell for this session) still holds a
 handle to it. Symptoms: `git worktree list` no longer shows the entry (git's
 `.git/worktrees/<name>` admin metadata IS removed), but
 `Test-Path <dir>`/`ls` on the physical path still returns true because the
 now-empty directory shell lingers. Confirm nothing was lost by checking
 `git branch --list <branch>` (the branch itself is untouched by `worktree
-remove` — delete it separately with `git branch -d` once it no longer shows
+remove` -- delete it separately with `git branch -d` once it no longer shows
 in `git worktree list`) and `git log`/`gh pr view` to confirm the merge
 actually landed on `main` before treating this as anything other than cleanup
 succeeding by 99%. Don't attempt a forced re-remove or `rm -rf` on the
-directory from within the same session — it can't remove its own lock, and
+directory from within the same session -- it can't remove its own lock, and
 the leftover empty directory is inert; it'll clean up naturally once the
 session ends. Also: once this happens, do not try to Read/Edit/Write any file
-inside that worktree path again this session — the files are actually gone,
+inside that worktree path again this session -- the files are actually gone,
 not just inaccessible; switch every subsequent file operation to the main
 checkout's absolute path instead. (Session `gii-ffdb93`, 2026-07-13: `git
 worktree remove ".claude/worktrees/gii-ffdb93"` for the just-merged PR #824
@@ -1110,12 +1110,12 @@ afterward.)
 
 When the next AI session reviewing a PR cites a "CLAUDE.md rule" to justify a
 requested change, check that the rule's exact wording actually appears in
-*this repo's* `CLAUDE.md` — not just in the harness's own baseline style
+*this repo's* `CLAUDE.md` -- not just in the harness's own baseline style
 defaults, which read similarly but aren't written into this file. PR #420's
-reviewer cited "one short line max — never write multi-line comment blocks" as
+reviewer cited "one short line max -- never write multi-line comment blocks" as
 a CLAUDE.md rule; it isn't in sparta's `CLAUDE.md`, and the codebase's own
 convention (e.g. `Settings.gd`) wraps explanatory comments across 2-3 lines.
-Rebutting with that distinction is fine — verify the citation, don't just comply.
+Rebutting with that distinction is fine -- verify the citation, don't just comply.
 
 ## `git worktree remove` needs `--force` on a worktree containing a submodule
 
@@ -1178,29 +1178,29 @@ not the flag you did not try.)
 ## A stub-review retry's recovered verdict posts under `github-actions`, not `claude`
 
 When auditing a PR's true review status, don't filter comments by
-`author.login == "claude"` alone — a comment matching that filter can be a
+`author.login == "claude"` alone -- a comment matching that filter can be a
 stale earlier verdict, while the actual final verdict was posted under a
 **different** identity and gets silently missed.
 
 **Why:** the repo's `claude-code-review` workflow has a stub-review retry path
-(gha#185/#218 — the first attempt runs to completion but posts no `### Verdict`
+(gha#185/#218 -- the first attempt runs to completion but posts no `### Verdict`
 line). When the retry recovers, it posts its result via a plain `gh pr comment`
 step running under the workflow's default token, which attributes the comment
 to **`github-actions[bot]`**, not `claude[bot]`. The original (stubbed or
 successfully-verdicted) attempt posts natively as `claude[bot]`. So a PR's
 comment history can contain an OLD `claude[bot]` "Needs more work" alongside a
-NEWER `github-actions[bot]` "Ready for merge" — and a check that only looks for
+NEWER `github-actions[bot]` "Ready for merge" -- and a check that only looks for
 the `claude` login finds the stale one and misses the real, current verdict.
 
 **How to catch it:** don't filter by a specific bot login at all. Pull every
 comment (`gh api repos/<owner>/<repo>/issues/<N>/comments`), sort by
-`created_at`, and read the actual last one — or grep the full comment list for
+`created_at`, and read the actual last one -- or grep the full comment list for
 `### Verdict` and take the latest match, regardless of author. Also check
 `gh pr checks <N>` timing against the comment timestamps: a `review /
 claude-review` / `review / require-review` run that completed **after** the
 `claude[bot]` comment's timestamp is a strong signal a newer verdict exists
 somewhere, even if the obvious author filter doesn't surface it.
-(`Lacaedemon/sparta` PR #647, 2026-07-04 — the agent's own "fully clean, Ready
+(`Lacaedemon/sparta` PR #647, 2026-07-04 -- the agent's own "fully clean, Ready
 for merge" report was correct; a first-pass verification that filtered by
 `author.login == "claude"` found only the stale "Needs more work" comment and
 nearly contradicted a true report.)
@@ -1211,18 +1211,18 @@ PR #1062 (issue #1061, 2026-07-23) removed `.github/workflows/claude-code-review
 `pull_request:` trigger, on the reasoning that GitHub Copilot code review (enabled
 repo-wide via the `main` branch ruleset's `copilot_code_review` rule) already reviews
 every PR automatically, making an automatic Claude pass redundant. Issue #1122
-(2026-07-27) reversed that call at the user's direct request — the `pull_request:`
+(2026-07-27) reversed that call at the user's direct request -- the `pull_request:`
 trigger (`types: [opened, synchronize, ready_for_review, reopened]`) is back, so a fresh
 PR again gets an automatic `claude[bot]` review comment, in addition to Copilot's.
 
 **What this means for ARDI going forward:** a fresh PR gets BOTH an automatic Copilot
-review and an automatic Claude review — check both (`gh pr view <N> --json reviews` and
+review and an automatic Claude review -- check both (`gh pr view <N> --json reviews` and
 `gh api repos/<owner>/<repo>/pulls/<N>/comments`, per the "Re-check for latest review
 findings" convention) rather than assuming only one fired. All of this file's and
 ai-config's stub-review / "do the review yourself when @claude doesn't produce a verdict"
 handling still applies to Claude's automatic pass, same as before it was ever disabled.
 `claude.yml`'s own re-dispatch-after-push mechanism and a manual
-`gh workflow run claude-code-review.yml -f pr_number=<N>` both still work as before —
+`gh workflow run claude-code-review.yml -f pr_number=<N>` both still work as before --
 useful for an ad-hoc re-review after a push, since `synchronize` already re-fires
 automatically now.
 
@@ -1230,22 +1230,22 @@ If this ever needs disabling again, PR #1062's diff (`git show 17fab72a`) is the
 prior workflow-config change to reference.
 
 **A PR that edits `claude-code-review.yml` (or a workflow file the review action reads)
-gets no inline Claude review at all — by design, not a stub.** The `review/claude-review`
+gets no inline Claude review at all -- by design, not a stub.** The `review/claude-review`
 job still runs and reports `pass`, but posts a run annotation instead of a review comment:
-"PR #N edits `.github/workflows/claude-code-review.yml` — skipping self-review (the action
+"PR #N edits `.github/workflows/claude-code-review.yml` -- skipping self-review (the action
 401s on workflow validation until merged; it runs after merge)." **The exact mechanism is
-unconfirmed** (not verified against `d-morrison/gha`'s own implementation) — the plausible
+unconfirmed** (not verified against `d-morrison/gha`'s own implementation) -- the plausible
 read is that GitHub only lets the review action validate against the workflow version
 already on the base branch, so a PR changing that same file can't be validated pre-merge and
 the action detects this and defers review to post-merge instead of failing or posting a
-stub — but that's inference from a single annotation, not a confirmed cause. Regardless of
+stub -- but that's inference from a single annotation, not a confirmed cause. Regardless of
 the exact mechanism, don't treat the skip as a broken/stub review needing a manual
-re-dispatch (per the existing stub-review handling above) — check the run's own annotations
+re-dispatch (per the existing stub-review handling above) -- check the run's own annotations
 (`gh run view <run-id>`) before assuming a self-review is missing for the usual reasons.
 (`Lacaedemon/sparta` PR #1123, 2026-07-27.)
 
 **The corollary, and it is the dangerous half: that self-skip means a PR which BREAKS the
-review config gets no review OF that breakage — so on a PR editing `claude-code-review.yml`,
+review config gets no review OF that breakage -- so on a PR editing `claude-code-review.yml`,
 a fully green board is the WEAKEST assurance available, not the strongest.** The skip fires
 before the config is exercised, so a broken `plugins:`/`plugin-marketplaces:` ref sails
 through with `review / require-review` itself reporting `pass`. The failure then lands on the
@@ -1255,7 +1255,7 @@ repo. Nothing on the introducing PR points at it.
 This is not hypothetical: PR #1176 (a Jules-authored one-line `distance_squared_to`
 micro-optimization) carried a commit that changed `plugins: ai-config@Morrison-Lab` back to
 `ai-config@d-morrison`, whose own message described it as *"fixes a Claude plugin marketplace
-reference bug"* — inverted, since the marketplace declares `"name": "Morrison-Lab"` (see the
+reference bug"* -- inverted, since the marketplace declares `"name": "Morrison-Lab"` (see the
 account-move entry below). It reverted #1172 and would have reintroduced #1171, making every
 subsequent PR unmergeable. All 14 checks were green, and the comment block *directly above the
 changed line* already warned against exactly that value, error string included. Three failures
@@ -1266,7 +1266,7 @@ only reviewer that would have caught it, and Copilot simultaneously quota-exhaus
 construction and hand-verify it, no matter how green CI is or how plausible the commit message
 sounds. Concretely, diff the file against the **merge-base**, matching this file's own
 convention for every other diff-scoped check (the `codecov/patch`-gap and `check.sh`
-diff-scoping entries) — not against `origin/main`'s tip:
+diff-scoping entries) -- not against `origin/main`'s tip:
 
 ```bash
 git diff "$(git merge-base HEAD origin/main)" HEAD -- .github/workflows/claude-code-review.yml
@@ -1275,7 +1275,7 @@ git diff "$(git merge-base HEAD origin/main)" HEAD -- .github/workflows/claude-c
 That distinction is load-bearing rather than pedantic here. `main` has itself moved on this
 exact file (#1172 landed the `d-morrison` -> `Morrison-Lab` fix there), so a tip diff on any
 branch forked before that reports a spurious "revert" of the marketplace ref for a branch that
-never touched the workflow at all — noise shaped exactly like the anomaly this entry teaches
+never touched the workflow at all -- noise shaped exactly like the anomaly this entry teaches
 you to hunt. The natural response to that false alarm is to "fix" a file the PR never touched,
 which is what would *create* a real self-skip condition out of nothing.
 
@@ -1286,16 +1286,16 @@ via GitHub's transfer redirect and so tells you nothing):
 
 Best outcome when the workflow edit is unrelated collateral (as here): drop it entirely. The
 file then becomes byte-identical to `main` and falls out of the PR's diff, which retires the
-skip condition — confirmed on #1176, where the review went from a 6s skip to a genuine 11m
+skip condition -- confirmed on #1176, where the review went from a 6s skip to a genuine 11m
 run and verdict on the very next push. That **narrows** the older "cannot verify itself" note
 in the account-move section below rather than retiring it, and the distinction matters: when
 the edit is collateral, dropping it restores review; when the edit *is* the fix (#1172 itself),
-dropping it would delete the very thing being verified, so that note still holds in full —
+dropping it would delete the very thing being verified, so that note still holds in full --
 confirm on the next PR's run. (`Lacaedemon/sparta` PR #1176, 2026-07-29.)
 
 **Copilot's own review can also fail closed, not just Claude's.** Copilot's review comment
 can read `Copilot was unable to review this pull request because the user who requested the
-review has reached their quota limit.` — repeatedly, across many pushes. This is a distinct
+review has reached their quota limit.` -- repeatedly, across many pushes. This is a distinct
 failure mode from Claude's own quota-skip message, but the same handling applies: it's not an
 approval, don't wait on it, self-review or manually dispatch Claude instead.
 
@@ -1322,20 +1322,20 @@ conflate the two when explaining *why* --- one is "Copilot looked and declined",
 "Copilot was never in a position to look." (`Lacaedemon/sparta` PR #1229, 2026-08-09.)
 
 **A manual `gh workflow run "Claude Code Review" -f pr_number=<N>` dispatch can silently run
-against `main`'s ref instead of the PR branch and post NO comment at all — a distinct, quieter
+against `main`'s ref instead of the PR branch and post NO comment at all -- a distinct, quieter
 failure than the documented stub-review pattern.** The run itself reports `success` (all three
 jobs green), and every run so far has carried a `The process '/usr/bin/git' failed with exit
-code 128` annotation regardless of whether it actually posted a review — that annotation is
+code 128` annotation regardless of whether it actually posted a review -- that annotation is
 benign, expected noise, not a sign anything went wrong. The real tell is the run's own
 `head_branch`: a manually-triggered run that resolves to `main` (rather than the PR's actual
 branch) reviews nothing PR-specific and produces no comment, even on `success`. Meanwhile, this
 repo's automated re-dispatch mechanism (`claude.yml`'s push-triggered re-dispatch, attributed to
 `github-actions[bot]`) fires its OWN `workflow_dispatch` correctly scoped to the PR's real branch
-— and if a manual dispatch is still in flight when it queues, the `claude-review-<N>` concurrency
+-- and if a manual dispatch is still in flight when it queues, the `claude-review-<N>` concurrency
 group cancels the manual one in favor of it (`Canceling since a higher priority waiting request
 for claude-review-<N> exists`). **How to apply:** after pushing, check `gh run list
 --workflow="Claude Code Review"` for a run whose `head_branch` matches the PR's actual branch
-before manually dispatching — the automated re-dispatch usually beats you to it within a minute
+before manually dispatching -- the automated re-dispatch usually beats you to it within a minute
 or two. If you do dispatch manually and it lands on `main` with no resulting comment, that's the
 signal to just wait for (or re-dispatch and confirm) a run scoped to the real branch, not to
 suspect the PR itself. (`Lacaedemon/sparta` PR #1070, 2026-07-27.)
@@ -1343,7 +1343,7 @@ suspect the PR itself. (`Lacaedemon/sparta` PR #1070, 2026-07-27.)
 ## Verify an issue's own stated root cause empirically before implementing its proposed fix
 
 A well-written bug issue with specific code references (line numbers, a named mechanism,
-a plausible-sounding causal chain) is still a hypothesis, not a verified fact — even when
+a plausible-sounding causal chain) is still a hypothesis, not a verified fact -- even when
 it was clearly written after real investigation. Before implementing the issue's own
 "fix direction," reproduce the bug live and confirm the ACTUAL code path taken matches the
 diagnosis, rather than trusting the write-up and jumping straight to the proposed fix.
@@ -1353,20 +1353,20 @@ diagnosis, rather than trusting the write-up and jumping straight to the propose
 `_advance_turn`'s tight arrival epsilon). The fix direction (a positional deadband before
 re-targeting) was specific, well-reasoned, and referenced real line numbers. Implementing
 it and running the exact reproduction (`demos/inputs/all-out-attack.json` via
-`tools/demo/dump-state.sh`) showed **zero change** in output vs. unpatched `main` — a
+`tools/demo/dump-state.sh`) showed **zero change** in output vs. unpatched `main` -- a
 temporary debug print in `_face_for_action` revealed `_engage_turn_target` was NEVER
 non-zero across the whole 300-tick window the bug manifests in. The offset stayed under 1°
 the entire time, so every tick took the *small*-offset instant-snap branch (`_face_dir`),
 never the branch the issue diagnosed and the fix targeted. The real mechanism turned out to
 involve the raw **position** itself arcing (not just facing), with soldier counts and
-frontage essentially frozen throughout — ruling out the issue's own "third instance of the
+frontage essentially frozen throughout -- ruling out the issue's own "third instance of the
 same hazard family" framing and pointing at `_press_into()`/`_separate()` instead.
 
 **How to apply:** before implementing a fix a reviewer or issue author proposed (yours or
 someone else's), run the issue's own reproduction command (or write an equivalent
 `dump-state.sh`/live-battle trace) against the UNMODIFIED code first, and instrument the
 specific branch/variable the diagnosis claims is at fault. Confirm that variable's state
-actually matches the story before spending effort on the proposed fix — a `git stash` +
+actually matches the story before spending effort on the proposed fix -- a `git stash` +
 re-run diff (patched vs. unpatched output, byte for byte) is a fast, decisive way to catch
 a fix that silently does nothing. This is the same "never assume; always verify" principle
 `preferences.md` states generally, applied specifically to a bug's root-cause narrative,
@@ -1377,7 +1377,7 @@ not just its resolution status.
 The entry above ("verify an issue's own stated root cause empirically") covers checking the
 DIAGNOSIS before implementing. This is the companion check AFTER implementing: a fix can be
 logically correct for the code path you touched, compile, pass its own new unit tests, and
-still leave the originally-reported bug completely unfixed — because the real-world scenario
+still leave the originally-reported bug completely unfixed -- because the real-world scenario
 that triggers the bug turns out to route through a DIFFERENT code path than the one the fix
 covers. Passing tests for the path you fixed proves nothing about whether that's the path
 the bug actually takes.
@@ -1387,26 +1387,26 @@ formation-geometry location instead of the dying soldiers' live position, and na
 `SoldierMelee.reap()`'s per-soldier casualty path as the fix point (PR #1074). The first
 implementation threaded the dying soldiers' exact live centroid through that path, added
 passing unit tests, and looked done. Only building an actual before/after visual proof (the
-same technique the issue's own investigation used — rendering the exact reported reproduction
+same technique the issue's own investigation used -- rendering the exact reported reproduction
 script at the exact reported tick, on `main` vs the branch) revealed the two frames were
-**pixel-identical** — the fix had zero effect on the reported scenario. Root cause:
+**pixel-identical** -- the fix had zero effect on the reported scenario. Root cause:
 `SoldierMelee.reap()` is only reached once a unit's engaged-tier latch has set
 (`Unit.is_engaged()`), which requires at least one PRIOR tick of `state == FIGHTING` (the
-latch, `tick_engaged()`, runs after `_think()` in the same physics step) — so the VERY FIRST
+latch, `tick_engaged()`, runs after `_think()` in the same physics step) -- so the VERY FIRST
 strike after fresh contact always falls through to the regiment-formula fallback path
 instead. Every one of the reported scenario's three casualty events was exactly that first-
 strike case; the per-soldier path the fix touched never fired at all for this bug. Required a
 second fallback tier (anchoring on the unit's own live soldier bodies when exact per-death
 data isn't available, instead of the stale formation geometry) to actually fix the reported
-case — see the follow-up entry below for how even THAT fallback still needed a further round
+case -- see the follow-up entry below for how even THAT fallback still needed a further round
 of the same lesson, and how the whole mechanism was eventually redesigned away.
 
 **How to apply:** before considering a fix complete, reproduce the ORIGINAL reported scenario
 (not just a hand-built unit-test fixture) and confirm observably that the previously-buggy
-behavior no longer occurs — a real before/after comparison (frame diff, state dump, or
+behavior no longer occurs -- a real before/after comparison (frame diff, state dump, or
 equivalent), not just "my new tests pass." If a before/after comparison shows NO difference
 at all where a real behavioral change was expected, that's a strong signal the fix's code
-path isn't the one actually exercised by the report — instrument the specific branch/gate
+path isn't the one actually exercised by the report -- instrument the specific branch/gate
 (`is_engaged()`, a feature flag, an early return) to find out which path really fires before
 assuming the fix needs to be bigger, smaller, or different. A unit test built around your own
 mental model of "how the bug happens" inherits that same blind spot; only a reproduction of
@@ -1416,65 +1416,65 @@ the ORIGINAL report is immune to it. (`Lacaedemon/sparta` issue #1072, PR #1074,
 
 The Fallen-heap saga above didn't end with PR #1074. A separate demo (`spear-standoff.json`,
 from PR #1075, an unrelated attack-cadence change) still showed casualties "appearing out of
-nowhere" after #1074 merged — the user caught this directly by eye. Investigating it surfaced
+nowhere" after #1074 merged -- the user caught this directly by eye. Investigating it surfaced
 TWO further lessons on top of the one above, both worth carrying forward:
 
 1. **The same "verify against the real scenario" lesson bit a SECOND time, on the fallback
    tier itself.** #1074's second-tier fallback (anchoring on the unit's live soldier bodies
-   when no exact per-death data exists) averaged the WHOLE regiment — a real, provable flaw
+   when no exact per-death data exists) averaged the WHOLE regiment -- a real, provable flaw
    (a unit test with a deliberately split formation showed the average landing in the gap
    between two clusters). The obvious fix was to bias that average toward the soldiers
    nearest the attacker instead. But re-verifying against the ACTUAL `spear-standoff` demo
    (not just the constructed unit-test case) showed the fix changed NOTHING for that specific
-   scenario — the block wasn't spread into separate clusters at the casualty tick, so the old
+   scenario -- the block wasn't spread into separate clusters at the casualty tick, so the old
    whole-block average and the new near-attacker-biased average came out nearly identical.
    The fix was still logically correct and worth keeping (proven by the isolated test), but it
    was not what was actually causing the visible symptom in the reported case. **How to
    apply:** even a fix built specifically IN RESPONSE to a "verify the real scenario" lesson
-   still needs that same verification applied to itself — don't let fixing one instance of the
+   still needs that same verification applied to itself -- don't let fixing one instance of the
    lesson exempt the next fix from it.
 2. **What actually explained the demo's symptom was a THIRD, distinct mechanism**: `Fallen.gd`
    already documented (in its own doc comment) that the heap is deliberately stationary once
    spawned, "fading into the ground as the fight moves on." A charging formation can advance
-   far enough in under a second to visibly leave a CORRECTLY-spawned heap behind — confirmed
+   far enough in under a second to visibly leave a CORRECTLY-spawned heap behind -- confirmed
    by comparing the unit's own `soldier_summary.centroid` at the death tick against 40 ticks
    later (a ~40-world-unit advance in ~0.6s). This was filed as its own issue (#1076) rather
    than fixed unilaterally, since "should a cosmetic death-mark track the living formation" is
-   a genuine design question, not a bug — then closed once the user confirmed directly that a
+   a genuine design question, not a bug -- then closed once the user confirmed directly that a
    fallen soldier's mark should reflect where it died, not follow the survivors afterward
    (the intended behavior all along, once the OTHER two issues were actually fixed).
 
 **The design pivot.** Asked directly what the "heap" mechanic even was, and on hearing the
 explanation, the user's call (echoing "remember: no top down abstractions") was to eliminate
 the whole "compute one representative point per casualty event, then scatter a synthetic
-pattern of marks around it" design outright — not just keep patching which point gets chosen.
+pattern of marks around it" design outright -- not just keep patching which point gets chosen.
 PR #1078 replaced it: every dying soldier now gets its own mark at its own real live position
 (exact positions from `SoldierMelee.reap()` when available; the real positions of the nearest
 live soldiers to the attacker as a fallback when not). No more averaging, no more golden-angle
 fake scatter. This is a DIRECT instance of this file's own "Standing design philosophy:
-bottom-up physics, no top-down gimmicks" section (above) — previously stated and applied only
+bottom-up physics, no top-down gimmicks" section (above) -- previously stated and applied only
 to gameplay/combat mechanics (knockback, collision, morale), but it turned out to apply just
 as cleanly to a purely cosmetic rendering system: an aggregate-and-scatter VFX is the same
 shape of top-down shortcut as a flat combat modifier, just one layer further from gameplay.
 **How to apply:** when a cosmetic/rendering system is accumulating fallback tiers and
 special-case math to approximate "where did this event actually happen," consider whether the
 underlying real per-entity data (already computed, already available) can be shown directly
-instead of being reduced to one synthetic representative point — the direct version is often
+instead of being reduced to one synthetic representative point -- the direct version is often
 BOTH simpler and more correct than the aggregate one, on this codebase's own terms.
 (`Lacaedemon/sparta` issues #1076/#1077, PRs #1078, 2026-07-25.)
 
-## A "matches the issue's own framing" fix can be completely inert for the actual reported symptom — verify with the SAME artifact the report used
+## A "matches the issue's own framing" fix can be completely inert for the actual reported symptom -- verify with the SAME artifact the report used
 
 Building on the entries above: PR #1137 (closing #1129, reporting infantry visibly walking
 through each other in the site's showcase clip) started by fixing exactly what the linked
-issue described — NORMAL formation's zero containment margin (a real gap #1118 deliberately
+issue described -- NORMAL formation's zero containment margin (a real gap #1118 deliberately
 left open). Implementing it, testing it, and even doing a live-battle probe render made it
 LOOK like the fix worked. But a direct before/after render of the ACTUAL reported artifact
-(`demos/showcase.json`, tick 600, unmodified vs. fixed) came back **pixel-identical** — the
+(`demos/showcase.json`, tick 600, unmodified vs. fixed) came back **pixel-identical** -- the
 exact same "zero effect" signal the Fallen-heap case above already documents. Root cause,
 found only by then tracing WHY the probe render differed from the real artifact: the showcase
 demo's player units were on a plain MOVE order with no attack target, which this repo's own
-`_think()` deliberately treats as "disengage" — the units never entered `state == FIGHTING`
+`_think()` deliberately treats as "disengage" -- the units never entered `state == FIGHTING`
 at all, so `is_engaged()`-gated `engaged_soldier_indices()` (which the containment margin
 widens) never fired for them regardless of any margin value. The real fix needed a second,
 deeper layer: decoupling PHYSICAL collision from combat state entirely
@@ -1484,20 +1484,20 @@ deeper layer: decoupling PHYSICAL collision from combat state entirely
 that framing "looks right" (passes new tests, even improves a HAND-BUILT reproduction), still
 render the SAME artifact the bug report itself pointed at (not a look-alike scenario you
 construct) before declaring it fixed. A hand-built probe scenario inherits your own mental
-model of the bug — same blind spot the entry above names — and can pass even when the real
+model of the bug -- same blind spot the entry above names -- and can pass even when the real
 artifact wouldn't. (`Lacaedemon/sparta` issue #1129, PR #1137, 2026-07-27.)
 
-## Widening a validated is_engaged()-OR-proximity gate to an ADJACENT function isn't automatically safe — position-anchor code has its own sensitivity
+## Widening a validated is_engaged()-OR-proximity gate to an ADJACENT function isn't automatically safe -- position-anchor code has its own sensitivity
 
 PR #1137 decoupled several functions from combat-state-only gating (`is_engaged()`) to
-`is_engaged() OR _in_enemy_contact` — a pure-proximity flag — so a "disengaging" unit's
+`is_engaged() OR _in_enemy_contact` -- a pure-proximity flag -- so a "disengaging" unit's
 soldier BODIES still physically resist an enemy even though the unit itself never fights.
 This worked cleanly for `SoldierEnemyContact.accumulate`, `_separate()`'s enemy branch, and
 the new `contact_soldier_indices()` selection: full test suite green, no regressions.
 
 Applying the IDENTICAL pattern to `Unit.position_anchor_indices()` / `near_front_soldier_
 indices()` (the selection `SoldierBodies.couple()` anchors a regiment's `position` on)
-looked like the natural, structurally-identical next step — and #783/#784 already
+looked like the natural, structurally-identical next step -- and #783/#784 already
 established the exact real-world need (a fighting regiment's charge "rides through" a braced
 line because `couple()` dilutes its resisted front rank's signal over the whole unengaged
 block; the same dilution applies to a merely-in-contact-not-fighting unit, unfixed). It
@@ -1513,14 +1513,14 @@ swirl/instability regressions from narrowing this SPECIFIC selection's DEPTH; wi
 UNITS qualify for it turned out to be an untested new axis on that same sensitive surface,
 not a safe copy of a pattern proven elsewhere. Before extending a validated fix to an
 adjacent function, specifically re-run any LIVE, LONG-RUNNING (not just isolated/short)
-regression tests that already exist for that function's own subsystem — a hang can hide
+regression tests that already exist for that function's own subsystem -- a hang can hide
 behind every fast/isolated check passing. Reverted rather than root-caused under time
 pressure; tracked as issue #1136 for whoever investigates further with per-tick
 instrumentation.
 
-## Even well-documented anti-patterns get re-violated under complexity/time pressure — a targeted pre-push grep still pays for itself
+## Even well-documented anti-patterns get re-violated under complexity/time pressure -- a targeted pre-push grep still pays for itself
 
-PR #1137's first review round found 5 real findings — two of which are mistakes THIS FILE
+PR #1137's first review round found 5 real findings -- two of which are mistakes THIS FILE
 already documents in detail before this PR even started: the asymmetric
 `maxf(self_reach, candidate_reach)` contact-check convention (see "A symmetric 'is X near Y'
 contact check" below) and the `demos/demo.json` shared-file-is-a-perennial-merge-conflict-
@@ -1534,51 +1534,51 @@ the specific lines being written).
 re-checking it at the moment of writing the specific code it warns about. For any PR
 touching `SoldierEnemyContact`/`_separate`/proximity-style contact checks, or any PR
 touching `demos/demo.json`, grep this file for the relevant section NAME right before the
-final push (not just recall it from earlier context) — a 10-second grep is cheaper than a
+final push (not just recall it from earlier context) -- a 10-second grep is cheaper than a
 full review round. (`Lacaedemon/sparta` PR #1137, 2026-07-27.)
 
 **A third recurrence, this time against a cross-repo (ai-config) rule rather than a
 sparta-local one:** `pr-on-claim.md`'s "Run that `requested_reviewers` POST as the sole
 (or last) command in its Bash call" was loaded in context, and #1241's very first Copilot
-request (issued right after `gh pr create`) already followed it — a single, unpiped,
+request (issued right after `gh pr create`) already followed it -- a single, unpiped,
 unchained call. `hooks/no-unreviewed-pr.py` still reported "no SUCCESSFUL reviewer request
 follows" for #1241 (and #1239) at the next Stop check. Re-requesting for #1239 in a
-combined call — `POST | head -3`, then two chained `gh pr view` verification reads for
-both PRs in the same Bash call — is a clear instance of the rule's own named tell ("a pipe
+combined call -- `POST | head -3`, then two chained `gh pr view` verification reads for
+both PRs in the same Bash call -- is a clear instance of the rule's own named tell ("a pipe
 added purely to trim the output"), and the guard fired again with the identical message.
 Only reissuing BOTH POSTs as fully isolated calls (bare command, no pipe, nothing chained
 after it) cleared the guard. Exactly why the first, genuinely clean #1241 request didn't
-already satisfy it is unconfirmed — possibly the guard's discharge window doesn't reach
+already satisfy it is unconfirmed -- possibly the guard's discharge window doesn't reach
 back past an intervening non-conforming call, possibly something else; this records the
 observed sequence and the fix, not a verified mechanism.
 **How to apply:** don't assume a clean, isolated reviewer-request call earlier in a session
-keeps discharging the guard for a PR you touch again later — if the guard fires, re-issue
+keeps discharging the guard for a PR you touch again later -- if the guard fires, re-issue
 the POST as its own isolated call right then, even if you believe an earlier request for
 the same PR was already correct. (`Lacaedemon/sparta` PRs #1239/#1241, 2026-08-10.)
 
-## A freshly-constructed test Unit defaults to morale 100 — routing tests can auto-rally instantly
+## A freshly-constructed test Unit defaults to morale 100 -- routing tests can auto-rally instantly
 
 `Unit.gd`'s `morale` field defaults to `100.0`. A GUT test that constructs a bare `Unit`
 via `Unit.new()` and immediately calls `_process_rout()` to test rout/flee behavior can hit
 `_process_rout`'s own auto-rally check (`morale >= RALLY_MORALE_THRESHOLD and _can_rally()`)
-on the very first call — `_can_rally()` trivially returns true in an isolated unit test
+on the very first call -- `_can_rally()` trivially returns true in an isolated unit test
 (full soldier strength, and `UnitTargeting.nearest_enemy_to` finds nothing since no enemy
 Unit exists in the scene), so the unit rallies immediately regardless of what the test
 meant to observe. Either set `u.morale = 0.0` (or another value below
 `RALLY_MORALE_THRESHOLD`) before the first `_process_rout()` call, or set `u._shattered =
 true` if the test wants a flee-forever unit that never rallies at all. Also call the real
-`u._rout()` first if the test depends on `_rout_timer` being armed (`ROUT_TIME`) — a unit
+`u._rout()` first if the test depends on `_rout_timer` being armed (`ROUT_TIME`) -- a unit
 that never went through `_rout()` has `_rout_timer == 0.0`, so `_process_rout`'s own
 "timer ran out" branch fires on the very first call, which look like a rally/shatter
 outcome from the fix under test rather than from the unarmed timer.
 (`Lacaedemon/sparta` PR #730, 2026-07-10.)
 
-## `PathField.active` is a global static — reset it around any isolated-unit test touching movement/routing
+## `PathField.active` is a global static -- reset it around any isolated-unit test touching movement/routing
 
 `PathField.active` (a `static var`) persists across GUT tests within the same run, not just
 within one test function. A test that constructs a bare `Unit` and calls `_process_rout()`
 or `_move_to()` directly (bypassing a live Battle scene) gets different behavior depending
-on whether some EARLIER test in the same run left a real `PathField` instance active — if
+on whether some EARLIER test in the same run left a real `PathField` instance active -- if
 so, the pathfinding branch runs instead of the simpler straight-line-flee/move branch,
 which can silently change which code path the test is actually exercising. Save and restore
 it around the test, the pattern already used in `test_routing_terrain_pathfinding.gd`:
@@ -1591,7 +1591,7 @@ PathField.active = old_pf
 Do this in any new isolated-unit test that calls a `Unit` method sensitive to
 `PathField.active`, not just tests that are themselves about pathfinding.
 
-## A new stance's derived cap can invert the baseline it's supposed to exceed — check the full input range, not just a weak test case
+## A new stance's derived cap can invert the baseline it's supposed to exceed -- check the full input range, not just a weak test case
 
 When a new order-mode/stance introduces its own derived cap or multiplier computed from
 geometry or other per-unit inputs (not a flat constant), verify across the REALISTIC RANGE
@@ -1601,11 +1601,11 @@ general claim in its own assertion message is false for stronger inputs elsewher
 range.
 
 **Concrete case:** PR #736 (knockback focus) added `SoldierCombat.clear_line_speed_cap()`
-— the default "just clear the line" push-distance cap, `sqrt(2 * body_accel *
-clear_distance)` — intending "trade damage for a much bigger push-back." But for realistic
+-- the default "just clear the line" push-distance cap, `sqrt(2 * body_accel *
+clear_distance)` -- intending "trade damage for a much bigger push-back." But for realistic
 front-depth pairings (`Unit._front_depth()`'s own `attack_range * 0.5` cap bounds
 `clear_distance` to roughly 26-48 wu), the geometric formula tops out around 39.5-53.67
-wu/s, BELOW the ordinary attack's `KNOCKBACK_SPEED_MAX = 60.0` — so a strong/charging
+wu/s, BELOW the ordinary attack's `KNOCKBACK_SPEED_MAX = 60.0` -- so a strong/charging
 landed hit got shoved LESS far by the stance's own default variant than a plain attack
 already pushes it, the opposite of the stated design. The included test
 (`test_knockback_focus_pushes_the_defender_back_harder_than_a_normal_attacker`) asserted
@@ -1623,7 +1623,7 @@ a case where the raw formula already exceeds the baseline.
 
 **How to apply:** when reviewing (or writing) any new per-unit derived cap/multiplier that's
 framed as "at least as strong as / bigger than" an existing baseline, don't trust a single
-weak-case test to prove that framing — compute (or test) the derived value at the edges of
+weak-case test to prove that framing -- compute (or test) the derived value at the edges of
 the realistic input range and confirm it never crosses below the baseline it's supposed to
 dominate. (`Lacaedemon/sparta` PR #736, 2026-07-11.)
 
@@ -1632,15 +1632,15 @@ dominate. (`Lacaedemon/sparta` PR #736, 2026-07-11.)
 The existing "verify an issue's own stated root cause empirically" memory above covers a
 not-yet-merged issue's hypothesis. It extends to a **merged, review-clean PR's own claims**
 too: don't cite one as describing the current codebase state just because it merged with a
-passing review — spot-check the actual reproduction before trusting it.
+passing review -- spot-check the actual reproduction before trusting it.
 
 **Concrete case:** #743 (merged) claimed, with specific before/after position values, that
 it fixed the coast-to-stop bug (residual `_current_speed` decaying while `position` sits
 frozen), and its own review rounds confirmed it. The claim didn't reproduce against the
 actually-merged commit: `dump-state.sh` on `main` still showed `position` pixel-frozen while
 `current_speed` ramped down. Root cause: `UnitCombat`'s "spend the charge" strike-resolution
-reset zeroed `_approach_velocity` on the exact tick a unit's last enemy died — the SAME tick
-the idle-coast guard started reading it for a travel direction — a case #743's own tests
+reset zeroed `_approach_velocity` on the exact tick a unit's last enemy died -- the SAME tick
+the idle-coast guard started reading it for a travel direction -- a case #743's own tests
 never exercised (they set up `_approach_velocity`/`facing` directly, never went through a
 real combat kill). Fixed in #747 by falling back to `facing` in that specific
 zero-velocity/nonzero-speed anomalous state.
@@ -1656,16 +1656,16 @@ the real path the bug actually occurs on.
 ## Regiment position is a pure function of body positions
 
 As of #749, `Unit.position` (the regiment's own kinematic point) is not an independently-
-controlled value the soldier bodies chase — it's continuously re-derived FROM the bodies.
+controlled value the soldier bodies chase -- it's continuously re-derived FROM the bodies.
 `SoldierBodies.couple()` runs every tick, computes the drift between the soldier bodies'
 actual centroid and their formation-slot centroid, and slides `position` a bounded fraction
 of that drift (`FOLLOW_RATE`, capped at `MAX_FOLLOW_SPEED`) toward the bodies. This runs
-**unconditionally** — for every unit, every tick, regardless of order state.
+**unconditionally** -- for every unit, every tick, regardless of order state.
 
 **Consequence:** a unit with NO move order (including one under `ORDER_HOLD`, or simply
 idle) can still visibly move if its soldier bodies get physically displaced by something
-else — enemy-contact impulses, knockback, a failed brace. This isn't a bug or a "unit
-trying to move" — it's the intended emergent behavior of the "no top-down gimmicks"
+else -- enemy-contact impulses, knockback, a failed brace. This isn't a bug or a "unit
+trying to move" -- it's the intended emergent behavior of the "no top-down gimmicks"
 philosophy above: a real line hit hard enough to yield ground would physically cede that
 ground, not teleport back to a fixed spot. Before #749, `MAX_FOLLOW_SPEED` was 80 (a mild
 drift, largely invisible); #749 raised it to 300 specifically so this coupling could win
@@ -1673,7 +1673,7 @@ against genuine contact resistance, which also makes any body displacement (incl
 unrelated causes) far more visible than before.
 
 **How to apply:** when a "stationary" or `HOLD`-ordered unit appears to drift in a demo or
-state dump, don't assume its order/state logic is misfiring — check whether its soldier
+state dump, don't assume its order/state logic is misfiring -- check whether its soldier
 BODIES are being displaced (contact physics, knockback, a facing/grid change dragging slot
 targets) and whether `couple()` is just honestly reporting that drift back up to `position`.
 (`Lacaedemon/sparta` PR #749, 2026-07-11.)
@@ -1682,7 +1682,7 @@ targets) and whether `couple()` is just honestly reporting that drift back up to
 
 When a per-tick force resolves in **pairs** (soldier-vs-soldier contact, not a single
 discrete strike) and the same body can appear in more than one pair simultaneously, a cap
-applied ONLY inside the per-pair resolution function is not enough — the pair-wise caps
+applied ONLY inside the per-pair resolution function is not enough -- the pair-wise caps
 compose additively across pairs unless the SUMMED result is also clamped before it's
 written back to the body's velocity.
 
@@ -1690,8 +1690,8 @@ written back to the body's velocity.
 `effective_closing_speed` at `KNOCKBACK_SPEED_MAX`, with a docstring explicitly scoped to
 "one enemy-contact pair." `SoldierEnemyContact.accumulate()` sums that impulse into each
 body's `delta_v` across every simultaneously-overlapping enemy, but originally applied the
-sum with a raw `+=` — a soldier touching 2-3 enemies at once (e.g. a Square-perimeter
-defender pressed by several attackers from one side — MORE likely after #749's own fix
+sum with a raw `+=` -- a soldier touching 2-3 enemies at once (e.g. a Square-perimeter
+defender pressed by several attackers from one side -- MORE likely after #749's own fix
 making `engaged_soldier_indices()` return the whole perimeter for Square/Schiltron, not
 just a front wedge) could receive 2-3x the stated per-tick cap. No downstream clamp rescues
 this for an actively-fighting body (`SoldierBodies._cap_body_speed()` only runs when idle
@@ -1700,7 +1700,7 @@ or reforming). Caught by `claude[bot]` review, not the original implementation o
 `test_collision_knockback_battle.gd`'s displacement bound).
 
 **Fix pattern:** apply the write-back through `SoldierCombat.capped_knockback_velocity`
-(which clamps the RESULTING velocity — `max(current speed, cap)` — after adding the
+(which clamps the RESULTING velocity -- `max(current speed, cap)` -- after adding the
 impulse) instead of a raw add, mirroring the pile-on clamp `SoldierMelee.resolve` already
 uses for accumulated strike knockback on one body ("impulses from every attacker shoving
 this body this cadence accumulate in its velocity, and each application clamps the summed
@@ -1713,21 +1713,21 @@ stays capped. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
 `UnitTargeting.current_target()`'s doc/comment states its purpose as "keep an already-live
 target rather than re-scanning for the nearest," but the auto-acquire fallback path
 (`nearest_enemy()`, used when `target_enemy` is null) never actually wrote its pick back
-into `target_enemy` — so a unit with no explicit attack order re-ran a full nearest-enemy
+into `target_enemy` -- so a unit with no explicit attack order re-ran a full nearest-enemy
 scan from scratch EVERY tick. Under a multi-attacker press, tiny jostles in relative
 distance flip which enemy is "nearest" tick to tick, and each flip re-arms
-`_face_for_action`'s engage-turn toward a new direction — the whole grid sweeps back and
+`_face_for_action`'s engage-turn toward a new direction -- the whole grid sweeps back and
 forth at the turn rate instead of settling on one foe (visible as soldiers "flying" once
-body coupling is fast enough to track it — see #749 above).
+body coupling is fast enough to track it -- see #749 above).
 
 **The gotcha:** persisting the auto-acquired pick (`target_enemy = enemy`, in `_think()`'s
 gated combat-engagement branches) fixes that whipsaw, but `Unit.gd`'s chase branch
 (`elif target_enemy != null or (chasing and not in_contact): ... _move_to(goal, delta)`)
-has **no `ORDER_HOLD` guard** — because until this change, `target_enemy` only ever went
+has **no `ORDER_HOLD` guard** -- because until this change, `target_enemy` only ever went
 non-null via an EXPLICIT order, which `ORDER_HOLD` is specifically meant to still obey
 ("HOLD only suppresses chasing a DETECTED foe, not an explicitly-set target"). Committing
 an auto-acquired pick unconditionally reclassifies it as that kind of explicit target: the
-instant the fought enemy leaves contact (retreats, gets knocked back, routs —
+instant the fought enemy leaves contact (retreats, gets knocked back, routs --
 `current_target()` still returns a routing unit, only `state != DEAD` is checked), the
 melee/ranged branch stops firing but `target_enemy` is still set, so the HELD unit marches
 off after it. Caught by `claude[bot]` review, not by the original fix or its own tests
@@ -1735,13 +1735,13 @@ off after it. Caught by `claude[bot]` review, not by the original fix or its own
 contact).
 
 **Fix:** skip the `target_enemy = enemy` commit specifically when `order_mode == ORDER_HOLD`
-— this preserves the pre-existing contract at the cost of not fixing the facing-whipsaw for
+-- this preserves the pre-existing contract at the cost of not fixing the facing-whipsaw for
 an un-squared HELD unit under a multi-attacker press specifically (not a regression, since
-that combination was never fixed by the persistence change in the first place — Square is
+that combination was never fixed by the persistence change in the first place -- Square is
 exempted from engage-turning entirely regardless of order_mode, so the common case is
 covered anyway). **How to apply:** any time a field's "only ever set by an explicit order"
 invariant is broken by a new auto-commit path, grep every consumer of that field for logic
-that assumes the old invariant (here: an unguarded chase branch) before shipping — a single
+that assumes the old invariant (here: an unguarded chase branch) before shipping -- a single
 unconditional write can silently reclassify state elsewhere in the same file relies on
 staying scoped. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
 
@@ -1755,8 +1755,8 @@ unit is mid-turn when it gets switched to the new early-return condition (here,
 `ORDER_FORMATION_ONLY` calling `Unit.set_formation()` mid-turn, which doesn't touch
 `_engage_turn_target`), every SUBSEQUENT call takes the new early return before ever
 reaching the `_advance_turn`/`_settle_engage_turn` logic that would normally finish and
-clear it. `_engage_turn_target` then stays stuck non-zero forever, which — per
-`is_maneuver_turning()`'s own docstring — permanently freezes `SoldierBodies.step`'s
+clear it. `_engage_turn_target` then stays stuck non-zero forever, which -- per
+`is_maneuver_turning()`'s own docstring -- permanently freezes `SoldierBodies.step`'s
 slot-approach term: the squared body never eases onto its new slots. Caught by `claude[bot]`
 review (reachable via the exact anti-cav-square flow #749 is built around: a unit turning
 to face an approaching charger, then squared reactively before the turn finishes), not by
@@ -1767,19 +1767,19 @@ the original implementation.
 **How to apply:** any new early return added to a stateful turn/maneuver function in this
 file (anything tracking `_engage_turn_target`, `is_wheeling()`, `is_order_turning()`, or
 similar) needs to settle or explicitly account for whatever in-progress state it might be
-short-circuiting past — grep the function for every OTHER path that clears the same state
+short-circuiting past -- grep the function for every OTHER path that clears the same state
 before assuming a new early return is safe. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
 
-## A bare `Unit.new()` test fixture defaults to `uid -1` — soldier-id collisions across fixtures
+## A bare `Unit.new()` test fixture defaults to `uid -1` -- soldier-id collisions across fixtures
 
 `Unit.soldier_id(index)` computes `uid * SOLDIER_ID_STRIDE + index`, and `Unit.gd`'s `uid`
 field defaults to `-1` (only ever assigned a real, unique value by `Battle`'s spawn path).
 A GUT test that constructs TWO bare `Unit.new()` fixtures (never spawned through Battle) and
-exercises any logic keyed on `soldier_id()` — e.g. `SoldierEnemyContact.accumulate()`'s pair
-canonicalization, `if sgids[b] <= sgids[a]: continue` — will see BOTH fixtures' soldier 0
+exercises any logic keyed on `soldier_id()` -- e.g. `SoldierEnemyContact.accumulate()`'s pair
+canonicalization, `if sgids[b] <= sgids[a]: continue` -- will see BOTH fixtures' soldier 0
 resolve to the identical id (`-1 * STRIDE + 0`), so the pair gets silently treated as
 already-resolved/duplicate and skipped, regardless of what the test actually intended to
-exercise. This doesn't fail loudly — a test asserting "nothing changed" can pass for the
+exercise. This doesn't fail loudly -- a test asserting "nothing changed" can pass for the
 WRONG reason (id collision) instead of the reason its docstring claims (e.g. a same-team
 skip, or a dead-unit skip).
 
@@ -1787,7 +1787,7 @@ skip, or a dead-unit skip).
 exercising soldier-id-keyed logic must assign each a distinct `uid` explicitly (e.g.
 `u.uid = 1`, `u.uid = 2`), matching what a real `Battle`-spawned unit always gets. Verify a
 new cross-unit test isn't accidentally passing via this collision by checking the actual
-resolved values (not just the top-level assertion) the first time it's written — a debug
+resolved values (not just the top-level assertion) the first time it's written -- a debug
 probe test (construct the fixtures, print `engaged_soldier_indices()`/`soldier_id()`/the
 resulting velocities) is the fast way to catch it, faster than reasoning through the pair
 loop by hand. (`Lacaedemon/sparta` PR #749, 2026-07-11.)
@@ -1802,21 +1802,21 @@ against the returned engaged set, gated to pairs actually within contact range) 
 sharper signal: the mismatch rate is **0% at every tick before the first casualty**, then
 jumps to 32%+ the instant `SoldierMelee.reap()` compacts the array. Root cause:
 `square_is_perimeter(i, n, files)` is a function of SLOT INDEX in the ORIGINAL grid, but
-`reap()` removes dead soldiers by splicing the per-soldier arrays — every index after a
+`reap()` removes dead soldiers by splicing the per-soldier arrays -- every index after a
 removed soldier shifts down, so index `i` no longer sits where `block_slots` originally laid
 it out. This is a **same-unit geometry bug**, not fundamentally about needing enemy-position
-data (the issue's own proposed direction) — the array is stale relative to itself.
+data (the issue's own proposed direction) -- the array is stale relative to itself.
 
 **Fix, partial:** `UnitFormation.live_perimeter_indices(positions, target_count)` replaces
 the slot-index selection with the `target_count` LIVING soldiers currently farthest from the
-block's own LIVE centroid (`_sim_soldier_pos`, read directly — same OUTPUT SIZE/target count
+block's own LIVE centroid (`_sim_soldier_pos`, read directly -- same OUTPUT SIZE/target count
 as the old ring, not the same runtime cost: selection itself is a bounded min-heap,
-O(n log target_count), vs. the old O(n) index scan — more work per call, though bounded and
+O(n log target_count), vs. the old O(n) index scan -- more work per call, though bounded and
 small relative to a tick's other per-soldier costs at this game's regiment sizes). This
 measurably improves the gated mismatch rate at every post-casualty tick checked (32%→22%,
 78%→70%, 67%→60%, 67%→47%, 62%→45%) with no regression on the pristine (no-casualty) case.
 **It does not fully
-close #752** — "farthest from live centroid" is still an approximation of "true outer ring,"
+close #752** -- "farthest from live centroid" is still an approximation of "true outer ring,"
 and under heavy multi-directional pressure (the block reflowing unevenly as different sides
 take casualties at different rates) it can still misclassify a soldier pushed inward on one
 side as "engaged" over a genuinely exposed soldier on a less-pressed side. The issue's
@@ -1827,9 +1827,9 @@ radius, via `SoldierSpatialHash`) is the fuller fix and remains open follow-up w
 **How to apply:** before implementing a "make this live/position-based instead of
 index-based" fix, verify empirically whether the bug is (a) same-unit index/position
 staleness (fixable by reading live positions, no cross-unit data needed) or (b) genuinely
-needs cross-unit proximity data — they look identical from the bug report alone
+needs cross-unit proximity data -- they look identical from the bug report alone
 ("this-N-vs-that-N mismatch under chaos") but have very different fix complexity. Gate any
-such reproduction to pairs actually within contact/reach range — an ungated "nearest globally"
+such reproduction to pairs actually within contact/reach range -- an ungated "nearest globally"
 metric picks up noise from units still approaching each other, which can make an otherwise-
 sound fix look like it regressed the pristine case. (`Lacaedemon/sparta` PR #758, partial
 fix for #752, 2026-07-11.)
@@ -1842,7 +1842,7 @@ out: the old SQUARE branch was a single O(n) index scan; the new one added an O(
 pass plus an O(n log n) sort, strictly more work, and the claim was baked into three separate
 comments/docs (`Unit.gd`, `test/unit/test_unit.gd`, this file) that all needed fixing, not just
 one. Replaced the full sort with a bounded min-heap of the `target_count` best candidates
-(O(n log target_count) — see `UnitFormation._worse`/`_heap_sift_up`/`_heap_sift_down`), which
+(O(n log target_count) -- see `UnitFormation._worse`/`_heap_sift_up`/`_heap_sift_down`), which
 is strictly less work than a full sort whenever `target_count < n` (always true here), and
 added a differential test against a brute-force full-sort reference on an irregular point
 cloud to catch a heap sift-up/sift-down bug the smaller/symmetric tests wouldn't. **How to
@@ -1856,17 +1856,17 @@ Merging a PR whose title/body bare-mentions a tracking issue by number (`(partia
 `Progress on #752`) can auto-close that issue on merge, even when the PR explicitly states
 "does **not** close it" and a PR/issue comment says "leaving this issue open." Neither PR
 #758's title nor body used a `Closes`/`Fixes`/`Resolves` keyword, so it isn't the standard
-keyword-based auto-close. **The exact mechanism is unconfirmed** — the reopening comment
+keyword-based auto-close. **The exact mechanism is unconfirmed** -- the reopening comment
 posted at the time guessed "repo automation matching the `#752` reference in the squash
 commit title," but that's a guess, not a verified cause; a later review round flagged that
 GitHub's PR "Development" sidebar auto-link (an alternative theory this entry originally
 asserted) normally requires a *manually applied* link and doesn't auto-attach just because
 an issue number appears in a PR title, so that theory is probably wrong too. `godot-ci.yml`'s
-`resolve-main-failure` job ("Close tracking issue on green") IS ruled out, though — it only
+`resolve-main-failure` job ("Close tracking issue on green") IS ruled out, though -- it only
 ever touches a separate marker-tagged `ci-failure` issue, confirmed by reading the workflow.
 
 **How to apply:** after merging any "partial fix, issue stays open" PR that mentions the
-issue number anywhere in its title or body, check the issue's state immediately —
+issue number anywhere in its title or body, check the issue's state immediately --
 `state_reason: "completed"` right around the merge timestamp is the tell. Reopen with an
 explanatory comment if it auto-closed; don't assume stating "leaving this open" in the PR
 body is sufficient to prevent it. (`Lacaedemon/sparta` PR #758 / issue #752, 2026-07-11:
@@ -1876,20 +1876,20 @@ stating it should stay open; reopened with an explanation.)
 **A second, independent occurrence narrows the mechanism further.** Issue #296 was
 auto-closed by PR #782's merge (2026-07-12, a real commit-message keyword match, since
 #782's first commit read "...closes #296") and reopened with an explanation. It was
-auto-closed a SECOND time by PR #981's merge (2026-07-18, 23:43:15Z — 2 seconds after the
+auto-closed a SECOND time by PR #981's merge (2026-07-18, 23:43:15Z -- 2 seconds after the
 merge landed), even though NO commit in #981's entire squash-merge history contains a
 `closes`/`fixes`/`resolves` keyword anywhere near "#296" (checked the full squash commit
 body). `gh api repos/.../issues/296/events` shows this second close event's `commit_id` is
-`null` — unlike the first (keyword-matched) close, which had a real commit SHA attached.
+`null` -- unlike the first (keyword-matched) close, which had a real commit SHA attached.
 A null `commit_id` rules out the standard commit-message-keyword auto-close for this
 occurrence specifically, and points instead at something that fires off the PR's own
 DESCRIPTION text: #981's body mentioned "#296" prominently in an "Also found and fixed in
-passing" section — not a closing-keyword sentence, but strong textual proximity to the word
+passing" section -- not a closing-keyword sentence, but strong textual proximity to the word
 "fixed". Still not a confirmed mechanism, but strengthens the case that merely naming an
 issue number anywhere in a PR body (not just a commit message, and not just a literal
 closing keyword) can trigger an auto-close on merge. Treat ANY issue-number mention
 anywhere in a PR's commits OR its description as a close risk, not just literal
-`closes #N` phrasing — check the mentioned issue's state immediately after every merge.
+`closes #N` phrasing -- check the mentioned issue's state immediately after every merge.
 
 **A THIRD occurrence confirms the mechanism for one of these shapes, and it is
 systematic rather than mysterious: our own `pr-on-claim` claim commit.**
@@ -1984,11 +1984,11 @@ each side has its OWN independently-valued range (reach, radius, whatever), a ch
 ONE side's range silently breaks the case where the OTHER side is the one with the longer
 range. This is the same spear-vs-sword standoff the `SoldierEnemyProximity.has_enemy_within`
 and `Unit.engaged_soldier_indices` code comments themselves call out ("a longer reach lets a
-soldier strike foes who cannot strike back") — but it's easy to re-introduce the same class of
+soldier strike foes who cannot strike back") -- but it's easy to re-introduce the same class of
 bug in a NEW proximity check that doesn't reuse that exact code path.
 
 **Concrete case:** PR #760's `SoldierEnemyProximity.has_enemy_within(pos, team, self_radius)`
-computed `contact = self_radius + candidate_radius + candidate_reach` — using only the
+computed `contact = self_radius + candidate_radius + candidate_reach` -- using only the
 CANDIDATE enemy's reach, never the QUERYING soldier's own. A long-reach querier (a Schiltron
 spear, reach 48) could be wrongly dropped from the engaged set when facing a shorter-reach
 enemy (a sword, reach 26) at a distance the QUERIER could actually close (e.g. 40 units --
@@ -2317,7 +2317,7 @@ checked GUT's own summary for a non-zero test count), so it silently reported PA
 tests run. Hit repeatedly across many fresh worktrees during the 2026-07-09/2026-07-13 GIA
 batch-cleanup and independent-verification passes, and again when reported directly as a bug.
 
-## The Coverage CI job shifts sim timing — read spawn values PRE-tick and budget arcs in real sim ticks
+## The Coverage CI job shifts sim timing -- read spawn values PRE-tick and budget arcs in real sim ticks
 
 Sparta's non-gating **Coverage** job (`test-coverage.yml`) runs the GUT suite through
 `addons/coverage`, which reloads counter-injected copies of the game scripts. That
@@ -2329,7 +2329,7 @@ their fixes (both in `test/unit/test_battle_scenario.gd` and `test_rout_rally_de
 - **Spawn/override-value asserts must read PRE-tick.** Reading a unit's `morale`/`facing`
   after `await get_tree().physics_frame` lets one recovery/rotation tick drift it off the
   exact spawn value (morale 30.0 read as 30.033; facing -1.0 read as -0.928). `Battle._ready()`
-  runs **synchronously** during `add_child_autofree(battle)` — it calls `_spawn_scenario()`,
+  runs **synchronously** during `add_child_autofree(battle)` -- it calls `_spawn_scenario()`,
   which registers each unit in the `"units"` group and sets `facing`/`morale` before returning.
   So delete the `await` and assert spawn values immediately; no tick can fire between
   `add_child` returning and the group query.
@@ -2339,14 +2339,14 @@ their fixes (both in `test/unit/test_battle_scenario.gd` and `test_rout_rally_de
   once per `_physics_process`) and derive the budget from sim constants with headroom, e.g.
   `ROUT_ONSET_BUDGET + ceil(Unit.ROUT_TIME * Replay.PHYSICS_TPS) + RALLY_MARGIN`. Prefer the
   canonical `Replay.PHYSICS_TPS` autoload over a duplicated `:= 60` local. Prefer read-pre-tick
-  / real-tick budgets over loosening tolerances — a wider tolerance still races the clock.
+  / real-tick budgets over loosening tolerances -- a wider tolerance still races the clock.
 
 When widening such a budget, also account for OTHER in-flight PRs that shift the same sim
 dynamics (a physics retune moves *when* the block breaks) so the later PR won't re-break the
-test on resync — widen via the named headroom constant, never by weakening an assertion.
+test on resync -- widen via the named headroom constant, never by weakening an assertion.
 (`Lacaedemon/sparta` #508/PR #511, coordinated with #497.)
 
-## Soldier bodies ARRIVE at their slots under bounded force — not a damped spring
+## Soldier bodies ARRIVE at their slots under bounded force -- not a damped spring
 
 `scripts/SoldierBodies.gd`'s `step()` used to be a near-critically-damped **spring** toward
 each formation slot (`SPRING_STIFFNESS`/`SPRING_DAMPING`), which read as visibly springy/wobbly.
@@ -2368,21 +2368,21 @@ The **anti-spring invariant** is *no overshoot / no oscillation*, pinned by
 to slot decreases monotonically, body never crosses to the far side, checked only while
 `dist > ARRIVE_EPS`) and `test_knockback_recovers_over_a_second_or_two`. Two subtleties that bit
 the port: (1) the `sqrt(2·a·d)` profile steepens near the slot faster than bounded decel can
-follow, so the **post-step inbound clamp** — not the desired-velocity cap — is the real overshoot
+follow, so the **post-step inbound clamp** -- not the desired-velocity cap -- is the real overshoot
 guard; (2) tests asserting the old spring's single-step velocity magnitudes had to be re-derived
-to the multi-tick ramp (a body ramps to top speed over many ticks, not in one step — loop 120–360
+to the multi-tick ramp (a body ramps to top speed over many ticks, not in one step -- loop 120-360
 ticks and assert the invariant throughout). Knockback impulses are untouched: a body holds the
 push, then decelerates and returns under bounded force. This is the concrete mechanism behind the
 "no snaps / bottom-up physics" philosophy at the top of this file; later PRs (#742/#743 coasting,
 #749 body→position coupling) build on top of it rather than replacing it. (Physics constants and
-exact function shapes will have moved further by the time you read this — verify against current
+exact function shapes will have moved further by the time you read this -- verify against current
 `scripts/SoldierBodies.gd` before relying on specifics; the anti-spring invariant itself is durable.)
 
 ## Any live-Battle test that runs a fight must seed `Replay.forced_seed`
 
 A scenario/integration test that instantiates `scenes/Battle.tscn` and lets it run a fight draws
 all combat randomness through `Replay.rng` (SoldierMelee land/wound rolls). If the test does not
-seed the RNG, those rolls draw from whatever `Replay.rng` state the *previously-run tests* left —
+seed the RNG, those rolls draw from whatever `Replay.rng` state the *previously-run tests* left --
 so the outcome varies with suite ordering and the test flakes. This is a latent non-determinism
 bug independent of any one PR; a physics change just **exposes** it by shifting an arc onto a
 decision boundary.
@@ -2390,19 +2390,19 @@ decision boundary.
 **Concrete case (#497/#465):** `test/unit/test_rout_rally_demo_scenario.gd` began flaking ~50% of
 full-suite runs (passed 100% in isolation) after the spring→arrival physics merged: the routing
 unit **shattered** instead of rallying, tripping `assert_not_null`. A seeded trace
-(`forced_seed=12345`) showed the arc routs ~tick 413 and rallies ~tick 774 — well within budget —
+(`forced_seed=12345`) showed the arc routs ~tick 413 and rallies ~tick 774 -- well within budget --
 so the physics was fine; an unlucky casualty streak was grinding the router below
 `SHATTER_STRENGTH_FRAC` or keeping an enemy inside `RALLY_CONTACT_RADIUS` at timer expiry.
 
 **Fix:** seed deterministically in the spawn helper, exactly as the demo it guards does
 (`Replay.forced_seed = 12345` **before** `add_child`; `Battle._ready()` folds it into `rng.seed`
 via `Replay.start_recording()` and resets `forced_seed = -1`, one-shot per spawn). This is a
-distinct failure mode from the coverage-timing budget flake above — that's about *when* an arc
+distinct failure mode from the coverage-timing budget flake above -- that's about *when* an arc
 completes, this is about *whether* it completes the same way each run. When a physics/balance
-change surfaces a scenario-test failure, first ask "is this test deterministic?" — fix the
+change surfaces a scenario-test failure, first ask "is this test deterministic?" -- fix the
 determinism, don't widen a budget to mask a boundary-brush. (`Lacaedemon/sparta` #497/#465.)
 
-## Per-soldier sim cost scales SUPER-linearly — the reference battle already sits at the 60fps budget
+## Per-soldier sim cost scales SUPER-linearly -- the reference battle already sits at the 60fps budget
 
 Measured via #549 (PR #551): `tools/benchmark/run-benchmark.sh` against
 `benchmarks/scenarios/large-battle.json`, scaled by `SPARTA_BENCHMARK_SCALE`
@@ -2414,7 +2414,7 @@ Measured via #549 (PR #551): `tools/benchmark/run-benchmark.sh` against
 | 3,440 (2×) | 52.92 ms | 63.79 ms | 18.9 |
 | 6,880 (4×) | 207.82 ms | 235.29 ms | 4.8 |
 
-Cost is **super-linear**: 2× soldiers → ~3.1× tick cost, 4× → ~12× — consistent with PLAN.md's
+Cost is **super-linear**: 2× soldiers → ~3.1× tick cost, 4× → ~12× -- consistent with PLAN.md's
 O(n²) neighbor-scan note; the per-soldier layer (`_sim_soldier_pos`/`SoldierSpatialHash`) hasn't
 fully escaped that shape. **The reference battle (1,720 soldiers) already sits at the 60fps budget
 (16.67 ms/tick) on mean tick cost, and over budget on p95, before render cost.** So the current
@@ -2422,13 +2422,13 @@ architecture can't comfortably support a battle much larger than this at 60fps w
 algorithmic win beyond the spatial hash. Treat this as a real, measured headroom constraint for
 #550 (Cannae-scale) and any per-entity-granularity decision (per-soldier speed, weapon/shield
 objects, individual orders): before adding another per-soldier array pass, re-run the benchmark and
-check whether it pushes the curve further from linear — that's the signal an O(n) win is needed
+check whether it pushes the curve further from linear -- that's the signal an O(n) win is needed
 before growing headcount. The exact multipliers drift as the sim evolves; the super-linear *shape*
 is structural. (One-machine local sweep, not the PLAN.md reference-hardware numbers; re-measure
 before citing exact figures.)
 
 **Concrete regression + fix, PR #981 (#240 melee standoff):** `SoldierMeleeStandoff.accumulate`
-originally called `SoldierEnemyProximity.rebuild(units, frame)` unconditionally every tick — a full
+originally called `SoldierEnemyProximity.rebuild(units, frame)` unconditionally every tick -- a full
 O(every living soldier in the battle) scan, run for EVERY engaged soldier's nearest-enemy lookup,
 not just the rare SQUARE-mode case that whole-battle grid actually exists for. Reported by CI's
 benchmark comment as +130.2% mean tick time (25.017ms -> 57.6ms on CI hardware); reproduced locally
@@ -2456,20 +2456,20 @@ battle spatial structure, check (a) whether the population can be scoped to just
 (b) whether a cheap unit- or team-level pre-filter (not requiring a soldier-level pass at all) can
 rule out entire populations from ever needing the expensive lookup, the way "my own reach already
 dominates the max opposing reach" does here. Measure before adding machinery, per (a) alone often
-being enough — verified here by benchmarking after each stacked fix rather than assuming.
+being enough -- verified here by benchmarking after each stacked fix rather than assuming.
 
-## CI workflows render AUTHOR-controlled data — keep it as data, never let it reach a shell as code
+## CI workflows render AUTHOR-controlled data -- keep it as data, never let it reach a shell as code
 
 `demo-video.yml` and its siblings run against author-controlled input: a PR author writes the demo
 manifest (`demos/demo.<slug>.json`), input scripts (`demos/inputs/*.json`), captions, tick lists.
 On a same-repo PR this runs on a **write-privileged** runner (pushes `demo-media`, comments on the
 PR), so shell injection is a real supply-chain hole. Conventions (follow them in any workflow that
-renders author data — established #506/PR #507, widened #549/PR #551):
+renders author data -- established #506/PR #507, widened #549/PR #551):
 
-1. **Author values reach steps via `env:`, never `${{ }}` interpolation** — `${{ }}` expands into
+1. **Author values reach steps via `env:`, never `${{ }}` interpolation** -- `${{ }}` expands into
    the script text *before* the shell parses it, so `"; rm -rf … #` becomes code. Pass as
    `env: CAPTION: ${{ … }}` and use `"$CAPTION"`.
-2. **jq programs are fixed string literals; data goes in as `--arg`/file operands** — never build a
+2. **jq programs are fixed string literals; data goes in as `--arg`/file operands** -- never build a
    filter by interpolation (e.g. `jq -r '(.state // .frames // []) | map(tostring) | join(",")' "$SOURCE"`).
 3. **Emit free text via `printf '%s'` with the value as an ARGUMENT**, not `echo`/`eval`; the
    `GITHUB_OUTPUT` heredoc uses a **random delimiter** (`caption_eof_$(openssl rand -hex 8)`) so
@@ -2477,38 +2477,38 @@ renders author data — established #506/PR #507, widened #549/PR #551):
 4. **A dynamic `export "${ENVVAR}=…"`** is safe only because `ENVVAR` is from a fixed set
    (`SPARTA_DEMO_REPLAY`/`SPARTA_DEMO_INPUT`), not author free-text.
 
-**This isn't only about malicious input — it silently breaks your OWN generated values too.** In
+**This isn't only about malicious input -- it silently breaks your OWN generated values too.** In
 `benchmark.yml` a step built a markdown code span (`` `tools/benchmark/baseline.json` ``) from
 trusted script output, stored it via `GITHUB_OUTPUT`, and a later step spliced it with `${{ }}`
-inside a quoted bash string — the backticks re-entered as live command substitution and the entire
+inside a quoted bash string -- the backticks re-entered as live command substitution and the entire
 span silently vanished from the posted comment (nothing errored). Route ANY `steps.*.outputs.*`
 containing shell metacharacters through `env:`, not `${{ }}`-splicing. Also note `$()` strips
-*trailing* newlines, so `BODY="$BODY"$(printf '\n\n')` is a no-op — fold separators into the same
+*trailing* newlines, so `BODY="$BODY"$(printf '\n\n')` is a no-op -- fold separators into the same
 `printf` format string. Verify comment-body assembly by simulating it in bash and `cat -A`-ing the
 result; a green job doesn't prove the posted message is correct.
 
 ## Gating a CI check on "does this posted artifact still match HEAD" needs a live re-read at job completion
 
 A workflow job that posts something derived from `github.event.pull_request.head.sha` (a demo
-comment, a state transcript) uses a SHA fixed at *trigger* time — a push landing after trigger but
+comment, a state transcript) uses a SHA fixed at *trigger* time -- a push landing after trigger but
 before the job finishes leaves a green job whose artifact cites a stale SHA.
 `concurrency: cancel-in-progress` is the first defense but its propagation isn't instantaneous.
 
 **Pattern (added to `demo-video.yml`, #542/PR #544):** as a final step in the *same* posting job,
 re-read the PR's **live** head SHA from the API (`gh api repos/OWNER/REPO/pulls/$PR --jq .head.sha`)
-— not the event payload — compare to the SHA the job posted against, and `exit 1` on mismatch. This
+-- not the event payload -- compare to the SHA the job posted against, and `exit 1` on mismatch. This
 makes success self-verifying: green means the artifact was fresh as of the job's own completion.
 Fold it into the posting job itself; a separate cross-check job just reintroduces the race one level
-out. **Retry the lookup separately from the staleness verdict** — under `set -euo pipefail` a
+out. **Retry the lookup separately from the staleness verdict** -- under `set -euo pipefail` a
 transient `gh api` failure aborts with a raw error that reads like "stale," so wrap the lookup in a
-small retry loop and emit two distinct messages ("could not read PR head — transient API failure,
+small retry loop and emit two distinct messages ("could not read PR head -- transient API failure,
 not a staleness verdict" vs. "HEAD moved to X, evidence is for Y, failing as stale"). A bot reviewer
 caught the missing-retry gap in round 1. (General CI pattern, but instantiated here in
 `demo-video.yml`.)
 
 ## Battle.gd order dispatch applies every live order exactly once (immediate-apply + tagged tick-drain)
 
-`Battle.gd`'s live order paths (`enqueue_*()`) apply every order TWICE by default — once
+`Battle.gd`'s live order paths (`enqueue_*()`) apply every order TWICE by default -- once
 immediately at enqueue time (for zero-latency feedback + paused preview) and again when the
 physics tick drains `_pending_orders`. Harmless for an absolute/idempotent order (formation,
 frontage-resize), but corrupts any order whose effect is RELATIVE to state the first apply
@@ -2519,24 +2519,24 @@ apply armed and fell into the wrong branch).
 - `_apply_order_live(cmd)` applies the order via `_apply_order_cmd(cmd)` AND tags the in-memory
   dict: `cmd["applied_live"] = true`. Every live enqueue path routes through it instead of
   calling `_apply_order_cmd` directly.
-- The tick drain still **records** every pending order for replay (unconditionally — the replay
+- The tick drain still **records** every pending order for replay (unconditionally -- the replay
   stream must be complete) but only **applies** it `if not o.get("applied_live", false)`. An
-  order NOT applied live (e.g. a waypoint append — non-idempotent by nature, tick-authoritative)
+  order NOT applied live (e.g. a waypoint append -- non-idempotent by nature, tick-authoritative)
   stays untagged and still drains-applies once, exactly as before.
 - `Replay.record_order` copies EXPLICIT named fields (not the whole dict), so the `applied_live`
-  tag never reaches the recorded stream — a `PLAYBACK` order read via `orders_for_tick` is
+  tag never reaches the recorded stream -- a `PLAYBACK` order read via `orders_for_tick` is
   therefore always untagged and applies once, so the PLAYBACK path is untouched by this pattern
   and replay determinism carries over automatically.
 
 **Test pattern for a Dictionary-tag dedup:** GDScript Dictionaries are reference types, so tagging
 the SAME object that sits in `_pending_orders` is visible to a drain-mimicking test helper without
-re-fetching — but cross-reference the helper's gate condition to the production drain in a
+re-fetching -- but cross-reference the helper's gate condition to the production drain in a
 comment, or the two silently diverge if the key/logic changes in only one place. Any NEW order
 type added to `Battle.gd` (or an existing one you refactor) that goes through a live-enqueue path
 must route through `_apply_order_live`, not call `_apply_order_cmd` directly, or it reintroduces
 the double-apply bug this pattern exists to prevent. (`Lacaedemon/sparta` #517/#518, PR #519.)
 
-## Form-up orders never use the smooth maneuvers — a big reposition needs its own facing/reform handling
+## Form-up orders never use the smooth maneuvers -- a big reposition needs its own facing/reform handling
 
 `Battle._apply_order_cmd`'s move dispatch explicitly excludes side-step, back-step, rear-move
 (about-face), and lateral-pivot (file-march) from ANY command that carries `cmd.has("face")` --
@@ -3625,7 +3625,7 @@ verification and an explicit `### Verdict`). (`Lacaedemon/sparta` PR #1054,
 `_info_panel_raise()` by the same PR this entry describes) documents that
 `.position=` on an anchored Control "just works" ONLY because it's set once
 during `_ready()`, before the CanvasLayer's real viewport size is
-established (so `anchor * parent_size == 0` at that moment) — and warns that
+established (so `anchor * parent_size == 0` at that moment) -- and warns that
 calling it again later, once the real size is baked in, silently shoves the
 Control far off-screen. There's a SECOND, distinct trap in the same
 territory: setting `.position=` once at `_ready()` time, then ALSO setting
@@ -3635,15 +3635,15 @@ content-derived).
 
 **Concrete case:** moving the unit card tray from center-bottom to
 bottom-right (#1049), the new build code mirrored the `_ctrl_bar`/
-`_legend_panel` pattern — `set_anchors_preset(PRESET_BOTTOM_RIGHT)`, then
+`_legend_panel` pattern -- `set_anchors_preset(PRESET_BOTTOM_RIGHT)`, then
 `.position = Vector2(-14, -14)`, then `custom_minimum_size = Vector2(500,
-0)` — and the tray ended up rendering almost entirely OFF the right edge of
+0)` -- and the tray ended up rendering almost entirely OFF the right edge of
 the screen, with only a ~15-20px sliver visible; confirmed via a direct
 screenshot, not caught by any unit test (GUT's headless dummy renderer
-never surfaces a rendered-position bug like this — see the "How to apply"
+never surfaces a rendered-position bug like this -- see the "How to apply"
 note below). The `_ctrl_bar`/`_legend_panel` precedent this pattern
 was copied from never sets an explicit `custom_minimum_size` on the
-anchored Control ITSELF (only on a child, or not at all) — they rely
+anchored Control ITSELF (only on a child, or not at all) -- they rely
 entirely on the Control's own natural content size, which `.position=`'s
 "resolve against size-0-at-_ready()-time" trick tolerates because there's
 no OTHER competing size assignment landing after it.
@@ -3651,7 +3651,7 @@ no OTHER competing size assignment landing after it.
 **Fix:** for a corner-anchored Control whose full size is known up front
 (a fixed-width tray, a fixed-size panel), set `offset_left`/`offset_right`/
 `offset_top`/`offset_bottom` explicitly instead of `.position=` +
-`custom_minimum_size` — exactly the pattern the settings/info panels
+`custom_minimum_size` -- exactly the pattern the settings/info panels
 already use elsewhere in `HUD.gd`. Explicit offsets are unambiguous
 regardless of assignment order or when the CanvasLayer's real viewport size
 becomes available; `.position=` is only safe when nothing else touches the
@@ -3660,11 +3660,11 @@ Control's size afterward.
 **How to apply:** before copying the `.position=`-based corner-anchor
 pattern to a NEW Control, check whether that Control also needs an
 explicit `custom_minimum_size` (or any other size-affecting property) set
-after the position — if so, use explicit offsets instead. And always
+after the position -- if so, use explicit offsets instead. And always
 confirm a new/moved HUD panel's ACTUAL on-screen position with a real
 screenshot (a throwaway tool scene + `--rendering-driver opengl3`, per
 "Throwaway tool-scene screenshots" in `.claude/skills/sparta-demos/SKILL.md`) before considering
-a layout change done — a GUT test asserting anchor/grow-direction
+a layout change done -- a GUT test asserting anchor/grow-direction
 properties (as `test_hud_layout.gd` does) proves the CONFIGURATION is
 correct but says nothing about where the Control actually renders.
 (`Lacaedemon/sparta` PR #1057, 2026-07-23.)
@@ -3680,9 +3680,9 @@ reasoning about the panel you're actively moving:
   there.** Moving the distance legend to top-left put it directly on top of
   the frame-rate counter's DEFAULT corner (`Settings.fps_corner` defaults to
   `FPS_CORNER_TOP_LEFT`, chosen specifically because nothing else lived
-  there — a comment in `Settings.gd` said so explicitly, and went stale the
+  there -- a comment in `Settings.gd` said so explicitly, and went stale the
   moment the legend moved in without anyone updating it). This wasn't the
-  legend's own move breaking something about ITSELF — it broke a completely
+  legend's own move breaking something about ITSELF -- it broke a completely
   different, unrelated feature's implicit assumption about that corner
   being free.
 - **A panel's own growth/reach calculation doesn't account for a NEW
@@ -3691,7 +3691,7 @@ reasoning about the panel you're actively moving:
   was computed purely against the raw screen edges, with no reference to
   the settings panel (bottom-left) or legend (top-left) now sharing its
   same `offset_left = 14.0` column. A tall enough stat sheet could grow
-  down into the settings panel or up into the legend — confirmed
+  down into the settings panel or up into the legend -- confirmed
   mathematically (not just eyeballed) by an existing test that already
   exercised a 200-line stat sheet pinning to the (wrong) 680px ceiling.
   Fixed by having the growth-budget function actively query each
@@ -3700,20 +3700,20 @@ reasoning about the panel you're actively moving:
   + _ctrl_bar_clearance()`) rather than a screen-edges-only constant.
   A similar tray-vs-control-bar collision (the control bar reaches far
   enough from screen center at the default 1280px width to overlap the
-  bottom-right tray) was ALSO found this same way — by direct screenshot,
+  bottom-right tray) was ALSO found this same way -- by direct screenshot,
   not by reasoning about the numbers ahead of time.
 
 **How to apply:** after any HUD panel reposition, don't just verify the
-moved panel's own rect looks right — grep the file for every OTHER
+moved panel's own rect looks right -- grep the file for every OTHER
 Settings-driven or dynamically-sized element (default corners, growth
 budgets, raise/lower clearances) and ask whether it implicitly assumed the
 old layout. A real before/after screenshot (not just a description of the
-intended positions) is what actually catches these — both collisions in
+intended positions) is what actually catches these -- both collisions in
 this PR were found by a human/reviewer looking at an actual rendered frame,
 not by static code review of the anchor math. (`Lacaedemon/sparta` PR
 #1057, 2026-07-23.)
 
-## A throwaway (non-GUT) Godot process also contaminates the real `settings.cfg` — not just GUT test runs
+## A throwaway (non-GUT) Godot process also contaminates the real `settings.cfg` -- not just GUT test runs
 
 The existing "Settings.gd setters persist to the REAL user://settings.cfg
 in tests" entry above covers GUT test runs calling a `Settings.*` setter.
@@ -3721,20 +3721,20 @@ The SAME contamination happens from a throwaway tool-scene script (`godot
 --rendering-driver opengl3 res://tools/demo/_shot_*.tscn`, per the
 screenshot-capture recipe) that directly sets `Settings.show_unit_card_tray
 = true` (or any other setter) to force a UI element visible for a
-screenshot — it's a REAL game process, not a sandboxed test run, so the
+screenshot -- it's a REAL game process, not a sandboxed test run, so the
 setter's own `_save()` call writes straight to the actual
 `user://settings.cfg` on disk, exactly like a real play session would.
 
 This bit silently: a `show_unit_card_tray defaults to false` GUT test
 started failing in a LATER, unrelated check.sh run, with no connection
-visible in the test's own diff — root-caused only by remembering an
+visible in the test's own diff -- root-caused only by remembering an
 earlier screenshot-capture step in the SAME session had set that setting
 directly. (`Lacaedemon/sparta` PR #1057, 2026-07-23.)
 
 **How to apply:** after running ANY throwaway tool scene that touches
 `Settings.*` (directly, or indirectly via a UI interaction the scene
 simulates) for a screenshot or manual verification, delete
-`user://settings.cfg` (path is machine-specific — see the "shared ACROSS
+`user://settings.cfg` (path is machine-specific -- see the "shared ACROSS
 worktrees" entries above for how to find it) before trusting the NEXT
 `tools/check.sh test`/`patch_coverage` run's results, or diff the file's
 `show_*`/`tray_row_order_placement`/etc. values against known defaults
@@ -3748,20 +3748,20 @@ already uses to force a known starting state without persisting it).
 ## A two-pass same-seed determinism test needs the tree PAUSED across `add_child`, or the two passes start one body-step out of phase
 
 A GUT test that instantiates `scenes/Battle.tscn` **twice** with the identical
-seed/scenario (to prove the sim is deterministic — no leaked global static,
+seed/scenario (to prove the sim is deterministic -- no leaked global static,
 no stray RNG draw) can still see the two passes' per-tick state diverge by a
 sub-pixel amount at the same tick number, even with every known global sim
 static (`PathField.active`, `SoldierEnemyProximity`, etc.) correctly reset
 between passes. The cause isn't a leaked static at all: whether
 `_on_soldier_tick` (which steps the soldier bodies) fires on the SAME frame
 as the first `_physics_process` call (which advances `_tick`) is a startup
-phase race against the engine's own node-ready scheduling — so one pass can
+phase race against the engine's own node-ready scheduling -- so one pass can
 get a body-step and a tick-increment on the same frame while the other gets
 them a frame apart, leaving the two passes permanently one body-step out of
 sync relative to `_tick` even though both started from byte-identical state.
 
 **Fix:** pause the tree, `add_child(_battle)`, await one `physics_frame` (the
-armies spawn; nothing steps while paused — `_physics_process` doesn't run at
+armies spawn; nothing steps while paused -- `_physics_process` doesn't run at
 all under pause, and the soldier tick early-returns), then unpause:
 
 ```gdscript
@@ -3771,11 +3771,11 @@ await get_tree().physics_frame   # spawn the armies; nothing steps while paused
 get_tree().paused = false
 ```
 
-This gives both passes a single shared start line — the unpause, not
-whatever frame `add_child` happened to land on — so the tick-increment and
+This gives both passes a single shared start line -- the unpause, not
+whatever frame `add_child` happened to land on -- so the tick-increment and
 body-step both begin in lockstep in both passes. Apply this any time a test
 needs two (or more) `Battle` instances, run sequentially or otherwise, to
-produce genuinely comparable per-tick state — not just the lockstep A/B
+produce genuinely comparable per-tick state -- not just the lockstep A/B
 sim-hash instrument this was found for, but any future test built the same
 way. (`Lacaedemon/sparta` PR #1068 / issue #1067, 2026-07-24: diagnosed with
 a throwaway per-unit diagnostic comparing body-step counts against `_tick`

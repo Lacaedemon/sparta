@@ -1,6 +1,6 @@
 # Reproducible Battle Replays
 
-Sparta records every battle so it can be re-watched and — more importantly —
+Sparta records every battle so it can be re-watched and -- more importantly --
 re-run for debugging. This is the same technique **many strategy games** use, and the
 reason such replay files stay tiny.
 
@@ -8,10 +8,10 @@ reason such replay files stay tiny.
 
 There are two common ways to build replays:
 
-1. **State-snapshot recording** — save every unit's position/health each frame
+1. **State-snapshot recording** -- save every unit's position/health each frame
    and play it back like a video. Simple, but the logs are large and it's "dumb"
    playback: you can't re-run the real logic to investigate a bug.
-2. **Deterministic simulation + input log** *(what Sparta does)* — record only
+2. **Deterministic simulation + input log** *(what Sparta does)* -- record only
    the RNG **seed** and the player's **orders** (each stamped with the physics
    tick it took effect). Replaying re-seeds the RNG and re-injects those orders
    on the same ticks, so the **real simulation** re-runs and unfolds identically.
@@ -33,7 +33,7 @@ The simulation is deterministic by construction:
 - **Orders drive the sim; presentation rides alongside.** Only right-click orders
   change the outcome, and each references units by a stable per-battle `uid` so it
   survives a scene reload. Camera pan and zoom are also recorded, but as a separate
-  **presentation track** that's purely cosmetic — it reproduces how the battle was
+  **presentation track** that's purely cosmetic -- it reproduces how the battle was
   framed without ever feeding the sim. The player's mouse (cursor, selection,
   drag-box, armed stance) rides along in a second such track, for the demo overlay.
 - Orders are queued and applied on the **next** physics tick, so live play and
@@ -88,15 +88,15 @@ The optional `camera` array is the **presentation track**: camera keyframes (`x`
 `y`, `zoom`) stamped with the physics tick they were captured on. Consecutive
 identical samples are dropped, so a still camera costs one keyframe. On playback the
 camera holds the latest keyframe at or before the current tick. The field is additive
-— replays without it (every pre-camera recording) play with the default static
-camera — so no `version` bump is needed.
+-- replays without it (every pre-camera recording) play with the default static
+camera -- so no `version` bump is needed.
 
 The optional `pointer` array is a second presentation track: the player's **mouse**
-over time — cursor world position (`x`, `y`), whether a multi-select drag-box is open
+over time -- cursor world position (`x`, `y`), whether a multi-select drag-box is open
 (`drag`, with its start corner `sx`/`sy`), the selected unit uids (`sel`), and the
 armed order stance (`mode`, a `Battle.OrderMode`). Like the camera track it's
 tick-stamped and dedup'd (a still pointer costs one keyframe), holds the latest
-keyframe at or before the current tick, and is additive — replays without it show no
+keyframe at or before the current tick, and is additive -- replays without it show no
 cursor overlay. The **demo recorder** draws it over the battle (cursor reticle,
 selection halos, drag-box, a click pulse at each order, and a stance label), so a clip
 shows what the player *did with the mouse*, not just the orders that resulted.
@@ -105,11 +105,11 @@ Each order's `target` overloads one int to encode the order kind, so the JSON
 schema stays fixed as order types are added (`Battle._apply_order_cmd` dispatches
 on it):
 
-- `-1` — plain **move** to `x,y`.
-- `-2` — **append** `x,y` to the units' waypoint queue instead of replacing the route.
-- `-3` — **formation change only**: no movement, the `formation` field carries the mode.
-- a `uid` on the **enemy** team — **attack** that unit (`x,y` ignored).
-- a `uid` on the **same** team — **relief**, **merge**, or **support**, depending on
+- `-1` -- plain **move** to `x,y`.
+- `-2` -- **append** `x,y` to the units' waypoint queue instead of replacing the route.
+- `-3` -- **formation change only**: no movement, the `formation` field carries the mode.
+- a `uid` on the **enemy** team -- **attack** that unit (`x,y` ignored).
+- a `uid` on the **same** team -- **relief**, **merge**, or **support**, depending on
   whether the target is one of the ordered `units` and on the order `mode`.
 
 The seed is stored as a **string** on purpose: JSON

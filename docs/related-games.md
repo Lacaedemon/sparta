@@ -2,7 +2,7 @@
 
 A **running review** of open-source (and a few proprietary) strategy games next
 to Sparta, so we don't re-research the landscape every time we want to borrow an
-idea, some code, or art. Append to it as new projects surface — this is a living
+idea, some code, or art. Append to it as new projects surface -- this is a living
 document, the design-and-code sibling of the art catalogue in
 [`docs/asset-sources.md`](asset-sources.md).
 
@@ -13,18 +13,18 @@ Two questions for each game:
 
 ## The one rule that decides everything: can we reuse it?
 
-Sparta's **code is MIT-licensed** (see [`LICENSE`](../LICENSE)) — permissive. That
+Sparta's **code is MIT-licensed** (see [`LICENSE`](../LICENSE)) -- permissive. That
 cuts both ways:
 
 - **Copyleft code (GPL / AGPL) is reference-only for us.** Copying GPL source into
-  Sparta would force the *combined* work — Sparta's code included — to be
+  Sparta would force the *combined* work -- Sparta's code included -- to be
   relicensed GPL. We are not doing that for a prototype. So for any GPL project we
   can **read it, learn from it, and reimplement clean-room**, but we cannot lift
   its code. Most of the open-source strategy world is GPL, so this is the common
   case, not the exception.
 - **Permissive / public-domain code (MIT, BSD, Apache, PD) we *can* vendor**, keeping
   the upstream notice. This is rare in this genre.
-- **Proprietary projects and commercial-game mods give us design lessons only** — no
+- **Proprietary projects and commercial-game mods give us design lessons only** -- no
   code, no art.
 
 **Art is licensed separately from code**, and the rules for bundling an art file
@@ -33,14 +33,14 @@ CC0 and CC-BY / CC-BY-SA are bundle-safe (CC-BY/SA need attribution; `-SA`
 derivatives stay `-SA`); `NC`, `ND`, freeware-no-redistribution, and
 commercial-game assets are reference-only. Note that
 [`PLAN.md`](../PLAN.md)'s *Locked decisions* currently say **CC0-only** for shipped
-art, which is stricter than the asset catalogue — so adopting a CC-BY-SA art set
+art, which is stricter than the asset catalogue -- so adopting a CC-BY-SA art set
 (e.g. 0 A.D.'s, below) would be a deliberate policy change to agree on first, not
 an automatic yes.
 
 **Legend (code reuse into Sparta's MIT codebase)**
-- ✅ **vendorable** — MIT / BSD / Apache / public domain; copy with the upstream notice.
-- ⛔ **reference-only (copyleft)** — GPL / AGPL; read and reimplement, never copy in.
-- 🚫 **design-only** — proprietary or a commercial-game mod; no code or art to take.
+- ✅ **vendorable** -- MIT / BSD / Apache / public domain; copy with the upstream notice.
+- ⛔ **reference-only (copyleft)** -- GPL / AGPL; read and reimplement, never copy in.
+- 🚫 **design-only** -- proprietary or a commercial-game mod; no code or art to take.
 
 (For the **art** column, the ✅ / 🅰 / ⛔ tags mean the same as in
 [`asset-sources.md`](asset-sources.md): ✅ CC0, 🅰 CC-BY/CC-BY-SA with attribution,
@@ -52,17 +52,17 @@ an automatic yes.
 
 | Game | Type | Code licence | Art / data licence | Code | Art | Relevance to Sparta |
 | --- | --- | --- | --- | :---: | :---: | --- |
-| [0 A.D.](https://play0ad.com/) | Real-time strategy, ancient warfare | GPL v2 (or later) | CC-BY-SA 3.0 | ⛔ | 🅰 | **Very high** — real-time ancient battles, formations, unit movement, economy |
-| [Freeciv](https://github.com/freeciv/freeciv) | Turn-based 4X | GPL v2 (or later) | mixed (GPL / CC-BY-SA per file) | ⛔ | 🅰 (verify each) | Medium-high — campaign/saga 4X; data-driven *rulesets* architecture |
-| [OpenCiv](https://github.com/RyanGrieb/OpenCiv) | Browser turn-based 4X | **MIT** | per-repo (verify) | ✅ | verify | Medium — MIT so code is vendorable, but TypeScript/web, turn-based |
-| [C-evo](https://en.wikipedia.org/wiki/C-evo) (original) | Turn-based 4X | source **public domain** | graphics freeware | ✅ | ⛔ | Medium — pluggable-AI module API; PD source, but Pascal/Delphi |
-| [C-evo: vn971 port](https://github.com/vn971/cevo) | Turn-based 4X | GPL-3.0 | — | ⛔ | — | Same design lessons; this port is GPL + archived (Nov 2024) |
-| [TotalWarSimulator](https://github.com/MichelangeloConserva/TotalWarSimulator) | Formation-battle research sim (Python 2D → Unity 3D) | **MIT** (see caveats below) | bundled third-party packs (varied) | ✅ | ⛔ | **Very high** — a worked 2D→3D conversion of exactly Sparta's battle layer; formation/assignment algorithms |
-| [godot-open-rts](https://github.com/lampe-games/godot-open-rts) | 3D RTS demo in Godot 4 | **MIT** | verify per asset | ✅ | verify | High — reference implementation of 3D selection, movement, and camera in Sparta's own engine |
-| [Divide et Impera](https://divideetimperamod.com/) | Total-overhaul **mod** for Total War: Rome II | proprietary (built on CA/Sega's game) | proprietary | 🚫 | 🚫 | **High for design only** — historical realism, supply/population/reform systems, 2000+ unit rosters |
+| [0 A.D.](https://play0ad.com/) | Real-time strategy, ancient warfare | GPL v2 (or later) | CC-BY-SA 3.0 | ⛔ | 🅰 | **Very high** -- real-time ancient battles, formations, unit movement, economy |
+| [Freeciv](https://github.com/freeciv/freeciv) | Turn-based 4X | GPL v2 (or later) | mixed (GPL / CC-BY-SA per file) | ⛔ | 🅰 (verify each) | Medium-high -- campaign/saga 4X; data-driven *rulesets* architecture |
+| [OpenCiv](https://github.com/RyanGrieb/OpenCiv) | Browser turn-based 4X | **MIT** | per-repo (verify) | ✅ | verify | Medium -- MIT so code is vendorable, but TypeScript/web, turn-based |
+| [C-evo](https://en.wikipedia.org/wiki/C-evo) (original) | Turn-based 4X | source **public domain** | graphics freeware | ✅ | ⛔ | Medium -- pluggable-AI module API; PD source, but Pascal/Delphi |
+| [C-evo: vn971 port](https://github.com/vn971/cevo) | Turn-based 4X | GPL-3.0 | -- | ⛔ | -- | Same design lessons; this port is GPL + archived (Nov 2024) |
+| [TotalWarSimulator](https://github.com/MichelangeloConserva/TotalWarSimulator) | Formation-battle research sim (Python 2D → Unity 3D) | **MIT** (see caveats below) | bundled third-party packs (varied) | ✅ | ⛔ | **Very high** -- a worked 2D→3D conversion of exactly Sparta's battle layer; formation/assignment algorithms |
+| [godot-open-rts](https://github.com/lampe-games/godot-open-rts) | 3D RTS demo in Godot 4 | **MIT** | verify per asset | ✅ | verify | High -- reference implementation of 3D selection, movement, and camera in Sparta's own engine |
+| [Divide et Impera](https://divideetimperamod.com/) | Total-overhaul **mod** for Total War: Rome II | proprietary (built on CA/Sega's game) | proprietary | 🚫 | 🚫 | **High for design only** -- historical realism, supply/population/reform systems, 2000+ unit rosters |
 | [M2TWEOP](https://github.com/EOP-Labs/M2TWEOP-library) | Engine-overhaul **mod framework** for Medieval II: Total War | GPL-3.0 | game data proprietary (CA/Sega) | ⛔ | 🚫 | **High for design only** -- a published schema of a shipped Total War title's runtime state: morale and combat-status ladders, a battle-event taxonomy, an army-plan vocabulary |
 | [Renaissance Kingdom Wars](https://store.steampowered.com/app/2533020/Renaissance_Kingdom_Wars/) | Real-time strategy + grand-strategy hybrid | proprietary | proprietary | 🚫 | 🚫 | **High for design only** -- RTS tactical battles fused with a province-conquest grand-strategy layer; mercenary-to-empire progression |
-| [awesome-paradox](https://github.com/js00070/awesome-paradox) | Curated list of Paradox-related projects | n/a (link list) | n/a | — | — | Pointers to grand-strategy / **dynasty** design and OSS reimplementations |
+| [awesome-paradox](https://github.com/js00070/awesome-paradox) | Curated list of Paradox-related projects | n/a (link list) | n/a | -- | -- | Pointers to grand-strategy / **dynasty** design and OSS reimplementations |
 
 ---
 
@@ -71,7 +71,7 @@ an automatic yes.
 ### 0 A.D. (Wildfire Games)
 
 The closest open-source relative to Sparta's battle layer: a real-time strategy
-game set in **ancient warfare** (the same 500 BC – 1 AD world Sparta draws on),
+game set in **ancient warfare** (the same 500 BC - 1 AD world Sparta draws on),
 with land battles of hundreds of units, formations, ranged-vs-melee interplay,
 territory, and an economy. Released July 2009; version 28 "Boiorix" (Feb 2026) is
 the first non-alpha build.
@@ -87,7 +87,7 @@ the first non-alpha build.
   CC-BY-SA 3.0** → 🅰 bundle-safe *with attribution and share-alike*, exactly like
   the LPC sets already noted in [`asset-sources.md`](asset-sources.md). This is the
   single biggest art opportunity in the list: a large, directly-relevant
-  ancient-warfare library — gated only by PLAN.md's current CC0-only stance.
+  ancient-warfare library -- gated only by PLAN.md's current CC0-only stance.
 
 ### Freeciv
 
@@ -97,7 +97,7 @@ buildings, techs, governments as editable data files), so the same engine can ru
 "civ2civ3", a classic ruleset, or a custom one without code changes.
 
 - **Design to learn from:** the ruleset pattern is a strong model for Sparta's own
-  data-driven content — we already load campaigns from JSON
+  data-driven content -- we already load campaigns from JSON
   ([`data/campaigns/`](../data/campaigns)); the same idea generalises to unit and
   faction definitions for the campaign/saga layer
   ([#126](https://github.com/Lacaedemon/sparta/issues/126),
@@ -116,7 +116,7 @@ could legitimately **vendor** into Sparta.
 - **Design to learn from:** clean modern take on tile interaction, camera/zoom
   controls, and turn progression.
 - **Caveat:** it is TypeScript targeting the browser and is turn-based, while
-  Sparta is GDScript/Godot and real-time tactical — so the practical reuse is
+  Sparta is GDScript/Godot and real-time tactical -- so the practical reuse is
   *patterns and structure*, not literal code transplants. Its design value
   outweighs its (technically permitted) code-reuse value.
 
@@ -129,7 +129,7 @@ freeware), so the original source is, uniquely, freely reusable.
 
 - **Design to learn from:** the pluggable-AI-module boundary is a clean model for
   [#135](https://github.com/Lacaedemon/sparta/issues/135) (recruitable AI
-  subcommanders given higher-level orders) — define a narrow command API and let an
+  subcommanders given higher-level orders) -- define a narrow command API and let an
   AI "commander" drive units through it.
 - **Licence nuance:** the **original** source is public domain → ✅ vendorable in
   principle, but it's Pascal/Delphi, so porting to GDScript is a rewrite, not a
@@ -143,7 +143,7 @@ A solo-authored research project (later "Total War: AI", a QMUL Game AI group
 effort) that tried to reproduce Total War-style formation battles three times
 over: a **Python/pymunk 2D prototype** (`master`), a **Unity 3D port**
 (`unity`, the default branch), and an abandoned **Unity DOTS** spike (`dots`)
-— plus a `cpp` branch. Studied in depth for the 3D conversion; the full
+-- plus a `cpp` branch. Studied in depth for the 3D conversion; the full
 findings and the ideas adopted are in
 [`3d-conversion-design.md`](3d-conversion-design.md).
 
@@ -159,7 +159,7 @@ findings and the ideas adopted are in
   hacky in Unity, and the project died of serial rewrites rather than any
   technical wall.
 - **Licence:** **MIT** (LICENSE added on the `unity` default branch) → ✅
-  vendorable in principle — a rarity in this genre. Two caveats: the vendored
+  vendorable in principle -- a rarity in this genre. Two caveats: the vendored
   LAP/Hungarian solvers carry no license headers and have unclear upstream
   origins (re-implement, don't copy), and the bundled `Alglib` plugin is
   GPL/commercial dual-licensed (never copy). Bundled art (medieval weapon and
@@ -170,7 +170,7 @@ findings and the ideas adopted are in
 
 A complete small 3D RTS built in Godot 4 (MIT, ~1.1k stars): selection,
 movement, construction, fog of war. Not a formation battle game, but the most
-useful **same-engine reference** for the 3D conversion's interaction shell —
+useful **same-engine reference** for the 3D conversion's interaction shell --
 RTS camera, unit picking, and drag-select done idiomatically in Godot 4.
 
 - **Design to learn from:** working, readable implementations of the exact
@@ -183,12 +183,12 @@ RTS camera, unit picking, and drag-select done idiomatically in Godot 4.
 
 Not a standalone game: a **total-overhaul mod for Total War: Rome II** (a
 commercial Creative Assembly / Sega title). It rebuilds the ancient-warfare
-experience around historical authenticity — a custom population system, a supply
+experience around historical authenticity -- a custom population system, a supply
 system, a reforms system, 2000+ hand-built unit rosters, and reworked battle AI
 and unit behaviour.
 
 - **Design to learn from:** a rich source of *what realistic ancient warfare feels
-  like* — supply lines, population, and believable unit behaviour. Directly informs
+  like* -- supply lines, population, and believable unit behaviour. Directly informs
   [#201](https://github.com/Lacaedemon/sparta/issues/201) (physics-based battles)
   and the broader realism goals.
 - **Licence:** it is built on a proprietary game and its assets → 🚫 **design
@@ -323,14 +323,14 @@ November 2024.
 ### awesome-paradox
 
 A curated list of open-source projects around **Paradox Interactive** grand-strategy
-games (Crusader Kings, Europa Universalis, Victoria, Hearts of Iron) — mods, save
+games (Crusader Kings, Europa Universalis, Victoria, Hearts of Iron) -- mods, save
 converters, parsers, and reimplementations.
 
 - **Design to learn from:** Paradox's **dynasty/character** systems (Crusader Kings)
   are the clearest commercial model for Sparta's "**dynastic** grand-strategy" pitch
   and the saga layer ([#126](https://github.com/Lacaedemon/sparta/issues/126)). Two
-  list entries are open-source reimplementations of Victoria II — **OpenVic** and
-  **Project Alice** — worth studying for how a deep grand-strategy simulation is
+  list entries are open-source reimplementations of Victoria II -- **OpenVic** and
+  **Project Alice** -- worth studying for how a deep grand-strategy simulation is
   structured in open code (check each project's own licence before reusing code).
 - **Licence:** the list itself is just links; the games it orbits are proprietary,
   so most mods build on closed engines. Treat as a reading list, not a code source.
@@ -339,19 +339,19 @@ converters, parsers, and reimplementations.
 
 ## Others worth a look
 
-The same pattern repeats across the open-source strategy ecosystem — **GPL code,
-often CC-BY-SA art** — so all of these are ⛔ for code reuse and 🅰 (verify) for
+The same pattern repeats across the open-source strategy ecosystem -- **GPL code,
+often CC-BY-SA art** -- so all of these are ⛔ for code reuse and 🅰 (verify) for
 art:
 
-- **The Battle for Wesnoth** (GPL v2; art CC-BY-SA) — turn-based tactics with a
+- **The Battle for Wesnoth** (GPL v2; art CC-BY-SA) -- turn-based tactics with a
   strong data-driven scenario/campaign system (WML). Good reference for
   externalised content.
-- **Warzone 2100** (GPL v2; assets CC0 / CC-BY-SA) — real-time strategy; one of the
+- **Warzone 2100** (GPL v2; assets CC0 / CC-BY-SA) -- real-time strategy; one of the
   more permissively-arted GPL projects.
-- **OpenRA** (GPL v3) — a modernised RTS engine with a well-regarded multiplayer and
+- **OpenRA** (GPL v3) -- a modernised RTS engine with a well-regarded multiplayer and
   **replay** architecture, relevant to Sparta's deterministic replay system
   ([`scripts/Replay.gd`](../scripts/Replay.gd), [`REPLAY.md`](../REPLAY.md)).
-- **Beyond All Reason / Recoil (Spring)** (GPL) — very large-scale RTS; a reference
+- **Beyond All Reason / Recoil (Spring)** (GPL) -- very large-scale RTS; a reference
   for unit counts and movement/physics at scale
   ([#201](https://github.com/Lacaedemon/sparta/issues/201)).
 
@@ -361,19 +361,19 @@ art:
 
 - **Code:** the genre is overwhelmingly GPL, and Sparta is MIT, so treat 0 A.D.,
   Freeciv, Wesnoth, OpenRA, Spring, and the `vn971/cevo` port as **design and
-  architecture references — read, learn, reimplement clean-room; never copy code
+  architecture references -- read, learn, reimplement clean-room; never copy code
   in.** The legitimately vendorable exceptions: **TotalWarSimulator (MIT)** and
-  **godot-open-rts (MIT)** — both directly relevant to the 3D conversion, the
-  latter even in our own engine — plus **OpenCiv (MIT)** and the **original
+  **godot-open-rts (MIT)** -- both directly relevant to the 3D conversion, the
+  latter even in our own engine -- plus **OpenCiv (MIT)** and the **original
   C-evo (public-domain source)**, which are different engines/languages and
   turn-based, so their design value beats their code value.
 - **Art:** the best opportunity is **0 A.D.'s CC-BY-SA 3.0 ancient-warfare
-  library** — bundle-safe with attribution under the [`asset-sources.md`](asset-sources.md)
+  library** -- bundle-safe with attribution under the [`asset-sources.md`](asset-sources.md)
   rules, but blocked for now by PLAN.md's CC0-only locked decision. If we ever
   relax that to allow CC-BY-SA (as the LPC note already contemplates), 0 A.D. is
   the first place to look.
 - **Highest design value for Sparta specifically:** **0 A.D.** (real-time ancient
-  tactics, formations, collision/pathing — our core pillar) and **Divide et Impera**
+  tactics, formations, collision/pathing -- our core pillar) and **Divide et Impera**
   (historical realism: supply, population, rosters, believable unit behaviour).
 - **Best source for the layers *above* the physics:** **M2TWEOP**, which is less a
   design to copy than a published schema of what a shipped Total War title tracks.

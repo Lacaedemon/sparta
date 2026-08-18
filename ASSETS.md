@@ -1,24 +1,24 @@
 # Art assets
 
-The game runs **without any downloaded art** — units draw as placeholder tokens in
+The game runs **without any downloaded art** -- units draw as placeholder tokens in
 `Unit.gd`. When you want real medieval art, use genuinely free **CC0** sources below.
 
 > 📓 For the broader **running catalog** of audio + graphics sources (including
 > reference-only libraries we can't bundle), see
 > [`docs/asset-sources.md`](docs/asset-sources.md).
 
-> ⚠️ **Do not use commercial-game mod assets.** They are *not* public domain — modders retain
+> ⚠️ **Do not use commercial-game mod assets.** They are *not* public domain -- modders retain
 > copyright and many derive from copyrighted base-game art. Shipping them is legally risky.
 > The sources below are CC0 (public-domain equivalent): free for any use, no attribution
-> required (crediting is still polite — see the table).
+> required (crediting is still polite -- see the table).
 
 ## Recommended CC0 packs
 
 | Pack | Use for | License | Link |
 | --- | --- | --- | --- |
 | Toen's Medieval Strategy Sprite Pack (16×16) | Soldiers, cavalry, siege, banners | CC0 | https://opengameart.org/content/toens-medieval-strategy-sprite-pack-v10-16x16 |
-| Kenney — game assets | UI buttons, panels, fonts, tiles | CC0 | https://kenney.nl/assets |
-| OpenGameArt — CC0 collection | Terrain, grass/dirt tiles, props | CC0 | https://opengameart.org/art-search-advanced?keys=&field_art_licenses_tid%5B%5D=4 |
+| Kenney -- game assets | UI buttons, panels, fonts, tiles | CC0 | https://kenney.nl/assets |
+| OpenGameArt -- CC0 collection | Terrain, grass/dirt tiles, props | CC0 | https://opengameart.org/art-search-advanced?keys=&field_art_licenses_tid%5B%5D=4 |
 
 ## How to add them
 1. Download a pack and unzip it.
@@ -29,4 +29,4 @@ The game runs **without any downloaded art** — units draw as placeholder token
 ## Credits
 CC0 requires no attribution, but list anything you use here as good practice:
 
-- _(none yet — placeholder primitives only)_
+- _(none yet -- placeholder primitives only)_

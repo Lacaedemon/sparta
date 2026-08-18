@@ -3,7 +3,7 @@
 Unit tests use [GUT](https://github.com/bitwes/Gut) (Godot Unit Test), pinned to
 **v9.7.0** (the Godot 4.7 release).
 
-GUT itself is **not committed** to this repo — CI vendors it at run time and you
+GUT itself is **not committed** to this repo -- CI vendors it at run time and you
 install it locally the same way:
 
 ```sh
@@ -13,7 +13,7 @@ mkdir -p addons && cp -r /tmp/gut/addons/gut addons/gut
 
 ## Running
 
-Headless (what CI runs — see `.github/workflows/godot-ci.yml`):
+Headless (what CI runs -- see `.github/workflows/godot-ci.yml`):
 
 ```sh
 godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://test -ginclude_subdirs -gexit
@@ -23,7 +23,7 @@ Or, in the editor, enable the GUT plugin (**Project → Project Settings →
 Plugins**) and use the GUT bottom panel.
 
 Or run [`tools/check.sh`](../tools/check.sh) (no args), which vendors GUT on
-demand and runs the suite alongside the project's other CI checks — see
+demand and runs the suite alongside the project's other CI checks -- see
 [`tools/README.md`](../tools/README.md).
 
 ## Layout
@@ -40,7 +40,7 @@ Test files must be named `test_*.gd` and extend `GutTest`.
 Line coverage is measured with
 [`jamie-pate/godot-code-coverage`](https://github.com/jamie-pate/godot-code-coverage)
 (its `godot4` branch), committed under [`../addons/coverage/`](../addons/coverage/)
-and pinned to commit `9c8d4a9`. Unlike GUT, the coverage addon **is** committed —
+and pinned to commit `9c8d4a9`. Unlike GUT, the coverage addon **is** committed --
 it is small, has no releases to pin a tag against, and reviewers can see the exact
 instrumented code in the diff. The only change from upstream is one debug
 constant (`DEBUG_SCRIPT_COVERAGE`) set to `0`, so instrumenting the tree doesn't
@@ -73,5 +73,5 @@ Two known limitations, both inherent to the instrumenter:
   instantiated before the pre-run hook fires, so reloading their scripts to
   instrument them is unreliable; `pre_run_hook.gd` skips them.
 - Instrumentation reloads each script with injected line counters, so the
-  coverage run is a little slower than the plain `test` job — another reason it
+  coverage run is a little slower than the plain `test` job -- another reason it
   runs separately.

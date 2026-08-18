@@ -5,22 +5,22 @@
 A prototype that fuses grand strategy with real-time tactical battles. 
 Built in **Godot 4.7** with GDScript.
 
-This repo currently contains **Milestone 1: a single, self-contained tactical battle** —
+This repo currently contains **Milestone 1: a single, self-contained tactical battle** --
 the hardest and most differentiating piece, built first as a vertical slice. The campaign
 map and the integration between the two layers come in later milestones (see the project plan).
 
-📖 **Documentation site:** <https://lacaedemon.github.io/sparta/> — getting started,
+📖 **Documentation site:** <https://lacaedemon.github.io/sparta/> -- getting started,
 controls, tactics, the replay system, architecture, and roadmap, with gameplay clips.
 (Built with Quarto from `website/`; published via GitHub Pages.)
 
 ## Run it
 
-1. Install **Godot 4.7.x — Standard build** (not the .NET/C# build) from
+1. Install **Godot 4.7.x -- Standard build** (not the .NET/C# build) from
    <https://godotengine.org/download/windows/>.
 2. Open Godot, click **Import**, and select this folder's `project.godot`.
-3. Press **F5** (Play). A title menu opens with two modes — no art download required:
-   - **Tactical Battle** — the M1 real-time battle (units render as colored tokens).
-   - **Campaign: Gallic War** — the M2 turn-based province-conquest map (Rome vs the
+3. Press **F5** (Play). A title menu opens with two modes -- no art download required:
+   - **Tactical Battle** -- the M1 real-time battle (units render as colored tokens).
+   - **Campaign: Gallic War** -- the M2 turn-based province-conquest map (Rome vs the
      Gallic tribes). Click one of your (blue) armies, then an adjacent province to
      move or attack; **End Turn** runs the enemy; conquer every province to win.
 
@@ -40,7 +40,7 @@ You command the **blue** army (top). Defeat the **red** army (bottom).
 Every battle is recorded automatically (`● REC`, top-center). When it ends, hit
 **Watch Replay** to re-run it (`▶ REPLAY`), or **Load Replay** (top-right, also
 on the end screen) to pick any earlier saved battle. Logs are tiny deterministic
-seed-plus-orders files in `user://replays/` — the same approach many strategy games use —
+seed-plus-orders files in `user://replays/` -- the same approach many strategy games use --
 so they're handy for both re-watching battles and debugging. See
 [REPLAY.md](REPLAY.md).
 
@@ -51,7 +51,7 @@ so they're handy for both re-watching battles and debugging. See
   (flee, shown faded) and stop counting toward the battle. Routs spread to nearby allies.
 - **Rock-paper-scissors:** **Cavalry** are fast and get a charge bonus, but **Spearmen**
   (with the spear marker) blunt that charge. Use cavalry to flank, spears to screen.
-- **Disengaging:** right-click ground (a move order) to pull a unit *out* of melee —
+- **Disengaging:** right-click ground (a move order) to pull a unit *out* of melee --
   handy for retreating a battered regiment or redeploying cavalry to a new flank.
   It's risky: while marching away the unit shows its back, so the enemy it left gets
   free rear hits (×2) until it's clear. Stop the unit and it re-engages anything nearby.
@@ -72,14 +72,14 @@ scripts/
   HUD.gd               Unit info panel, victory/defeat overlay
   MainMenu.gd          Title screen UI (built in code)
   campaign/            M2 campaign map (#70):
-    CampaignState.gd     Province/turn/combat rules — pure logic, unit-tested
+    CampaignState.gd     Province/turn/combat rules -- pure logic, unit-tested
     CampaignLoader.gd    Loads + validates a campaign map from a JSON data file (#125)
     Campaigns.gd         Registry of available campaigns (what the menu lists)
     CampaignMap.gd       Renders provinces, handles clicks, runs the enemy turn
     CampaignHUD.gd       Turn banner, End Turn, standings, victory overlay
-data/campaigns/        Campaign map data files (gallic_war.json) — add a JSON + a
+data/campaigns/        Campaign map data files (gallic_war.json) -- add a JSON + a
                        Campaigns.gd row to ship a new campaign
-assets/                CC0 art goes here (see ASSETS.md) — not required to run
+assets/                CC0 art goes here (see ASSETS.md) -- not required to run
 ```
 
 ## Swapping placeholder art for real sprites
@@ -92,7 +92,7 @@ See [ASSETS.md](ASSETS.md) for where to get CC0 medieval sprites.
 
 The repo works well with Claude Code's cloud environment for editing GDScript and managing Git, with a few things to know:
 
-**No setup needed for code editing.** The environment requires no environment variables and no build step — just open a session and start editing.
+**No setup needed for code editing.** The environment requires no environment variables and no build step -- just open a session and start editing.
 
 **Running Godot headlessly is possible** but requires installing it in the setup script. Add this to your environment's setup script (use Godot 4.7.x, or whatever version matches the project):
 
@@ -107,11 +107,11 @@ export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Once installed, `godot --headless` validates the project and runs the unit-test
-suite ([GUT](https://github.com/bitwes/Gut)) — see [`test/README.md`](test/README.md).
+suite ([GUT](https://github.com/bitwes/Gut)) -- see [`test/README.md`](test/README.md).
 
 > **Note:** The snippet above targets Godot 4.7 to match the project. If the engine version changes, update both the download URL and the binary filename.
 
-**To actually play the game**, pull the branch locally and open it in the Godot 4.7 desktop editor — the cloud environment has no display.
+**To actually play the game**, pull the branch locally and open it in the Godot 4.7 desktop editor -- the cloud environment has no display.
 
 ## Local checks (reproduce CI before pushing)
 
@@ -131,10 +131,10 @@ setup beyond a Godot 4.7 binary on `PATH` (or set `GODOT_BIN`). See
 
 ## Roadmap
 - **M1 (here):** one playable tactical battle. ✅ scaffolded
-- **M2:** campaign map — provinces, characters, turn-based diplomacy; battles auto-resolved.
+- **M2:** campaign map -- provinces, characters, turn-based diplomacy; battles auto-resolved.
   🚧 first slice in (#70): a Gallic War conquest map (provinces, army moves,
   auto-resolved battles, enemy AI, victory). Diplomacy/characters are follow-ups.
-- **M3:** integration — armies on the map launch into this battle scene and return a result.
+- **M3:** integration -- armies on the map launch into this battle scene and return a result.
 
 ## License
 
@@ -144,4 +144,4 @@ The **code** is licensed under the [MIT License](LICENSE).
 third-party art and audio under `assets/`, which each keep their own license
 (CC0 or CC-BY). See [`assets/sfx/CREDITS.md`](assets/sfx/CREDITS.md) for audio and
 [`ASSETS.md`](ASSETS.md) for graphics. The project bundles only assets that permit
-redistribution — never `NC`/`ND` or no-redistribution stock content.
+redistribution -- never `NC`/`ND` or no-redistribution stock content.

@@ -1,7 +1,7 @@
-# Sparta — Project Plan & Handoff
+# Sparta -- Project Plan & Handoff
 
 > Self-contained record so any new session (cloud or local) can continue without prior chat context.
-> Last edited — see this file's git history (`git log -- PLAN.md`) rather than a hand-maintained date, which drifts.
+> Last edited -- see this file's git history (`git log -- PLAN.md`) rather than a hand-maintained date, which drifts.
 
 ## Vision
 A game fusing **dynastic grand-strategy** campaign mechanics with **real-time
@@ -12,12 +12,12 @@ then grow outward.
 ## Locked decisions
 - **Engine:** Godot **4.7.x Standard build** (GDScript, *not* the C#/.NET build).
 - **Battles:** 2D top-down today; a conversion to a Total War-style **3D battle
-  view** is planned (#69) — the deterministic sim stays planar and only the
+  view** is planned (#69) -- the deterministic sim stays planar and only the
   presentation/camera/input shell changes. See `docs/3d-conversion-design.md`
   for the architecture, the Godot-vs-Unity assessment (staying on Godot), and
   the phased roadmap. The campaign map stays 2D.
-- **Art:** **CC0 only** — Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
-  - ⚠️ **Not** commercial-game mod assets — they are copyrighted, not public domain.
+- **Art:** **CC0 only** -- Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
+  - ⚠️ **Not** commercial-game mod assets -- they are copyrighted, not public domain.
 - **First milestone:** one self-contained tactical battle. No campaign map yet.
 - **Performance target (#549, hardware floor revised with #69):** **60fps at a representative
   large-battle scale** (several hundred soldiers across multiple regiments, actively engaged
@@ -36,24 +36,24 @@ then grow outward.
   and both checks.
 
 ## Design pillars
-1. **Collision is core — treat it as a first-class system, not polish.** In a large-scale tactical
+1. **Collision is core -- treat it as a first-class system, not polish.** In a large-scale tactical
    battle, where bodies are on the field *is* the game: units must physically occupy space,
    press against each other, hold formation, and be blocked by friend and foe. Flanking, screening
    spearmen, cavalry charges, and chokepoints are only meaningful if units cannot pass through or
    stack on one another. Every movement/combat feature is designed around this constraint, and
    collision correctness/perf takes priority over new feature breadth.
-   - **Current state:** soft separation in `Unit.gd` → `_separate()` — each frame a unit pushes
+   - **Current state:** soft separation in `Unit.gd` → `_separate()` -- each frame a unit pushes
      out of any overlapping unit (live or routing) by half the overlap (neighbor corrects the rest),
      using a **per-type** center-to-center floor (cavalry wider than infantry) rather than a shared
      `RADIUS`. It is intentionally *soft* so regiments still press into melee contact (attack reach >
-     separation floor) instead of bouncing apart — except against a spearman screen, where `_separate()`
+     separation floor) instead of bouncing apart -- except against a spearman screen, where `_separate()`
      → `_push_share()` gives cavalry the full correction so it can't ride through the line. Neighbor
      lookups run on the `SpatialHash` grid rather than an O(n²) scan. All five roadmap items below
      have landed.
    - **Individual-soldier layer (#164, phases 1-3 landed):** alongside the regiment circle, soldiers
      exist as simulated bodies (`_sim_soldier_pos`), seeded from formation slots, separated
      per-soldier across regiments (engaged front ranks, on a `SoldierSpatialHash`), and **rendered
-     at those positions** so the on-screen soldiers reflect the collision — behind
+     at those positions** so the on-screen soldiers reflect the collision -- behind
      `Unit.INDIVIDUAL_COLLISION` (on) and **non-authoritative** for the sim (combat/movement still use
      the regiment circle). Next: phase 4 makes combat per-soldier (the first gameplay change), then
      phase 5 retires the circle. See `docs/individual-collision-design.md`.
@@ -73,8 +73,8 @@ then grow outward.
         `SpatialHash.gd`/`SoldierSpatialHash.gd`; see `docs/individual-collision-design.md` for the
         full individual-collision design.
 2. **Bottom-up emergence over top-down heuristics.** As we move away from control-theory/springs/
-   heuristics, we add more realistic behaviors at each organizational level — soldier, file/rank,
-   unit/regiment, army — and let system-level phenomena (formation shape, morale/routing,
+   heuristics, we add more realistic behaviors at each organizational level -- soldier, file/rank,
+   unit/regiment, army -- and let system-level phenomena (formation shape, morale/routing,
    rank-closing, combat outcomes) *emerge* from the aggregate interaction of those local rules,
    rather than approximating the desired system-level outcome directly with a top-down formula or
    magic-number lookup. We're building the game model bottom-up, not top-down.
@@ -86,13 +86,13 @@ then grow outward.
      heuristics (`flank_multiplier()`, `charge_multiplier()` as magic-number lookups) with concrete
      per-soldier `Weapon`/`Shield` objects whose properties (reach, defense) directly drive outcomes.
    - **Formation shape (#530, in flight as PR #534):** replacing "formation = a combat-multiplier
-     flag" with real soldier-by-soldier geometric restructuring — a square is actually square, a
-     shield wall is actually tighter — so the formation's tactical effect emerges from its real
+     flag" with real soldier-by-soldier geometric restructuring -- a square is actually square, a
+     shield wall is actually tighter -- so the formation's tactical effect emerges from its real
      geometry, not an abstracted flag.
    - **Slot ownership and reshaping (#547, design, just filed):** replacing the block-level
      "recompute the whole formation and reassign soldiers by array index" heuristic (the source of
-     #541's identity-swap bug) with individual soldiers receiving explicit orders — one-shot
-     reshaping instructions plus bounded standing orders like "advance if your file-mate dies" —
+     #541's identity-swap bug) with individual soldiers receiving explicit orders -- one-shot
+     reshaping instructions plus bounded standing orders like "advance if your file-mate dies" --
      from their unit commander. Formation-level behavior (rank-closing, reshaping) emerges from
      individually-ordered soldiers, not a centralized recompute.
    - **Square as sub-unit folding (#1161, design in `docs/square-formation-design.md`):**
@@ -114,28 +114,28 @@ then grow outward.
      faces), and re-expresses unit-level reforms as subunit-level operations, the way
      `reversed_ranks_within_files` already does for the countermarch reform.
    - **Rout/discipline (#529, in flight as PR #533):** stays at the current unit-level morale-scalar
-     architecture for now — a candidate for later, not scoped now. Individual soldier morale/fear
+     architecture for now -- a candidate for later, not scoped now. Individual soldier morale/fear
      (nearby casualties, whether neighbors are routing, commander proximity) aggregating into
      unit-level rout/rally is the natural next step in this direction, but nothing is decided or
      in progress on it yet.
-   - **Going forward:** when a system-level behavior needs modeling — or an existing one needs
-     revisiting — prefer defining realistic local rules at the right organizational level (soldier /
+   - **Going forward:** when a system-level behavior needs modeling -- or an existing one needs
+     revisiting -- prefer defining realistic local rules at the right organizational level (soldier /
      file/rank / unit / army) and letting the system-level outcome emerge, over directly encoding
      the system-level outcome as a heuristic/formula/multiplier at the top. Weigh this against the
      standing performance constraint: per-entity realism must stay array-based/SoA at the
-     soldier-count scale this game targets. The #497/#535 resolution is the general pattern —
+     soldier-count scale this game targets. The #497/#535 resolution is the general pattern --
      concrete shared `Type` objects plus per-soldier array state, not per-soldier heap-allocated
-     objects — so bottom-up realism doesn't cost bottom-up performance.
-3. **Compositionality — small units that combine, not monoliths.** We build lots of small,
-   focused, single-responsibility units — functions, classes, order primitives, behaviors — and
+     objects -- so bottom-up realism doesn't cost bottom-up performance.
+3. **Compositionality -- small units that combine, not monoliths.** We build lots of small,
+   focused, single-responsibility units -- functions, classes, order primitives, behaviors -- and
    combine them into larger structures, rather than building large monolithic units that directly
    encode complex behavior wholesale. A big capability should be assembled from small composable
    pieces, not authored as one big piece.
    - **Order composability (#516, design merged as `docs/orders-queue-design.md` via PR #527):**
-     the unified orders-queue model is explicitly composable via two disciplined mechanisms —
+     the unified orders-queue model is explicitly composable via two disciplined mechanisms --
      intra-order **phasing** (a single order like move-to-rear carries internal phases: turn-in-place
      then march) and macro **expansion** (a higher-level command expands into a flat sequence of
-     primitive orders) — and explicitly rejects a deep nested order-tree/behavior-tree in favor of
+     primitive orders) -- and explicitly rejects a deep nested order-tree/behavior-tree in favor of
      this flat composition, for both legibility and determinism.
      **Superseded (#822, design in `docs/atomic-order-decomposition-design.md`):** this flat-only
      position is being revisited in favor of a genuinely nested order tree, for the conceptual-chunking
@@ -143,13 +143,13 @@ then grow outward.
    - **Individual-soldier orders (#547, design, just filed):** replacing block-level monolithic
      layout recomputation with small, individually-addressed per-soldier orders (one-shot reshaping
      instructions, bounded standing orders) that compose into unit-level and formation-level
-     emergent behavior — a direct instance of both this pillar and pillar 2 (bottom-up emergence) at
+     emergent behavior -- a direct instance of both this pillar and pillar 2 (bottom-up emergence) at
      once; the two pillars reinforce each other here.
    - **Reform as a separate composable phase, not baked into conversio (#552, just scoped):** the
      about-face (`conversio`) primitive stays narrow and single-purpose; a "reform to fill the new
      front rank" step is a separate phase that composite orders combine alongside `conversio`
      (before or after a march phase, depending on order intent) rather than logic bolted onto the
-     `conversio` primitive itself — a concrete example of keeping primitives small and composing
+     `conversio` primitive itself -- a concrete example of keeping primitives small and composing
      them, rather than growing one primitive to do more.
    - **Weapon/Shield as small composable objects (#535, design, in flight):** concrete, focused
      `Weapon`/`Shield` type objects (each responsible for its own reach/defense/behavior) referenced
@@ -157,8 +157,8 @@ then grow outward.
      equipment interaction directly.
    - **Going forward:** when designing a new system or extending an existing one, prefer decomposing
      into several small, focused, independently-testable units (a pure function, a narrow class, an
-     order primitive) that compose via a clear, disciplined composition mechanism — phasing,
-     macro-expansion, references/ids — over building one large unit that directly encodes the whole
+     order primitive) that compose via a clear, disciplined composition mechanism -- phasing,
+     macro-expansion, references/ids -- over building one large unit that directly encodes the whole
      behavior wholesale. Avoid deep inheritance trees and sprawling god-objects/god-functions; those
      are monoliths by another name. This pillar and pillar 2 (bottom-up emergence) are complementary,
      not identical: bottom-up emergence is about *where* behavior should live (the right
@@ -167,30 +167,30 @@ then grow outward.
      #547 is the clearest example of both principles operating together.
 
 ## Prioritized roadmap (synced with GitHub issues)
-Tracked as issues on `Lacaedemon/sparta` with `P0`–`P3` labels (a GitHub Project board groups them).
-Order reflects dependencies — validate the foundation, then build the collision pillar, then the
+Tracked as issues on `Lacaedemon/sparta` with `P0`-`P3` labels (a GitHub Project board groups them).
+Order reflects dependencies -- validate the foundation, then build the collision pillar, then the
 features that depend on it, then independent polish.
 
-- **P0 — Foundation (do first):**
-  - #12 M1 first run & verification in Godot — nothing below is validated until this passes.
-  - #13 Spacebar active pause — implemented in PR #2, pending live confirm.
-- **P1 — Collision pillar (core, in dependency order):**
+- **P0 -- Foundation (do first):**
+  - #12 M1 first run & verification in Godot -- nothing below is validated until this passes.
+  - #13 Spacebar active pause -- implemented in PR #2, pending live confirm.
+- **P1 -- Collision pillar (core, in dependency order):**
   - #6 Per-type footprint (`_separate()` now uses per-type separation radii instead of the shared `RADIUS`). (shipped)
   - #10 NavigationAgent2D pathfinding (decide path-vs-collision split here). (shipped)
-  - #9 Scale beyond O(n²) — pairs with #10. (shipped)
+  - #9 Scale beyond O(n²) -- pairs with #10. (shipped)
   - #7 Formation cohesion (depends on #6). (shipped)
   - #8 Hard blocking: spears stop cavalry (depends on solid collision + formations). (shipped)
-- **P2 — Features on the shared "collision-exemption" primitive (build it once in #5, reuse):**
+- **P2 -- Features on the shared "collision-exemption" primitive (build it once in #5, reuse):**
   - #5 Friendly pass-through (simplest; establishes the primitive).
   - #4 Line relief (adds fatigue stat + handoff).
   - #3 Unit merging (stat blending + "strangers" debuff).
-- **P3 — Independent polish:**
+- **P3 -- Independent polish:**
   - #11 Richer selection (double-click type-select, control groups).
 
-## Current status — Milestone 1: SCAFFOLDED, not yet run in Godot
+## Current status -- Milestone 1: SCAFFOLDED, not yet run in Godot
 All code written and committed to the repo. Runs with **zero downloaded art** (units are
 self-drawn colored tokens). **Not yet opened in the Godot editor**, so no live playtest has
-happened — first run is the immediate next step (see Verification).
+happened -- first run is the immediate next step (see Verification).
 
 ### What exists
 ```
@@ -202,7 +202,7 @@ scripts/
   SelectionManager.gd  LMB click + drag-box select; RMB move/attack orders
   CameraController.gd  WASD/arrow/edge pan, mouse-wheel zoom
   HUD.gd               Selected-unit info panel, victory/defeat overlay (built in code)
-assets/sprites, assets/ui   Empty (.gitkeep) — CC0 art drops here later
+assets/sprites, assets/ui   Empty (.gitkeep) -- CC0 art drops here later
 README.md, ASSETS.md   Run instructions + CC0 asset sourcing
 ```
 
@@ -231,7 +231,7 @@ Godot was **not installed** in the authoring environment, so only static checks 
 6. Eliminate one side → Victory/Defeat overlay + "Fight Again" restart.
 7. Camera: WASD/edge pans, wheel zooms.
 
-If any script error appears on first run, fix it before building further — this is expected for
+If any script error appears on first run, fix it before building further -- this is expected for
 hand-authored GDScript that hasn't been engine-checked.
 
 ## Added since scaffold
@@ -246,9 +246,9 @@ hand-authored GDScript that hasn't been engine-checked.
   - Swap token `_draw()` for real CC0 `Sprite2D` art (see README "Swapping placeholder art").
   - Stretch: render each regiment as an N×M block of soldier sprites that thins with casualties
     (the true massed-formation look); unit facing arrows; pre-battle deployment phase.
-- **M2 — dynastic campaign map:** clickable provinces, characters/realms, turn-based
+- **M2 -- dynastic campaign map:** clickable provinces, characters/realms, turn-based
   diplomacy & war. Battles **auto-resolved** at first (no tactical layer yet).
-  - **Thin slice landed (#70):** a Gallic War map (`scenes/Campaign.tscn`) — Rome vs
+  - **Thin slice landed (#70):** a Gallic War map (`scenes/Campaign.tscn`) -- Rome vs
     the Gallic tribes (plus the neutral Germanic tribes, see #123) over clickable
     polygon provinces. Turn-based: move/attack an army into an adjacent province,
     auto-resolved combat, a greedy enemy AI, and a conquest victory. Reached from a new
@@ -261,7 +261,7 @@ hand-authored GDScript that hasn't been engine-checked.
   - **Diplomacy (#123):** `CampaignState` tracks per-faction war/peace stances and
     gates province entry on being at war (you can only enter/attack a faction you're at
     war with). The Gallic War now ships a **neutral third faction** (the Germanic
-    tribes, at peace with both belligerents — declared via the map's optional `peace`
+    tribes, at peace with both belligerents -- declared via the map's optional `peace`
     list) that the player can court (stay at peace, avoid a second front) or conquer
     (declare war). The HUD has a **diplomacy panel** to declare war / sue for peace per
     faction and surfaces current stances; the AI only attacks factions it's at war with.
@@ -270,20 +270,20 @@ hand-authored GDScript that hasn't been engine-checked.
   - **Diplomacy follow-ups landed (#138, #139, #140):** suing for peace can carry a
     **truce** (a set number of turns during which war can't be re-declared; the HUD
     greys the toggle out and counts the turns down, and a map's `peace` entries take an
-    optional third truce-length element). The AI now has **diplomatic agency** — on its
+    optional third truce-length element). The AI now has **diplomatic agency** -- on its
     turn it sues for peace with its strongest enemy when overextended and outmatched, and
     declares war on a weak bordering neighbour it clearly outweighs (deterministic, no
     RNG; truces respected). A second campaign, **The Four Kingdoms**, ships a balanced
     four-faction map to exercise multi-sided war. Characters/dynasty (#124) and the saga
     layer (#126) remain follow-ups.
-- **M3 — Integration:** an army battle on the campaign map launches into the M1 battle scene
+- **M3 -- Integration:** an army battle on the campaign map launches into the M1 battle scene
   and returns a result (winner, casualties) to the campaign. This is where the two genres meet;
   the battle scene was kept self-contained specifically to make this hand-off clean.
   - **Hand-off landed (#122):** a player attack on a **defended** enemy province now
     launches `scenes/Battle.tscn` instead of auto-resolving. Each side deploys units
     scaled to its campaign army strength (`CampaignBattle.units_for`), and on the battle's
     end the winner's surviving units scale back to campaign strength and are applied to the
-    province via `CampaignState.resolve_attack` — the same state transition auto-resolve
+    province via `CampaignState.resolve_attack` -- the same state transition auto-resolve
     uses, so the two converge. The campaign state is snapshotted across the one-way scene
     swap (`CampaignState.snapshot`/`restore`, held in the `CampaignBattle` static) and the
     battle's end screen gains a **Return to Campaign** button. Auto-resolve stays available
@@ -291,18 +291,18 @@ hand-authored GDScript that hasn't been engine-checked.
     scene changes during the enemy turn). Remaining: launching battles for AI-vs-AI or
     AI-vs-player clashes, and richer army composition from province/unit data.
 
-## Feature backlog (design goals — captured early, not yet scheduled)
-- **Unit merging — combine two units into one.** Player can merge two friendly units into a single
+## Feature backlog (design goals -- captured early, not yet scheduled)
+- **Unit merging -- combine two units into one.** Player can merge two friendly units into a single
   regiment. Two intended uses:
   1. **Consolidation:** fold depleted units together after casualties so a thinned line becomes one
      viable regiment instead of several near-broken ones.
   2. **Formation locking:** deliberately bind units into a single wider, coordinated block that
-     moves and fights as one (ties directly into the collision/formation pillar — a merged unit has
+     moves and fights as one (ties directly into the collision/formation pillar -- a merged unit has
      a larger footprint and held shape).
   - **"Strangers" debuff:** merging forces soldiers from different regiments together, so the result
     starts with a penalty (e.g. reduced morale and/or attack/cohesion) representing unfamiliarity.
     Lean toward a *temporary* debuff that decays over time as the merged unit "gels," rather than a
-    permanent tax — keeps merging worthwhile without making it free.
+    permanent tax -- keeps merging worthwhile without making it free.
   - **Open design questions (decide when scheduled):**
     - Merged `max_soldiers` = sum, or capped at a regiment ceiling (excess lost/disbanded)?
     - Restrictions: same team only? same/compatible unit types only (can cavalry merge into
@@ -315,18 +315,18 @@ hand-authored GDScript that hasn't been engine-checked.
     `SelectionManager.gd` (a merge order/input), and the collision footprint (`RADIUS` in `_separate()`)
     for the wider merged body.
 
-- **Line relief — cycle tired units out of combat.** A fresh unit can "relieve" an already-engaged
+- **Line relief -- cycle tired units out of combat.** A fresh unit can "relieve" an already-engaged
   friendly: the fresh unit moves into the front-line slot while the tired one peels back to the rear,
   letting the player rotate exhausted regiments out and rest them.
   - **Requires a new fatigue/stamina stat** (does not exist yet): accumulates while `FIGHTING`
     (faster when taking casualties), recovers while idle/out of contact. Fatigue should bite into
     combat performance (attack/defense/morale) so relief is a real tactical lever, not flavor.
   - **Smooth swap mechanism (the hard part):** choreograph the exchange so it reads well and isn't
-    exploitable —
+    exploitable --
     - The relieving unit advances into the slot *as* the relieved unit withdraws; ideally the fresh
       unit arrives/screens before the tired one fully disengages so the enemy doesn't get a free
       gap to pour through.
-    - The two units must **pass through each other** during the maneuver — directly exercises the
+    - The two units must **pass through each other** during the maneuver -- directly exercises the
       collision pillar. Plan: temporarily exempt the swapping pair from mutual `_separate()` (and/or
       lane them past each other) until the swap completes, then re-enable.
     - Define the window: brief protected/"relieving" state vs. fully simulated handoff with risk.
@@ -337,7 +337,7 @@ hand-authored GDScript that hasn't been engine-checked.
     state machine; per-pair collision exemption in `_separate()`), `SelectionManager.gd` (a relieve
     order targeting an engaged friendly), and AI in `Battle.gd` (so the enemy also rotates lines).
 
-- **Move-through friendly units — coordinated pass-through.** Let one unit move *through* an idle
+- **Move-through friendly units -- coordinated pass-through.** Let one unit move *through* an idle
   friendly unit smoothly (ranks interleave / the idle unit parts and reforms) instead of colliding,
   shoving, or detouring around it. Ref: https://www.youtube.com/shorts/7VTVNe_C5No
   - Shares the **collision-exemption** mechanism with line relief: while a unit is passing through a

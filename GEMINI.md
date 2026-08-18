@@ -1,7 +1,7 @@
-# GEMINI.md — Google Antigravity / Gemini working instructions for Sparta
+# GEMINI.md -- Google Antigravity / Gemini working instructions for Sparta
 
 Orientation and standing policies for any Gemini or Google Antigravity (AGY) session working in this repo.
-Sparta is a **Godot 4.7** (GDScript, Standard build — not .NET/C#) prototype fusing dynastic grand strategy with real-time tactical battles. See `README.md` for layout and `PLAN.md` for project vision, roadmap, architecture, and verification steps — read `PLAN.md` first.
+Sparta is a **Godot 4.7** (GDScript, Standard build -- not .NET/C#) prototype fusing dynastic grand strategy with real-time tactical battles. See `README.md` for layout and `PLAN.md` for project vision, roadmap, architecture, and verification steps -- read `PLAN.md` first.
 
 ## Cross-repo AI configuration (`Morrison-Lab/ai-config`)
 
@@ -19,32 +19,32 @@ Sparta-specific working notes and gotchas, imported so they load with this file:
 ## Project at a glance
 - Godot **4.7.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
 - Main scene: `scenes/Battle.tscn`. Core scripts live in `scripts/`.
-- Issues are tracked on this repo with `P0`–`P3` labels; `PLAN.md` mirrors the roadmap.
+- Issues are tracked on this repo with `P0`-`P3` labels; `PLAN.md` mirrors the roadmap.
 - Gemini skills live in `.gemini/skills/` (including `verify-via-state-dump`).
 
 ## Verify before you push
 Run `tools/check.sh` to reproduce CI's gating checks locally (Godot import validation + GUT unit suite + the docs char-check; `tools/check.sh all` adds the lychee link-check). It vendors GUT on demand and needs only a Godot 4.7 binary on `PATH` (or `GODOT_BIN`). See `tools/README.md`. Prefer it over invoking individual checks by hand so local and CI results stay in sync.
 
-When the diff touches `scripts/`, also run `patch_coverage` before pushing — a local approximation of the `codecov/patch` CI check, verified to match Codecov's own numbers. Add it to the same `tools/check.sh` invocation (e.g. `tools/check.sh validate test chars comments units patch_coverage`), not a separate command afterward.
+When the diff touches `scripts/`, also run `patch_coverage` before pushing -- a local approximation of the `codecov/patch` CI check, verified to match Codecov's own numbers. Add it to the same `tools/check.sh` invocation (e.g. `tools/check.sh validate test chars comments units patch_coverage`), not a separate command afterward.
 
 ## Gameplay demos in PRs
 Every PR that changes the user experience (UI elements, HUD overlays, unit cards, battle maneuvers, visual presentation, controls, or settings affecting display) needs proof a reviewer can actually see, not just a claim:
-- When the change is reachable through the scripted-input recorder's step vocabulary (`click`/`box`/`rmb_drag`/`key` — see `demos/README.md`), commit a **`demos/demo.json`** pointing at a scripted-input recording (`demos/inputs/*.json`) with the `input` field so CI records a clip and embeds it in the PR description.
-- **The recorder can only click the battlefield and press keys — it cannot open a ☰-menu popup.** A setting only reachable through a menu checkbox (no bound hotkey) can't be toggled on by a scripted clip; staging one anyway records an ordinary battle with the feature never turned on, which is worse than an honest skip. For a feature the recorder genuinely can't reach (a menu-only toggle, a screen with no entry point yet, a pure-data API with no UI at all), use `"skip": true` with the real reason, and post a hand-captured still image in the PR description instead (`demos/README.md`, "Still images for static features") — don't fabricate a clip that doesn't actually show the change just to avoid `skip: true`.
-- Before trusting any new demo, actually look at a captured frame (or the state dump) and confirm it shows what the caption claims — a clip that runs without erroring is not the same as a clip that demonstrates the feature.
+- When the change is reachable through the scripted-input recorder's step vocabulary (`click`/`box`/`rmb_drag`/`key` -- see `demos/README.md`), commit a **`demos/demo.json`** pointing at a scripted-input recording (`demos/inputs/*.json`) with the `input` field so CI records a clip and embeds it in the PR description.
+- **The recorder can only click the battlefield and press keys -- it cannot open a ☰-menu popup.** A setting only reachable through a menu checkbox (no bound hotkey) can't be toggled on by a scripted clip; staging one anyway records an ordinary battle with the feature never turned on, which is worse than an honest skip. For a feature the recorder genuinely can't reach (a menu-only toggle, a screen with no entry point yet, a pure-data API with no UI at all), use `"skip": true` with the real reason, and post a hand-captured still image in the PR description instead (`demos/README.md`, "Still images for static features") -- don't fabricate a clip that doesn't actually show the change just to avoid `skip: true`.
+- Before trusting any new demo, actually look at a captured frame (or the state dump) and confirm it shows what the caption claims -- a clip that runs without erroring is not the same as a clip that demonstrates the feature.
 - Check every new demo against the standard defect checklist in `.gemini/skills/verify-via-state-dump/SKILL.md` (or `.claude/skills/verify-via-state-dump/SKILL.md`).
 
 ### Backend-only performance PRs: graph the work, then film the result
-A PR whose point is that the sim does the same thing faster (a hot-loop rewrite, a cheaper query, a removed redundant pass — the `⚡ Bolt` family) ships two artifacts in its description:
-1. **A before/after graph of computations per tick** (y = operations, x = tick) over a representative demo, from `tools/perf/ops-before-after.sh`. Commit the PNG under `demos/shots/`, embed it by raw URL at the commit SHA, and paste the per-bucket table the tool prints. Counts, not milliseconds — they're deterministic for a scenario and seed, so the two lines differ only where the code did, while a timing chart carries CI's documented ~20–30% run-to-run swing. Full protocol: `tools/perf/README.md`.
-2. **A demo video recorded after the improvement** — a real `demos/demo.<slug>.json` clip, not `"skip": true`. "Backend-only" is the claim under review: an optimization that quietly changed the battle looks exactly like one that didn't until someone watches it.
+A PR whose point is that the sim does the same thing faster (a hot-loop rewrite, a cheaper query, a removed redundant pass -- the `⚡ Bolt` family) ships two artifacts in its description:
+1. **A before/after graph of computations per tick** (y = operations, x = tick) over a representative demo, from `tools/perf/ops-before-after.sh`. Commit the PNG under `demos/shots/`, embed it by raw URL at the commit SHA, and paste the per-bucket table the tool prints. Counts, not milliseconds -- they're deterministic for a scenario and seed, so the two lines differ only where the code did, while a timing chart carries CI's documented ~20-30% run-to-run swing. Full protocol: `tools/perf/README.md`.
+2. **A demo video recorded after the improvement** -- a real `demos/demo.<slug>.json` clip, not `"skip": true`. "Backend-only" is the claim under review: an optimization that quietly changed the battle looks exactly like one that didn't until someone watches it.
 
-If the two lines coincide exactly, say so and explain why (the path isn't one the counters cover, or the change is cheaper-per-operation rather than fewer-operations) — never present a flat graph as a demonstrated win.
+If the two lines coincide exactly, say so and explain why (the path isn't one the counters cover, or the change is cheaper-per-operation rather than fewer-operations) -- never present a flat graph as a demonstrated win.
 
 ## Code conventions
 
 ### Parameters are caller-configurable; only real physical constants are fixed
-Any parameter value a caller could reasonably want to vary — sizes, counts, layouts, spawn geometry, timings, gameplay thresholds — enters through a function parameter, a constructor/instance field, or a data file, with today's value as the default. Never a bare literal buried in the implementation. This applies unconditionally to new code; an *existing* hard-coded constant is migrated opportunistically (only when a real task needs it varied), not via a standing audit sweep — the earlier proactive #963 effort is paused as of 2026-07-19.
+Any parameter value a caller could reasonably want to vary -- sizes, counts, layouts, spawn geometry, timings, gameplay thresholds -- enters through a function parameter, a constructor/instance field, or a data file, with today's value as the default. Never a bare literal buried in the implementation. This applies unconditionally to new code; an *existing* hard-coded constant is migrated opportunistically (only when a real task needs it varied), not via a standing audit sweep -- the earlier proactive #963 effort is paused as of 2026-07-19.
 
 ### Comments: no issue-number references
 Don't cite issue numbers (`#123`) in code comments. The explanation itself should stand on its own. Issue numbers belong in commit messages, PR descriptions, and `TODO`/`FIXME` comments.
@@ -78,7 +78,7 @@ Our lab's work rules encoded throughout `ai-config` apply unconditionally to all
 
 1. **Main session acts as orchestrator**: Delegate heavy research, multi-file searches, complex sub-tasks, or parallel branch operations to subagents (`invoke_subagent`) or background tasks (`run_command`), keeping main context clean and focused on high-level direction, triage, and review.
 2. **Proactive corrective actions & PR workflow**: Whenever a gap, missing PR, or workflow instruction is identified:
-   - **Act immediately without asking**: Never wait for a user prompt or ask "Should I do X?" when the requirement is clear — branch, commit, open the PR, request review from `d-morrison`, and drive to clean in the exact same response turn.
+   - **Act immediately without asking**: Never wait for a user prompt or ask "Should I do X?" when the requirement is clear -- branch, commit, open the PR, request review from `d-morrison`, and drive to clean in the exact same response turn.
    - **Auto-merge under `mwc`**: If `mwc` is active for the session, once CI passes and review is clean, execute the merge and post-merge wrap-up immediately without stopping.
 3. **Mandatory Timers for Async Work**: Whenever waiting on in-flight CI runs, background tasks, or subagents before completing a task or merge, **ALWAYS** schedule a timer (`schedule`) or proceed to other active work. Never end a turn waiting on asynchronous execution without a scheduled wakeup handle.
 4. **Memory & Skill PR Discipline**: Every addition or update to memories, instructions, or skills (including `cai`, `memorize`, and `push-memory`) **MUST** be delivered via a branch + PR with requested reviewer (`d-morrison`) and driven to clean. Never edit configuration or memory files directly on `main` or disk without a PR.
