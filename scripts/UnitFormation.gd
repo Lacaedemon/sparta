@@ -55,11 +55,12 @@ static func auto_files_for_subunit_size(count: int, size: int) -> int:
 	return maxi(1, int(ceil(float(count) / float(size))))
 
 
-## Number of columns (frontage) for `n` cavalry soldiers in a squadron block (Asclepiodotus 7.4).
+## Number of columns (frontage) for `n` cavalry soldiers in a squadron block.
 ## Unlike heavy infantry, cavalry does not derive its frontage from the line-infantry FORMATION_ASPECT.
-## A square/oblong squadron fields ceil(sqrt(n)) columns. Pure of n.
+## An interim aspect-~1.0 approximation of the square/oblong squadron shapes described by
+## ancient tacticians (e.g. Asclepiodotus 7.2-7.5), delegating to square_files(n). Pure of n.
 static func cavalry_files(n: int) -> int:
-	return maxi(1, int(ceil(sqrt(float(n)))))
+	return square_files(n)
 
 
 ## The regiment's stable file count (frontage).

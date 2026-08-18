@@ -90,8 +90,11 @@ func test_cavalry_spawned_from_default_loadout() -> void:
 	var b := BattleScript.new()
 	autofree(b)
 	var loadout: Array = b._default_loadout()
+	var cavalry_seen := 0
 	for d in loadout:
 		if str(d["name"]) == "Cavalry":
+			cavalry_seen += 1
 			assert_false(d.has("subunit_structure"), "Cavalry declares no subunit_structure (structureless)")
 			assert_false(d.has("subunit_size"), "Cavalry declares no subunit_size")
 			assert_false(bool(d.get("file_major_reform_default", true)), "Cavalry file_major_reform_default is false")
+	assert_eq(cavalry_seen, 2, "both Cavalry loadout entries were verified")
