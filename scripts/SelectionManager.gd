@@ -2233,8 +2233,9 @@ func _draw_resize_preview(u) -> void:
 	var a: Vector2 = u.global_position + right * _resize_anchored_edge_x(u, _resize_anchor)
 	var b: Vector2 = a + right * width * -float(_resize_anchor)
 	draw_line(a, b, RESIZE_HANDLE_COLOR, 2.0)
-	draw_string(ThemeDB.fallback_font, b + Vector2(8.0, -6.0), UnitFormation.files_label(_resize_files),
+	draw_string(ThemeDB.fallback_font, b + Vector2(8.0, -6.0), UnitFormation.files_label_for_unit(u, _resize_files),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, RESIZE_HANDLE_COLOR)
+
 
 
 ## The cursor's world position: the injected position when one is set (deterministic

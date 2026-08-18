@@ -406,9 +406,25 @@ other side). The same soldiers spread across a different shape:
   holds a chokepoint or punches through one spot rather than spreading thin.
 
 A wider line is easier to outlast in depth and quicker to crumble once it bends;
-a deeper one trades frontage for staying power. A width you've set by hand (the
+a deeper one trades frontage for staying power. Heavy infantry types with a declared subunit structure (such as Spearmen with 16-man files) derive their default full-strength width directly from that subunit size (e.g. 9 files for 140 men) with HUD readouts indicating file count and file capacity (@fig-spearmen-declared-frontage). A width you've set by hand (the
 bracket keys or a flank drag) holds exactly as you left it --- the game never
 overrides your explicit choice.
+
+::: {#fig-spearmen-declared-frontage .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/spearmen_declared_frontage.jpg">
+  <source src="media/spearmen_declared_frontage.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A 140-man Spearmen regiment formed up into 9 files (16 ranks deep) in drill mode. The default frontage derives directly from declared subunit size (16 men per file, the historical lochos) rather than the generic roster-wide aspect ratio.
+:::
+
+
 
 **Close the ranks.** Left on auto, though, a regiment that's lost half its strength
 narrows its own frontage one notch, trading width for depth so the survivors reform

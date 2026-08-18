@@ -33,13 +33,14 @@ func test_default_line_units_do_not_overlap() -> void:
 		var a: Unit = team0[i]
 		var b: Unit = team0[i + 1]
 		var half_a: float = UnitFormation.half_width_for_soldiers(
-				a.max_soldiers, a.file_pitch_wu())
+				a.max_soldiers, a.file_pitch_wu(), a.subunit_structure, a.subunit_size)
 		var half_b: float = UnitFormation.half_width_for_soldiers(
-				b.max_soldiers, b.file_pitch_wu())
+				b.max_soldiers, b.file_pitch_wu(), b.subunit_structure, b.subunit_size)
 		var gap: float = b.position.x - a.position.x
 		assert_gt(gap, half_a + half_b,
 				"%s (half-width %.1f) and %s (half-width %.1f) overlap: centre gap %.1f" %
 				[a.unit_name, half_a, b.unit_name, half_b, gap])
+
 
 
 func test_max_campaign_stack_stays_within_field() -> void:
@@ -80,9 +81,10 @@ func test_max_campaign_stack_stays_within_field() -> void:
 	var leftmost: Unit = team0[0]
 	var rightmost: Unit = team0[team0.size() - 1]
 	var half_left: float = UnitFormation.half_width_for_soldiers(
-			leftmost.max_soldiers, leftmost.file_pitch_wu())
+			leftmost.max_soldiers, leftmost.file_pitch_wu(), leftmost.subunit_structure, leftmost.subunit_size)
 	var half_right: float = UnitFormation.half_width_for_soldiers(
-			rightmost.max_soldiers, rightmost.file_pitch_wu())
+			rightmost.max_soldiers, rightmost.file_pitch_wu(), rightmost.subunit_structure, rightmost.subunit_size)
+
 
 	var left_edge: float = leftmost.position.x - half_left
 	var right_edge: float = rightmost.position.x + half_right

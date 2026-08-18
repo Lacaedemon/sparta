@@ -3,7 +3,8 @@
   "seed": "4471",
   "drill": true,
   "scenario": [
-    {"team": 0, "type": "Spearmen", "x": 600, "y": 420, "count": 60, "facing": [0, 1]}
+    {"team": 0, "type": "Spearmen", "x": 600, "y": 420, "count": 60, "facing": [0, 1], "frontage_override": 11}
+
   ],
   "camera": [
     {"tick": 0, "x": 600.0, "y": 420.0, "zoom": 2.0}

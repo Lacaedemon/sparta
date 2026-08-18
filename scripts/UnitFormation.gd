@@ -47,43 +47,58 @@ static func should_close_ranks(currently_closed: bool, soldiers: int, max_soldie
 	return currently_closed
 
 
-## The regiment's stable file count (frontage): `_files` at FULL strength, so the LINE
-## KEEPS ITS WIDTH as casualties thin its DEPTH (ranks). Keying the slot layout and the
-## engaged-rank cutoff off this -- not the live count -- stops the whole grid from
-## reflowing (every soldier jumping to a new file at once) each
-## time the count crosses a sqrt threshold mid-fight. At full strength it equals
-## `_files(soldiers)`, so nothing changes there.
+## Number of files (columns) for `count` soldiers at `size` men per subunit:
+## fields ceil(count / size) subunits as columns, floored at 1.
+static func auto_files_for_subunit_size(count: int, size: int) -> int:
+	if count <= 0 or size <= 0:
+		return 1
+	return maxi(1, int(ceil(float(count) / float(size))))
+
+
+## The regiment's stable file count (frontage).
 ##
-## A player-set `frontage_override` (> 0) wins over the auto width, clamped to
-## [1, max_soldiers] -- so the line can be widened (shallower) or narrowed (deeper)
-## by hand, still keying every downstream layout off one stable file count. Otherwise,
-## once the unit's casualties have crossed the close-the-ranks threshold (`u._ranks_closed`,
-## ticked once per frame by should_close_ranks above), the auto width itself steps down
-## one notch (narrowed_files) so the mauled survivors reform deeper rather than holding a
-## thin full-width line -- a single discrete step, not a continuous reflow.
+## Under declared subunit size (`FILE_GROUP` with `subunit_size > 0`), a unit fields
+## `auto_files_for_subunit_size(max_soldiers, subunit_size)` files (subunits) at full strength.
+## To prevent per-casualty target-slot churn during melee, loss of soldiers narrows the unit
+## at the discrete hysteresis-gapped `_ranks_closed` threshold (<= 50% max strength), where
+## auto frontage steps down to `auto_files_for_subunit_size(ceil(max_soldiers * 0.5), subunit_size)`
+## (the fixed 50%-of-max-strength count) so the mauled survivors reform into fewer subunit columns
+## -- resolving the `_ranks_closed` overlap explicitly without multi-step narrowing during melee.
+## For types without a declared subunit size (NONE, LATERAL_HALVES, GROUP), frontage uses `_files(max_soldiers)`
+## at full strength and `narrowed_files()` when `_ranks_closed` is true.
+##
+## A player-set `frontage_override` (> 0) wins over the auto width in all cases, clamped to
+## [1, max_soldiers]. Player frontage overrides and drag handle resizes specify direct file counts.
 static func frontage(u: Unit) -> int:
+
 	if u.frontage_override > 0:
 		return clampi(u.frontage_override, 1, maxi(1, u.max_soldiers))
-	var full: int = _files(u.max_soldiers)
+	if u.subunit_structure == Unit.SubunitStructure.FILE_GROUP and u.subunit_size > 0:
+		var full: int = auto_files_for_subunit_size(u.max_soldiers, u.subunit_size)
+		if u._ranks_closed:
+			var half_count: int = int(ceil(float(u.max_soldiers) * CLOSE_RANKS_CONTRACT_FRAC))
+			var closed: int = auto_files_for_subunit_size(half_count, u.subunit_size)
+
+			return mini(full, closed)
+		return full
+	var full_files: int = _files(u.max_soldiers)
 	if u._ranks_closed:
-		return narrowed_files(full)
-	return full
+		return narrowed_files(full_files)
+	return full_files
 
 
 ## Half-width (local +/-X extent, world units) of a FRESH, full-strength unit's
-## formation block -- `_half_width` at the FULL frontage (`_files(soldiers)`), before
-## any ranks-closed narrowing or player frontage_override apply (both only kick in
-## after a live Unit has taken casualties or been manually resized). `spacing` is
-## the formation's world-unit FILE pitch (the type's own file pitch scaled by
-## Unit.spacing_scale_for_mode(formation_mode)) -- the axis a line's width runs along.
-##
-## Pure -- doesn't need a live Unit, so Battle._spawn_line can call it while still
-## building the loadout, to space a line of units apart by their actual footprint
-## instead of a fixed per-unit spacing that assumes uniform width -- a
-## 90-soldier LOOSE-order Archers block is far wider than a same-count TIGHT block,
-## so a flat spacing constant lets a wide neighbour's formation overlap it.
-static func half_width_for_soldiers(soldiers: int, spacing: float) -> float:
-	return _half_width(_files(soldiers), spacing)
+## formation block -- `_half_width` at FULL frontage, before any ranks-closed narrowing or
+## player frontage_override apply. `spacing` is the formation's world-unit FILE pitch.
+## Optional `subunit_structure` and `subunit_size` allow pre-spawn calculation for types with
+## declared subunit sizes (Spearmen).
+static func half_width_for_soldiers(count: int, spacing: float, subunit_structure: int = 0, subunit_size: int = 0) -> float:
+	var files: int
+	if subunit_structure == Unit.SubunitStructure.FILE_GROUP and subunit_size > 0:
+		files = auto_files_for_subunit_size(count, subunit_size)
+	else:
+		files = _files(count)
+	return (files - 1) * 0.5 * spacing
 
 
 ## File count for a drag-resize handle pulled to `half_width` world units from the
@@ -103,6 +118,17 @@ static func files_for_halfwidth(half_width: float, max_soldiers: int,
 ## "%d file(s)" with correct singular/plural, for the HUD readout and resize preview.
 static func files_label(n: int) -> String:
 	return "%d file" % n if n == 1 else "%d files" % n
+
+
+## "%d file(s)" or "%d file(s) (%d/file)" for the HUD readout and resize preview when a Unit is available.
+## Appends (%d/file) only when at default full-strength declared subunit frontage without player override.
+static func files_label_for_unit(u: Unit, n: int) -> String:
+	var base: String = files_label(n)
+	if u != null and u.subunit_structure == Unit.SubunitStructure.FILE_GROUP and u.subunit_size > 0:
+		if u.frontage_override == 0 and not u._ranks_closed and n == auto_files_for_subunit_size(u.max_soldiers, u.subunit_size):
+			return "%s (%d/file)" % [base, u.subunit_size]
+	return base
+
 
 
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep grid (front
