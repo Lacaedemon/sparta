@@ -847,7 +847,6 @@ func _line_x_offsets(half_widths: Array[float], field_width: float) -> Array[flo
 ## and Battle._line_half_width; see Unit.subunit_structure for what each kind means and why the primitive
 ## is a headcount rather than a depth. The structure string is parsed by _parse_subunit_structure
 ## below; an entry omitting both keys declares nothing, which is what the Archers row does
-
 ## deliberately. Values and their sources:
 ##   Spearmen -- "file_group", 16   (Asclepiodotus 2.1, 2.8: the lochos, sixteen men)
 ##   Infantry -- "lateral_halves"    (Polybius 6.24: the maniple's right and left centuries)
@@ -991,8 +990,8 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.walk_advance = bool(d.get("walk_advance_default", false))
 	u.reform_before_move = bool(d.get("reform_before_move_default", true))
 	u.file_major_reform_mode = _parse_reform_mode(d.get("file_major_reform_default", true))
-	# Declared subunit structure, threaded exactly like the three settings above and read by
-	# nothing downstream -- see Unit.subunit_structure and _default_loadout's own doc comment.
+	# Declared subunit structure, threaded exactly like the three settings above and read for
+	# FILE_GROUP layout by UnitFormation.frontage() and Battle._line_half_width -- see Unit.subunit_structure and _default_loadout's own doc comment.
 	# A dict without the keys (a bare test unit, or the deliberately-undeclared Archers row)
 	# keeps the Unit defaults, NONE and 0.
 	u.subunit_structure = _parse_subunit_structure(d.get("subunit_structure", "none"))
@@ -1149,8 +1148,11 @@ func _custom_matchup_scenario(team_0_names: Array, team_1_names: Array) -> Array
 			# Faction.ROSTER_SUBUNIT_OVERRIDES for why one is needed at all.
 			overrides.append(FactionRef.get_subunit_override(str(roster_name)))
 		var half_widths: Array[float] = []
-		for d in dicts:
-			half_widths.append(_line_half_width(d))
+		for i in range(dicts.size()):
+			var d_eff: Dictionary = dicts[i].duplicate()
+			if not overrides[i].is_empty():
+				d_eff.merge(overrides[i], true)
+			half_widths.append(_line_half_width(d_eff))
 		var xs: Array[float] = _line_x_offsets(half_widths, field.size.x)
 		var start_x: float = field.size.x * 0.5 - (xs[xs.size() - 1] * 0.5 if not xs.is_empty() else 0.0)
 		for i in range(dicts.size()):
