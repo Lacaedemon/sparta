@@ -89,4 +89,6 @@ DEMOS=(
   "disengage_sacrifice_rearguard|demos/inputs/disengage-with-sacrifice-rearguard.json|30|150|640|input"
   "push_stance|demos/inputs/push-stance.json|30|500|640|input"
   "weapon_switch|demos/inputs/weapon-switch.json|30|240|640|input"
+  "spearmen_declared_frontage|demos/inputs/spearmen-declared-frontage.json|30|240|640|input"
 )
+
