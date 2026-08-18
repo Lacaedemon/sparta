@@ -33,9 +33,9 @@ func test_default_line_units_do_not_overlap() -> void:
 		var a: Unit = team0[i]
 		var b: Unit = team0[i + 1]
 		var half_a: float = UnitFormation.half_width_for_soldiers(
-				a.max_soldiers, a.file_pitch_wu(), a.subunit_structure, a.subunit_size)
+				a.max_soldiers, a.file_pitch_wu(), a.subunit_structure, a.subunit_size, a.is_cavalry)
 		var half_b: float = UnitFormation.half_width_for_soldiers(
-				b.max_soldiers, b.file_pitch_wu(), b.subunit_structure, b.subunit_size)
+				b.max_soldiers, b.file_pitch_wu(), b.subunit_structure, b.subunit_size, b.is_cavalry)
 		var gap: float = b.position.x - a.position.x
 		assert_gt(gap, half_a + half_b,
 				"%s (half-width %.1f) and %s (half-width %.1f) overlap: centre gap %.1f" %
@@ -81,9 +81,9 @@ func test_max_campaign_stack_stays_within_field() -> void:
 	var leftmost: Unit = team0[0]
 	var rightmost: Unit = team0[team0.size() - 1]
 	var half_left: float = UnitFormation.half_width_for_soldiers(
-			leftmost.max_soldiers, leftmost.file_pitch_wu(), leftmost.subunit_structure, leftmost.subunit_size)
+			leftmost.max_soldiers, leftmost.file_pitch_wu(), leftmost.subunit_structure, leftmost.subunit_size, leftmost.is_cavalry)
 	var half_right: float = UnitFormation.half_width_for_soldiers(
-			rightmost.max_soldiers, rightmost.file_pitch_wu(), rightmost.subunit_structure, rightmost.subunit_size)
+			rightmost.max_soldiers, rightmost.file_pitch_wu(), rightmost.subunit_structure, rightmost.subunit_size, rightmost.is_cavalry)
 
 
 	var left_edge: float = leftmost.position.x - half_left
@@ -157,10 +157,9 @@ func test_cavalry_grid_pitch_reaches_the_live_units_bit_exactly() -> void:
 
 
 func test_cavalry_formation_width_uses_its_own_file_pitch() -> void:
-	# 80 cavalry at Normal order form 12 files; at the 1.0 m file pitch the block
-	# spans (12-1) * 20 = 220 world units -- the realistic frontage that motivated
-	# the per-type pitch, more than double the foot-pitch width pinned above.
+	# 80 cavalry at Normal order form a 9-column squadron (Asclepiodotus 7.4); at the 1.0 m file
+	# pitch the block spans (9-1) * 20 = 160 world units.
 	assert_almost_eq(
 			2.0 * UnitFormation.half_width_for_soldiers(80,
-					1.0 * WorldScale.WU_PER_M * Unit.spacing_scale_for_mode(Unit.FORMATION_NORMAL)),
-			220.0, 0.01, "Cavalry (80, NORMAL) width at its own file pitch")
+					1.0 * WorldScale.WU_PER_M * Unit.spacing_scale_for_mode(Unit.FORMATION_NORMAL), 0, 0, true),
+			160.0, 0.01, "Cavalry (80, NORMAL) width at its own file pitch")

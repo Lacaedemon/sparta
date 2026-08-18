@@ -751,7 +751,8 @@ func _line_half_width(d: Dictionary) -> float:
 			* Unit.spacing_scale_for_mode(d.get("formation", Unit.FORMATION_NORMAL))
 	var sub_struct: int = _parse_subunit_structure(d.get("subunit_structure", "none"))
 	var sub_size: int = int(d.get("subunit_size", 0))
-	return UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing, sub_struct, sub_size)
+	var is_cav: bool = bool(d.get("cav", false))
+	return UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing, sub_struct, sub_size, is_cav)
 
 
 ## Given each unit's own half-width (already formation-density-scaled, see _line_half_width)
@@ -846,11 +847,13 @@ func _line_x_offsets(half_widths: Array[float], field_width: float) -> Array[flo
 ## into (docs/subunit-structure-design.md). Read for FILE_GROUP layout by UnitFormation.frontage()
 ## and Battle._line_half_width; see Unit.subunit_structure for what each kind means and why the primitive
 ## is a headcount rather than a depth. The structure string is parsed by _parse_subunit_structure
-## below; an entry omitting both keys declares nothing, which is what the Archers row does
+## below; an entry omitting both keys declares nothing, which is what the Archers and Cavalry rows do
 ## deliberately. Values and their sources:
 ##   Spearmen -- "file_group", 16   (Asclepiodotus 2.1, 2.8: the lochos, sixteen men)
 ##   Infantry -- "lateral_halves"    (Polybius 6.24: the maniple's right and left centuries)
-##   Cavalry  -- "group", 10         (Xenophon Hipparchicus 4.9-10; Polybius 6.25)
+##   Cavalry  -- undeclared          (Phase 3 interim: structureless squadron block; drops
+##                                    line-infantry file derivation and persistent file
+##                                    identity without blocking on the future leader model)
 ##   Archers  -- undeclared          (the record does not support a number -- saying so is the
 ##                                    point rather than a gap; see the note's "pattern of
 ##                                    silences" section)
@@ -864,8 +867,8 @@ func _default_loadout() -> Array:
 		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT, "walk_advance_default": true, "subunit_structure": "file_group", "subunit_size": 16},
 		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "sidearm": LoadoutRegistry.WEAPON_PILUM, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_HAMATA, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.5, "formation": Unit.FORMATION_NORMAL, "subunit_structure": "lateral_halves"},
 		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "back_fraction": 0.55, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "armor": LoadoutRegistry.ARMOR_TUNIC, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false, "subunit_structure": "group", "subunit_size": 10},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false, "subunit_structure": "group", "subunit_size": 10},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false, "file_major_reform_default": false},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false, "file_major_reform_default": false},
 	]
 
 

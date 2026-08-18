@@ -43,8 +43,8 @@ func test_every_loadout_entry_declares_a_subunit_or_deliberately_declares_none()
 		{"name": "Spearmen", "structure": "file_group", "size": 16},
 		{"name": "Infantry", "structure": "lateral_halves", "size": 0},
 		{"name": "Archers", "structure": null, "size": 0},
-		{"name": "Cavalry", "structure": "group", "size": 10},
-		{"name": "Cavalry", "structure": "group", "size": 10},
+		{"name": "Cavalry", "structure": null, "size": 0},
+		{"name": "Cavalry", "structure": null, "size": 0},
 	]
 	for i in range(expected.size()):
 		var entry: Dictionary = loadout[i]
@@ -134,7 +134,7 @@ func test_every_spawned_regiment_carries_its_types_declaration() -> void:
 		"Spearmen": [UnitScript.SubunitStructure.FILE_GROUP, 16],
 		"Infantry": [UnitScript.SubunitStructure.LATERAL_HALVES, 0],
 		"Archers": [UnitScript.SubunitStructure.NONE, 0],
-		"Cavalry": [UnitScript.SubunitStructure.GROUP, 10],
+		"Cavalry": [UnitScript.SubunitStructure.NONE, 0],
 	}
 	var cavalry_seen := 0
 	var checked := 0

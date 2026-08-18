@@ -3962,12 +3962,16 @@ func formation_files(count: int) -> int:
 
 
 ## Resolves file_major_reform_mode to a plain file-major/row-major choice.
+## Cavalry is structureless under the Phase 3 interim model (no line-infantry files), so it
+## always reflows row-major as a cohesive block without persistent file identity.
 ## FILE_MAJOR/ROW_MAJOR pass straight through; AUTO defers to this unit's own `disciplined`
 ## flag (see file_major_reform_mode's own doc comment for why AUTO ties to `disciplined` and
 ## not `training`) -- a disciplined regiment reflows file-major, an undisciplined one
-## reflows row-major. Pure -- a function of (file_major_reform_mode, disciplined) -- so
+## reflows row-major. Pure -- a function of (is_cavalry, file_major_reform_mode, disciplined) -- so
 ## formation_slots below stays deterministic and replay-safe.
 func _effective_file_major_reform() -> bool:
+	if is_cavalry:
+		return false
 	match file_major_reform_mode:
 		ReformMode.FILE_MAJOR:
 			return true

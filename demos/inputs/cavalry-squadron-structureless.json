@@ -1,0 +1,17 @@
+{
+  "_comment": "Subunits Phase 3 cavalry squadron demo (#1290): an 80-man Cavalry regiment staged alone in drill mode. Frontage is derived from cavalry_files (Asclepiodotus 7.4 square/oblong squadron: ceil(sqrt(80)) = 9 columns) rather than the line-infantry aspect ratio (which gave 12 files). The cavalry is structureless (no line-infantry files or persistent per-soldier file identity), reflowing row-major as a cohesive squadron block during maneuvers.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 600, "y": 360, "count": 80, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 600.0, "y": 420.0, "zoom": 1.3}
+  ],
+  "steps": [
+    {"tick": 8, "click": [600, 360]},
+    {"tick": 24, "rmb_click": [600, 480]}
+  ],
+  "frames": [0, 24, 60, 120, 180, 240],
+  "state": [0, 8, 24, 60, 120, 180, 240]
+}

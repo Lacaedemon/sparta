@@ -1577,11 +1577,11 @@ func test_units_spawn_with_their_type_walk_advance_and_reform_before_move_defaul
 	assert_true(seen_reform.get("Archers", false),
 		"Archers keeps the old global default (reform_before_move on)")
 
-	# file_major_reform has no per-type override today -- every type spawns with it on.
+	# Foot types spawn with file_major_reform on; Cavalry (structureless) defaults to false.
 	assert_true(seen_file_major.get("Spearmen", false), "Spearmen default file_major_reform on")
 	assert_true(seen_file_major.get("Infantry", false), "Infantry default file_major_reform on")
 	assert_true(seen_file_major.get("Archers", false), "Archers default file_major_reform on")
-	assert_true(seen_file_major.get("Cavalry", false), "Cavalry default file_major_reform on")
+	assert_false(seen_file_major.get("Cavalry", true), "Cavalry default file_major_reform off (structureless)")
 
 
 func test_bare_unit_without_loadout_keeps_default_walk_advance_and_reform_before_move() -> void:
