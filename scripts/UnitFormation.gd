@@ -801,8 +801,10 @@ static func subunit_reform_files(file_ids: PackedInt32Array, ranks: PackedInt32A
 
 		var relocated_ptr: int = relocated_indices.size()
 		for f in range(new_files - 1, -1, -1):
+			if relocated_ptr == 0:
+				break
 			var needed: int = new_capacities[f] - retained_counts[f]
-			if needed <= 0 or relocated_ptr <= 0:
+			if needed <= 0:
 				continue
 			var start_idx: int = maxi(0, relocated_ptr - needed)
 			var batch_count: int = relocated_ptr - start_idx

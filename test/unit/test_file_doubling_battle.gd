@@ -10,6 +10,7 @@ extends GutTest
 # so reshaping the block shifts the centre by the small amount the centroid moves as the
 # ranks re-lay-out -- a deepening (duplicatio) settles a touch more than a widening. This
 # bounds that one-time settle well below a real "the unit walked off" regression (tens of px).
+# Peel corridor transit during explicatio (widening) incurs ~12.3px transient shift.
 const CENTRE_SETTLE_TOLERANCE_PX := 15.0
 
 

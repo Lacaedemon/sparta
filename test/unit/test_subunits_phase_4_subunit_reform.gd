@@ -235,7 +235,7 @@ func test_live_spearmen_reform_routes_around_formation_block() -> void:
 		depth = spacing
 	var rx_min_retained: float = -(4 - 1) * 0.5 * spacing
 	var rx_max_retained: float = (4 - 1) * 0.5 * spacing
-	var y_rear: float = (16 - 1) * 0.5 * depth
+	var y_rear_pre_reform: float = (16 - 1) * 0.5 * depth
 	var folded_soldier_indices: Array[int] = []
 	for i in range(u.soldiers):
 		if u._sim_soldier_file[i] == 4:
@@ -251,10 +251,10 @@ func test_live_spearmen_reform_routes_around_formation_block() -> void:
 		for i in folded_soldier_indices:
 			var pos: Vector2 = u._sim_soldier_pos[i]
 			var p_local: Vector2 = (pos - u.position).rotated(-ang)
-			# If the soldier's lateral position is within the retained files (files 0..3):
-			# the soldier must be in the rear corridor or rear ranks (y >= y_rear - spacing * 1.5),
-			# never cutting through the interior front/mid ranks!
-			if p_local.x >= rx_min_retained - spacing * 0.2 and p_local.x <= rx_max_retained - spacing * 0.2:
-				assert_gte(p_local.y, y_rear - spacing * 1.5,
-						"soldier %d during reform routes around rear corridor instead of penetrating interior (y=%.1f, y_rear=%.1f)" % [i, p_local.y, y_rear])
+			# If the soldier's lateral position enters the retained files interior (files 0..3):
+			# the soldier must be entering via the rear corridor / rear ranks,
+			# never cutting through the interior front/mid ranks (ranks 0..14 of the original block)!
+			if p_local.x >= rx_min_retained + spacing * 0.2 and p_local.x <= rx_max_retained - spacing * 0.2:
+				assert_gte(p_local.y, y_rear_pre_reform - depth * 1.5,
+						"soldier %d during reform routes around rear corridor instead of penetrating interior (y=%.1f, y_rear=%.1f)" % [i, p_local.y, y_rear_pre_reform])
 

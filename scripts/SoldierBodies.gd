@@ -42,6 +42,13 @@ const REST_SPEED: float = 0.5
 # (and a casualty forces an immediate recompute regardless -- see Unit._engaged_target_*).
 const ENGAGED_TARGET_REASSIGN_TICKS: int = 30
 
+# Multiplier on file pitch defining proximity threshold for straight-line arrival.
+const CORRIDOR_PROXIMITY_MULT: float = 1.5
+# Lateral clearance beyond outer formed file for perimeter corridor routing.
+const CORRIDOR_CLEARANCE_MULT: float = 1.0
+# Stagger fraction between alternate soldier lanes in perimeter corridor.
+const CORRIDOR_LANE_STAGGER_FRAC: float = 0.25
+
 
 ## Seed a unit's bodies onto its current formation slots, at rest (zero velocity) and
 ## at full per-type health.
@@ -520,14 +527,14 @@ static func couple(unit: Unit, delta: float) -> void:
 
 ## Computes the immediate arrival target vector for soldier `i` towards `own_slot`, routing
 ## along the formation's perimeter corridors (flank corridor and rear corridor) when crossing
-## between different files to avoid cutting directly through standing formation ranks.
+## between different files and ranks to avoid cutting directly through standing formation ranks.
 static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> Vector2:
 	var pos: Vector2 = unit._sim_soldier_pos[i]
 	var diff: Vector2 = own_slot - pos
 	if unit.state == Unit.State.ROUTING or (unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0):
 		return diff
 	var spacing: float = unit.file_pitch_wu()
-	if diff.length_squared() <= (spacing * 1.5) * (spacing * 1.5):
+	if diff.length_squared() <= (spacing * CORRIDOR_PROXIMITY_MULT) * (spacing * CORRIDOR_PROXIMITY_MULT):
 		return diff
 	var ang: float = unit.soldier_block_world_angle()
 	var p_local: Vector2 = (pos - unit.position).rotated(-ang)
@@ -536,27 +543,28 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 		p_local.x = -p_local.x
 		t_local.x = -t_local.x
 
-	var files: int = unit.formation_files(n)
 	var rank_pitch: float = unit.rank_pitch_wu()
 	var depth: float = rank_pitch if rank_pitch >= 0.0 else spacing
-	var ranks: int = UnitFormation.ranks_for(n, files)
-	var rx_half: float = (files - 1) * 0.5 * spacing
-	var y_rear: float = (ranks - 1) * 0.5 * depth
+	# Only route through perimeter corridors when moving across both ranks and files:
+	if absf(p_local.y - t_local.y) > depth * 0.5 and absf(p_local.x - t_local.x) > spacing * 0.5:
+		var files: int = unit.formation_files(n)
+		var ranks: int = UnitFormation.ranks_for(n, files)
+		var rx_half: float = (files - 1) * 0.5 * spacing
+		var y_rear: float = (ranks - 1) * 0.5 * depth
+		var rear_corridor_y: float = y_rear + depth * (CORRIDOR_CLEARANCE_MULT + CORRIDOR_LANE_STAGGER_FRAC * float((i / 2) % 2))
 
-	# If moving between distinct lateral files:
-	if absf(p_local.x - t_local.x) > spacing * 0.5:
-		var lane_sign: float = 1.0 if p_local.x >= 0.0 else -1.0
-		var flank_x: float = lane_sign * (rx_half + spacing * (1.0 + 0.25 * float(i % 2)))
-		var rear_corridor_y: float = y_rear + depth * (1.0 + 0.25 * float((i / 2) % 2))
 		# Case 1: moving to a rearward slot (destination is deeper than origin)
 		if t_local.y >= p_local.y + depth * 0.5:
+			var start_flank_sign: float = 1.0 if p_local.x >= 0.0 else -1.0
+			var flank_x: float = start_flank_sign * (rx_half + spacing * (CORRIDOR_CLEARANCE_MULT + CORRIDOR_LANE_STAGGER_FRAC * float(i % 2)))
 			if p_local.y < rear_corridor_y - depth * 0.5:
 				t_local = Vector2(flank_x, rear_corridor_y)
 			elif absf(p_local.x - t_local.x) > spacing * 0.5:
 				t_local = Vector2(t_local.x, rear_corridor_y)
 		# Case 2: moving from a rearward position to a forward slot
 		elif p_local.y > t_local.y + depth * 0.5:
-			var target_flank_x: float = (1.0 if t_local.x >= 0.0 else -1.0) * (rx_half + spacing * (1.0 + 0.25 * float(i % 2)))
+			var target_flank_sign: float = 1.0 if t_local.x >= 0.0 else -1.0
+			var target_flank_x: float = target_flank_sign * (rx_half + spacing * (CORRIDOR_CLEARANCE_MULT + CORRIDOR_LANE_STAGGER_FRAC * float(i % 2)))
 			if absf(p_local.x - target_flank_x) > spacing * 0.5 and p_local.y >= rear_corridor_y - depth * 0.5:
 				t_local = Vector2(target_flank_x, rear_corridor_y)
 			elif p_local.y >= t_local.y + depth * 0.5:
