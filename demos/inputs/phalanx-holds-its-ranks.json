@@ -4,8 +4,9 @@
   "drill": false,
   "show_engaged_highlight": true,
   "scenario": [
-    {"team": 0, "type": "Spearmen", "x": 800, "y": 300, "count": 45},
-    {"team": 1, "type": "Spearmen", "x": 800, "y": 470, "count": 45}
+    {"team": 0, "type": "Spearmen", "x": 800, "y": 300, "count": 45, "frontage_override": 9},
+    {"team": 1, "type": "Spearmen", "x": 800, "y": 470, "count": 45, "frontage_override": 9}
+
   ],
   "camera": [
     {"tick": 0, "x": 800.0, "y": 385.0, "zoom": 1.45}

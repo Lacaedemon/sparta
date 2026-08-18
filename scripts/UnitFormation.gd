@@ -61,13 +61,15 @@ static func auto_files_for_subunit_size(count: int, size: int) -> int:
 ## `auto_files_for_subunit_size(max_soldiers, subunit_size)` files (subunits) at full strength.
 ## To prevent per-casualty target-slot churn during melee, loss of soldiers narrows the unit
 ## at the discrete hysteresis-gapped `_ranks_closed` threshold (<= 50% max strength), where
-## auto frontage steps down to `auto_files_for_subunit_size(soldiers, subunit_size)` so the mauled
-## survivors reform into fewer subunit columns -- resolving the `_ranks_closed` overlap explicitly.
+## auto frontage steps down to `auto_files_for_subunit_size(ceil(max_soldiers * 0.5), subunit_size)`
+## (the fixed 50%-of-max-strength count) so the mauled survivors reform into fewer subunit columns
+## -- resolving the `_ranks_closed` overlap explicitly without multi-step narrowing during melee.
 ## For types without a declared subunit size (NONE, LATERAL_HALVES, GROUP), frontage uses `_files(max_soldiers)`
 ## at full strength and `narrowed_files()` when `_ranks_closed` is true.
 ##
 ## A player-set `frontage_override` (> 0) wins over the auto width in all cases, clamped to
-## [1, max_soldiers].
+## [1, max_soldiers]. Player frontage overrides and drag handle resizes specify direct file counts.
+
 static func frontage(u: Unit) -> int:
 	if u.frontage_override > 0:
 		return clampi(u.frontage_override, 1, maxi(1, u.max_soldiers))
