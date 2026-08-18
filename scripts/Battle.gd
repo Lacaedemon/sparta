@@ -843,9 +843,10 @@ func _line_x_offsets(half_widths: Array[float], field_width: float) -> Array[flo
 ## today; no entry below overrides it.
 ##
 ## `subunit_structure` / `subunit_size` declare the subunit this type's doctrine organises it
-## into (docs/subunit-structure-design.md). DECLARATION ONLY -- no layout code reads either one,
-## so they are inert; see Unit.subunit_structure for what each kind means and why the primitive
+## into (docs/subunit-structure-design.md). Read for FILE_GROUP layout by UnitFormation.frontage()
+## and Battle._line_half_width; see Unit.subunit_structure for what each kind means and why the primitive
 ## is a headcount rather than a depth. The structure string is parsed by _parse_subunit_structure
+
 ## below; an entry omitting both keys declares nothing, which is what the Archers row does
 ## deliberately. Values and their sources:
 ##   Spearmen -- "file_group", 16   (Asclepiodotus 2.1, 2.8: the lochos, sixteen men)

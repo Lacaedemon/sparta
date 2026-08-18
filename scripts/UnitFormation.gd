@@ -76,8 +76,9 @@ static func frontage(u: Unit) -> int:
 	if u.subunit_structure == Unit.SubunitStructure.FILE_GROUP and u.subunit_size > 0:
 		var full: int = auto_files_for_subunit_size(u.max_soldiers, u.subunit_size)
 		if u._ranks_closed:
-			var half_count: int = int(ceil(float(u.max_soldiers) * 0.5))
+			var half_count: int = int(ceil(float(u.max_soldiers) * CLOSE_RANKS_CONTRACT_FRAC))
 			var closed: int = auto_files_for_subunit_size(half_count, u.subunit_size)
+
 			return mini(full, closed)
 		return full
 	var full_files: int = _files(u.max_soldiers)

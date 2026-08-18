@@ -4,22 +4,23 @@
   "drill": false,
   "show_engaged_highlight": true,
   "scenario": [
-    {"team": 0, "type": "Spearmen", "x": 800, "y": 300, "count": 45, "frontage_override": 9},
-    {"team": 1, "type": "Spearmen", "x": 800, "y": 470, "count": 45, "frontage_override": 9}
-
+    {"team": 0, "type": "Spearmen", "x": 800, "y": 300, "count": 140},
+    {"team": 1, "type": "Spearmen", "x": 800, "y": 560, "count": 140}
   ],
   "camera": [
-    {"tick": 0, "x": 800.0, "y": 385.0, "zoom": 1.45}
+    {"tick": 0, "x": 800.0, "y": 430.0, "zoom": 1.3}
   ],
   "steps": [
     {"tick": 8, "click": [800, 300]},
-    {"tick": 12, "rmb_click": [800, 470]}
+    {"tick": 12, "rmb_click": [800, 560]}
   ],
+
   "state": [0, 60, 150, 220, 300, 380, 460, 540],
   "frames": [150, 300, 460],
   "expect": [
     {"tick": 0, "uid": 0, "field": "position", "value": [800.0, 300.0]},
-    {"tick": 0, "uid": 1, "field": "position", "value": [800.0, 470.0]},
+    {"tick": 0, "uid": 1, "field": "position", "value": [800.0, 560.0]},
+
     {"tick": [220, 300], "uid": 0, "field": "state", "value": "FIGHTING"},
     {"tick": [220, 300], "uid": 0, "field": "engaged", "value": true},
     {"tick": [380, 540], "uid": 0, "field": "engaged", "value": true}

@@ -132,9 +132,10 @@ func test_files_label_for_unit() -> void:
 func test_scenario_frontage_parsing() -> void:
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.scenario = [
-		{"team": 0, "type": "Spearmen", "soldiers": 140, "subunit_structure": "file_group", "subunit_size": 16, "frontage": 12, "x": 400, "y": 400},
-		{"team": 1, "type": "Spearmen", "soldiers": 140, "subunit_structure": "file_group", "subunit_size": 16, "frontage_override": 14, "x": 400, "y": 600}
+		{"team": 0, "type": "Spearmen", "count": 140, "subunit_structure": "file_group", "subunit_size": 16, "frontage": 12, "x": 400, "y": 400},
+		{"team": 1, "type": "Spearmen", "count": 140, "subunit_structure": "file_group", "subunit_size": 16, "frontage_override": 14, "x": 400, "y": 600}
 	]
+
 	add_child_autofree(battle)
 	await get_tree().physics_frame
 
