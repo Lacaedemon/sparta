@@ -29,14 +29,7 @@
     }
   ],
   "steps": [],
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [
-        0
-      ],
-      "reason": "The depth reflection leaves the six men whose rank has no same-width counterpart (an 11-wide rank pairing against a centred 5-wide one) with no cell to pair with, so they swap ends along their own file and cross the stationary ranks between. One judged sample catches that traverse (nnd_min 1.46 wu at tick 375, pair 0/33). Expected under the current assignment rather than correct: whether an unpaired man should swap ends at all is open in #1280, which also records that the pre-fix code is worse here (0.83 wu) and never recovers, while this settles to an exact 9.0 lattice by tick 450."
-    }
-  },
+
   "state": [
     30,
     120,

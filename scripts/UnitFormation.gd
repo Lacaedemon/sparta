@@ -436,6 +436,37 @@ static func permute_slots(slots: PackedVector2Array, perm: PackedInt32Array) -> 
 	return out
 
 
+## Applies outward lateral flank arcs to unpaired traversing soldiers during depth-reflection
+## reform, preventing them from interpenetrating stationary neighbours as they cross ranks.
+static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions: PackedVector2Array,
+		unit_pos: Vector2, unit_ang: float, perm: PackedInt32Array, files: int, spacing: float) -> PackedVector2Array:
+	var n: int = slots.size()
+	if n <= 0 or files <= 0 or perm.size() != n or world_positions.size() != n:
+		return slots
+	var ranks: int = ranks_for(n, files)
+	if ranks <= 1:
+		return slots
+	var out: PackedVector2Array = slots.duplicate()
+	for i in range(n):
+		var cell: int = clampi(perm[i], 0, n - 1)
+		var r: int = i / files
+		var r_target: int = cell / files
+		if absi(r_target - r) >= ranks - 2:
+			var f: int = i % files
+			var y_start: float = slots[i].y
+			var y_target: float = slots[cell].y
+			var dy: float = y_target - y_start
+			if absf(dy) > 0.001:
+				var local_pos: Vector2 = (world_positions[i] - unit_pos).rotated(-unit_ang)
+				var t: float = clampf((local_pos.y - y_start) / dy, 0.0, 1.0)
+				var arc: float = smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.92, 1.0, t))
+				var side: float = -1.0 if float(f) < (files * 0.5) else 1.0
+				var dist: float = (files * 0.5 - float(f)) if side < 0.0 else (float(f) - files * 0.5 + 1.0)
+				var flank_offset: float = side * (dist + 1.5) * spacing
+				out[i].x += arc * flank_offset
+	return out
+
+
 ## `perm` with the entry for the soldier at `index` removed and every remaining cell id
 ## above the vacated one stepped down by one, so the result is still a permutation -- of
 ## 0..size-2 this time.
