@@ -36,27 +36,27 @@
           "soldier_summary": {
             "bbox": [
               72.0,
-              36.0
+              135.0
             ],
             "broken_count": 0,
             "centroid": [
               800.0,
-              300.0
+              301.93
             ],
-            "count": 45,
+            "count": 140,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
               3.6,
-              1.8
+              6.75
             ],
             "centroid_m": [
               40.0,
-              15.0
+              15.096
             ]
           },
-          "soldiers": 45,
+          "soldiers": 140,
           "state": "IDLE",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -89,38 +89,38 @@
           "order_phase": null,
           "position": [
             800.0,
-            470.0
+            560.0
           ],
           "position_m": [
             40.0,
-            23.5
+            28.0
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
               72.0,
-              36.0
+              135.0
             ],
             "broken_count": 0,
             "centroid": [
               800.0,
-              470.0
+              558.07
             ],
-            "count": 45,
+            "count": 140,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
               3.6,
-              1.8
+              6.75
             ],
             "centroid_m": [
               40.0,
-              23.5
+              27.904
             ]
           },
-          "soldiers": 45,
+          "soldiers": 140,
           "state": "IDLE",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -158,38 +158,38 @@
           "order_phase": "NONE",
           "position": [
             800.0,
-            301.84
+            301.04
           ],
           "position_m": [
             40.0,
-            15.092
+            15.052
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
               72.0,
-              36.0
+              135.0
             ],
             "broken_count": 0,
             "centroid": [
               800.0,
-              301.93
+              303.06
             ],
-            "count": 45,
+            "count": 140,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
               3.6,
-              1.8
+              6.75
             ],
             "centroid_m": [
               40.0,
-              15.097
+              15.153
             ]
           },
-          "soldiers": 45,
+          "soldiers": 140,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -222,38 +222,38 @@
           "order_phase": "NONE",
           "position": [
             800.0,
-            467.16
+            557.16
           ],
           "position_m": [
             40.0,
-            23.358
+            27.858
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
               72.0,
-              36.0
+              135.0
             ],
             "broken_count": 0,
             "centroid": [
               800.0,
-              467.01
+              555.08
             ],
-            "count": 45,
+            "count": 140,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
               3.6,
-              1.8
+              6.75
             ],
             "centroid_m": [
               40.0,
-              23.35
+              27.754
             ]
           },
-          "soldiers": 45,
+          "soldiers": 140,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -291,38 +291,38 @@
           "order_phase": "NONE",
           "position": [
             800.0,
-            331.25
+            330.45
           ],
           "position_m": [
             40.0,
-            16.562
+            16.523
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
               72.0,
-              36.0
+              135.0
             ],
             "broken_count": 0,
             "centroid": [
               800.0,
-              331.58
+              332.71
             ],
-            "count": 45,
+            "count": 140,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
               3.6,
-              1.8
+              6.75
             ],
             "centroid_m": [
               40.0,
-              16.579
+              16.635
             ]
           },
-          "soldiers": 45,
+          "soldiers": 140,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -355,38 +355,38 @@
           "order_phase": "NONE",
           "position": [
             800.0,
-            434.71
+            524.71
           ],
           "position_m": [
             40.0,
-            21.735
+            26.235
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
               72.0,
-              36.0
+              135.0
             ],
             "broken_count": 0,
             "centroid": [
               800.0,
-              434.38
+              522.45
             ],
-            "count": 45,
+            "count": 140,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
               3.6,
-              1.8
+              6.75
             ],
             "centroid_m": [
               40.0,
-              21.719
+              26.123
             ]
           },
-          "soldiers": 45,
+          "soldiers": 140,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -408,55 +408,55 @@
           "current_speed": 22.0,
           "current_speed_mps": 1.1,
           "delegated_group_id": null,
-          "engaged": true,
+          "engaged": false,
           "facing": [
             0.0,
             1.0
           ],
           "formation": "TIGHT",
           "frontage": 9,
-          "in_enemy_contact": true,
-          "maneuver": "FIGHTING",
-          "morale": 94.4,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            799.77,
-            354.89
+            800.0,
+            358.68
           ],
           "position_m": [
-            39.988,
-            17.745
+            40.0,
+            17.934
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              72.11,
-              34.62
+              72.0,
+              135.0
             ],
             "broken_count": 0,
             "centroid": [
-              800.84,
-              353.43
+              800.0,
+              360.94
             ],
-            "count": 42,
+            "count": 140,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.606,
-              1.731
+              3.6,
+              6.75
             ],
             "centroid_m": [
-              40.042,
-              17.672
+              40.0,
+              18.047
             ]
           },
-          "soldiers": 42,
-          "state": "FIGHTING",
+          "soldiers": 140,
+          "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 16,
           "subunit_structure": "FILE_GROUP",
@@ -472,55 +472,55 @@
           "current_speed": 22.0,
           "current_speed_mps": 1.1,
           "delegated_group_id": null,
-          "engaged": true,
+          "engaged": false,
           "facing": [
             0.0,
             -1.0
           ],
           "formation": "TIGHT",
           "frontage": 9,
-          "in_enemy_contact": true,
-          "maneuver": "FIGHTING",
-          "morale": 96.4,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
           "name": "Spearmen 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
             800.0,
-            411.95
+            496.48
           ],
           "position_m": [
             40.0,
-            20.598
+            24.824
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              72.08,
-              36.64
+              72.0,
+              135.0
             ],
             "broken_count": 0,
             "centroid": [
-              799.63,
-              414.17
+              800.0,
+              494.22
             ],
-            "count": 43,
+            "count": 140,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.604,
-              1.832
+              3.6,
+              6.75
             ],
             "centroid_m": [
-              39.981,
-              20.708
+              40.0,
+              24.711
             ]
           },
-          "soldiers": 43,
-          "state": "FIGHTING",
+          "soldiers": 140,
+          "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 16,
           "subunit_structure": "FILE_GROUP",
@@ -543,52 +543,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.18,
-            0.98
+            0.03,
+            1.0
           ],
           "formation": "TIGHT",
           "frontage": 9,
           "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 85.0,
+          "morale": 86.0,
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            794.72,
-            363.12
+            799.18,
+            395.39
           ],
           "position_m": [
-            39.736,
-            18.156
+            39.959,
+            19.769
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              75.12,
-              34.7
+              94.15,
+              137.6
             ],
             "broken_count": 0,
             "centroid": [
-              797.82,
-              361.19
+              800.21,
+              381.9
             ],
-            "count": 37,
+            "count": 118,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.756,
-              1.735
+              4.708,
+              6.88
             ],
             "centroid_m": [
-              39.891,
-              18.059
+              40.011,
+              19.095
             ]
           },
-          "soldiers": 37,
+          "soldiers": 118,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -607,52 +607,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.18,
-            -0.98
+            -0.03,
+            -1.0
           ],
           "formation": "TIGHT",
           "frontage": 9,
           "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 91.2,
+          "morale": 85.3,
           "name": "Spearmen 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            802.27,
-            404.27
+            800.82,
+            459.77
           ],
           "position_m": [
-            40.113,
-            20.214
+            40.041,
+            22.989
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              74.47,
-              33.69
+              94.15,
+              137.61
             ],
             "broken_count": 0,
             "centroid": [
-              800.49,
-              407.04
+              799.78,
+              472.76
             ],
-            "count": 40,
+            "count": 117,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.724,
-              1.685
+              4.708,
+              6.88
             ],
             "centroid_m": [
-              40.025,
-              20.352
+              39.989,
+              23.638
             ]
           },
-          "soldiers": 40,
+          "soldiers": 117,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -676,52 +676,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.39,
-            0.92
+            0.05,
+            1.0
           ],
           "formation": "TIGHT",
           "frontage": 9,
           "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 79.4,
+          "morale": 84.7,
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            789.48,
-            364.94
+            801.94,
+            400.64
           ],
           "position_m": [
-            39.474,
-            18.247
+            40.097,
+            20.032
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              70.69,
-              44.83
+              224.75,
+              177.44
             ],
             "broken_count": 0,
             "centroid": [
-              790.68,
-              364.88
+              796.73,
+              379.63
             ],
-            "count": 34,
+            "count": 115,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.534,
-              2.241
+              11.238,
+              8.872
             ],
             "centroid_m": [
-              39.534,
-              18.244
+              39.836,
+              18.982
             ]
           },
-          "soldiers": 34,
+          "soldiers": 115,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -740,52 +740,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.39,
-            -0.92
+            -0.05,
+            -1.0
           ],
           "formation": "TIGHT",
           "frontage": 9,
           "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 87.9,
+          "morale": 84.7,
           "name": "Spearmen 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            805.95,
-            402.6
+            803.84,
+            449.22
           ],
           "position_m": [
-            40.298,
-            20.13
+            40.192,
+            22.461
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              77.93,
-              49.72
+              224.21,
+              185.1
             ],
             "broken_count": 0,
             "centroid": [
-              803.54,
-              406.11
+              804.24,
+              474.01
             ],
-            "count": 38,
+            "count": 115,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.896,
-              2.486
+              11.211,
+              9.255
             ],
             "centroid_m": [
-              40.177,
-              20.306
+              40.212,
+              23.7
             ]
           },
-          "soldiers": 38,
+          "soldiers": 115,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -809,52 +809,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.59,
-            0.81
+            0.19,
+            0.98
           ],
           "formation": "TIGHT",
           "frontage": 9,
           "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 69.5,
+          "morale": 78.2,
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            786.68,
-            370.82
+            789.75,
+            388.39
           ],
           "position_m": [
-            39.334,
-            18.541
+            39.487,
+            19.42
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              67.77,
-              61.03
+              271.74,
+              189.2
             ],
             "broken_count": 0,
             "centroid": [
-              789.09,
-              365.55
+              795.87,
+              375.91
             ],
-            "count": 29,
+            "count": 104,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.389,
-              3.052
+              13.587,
+              9.46
             ],
             "centroid_m": [
-              39.455,
-              18.277
+              39.794,
+              18.796
             ]
           },
-          "soldiers": 29,
+          "soldiers": 104,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -873,52 +873,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.59,
-            -0.81
+            -0.19,
+            -0.98
           ],
           "formation": "TIGHT",
           "frontage": 9,
           "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 78.5,
+          "morale": 78.2,
           "name": "Spearmen 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            810.1,
-            403.19
+            801.95,
+            451.14
           ],
           "position_m": [
-            40.505,
-            20.159
+            40.098,
+            22.557
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              71.81,
-              60.05
+              260.7,
+              205.38
             ],
             "broken_count": 0,
             "centroid": [
-              808.98,
-              404.81
+              804.03,
+              472.14
             ],
-            "count": 33,
+            "count": 104,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.59,
-              3.002
+              13.035,
+              10.269
             ],
             "centroid_m": [
-              40.449,
-              20.24
+              40.201,
+              23.607
             ]
           },
-          "soldiers": 33,
+          "soldiers": 104,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -942,52 +942,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            0.7,
-            0.71
+            0.14,
+            0.99
           ],
           "formation": "TIGHT",
           "frontage": 9,
           "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 49.3,
+          "morale": 72.0,
           "name": "Spearmen 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            784.24,
-            365.34
+            792.57,
+            380.34
           ],
           "position_m": [
-            39.212,
-            18.267
+            39.628,
+            19.017
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              64.73,
-              53.73
+              228.79,
+              160.48
             ],
             "broken_count": 0,
             "centroid": [
-              786.65,
-              358.57
+              794.25,
+              384.86
             ],
-            "count": 19,
+            "count": 94,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.237,
-              2.687
+              11.439,
+              8.024
             ],
             "centroid_m": [
-              39.333,
-              17.929
+              39.713,
+              19.243
             ]
           },
-          "soldiers": 19,
+          "soldiers": 94,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "subunit_size": 16,
@@ -1006,52 +1006,52 @@
           "delegated_group_id": null,
           "engaged": true,
           "facing": [
-            -0.7,
-            -0.71
+            -0.14,
+            -0.99
           ],
           "formation": "TIGHT",
           "frontage": 9,
           "in_enemy_contact": true,
           "maneuver": "FIGHTING",
-          "morale": 67.0,
+          "morale": 73.8,
           "name": "Spearmen 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            813.05,
-            394.94
+            803.08,
+            456.6
           ],
           "position_m": [
-            40.653,
-            19.747
+            40.154,
+            22.83
           ],
           "queue_tail": [],
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              61.96,
-              60.49
+              236.75,
+              178.21
             ],
             "broken_count": 0,
             "centroid": [
-              810.55,
-              403.92
+              801.22,
+              452.8
             ],
-            "count": 27,
+            "count": 94,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.098,
-              3.024
+              11.838,
+              8.91
             ],
             "centroid_m": [
-              40.528,
-              20.196
+              40.061,
+              22.64
             ]
           },
-          "soldiers": 27,
+          "soldiers": 94,
           "state": "FIGHTING",
           "subcommander_rank": null,
           "subunit_size": 16,
