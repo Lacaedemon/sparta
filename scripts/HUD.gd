@@ -918,7 +918,7 @@ func show_unit(u, group_count: int) -> void:
 	if u.training > 0.0:
 		lines.append("Training: %d%%" % clampi(roundi(u.training * 100.0), 1, 100))
 	lines.append("Formation: %s" % u.formation_summary())
-	lines.append("Width: %s" % UnitFormation.files_label(UnitFormation.frontage(u)))
+	lines.append("Width: %s" % UnitFormation.files_label_for_unit(u, UnitFormation.frontage(u)))
 	lines.append("Order: %s" % u.order_summary())
 	# Battle AI phase 4 (docs/battle-ai-design.md): a delegated unit's period-flavored
 	# subcommander rank, resolved from the player's own doctrine profile at delegation time

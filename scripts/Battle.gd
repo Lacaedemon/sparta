@@ -749,7 +749,9 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 func _line_half_width(d: Dictionary) -> float:
 	var d_spacing: float = float(d.get("file_pitch_m", 0.45)) * WorldScaleRef.WU_PER_M \
 			* Unit.spacing_scale_for_mode(d.get("formation", Unit.FORMATION_NORMAL))
-	return UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing)
+	var sub_struct: int = _parse_subunit_structure(d.get("subunit_structure", "none"))
+	var sub_size: int = int(d.get("subunit_size", 0))
+	return UnitFormation.half_width_for_soldiers(d["soldiers"], d_spacing, sub_struct, sub_size)
 
 
 ## Given each unit's own half-width (already formation-density-scaled, see _line_half_width)
@@ -1021,6 +1023,8 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.set_formation(d.get("formation", Unit.FORMATION_NORMAL))
 	if d.has("morale"):
 		u.morale = float(d["morale"])
+	if d.has("frontage_override"):
+		u.frontage_override = int(d["frontage_override"])
 	# Apply a starting state if specified (ROUTING for demo recovery scenarios, etc).
 	if d.has("starting_state"):
 		_apply_starting_state(u, int(d["starting_state"]))
@@ -1086,6 +1090,10 @@ func _spawn_scenario(specs: Array) -> void:
 			d["subunit_structure"] = spec["subunit_structure"]
 		if spec.has("subunit_size"):
 			d["subunit_size"] = int(spec["subunit_size"])
+		if spec.has("frontage_override"):
+			d["frontage_override"] = int(spec["frontage_override"])
+		elif spec.has("frontage"):
+			d["frontage_override"] = int(spec["frontage"])
 		var team := int(spec.get("team", 0))
 		var pos := Vector2(float(spec.get("x", field.size.x * 0.5)), float(spec.get("y", field.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the

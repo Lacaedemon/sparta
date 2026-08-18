@@ -31,7 +31,7 @@ func _stage_lone_spearmen(disciplined: bool) -> Unit:
 	_battle.drill_mode = true   # set before add_child so Battle._ready reads it
 	_battle.scenario = [
 		{"team": 0, "type": "Spearmen", "x": SPAWN.x, "y": SPAWN.y,
-			"count": SPEARMEN_COUNT, "facing": [0, 1],
+			"count": SPEARMEN_COUNT, "facing": [0, 1], "frontage_override": 9,
 			"disciplined": disciplined, "file_major_reform": "auto"},
 	]
 	add_child(_battle)
