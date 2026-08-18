@@ -13,7 +13,7 @@ const FactionRef = preload("res://scripts/Faction.gd")
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 const BattleMapRef = preload("res://scripts/BattleMap.gd")
 
-## Signals emitted for battle-significant events (#1287)
+## Signals emitted for battle-significant events
 signal tide_of_battle_changed(stronger_team: int)
 signal army_half_destroyed(team: int)
 signal army_tired(team: int)
@@ -2930,7 +2930,7 @@ func _report_campaign_result(text: String) -> void:
 		CampaignBattle.result = {"attacker_won": false, "survivors": 1}
 
 
-## Evaluate and emit battle-significant event signals (#1287)
+## Evaluate and emit battle-significant event signals
 func _evaluate_battle_event_signals() -> void:
 	if _ended or drill_mode:
 		return
