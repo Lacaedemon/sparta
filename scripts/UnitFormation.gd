@@ -735,16 +735,16 @@ static func reversed_ranks_within_files(file_ids: PackedInt32Array,
 ## preserving file identity for all soldiers in the retained files.
 ## Returns a Dictionary with "file_ids": PackedInt32Array and "ranks": PackedInt32Array.
 static func fold_flank_to_rear(file_ids: PackedInt32Array, ranks: PackedInt32Array,
-		old_files: int, new_files: int) -> Dictionary:
-	return subunit_reform_files(file_ids, ranks, old_files, new_files)
+		new_files: int) -> Dictionary:
+	return subunit_reform_files(file_ids, ranks, new_files)
 
 
 ## Peels rear-rank soldiers from existing files to form new flank files when widening frontage,
 ## preserving file identity for all soldiers remaining in the existing files.
 ## Returns a Dictionary with "file_ids": PackedInt32Array and "ranks": PackedInt32Array.
 static func peel_rear_to_flank(file_ids: PackedInt32Array, ranks: PackedInt32Array,
-		old_files: int, new_files: int) -> Dictionary:
-	return subunit_reform_files(file_ids, ranks, old_files, new_files)
+		new_files: int) -> Dictionary:
+	return subunit_reform_files(file_ids, ranks, new_files)
 
 
 ## Expresses a frontage reform (narrowing or widening) as a subunit-level operation.
@@ -752,7 +752,7 @@ static func peel_rear_to_flank(file_ids: PackedInt32Array, ranks: PackedInt32Arr
 ## within the new file capacities, only relocating excess or peeled soldiers.
 ## Returns a Dictionary with "file_ids": PackedInt32Array and "ranks": PackedInt32Array.
 static func subunit_reform_files(file_ids: PackedInt32Array, ranks: PackedInt32Array,
-		old_files: int, new_files: int) -> Dictionary:
+		new_files: int) -> Dictionary:
 	var n: int = file_ids.size()
 	if n <= 0 or new_files <= 0:
 		return {"file_ids": file_ids, "ranks": ranks}

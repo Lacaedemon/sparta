@@ -4101,7 +4101,7 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 	else:
 		if subunit_structure == SubunitStructure.FILE_GROUP and _file_assignment_files > 0 and _sim_soldier_file.size() == count:
 			var reformed: Dictionary = UnitFormation.subunit_reform_files(
-					_sim_soldier_file, _sim_soldier_rank, _file_assignment_files, files)
+					_sim_soldier_file, _sim_soldier_rank, files)
 			_sim_soldier_file = reformed["file_ids"]
 			_sim_soldier_rank = reformed["ranks"]
 		else:

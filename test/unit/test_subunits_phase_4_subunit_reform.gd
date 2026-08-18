@@ -28,7 +28,7 @@ func test_fold_flank_to_rear_preserves_retained_files() -> void:
 		seen[f] = d + 1
 		initial_ranks[i] = d
 
-	var res: Dictionary = UnitFormation.fold_flank_to_rear(initial_files, initial_ranks, old_files, new_files)
+	var res: Dictionary = UnitFormation.fold_flank_to_rear(initial_files, initial_ranks, new_files)
 	var out_files: PackedInt32Array = res["file_ids"]
 	var out_ranks: PackedInt32Array = res["ranks"]
 
@@ -65,7 +65,7 @@ func test_peel_rear_to_flank_preserves_retained_files() -> void:
 		seen[f] = d + 1
 		initial_ranks[i] = d
 
-	var res: Dictionary = UnitFormation.peel_rear_to_flank(initial_files, initial_ranks, old_files, new_files)
+	var res: Dictionary = UnitFormation.peel_rear_to_flank(initial_files, initial_ranks, new_files)
 	var out_files: PackedInt32Array = res["file_ids"]
 	var out_ranks: PackedInt32Array = res["ranks"]
 
@@ -113,7 +113,7 @@ func test_file_disruption_improvement_over_whole_block_relabel() -> void:
 
 	# 2. Subunit reform
 	var subunit_res: Dictionary = UnitFormation.subunit_reform_files(
-			initial_files, initial_ranks, old_files, new_files)
+			initial_files, initial_ranks, new_files)
 	var sub_files: PackedInt32Array = subunit_res["file_ids"]
 
 	var files_changed_relabel := 0
