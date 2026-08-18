@@ -12,7 +12,7 @@ makensis -DVERSION=0.1.0 -DEXE_PATH=sparta.exe sparta.nsi
 `OUTFILE` defaults to a name in this script's own directory for a plain local
 build; the release workflow passes an absolute `-DOUTFILE=...` so the built
 installer lands in `build/` instead (see the comment at the top of the `.nsi`
-file — a relative `OutFile` resolves against the script's directory, not the
+file -- a relative `OutFile` resolves against the script's directory, not the
 caller's working directory).
 
 ## Code-signing & notarization
@@ -20,13 +20,13 @@ caller's working directory).
 Release builds (macOS `.zip`/`.app`, the Windows `.exe`, and the Windows
 installer built from this directory) are **unsigned by default**. The
 `release.yml` workflow has the plumbing wired up to sign and notarize them
-automatically — it just needs the certificates below added as **repository
+automatically -- it just needs the certificates below added as **repository
 secrets** (Settings → Secrets and variables → Actions → New repository
 secret). Until they're all present, the corresponding step logs an
 `::notice::` and no-ops; the build still succeeds, just unsigned, exactly as
 today.
 
-**This session cannot obtain or provision these for you** — they require a
+**This session cannot obtain or provision these for you** -- they require a
 paid Apple Developer Program membership and a purchased Windows code-signing
 certificate, both tied to the maintainer's own identity/organization. Nothing
 short of the actual repo owner buying and generating these can turn signing
@@ -35,10 +35,10 @@ on.
 ### macOS: Developer ID signing + notarization
 
 Godot cross-exports macOS from the Linux runner, so signing/notarizing also
-runs there — via [`rcodesign`](https://github.com/indygreg/apple-platform-rs)
+runs there -- via [`rcodesign`](https://github.com/indygreg/apple-platform-rs)
 (the `apple-codesign` project), which reimplements Apple's codesign/notary
 tools in a way that doesn't require a Mac. `release.yml` downloads a pinned
-`rcodesign` release (`RCODESIGN_VERSION` at the top of the workflow — bump it
+`rcodesign` release (`RCODESIGN_VERSION` at the top of the workflow -- bump it
 if a newer release is needed).
 
 Required secrets, all four together (partial configuration is treated as
@@ -55,14 +55,14 @@ The workflow signs the exported `.app`, then zips it into a throwaway
 archive used only for notary submission. It runs
 `rcodesign notary-submit --wait` (no `--staple` flag) against that throwaway
 zip, then runs `rcodesign staple` separately *directly against the `.app`
-directory itself*, not the zip — stapling only works on the bundle, not an
+directory itself*, not the zip -- stapling only works on the bundle, not an
 archive of it. The now-stapled `.app` is then re-zipped as the final
-`sparta.zip` distribution artifact — so the shipped `.zip`/`.app` passes
+`sparta.zip` distribution artifact -- so the shipped `.zip`/`.app` passes
 Gatekeeper with no right-click-Open workaround needed.
 
 Because this can't be exercised end-to-end without real credentials, treat
 the exact `rcodesign` invocation as a best-effort scaffold based on its
-documented CLI — the maintainer should watch the first real signing run
+documented CLI -- the maintainer should watch the first real signing run
 closely and adjust flags if `rcodesign`'s CLI has moved since
 `RCODESIGN_VERSION` was pinned.
 
@@ -70,7 +70,7 @@ closely and adjust flags if `rcodesign`'s CLI has moved since
 
 Signing also runs on the Linux runner, via
 [`osslsigncode`](https://github.com/mtrojnar/osslsigncode) (a Linux-native
-Authenticode signer — installed by `apt-get` in the workflow), so no Windows
+Authenticode signer -- installed by `apt-get` in the workflow), so no Windows
 runner or `signtool` is needed. Both the raw `sparta.exe` and the NSIS
 installer built from this directory get signed.
 
@@ -78,11 +78,11 @@ Required secrets, both together:
 
 | Secret | What it is | How to get it |
 | --- | --- | --- |
-| `WINDOWS_CODESIGN_PFX_BASE64` | Base64 of an Authenticode code-signing certificate (`.pfx`/`.p12`) — an OV or EV certificate from a CA (DigiCert, Sectigo, SSL.com, etc.) | `base64 -w0 cert.pfx` (Linux/macOS) or `[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))` (PowerShell) |
+| `WINDOWS_CODESIGN_PFX_BASE64` | Base64 of an Authenticode code-signing certificate (`.pfx`/`.p12`) -- an OV or EV certificate from a CA (DigiCert, Sectigo, SSL.com, etc.) | `base64 -w0 cert.pfx` (Linux/macOS) or `[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))` (PowerShell) |
 | `WINDOWS_CODESIGN_PASSWORD` | Password protecting that `.pfx` | Whatever password the CA/export gave it |
 
 An EV certificate is usually held on a hardware token and can't be exported
-as a portable `.pfx` at all — if the maintainer's certificate is EV-on-token,
+as a portable `.pfx` at all -- if the maintainer's certificate is EV-on-token,
 this plumbing (which assumes an exportable `.pfx` reachable via CI secrets)
 won't work as-is, and CI-based signing would need a different approach (e.g. a
 self-hosted runner with the token attached). An OV certificate exported as a
