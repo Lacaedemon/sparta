@@ -909,7 +909,7 @@ func show_unit(u, group_count: int) -> void:
 	lines.append("Type: %s" % kind)
 	lines.append("Commander: %s" % OfficerRank.title_for(u))
 	lines.append("Soldiers: %d / %d" % [u.soldiers, u.max_soldiers])
-	lines.append("Morale: %d" % int(u.morale))
+	lines.append("Morale: %d (%s)" % [int(u.morale), u.morale_ladder_name()])
 	lines.append("Fatigue: %d%%" % int(u.fatigue))
 	if u.cohesion < 1.0:
 		lines.append("Cohesion: %d%%" % mini(roundi(u.cohesion * 100.0), 99))

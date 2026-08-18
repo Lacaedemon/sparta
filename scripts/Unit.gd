@@ -966,6 +966,10 @@ const RANK_CYCLE_MORALE_PER_SEC: float = 1.2
 # either -- tick_morale gates its in-fight recovery off at the same ratio. Shared so the
 # two effects switch on/off together instead of drifting out of sync.
 const MORALE_CRUMBLE_RATIO_THRESHOLD: float = 0.4
+
+## Returns the human-readable 7-rung morale ladder name for this unit.
+func morale_ladder_name() -> String:
+	return UnitMorale.ladder_name(morale, state == State.ROUTING)
 # Base per-casualty morale erosion (UnitCombat.register_casualties) is FRACTION-of-force
 # scaled, not a flat per-head amount: losing `total` soldiers costs
 # `(total / max_soldiers) * MORALE_LOSS_PER_FULL_LOSS` morale, so a percentage loss costs
@@ -7025,7 +7029,7 @@ func to_snapshot_dict() -> Dictionary:
 		"team_color": team_color,
 
 		# Mutable runtime state.
-		"soldiers": soldiers, "morale": morale, "fatigue": fatigue, "cohesion": cohesion,
+		"soldiers": soldiers, "morale": morale, "morale_ladder": morale_ladder_name(), "fatigue": fatigue, "cohesion": cohesion,
 		"state": state, "facing": facing, "position": position,
 		"move_target": move_target, "has_move_target": has_move_target,
 		"order_mode": order_mode, "knockback_push_indefinite": knockback_push_indefinite,
