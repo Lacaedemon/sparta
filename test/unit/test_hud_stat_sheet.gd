@@ -121,7 +121,7 @@ func test_show_unit_splits_the_header_stats_onto_own_lines() -> void:
 	var text: String = hud._info.text
 	assert_string_contains(text, "Type: Infantry\nCommander: ",
 			"type and commander sit on adjacent single-item lines")
-	assert_string_contains(text, "Morale: 100\nFatigue: 0%",
+	assert_string_contains(text, "Morale: 100 (berserk)\nFatigue: 0%",
 			"morale and fatigue split onto their own lines")
 	assert_string_contains(text, "\nWidth: ", "the width gets its own line")
 	assert_string_contains(text, "\nOrder: ", "the order gets its own line")

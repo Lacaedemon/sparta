@@ -1,9 +1,51 @@
 class_name UnitMorale
 ## Per-tick regiment condition updates for a Unit, extracted from Unit.gd: fatigue
 ## build-up/recovery (and the attack penalty it drives), the post-merge cohesion ramp, and
-## morale recovery. Static helpers on the unit, driven by the fixed-step delta and combat
+## morale recovery/erosion. Static helpers on the unit, driven by the fixed-step delta and combat
 ## state only -- no RNG, no wall-clock -- so they reproduce on replay. Called once per tick
 ## from Unit's _physics_process; the line-relief and merge logic live elsewhere on Unit.
+
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
+enum Ladder { ROUTING, WAVERING, SHAKEN, FIRM, HIGH, IMPETUOUS, BERSERK }
+
+const LADDER_NAMES := {
+	Ladder.ROUTING: "routing",
+	Ladder.WAVERING: "wavering",
+	Ladder.SHAKEN: "shaken",
+	Ladder.FIRM: "firm",
+	Ladder.HIGH: "high",
+	Ladder.IMPETUOUS: "impetuous",
+	Ladder.BERSERK: "berserk",
+}
+
+const LOCAL_FORCE_RADIUS_SQ: float = (8.0 * WorldScaleRef.WU_PER_M) * (8.0 * WorldScaleRef.WU_PER_M)
+const OUTNUMBERED_MORALE_EROSION_PER_SEC: float = 2.0
+const UNDER_FIRE_MORALE_EROSION_PER_SEC: float = 1.5
+const LOCAL_SUPERIORITY_MORALE_BOOST_PER_SEC: float = 1.0
+
+
+## Classifies a morale scalar (and routing state) into one of the 7 rungs of the morale ladder.
+static func classify(morale: float, is_routing: bool = false) -> Ladder:
+	if is_routing or morale <= 0.0:
+		return Ladder.ROUTING
+	elif morale <= 25.0:
+		return Ladder.WAVERING
+	elif morale <= 50.0:
+		return Ladder.SHAKEN
+	elif morale <= 75.0:
+		return Ladder.FIRM
+	elif morale <= 90.0:
+		return Ladder.HIGH
+	elif morale <= 98.0:
+		return Ladder.IMPETUOUS
+	else:
+		return Ladder.BERSERK
+
+
+## Returns the human-readable string name for the current morale rung.
+static func ladder_name(morale: float, is_routing: bool = false) -> String:
+	return LADDER_NAMES[classify(morale, is_routing)]
 
 
 ## Fatigue builds while fighting and recovers while resting. Well-trained melee units
@@ -37,22 +79,49 @@ static func tick_cohesion(u: Unit, delta: float) -> void:
 
 ## Morale recovers when resting; well-trained melee units also sustain it while fighting
 ## via visible rank rotation keeping the formation steady -- the same intra-unit
-## rank-relief mode as the fatigue reduction above (Unit.rank_relief; recovery cuts off
-## entirely with the mode off). In-fight recovery is scaled by
-## the regiment's remaining STRENGTH RATIO (soldiers / max_soldiers), not just training: a
-## thinned-out regiment has fewer fresh files left to rotate to the front, so its capacity
-## to sustain morale through rank-cycling shrinks as it bleeds, and cuts off entirely once
-## the regiment is CRUMBLING (below Unit.MORALE_CRUMBLE_RATIO_THRESHOLD -- see
-## UnitCombat.register_casualties, which adds an extra erosion penalty at the same point).
-## This is what keeps discipline from granting near-immunity to routing (see
-## RANK_CYCLE_MORALE_PER_SEC): under sustained casualties the strength ratio trends toward
-## 0, so in-fight recovery fades out well before the regiment is spent, and erosion always
-## wins eventually -- even for a maxed-training unit. Training still sets how strong the
-## recovery is while the regiment is intact, so a disciplined unit holds out longer / absorbs
-## more losses before that crossover -- it just isn't a permanent floor above the rout
-## threshold.
+## rank-relief mode as the fatigue reduction above (Unit.rank_relief).
+## Local force-ratio inputs (nearby friendly vs enemy soldier counts) and incoming fire
+## adjust morale decay / stability each tick.
 static func tick_morale(u: Unit, delta: float) -> void:
-	if u.state != Unit.State.FIGHTING and u.morale < 100.0:
+	# Query local neighborhood for force-ratio inputs
+	var nearby_friendly_soldiers: int = u.soldiers
+	var nearby_enemy_soldiers: int = 0
+	if u.is_inside_tree():
+		var candidates: Array = u._separation_candidates()
+		var radius_sq := LOCAL_FORCE_RADIUS_SQ
+		for candidate in candidates:
+			if candidate == null or candidate == u:
+				continue
+			if "soldiers" in candidate and "team" in candidate and "state" in candidate:
+				if candidate.state == Unit.State.DEAD or candidate.state == Unit.State.ROUTING:
+					continue
+				if u.position.distance_squared_to(candidate.position) <= radius_sq:
+					if candidate.team == u.team:
+						nearby_friendly_soldiers += candidate.soldiers
+					else:
+						nearby_enemy_soldiers += candidate.soldiers
+
+	var local_force_ratio: float = 1.0
+	if nearby_enemy_soldiers > 0:
+		local_force_ratio = float(nearby_friendly_soldiers) / float(nearby_enemy_soldiers)
+	elif nearby_friendly_soldiers > u.soldiers:
+		local_force_ratio = 2.0
+
+	# Local force ratio adjustments:
+	if local_force_ratio < 1.0:
+		var erosion := OUTNUMBERED_MORALE_EROSION_PER_SEC * (1.0 - local_force_ratio) * delta
+		u.morale = maxf(0.0, u.morale - erosion)
+	elif local_force_ratio >= 1.5 and u.morale < 100.0 and u.state != Unit.State.FIGHTING:
+		var boost := LOCAL_SUPERIORITY_MORALE_BOOST_PER_SEC * delta
+		u.morale = minf(100.0, u.morale + boost)
+
+	# Incoming fire erosion:
+	if u._under_fire:
+		var fire_erosion := UNDER_FIRE_MORALE_EROSION_PER_SEC * delta
+		u.morale = maxf(0.0, u.morale - fire_erosion)
+
+	# Resting recovery / rank-cycle in-fight recovery:
+	if u.state != Unit.State.FIGHTING and u.morale < 100.0 and local_force_ratio >= 1.0 and not u._under_fire:
 		u.morale = minf(100.0, u.morale + Unit.MORALE_RECOVER_PER_SEC * delta)
 	elif u.state == Unit.State.FIGHTING and not u.is_ranged and u.rank_relief \
 			and u.training >= Unit.RANK_CYCLE_MORALE_THRESHOLD and u.morale < 100.0:
