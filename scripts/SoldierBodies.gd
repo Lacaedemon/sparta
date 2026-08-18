@@ -545,21 +545,22 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 
 	# If moving between distinct lateral files:
 	if absf(p_local.x - t_local.x) > spacing * 0.5:
-		var rear_corridor_y: float = y_rear + depth * 1.0
+		var lane_sign: float = 1.0 if p_local.x >= 0.0 else -1.0
+		var flank_x: float = lane_sign * (rx_half + spacing * (1.0 + 0.25 * float(i % 2)))
+		var rear_corridor_y: float = y_rear + depth * (1.0 + 0.25 * float((i / 2) % 2))
 		# Case 1: moving to a rearward slot (destination is deeper than origin)
 		if t_local.y >= p_local.y + depth * 0.5:
-			var flank_x: float = (rx_half + spacing * 1.0) if p_local.x >= 0.0 else (-rx_half - spacing * 1.0)
 			if p_local.y < rear_corridor_y - depth * 0.5:
 				t_local = Vector2(flank_x, rear_corridor_y)
 			elif absf(p_local.x - t_local.x) > spacing * 0.5:
 				t_local = Vector2(t_local.x, rear_corridor_y)
 		# Case 2: moving from a rearward position to a forward slot
 		elif p_local.y > t_local.y + depth * 0.5:
-			var flank_x: float = (rx_half + spacing * 1.0) if t_local.x >= 0.0 else (-rx_half - spacing * 1.0)
-			if absf(p_local.x - flank_x) > spacing * 0.5 and p_local.y >= rear_corridor_y - depth * 0.5:
-				t_local = Vector2(flank_x, rear_corridor_y)
+			var target_flank_x: float = (1.0 if t_local.x >= 0.0 else -1.0) * (rx_half + spacing * (1.0 + 0.25 * float(i % 2)))
+			if absf(p_local.x - target_flank_x) > spacing * 0.5 and p_local.y >= rear_corridor_y - depth * 0.5:
+				t_local = Vector2(target_flank_x, rear_corridor_y)
 			elif p_local.y >= t_local.y + depth * 0.5:
-				t_local = Vector2(flank_x, t_local.y)
+				t_local = Vector2(target_flank_x, t_local.y)
 
 	if unit._formation_mirror_x:
 		t_local.x = -t_local.x
