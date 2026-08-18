@@ -19,7 +19,16 @@ const LADDER_NAMES := {
 	Ladder.BERSERK: "berserk",
 }
 
-const LOCAL_FORCE_RADIUS_SQ: float = (8.0 * WorldScaleRef.WU_PER_M) * (8.0 * WorldScaleRef.WU_PER_M)
+# Morale ladder band boundaries
+const THRESHOLD_WAVERING: float = 25.0
+const THRESHOLD_SHAKEN: float = 50.0
+const THRESHOLD_FIRM: float = 75.0
+const THRESHOLD_HIGH: float = 90.0
+const THRESHOLD_IMPETUOUS: float = 98.0
+
+# 6m radius (120 WU) fits inside SpatialHash.CELL_SIZE (128 WU) so candidate queries stay complete
+const LOCAL_FORCE_RADIUS_SQ: float = (6.0 * WorldScaleRef.WU_PER_M) * (6.0 * WorldScaleRef.WU_PER_M)
+const UNOPPOSED_LOCAL_FORCE_RATIO: float = 2.0
 const OUTNUMBERED_MORALE_EROSION_PER_SEC: float = 2.0
 const UNDER_FIRE_MORALE_EROSION_PER_SEC: float = 1.5
 const LOCAL_SUPERIORITY_MORALE_BOOST_PER_SEC: float = 1.0
@@ -29,15 +38,15 @@ const LOCAL_SUPERIORITY_MORALE_BOOST_PER_SEC: float = 1.0
 static func classify(morale: float, is_routing: bool = false) -> Ladder:
 	if is_routing or morale <= 0.0:
 		return Ladder.ROUTING
-	elif morale <= 25.0:
+	elif morale <= THRESHOLD_WAVERING:
 		return Ladder.WAVERING
-	elif morale <= 50.0:
+	elif morale <= THRESHOLD_SHAKEN:
 		return Ladder.SHAKEN
-	elif morale <= 75.0:
+	elif morale <= THRESHOLD_FIRM:
 		return Ladder.FIRM
-	elif morale <= 90.0:
+	elif morale <= THRESHOLD_HIGH:
 		return Ladder.HIGH
-	elif morale <= 98.0:
+	elif morale <= THRESHOLD_IMPETUOUS:
 		return Ladder.IMPETUOUS
 	else:
 		return Ladder.BERSERK
@@ -105,7 +114,7 @@ static func tick_morale(u: Unit, delta: float) -> void:
 	if nearby_enemy_soldiers > 0:
 		local_force_ratio = float(nearby_friendly_soldiers) / float(nearby_enemy_soldiers)
 	elif nearby_friendly_soldiers > u.soldiers:
-		local_force_ratio = 2.0
+		local_force_ratio = UNOPPOSED_LOCAL_FORCE_RATIO
 
 	# Local force ratio adjustments:
 	if local_force_ratio < 1.0:

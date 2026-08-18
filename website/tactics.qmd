@@ -42,6 +42,7 @@ fightable --- for as long as it's plausibly still in view.
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
+- **Local force ratio & named morale ladder.** Morale reflects local tactical context: being locally outnumbered or under missile fire drains morale over time, while local numerical superiority steadies nerve. Morale is classified into a 7-rung ladder (`routing`, `wavering`, `shaken`, `firm`, `high`, `impetuous`, `berserk`) shown in the unit info panel.
 - This makes morale a *weapon*: you can win by breaking the enemy's will before
   you've killed even half their soldiers.
 - **A routing unit is still fair game.** Routing doesn't grant immunity --- a fleeing
