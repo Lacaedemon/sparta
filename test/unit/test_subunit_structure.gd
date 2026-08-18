@@ -159,10 +159,8 @@ func test_every_spawned_regiment_carries_its_types_declaration() -> void:
 	assert_eq(cavalry_seen, 4, "both cavalry regiments on both teams were checked")
 
 
-func test_the_declaration_is_inert_for_layout() -> void:
-	# The phase's actual claim. Two otherwise-identical units differing only in their declared
-	# subunit lay out identically -- frontage still comes from UnitFormation, which reads
-	# neither field.
+func test_the_file_group_declaration_sets_layout_frontage() -> void:
+	# In Subunits Phase 2, a FILE_GROUP foot unit derives frontage from ceil(max_soldiers / subunit_size).
 	var plain: Unit = UnitScript.new()
 	add_child_autofree(plain)
 	plain.max_soldiers = 120
@@ -175,11 +173,10 @@ func test_the_declaration_is_inert_for_layout() -> void:
 	declared.subunit_structure = UnitScript.SubunitStructure.FILE_GROUP
 	declared.subunit_size = 16
 
-	assert_eq(UnitFormation.frontage(declared), UnitFormation.frontage(plain),
-		"a declared subunit does not move the frontage -- nothing reads it for layout yet")
-	assert_eq(declared.formation_slots(declared.soldiers).size(),
-		plain.formation_slots(plain.soldiers).size(),
-		"...nor the slot layout")
+	assert_eq(UnitFormation.frontage(declared), 8,
+		"FILE_GROUP with 120 max soldiers and subunit_size 16 calculates 8 files wide")
+	assert_eq(declared.formation_slots(declared.soldiers).size(), 120,
+		"slot layout generates 120 slots")
 
 
 # --- overrides ------------------------------------------------------------
