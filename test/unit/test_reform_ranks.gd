@@ -879,7 +879,7 @@ func test_square_hold_ground_reform_holds_its_ground_from_an_out_of_sync_assignm
 func test_traverse_flank_arcs_offsets_unpaired_traversing_soldiers() -> void:
 	var slots := PackedVector2Array([Vector2(0, -10), Vector2(0, 10)])
 	var positions := PackedVector2Array([Vector2(0, 0), Vector2(0, 10)])
-	var perm := PackedInt32Array([1, 0])
+	var perm := PackedInt32Array([0, 1])
 	var result: PackedVector2Array = UnitFormation.apply_traverse_flank_arcs(
 		slots, positions, Vector2.ZERO, 0.0, perm, 1, 9.0)
 	assert_eq(result.size(), 2, "returns slot array of same size")
