@@ -57,6 +57,7 @@ var uid: int = -1
 # --- Tunable stats (set by Battle.gd when spawning) ---
 @export var unit_name: String = "Spearmen"
 @export var team: int = 0
+@export var is_general: bool = false
 @export var max_soldiers: int = 120
 @export var attack: int = 12
 @export var defense: int = 6
