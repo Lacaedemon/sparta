@@ -91,6 +91,15 @@ func test_losing_combat_erodes_morale() -> void:
 	UnitMoraleScript.tick_morale(u, 1.0)
 	assert_lt(u.morale, 80.0, "losing combat erodes morale during combat")
 
+	var u2 := _unit(50, Unit.State.FIGHTING)
+	var e2 := _unit(80, Unit.State.FIGHTING)
+	e2.team = 1
+	_engage(u2, e2)
+	u2.morale = 80.0
+
+	UnitMoraleScript.tick_morale(u2, 1.0)
+	assert_lt(u2.morale, 80.0, "losing moderate combat erodes morale during combat")
+
 
 func test_snapshot_dict_exports_combat_status() -> void:
 	var u := _unit(100, Unit.State.IDLE)
