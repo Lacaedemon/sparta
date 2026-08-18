@@ -499,16 +499,14 @@ func _ready() -> void:
 	# The rout margin tracks the live field, not the default const.
 	field_with_margin = field.grow(ROUT_MARGIN)
 
-	if _camera != null:
-		if "bounds" in _camera:
-			_camera.bounds = field
-		_camera.position = field.position + field.size * 0.5
-		# When the demo recorder replays a presentation track, start already framed on the
-		# first keyframe so the smoothing below has nothing to glide in from.
-		if Replay.mode == Replay.Mode.PLAYBACK and Replay.drive_camera and Replay.has_camera_track():
-			var first: Dictionary = Replay.camera_for_tick(0)
-			_camera.position = Vector2(first["x"], first["y"])
-			_camera.zoom = Vector2(first["zoom"], first["zoom"])
+	_camera.bounds = field
+	_camera.position = field.position + field.size * 0.5
+	# When the demo recorder replays a presentation track, start already framed on the
+	# first keyframe so the smoothing below has nothing to glide in from.
+	if Replay.mode == Replay.Mode.PLAYBACK and Replay.drive_camera and Replay.has_camera_track():
+		var first: Dictionary = Replay.camera_for_tick(0)
+		_camera.position = Vector2(first["x"], first["y"])
+		_camera.zoom = Vector2(first["zoom"], first["zoom"])
 
 	# In-flight projectiles (ranged volleys) live here, ticked in _on_soldier_tick; cleared in
 	# _exit_tree(). A fresh field per battle so no arrows carry over a restart.
@@ -1016,10 +1014,7 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.position = pos
 	u.field_bounds = field   # so a skirmisher kites without backing off the map
 	u.retreat_bounds = field_with_margin   # a router may flee this far before it escapes
-	if _units != null:
-		_units.add_child(u)
-	else:
-		add_child(u)
+	_units.add_child(u)
 	# Set after add_child() so _ready() has already established the type's base
 	# separation_radius for set_formation() to scale from, and set soldiers from
 	# max_soldiers. A scenario's optional morale override lands here too.
@@ -1286,10 +1281,7 @@ func _spawn_from_snapshot(ud: Dictionary) -> Unit:
 	u.is_cavalry = bool(ud["is_cavalry"])
 	u.facing = ud["facing"]
 	u.position = ud["position"]
-	if _units != null:
-		_units.add_child(u)
-	else:
-		add_child(u)
+	_units.add_child(u)
 	u.apply_snapshot_dict(ud)
 	if int(ud["state"]) == UnitRef.State.ROUTING:
 		u.remove_from_group("units")
@@ -1404,7 +1396,7 @@ func _physics_process(_delta: float) -> void:
 		# Drive the camera from the recorded presentation track so the replay is framed
 		# (zoom/pan) as it was played — only when asked (the demo recorder), so in-app
 		# Watch Replay keeps free pan/zoom. No track -> static camera, as before.
-		if Replay.drive_camera and _camera != null:
+		if Replay.drive_camera:
 			var cam: Dictionary = Replay.camera_for_tick(_tick)
 			if not cam.is_empty():
 				# Ease toward the recorded framing rather than snapping to it, so jitter in
@@ -1439,8 +1431,7 @@ func _physics_process(_delta: float) -> void:
 				_apply_order_cmd(o)
 		_pending_orders.clear()
 		# Capture the camera each tick so a live recording reproduces what the player saw.
-		if _camera != null:
-			Replay.record_camera(_tick, _camera.position, _camera.zoom.x)
+		Replay.record_camera(_tick, _camera.position, _camera.zoom.x)
 		# Capture the pointer (cursor / selection / drag-box / armed stance) too, so a demo
 		# replay can reproduce what the player did with the mouse, not just the orders.
 		if _selection != null:
