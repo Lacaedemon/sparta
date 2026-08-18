@@ -13,6 +13,12 @@ const FactionRef = preload("res://scripts/Faction.gd")
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 const BattleMapRef = preload("res://scripts/BattleMap.gd")
 
+## Signals emitted for battle-significant events (#1287)
+signal tide_of_battle_changed(stronger_team: int)
+signal army_half_destroyed(team: int)
+signal army_tired(team: int)
+signal general_killed_or_routed(team: int, general_unit: Node, cause: String)
+
 # 80 x 60 m at 20 wu/m. Deep enough that the two default lines deploy with real
 # ground between them (see _spawn_line's y anchors below): the field grew downward
 # from its original 1600x1000, keeping the origin, team 0's line, and the terrain
@@ -340,6 +346,13 @@ var camera_smoothing: float = CAMERA_SMOOTHING
 # Fixed-step clock driving the whole simulation; also the timeline for replays.
 var _tick: int = 0
 var _ended: bool = false
+# Battle-event signal tracking state (#1287)
+var _last_tide_stronger_team: int = -2
+var _army_half_destroyed_emitted: Array[bool] = [false, false]
+var _army_tired_emitted: Array[bool] = [false, false]
+var _initial_team_headcount: Array[int] = [0, 0]
+var _general_killed_emitted: Dictionary = {}
+var _general_routed_emitted: Dictionary = {}
 # Procedural ground/terrain art (TerrainArt), built once in _ready. Render-only: the
 # textures are a pure function of a fixed art seed and the TERRAIN table, never of any
 # sim/replay RNG, so no battle state or transcript shifts with them. Null until built --
@@ -486,14 +499,16 @@ func _ready() -> void:
 	# The rout margin tracks the live field, not the default const.
 	field_with_margin = field.grow(ROUT_MARGIN)
 
-	_camera.bounds = field
-	_camera.position = field.position + field.size * 0.5
-	# When the demo recorder replays a presentation track, start already framed on the
-	# first keyframe so the smoothing below has nothing to glide in from.
-	if Replay.mode == Replay.Mode.PLAYBACK and Replay.drive_camera and Replay.has_camera_track():
-		var first: Dictionary = Replay.camera_for_tick(0)
-		_camera.position = Vector2(first["x"], first["y"])
-		_camera.zoom = Vector2(first["zoom"], first["zoom"])
+	if _camera != null:
+		if "bounds" in _camera:
+			_camera.bounds = field
+		_camera.position = field.position + field.size * 0.5
+		# When the demo recorder replays a presentation track, start already framed on the
+		# first keyframe so the smoothing below has nothing to glide in from.
+		if Replay.mode == Replay.Mode.PLAYBACK and Replay.drive_camera and Replay.has_camera_track():
+			var first: Dictionary = Replay.camera_for_tick(0)
+			_camera.position = Vector2(first["x"], first["y"])
+			_camera.zoom = Vector2(first["zoom"], first["zoom"])
 
 	# In-flight projectiles (ranged volleys) live here, ticked in _on_soldier_tick; cleared in
 	# _exit_tree(). A fresh field per battle so no arrows carry over a restart.
@@ -906,6 +921,7 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	_by_uid[u.uid] = u
 	u.unit_name = unit_label
 	u.team = team
+	u.is_general = d.get("is_general", false)
 	u.anti_cavalry = d["anti_cav"]
 	u.is_cavalry = d["cav"]
 	u.is_ranged = d.get("ranged", false)
@@ -1000,7 +1016,10 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.position = pos
 	u.field_bounds = field   # so a skirmisher kites without backing off the map
 	u.retreat_bounds = field_with_margin   # a router may flee this far before it escapes
-	_units.add_child(u)
+	if _units != null:
+		_units.add_child(u)
+	else:
+		add_child(u)
 	# Set after add_child() so _ready() has already established the type's base
 	# separation_radius for set_formation() to scale from, and set soldiers from
 	# max_soldiers. A scenario's optional morale override lands here too.
@@ -1267,7 +1286,10 @@ func _spawn_from_snapshot(ud: Dictionary) -> Unit:
 	u.is_cavalry = bool(ud["is_cavalry"])
 	u.facing = ud["facing"]
 	u.position = ud["position"]
-	_units.add_child(u)
+	if _units != null:
+		_units.add_child(u)
+	else:
+		add_child(u)
 	u.apply_snapshot_dict(ud)
 	if int(ud["state"]) == UnitRef.State.ROUTING:
 		u.remove_from_group("units")
@@ -1382,7 +1404,7 @@ func _physics_process(_delta: float) -> void:
 		# Drive the camera from the recorded presentation track so the replay is framed
 		# (zoom/pan) as it was played — only when asked (the demo recorder), so in-app
 		# Watch Replay keeps free pan/zoom. No track -> static camera, as before.
-		if Replay.drive_camera:
+		if Replay.drive_camera and _camera != null:
 			var cam: Dictionary = Replay.camera_for_tick(_tick)
 			if not cam.is_empty():
 				# Ease toward the recorded framing rather than snapping to it, so jitter in
@@ -1417,7 +1439,8 @@ func _physics_process(_delta: float) -> void:
 				_apply_order_cmd(o)
 		_pending_orders.clear()
 		# Capture the camera each tick so a live recording reproduces what the player saw.
-		Replay.record_camera(_tick, _camera.position, _camera.zoom.x)
+		if _camera != null:
+			Replay.record_camera(_tick, _camera.position, _camera.zoom.x)
 		# Capture the pointer (cursor / selection / drag-box / armed stance) too, so a demo
 		# replay can reproduce what the player did with the mouse, not just the orders.
 		if _selection != null:
@@ -1446,6 +1469,7 @@ func _physics_process(_delta: float) -> void:
 		_run_player_delegated_ai()
 
 	_check_victory()
+	_evaluate_battle_event_signals()
 	_tick += 1
 
 
@@ -2904,3 +2928,84 @@ func _report_campaign_result(text: String) -> void:
 		# Mutual destruction: the assault fails and the province holds with a token
 		# garrison (mirrors auto-resolve's guaranteed >= 1 survivor).
 		CampaignBattle.result = {"attacker_won": false, "survivors": 1}
+
+
+## Evaluate and emit battle-significant event signals (#1287)
+func _evaluate_battle_event_signals() -> void:
+	if _ended or drill_mode:
+		return
+
+	var h0 := 0
+	var h1 := 0
+	var f0_sum := 0.0
+	var f0_cnt := 0
+	var f1_sum := 0.0
+	var f1_cnt := 0
+
+	var all_units := get_tree().get_nodes_in_group("units")
+	for node in all_units:
+		var u = node as UnitRef
+		if u == null or u.state == UnitRef.State.DEAD:
+			continue
+		var live: int = u.soldiers
+		if u.team == 0:
+			h0 += live
+			f0_sum += u.fatigue
+			f0_cnt += 1
+		elif u.team == 1:
+			h1 += live
+			f1_sum += u.fatigue
+			f1_cnt += 1
+
+	if _initial_team_headcount[0] == 0 and _initial_team_headcount[1] == 0:
+		_initial_team_headcount[0] = h0
+		_initial_team_headcount[1] = h1
+
+	# 1. Tide of battle transition (strongest team changes)
+	var stronger := -1
+	if h0 > h1:
+		stronger = 0
+	elif h1 > h0:
+		stronger = 1
+
+	if _last_tide_stronger_team == -2:
+		_last_tide_stronger_team = stronger
+	elif stronger != _last_tide_stronger_team and (h0 > 0 or h1 > 0):
+		_last_tide_stronger_team = stronger
+		tide_of_battle_changed.emit(stronger)
+
+	# 2. Army half destroyed (headcount <= 50% of starting headcount)
+	for team_id in [0, 1]:
+		if not _army_half_destroyed_emitted[team_id] and _initial_team_headcount[team_id] > 0:
+			var h: int = h0 if team_id == 0 else h1
+			if h <= int(_initial_team_headcount[team_id] * 0.5):
+				_army_half_destroyed_emitted[team_id] = true
+				army_half_destroyed.emit(team_id)
+
+	# 3. Army tired (average unit fatigue >= 50.0)
+	var avg_f0: float = f0_sum / float(f0_cnt) if f0_cnt > 0 else 0.0
+	var avg_f1: float = f1_sum / float(f1_cnt) if f1_cnt > 0 else 0.0
+
+	if not _army_tired_emitted[0] and f0_cnt > 0 and avg_f0 >= 50.0:
+		_army_tired_emitted[0] = true
+		army_tired.emit(0)
+	if not _army_tired_emitted[1] and f1_cnt > 0 and avg_f1 >= 50.0:
+		_army_tired_emitted[1] = true
+		army_tired.emit(1)
+
+	# 4. General killed or routed
+	var all_routers := get_tree().get_nodes_in_group("routers")
+	var active_and_routers: Array = []
+	active_and_routers.append_array(all_units)
+	active_and_routers.append_array(all_routers)
+
+	for node in active_and_routers:
+		var u = node as UnitRef
+		if u != null and u.is_general:
+			if u.state == UnitRef.State.DEAD and not _general_killed_emitted.has(u.uid):
+				_general_killed_emitted[u.uid] = true
+				general_killed_or_routed.emit(u.team, u, "killed")
+			elif u.state == UnitRef.State.ROUTING and not _general_routed_emitted.has(u.uid):
+				_general_routed_emitted[u.uid] = true
+				general_killed_or_routed.emit(u.team, u, "routed")
+

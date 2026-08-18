@@ -1,8 +1,10 @@
 extends GutTest
 ## Tests for CameraController gesture input: two-finger pan, pinch zoom, and wheel zoom.
 
-func _make_camera() -> CameraController:
-	var cam: CameraController = CameraController.new()
+const CameraControllerScript = preload("res://scripts/CameraController.gd")
+
+func _make_camera() -> Camera2D:
+	var cam = CameraControllerScript.new()
 	add_child_autofree(cam)
 	cam.bounds = Rect2(0, 0, 1600, 1000)
 	cam.position = Vector2(800, 500)   # center of bounds
@@ -10,8 +12,8 @@ func _make_camera() -> CameraController:
 
 
 func test_pan_gesture_moves_camera() -> void:
-	var cam := _make_camera()
-	var before := cam.position
+	var cam = _make_camera()
+	var before: Vector2 = cam.position
 	var event := InputEventPanGesture.new()
 	event.delta = Vector2(10, 0)   # swipe right
 	cam._unhandled_input(event)
@@ -20,9 +22,9 @@ func test_pan_gesture_moves_camera() -> void:
 
 
 func test_pan_gesture_is_zoom_adjusted() -> void:
-	var cam := _make_camera()
+	var cam = _make_camera()
 	cam.zoom = Vector2(2.0, 2.0)   # zoomed in
-	var before := cam.position
+	var before: Vector2 = cam.position
 	var event := InputEventPanGesture.new()
 	event.delta = Vector2(10, 0)
 	cam._unhandled_input(event)
@@ -38,8 +40,8 @@ func test_pan_gesture_is_zoom_adjusted() -> void:
 
 
 func test_magnify_gesture_zooms_in() -> void:
-	var cam := _make_camera()
-	var before_zoom := cam.zoom.x
+	var cam = _make_camera()
+	var before_zoom: float = cam.zoom.x
 	var event := InputEventMagnifyGesture.new()
 	event.factor = 1.2   # spread = zoom in
 	cam._unhandled_input(event)
@@ -48,8 +50,8 @@ func test_magnify_gesture_zooms_in() -> void:
 
 
 func test_magnify_gesture_zooms_out() -> void:
-	var cam := _make_camera()
-	var before_zoom := cam.zoom.x
+	var cam = _make_camera()
+	var before_zoom: float = cam.zoom.x
 	var event := InputEventMagnifyGesture.new()
 	event.factor = 0.8   # pinch = zoom out
 	cam._unhandled_input(event)
@@ -58,7 +60,7 @@ func test_magnify_gesture_zooms_out() -> void:
 
 
 func test_zoom_clamped_at_max() -> void:
-	var cam := _make_camera()
+	var cam = _make_camera()
 	var event := InputEventMagnifyGesture.new()
 	event.factor = 100.0   # extreme spread
 	cam._unhandled_input(event)
@@ -68,7 +70,7 @@ func test_zoom_clamped_at_max() -> void:
 
 
 func test_zoom_clamped_at_min() -> void:
-	var cam := _make_camera()
+	var cam = _make_camera()
 	var event := InputEventMagnifyGesture.new()
 	event.factor = 0.001   # extreme pinch
 	cam._unhandled_input(event)
@@ -77,7 +79,7 @@ func test_zoom_clamped_at_min() -> void:
 
 
 func test_pan_clamped_to_bounds() -> void:
-	var cam := _make_camera()
+	var cam = _make_camera()
 	cam.position = Vector2(1590, 500)   # near right edge
 	var event := InputEventPanGesture.new()
 	event.delta = Vector2(1000, 0)   # huge rightward swipe
@@ -87,7 +89,7 @@ func test_pan_clamped_to_bounds() -> void:
 
 
 func test_pan_clamped_to_bounds_y() -> void:
-	var cam := _make_camera()
+	var cam = _make_camera()
 	cam.position = Vector2(800, 990)   # near bottom edge
 	var event := InputEventPanGesture.new()
 	event.delta = Vector2(0, 1000)   # huge downward swipe
@@ -97,7 +99,7 @@ func test_pan_clamped_to_bounds_y() -> void:
 
 
 func test_pinch_anchors_on_gesture_position() -> void:
-	var cam := _make_camera()
+	var cam = _make_camera()
 	cam.zoom = Vector2(1.0, 1.0)
 	# Use a gesture position offset from center so the anchor matters.
 	var gesture_pos := Vector2(200.0, 150.0)
@@ -115,7 +117,7 @@ func test_pinch_anchors_on_gesture_position() -> void:
 
 
 func test_wheel_zoom_anchors_on_cursor() -> void:
-	var cam := _make_camera()
+	var cam = _make_camera()
 	cam.zoom = Vector2(1.0, 1.0)
 	# Cursor offset from center so anchor drift would be visible.
 	var cursor_pos := Vector2(300.0, 100.0)
@@ -134,7 +136,7 @@ func test_wheel_zoom_anchors_on_cursor() -> void:
 
 
 func test_wheel_zoom_down_anchors_on_cursor() -> void:
-	var cam := _make_camera()
+	var cam = _make_camera()
 	cam.zoom = Vector2(1.0, 1.0)
 	var cursor_pos := Vector2(300.0, 100.0)
 	var vp_center: Vector2 = cam.get_viewport().get_visible_rect().size * 0.5
@@ -154,8 +156,8 @@ func test_wheel_zoom_down_anchors_on_cursor() -> void:
 func test_input_yields_while_a_presentation_track_drives_the_camera() -> void:
 	# During playback of a replay with a camera track, Battle drives the camera, so the
 	# controller must ignore pan/zoom input rather than fight the recorded framing.
-	var cam := _make_camera()
-	var before := cam.position
+	var cam = _make_camera()
+	var before: Vector2 = cam.position
 	Replay.mode = Replay.Mode.PLAYBACK
 	Replay.drive_camera = true
 	Replay._camera_track = [{"tick": 0, "x": 0.0, "y": 0.0, "zoom": 1.0}]
