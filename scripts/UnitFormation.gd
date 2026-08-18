@@ -731,6 +731,82 @@ static func reversed_ranks_within_files(file_ids: PackedInt32Array,
 	return out
 
 
+## Folds flank files into the rear of retained files when narrowing frontage,
+## preserving file identity for all soldiers in the retained files.
+## Returns a Dictionary with "file_ids": PackedInt32Array and "ranks": PackedInt32Array.
+static func fold_flank_to_rear(file_ids: PackedInt32Array, ranks: PackedInt32Array,
+		old_files: int, new_files: int) -> Dictionary:
+	return subunit_reform_files(file_ids, ranks, old_files, new_files)
+
+
+## Peels rear-rank soldiers from existing files to form new flank files when widening frontage,
+## preserving file identity for all soldiers remaining in the existing files.
+## Returns a Dictionary with "file_ids": PackedInt32Array and "ranks": PackedInt32Array.
+static func peel_rear_to_flank(file_ids: PackedInt32Array, ranks: PackedInt32Array,
+		old_files: int, new_files: int) -> Dictionary:
+	return subunit_reform_files(file_ids, ranks, old_files, new_files)
+
+
+## Expresses a frontage reform (narrowing or widening) as a subunit-level operation.
+## Retains existing file and rank assignments for all soldiers whose positions remain
+## within the new file capacities, only relocating excess or peeled soldiers.
+## Returns a Dictionary with "file_ids": PackedInt32Array and "ranks": PackedInt32Array.
+static func subunit_reform_files(file_ids: PackedInt32Array, ranks: PackedInt32Array,
+		old_files: int, new_files: int) -> Dictionary:
+	var n: int = file_ids.size()
+	if n <= 0 or new_files <= 0:
+		return {"file_ids": file_ids, "ranks": ranks}
+	var new_capacities: PackedInt32Array = file_capacities(n, new_files)
+	var explicit_ranks: bool = ranks.size() == n
+	var current_ranks := PackedInt32Array()
+	if explicit_ranks:
+		current_ranks = ranks
+	else:
+		var seen := {}
+		current_ranks.resize(n)
+		for i in range(n):
+			var f: int = file_ids[i]
+			var d: int = int(seen.get(f, 0))
+			seen[f] = d + 1
+			current_ranks[i] = d
+
+	var out_files := PackedInt32Array()
+	var out_ranks := PackedInt32Array()
+	out_files.resize(n)
+	out_ranks.resize(n)
+
+	var retained_counts := PackedInt32Array()
+	retained_counts.resize(new_files)
+	var relocated_indices: Array[int] = []
+
+	for i in range(n):
+		var f: int = file_ids[i]
+		var r: int = current_ranks[i]
+		if f < new_files and r < new_capacities[f]:
+			out_files[i] = f
+			out_ranks[i] = r
+			retained_counts[f] = maxi(retained_counts[f], r + 1)
+		else:
+			relocated_indices.push_back(i)
+
+	relocated_indices.sort_custom(func(a: int, b: int) -> bool:
+		if file_ids[a] != file_ids[b]:
+			return file_ids[a] < file_ids[b]
+		return current_ranks[a] < current_ranks[b])
+
+	var relocated_ptr: int = 0
+	for f in range(new_files):
+		while retained_counts[f] < new_capacities[f] and relocated_ptr < relocated_indices.size():
+			var idx: int = relocated_indices[relocated_ptr]
+			relocated_ptr += 1
+			out_files[idx] = f
+			out_ranks[idx] = retained_counts[f]
+			retained_counts[f] += 1
+
+	return {"file_ids": out_files, "ranks": out_ranks}
+
+
+
 # --- Square / orbis grid (real hollow/solid square footprint) ---------------
 # The anti-cavalry square is a genuine square block, not the standard wide-line
 # frontage: it uses its own file count (files ~= ranks, so the bbox aspect is ~1)

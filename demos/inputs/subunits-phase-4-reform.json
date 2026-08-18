@@ -1,0 +1,22 @@
+{
+  "_comment": "Subunits Phase 4 reform demo: an 80-man Spearmen regiment staged alone in drill mode (5 files of 16 men, lochos). At tick 60, frontage is narrowed by 1 file (to 4 files of 20) via BracketLeft. Under the subunit reform, the 64 men in the retained files remain in their exact files and ranks without criss-crossing the block, while only the 16 men from the folded flank file march to the rear ranks of the retained files.",
+  "seed": "4471",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 600, "y": 420, "count": 80, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 600.0, "y": 440.0, "zoom": 1.6}
+  ],
+  "steps": [
+    {"tick": 20, "click": [600, 420]},
+    {"tick": 60, "key": "BracketLeft"}
+  ],
+  "state": [8, 40, 60, 90, 130, 180, 240, 300],
+  "frames": [40, 90, 130, 300],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [600.0, 420.0]},
+    {"tick": 8, "uid": 0, "field": "frontage", "value": 5},
+    {"tick": 180, "uid": 0, "field": "frontage", "value": 4}
+  ]
+}
