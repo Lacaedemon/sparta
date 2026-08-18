@@ -115,6 +115,84 @@ CI/tooling issues are polish or infrastructure, not core mechanics specifically
 (infrastructure still gets its own tie-breaker per `pr-prioritization.md`, applied
 before this one when the candidates are CI/tooling rather than gameplay UI/art).
 
+## GII grabbability is a separate axis from priority: a design-blocked issue is not grabbable
+
+The section above orders candidates that are all workable.
+It says nothing about whether a candidate is workable at all, and in a GII sweep
+that is the question that actually decides the pick --- because GII's terminal
+action is a PR driven to a clean review verdict, and an issue whose next step is
+an unmade **design decision** cannot reach one.
+
+That is not the same thing as being low priority.
+A design-blocked issue is frequently core mechanics and frequently the highest
+thing on the board, so the mechanics-over-polish rule ranks it first and the
+grabbability check rules it out --- two axes, evaluated separately, in that
+order.
+Collapsing them produces the wrong move in both directions: grabbing an issue
+that cannot be closed, or demoting one whose design question is already settled.
+
+The tell is in the issue body rather than in its labels.
+Phrases like "needs a design pass", "we should decide whether", "owner directive
+pending", or a body that enumerates options without picking one all say the next
+artifact is a **decision**, which is human-gated (see `daytb`/`mwc` scope), not a
+diff.
+An issue addressed to a specific bot or person by name is the same shape for a
+different reason --- it is claimed, so GII's unclaimed-only rule already excludes
+it.
+
+What to do with one rather than silently skipping it: say in the session report
+which issues were ruled out and on what grounds, so the thin-backlog condition is
+visible instead of looking like a stalled sweep.
+A design question worth answering is worth surfacing to the owner as a question,
+which is a real deliverable even though it is not a PR.
+
+- **Do:** run the grabbability check before the priority ordering, and report
+  which candidates it removed.
+- **Do:** surface a blocking design question to the owner rather than picking a
+  lower-priority issue silently.
+- **Don't:** grab an issue whose next step is a decision --- GII cannot deliver
+  one, so the loop stalls with a claim posted and nothing to push.
+- **Don't:** read "core mechanics" as implying grabbable; the two axes are
+  independent, and the highest-priority item is often the one that is blocked.
+
+(GII session, 2026-08-16: after PR #1257 merged, four candidates were looked at
+--- #1152, #1095, and #1134, each stating in its own body that it needs a design
+pass, plus #1110, addressed to the Jules bot.
+All four rank as core mechanics under the section above, and none is grabbable,
+which is the rule this entry states.
+
+Issue #1152 has since closed, and reads `COMPLETED` to anyone who follows the
+citation --- but it was not resolved.
+PR #1259, a spec-only design pass whose own body says "#1152 stays open to carry
+the implementation", auto-closed it two seconds after merging
+(`02:16:36Z` and `02:16:38Z`), via a `(closes #1152)` keyword left in its
+squashed claim commit.
+That is the keyword hazard this file documents further down, landing on this
+entry's own worked example, so the citation is kept with this note rather than
+dropped.
+Note that GitHub's own `closed_by_pull_requests` names **#1276** rather than the
+PR that performed the close, since #1276 quotes the offending keyword line while
+documenting it --- so the linkage field points at the PR that described the
+auto-close instead of the one that did it.
+
+The conclusion drawn from them was **wrong**, and the way it was wrong is worth
+keeping, because it is the failure mode a grabbability check invites.
+"The tractable unclaimed backlog is thin" was reported on the strength of those
+four, and a later derived list returned **91 open issues**, of which #1279
+(orphaned `.gd.uid` sidecars), #1277 (weapon-switch flash message), #1271
+(`check.sh` versus `config/features`), and #1269 (banned-glyph set drift) are
+each bounded, unclaimed, and grabbable --- confirmed unclaimed by intersecting
+against the six open PRs at that moment, none of which referenced them.
+
+So run the grabbability check over a **derived** candidate set, not over the
+handful you happened to open.
+Ruling four issues out says nothing about the eighty-seven you did not look at,
+and "the backlog is thin" is a claim about the population --- see
+[`derive-dont-enumerate`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/derive-dont-enumerate.md)'s
+own section on asserting a set is empty.
+Report the examined count alongside the removed count, so a genuinely thin
+backlog stays distinguishable from a narrow look at a deep one.)
+
 ## Pending: migrate to gha quarto-publish `@v2` (branch deploy)
 
 Sparta is the registered `quarto-publish` consumer in gha's `REVDEPS.md`, and
@@ -283,6 +361,59 @@ binary match.
   appears it's that known quirk, not a regression. Since the #420 upgrade the
   full suite has been observed passing every test, so don't assume that failure
   is still present, and don't pin an exact test total; the suite grows.
+
+## A `cd` in one shell call resolves the NEXT call's `res://`, and Godot reports it as a missing file
+
+The Bash tool's working directory **persists between calls** while its
+environment does not, so a `cd` typed for one purpose silently becomes the
+launch directory for every command after it.
+Godot finds the project by walking up from the directory it was started in, so a
+later `godot ... res://tools/demo/DemoRunner.tscn` run from anywhere outside the
+checkout resolves `res://` against a different root, or none, and fails with a
+**File not found** naming the path.
+
+The message points at the wrong half of the problem, which is the whole
+difficulty.
+The path is correct, the file exists, and the checkout is the right one --- so
+the natural next move is to re-derive the path, verify the scene, or suspect the
+import cache, none of which can find anything wrong.
+Nothing in the error mentions the working directory, because from Godot's side
+there is nothing to mention: it looked where it was standing.
+
+This is not one of the worktree hazards elsewhere in this file.
+Those are all about **which checkout** a path names --- a fake worktree, a
+double-checked-out branch, a stale sibling.
+Here there is one checkout, it is correct, and the only wrong thing is the
+directory the process was launched from.
+So the worktree checks (`git worktree list`, `ls -la .git`) all come back clean
+and settle nothing.
+
+Two habits remove it outright.
+Pass the project explicitly rather than relying on where you happen to be ---
+`godot --path /home/user/sparta ...` --- so the resolution is stated in the
+command.
+And treat a trailing `cd` as a side effect on the session rather than a
+convenience: a status sweep or a `/tmp` inspection that ends by leaving the
+shell somewhere else has changed the meaning of every later relative path and
+every later `res://`, minutes or hours afterwards, with nothing to connect the
+two.
+
+- **Do:** pass `--path <checkout>` to Godot, so `res://` resolves from the
+  command rather than from the session's history.
+- **Do:** run `pwd` before a command whose paths are relative or `res://`-rooted,
+  when anything earlier in the session may have moved the shell.
+- **Don't:** read a `res://` "File not found" as a fact about the path --- check
+  the working directory before re-deriving the path or suspecting the import
+  cache.
+- **Don't:** end a Bash call with a bare `cd`; the next call inherits it, and the
+  failure it causes surfaces far from the command that set it.
+
+(GII session, 2026-08-16: a `cd /tmp` in an earlier call left the shell outside
+the checkout, and a later `DemoRunner.tscn` invocation reported the scene
+missing; the same command re-run from the project root worked unchanged.
+The persistence itself is documented in the Bash tool's own description --- "Working
+directory persists between calls" --- so the gap is not the fact but its
+consequence for `res://`, which no error message connects back to it.)
 
 ## Reproducing a reported hang cross-platform: WSL gives a genuine native-Linux Godot binary
 
@@ -4882,6 +5013,51 @@ PR #1257 separately verified against Godot's own 4.7-stable source that
 `length_squared()` returns, with no widening between them, and re-checked it in-engine
 with 2M probes.)
 
+### A verification probe must name the precision domain, or it measures the rejected design
+
+The entry above is the fact.
+This is what the fact does to any probe written to CHECK it, and the failure is
+worse than not probing at all, because it returns a confident **REFUTED** against
+a design that is correct.
+
+The mechanism is that the two spellings are not merely different --- one of them
+is the one the codebase deliberately does not use.
+So a probe reaching for the natural GDScript form, `sqrt(...)`, is computing in
+**double**, which is the rejected path.
+It is then comparing a double-precision result against a float32 threshold and
+reporting the disagreement as a defect in the shipped code.
+Every part of that run is real: the probe executes, the numbers are genuine, and
+the verdict is about a computation nobody ships.
+
+Nothing about the output says so, which is what makes it expensive.
+A refutation reads as the strongest possible finding, so the natural response is
+to reopen the design rather than to reread the probe --- and the probe is where
+the error is.
+
+State the domain in the claim itself, not in the code that tests it.
+"`Vector2.length()` is monotonic in `length_squared()` across the band" names
+float32 and is checkable; "the square root of the squared distance stays within
+the band" names nothing and will be implemented in whichever precision the
+language makes convenient.
+
+- **Do:** write the precision domain into the claim, so a probe that drifts out
+  of it is visibly answering a different question.
+- **Do:** prefer a claim about the operation actually shipped (`Vector2.length()`,
+  `length_squared()`) over one about the mathematical quantity it approximates.
+- **Don't:** reach for global `sqrt()` in a probe verifying float32 behaviour ---
+  it is a double, and it is specifically the spelling the entry above rejects.
+- **Don't:** reopen a design on a single REFUTED verdict without re-reading which
+  precision the probe ran in; that check costs one line and the reopening does
+  not.
+
+(`Lacaedemon/sparta` PR #1257, 2026-08-16: the first cut of the band's
+verification specified claim 1 as a statement about the square root rather than
+about `Vector2.length()`, implemented it with global `sqrt()`, and returned
+REFUTED.
+Re-specified as monotonicity of `Vector2.length()` against `length_squared()`,
+the same 2M-probe run verified with 0 inversions and a worst-case margin of about
+419 float32 ULP.)
+
 ## When a cheap test GATES an exact one, fix the PREDICATE, not the VALUE
 
 The obvious repair for the entry above is to recompute the exact value on whatever
@@ -5453,3 +5629,286 @@ repo's own caution about a repeated start anchor silently widening a range.
 
 (Verified 2026-08-16 at `cee465f6`: five entries, `entries=2 unique=1` for Cavalry, and the
 docstring's own first line naming cavalry twice.)
+
+## A "disjoint, no merge-order constraint" claim must be DERIVED, and the candidate set is live
+
+The rule already exists, and it is worth naming its home precisely: it lives in
+`Morrison-Lab/ai-config`'s own `CLAUDE.md`, the corpus-wide file loaded into every session --- NOT
+in this repo's `CLAUDE.md`, which says nothing about merge order at all.
+Its "Surface merge-order constraints" section states it outright:
+
+> But "disjoint" is a claim about their file *sets*, so derive both sets and check the intersection
+> before asserting it --- `gh pr diff <N> --name-only` on each PR, and confirm no path appears in
+> both --- rather than recalling what each PR is "about".
+
+That rule was loaded and was not followed: the claim was made twice, from recollection, with no
+derivation run either time.
+
+Two failures stack here, and only the first is the one that rule covers.
+
+**The process failure is that the sets were recalled rather than derived.**
+One command per PR settles it, and it answers a question about PATHS where recollection answers
+one about TOPICS.
+Note that a correct conclusion is not evidence the derivation ran --- the two PRs really were
+disjoint, and the claim was still unsupported at the moment it was made.
+
+**The scope failure is that a two-PR intersection answers a question about two PRs.**
+Any OTHER open PR touching the same file collides just as hard, so the set of candidates is not
+the set you happen to have in mind.
+This is the harder half, because running the derivation correctly does not fix it: the
+derivation would have been scoped to a population that was already incomplete.
+
+So derive the population as well as each member's files:
+
+```bash
+for n in $(gh pr list -R <owner>/<repo> --state open --json number --jq '.[].number'); do
+  printf '%s: ' "$n"
+  gh pr diff "$n" -R <owner>/<repo> --name-only | tr '\n' ' '
+  echo
+done
+```
+
+**And treat the answer as expiring.**
+This file already records that `main` moves during a session, and that an append-collision on a
+shared file recurs once per merge in a cascade rather than resolving permanently --- see
+"Battle.gd merge: order-sentinel and same-name-local collisions" above, whose whole point is that
+resolving once settles nothing while siblings keep landing.
+A disjointness claim inherits that liveness.
+It is a measurement of a live population, true when taken and capable of being false by merge
+time, so re-derive it at merge time rather than citing the reading taken when the PRs were opened.
+
+- **Do:** derive each candidate's file set with `gh pr diff <N> --name-only`, and intersect them.
+- **Do:** derive the candidate set itself from `gh pr list --state open`, rather than from the
+  PRs this session happens to know about.
+- **Do:** re-derive at merge time, and say when the reading was taken.
+- **Don't:** report "disjoint, merge in any order" from what each PR is for --- that is a claim
+  about topic, and a conflict is a claim about paths.
+- **Don't:** read a correct conclusion as evidence the derivation ran.
+
+(`Lacaedemon/sparta`, 2026-08-16: PR #1283 touches `demos/demo.1201.json` and
+`docs/related-games.md`, and PR #1292 touches `.claude/memories/sparta.md` and
+`demos/demo.1292.json`.
+The two were declared "disjoint, merge in any order" twice from recollection, and the intersection
+is genuinely empty --- derived afterwards with the command above.
+#1292 hit `Pull Request has merge conflicts` anyway, against #1293, a PR opened and merged by a
+different session, which touches `.claude/memories/sparta.md` and nothing else.
+#1293 merged at 18:36:59Z, ahead of #1283's own 18:38:43Z, and #1292 absorbed it with a `main`
+merge at 18:41:43Z --- replaying that merge with `git merge-tree` reports exactly one conflicted
+path, `.claude/memories/sparta.md`, so the collision is measured rather than inferred.
+Four PRs landed on `main` inside four minutes --- #1293 at 18:36:59Z, #1281 at 18:37:50Z, #1283 at
+18:38:43Z and #1282 at 18:40:31Z --- so the population any such comparison had to cover was moving
+the whole time.)
+
+## `.claude/memories/sparta.md` contains literal conflict markers as documentation
+
+The section on `record-demos.sh` DEMOS conflicts being ADDITIVE quotes a real merge conflict
+verbatim inside a fenced code block, so `<<<<<<< HEAD`, `=======` and `>>>>>>> origin/main` sit in
+this file as **content** --- at lines 741, 743 and 745 as of `4aee29b9`.
+
+**Those numbers move faster than an append-only reader expects, because entries land mid-file as
+well as at the end.**
+Across just two merges on the same day, `4aee29b9` to `18ec2919`, the markers moved to 872, 874
+and 876: PR #1294 inserted 78 lines at line 115 and 53 more at line 284, and that 131-line total
+is exactly the drift.
+So anchor on the section heading, never on a line number quoted anywhere --- including the ones in
+this paragraph.
+
+Consequence: resolving a genuine conflict in this file by stripping every conflict-marker line,
+or by any editor "accept ours / accept theirs" pass that scans for markers globally, silently
+deletes three lines out of that documentation block.
+A `grep -n` for the markers during a resolution returns those three alongside the real ones and
+cannot separate them --- same text, same column, and the grep output carries no surrounding
+context to tell one from the other.
+
+**Nothing downstream catches the loss.**
+`tools/check.sh chars` and the `check-non-standard-chars` workflow both scan `*.qmd` and `*.R`
+only, and this repo runs no Markdown linter at all, so a corrupted block reaches `main` with every
+check green --- reading correctly everywhere except one code fence that has quietly become
+nonsense.
+
+So resolve by LINE NUMBER rather than by pattern.
+Read the markers' line numbers, work out which fall inside the fenced example by anchoring on the
+section heading rather than on the numbers quoted above (they move as the file grows), and edit
+only the ranges outside it.
+Then re-run the grep and count what survived:
+
+```bash
+grep -n '^<<<<<<<\|^=======\|^>>>>>>>' .claude/memories/sparta.md
+```
+
+Three hits, consecutive within five lines and under the `record-demos.sh` heading, is the healthy
+answer.
+Zero means the resolution ate the documented example.
+More than three means a real conflict is still unresolved.
+
+- **Do:** resolve a conflict in this file by editing the real markers' line ranges, identified by
+  number and confirmed against the `record-demos.sh` heading.
+- **Do:** re-run the marker grep afterwards, and expect exactly three survivors.
+- **Don't:** strip conflict markers from this file by pattern, and don't accept an editor's
+  global ours/theirs pass over it.
+- **Don't:** expect a check to catch the loss --- the chars scan does not read `.md`, and no
+  Markdown linter runs in this repo.
+
+(Verified 2026-08-16 at `4aee29b9`: exactly three markers, at lines 741, 743 and 745, all inside
+the fenced example under the `record-demos.sh` DEMOS-conflicts heading.
+Exercised for real on the very PR that records it: merging `origin/main` in raised a genuine
+append-collision in this file, so the grep returned SIX markers --- 872/874/876 documented,
+5633/5742/5781 real.
+Deleting only the second triple by line number kept both sides' new sections and left the example
+intact, and a heading-set comparison confirmed the merge lost nothing in either direction:
+147 headings on the branch, 148 on `main`, 150 merged.)
+## `pair_slots_by_lateral_file` is order-preserving, not identity-preserving -- so bound TRAVEL, never count movers
+
+The slot-assignment family above ("Formation slot assignment is by ARRAY INDEX") explains why a
+reshape relabels men onto distant cells. This is the measured consequence for anyone writing a
+regression test against one of those paths, and it is the reason a mover COUNT is the wrong
+metric there.
+
+`UnitFormation.pair_slots_by_lateral_file` sorts each file's group by ascending y and assigns to
+column cells in depth order. That preserves ORDER within a file; it does not preserve which man
+holds which cell. On a partial-rank square the two come apart badly. Measured on a 60-man,
+8-file square at 9.0 wu pitch, `moved` counting men displaced more than half a pitch:
+
+| path | moved | farthest | mean |
+| --- | ---: | ---: | ---: |
+| in-sync reform | 4 | 63.0 | 4.20 |
+| out-of-sync, composed twice (the bug) | 58 | 68.54 | 30.74 |
+| out-of-sync, rebuild used as-is (the fix) | 51 | 28.46 | 13.44 |
+| **out-of-sync, no reform at all** | **51** | 20.12 | 10.19 |
+
+The last row is the one to keep. A bare rebuild with NO reform already churns 51 of 60 with
+nothing else changing, so `moved` cannot discriminate the fix from the bug on that path at all --
+the fixed and do-nothing readings are identical. Only `farthest` and `mean` separate (28.46/13.44
+against 20.12/10.19), and `mean` separates most cleanly.
+
+**How to apply:** when testing any out-of-sync or rebuild path in the slot-assignment family,
+bound MEAN TRAVEL against a quantity derived from the block's own geometry (e.g.
+`(ranks_for(n, files) - 1) * file_pitch_wu() / 3.0`), not a mover count and not a hand-picked
+constant. A count-based assertion there is vacuous by construction, and a constant drifts as the
+churn floor moves. The shipped guard in
+`test_square_hold_ground_reform_holds_its_ground_from_an_out_of_sync_assignment` does exactly
+this, and mutation-verifies at `[30.74] expected to be < than [21.0]` with the guard removed.
+
+Related, and the reason the out-of-sync path exists at all: `_slot_frame_positions` reads
+`_formation_mirror_x`, which `reform_ranks` arms BEFORE calling `_apply_square_slot_reflection`.
+So when the assignment is stale and `_ensure_square_slot_assignment` rebuilds from live bodies,
+that rebuild already lands men in the render frame -- the depth reflection is baked in, and
+composing the pairing on top applies it twice. Snapshot the in-sync answer before the ensure call
+can overwrite it. (`Lacaedemon/sparta` PR #1282, 2026-08-16.)
+
+
+## A `/tmp` file written by MSYS bash is unreadable from native Windows Python
+
+On Windows Git Bash the two tools resolve `/tmp` to different directories,
+so a file handed from one to the other goes missing.
+This sequence fails:
+
+```bash
+some_command > /tmp/added.txt
+python -c "open('/tmp/added.txt')"     # FileNotFoundError
+```
+
+The redirection writes to **MSYS's own `/tmp`**, which on this machine is
+`%LOCALAPPDATA%\Temp` (`pwd -W` inside `/tmp` reports
+`C:/Users/dougm/AppData/Local/Temp`, the same mapping the `MSYS_NO_PATHCONV` entry
+above already records).
+The `python` on `PATH` is a **native Windows** interpreter (`C:\Python313\python.exe`),
+which resolves the literal string `/tmp/added.txt` against the current drive as
+`C:\tmp\added.txt`.
+
+**The discriminator is whether MSYS can SEE the path, not which tool reads it.**
+MSYS translates a `/`-rooted path that appears as a bare **argument**, so the same
+interpreter reads the same file perfectly well when the path is passed rather than
+embedded.
+Measured, all in one Git Bash session:
+
+| form | what Python receives | result |
+| --- | --- | --- |
+| `python /tmp/probe.py` | `C:/Users/dougm/AppData/Local/Temp/probe.py` | runs |
+| `python -c "...open(sys.argv[1])" /tmp/probe.txt` | same, translated | reads |
+| `python -c "...open('/tmp/probe.txt')"` | `/tmp/probe.txt` verbatim | `FileNotFoundError` |
+
+The path embedded inside the `-c` program text is invisible to the translator, and only
+that form breaks.
+The same applies to any path MSYS cannot see as an argument, such as one written into a
+config file or a JSON manifest that some later step reads.
+
+**Neither tool reports the mismatch.**
+Bash exits 0 and reads the file back fine itself, and Python raises a plain missing-file
+error, so the pair reads as "the command produced nothing" rather than "these two tools
+disagree about the root".
+That is the expensive part, because the natural diagnosis is that the upstream command
+failed, which sends you to debug a pipeline that was working.
+
+**The sharper variant raises no error at all.**
+`C:\tmp` is a real directory on this machine, already holding generic-named leftovers from
+earlier sessions (`pr_body_payload.json`, `prbody2.md`, `doc_cmd.sh`).
+A same-named file there is read INSTEAD of the one bash just wrote.
+Measured: with `STALE-FROM-AN-EARLIER-SESSION` in `C:\tmp\probe.txt` and
+`FRESH-FROM-THIS-COMMAND` written by bash to `/tmp/probe.txt`, `cat` printed the fresh line
+while the embedded-path `open()` printed the stale one.
+A missing file is at least loud; this is wrong data wearing a successful read.
+
+**Fix: keep the handoff on a path both tools resolve identically.**
+A relative path inside the repo working directory works for both, and deleting it
+afterwards keeps the tree clean.
+Better still, keep the whole operation inside one tool and skip the file entirely by
+piping into `python -c` on stdin.
+Both verified:
+
+```bash
+some_command > ./added.txt && python -c "print(open('added.txt').read())"; rm -f ./added.txt
+some_command | python -c "import sys; print(sys.stdin.read())"
+```
+
+**Relationship to the `MSYS_NO_PATHCONV` entry above** (in the WSL cross-platform section):
+same translation mechanism, opposite directions, so do not reach for that fix here.
+There translation **happens and hurts**, because MSYS rewrites a `/`-rooted argument to
+`wsl.exe`, which would have resolved the POSIX path correctly itself.
+Here translation **does not happen, and its absence hurts**, because the path is hidden
+inside a string where nothing can rewrite it.
+So `MSYS_NO_PATHCONV=1` does nothing for this case, and would break the bare-argument form
+in the table above that currently works.
+
+- **Do:** hand a file between MSYS bash and a native Windows interpreter on a relative path
+  inside the repo, or pipe it on stdin and skip the file.
+- **Do:** pass a path as an argument rather than embedding it in `-c` program text when a
+  temp file is unavoidable, so MSYS can translate it.
+- **Do:** run `python -c "import os; print(os.path.abspath('/tmp/x'))"` when a just-written
+  file reads as missing, since it names the wrong root immediately.
+- **Don't:** diagnose a missing `/tmp` handoff as the upstream command having produced
+  nothing; `cat` it from bash first, which reads the real file.
+- **Don't:** trust a SUCCESSFUL read of a `/tmp` path from native Python either, since a
+  same-named file in `C:\tmp` is returned silently in place of the fresh one.
+- **Don't:** reach for `MSYS_NO_PATHCONV=1` here; it addresses the opposite failure.
+
+(`Lacaedemon/sparta` PR #1292, 2026-08-16: reproduced deliberately in a Git Bash session on
+this machine against `C:\Python313\python.exe`; every figure above is from that run.)
+
+## `docs/related-games.md` is a living document with its own contribution contract
+
+When reviewing an external project as a source of ideas for sparta, append to
+`docs/related-games.md` rather than creating a new `docs/<project>-review.md`.
+The doc calls itself a "running review" and a "living document", and its closing
+**"Adding a game to this list"** section spells out the procedure: find the code licence
+and the art/data licence **separately**, tag each with the legend symbols it shares with
+`docs/asset-sources.md`, add a shortlist table row with links, then write the per-game
+notes.
+Its framing already covers closed-source subjects, via the rule that proprietary projects
+and commercial-game mods give us design lessons only (no code, no art), so a
+non-open-source subject is not a reason to start a separate file.
+
+Three reviews have gone through it, so this is established practice rather than a
+preference: PR #208 created it (closes #204), PR #1233 appended Renaissance Kingdom Wars,
+and PR #1283 appends M2TWEOP for issue #1201 (open at the time of writing).
+A parallel per-project file would fragment the licence legend and the **Bottom line**
+summary, which are what make the doc worth consulting at all, since both rank every game
+against each other and neither survives being split.
+
+- **Do:** append a new per-game section plus a shortlist row, following the doc's own
+  four-step "Adding a game to this list" procedure.
+- **Don't:** create `docs/<project>-review.md` for a one-off review, since the comparison
+  value lives in the single ranked list.
+
+(`Lacaedemon/sparta` PR #1292, 2026-08-16, recorded from PR #1283's review of M2TWEOP.)
+

@@ -72,6 +72,16 @@ const COUNTERMARCH_VARIANT_NAMES := {
 ## Battle._team_in_play() scans when deciding whether a team is still in play.
 const COMBAT_GROUPS := ["units", "routers"]
 
+## Mirrors `enum SubunitStructure { NONE, FILE_GROUP, LATERAL_HALVES, GROUP }` on Unit.gd, the
+## same way STATE_NAMES and FORMATION_NAMES above mirror theirs -- kept as a local table so this
+## helper stays readable from tooling that never loads the gameplay scripts.
+const SUBUNIT_STRUCTURE_NAMES := {
+	0: "NONE",
+	1: "FILE_GROUP",
+	2: "LATERAL_HALVES",
+	3: "GROUP",
+}
+
 
 ## Map an int to a name via a table, falling back to "UNKNOWN(<n>)" for an unmapped value so a
 ## new enum member surfaces as a visible, greppable token instead of a missing field.
@@ -97,6 +107,10 @@ static func maneuver_name(value: int) -> String:
 static func weapon_name(type_id: int) -> String:
 	var w: Weapon = LoadoutRegistry.weapon(type_id)
 	return w.display_name if w != null else "WEAPON_%d" % type_id
+
+
+static func subunit_structure_name(value: int) -> String:
+	return name_from(SUBUNIT_STRUCTURE_NAMES, value, "SUBUNIT_STRUCTURE")
 
 
 static func countermarch_variant_name(value: int) -> String:
@@ -277,6 +291,13 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# not the deployed one -- a regiment that has drawn its second carried weapon reads
 		# that weapon here while its spawn fingerprint keeps hashing what it deployed with.
 		"weapon": weapon_name(u.weapon_type_id),
+		# The subunit this regiment's type (or roster name) declares it is organised into, and
+		# that subunit's target headcount. DECLARATION ONLY -- no layout code reads either, so
+		# these appear here to make the declaration verifiable straight off the transcript
+		# rather than only from the loadout source. See Unit.subunit_structure and
+		# docs/subunit-structure-design.md.
+		"subunit_structure": subunit_structure_name(u.subunit_structure),
+		"subunit_size": u.subunit_size,
 		# Battle AI phase 4 (docs/battle-ai-design.md): which AI subcommander group (if any)
 		# this unit is currently delegated to, and the rank title resolved from the player's
 		# own doctrine profile at delegation time. Both null for a non-delegated (ordinary

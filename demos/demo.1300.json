@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Memory-only change: appends two sections to .claude/memories/sparta.md recording process lessons about PR merge-order claims and about this file's own literal conflict markers. No scene, script, asset or project setting is touched, so a recorded battle would be byte-identical to main's and would show nothing about the change."
+}

@@ -826,13 +826,31 @@ func _line_x_offsets(half_widths: Array[float], field_width: float) -> Array[flo
 ## `"auto"` (AUTO: resolves to file-major/row-major from the unit's own `disciplined` flag --
 ## see Unit.file_major_reform_mode's own doc comment). Every type keeps the FILE_MAJOR default
 ## today; no entry below overrides it.
+##
+## `subunit_structure` / `subunit_size` declare the subunit this type's doctrine organises it
+## into (docs/subunit-structure-design.md). DECLARATION ONLY -- no layout code reads either one,
+## so they are inert; see Unit.subunit_structure for what each kind means and why the primitive
+## is a headcount rather than a depth. The structure string is parsed by _parse_subunit_structure
+## below; an entry omitting both keys declares nothing, which is what the Archers row does
+## deliberately. Values and their sources:
+##   Spearmen -- "file_group", 16   (Asclepiodotus 2.1, 2.8: the lochos, sixteen men)
+##   Infantry -- "lateral_halves"    (Polybius 6.24: the maniple's right and left centuries)
+##   Cavalry  -- "group", 10         (Xenophon Hipparchicus 4.9-10; Polybius 6.25)
+##   Archers  -- undeclared          (the record does not support a number -- saying so is the
+##                                    point rather than a gap; see the note's "pattern of
+##                                    silences" section)
+## Both Cavalry entries below carry the keys. That is load-bearing rather than duplication: this
+## array is an ARMY ROSTER walked `loadout[i % size]`, not a type registry, so a key set on only
+## the first would apply to only one of the two spawned cavalry regiments -- and
+## _loadout_for_type()'s first-match lookup would hide the omission from any test going through
+## it.
 func _default_loadout() -> Array:
 	return [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT, "walk_advance_default": true},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "sidearm": LoadoutRegistry.WEAPON_PILUM, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_HAMATA, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT, "walk_advance_default": true, "subunit_structure": "file_group", "subunit_size": 16},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "sidearm": LoadoutRegistry.WEAPON_PILUM, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_HAMATA, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.5, "formation": Unit.FORMATION_NORMAL, "subunit_structure": "lateral_halves"},
 		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "back_fraction": 0.55, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "armor": LoadoutRegistry.ARMOR_TUNIC, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false, "subunit_structure": "group", "subunit_size": 10},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false, "subunit_structure": "group", "subunit_size": 10},
 	]
 
 
@@ -846,6 +864,34 @@ static func _parse_reform_mode(value) -> int:
 	if typeof(value) == TYPE_STRING and String(value).to_lower() == "auto":
 		return Unit.ReformMode.AUTO
 	return Unit.ReformMode.FILE_MAJOR if bool(value) else Unit.ReformMode.ROW_MAJOR
+
+
+## Every accepted `subunit_structure` spelling -> its Unit.SubunitStructure ordinal. A dictionary
+## rather than a match chain so the accepted set is enumerable by a test, which is what keeps a
+## later enum member from being addable in Unit.gd while silently unreachable from a loadout or
+## a scenario spec.
+const SUBUNIT_STRUCTURE_NAMES := {
+	"none": Unit.SubunitStructure.NONE,
+	"file_group": Unit.SubunitStructure.FILE_GROUP,
+	"lateral_halves": Unit.SubunitStructure.LATERAL_HALVES,
+	"group": Unit.SubunitStructure.GROUP,
+}
+
+
+## Parses a loadout/scenario "subunit_structure" value into a Unit.SubunitStructure ordinal.
+## Accepts a case-insensitive name from SUBUNIT_STRUCTURE_NAMES; anything else (including a
+## missing key, which reaches here as the "none" default the callers pass) resolves to NONE --
+## the undeclared fallback, which is a valid declaration rather than an error state, so an
+## unrecognised spelling degrades to "this type declares nothing" instead of aborting a spawn.
+## Warns on an unrecognised non-empty string so a typo in a scenario spec is visible rather than
+## silently reading as undeclared.
+static func _parse_subunit_structure(value) -> int:
+	var key := String(value).to_lower() if typeof(value) == TYPE_STRING else ""
+	if SUBUNIT_STRUCTURE_NAMES.has(key):
+		return SUBUNIT_STRUCTURE_NAMES[key]
+	if key != "":
+		push_warning("[battle] unknown subunit_structure '%s'; treating as undeclared." % value)
+	return Unit.SubunitStructure.NONE
 
 
 ## Build one unit from a loadout dict `d` at `pos`, facing `facing`, on `team`, register it,
@@ -928,6 +974,19 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.walk_advance = bool(d.get("walk_advance_default", false))
 	u.reform_before_move = bool(d.get("reform_before_move_default", true))
 	u.file_major_reform_mode = _parse_reform_mode(d.get("file_major_reform_default", true))
+	# Declared subunit structure, threaded exactly like the three settings above and read by
+	# nothing downstream -- see Unit.subunit_structure and _default_loadout's own doc comment.
+	# A dict without the keys (a bare test unit, or the deliberately-undeclared Archers row)
+	# keeps the Unit defaults, NONE and 0.
+	u.subunit_structure = _parse_subunit_structure(d.get("subunit_structure", "none"))
+	u.subunit_size = int(d.get("subunit_size", 0))
+	# NONE and LATERAL_HALVES carry no headcount, so pin the size to 0 rather than trusting every
+	# caller to omit it. An unrecognised spelling falls back to NONE while leaving whatever size
+	# accompanied it, which is the reachable way to land a pairing Unit.subunit_size's own doc
+	# comment says cannot occur.
+	if u.subunit_structure == Unit.SubunitStructure.NONE \
+			or u.subunit_structure == Unit.SubunitStructure.LATERAL_HALVES:
+		u.subunit_size = 0
 	# Cavalry respond faster — more mobile and battle-conditioned.
 	if d["cav"]:
 		u.order_response_delay = 0.3
@@ -1003,6 +1062,16 @@ func _spawn_scenario(specs: Array) -> void:
 			# bool (true/false -> FILE_MAJOR/ROW_MAJOR) or the string "auto" (-> AUTO), and a
 			# bool cast here would turn "auto" into `true` before it ever reached that parse.
 			d["file_major_reform_default"] = spec["file_major_reform"]
+		# Per-unit subunit-structure override. Two independent keys rather than one, because a
+		# roster override can legitimately change the SIZE while keeping the kind (a Spartan
+		# enomotia and a Macedonian file are both file_group at different headcounts) -- so a
+		# spec setting only "subunit_size" keeps the type's declared kind. Passed through RAW
+		# for the same reason "file_major_reform" is: _parse_subunit_structure reads a string,
+		# and a cast here would flatten it before that parse ever saw it.
+		if spec.has("subunit_structure"):
+			d["subunit_structure"] = spec["subunit_structure"]
+		if spec.has("subunit_size"):
+			d["subunit_size"] = int(spec["subunit_size"])
 		var team := int(spec.get("team", 0))
 		var pos := Vector2(float(spec.get("x", field.size.x * 0.5)), float(spec.get("y", field.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
@@ -1043,6 +1112,7 @@ func _custom_matchup_scenario(team_0_names: Array, team_1_names: Array) -> Array
 		var facing := Vector2.DOWN if team == 0 else Vector2.UP
 		var y: float = float(spawn_line_ys[team])
 		var dicts: Array[Dictionary] = []
+		var overrides: Array[Dictionary] = []
 		for roster_name in names:
 			var type_name: String = FactionRef.get_unit_type(str(roster_name))
 			var d: Dictionary = _loadout_for_type(loadout, type_name)
@@ -1050,19 +1120,29 @@ func _custom_matchup_scenario(team_0_names: Array, team_1_names: Array) -> Array
 				push_warning("[battle] custom matchup roster entry '%s' has no known unit type; skipping." % roster_name)
 				continue
 			dicts.append(d)
+			# The roster name's own subunit override, if it has one -- carried alongside the
+			# resolved dict because the spec built below keys off the loadout TYPE name, which
+			# is exactly the information a many-to-one roster mapping throws away. See
+			# Faction.ROSTER_SUBUNIT_OVERRIDES for why one is needed at all.
+			overrides.append(FactionRef.get_subunit_override(str(roster_name)))
 		var half_widths: Array[float] = []
 		for d in dicts:
 			half_widths.append(_line_half_width(d))
 		var xs: Array[float] = _line_x_offsets(half_widths, field.size.x)
 		var start_x: float = field.size.x * 0.5 - (xs[xs.size() - 1] * 0.5 if not xs.is_empty() else 0.0)
 		for i in range(dicts.size()):
-			specs.append({
+			var spec: Dictionary = {
 				"team": team,
 				"type": str(dicts[i]["name"]),
 				"x": start_x + xs[i],
 				"y": y,
 				"facing": [facing.x, facing.y],
-			})
+			}
+			# merge() WITH overwrite: the roster's keys are new to this spec today, so true and
+			# false agree right now, but a false here would let a later change to the literal
+			# above silently win over the override.
+			spec.merge(overrides[i], true)
+			specs.append(spec)
 	return specs
 
 
