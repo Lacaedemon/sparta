@@ -346,7 +346,7 @@ var camera_smoothing: float = CAMERA_SMOOTHING
 # Fixed-step clock driving the whole simulation; also the timeline for replays.
 var _tick: int = 0
 var _ended: bool = false
-# Battle-event signal tracking state (#1287)
+# Battle-event signal tracking state
 var _last_tide_stronger_team: int = -2
 var _army_half_destroyed_emitted: Array[bool] = [false, false]
 var _army_tired_emitted: Array[bool] = [false, false]
