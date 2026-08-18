@@ -874,3 +874,13 @@ func test_square_hold_ground_reform_holds_its_ground_from_an_out_of_sync_assignm
 	var depth_span: float = float(UnitFormation.ranks_for(u.soldiers, 8) - 1) * u.file_pitch_wu()
 	assert_lt(float(t["mean"]), depth_span / 3.0,
 		"the rebuild does not double-apply the reflection and march the block through itself")
+
+
+func test_traverse_flank_arcs_offsets_unpaired_traversing_soldiers() -> void:
+	var slots := PackedVector2Array([Vector2(0, -10), Vector2(0, 10)])
+	var positions := PackedVector2Array([Vector2(0, 0), Vector2(0, 10)])
+	var perm := PackedInt32Array([0, 1])
+	var result: PackedVector2Array = UnitFormation.apply_traverse_flank_arcs(
+		slots, positions, Vector2.ZERO, 0.0, perm, 1, 9.0)
+	assert_eq(result.size(), 2, "returns slot array of same size")
+	assert_ne(result[0].x, slots[0].x, "traversing soldier at mid-traverse receives lateral flank arc")

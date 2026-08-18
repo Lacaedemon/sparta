@@ -4001,7 +4001,11 @@ func formation_slots(count: int) -> PackedVector2Array:
 		var square_grid: PackedVector2Array = UnitFormation.block_slots(
 				count, square_file_count, file_pitch_wu())
 		_ensure_square_slot_assignment(count, square_file_count, square_grid)
-		return UnitFormation.permute_slots(square_grid, _sim_soldier_square_slot)
+		var sq_slots: PackedVector2Array = UnitFormation.permute_slots(square_grid, _sim_soldier_square_slot)
+		if _sim_soldier_pos.size() == count and _sim_soldier_square_slot.size() == count and _reform_holding():
+			var sq_ang: float = facing.angle() + PI * 0.5 + _formation_angle
+			sq_slots = UnitFormation.apply_traverse_flank_arcs(sq_slots, _sim_soldier_pos, position, sq_ang, _sim_soldier_square_slot, square_file_count, file_pitch_wu())
+		return sq_slots
 	if _effective_file_major_reform():
 		var files: int = formation_files(count)
 		_ensure_file_assignment(count, files)
@@ -4014,7 +4018,11 @@ func formation_slots(count: int) -> PackedVector2Array:
 	# soldier i. The file-count guard drops a pairing whose grid has since reshaped rather
 	# than reinterpreting its cell ids against a frontage they were never computed for.
 	if _sim_soldier_row_slot.size() == count and _row_slot_files == formation_files(count):
-		return UnitFormation.permute_slots(row_grid, _sim_soldier_row_slot)
+		var r_slots: PackedVector2Array = UnitFormation.permute_slots(row_grid, _sim_soldier_row_slot)
+		if _sim_soldier_pos.size() == count and _reform_holding():
+			var r_ang: float = facing.angle() + PI * 0.5 + _formation_angle
+			r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position, r_ang, _sim_soldier_row_slot, formation_files(count), file_pitch_wu())
+		return r_slots
 	return row_grid
 
 
