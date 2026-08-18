@@ -406,9 +406,10 @@ other side). The same soldiers spread across a different shape:
   holds a chokepoint or punches through one spot rather than spreading thin.
 
 A wider line is easier to outlast in depth and quicker to crumble once it bends;
-a deeper one trades frontage for staying power. A width you've set by hand (the
+a deeper one trades frontage for staying power. Heavy infantry types with a declared subunit structure (such as Spearmen with 16-man files) derive their default full-strength width directly from that subunit size (e.g. 9 files for 140 men) with HUD readouts indicating file count and file capacity. A width you've set by hand (the
 bracket keys or a flank drag) holds exactly as you left it --- the game never
 overrides your explicit choice.
+
 
 **Close the ranks.** Left on auto, though, a regiment that's lost half its strength
 narrows its own frontage one notch, trading width for depth so the survivors reform

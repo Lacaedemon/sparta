@@ -766,10 +766,8 @@ enum ReformMode { FILE_MAJOR, ROW_MAJOR, AUTO }
 var file_major_reform_mode: int = ReformMode.FILE_MAJOR
 
 # The subunit this regiment's doctrine organises it into, and how many men that subunit holds.
-# DECLARATION ONLY -- nothing reads either field for layout. Every unit's frontage still comes
-# from UnitFormation.frontage/_files(max_soldiers) exactly as before, so these two fields are
-# inert by construction: see docs/subunit-structure-design.md, whose phased plan ships the
-# declaration on its own so the data question is reviewable apart from the behaviour question.
+# Read for layout by UnitFormation.frontage() when subunit_structure == FILE_GROUP and subunit_size > 0:
+# see docs/subunit-structure-design.md Phase 2.
 #
 # The primitive is a SIZE plus a KIND, not a depth. That is the design note's central historical
 # finding: Asclepiodotus 2.1 records file depth as a matter of practice ("some have formed the
@@ -797,8 +795,9 @@ var file_major_reform_mode: int = ReformMode.FILE_MAJOR
 enum SubunitStructure { NONE, FILE_GROUP, LATERAL_HALVES, GROUP }
 var subunit_structure: int = SubunitStructure.NONE
 # Target headcount for one subunit, or 0 when the declared kind carries no headcount (NONE, and
-# LATERAL_HALVES whose part count is fixed at two). Never read for layout; see above.
+# LATERAL_HALVES whose part count is fixed at two). Read for FILE_GROUP layout by UnitFormation.frontage().
 var subunit_size: int = 0
+
 # Backward-compatible bool view of file_major_reform_mode, for every call site that predates
 # the AUTO option and only ever reads/writes a plain on/off (Battle._default_loadout's bool
 # scenario-spec path, most existing tests). Reading is true only for FILE_MAJOR -- AUTO reads

@@ -74,7 +74,8 @@ static func frontage(u: Unit) -> int:
 	if u.subunit_structure == Unit.SubunitStructure.FILE_GROUP and u.subunit_size > 0:
 		var full: int = auto_files_for_subunit_size(u.max_soldiers, u.subunit_size)
 		if u._ranks_closed:
-			var closed: int = auto_files_for_subunit_size(u.soldiers, u.subunit_size)
+			var half_count: int = int(ceil(float(u.max_soldiers) * 0.5))
+			var closed: int = auto_files_for_subunit_size(half_count, u.subunit_size)
 			return mini(full, closed)
 		return full
 	var full_files: int = _files(u.max_soldiers)
@@ -88,12 +89,13 @@ static func frontage(u: Unit) -> int:
 ## player frontage_override apply. `spacing` is the formation's world-unit FILE pitch.
 ## Optional `subunit_structure` and `subunit_size` allow pre-spawn calculation for types with
 ## declared subunit sizes (Spearmen).
-static func half_width_for_soldiers(soldiers: int, spacing: float,
-		subunit_structure: int = Unit.SubunitStructure.NONE,
-		subunit_size: int = 0) -> float:
+static func half_width_for_soldiers(count: int, spacing: float, subunit_structure: int = 0, subunit_size: int = 0) -> float:
+	var files: int
 	if subunit_structure == Unit.SubunitStructure.FILE_GROUP and subunit_size > 0:
-		return _half_width(auto_files_for_subunit_size(soldiers, subunit_size), spacing)
-	return _half_width(_files(soldiers), spacing)
+		files = auto_files_for_subunit_size(count, subunit_size)
+	else:
+		files = _files(count)
+	return (files - 1) * 0.5 * spacing
 
 
 ## File count for a drag-resize handle pulled to `half_width` world units from the
@@ -116,11 +118,14 @@ static func files_label(n: int) -> String:
 
 
 ## "%d file(s)" or "%d file(s) (%d/file)" for the HUD readout and resize preview when a Unit is available.
+## Appends (%d/file) only when at default full-strength declared subunit frontage without player override.
 static func files_label_for_unit(u: Unit, n: int) -> String:
 	var base: String = files_label(n)
 	if u != null and u.subunit_structure == Unit.SubunitStructure.FILE_GROUP and u.subunit_size > 0:
-		return "%s (%d/file)" % [base, u.subunit_size]
+		if u.frontage_override == 0 and not u._ranks_closed and n == auto_files_for_subunit_size(u.max_soldiers, u.subunit_size):
+			return "%s (%d/file)" % [base, u.subunit_size]
 	return base
+
 
 
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep grid (front
