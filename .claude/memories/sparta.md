@@ -2410,11 +2410,11 @@ Measured via #549 (PR #551): `tools/benchmark/run-benchmark.sh` against
 
 | soldiers | mean tick | p95 tick | implied fps |
 | --- | --- | --- | --- |
-| 1,720 (1×, reference) | 16.97 ms | 21.28 ms | 58.9 |
-| 3,440 (2×) | 52.92 ms | 63.79 ms | 18.9 |
-| 6,880 (4×) | 207.82 ms | 235.29 ms | 4.8 |
+| 1,720 (1x, reference) | 16.97 ms | 21.28 ms | 58.9 |
+| 3,440 (2x) | 52.92 ms | 63.79 ms | 18.9 |
+| 6,880 (4x) | 207.82 ms | 235.29 ms | 4.8 |
 
-Cost is **super-linear**: 2× soldiers → ~3.1× tick cost, 4× → ~12× -- consistent with PLAN.md's
+Cost is **super-linear**: 2x soldiers → ~3.1x tick cost, 4x → ~12x -- consistent with PLAN.md's
 O(n²) neighbor-scan note; the per-soldier layer (`_sim_soldier_pos`/`SoldierSpatialHash`) hasn't
 fully escaped that shape. **The reference battle (1,720 soldiers) already sits at the 60fps budget
 (16.67 ms/tick) on mean tick cost, and over budget on p95, before render cost.** So the current

@@ -273,7 +273,7 @@ Its pitfalls, adopted as **anti-requirements** for the conversion:
 - No per-frame global recomputation (assignment, nearest-enemy LINQ scans) --
   budget such work on staggered ticks and spatial hashes, as the sim already
   does.
-- No frame-rate-coupled combat (their damage was `× Time.deltaTime` inside a
+- No frame-rate-coupled combat (their damage was `x Time.deltaTime` inside a
   render-driven loop; our fixed-tick resolution is non-negotiable).
 - No engagement logic that mutates poses on collider contact (their units
   visibly snap on engagement).

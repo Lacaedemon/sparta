@@ -15,7 +15,7 @@ single source of truth -- this table is not hand-maintained separately):
 
 **Conversion:** every `*_mps`/`*_mps2` value is multiplied by
 `WORLD_UNITS_PER_METER = 20.0` and `SPEED_SCALE = 1.0` (`Battle.gd`), so
-world-unit speeds are exactly 20× the m/s figures above and `SPEED_SCALE`
+world-unit speeds are exactly 20x the m/s figures above and `SPEED_SCALE`
 does not currently rescale anything (it's a global multiplier hook, left at
 its identity value). Infantry walk: 26 world-units/s (1.3 m/s); infantry
 sprint: 80 world-units/s (4.0 m/s).
@@ -57,7 +57,7 @@ sprint: 80 world-units/s (4.0 m/s).
   [Horse gait -- Wikipedia](https://en.wikipedia.org/wiki/Horse_gait).
   **Correction to the original draft:** Sparta's cavalry "sprint" of 8.5 m/s
   (30.6 km/h) is **not** "the upper end of the historical gallop range" -- a
-  true gallop averages 40-48 km/h, nearly 1.5× faster. 8.5 m/s instead falls
+  true gallop averages 40-48 km/h, nearly 1.5x faster. 8.5 m/s instead falls
   **between the canter and gallop ranges** (faster than a 16-27 km/h canter,
   well short of a 40-48 km/h gallop) -- closer to a fast canter than to any
   gait actually called a gallop.
@@ -132,8 +132,8 @@ above do -- flagged as an open question rather than asserted as verified.
 | Cavalry | 24 | 1.2 m |
 | Max | 28 | 1.4 m |
 
-A human footprint is roughly 0.3 m × 0.4 m and a horse-with-rider occupies
-roughly 0.8 m × 2.5 m (length); round collision bodies necessarily oversize a
+A human footprint is roughly 0.3 m x 0.4 m and a horse-with-rider occupies
+roughly 0.8 m x 2.5 m (length); round collision bodies necessarily oversize a
 human silhouette to avoid unrealistic clipping, and 0.9-1.2 m diameter is a
 reasonable compromise for that purpose. The cavalry radius (1.2 m) being
 wider than infantry (0.9 m) correctly represents a mounted unit's greater

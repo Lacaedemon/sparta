@@ -16,7 +16,7 @@ The game runs **without any downloaded art** -- units draw as placeholder tokens
 
 | Pack | Use for | License | Link |
 | --- | --- | --- | --- |
-| Toen's Medieval Strategy Sprite Pack (16×16) | Soldiers, cavalry, siege, banners | CC0 | https://opengameart.org/content/toens-medieval-strategy-sprite-pack-v10-16x16 |
+| Toen's Medieval Strategy Sprite Pack (16x16) | Soldiers, cavalry, siege, banners | CC0 | https://opengameart.org/content/toens-medieval-strategy-sprite-pack-v10-16x16 |
 | Kenney -- game assets | UI buttons, panels, fonts, tiles | CC0 | https://kenney.nl/assets |
 | OpenGameArt -- CC0 collection | Terrain, grass/dirt tiles, props | CC0 | https://opengameart.org/art-search-advanced?keys=&field_art_licenses_tid%5B%5D=4 |
 

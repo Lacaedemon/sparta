@@ -54,7 +54,7 @@ doesn't need to, because our physics model already differs from theirs in an imp
 A damped pressure term changes how much **force** a crowded pair applies to each other; it
 does not change **how many pairs get evaluated**. The blowup measured in §1 comes from too
 many soldiers entering the expensive per-pair pass, not from the per-pair math being too
-expensive per call. Damping the force per pair leaves the same O(engaged-count × neighbors)
+expensive per call. Damping the force per pair leaves the same O(engaged-count x neighbors)
 work on the table -- it would not have prevented the 2x→3.5x cost jump. Any fix here has to
 shrink the *promoted population*, not the *cost per promoted soldier*.
 

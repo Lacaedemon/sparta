@@ -45,7 +45,7 @@ so they're handy for both re-watching battles and debugging. See
 [REPLAY.md](REPLAY.md).
 
 ### Tactics that matter
-- **Flanking:** hitting a unit from the side (×1.5) or rear (×2) deals far more damage
+- **Flanking:** hitting a unit from the side (x1.5) or rear (x2) deals far more damage
   and morale loss. Maneuver behind the enemy line.
 - **Morale & routing:** units that lose enough soldiers or take flank hits will **rout**
   (flee, shown faded) and stop counting toward the battle. Routs spread to nearby allies.
@@ -54,7 +54,7 @@ so they're handy for both re-watching battles and debugging. See
 - **Disengaging:** right-click ground (a move order) to pull a unit *out* of melee --
   handy for retreating a battered regiment or redeploying cavalry to a new flank.
   It's risky: while marching away the unit shows its back, so the enemy it left gets
-  free rear hits (×2) until it's clear. Stop the unit and it re-engages anything nearby.
+  free rear hits (x2) until it's clear. Stop the unit and it re-engages anything nearby.
 
 ## Project layout
 

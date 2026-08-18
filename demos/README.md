@@ -248,7 +248,7 @@ truncates the recording and normal recording is unchanged.
 textures, so capture must run **without `--headless`** using `--rendering-driver opengl3` (a
 window may open locally -- that's fine). The viewport texture is only valid after the frame is
 drawn, so the recorder waits for `RenderingServer.frame_post_draw` before `save_png` -- the
-saved PNGs are real 1280×720 frames, not black.
+saved PNGs are real 1280x720 frames, not black.
 
 ### The wrapper
 
@@ -677,7 +677,7 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 3 | 8 |
 | Cavalry | 4 | 9 |
 
-The field is `1600 × 1200`, and the lines start **580 px** apart vertically --
+The field is `1600 x 1200`, and the lines start **580 px** apart vertically --
 the deepest deployment that keeps both armies inside the close-tier band
 (`FormationTier.DEMOTE_RANGE`) from the first tick. The horizontal spacing is no longer a flat 150 px per unit (issue
 #677: a flat spacing let a wide LOOSE-order Archers regiment overlap its
@@ -702,7 +702,7 @@ the input-script contract's warning about silent no-op gestures).
 
 Each unit's sprint speed is stated
 in the loadout in **metres/second** (`sprint_mps`); effective px/s is
-`sprint_mps × WORLD_UNITS_PER_METER` (`20`) `× SPEED_SCALE` (`1.0`):
+`sprint_mps x WORLD_UNITS_PER_METER` (`20`) `x SPEED_SCALE` (`1.0`):
 
 | Unit | sprint speed (m/s) | effective px/s |
 | --- | --- | --- |

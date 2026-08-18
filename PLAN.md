@@ -209,7 +209,7 @@ README.md, ASSETS.md   Run instructions + CC0 asset sourcing
 ### Implemented systems (all 10 from the original plan)
 1. Project bootstrap (config, main scene). 2. Unit scene/stats + state machine
 (IDLE→MOVING→FIGHTING→ROUTING/DEAD). 3. Straight-line movement. 4. Click + drag-box selection,
-order issuing. 5. Melee combat with **flanking** (×1.5 side / ×2 rear). 6. **Morale & routing**
+order issuing. 5. Melee combat with **flanking** (x1.5 side / x2 rear). 6. **Morale & routing**
 (contagious to nearby allies). 7. Win condition (a team with no fighting units loses).
 8. HUD (info panel + end overlay). 9. Camera pan/zoom. 10. Polish: unit types
 (infantry / anti-cavalry spearmen / cavalry with charge bonus = rock-paper-scissors) + grass field.
@@ -244,7 +244,7 @@ hand-authored GDScript that hasn't been engine-checked.
 ## Next milestones (not started)
 - **M1 polish (optional, after first run is fun):**
   - Swap token `_draw()` for real CC0 `Sprite2D` art (see README "Swapping placeholder art").
-  - Stretch: render each regiment as an N×M block of soldier sprites that thins with casualties
+  - Stretch: render each regiment as an NxM block of soldier sprites that thins with casualties
     (the true massed-formation look); unit facing arrows; pre-battle deployment phase.
 - **M2 -- dynastic campaign map:** clickable provinces, characters/realms, turn-based
   diplomacy & war. Battles **auto-resolved** at first (no tactical layer yet).

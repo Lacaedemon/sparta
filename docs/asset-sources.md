@@ -90,7 +90,7 @@ ancient-warfare set. Summary here for one-stop browsing:
 
 | Source | Licence | Bundle? | Best for |
 | --- | --- | :---: | --- |
-| [Toen's Medieval Strategy Sprite Pack (16×16)](https://opengameart.org/content/toens-medieval-strategy-sprite-pack-v10-16x16) | CC0 | ✅ | soldiers, cavalry, siege, banners |
+| [Toen's Medieval Strategy Sprite Pack (16x16)](https://opengameart.org/content/toens-medieval-strategy-sprite-pack-v10-16x16) | CC0 | ✅ | soldiers, cavalry, siege, banners |
 | [Kenney](https://kenney.nl/assets) | CC0 | ✅ | UI panels/buttons, tiles, fonts, icons |
 | [OpenGameArt (CC0 filter)](https://opengameart.org/art-search-advanced?keys=&field_art_licenses_tid%5B%5D=4) | CC0 (verify each) | ✅ | terrain, tiles, props, sprites |
 | [game-icons.net](https://game-icons.net/) | CC-BY 3.0 | 🅰 | ability / unit / status icons (4000+) -- keep attribution |

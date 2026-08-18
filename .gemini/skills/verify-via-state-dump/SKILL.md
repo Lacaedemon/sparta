@@ -179,7 +179,7 @@ the whole clip, not just the start/end.
 
 2. **Pulsing** -- a formation's footprint expands and contracts repeatedly
    instead of holding steady or changing smoothly and monotonically. *Check:*
-   compute `soldier_summary.bbox` area (or width × depth) per tick across the
+   compute `soldier_summary.bbox` area (or width x depth) per tick across the
    dense sequence and count local minima/maxima. More than one full
    expand-contract cycle, absent an intentional formation-shape change (a
    frontage resize, a Square deploy), is pulsing.
