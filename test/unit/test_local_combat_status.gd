@@ -1,5 +1,5 @@
 extends GutTest
-## Unit tests for per-unit local combat status derived from physics and combat state (#1284).
+## Unit tests for per-unit local combat status derived from physics and combat state.
 
 const UnitScript = preload("res://scripts/Unit.gd")
 const UnitMoraleScript = preload("res://scripts/UnitMorale.gd")
