@@ -1,0 +1,17 @@
+{
+  "_comment": "Subunits Phase 2 declared frontage demo (#1289): a 140-man Spearmen regiment staged alone in drill mode. The declared subunit size (16, lochos) automatically dictates a 9-file frontage (ceil(140 / 16) = 9) at full strength without any player frontage override. The regiment is selected (showing the derived 9-file selection bounds) and issued a short march order to show the 9-file phalanx stepping off in clean rank/file order.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 600, "y": 380, "count": 140, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 600.0, "y": 430.0, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 8, "click": [600, 380]},
+    {"tick": 24, "rmb_click": [600, 480]}
+  ],
+  "frames": [0, 24, 60, 120, 180, 240],
+  "state": [0, 8, 24, 60, 120, 180, 240]
+}

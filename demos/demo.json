@@ -1,6 +1,7 @@
 {
-  "input": "demos/inputs/phalanx-holds-its-ranks.json",
-  "caption": "Subunits Phase 2 layout inputs (#1289): Spearmen unit frontage is derived from declared subunit size (16) rather than roster-wide aspect ratio, fielding 9 files at full strength.",
+  "input": "demos/inputs/spearmen-declared-frontage.json",
+  "caption": "Subunits Phase 2 layout inputs (#1289): Spearmen unit frontage is derived from declared subunit size (16, lochos) rather than roster-wide aspect ratio, automatically fielding 9 files at full strength (140 men) in drill mode.",
+
   "fixed_fps": 30,
   "max_frames": 280,
   "fps": 15,
