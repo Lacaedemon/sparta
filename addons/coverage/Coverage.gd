@@ -564,7 +564,7 @@ func _list_scripts_recursive(path: String, list := []) -> Array:
 	var d := DirAccess.open(path)
 	var err := d.get_open_error()
 	assert(err == OK, "Error opening path %s: %s" % [path, err])
-	err = d.list_dir_begin() # TODOConverter3To4 fill missing arguments https://github.com/godotengine/godot/pull/40547
+	err = d.list_dir_begin()
 	assert(err == OK, "Error listing directory %s: %s" % [path, err])
 	var next := d.get_next()
 	while next:
