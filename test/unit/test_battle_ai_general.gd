@@ -118,6 +118,21 @@ func test_cautious_doctrine_picks_advance_line_and_holds_reserves_at_the_first_a
 	assert_eq(decision["reserve_units"].size(), 2, "cautious holds 2 of 5 units back (0.4 * 5)")
 
 
+func test_defensive_doctrine_picks_defend_and_holds_line_at_first_ai_tick() -> void:
+	var battle: Node = _spawn_battle("defensive")
+	await get_tree().physics_frame
+
+	var team1: Array = _team1_units(battle)
+	var doctrine: Dictionary = DoctrineRegistry.doctrine("defensive")
+	var decision: Dictionary = General.decide_army(
+		team1, get_tree().get_nodes_in_group("units"), doctrine)
+	assert_eq(decision["plan"], General.PLAN_DEFEND,
+		"defensive doctrine selects PLAN_DEFEND as primary base plan")
+	assert_eq(decision["groups"].size(), 1)
+	assert_eq(decision["reserve_units"].size(), 1, "defensive holds 1 of 5 units back (0.25 * 5)")
+
+
+
 func test_two_doctrines_produce_visibly_different_army_behavior_from_the_same_seed() -> void:
 	# The design doc's own headline phase-3 acceptance criterion, checked directly against
 	# live-battle transcript state rather than just the pure General.decide_army() output

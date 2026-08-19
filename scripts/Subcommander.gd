@@ -3,14 +3,15 @@ class_name Subcommander
 ## Phase 2 of the chain-of-command battle AI (docs/battle-ai-design.md): the
 ## subcommander. Keeps one unit group fighting as a group, per the design doc's
 ## "Subcommander (one per unit group)" section:
-##   - line integrity -- no unit races ahead of the group into an unsupported melee.
+##   - line integrity -- under PLAN_ADVANCE_LINE, no unit races ahead into unsupported melee.
+##   - defend hold -- under PLAN_DEFEND, unengaged units hold their ground in formation.
 ##   - mutual support -- an engaged unit's unengaged neighbor is sent to guard it.
 ##   - flank coverage -- an exposed group flank gets a repositioned unit sent to cover it.
 ##
 ## Stateless, like UnitLeader (phase 1): one entry point, decide_group(), a pure function
-## of already-serialized sim state (group + every living unit), called once per AI tick
-## from Battle._run_enemy_ai(). No RNG, no wall-clock, no node-iteration-order dependence
-## beyond what the caller already controls -- same seed -> same perception -> same
+## of already-serialized sim state (group + every living unit + current plan), called once
+## per AI tick from Battle._run_enemy_ai(). No RNG, no wall-clock, no node-iteration-order
+## dependence beyond what the caller already controls -- same seed -> same perception -> same
 ## directives, so replay re-derives them exactly like every other AI decision.
 ##
 ## Group assignment (phase 2 scope, per the design doc's own "start static" open-question
@@ -30,13 +31,13 @@ class_name Subcommander
 ##   {"type": DIRECTIVE_COVER_FLANK, "x": float, "y": float}  -- reposition to cover this point.
 ##
 ## Priority when more than one behaviour could claim the same unit this tick: mutual
-## support first, flank coverage second, line integrity last. Support and flank coverage
-## are reactions to an immediate threat (an ally already fighting, an enemy already closing
-## on an open flank); line integrity is standing discipline with no urgency behind it. A
-## unit already claimed by a higher-priority directive this tick is never reassigned by a
-## lower one (see the `directives.has(uid)` guards throughout). This mirrors UnitLeader's
-## own documented priority order (flank threat > square > relief > fallback): react to the
-## sharpest need first.
+## support first, flank coverage second, line integrity / defend-hold last. Support and flank
+## coverage are reactions to an immediate threat (an ally already fighting, an enemy already
+## closing on an open flank); line integrity and defensive line holding are standing discipline
+## with no urgency behind them. A unit already claimed by a higher-priority directive this tick
+## is never reassigned by a lower one (see the `directives.has(uid)` guards throughout). This
+## mirrors UnitLeader's own documented priority order (flank threat > square > relief > fallback):
+## react to the sharpest need first.
 
 const DIRECTIVE_SUPPORT := "support"
 const DIRECTIVE_HOLD_LINE := "hold_line"
@@ -73,10 +74,11 @@ const POINT_EPSILON := 12.0
 ## Decide this AI tick's directives for one team's group. `group` is the team's own living,
 ## non-routing units (Battle._team_units(team) -- the caller's group-assignment choice, see
 ## the class doc); `all_units` is every living node in the "units" group, the same
-## omniscient perception source UnitLeader.decide reads. Returns {uid: directive} covering
-## only units that should receive a directive this tick -- a uid absent from the result
-## gets none (UnitLeader falls back to its own ordinary chase-nearest-enemy behaviour).
-static func decide_group(group: Array, all_units: Array) -> Dictionary:
+## omniscient perception source UnitLeader.decide reads; `plan` is the current army plan
+## (defaults to General.PLAN_ADVANCE_LINE). Returns {uid: directive} covering only units that
+## should receive a directive this tick -- a uid absent from the result gets none (UnitLeader
+## falls back to its own ordinary chase-nearest-enemy behaviour).
+static func decide_group(group: Array, all_units: Array, plan: String = General.PLAN_ADVANCE_LINE) -> Dictionary:
 	var living: Array = _living(group)
 	if living.size() < 2:
 		return {}
@@ -84,7 +86,9 @@ static func decide_group(group: Array, all_units: Array) -> Dictionary:
 	_mutual_support_directives(living, directives)
 	var axis: Vector2 = _advance_axis(living, all_units)
 	_flank_coverage_directives(living, all_units, axis, directives)
-	if axis != Vector2.ZERO:
+	if plan == General.PLAN_DEFEND:
+		_defend_hold_directives(living, directives)
+	elif axis != Vector2.ZERO:
 		_line_integrity_directives(living, axis, directives)
 	return directives
 
@@ -304,3 +308,15 @@ static func _flank_is_outflanked(flank: Unit, outward: Vector2, all_units: Array
 		if to_e.dot(outward) > 0.0:
 			return true
 	return false
+
+
+## In a defensive plan (PLAN_DEFEND), units not already assigned to mutual support or flank
+## coverage hold their current position on the defensive line rather than advancing out to chase.
+static func _defend_hold_directives(group: Array, directives: Dictionary) -> void:
+	for node in group:
+		var u := node as Unit
+		if u == null or directives.has(u.uid) or u.state == Unit.State.FIGHTING:
+			continue
+		if UnitLeader.is_chasing_live_target(u):
+			continue
+		directives[u.uid] = {"type": DIRECTIVE_HOLD_LINE, "x": u.position.x, "y": u.position.y}

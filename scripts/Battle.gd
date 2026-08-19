@@ -2769,9 +2769,10 @@ func _run_enemy_ai() -> void:
 	var team1_roster: Array = _team_roster(1)
 	var doctrine: Dictionary = DoctrineRegistry.doctrine(ai_doctrine)
 	var decision: Dictionary = General.decide_army(team1_roster, all_units, doctrine)
+	var plan: String = String(decision.get("plan", General.PLAN_ADVANCE_LINE))
 	var directives: Dictionary = General.reserve_directives(decision["reserve_units"])
 	for group in decision["groups"]:
-		var group_directives: Dictionary = Subcommander.decide_group(group, all_units)
+		var group_directives: Dictionary = Subcommander.decide_group(group, all_units, plan)
 		for uid in group_directives:
 			directives[uid] = group_directives[uid]
 	var pursue_routers: bool = bool(decision.get("pursue_routers", true))
