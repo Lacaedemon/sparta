@@ -1,0 +1,10 @@
+{
+  "name": "Defensive",
+  "plans": ["defend", "envelop"],
+  "envelop_ratio_threshold": 2.0,
+  "defend_ratio_threshold": 1.0,
+  "reserve_fraction": 0.25,
+  "reserve_commit_morale_threshold": 40.0,
+  "pursue_routers": false,
+  "subcommander_rank": "Strategos"
+}

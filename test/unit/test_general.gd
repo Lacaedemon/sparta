@@ -85,6 +85,64 @@ func test_select_plan_advances_when_no_living_enemy_to_measure_against() -> void
 	assert_eq(plan, GeneralScript.PLAN_ADVANCE_LINE)
 
 
+func test_select_plan_picks_defend_when_configured_as_base_plan() -> void:
+	var a := _unit(1, Vector2(600, 700))
+	var b := _unit(2, Vector2(700, 700))
+	var enemy := _unit(3, Vector2(650, 300), 0)
+	var doctrine := _doctrine({
+		"plans": ["defend", "envelop"],
+		"envelop_ratio_threshold": 3.0,
+	})
+	var plan: String = GeneralScript.select_plan([a, b], [a, b, enemy], doctrine)
+	assert_eq(plan, GeneralScript.PLAN_DEFEND, "2 vs 1 (ratio 2.0) misses 3.0 envelop threshold, picks defend")
+
+
+func test_select_plan_picks_defend_below_defend_ratio_threshold() -> void:
+	var a := _unit(1, Vector2(600, 700))
+	var enemy_a := _unit(2, Vector2(650, 300), 0)
+	var enemy_b := _unit(3, Vector2(550, 300), 0)
+	var doctrine := _doctrine({
+		"plans": ["defend", "advance_line"],
+		"defend_ratio_threshold": 0.6,
+	})
+	var plan: String = GeneralScript.select_plan([a], [a, enemy_a, enemy_b], doctrine)
+	assert_eq(plan, GeneralScript.PLAN_DEFEND, "1 vs 2 (ratio 0.5) is <= 0.6 defend threshold")
+
+
+func test_select_plan_prefers_envelop_over_defend_when_clearing_envelop_threshold() -> void:
+	var a := _unit(1, Vector2(600, 700))
+	var b := _unit(2, Vector2(700, 700))
+	var c := _unit(3, Vector2(800, 700))
+	var enemy := _unit(4, Vector2(650, 300), 0)
+	var doctrine := _doctrine({
+		"plans": ["defend", "envelop"],
+		"envelop_ratio_threshold": 2.0,
+	})
+	var plan: String = GeneralScript.select_plan([a, b, c], [a, b, c, enemy], doctrine)
+	assert_eq(plan, GeneralScript.PLAN_ENVELOP, "3 vs 1 (ratio 3.0) clears 2.0 envelop threshold")
+
+
+func test_plan_vocabulary_constants_are_defined_and_distinct() -> void:
+	var plans: Array[String] = [
+		GeneralScript.PLAN_ADVANCE_LINE,
+		GeneralScript.PLAN_ENVELOP,
+		GeneralScript.PLAN_DEFEND,
+		GeneralScript.PLAN_DEFEND_FEATURE,
+		GeneralScript.PLAN_WITHDRAW,
+		GeneralScript.PLAN_AMBUSH,
+		GeneralScript.PLAN_HIDE,
+		GeneralScript.PLAN_SCOUT,
+		GeneralScript.PLAN_HOLD,
+		GeneralScript.PLAN_DO_NOTHING,
+	]
+	for p in plans:
+		assert_gt(p.length(), 0, "plan name is non-empty")
+	var unique_set: Dictionary = {}
+	for p in plans:
+		assert_false(unique_set.has(p), "plan constant '%s' is unique" % p)
+		unique_set[p] = true
+
+
 # --- group assignment -----------------------------------------------------------------------
 
 func test_advance_line_keeps_one_group() -> void:
@@ -94,6 +152,16 @@ func test_advance_line_keeps_one_group() -> void:
 	var groups: Array = GeneralScript.assign_groups(
 		[a, b], [a, b, enemy], GeneralScript.PLAN_ADVANCE_LINE)
 	assert_eq(groups, [[a, b]])
+
+
+func test_defend_keeps_one_group() -> void:
+	var a := _unit(1, Vector2(500, 700))
+	var b := _unit(2, Vector2(700, 700))
+	var enemy := _unit(3, Vector2(600, 300), 0)
+	var groups: Array = GeneralScript.assign_groups(
+		[a, b], [a, b, enemy], GeneralScript.PLAN_DEFEND)
+	assert_eq(groups, [[a, b]])
+
 
 
 func test_envelop_splits_the_team_into_a_left_and_right_wing() -> void:

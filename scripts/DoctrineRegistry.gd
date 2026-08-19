@@ -96,7 +96,7 @@ static func parse_doctrine(raw: Dictionary) -> Dictionary:
 	var plans: Array[String] = []
 	for p in raw_plans:
 		plans.append(str(p))
-	return {
+	var out: Dictionary = {
 		"name": str(raw.get("name", "Doctrine")),
 		"plans": plans,
 		"envelop_ratio_threshold": float(raw["envelop_ratio_threshold"]),
@@ -105,6 +105,9 @@ static func parse_doctrine(raw: Dictionary) -> Dictionary:
 		"pursue_routers": bool(raw["pursue_routers"]),
 		"subcommander_rank": str(raw["subcommander_rank"]),
 	}
+	if raw.has("defend_ratio_threshold"):
+		out["defend_ratio_threshold"] = float(raw["defend_ratio_threshold"])
+	return out
 
 
 ## Every doctrine id with a data file on disk, sorted -- for tooling/tests that want to iterate

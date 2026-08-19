@@ -73,10 +73,11 @@ const POINT_EPSILON := 12.0
 ## Decide this AI tick's directives for one team's group. `group` is the team's own living,
 ## non-routing units (Battle._team_units(team) -- the caller's group-assignment choice, see
 ## the class doc); `all_units` is every living node in the "units" group, the same
-## omniscient perception source UnitLeader.decide reads. Returns {uid: directive} covering
-## only units that should receive a directive this tick -- a uid absent from the result
-## gets none (UnitLeader falls back to its own ordinary chase-nearest-enemy behaviour).
-static func decide_group(group: Array, all_units: Array) -> Dictionary:
+## omniscient perception source UnitLeader.decide reads; `plan` is the current army plan
+## (defaults to General.PLAN_ADVANCE_LINE). Returns {uid: directive} covering only units that
+## should receive a directive this tick -- a uid absent from the result gets none (UnitLeader
+## falls back to its own ordinary chase-nearest-enemy behaviour).
+static func decide_group(group: Array, all_units: Array, plan: String = General.PLAN_ADVANCE_LINE) -> Dictionary:
 	var living: Array = _living(group)
 	if living.size() < 2:
 		return {}
@@ -84,7 +85,9 @@ static func decide_group(group: Array, all_units: Array) -> Dictionary:
 	_mutual_support_directives(living, directives)
 	var axis: Vector2 = _advance_axis(living, all_units)
 	_flank_coverage_directives(living, all_units, axis, directives)
-	if axis != Vector2.ZERO:
+	if plan == General.PLAN_DEFEND:
+		_defend_hold_directives(living, directives)
+	elif axis != Vector2.ZERO:
 		_line_integrity_directives(living, axis, directives)
 	return directives
 
@@ -304,3 +307,15 @@ static func _flank_is_outflanked(flank: Unit, outward: Vector2, all_units: Array
 		if to_e.dot(outward) > 0.0:
 			return true
 	return false
+
+
+## In a defensive plan (PLAN_DEFEND), units not already assigned to mutual support or flank
+## coverage hold their current position on the defensive line rather than advancing out to chase.
+static func _defend_hold_directives(group: Array, directives: Dictionary) -> void:
+	for node in group:
+		var u := node as Unit
+		if u == null or directives.has(u.uid) or u.state == Unit.State.FIGHTING:
+			continue
+		if UnitLeader.is_chasing_live_target(u):
+			continue
+		directives[u.uid] = {"type": DIRECTIVE_HOLD_LINE, "x": u.position.x, "y": u.position.y}
