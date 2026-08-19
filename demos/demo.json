@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/subunits-phase-4-reform.json",
-  "caption": "Subunits Phase 4 reform (#1330): Narrowing frontage by 1 file folds the flank file into nearest-rear ranks, routing relocating soldiers along the outer flank and rear perimeter corridors to prevent penetrating standing ranks.",
-  "fixed_fps": 30,
-  "max_frames": 320,
-  "fps": 15,
-  "width": 720
+  "skip": true,
+  "reason": "Memory-only refactor: splits .claude/memories/sparta.md into topical subfiles under .claude/memories/sparta/ while keeping the aggregator path unchanged. No scene, script, asset, or project setting is touched, so a recorded battle would be byte-identical to main's."
 }
