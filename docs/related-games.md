@@ -336,12 +336,12 @@ we cannot vendor, plus changelogs of *what* they added, not *how* the sim works.
   `modding/*.md` files, and the dumped script/console tables. This is the
   legitimate harvest.
 - **Reimplement documented TW combat rules in Godot -- weeks.** The modding
-  community already published EDU chance-to-kill formulas (the
-  [Complete EDU Guide (RTW)](https://wiki.twcenter.net/index.php?title=Complete_EDU_Guide_%28RTW%29)).
-  That is gameplay design research, not binary reconstruction. It also conflicts
-  with Sparta's locked pillar in [`PLAN.md`](../PLAN.md): bottom-up emergence
-  from soldier physics, not a top-down `1.1^(ATK - DEF)` lookup. Do not import
-  those formulas into combat resolution.
+  community already published EDU chance-to-kill formulas (the Complete EDU
+  Guide on the TWC Wiki). That is gameplay design research, not binary
+  reconstruction. It also conflicts with Sparta's locked pillar in
+  [`PLAN.md`](../PLAN.md): bottom-up emergence from soldier physics, not a
+  top-down `1.1^(ATK - DEF)` lookup. Do not import those formulas into combat
+  resolution.
 - **Clean-room reconstruction of the engine -- multi-year, specialist team.**
   Two related-but-not-identical games, tightly coupled renderer / sim / AI /
   data, no public symbols. REX's own pace (first public release around March
