@@ -15,8 +15,8 @@ is soldier-level (phase 5 slice 1).
 (`UnitCombat.shoot` still derives one volley size from regiment scalars and one RNG roll;
 distribution then zeroes the nearest living soldiers to the volley origin in the health
 pool via `SoldierMelee.apply_ranged_casualties`, not arbitrary rear trim -- but each kill
-is still guaranteed with no per-soldier shield/armour contest). Full per-shooter,
-per-target resolution is tracked in #1186 / #435. Morale (a regiment scalar,
+is still guaranteed with no per-soldier shield/armour contest; full per-shooter,
+per-target resolution is tracked in #1186 / #435), morale (a regiment scalar,
 not derived from soldier state), and **enemy** soldier-vs-soldier collision + retiring the
 regiment circle -- the last is deferred to **#201** (stopping a charge needs momentum/mass;
 see the phase-5 note below and #296). #201's momentum physics landed (#749), but a live
