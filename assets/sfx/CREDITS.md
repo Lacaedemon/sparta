@@ -1,6 +1,6 @@
 # Sound-effect credits & licensing
 
-All bundled sound effects are **CC0 1.0 (public domain)** — free to use, modify,
+All bundled sound effects are **CC0 1.0 (public domain)** -- free to use, modify,
 and redistribute in personal, educational, and commercial projects, with no
 attribution required. Every clip was sourced from **[OpenGameArt](https://opengameart.org)**.
 We credit each author here anyway (encouraged, not mandatory).
@@ -25,14 +25,14 @@ Each clip is taken from the submission below, renamed to the event name that
 
 Each OpenGameArt submission page confirms CC0 on its licence line:
 
-- **Thwack Sounds** — <https://opengameart.org/content/thwack-sounds>
-- **Swishes Sound Pack** — <https://opengameart.org/content/swishes-sound-pack>
-- **20 Sword Sound Effects (Attacks and Clashes)** —
+- **Thwack Sounds** -- <https://opengameart.org/content/thwack-sounds>
+- **Swishes Sound Pack** -- <https://opengameart.org/content/swishes-sound-pack>
+- **20 Sword Sound Effects (Attacks and Clashes)** --
   <https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes>
-- **7 Assorted Sound Effects (Menu, Level Up)** —
+- **7 Assorted Sound Effects (Menu, Level Up)** --
   <https://opengameart.org/content/7-assorted-sound-effects-menu-level-up>
-- **8-bit sound FX** — <https://opengameart.org/content/8-bit-sound-fx>
-- **Game Over Trumpet SFX** — <https://opengameart.org/content/game-over-trumpet-sfx>
+- **8-bit sound FX** -- <https://opengameart.org/content/8-bit-sound-fx>
+- **Game Over Trumpet SFX** -- <https://opengameart.org/content/game-over-trumpet-sfx>
 
 ## Modifications
 
@@ -51,8 +51,8 @@ The combat and UI cues map cleanly; `rout`, `victory`, and `defeat` are more a
 matter of taste (`death` reuses a sword **clash** as a decisive killing blow;
 `rout` reuses a heavier **swish** as a line-breaks-and-flees whoosh). To swap any
 of them, drop a replacement `assets/sfx/<event>.{ogg,wav}` and re-run the Godot
-import — no code change needed. Record the new source + licence here.
+import -- no code change needed. Record the new source + licence here.
 
-Only commit audio you can legally redistribute — prefer CC0. Do **not** copy
+Only commit audio you can legally redistribute -- prefer CC0. Do **not** copy
 mixed-licence collections wholesale, and verify each submission's licence line
 individually (OpenGameArt hosts CC0, CC-BY, GPL, and others side by side).

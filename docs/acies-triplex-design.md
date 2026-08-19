@@ -1,9 +1,9 @@
 # Design note: acies triplex (checkerboard spacing + persistent lines)
 
-Status: **phase 1 landed** — checkerboard (quincunx) spacing as a new multi-unit
+Status: **phase 1 landed** -- checkerboard (quincunx) spacing as a new multi-unit
 form-up distribution mode (`SelectionManager.FormUpDist.CHECKERBOARD`). Persistent
 line-membership state, cavalry-flank-vulnerability tradeoffs, and century-level
-partial withdrawal are **not yet built** — tracked in
+partial withdrawal are **not yet built** -- tracked in
 [#819](https://github.com/Lacaedemon/sparta/issues/819), see "Deferred" below.
 
 Tracks [#805](https://github.com/Lacaedemon/sparta/issues/805) (phase 1, closed) and
@@ -16,23 +16,23 @@ swaps would happen within.
 ## Historical background
 
 The Roman **acies triplex** (Camillian reforms, 4th century BCE) deployed
-infantry in three lines — hastati, principes, triarii — each made of maniples
+infantry in three lines -- hastati, principes, triarii -- each made of maniples
 (120-150 soldiers, six ranks) with **gaps between maniples roughly matching
 their own frontage width**. The line behind was offset so its maniples covered
 those gaps: a checkerboard (quincunx) pattern. Sources:
 
-- Polybius VI — the primary ancient source for the manipular system (already
+- Polybius VI -- the primary ancient source for the manipular system (already
   cited by #377/#378).
-- Vegetius, *De Re Militari* — cited in `REFORM_RESEARCH.md` for rank-closing
+- Vegetius, *De Re Militari* -- cited in `REFORM_RESEARCH.md` for rank-closing
   procedures; also documents the acies triplex's discipline advantage (troops
   held formation rather than pursuing recklessly).
-- [imperiumromanum.pl, "Acies Triplex: Roman Triple Formation"](https://imperiumromanum.pl/en/roman-army/military-formations-of-ancient-romans/acies-triplex/) —
+- [imperiumromanum.pl, "Acies Triplex: Roman Triple Formation"](https://imperiumromanum.pl/en/roman-army/military-formations-of-ancient-romans/acies-triplex/) --
   secondary source: maniple size, cavalry deployed on the flanks in ten
-  divisions, and a named weakness — **insufficient cavalry was the system's
+  divisions, and a named weakness -- **insufficient cavalry was the system's
   greatest vulnerability for protecting the flanks and rear**, since a gapped,
   multi-line infantry formation trades frontage flexibility for flank exposure.
   Also: the rear CENTURY of a maniple (not the whole maniple) withdrew into a
-  gap first, letting the front century keep fighting — a more granular
+  gap first, letting the front century keep fighting -- a more granular
   withdrawal than #377's whole-unit swap.
 
 ## What phase 1 builds
@@ -49,15 +49,15 @@ line:
   neighbour's own frontage width**
   (`maxf(width_i, width_{i+1}) * CHECKERBOARD_GAP_SCALE + MULTI_FORM_UP_GAP`,
   where each unit's width is `(files - 1) * FORMATION_SPACING`) instead of the
-  flat `MULTI_FORM_UP_GAP` alone — the quincunx "gap ≈ own frontage" rule.
+  flat `MULTI_FORM_UP_GAP` alone -- the quincunx "gap ≈ own frontage" rule.
 - **Rear row** (units at odd ordinal position: 2nd, 4th, ...) is placed at the
   lateral midpoint of each front-row gap, offset backward (away from the
-  facing direction) by `CHECKERBOARD_LINE_GAP` world units — enough depth that
+  facing direction) by `CHECKERBOARD_LINE_GAP` world units -- enough depth that
   the two rows read as visually and physically distinct lines rather than one
   crowded block.
 - If the rear row has one more unit than the front row has internal gaps (an
   even total selection splits evenly, so there's no back-row-fits-a-gap
-  parity — see `_checkerboard_slices`'s own doc comment), the trailing rear
+  parity -- see `_checkerboard_slices`'s own doc comment), the trailing rear
   unit is placed past the front row's own flank at the same lateral pitch,
   rather than left with no slot.
 
@@ -70,11 +70,11 @@ consumer of a form-up command are untouched. No new sim/combat mechanics.
 
 Checkerboard's rear row needs a large lateral+depth reposition, which exposed
 two pre-existing bugs in *every* multi-unit form-up (not checkerboard-specific
-— any drag-to-form-up a real distance away hit these too, just less visibly):
+-- any drag-to-form-up a real distance away hit these too, just less visibly):
 
 1. **Reform and march overlapped.** A form-up applied its new frontage
    (`Unit.set_frontage`) immediately, then held the unit for a FIXED
-   `REFORM_DURATION` (0.8s) before marching — regardless of whether the
+   `REFORM_DURATION` (0.8s) before marching -- regardless of whether the
    reshape had actually finished settling. A large frontage change (front vs.
    rear row can differ substantially) needs much longer than 0.8s for 80+
    soldiers to walk into their new ranks, so the march started while the
@@ -84,19 +84,19 @@ two pre-existing bugs in *every* multi-unit form-up (not checkerboard-specific
    cap (`Unit._reshape_timeout`) rather than the flat duration as a backstop.
    The settle check itself needed a looser tolerance for a full reshape than
    the existing about-face case (`REFORM_SETTLE_EPS_RESHAPE`, 4.0 world units
-   vs. 1.0) — empirically, a wholesale frontage change's last body or two
+   vs. 1.0) -- empirically, a wholesale frontage change's last body or two
    hovers a couple of units outside the tight tolerance indefinitely without
    ever fully closing it, unlike a same-shape angle-fold reform.
 2. **A form-up centre-pivoted toward its OWN TRAVEL DIRECTION while
    marching, then snapped to its commanded facing on arrival.** `_move_to`'s
    ordinary "orderly move" behavior re-aims a marching block toward wherever
    it's currently walking (correct for a plain move, where the final facing
-   *should* match the travel direction) — but a form-up's final facing is
+   *should* match the travel direction) -- but a form-up's final facing is
    dictated by the drag line, not by the march's heading. For a diagonal
    reposition (checkerboard's rear row: lateral + backward), this rotated the
    whole formation grid to point along the diagonal travel path for the
    whole march, then abruptly re-oriented to the commanded facing the
-   instant it arrived — a visible "collapse into a diagonal column, then
+   instant it arrived -- a visible "collapse into a diagonal column, then
    expand back into a line" artifact. Fixed by holding the form-up's
    `deploy_facing` fixed for the entire march (the same `ordered_facing`
    "maneuvering" mechanism a side-step already uses to hold a fixed facing),
@@ -116,25 +116,25 @@ the flat 0.8s hold ended before it could develop). Pivoting `facing` toward
 `deploy_facing` *gradually* during the hold, while `set_frontage`'s new file
 count is already applied and fixed from the same tick, meant the soldier
 slot grid was simultaneously ROTATING (facing still catching up) and
-RESHAPING (frontage already changed) — bodies chasing a target that's both
+RESHAPING (frontage already changed) -- bodies chasing a target that's both
 moving and changing shape every tick swirl instead of converging cleanly.
 Fixed by snapping `facing` to `deploy_facing` immediately (`_face_dir`,
-whose `_formation_angle` absorption keeps the snap itself invisible — no
+whose `_formation_angle` absorption keeps the snap itself invisible -- no
 body jumps, only bookkeeping changes) instead of a gradual
 `_rotate_facing_toward`, so the grid is orientation-stable from the very
 first hold tick and only the (single, fixed) reshape is left to converge.
 
-A fourth idea raised in the same discussion — unifying this reform-hold
+A fourth idea raised in the same discussion -- unifying this reform-hold
 mechanism (currently bare `Unit` fields: `_reform_timer`/`_reform_target`/
 `_reform_until_settled`) onto the `Order.Phase` state machine the rear-move
-composite already uses (`Order.Phase.REFORM` -> `MARCH`) — is a refactor of
+composite already uses (`Order.Phase.REFORM` -> `MARCH`) -- is a refactor of
 the shared move-order path every unit uses, not form-up-specific, so it's
 tracked separately in
 [#822](https://github.com/Lacaedemon/sparta/issues/822) rather than folded in
 here.
 
-A fifth idea — anchoring `Unit.position` on the front rank's midpoint
-instead of the soldier-body centroid — was tried and reverted (it destabilized
+A fifth idea -- anchoring `Unit.position` on the front rank's midpoint
+instead of the soldier-body centroid -- was tried and reverted (it destabilized
 two hard invariants: quarter-turn and explicatio/duplicatio must not move the
 regiment's centre) and is tracked separately in
 [#821](https://github.com/Lacaedemon/sparta/issues/821). A related idea (a
@@ -144,29 +144,29 @@ standard-bearer soldier the unit forms up relative to) is tracked in
 ## Deferred (tracked in [#819](https://github.com/Lacaedemon/sparta/issues/819))
 
 - **Persistent line-membership state.** `General.gd`'s reserve-commit logic
-  (#586/PR #794) is an army-composition decision — which units join the fight
-  at all — not a spatial "this unit belongs to line 2, standing in reserve
+  (#586/PR #794) is an army-composition decision -- which units join the fight
+  at all -- not a spatial "this unit belongs to line 2, standing in reserve
   behind a gap" concept. Nothing currently models line membership as
   persistent formation state; a checkerboard form-up today is a one-shot
   layout, not a standing arrangement a unit remembers.
 - **Cavalry-flank-vulnerability tradeoff.** The historical system's chief
   weakness (thin cavalry can't cover the flanks of a gapped multi-line
-  formation) isn't modeled — a checkerboard-formed army isn't currently more
+  formation) isn't modeled -- a checkerboard-formed army isn't currently more
   vulnerable to flanking than a solid line.
 - **Century-level partial withdrawal.** The historical rear-century-first
-  withdrawal needs per-sub-unit granularity that doesn't exist yet — gated
+  withdrawal needs per-sub-unit granularity that doesn't exist yet -- gated
   behind [#547](https://github.com/Lacaedemon/sparta/issues/547) ("Rethink
   slot: explicit per-soldier slot ownership"). #377's passage-of-lines and
   #802's target-slot work both operate at the whole-`Unit` level.
 - **Command-structure spatial analog.** `General.gd` (#586) already splits an
   army into multiple `groups` by doctrine, and `Subcommander.gd` (#585)
-  independently manages each group's line integrity — a genuine
-  decentralized-command analog — but those groups aren't tied to the
+  independently manages each group's line integrity -- a genuine
+  decentralized-command analog -- but those groups aren't tied to the
   checkerboard's spatial arrangement.
 
 ## Relationship to other design docs
 
-- [`REFORM_RESEARCH.md`](REFORM_RESEARCH.md) — the single-unit reformation
+- [`REFORM_RESEARCH.md`](REFORM_RESEARCH.md) -- the single-unit reformation
   research (File-Closure Principle, Hysteresis in Reformation Decisions) this
   issue's multi-unit, whole-battle-line-composition counterpart builds on.
 - Parent: [#362](https://github.com/Lacaedemon/sparta/issues/362) (implement a

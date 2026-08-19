@@ -1,21 +1,21 @@
 # Design note: per-soldier combat model
 
-Status: **phase 4 of individual-soldier collision — largely implemented** (see
+Status: **phase 4 of individual-soldier collision -- largely implemented** (see
 [`individual-collision-design.md`](individual-collision-design.md)). This is the
 probabilistic model that resolves combat between individual soldiers; it is now wired
 into **engaged melee**, which is soldier-authoritative (`SoldierMelee.resolve`). The
 per-slice `> Implemented` notes below track what has landed (the land contest, wound,
 knockback, prone, graded bracing, and stamina) and what is deferred (the full posture
 enum/stamina-regen system, the domino cascade, and enemy collision → #201). The
-player-facing version lives at [`website/combat.qmd`](../website/combat.qmd) — keep the
+player-facing version lives at [`website/combat.qmd`](../website/combat.qmd) -- keep the
 two in sync.
 
 The guiding principle is **emergence, not modifiers**. We do not bolt a "flanking
 bonus" or an "out-of-formation debuff" onto regiment combat. Instead each soldier
-carries its own state — health, stamina, footing, facing — and resolves its own
-strikes against the individual in front of it. The familiar tactical truths —
+carries its own state -- health, stamina, footing, facing -- and resolves its own
+strikes against the individual in front of it. The familiar tactical truths --
 flanking kills faster, spears screen, charges shatter loose lines but break on
-braced ones, a surrounded man tires and falls — *fall out* of the geometry and the
+braced ones, a surrounded man tires and falls -- *fall out* of the geometry and the
 per-strike rolls below, not from special cases.
 
 ## Soldier state and attributes
@@ -60,7 +60,7 @@ $m$ is likewise derived, not a separately-tuned figure:
 `SoldierCombat.relative_mass_from_kg` divides a real mass in kilograms by
 the 80 kg heavy-foot baseline, so Spearmen and Infantry (both 80 kg) land on exactly
 1.0, Archers' lighter 70 kg body on 0.875, and a mounted Cavalryman's rider
-(75 kg) plus warhorse (450 kg) on 6.5625 — a real ~525 kg rider-and-horse
+(75 kg) plus warhorse (450 kg) on 6.5625 -- a real ~525 kg rider-and-horse
 relative to a foot soldier, not a hand-tuned "cavalry hits like 2.5 men"
 scalar.
 
@@ -76,7 +76,7 @@ $$g(\sigma) = \underline{g} + (1-\underline{g})\,\frac{\sigma}{\sigma_{\max}}
 
 A fresh, unhurt soldier sits at $q = g = 1$; a near-dead or spent one drops toward
 the floors $\underline{q}, \underline{g}$. There is **no discrete "injured"
-state** — wounds accumulate in $h$ and degrade the soldier continuously through
+state** -- wounds accumulate in $h$ and degrade the soldier continuously through
 $q(h)$.
 
 ## Posture (stance)
@@ -99,23 +99,23 @@ postures, and what each one sets:
 Two consequences fall straight out of this table and matter everywhere below:
 
 - **Motion *is* the charge.** The closing term $c$ (next section) is just the
-  attacker's gait — a sprinting soldier deals a big $c$; a planted one deals none.
+  attacker's gait -- a sprinting soldier deals a big $c$; a planted one deals none.
   A "charge" is not a special attack, it is the *sprinting* posture meeting a
   target. The faster the gait, the deadlier the blow **and** the weaker the
-  sprinter's own defence and bracing — speed is bought with vulnerability.
+  sprinter's own defence and bracing -- speed is bought with vulnerability.
 - **Posture changes take time.** A transition costs $T_{\mathrm{post}}$ ticks (and
   going from a fast gait to *braced* costs the most). You cannot brace the instant
-  a charge lands — you must be **set before** it arrives. This is the whole tactical
+  a charge lands -- you must be **set before** it arrives. This is the whole tactical
   game of receiving a charge: a line ordered to brace in time holds; one caught
   *at ease* or still shuffling into position is ridden down before it can plant.
 
 > **Implemented (#1105), simplified:** the closing term $c$ (below) already reads real
 > velocity, so "motion is the charge" was already true. What #1105 adds is the *brace* half:
 > a new `ORDER_BRACE` order plus a `BRACE_SETTLE_TIME` ($T_{\mathrm{post}}$) held-still timer
-> before the full braced bonus applies — see the `> Implemented` note under "Bracing and the
+> before the full braced bonus applies -- see the `> Implemented` note under "Bracing and the
 > knockback chain" below. The full seven-way posture table above (`at ease` / `at attention` /
 > `advancing` / `jogging` / `sprinting` / `braced` / `prone`, each with its own stamina-regen
-> rate) is **not** implemented as a discrete state machine — bracing instead reads a
+> rate) is **not** implemented as a discrete state machine -- bracing instead reads a
 > continuous penalty from the regiment's own `current_speed`, not a named gait. `prone` is
 > implemented separately (see "Going prone and getting up" below).
 
@@ -128,18 +128,18 @@ health, a stamina cost on both sides, and a knockback impulse.
 **Attack cadence** is a per-weapon-type stat, `Weapon.attack_interval_s`: seconds
 between damage ticks, aggregated at the regiment level (one tick stands for the
 whole engaged front rank trading blows over that span, not a literal per-soldier
-swing — see `Unit.ATTACK_INTERVAL`'s own doc comment). Every type keeps the flat
+swing -- see `Unit.ATTACK_INTERVAL`'s own doc comment). Every type keeps the flat
 0.6 s baseline except gladius+scutum (Infantry), tuned to 1.2 s following a
 2026-07-24/25 discussion that the flat rate felt unrealistically fast even as a
 short burst. The gladius value's qualitative grounding is
 [a Roman-Britain educational overview](https://www.romanobritain.org/8-military/mil_roman_soldier_sword.php)
-of legionary gladius technique — not an academic or HEMA source, so treat it as
+of legionary gladius technique -- not an academic or HEMA source, so treat it as
 illustrative rather than rigorously sourced. It describes a thrust-focused
 "scutum, gladius, scutum, gladius" drill (shield punch, then sword thrust,
 alternating) and claims a thrusting rate as high as four stabs per second against
 one slash every two seconds for a cutting motion. That peak figure is not used
 directly here: even the old flat 0.6 s (100 attacks/minute) already read as
-unsustainably fast as a *sustained* rate, so the source only supports two things —
+unsustainably fast as a *sustained* rate, so the source only supports two things --
 differentiating cadence by weapon *mechanic* (thrust vs. slash is a real
 asymmetry), and treating whatever number a type lands on as a sustained baseline,
 with any peak-burst behaviour handled separately rather than folded into the
@@ -165,11 +165,11 @@ $v_{\mathrm{ref}}$, a reference gallop speed (so $c \approx 1$ at a full charge)
 This is exactly the attacker's **posture** in motion: a
 planted (*braced* / *at attention*) fighter has $c = 0$, an *advancing* one a small
 $c$, a *sprinting* cavalryman a large $c$. The single quantity $c$ feeds the hit
-contest, the damage, **and** the knockback below — closing fast makes you harder to
+contest, the damage, **and** the knockback below -- closing fast makes you harder to
 evade, hit harder, and shove further, all at once (and, per the posture table,
 leaves the sprinter's own defence and bracing near zero while it does).
 
-**Closing speed belongs to the *pair*, not the attacker — it is symmetric and
+**Closing speed belongs to the *pair*, not the attacker -- it is symmetric and
 cumulative.** The geometry flips both the axis and the velocity difference, so the
 defender sees the *same* $c$ when it strikes back:
 
@@ -177,16 +177,16 @@ $$\big((\vec{v}_D - \vec{v}_A)\cdot \hat{u}_{D\to A}\big)_+
 = \big((\vec{v}_A - \vec{v}_D)\cdot \hat{u}_{A\to D}\big)_+ = v_c.$$
 
 So **every blow traded during the closing carries $c$, in either direction**, and
-head-on approach speeds **add**. A charge recipient who also strikes — or merely
-holds a spear into the rush — lands its own blow with the full closing $c$: the
+head-on approach speeds **add**. A charge recipient who also strikes -- or merely
+holds a spear into the rush -- lands its own blow with the full closing $c$: the
 charger impales itself on the presented point (its own momentum turned against it).
 And two bodies closing head-on sum their speeds into one large shared $c$, so a
-**mutual charge — cavalry into cavalry — is the deadliest exchange in the game**:
+**mutual charge -- cavalry into cavalry -- is the deadliest exchange in the game**:
 both sides strike, wound, and knock back at maximal force on the same tick.
 
 ### 1. The land contest (opposed roll, facing-gated)
 
-The blow does not roll against a fixed number — it is an **opposed roll** of the
+The blow does not roll against a fixed number -- it is an **opposed roll** of the
 attacker's offence against the defender's **active defence** (footwork, parry,
 shield, deflection). Active defence only works against blows the defender can see
 and meet:
@@ -205,7 +205,7 @@ that protects regardless. $\phi_D$ is the
 **facing gate**: the dot of the defender's facing with the
 direction the blow comes from, clamped to non-negative. A blow from the front
 ($\phi_D \to 1$) meets full active defence; a blow from the flank meets little; a
-blow to the **back** ($\phi_D = 0$) meets *none* — no parry, no shield block, no
+blow to the **back** ($\phi_D = 0$) meets *none* -- no parry, no shield block, no
 deflection, only armour. The blow lands with
 
 $$p_{\mathrm{land}} = \operatorname{clip}\!\Big(L\big(\beta\,(\mathcal{A} - \mathcal{D})\big),\; p_{\min},\; p_{\max}\Big),
@@ -232,7 +232,7 @@ h_D \leftarrow h_D - \Delta h.$$
 
 $D_0 > 0$ is a base damage scale (the wound a baseline weapon, $\ell = 1$, deals to
 an unarmoured, standing target). The soldier **dies** when $h_D \le 0$. Until then it fights on at reduced capacity
-through $q(h_D)$ — wounds compound, because a hurt soldier both defends and hits
+through $q(h_D)$ -- wounds compound, because a hurt soldier both defends and hits
 worse, so the second and third wounds come easier than the first. Armour $a_D$ is
 the only thing that protects a back-turned or downed man, since it sits outside the
 facing-gated contest.
@@ -259,7 +259,7 @@ Here $\kappa_a, \kappa_d, \kappa_p \ge 0$ are the stamina costs of a strike, of
 meeting one blow, and of rising from prone; $\rho_\sigma(\text{posture})$ is the
 posture-set regen rate; and $\Delta t$ is the tick duration. Defending is not free: a soldier under sustained assault spends $\kappa_d$ on
 **every** incoming blow it meets, so its stamina falls, $g(\sigma)$ falls, and its
-active defence $\mathcal{D}$ collapses — after which blows land freely. This is the
+active defence $\mathcal{D}$ collapses -- after which blows land freely. This is the
 engine behind several tactics: a **surrounded** soldier meets many blows per tick,
 exhausts fast, and is then cut down; a man knocked **prone** pays $\kappa_p$ to
 stand and defends nothing while down.
@@ -275,21 +275,21 @@ $$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\;\eta,
 \eta = \begin{cases} \eta_{\mathrm{def}} \in (0,1) & \text{defended (turned aside)} \\ 1 & \text{landed.} \end{cases}$$
 
 $J_0 > 0$ is a base impulse scale, and $\eta$ is the fraction of momentum
-transmitted — $\eta_{\mathrm{def}}$ for a defended blow, $1$ for a clean landing.
+transmitted -- $\eta_{\mathrm{def}}$ for a defended blow, $1$ for a clean landing.
 The struck soldier is displaced by $J\,\hat{u}_{A\to D}$; the formation's bounded
 arrival dynamics then decelerate and return it over the following ticks. A blocked blow draws no blood but still
-shoves — which is how a spear wall pushes a stalled enemy back even when it can't
+shoves -- which is how a spear wall pushes a stalled enemy back even when it can't
 wound it.
 
 Impulses **accumulate under a clamp**: in an intermixed press several attackers
 commonly shove the same body within one melee cadence, so their impulses
-accumulate in its velocity — each strike adds its impulse and the speed is
+accumulate in its velocity -- each strike adds its impulse and the speed is
 re-clamped as it lands, to a ceiling $v_{\max}$
 (`KNOCKBACK_SPEED_MAX`, $1.5\,J_0$), or to the speed the body already carried if
 that was higher (a blow never accelerates a galloping body, and no sequence of
 blows can ratchet a body past the ceiling). Under the bounded arrival recovery
 ($a$ = `BODY_ACCEL_FLOOR`) a body at the ceiling coasts at most
-$v_{\max}^2 / (2a)$ — a hard shove of body-lengths, never a launch across the
+$v_{\max}^2 / (2a)$ -- a hard shove of body-lengths, never a launch across the
 field. The *uncapped* $J$ still drives the prone roll below, so a heavy hit's
 felling power is unchanged.
 
@@ -297,7 +297,7 @@ felling power is unchanged.
 > `mass` in `profile_for`, wired into `SoldierMelee` as one mass-scaled impulse per
 > in-reach strike (η = 1 landed, `ETA_DEFENDED` otherwise), bounded by
 > `SoldierCombat.capped_knockback_velocity` (called once per strike, so the clamp
-> applies cumulatively as impulses accumulate). Velocity-only — the body
+> applies cumulatively as impulses accumulate). Velocity-only -- the body
 > integrates it, never a position snap. (Prone/knockdown in slice B; depth-buttressed
 > bracing in slice C; the rearward domino cascade is a follow-up.)
 
@@ -312,10 +312,10 @@ $$p_{\mathrm{prone}} = \operatorname{clip}\!\Big(\frac{J - J_{\mathrm{fall}}\,(1
 where $J_{\mathrm{fall}} > 0$ is the base knockdown threshold (an impulse below it
 never fells a man), $J_{\mathrm{scale}} > 0$ how fast the fall chance climbs with
 surplus impulse, and $p_{\mathrm{prone}}^{\max} \le 1$ caps it (no single blow is a
-certain knockdown). A **prone** soldier has $\phi_D \to 0$ in every contest (no active defence — only
+certain knockdown). A **prone** soldier has $\phi_D \to 0$ in every contest (no active defence -- only
 armour saves it), $b_{\mathrm{post}} = 0$, cannot strike, and must spend
 $T_{\mathrm{up}}$ ticks and $\kappa_p$ stamina to return to *at attention*. So a
-charge that bowls men over does not just push them — it lays them down defenceless
+charge that bowls men over does not just push them -- it lays them down defenceless
 and tires them out as they scramble up, which is when the follow-up rank kills them.
 A **braced**, heavy, set line clears the prone threshold far less often and stays on
 its feet.
@@ -472,7 +472,7 @@ $$J_{\mathrm{fall}} \;=\; \Lambda\,J_{\mathrm{anchor}} \;=\; \frac{d_b}{\mu_s\,z
 
 A knocked-back soldier collides with whoever is behind it. Two things resist the
 impulse: the struck man's own bracing **and the braced comrades behind him**. In a
-tight formation a set man buttresses the one in front — he physically backs him up —
+tight formation a set man buttresses the one in front -- he physically backs him up --
 so the front rank's *effective* capacity is its own plus an attenuated sum down the
 file behind it:
 
@@ -482,12 +482,12 @@ $$C_i = J_{\mathrm{cap}}\Big(\mathrm{br}_i + \sum_{k\ge1}\zeta^{\,k}\,\mathrm{br
 where $J_{\mathrm{cap}} > 0$ is the impulse a fully-set man ($\mathrm{br} = 1$) can
 absorb, $\zeta \in (0, 1]$ is the per-rank support-transmission efficiency, and
 $T_{i,k} \in \{0,1\}$ flags whether ranks $i \dots i+k$ form an **unbroken, tight,
-braced, front-facing** file — support transmits through set men in contact, and a
+braced, front-facing** file -- support transmits through set men in contact, and a
 gap, a loose or unbraced man, or one not facing the blow sets $T = 0$ from there
 back. A lone braced man has $C_i =
 J_{\mathrm{cap}}\,\mathrm{br}_i$; a **deep** braced phalanx sums down the column, so
 the front rank resists far more than any one man could. That is the historical depth
-effect (rear ranks bracing into the front), emergent from support — not a "depth
+effect (rear ranks bracing into the front), emergent from support -- not a "depth
 bonus."
 
 Bracing stays **finite**: only the surplus over $C_i$ passes on. Writing $J_i$ for
@@ -498,11 +498,11 @@ $$J_{i+1} = \tau\,\big(J_i - C_i\big)_+,
 
 where $\tau$ is the per-contact attenuation (the impulse fades as it passes
 rearward). A blow **below** the front column's capacity
-$C_i$ dies there — the charge breaks on the braced depth. A blow that **exceeds** it
+$C_i$ dies there -- the charge breaks on the braced depth. A blow that **exceeds** it
 overwhelms the front man (he is shoved, and rolls $p_{\mathrm{prone}}$ on his own
-footing — a hard enough $J$ topples him despite bracing), the supporting file has
+footing -- a hard enough $J$ topples him despite bracing), the supporting file has
 spent its backing, and the surplus dominoes rearward, re-resisted by whatever set
-men remain. So a strong enough charge still punches *through* — but now it must beat
+men remain. So a strong enough charge still punches *through* -- but now it must beat
 the **whole braced column**, not one man. Each soldier the impulse reaches rolls
 $p_{\mathrm{prone}}$ on its own footing, toppling a row of unsupported men like
 dominoes. The per-soldier bracing term is itself emergent:
@@ -513,12 +513,12 @@ $$\mathrm{br} = \operatorname{clip}\!\big(\mathrm{br}_0
   + w_d\,(\hat{n}\cdot\hat{u}_{\text{incoming}})_+ ,\; 0,\; 1\big),$$
 
 i.e. starting from a baseline $\mathrm{br}_0$, a soldier is more braced in a **set
-posture** ($b_{\mathrm{post}}$ from the posture table — max when *braced*, near zero
+posture** ($b_{\mathrm{post}}$ from the posture table -- max when *braced*, near zero
 when *sprinting*, *at ease*, or *prone*), in **tight formation** (weight $w_f$ on the
 indicator $[\,\text{formation} = \textsf{TIGHT}\,]$, which is $1$ when its condition
 holds and $0$ otherwise), and **facing into** the blow (weight $w_d$ on the last
-term — the facing $\hat{n}$ dotted with the incoming direction, clamped
-non-negative — the *same* facing that gates active defence). A loose, flanked, sprinting, or routing
+term -- the facing $\hat{n}$ dotted with the incoming direction, clamped
+non-negative -- the *same* facing that gates active defence). A loose, flanked, sprinting, or routing
 file has $\mathrm{br}\to 0$, dominoes, and goes down; a *braced*, tight,
 front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 
@@ -526,17 +526,17 @@ front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 > `brace_capacity` compute the depth-buttressed column capacity $C_i$. `Unit.soldier_brace()`
 > is graded, not binary: a merely-engaged, non-skirmish regiment sits at a baseline ("at
 > attention," `BRACE_BASELINE_ENGAGED`); ordering `ORDER_BRACE` and holding still
-> (`current_speed` at or below `BRACE_STILL_SPEED`) for `BRACE_SETTLE_TIME` seconds — the
-> doc's $T_{\mathrm{post}}$, "you must be set before it arrives" — adds the full
+> (`current_speed` at or below `BRACE_STILL_SPEED`) for `BRACE_SETTLE_TIME` seconds -- the
+> doc's $T_{\mathrm{post}}$, "you must be set before it arrives" -- adds the full
 > `BRACE_SET_BONUS`, and a tight formation adds a further `BRACE_TIGHT_BONUS` ($w_f$ above);
 > motion still under way subtracts a penalty scaled by `current_speed`. `ORDER_SKIRMISH`
-> still forces 0. The $w_d$ facing term is deliberately not folded into this formula — it is
+> still forces 0. The $w_d$ facing term is deliberately not folded into this formula -- it is
 > already enforced at the call site (`SoldierMelee.resolve`'s front-facing-only rearward file
 > walk), so adding it here would double-count it. `SoldierCombat.brace_capacity_for_type` also
 > grades $J_{\mathrm{cap}}$ itself by weapon: a grounded, angled spear/pike (anti-cavalry)
 > resists via an independent leveraged strut into the earth, so its column capacity exceeds a
 > shield-only soldier's friction/mass-stacking baseline. In `SoldierMelee.resolve` the struck
-> soldier's file column is walked rearward (front-facing blows only — $\phi = 0$ gives no
+> soldier's file column is walked rearward (front-facing blows only -- $\phi = 0$ gives no
 > buttress), and the sub-capacity shove is absorbed before applying velocity; `brace_depth` is
 > also passed to `prone_chance` to raise the knockdown threshold for a set phalanx.
 > **Deferred:** the rearward domino cascade ($J_{i+1} = \tau(J_i - C_i)_+$, surplus toppling
@@ -546,7 +546,7 @@ front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 
 > **Implemented (#201 slice D):** `SoldierCombat.stamina_factor` ($g(\sigma)$) and the
 > per-soldier `_sim_soldier_stamina` pool. In `SoldierMelee.resolve`, `cond_a`/`cond_d`
-> are now $q(h)\,g(\sigma)$ — the full two-factor condition. Every strike costs the
+> are now $q(h)\,g(\sigma)$ -- the full two-factor condition. Every strike costs the
 > attacker $\kappa_a$; every met blow costs the defender $\kappa_d\,\phi\,(1+c)$ (zero
 > for prone or flanked defenders). `SoldierBodies.step` regens stamina at $\rho_\sigma$
 > per second and charges $\kappa_p$ on the tick a soldier rises from prone. **Deferred:**
@@ -560,10 +560,10 @@ $c$ lighting up every term at once: (i) the closing speed makes the charger's bl
 harder to evade ($\mu c$ in $\mathcal{A}$), (ii) deadlier ($1+c$ in $\Delta h$),
 and (iii) a heavier shove ($1+c$ in $J$) that is more likely to knock men prone.
 Against an **unbraced** line ($\mathrm{br}\to 0$) the impulse ripples several ranks
-deep and lays them out — the line is bowled over and butchered on the ground.
-Against a **braced** line — one ordered into the *braced* posture **in time**, a set
+deep and lays them out -- the line is bowled over and butchered on the ground.
+Against a **braced** line -- one ordered into the *braced* posture **in time**, a set
 spear hedge with shields locked, facing the charge ($\mathrm{br}\to 1$), and **deep
-enough** that the rear ranks buttress the front (a large column capacity $C$) — the
+enough** that the rear ranks buttress the front (a large column capacity $C$) -- the
 impulse is absorbed at the front rank, few men fall, and little passes back: the line
 holds. A shallow braced line can still be punched through; depth is what makes the
 hedge unbreakable. The timing is the crux: because a posture change costs
@@ -571,7 +571,7 @@ $T_{\mathrm{post}}$, a line still *at ease* or shuffling into place when the hor
 arrives cannot plant in time and is ridden down, while the same line set a moment
 earlier holds. And because the spear's reach $r$ exceeds the horseman's, the
 spearman strikes *first*, and the impaling closing speed makes $c$ work **against**
-the rider. None of this is special-cased — it is the posture timing, the reach, the
+the rider. None of this is special-cased -- it is the posture timing, the reach, the
 opposed rolls, the prone threshold, and the bracing chain acting together.
 
 ## Why the tactics emerge
@@ -579,7 +579,7 @@ opposed rolls, the prone threshold, and the bracing chain acting together.
 - **Flanking / surround.** A soldier with enemies on two or three sides (a) is in
   reach of more attackers, so it is the target of more strikes per tick, (b) meets
   more blows and burns stamina faster, so its active defence collapses, and (c)
-  takes blows it cannot face — flank and rear strikes see $\phi_D \to 0$ and only
+  takes blows it cannot face -- flank and rear strikes see $\phi_D \to 0$ and only
   armour answers them. Three emergent effects, one cause: *enemies it cannot face,
   in numbers it cannot out-last*. No "rear bonus" multiplier exists.
 - **Don't turn your back.** Facing gates both active defence and bracing. A soldier
@@ -590,13 +590,13 @@ opposed rolls, the prone threshold, and the bracing chain acting together.
   own reach, so they are struck without striking back, and the knockback keeps
   shoving them out. A spear line screens whatever stands behind it.
 - **Form deep, form tight.** Braced men in a tight file back up the rank in front,
-  so the front line's resisting capacity $C$ is the *column's*, not one man's — a
+  so the front line's resisting capacity $C$ is the *column's*, not one man's -- a
   deep, set phalanx breaks a charge a shallow one can't. The cost is that depth and
   tightness trade against frontage and mobility, and the support evaporates the
   moment the file loosens, opens a gap, or is hit from a side it isn't facing.
 - **Closing speed cuts both ways.** The charge bonus belongs to the pair, so
   meeting a charge with a presented spear (or a counter-charge) turns the enemy's
-  own momentum against it — the charger runs onto the point at full $c$. A **mutual
+  own momentum against it -- the charger runs onto the point at full $c$. A **mutual
   cavalry charge** is therefore mutually annihilating (both sides hit at combined
   speed); prefer to receive a charge on **set spears**, which strike first at the
   same shared $c$, over meeting it horse-to-horse.
@@ -606,15 +606,15 @@ opposed rolls, the prone threshold, and the bracing chain acting together.
   differ in who benefits: armour protects whoever wears it, while the shield's
   contribution to active defence scales with the defender's own skill, so issuing
   shields to a raw levy buys far less than issuing them to veterans.
-- **Skill and freshness** compound at both ends — landing more, defending more,
-  tiring slower — so rested veterans beat raw or winded levies out of proportion to
+- **Skill and freshness** compound at both ends -- landing more, defending more,
+  tiring slower -- so rested veterans beat raw or winded levies out of proportion to
   their numbers. Pace the fight: a line that has been holding all battle defends
   worse than one just committed.
 
 ## Determinism
 
-Combat is part of the deterministic simulation. Every random draw above — the land
-contest, the wound, the prone roll — comes from the single seeded `Replay.rng`
+Combat is part of the deterministic simulation. Every random draw above -- the land
+contest, the wound, the prone roll -- comes from the single seeded `Replay.rng`
 stream, drawn in a fixed order (soldiers resolved in global-id order within the
 per-tick soldier pass, exactly like the separation tie-breaks). Per-soldier health,
 stamina, facing, and footing are ordinary simulation state, advanced the same way

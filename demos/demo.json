@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/subunits-phase-4-reform.json",
-  "caption": "Subunits Phase 4 reform (#1291): Narrowing frontage by 1 file operates as a subunit flank fold where retained files keep their exact soldiers and ranks without cross-block shuffling, and only the flank file moves to the rear rank.",
+  "caption": "Subunits Phase 4 reform (#1330): Narrowing frontage by 1 file folds the flank file into nearest-rear ranks, routing relocating soldiers along the outer flank and rear perimeter corridors to prevent penetrating standing ranks.",
   "fixed_fps": 30,
   "max_frames": 320,
   "fps": 15,

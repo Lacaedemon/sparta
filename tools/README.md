@@ -1,9 +1,9 @@
 # tools/
 
-Developer tooling for Sparta — small helpers that speed up the edit → verify
+Developer tooling for Sparta -- small helpers that speed up the edit → verify
 loop. None of it ships in the game build.
 
-## `check.sh` — run CI's checks locally
+## `check.sh` -- run CI's checks locally
 
 A single entry point that reproduces the **gating** checks from
 `.github/workflows/` on your machine, so you can get a CI-equivalent pass (or
@@ -19,14 +19,14 @@ tools/check.sh --help          # full usage
 
 | Check | What it does | Mirrors |
 |---|---|---|
-| `validate` | `godot --headless --import` loads the whole project (autoloads, `class_name` globals, cross-script refs) and fails on any script/parse error, then a compile sweep (`tools/ci/compile_all_scripts.gd`) force-loads every `.gd` — catching parse errors in scripts nothing references at import time, which the import pass alone misses. | `godot-ci.yml` |
+| `validate` | `godot --headless --import` loads the whole project (autoloads, `class_name` globals, cross-script refs) and fails on any script/parse error, then a compile sweep (`tools/ci/compile_all_scripts.gd`) force-loads every `.gd` -- catching parse errors in scripts nothing references at import time, which the import pass alone misses. | `godot-ci.yml` |
 | `test` | Runs the GUT unit suite headlessly (`-gexit`). Self-sufficient: imports the project first if it hasn't been imported yet this invocation (reusing `validate`'s import when both run together), so `tools/check.sh test` alone in a fresh checkout doesn't need `validate` to run first. | `godot-ci.yml` |
 | `chars` | Flags curly quotes (U+2018, U+2019, U+201C, U+201D), en/em dashes (U+2013, U+2014), and the multiplication sign (U+00D7) in the Quarto docs (`*.qmd`, `*.R`), which are kept plain-ASCII (configured in `tools/ci/banned_chars.json`). Remedy differs by file type: `x` or `*` in `.R`, `&times;` in `.qmd` prose (a `\uXXXX` escape is rendered literally by Pandoc, so it is not a substitute there). | `check-non-standard-chars.yml` |
-| `comments` | Flags issue/PR-number citations (`#123`) added by this diff's GDScript (`*.gd`) comment lines — CLAUDE.md's "no issue-number references" rule (`TODO(#N):`/`FIXME(#N):` excepted). Diff-scoped against `origin/main` (or `SPARTA_CHECK_COMMENTS_BASE`), not a whole-repo scan, so pre-existing citations elsewhere in the tree don't fail the check. | `check-comment-citations.yml` |
-| `file_length` | Caps NEW `scripts/*.gd` files (added by this diff, not existing ones) at 100 lines (override with `SPARTA_CHECK_MAX_NEW_FILE_LINES`) — a modularity budget for genuinely new files, introduced by this check itself (not an existing CLAUDE.md rule). Diff-scoped like `comments`, sharing its base resolution: a whole-tree gate would fail on the 167 of 274 tracked `*.gd` files that already exceed 100 lines. Scoped to `scripts/`, not `test/` (this repo's test files deliberately group many test functions per file). | `check-comment-citations.yml` |
+| `comments` | Flags issue/PR-number citations (`#123`) added by this diff's GDScript (`*.gd`) comment lines -- CLAUDE.md's "no issue-number references" rule (`TODO(#N):`/`FIXME(#N):` excepted). Diff-scoped against `origin/main` (or `SPARTA_CHECK_COMMENTS_BASE`), not a whole-repo scan, so pre-existing citations elsewhere in the tree don't fail the check. | `check-comment-citations.yml` |
+| `file_length` | Caps NEW `scripts/*.gd` files (added by this diff, not existing ones) at 100 lines (override with `SPARTA_CHECK_MAX_NEW_FILE_LINES`) -- a modularity budget for genuinely new files, introduced by this check itself (not an existing CLAUDE.md rule). Diff-scoped like `comments`, sharing its base resolution: a whole-tree gate would fail on the 167 of 274 tracked `*.gd` files that already exceed 100 lines. Scoped to `scripts/`, not `test/` (this repo's test files deliberately group many test functions per file). | `check-comment-citations.yml` |
 | `coverage` | Runs the GUT suite instrumented for line coverage and writes `coverage/lcov.info` (git-ignored). Slower than `test` (instrumentation overhead) and coverage numbers never gate a PR on their own, so it's **not** in the default set. | `test-coverage.yml` |
-| `patch_coverage` | Local approximation of Codecov's `codecov/patch` check: regenerates `coverage/lcov.info` fresh (runs `coverage` first), then reports what fraction of THIS diff's added `scripts/*.gd` lines are covered — per-file breakdown plus the exact missing line numbers — and **fails when that fraction is below the effective target** (auto: the project-wide total from the regenerated report, mirroring `codecov/patch`'s `target: auto`; override with `SPARTA_CHECK_PATCH_COVERAGE_TARGET`). Diff-scoped against `origin/main` (or `SPARTA_CHECK_PATCH_COVERAGE_BASE`), same as `comments`. Run it before pushing a `scripts/` change to catch a `codecov/patch` shortfall locally instead of after a CI round trip — see "Checking patch coverage before you push" below. **Not** in the default set (inherits `coverage`'s slowness). | `codecov/patch` (GitHub check, driven by `test-coverage.yml`'s upload) |
-| `lint` | GDScript style lint via [gdtoolkit](https://github.com/Scony/godot-gdscript-toolkit)'s `gdlint`, if installed (`pip install gdtoolkit==4.5.0`). Config in `.gdlintrc` at the project root, tuned to this repo's actual conventions — see that file's own header for the disabled-rule rationale. Runs over every tracked `*.gd` file (not diff-scoped: the baseline is clean, so any finding is unambiguously new), skipping `addons/`. **Not** in the default set (an external tool most local setups won't have installed by default). | `check-gdlint.yml` |
+| `patch_coverage` | Local approximation of Codecov's `codecov/patch` check: regenerates `coverage/lcov.info` fresh (runs `coverage` first), then reports what fraction of THIS diff's added `scripts/*.gd` lines are covered -- per-file breakdown plus the exact missing line numbers -- and **fails when that fraction is below the effective target** (auto: the project-wide total from the regenerated report, mirroring `codecov/patch`'s `target: auto`; override with `SPARTA_CHECK_PATCH_COVERAGE_TARGET`). Diff-scoped against `origin/main` (or `SPARTA_CHECK_PATCH_COVERAGE_BASE`), same as `comments`. Run it before pushing a `scripts/` change to catch a `codecov/patch` shortfall locally instead of after a CI round trip -- see "Checking patch coverage before you push" below. **Not** in the default set (inherits `coverage`'s slowness). | `codecov/patch` (GitHub check, driven by `test-coverage.yml`'s upload) |
+| `lint` | GDScript style lint via [gdtoolkit](https://github.com/Scony/godot-gdscript-toolkit)'s `gdlint`, if installed (`pip install gdtoolkit==4.5.0`). Config in `.gdlintrc` at the project root, tuned to this repo's actual conventions -- see that file's own header for the disabled-rule rationale. Runs over every tracked `*.gd` file (not diff-scoped: the baseline is clean, so any finding is unambiguously new), skipping `addons/`. **Not** in the default set (an external tool most local setups won't have installed by default). | `check-gdlint.yml` |
 | `links` | Markdown link-check via [lychee](https://github.com/lycheeverse/lychee), if installed. Needs network, so it's **not** in the default set. | `check-links.yml` |
 
 Exit status is non-zero if any selected check fails, so it drops straight into a
@@ -38,7 +38,7 @@ tools/check.sh && git push
 
 ### Requirements
 
-- **Bash 3.2+** — works with the system Bash that ships on macOS (no Homebrew
+- **Bash 3.2+** -- works with the system Bash that ships on macOS (no Homebrew
   Bash needed); uses only POSIX/BSD-compatible tool flags.
 - **Godot 4.7 (Standard build)** on `PATH`, or point `GODOT_BIN` at it
   (e.g. `/Applications/Godot.app/Contents/MacOS/Godot` on macOS). See the README's
@@ -51,7 +51,7 @@ tools/check.sh && git push
 - **lychee** only for the optional `links` check.
 - **gdtoolkit** (`pip install gdtoolkit==4.5.0`) only for the optional `lint` check.
 - **`comments`** needs a resolvable diff base (`origin/main`, a local `main`, or
-  `SPARTA_CHECK_COMMENTS_BASE`) to find the lines this diff adds — see below. A
+  `SPARTA_CHECK_COMMENTS_BASE`) to find the lines this diff adds -- see below. A
   shallow clone with no such ref available skips the check rather than falling
   back to a whole-tree scan.
 
@@ -66,7 +66,7 @@ tools/check.sh && git push
 | `SPARTA_CHECK_VALIDATE_TIMEOUT` | `900` | Hard timeout (s) for the `validate` Godot run. |
 | `SPARTA_CHECK_TEST_TIMEOUT` | `1800` | Hard timeout (s) for the `test` Godot run. |
 | `SPARTA_CHECK_COVERAGE_TIMEOUT` | `2700` | Hard timeout (s) for the `coverage` Godot run. |
-| `SPARTA_CHECK_COMMENTS_BASE` | _(unset)_ | Commit-ish the `comments` check diffs `HEAD` against to find new lines to scan. Falls back to `origin/main` then a local `main`; CI sets this per-event (PR base SHA, or the push event's `before`) — see `check-comment-citations.yml`. |
+| `SPARTA_CHECK_COMMENTS_BASE` | _(unset)_ | Commit-ish the `comments` check diffs `HEAD` against to find new lines to scan. Falls back to `origin/main` then a local `main`; CI sets this per-event (PR base SHA, or the push event's `before`) -- see `check-comment-citations.yml`. |
 | `SPARTA_CHECK_PATCH_COVERAGE_BASE` | _(unset)_ | Same, for the `patch_coverage` check's diff base. |
 | `SPARTA_CHECK_PATCH_COVERAGE_TARGET` | _(unset)_ | Fixed pass/fail threshold (percent) for `patch_coverage`. Unset mirrors `codecov/patch`'s `target: auto`: the project-wide line coverage from the regenerated `coverage/lcov.info`. |
 | `SPARTA_GODOT_PREFLIGHT_LIMIT` | `5` | Warn when more Godot processes than this are already running before the checks start. |
@@ -113,7 +113,7 @@ does not recognize.
 ## Checking patch coverage before you push
 
 `codecov/patch` (Codecov's per-diff coverage gate, uploaded from the `coverage`
-CI job) only reports after a push — a ~15–20 min round trip to discover a
+CI job) only reports after a push -- a ~15-20 min round trip to discover a
 `scripts/` change fell short. Run it locally first:
 
 ```sh
@@ -121,13 +121,13 @@ tools/check.sh patch_coverage
 ```
 
 **Run it in the SAME invocation as `test`/the default set, not as a separate
-command** — e.g. `tools/check.sh validate test chars comments units
+command** -- e.g. `tools/check.sh validate test chars comments units
 patch_coverage` (or just add `patch_coverage` to whatever other checks you're
 already running). `patch_coverage` internally runs `coverage`, which is a
 strict superset of what `test` checks (same suite, same pass/fail semantics,
-plus the same script-parse-error guard) — `main()` reorders a same-invocation
+plus the same script-parse-error guard) -- `main()` reorders a same-invocation
 `test` to run *after* `coverage`/`patch_coverage` and `check_test` then
-reuses that result instead of re-running the whole ~4–5 min GUT suite a
+reuses that result instead of re-running the whole ~4-5 min GUT suite a
 second time. This dedup only works **within one process invocation**:
 `RESULT_NAMES`/`RESULT_STATUSES` are in-memory bash arrays that don't survive
 between separate `tools/check.sh` calls, so running `tools/check.sh test`
@@ -137,13 +137,13 @@ still pays for the full suite twice.
 This regenerates `coverage/lcov.info` fresh (so the numbers reflect your
 current working tree, not a stale report from a previous diff), diffs against
 `origin/main` to find this diff's added `scripts/*.gd` lines, and reports a
-per-file breakdown plus the exact missing line numbers — a local
+per-file breakdown plus the exact missing line numbers -- a local
 approximation of what Codecov will report, verified to match its output
 directly (same percentage, same missing lines) on a real PR's diff. The check
 then **gates on the effective target**, the same way the `codecov/patch`
 status check judges a PR: with no explicit Codecov config, `codecov/patch`
-uses `target: auto` — patch coverage must reach the project-wide coverage of
-the PR's base — so this check compares against the project-wide total of the
+uses `target: auto` -- patch coverage must reach the project-wide coverage of
+the PR's base -- so this check compares against the project-wide total of the
 report it just regenerated (HEAD's total rather than the base's: the closest
 number available without a second instrumented run, differing only by this
 diff's own effect on the total). The target is printed alongside the
@@ -156,13 +156,13 @@ merge on GitHub is a repo/branch-protection setting this local tool has no
 visibility into.
 
 If a diff comes up short, the fix is either genuine new test coverage for the
-newly-added lines, or — when a specific line is structurally hard to cover (a
-scene-transition call, an OS/input-dependent path) — accepting that one
+newly-added lines, or -- when a specific line is structurally hard to cover (a
+scene-transition call, an OS/input-dependent path) -- accepting that one
 residual line and saying so explicitly in the PR. Extract whatever IS
 testable around it into its own function first, the way `HUD._on_quit_to_menu`
 was split so its reset prelude is covered by
 `test/unit/test_hud_scene_transitions.gd`, leaving only the actual
-`change_scene_to_file(...)` call itself untested — not the whole handler.
+`change_scene_to_file(...)` call itself untested -- not the whole handler.
 `test/unit/test_main_menu.gd`'s own note explains why that ONE call is never
 exercised directly (it would trigger a real scene swap against the live test
 runner). Padding coverage with tests that don't guard real behavior is worse
@@ -171,15 +171,15 @@ than a documented gap.
 ## Orphaned Godot processes: prevention and cleanup
 
 Headless Godot runs survive their calling shell on Windows (no process-tree
-kill), so a hung run whose shell died — a harness command timeout, a session
-end — lives forever as an orphan and starves every later run on the machine.
+kill), so a hung run whose shell died -- a harness command timeout, a session
+end -- lives forever as an orphan and starves every later run on the machine.
 Three layers keep that from piling up:
 
 1. **Hard timeouts at the source.** Every Godot invocation in the repo's shell
    scripts (`check.sh`, `demo/dump-state.sh`, `demo/capture-frames.sh`,
    `benchmark/run-benchmark.sh`, `../website/tools/record-demos.sh`) runs under
    coreutils `timeout` via the shared `lib/run-bounded.sh` helper, so a hung
-   Godot is killed — not just the calling shell. Budgets are generous
+   Godot is killed -- not just the calling shell. Budgets are generous
    hang-detectors, overridable per script (see each script's header). On stock
    macOS (no coreutils), the scripts run unbounded with a one-time warning;
    `brew install coreutils` restores the net.
@@ -189,27 +189,27 @@ Three layers keep that from piling up:
    default 900 s, override via `SPARTA_RUN_TIMEOUT_SEC`) and
    `benchmark/BenchmarkRunner.gd`'s own timeout + stall guard.
 3. **Pre-flight warning.** `check.sh` warns when more than a handful of Godot
-   processes are already running — the early signal of a leak building up (and
+   processes are already running -- the early signal of a leak building up (and
    the likely explanation for slow or flaky local runs).
 
-### `kill-orphan-godot.ps1` / `kill-orphan-godot.sh` — sweep script
+### `kill-orphan-godot.ps1` / `kill-orphan-godot.sh` -- sweep script
 
 Lists Godot processes whose command line matches a **non-interactive run
-signature** (headless import, GUT suite, demo/benchmark recording — an
+signature** (headless import, GUT suite, demo/benchmark recording -- an
 interactive editor session never matches, so it is never touched) and
 classifies each:
 
-- **Orphaned** — the parent process is gone, so nothing is consuming the
+- **Orphaned** -- the parent process is gone, so nothing is consuming the
   output. Safe to kill by construction: killing Godot cannot lose git state.
-- **Overdue** — older than the age ceiling (default 2 h; no legitimate repo
+- **Overdue** -- older than the age ceiling (default 2 h; no legitimate repo
   run takes that long).
-- **Child** — a matched process whose parent is itself being killed by this
+- **Child** -- a matched process whose parent is itself being killed by this
   sweep (the Windows console build is a launcher exe that spawns the real
   Godot as a child; killing only the launcher would leave the real process
   behind).
-- **Live** — everything else; never touched.
+- **Live** -- everything else; never touched.
 
-**Dry-run by default** — it only prints what it would kill:
+**Dry-run by default** -- it only prints what it would kill:
 
 ```sh
 tools/kill-orphan-godot.sh                    # dry run (any platform)
@@ -227,16 +227,16 @@ powershell -NoProfile -File tools/kill-orphan-godot.ps1 -Force   # kill
 ```
 
 Optionally (user-machine config, not repo policy), register the sweep as a
-scheduled task every 30–60 min so a leak never builds up unattended.
+scheduled task every 30-60 min so a leak never builds up unattended.
 
 ## `demo/`
 
-The headless demo recorder used by the demo-video pipeline — see
+The headless demo recorder used by the demo-video pipeline -- see
 [`demos/README.md`](../demos/README.md).
 
 ## `perf/`
 
-Before/after graphs of **computations per tick** — the evidence a backend-only
+Before/after graphs of **computations per tick** -- the evidence a backend-only
 performance PR ships alongside its post-improvement demo clip. Deterministic work
 counts (`scripts/SimOps.gd`) rather than wall-clock time, so the two lines differ only
 where the code did. `ops-before-after.sh` records both sides and draws the graph; see
@@ -247,7 +247,7 @@ performance PRs" for when it's required.
 
 Small helpers invoked by GitHub Actions workflows.
 
-- `upsert-pr-comment.sh <repo> <pr> <marker> <body> [label]` — PATCH the existing
+- `upsert-pr-comment.sh <repo> <pr> <marker> <body> [label]` -- PATCH the existing
   marker-tagged PR comment if one exists, else POST a new one. Used by
   `.github/workflows/demo-video.yml` so its recorded-clip and "no clip applies"
   paths share one comment-upsert implementation. Needs `gh` authenticated via

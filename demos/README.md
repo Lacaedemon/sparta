@@ -6,27 +6,27 @@ the diff.
 [`.github/workflows/demo-video.yml`](../.github/workflows/demo-video.yml) plays a
 replay back headlessly (Godot Movie Maker → ffmpeg) and upserts it into the PR
 **description** as an inline GIF that **plays once** (it freezes on the final frame
-instead of looping) — plus a link to an **MP4 with sound** (the GIF is silent; see
+instead of looping) -- plus a link to an **MP4 with sound** (the GIF is silent; see
 [Sound](#sound) below). It lives in the description (not a comment) so it stays
 visible at the top of the PR page no matter how long the review thread grows; a
-compact **state transcript** (when one dumps) still posts as its own comment — see
+compact **state transcript** (when one dumps) still posts as its own comment -- see
 [CI posts the transcript automatically](#ci-posts-the-transcript-automatically). An
 inline GIF is used rather than a poster-linked MP4 because GitHub's blob-view video
 player doesn't work on the mobile site or app, while a GIF renders inline everywhere.
 
 CI can't infer what a diff changed, so to make the clip *demonstrate your change*
 you **declare what to show**: commit a small **manifest** pointing at a **replay**
-that exercises it. If you don't, CI still posts a demo — the default
-`showcase.json` battle, labelled as a generic build demo — but a tailored one is
+that exercises it. If you don't, CI still posts a demo -- the default
+`showcase.json` battle, labelled as a generic build demo -- but a tailored one is
 far more useful, so prefer to add a manifest.
 
 ## The contract
 
-Add a manifest on your PR branch, named **`demos/demo.<slug>.json`** — `<slug>`
+Add a manifest on your PR branch, named **`demos/demo.<slug>.json`** -- `<slug>`
 is your issue or PR number (e.g. `demos/demo.371.json`). Each PR's manifest gets
 its own unique filename, so two PRs in flight never conflict editing the same
 file (the older shared `demos/demo.json` pointer still works as a fallback, but
-a uniquely-named manifest is preferred for exactly this reason — see
+a uniquely-named manifest is preferred for exactly this reason -- see
 [Resolution order](#resolution-order)):
 
 ```json
@@ -42,40 +42,40 @@ a uniquely-named manifest is preferred for exactly this reason — see
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `input` | preferred | Repo-relative path to a **scripted-input** demo (`demos/inputs/*.json`) — **no `res://` prefix**. Recorded live through the real controls. The standard way to author a demo; see [Scripted-input demos](#scripted-input-demos). Wins over `replay` when both are present. |
-| `replay` | alt | Repo-relative path to a saved replay JSON to play back — **no `res://` prefix**. The older path; prefer `input`. See [Getting a replay](#getting-a-replay-that-shows-your-change). |
+| `input` | preferred | Repo-relative path to a **scripted-input** demo (`demos/inputs/*.json`) -- **no `res://` prefix**. Recorded live through the real controls. The standard way to author a demo; see [Scripted-input demos](#scripted-input-demos). Wins over `replay` when both are present. |
+| `replay` | alt | Repo-relative path to a saved replay JSON to play back -- **no `res://` prefix**. The older path; prefer `input`. See [Getting a replay](#getting-a-replay-that-shows-your-change). |
 | `caption` | recommended | Explains the change; shown above the GIF. |
 | `fixed_fps` | no (30) | Sim/record framerate Movie Maker runs at. |
 | `max_frames` | no (300) | Recording length in frames (`300 / fixed_fps` ≈ seconds). |
 | `fps` | no (12) | Output GIF framerate. |
 | `width` | no (640) | Output GIF width in px (height auto). |
 | `skip` | no (false) | Set `true` when the change **can't** be shown by a recorded battle (a paused-overlay interaction, an editor-only tool, a non-visual refactor). CI then records nothing and posts a short note instead of an unrelated clip. See [No clip applies](#no-clip-applies). |
-| `reason` | no | Used only with `skip` — the explanation shown in the note (falls back to `caption`). |
+| `reason` | no | Used only with `skip` -- the explanation shown in the note (falls back to `caption`). |
 
-`demo.example.json` is a copy-paste starting point — copy it to
+`demo.example.json` is a copy-paste starting point -- copy it to
 `demos/demo.<slug>.json` rather than `demos/demo.json`. Any **other** keys are
 ignored by the workflow (its `jq` only reads the fields above), so a leading
-`"_comment"` note — as used in `demo.example.json` itself — is safe to include.
+`"_comment"` note -- as used in `demo.example.json` itself -- is safe to include.
 
 ### Resolution order
 
 CI's "Resolve demo source" step picks the most specific manifest available:
 
 1. A **per-PR manifest** (`demos/demo.*.json`, e.g. `demos/demo.371.json`) that
-   was **added** in your PR's diff against the base branch. Preferred — see above.
+   was **added** in your PR's diff against the base branch. Preferred -- see above.
 2. The legacy shared `demos/demo.json`, if present. Still works, but every PR
    that uses it is editing the same file, so two such PRs in flight will conflict
    on merge (`demos/demo.json` is a perennial source of merge conflicts for
-   exactly this reason — prefer the per-PR filename to avoid it).
+   exactly this reason -- prefer the per-PR filename to avoid it).
 3. The default `showcase.json` battle (generic, honestly labelled).
 
 If your PR adds more than one `demos/demo.*.json` file, CI warns and picks the
-first alphabetically — stick to one manifest per PR.
+first alphabetically -- stick to one manifest per PR.
 
 ## Scripted-input demos
 
 **The standard way to author a demo.** Instead of a recorded or hand-authored
-replay, write a deterministic **input script** — a list of mouse clicks/drags and
+replay, write a deterministic **input script** -- a list of mouse clicks/drags and
 keystrokes stamped with the physics tick they fire on. The recorder
 (`tools/demo/DemoInputRecorder.gd`) drives a live battle by injecting those as real
 `InputEvent`s through the same `SelectionManager` code a player's mouse drives, while
@@ -97,141 +97,141 @@ script under `demos/inputs/`:
 }
 ```
 
-- `seed` — the battle seed (string). Use `"12345"` for the documented standard 5v5
+- `seed` -- the battle seed (string). Use `"12345"` for the documented standard 5v5
   layout (the unit table below); spawn **positions** are seed-independent, so clicks
-  land regardless — the seed only fixes combat RNG for reproducibility.
-- `camera` (optional) — a list of keyframes `{tick,x,y,zoom}` (world coordinates), sorted
+  land regardless -- the seed only fixes combat RNG for reproducibility.
+- `camera` (optional) -- a list of keyframes `{tick,x,y,zoom}` (world coordinates), sorted
   by tick. The recorder interpolates position and zoom linearly between them, so the clip
   pans and zooms over time; outside the track's range it holds the first / last frame. A
   single keyframe just statically frames the whole clip. Omit for the default whole-field
   camera. (`demos/inputs/camera-zoom.json` shows a multi-keyframe pan-and-zoom.)
-- `steps` — each stamped with a `tick` (physics ticks, 60/s). Coordinates are world-space:
-  - `click [x,y]` / `shift_click [x,y]` / `rmb_click [x,y]` — a press+release at a point.
-  - `box { "from": [x,y], "to": [x,y] }` — a left-drag box-select.
-  - `rmb_drag { "from": [x,y], "to": [x,y], "shift": false }` — a right-drag (move / form-up;
+- `steps` -- each stamped with a `tick` (physics ticks, 60/s). Coordinates are world-space:
+  - `click [x,y]` / `shift_click [x,y]` / `rmb_click [x,y]` -- a press+release at a point.
+  - `box { "from": [x,y], "to": [x,y] }` -- a left-drag box-select.
+  - `rmb_drag { "from": [x,y], "to": [x,y], "shift": false }` -- a right-drag (move / form-up;
     `shift` toggles the form-up ordering variant). Drags animate over a few ticks so the
     live preview renders.
-  - `key "Y"` — a gameplay hotkey press (formation cycle, order stance, etc.). Add
+  - `key "Y"` -- a gameplay hotkey press (formation cycle, order stance, etc.). Add
     `"ctrl": true` to chord it with Ctrl (e.g. `{"key": "H", "ctrl": true}` writes the
-    Hold stance on the selection in place — see the stance-order gesture in
+    Hold stance on the selection in place -- see the stance-order gesture in
     `how-to-play.qmd`) or `"shift": true` to chord it with Shift (e.g.
     `{"key": "O", "shift": true}` jumps straight to the schiltron stance, sharing
-    orbis's O key — see "Square: orbis and schiltron" in `how-to-play.qmd`).
-- `map` (optional) — **declare the demo's own battlefield** instead of the default map:
+    orbis's O key -- see "Square: orbis and schiltron" in `how-to-play.qmd`).
+- `map` (optional) -- **declare the demo's own battlefield** instead of the default map:
   `{"field": [w, h], "terrain": [{"rect": [x, y, w, h], "type": "hill", "kind": "block"},
   {"rect": [...], "type": "forest", "kind": "slow", "speed": 0.6}], "spawn_lines":
-  [attacker_y, defender_y]}`. Every key is optional — an absent key keeps the default
+  [attacker_y, defender_y]}`. Every key is optional -- an absent key keeps the default
   map's value (the `Battle.FIELD`/`TERRAIN`/`SPAWN_LINE_YS` consts). Applied before the
   battle spawns, like `drill`/`scenario` above, so the camera bounds, routing grid, rout
   margins, and default-line spawns all rebuild on the declared battlefield. Strict like
   `steps`/`scenario`: a malformed block fails the recording loudly (map geometry decides
   WHAT battle runs). Use it to isolate a mechanic on purpose-built terrain rather than
-  contorting a staging around the default map's fixed forest and hill — and note a replay
+  contorting a staging around the default map's fixed forest and hill -- and note a replay
   recorded on a custom map carries it in its header, so playback reconstructs the same
   battlefield (`demos/inputs/custom-map-defile.json` is the worked example).
-- `drill` (optional bool, **default it to `true` unless the demo needs an enemy**) — solo/
+- `drill` (optional bool, **default it to `true` unless the demo needs an enemy**) -- solo/
   no-opponent rehearsal: only the player army (team 0) deploys and the battle never auto-ends
   on "no enemies", so a unit can rehearse a maneuver with no combat. Set `"drill": true` for
   any demo that isn't specifically about combat/enemy interaction (a clash, a rout, an
-  engagement mechanic, morale under fire) — maneuver, formation, order-queue, HUD, and UI
+  engagement mechanic, morale under fire) -- maneuver, formation, order-queue, HUD, and UI
   demos have no reason to spawn an enemy at all, and a nearby enemy AI can introduce
   engagement/proximity noise that has nothing to do with what the demo is showing (a reviewer
   cross-checking a caption against the state transcript then has to account for combat state
   that's irrelevant to the actual change). Only omit `drill` (or set it `false`) when the demo
   genuinely needs a live opponent.
-- `doctrine` (optional string) — override team 1's battle-AI doctrine profile (a
-  `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` — see `data/doctrines/*.json`
+- `doctrine` (optional string) -- override team 1's battle-AI doctrine profile (a
+  `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` -- see `data/doctrines/*.json`
   and `docs/battle-ai-design.md`'s phase-3 section). Set before the battle spawns, like
   `drill`/`scenario` above. Omit to use `Battle.ai_doctrine`'s own default.
-- `all_teams_control` (optional bool, default `false`) — debug/testing mode: the player
+- `all_teams_control` (optional bool, default `false`) -- debug/testing mode: the player
   commands every team's units directly (`SelectionManager`'s team checks are relaxed) and
   team 1's AI never runs, so a script can select and order BOTH sides of a real clash by
-  hand instead of only team 0 against the AI. Unlike `drill`, both armies still spawn — set
+  hand instead of only team 0 against the AI. Unlike `drill`, both armies still spawn -- set
   before the battle spawns, like `drill`/`scenario`/`doctrine` above. See
   `scripts/AllTeamsControl.gd` and `demos/inputs/all-teams-control.json`.
-- `show_soldier_ids` (optional bool, **default `true`**) — session-only: enables the
+- `show_soldier_ids` (optional bool, **default `true`**) -- session-only: enables the
   per-soldier-ID HUD overlay for the recording without touching a developer's saved
   settings. On by default so scripted-input recordings show this debugging/verification
   signal for reviewers; set `"show_soldier_ids": false` to opt a script back out. Note
-  this alone isn't enough to render the overlay — it also requires the unit to be
+  this alone isn't enough to render the overlay -- it also requires the unit to be
   `selected` and the camera at detailed LOD (`Unit._draw`'s
   `if selected and Settings.show_soldier_ids and _detailed_lod` gate), so a demo that
   doesn't already select a unit and zoom in past `LOD_ZOOM_IN` won't show IDs
   regardless of this default.
-- `show_position_anchor` (optional bool, default `false`) — session-only: draws a small dot
+- `show_position_anchor` (optional bool, default `false`) -- session-only: draws a small dot
   at each unit's `position` (the regiment's own kinematic anchor, `SoldierBodies.couple()`)
   for the recording, without touching a developer's saved settings. Off by default; set
   `"show_position_anchor": true` for a demo specifically about how `position` tracks (or
   doesn't track) the block.
-- `scenario` (optional) — **stage a custom matchup** instead of the default 5v5 lines, so a
+- `scenario` (optional) -- **stage a custom matchup** instead of the default 5v5 lines, so a
   demo can show a *specific* fight the default battle won't produce on its own (a weak unit
   that routs, an enemy placed off a unit's flank, cavalry vs a single target). A list of unit
   specs; when present it replaces the default spawn entirely. Each spec:
-  - `team` — `0` (player, deploys facing down by default) or `1` (enemy, facing up).
-  - `type` — one of `"Spearmen"`, `"Infantry"`, `"Archers"`, `"Cavalry"` (uses that type's
+  - `team` -- `0` (player, deploys facing down by default) or `1` (enemy, facing up).
+  - `type` -- one of `"Spearmen"`, `"Infantry"`, `"Archers"`, `"Cavalry"` (uses that type's
     full stat block from the default loadout).
-  - `x`, `y` — world-space spawn position.
-  - `facing` (optional `[x, y]`) — an explicit heading; defaults to facing the enemy half.
-  - `count` (optional) — soldier-count override (a smaller unit routs sooner; a bigger one
+  - `x`, `y` -- world-space spawn position.
+  - `facing` (optional `[x, y]`) -- an explicit heading; defaults to facing the enemy half.
+  - `count` (optional) -- soldier-count override (a smaller unit routs sooner; a bigger one
     holds longer).
-  - `morale` (optional) — starting morale (default 100; set low to stage a quick rout).
-  - `formation` (optional) — starting stance (`0` Normal, `1` Tight, `2` Loose,
+  - `morale` (optional) -- starting morale (default 100; set low to stage a quick rout).
+  - `formation` (optional) -- starting stance (`0` Normal, `1` Tight, `2` Loose,
     `3` Square, `4` Shield Wall, `5` Testudo). Square is the anti-cavalry ring; the two
     shielded stances plant and barely move but blunt missile fire (testudo from all
     sides, shield wall from the front).
-  - `atomic_response_s` (optional) — seconds the unit holds between a drill command
+  - `atomic_response_s` (optional) -- seconds the unit holds between a drill command
     (wheel, about-face, quarter-turn, countermarch) and the men starting the evolution
     (default 0.2, `Unit.atomic_response_delay`). Lower stages an elite regiment's
     snappier drill; higher a raw levy's sluggish one.
-  - `starting_state` (optional) — force the unit's initial `Unit.State` on spawn, for
+  - `starting_state` (optional) -- force the unit's initial `Unit.State` on spawn, for
     staging a state a normal battle can't otherwise reach: `3` (`ROUTING`) starts the
-    unit already fleeing/recovering — routing is normally only reachable as a side
-    effect of real combat casualties — and `4` (`DEAD`) sets it dead in place. This is
+    unit already fleeing/recovering -- routing is normally only reachable as a side
+    effect of real combat casualties -- and `4` (`DEAD`) sets it dead in place. This is
     the one scenario field that is **not strict** about a bad value: an unrecognized
     `starting_state` warns (`push_warning`) and leaves the unit at the default `IDLE`,
     rather than failing the recording outright. Pair `starting_state: 3` with a low
-    `morale` override — a unit that starts ROUTING at the default morale (100) is
+    `morale` override -- a unit that starts ROUTING at the default morale (100) is
     already above the rally threshold and rallies in a single tick, showing no
     recovery at all. See `demos/inputs/morale-recovery.json` (morale `1.0`, so the
     climb back to the ~35 rally threshold is gradual and visible).
 
-  Example — stage a lone, low-morale infantry unit against a strong cavalry force so it routs
+  Example -- stage a lone, low-morale infantry unit against a strong cavalry force so it routs
   (then rallies, if the build has that): `demos/inputs/rout-rally.json`.
-- `frames` (optional) — a list of physics ticks to save a viewport PNG at, for visual
+- `frames` (optional) -- a list of physics ticks to save a viewport PNG at, for visual
   verification (see [Verifying a demo visually](#verifying-a-demo-visually-frame-capture)). The
   `SPARTA_DEMO_FRAMES` env var adds to this list, so a reviewer can capture frames from any demo
   without editing its script. Ignored during a normal movie recording (capture only runs when a
   frame is armed).
-- `state` (optional) — a list of physics ticks to dump a machine-readable JSON game-state snapshot
+- `state` (optional) -- a list of physics ticks to dump a machine-readable JSON game-state snapshot
   at, for AI verification (see [Verifying a demo by state](#verifying-a-demo-by-state-ai-verification)).
   The `SPARTA_DEMO_STATE` env var adds to this list, so a reviewer can dump state from any demo
   without editing its script. Ignored during a normal movie recording.
-- `spawn_fingerprint` (optional string) — a **stale-artifact guard**. A scripted-input demo clicks
+- `spawn_fingerprint` (optional string) -- a **stale-artifact guard**. A scripted-input demo clicks
   fixed world coordinates, so a change to the spawn table (issue #926 re-spaced every unit's x by
   tens of world units) can silently move a unit out from under a click, leaving the gesture a
   no-op with no error. Stamp the script with the layout's fingerprint (`SpawnFingerprint`, a digest
   of every unit's type, roster size, and rounded spawn position) and the recorder fails **loudly**
-  (a `push_error` + non-zero exit) when it no longer matches this build's spawn — instead of
+  (a `push_error` + non-zero exit) when it no longer matches this build's spawn -- instead of
   recording a clip whose clicks land on empty ground. **Opt-in**: an unstamped script isn't gated
   (existing scripts keep working). To stamp a new script, run it once and copy the
   `[demo-input] spawn fingerprint: <hex>` line the recorder always prints into a
   `"spawn_fingerprint": "<hex>"` field. A `scenario`-array script gets its own scenario's
   fingerprint (self-contained, so it never drifts); a default-spawn script gets the default layout's
   (which does drift). Replays carry the same stamp automatically (written by `Replay.save`, checked
-  on load — a mismatch warns the player and desyncs are flagged rather than silently mis-targeting).
+  on load -- a mismatch warns the player and desyncs are flagged rather than silently mis-targeting).
 
 A malformed `camera`, `frames`, or `state` field (a non-array value, e.g. `"state": "8,60"`)
 **degrades instead of failing** in the recorder, which warns and ignores the field. CI's
-transcript tick parser degrades the same way, but only reads `frames`/`state` — a malformed
-`camera` field doesn't affect it. `steps` and `scenario` stay strict — a typo there would
+transcript tick parser degrades the same way, but only reads `frames`/`state` -- a malformed
+`camera` field doesn't affect it. `steps` and `scenario` stay strict -- a typo there would
 change what the demo simulates, so the recording fails loudly instead.
 
 The standard 5v5 (`seed "12345"`) unit positions are in [Hand-authoring a scenario](#hand-authoring-a-scenario)
-below — clicks target those world coordinates.
+below -- clicks target those world coordinates.
 
 ## Verifying a demo visually (frame capture)
 
-A demo that *runs* clean isn't proof it *shows the right thing* — the camera can frame the
+A demo that *runs* clean isn't proof it *shows the right thing* -- the camera can frame the
 wrong spot, the intended unit can sit off-screen, an effect can fail to appear. To catch
 that, render the demo to **PNG frames at chosen ticks** and look at them.
 
@@ -241,14 +241,14 @@ each listed physics tick it saves the drawn viewport to `SPARTA_DEMO_FRAME_DIR/f
 (a temp dir by default), then quits once the last frame is saved. A demo's input script can also
 carry a `"frames": [10, 60, 120]` array; when the env var is set, the two lists are merged (an
 empty env value falls back to the script's list). Capture is **env-gated**: with the env var
-unset — the CI movie-recording path — it never arms, so a demo's own `frames` array never
+unset -- the CI movie-recording path -- it never arms, so a demo's own `frames` array never
 truncates the recording and normal recording is unchanged.
 
 **A real renderer is required.** `--headless` uses the dummy renderer and produces null/blank
 textures, so capture must run **without `--headless`** using `--rendering-driver opengl3` (a
-window may open locally — that's fine). The viewport texture is only valid after the frame is
-drawn, so the recorder waits for `RenderingServer.frame_post_draw` before `save_png` — the
-saved PNGs are real 1280×720 frames, not black.
+window may open locally -- that's fine). The viewport texture is only valid after the frame is
+drawn, so the recorder waits for `RenderingServer.frame_post_draw` before `save_png` -- the
+saved PNGs are real 1280x720 frames, not black.
 
 ### The wrapper
 
@@ -286,32 +286,32 @@ tick order.
 staged rout (`rout-rally.json`) capture *early* ticks (the clash, then the break); for a
 no-opponent `drill` demo (`wheel.json`, `quarter-turn.json`) the sim never auto-ends, so any
 tick up to the script's length works. The recorder also quits after a wall-clock timeout, so
-an over-long tick can't hang the run — it just won't produce that frame.
+an over-long tick can't hang the run -- it just won't produce that frame.
 
 ### Required demo self-check (do this before opening a PR)
 
 **Every demo PR must render a couple of frames at key ticks and confirm the change is visible
 before the PR is opened.** "It runs clean" is not enough, and "can't verify visually" is no
-longer a valid skip — with scenario staging (a custom matchup) and frame capture, a demo can
+longer a valid skip -- with scenario staging (a custom matchup) and frame capture, a demo can
 always be staged *and seen*. Concretely, for the demo your PR adds or changes:
 
-1. Render 2–3 frames at the ticks where the behaviour should be on-screen (the command above).
+1. Render 2-3 frames at the ticks where the behaviour should be on-screen (the command above).
 2. Open each PNG and confirm the intended units/effect are framed and doing the intended thing.
 3. If a frame shows the wrong thing (off-camera, wrong unit, no effect), fix the script
    (camera keyframes, tick timing, scenario placement) and re-render until it's right.
 
 Only after the frames confirm the behaviour is on-screen is the demo ready. If a change
 genuinely can't be shown in a battle frame at all (a paused-overlay interaction, an editor-only
-tool), use the `skip` manifest ([No clip applies](#no-clip-applies)) with an honest reason —
+tool), use the `skip` manifest ([No clip applies](#no-clip-applies)) with an honest reason --
 don't use the self-check's difficulty as the excuse.
 
 ## Verifying a demo by state (AI verification)
 
 A rendered frame (above) proves the behaviour is *on-screen*, but reading it back means
-**interpreting pixels** — is that unit routing? what's its morale? A **machine-readable state
+**interpreting pixels** -- is that unit routing? what's its morale? A **machine-readable state
 dump** answers those precisely: at the ticks a demo cares about, it writes the authoritative
 game state to JSON, so a reviewing agent (or a test) reads **exact values** and asserts on them
-— "at tick 280, 'Infantry 1' is at morale 19, down to 8 soldiers, engaged" — instead of eyeballing
+-- "at tick 280, 'Infantry 1' is at morale 19, down to 8 soldiers, engaged" -- instead of eyeballing
 a GIF. It's the machine-readable companion to the [frame capture](#verifying-a-demo-visually-frame-capture)
 above: same recorder, same tick-list plumbing, but it emits readable state rather than pixels.
 
@@ -319,25 +319,25 @@ The recorder (`tools/demo/DemoInputRecorder.gd`) dumps state when the `SPARTA_DE
 is **set** (to a comma-separated tick list like `8,60,140`). At each listed physics tick it writes
 `SPARTA_DEMO_STATE_DIR/state_<tick>.json` (a temp dir by default), then quits once the last snapshot
 is written. A demo's input script can also carry a `"state": [8, 60, 140]` array; when the env var is
-set, the two lists are merged (an empty env value falls back to the script's list — the same
-merge rule as `frames`). Dumping is **env-gated**: with the env var unset — the CI movie-recording
-path — it never arms, so normal recording and the frame-capture path are both unchanged.
+set, the two lists are merged (an empty env value falls back to the script's list -- the same
+merge rule as `frames`). Dumping is **env-gated**: with the env var unset -- the CI movie-recording
+path -- it never arms, so normal recording and the frame-capture path are both unchanged.
 
 **Replay playback dumps state the same way.** A `SPARTA_DEMO_REPLAY` run
 (`tools/demo/DemoRunner.tscn`) honors the same `SPARTA_DEMO_STATE` /
 `SPARTA_DEMO_STATE_DIR` / `SPARTA_DEMO_STATE_FULL` env vars via
-`tools/demo/DemoStateSink.gd` — a root-level node that survives the runner's scene swap
+`tools/demo/DemoStateSink.gd` -- a root-level node that survives the runner's scene swap
 and writes the identical snapshot shape (both paths share `DemoState.build_snapshot`).
 The one difference: a replay file carries no `"state"` array, so the tick list comes from
 the env var alone. This is what lets the website demo-diff workflow transcript-sweep the
 catalog's `type=replay` rows, not just the scripted-input ones.
 
 Unlike frame capture, the dump reads **sim state, not the drawn frame**, so it runs under
-`--headless` (no real renderer needed) — faster, and no window opens.
+`--headless` (no real renderer needed) -- faster, and no window opens.
 
-Each `state_<tick>.json` holds the battle tick and a record per unit — **including routing
+Each `state_<tick>.json` holds the battle tick and a record per unit -- **including routing
 units**. The dumper walks the `"units"` and `"routers"` groups together (a ROUTING unit has
-left `"units"` but is still on the field and may rally — the same union the victory check
+left `"units"` but is still on the field and may rally -- the same union the victory check
 scans), so a mid-rout unit stays transcript-visible: its `state` reads `ROUTING` and its
 recovering `morale` and fleeing `position` can be followed tick by tick. Records are sorted
 by `uid`, so a unit keeps its row across the rout/rally group changes:
@@ -348,45 +348,45 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `position`, `facing` | World-space `[x, y]` pairs (rounded). |
 | `position_m` | `position` mirrored in metres (`WorldScale.WU_PER_M`), so a reviewer reads real distances without dividing by the world scale by hand. |
 | `morale` | Current morale (100 = fresh; a rout triggers at 0). |
-| `state` | Readable `State` name — `IDLE` / `MOVING` / `FIGHTING` / `ROUTING` / `DEAD`. |
-| `formation` | Readable formation — `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE` / `SHIELD_WALL` / `TESTUDO` / `SCHILTRON`. |
-| `frontage` | Current file count — the durable width a `FRONTAGE` order last wrote, or the type-derived default when none has. |
+| `state` | Readable `State` name -- `IDLE` / `MOVING` / `FIGHTING` / `ROUTING` / `DEAD`. |
+| `formation` | Readable formation -- `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE` / `SHIELD_WALL` / `TESTUDO` / `SCHILTRON`. |
+| `frontage` | Current file count -- the durable width a `FRONTAGE` order last wrote, or the type-derived default when none has. |
 | `soldiers` | Living soldier count (drops as the unit takes casualties). |
 | `current_speed` | Current movement speed (world units/s). |
 | `current_speed_mps` | The same speed in m/s (folding in `Battle.SPEED_SCALE`, so it reads back as the loadout's declared figure). |
 | `order_mode` | Readable order stance (`Normal`, `Hold`, `Attack flank`, …). |
 | `rank_relief` | Whether the intra-unit rank-relief mode is on (rear ranks rotate forward to relieve their own fighting line; written by a stance order). |
-| `current_order` | The head of the unit's orders queue — readable `Order.Type` name (`MOVE`, `ATTACK`, `RELIEF`, `WHEEL`, …), or `null` when idle. |
-| `order_phase` | The current order's active phase (`NONE`, or `TURN` / `REFORM` / `MARCH` / `RETURN_TURN` / `WHEEL`), or `null` when idle. `REFORM` covers BOTH a phased rear-move/lateral-pivot's interstitial hold and an ordinary move/form-up's reform-before-move pause (`Unit.reform_before_move`, a per-unit field defaulting on for most types) — both hold on a REFORM leaf order and read identically here. `RETURN_TURN` is a lateral pivot's closing quarter-turn back to its original facing; `WHEEL` is a wheel-turn composite's flank-pivot phase, between its opening about-face and its march. |
-| `order_guard` | The current order's pending terminal condition — readable `Order.Guard` name (`ENEMY_IN_RANGE`, `CONTACT_MADE`, `MORALE_BELOW`, `ALLY_EXHAUSTED`, `TICKS_ELAPSED`, `FLANKED`, `ENGAGED_FRACTION_ABOVE`), or `null` when the order carries no guard (or there is no current order). |
-| `queue_tail` | The not-yet-current queued orders behind `current_order`, as an array of `Order.Type` names in queue order — `[]` (not `null`) when nothing is queued. |
+| `current_order` | The head of the unit's orders queue -- readable `Order.Type` name (`MOVE`, `ATTACK`, `RELIEF`, `WHEEL`, …), or `null` when idle. |
+| `order_phase` | The current order's active phase (`NONE`, or `TURN` / `REFORM` / `MARCH` / `RETURN_TURN` / `WHEEL`), or `null` when idle. `REFORM` covers BOTH a phased rear-move/lateral-pivot's interstitial hold and an ordinary move/form-up's reform-before-move pause (`Unit.reform_before_move`, a per-unit field defaulting on for most types) -- both hold on a REFORM leaf order and read identically here. `RETURN_TURN` is a lateral pivot's closing quarter-turn back to its original facing; `WHEEL` is a wheel-turn composite's flank-pivot phase, between its opening about-face and its march. |
+| `order_guard` | The current order's pending terminal condition -- readable `Order.Guard` name (`ENEMY_IN_RANGE`, `CONTACT_MADE`, `MORALE_BELOW`, `ALLY_EXHAUSTED`, `TICKS_ELAPSED`, `FLANKED`, `ENGAGED_FRACTION_ABOVE`), or `null` when the order carries no guard (or there is no current order). |
+| `queue_tail` | The not-yet-current queued orders behind `current_order`, as an array of `Order.Type` names in queue order -- `[]` (not `null`) when nothing is queued. |
 | `target_enemy_uid` | The uid this unit is attacking, or `null`. |
-| `engaged` | Whether the regiment is in the engaged tier (front ranks in/just-out of melee) — a COMBAT-state decision (see `Unit.is_engaged()`). |
-| `in_enemy_contact` | Whether ANY live enemy regiment is within melee contact range, from proximity alone, regardless of combat state (`Unit._in_enemy_contact`). A "disengaging" unit (a plain move order with no attack target) can read `in_enemy_contact: true, engaged: false` at once — physical contact still holds even though it never decided to fight. |
-| `maneuver` | A single readable label for the in-progress drill/maneuver — `IDLE` / `MARCHING` / `FIGHTING` / `CONVERSIO` / `QUARTER_TURN` / `WHEELING` / `FILE_DOUBLE_DEEPEN` / `FILE_DOUBLE_WIDEN` / `NUDGE_SIDESTEP` / `NUDGE_BACKSTEP` / `NUDGE_FORWARD_STEP` / `CYCLE_CHARGE` / `COUNTERMARCH`. Consolidates `current_order`/`order_phase`/`order_mode` into one field, so e.g. a conversio and a centre-pivot (both otherwise `MOVE`/`TURN` vs `QUARTER_TURN`) are distinguishable directly. `FILE_DOUBLE_DEEPEN`/`WIDEN` only show on the exact tick the reshape order applied — the order itself retires the same tick. See `Unit.current_maneuver()`. |
-| `countermarch_variant` | Which exelismos variant a `maneuver: "COUNTERMARCH"` is running — `MACEDONIAN` / `LACONIAN` / `CHORAL`, or `null` when the unit isn't countermarching (`maneuver` alone can't distinguish the three). See `Unit.countermarch_variant()`. |
-| `tier` | The formation's **simulation tier** — `CLOSE` (full per-soldier arrays) or `FAR` (aggregate record, no individual bodies). See `docs/large-scale-simulation-design.md`. |
-| `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count, broken_count}` — a compact digest, **not** the full per-soldier arrays. `broken_count` is how many soldiers have individually broken from a SHIELD_WALL/TESTUDO stance under encirclement (`Unit._sim_soldier_broken` / `SoldierEncirclement`) — always 0 for a formation that can't break (`NORMAL`/`TIGHT`/`LOOSE`/`SQUARE`/`SCHILTRON`). **Close-tier units only.** |
+| `engaged` | Whether the regiment is in the engaged tier (front ranks in/just-out of melee) -- a COMBAT-state decision (see `Unit.is_engaged()`). |
+| `in_enemy_contact` | Whether ANY live enemy regiment is within melee contact range, from proximity alone, regardless of combat state (`Unit._in_enemy_contact`). A "disengaging" unit (a plain move order with no attack target) can read `in_enemy_contact: true, engaged: false` at once -- physical contact still holds even though it never decided to fight. |
+| `maneuver` | A single readable label for the in-progress drill/maneuver -- `IDLE` / `MARCHING` / `FIGHTING` / `CONVERSIO` / `QUARTER_TURN` / `WHEELING` / `FILE_DOUBLE_DEEPEN` / `FILE_DOUBLE_WIDEN` / `NUDGE_SIDESTEP` / `NUDGE_BACKSTEP` / `NUDGE_FORWARD_STEP` / `CYCLE_CHARGE` / `COUNTERMARCH`. Consolidates `current_order`/`order_phase`/`order_mode` into one field, so e.g. a conversio and a centre-pivot (both otherwise `MOVE`/`TURN` vs `QUARTER_TURN`) are distinguishable directly. `FILE_DOUBLE_DEEPEN`/`WIDEN` only show on the exact tick the reshape order applied -- the order itself retires the same tick. See `Unit.current_maneuver()`. |
+| `countermarch_variant` | Which exelismos variant a `maneuver: "COUNTERMARCH"` is running -- `MACEDONIAN` / `LACONIAN` / `CHORAL`, or `null` when the unit isn't countermarching (`maneuver` alone can't distinguish the three). See `Unit.countermarch_variant()`. |
+| `tier` | The formation's **simulation tier** -- `CLOSE` (full per-soldier arrays) or `FAR` (aggregate record, no individual bodies). See `docs/large-scale-simulation-design.md`. |
+| `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count, broken_count}` -- a compact digest, **not** the full per-soldier arrays. `broken_count` is how many soldiers have individually broken from a SHIELD_WALL/TESTUDO stance under encirclement (`Unit._sim_soldier_broken` / `SoldierEncirclement`) -- always 0 for a formation that can't break (`NORMAL`/`TIGHT`/`LOOSE`/`SQUARE`/`SCHILTRON`). **Close-tier units only.** |
 | `soldier_summary_m` | The summary's `{centroid_m, bbox_m}` mirrored in metres, derived from the same positions so the two can never disagree. Close-tier only, like its wu sibling. |
 
-A `tier: "FAR"` record carries **no per-soldier payload at all** — no `soldier_summary`, no
-`soldiers_full` — because a far-tier formation has no individual bodies to derive them from.
+A `tier: "FAR"` record carries **no per-soldier payload at all** -- no `soldier_summary`, no
+`soldiers_full` -- because a far-tier formation has no individual bodies to derive them from.
 The explicit `tier` field is what tells that apart from "per-soldier detail not requested"
 (a close-tier dump without the full flag, which still gets the summary).
 
-Set `SPARTA_DEMO_STATE_FULL=1` to also dump `soldiers_full` — the raw per-soldier arrays
-(`pos`, `facing`, `slots`, `hp`, `prone`, `stamina`, `broken`) — for deep debugging. Off by default (the
+Set `SPARTA_DEMO_STATE_FULL=1` to also dump `soldiers_full` -- the raw per-soldier arrays
+(`pos`, `facing`, `slots`, `hp`, `prone`, `stamina`, `broken`) -- for deep debugging. Off by default (the
 summary is what a reviewer needs; the full arrays are ~20x larger). `slots` is the unit's
-canonical slot grid (`Unit.soldier_world_slots`) at the same tick — the *ordered* shape the
-bodies chase — and a `motion_ref` dict rides alongside with the per-unit constants an offline
+canonical slot grid (`Unit.soldier_world_slots`) at the same tick -- the *ordered* shape the
+bodies chase -- and a `motion_ref` dict rides alongside with the per-unit constants an offline
 analyzer derives thresholds from (`formation_spacing`, the per-axis pitches,
-`soldier_body_radius` — the physical-contact basis for the blob/overlap floors, distinct
-from the grid pitch — the three gait speeds, `pivot_radius`, `turn_rate`), so analysis
+`soldier_body_radius` -- the physical-contact basis for the blob/overlap floors, distinct
+from the grid pitch -- the three gait speeds, `pivot_radius`, `turn_rate`), so analysis
 reads the sim's own tuning rather than hardcoding a copy.
 
 ### Declared expectations (`expect`)
 
-An input script can declare its own intent as data — an optional `expect` list of
+An input script can declare its own intent as data -- an optional `expect` list of
 `{"tick": N, "uid": U, "field": F, "value": V}` entries (tick may be a `[lo, hi]` range for
 drift-tolerant claims: the expectation passes when ANY snapshot inside the range matches).
 Fields are the compact per-unit record fields every dump carries (`state`, `current_order`,
@@ -400,13 +400,13 @@ enough to make the data it checks exist; the analyzer evaluates them offline:
 ```
 
 An expectation that cannot be checked (no snapshot in range, no such unit, no such field)
-FAILS rather than skips — an uncheckable claim is an authoring error. This is how a demo
+FAILS rather than skips -- an uncheckable claim is an authoring error. This is how a demo
 that stops demonstrating its own caption (a rebound hotkey arming the wrong stance, a rally
 where a flee was staged) turns into a red exit code instead of an eyeball catch.
 
 ### Algorithmic defect scan
 
-`tools/demo/DemoDefects.gd` turns a FULL dump into deterministic defect verdicts — the
+`tools/demo/DemoDefects.gd` turns a FULL dump into deterministic defect verdicts -- the
 machine-checkable core of the demo-review checklist (blob/compression, soldier overlap,
 shape scramble via an ordered-vs-actual best-fit decomposition, facing whipsaw, sustained
 super-physical speed, and crossing routes). Run it headless over a dump directory:
@@ -420,9 +420,9 @@ value, and threshold), `2` = unusable input (e.g. the dump wasn't taken with
 `SPARTA_DEMO_STATE_FULL=1`), `3` = the script's own `expect`/`defect_exemptions` block is
 malformed. `2` and `3` differ in whether anything could have been judged: `2` means the data
 is absent, so callers warn and move on, while `3` means an authoring typo stopped the scan
-before it computed a single metric — CI gates on that, since otherwise one bad character in
-a declaration would silently disable every check for the clip. Post-contact samples are exempt from the spacing/shape checks —
-melee press legitimately compresses a block — and the sustained checks are
+before it computed a single metric -- CI gates on that, since otherwise one bad character in
+a declaration would silently disable every check for the clip. Post-contact samples are exempt from the spacing/shape checks --
+melee press legitimately compresses a block -- and the sustained checks are
 convergence-aware: a long transition (a reshape, a big commanded turn) that steadily
 improves toward tolerance is read as healthy, while the same magnitude holding flat or
 worsening is a defect. Slot-misassignment only counts once the men are actually standing on
@@ -431,7 +431,7 @@ the grid (identity is noise mid-transit).
 `path_crossing` is the one metric that scores the ROUTE rather than the destination, and it
 exists because every other check above is blind in exactly the same place. Misslot is
 switched off while a block is in transit, and the sustained checks forgive a series that
-steadily converges — so a reshape that reaches a perfectly correct end state by an absurd
+steadily converges -- so a reshape that reaches a perfectly correct end state by an absurd
 route (men walking clear across their own formation and swapping sides on the way) passes
 every one of them. Between two consecutive judged samples this metric removes the block's
 own rigid motion, leaving each soldier's travel *within* his formation, and counts the men
@@ -465,14 +465,14 @@ silencing a real defect, and the point of a deterministic scan is that suppressi
 to be justified in writing. Exemptions never hide: the verdict still prints, as `EXEMPT`
 with its reason attached, and one whose metric has started passing on its own prints as
 `STALE` so it gets deleted rather than outliving the problem it was written for. A stale
-exemption is reported, not failed — failing it would redden the very PR that fixed the
+exemption is reported, not failed -- failing it would redden the very PR that fixed the
 underlying defect.
 
 CI runs this scan on every PR demo (the demo workflow's "Demo defect scan" step, with the
 script's own `expect` assertions included) and appends the verdict table to the posted
 state-transcript comment; a failing verdict fails the job **after** the GIF and transcript
 publish, so the artifacts you need to debug are always there. Run it pre-push with
-`tools/check.sh demo_defects` — it scans exactly the input scripts your diff adds or edits.
+`tools/check.sh demo_defects` -- it scans exactly the input scripts your diff adds or edits.
 
 ### Per-tick hash stream (`hash_stream.jsonl`)
 
@@ -481,7 +481,7 @@ same directory (`tools/demo/DemoStateHash.gd`, adapted from 0 A.D.'s replay stat
 a **cheap** tier every tick (unit + soldier positions, hashed as raw float bits), and a
 **full** tier every 20 ticks (the cheap fields plus facings, morale/state/order fields,
 the per-soldier hp/prone/stamina arrays, and the replay RNG state). Nothing needs arming
-beyond the state dump itself — the stream rides along wherever `SPARTA_DEMO_STATE` is set.
+beyond the state dump itself -- the stream rides along wherever `SPARTA_DEMO_STATE` is set.
 
 Two streams from different runs of the same clip localize a divergence to the exact tick
 it first appears, replacing an eyeball diff of full field-level dumps:
@@ -492,11 +492,11 @@ it first appears, replacing an eyeball diff of full field-level dumps:
 
 Exit `0` = the common tick range is hash-identical, `1` = divergent (the output names the
 first divergent tick and tier: a `cheap` divergence is positional, a `full`-only one means
-non-position state — morale, orders, the RNG — moved first), `2` = a stream is missing.
+non-position state -- morale, orders, the RNG -- moved first), `2` = a stream is missing.
 Compare streams from the SAME dump path (recorder vs recorder, sink vs sink): the two
 paths sample the tick at slightly different points in the frame, so their streams are
 only comparable to themselves across runs. This is the diagnostic for "when did two runs
-of this clip diverge" (local vs CI, headless vs rendered — both known to drift late in
+of this clip diverge" (local vs CI, headless vs rendered -- both known to drift late in
 long battles); it diagnoses drift, it does not fix it.
 
 The **whole-catalog** counterpart drives `website-demo-diff.yml`'s hash-first pre-filter:
@@ -506,11 +506,11 @@ The **whole-catalog** counterpart drives `website-demo-diff.yml`'s hash-first pr
 ```
 
 It prints one `HASHCMP<TAB><clip><TAB>SAME|CHANGED|ADDED|REMOVED|UNKNOWN[<TAB>tick<TAB>tier]`
-line per clip (robust against Godot's banner, and always exits 0 — the verdict is per-line).
+line per clip (robust against Godot's banner, and always exits 0 -- the verdict is per-line).
 The CI diff runs this first over both transcript trees: because the every-tick hash stream is a
 strict digest, a clip it calls `SAME` is genuinely unchanged and skips the expensive per-tick
 `jq` field-level compare entirely, so the field analysis runs only for the clips the hash flagged
-— each reported with its exact first divergent tick and tier. `UNKNOWN` (a tree lacking a stream,
+-- each reported with its exact first divergent tick and tier. `UNKNOWN` (a tree lacking a stream,
 e.g. one predating the hashing) falls back to the full `jq` compare.
 
 ### The wrapper
@@ -528,7 +528,7 @@ GODOT_BIN="C:\Users\you\Documents\apps\Godot_v4.7-stable_win64_console.exe" \
   tools/demo/dump-state.sh demos/inputs/rout-rally.json 8,60,140 /tmp/state
 ```
 
-On Linux/CI, drop `GODOT_BIN` if `godot` is on `PATH`. No `xvfb-run` needed — the dump is headless.
+On Linux/CI, drop `GODOT_BIN` if `godot` is on `PATH`. No `xvfb-run` needed -- the dump is headless.
 
 Or invoke Godot directly (no wrapper):
 
@@ -540,49 +540,49 @@ SPARTA_DEMO_INPUT="res://demos/inputs/rout-rally.json" \
 ```
 
 Then `Read` each `/tmp/state/state_<tick>.json` and assert on the values. As with frame capture,
-**pick ticks the demo actually reaches** — a battle freezes its physics tick when it ends, so a
+**pick ticks the demo actually reaches** -- a battle freezes its physics tick when it ends, so a
 tick armed past that never fires (the run quits on a wall-clock timeout, warning which snapshots
 it managed to write).
 
-### Worked example — the staged rout
+### Worked example -- the staged rout
 
 `demos/inputs/rout-rally.json` stages a lone, low-morale (25) player infantry unit of 60 against
 two 80-man cavalry that hit it head-on. Dumping at `8,60,140` (and on to `280`) shows the collapse
 in exact numbers, no frame-reading required:
 
-- **tick 8** — `Infantry 1`: `state MOVING`, `morale 25.3`, `soldiers 60`, `engaged false`; the two
+- **tick 8** -- `Infantry 1`: `state MOVING`, `morale 25.3`, `soldiers 60`, `engaged false`; the two
   cavalry (`morale 100`, `soldiers 80`) closing, `target_enemy_uid 0` (both targeting the infantry).
-- **tick 140** — `state FIGHTING`, `morale 25.4`, `soldiers 38`, `engaged true`; the weak unit is
+- **tick 140** -- `state FIGHTING`, `morale 25.4`, `soldiers 38`, `engaged true`; the weak unit is
   locked in melee and already down a third of its men while the cavalry stay near full.
-- **tick 280** — `morale 19.1`, `soldiers 8`; the unit is nearly annihilated (it's ground down
+- **tick 280** -- `morale 19.1`, `soldiers 8`; the unit is nearly annihilated (it's ground down
   before morale reaches the rout threshold of 0).
 
-A reviewer asserts on those values directly — the low morale, the falling `soldiers`, the
-`engaged`/`FIGHTING` transition — rather than judging a routed-looking sprite from a GIF.
+A reviewer asserts on those values directly -- the low morale, the falling `soldiers`, the
+`engaged`/`FIGHTING` transition -- rather than judging a routed-looking sprite from a GIF.
 
 ### CI posts the transcript automatically
 
-You don't have to run the dump by hand for a reviewer to see the state — `demo-video.yml`
+You don't have to run the dump by hand for a reviewer to see the state -- `demo-video.yml`
 does it for every PR whose demo is a **scripted-input** recording (a manifest with an `input`
 field). Alongside the GIF/MP4, CI runs the same headless dump for the same input script, at the
 ticks the script already cares about (its `state` list, else its `frames` list, else a default
 `8,60,140`), then posts two things:
 
-- **A compact per-tick table in a PR comment** — a `🔬 Per-tick state transcript` heading with
+- **A compact per-tick table in a PR comment** -- a `🔬 Per-tick state transcript` heading with
   one row per unit per dumped tick (State / formation / order mode / morale / soldier count /
   centroid), and a link to the full JSON. It's a **comment**, not part of the description, because
   it's large technical detail most reviewers don't need at a glance; the description (where the
   GIF lives) links to it. Both a human reviewer and the `@claude` review bot read PR comments
-  directly — the bot reviews the PR thread and diff, not the media branch, so this is what makes
+  directly -- the bot reviews the PR thread and diff, not the media branch, so this is what makes
   the transcript actually reach it.
-- **A link to the full JSON** — `Full machine-readable state transcript (JSON)`, the complete
+- **A link to the full JSON** -- `Full machine-readable state transcript (JSON)`, the complete
   per-tick snapshots (every field, including `soldier_summary`) published next to the GIF/MP4 on
   the `demo-media` branch for detail.
 
 The `claude-code-review.yml` reviewer is told to prefer this transcript over the video clip when
 verifying behaviour.
 
-It's **best-effort**, like the MP4 encode: a dump failure never blocks the GIF or fails the job —
+It's **best-effort**, like the MP4 encode: a dump failure never blocks the GIF or fails the job --
 the demo just posts without a transcript. It applies only to scripted-input demos; a **replay**
 or the generic **showcase** fallback records via `DemoRunner`, which has no state-dump path, so
 those post the clip alone. A `"skip": true` manifest posts neither clip nor transcript.
@@ -604,20 +604,20 @@ Replays are the project's deterministic seed-plus-orders logs (see
    `demos/showcase.json` is a ready-made deterministic auto-battle (seed `12345`,
    no orders). Copy it and change the seed if you want a different battle.
 
-A replay only reproduces on the **same build**, which is exactly the point here —
+A replay only reproduces on the **same build**, which is exactly the point here --
 CI replays it against *your PR's* build, so the clip reflects your change.
 
 ### Camera moves (presentation track)
 
-A replay also records the **camera** — pan and zoom over time — as a presentation
+A replay also records the **camera** -- pan and zoom over time -- as a presentation
 track alongside the orders (see [`../REPLAY.md`](../REPLAY.md)). When CI records the
 clip it drives the camera from that track, so a recorded session **pans and zooms
 exactly as it was played**. This is how to show a change that only appears at a
-non-default camera — e.g. the zoomed-in soldier figures: record a battle while you
+non-default camera -- e.g. the zoomed-in soldier figures: record a battle while you
 zoom into the clash, and the clip zooms in too. `demos/camera-showcase.json` is a
 ready-made example (an auto-battle that zooms into the melee and back out).
 
-A demo can also **open already zoomed in or panned** — the clip starts on the
+A demo can also **open already zoomed in or panned** -- the clip starts on the
 track's first keyframe (the recorder snaps to it before the first frame), so you
 don't have to begin every demo on the wide default view.
 
@@ -628,7 +628,7 @@ nothing here changes existing demos.
 **Raise the framerate for a moving camera.** The defaults (`fixed_fps` 30, GIF
 `fps` 12) are tuned for static-camera battle demos, where only the units move
 slowly. A panning/zooming camera looks choppy at 12 fps, so for a camera-motion
-demo bump the manifest — e.g. `"fixed_fps": 60, "max_frames": 600, "fps": 30` —
+demo bump the manifest -- e.g. `"fixed_fps": 60, "max_frames": 600, "fps": 30` --
 to record at the full physics-tick rate and output a smooth 30 fps GIF (at the
 cost of a larger file). The manifest here uses those values.
 
@@ -639,7 +639,7 @@ field, so a viewer sees *what was commanded*, not only the resulting moves: a
 green dashed path with a destination ring (plus dots for shift-waypoints) for a
 move, and a red line with a crosshair for an attack. It's driven from the orders
 already in the replay, so any scenario with player orders shows them
-automatically — no manifest field to set. The overlay is recording-only: in-app
+automatically -- no manifest field to set. The overlay is recording-only: in-app
 **Watch Replay** keeps orders on the hold-Space survey, unchanged.
 
 The clip also replays the player's **mouse**, captured into the replay's `pointer`
@@ -659,7 +659,7 @@ it's captured live and back-compatible -- replays without a keys track show no c
 
 ## Hand-authoring a scenario
 
-You can also write a replay JSON by hand — a **scenario** — to stage a specific
+You can also write a replay JSON by hand -- a **scenario** -- to stage a specific
 clash deterministically, rather than recording one by playing. The files under
 `demos/scenarios/` (and `charge_demo.json`, `support_demo.json`, `clash.json`)
 are built this way. A scenario is an ordinary replay file (see
@@ -677,11 +677,11 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 3 | 8 |
 | Cavalry | 4 | 9 |
 
-The field is `1600 × 1200`, and the lines start **580 px** apart vertically —
+The field is `1600 x 1200`, and the lines start **580 px** apart vertically --
 the deepest deployment that keeps both armies inside the close-tier band
 (`FormationTier.DEMOTE_RANGE`) from the first tick. The horizontal spacing is no longer a flat 150 px per unit (issue
 #677: a flat spacing let a wide LOOSE-order Archers regiment overlap its
-Infantry neighbour) — each adjacent pair's gap widens to fit their actual
+Infantry neighbour) -- each adjacent pair's gap widens to fit their actual
 formation widths, so the standard 5v5's `x` positions are:
 
 | uid | Type | `x` |
@@ -694,7 +694,7 @@ formation widths, so the standard 5v5's `x` positions are:
 
 Cavalry rows sit on their own wider grid pitch (1.0 m between files, 3.0 m
 between ranks), so each cavalry block is ~218 px wide and **360 px deep**
-(`y` roughly 120–480 for the player line) — the line re-spaced around those
+(`y` roughly 120-480 for the player line) -- the line re-spaced around those
 wider blocks, which is why every unit's `x` shifted from the pre-pitch values.
 A scripted click aimed at a unit must use the coordinates above; a click at a
 unit's old position can land in dead ground and silently select nothing (see
@@ -702,7 +702,7 @@ the input-script contract's warning about silent no-op gestures).
 
 Each unit's sprint speed is stated
 in the loadout in **metres/second** (`sprint_mps`); effective px/s is
-`sprint_mps × WORLD_UNITS_PER_METER` (`20`) `× SPEED_SCALE` (`1.0`):
+`sprint_mps x WORLD_UNITS_PER_METER` (`20`) `x SPEED_SCALE` (`1.0`):
 
 | Unit | sprint speed (m/s) | effective px/s |
 | --- | --- | --- |
@@ -714,36 +714,36 @@ in the loadout in **metres/second** (`sprint_mps`); effective px/s is
 **Only team 1 advances on its own.** The enemy AI (`Battle.gd` →
 `_run_enemy_ai()`) walks each idle enemy toward the nearest player unit. Team 0
 units stay put until you order them, so a scenario that needs the player line to
-engage **must** issue a move (or attack) order early — for example the tick-12
+engage **must** issue a move (or attack) order early -- for example the tick-12
 order in `demos/scenarios/line-relief.json` and `charge_demo.json`. Forget it and
 the clip records the player line standing still while only the enemy closes.
 
 With both sides closing over the 580 px gap, a head-on meet takes roughly
 `580 / (sum of the two effective speeds)` seconds: about 5.2 s for
 spearmen-vs-spearmen (`56 + 56`), about 1.7 s for cavalry-vs-cavalry (`170 + 170`)
-— and substantially longer when either side only walks (the enemy AI's default
+-- and substantially longer when either side only walks (the enemy AI's default
 advance pace), so budget windows from the walk speeds, not the sprint table.
-These are approximations — the enemy AI re-targets only every `ai_period` (default 1 s),
-and cavalry carry a 0.3 s order-response delay — so work the timing out on paper
+These are approximations -- the enemy AI re-targets only every `ai_period` (default 1 s),
+and cavalry carry a 0.3 s order-response delay -- so work the timing out on paper
 **before** spending a CI run on it; a mistimed scenario silently records the
 wrong moment.
 
 Note that `max_frames` counts **output video frames at `fixed_fps`**, not physics
 ticks: at the default 30 fps, 480 frames ≈ 16 s and 600 ≈ 20 s.
 
-**`camera`/`max_frames` and `state`/`frames` ticks live on two different tick bases —
+**`camera`/`max_frames` and `state`/`frames` ticks live on two different tick bases --
 author each against the right one.** The recorded clip (`--fixed-fps` from the
 manifest, default 30) and a state/frame dump (`dump-state.sh`/`capture-frames.sh`,
 which never pass `--fixed-fps` and so run at the project's default 60 physics
 ticks/second) are two *separate* Godot runs of the same input script. Sim behavior
 (morale recovery, rout timers, movement) is driven by real elapsed seconds via
-`delta`, so it converges at the same wall-clock moment either way — but the tick
+`delta`, so it converges at the same wall-clock moment either way -- but the tick
 *count* that moment falls on differs by the ratio of the two rates (a `fixed_fps: 30`
 recording needs half as many ticks to reach a given real-time point as a 60 Hz state
 dump does). Concretely: author `camera` keyframes and reason about `max_frames`
 against the manifest's own `fixed_fps`; author `state`/`frames` ticks (and any tick
 numbers you verify with `dump-state.sh`/`capture-frames.sh`) against the default 60
-Hz — don't reuse one script's `state` tick numbers as if they were also valid
+Hz -- don't reuse one script's `state` tick numbers as if they were also valid
 `camera` tick numbers, or vice versa. A `scenario`-only demo with no `steps` (like
 `demos/inputs/morale-recovery.json`) only has `camera` on the recording-basis side,
 since there are no player-input ticks to fall out of sync between the two runs.
@@ -759,9 +759,9 @@ since there are no player-input ticks to fall out of sync between the two runs.
   your change). Without one, it falls back to the default `demos/showcase.json`
   battle, posted with an honest "generic build demo" caption that nudges you to
   add a manifest. So the manifest is how you make the demo *demonstrate your
-  change* — skipping it gives a generic clip, not nothing.
+  change* -- skipping it gives a generic clip, not nothing.
 - **Unless you opt out.** A manifest with `"skip": true` posts a short note
-  instead of a clip — see below.
+  instead of a clip -- see below.
 
 ## No clip applies
 
@@ -769,7 +769,7 @@ Some user-visible changes genuinely can't be shown by the recorded-battle pipeli
 a **paused-overlay** interaction (e.g. previewing a queued waypoint while the sim is
 paused), an **editor-only** tool, or a change that's visible only through input the
 replay format doesn't capture. In those cases a generic showcase clip is worse than
-nothing — it shows an unrelated battle and implies it's a demo of your change (see
+nothing -- it shows an unrelated battle and implies it's a demo of your change (see
 issue #75).
 
 To say so, commit a `demos/demo.<slug>.json` that opts out:
@@ -777,22 +777,22 @@ To say so, commit a `demos/demo.<slug>.json` that opts out:
 ```json
 {
   "skip": true,
-  "reason": "Previews a queued waypoint in the paused Space overlay — a paused-overlay interaction the recorded-battle pipeline can't capture."
+  "reason": "Previews a queued waypoint in the paused Space overlay -- a paused-overlay interaction the recorded-battle pipeline can't capture."
 }
 ```
 
 CI records nothing and upserts the demo section of the PR **description** with an
-honest note (`🚫 No gameplay clip for this PR — <reason>`) rather than a misleading
-GIF. Only use this when the change really can't be filmed — for anything visible in
+honest note (`🚫 No gameplay clip for this PR -- <reason>`) rather than a misleading
+GIF. Only use this when the change really can't be filmed -- for anything visible in
 a normal battle, a tailored replay (or `showcase.json`) is far better.
 
 ## Still images for static features
 
-A recorded battle is the right tool for *motion* — a charge, a rout, an ability
+A recorded battle is the right tool for *motion* -- a charge, a rout, an ability
 firing. For **static** changes a single labelled frame is clearer: a new
 **interface/menu/HUD**, **new or improved art**, a layout or visual-polish change.
 For those, post informative **image(s) in the PR description** (the body), in
-addition to a clip when motion also matters — a reviewer then judges the change at a
+addition to a clip when motion also matters -- a reviewer then judges the change at a
 glance without opening media.
 
 ### Producing the PNG
@@ -808,7 +808,7 @@ glance without opening media.
   `-ss 5` grabs the frame ~5s in; pick a moment that shows your change.
 
 - **A new menu/HUD/screen** the replay-driven battle doesn't reach: run that scene
-  under Xvfb and save a viewport screenshot from a short throwaway script — after the
+  under Xvfb and save a viewport screenshot from a short throwaway script -- after the
   frame draws, call
 
   ```gdscript
@@ -827,38 +827,38 @@ then embed it in the **PR description** by raw URL with a caption:
 ```
 
 Use the **commit SHA** (immutable) so the image keeps rendering after the branch is
-deleted on merge — a branch-name URL works while the PR is open but breaks once the
+deleted on merge -- a branch-name URL works while the PR is open but breaks once the
 branch is gone. The PNG is committed in-repo, so it's permanent in `main` after merge.
 
 This is independent of the `demos/demo.json` manifest: the manifest drives the CI
 gameplay **clip**, which CI itself inserts into the PR **description** (see
 [Where the GIF lives](#where-the-gif-lives)), while these images live in the same
 **description** but you add them yourself, by hand, outside CI's marked section. For
-a static UI a battle can't film, combine them — opt the clip out with `"skip": true`
+a static UI a battle can't film, combine them -- opt the clip out with `"skip": true`
 (see [No clip applies](#no-clip-applies)) and post a still in the description instead.
 
 ## Where the GIF lives
 
-The GIF (and the MP4 — see [Sound](#sound)) is pushed to a long-lived
+The GIF (and the MP4 -- see [Sound](#sound)) is pushed to a long-lived
 **`demo-media`** branch and embedded/linked by raw URL. This deliberately avoids
 committing to your PR's own branch: it never disturbs the PR's required status
 checks, and the clip keeps working after the PR branch is deleted on merge. CI
 upserts it into the PR **description** between `<!-- sparta-demo -->` /
 `<!-- /sparta-demo -->` markers, replacing only that section in place on each push
-(no spam, and the rest of your description is left untouched) — see
+(no spam, and the rest of your description is left untouched) -- see
 [`tools/ci/upsert-pr-body-section.sh`](../tools/ci/upsert-pr-body-section.sh). The
 filename carries the commit SHA so GitHub never shows a stale cached frame.
 
 ## Sound
 
 The inline preview is a GIF (it plays once and freezes on the final frame), and
-**GIF can't carry audio** — so the clip you see in the description is silent. The
+**GIF can't carry audio** -- so the clip you see in the description is silent. The
 workflow also encodes an **MP4 with sound** (Godot's Movie Maker captures the game's
 audio into the recording; the GIF step just drops it) and links it under the GIF as
 *"watch with sound"*. Click it to play the clip with audio, pause, and scrub. SFX
 are off by default in-game, so whichever recorder runs turns them on for the recording
 ([`../tools/demo/DemoInputRecorder.gd`](../tools/demo/DemoInputRecorder.gd) for scripted
-input, [`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd) for a replay) — that's
+input, [`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd) for a replay) -- that's
 how the MP4 ends up with the battle's sound.
 
 Why a GIF plus a link, and not an inline player: GitHub renders an inline, playable
@@ -867,7 +867,7 @@ Why a GIF plus a link, and not an inline player: GitHub renders an inline, playa
 session and is unreachable from CI. A `<video>` tag or bare link pointing at our
 `demo-media` raw URL renders as a dead/greyed player or a download. Linking the
 poster to the MP4's blob page (so a click opens GitHub's file-view player) works on
-desktop but **not on mobile** — the blob-view video player doesn't play there — so
+desktop but **not on mobile** -- the blob-view video player doesn't play there -- so
 an inline GIF (which renders everywhere, including mobile) plus a click-to-play MP4
 link is the honest best CI can post. The
 recorder force-enables SFX, so the MP4 is silent only if no sound events happen to
@@ -890,5 +890,5 @@ ffmpeg -i /tmp/demo.avi -vf "scale=640:-2:flags=lanczos" \
 
 [`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd) is the headless entry
 point: it arms replay playback from `SPARTA_DEMO_REPLAY`, then switches to the
-battle scene while Movie Maker records. It's tooling only — it changes no
+battle scene while Movie Maker records. It's tooling only -- it changes no
 simulation code.

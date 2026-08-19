@@ -1,8 +1,8 @@
 # Design note: unified orders queue
 
-Status: **in implementation — phases 1–3 landed** (the `Order` type + queue +
+Status: **in implementation -- phases 1-3 landed** (the `Order` type + queue +
 apply-once, the movement-maneuver migration, and the transition/relief/waypoint
-absorption); phases 4–5 (the guard vocabulary and the transcript's remaining
+absorption); phases 4-5 (the guard vocabulary and the transcript's remaining
 gaps) are implemented and in review (#525, #526). This
 note consolidates the design from #516 (and its refinement comments) into one
 spec, and lays out the phased implementation plan tracked by the phase issues
@@ -33,11 +33,11 @@ verify is a direct symptom: an about-face and a 180° centre-pivot both read as
 
 **The transcript can't see the maneuver.** The machine-readable state transcript
 (#500 / #501 / #507) records `state`, `formation`, `order_mode`, position,
-facing, morale, and the per-soldier summary — but *not* which maneuver a unit is
+facing, morale, and the per-soldier summary -- but *not* which maneuver a unit is
 executing (#515), because no field authoritatively holds it. So a correct
 conversio and the exact bug it was meant to replace look identical in the dump.
 
-**A whole class of double-apply bugs.** `Battle.gd` applies every order twice —
+**A whole class of double-apply bugs.** `Battle.gd` applies every order twice --
 once immediately for zero-latency feedback, and again when the next physics tick
 drains `_pending_orders` (#518). Any non-idempotent order path is corrupted by
 the second apply reading state the first apply just armed. This has already
@@ -59,9 +59,9 @@ in-progress maneuver flag with one structure.
 
 Queue operations preserve the gestures that exist today:
 
-- **append** (shift-click waypoint) — add to the tail,
-- **replace-current** (plain order) — clear and set head,
-- **insert-next** — splice ahead of the tail,
+- **append** (shift-click waypoint) -- add to the tail,
+- **replace-current** (plain order) -- clear and set head,
+- **insert-next** -- splice ahead of the tail,
 - **clear**.
 
 Some orders are instantaneous; some occupy the unit for N ticks. Some are
@@ -78,7 +78,7 @@ wheel, attack, "form testudo".
 **Modes are durable nouns.** They are persistent `Unit` state that a completed
 order writes: `formation_mode`, `spacing`, `active_weapon`, `stance`. A
 transition order (form testudo / change spacing / switch weapon) executes like
-any other order — possibly over a transition time — and on completion writes its
+any other order -- possibly over a transition time -- and on completion writes its
 mode. The mode then stays as queryable `Unit` state until a later order changes
 it.
 
@@ -89,46 +89,46 @@ order/queue **and** the resulting modes with no special-case dump code.
 ### Taxonomy
 
 One queue, many subtypes. GDScript is single-inheritance `class_name`, so the
-hierarchy stays shallow — a tagged-record / enum-plus-data approach may beat a
+hierarchy stays shallow -- a tagged-record / enum-plus-data approach may beat a
 deep class tree in places (evaluate during phase 1, per the avoid-nesting
 default).
 
 | Order (verb) | Kind | Writes mode | Notes |
 |---|---|---|---|
-| `MoveOrder` | movement | — | carries an **execution style** (direct march / about-face-conversio / sidestep) chosen by geometry — an about-face is the execution style of a rear move, not a separate order |
-| `WheelOrder` | movement | — | pivot the line about an end |
-| `QuarterTurnOrder` | movement | — | 90° facing change in place |
-| `FileDoubleOrder` | movement | — | deepen / widen the formation (duplicatio / explicatio) |
-| `NudgeOrder` | movement | — | short sidestep / backstep, holds facing |
-| `AttackOrder` | targeting | — | terminates when the target dies |
+| `MoveOrder` | movement | -- | carries an **execution style** (direct march / about-face-conversio / sidestep) chosen by geometry -- an about-face is the execution style of a rear move, not a separate order |
+| `WheelOrder` | movement | -- | pivot the line about an end |
+| `QuarterTurnOrder` | movement | -- | 90° facing change in place |
+| `FileDoubleOrder` | movement | -- | deepen / widen the formation (duplicatio / explicatio) |
+| `NudgeOrder` | movement | -- | short sidestep / backstep, holds facing |
+| `AttackOrder` | targeting | -- | terminates when the target dies |
 | `FormationOrder` | transition | `formation_mode` | tight / loose / square / shield-wall / testudo |
 | `SpacingOrder` | transition | `spacing` | open / close order |
-| `StanceOrder` | transition | `stance` | hold / cycle-charge (and the intra-unit rank-relief mode toggle — see below) |
+| `StanceOrder` | transition | `stance` | hold / cycle-charge (and the intra-unit rank-relief mode toggle -- see below) |
 | `SwitchWeaponOrder` | transition | `active_weapon` | future: pike↔sword, javelin↔sword |
-| `RelieveUnitOrder` | targeted action | — | **inter-unit** relief: a fresh unit passes through / replaces a tired front-line ally; the order names the ally to relieve, and the response-delay + ward become the order's own execution state |
+| `RelieveUnitOrder` | targeted action | -- | **inter-unit** relief: a fresh unit passes through / replaces a tired front-line ally; the order names the ally to relieve, and the response-delay + ward become the order's own execution state |
 
 **Waypoints are absorbed, not preserved alongside.** The current waypoint/append
-list *is* a proto-orders-queue for moves — a waypoint already is a queued move.
+list *is* a proto-orders-queue for moves -- a waypoint already is a queued move.
 Unifying just replaces the bespoke move-only list with the general queue; the
 append gesture is identical to the player. The codebase already half-built this
 pattern (a move waypoint queue, then maneuvers and relief bolted on separately
 as flags); the unified queue finishes it. Net: fewer moving parts after the
 refactor, not more.
 
-**Relief is two distinct behaviors — keep them separate.** Today relief runs
-through `_relief_partner` links on `Unit`, managed by `UnitRelief.gd` — a single
+**Relief is two distinct behaviors -- keep them separate.** Today relief runs
+through `_relief_partner` links on `Unit`, managed by `UnitRelief.gd` -- a single
 mechanism that conflates two things we want to model differently. The order/mode
 split cleaves them cleanly:
 
-- **Inter-unit relief is an order.** One unit relieving another — a fresh unit
-  passes through or replaces a tired front-line ally — is a targeted queue action
+- **Inter-unit relief is an order.** One unit relieving another -- a fresh unit
+  passes through or replaces a tired front-line ally -- is a targeted queue action
   (`RelieveUnitOrder`) that names the ally to relieve. Its response-delay and ward
   become the order's own execution state. This is definitely an order, not a mode.
 - **Intra-unit rank-relief is a mode.** Individuals within a unit relieving their
-  *own* unit's front line — rear ranks rotating forward to the fighting line — is
+  *own* unit's front line -- rear ranks rotating forward to the fighting line -- is
   a durable intra-unit behavior, so it belongs in the mode layer (a reactive /
   ROE-style mode toggled by a `StanceOrder`), not a queue entry. It is the same
-  rank-cycle recovery that makes routs nearly unreachable in #529 — so whether
+  rank-cycle recovery that makes routs nearly unreachable in #529 -- so whether
   the mode is on, and how strong its recovery is, is the knob that issue turns.
 
 Modeling these two separately (an order for one, a mode for the other) is the
@@ -147,11 +147,11 @@ third is out by default.
 
 ### 1. Intra-order phasing (the core)
 
-An `Order` carries its own choreography as internal phases — a small
-deterministic state machine — not as separate queue entries. The canonical case
+An `Order` carries its own choreography as internal phases -- a small
+deterministic state machine -- not as separate queue entries. The canonical case
 is the move-to-rear: **phase 1 conversio (turn in place) → phase 2 reform (the
 ranks re-square to the new heading so a full rank fronts it; deferred to
-arrival — or skipped when there is nothing to bring forward — for an order
+arrival -- or skipped when there is nothing to bring forward -- for an order
 issued without the reform-before-move drill) → phase 3 march**.
 
 This is both the clean model and the fix for the #517 / #518 bug class. Today the
@@ -165,7 +165,7 @@ single queue entry is both the model and the bug fix.**
 > / [`atomic-order-decomposition-design.md`](atomic-order-decomposition-design.md).**
 > The rear-move and lateral-pivot composites' internal `Order.Phase` state
 > machine is planned to become real nested `children` (genuinely atomic child
-> orders) instead — the #517/#518 fix this section describes still has to
+> orders) instead -- the #517/#518 fix this section describes still has to
 > hold (advancement must run through the same exactly-once apply path, not a
 > new ad hoc trigger), just expressed as tree traversal rather than a phase
 > enum. See the linked design for why and the regression-test plan.
@@ -173,7 +173,7 @@ single queue entry is both the model and the bug fix.**
 ### 2. Macro expansion (a thin layer)
 
 A higher-level command expands into a *sequence of primitive orders appended to
-the flat queue* — e.g. a flank maneuver → wheel, advance, attack — tagged with a
+the flat queue* -- e.g. a flank maneuver → wheel, advance, attack -- tagged with a
 group id so cancelling the macro clears its not-yet-executed children. This gives
 reuse and compound player commands **without** a persistent tree: the executed
 structure stays flat, so `current_order` is always a single legible primitive in
@@ -191,12 +191,12 @@ future command builds on top of `enqueue_macro`.
 > **Removed, tracked in [#822](https://github.com/Lacaedemon/sparta/issues/822) /
 > [`atomic-order-decomposition-design.md`](atomic-order-decomposition-design.md).**
 > The rear-move/lateral-pivot/form-up cases this section anticipated became real
-> parent/child structure instead of sibling entries sharing a `macro_id` tag —
+> parent/child structure instead of sibling entries sharing a `macro_id` tag --
 > and neither ever actually went through `enqueue_macro` in the first place (the
 > rear-move/lateral-pivot composites build `children` directly via
 > `Unit.begin_pivot`; the form-up group tags a shared parent directly via
-> `Battle._apply_order_cmd`). With no real caller left — only its own dedicated
-> tests exercised it — `Order.macro_id`/`Unit.enqueue_macro()`/`cancel_macro()`
+> `Battle._apply_order_cmd`). With no real caller left -- only its own dedicated
+> tests exercised it -- `Order.macro_id`/`Unit.enqueue_macro()`/`cancel_macro()`
 > were removed rather than kept for a hypothetical future "cancel as one unit"
 > case; a future need can re-add the same mechanism if it materializes.
 
@@ -240,8 +240,8 @@ above.
 
 ### 2. Guards from a bounded, enumerated vocabulary
 
-An order or queue slot may carry a guard — "advance to the next order WHEN
-\<condition\>" — drawn from a small closed deterministic set:
+An order or queue slot may carry a guard -- "advance to the next order WHEN
+\<condition\>" -- drawn from a small closed deterministic set:
 
 `enemy-in-range`, `contact-made`, `morale-below-X`, `ally-exhausted`,
 `ticks-elapsed`, `flanked`, …
@@ -253,7 +253,7 @@ vocabulary is the guardrail: composable, not Turing-complete.
 
 Most "conditional orders" are really rules-of-engagement / stance: HOLD ("don't
 chase unless attacked"), cycle-charge / caracole (#472), "fire at will in range".
-These are durable **reactive modes** that modify how orders execute — the same
+These are durable **reactive modes** that modify how orders execute -- the same
 layer as `formation_mode`, per the order/mode split. The existing `order_mode`
 enum (`HOLD` / `CYCLE_CHARGE` / `SUPPORT` / …) is already a crude version. Do NOT
 encode these as if/else inside every order.
@@ -261,13 +261,13 @@ encode these as if/else inside every order.
 ### Out of the core: arbitrary reactive branching
 
 "If flanked form square else advance" is a reactive AI layer *above* the queue
-that reissues and reorders commands — it edits the plan; it is not an `if`
+that reissues and reorders commands -- it edits the plan; it is not an `if`
 embedded in each order. Reactivity mutates a still-flat, still-deterministic
 queue.
 
 ## Two invariants
 
-Conditionals — indeed the whole design — rest on two hard constraints. Break
+Conditionals -- indeed the whole design -- rest on two hard constraints. Break
 either and the rest falls apart.
 
 **Determinism.** Every condition and every order is a pure function of
@@ -276,11 +276,11 @@ either and the rest falls apart.
 advanced deterministically in the sim step, identical on replay.
 
 **Transcript legibility.** The dump records the active order AND its active phase
-AND its pending / unmet condition — e.g. `MoveToRear: conversio` vs `MoveToRear:
+AND its pending / unmet condition -- e.g. `MoveToRear: conversio` vs `MoveToRear:
 march`, or `Hold: until enemy_in_range`. A phased or conditional order is
 verifiable by a direct read, not by inferring intent from motion. This is
 strictly better than the flat maneuver label #515 asked for, because the phase
-boundary itself is visible — conversio-vs-pivot verification becomes a one-field
+boundary itself is visible -- conversio-vs-pivot verification becomes a one-field
 read.
 
 ## How the transcript records it
@@ -288,7 +288,7 @@ read.
 Because `current_order` is a real field and modes are real `Unit` state, the
 transcript records the unit's plan with no special-case dump code:
 
-- `current_order` — the head primitive (e.g. `MoveOrder`, `WheelOrder`),
+- `current_order` -- the head primitive (e.g. `MoveOrder`, `WheelOrder`),
 - its **active phase** when phased (e.g. `MoveToRear: march`),
 - its **pending terminal condition / guard** when conditional (e.g. `Hold:
   until enemy_in_range`),
@@ -310,18 +310,18 @@ Every phase must hold both invariants (determinism on replay; the transcript
 stays legible) and must preserve every existing behavior it touches
 (append/waypoint, relief, HOLD, formation transitions).
 
-### Phase 1 — `Order` + orders queue + `current_order` (apply-once)
+### Phase 1 -- `Order` + orders queue + `current_order` (apply-once)
 
 **Scope.** Introduce the `Order` value type, the `orders` queue on `Unit`, and
 `current_order` with phase support. Make each order **apply exactly once** in the
-sim step — the queue advances deterministically per tick, retiring the immediate
+sim step -- the queue advances deterministically per tick, retiring the immediate
 + tick-drain double-apply. Wire `current_order` (+ its phase) into the
 transcript.
 
 **Subsumes.** The move-only waypoint/append list becomes the queue; #515's
 explicit-maneuver field becomes `current_order` + phase.
 
-**Resolves.** The #518 double-apply class at its root — apply-once is the whole
+**Resolves.** The #518 double-apply class at its root -- apply-once is the whole
 point. Phase 1 **coordinates with the in-flight #518 fix**: that short-term fix
 is effectively this phase's apply-once slice landing first, and the queue then
 formalizes it (single source of truth, one apply site). Do not duplicate the fix;
@@ -337,14 +337,14 @@ appear in the transcript; a scripted-input replay of an existing maneuver
 produces the same body positions tick-by-tick as before (minus the spurious
 second apply); the double-apply reproduction from #518 no longer fires.
 
-### Phase 2 — migrate movement maneuvers onto the queue
+### Phase 2 -- migrate movement maneuvers onto the queue
 
 **Scope.** Move `MoveOrder` (with geometry-chosen execution style),
 `WheelOrder`, `QuarterTurnOrder`, `FileDoubleOrder`, and `NudgeOrder` onto the
 queue. Model the move-to-rear as a phased order (conversio → march).
 
 **Subsumes.** `_wheel_target`, `_engage_turn_target`, the conversio /
-quarter-turn in-progress state, `_pending_march_target`, and the nudge state —
+quarter-turn in-progress state, `_pending_march_target`, and the nudge state --
 all dropped as each migrates.
 
 **Resolves / verifies.** The phased move-to-rear fixes the #517 centre-pivot; the
@@ -366,7 +366,7 @@ phased rear move carries its recorded reform choice and parks its march in
 `target_pos`; `_wheel_target`, the conversio / quarter-turn in-progress state,
 and `_pending_march_*` are deleted. Replacing or clearing the queue interrupts
 the maneuver in flight (a partial turn folds and settles; a wheel stops where it
-stands), so a parked rear march dies with its order — which also fixes a latent
+stands), so a parked rear march dies with its order -- which also fixes a latent
 stale-march bug the parallel flags had. Two scoping notes:
 
 - The **standalone V/Q/E drills** became `ABOUT_FACE` / `QUARTER_TURN` queue
@@ -375,12 +375,12 @@ stale-march bug the parallel flags had. Two scoping notes:
   standstill, so an unrecorded gesture can never clobber the order a live
   behaviour runs off.
 - **`_engage_turn_target` stays a Unit field**, not a queue entry. The combat
-  re-face is reactive execution state the sim arms *while fighting* — an idle
-  auto-engaged unit has no order at all — so per this doc's own verbs-vs-modes
+  re-face is reactive execution state the sim arms *while fighting* -- an idle
+  auto-engaged unit has no order at all -- so per this doc's own verbs-vs-modes
   split it belongs to the reactive layer, not the queue. It shares the in-place
   turn mechanics (`is_maneuver_turning` covers it for the body-arrival freeze).
 
-### Phase 3 — migrate transition orders + split relief + absorb waypoints
+### Phase 3 -- migrate transition orders + split relief + absorb waypoints
 
 **Scope.** Move `FormationOrder`, `SpacingOrder`, `StanceOrder`, and
 `SwitchWeaponOrder` onto the queue, each writing its durable mode on completion.
@@ -417,27 +417,27 @@ the support-ward decision is recorded here.
   the reliever's `RELIEF` order (`Order.friendly_target`, later generalized into a
   pass-through link any order type can arm): the pass-through
   separation exemption is checked from either side off that one link, the tired
-  unit's retreat is a queue-visible `MOVE` order of its own, and the link — so
-  the exemption — dies with the order on an interrupt. The order retires only
+  unit's retreat is a queue-visible `MOVE` order of its own, and the link -- so
+  the exemption -- dies with the order on an interrupt. The order retires only
   once the swap has resolved (no foe, no advance in flight, link cleared), so
   retiring can't shove a still-overlapping pair apart. Intra-unit rank-relief is
   the durable `Unit.rank_relief` mode (default on, so replays and balance are
   unchanged): it gates the training-driven rank-cycle fatigue reduction and
   in-fight morale recovery, and a `STANCE` order writes it. `target_enemy` and
-  `support_target` stay unit fields — the reactive layer (enemy AI, auto-engage)
+  `support_target` stay unit fields -- the reactive layer (enemy AI, auto-engage)
   writes `target_enemy` with no order behind it, so per the verbs-vs-modes split
   they are execution state the queue reads.
 - **Transitions complete instantaneously today.** `FORMATION` / `FRONTAGE` / the
-  new `STANCE` order write their mode at the apply tick — the write IS the
-  completion — because the sim has no transition choreography for them yet: the
+  new `STANCE` order write their mode at the apply tick -- the write IS the
+  completion -- because the sim has no transition choreography for them yet: the
   body re-packing that follows is the presentation layer's arrival dynamics.
   The completion-write contract is therefore held trivially (a deterministic
   write at the apply tick), and a future PR that gives a formation change a real
   N-tick duration inherits the queue machinery ready-made. The idle-only queue
   entry (occupy the queue only when no live order runs) carries the transcript
   visibility; a busy unit's concurrent mode write is the mode layer's parallel
-  composition. `SpacingOrder` maps onto what the codebase already models —
-  open/close order is `FORMATION` density, line width is `FRONTAGE` — and
+  composition. `SpacingOrder` maps onto what the codebase already models --
+  open/close order is `FORMATION` density, line width is `FRONTAGE` -- and
   `SwitchWeaponOrder` stays future work: no weapon-switch mechanic exists yet.
 - **`StanceOrder` has no player gesture yet.** The stance hotkeys still arm a
   mode for the *next* move/attack order; `Battle.enqueue_stance` exists (and is
@@ -453,7 +453,7 @@ the support-ward decision is recorded here.
   reference (`Unit.support_target`) stays on the unit as execution state, since
   uid→node resolution lives in Battle.
 
-### Phase 4 — terminal conditions + trigger vocabulary + ROE modes
+### Phase 4 -- terminal conditions + trigger vocabulary + ROE modes
 
 **Scope.** Add the first-class terminal-condition field, the bounded enumerated
 guard vocabulary, and the reactive ROE modes (HOLD / fire-at-will / cycle-charge)
@@ -483,14 +483,14 @@ a replay with conditions produces identical branch choices on re-run.
   the constructor-helper pattern the taxonomy table already uses. A satisfied
   guard retires the order early from `Unit._update_current_order`, checked
   before the per-type match so it pre-empts ANY order kind's own completion
-  condition — the general form of "terminal condition," not a MOVE-specific
+  condition -- the general form of "terminal condition," not a MOVE-specific
   carve-out.
 - **"Advance UNTIL contact THEN attack" is the guard-plus-append composition
   the design doc names, not a new order type.** A `MoveOrder` guarded by
   `CONTACT_MADE` with an appended, unresolved `AttackOrder` (`target_uid < 0`)
   behind it: the guard firing retires the move and promotes the attack on the
   same tick, and a new promotion hook (`Unit._start_promoted_attack`) resolves
-  the unresolved attack's target to whatever enemy is actually in contact —
+  the unresolved attack's target to whatever enemy is actually in contact --
   the counterpart to the existing `_start_promoted_move` hook that commits a
   promoted route leg's march. A player-issued attack (a resolved `target_uid`)
   is untouched; `Battle._apply_order_cmd` already sets `target_enemy` at issue
@@ -500,7 +500,7 @@ a replay with conditions produces identical branch choices on re-run.
   `is_ranged` branch in `Unit._think` is not gated on `order_mode`), so
   fire-at-will is the existing default rather than a mode of its own. The ROE
   modes the design doc asks to promote (`HOLD` / `SKIRMISH` / `CYCLE_CHARGE` /
-  `SUPPORT` / the flank/rear attack bias) already exist as `Unit.OrderMode` —
+  `SUPPORT` / the flank/rear attack bias) already exist as `Unit.OrderMode` --
   phase 4 documents them as the mode-layer promotion in place (see the
   comment block above `Unit.ORDER_HOLD`) rather than renaming or duplicating
   them; the guard vocabulary is what was actually missing, and gives the
@@ -512,34 +512,34 @@ a replay with conditions produces identical branch choices on re-run.
   future reactive-AI layer per the design doc's "out of the core" boundary),
   with the hotkey/UI surface left as follow-up work.
 
-### Phase 5 — transcript records order + phase + condition (verification payoff)
+### Phase 5 -- transcript records order + phase + condition (verification payoff)
 
 **Scope.** Finish the transcript surface: `current_order`, active phase, pending
 terminal condition / guard, the durable modes, and optionally the queue tail.
-This is largely delivered incrementally by phases 1–4; phase 5 closes any gaps
+This is largely delivered incrementally by phases 1-4; phase 5 closes any gaps
 and locks the format.
 
-**Determinism / replay risks.** Low — read-only serialization. Guard against
+**Determinism / replay risks.** Low -- read-only serialization. Guard against
 non-deterministic ordering when dumping the queue.
 
 **Done-check.** A single transcript read distinguishes conversio from centre-pivot
 (the #517 verification), shows a held-until condition, and shows every durable
-mode — no motion-inference needed.
+mode -- no motion-inference needed.
 
-**As implemented (#526).** Phases 1–4 already delivered `current_order`,
+**As implemented (#526).** Phases 1-4 already delivered `current_order`,
 `order_phase`, and `order_guard` on the state-dump snapshot
 (`DemoInputRecorder._unit_record`); phase 5's own gaps were two fields plus
 the verification itself:
 
-- **`frontage`** — the file count a `FRONTAGE` order last wrote (or the
+- **`frontage`** -- the file count a `FRONTAGE` order last wrote (or the
   type-derived default when none has), read via the same
   `UnitFormation.frontage` lookup the sim itself uses. The taxonomy table's
   other durable modes were already covered: `formation` (`formation_mode`),
   `order_mode` + `rank_relief` (stance). `active_weapon` has no field to dump
-  — `SwitchWeaponOrder` is still future work (phase 3's own scoping note: no
+  -- `SwitchWeaponOrder` is still future work (phase 3's own scoping note: no
   weapon-switch mechanic exists yet), so there is nothing there to surface
   until that mechanic lands.
-- **`queue_tail`** — the not-yet-current queued orders' type names, in queue
+- **`queue_tail`** -- the not-yet-current queued orders' type names, in queue
   order. Optional per the design doc, and cheap once `current_order` /
   `order_phase` / `order_guard` already existed: a plain slice of `Unit.orders`
   past the head. Empty (`[]`), not `null`, when nothing is queued, so a reader
@@ -549,20 +549,20 @@ the verification itself:
   (`test_orders_transcript.gd`): stages a plain forward march and a rear-move
   about-face on the same unit through the SAME snapshot code CI's demo
   state-dump path runs (not a hand-rolled read of `Unit` fields), and asserts
-  `order_phase` alone reads `NONE` vs `TURN` — the one-field read the whole
+  `order_phase` alone reads `NONE` vs `TURN` -- the one-field read the whole
   design exists to make possible.
 
 ## Relationship to existing issues
 
-- **#515** (explicit current-maneuver state) — absorbed as phase 1; it becomes
+- **#515** (explicit current-maneuver state) -- absorbed as phase 1; it becomes
   `current_order` + phase. Close it into this once phase 1 lands, or keep it as
   the phase-1 tracking issue.
-- **#518** (orders applied twice) — the bug class phase 1 kills at the root. The
+- **#518** (orders applied twice) -- the bug class phase 1 kills at the root. The
   in-flight #518 fix is phase 1's apply-once slice landing first.
-- **#517** (move-to-rear centre-pivot) — fixed by the phased move-to-rear in
+- **#517** (move-to-rear centre-pivot) -- fixed by the phased move-to-rear in
   phase 2 and verified in phase 5.
-- **#521** (nudge under-travel) — fixed by apply-once + the queue in phases 1–2.
-- **#529** (routs nearly unreachable — in-fight morale recovery) — the intra-unit
+- **#521** (nudge under-travel) -- fixed by apply-once + the queue in phases 1-2.
+- **#529** (routs nearly unreachable -- in-fight morale recovery) -- the intra-unit
   rank-relief *mode* introduced in phase 3 is the same rank-cycle recovery that
   issue tracks; whether that mode is on, and how strong its recovery is, is the
   knob #529 tunes.

@@ -1,10 +1,10 @@
-# CLAUDE.md — AI working instructions for Sparta
+# CLAUDE.md -- AI working instructions for Sparta
 
 Orientation and standing policies for any AI session working in this repo.
-Sparta is a **Godot 4.7** (GDScript, Standard build — not .NET/C#) prototype
+Sparta is a **Godot 4.7** (GDScript, Standard build -- not .NET/C#) prototype
 fusing dynastic grand strategy with real-time tactical battles. See
 `README.md` for layout and `PLAN.md` for project vision, roadmap, architecture,
-and verification steps — read `PLAN.md` first.
+and verification steps -- read `PLAN.md` first.
 
 ## Cross-repo AI configuration (`Morrison-Lab/ai-config`)
 
@@ -12,7 +12,7 @@ This repo pulls in [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai
 for portable skills and memories via the **Plugin Marketplace**.
 
 `.claude/settings.json` registers the `Morrison-Lab` marketplace and enables the
-`ai-config` plugin, so Claude Code installs it at session start — skills are
+`ai-config` plugin, so Claude Code installs it at session start -- skills are
 available as `/ai-config:<name>` (e.g. `/ai-config:ardi`, `/ai-config:remember`).
 
 ## Project memories
@@ -30,7 +30,7 @@ required.
 ## Project at a glance
 - Godot **4.7.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
 - Main scene: `scenes/Battle.tscn`. Core scripts live in `scripts/`.
-- Issues are tracked on this repo with `P0`–`P3` labels; `PLAN.md` mirrors the roadmap.
+- Issues are tracked on this repo with `P0`-`P3` labels; `PLAN.md` mirrors the roadmap.
 
 ## Verify before you push
 Run `tools/check.sh` to reproduce CI's gating checks locally (Godot import
@@ -39,26 +39,26 @@ lychee link-check). It vendors GUT on demand and needs only a Godot 4.7 binary o
 `PATH` (or `GODOT_BIN`). See `tools/README.md`. Prefer it over invoking the
 individual checks by hand so local and CI results stay in sync.
 
-When the diff touches `scripts/`, also run `patch_coverage` before pushing —
+When the diff touches `scripts/`, also run `patch_coverage` before pushing --
 a local approximation of the `codecov/patch` CI check, verified to match
-Codecov's own numbers. Catching a shortfall locally saves a ~15–20 min CI
+Codecov's own numbers. Catching a shortfall locally saves a ~15-20 min CI
 round trip; see "Checking patch coverage before you push" in
 `tools/README.md`. **Add it to the same `tools/check.sh` invocation as the
 other checks** (e.g. `tools/check.sh validate test chars comments units
-patch_coverage`), not a separate command afterward — `patch_coverage`
+patch_coverage`), not a separate command afterward -- `patch_coverage`
 already re-runs the full GUT suite via `coverage`, and `check.sh` dedupes
 that against a same-invocation `test` automatically; a second, separate
 `tools/check.sh patch_coverage` call pays for the whole suite again since
 that dedup state doesn't survive across process invocations.
 
 ## Gameplay demos in PRs
-When your change is **user-visible** — it affects how the game looks or plays
-(`scenes/`, `scripts/`, `assets/`, `project.godot`) — help reviewers *see* it:
+When your change is **user-visible** -- it affects how the game looks or plays
+(`scenes/`, `scripts/`, `assets/`, `project.godot`) -- help reviewers *see* it:
 commit a **`demos/demo.json`** so CI records a short clip and inserts it into the
-PR **description** (not a comment — the description stays visible at the top of
+PR **description** (not a comment -- the description stays visible at the top of
 the PR page no matter how long the review thread grows).
 
-- **Author demos as a scripted-input recording — not a hand-authored replay.** Write a
+- **Author demos as a scripted-input recording -- not a hand-authored replay.** Write a
   deterministic input script (`demos/inputs/*.json`: a list of mouse clicks/drags and
   keystrokes stamped with the tick they fire on) and point `demos/demo.json` at it with
   the `input` field. The recorder drives a live battle through the *real* controls, so the
@@ -70,20 +70,20 @@ the PR page no matter how long the review thread grows).
 - See `demos/README.md` for the full contract and `demos/demo.example.json` for a
   template.
 - If you skip this, CI still posts a *generic* build demo, but it won't show your
-  specific change — so add a tailored manifest whenever the change is worth seeing.
+  specific change -- so add a tailored manifest whenever the change is worth seeing.
 - If your change genuinely **can't** be shown by a recorded battle (a paused-overlay
   interaction, an editor-only tool, a non-visual refactor), don't let CI post an
   unrelated generic clip: commit a `demos/demo.json` with `"skip": true` and a
   `"reason"`. CI then inserts a short note explaining the absence into the same
   description section instead (`demos/demo.skip.example.json` is a template).
-- **Keep each demo simple and focused on one thing — use multiple demos when a PR
+- **Keep each demo simple and focused on one thing -- use multiple demos when a PR
   touches multiple features, rather than one clip trying to show everything.** A
   clip that chains an unrelated setup phase (spawning, an AI unit's first move
   order, a formation change) onto the actual feature under review makes the
-  reviewer wade through noise to find the point — or worse, mistakes an unrelated
+  reviewer wade through noise to find the point -- or worse, mistakes an unrelated
   transient (e.g. the spawn-facing churn tracked in #631) for a bug in the change
   being reviewed. CI's demo-video workflow only auto-posts **one** clip per PR
-  (`demos/demo.*.json` — if several exist, it warns and picks the first
+  (`demos/demo.*.json` -- if several exist, it warns and picks the first
   alphabetically), so when a PR genuinely has multiple features worth showing
   separately: pick the most complete/representative one as the primary
   `demos/demo.json`, and record any others as supplementary GIFs committed under
@@ -96,19 +96,19 @@ the PR page no matter how long the review thread grows).
   verified.** Run the "Standard demo defect checklist" in
   `.claude/skills/verify-via-state-dump/SKILL.md` (blobbing, pulsing,
   flank-swapping, rank-swapping, facing whipsaw/rotation/reshape surge) against
-  the demo's state dump — a rendered clip that looks fine can still hide one of
+  the demo's state dump -- a rendered clip that looks fine can still hide one of
   these, so this is a standing check, not something to run only when a clip
   looks off.
 
 ### Static features: images in the PR description
-For changes a still shows better than motion — new **interfaces/menus/HUD**, **new
-or improved art**, layout/visual polish — also embed informative **image(s) in the
+For changes a still shows better than motion -- new **interfaces/menus/HUD**, **new
+or improved art**, layout/visual polish -- also embed informative **image(s) in the
 PR description itself** (in addition to the CI clip when motion matters). A labelled
 screenshot in the body lets a reviewer judge the change at a glance without opening
 media.
 
 - Capture a PNG, commit it under `demos/shots/` on your PR branch, and embed it in
-  the description by raw URL with a caption — referencing the **commit SHA** so the
+  the description by raw URL with a caption -- referencing the **commit SHA** so the
   image keeps rendering after the branch is deleted on merge.
 - See `demos/README.md` for how to produce the PNG (pull a frame from the demo
   recording, or screenshot a scene) and the full image contract.
@@ -120,18 +120,18 @@ media.
 
 ### Backend-only performance PRs: graph the work, then film the result
 
-A PR whose point is that the simulation does the **same thing faster** — a hot-loop
+A PR whose point is that the simulation does the **same thing faster** -- a hot-loop
 rewrite, a cheaper query, a removed redundant pass, anything in the `⚡ Bolt` family
-— ships two artifacts, both in the PR description:
+-- ships two artifacts, both in the PR description:
 
 1. **A before/after graph of computations per tick** (y = operations, x = tick) over a
    representative demo, from `tools/perf/ops-before-after.sh`. Commit the PNG under
    `demos/shots/` and embed it by raw URL at the commit SHA, alongside the
    per-bucket table the tool prints. Counts, not milliseconds: they're deterministic
-   for a given scenario and seed, so the two lines differ only where the code did —
-   a timing chart at CI's documented ~20–30% run-to-run swing can hide a real win or
+   for a given scenario and seed, so the two lines differ only where the code did --
+   a timing chart at CI's documented ~20-30% run-to-run swing can hide a real win or
    invent a fake one. `tools/perf/README.md` has the full protocol.
-2. **A demo video recorded after the improvement** — a real `demos/demo.<slug>.json`
+2. **A demo video recorded after the improvement** -- a real `demos/demo.<slug>.json`
    clip, not `"skip": true`. "Backend-only" is the claim under review, not a licence
    to skip the clip: an optimization that quietly changed the battle it was
    optimizing looks exactly like one that didn't until someone watches it. Reuse a
@@ -140,14 +140,14 @@ rewrite, a cheaper query, a removed redundant pass, anything in the `⚡ Bolt` f
 
 If the graph shows the two lines exactly coincident, say so plainly and explain why
 (the path you optimized isn't one the counters cover, or the change is
-cheaper-per-operation rather than fewer-operations) — don't present a flat graph as
+cheaper-per-operation rather than fewer-operations) -- don't present a flat graph as
 if it demonstrated a win. Same for a wall-clock-only claim: pair it with the graph
 rather than substituting for it.
 
 ## Website updates in user-facing PRs
 
-When a PR changes **how the game looks or plays** — mechanics, controls, UI,
-balance, or any player-visible behaviour — include corresponding updates to the
+When a PR changes **how the game looks or plays** -- mechanics, controls, UI,
+balance, or any player-visible behaviour -- include corresponding updates to the
 `website/` docs site so the documentation stays in sync.
 
 **When the rule applies:** any PR that touches `scenes/`, `scripts/`, `assets/`,
@@ -156,13 +156,13 @@ architecture, and CI changes are exempt.
 
 **What to update:**
 
-- `website/how-to-play.qmd` — step-by-step guide for new players. Add a step,
+- `website/how-to-play.qmd` -- step-by-step guide for new players. Add a step,
   update a control description, or note a new interaction.
-- `website/tactics.qmd` — tactical guidance. Add a section when a new mechanic
+- `website/tactics.qmd` -- tactical guidance. Add a section when a new mechanic
   creates strategic decisions (terrain types, order delay, unit interactions, etc.).
 - Other pages (`website/index.qmd`, `website/roadmap.qmd`) when the change is
   milestone-level.
-- `website/tools/demo-catalog.sh` — the `DEMOS` list controls which website
+- `website/tools/demo-catalog.sh` -- the `DEMOS` list controls which website
   video clips get recorded at deploy time (via `record-demos.sh`) and which
   clips the per-PR state-transcript diff sweeps. When your PR adds a mechanic or
   visual that isn't visible in any existing scenario, append a row to `DEMOS`
@@ -173,7 +173,7 @@ architecture, and CI changes are exempt.
     (`demos/*.json`) via `DemoRunner.tscn`. Record a new replay by playing the
     battle and copying it from `user://replays/` into `demos/`.
   - **`type=input`**: drives the game from a scripted-input file
-    (`demos/inputs/*.json`) via `DemoInputRecorder.tscn` — preferred for
+    (`demos/inputs/*.json`) via `DemoInputRecorder.tscn` -- preferred for
     mechanics that need specific player gestures (a key toggle, a multi-unit
     drag). Reuse the file you wrote for `demos/demo.json`.
   See `website/README.md` for the full pipeline.
@@ -183,29 +183,29 @@ architecture, and CI changes are exempt.
   get a conflict. Keep YOUR version (it describes the change being merged).
 
 **Figures and tables get labels + captions, via div syntax.** Every figure and
-table on the site — images, markdown tables, and the raw-HTML `<video>` embeds —
+table on the site -- images, markdown tables, and the raw-HTML `<video>` embeds --
 gets a cross-referenceable label and a caption using Quarto
 [div syntax](https://quarto.org/docs/authoring/figures.html#figure-divs): wrap it
 in a fenced `::: {#fig-slug .demo}` / `::: {#tbl-slug}` div with the caption as
 the last line before the closing `:::`. Keep a video's ` ```{=html} ` fence (just
-the `<video>` element — no `<figure>`/`<figcaption>` HTML) inside the div; don't
+the `<video>` element -- no `<figure>`/`<figcaption>` HTML) inside the div; don't
 use chunk-option syntax (`#| label:` / `#| fig-cap:`) for the cross-reference id.
 
 **Where to look for site layout:** `website/README.md` describes the page
 structure, build instructions, and how demo clips are recorded. Each `.qmd` page
 links back to its source of truth in the repo root.
 
-Keep website changes on the **same PR branch** as the code change — don't split
+Keep website changes on the **same PR branch** as the code change -- don't split
 them into a follow-up PR, since reviewers need to see both together.
 
 **Re-check website sync at each review round and at the end of every work
-session — not just when first authoring the PR.** Before declaring a round done
+session -- not just when first authoring the PR.** Before declaring a round done
 or reporting a PR clean, audit the live `website/` content against the current
 state of the game and confirm nothing has drifted, including:
 
-- **Prose** — does any page describe behaviour the PR (or an earlier merged PR
+- **Prose** -- does any page describe behaviour the PR (or an earlier merged PR
   that never updated the site) has since changed?
-- **Demo videos** — the `<video>` embeds (`website/media/*.mp4`) are recorded
+- **Demo videos** -- the `<video>` embeds (`website/media/*.mp4`) are recorded
   fresh at deploy time from the fixed replay scenarios in
   `website/tools/record-demos.sh`. That means they track *code* changes
   automatically (new art, HUD tweaks, balance), but only for features that
@@ -215,19 +215,19 @@ state of the game and confirm nothing has drifted, including:
   new scenario, or a camera move won't show up unless you added an entry to
   `DEMOS` (and a matching `<video>` embed) on this PR. If you didn't, and the
   feature is worth showing, file a follow-up issue.
-- **Screenshots / images** — any committed image embedded in a page must still
+- **Screenshots / images** -- any committed image embedded in a page must still
   match what the game looks like now; a visual change can make an existing
   screenshot stale even when no prose changed. Recapture it on the PR branch.
 
 This audit covers drift from **previously merged PRs** too, not only the one in
-hand — if you spot a page that an earlier change left stale, fix it on the
+hand -- if you spot a page that an earlier change left stale, fix it on the
 current PR when it's in scope, or file a follow-up issue otherwise.
 
 ## Code conventions
 
 ### Parameters are caller-configurable; only real physical constants are fixed
-Any parameter value a caller could reasonably want to vary — sizes, counts,
-layouts, spawn geometry, timings, gameplay thresholds — enters through a
+Any parameter value a caller could reasonably want to vary -- sizes, counts,
+layouts, spawn geometry, timings, gameplay thresholds -- enters through a
 function parameter, a constructor/instance field, or a data file, with
 today's value as the default. Never a bare literal buried in the
 implementation: the battlefield size was hard-coded for months and changing
@@ -235,28 +235,28 @@ it forced a 19-clip demo sweep that per-battle map data would have avoided.
 The exemptions are empirically known physical constants and unit conversions
 (the units convention's territory), true mathematical constants, and solver
 epsilons/convergence tolerances (see the units convention's "deliberately
-NOT metric" list — those aren't gameplay parameters). A const remains the
+NOT metric" list -- those aren't gameplay parameters). A const remains the
 right home for the DEFAULT value; the instance/parameter is what the battle
 actually runs on (`Battle.field`/`terrain`/`spawn_line_ys` vs the `FIELD`/
 `TERRAIN`/`SPAWN_LINE_YS` consts is the worked example). In review, a new
 hard-coded tunable in a NEW function/diff is a standard finding, the same
-weight as the units-convention checks — new code externalizes by default,
+weight as the units-convention checks -- new code externalizes by default,
 unconditionally.
 
 **Existing functions are migrated opportunistically, not via a standing
 audit sweep.** #963 tracked a proactive migrate-incrementally-one-slice-
-per-PR effort; that's paused as of 2026-07-19 (owner directive) — don't
+per-PR effort; that's paused as of 2026-07-19 (owner directive) -- don't
 pick a new slice off #963 just because it's open. Migrate an existing
 hard-coded constant to caller-configurable only when a real task actually
 needs it varied (a demo/test needs a non-default value, a bug fix needs
-per-caller control) — on the fly, driven by need, not swept wholesale.
+per-caller control) -- on the fly, driven by need, not swept wholesale.
 
 ### Comments: no issue-number references
 Don't cite issue numbers (`#123`) in code comments. The explanation itself
 should stand on its own; a reader shouldn't need to open a tracker to understand
 the code, and the reference rots as issues close and renumber. Issue numbers
 belong in commit messages, PR descriptions, and `TODO`/`FIXME` comments (where a
-`TODO(#123):` link to outstanding work is useful) — not in ordinary explanatory
+`TODO(#123):` link to outstanding work is useful) -- not in ordinary explanatory
 comments or docstrings.
 
 ### Units: author in metres, store in world units, display in metric
@@ -264,10 +264,10 @@ See `docs/units-convention.md` for the full rules; `tools/check.sh units`
 lints each diff's added lines. In short: a physically-derived length/speed
 constant is written as `<metres> * WorldScaleRef.WU_PER_M` (parse-time-folded,
 bit-exact-pinned by a test; `WorldScaleRef` is the script's own
-`preload("res://scripts/WorldScale.gd")` alias — declare it with the other
+`preload("res://scripts/WorldScale.gd")` alias -- declare it with the other
 preloads), runtime state stays world units end to end (no
 conversions in hot loops), and any user-facing length/distance/speed renders
-through `DistanceLegend`'s wu→metric helpers — a raw world-unit number is
+through `DistanceLegend`'s wu→metric helpers -- a raw world-unit number is
 never shown to the player. Deliberately unit-tuned knobs and solver epsilons
 keep their wu literal, marked `# tuned in wu`. In review, treat as standard
 findings: a new metric-looking bare literal, a runtime `WU_PER_M`
@@ -292,7 +292,7 @@ routed through `DistanceLegend`.
   visual state.
 
 - **`set_deferred()` does not parse colon sub-paths the way `set_indexed()`
-  does.** `set_deferred("position:y", ...)` is a silent no-op — `Object::set()`
+  does.** `set_deferred("position:y", ...)` is a silent no-op -- `Object::set()`
   doesn't understand the colon syntax, only `set_indexed()` (NodePath-based)
   does. Defer the whole property instead:
   `set_deferred("position", Vector2(x, new_y))`.
@@ -307,17 +307,17 @@ routed through `DistanceLegend`.
 
 - **A local `var name` shadows the inherited `Node.name` property.** Every
   `Node` already has `name` (`get_name()`/`set_name()`), so a local `var name`
-  inside a `Node`-derived script trips a GDScript shadow warning. Qualify it —
-  e.g. `mode_name`, `display_name`, `name_label` — so the local doesn't shadow
+  inside a `Node`-derived script trips a GDScript shadow warning. Qualify it --
+  e.g. `mode_name`, `display_name`, `name_label` -- so the local doesn't shadow
   the inherited property. The same applies to other inherited names
   (`position`, `owner`, `scale`).
 
-- **Godot generates `.import` sidecar files — don't add new ones to git.**
+- **Godot generates `.import` sidecar files -- don't add new ones to git.**
   `.gitignore` already has `*.import`. Several legacy ones in `assets/sfx/` and
   `demos/shots/` are still committed and tracked; don't add new `.import` files
   without intent.
 
-- **`.gd.uid` sidecars are tracked — commit one with every new script.** Unlike
+- **`.gd.uid` sidecars are tracked -- commit one with every new script.** Unlike
   `.import`, `.gd.uid` files are checked in (see the `test/unit/*.gd.uid` next to
   each test). When you add a new `.gd`, `git add` its generated `.gd.uid` too;
   leaving it out makes the file show as perpetually-untracked (Godot regenerates
@@ -333,12 +333,12 @@ routed through `DistanceLegend`.
 - **The soldier body arrays (`_sim_soldier_pos`, etc.) are PARENT-LOCAL, not
   world-space.** They're built from `unit.position` (local) via
   `soldier_world_slots`, so any new consumer that compares a unit/regiment position
-  against them must use `.position`, not `.global_position` — the two only coincide
+  against them must use `.position`, not `.global_position` -- the two only coincide
   while the Battle scene sits at the world origin with an identity transform, so a
   `global_position` mix-up is a latent bug that stays dormant until that changes.
   `flank_multiplier` and all the `SoldierMelee` geometry use `.position`; match them.
 
-- **GUT's `assert_almost_eq` does not support `Vector2` operands — it silently
+- **GUT's `assert_almost_eq` does not support `Vector2` operands -- it silently
   passes regardless of the actual difference.** The `diff > margin` check reduces
   to `Vector2 > float`, which GDScript always evaluates as `false`. For an *exact*
   Vector2 comparison use `assert_eq`; for approximate component checks, split into
@@ -351,22 +351,22 @@ routed through `DistanceLegend`.
 - **Movie Maker mode: drop `--headless`, use `xvfb-run` alone.** Running
   `godot --headless --write-movie` crashes with a null-texture error (dummy
   renderer). Use `xvfb-run -a godot --rendering-driver opengl3 --write-movie`
-  instead — Godot's default Vulkan renderer doesn't work under Xvfb's software
+  instead -- Godot's default Vulkan renderer doesn't work under Xvfb's software
   framebuffer, so `--rendering-driver opengl3` is required.
-  Pass the input script path via the `SPARTA_DEMO_INPUT` env var — CLI `--`
+  Pass the input script path via the `SPARTA_DEMO_INPUT` env var -- CLI `--`
   args are not forwarded to `DemoInputRecorder`.
-  **On Windows, `xvfb-run` doesn't apply at all — there's no dummy X server to
+  **On Windows, `xvfb-run` doesn't apply at all -- there's no dummy X server to
   wrap.** The fix is the same drop-`--headless` half only: run
   `godot --rendering-driver opengl3 --write-movie ...` directly (a real
   display is already present), with no `xvfb-run` prefix. The identical
   `--headless --write-movie` crash reproduces on Windows too if `--headless`
-  is left in — the null-texture cause is the dummy renderer, not Xvfb
+  is left in -- the null-texture cause is the dummy renderer, not Xvfb
   specifically, so the fix generalizes; only the wrapper differs per platform.
 
 - **`push_error()` does not set a non-zero exit code.** A `--headless` Godot run
   (or a GUT run) that calls `push_error(...)` still exits `0`, so a CI step or
   script that only checks the exit code passes even when the work silently
-  failed — e.g. a report file was never written. When a headless step is meant to
+  failed -- e.g. a report file was never written. When a headless step is meant to
   produce an artifact, verify the artifact exists (and is non-empty) rather than
   trusting the exit code. The coverage job and `tools/check.sh coverage` guard
   `coverage/lcov.info` this way.
@@ -391,7 +391,7 @@ review rounds grow the change set unboundedly.
 
 ### Findings that live in an upstream/external repo
 When a review raises an issue that actually lives in an **upstream/external
-repository** — a reusable workflow, a dependency, an action we call, etc. —
+repository** -- a reusable workflow, a dependency, an action we call, etc. --
 rather than only working around it here:
 
 1. **File a follow-up issue in the upstream repo** describing the problem (link
@@ -413,27 +413,27 @@ In some sessions (especially those where the `claude-code-remote` MCP server is
 not configured), the `send_later` tool is **not available**, so you cannot
 schedule a delayed self check-in to re-poll a PR's CI/merge state. This is a
 session/MCP-config condition, not specific to any one client. When you hit it,
-do not just report it as a dead end — use whichever of these is available:
+do not just report it as a dead end -- use whichever of these is available:
 
-1. **`subscribe_pr_activity`** (if available) — it wakes the session on PR
+1. **`subscribe_pr_activity`** (if available) -- it wakes the session on PR
    comments, CI completions, and reviews (the exact set depends on the
    deployment), which covers most babysitting needs.
    Two things a PR-activity subscription won't reliably hand you, so check them
    actively rather than waiting on a webhook. First, a CI run that goes green
    *and* needs you to act on it (e.g. auto-merge). Second, a **merge conflict
-   appearing** — poll the PR's `mergeable_state` (via the GitHub API) to catch
+   appearing** -- poll the PR's `mergeable_state` (via the GitHub API) to catch
    it. (A push does emit a `synchronize` webhook, but the subscription may not
    surface it, so don't rely on it.)
 
-2. **`/loop` skill** (if available) — runs a prompt or slash command on an
+2. **`/loop` skill** (if available) -- runs a prompt or slash command on an
    interval (e.g. `/loop 1h check PR #N CI and mergeability`). This is the
    practical replacement for `send_later`'s self-scheduling: periodic re-checks
    without the MCP tool.
 
-3. **On-demand** — while the session is alive, the user can ping at any time and
+3. **On-demand** -- while the session is alive, the user can ping at any time and
    you re-check the PR state.
 
-4. **Enable the MCP server** — `send_later` lives in the `claude-code-remote` MCP
+4. **Enable the MCP server** -- `send_later` lives in the `claude-code-remote` MCP
    server. If you truly need it, it must be configured for the environment; that's
    a settings/MCP-config change, not something to flip on mid-session.
 
