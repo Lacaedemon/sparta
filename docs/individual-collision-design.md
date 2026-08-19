@@ -383,18 +383,17 @@ deterministic property of this code, consistent with the chaos-sensitivity this 
 family hangs again, that history -- and this note -- are the first things to revisit before
 assuming a fresh regression.
 
-**This does not fully close the underlying issue either way.** Verified empirically against
-the site's showcase clip
+The position-anchor gap is closed; the kinematic drive now yields too.
+Verified empirically against the site's showcase clip
 (`demos/showcase.json`, seed 12345): a "disengaging" unit now visibly takes real contact
 resistance (and casualties, since the enemy's own attack still lands) it took none of
-before, but `_move_to()` -- the code driving that unit's own kinematic march toward its
-destination -- is still not itself gated by contact at all. It keeps commanding `position`
-forward at full march speed every tick regardless; the soldier/regiment-level resistance
-above only pushes back afterward, bounded, each tick -- a tug-of-war between an unbounded
-kinematic drive and a bounded physical response, not the drive itself yielding to contact.
-Closing it fully needs `_move_to()` itself (or the regiment's overall kinematic advance) to
-yield to contact, not just be resisted after the fact -- a change to core movement code
-shared by every unit in the game, deliberately out of scope here.
+before. `_move_to()` itself also yields on an orderly (player-move / disengage) march:
+it strips the component of the commanded step that would walk the block into a
+contacting enemy, and bleeds `_current_speed` when that leftover is zero, so the
+rear ranks are not kept pressing into an arrested front. Combat approaches
+(`formed_turn`, not orderly) still close -- they have to cover the gap between
+either-side contact range and this unit's own `in_contact` gate, after which
+`_press_into` takes over.
 
 ## Collision damage: hard contact converts dissipated kinetic energy into health loss
 

@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Memory-only refactor: splits .claude/memories/sparta.md into topical subfiles under .claude/memories/sparta/ while keeping the aggregator path unchanged. No scene, script, asset, or project setting is touched, so a recorded battle would be byte-identical to main's."
+  "input": "demos/inputs/disengaged-march-through-contact.json",
+  "caption": "Orderly march yields to contact (#1238): a player Infantry ordered straight through a held enemy line arrests at the front instead of compressing its rear ranks into the contact.",
+  "fixed_fps": 30,
+  "max_frames": 210,
+  "fps": 15,
+  "width": 720
 }

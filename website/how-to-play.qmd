@@ -295,6 +295,10 @@ disengage --- it breaks contact and steps back holding facing, while the
 still-committed enemy keeps pressing after it.
 :::
 
+A right-click move that would walk a regiment *through* an enemy it is not
+fighting still arrests at contact --- the men cannot occupy the same ground,
+so go around or wait for a gap.
+
 **Centre pivot (larger turns).** A move order that turns a unit toward a new heading makes
 it **pivot about its centre** there gradually rather than snapping --- it turns toward its
 travel direction in good order as it sets off. When the heading change is sharp, the unit

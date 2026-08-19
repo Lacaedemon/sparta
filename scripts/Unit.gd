@@ -2499,6 +2499,52 @@ func _pursuit_stance() -> bool:
 			or order_mode == ORDER_SWEEP_ROUTERS
 
 
+## Leftover of unit `dir` after removing every component that would walk this
+## regiment into a contacting enemy. A unilateral contact constraint: the
+## kinematic drive may slide along contact or walk away, but it must not
+## command a step through a body that is already in physical contact. Returns
+## Vector2.ZERO when `dir` is fully into contact. `dir` is a unit vector;
+## the leftover's length is the remaining (tangential) fraction, 0..1.
+## Matches `_think`'s proximity check (`maxf` of both reaches + both RADII).
+func _yield_step_away_from_contact(dir: Vector2) -> Vector2:
+	if not is_inside_tree():
+		return dir
+	var yielded: Vector2 = dir
+	var normals: Array[Vector2] = []
+	var candidates: Array = get_tree().get_nodes_in_group("units")
+	candidates.append_array(get_tree().get_nodes_in_group("routers"))
+	var contact_checks: int = 0
+	for u in candidates:
+		if u is Unit and u.team != team and u.state != State.DEAD:
+			contact_checks += 1
+			var other: Unit = u
+			var c_dist: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS
+			if position.distance_squared_to(other.position) <= c_dist * c_dist:
+				var toward: Vector2 = other.position - position
+				if toward.length_squared() < 0.0001:  # tuned in wu
+					continue
+				normals.append(toward.normalized())
+	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
+	if normals.is_empty():
+		return dir
+	# A single sequential pass is order-dependent when two or more enemies flank the
+	# march; relaxation re-checks every normal until none still sees an into-contact
+	# component, converging on the largest tangential step that violates none.
+	var max_relax_iters: int = maxi(8, normals.size())  # tuned in wu
+	for _iter in max_relax_iters:
+		var changed: bool = false
+		for normal in normals:
+			var into: float = yielded.dot(normal)
+			if into > 0.0:
+				yielded -= normal * into
+				changed = true
+		if not changed:
+			break
+	if yielded.length_squared() < 0.0001:  # tuned in wu
+		return Vector2.ZERO
+	return yielded
+
+
 func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: bool = false, brake_arrival: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
@@ -2712,6 +2758,32 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	# is an undisciplined/in-haste march (it never pivots, so there's nothing to wait on).
 	if pivot_as_formation and not maneuvering:
 		effective_speed *= clampf(facing.dot(steer_dir) * 2.0, 0.0, 1.0)
+	# Orderly (player-move / disengage) marches yield to contact: the kinematic
+	# drive must not keep commanding the block through an enemy whose bodies are
+	# already resisting, or the rear ranks compress into the arrested front.
+	# Combat approaches (formed_turn, not orderly) still close -- they have to
+	# cover the gap between either-side contact range and this unit's own
+	# in_contact gate, then _press_into takes over once fighting. Yielding those
+	# would stall a shorter-reach charger short of its own strike range.
+	var travel_dir: Vector2 = dir
+	var travel_frac: float = 1.0
+	if orderly and _in_enemy_contact:
+		var leftover: Vector2 = _yield_step_away_from_contact(dir)
+		var leftover_len: float = leftover.length()
+		if leftover_len < 0.0001:  # tuned in wu
+			# Fully into contact: bleed commanded speed at the arrival brake rate
+			# (same friction as standing on the ordered point). Flag still-moving
+			# so the idle-coast block below cannot step forward into contact on
+			# this tick or rebuild travel_dir from facing when velocity hits zero.
+			_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
+			state = State.MOVING
+			_moved_last_frame = true
+			_approach_velocity = Vector2.ZERO
+			position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+			position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
+			return
+		travel_dir = leftover / leftover_len
+		travel_frac = leftover_len
 	# Inbound clamp: never step PAST the immediate goal point in a single tick -- the
 	# same post-step guard the soldier-body arrival uses. Without it a fast unit whose
 	# per-tick step exceeds the remaining distance crosses the point, the direction
@@ -2720,10 +2792,10 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	# destination: near the target the pathfinding node can sit past the exact ordered
 	# point, and stepping to the node would cross it. The recorded charge velocity below
 	# stays the unclamped speed -- landing ON a target must not bleed the impact.
-	var advance: float = minf(effective_speed * delta, to.length())
+	var advance: float = minf(effective_speed * travel_frac * delta, to.length())
 	if braking_to_stop:
 		advance = minf(advance, dist_to_stop)
-	position += dir * advance
+	position += travel_dir * advance
 	# A non-routing unit stops at the field's own edge -- the retreat margin is for a
 	# ROUTING unit to flee into (see Unit.retreat_bounds / _process_rout), not a place a
 	# pursuer can follow it. This is the only thing that stops a unit chasing a routing
@@ -2734,7 +2806,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	state = State.MOVING
 	_moved_last_frame = true
 	# Charge velocity; terrain-scaled so forest reduces the charge bonus (intentional — can't sprint in trees).
-	_approach_velocity = dir * effective_speed
+	_approach_velocity = travel_dir * effective_speed * travel_frac
 
 
 ## Lean into a melee: nudge the position toward `point` WITHOUT flipping to MOVING or
