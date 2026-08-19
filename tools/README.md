@@ -48,6 +48,10 @@ tools/check.sh && git push
   "A Godot version mismatch fails fast" below.
 - **GUT** is vendored on demand into `addons/gut/` the first time `validate`/`test`
   runs (it isn't committed); no manual install needed.
+- **ai-config** for Gemini/AGY is bootstrapped on demand into `.ai-config/` via
+  `tools/bootstrap-ai-config.sh` (pinned by `.ai-config-ref`, gitignored); run it
+  once per fresh clone before a Gemini session. Claude uses the plugin marketplace
+  instead (`.claude/settings.json`).
 - **lychee** only for the optional `links` check.
 - **gdtoolkit** (`pip install gdtoolkit==4.5.0`) only for the optional `lint` check.
 - **`comments`** needs a resolvable diff base (`origin/main`, a local `main`, or
@@ -228,6 +232,21 @@ powershell -NoProfile -File tools/kill-orphan-godot.ps1 -Force   # kill
 
 Optionally (user-machine config, not repo policy), register the sweep as a
 scheduled task every 30-60 min so a leak never builds up unattended.
+
+## `bootstrap-ai-config.sh` -- vendor ai-config for Gemini / Antigravity
+
+Shallow-clones [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config)
+into `.ai-config/` at the commit pinned in `.ai-config-ref` (committed at the repo
+root). The checkout is gitignored. Claude Code uses the plugin marketplace instead;
+this script is for Gemini CLI and Antigravity sessions that read
+`.gemini/config.json` and `.agents/{plugins,skills}.json`.
+
+```sh
+tools/bootstrap-ai-config.sh
+```
+
+Re-run after bumping `.ai-config-ref`. The script is idempotent: it skips work when
+the checkout already matches the pin.
 
 ## `demo/`
 
