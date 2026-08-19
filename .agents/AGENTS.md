@@ -41,3 +41,12 @@ There is no backend/server/database -- everything runs inside the Godot engine.
   frame-capture run -- it crashes with a null-texture error (dummy renderer); use
   `xvfb-run` + `--rendering-driver opengl3` (see `CLAUDE.md`). Machine-readable
   **state dumps** (`tools/demo/dump-state.sh`) do run under `--headless`.
+- **Cloud Agent bootstrap gotcha:** some Cloud Agent runs start with *no linked
+  environment* (so the repo-defined update script hasn't been applied yet).
+  When that happens, install/verify the dependencies needed by `tools/check.sh`
+  first: Godot 4.7 Standard (`/usr/local/bin/godot`), then `gdtoolkit==4.5.0`
+  (provides `gdlint`/`gdformat`).
+- **Godot exit noise:** headless runs may print warnings/errors about leaked
+  rendering resources (“CanvasItem … were leaked”, “ObjectDB instances … leaked”,
+  “resources still in use at exit”). `tools/check.sh` still treats the suite as
+  passing when the GUT summary is clean, so don't confuse this with failing tests.
