@@ -1,11 +1,13 @@
 {
   "skills": [
     ".gemini/skills",
-    ".claude/skills"
+    ".claude/skills",
+    ".ai-config/skills"
   ],
   "memories": [
     ".gemini/memories",
-    ".claude/memories"
+    ".claude/memories",
+    ".ai-config/memories"
   ]
 }
 

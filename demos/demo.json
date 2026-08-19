@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/subunits-phase-4-reform.json",
-  "caption": "Subunits Phase 4 reform (#1330): Narrowing frontage by 1 file folds the flank file into nearest-rear ranks, routing relocating soldiers along the outer flank and rear perimeter corridors to prevent penetrating standing ranks.",
-  "fixed_fps": 30,
-  "max_frames": 320,
-  "fps": 15,
-  "width": 720
+  "skip": true,
+  "reason": "Infra-only change: bootstraps ai-config for Gemini/AGY without altering gameplay."
 }
