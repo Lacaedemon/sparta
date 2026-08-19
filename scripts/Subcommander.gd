@@ -134,7 +134,7 @@ static func _advance_axis(group: Array, all_units: Array) -> Vector2:
 	if enemy_count == 0:
 		return Vector2.ZERO
 	var delta: Vector2 = (enemy_sum / enemy_count) - _centroid(group)
-	if delta.length() < 1.0:
+	if delta.length_squared() < 1.0:
 		return Vector2.ZERO
 	return delta.normalized()
 

@@ -1104,7 +1104,7 @@ func _spawn_scenario(specs: Array) -> void:
 		var facing := Vector2.DOWN if team == 0 else Vector2.UP
 		if spec.has("facing"):
 			var f: Array = spec["facing"]
-			if f.size() >= 2 and Vector2(float(f[0]), float(f[1])).length() > 0.0001:
+			if f.size() >= 2 and Vector2(float(f[0]), float(f[1])).length_squared() > 0.00000001:
 				facing = Vector2(float(f[0]), float(f[1])).normalized()
 			else:
 				push_warning("[battle] scenario 'facing' must be a non-zero [x, y]; using the team default.")
@@ -1851,7 +1851,7 @@ func enqueue_disengage_with_sacrifice(uids: Array) -> void:
 ## back-step); FORWARD is straight along facing (a forward step). Each is
 ## NUDGE_DISTANCE long. Pure/static so it's unit-testable.
 static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
-	var fwd: Vector2 = facing.normalized() if facing.length() > 0.01 else Vector2.UP
+	var fwd: Vector2 = facing.normalized() if facing.length_squared() > 0.0001 else Vector2.UP
 	var perp := Vector2(-fwd.y, fwd.x)   # unit's right-hand side in world space
 	match dir:
 		NudgeDir.LEFT:
