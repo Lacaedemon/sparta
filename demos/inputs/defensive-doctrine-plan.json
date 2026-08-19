@@ -1,11 +1,12 @@
 {
-  "_comment": "Battle AI army-plan vocabulary: defensive doctrine profile (data/doctrines/defensive.json) executing PLAN_DEFEND. Team 1 deploys 2 units under defensive doctrine against player forces across the field. Unlike aggressive AI which charges across the field immediately on contact, team 1 unengaged units hold their defensive line at spawn in formation via _defend_hold_directives.",
+  "_comment": "Battle AI army-plan vocabulary: defensive doctrine profile (data/doctrines/defensive.json) executing PLAN_DEFEND. Team 1 deploys 2 infantry units under defensive doctrine against 2 player infantry units across the field (1.0 ratio, below envelop_ratio_threshold 2.0). Unlike aggressive AI which charges across the field immediately, team 1 unengaged units hold their defensive line at spawn in formation via _defend_hold_directives.",
   "seed": "12345",
   "doctrine": "defensive",
-  "spawn_fingerprint": "a78a4ad26066d8fef1a159bd0e187a72",
+  "spawn_fingerprint": "2b69c23174acde991792888e16f993e5",
   "scenario": [
-    {"team": 0, "type": "Infantry", "x": 600, "y": 350, "count": 80},
-    {"team": 1, "type": "Spearmen", "x": 500, "y": 700, "count": 80},
+    {"team": 0, "type": "Infantry", "x": 500, "y": 350, "count": 80},
+    {"team": 0, "type": "Infantry", "x": 700, "y": 350, "count": 80},
+    {"team": 1, "type": "Infantry", "x": 500, "y": 700, "count": 80},
     {"team": 1, "type": "Infantry", "x": 700, "y": 700, "count": 80}
   ],
   "camera": [
