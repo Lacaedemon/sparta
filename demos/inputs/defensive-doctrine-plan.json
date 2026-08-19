@@ -1,20 +1,16 @@
 {
-  "_comment": "Battle AI army-plan vocabulary: defensive doctrine profile (data/doctrines/defensive.json) executing PLAN_DEFEND. Team 1 deploys 3 units under defensive doctrine. Unlike default aggressive AI which rushes forward immediately across the field, team 1 unengaged units hold their defensive line at spawn in formation via _defend_hold_directives. When the player unit advances and engages the center, the defensive line holds firm and provides mutual support.",
+  "_comment": "Battle AI army-plan vocabulary: defensive doctrine profile (data/doctrines/defensive.json) executing PLAN_DEFEND. Team 1 deploys 2 units under defensive doctrine against player forces across the field. Unlike aggressive AI which charges across the field immediately on contact, team 1 unengaged units hold their defensive line at spawn in formation via _defend_hold_directives.",
   "seed": "12345",
   "doctrine": "defensive",
-  "spawn_fingerprint": "a5c9098a511dba749eaf0a50179398fc",
+  "spawn_fingerprint": "a78a4ad26066d8fef1a159bd0e187a72",
   "scenario": [
-    {"team": 0, "type": "Infantry", "x": 600, "y": 350, "count": 100},
-    {"team": 1, "type": "Infantry", "x": 450, "y": 700, "count": 80},
-    {"team": 1, "type": "Spearmen", "x": 600, "y": 700, "count": 100},
-    {"team": 1, "type": "Infantry", "x": 750, "y": 700, "count": 80}
+    {"team": 0, "type": "Infantry", "x": 600, "y": 350, "count": 80},
+    {"team": 1, "type": "Spearmen", "x": 500, "y": 700, "count": 80},
+    {"team": 1, "type": "Infantry", "x": 700, "y": 700, "count": 80}
   ],
   "camera": [
-    {"tick": 0, "x": 600.0, "y": 550.0, "zoom": 0.9}
+    {"tick": 0, "x": 600.0, "y": 525.0, "zoom": 1.0}
   ],
-  "steps": [
-    {"tick": 8, "click": [600, 350]},
-    {"tick": 12, "rmb_click": [600, 680]}
-  ],
-  "state": [0, 60, 120, 180, 240, 300, 360, 420, 480]
+  "steps": [],
+  "state": [0, 60, 120, 180, 240, 300]
 }
