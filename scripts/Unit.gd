@@ -2510,6 +2510,7 @@ func _yield_step_away_from_contact(dir: Vector2) -> Vector2:
 	if not is_inside_tree():
 		return dir
 	var yielded: Vector2 = dir
+	var normals: Array[Vector2] = []
 	var candidates: Array = get_tree().get_nodes_in_group("units")
 	candidates.append_array(get_tree().get_nodes_in_group("routers"))
 	var contact_checks: int = 0
@@ -2522,11 +2523,23 @@ func _yield_step_away_from_contact(dir: Vector2) -> Vector2:
 				var toward: Vector2 = other.position - position
 				if toward.length_squared() < 0.0001:  # tuned in wu
 					continue
-				var normal: Vector2 = toward.normalized()
-				var into: float = yielded.dot(normal)
-				if into > 0.0:
-					yielded -= normal * into
+				normals.append(toward.normalized())
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
+	if normals.is_empty():
+		return dir
+	# A single sequential pass is order-dependent when two or more enemies flank the
+	# march; relaxation re-checks every normal until none still sees an into-contact
+	# component, converging on the largest tangential step that violates none.
+	var max_relax_iters: int = maxi(8, normals.size())  # tuned in wu
+	for _iter in max_relax_iters:
+		var changed: bool = false
+		for normal in normals:
+			var into: float = yielded.dot(normal)
+			if into > 0.0:
+				yielded -= normal * into
+				changed = true
+		if not changed:
+			break
 	if yielded.length_squared() < 0.0001:  # tuned in wu
 		return Vector2.ZERO
 	return yielded
@@ -2758,12 +2771,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		var leftover: Vector2 = _yield_step_away_from_contact(dir)
 		var leftover_len: float = leftover.length()
 		if leftover_len < 0.0001:  # tuned in wu
-			# Fully into contact: the wall dissipates commanded speed (friction),
-			# the same way arrival bleeds speed when standing on the point. Not
-			# an inert leftover -- the number falls because the drive yielded.
-			_current_speed = move_toward(_current_speed, 0.0, decel * delta)
+			# Fully into contact: bleed commanded speed at the arrival brake rate
+			# (same friction as standing on the ordered point). Flag still-moving
+			# so the idle-coast block below cannot step forward into contact on
+			# this tick or rebuild travel_dir from facing when velocity hits zero.
+			_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
 			state = State.MOVING
-			_moved_last_frame = false
+			_moved_last_frame = true
 			_approach_velocity = Vector2.ZERO
 			position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
 			position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)

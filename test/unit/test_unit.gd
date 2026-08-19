@@ -3579,6 +3579,67 @@ func test_formed_turn_move_to_still_closes_into_contact() -> void:
 	PathField.active = old_pf
 
 
+func test_yield_step_away_from_contact_relaxes_two_flanking_enemies() -> void:
+	# Sequential per-enemy projection is order-dependent: a march into a wedge
+	# can reintroduce an into-contact component against the first enemy. Relax
+	# until every normal is satisfied.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.team = 0
+	u.position = Vector2.ZERO
+	var c_dist: float = u.attack_range + Unit.RADIUS + Unit.RADIUS - 1.0
+	var flank_a := _make_unit()
+	flank_a.team = 1
+	flank_a.position = Vector2(c_dist * 0.5, c_dist * 0.8660254)
+	var flank_b := _make_unit()
+	flank_b.team = 1
+	flank_b.position = Vector2(c_dist * 0.5, -c_dist * 0.8660254)
+	var dir := Vector2.RIGHT
+	var leftover: Vector2 = u._yield_step_away_from_contact(dir)
+	if leftover == Vector2.ZERO:
+		assert_gt(dir.dot((flank_a.position - u.position).normalized()), 0.0,
+				"sanity: head-on march into a wedge is fully blocked")
+		assert_gt(dir.dot((flank_b.position - u.position).normalized()), 0.0,
+				"sanity: head-on march into a wedge is fully blocked")
+	else:
+		var leftover_dir: Vector2 = leftover.normalized()
+		for other in [flank_a, flank_b]:
+			var toward: Vector2 = other.position - u.position
+			var normal: Vector2 = toward.normalized()
+			assert_lte(leftover_dir.dot(normal), 0.001,
+					"the relaxed step must not walk into either flanking contact")
+	PathField.active = old_pf
+
+
+func test_orderly_blocked_at_contact_does_not_idle_coast_forward() -> void:
+	# End-to-end through _physics_process: when yield fully blocks an orderly
+	# march, the same tick's idle-coast path must not rebuild travel_dir from
+	# facing and creep ~15-20 wu into contact.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.team = 0
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._current_speed = u.walk_speed
+	u._approach_velocity = Vector2.RIGHT * u.walk_speed
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	u.set_current_order(Order.new_move(Vector2(200, 0)))
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(u.attack_range + Unit.RADIUS + enemy.RADIUS - 1.0, 0)
+	u._in_enemy_contact = true
+	var before_x: float = u.position.x
+	var dt: float = 1.0 / float(Replay.PHYSICS_TPS)
+	for _i in range(60):
+		u._physics_process(dt)
+	assert_lte(u.position.x - before_x, 0.5,
+			"blocked yield must not idle-coast the regiment forward into contact")
+	PathField.active = old_pf
+
+
 func test_engaged_soldier_indices_memoizes_within_the_same_physics_tick() -> void:
 	# Called from up to six places per tick; the second call with the same
 	# (Engine.get_physics_frames(), count) must reuse the first call's cached result rather
