@@ -18,6 +18,9 @@ then grow outward.
   the phased roadmap. The campaign map stays 2D.
 - **Art:** **CC0 only** -- Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
   - ⚠️ **Not** commercial-game mod assets -- they are copyrighted, not public domain.
+- **Commercial Total War engines:** stay on Godot. REX/M2EX (and any leaked CA
+  source or patched RTW/M2TW executable) are design-only; do not reconstruct,
+  disassemble, or vendor them. See [`docs/related-games.md`](docs/related-games.md).
 - **First milestone:** one self-contained tactical battle. No campaign map yet.
 - **Performance target (#549, hardware floor revised with #69):** **60fps at a representative
   large-battle scale** (several hundred soldiers across multiple regiments, actively engaged

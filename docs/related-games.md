@@ -61,6 +61,7 @@ an automatic yes.
 | [godot-open-rts](https://github.com/lampe-games/godot-open-rts) | 3D RTS demo in Godot 4 | **MIT** | verify per asset | ✅ | verify | High -- reference implementation of 3D selection, movement, and camera in Sparta's own engine |
 | [Divide et Impera](https://divideetimperamod.com/) | Total-overhaul **mod** for Total War: Rome II | proprietary (built on CA/Sega's game) | proprietary | 🚫 | 🚫 | **High for design only** -- historical realism, supply/population/reform systems, 2000+ unit rosters |
 | [M2TWEOP](https://github.com/EOP-Labs/M2TWEOP-library) | Engine-overhaul **mod framework** for Medieval II: Total War | GPL-3.0 | game data proprietary (CA/Sega) | ⛔ | 🚫 | **High for design only** -- a published schema of a shipped Total War title's runtime state: morale and combat-status ladders, a battle-event taxonomy, an army-plan vocabulary |
+| [REX / M2EX](https://github.com/Pannoniae/rex) | Unofficial x64 / DX11 **replacement executable** for Rome: Total War and Medieval II: Total War | none published (patched CA/Sega binaries) | game data proprietary (CA/Sega) | 🚫 | 🚫 | **High for design only -- do not reconstruct.** Public GitHub is docs and changelogs, not engine source; rebuilding it is a multi-year commercial-engine problem that conflicts with Sparta's Godot / bottom-up pillars |
 | [Renaissance Kingdom Wars](https://store.steampowered.com/app/2533020/Renaissance_Kingdom_Wars/) | Real-time strategy + grand-strategy hybrid | proprietary | proprietary | 🚫 | 🚫 | **High for design only** -- RTS tactical battles fused with a province-conquest grand-strategy layer; mercenary-to-empire progression |
 | [awesome-paradox](https://github.com/js00070/awesome-paradox) | Curated list of Paradox-related projects | n/a (link list) | n/a | -- | -- | Pointers to grand-strategy / **dynasty** design and OSS reimplementations |
 
@@ -205,7 +206,9 @@ Most of its stated feature set is limit-breaking and re-exposure rather than new
 mechanics -- raising the unit-roster cap, unlocking console commands, fixing
 engine bugs.
 
-That makes it a different **kind** of entry from every other row here.
+That makes it a different **kind** of entry from the standalone games above
+(REX/M2EX, next, is the other engine-patch row, but it ships binaries rather
+than a published schema).
 We are not reading it for its own design.
 Its generated Lua reference (`docs/_static/LuaLib/index.html`) is in effect a
 **published schema of a shipped Total War title's runtime state**: an itemised
@@ -297,6 +300,90 @@ reads as an outcome.
   also carries LGPL FFmpeg and BeaEngine and a proprietary Autodesk FBX SDK; none
   of it is usable from GDScript, so the question is moot.
 
+### REX / M2EX (Pannoniae)
+
+Not an open-source engine. [Pannoniae/rex](https://github.com/Pannoniae/rex) is
+the public hub for **REX** (Rome: Total War) and **M2EX** (Medieval II: Total
+War): unofficial patches that replace the Steam executables with a 64-bit,
+Direct3D 11 overhaul of Creative Assembly's 2004/2006 games. The GitHub repo
+itself is about 78 KB -- a README, three `modding/*.md` notes, and dumped
+scripting/console tables under `scripting/{rtwdocs,m2docs}/`. Language stats are
+empty; there is no published licence. Releases ship Windows binaries that patch
+a retail copy. Reconstructing REX therefore means reconstructing those two
+commercial engines, then re-doing the overhaul on top.
+
+**The finding that frames everything else:** REX already *is* the reconstruction.
+Its March-August 2026 changelogs name full subsystems, not tweaks -- x64 runtime
+and hardcoded-cap removal (factions, regions, religions, cultures, pack size
+above 4 GB); a DX9-to-DX11 renderer then HDR, cascaded shadows, PBR, dynamic
+lights, LOD fading, and a campaign-map rewrite that cut VRAM from roughly 1-2 GB
+to 15 MB; battle combat (including vanilla bugs they claim to have fixed: spear,
+high-ground, pikes, muskets, two-handers) plus formations, sieges, and projectile
+physics accurate enough to drive terrain-following range rings; campaign AI,
+fog-of-war, and end-turns they report as 20-40x faster; a new pack format, packer,
+and 7-zip plugin. Rome 2 was publicly described as about 3 million lines of code.
+RTW/M2TW are older and smaller, but still a complete AAA strategy product of that
+era. A clean rebuild is years of specialist work even with source. Without source
+it is longer.
+
+That is a different kind of entry from M2TWEOP above. M2TWEOP publishes a Lua
+schema of live engine state we can read. REX publishes replacement executables
+we cannot vendor, plus changelogs of *what* they added, not *how* the sim works.
+
+**Difficulty by approach (so we do not re-open the question):**
+
+- **Read what is already public -- hours to days.** Changelog, the three
+  `modding/*.md` files, and the dumped script/console tables. This is the
+  legitimate harvest.
+- **Reimplement documented TW combat rules in Godot -- weeks.** The modding
+  community already published EDU chance-to-kill formulas (the
+  [Complete EDU Guide (RTW)](https://wiki.twcenter.net/index.php?title=Complete_EDU_Guide_%28RTW%29)).
+  That is gameplay design research, not binary reconstruction. It also conflicts
+  with Sparta's locked pillar in [`PLAN.md`](../PLAN.md): bottom-up emergence
+  from soldier physics, not a top-down `1.1^(ATK - DEF)` lookup. Do not import
+  those formulas into combat resolution.
+- **Clean-room reconstruction of the engine -- multi-year, specialist team.**
+  Two related-but-not-identical games, tightly coupled renderer / sim / AI /
+  data, no public symbols. REX's own pace (first public release around March
+  2026, DX11/HDR/PBR by August) is only plausible with deep engine access;
+  community threads argue about leaked CA source versus binary patching.
+  Either path is a copyright problem, not a coding exercise. Out of bounds
+  here: no disassembly, no leaked trees, no patched-exe archaeology.
+- **Copy REX's binary into Sparta -- not a shortcut.** Sparta is Godot 4.7
+  GDScript, 2D-sim-first, CC0 art only. Dropping in a Direct3D C++ Total War
+  executable would throw away the existing battle, the 3D-presentation plan
+  ([#69](https://github.com/Lacaedemon/sparta/issues/69)), and the licence
+  stance.
+
+**Is it worth it?** For playing RTW/M2TW on modern PCs, REX already exists;
+reconstructing it duplicates that project. For Sparta, no. The valuable bits
+are design observations (range rings that follow projectile physics,
+formation-attack, pike/musket feel, silhouette readability), which come from
+changelogs and play. The expensive bits (DX11 port, pack format, campaign AI,
+hardcoded-limit surgery) are solving CA's 2004 engine, not Sparta's. Sparta
+already has the hard differentiating piece in progress: collision-first
+individual soldiers, formation cohesion, spear screens. Recreating REX would
+replace that with a different -- and copyrighted -- architecture.
+
+**What to take care NOT to take.** Same rule as M2TWEOP's terrain-modifier
+tables: EDU lethality formulas, per-type combat multipliers, and any other
+top-down lookup that CA used to approximate an outcome our physics should
+produce. Also the engine, the pack format, the renderer, and the campaign
+layer -- those are CA's product.
+
+**If we later want TW-like *feel* in Sparta,** stay on the Godot sim and
+harvest public design: play notes (pikes, charges, range, camera), treat TWC
+EDU/morale docs as reference for *which quantities a player notices*, and
+open roadmap issues for specific UX (range rings, unit silhouettes,
+formation-attack) when they earn a place. That is weeks of design, not years
+of engine archaeology.
+
+- **Licence:** none published on the GitHub repo; the shipped artefacts are
+  patched Creative Assembly / Sega executables plus the retail game's data.
+  🚫 **design inspiration only** -- no code, no art, no reconstruction.
+  Matches PLAN.md's "**not** commercial-game mod assets" warning and the
+  locked decision not to reconstruct commercial Total War engines.
+
 ### Renaissance Kingdom Wars (Broken Rampart Interactive)
 
 A commercial hybrid of grand strategy and real-time tactical battles, set in
@@ -381,6 +468,11 @@ art:
   offers nothing for our core sim and a great deal for morale classification,
   per-unit perception, army planning, and battle reporting -- the parts of Sparta
   that are thinnest precisely because the physics has had all the attention.
+- **Do not reconstruct REX/M2EX (or the CA engines they patch).** The GitHub
+  repo is docs, not source; rebuilding those games is a multi-year commercial-
+  engine project that would throw away Sparta's Godot sim and bottom-up combat
+  pillar. Harvest UX from public changelogs and play; never disassemble,
+  vendor, or port the replacement executables.
 
 ## Adding a game to this list
 
