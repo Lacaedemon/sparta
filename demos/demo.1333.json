@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation only: records a REX/M2EX reconstruction-difficulty review in docs/related-games.md and a matching locked decision in PLAN.md. No scenes, scripts, assets, or project settings change, so there is no gameplay behaviour for a recorded battle to show."
+}

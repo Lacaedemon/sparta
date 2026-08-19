@@ -29,6 +29,11 @@ exclude = [
   # (even after re-runs). The site is reachable in a browser, so skip it rather
   # than re-cost a CI re-run each time.
   "^https://divideetimperamod\\.com",
+  # freesound.org (linked from assets/sfx/README.md, docs/asset-sources.md)
+  # intermittently times out under lychee's 20s budget even though the site
+  # loads in a browser — same false-positive pattern as divideetimperamod.com
+  # above. Skip it rather than reddening unrelated PRs on an upstream flake.
+  "^https://freesound\\.org",
   # opengameart.org (linked from ASSETS.md, assets/sfx/CREDITS.md,
   # assets/sfx/README.md, docs/asset-sources.md, website/assets.qmd) rejects
   # lychee's automated requests with HTTP 502 Bad Gateway, even though the
