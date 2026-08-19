@@ -12,9 +12,12 @@ class_name DoctrineRegistry
 ##                              General.gd's PLAN_* constants for the recognised names).
 ##   envelop_ratio_threshold    General.select_plan picks "envelop" (if it's in `plans`) once
 ##                              the team's own living-unit count is at least this multiple of
-##                              the enemy's; otherwise "advance_line". A low threshold picks
-##                              envelop readily (aggressive); a high one needs a lopsided
-##                              advantage first (cautious).
+##                              the enemy's; otherwise "advance_line" (or the base plan).
+##                              A low threshold picks envelop readily (aggressive); a high
+##                              one needs a lopsided advantage first (cautious).
+##   defend_ratio_threshold     optional: General.select_plan picks "defend" (if known) when
+##                              the team's active unit ratio drops at or below this threshold
+##                              (e.g. falling back to defense when outnumbered).
 ##   reserve_fraction           0.0-1.0: the fraction of the team's own units held back as
 ##                              reserves instead of joining an active subcommander group.
 ##   reserve_commit_morale_threshold

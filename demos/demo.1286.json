@@ -1,0 +1,9 @@
+{
+  "input": "demos/inputs/defensive-doctrine-plan.json",
+  "caption": "Army-plan vocabulary: General.PLAN_DEFEND under the defensive doctrine profile. Unengaged enemy units hold their defensive line in formation at spawn rather than rushing forward across the field, maintaining formation integrity and mutual support when engaged.",
+
+  "fixed_fps": 30,
+  "max_frames": 360,
+  "fps": 15,
+  "width": 720
+}

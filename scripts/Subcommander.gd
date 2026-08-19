@@ -3,14 +3,15 @@ class_name Subcommander
 ## Phase 2 of the chain-of-command battle AI (docs/battle-ai-design.md): the
 ## subcommander. Keeps one unit group fighting as a group, per the design doc's
 ## "Subcommander (one per unit group)" section:
-##   - line integrity -- no unit races ahead of the group into an unsupported melee.
+##   - line integrity -- under PLAN_ADVANCE_LINE, no unit races ahead into unsupported melee.
+##   - defend hold -- under PLAN_DEFEND, unengaged units hold their ground in formation.
 ##   - mutual support -- an engaged unit's unengaged neighbor is sent to guard it.
 ##   - flank coverage -- an exposed group flank gets a repositioned unit sent to cover it.
 ##
 ## Stateless, like UnitLeader (phase 1): one entry point, decide_group(), a pure function
-## of already-serialized sim state (group + every living unit), called once per AI tick
-## from Battle._run_enemy_ai(). No RNG, no wall-clock, no node-iteration-order dependence
-## beyond what the caller already controls -- same seed -> same perception -> same
+## of already-serialized sim state (group + every living unit + current plan), called once
+## per AI tick from Battle._run_enemy_ai(). No RNG, no wall-clock, no node-iteration-order
+## dependence beyond what the caller already controls -- same seed -> same perception -> same
 ## directives, so replay re-derives them exactly like every other AI decision.
 ##
 ## Group assignment (phase 2 scope, per the design doc's own "start static" open-question
@@ -30,13 +31,13 @@ class_name Subcommander
 ##   {"type": DIRECTIVE_COVER_FLANK, "x": float, "y": float}  -- reposition to cover this point.
 ##
 ## Priority when more than one behaviour could claim the same unit this tick: mutual
-## support first, flank coverage second, line integrity last. Support and flank coverage
-## are reactions to an immediate threat (an ally already fighting, an enemy already closing
-## on an open flank); line integrity is standing discipline with no urgency behind it. A
-## unit already claimed by a higher-priority directive this tick is never reassigned by a
-## lower one (see the `directives.has(uid)` guards throughout). This mirrors UnitLeader's
-## own documented priority order (flank threat > square > relief > fallback): react to the
-## sharpest need first.
+## support first, flank coverage second, line integrity / defend-hold last. Support and flank
+## coverage are reactions to an immediate threat (an ally already fighting, an enemy already
+## closing on an open flank); line integrity and defensive line holding are standing discipline
+## with no urgency behind them. A unit already claimed by a higher-priority directive this tick
+## is never reassigned by a lower one (see the `directives.has(uid)` guards throughout). This
+## mirrors UnitLeader's own documented priority order (flank threat > square > relief > fallback):
+## react to the sharpest need first.
 
 const DIRECTIVE_SUPPORT := "support"
 const DIRECTIVE_HOLD_LINE := "hold_line"
