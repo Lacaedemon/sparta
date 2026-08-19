@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Doc-only change: replaces non-standard characters in .agents/AGENTS.md."
+  "reason": "Docs-only correction to docs/individual-collision-design.md ranged-casualty wording -- no executable code or gameplay behavior changed."
 }
