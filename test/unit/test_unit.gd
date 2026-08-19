@@ -3512,6 +3512,73 @@ func test_in_enemy_contact_is_false_with_no_enemy_nearby() -> void:
 	assert_false(u._in_enemy_contact, "no enemy nearby -- no contact recorded")
 
 
+func test_orderly_move_to_does_not_advance_into_contact() -> void:
+	# A player-move (orderly) march yields the into-contact component: commanding
+	# the block through an enemy already in physical contact is how rear ranks
+	# over-compress against an arrested front. Combat approaches (formed_turn)
+	# still close -- covered by the formed_turn counterpart below.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.team = 0
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._current_speed = u.walk_speed
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)
+	u._in_enemy_contact = true
+	var before: Vector2 = u.position
+	u._move_to(Vector2(200, 0), 0.1, true)
+	assert_almost_eq(u.position.x, before.x, 0.01,
+		"an orderly march does not step into a contacting enemy")
+	assert_almost_eq(u.position.y, before.y, 0.01,
+		"and it does not slide off-axis either when the command is head-on")
+	PathField.active = old_pf
+
+
+func test_orderly_move_to_still_walks_away_from_contact() -> void:
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.team = 0
+	u.position = Vector2.ZERO
+	u.facing = Vector2.LEFT
+	u._current_speed = u.walk_speed
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)
+	u._in_enemy_contact = true
+	var before: Vector2 = u.position
+	u._move_to(Vector2(-200, 0), 0.1, true)
+	assert_lt(u.position.x, before.x,
+		"an orderly march away from contact is not blocked -- disengage still works")
+	PathField.active = old_pf
+
+
+func test_formed_turn_move_to_still_closes_into_contact() -> void:
+	# Combat approaches have to cover the gap between either-side contact range
+	# and this unit's own in_contact gate. Yielding those would stall a shorter-
+	# reach charger short of its strike range; _press_into takes over only once
+	# fighting has started.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_unit()
+	u.team = 0
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._current_speed = u.walk_speed
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)
+	u._in_enemy_contact = true
+	var before: Vector2 = u.position
+	u._move_to(Vector2(200, 0), 0.1, false, true)
+	assert_gt(u.position.x, before.x,
+		"a combat approach still closes into contact -- yield is orderly-only")
+	PathField.active = old_pf
+
+
 func test_engaged_soldier_indices_memoizes_within_the_same_physics_tick() -> void:
 	# Called from up to six places per tick; the second call with the same
 	# (Engine.get_physics_frames(), count) must reuse the first call's cached result rather

@@ -1899,6 +1899,26 @@ Stop the unit and it re-engages anything nearby. Timing the disengage --- late e
 that the enemy is committed, early enough that you survive the exit --- is one of the
 game's sharper decisions.
 
+A move order that would walk a regiment *through* an enemy it is not fighting still
+arrests at contact. The kinematic march yields rather than compressing the rear ranks
+into a front that is already held; go around, or wait for a gap.
+
+::: {#fig-disengaged-march-through-contact .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/disengaged_march_through_contact.jpg">
+  <source src="media/disengaged_march_through_contact.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A player Infantry regiment is ordered straight through a held enemy line. The
+front arrests at contact and the rear ranks stay dressed instead of compressing
+into the held men.
+:::
+
 A move order given while the unit is still fighting takes hold right away --- the unit
 starts marching off toward the new destination immediately, it doesn't hold the line and
 keep trading blows first. If no real fight happened under this order, the march just

@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/subunits-phase-4-reform.json",
-  "caption": "Subunits Phase 4 reform (#1330): Narrowing frontage by 1 file folds the flank file into nearest-rear ranks, routing relocating soldiers along the outer flank and rear perimeter corridors to prevent penetrating standing ranks.",
+  "input": "demos/inputs/disengaged-march-through-contact.json",
+  "caption": "Orderly march yields to contact (#1238): a player Infantry ordered straight through a held enemy line arrests at the front instead of compressing its rear ranks into the contact.",
   "fixed_fps": 30,
-  "max_frames": 320,
+  "max_frames": 210,
   "fps": 15,
   "width": 720
 }
