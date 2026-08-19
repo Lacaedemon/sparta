@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Infra-only change: bootstraps ai-config for Gemini/AGY without altering gameplay."
+  "reason": "Docs-only correction to docs/individual-collision-design.md ranged-casualty wording — no executable code or gameplay behavior changed."
 }

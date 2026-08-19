@@ -11,8 +11,12 @@ morale, rout, and the HUD now read soldier deaths for the engaged-melee case. Kn
 prone, depth bracing, and stamina are wired (#201 slices A-D); friendly soldier collision
 is soldier-level (phase 5 slice 1).
 
-**Still regiment-level (the remaining authority work):** ranged casualties (decrement
-`soldiers` and trim arbitrary rear bodies, not arrow-targeted), morale (a regiment scalar,
+**Still regiment-level (the remaining authority work):** ranged casualty *count*
+(`UnitCombat.shoot` still derives one volley size from regiment scalars and one RNG roll;
+distribution then zeroes the nearest living soldiers to the volley origin in the health
+pool via `SoldierMelee.apply_ranged_casualties`, not arbitrary rear trim -- but each kill
+is still guaranteed with no per-soldier shield/armour contest). Full per-shooter,
+per-target resolution is tracked in #1186 / #435. Morale (a regiment scalar,
 not derived from soldier state), and **enemy** soldier-vs-soldier collision + retiring the
 regiment circle -- the last is deferred to **#201** (stopping a charge needs momentum/mass;
 see the phase-5 note below and #296). #201's momentum physics landed (#749), but a live
@@ -263,8 +267,9 @@ that follow-up promised has now landed too (#983), as `Unit.ORDER_GIVE_GROUND` /
 passive default -- an engaged unit under this order backs away from its nearest enemy at a
 constant rate REGARDLESS of reach comparison (no ramp, no reach gate), and overrides the
 passive outreached-press bias above for the same soldier when both would otherwise apply.
-The next authority slices are ranged casualties (kill soldiers in the
-health pool) and morale-from-soldier-state; retiring the regiment circle's enemy-collision
+The next authority slices are ranged resolution (per-shooter launch and per-target
+opposed impact, replacing the regiment volley count -- see #1186) and
+morale-from-soldier-state; retiring the regiment circle's enemy-collision
 branches is unblocked on the momentum/mass side (#783 closed via #784's engaged-weighted
 body coupling -- see the phase-5 note above) but still needs its own residual-transient fix
 before that retirement is safe (tracked on #296).
