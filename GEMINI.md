@@ -7,7 +7,13 @@ Sparta is a **Godot 4.7** (GDScript, Standard build -- not .NET/C#) prototype fu
 
 Claude Code sessions get the portable skills and memories from [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) through the **Plugin Marketplace**, registered in `.claude/settings.json`.
 
-**Gemini and AGY sessions do not.** The `.ai-config` submodule that used to supply them was removed (#1249), and there is no marketplace equivalent, so a Gemini session in this repo sees only the skills and memories under `.gemini/` and `.claude/` (per `.gemini/config.json`). Issue #1250 tracks whether to give Gemini a route back to the shared corpus or to accept the narrower context deliberately.
+**Gemini and AGY sessions** get the same corpus through a **repo-local bootstrap checkout** instead of a git submodule:
+
+```bash
+tools/bootstrap-ai-config.sh
+```
+
+That shallow-clones ai-config into `.ai-config/` (gitignored, pinned by the committed `.ai-config-ref`) and initializes its `sembr-skills` submodule. `.gemini/config.json`, `.agents/plugins.json`, and `.agents/skills.json` then point at the checkout the same way the old submodule did. Run the bootstrap once per fresh clone before a Gemini/AGY session; re-run after bumping `.ai-config-ref`.
 
 ## Project memories
 

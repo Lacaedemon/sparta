@@ -16,6 +16,9 @@ mono_crash.*
 # Test framework (GUT) is vendored at CI/dev time, not committed — see test/README.md
 /addons/gut/
 
+# Shared ai-config corpus for Gemini/AGY (bootstrapped via tools/bootstrap-ai-config.sh)
+/.ai-config/
+
 # Test artifacts
 test_results.xml
 import.log
