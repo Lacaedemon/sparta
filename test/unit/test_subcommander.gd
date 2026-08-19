@@ -242,3 +242,46 @@ func test_support_takes_priority_over_a_hold_line_directive_on_the_same_unit() -
 	assert_eq(directives, {
 		a.uid: {"type": SubcommanderScript.DIRECTIVE_SUPPORT, "ward_uid": fighter.uid},
 	}, "a claimed by support, not also (or instead) held back for line integrity")
+
+
+# --- defend plan directives --------------------------------------------------------
+
+func test_defend_plan_holds_idle_units_at_their_positions() -> void:
+	var a := _unit(1, Vector2(500, 700))
+	var b := _unit(2, Vector2(600, 700))
+	var c := _unit(3, Vector2(700, 700))
+	var enemy := _unit(4, Vector2(600, 200), 0)
+	var group: Array = [a, b, c]
+	var all_units: Array = [a, b, c, enemy]
+
+	var directives: Dictionary = SubcommanderScript.decide_group(
+		group, all_units, "defend")
+
+	assert_eq(directives.size(), 3, "every idle unit receives a defensive hold directive")
+	assert_eq(directives[a.uid], {"type": SubcommanderScript.DIRECTIVE_HOLD_LINE, "x": 500.0, "y": 700.0})
+	assert_eq(directives[b.uid], {"type": SubcommanderScript.DIRECTIVE_HOLD_LINE, "x": 600.0, "y": 700.0})
+	assert_eq(directives[c.uid], {"type": SubcommanderScript.DIRECTIVE_HOLD_LINE, "x": 700.0, "y": 700.0})
+
+
+func test_defend_plan_preserves_mutual_support_priority() -> void:
+	var fighter := _unit(1, Vector2(500, 700))
+	fighter.state = Unit.State.FIGHTING
+	var supporter := _unit(2, Vector2(550, 700))
+	var idle := _unit(3, Vector2(700, 700))
+	var enemy := _unit(4, Vector2(500, 680), 0)
+	var group: Array = [fighter, supporter, idle]
+	var all_units: Array = [fighter, supporter, idle, enemy]
+
+	var directives: Dictionary = SubcommanderScript.decide_group(
+		group, all_units, "defend")
+
+	assert_eq(directives[supporter.uid], {
+		"type": SubcommanderScript.DIRECTIVE_SUPPORT,
+		"ward_uid": fighter.uid,
+	}, "supporter is dispatched to help the fighting neighbor")
+	assert_eq(directives[idle.uid], {
+		"type": SubcommanderScript.DIRECTIVE_HOLD_LINE,
+		"x": 700.0,
+		"y": 700.0,
+	}, "unengaged idle unit continues holding position")
+

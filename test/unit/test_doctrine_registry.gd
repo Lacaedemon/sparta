@@ -82,8 +82,15 @@ func test_cautious_profile_loads_and_favors_holding_reserves() -> void:
 	assert_false(d["pursue_routers"], "cautious doctrine holds the line instead of pursuing")
 
 
+func test_defensive_profile_loads_and_favors_holding_formation() -> void:
+	var d := DoctrineRegistryScript.doctrine("defensive")
+	assert_false(d.is_empty(), "data/doctrines/defensive.json parses")
+	assert_eq(d["plans"], ["defend", "envelop"] as Array[String])
+	assert_false(d["pursue_routers"], "defensive doctrine holds the line instead of pursuing")
+
+
 func test_the_two_shipped_profiles_have_genuinely_different_parameters() -> void:
-	# The whole point of two profiles: they must differ on more than just their name, or
+	# The whole point of distinct profiles: they must differ on more than just their name, or
 	# there is nothing for "two doctrines produce visibly different behavior" to demonstrate.
 	var aggressive := DoctrineRegistryScript.doctrine("aggressive")
 	var cautious := DoctrineRegistryScript.doctrine("cautious")
@@ -99,3 +106,5 @@ func test_doctrine_ids_lists_both_shipped_profiles() -> void:
 	var ids := DoctrineRegistryScript.doctrine_ids()
 	assert_true(ids.has("aggressive"))
 	assert_true(ids.has("cautious"))
+	assert_true(ids.has("defensive"))
+

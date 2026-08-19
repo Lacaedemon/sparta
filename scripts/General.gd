@@ -45,6 +45,14 @@ class_name General
 
 const PLAN_ADVANCE_LINE := "advance_line"
 const PLAN_ENVELOP := "envelop"
+const PLAN_DEFEND := "defend"
+const PLAN_DEFEND_FEATURE := "defend_feature"
+const PLAN_WITHDRAW := "withdraw"
+const PLAN_AMBUSH := "ambush"
+const PLAN_HIDE := "hide"
+const PLAN_SCOUT := "scout"
+const PLAN_HOLD := "hold"
+const PLAN_DO_NOTHING := "do_nothing"
 
 
 ## Decide this AI tick's army-level decision for one team. `team_units` is the team's whole
@@ -157,15 +165,17 @@ static func should_commit_reserves(active: Array, threshold: float) -> bool:
 	return (weighted_morale / float(total_soldiers)) < threshold
 
 
-## Which of the doctrine's known plans applies this tick. A simple, legible utility: "envelop"
-## (if the doctrine knows it) once the team's own active unit count is at least
-## envelop_ratio_threshold times the living enemy count; otherwise (or if the doctrine doesn't
-## know "envelop" at all, or there's no living enemy to measure against) "advance_line". Purely
-## a function of unit COUNTS -- no positional reasoning here, that's assign_groups' (and, at
+## Which of the doctrine's known plans applies this tick. Evaluates the doctrine's available
+## plans based on force ratios:
+##   - "envelop" (if known) once the active unit ratio clears envelop_ratio_threshold;
+##   - "defend" (if known) once the active unit ratio falls at or below defend_ratio_threshold,
+##     or as base plan if defend is primary/sole plan;
+##   - otherwise "advance_line" (or the doctrine's primary plan).
+## Purely a function of unit COUNTS -- no positional reasoning here, that's assign_groups' (and, at
 ## the per-unit level, Subcommander's own) job once the groups exist.
 static func select_plan(active: Array, all_units: Array, doctrine: Dictionary) -> String:
 	var plans: Array = doctrine.get("plans", [])
-	if not plans.has(PLAN_ENVELOP) or active.is_empty():
+	if active.is_empty():
 		return PLAN_ADVANCE_LINE
 	var team: int = (active[0] as Unit).team
 	var enemy_count: int = 0
@@ -175,10 +185,27 @@ static func select_plan(active: Array, all_units: Array, doctrine: Dictionary) -
 				and e.state != Unit.State.ROUTING:
 			enemy_count += 1
 	if enemy_count == 0:
-		return PLAN_ADVANCE_LINE
+		if plans.has(PLAN_ADVANCE_LINE):
+			return PLAN_ADVANCE_LINE
+		return str(plans[0]) if not plans.is_empty() else PLAN_ADVANCE_LINE
+
 	var ratio: float = float(active.size()) / float(enemy_count)
-	var threshold: float = float(doctrine.get("envelop_ratio_threshold", INF))
-	return PLAN_ENVELOP if ratio >= threshold else PLAN_ADVANCE_LINE
+	if plans.has(PLAN_ENVELOP):
+		var envelop_thresh: float = float(doctrine.get("envelop_ratio_threshold", INF))
+		if ratio >= envelop_thresh:
+			return PLAN_ENVELOP
+
+	if plans.has(PLAN_DEFEND):
+		if doctrine.has("defend_ratio_threshold"):
+			var defend_thresh: float = float(doctrine.get("defend_ratio_threshold", 0.0))
+			if ratio <= defend_thresh:
+				return PLAN_DEFEND
+		elif not plans.has(PLAN_ADVANCE_LINE) or str(plans[0]) == PLAN_DEFEND:
+			return PLAN_DEFEND
+
+	if plans.has(PLAN_ADVANCE_LINE):
+		return PLAN_ADVANCE_LINE
+	return str(plans[0]) if not plans.is_empty() else PLAN_ADVANCE_LINE
 
 
 ## The fewest units a wing may have and still be worth splitting off as its own Subcommander
