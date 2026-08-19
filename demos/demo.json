@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Infra-only change: bootstraps ai-config for Gemini/AGY without altering gameplay."
+  "reason": "Doc-only change: replaces non-standard characters in .agents/AGENTS.md."
 }

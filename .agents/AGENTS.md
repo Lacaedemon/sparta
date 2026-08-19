@@ -47,6 +47,6 @@ There is no backend/server/database -- everything runs inside the Godot engine.
   first: Godot 4.7 Standard (`/usr/local/bin/godot`), then `gdtoolkit==4.5.0`
   (provides `gdlint`/`gdformat`).
 - **Godot exit noise:** headless runs may print warnings/errors about leaked
-  rendering resources (“CanvasItem … were leaked”, “ObjectDB instances … leaked”,
-  “resources still in use at exit”). `tools/check.sh` still treats the suite as
+  rendering resources ("CanvasItem ... were leaked", "ObjectDB instances ... leaked",
+  "resources still in use at exit"). `tools/check.sh` still treats the suite as
   passing when the GUT summary is clean, so don't confuse this with failing tests.
