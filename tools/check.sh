@@ -844,7 +844,7 @@ check_chars() {
   local files=()
   while IFS= read -r -d '' f; do
     files+=("$f")
-  done < <(cd "$PROJECT_ROOT" && git ls-files -z '*.qmd' '*.R')
+  done < <(cd "$PROJECT_ROOT" && git ls-files -z '*.qmd' '*.R' '*.md')
   if [ ${#files[@]} -eq 0 ]; then
     info "No docs to check."
     return 0

@@ -1,5 +1,5 @@
 {
-  "_comment": "Canonical list of non-standard characters banned in .qmd and .R files. Synchronized with Morrison-Lab/gha/check-non-standard-chars.",
+  "_comment": "Canonical list of non-standard characters banned in .qmd, .R, and .md files. Synchronized with Morrison-Lab/gha/check-non-standard-chars.",
   "banned_characters": [
     {
       "codepoint": "U+201C",
