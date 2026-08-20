@@ -509,14 +509,14 @@ dominoes. The per-soldier bracing term is itself emergent:
 
 $$\mathrm{br} = \operatorname{clip}\!\big(\mathrm{br}_0
   + b_{\mathrm{post}}
-  + w_f\,[\text{formation} = \textsf{TIGHT}]
+  + w_f\,[\text{formation} \in \textsf{CLOSE\_ORDER}]
   + w_d\,(\hat{n}\cdot\hat{u}_{\text{incoming}})_+ ,\; 0,\; 1\big),$$
 
 i.e. starting from a baseline $\mathrm{br}_0$, a soldier is more braced in a **set
 posture** ($b_{\mathrm{post}}$ from the posture table -- max when *braced*, near zero
-when *sprinting*, *at ease*, or *prone*), in **tight formation** (weight $w_f$ on the
-indicator $[\,\text{formation} = \textsf{TIGHT}\,]$, which is $1$ when its condition
-holds and $0$ otherwise), and **facing into** the blow (weight $w_d$ on the last
+when *sprinting*, *at ease*, or *prone*), in **close-order formation** (weight $w_f$ on the
+indicator $[\,\text{formation} \in \textsf{CLOSE\_ORDER}\,]$, which is $1$ for close-order
+stances `TIGHT`, `SHIELD_WALL`, `TESTUDO`, `SQUARE`, `SCHILTRON` and $0$ otherwise), and **facing into** the blow (weight $w_d$ on the last
 term -- the facing $\hat{n}$ dotted with the incoming direction, clamped
 non-negative -- the *same* facing that gates active defence). A loose, flanked, sprinting, or routing
 file has $\mathrm{br}\to 0$, dominoes, and goes down; a *braced*, tight,
@@ -528,7 +528,7 @@ front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 > attention," `BRACE_BASELINE_ENGAGED`); ordering `ORDER_BRACE` and holding still
 > (`current_speed` at or below `BRACE_STILL_SPEED`) for `BRACE_SETTLE_TIME` seconds -- the
 > doc's $T_{\mathrm{post}}$, "you must be set before it arrives" -- adds the full
-> `BRACE_SET_BONUS`, and a tight formation adds a further `BRACE_TIGHT_BONUS` ($w_f$ above);
+> `BRACE_SET_BONUS`, and any close-order formation (`Unit.is_tight_formation()`) adds a further `BRACE_TIGHT_BONUS` ($w_f$ above);
 > motion still under way subtracts a penalty scaled by `current_speed`. `ORDER_SKIRMISH`
 > still forces 0. The $w_d$ facing term is deliberately not folded into this formula -- it is
 > already enforced at the call site (`SoldierMelee.resolve`'s front-facing-only rearward file
