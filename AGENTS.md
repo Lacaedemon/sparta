@@ -1,4 +1,16 @@
-# Agent Rules
+# AGENTS.md -- shared rules for AGENTS.md-standard coding agents
+
+This is the [`AGENTS.md`](https://agents.md/) standard file, read from the repo
+root by hosted coding agents including **[jules.google](https://jules.google/docs/)**,
+OpenAI Codex, Cursor, and Amp. It holds the environment and workflow rules those
+agents need; it lives at the repo root (not in a subdirectory) so they actually
+discover it.
+
+Sparta is a **Godot 4.7** (GDScript, Standard build -- not .NET/C#) prototype
+fusing dynastic grand strategy with real-time tactical battles. Read `PLAN.md`
+first for project vision, roadmap, architecture, and verification steps; see
+`README.md` for layout. Agent-specific orientation docs live alongside this one:
+`CLAUDE.md` (Claude Code) and `GEMINI.md` (Gemini / Google Antigravity).
 
 ## PowerShell CLI Command Safety
 - **Never inline Markdown backticks in PowerShell double quotes**: PowerShell interprets `` `b `` as an ASCII Backspace control character (`0x08`).
@@ -14,7 +26,7 @@
 ## GDScript Performance Best Practices
 - **Distance Checks**: Prefer using `distance_squared_to()` over `distance_to()` when comparing against distance thresholds, as it bypasses the expensive square root operation.
 
-## Cursor Cloud specific instructions
+## Cloud agent environment (Jules, Cursor Cloud, and other hosted runners)
 This repo is a single product: a **Godot 4.7 Standard** (GDScript) game with two
 modes launched from `scenes/MainMenu.tscn` -- the real-time tactical **Battle**
 (`scenes/Battle.tscn`) and the turn-based **Campaign** (`scenes/Campaign.tscn`).
