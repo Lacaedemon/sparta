@@ -5,8 +5,8 @@
     {"team": 0, "type": "Infantry", "x": 575,  "y": 490, "count": 120},
     {"team": 1, "type": "Infantry", "x": 575,  "y": 510, "count": 120}
   ],
-  "steps": [
-    { "tick": 50, "camera": { "x": 600, "y": 500, "zoom": 1.0 } },
-    { "tick": 100, "action": "stop" }
-  ]
+  "camera": [
+    { "tick": 50, "x": 600, "y": 500, "zoom": 1.0 }
+  ],
+  "steps": []
 }
