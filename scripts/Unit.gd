@@ -5373,7 +5373,7 @@ func is_delegated() -> bool:
 ## it here too would double-count it.
 const BRACE_BASELINE_ENGAGED: float = 0.35  # br_0: merely engaged, not explicitly set
 const BRACE_SET_BONUS: float = 0.65         # added once ORDER_BRACE has settled
-const BRACE_TIGHT_BONUS: float = 0.15       # w_f: FORMATION_TIGHT gets extra margin
+const BRACE_TIGHT_BONUS: float = 0.15       # w_f: any close-order formation (is_tight_formation()) gets extra margin
 const BRACE_MOTION_PENALTY: float = 0.5     # scaled by how fast the regiment is moving
 const BRACE_MOTION_REF_SPEED: float = CHARGE_REFERENCE_SPEED
 const BRACE_STILL_SPEED: float = 5.0        # wu/s; at or below this counts as "stationary"

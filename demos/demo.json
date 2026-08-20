@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Tooling-only change: synchronizes tools/check.sh chars check with CI."
+  "reason": "Combat-balance change: all close-order formations now get the tight brace bonus. Best shown via state dump, not a clip."
 }
