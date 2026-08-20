@@ -1,5 +1,5 @@
 {
-  "_comment": "Close-order brace bonus (#1132): a Square Infantry regiment (formation 7, set at spawn) braces against a frontal cavalry charge. Square now receives the same +0.15 tight brace bonus that only Tight had before this PR -- watch the regiment hold firmer than it would pre-fix. The cavalry spawns below and advances into the stationary Square; Ctrl+H issues HOLD so the defender doesn't chase.",
+  "_comment": "Close-order brace bonus (#1132): a Square Infantry regiment (formation 3, set at spawn) braces against a frontal cavalry charge. Square now receives the same +0.15 tight brace bonus that only Tight had before this PR -- watch the regiment hold firmer than it would pre-fix. The cavalry spawns below and advances into the stationary Square; Ctrl+H issues HOLD so the defender doesn't chase.",
   "seed": "12345",
   "scenario": [
     {"team": 0, "type": "Infantry", "x": 800, "y": 400, "count": 120, "formation": 3},
