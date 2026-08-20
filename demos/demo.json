@@ -1,4 +1,0 @@
-{
-  "skip": true,
-  "reason": "Tooling-only change: synchronizes tools/check.sh chars check with CI."
-}
