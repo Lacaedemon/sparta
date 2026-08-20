@@ -3486,6 +3486,17 @@ func in_schiltron() -> bool:
 	return formation_mode == FORMATION_SCHILTRON
 
 
+## True when the unit's formation is close-order (TIGHT, SHIELD_WALL, TESTUDO, SQUARE,
+## SCHILTRON), giving soldiers tighter containment, closer spacing, and the tight-formation
+## bracing bonus in soldier_brace().
+func is_tight_formation() -> bool:
+	return formation_mode == FORMATION_TIGHT \
+			or formation_mode == FORMATION_SHIELD_WALL \
+			or formation_mode == FORMATION_TESTUDO \
+			or formation_mode == FORMATION_SQUARE \
+			or formation_mode == FORMATION_SCHILTRON
+
+
 ## True for the two formations whose stance bonus depends on the shields staying locked
 ## with a soldier's neighbours in one particular direction: SHIELD_WALL's frontal melee/
 ## missile defense, and TESTUDO's all-round missile cover and melee-output penalty. A
@@ -5362,7 +5373,7 @@ func is_delegated() -> bool:
 ## it here too would double-count it.
 const BRACE_BASELINE_ENGAGED: float = 0.35  # br_0: merely engaged, not explicitly set
 const BRACE_SET_BONUS: float = 0.65         # added once ORDER_BRACE has settled
-const BRACE_TIGHT_BONUS: float = 0.15       # w_f: FORMATION_TIGHT gets extra margin
+const BRACE_TIGHT_BONUS: float = 0.15       # w_f: any close-order formation (is_tight_formation()) gets extra margin
 const BRACE_MOTION_PENALTY: float = 0.5     # scaled by how fast the regiment is moving
 const BRACE_MOTION_REF_SPEED: float = CHARGE_REFERENCE_SPEED
 const BRACE_STILL_SPEED: float = 5.0        # wu/s; at or below this counts as "stationary"
@@ -5386,7 +5397,7 @@ func soldier_brace() -> float:
 			* clampf(current_speed / BRACE_MOTION_REF_SPEED, 0.0, 1.0)
 	var set_term: float = BRACE_SET_BONUS \
 			if (order_mode == ORDER_BRACE and _brace_settled_time >= BRACE_SETTLE_TIME) else 0.0
-	var tight_term: float = BRACE_TIGHT_BONUS if formation_mode == FORMATION_TIGHT else 0.0
+	var tight_term: float = BRACE_TIGHT_BONUS if is_tight_formation() else 0.0
 	return clampf(BRACE_BASELINE_ENGAGED + set_term + tight_term - motion_term, 0.0, 1.0)
 
 
