@@ -103,6 +103,34 @@ func test_tight_formation_adds_a_margin() -> void:
 		"a tight formation braces harder than the same posture in a looser one")
 
 
+func test_all_close_order_formations_get_tight_brace_bonus() -> void:
+	var normal := _make_unit()
+	_engage(normal)
+	normal.formation_mode = Unit.FORMATION_NORMAL
+	var baseline_brace: float = normal.soldier_brace()
+
+	for mode in [
+		Unit.FORMATION_TIGHT,
+		Unit.FORMATION_SHIELD_WALL,
+		Unit.FORMATION_TESTUDO,
+		Unit.FORMATION_SQUARE,
+		Unit.FORMATION_SCHILTRON,
+	]:
+		var u := _make_unit()
+		_engage(u)
+		u.formation_mode = mode
+		assert_true(u.is_tight_formation(), "formation %d is close-order" % mode)
+		assert_almost_eq(u.soldier_brace(), baseline_brace + Unit.BRACE_TIGHT_BONUS, 0.001,
+			"close-order formation %d receives the BRACE_TIGHT_BONUS margin" % mode)
+
+	var loose := _make_unit()
+	_engage(loose)
+	loose.formation_mode = Unit.FORMATION_LOOSE
+	assert_false(loose.is_tight_formation(), "FORMATION_LOOSE is not close-order")
+	assert_almost_eq(loose.soldier_brace(), baseline_brace, 0.001,
+		"loose formation receives no tight brace bonus")
+
+
 func test_brace_never_exceeds_one_even_at_the_ceiling_in_tight_formation() -> void:
 	var u := _make_unit()
 	_engage(u)
@@ -119,3 +147,4 @@ func test_brace_order_still_zero_while_skirmishing() -> void:
 	u.tick_brace_settle(Unit.BRACE_SETTLE_TIME + 0.01)
 	assert_almost_eq(u.soldier_brace(), 0.0, 0.001,
 		"ORDER_SKIRMISH forces zero regardless of any settled brace state")
+
