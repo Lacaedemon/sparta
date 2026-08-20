@@ -1,0 +1,9 @@
+{
+  "_comment": "Per-PR demo for #1348 / #1178 line_relief corridor: back ranks widen so the reliever can pass between without intra-unit overlap.",
+  "input": "demos/inputs/line-relief-queue.json",
+  "caption": "Line relief corridor (#1178 / #1348): a fresh Infantry behind the line relieves a tired engaged ally. Watch the tired unit's back ranks widen to open a centre lane as the reliever advances through — no defect_exemptions; formation-slot physics keeps soldiers from overlapping during the peel-back.",
+  "fixed_fps": 60,
+  "max_frames": 480,
+  "fps": 15,
+  "width": 720
+}
