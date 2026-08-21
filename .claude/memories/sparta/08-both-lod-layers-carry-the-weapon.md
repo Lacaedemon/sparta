@@ -875,17 +875,23 @@ merge-base symbol count above as the cheap triage that tells you to.
 
 `.github/workflows/claude-code-review.yml` is a thin caller: `on:`, `permissions:`, `uses:`,
 `with:`. Every gating condition lives in the reusable workflow it delegates to, in
-`Morrison-Lab/gha`, at the pinned ref. So `grep -rn draft .github/workflows/` returns nothing
-in this repo even though the review workflow does gate on `draft == false`.
+`Morrison-Lab/gha`, at the pinned ref. So `grep -rn "draft ==" .github/workflows/` returns
+nothing in this repo even though the review workflow does gate on `draft == false`. Grep the
+bare word `draft` instead and you get exactly one hit -- a commented-out `eager-pr` line in
+`claude.yml` -- which is a mention, not a gate.
 
-Both directions of that gap have now bitten in one session. A claim was written asserting the
-gate and citing nothing a reader could find here; separately, two review findings were raised
-by checking a trigger against the caller's own `on:` block.
+Both directions of that gap have bitten in one session, and so has a third: the claim above
+was first written citing the bare-word grep as returning nothing. It does not. The empty
+result came from a run with `| grep -v "^.*#"` appended, which drops every line containing a
+`#` anywhere and so removed exactly that comment hit -- and the unfiltered command was then
+written down as if it had produced it. Cite the query you actually ran, and prefer one whose
+emptiness is a property of the repo rather than of your filter.
 
 - **Do:** follow the `uses:` to the callee at its pinned ref before asserting when a workflow
   runs or what gates it.
 - **Do:** say where a gate lives when citing one, so an empty grep here is not read as a
   refutation.
+- **Do:** paste the exact command whose output you are reporting, filters included.
 - **Don't:** read a caller's `on:` types list as the trigger condition -- it is the wider of
   the two constraints.
 - **Don't:** conclude from an empty `.github/workflows/` grep that nothing gates on the thing
