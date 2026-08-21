@@ -10,7 +10,7 @@ project:
     - media/
 
 # Sparta documentation site. Pure-markdown Quarto (no R / knitr) — every page is a
-# plain .qmd, so rendering needs only the Quarto CLI. Templated on UCD-SERG/qwt,
+# plain .qmd, so rendering needs only the Quarto CLI. Templated on d-morrison/qwt,
 # trimmed to the website essentials (the academic book/theorem/bibliography
 # machinery that qwt carries is dropped — Sparta has no R chunks or citations).
 
