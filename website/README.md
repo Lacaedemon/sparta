@@ -5,7 +5,7 @@ Pages at **<https://lacaedemon.github.io/sparta/>**.
 
 It's pure-markdown Quarto -- every page is a plain `.qmd`, so building it needs only
 the Quarto CLI (no R, no Python). Templated on
-[d-morrison/qwt](https://github.com/d-morrison/qwt), trimmed to the website essentials.
+[UCD-SERG/qwt](https://github.com/UCD-SERG/qwt), trimmed to the website essentials.
 
 ## Build & preview locally
 

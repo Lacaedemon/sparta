@@ -1,4 +1,0 @@
-{
-  "skip": true,
-  "reason": "CI-configuration only: adds the lab-manual input to the Claude review workflow's caller. No scenes/, scripts/, assets/ or project.godot change, so a recorded battle cannot show it."
-}

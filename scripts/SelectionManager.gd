@@ -526,7 +526,7 @@ func _finish_selection() -> void:
 	_clear_selection()
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 
-	if rect.size.length_squared() < CLICK_THRESHOLD * CLICK_THRESHOLD:
+	if rect.size.length() < CLICK_THRESHOLD:
 		_finish_click(_unit_at(_drag_start, TEAM_ANY_OWN))
 	else:
 		for node in get_tree().get_nodes_in_group("units"):
