@@ -2368,7 +2368,7 @@ func _think(delta: float) -> void:
 	else:
 		# Idle: no enemy; a HOLD/BRACE stance that won't chase; or a directly
 		# player-commanded unit holding formation (auto_advance_on_detect false) with nothing
-		# in weapon range yet — the paths above still fight/fire whatever reaches a held unit.
+		# in weapon range yet -- the paths above still fight/fire whatever reaches a held unit.
 		# If the engaged enemy vanished
 		# (died/routed/left range) while a re-face turn was still running, settle it here so
 		# the soldier-body arrival doesn't stay frozen indefinitely (folding the partial
