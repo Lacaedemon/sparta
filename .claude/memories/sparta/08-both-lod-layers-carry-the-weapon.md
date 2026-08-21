@@ -792,21 +792,41 @@ Don't dump-state every one. The fast, rigorous classification:
 
 ## A fixable red CI check means HOLD the PR, not ask what to do
 
-When a PR fails a CI check and that failure has a known fix -- an issue is filed for it, or
-the fix is otherwise identified -- **hold the PR until the unblocking PR lands.** Do not ask
-the owner to choose between merging past a red gate and waiting; the answer is always wait.
-Mark the PR draft so the hold is visible at a glance and so it stops consuming review and CI
-cycles while it waits, and say on the thread which issue it is waiting for.
+When a PR fails a CI check and that failure has a known fix **that lands outside this PR** --
+an issue is filed for it, or the fix is otherwise identified -- **hold the PR until the
+unblocking PR lands.** Do not ask the owner to choose between merging past a red gate and
+waiting; the answer is always wait. Mark the PR draft so the hold is visible at a glance and
+say on the thread which issue it is waiting for.
 
-This applies to the PR's own defects and to failures it merely surfaces. A check that goes
-red because the PR's demo now genuinely exercises a pre-existing bug still holds the PR --
-the fix belongs to the tracked issue, and the PR resumes once that issue's PR merges.
+**Draft stops the review round, not the CI spend.** Only the review workflow gates on draft
+status (`github.event.pull_request.draft == false`); `godot-ci.yml` triggers on a bare
+`pull_request:` with no draft gate, and `demo-video.yml` fires on `synchronize`, so `Validate
+& test` and `demo` both keep running on every push to a held draft. Draft it for the signal
+and to stop burning review rounds -- not on the belief that it makes the hold free.
 
-**Never buy green instead of waiting.** Not with `defect_exemptions` on the failing unit, not
-by trimming the clip to end before the defect appears, not by swapping to a scenario that
-avoids the code path, and not by re-running until the flake lands the other way. Each of
-those hides the signal the check exists to give, and the first two additionally falsify
-whatever the PR claims about the behaviour.
+**The failure has to belong to someone else.** This rule covers a pre-existing bug the PR
+merely surfaces, or a flake tracked elsewhere -- cases where the fix is somebody's tracked
+issue and waiting is the only way to get a true green. A defect the PR itself introduced is
+not a hold: it is yours to fix on the branch now, per the standing no-technical-debt rule.
+Deciding which one you have is the first step, not an afterthought.
+
+**Never buy green instead of waiting.** Not by trimming the clip to end before the defect
+appears, not by swapping to a scenario that avoids the code path. Both hide the signal the
+check exists to give, and both falsify whatever the PR claims about the behaviour.
+
+Two adjacent remedies are sanctioned elsewhere in this file and are **not** covered by that
+ban, so read the distinction rather than the keyword:
+
+- **`defect_exemptions`** is the sanctioned answer when a maneuver legitimately trips a
+  metric -- see "When a maneuver legitimately trips a metric" above, which spells out the
+  contract. Exempt when the trip is the maneuver doing its job, with the honest reason the
+  contract requires. Hold when the trip is a genuine defect waiting on a fix; an exemption
+  there is the buy-green move this section forbids.
+- **Re-running a failed job** is the sanctioned answer for a failure confirmed transient or
+  infra-side (a link-checker blip, a runner dying before any test body ran). What this
+  section forbids is the different move of re-rolling a *nondeterministic gate whose defect
+  is already tracked* until it happens to land green -- the flake is the known bug, so a
+  green re-roll is an unearned pass rather than a recovered run.
 
 **Resuming is part of the hold.** When the unblocking PR merges: re-sync the held branch onto
 the new `main`, re-run CI, and mark it ready for review again only once the check that caused
