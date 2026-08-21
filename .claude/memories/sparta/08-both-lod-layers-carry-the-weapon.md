@@ -801,8 +801,11 @@ thread which issue it is waiting for.
 The thing you wait on is usually a tracking issue, not a PR, because at the moment you file
 the hold nobody has written the fix yet. So the trigger is "the fix lands" -- a fix PR merges,
 or the tracking issue closes -- and watching for a specific PR number gives you nothing to
-watch. Of this section's own two worked examples, #1357 acquired a fix PR (#1363) hours after
-the hold was filed and #1360 had none at all.
+watch. Both of this section's worked examples went that way: #1348 held behind #1360 (the
+tired unit's peel-back, which reddens its `demo` gate) and #1349 behind #1357 (the
+nondeterministic subcommander test, which reddens its `Validate & test`). #1357 acquired a fix
+PR, #1363, hours after the hold was filed; #1360 had none at all. Both are written up in full
+at the end of this section.
 
 **Draft stops the review round, not the CI spend.** Only the review workflow gates on draft
 status, and that gate is not in this repo -- `grep -rn "draft ==" .github/workflows/` returns
