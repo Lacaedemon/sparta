@@ -838,15 +838,37 @@ done
 A symbol with N references on `main` and **0** on the head, or a file present on `main` and
 absent on the head, is a revert of merged work that would land if the PR merged.
 
-Rule out the innocent explanation first: if `git merge-base <base> <head>` equals the base's
-current head, the branch has fully absorbed its base, so the removals are genuine removals
-made on the branch rather than base commits it has yet to pull in.
+Rule out the innocent explanation before calling it a revert. "Present on `main`, absent on
+the head" has two causes: `main` gained the content after the fork and the branch simply has
+not merged it yet, or the content was in the branch's own ancestry and the branch deleted it.
+Only the second is a revert, and what separates them is whether the **merge-base** carries it:
+
+```sh
+MB=$(git merge-base origin/main <head>)
+git show $MB:<file> | grep -c '<symbol>'          # present in the branch's own ancestry?
+git show <head>:<file> | grep -c '<symbol>'       # gone now?
+```
+
+Present at the merge-base and absent at the head is a deletion the branch made. On #1349 that
+read 3 and 0.
+
+**Do not substitute an ancestry check for this**, in any of its forms -- neither
+`git merge-base --is-ancestor origin/main <head>` nor "the head has absorbed its base". Both
+return a reassuring true for a branch that merged `main` and then reverted it, because the
+merge genuinely is in the ancestry and the revert sits on top. `07-a-pr-can-revert-merged-main.md`
+names that trap directly and gives the authoritative check, a real trial merge onto `main` in
+a throwaway worktree read by its net diffstat; run that before merging, and treat the
+merge-base symbol count above as the cheap triage that tells you to.
 
 - **Do:** count a deleted feature's references on `main` and on the head, and check file
   presence, whenever a diff is wider than the stated change explains.
-- **Do:** confirm the merge-base equals the base head before calling a removal a revert.
+- **Do:** compare the head against the **merge-base**, not against the base branch's tip,
+  before calling a removal a revert.
+- **Do:** run `07-...md`'s trial merge for the authoritative answer.
 - **Don't:** read a stacked PR's base-relative diff as evidence about what merging it does to
   `main`.
+- **Don't:** rule out a revert with any ancestry check -- that is the one signal that is
+  reliably true in exactly the case you are trying to detect.
 - **Don't:** attribute a tick-1 divergence to a refactor of code that runs later than tick 1.
 
 ## A workflow claim checked against the caller is not checked
