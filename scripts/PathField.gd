@@ -466,7 +466,7 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	var rect: Rect2 = _block_rects[idx]
 	var grown: Rect2 = rect.grow(clearance + CORNER_STANDOFF)
 	var heading: Vector2 = to - from
-	var tangent: Vector2 = heading.orthogonal().normalized() if heading.length_squared() > 0.0 else Vector2.ZERO
+	var tangent: Vector2 = heading.orthogonal().normalized() if heading.length() > 0.0 else Vector2.ZERO
 	# Which way around THIS rect: the side of the rect the A* route squeezes
 	# past on -- which can deliberately be the geometrically-longer way, when
 	# other obstacles block the short one. Measured at the route's closest
