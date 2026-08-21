@@ -1,7 +1,7 @@
 {
-  "_comment": "Per-PR demo for #1348 / #1178 line_relief corridor: back ranks widen so the reliever can pass between without intra-unit overlap.",
+  "_comment": "Per-PR demo for #1348 / #1178 line_relief corridor. The right-click MUST land after the enemy reaches the tired unit (contact is ~tick 128) -- a right-click on a friendly that is not yet FIGHTING resolves to a plain ground MOVE, not a RELIEF, and the corridor code then never runs at all.",
   "input": "demos/inputs/line-relief-queue.json",
-  "caption": "Line relief corridor: a fresh Infantry behind the line relieves a tired engaged ally. Watch the tired unit's back ranks widen to open a centre lane as the reliever advances through — no defect_exemptions; formation-slot physics keeps soldiers from overlapping during the peel-back.",
+  "caption": "Line relief corridor: at tick 200 the fresh Infantry (uid1) takes a RELIEF order on its engaged ally (uid0), which peels back on a MOVE. While the link is live the reliever's block widens -- its median soldier spacing rises from 9.00 to 10.05 wu as it closes -- so it passes through without intra-unit overlap. The tired unit's own peel-back does NOT yet hold formation: see the PR thread for the measured numbers.",
   "fixed_fps": 60,
   "max_frames": 480,
   "fps": 15,
