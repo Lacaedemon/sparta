@@ -207,6 +207,17 @@ var current_order: Order = null
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
 var order_mode: int = 0
+# Whether this unit auto-advances onto a merely-detected, out-of-weapon-range enemy while
+# it has no order -- the reactive close-the-distance fallback at the bottom of _think's
+# enemy branch. True by default, so a bare unit (most tests) keeps the historical
+# auto-advance. Battle clears it for the units the player commands directly (team 0, or
+# every team under all-teams control): such a unit under the default NORMAL stance holds
+# formation and waits for an explicit order instead of wandering toward a distant foe, so
+# only enemies already within weapon range are ever engaged unprompted. The AI-driven
+# enemy army keeps it set, so battles still start; a player-delegated group is AI-driven
+# too but closes via its leader's explicit attack order, never this fallback. ORDER_HOLD
+# and ORDER_BRACE already suppress the same advance regardless of this flag.
+var auto_advance_on_detect: bool = true
 # KNOCKBACK_FOCUS's own per-order parameter: how far a struck enemy body should be shoved.
 # false (default) -- just clear the battle line -- is the common case; true pushes it much
 # further. A genuine per-ORDER setting, not a global Settings toggle: Battle._apply_order_cmd
@@ -1567,7 +1578,7 @@ func _held_march_continues_travel() -> bool:
 			return false
 		dest = leaf.target_pos
 	var to: Vector2 = dest - position
-	if to.length() < 1.0:
+	if to.length_squared() < 1.0:
 		return false
 	return _approach_velocity.normalized().dot(to.normalized()) >= REORDER_MOMENTUM_DOT_MIN
 
@@ -2119,7 +2130,7 @@ func _think(delta: float) -> void:
 		if is_ranged and order_mode == ORDER_SKIRMISH and dist_sq < SKIRMISH_KITE_DISTANCE * SKIRMISH_KITE_DISTANCE \
 				and (target_enemy != null or not has_move_target):
 			var away: Vector2 = position - enemy.position
-			if away.length() < 0.001:
+			if away.length_squared() < 0.000001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
 			_move_to(UnitTargeting.clamp_to_field(self, position + away.normalized() * SKIRMISH_KITE_DISTANCE), delta)
 			# Only commit to the retreat if it actually moved. If the unit is cornered
@@ -2341,17 +2352,24 @@ func _think(delta: float) -> void:
 				# arrival) it appended nothing, so the order just retires normally
 				# (has_move_target false, active_leaf().turn_target still zero), leaving
 				# the unit facing the pivoted heading instead of turning back.
-	elif enemy != null and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
+	elif enemy != null and auto_advance_on_detect \
+			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
-		# range/contact). If a re-face turn was in progress, settle it first: the unit is
-		# marching now, so the frozen arrival must release (folding the partial rotation into
-		# _formation_angle) or the bodies would stay pinned and never keep up with the march.
+		# range/contact). Gated by auto_advance_on_detect: a directly player-commanded unit
+		# leaves this false and holds formation instead (the else branch below), waiting for
+		# an order rather than closing on a foe still outside weapon range; the AI-driven
+		# enemy keeps it true so it still closes. If a re-face turn was in progress, settle it
+		# first: the unit is marching now, so the frozen arrival must release (folding the
+		# partial rotation into _formation_angle) or the bodies would stay pinned and never
+		# keep up with the march.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		_move_to(enemy.position, delta, false, true)
 	else:
-		# Idle: no enemy, or a HOLD stance that won't chase — the paths above
-		# still fight/fire whatever reaches a held unit. If the engaged enemy vanished
+		# Idle: no enemy; a HOLD/BRACE stance that won't chase; or a directly
+		# player-commanded unit holding formation (auto_advance_on_detect false) with nothing
+		# in weapon range yet -- the paths above still fight/fire whatever reaches a held unit.
+		# If the engaged enemy vanished
 		# (died/routed/left range) while a re-face turn was still running, settle it here so
 		# the soldier-body arrival doesn't stay frozen indefinitely (folding the partial
 		# rotation into _formation_angle so the bodies don't surge when the arrival re-enables).
@@ -2379,7 +2397,7 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 	if _cycle_recharging:
 		if dist < CYCLE_CHARGE_STANDOFF - CYCLE_CHARGE_STANDOFF_EPS:
 			var away: Vector2 = position - enemy.position
-			if away.length() < 0.001:
+			if away.length_squared() < 0.000001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
 			var goal: Vector2 = position + away.normalized() * (CYCLE_CHARGE_STANDOFF - dist)
 			_move_to(UnitTargeting.clamp_to_field(self, goal), delta, false, false, true)
@@ -2554,7 +2572,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		step = PathField.active.next_step(position, point, terrain_clearance(), funnel_lane_offset(point))
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
-	if to.length() < 1.0:
+	if to.length_squared() < 1.0:
 		# Standing on the point already. An orderly (or brake_arrival) march bleeds any
 		# residual speed at the brake rate here -- and flags itself as still moving so the
 		# "no momentum while stationary" reset can't hard-snap the tail of the ramp to 0 --
@@ -2579,7 +2597,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	# geometric artifact of the calculation, not a physical effect, so freezing the STEERING
 	# direction (not the actual movement step below, which stays smooth and self-correcting)
 	# once `to` is this small is the right fix rather than a "no top-down gimmicks" violation.
-	var steer_dir: Vector2 = dir if to.length() >= BEARING_STEER_FREEZE_RADIUS else facing
+	var steer_dir: Vector2 = dir if to.length_squared() >= BEARING_STEER_FREEZE_RADIUS * BEARING_STEER_FREEZE_RADIUS else facing
 	var maneuvering: bool = ordered_facing != Vector2.ZERO
 	# Pace: a maneuver or walk-advance holds walk speed throughout. AUTO otherwise
 	# walks by default, jogs under missile fire, and sprints at full speed once
@@ -2817,7 +2835,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 ## at body contact instead of trading blows at arm's length.
 func _press_into(point: Vector2, delta: float) -> void:
 	var to: Vector2 = point - position
-	if to.length() < 1.0:
+	if to.length_squared() < 1.0:
 		return
 	position += to.normalized() * move_speed * MELEE_PRESS_FRACTION * delta
 	# Same field-edge stop as _move_to: a non-routing unit doesn't follow a routing
@@ -2958,7 +2976,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 			_settle_engage_turn()
 		return true
 	var dir: Vector2 = point - position
-	if dir.length() < 0.01:
+	if dir.length_squared() < 0.0001:
 		return true
 	var offset: float = absf(angle_difference(facing.angle(), dir.angle()))
 	# Already turning: keep rotating toward the (possibly moved) target and settle on arrival.
@@ -3051,7 +3069,7 @@ func _settle_engage_turn() -> void:
 ## large facing snap (e.g. a chase target appearing behind a unit still marching off a
 ## countermarched reform) instead of a reform.
 func _face_dir(dir: Vector2) -> void:
-	if dir.length() <= 0.01:
+	if dir.length_squared() <= 0.0001:
 		return
 	var new_facing: Vector2 = dir.normalized()
 	if absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
@@ -3065,7 +3083,7 @@ func _face_dir(dir: Vector2) -> void:
 ## conversio about-face, instead of snapping. Takes the shortest arc, so a 180°
 ## reversal turns through the nearer side.
 func _rotate_facing_toward(target_dir: Vector2, delta: float, rate: float = TURN_RATE) -> void:
-	if target_dir.length() < 0.01:
+	if target_dir.length_squared() < 0.0001:
 		return
 	var cur: float = facing.angle()
 	var diff: float = angle_difference(cur, target_dir.angle())
@@ -3465,7 +3483,7 @@ func _is_frontal_attack(attacker: Unit) -> bool:
 	if attacker == null or not is_instance_valid(attacker):
 		return true
 	var to_attacker: Vector2 = attacker.position - position
-	if to_attacker.length() < 0.001:
+	if to_attacker.length_squared() < 0.000001:
 		return true
 	return facing.dot(to_attacker.normalized()) > 0.0
 
@@ -4316,7 +4334,7 @@ func soldier_world_facings(count: int) -> PackedVector2Array:
 func set_all_soldier_facing(dir: Vector2) -> void:
 	# No bodies yet (pre-seed): take no ownership, so a later seed/step doesn't
 	# leave the flag set with the bodies silently facing the unit heading.
-	if dir.length() < 0.01 or _sim_soldier_facing.is_empty():
+	if dir.length_squared() < 0.0001 or _sim_soldier_facing.is_empty():
 		return
 	_per_soldier_facing = true
 	var d: Vector2 = dir.normalized()
@@ -4327,7 +4345,7 @@ func set_all_soldier_facing(dir: Vector2) -> void:
 ## Point a single body at `dir` and take maneuver ownership. Out-of-range index or
 ## a zero dir is a no-op.
 func set_soldier_facing(index: int, dir: Vector2) -> void:
-	if index < 0 or index >= _sim_soldier_facing.size() or dir.length() < 0.01:
+	if index < 0 or index >= _sim_soldier_facing.size() or dir.length_squared() < 0.0001:
 		return
 	_per_soldier_facing = true
 	_sim_soldier_facing[index] = dir.normalized()
@@ -4960,7 +4978,7 @@ func _wheel_pivot_point(dir: int) -> Vector2:
 ## doesn't preload Battle.gd; see the NUDGE_*/ORDER_* mirror-constant comments above
 ## for why).
 static func disengage_offset(unit_facing: Vector2, step_distance: float = DISENGAGE_STEP_DISTANCE) -> Vector2:
-	var fwd: Vector2 = unit_facing.normalized() if unit_facing.length() > 0.01 else Vector2.UP
+	var fwd: Vector2 = unit_facing.normalized() if unit_facing.length_squared() > 0.0001 else Vector2.UP
 	return -fwd * step_distance
 
 
