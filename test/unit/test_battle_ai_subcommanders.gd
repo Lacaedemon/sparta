@@ -43,10 +43,12 @@ func after_each() -> void:
 	Replay.forced_seed = -1
 
 
-## Scoped to the battle passed in, not to the whole "units" group. The determinism test below
-## runs two battles in one test, and GUT's autofree only frees at end of test, so a group-wide
-## query can hand back another instance's units and report a foreign unit's order as this
-## battle's.
+## Scoped to the battle passed in, not to the whole "units" group. The parameter was already
+## in the signature and simply unused, so the function's name and arguments claimed a scoping
+## it did not do -- this makes them true. No caller currently keeps two battles alive at once
+## (the determinism test below runs two, but frees the first before instantiating the second),
+## so this is hardening rather than a bug fix; a group-wide query would report a foreign
+## unit's order as this battle's the moment one did.
 func _team1_units(battle: Node) -> Array:
 	var out: Array = []
 	for node in get_tree().get_nodes_in_group("units"):
