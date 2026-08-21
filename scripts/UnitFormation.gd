@@ -192,8 +192,10 @@ static func ranks_for(n: int, files: int) -> int:
 ## Back ranks (rank > 0) push outward along `corridor_perp_local` in proportion to
 ## their lateral coordinate -- flank men step aside, the centre stays put, so the
 ## partner's front line can march between. `spread_strength` is the caller's
-## 0..1 scale (Unit.RELIEF_CORRIDOR_SPREAD_MAX at full overlap); depth ramps from
-## 0 on the front rank to 1 on the rearmost. Pure, deterministic, replay-safe.
+## 0..`Unit.RELIEF_CORRIDOR_SPREAD_MAX` scale (that maximum at full overlap, matching
+## `Unit._relief_corridor_spread_strength()`'s own range); this function itself treats
+## it as a plain multiplier and does not clamp it. Depth ramps from 0 on the front rank
+## to 1 on the rearmost. Pure, deterministic, replay-safe.
 static func relief_corridor_slot_offset(slot_local: Vector2, rank: int, ranks: int,
 		corridor_perp_local: Vector2, spread_strength: float) -> Vector2:
 	if spread_strength <= 0.0 or ranks <= 1 or rank <= 0:

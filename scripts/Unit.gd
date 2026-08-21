@@ -6083,16 +6083,19 @@ func _relief_swap_partner() -> Unit:
 	return null
 
 
-## 0..RELIEF_CORRIDOR_SPREAD_MAX spread strength while a relief swap is active.
-## Peaks when the two blocks overlap, fades as they clear apart.
-func _relief_corridor_spread_strength() -> float:
-	var partner: Unit = _relief_swap_partner()
+## 0..RELIEF_CORRIDOR_SPREAD_MAX spread strength for a live relief swap with `partner`.
+## Peaks when the two blocks overlap, fades as they clear apart. Takes the partner rather
+## than re-deriving it so the one caller pays for a single _relief_swap_partner() lookup
+## per formation_slots() call -- that lookup falls back to a whole-group scan, and this
+## runs every frame per unit.
+func _relief_corridor_spread_strength(partner: Unit) -> float:
 	if partner == null or not is_instance_valid(partner):
 		return 0.0
+	# Always positive: soldier_block_extent() floors at Unit.RADIUS plus a mark radius and
+	# margin (SoldierFlock.compute_extent), so the sum can never reach zero and the ratio
+	# below is safe to take unguarded.
 	var contact: float = separation_radius + partner.separation_radius \
 			+ soldier_block_extent() + partner.soldier_block_extent()
-	if contact <= 0.0:
-		return RELIEF_CORRIDOR_SPREAD_MAX
 	var dist: float = position.distance_to(partner.position)
 	var overlap_frac: float = clampf(1.0 - dist / contact, 0.0, 1.0)
 	return RELIEF_CORRIDOR_SPREAD_MAX * overlap_frac
@@ -6100,19 +6103,19 @@ func _relief_corridor_spread_strength() -> float:
 
 ## Widen back-rank slot spacing during a line-relief pass-through.
 func _apply_relief_corridor_to_slots(slots: PackedVector2Array, count: int) -> PackedVector2Array:
-	var spread: float = _relief_corridor_spread_strength()
+	var partner: Unit = _relief_swap_partner()
+	var spread: float = _relief_corridor_spread_strength(partner)
 	if spread <= 0.0 or slots.is_empty():
 		return slots
-	var partner: Unit = _relief_swap_partner()
-	if partner == null:
-		return slots
+	# A spread above zero already established a live, valid partner, so partner is non-null
+	# from here on.
 	var approach_world: Vector2 = partner.position - position
 	if approach_world.length_squared() < 0.25:
-		approach_world = Vector2.RIGHT
+		approach_world = Vector2.RIGHT   # blocks sitting on top of each other: pick an axis
 	var block_ang: float = soldier_block_world_angle()
+	# rotated() preserves length, so approach_local inherits the non-degenerate magnitude
+	# the fallback above guarantees and normalized() below cannot divide by zero.
 	var approach_local: Vector2 = approach_world.rotated(-block_ang)
-	if approach_local.length_squared() < 0.01:
-		return slots
 	var corridor_perp: Vector2 = approach_local.rotated(PI * 0.5).normalized()
 	var files: int = formation_files(count)
 	var ranks: int = UnitFormation.ranks_for(count, files)
