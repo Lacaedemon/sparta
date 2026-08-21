@@ -789,3 +789,82 @@ Don't dump-state every one. The fast, rigorous classification:
 - **Don't:** read a wide demo-diff as many regressions, or dump-state each clip's merge-base
   side unless its OUTCOME looks wrong (a wiped unit, a missing rally) per the sparta-demos
   wide-diff procedure.
+
+## A GUT poll loop tests its bound BEFORE the await, so it samples one tick past it
+
+The shape is everywhere in the live-battle tests:
+
+```gdscript
+while battle.current_tick() <= WINDOW and not saw_it:
+    await get_tree().physics_frame
+    ...check...
+```
+
+The condition is evaluated at tick `T`; if `T <= WINDOW` the body awaits, which advances to
+`T + 1`, and only then samples. So the last tick actually inspected is **`WINDOW + 1`**, not
+`WINDOW`. A test with `WINDOW = 600` passes on an event at tick 601.
+
+The consequence is not the off-by-one itself, which is harmless, but the arithmetic done
+**about** the loop afterwards. Counting how many sampled seeds a window would have failed,
+comparing a measured fire tick against the bound, quoting a failure rate in a PR body or an
+issue -- each is wrong by whatever lands on the boundary tick, and every one of those reads
+as a careful, quantitative claim. It cost a published "6 of 30" that was really 4 of 30.
+
+- **Do:** treat the effective bound as `WINDOW + 1` in any claim derived from such a loop.
+- **Do:** re-derive a failure count against the effective bound before writing it down, not
+  against the constant's value.
+- **Don't:** compare a measured tick against `WINDOW` and call the difference the margin.
+
+## Check a claimed-no-op refactor against `main`, never only against its own base
+
+A stacked PR's demo-diff and its three-dot `git diff` are both computed against its **base
+branch**. That is the right comparison for reviewing what the PR adds, and it is blind to the
+thing most worth catching: content the branch has **deleted** that exists on `main`.
+
+The tell is a wide demo-diff that the stated change cannot explain -- 33 of 83 clips changed,
+most diverging at tick 1, on a PR converting two distance guards to squared space. A refactor
+that touches maneuver classification cannot move the first tick of every scenario. Something
+else did.
+
+Derive it rather than reading the diff, since a deletion is invisible unless you go looking:
+
+```sh
+for ref in origin/main origin/<pr-head>; do
+  git show $ref:scripts/Battle.gd | grep -c '<feature symbol>'
+  git cat-file -e $ref:<file> && echo PRESENT || echo ABSENT
+done
+```
+
+A symbol with N references on `main` and **0** on the head, or a file present on `main` and
+absent on the head, is a revert of merged work that would land if the PR merged.
+
+Rule out the innocent explanation first: if `git merge-base <base> <head>` equals the base's
+current head, the branch has fully absorbed its base, so the removals are genuine removals
+made on the branch rather than base commits it has yet to pull in.
+
+- **Do:** count a deleted feature's references on `main` and on the head, and check file
+  presence, whenever a diff is wider than the stated change explains.
+- **Do:** confirm the merge-base equals the base head before calling a removal a revert.
+- **Don't:** read a stacked PR's base-relative diff as evidence about what merging it does to
+  `main`.
+- **Don't:** attribute a tick-1 divergence to a refactor of code that runs later than tick 1.
+
+## A workflow claim checked against the caller is not checked
+
+`.github/workflows/claude-code-review.yml` is a thin caller: `on:`, `permissions:`, `uses:`,
+`with:`. Every gating condition lives in the reusable workflow it delegates to, in
+`Morrison-Lab/gha`, at the pinned ref. So `grep -rn draft .github/workflows/` returns nothing
+in this repo even though the review workflow does gate on `draft == false`.
+
+Both directions of that gap have now bitten in one session. A claim was written asserting the
+gate and citing nothing a reader could find here; separately, two review findings were raised
+by checking a trigger against the caller's own `on:` block.
+
+- **Do:** follow the `uses:` to the callee at its pinned ref before asserting when a workflow
+  runs or what gates it.
+- **Do:** say where a gate lives when citing one, so an empty grep here is not read as a
+  refutation.
+- **Don't:** read a caller's `on:` types list as the trigger condition -- it is the wider of
+  the two constraints.
+- **Don't:** conclude from an empty `.github/workflows/` grep that nothing gates on the thing
+  you searched for.
