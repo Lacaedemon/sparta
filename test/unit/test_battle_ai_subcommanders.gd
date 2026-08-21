@@ -84,10 +84,11 @@ func _team1_units(battle: Node) -> Array:
 ## and the directive can only fire much later, once combat morale happens to push the ward's
 ## foe into ROUTING and frees the ally again. That last step is a combat race, and it was the
 ## entire source of this test's flakiness: with the foe spawned a march away (y=480) the fire
-## tick ranged over 301, 361, 481, 541, 601, 661 and 781 across seeds 1..30, so the old
-## 600-tick window failed on 6 of those 30 draws -- roughly one run in five, on any machine,
-## job or run speed. Spawning the ward in contact removes the race outright: measured at tick
-## 61 on every one of 16 runs. y=515 sits mid-band; the behaviour is identical anywhere from
+## tick ranged over 301, 361, 481, 541, 601, 661 and 781 across seeds 1..30. The loop below
+## polls one tick past its bound (it tests current_tick() BEFORE the await), so a 600-tick
+## window really admits a fire at 601, and 4 of those 30 draws -- the three at 661 and the one
+## at 781 -- still missed it. Spawning the ward in contact removes the race outright: measured
+## at tick 61 on every one of 16 runs. y=515 sits mid-band; the behaviour is identical from
 ## about y=495 to y=535 and reverts to the old race by y=480.
 ##
 ## See also demos/inputs/subcommander-mutual-support.json, the website demo built on this same
