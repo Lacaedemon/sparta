@@ -22,9 +22,14 @@ const AI_PERIOD: int = 60
 const SUPPORT_BY_TICK: int = 600
 
 ## How long to give the dedicated SUPPORT-order scenario below: empirically verified (see
-## _spawn_support_scenario's comment) to reach a real SUPPORT order by tick 120 -- two AI_PERIOD
-## decisions in, with margin.
-const SUPPORT_SCENARIO_TICK_WINDOW: int = 120
+## _spawn_support_scenario's comment) to reach a real SUPPORT order at tick 301 -- the
+## directive fires on the AI decision at tick 300, on the default seed. This lands later
+## than it once did (~tick 120): with the hold-formation default a player-side unit no longer
+## auto-advances onto a merely-detected foe, so team-0's staged foes stand instead of rushing
+## in -- the ally's throwaway 1-soldier foe therefore dies several AI periods later, and the
+## freed ally only then picks up the mutual-support directive. 360 leaves an AI_PERIOD of
+## margin past the observed 301.
+const SUPPORT_SCENARIO_TICK_WINDOW: int = 360
 
 
 func after_each() -> void:
