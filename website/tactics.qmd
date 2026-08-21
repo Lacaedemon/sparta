@@ -1442,37 +1442,12 @@ a fresh order.
 
 ## Order stances
 
-By default --- with no stance armed --- a unit **holds its formation** and fights only
-what reaches its own weapon range. It won't advance on its own to close with an enemy it
-has merely detected across the field, so your line stays where you put it until you order
-it forward: a move or attack order onto the enemy, or a **March to contact** / **Chase**
-stance. The AI-run enemy army still advances on its own, so battles start without you
-having to bait them.
-
-::: {#fig-hold-formation .demo}
-
-```{=html}
-<video class="demo-video" controls muted loop playsinline preload="metadata"
-       poster="media/hold_formation.jpg">
-  <source src="media/hold_formation.mp4" type="video/mp4">
-  Your browser can't play this clip --- see the
-  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-</video>
-```
-
-Given no order, the player's line (top) holds its ground for the whole approach ---
-its position never shifts --- while the AI enemy (bottom) marches the full distance in
-on its own and the two lock in melee on contact.
-:::
-
 Each order can carry a *stance*, armed with a hotkey before you click (a coloured
 cursor shows which is active; <kbd>Esc</kbd> clears it). Stances turn the same units
 into different tools:
 
-- **Hold** (<kbd>H</kbd>) --- the unit stands its ground instead of chasing bait. It
-  goes one step past the plain default: it also refuses to chase a foe it has *already*
-  fought and that then pulls back, where an un-stanced unit pursues. Anchor a line, or
-  keep a screen in place while your cavalry swings wide.
+- **Hold** (<kbd>H</kbd>) --- the unit stands its ground instead of chasing bait.
+  Anchor a line, or keep a screen in place while your cavalry swings wide.
 - **Attack flank** (<kbd>F</kbd>) / **Attack rear** (<kbd>R</kbd>) --- the unit
   maneuvers for the side or back rather than the front, cashing in the &times;1.5 / &times;2
   multipliers above. Pair it with a frontal pin.

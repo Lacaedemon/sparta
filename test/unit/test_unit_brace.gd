@@ -147,4 +147,3 @@ func test_brace_order_still_zero_while_skirmishing() -> void:
 	u.tick_brace_settle(Unit.BRACE_SETTLE_TIME + 0.01)
 	assert_almost_eq(u.soldier_brace(), 0.0, 0.001,
 		"ORDER_SKIRMISH forces zero regardless of any settled brace state")
-

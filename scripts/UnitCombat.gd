@@ -45,12 +45,6 @@ const KNOCKBACK_FOCUS_DAMAGE_MULT: float = 0.6
 ## only, and not against other cavalry. Anti-cavalry spearmen brace and turn it into a
 ## speed-scaled penalty (charging onto set spears backfires). Deterministic -- derived
 ## from positions and move_speed, which live play and replay reach identically.
-##
-## Note on combat layers: this function models the REGIMENT-LEVEL macro damage modifier
-## (approach momentum and formation shape like square/schiltron omnidirectional spear sets).
-## In contrast, individual soldier-level physics bracing (impulse absorption, knockback
-## mass-split, column buttressing) is computed per soldier in Unit.soldier_brace() and
-## SoldierMelee/SoldierCollision.
 static func charge_multiplier(u: Unit, enemy: Unit) -> float:
 	if not u.is_cavalry or enemy.is_cavalry:
 		return 1.0
