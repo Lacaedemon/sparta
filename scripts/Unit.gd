@@ -550,7 +550,7 @@ const LOOSE_SPACING_SCALE: float = 2.0
 # Line-relief corridor: back ranks spread laterally during a pass-through swap so the
 # partner's front line can march between them without intra-unit overlap. Peaks when
 # the two blocks overlap (same distance gate as Order.resolve_friendly_target).
-# Restages Stage E's render-only relief spread (#200) as formation-slot physics.
+# Restages Stage E's render-only relief spread as formation-slot physics.
 const RELIEF_CORRIDOR_SPREAD_MAX: float = 0.45
 # SHIELD_WALL and TESTUDO lock their shields edge-to-edge, so unlike TIGHT/SQUARE
 # (which pack to the synaspismos floor and stop there) they squeeze the
@@ -4093,7 +4093,13 @@ func _effective_file_major_reform() -> bool:
 ## a function of (count, formation_mode, file_major_reform_mode, disciplined, spacing_scale,
 ## the unit's frontage inputs, and -- for the square and file-major branches -- the unit's
 ## own assignment state) -- so it stays deterministic and replay-safe like the callers below.
-func formation_slots(count: int) -> PackedVector2Array:
+##
+## `apply_relief_corridor` defaults true so live formation targets open a centre lane during
+## a line-relief swap. Pass false when measuring the block's BASE footprint (soldier_block_
+## extent / half_extents): those helpers feed the corridor's own spread-strength distance
+## gate, and calling formation_slots(true) from there would recurse forever through
+## _relief_corridor_spread_strength -> soldier_block_extent -> formation_slots.
+func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVector2Array:
 	if in_square():
 		var square_file_count: int = formation_files(count)
 		var square_grid: PackedVector2Array = UnitFormation.block_slots(
@@ -4125,7 +4131,9 @@ func formation_slots(count: int) -> PackedVector2Array:
 			slots = r_slots
 		else:
 			slots = row_grid
-	return _apply_relief_corridor_to_slots(slots, count)
+	if apply_relief_corridor:
+		return _apply_relief_corridor_to_slots(slots, count)
+	return slots
 
 
 ## Rebuild the persistent per-soldier file-major assignment (_sim_soldier_file) FRESH
@@ -5225,8 +5233,10 @@ func soldier_facing(index: int) -> Vector2:
 ## Half-extent of the seeded soldier block around the regiment center: the
 ## containment radius the parallel layer must stay within while the regiment
 ## circle is authoritative. Reuses the render's block-extent math.
+## Uses the BASE grid (no relief-corridor widen) so extent queries that feed the
+## corridor's own spread gate cannot recurse through formation_slots.
 func soldier_block_extent() -> float:
-	return SoldierFlock.compute_extent(self, formation_slots(soldiers))
+	return SoldierFlock.compute_extent(self, formation_slots(soldiers, false))
 
 
 ## Per-axis counterpart to soldier_block_extent(): (half-width, half-depth) of the seeded
@@ -5234,7 +5244,7 @@ func soldier_block_extent() -> float:
 ## the block's reach along one specific direction (soldier_block_world_angle() gives the
 ## rotation to express that direction in) instead of every direction via the circumradius.
 func soldier_block_half_extents() -> Vector2:
-	return SoldierFlock.compute_half_extents(self, formation_slots(soldiers))
+	return SoldierFlock.compute_half_extents(self, formation_slots(soldiers, false))
 
 
 ## The soldier block's current world-space rotation: the same facing + in-progress-maneuver

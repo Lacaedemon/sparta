@@ -52,3 +52,47 @@ func test_relief_corridor_works_for_diagonal_perp() -> void:
 	var off_axis := UnitFormation.relief_corridor_slot_offset(Vector2(3.0, 0.0), 5, 8, perp, 0.5)
 	assert_gt(off_axis.length(), 0.0,
 			"mark off a diagonal axis gets a non-zero spread offset")
+
+
+func _spawn_battle() -> Node:
+	Replay.forced_seed = 12345
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	return battle
+
+
+func _unit_by_uid(battle: Node, uid: int) -> Unit:
+	for node in battle.get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u != null and u.uid == uid:
+			return u
+	return null
+
+
+func test_formation_slots_during_relief_does_not_recurse() -> void:
+	## Regression: spread strength used to call soldier_block_extent(), which called
+	## formation_slots() again, infinite recursion the moment a relief swap armed.
+	var battle := _spawn_battle()
+	for _k in range(10):
+		await get_tree().physics_frame
+
+	var tired: Unit = _unit_by_uid(battle, 0)
+	var fresh: Unit = _unit_by_uid(battle, 1)
+	assert_not_null(tired, "found tired unit")
+	assert_not_null(fresh, "found fresh unit")
+	if tired == null or fresh == null:
+		return
+
+	var relief_order := Order.new_relief(tired.uid)
+	fresh.set_current_order(relief_order)
+	UnitRelief.begin(fresh, tired, relief_order)
+	assert_eq(fresh.current_order.friendly_target, tired, "relief swap armed")
+
+	var base: PackedVector2Array = fresh.formation_slots(fresh.soldiers, false)
+	var widened: PackedVector2Array = fresh.formation_slots(fresh.soldiers, true)
+	assert_eq(base.size(), widened.size(), "corridor keeps slot count")
+	# Extent queries must also complete (they use the base-grid path).
+	var extent: float = fresh.soldier_block_extent()
+	var partner_extent: float = tired.soldier_block_extent()
+	assert_gt(extent, 0.0, "own base extent is finite")
+	assert_gt(partner_extent, 0.0, "partner base extent is finite")
