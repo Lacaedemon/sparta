@@ -39,10 +39,6 @@ jobs:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     with:
-      # This repo has no lab manual, so the upstream reusable workflow's
-      # lab-manual step has nothing to fetch. Turning it off keeps the reviewer
-      # from spending a step (and a failure mode) on it.
-      lab-manual: false
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
       # a review on Claude's commits; empty (and ignored) for pull_request runs.
       pr-number: ${{ inputs.pr_number }}
