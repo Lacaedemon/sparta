@@ -799,10 +799,13 @@ waiting; the answer is always wait. Mark the PR draft so the hold is visible at 
 say on the thread which issue it is waiting for.
 
 **Draft stops the review round, not the CI spend.** Only the review workflow gates on draft
-status (`github.event.pull_request.draft == false`); `godot-ci.yml` triggers on a bare
-`pull_request:` with no draft gate, and `demo-video.yml` fires on `synchronize`, so `Validate
-& test` and `demo` both keep running on every push to a held draft. Draft it for the signal
-and to stop burning review rounds -- not on the belief that it makes the hold free.
+status (`github.event.pull_request.draft == false`). `godot-ci.yml` triggers on a bare
+`pull_request:` with no draft gate and no `paths:` filter, so `Validate & test` runs on every
+push to a held draft. `demo-video.yml` fires on `synchronize`, also with no draft gate, but it
+IS path-filtered (`scenes/`, `scripts/`, `assets/`, `project.godot`, `demos/*.json`,
+`demos/scenarios/`, `demos/inputs/`), so `demo` re-runs only on a push that touches one of
+those. Draft it for the signal and to stop burning review rounds -- not on the belief that it
+makes the hold free.
 
 **The failure has to belong to someone else.** This rule covers a pre-existing bug the PR
 merely surfaces, or a flake tracked elsewhere -- cases where the fix is somebody's tracked
@@ -810,12 +813,19 @@ issue and waiting is the only way to get a true green. A defect the PR itself in
 not a hold: it is yours to fix on the branch now, per the standing no-technical-debt rule.
 Deciding which one you have is the first step, not an afterthought.
 
+This last paragraph is a deliberate narrowing, recorded here rather than left implicit. The
+first draft of this entry -- and the tracking issue's restatement of it -- said the rule
+"applies to the PR's own defects and to failures it merely surfaces", which was a paraphrase
+rather than the directive. The directive itself is about a failure whose fix "comes through"
+on another PR, and a defect the PR introduced has no such PR to wait for, so holding for it
+would mean waiting on nothing. The narrowing is the reading that makes the rule executable.
+
 **Never buy green instead of waiting.** Not by trimming the clip to end before the defect
 appears, not by swapping to a scenario that avoids the code path. Both hide the signal the
 check exists to give, and both falsify whatever the PR claims about the behaviour.
 
-Two adjacent remedies are sanctioned elsewhere in this file and are **not** covered by that
-ban, so read the distinction rather than the keyword:
+Two adjacent remedies are already sanctioned in this memory corpus and are **not** covered by
+that ban, so read the distinction rather than the keyword:
 
 - **`defect_exemptions`** is the sanctioned answer when a maneuver legitimately trips a
   metric -- see "When a maneuver legitimately trips a metric" above, which spells out the
@@ -823,7 +833,8 @@ ban, so read the distinction rather than the keyword:
   contract requires. Hold when the trip is a genuine defect waiting on a fix; an exemption
   there is the buy-green move this section forbids.
 - **Re-running a failed job** is the sanctioned answer for a failure confirmed transient or
-  infra-side (a link-checker blip, a runner dying before any test body ran). What this
+  infra-side (a link-checker blip, a runner dying before any test body ran) -- that contract
+  lives in the sibling part-files `04-...md` and `07-...md`, not in this one. What this
   section forbids is the different move of re-rolling a *nondeterministic gate whose defect
   is already tracked* until it happens to land green -- the flake is the known bug, so a
   green re-roll is an unearned pass rather than a recovered run.
