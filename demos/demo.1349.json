@@ -1,9 +1,10 @@
 {
-  "_comment": "Performance refactor of UnitManeuver.gd: is_sidestep, is_rear_move, etc.",
-  "replay": "demos/inputs/about-face.json",
-  "caption": "Non-visual refactor: replaces `distance_to` (`length()`) calls with `distance_squared_to` (`length_squared()`) inside `scripts/UnitManeuver.gd`. Evaluates maneuver check logic like `is_sidestep` and `is_rear_move` using squared thresholds instead of expensive sqrts. A recorded clip remains byte-for-byte identical.",
+  "_comment": "Per-PR demo for #1349: is_sidestep / is_lateral_pivot evaluate their distance guards in square space. Reuses the about-face input script, which drives a rear move through exactly those maneuver classifiers.",
+  "input": "demos/inputs/about-face.json",
+  "caption": "Maneuver classification in square space: a Spearmen regiment is ordered to a destination directly behind it and executes an about-face (conversio) then marches. is_sidestep and is_lateral_pivot now compare move_vec.length_squared() against a squared SIDESTEP_MAX_DISTANCE instead of taking a sqrt, so this is the code path the change touches. Behaviour is intended to be unchanged; the clip is here so a reviewer can confirm the maneuver still reads correctly.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,
-  "width": 640
+  "width": 640,
+  "state": [30, 90, 150, 210, 270]
 }
