@@ -44,7 +44,7 @@ static func spawn(parent: Node, from: Vector2, to: Vector2, color: Color,
 	# orthogonal() rotates 90° counterclockwise, so all streaks arc to the left
 	# relative to their flight direction. Two opposing volleys arc in opposite
 	# on-screen directions, which looks natural and is consistent per-shot.
-	if trail._delta.length_squared() > 0.000001:
+	if trail._delta.length() > 0.001:
 		trail._lift_dir = trail._delta.orthogonal().normalized()
 
 
