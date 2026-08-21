@@ -207,6 +207,17 @@ var current_order: Order = null
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
 var order_mode: int = 0
+# Whether this unit auto-advances onto a merely-detected, out-of-weapon-range enemy while
+# it has no order -- the reactive close-the-distance fallback at the bottom of _think's
+# enemy branch. True by default, so a bare unit (most tests) keeps the historical
+# auto-advance. Battle clears it for the units the player commands directly (team 0, or
+# every team under all-teams control): such a unit under the default NORMAL stance holds
+# formation and waits for an explicit order instead of wandering toward a distant foe, so
+# only enemies already within weapon range are ever engaged unprompted. The AI-driven
+# enemy army keeps it set, so battles still start; a player-delegated group is AI-driven
+# too but closes via its leader's explicit attack order, never this fallback. ORDER_HOLD
+# and ORDER_BRACE already suppress the same advance regardless of this flag.
+var auto_advance_on_detect: bool = true
 # KNOCKBACK_FOCUS's own per-order parameter: how far a struck enemy body should be shoved.
 # false (default) -- just clear the battle line -- is the common case; true pushes it much
 # further. A genuine per-ORDER setting, not a global Settings toggle: Battle._apply_order_cmd
@@ -2346,17 +2357,24 @@ func _think(delta: float) -> void:
 				# arrival) it appended nothing, so the order just retires normally
 				# (has_move_target false, active_leaf().turn_target still zero), leaving
 				# the unit facing the pivoted heading instead of turning back.
-	elif enemy != null and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
+	elif enemy != null and auto_advance_on_detect \
+			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
-		# range/contact). If a re-face turn was in progress, settle it first: the unit is
-		# marching now, so the frozen arrival must release (folding the partial rotation into
-		# _formation_angle) or the bodies would stay pinned and never keep up with the march.
+		# range/contact). Gated by auto_advance_on_detect: a directly player-commanded unit
+		# leaves this false and holds formation instead (the else branch below), waiting for
+		# an order rather than closing on a foe still outside weapon range; the AI-driven
+		# enemy keeps it true so it still closes. If a re-face turn was in progress, settle it
+		# first: the unit is marching now, so the frozen arrival must release (folding the
+		# partial rotation into _formation_angle) or the bodies would stay pinned and never
+		# keep up with the march.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		_move_to(enemy.position, delta, false, true)
 	else:
-		# Idle: no enemy, or a HOLD stance that won't chase — the paths above
-		# still fight/fire whatever reaches a held unit. If the engaged enemy vanished
+		# Idle: no enemy; a HOLD/BRACE stance that won't chase; or a directly
+		# player-commanded unit holding formation (auto_advance_on_detect false) with nothing
+		# in weapon range yet -- the paths above still fight/fire whatever reaches a held unit.
+		# If the engaged enemy vanished
 		# (died/routed/left range) while a re-face turn was still running, settle it here so
 		# the soldier-body arrival doesn't stay frozen indefinitely (folding the partial
 		# rotation into _formation_angle so the bodies don't surge when the arrival re-enables).
