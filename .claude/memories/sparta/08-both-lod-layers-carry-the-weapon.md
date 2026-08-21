@@ -721,3 +721,54 @@ Whenever ending a session, completing a turn, or wrapping up work (whether finis
 
 
 
+
+## A GUT test asserting a tick-N outcome of a multi-hundred-tick battle is cross-platform-fragile
+
+A test that runs a live Battle for a few hundred ticks and asserts an event happens
+by a specific tick will diverge Windows-vs-Linux once enough soldier physics accumulates
+(the same float-drift `.claude/skills/sparta-demos/SKILL.md` documents for precise-tick demo
+captions -- it applies to GUT test tick windows too, not just captions/artifacts). A window
+tuned to the local (Windows) fire tick can pass locally and fail on CI (Linux), where the
+event lands later. `test_battle_ai_subcommanders.gd`'s SUPPORT-order window hit this: local
+fire tick 301, CI Linux > 360 (#1095/PR #1351).
+
+- **Do:** size a "does event X eventually happen" window to a battle length already proven to
+  complete on CI (e.g. the sibling determinism test's own tick count), with wide margin over
+  the observed fire tick, rather than a tight bound tuned to one platform's numbers.
+- **Do:** verify a widened window against CI's own run (Linux), not just locally, when the
+  event tick is platform-sensitive.
+- **Don't:** hard-code a tick window from a single local `dump-state.sh` / probe reading for a
+  battle that runs long enough to drift across platforms.
+
+## Run ONE GUT test file: `-gselect`, not `-gtest`, because `.gutconfig.json` forces the dir
+
+`.gutconfig.json` sets `dirs: ["res://test"]`, so a bare
+`-s addons/gut/gut_cmdln.gd -gtest=res://test/unit/<file>.gd` still runs the WHOLE suite
+(the config's dirs win) -- it times out looking like a hang. To run a single file:
+`-gdir=res://test/unit -ginclude_subdirs=false -gselect=<basename.gd> -gexit`.
+
+- **Do:** use `-gselect=<basename.gd>` (with `-gdir`/`-ginclude_subdirs=false`) to run one
+  test file locally while iterating.
+- **Don't:** assume `-gtest=<path>` limits the run -- the `.gutconfig.json` `dirs` override it.
+
+## A battle-wide default change floods the website demo-diff -- classify structurally, don't re-verify 30 clips by hand
+
+Changing a default that affects many scenarios (e.g. #1095's hold-formation default) makes
+`website-demo-diff.yml` flag dozens of clips (33 on PR #1351), most diverging at tick 1.
+Don't dump-state every one. The fast, rigorous classification:
+
+- **Do:** first confirm the diff touches no physics/collision/formation code
+  (`git diff origin/main -- scripts/ | grep -iE 'press|collision|overlap|shape|formation|melee|_move|physics'`);
+  if empty, a "candidate regression" `overlap`/`shape_residual`/`blob` cannot be a NEW physics
+  bug -- it is a re-arrangement (a unit now standing where it used to march, or an AI unit now
+  marching further and tripping the known long-march deformation).
+- **Do:** tally the WHOLE defect-delta table (cleared vs added), not just candidate-regression
+  rows, and put the net in the PR description (PR #1351: ~13 cleared, 10 candidate, 10
+  pre-existing).
+- **Do:** treat `expect:position@N` / `expect:state@N` candidate regressions in OTHER demos as
+  stale pins (they asserted the old behavior) -- they don't fail CI (`demo_defects` scans only
+  CHANGED demos), so file a follow-up to re-pin them (PR #1351 -> #1354) rather than growing the
+  PR.
+- **Don't:** read a wide demo-diff as many regressions, or dump-state each clip's merge-base
+  side unless its OUTCOME looks wrong (a wiped unit, a missing rally) per the sparta-demos
+  wide-diff procedure.
