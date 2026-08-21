@@ -21,15 +21,18 @@ const AI_PERIOD: int = 60
 ## whether any SUPPORT directive happens to fire along the way.
 const SUPPORT_BY_TICK: int = 600
 
-## How long to give the dedicated SUPPORT-order scenario below: empirically verified (see
-## _spawn_support_scenario's comment) to reach a real SUPPORT order at tick 301 -- the
-## directive fires on the AI decision at tick 300, on the default seed. This lands later
-## than it once did (~tick 120): with the hold-formation default a player-side unit no longer
-## auto-advances onto a merely-detected foe, so team-0's staged foes stand instead of rushing
-## in -- the ally's throwaway 1-soldier foe therefore dies several AI periods later, and the
-## freed ally only then picks up the mutual-support directive. 360 leaves an AI_PERIOD of
-## margin past the observed 301.
-const SUPPORT_SCENARIO_TICK_WINDOW: int = 360
+## How long to give the dedicated SUPPORT-order scenario below to reach a real SUPPORT
+## order. This lands later than it once did (~tick 120): with the hold-formation default a
+## player-side unit no longer auto-advances onto a merely-detected foe, so team-0's staged
+## foes stand instead of rushing in -- the ally's throwaway 1-soldier foe therefore dies
+## several AI periods later, and the freed ally only then picks up the mutual-support
+## directive. The exact tick also diverges across platforms once a battle runs a few hundred
+## ticks of live soldier physics (a known Windows-vs-Linux float-drift effect): locally it
+## fires by tick 301, but CI's Linux run reaches it later. So the window is set to the same
+## 600-tick length SUPPORT_BY_TICK already runs the determinism check over -- a battle length
+## proven to complete on CI -- with wide margin over the observed fire tick on either
+## platform, rather than a tight bound calibrated on one platform's numbers.
+const SUPPORT_SCENARIO_TICK_WINDOW: int = 600
 
 
 func after_each() -> void:
@@ -60,9 +63,11 @@ func _team1_units(battle: Node) -> Array:
 ## fights for a long time, and `ally` against a token 1-soldier enemy that dies almost
 ## immediately -- freeing `ally` (UnitLeader.is_chasing_live_target reads false once its
 ## target is dead) while `ward` is still fighting, so the next AI tick's mutual-support
-## directive can claim it. Empirically verified via tools/demo/dump-state.sh: `ally`'s
-## current_order reads SUPPORT by tick 120 (see demos/inputs/subcommander-mutual-support.json,
-## the website demo built on this same scenario shape).
+## directive can claim it. `ally`'s current_order reaches SUPPORT well within
+## SUPPORT_SCENARIO_TICK_WINDOW -- later than it once did, now that the hold-formation default
+## keeps team-0's staged foes from rushing in; see that constant's own comment for the timing
+## and the cross-platform note (also demos/inputs/subcommander-mutual-support.json, the
+## website demo built on this same scenario shape).
 func _spawn_support_scenario() -> Node:
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.scenario = [
