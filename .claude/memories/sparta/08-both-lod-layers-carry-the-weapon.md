@@ -799,10 +799,12 @@ waiting; the answer is always wait. Mark the PR draft so the hold is visible at 
 say on the thread which issue it is waiting for.
 
 **Draft stops the review round, not the CI spend.** Only the review workflow gates on draft
-status, and that gate is not in this repo -- `grep -rn draft .github/workflows/` returns
-nothing. `claude-code-review.yml` is a thin caller that delegates via `uses:` to
-`Morrison-Lab/gha`, and the `github.event.pull_request.draft == false` condition lives in the
-callee, at the pinned ref. Don't read the empty grep as "nothing gates on draft". `godot-ci.yml`
+status, and that gate is not in this repo -- `grep -rn "draft ==" .github/workflows/` returns
+nothing. (Search for the bare word `draft` instead and you get exactly one hit, an unrelated
+`eager-pr` comment in `claude.yml`; it is a comment, not a gate.) `claude-code-review.yml` is a
+thin caller that delegates via `uses:` to `Morrison-Lab/gha`, and the
+`github.event.pull_request.draft == false` condition lives in the callee, at the pinned ref.
+Don't read the empty grep as "nothing gates on draft". `godot-ci.yml`
 triggers on a bare
 `pull_request:` with no draft gate and no `paths:` filter, so `Validate & test` runs on every
 push to a held draft. `demo-video.yml` fires on `synchronize`, also with no draft gate, but it
