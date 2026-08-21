@@ -17,31 +17,5 @@
     180,
     240
   ],
-  "input": "demos/inputs/about-face.json",
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [
-        0
-      ],
-      "reason": "inherited defects from about-face.json"
-    },
-    "shape_residual": {
-      "uids": [
-        0
-      ],
-      "reason": "inherited defects from about-face.json"
-    },
-    "misslotted": {
-      "uids": [
-        0
-      ],
-      "reason": "inherited defects from about-face.json"
-    },
-    "path_crossing": {
-      "uids": [
-        0
-      ],
-      "reason": "inherited defects from about-face.json"
-    }
-  }
+  "input": "demos/inputs/about-face.json"
 }
