@@ -15,16 +15,6 @@ for portable skills and memories via the **Plugin Marketplace**.
 `ai-config` plugin, so Claude Code installs it at session start -- skills are
 available as `/ai-config:<name>` (e.g. `/ai-config:ardi`, `/ai-config:remember`).
 
-Other agents consume the same corpus from the gitignored `.ai-config/` checkout
-(bootstrapped by `tools/bootstrap-ai-config.sh`, pinned by `.ai-config-ref`):
-Gemini CLI / Antigravity read `.agents/skills.json` and `.agents/plugins.json`;
-**opencode** reads `opencode.json`, which points its `skills.paths` and
-`references` at `.ai-config/` and lists `.ai-config/CLAUDE.md` under
-`instructions`. opencode has no skills-bundle "plugin" (its `plugin` field is for
-JavaScript event-hook modules), so this config-field wiring is the equivalent of
-the Claude plugin. Run `tools/bootstrap-ai-config.sh` before an opencode session
-so `.ai-config/` exists.
-
 ## Project memories
 
 Sparta-specific working notes and gotchas, imported so they load with this file:
