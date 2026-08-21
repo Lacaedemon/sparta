@@ -793,10 +793,16 @@ Don't dump-state every one. The fast, rigorous classification:
 ## A fixable red CI check means HOLD the PR, not ask what to do
 
 When a PR fails a CI check and that failure has a known fix **that lands outside this PR** --
-an issue is filed for it, or the fix is otherwise identified -- **hold the PR until the
-unblocking PR lands.** Do not ask the owner to choose between merging past a red gate and
-waiting; the answer is always wait. Mark the PR draft so the hold is visible at a glance and
-say on the thread which issue it is waiting for.
+an issue is filed for it, or the fix is otherwise identified -- **hold the PR until that fix
+lands.** Do not ask the owner to choose between merging past a red gate and waiting; the
+answer is always wait. Mark the PR draft so the hold is visible at a glance and say on the
+thread which issue it is waiting for.
+
+The thing you wait on is usually a tracking issue, not a PR, because at the moment you file
+the hold nobody has written the fix yet. So the trigger is "the fix lands" -- a fix PR merges,
+or the tracking issue closes -- and watching for a specific PR number gives you nothing to
+watch. Of this section's own two worked examples, #1357 acquired a fix PR (#1363) hours after
+the hold was filed and #1360 had none at all.
 
 **Draft stops the review round, not the CI spend.** Only the review workflow gates on draft
 status, and that gate is not in this repo -- `grep -rn "draft ==" .github/workflows/` returns
@@ -850,9 +856,9 @@ that ban, so read the distinction rather than the keyword:
   is already tracked* until it happens to land green -- the flake is the known bug, so a
   green re-roll is an unearned pass rather than a recovered run.
 
-**Resuming is part of the hold.** When the unblocking PR merges: re-sync the held branch onto
-the new `main`, re-run CI, and mark it ready for review again only once the check that caused
-the hold actually comes back clean.
+**Resuming is part of the hold.** When the fix lands -- its PR merges, or the tracking issue
+closes -- re-sync the held branch onto the new `main`, re-run CI, and mark it ready for review
+again only once the check that caused the hold actually comes back clean.
 
 (Owner directive, 2026-08-21, from the GIA sweep of #1345/#1348/#1349. Worked example: #1348's
 `demo` gate failed on `uid0 overlap worst=0.117` -- the tired unit's peel-back, split out as
