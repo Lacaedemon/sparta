@@ -863,5 +863,8 @@ again only once the check that caused the hold actually comes back clean.
 (Owner directive, 2026-08-21, from the GIA sweep of #1345/#1348/#1349. Worked example: #1348's
 `demo` gate failed on `uid0 overlap worst=0.117` -- the tired unit's peel-back, split out as
 #1360 -- and #1349's `Validate & test` failed on the nondeterministic subcommander test tracked
-in #1357. Both were put on hold behind their unblocking issues rather than escalated as a
-merge-policy question.)
+in #1357. #1348's red gate was **first escalated to the owner** as a merge-policy question --
+"I'd rather ask than quietly pick" -- and that escalation is what prompted this directive,
+which then put both PRs on hold behind their unblocking issues and retracted the question.
+The escalation is the retired behaviour this entry exists to replace, so it is recorded here
+rather than smoothed over.)
