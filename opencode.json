@@ -1,0 +1,24 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".ai-config/CLAUDE.md"
+  ],
+  "skills": {
+    "paths": [
+      ".ai-config/skills",
+      ".ai-config/shared/sembr-skills/skills"
+    ]
+  },
+  "references": {
+    "shared": {
+      "path": ".ai-config/shared",
+      "description": "Shared coding, writing, workflow, and principle fragments referenced by ai-config skills"
+    },
+    "memories": {
+      "path": ".ai-config/memories",
+      "description": "ai-config persistent cross-session memory fragments"
+    }
+  }
+}
