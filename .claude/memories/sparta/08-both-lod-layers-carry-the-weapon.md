@@ -839,8 +839,13 @@ that ban, so read the distinction rather than the keyword:
   contract requires. Hold when the trip is a genuine defect waiting on a fix; an exemption
   there is the buy-green move this section forbids.
 - **Re-running a failed job** is the sanctioned answer for a failure confirmed transient or
-  infra-side (a link-checker blip, a runner dying before any test body ran) -- that contract
-  lives in the sibling part-files `04-...md` and `07-...md`, not in this one. What this
+  infra-side -- that contract lives in the sibling part-files `04-...md` and `07-...md`, not
+  in this one, and both of its attested cases are narrow: a link-checker blip that a PASSED
+  `main` run over the same corpus proves was reachable, and a `claude-review` that posted a
+  full verdict and then failed on a step downstream of it. Note what does NOT qualify, from
+  the same file: a `claude-review` dying at ~40s with `total_cost_usd: 0` is not transient,
+  and `07-...md` says re-running that one waits forever. Read the failing step before
+  classifying. What this
   section forbids is the different move of re-rolling a *nondeterministic gate whose defect
   is already tracked* until it happens to land green -- the flake is the known bug, so a
   green re-roll is an unearned pass rather than a recovered run.
