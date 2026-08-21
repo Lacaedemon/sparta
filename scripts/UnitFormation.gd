@@ -188,6 +188,23 @@ static func ranks_for(n: int, files: int) -> int:
 	return int(ceil(float(n) / float(files)))
 
 
+## Lateral slot offset that opens a centre corridor for a line-relief pass-through.
+## Back ranks (rank > 0) push outward along `corridor_perp_local` in proportion to
+## their lateral coordinate -- flank men step aside, the centre stays put, so the
+## partner's front line can march between. `spread_strength` is the caller's
+## 0..`Unit.RELIEF_CORRIDOR_SPREAD_MAX` scale (that maximum at full overlap, matching
+## `Unit._relief_corridor_spread_strength()`'s own range); this function itself treats
+## it as a plain multiplier and does not clamp it. Depth ramps from 0 on the front rank
+## to 1 on the rearmost. Pure, deterministic, replay-safe.
+static func relief_corridor_slot_offset(slot_local: Vector2, rank: int, ranks: int,
+		corridor_perp_local: Vector2, spread_strength: float) -> Vector2:
+	if spread_strength <= 0.0 or ranks <= 1 or rank <= 0:
+		return Vector2.ZERO
+	var back_frac: float = float(rank) / float(ranks - 1)
+	var lateral: float = slot_local.dot(corridor_perp_local)
+	return corridor_perp_local * lateral * spread_strength * back_frac
+
+
 ## The general grid layout: `n` slots in a centred, wider-than-deep block with `files`
 ## columns at `spacing` px, front rank toward -Y. Full ranks span the whole frontage; a
 ## partial rear rank closes up onto the CENTRE files of that same frontage, so its survivors
