@@ -789,3 +789,31 @@ Don't dump-state every one. The fast, rigorous classification:
 - **Don't:** read a wide demo-diff as many regressions, or dump-state each clip's merge-base
   side unless its OUTCOME looks wrong (a wiped unit, a missing rally) per the sparta-demos
   wide-diff procedure.
+
+## A fixable red CI check means HOLD the PR, not ask what to do
+
+When a PR fails a CI check and that failure has a known fix -- an issue is filed for it, or
+the fix is otherwise identified -- **hold the PR until the unblocking PR lands.** Do not ask
+the owner to choose between merging past a red gate and waiting; the answer is always wait.
+Mark the PR draft so the hold is visible at a glance and so it stops consuming review and CI
+cycles while it waits, and say on the thread which issue it is waiting for.
+
+This applies to the PR's own defects and to failures it merely surfaces. A check that goes
+red because the PR's demo now genuinely exercises a pre-existing bug still holds the PR --
+the fix belongs to the tracked issue, and the PR resumes once that issue's PR merges.
+
+**Never buy green instead of waiting.** Not with `defect_exemptions` on the failing unit, not
+by trimming the clip to end before the defect appears, not by swapping to a scenario that
+avoids the code path, and not by re-running until the flake lands the other way. Each of
+those hides the signal the check exists to give, and the first two additionally falsify
+whatever the PR claims about the behaviour.
+
+**Resuming is part of the hold.** When the unblocking PR merges: re-sync the held branch onto
+the new `main`, re-run CI, and mark it ready for review again only once the check that caused
+the hold actually comes back clean.
+
+(Owner directive, 2026-08-21, from the GIA sweep of #1345/#1348/#1349. Worked example: #1348's
+`demo` gate failed on `uid0 overlap worst=0.117` -- the tired unit's peel-back, split out as
+#1360 -- and #1349's `Validate & test` failed on the nondeterministic subcommander test tracked
+in #1357. Both were put on hold behind their unblocking issues rather than escalated as a
+merge-policy question.)
