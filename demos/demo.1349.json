@@ -1,47 +1,10 @@
 {
-  "_comment": "Performance refactor of UnitManeuver.gd: is_sidestep, is_rear_move, etc.",
-  "caption": "Non-visual refactor: replaces `distance_to` (`length()`) calls with `distance_squared_to` (`length_squared()`) inside `scripts/UnitManeuver.gd`. Evaluates maneuver check logic like `is_sidestep` and `is_rear_move` using squared thresholds instead of expensive sqrts. A recorded clip remains byte-for-byte identical.",
+  "_comment": "Per-PR demo for #1349: is_sidestep is one of the two classifiers this PR converts to square-space distance guards, so the clip drives a real side-step through SelectionManager rather than a scenario that never touches those functions.",
+  "input": "demos/inputs/sidestep.json",
+  "caption": "Side-step classification in square space: a lone Spearmen regiment is ordered a ~28 wu step to its right -- under SIDESTEP_MAX_DISTANCE (40) -- so UnitManeuver.is_sidestep classifies it as a side-step and the regiment shuffles right at a walk while holding its south-facing line, instead of pivoting to face the move and back. is_sidestep and is_lateral_pivot now compare move_vec.length_squared() against a squared threshold instead of taking a sqrt; behaviour is unchanged. Transcript confirms it: position x goes 452.00 -> 479.90 while facing stays exactly (0, 1) at every sampled tick.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,
   "width": 640,
-  "state": [
-    0,
-    24,
-    40,
-    56,
-    72,
-    88,
-    104,
-    130,
-    180,
-    240
-  ],
-  "input": "demos/inputs/about-face.json",
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [
-        0
-      ],
-      "reason": "inherited defects from about-face.json"
-    },
-    "shape_residual": {
-      "uids": [
-        0
-      ],
-      "reason": "inherited defects from about-face.json"
-    },
-    "misslotted": {
-      "uids": [
-        0
-      ],
-      "reason": "inherited defects from about-face.json"
-    },
-    "path_crossing": {
-      "uids": [
-        0
-      ],
-      "reason": "inherited defects from about-face.json"
-    }
-  }
+  "state": [8, 30, 60, 90, 120, 150, 180, 240]
 }
