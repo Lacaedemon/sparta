@@ -120,12 +120,12 @@ static func braced_defender_impulse(
 ## Returns: true if the body should move, false if static friction holds it in place.
 static func overcomes_static_friction(
 	impulse_magnitude: float,
-	body_velocity_magnitude: float,
+	body_velocity_magnitude_sq: float,
 	mass: float,
 	brace: float
 ) -> bool:
 	# If already moving, static friction doesn't gate further motion (kinetic friction only).
-	if body_velocity_magnitude > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE:
+	if body_velocity_magnitude_sq > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE * SoldierCombat.STATIC_FRICTION_VELOCITY_GATE:
 		return true
 
 	# Standing body: compare impulse against effective-mass-scaled threshold.
