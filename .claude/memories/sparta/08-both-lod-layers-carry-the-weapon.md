@@ -745,11 +745,20 @@ fire tick 301, CI Linux > 360 (#1095/PR #1351).
 `.gutconfig.json` sets `dirs: ["res://test"]`, so a bare
 `-s addons/gut/gut_cmdln.gd -gtest=res://test/unit/<file>.gd` still runs the WHOLE suite
 (the config's dirs win) -- it times out looking like a hang. To run a single file:
-`-gdir=res://test/unit -ginclude_subdirs=false -gselect=<basename.gd> -gexit`.
+`-gdir=res://test/unit -gselect=<basename.gd> -gexit`. It is `-gselect` (a substring filter
+on script names) that limits which scripts actually RUN; `-gdir` just narrows the collection
+directory so the scan is faster.
 
-- **Do:** use `-gselect=<basename.gd>` (with `-gdir`/`-ginclude_subdirs=false`) to run one
-  test file locally while iterating.
+Don't pass `-ginclude_subdirs=false` expecting it to disable subdir scanning: GUT's optparse
+(`addons/gut/cli/optparse.gd`) treats boolean flags as toggles -- presence sets the value to
+`!default` and any `=false` suffix is ignored -- so the flag does the opposite of what
+`=false` reads like. `-gselect` already scopes the run, so just omit it.
+
+- **Do:** use `-gselect=<basename.gd>` (with `-gdir=res://test/unit`) to run one test file
+  locally while iterating.
 - **Don't:** assume `-gtest=<path>` limits the run -- the `.gutconfig.json` `dirs` override it.
+- **Don't:** write `-ginclude_subdirs=false` -- a GUT boolean flag ignores its `=false` and
+  toggles to `!default`.
 
 ## A battle-wide default change floods the website demo-diff -- classify structurally, don't re-verify 30 clips by hand
 
@@ -757,11 +766,19 @@ Changing a default that affects many scenarios (e.g. #1095's hold-formation defa
 `website-demo-diff.yml` flag dozens of clips (33 on PR #1351), most diverging at tick 1.
 Don't dump-state every one. The fast, rigorous classification:
 
-- **Do:** first confirm the diff touches no physics/collision/formation code
-  (`git diff origin/main -- scripts/ | grep -iE 'press|collision|overlap|shape|formation|melee|_move|physics'`);
-  if empty, a "candidate regression" `overlap`/`shape_residual`/`blob` cannot be a NEW physics
-  bug -- it is a re-arrangement (a unit now standing where it used to march, or an AI unit now
-  marching further and tripping the known long-march deformation).
+- **Do:** first confirm the diff touches no physics/collision/formation code, checking only
+  the diff's *added* lines and ignoring comment/prose matches -- this repo's own vocabulary
+  ("hold formation", "press into") makes a naive whole-diff grep hit comment prose and
+  unchanged `_move_to(...)` context lines, so it never reads empty even on a genuinely
+  logic-free diff (this happened on the very PR this lesson is drawn from). Restrict to added
+  code lines and read the hits:
+  `git diff origin/main...HEAD -- scripts/ | grep -E '^\+' | grep -vE '^\+\+\+|^\+\s*#|^\+\s*$' | grep -iE 'press|collision|overlap|shape|formation|melee|_move|physics'`.
+  Use `origin/main...HEAD` (merge-base, what `website-demo-diff.yml` itself uses), not two-dot
+  `origin/main`, so a moved-forward `main` doesn't drag unrelated `scripts/` changes in. If the
+  only hits are comment prose (`+ #`) or unchanged context, the logic is untouched: a
+  "candidate regression" `overlap`/`shape_residual`/`blob` cannot be a NEW physics bug -- it is
+  a re-arrangement (a unit now standing where it used to march, or an AI unit now marching
+  further and tripping the known long-march deformation).
 - **Do:** tally the WHOLE defect-delta table (cleared vs added), not just candidate-regression
   rows, and put the net in the PR description (PR #1351: ~13 cleared, 10 candidate, 10
   pre-existing).
