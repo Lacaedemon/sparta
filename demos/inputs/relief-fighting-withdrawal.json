@@ -100,13 +100,5 @@
         1.0
       ]
     }
-  ],
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [
-        0
-      ],
-      "reason": "One judged sample: tick 260, nnd_min 1.044 wu against a 2.25 threshold. At that sample `engaged` has already dropped -- so DemoDefects judges it -- but `in_enemy_contact` is still TRUE: the relieved block is out of the melee bookkeeping yet still physically in the press it is backing out of, which is exactly the condition the `engaged` exemption exists to forgive. That judged_mask() keys on `engaged` alone and never consults `in_enemy_contact` is a scan bug, filed as #1371; when that lands this exemption should print STALE and be removed. Every sample from tick 340 on is genuinely clear of contact and passes -- 2.72 / 2.43 / 6.35 / 3.43 / 7.18 wu at ticks 340 / 380 / 420 / 460 / 500 -- with the median settled on the 9.0 wu grid pitch. Measured against origin/main on the same seed, the pre-fix code fails this metric at EVERY judged sample and never recovers (0.21 / 0.10 / 0.23 / 0.25 / 0.29 / 0.11 / 0.20 wu at ticks 260 / 300 / 340 / 380 / 420 / 460 / 500), with in_enemy_contact still true at tick 500 because the relieved block never actually leaves the line."
-    }
-  }
+  ]
 }

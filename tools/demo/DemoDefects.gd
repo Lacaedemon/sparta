@@ -27,11 +27,14 @@ extends RefCounted
 ## Thresholds are expressed as fractions of the unit's OWN dumped constants (body
 ## radius for the physical-contact floors, grid pitch for the grid-deviation ones,
 ## gaits for speed), never absolute world-unit literals, so a retune of the sim
-## retunes the verdicts with it. The grid/spacing checks judge only the samples
-## judged_mask() admits: engaged samples are exempt (melee press legitimately
-## compresses and scrambles a block), as are ROUTING samples, samples adjacent to
-## an engagement flip, the sample right after a casualty compaction, and lone
-## survivors -- see judged_mask's own doc for each rationale.
+## retunes the verdicts with it. The grid/spacing checks -- and path_crossing,
+## which needs both ends of a step admitted -- judge only the samples
+## judged_mask() admits: samples in enemy CONTACT are exempt (melee press
+## legitimately compresses and scrambles a block), as are ROUTING samples,
+## samples adjacent to a contact flip, the sample right after a casualty
+## compaction, and lone survivors -- see judged_mask's own doc for each
+## rationale, including why contact reads `engaged` OR `in_enemy_contact`
+## rather than `engaged` alone.
 
 ## Spacing floors derive from BODY GEOMETRY, not grid pitch: pitch is where the
 ## formation posts its slots, the body radius is how close two men can physically
@@ -288,7 +291,8 @@ static func analyze(snapshots: Array) -> Dictionary:
 			var uid: int = int(u["uid"])
 			if not series.has(uid):
 				series[uid] = {
-					"ticks": [], "engaged": [], "moving": [], "routing": [], "counts": [],
+					"ticks": [], "engaged": [], "in_enemy_contact": [],
+					"moving": [], "routing": [], "counts": [],
 					"nnd_min": [], "nnd_med": [], "angle": [], "residual": [],
 					"misslotted": [], "facing_angle": [], "pos": [],
 					"motion_ref": u["motion_ref"],
@@ -300,6 +304,10 @@ static func analyze(snapshots: Array) -> Dictionary:
 			var fit: Dictionary = kabsch_fit(slots, bodies)
 			s["ticks"].append(int(snap["tick"]))
 			s["engaged"].append(bool(u.get("engaged", false)))
+			# Physical press, not the combat-state decision: the two drop at different
+			# moments (see judged_mask). Absent from transcripts dumped before the field
+			# existed, where false leaves the mask exactly as `engaged` alone made it.
+			s["in_enemy_contact"].append(bool(u.get("in_enemy_contact", false)))
 			s["moving"].append(String(u.get("state", "")) == "MOVING")
 			s["routing"].append(String(u.get("state", "")) == "ROUTING")
 			s["counts"].append(bodies.size())
@@ -329,13 +337,25 @@ static func analyze(snapshots: Array) -> Dictionary:
 
 
 ## Which samples the grid/spacing-reference verdicts (blob, overlap, shape,
-## misslot) actually judge. Beyond the engaged exemption those checks always
-## had, a sample is also exempt when:
+## misslot) actually judge -- and, one step removed, path_crossing, which
+## measures a route between two samples and so needs BOTH of them admitted.
+## The exemption those checks are built around is
+## CONTACT -- a block with enemy bodies in among its own is legitimately
+## compressed and scrambled, so the grid spacing it reads there says nothing
+## about the formation code. Contact is `engaged` OR `in_enemy_contact`, not
+## `engaged` alone: the first is a combat-state decision, the second is
+## physical proximity, and they do not drop together. A regiment relieved out
+## of a melee stops being `engaged` the moment the bookkeeping hands the fight
+## over, while its men stay pressed against the enemy for tens of ticks
+## afterwards as they back out -- so keying on `engaged` alone judged that
+## whole window, reading the melee's own compression as a formation defect.
+##
+## Beyond contact, a sample is also exempt when:
 ## - the unit is ROUTING: a fleeing mob is legitimately not on any slot grid,
 ##   so grid-referenced geometry there is noise, not a defect;
-## - it sits NEXT TO an engaged sample in the series (the transition window):
+## - it sits NEXT TO a contact sample in the series (the transition window):
 ##   a block charging into or peeling out of contact legitimately compresses
-##   in the sampled moments just before `engaged` flips, and judging one side
+##   in the sampled moments just before contact flips, and judging one side
 ##   of the flip while exempting the other made verdicts a lottery on where
 ##   the sample landed relative to first contact;
 ## - the soldier count dropped since the previous sample: casualties compact
@@ -345,13 +365,16 @@ static func analyze(snapshots: Array) -> Dictionary:
 ##   which would read as maximal compression forever.
 static func judged_mask(s: Dictionary) -> Array:
 	var n: int = s["ticks"].size()
+	var contact: Array = []
+	for i in range(n):
+		contact.append(bool(s["engaged"][i]) or bool(s["in_enemy_contact"][i]))
 	var mask: Array = []
 	for i in range(n):
-		var ok: bool = not s["engaged"][i] and not s["routing"][i] \
+		var ok: bool = not contact[i] and not s["routing"][i] \
 				and int(s["counts"][i]) >= 2
-		if ok and i > 0 and (s["engaged"][i - 1] or int(s["counts"][i]) < int(s["counts"][i - 1])):
+		if ok and i > 0 and (contact[i - 1] or int(s["counts"][i]) < int(s["counts"][i - 1])):
 			ok = false
-		if ok and i + 1 < n and s["engaged"][i + 1]:
+		if ok and i + 1 < n and contact[i + 1]:
 			ok = false
 		mask.append(ok)
 	return mask
