@@ -411,7 +411,7 @@ static func _cap_body_speed(unit: Unit, i: int) -> Vector2:
 	var back_cap: float = unit.jog_speed * unit.back_speed_fraction
 	var along: Vector2 = facing * forward_component            # points backward (component < 0)
 	var side: Vector2 = vel - along
-	if along.length() > back_cap:
+	if along.length_squared() > back_cap * back_cap:
 		along = along.normalized() * back_cap
 	return (along + side).limit_length(unit.jog_speed)
 
