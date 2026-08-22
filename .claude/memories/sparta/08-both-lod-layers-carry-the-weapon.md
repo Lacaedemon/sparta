@@ -1165,16 +1165,32 @@ own finding rather than letting it silently corrupt the position math.
 
 The whole-corpus sweep this came from is worth reusing as a method: two `git worktree`s
 at the two commits, `diff -rq` over `scripts/` to prove exactly one file differs, then
-every `demos/inputs/*.json` through `dump-state.sh` on both sides at a fixed tick set.
-146 scenarios take about 40 minutes with the two runs in parallel, and the answer -- 142
-identical, 4 changed, one of them reaching a different battle outcome -- is the kind of
+every `demos/inputs/*.json` through `dump-state.sh` on both sides. 146 scenarios take
+about 40 minutes with the two runs in parallel, and the answer -- 142 showing no
+difference, 4 changed, one of them reaching a different battle outcome -- is the kind of
 claim a spot check cannot make.
 
+**But run it against CI's own website demo-diff before trusting it, because a hand-rolled
+sweep is easy to under-scope, and both ways it fails are silent.** The first attempt
+sampled every 60th tick up to 600 and enumerated `demos/inputs/` only. CI's diff, which
+walks every tick and reads `website/tools/demo-catalog.sh`, found two things that sweep
+could not: a scenario whose transcripts first diverge at tick 751 (reported "no
+difference" because the sampling stopped at 600 -- and a coarse tick set always reports a
+LATER onset than the real one), and two changed clips of `type=replay`, whose sources
+(`demos/showcase.json`, `demos/charge_demo.json`) do not live under `demos/inputs/` at
+all. CI also diffs `DemoDefects` verdicts per side and surfaced three new defects the
+position-only comparison had no way to see -- including a `blob`, the exact failure the
+changed code existed to prevent.
+
 - **Do:** key transcript comparisons on `uid`; surface roster differences separately.
+- **Do:** run each script to its own full length, cover the `replay`-type catalog entries,
+  and diff defect verdicts -- not just positions.
 - **Do:** sweep the whole corpus before claiming a sim change is invisible or
-  "backend-only". A change can be inert in 142 scenarios and still flip who wins in the
-  one long AI-doctrine battle.
+  "backend-only". A change can show no difference in 142 scenarios and still flip who wins
+  in the one long AI-doctrine battle.
 - **Don't:** trust a per-scenario spot check to bound a change in a chaotic simulation.
+- **Don't:** report "identical" when you mean "no difference at the ticks I sampled". Say
+  which ticks, and say what the sweep did not cover.
 
 ## `lychee` exits 2 on a TIMEOUT, and the auto-filed issue calls it a broken link
 
