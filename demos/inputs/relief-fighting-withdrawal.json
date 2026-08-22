@@ -1,0 +1,112 @@
+{
+  "_comment": "A relieved regiment backs out of the line facing the enemy. A tired player Infantry unit (uid0) holds an engaged enemy while a fresh one (uid1) waits behind it; the player box-selects the fresh unit and right-clicks the engaged ally at tick 200 -- a RELIEF order. The reliever takes over the fight and the relieved unit peels back to its own rear. Watch uid0's heading: it stays fronted on the enemy for the whole withdrawal instead of pivoting 180 degrees and marching off, so the slot grid never sweeps through a half-turn the soldier bodies cannot follow. TIMING IS LOAD-BEARING: the right-click must land AFTER the enemy reaches the tired unit (contact is around tick 128), because a right-click on a friendly that is not yet fighting resolves to a plain ground MOVE instead of a RELIEF -- there is nothing to relieve yet.",
+  "seed": "12345",
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 800,
+      "y": 470
+    },
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 800,
+      "y": 390
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 800,
+      "y": 570,
+      "count": 70
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 800.0,
+      "y": 430.0,
+      "zoom": 1.0
+    }
+  ],
+  "steps": [
+    {
+      "tick": 30,
+      "box": {
+        "from": [
+          700,
+          350
+        ],
+        "to": [
+          900,
+          430
+        ]
+      }
+    },
+    {
+      "tick": 200,
+      "rmb_click": [
+        800,
+        470
+      ]
+    }
+  ],
+  "state": [
+    190,
+    220,
+    260,
+    300,
+    340,
+    380,
+    420,
+    460,
+    500
+  ],
+  "expect": [
+    {
+      "tick": 190,
+      "uid": 0,
+      "field": "state",
+      "value": "FIGHTING"
+    },
+    {
+      "tick": [
+        205,
+        240
+      ],
+      "uid": 1,
+      "field": "current_order",
+      "value": "RELIEF"
+    },
+    {
+      "tick": [
+        205,
+        240
+      ],
+      "uid": 0,
+      "field": "current_order",
+      "value": "MOVE"
+    },
+    {
+      "tick": [
+        300,
+        500
+      ],
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.01,
+        1.0
+      ]
+    }
+  ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        0
+      ],
+      "reason": "One judged sample: tick 260, nnd_min 1.044 wu against a 2.25 threshold. At that sample `engaged` has already dropped -- so DemoDefects judges it -- but `in_enemy_contact` is still TRUE: the relieved block is out of the melee bookkeeping yet still physically in the press it is backing out of, which is exactly the condition the `engaged` exemption exists to forgive. That judged_mask() keys on `engaged` alone and never consults `in_enemy_contact` is a scan bug, filed as #1371; when that lands this exemption should print STALE and be removed. Every sample from tick 340 on is genuinely clear of contact and passes -- 2.72 / 2.43 / 6.35 / 3.43 / 7.18 wu at ticks 340 / 380 / 420 / 460 / 500 -- with the median settled on the 9.0 wu grid pitch. Measured against origin/main on the same seed, the pre-fix code fails this metric at EVERY judged sample and never recovers (0.21 / 0.10 / 0.23 / 0.25 / 0.29 / 0.11 / 0.20 wu at ticks 260 / 300 / 340 / 380 / 420 / 460 / 500), with in_enemy_contact still true at tick 500 because the relieved block never actually leaves the line."
+    }
+  }
+}

@@ -140,7 +140,7 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 
 		var dpos: Vector2 = defender._sim_soldier_pos[target]
 		var axis: Vector2 = dpos - apos
-		var push_dir: Vector2 = axis.normalized() if axis.length() > 0.001 else Vector2.ZERO
+		var push_dir: Vector2 = axis.normalized() if axis.length_squared() > 0.000001 else Vector2.ZERO
 		# Closing speed along the strike axis -> the charge term c (bind on its own
 		# line; an inline ternary as a call arg can mis-evaluate in GDScript).
 		var closing: float = attacker._approach_velocity.dot(push_dir)
@@ -246,7 +246,7 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 			var impulse_attacker: Vector2 = impulses[0]
 			var impulse_defender: Vector2 = impulses[1]
 			# Apply recoil to attacker (always, even if bracing absorbs the defender's motion).
-			if impulse_attacker.length() > 0.01:
+			if impulse_attacker.length_squared() > 0.0001:
 				attacker._sim_body_vel[ai] = SoldierCombat.capped_knockback_velocity(
 					attacker._sim_body_vel[ai], impulse_attacker)
 			# Apply reduced impulse to defender, still gated by bracing capacity: scale the
