@@ -897,6 +897,110 @@ emptiness is a property of the repo rather than of your filter.
 - **Don't:** conclude from an empty `.github/workflows/` grep that nothing gates on the thing
   you searched for.
 
+## A fixable red CI check means HOLD the PR, not ask what to do
+
+When a PR fails a CI check and that failure has a known fix **that lands outside this PR** --
+an issue is filed for it, or the fix is otherwise identified -- **hold the PR until that fix
+lands.** Do not ask the owner to choose between merging past a red gate and waiting; the
+answer is always wait. Mark the PR draft so the hold is visible at a glance and say on the
+thread which issue it is waiting for.
+
+The thing you wait on is usually a tracking issue, not a PR, because at the moment you file
+the hold nobody has written the fix yet. So the trigger is "the fix lands" -- a fix PR merges,
+or the tracking issue closes -- and watching for a specific PR number gives you nothing to
+watch. Both of this section's worked examples went that way: #1348 held behind #1360 (the
+tired unit's peel-back, which reddens its `demo` gate) and #1349 behind #1357 (the
+nondeterministic subcommander test, which reddens its `Validate & test`). #1357 acquired a fix
+PR, #1363, hours after the hold was filed; #1360 had none at all. Both are written up in full
+at the end of this section.
+
+**Draft stops the review round, not the CI spend.** Only the review workflow gates on draft
+status, and that gate is not in this repo -- `grep -rn "draft ==" .github/workflows/` returns
+nothing. (Search for the bare word `draft` instead and you get exactly one hit, an unrelated
+`eager-pr` comment in `claude.yml`; it is a comment, not a gate.) `claude-code-review.yml` is a
+thin caller that delegates via `uses:` to `Morrison-Lab/gha`, and the
+`github.event.pull_request.draft == false` condition lives in the callee, at the pinned ref.
+Don't read the empty grep as "nothing gates on draft". `godot-ci.yml`
+triggers on a bare
+`pull_request:` with no draft gate and no `paths:` filter, so `Validate & test` runs on every
+push to a held draft. `demo-video.yml` fires on `synchronize`, also with no draft gate, and it
+IS path-filtered (`scenes/`, `scripts/`, `assets/`, `project.godot`, `demos/*.json`,
+`demos/scenarios/`, `demos/inputs/`) -- but that filter buys a held draft almost nothing,
+because on a `pull_request` event GitHub matches `paths:` against the **pull request's whole
+changed-file set**, not against the individual push's own delta. Once a PR's diff has touched
+a watched path at all, every later `synchronize` re-runs `demo`, including a push that touches
+nothing relevant.
+
+#1349 is the worked proof, and it is checkable: commit `f1beab07` changed exactly one file,
+`.github/workflows/claude-code-review.yml`, which is not in that list -- and Demo video run
+`32520548972` fired on it anyway, because the PR's cumulative diff carries
+`scripts/UnitManeuver.gd`. So the only PR a path filter actually spares is one that has never
+touched a watched path in its whole life; this entry's own PR, #1362, is that case -- it
+touches `.claude/memories/` only and got no `demo` check on any of its heads. Never reason
+about a path filter from what a single push changed. Draft it for the signal and to stop
+burning review rounds -- not on the belief that it makes the hold free.
+
+**The failure has to belong to someone else.** This rule covers a pre-existing bug the PR
+merely surfaces, or a flake tracked elsewhere -- cases where the fix is somebody's tracked
+issue and waiting is the only way to get a true green. A defect the PR itself introduced is
+not a hold: it is yours to fix on the branch now. Deciding which one you have is the first
+step, not an afterthought.
+
+This last paragraph is a deliberate narrowing, recorded here rather than left implicit. The
+first draft of this entry -- and the tracking issue's restatement of it -- said the rule
+"Applies both to the PR's own defects **and** to pre-existing bugs the PR merely surfaces",
+which was my paraphrase rather than the directive.
+
+What separates the two cases is OWNERSHIP, not whether a fix PR exists. A pre-existing bug is
+somebody else's tracked issue, so waiting is the only route to a true green; a defect you
+introduced is already yours, so there is nobody to wait for. Don't reach for "there is no PR
+to wait on" as the discriminator -- as the paragraph above establishes, a legitimate hold
+usually has no fix PR either at the moment you file it, so that test would throw out this
+section's own worked examples. The narrowing is the reading that makes the rule executable.
+
+**Never buy green instead of waiting.** Not by trimming the clip to end before the defect
+appears, not by swapping to a scenario that avoids the code path. Both hide the signal the
+check exists to give, and both falsify whatever the PR claims about the behaviour.
+
+Two adjacent remedies are already sanctioned in this memory corpus and are **not** covered by
+that ban, so read the distinction rather than the keyword:
+
+- **`defect_exemptions`** is the sanctioned answer when a maneuver legitimately trips a
+  metric -- see "When a maneuver legitimately trips a metric" above, which spells out the
+  contract. Exempt when the trip is the maneuver doing its job, with the honest reason the
+  contract requires. Hold when the trip is a genuine defect waiting on a fix; an exemption
+  there is the buy-green move this section forbids.
+- **Re-running a failed job** is the sanctioned answer for a failure confirmed transient or
+  infra-side -- that contract lives in the sibling part-files `04-...md` and `07-...md`, not
+  in this one, and both of its attested cases are narrow: a link-checker blip that a PASSED
+  `main` run over the same corpus proves was reachable, and a `claude-review` that posted a
+  full verdict and then failed on a step downstream of it. **Confirmed** is the load-bearing
+  word, and `07-...md` is precisely about why a fingerprint cannot do the confirming: a
+  `claude-review` dying at ~40s with `total_cost_usd: 0` covers quota exhaustion (which does
+  clear on its own), expired credentials, AND a plugin-install failure -- identical cost,
+  identical duration, and only the last one "will never clear on its own", so that "a
+  retry-and-wait on this one waits forever". Its instruction is to read the job's own
+  `##[error]` lines before classifying by the fingerprint. That is a DIFFERENT diagnostic
+  from the STEP LIST reading the same file prescribes for its other case (verdict posted, a
+  later step failed); two procedures for two failures, so don't merge them into one habit.
+  What this section forbids is the different move of re-rolling a *nondeterministic gate
+  whose defect is already tracked* until it happens to land green -- the flake is the known
+  bug, so a green re-roll is an unearned pass rather than a recovered run.
+
+**Resuming is part of the hold.** When the fix lands -- its PR merges, or the tracking issue
+closes -- re-sync the held branch onto the new `main`, re-run CI, and mark it ready for review
+again only once the check that caused the hold actually comes back clean.
+
+(Owner directive, 2026-08-21, from the GIA sweep of #1345/#1348/#1349. Worked example: #1348's
+`demo` gate failed on `uid0 overlap worst=0.117` -- the tired unit's peel-back, split out as
+#1360 -- and #1349's `Validate & test` failed on the nondeterministic subcommander test tracked
+in #1357. #1348's red gate was **first escalated to the owner** as a merge-policy question --
+"I'd rather ask than quietly pick" -- and that escalation is what prompted this directive,
+which then put both PRs on hold behind their unblocking issues and retracted the question.
+The escalation is the retired behaviour this entry exists to replace, so it is recorded here
+rather than smoothed over.)
+
+
 ## Batch a review round's fixes into one push; a superseded head's red check is not a defect
 
 The review workflow runs with `cancel-in-progress`, so pushing while a round is in flight
