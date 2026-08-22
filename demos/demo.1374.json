@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Demo-review tooling only. The diff touches `tools/demo/DemoDefects.gd` (the offline transcript analyzer) and its unit tests -- no `scripts/`, `scenes/`, `assets/` or `project.godot` change, and `git diff origin/main...HEAD | grep -cE '_draw|_refresh_flock_render|modulate'` returns 0, so no render path is touched either. The clip a recording would produce is identical to main's; what changed is which SAMPLES of that clip's transcript the defect scan judges. That is shown by the before/after catalog sweep in the PR description, not by footage."
+  "input": "demos/inputs/relief-fighting-withdrawal.json",
+  "caption": "This PR changes no game behaviour -- the footage here is identical to main's. It is the clip whose scan exemption this PR removes, recorded so CI's own defect scan judges it at its declared tick set: a relieved regiment (the front block) backs out of the line still fronting the enemy, and the samples where it is disengaged but still pressed against the enemy are the ones the widened judged_mask() now forgives. The verdict table under the transcript comment is this PR's verification, not the picture.",
+  "fixed_fps": 60,
+  "max_frames": 420,
+  "fps": 15,
+  "width": 720
 }
