@@ -3,87 +3,15 @@
   "seed": "12345",
   "drill": true,
   "scenario": [
-    {
-      "team": 0,
-      "type": "Spearmen",
-      "x": 500,
-      "y": 430,
-      "count": 40,
-      "facing": [
-        0,
-        1
-      ]
-    }
+    {"team": 0, "type": "Spearmen", "x": 500, "y": 430, "count": 40, "facing": [0, 1]}
   ],
   "camera": [
-    {
-      "tick": 0,
-      "x": 500.0,
-      "y": 350.0,
-      "zoom": 1.9
-    }
+    {"tick": 0, "x": 500.0, "y": 350.0, "zoom": 1.9}
   ],
   "steps": [
-    {
-      "tick": 12,
-      "click": [
-        500,
-        430
-      ]
-    },
-    {
-      "tick": 24,
-      "rmb_click": [
-        500,
-        250
-      ]
-    }
+    {"tick": 12, "click": [500, 430]},
+    {"tick": 24, "rmb_click": [500, 250]}
   ],
-  "frames": [
-    0,
-    24,
-    60,
-    90,
-    130,
-    180,
-    240
-  ],
-  "state": [
-    0,
-    24,
-    40,
-    56,
-    72,
-    88,
-    104,
-    130,
-    180,
-    240
-  ],
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [
-        0
-      ],
-      "reason": "Known issue: The conversio (about-face) maneuver currently causes temporary overlap during the in-place pivot."
-    },
-    "shape_residual": {
-      "uids": [
-        0
-      ],
-      "reason": "Known issue: Shape briefly deforms during the conversio pivot before recovering."
-    },
-    "misslotted": {
-      "uids": [
-        0
-      ],
-      "reason": "Known issue: Soldiers temporarily leave their exact slots during the 180-degree conversio."
-    },
-    "path_crossing": {
-      "uids": [
-        0
-      ],
-      "reason": "Known issue: Soldier paths cross as ranks invert during the conversio maneuver."
-    }
-  }
+  "frames": [0, 24, 60, 90, 130, 180, 240],
+  "state": [0, 24, 40, 56, 72, 88, 104, 130, 180, 240]
 }
