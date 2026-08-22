@@ -16,6 +16,7 @@ DEMOS=(
   "support|demos/support_demo.json|30|400|640|replay"
   "group_attack|demos/inputs/group-attack-distributed.json|30|400|640|input"
   "pace_modes|demos/inputs/pace-modes.json|30|720|640|input"
+  "hold_formation|demos/inputs/hold-formation-default.json|30|200|640|input"
   "sidestep|demos/inputs/sidestep.json|30|150|640|input"
   "back_step|demos/inputs/backstep.json|30|300|640|input"
   "arrow_nudge|demos/inputs/arrow-nudge.json|30|330|640|input"

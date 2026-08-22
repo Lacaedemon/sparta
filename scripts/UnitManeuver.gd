@@ -64,7 +64,7 @@ const MOVING_WHEEL_MIN_ANGLE_DEG := 45.0
 ## the unit's current heading; `move_vec` is destination minus current position.
 static func is_sidestep(facing: Vector2, move_vec: Vector2) -> bool:
 	var dist := move_vec.length()
-	if facing.length() < 0.01 or dist < 0.01:
+	if facing.length_squared() < 0.0001 or dist * dist < 0.0001:
 		return false
 	if dist > SIDESTEP_MAX_DISTANCE:
 		return false
@@ -82,7 +82,7 @@ static func is_sidestep(facing: Vector2, move_vec: Vector2) -> bool:
 ## `move_vec` is destination minus current position. Degenerate inputs (no facing,
 ## a zero-length move) are not rear moves.
 static func is_rear_move(facing: Vector2, move_vec: Vector2) -> bool:
-	if facing.length() < 0.01 or move_vec.length() < 0.01:
+	if facing.length_squared() < 0.0001 or move_vec.length_squared() < 0.0001:
 		return false
 	var angle := rad_to_deg(absf(facing.angle_to(move_vec)))
 	return angle >= REAR_MOVE_MIN_ANGLE_DEG
@@ -94,7 +94,7 @@ static func is_rear_move(facing: Vector2, move_vec: Vector2) -> bool:
 ## with is_rear_move to decide whether the about-face alone leaves too much for the march's
 ## own gradual re-aim to close cleanly (see is_wheel_turn).
 static func rear_move_wheel_residual_deg(facing: Vector2, move_vec: Vector2) -> float:
-	if facing.length() < 0.01 or move_vec.length() < 0.01:
+	if facing.length_squared() < 0.0001 or move_vec.length_squared() < 0.0001:
 		return 0.0
 	return rad_to_deg(absf((-facing).angle_to(move_vec)))
 
@@ -132,7 +132,7 @@ static func wheel_turn_dir(facing: Vector2, move_vec: Vector2) -> int:
 ## march. `facing` is the current heading; `move_vec` is destination minus current
 ## position.
 static func is_backstep(facing: Vector2, move_vec: Vector2) -> bool:
-	if move_vec.length() > SIDESTEP_MAX_DISTANCE:
+	if move_vec.length_squared() > SIDESTEP_MAX_DISTANCE * SIDESTEP_MAX_DISTANCE:
 		return false
 	return is_rear_move(facing, move_vec)
 
@@ -146,7 +146,7 @@ static func is_backstep(facing: Vector2, move_vec: Vector2) -> bool:
 ## minus current position.
 static func is_lateral_pivot(facing: Vector2, move_vec: Vector2) -> bool:
 	var dist := move_vec.length()
-	if facing.length() < 0.01 or dist <= SIDESTEP_MAX_DISTANCE:
+	if facing.length_squared() < 0.0001 or dist <= SIDESTEP_MAX_DISTANCE * SIDESTEP_MAX_DISTANCE:
 		return false
 	if is_rear_move(facing, move_vec):
 		return false
@@ -215,7 +215,7 @@ static func max_turn_rate_for_speed(body_accel: float, speed: float) -> float:
 ## is_wheel_turn, which only ever fires inside the rear sector (is_rear_move gates it).
 ## `facing` is the current heading; `move_vec` is destination minus current position.
 static func is_moving_wheel_turn(is_cavalry: bool, facing: Vector2, move_vec: Vector2) -> bool:
-	if not is_cavalry or facing.length() < 0.01 or move_vec.length() < 0.01:
+	if not is_cavalry or facing.length_squared() < 0.0001 or move_vec.length_squared() < 0.0001:
 		return false
 	return rad_to_deg(absf(facing.angle_to(move_vec))) >= MOVING_WHEEL_MIN_ANGLE_DEG
 
@@ -230,6 +230,6 @@ static func is_moving_wheel_turn(is_cavalry: bool, facing: Vector2, move_vec: Ve
 ## the way begin_about_face_with_wheel's own about-face+residual can already total more
 ## than a half-turn) can still ask for it directly. Zero for degenerate input.
 static func moving_wheel_turn_angle(facing: Vector2, move_vec: Vector2) -> float:
-	if facing.length() < 0.01 or move_vec.length() < 0.01:
+	if facing.length_squared() < 0.0001 or move_vec.length_squared() < 0.0001:
 		return 0.0
 	return facing.angle_to(move_vec)

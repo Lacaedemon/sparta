@@ -1194,6 +1194,12 @@ and accelerate to full speed on contact.
 2. **Order** --- right-click to send them. Move them onto an enemy's flank, or
    right-click the enemy directly to attack. There is a brief **reaction delay**
    (~0.5 s, faster for cavalry) before units execute --- orders aren't instant.
+   A unit you leave alone **holds its formation**: it stands and fights only an
+   enemy that closes into its own weapon range, and won't march off on its own to
+   reach a foe it has merely spotted across the field. Send it forward with a move
+   or attack order (or a March-to-contact / Chase stance --- see
+   [Order stances](tactics.qmd#order-stances)) to close that gap. The AI-run enemy
+   army still advances on its own, so the fight comes to you either way.
 3. **Watch the bars** --- each unit flies a small **regimental flag** in its team
    colour and shows a strength bar that drops as it takes casualties. The flag is a
    click target too: clicking it selects the unit, just like clicking the block.
