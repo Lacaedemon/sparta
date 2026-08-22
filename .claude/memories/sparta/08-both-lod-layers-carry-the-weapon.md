@@ -1145,7 +1145,8 @@ fixture the cap says should turn 2.1 deg/s turned 162.7 deg/s, 75.7x over).
 
 A bearing at or past 90 degrees is the case the taper and the cap were written for. The
 change removed the brake precisely where it was load-bearing, and looked correct
-everywhere else -- which is why 142 of 146 demo scenarios were bit-identical.
+everywhere else -- which is why almost every demo scenario showed no difference at all
+(see the sweep entry below for how nearly that "no difference" was itself over-claimed).
 
 - **Do:** before multiplying a pacing/limit quantity by a gate factor, evaluate the
   factor at the extreme the limit exists to handle. If it is 0 or 1 there, the limit is
@@ -1166,9 +1167,9 @@ own finding rather than letting it silently corrupt the position math.
 The whole-corpus sweep this came from is worth reusing as a method: two `git worktree`s
 at the two commits, `diff -rq` over `scripts/` to prove exactly one file differs, then
 every `demos/inputs/*.json` through `dump-state.sh` on both sides. 146 scenarios take
-about 40 minutes with the two runs in parallel, and the answer -- 142 showing no
-difference, 4 changed, one of them reaching a different battle outcome -- is the kind of
-claim a spot check cannot make.
+about 40 minutes with the two runs in parallel, and an answer of the shape "almost all
+show no difference, a handful change, and one of those reaches a different battle
+outcome" is the kind of claim a spot check cannot make.
 
 **But run it against CI's own website demo-diff before trusting it, because a hand-rolled
 sweep is easy to under-scope, and both ways it fails are silent.** The first attempt
@@ -1186,8 +1187,8 @@ changed code existed to prevent.
 - **Do:** run each script to its own full length, cover the `replay`-type catalog entries,
   and diff defect verdicts -- not just positions.
 - **Do:** sweep the whole corpus before claiming a sim change is invisible or
-  "backend-only". A change can show no difference in 142 scenarios and still flip who wins
-  in the one long AI-doctrine battle.
+  "backend-only". A change can show no difference in nearly every scenario and still flip
+  who wins in the one long AI-doctrine battle.
 - **Don't:** trust a per-scenario spot check to bound a change in a chaotic simulation.
 - **Don't:** report "identical" when you mean "no difference at the ticks I sampled". Say
   which ticks, and say what the sweep did not cover.
@@ -1214,8 +1215,10 @@ timeouts-only failure, and send the reader hunting a URL that does not exist.
 - **Do:** treat a timeouts-only failure as the sanctioned transient case -- re-run once;
   a PASS over the same corpus at the same commit is the discriminator.
 - **Do:** if the same host times out again after a re-run, add it to `lychee.toml`'s
-  `exclude` with a dated reason. That file already carries eight such entries, two of
-  them explicitly for the timeout case; that is the in-convention fix, not a link edit.
+  `exclude` with a dated reason. That file already carries a dozen such host entries,
+  two of them explicitly for the timeout case (`divideetimperamod.com`,
+  `freesound.org`); that is the in-convention fix, not a link edit. Count them yourself
+  rather than trusting a number written here -- the list grows.
 - **Don't:** conclude from a sandboxed `curl` that the host is down. This environment's
   egress proxy answers `CONNECT tunnel failed, response 403` for hosts it does not
   allow, which is a fact about the sandbox, not the site.
