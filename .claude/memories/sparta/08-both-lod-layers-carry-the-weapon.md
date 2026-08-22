@@ -1098,3 +1098,108 @@ that settles it. If the check cannot be pasted, the finding is not ready to post
 - **Do:** retract plainly and immediately when a published claim turns out false, and say what
   survives.
 - **Don't:** publish a sentence containing your own hedging mid-derivation.
+
+
+## A bespoke probe is not verification; run the suite first
+
+A `scripts/` diff that changed the formed-pivot pacing in `Unit.gd` was pushed with
+"verification" consisting of `gdlint` plus a hand-written GUT probe. The probe measured
+one number -- turn rate holding at 40.7 deg/s instead of collapsing to ~11 -- and the
+number moved the right way, so the change looked measured rather than guessed.
+
+`tools/check.sh validate test chars comments units patch_coverage`, run later, failed
+**four** tests that pass on the same branch's base (2791/2791 -> 2787 passing, 4
+failing). Three of them, in `test/unit/test_unit.gd`, assert the exact invariant the
+change broke: that a formed pivot IS slower at speed than at a stand, and that the
+body-acceleration cap governs at a sprint. The collapse to 11 deg/s that the probe was
+built to eliminate **was the design**, already written down as an executable assertion.
+
+The failure is not "forgot to run tests". It is building an instrument to measure a
+quantity you have already decided is the problem, and never asking whether the repo
+already encodes the opposite. A bespoke probe can only answer the question you thought
+to ask; the suite answers the ones you didn't.
+
+- **Do:** run `tools/check.sh ... patch_coverage` on a `scripts/` diff BEFORE writing any
+  bespoke instrumentation. It is the cheapest way to discover that the behaviour you are
+  "fixing" is a specified invariant, and it costs one run instead of a review round.
+- **Do:** when a probe's number moves the way you hoped, go looking for the test that
+  disagrees before writing it up. `grep` the suite for the function you touched.
+- **Don't:** list `gdlint` + a scratch probe under a "Verification" heading. Lint proves
+  the file parses. Name what you actually ran.
+
+## Check a gate factor's value in the case the pacing exists for
+
+The same change reused the turn-before-march gate factor as a pacing input:
+
+```gdscript
+var march_frac: float = clampf(facing.dot(steer_dir) * 2.0, 0.0, 1.0)
+var marched_speed: float = _current_speed * march_frac
+```
+
+The reasoning was sound in the abstract -- the accelerator and the brake should read the
+same variable. But `clampf(dot * 2.0, 0.0, 1.0)` is **exactly 0.0** for every bearing at
+or past 90 degrees, so `marched_speed` is 0 there, and every bound computed from it
+switches off: the taper returns full `TURN_RATE` (180 deg/s, identical to a standing
+unit) and the `marched_speed > jog_speed` gate on the body-accel cap never fires (a
+fixture the cap says should turn 2.1 deg/s turned 162.7 deg/s, 75.7x over).
+
+A bearing at or past 90 degrees is the case the taper and the cap were written for. The
+change removed the brake precisely where it was load-bearing, and looked correct
+everywhere else -- which is why 142 of 146 demo scenarios were bit-identical.
+
+- **Do:** before multiplying a pacing/limit quantity by a gate factor, evaluate the
+  factor at the extreme the limit exists to handle. If it is 0 or 1 there, the limit is
+  gone or unbounded there.
+- **Do:** treat "this makes two call sites read the same variable" as a hypothesis, not
+  a proof. Symmetry is not correctness when one side is a throttle.
+
+## Diff two transcripts by `uid`, not by list index
+
+Comparing before/after `dump-state.sh` transcripts with `zip(before["units"],
+after["units"])` is wrong the moment a unit is annihilated in one run and not the other:
+every unit after it in the list is compared against its neighbour, which invents large
+deltas out of nothing (a unit "moving" 190 wu because it is being compared to a
+different regiment) and can equally hide a real one. The dumps carry a stable `uid`
+field; key on it, and report a roster divergence (a uid alive in one run only) as its
+own finding rather than letting it silently corrupt the position math.
+
+The whole-corpus sweep this came from is worth reusing as a method: two `git worktree`s
+at the two commits, `diff -rq` over `scripts/` to prove exactly one file differs, then
+every `demos/inputs/*.json` through `dump-state.sh` on both sides at a fixed tick set.
+146 scenarios take about 40 minutes with the two runs in parallel, and the answer -- 142
+identical, 4 changed, one of them reaching a different battle outcome -- is the kind of
+claim a spot check cannot make.
+
+- **Do:** key transcript comparisons on `uid`; surface roster differences separately.
+- **Do:** sweep the whole corpus before claiming a sim change is invisible or
+  "backend-only". A change can be inert in 142 scenarios and still flip who wins in the
+  one long AI-doctrine battle.
+- **Don't:** trust a per-scenario spot check to bound a change in a chaotic simulation.
+
+## `lychee` exits 2 on a TIMEOUT, and the auto-filed issue calls it a broken link
+
+The Check Links workflow on `main` filed an issue titled "Broken links detected in main
+branch", with a body saying the checker "found broken links" and a directive to fix
+them. The run's own summary said:
+
+```
+| 🚫 Errors      | 0     |
+| ⏳ Timeouts    | 1     |
+```
+
+Nothing was broken. One third-party host missed `lychee.toml`'s `timeout = 20` on one
+run; a re-run of the same commit passed in 13 seconds with no file changed. `lychee`
+exits `2` for timeouts as well as errors, and the reporting step does not distinguish
+them -- so the issue's title, body and fix directive are all false for a
+timeouts-only failure, and send the reader hunting a URL that does not exist.
+
+- **Do:** open the `Check links` step and read the status table before touching any
+  link. `Errors: 0` means there is nothing to fix.
+- **Do:** treat a timeouts-only failure as the sanctioned transient case -- re-run once;
+  a PASS over the same corpus at the same commit is the discriminator.
+- **Do:** if the same host times out again after a re-run, add it to `lychee.toml`'s
+  `exclude` with a dated reason. That file already carries eight such entries, two of
+  them explicitly for the timeout case; that is the in-convention fix, not a link edit.
+- **Don't:** conclude from a sandboxed `curl` that the host is down. This environment's
+  egress proxy answers `CONNECT tunnel failed, response 403` for hosts it does not
+  allow, which is a fact about the sandbox, not the site.
