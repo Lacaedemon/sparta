@@ -51,8 +51,8 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	# destination, and the turn-before-march clamp (facing.dot(steer_dir) * 2) zeroes the
 	# advance while it does, so the slot grid sweeps through a half-turn the bodies cannot
 	# track -- the men scramble across the block and the formation reads as a blob for the
-	# rest of the retreat. Arrival clears the hold (Unit._update_move), so it lives exactly
-	# as long as this leg.
+	# rest of the retreat. Arrival clears the hold (Unit._think's move bookkeeping, where
+	# every other maneuver hold is dropped too), so it lives exactly as long as this leg.
 	tired.ordered_facing = tired.facing
 
 
