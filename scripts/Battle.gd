@@ -917,19 +917,6 @@ static func _parse_subunit_structure(value) -> int:
 ## here (these are DICT keys, not scenario-spec fields -- _spawn_scenario maps a spec's `count`
 ## onto `soldiers` before calling): `soldiers` sets max_soldiers, `morale` the starting morale
 ## (default 100), `formation` the starting density.
-## Whether a unit on `team` should auto-advance onto a merely-detected, out-of-weapon-range
-## enemy while it has no order -- the reactive close-the-distance fallback in Unit._think.
-## Only the AI-driven enemy army does (team 1 in a normal battle), so battles still start on
-## their own. Units the player commands directly -- team 0, or every team under all-teams
-## control -- hold formation instead and wait for an explicit order (they read false). A
-## player-DELEGATED team-0 group is AI-driven, but its UnitLeader issues an explicit attack
-## order that closes the distance itself, so it never relies on this fallback; no special
-## case is needed here. Deterministic: a pure function of `team` and all_teams_control, both
-## fixed for the whole battle, so a replayed/rewound unit recomputes the same value.
-func _unit_auto_advances_on_detect(team: int) -> bool:
-	return team != 0 and not all_teams_control
-
-
 func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_label: String) -> Unit:
 	var u := UnitRef.new()
 	u.uid = _next_uid
@@ -937,7 +924,6 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	_by_uid[u.uid] = u
 	u.unit_name = unit_label
 	u.team = team
-	u.auto_advance_on_detect = _unit_auto_advances_on_detect(team)
 	u.is_general = d.get("is_general", false)
 	u.anti_cavalry = d["anti_cav"]
 	u.is_cavalry = d["cav"]
@@ -1118,7 +1104,7 @@ func _spawn_scenario(specs: Array) -> void:
 		var facing := Vector2.DOWN if team == 0 else Vector2.UP
 		if spec.has("facing"):
 			var f: Array = spec["facing"]
-			if f.size() >= 2 and Vector2(float(f[0]), float(f[1])).length_squared() > 0.00000001:
+			if f.size() >= 2 and Vector2(float(f[0]), float(f[1])).length() > 0.0001:
 				facing = Vector2(float(f[0]), float(f[1])).normalized()
 			else:
 				push_warning("[battle] scenario 'facing' must be a non-zero [x, y]; using the team default.")
@@ -1306,10 +1292,6 @@ func _spawn_from_snapshot(ud: Dictionary) -> Unit:
 	var u := UnitRef.new()
 	u.uid = int(ud["uid"])
 	u.team = int(ud["team"])
-	# Recompute (not snapshotted) -- a pure function of team + all_teams_control, both fixed
-	# for the battle, so a rewound or rearguard-cloned unit gets the same reactive-advance
-	# behaviour its live spawn had.
-	u.auto_advance_on_detect = _unit_auto_advances_on_detect(u.team)
 	u.is_cavalry = bool(ud["is_cavalry"])
 	u.facing = ud["facing"]
 	u.position = ud["position"]
@@ -1869,7 +1851,7 @@ func enqueue_disengage_with_sacrifice(uids: Array) -> void:
 ## back-step); FORWARD is straight along facing (a forward step). Each is
 ## NUDGE_DISTANCE long. Pure/static so it's unit-testable.
 static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
-	var fwd: Vector2 = facing.normalized() if facing.length_squared() > 0.0001 else Vector2.UP
+	var fwd: Vector2 = facing.normalized() if facing.length() > 0.01 else Vector2.UP
 	var perp := Vector2(-fwd.y, fwd.x)   # unit's right-hand side in world space
 	match dir:
 		NudgeDir.LEFT:

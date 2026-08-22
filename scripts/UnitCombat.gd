@@ -55,7 +55,7 @@ static func charge_multiplier(u: Unit, enemy: Unit) -> float:
 	if not u.is_cavalry or enemy.is_cavalry:
 		return 1.0
 	var to_target: Vector2 = enemy.position - u.position
-	if to_target.length_squared() < 0.000001:
+	if to_target.length() < 0.001:
 		return 1.0
 	# Speed directed at the target (combines closing speed and angle, relative to it).
 	var speed_toward: float = maxf(0.0, u._approach_velocity.dot(to_target.normalized()))
@@ -233,7 +233,7 @@ static func friendly_interceptor(u: Unit, target: Unit) -> Unit:
 		if proj < 0.05 or proj > 0.95:
 			continue
 		var foot: Vector2 = u.position + seg * proj
-		if (other.position - foot).length_squared() < other.separation_radius * other.separation_radius and proj < closest_proj:
+		if (other.position - foot).length() < other.separation_radius and proj < closest_proj:
 			closest = other
 			closest_proj = proj
 	return closest
@@ -331,7 +331,7 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 				# attacker must be a global delta too. Mixing in local `position` would skew
 				# the offset if the units' parent ever had a non-identity transform.
 				var toward: Vector2 = attacker.global_position - edge
-				if toward.length_squared() > 0.000001:
+				if toward.length() > 0.001:
 					edge += toward.normalized() * u._block_extent
 			Fallen.spawn(u.get_parent(), PackedVector2Array([edge]), u.team_color, body_r)
 		else:
