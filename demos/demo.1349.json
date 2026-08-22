@@ -1,0 +1,10 @@
+{
+  "_comment": "Per-PR demo for #1349: is_sidestep is one of the two classifiers this PR converts to square-space distance guards, so the clip drives a real side-step through SelectionManager rather than a scenario that never touches those functions.",
+  "input": "demos/inputs/sidestep.json",
+  "caption": "Side-step classification in square space: a lone Spearmen regiment is ordered a ~28 wu step to its right -- under SIDESTEP_MAX_DISTANCE (40) -- so UnitManeuver.is_sidestep classifies it as a side-step and the regiment shuffles right at a walk while holding its south-facing line, instead of pivoting to face the move and back. is_sidestep and is_lateral_pivot now compare move_vec.length_squared() against a squared threshold instead of taking a sqrt; behaviour is unchanged. Transcript confirms it: position x goes 452.00 -> 479.90 while facing stays exactly (0, 1) at every sampled tick.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640,
+  "state": [8, 30, 60, 90, 120, 150, 180, 240]
+}
