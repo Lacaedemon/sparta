@@ -1,4 +1,8 @@
 {
-  "input": "demos/inputs/bolt-perf.json",
-  "caption": "Gameplay demo verifying Bolt performance optimization."
+  "input": "demos/inputs/relief-fighting-withdrawal.json",
+  "caption": "A relieved regiment now backs out of the line facing the enemy instead of turning its back. At tick 200 the fresh Infantry takes a RELIEF order on its engaged ally; the relieved unit (the front block) withdraws to its own rear with its heading held on the enemy the whole way, so its ranks stay square instead of scrambling. Previously the block pivoted 180 degrees toward its destination and the slot grid swept through a half-turn the soldiers could not track -- see the before/after numbers in the PR description.",
+  "fixed_fps": 60,
+  "max_frames": 420,
+  "fps": 15,
+  "width": 720
 }
