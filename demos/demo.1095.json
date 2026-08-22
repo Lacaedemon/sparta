@@ -1,8 +1,0 @@
-{
-  "input": "demos/inputs/hold-formation-default.json",
-  "caption": "Hold-formation default (#1095): given no order, the player's Infantry line (top) holds its formation instead of advancing on the detected enemy across the field -- its position never moves through the whole approach. The AI enemy (bottom) still marches in on its own, so the fight comes to the held line and they lock in melee on contact.",
-  "fixed_fps": 30,
-  "max_frames": 200,
-  "fps": 15,
-  "width": 720
-}

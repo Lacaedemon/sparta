@@ -104,7 +104,7 @@ static func formation_speed_factor(rec: FarTierFormation) -> float:
 ## Unit._is_frontal_attack (the full forward hemisphere).
 static func is_frontal(defender: FarTierFormation, attacker_pos: Vector2) -> bool:
 	var to_attacker: Vector2 = attacker_pos - defender.position
-	if to_attacker.length_squared() < 0.000001:
+	if to_attacker.length() < 0.001:
 		return true
 	return defender.facing.dot(to_attacker.normalized()) > 0.0
 
@@ -143,7 +143,7 @@ static func flank_multiplier(defender: FarTierFormation, attacker_pos: Vector2) 
 	if in_square(defender):
 		return 1.0
 	var to_attacker: Vector2 = attacker_pos - defender.position
-	if to_attacker.length_squared() < 0.000001:
+	if to_attacker.length() < 0.001:
 		return 1.0
 	var d: float = defender.facing.dot(to_attacker.normalized())
 	if d >= 0.35:
@@ -309,7 +309,7 @@ static func tick_rout(rec: FarTierFormation, enemy: FarTierFormation, delta: flo
 	if not rec.routing:
 		return
 	var away: Vector2 = rec.position - enemy.position
-	if away.length_squared() >= 0.000001:
+	if away.length() >= 0.001:
 		rec.facing = away.normalized()
 		rec.position += rec.facing * (effective_speed(rec) * FLEE_SPEED_MULTIPLIER) * delta
 	if rec.morale < Unit.ROUT_RALLY_BASELINE:
@@ -359,7 +359,7 @@ static func advance(rec: FarTierFormation, target: Vector2, delta: float) -> voi
 ## against the enemy rather than marching past it).
 static func face_toward(rec: FarTierFormation, point: Vector2) -> void:
 	var to_point: Vector2 = point - rec.position
-	if to_point.length_squared() < 0.000001:
+	if to_point.length() < 0.001:
 		return
 	rec.facing = to_point.normalized()
 
