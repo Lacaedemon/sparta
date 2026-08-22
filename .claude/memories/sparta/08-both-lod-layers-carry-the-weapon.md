@@ -790,6 +790,113 @@ Don't dump-state every one. The fast, rigorous classification:
   side unless its OUTCOME looks wrong (a wiped unit, a missing rally) per the sparta-demos
   wide-diff procedure.
 
+## A GUT poll loop tests its bound BEFORE the await, so it samples one tick past it
+
+The shape is everywhere in the live-battle tests:
+
+```gdscript
+while battle.current_tick() <= WINDOW and not saw_it:
+    await get_tree().physics_frame
+    ...check...
+```
+
+The condition is evaluated at tick `T`; if `T <= WINDOW` the body awaits, which advances to
+`T + 1`, and only then samples. So the last tick actually inspected is **`WINDOW + 1`**, not
+`WINDOW`. A test with `WINDOW = 600` passes on an event at tick 601.
+
+The consequence is not the off-by-one itself, which is harmless, but the arithmetic done
+**about** the loop afterwards. Counting how many sampled seeds a window would have failed,
+comparing a measured fire tick against the bound, quoting a failure rate in a PR body or an
+issue -- each is wrong by whatever lands on the boundary tick, and every one of those reads
+as a careful, quantitative claim. It cost a published "6 of 30" that was really 4 of 30.
+
+- **Do:** treat the effective bound as `WINDOW + 1` in any claim derived from such a loop.
+- **Do:** re-derive a failure count against the effective bound before writing it down, not
+  against the constant's value.
+- **Don't:** compare a measured tick against `WINDOW` and call the difference the margin.
+
+## Check a claimed-no-op refactor against `main`, never only against its own base
+
+A stacked PR's demo-diff and its three-dot `git diff` are both computed against its **base
+branch**. That is the right comparison for reviewing what the PR adds, and it is blind to the
+thing most worth catching: content the branch has **deleted** that exists on `main`.
+
+The tell is a wide demo-diff that the stated change cannot explain -- 33 of 83 clips changed,
+most diverging at tick 1, on a PR converting two distance guards to squared space. A refactor
+that touches maneuver classification cannot move the first tick of every scenario. Something
+else did.
+
+Derive it rather than reading the diff, since a deletion is invisible unless you go looking:
+
+```sh
+for ref in origin/main origin/<pr-head>; do
+  git show $ref:scripts/Battle.gd | grep -c '<feature symbol>'
+  git cat-file -e $ref:<file> && echo PRESENT || echo ABSENT
+done
+```
+
+A symbol with N references on `main` and **0** on the head, or a file present on `main` and
+absent on the head, is a revert of merged work that would land if the PR merged.
+
+Rule out the innocent explanation before calling it a revert. "Present on `main`, absent on
+the head" has two causes: `main` gained the content after the fork and the branch simply has
+not merged it yet, or the content was in the branch's own ancestry and the branch deleted it.
+Only the second is a revert, and what separates them is whether the **merge-base** carries it:
+
+```sh
+MB=$(git merge-base origin/main <head>)
+git show $MB:<file> | grep -c '<symbol>'          # present in the branch's own ancestry?
+git show <head>:<file> | grep -c '<symbol>'       # gone now?
+```
+
+Present at the merge-base and absent at the head is a deletion the branch made. On #1349 that
+read 3 and 0.
+
+**Do not substitute an ancestry check for this**, in any of its forms -- neither
+`git merge-base --is-ancestor origin/main <head>` nor "the head has absorbed its base". Both
+return a reassuring true for a branch that merged `main` and then reverted it, because the
+merge genuinely is in the ancestry and the revert sits on top. `07-a-pr-can-revert-merged-main.md`
+names that trap directly and gives the authoritative check, a real trial merge onto `main` in
+a throwaway worktree read by its net diffstat; run that before merging, and treat the
+merge-base symbol count above as the cheap triage that tells you to.
+
+- **Do:** count a deleted feature's references on `main` and on the head, and check file
+  presence, whenever a diff is wider than the stated change explains.
+- **Do:** compare the head against the **merge-base**, not against the base branch's tip,
+  before calling a removal a revert.
+- **Do:** run `07-...md`'s trial merge for the authoritative answer.
+- **Don't:** read a stacked PR's base-relative diff as evidence about what merging it does to
+  `main`.
+- **Don't:** rule out a revert with any ancestry check -- that is the one signal that is
+  reliably true in exactly the case you are trying to detect.
+- **Don't:** attribute a tick-1 divergence to a refactor of code that runs later than tick 1.
+
+## A workflow claim checked against the caller is not checked
+
+`.github/workflows/claude-code-review.yml` is a thin caller: `on:`, `permissions:`, `uses:`,
+`with:`. Every gating condition lives in the reusable workflow it delegates to, in
+`Morrison-Lab/gha`, at the pinned ref. So `grep -rn "draft ==" .github/workflows/` returns
+nothing in this repo even though the review workflow does gate on `draft == false`. Grep the
+bare word `draft` instead and you get exactly one hit -- a commented-out `eager-pr` line in
+`claude.yml` -- which is a mention, not a gate.
+
+Both directions of that gap have bitten in one session, and so has a third: the claim above
+was first written citing the bare-word grep as returning nothing. It does not. The empty
+result came from a run with `| grep -v "^.*#"` appended, which drops every line containing a
+`#` anywhere and so removed exactly that comment hit -- and the unfiltered command was then
+written down as if it had produced it. Cite the query you actually ran, and prefer one whose
+emptiness is a property of the repo rather than of your filter.
+
+- **Do:** follow the `uses:` to the callee at its pinned ref before asserting when a workflow
+  runs or what gates it.
+- **Do:** say where a gate lives when citing one, so an empty grep here is not read as a
+  refutation.
+- **Do:** paste the exact command whose output you are reporting, filters included.
+- **Don't:** read a caller's `on:` types list as the trigger condition -- it is the wider of
+  the two constraints.
+- **Don't:** conclude from an empty `.github/workflows/` grep that nothing gates on the thing
+  you searched for.
+
 ## A fixable red CI check means HOLD the PR, not ask what to do
 
 When a PR fails a CI check and that failure has a known fix **that lands outside this PR** --
