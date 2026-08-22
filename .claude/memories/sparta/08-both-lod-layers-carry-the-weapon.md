@@ -1222,3 +1222,140 @@ timeouts-only failure, and send the reader hunting a URL that does not exist.
 - **Don't:** conclude from a sandboxed `curl` that the host is down. This environment's
   egress proxy answers `CONNECT tunnel failed, response 403` for hosts it does not
   allow, which is a fact about the sandbox, not the site.
+
+## `check.sh demo_defects` is NOT a CI job -- a `skip` manifest leaves a clip unjudged by anything
+
+`tools/check.sh demo_defects` reads as a CI mirror (its own docstring says the grading
+matches "the CI step"), and `CLAUDE.md` tells you to run `check.sh` to reproduce CI's
+gating checks. Neither statement is false, and together they invite a wrong conclusion:
+grep `.github/workflows/` for `demo_defects` and it appears in **comments only**. No
+workflow invokes it.
+
+What CI actually runs is narrower on every axis:
+
+- **`demo-video.yml`'s "Demo defect scan"** judges exactly ONE clip -- whichever
+  `demos/demo.*.json` the PR added -- at that script's own declared tick set. Gating.
+- **`website-demo-diff.yml`** runs the analyzer only over clips whose transcript
+  **changed** versus the merge-base. Informational.
+- **`website-demo-defect-sweep.yml`** sweeps the whole catalog absolutely, but only
+  weekly on `main` (or by `workflow_dispatch`), reporting to a tracking issue.
+
+The consequence that bites: a PR whose manifest sets `"skip": true` gets **no CI-side
+verdict on any clip at all**. If the PR also touches no sim code, the demo-diff finds
+nothing changed and scans nothing either -- so a claim about a clip's defect verdicts
+has no CI measurement behind it, and a local run is the only evidence, which the
+divergence section below says not to trust for this kind of clip.
+
+**How to apply:** when a PR's deliverable is a claim about how the scan judges a
+particular clip -- removing a `defect_exemptions` block, changing `judged_mask()`,
+re-staging a scenario -- point `demos/demo.<N>.json` at **that clip** rather than
+skipping, and say in the caption that the footage itself is unchanged. That is what makes
+CI judge it. Reserve `skip` for a PR that genuinely has nothing to show AND makes no claim
+about any clip's verdicts.
+
+- **Do:** point the manifest at the clip whose verdicts the PR is about.
+- **Do:** grep `.github/workflows/` before asserting that a `check.sh` subcommand runs in
+  CI -- several do not.
+- **Don't:** read `check.sh <name>`'s "mirrors the CI step" docstring as evidence a
+  workflow calls it.
+- **Don't:** ship a `skip` manifest on a PR whose whole argument is about a scan verdict.
+
+(PR #1374, 2026-08-22: a `skip` manifest was written first, on the correct reasoning that
+the diff touched only `tools/demo/` and no render path. It was replaced by an `input`
+manifest once the gap above was traced -- and CI's scan then returned `25/25 verdicts
+passed`, which was the PR's entire deliverable and which the skip would have silently
+withheld.)
+
+## A local dump of a long relief clip can invert a defect verdict against CI -- do not gate an exemption on one
+
+The demos skill already warns that a local run and CI's transcript diverge late in a
+long, chaotic battle, and scopes that warning to precise-tick claims in captions and
+comments. It goes further than a caption: **the divergence is large enough to flip a
+gating verdict.**
+
+Measured on `demos/inputs/relief-fighting-withdrawal.json`, same seed, same commit:
+
+| | local (Windows, headless) | CI (Linux) |
+|---|---|---|
+| `uid0 overlap` worst | **1.611** (FAIL, threshold 2.25) | **2.432** (PASS) |
+| `expect:facing@300-500` | **FAIL** | PASS |
+
+The `expect` row is the tell, and it is worth reaching for deliberately: nothing in the
+diff touched facing, and CI had passed that same assertion on the PR that introduced it,
+so a local failure there is a **self-test proving the local run is the unreliable one**.
+Look for an assertion your change cannot have affected before trusting any local verdict
+on a clip like this.
+
+- **Do:** find an untouched `expect` assertion in the same run and check it first; if it
+  fails locally and passes on CI, discard the local numbers wholesale.
+- **Do:** get CI to judge the clip (see the section above) when the decision turns on a
+  verdict.
+- **Don't:** restore or retain a `defect_exemptions` block on the strength of a local
+  FAIL, or delete one on the strength of a local PASS.
+
+## Changing the ANALYZER? Dump once, analyze twice -- never compare two recordings
+
+A change to `tools/demo/DemoDefects.gd` changes how transcripts are *judged*, not what
+the sim *does*. Comparing two recordings to measure it is therefore the wrong experiment
+twice over: it costs a second full catalog dump, and it mixes the analyzer delta with
+run-to-run sim divergence, which the section above shows can exceed the effect being
+measured.
+
+Dump the catalog **once**, then run the sweep against those same transcripts with each
+version of the analyzer:
+
+```sh
+website/tools/dump-demo-states.sh <tx>                      # once, ~85 clips
+tools/ci/website-demo-defect-sweep.sh <tx> before.md <tree> # analyzer A
+tools/ci/website-demo-defect-sweep.sh <tx> after.md <tree>  # analyzer B
+diff -u before.md after.md
+```
+
+`website-demo-defect-sweep.sh` takes the tree whose analyzer and catalog it uses as its
+third argument, so "analyzer A/B" can be two checkouts -- or one checkout with the single
+function swapped between runs, which is cheaper and is what PR #1374 did.
+
+The `diff` is the whole report, and it comes with its own **negative control**: the rows
+that did not change. "Five verdicts changed, 80 clip rows byte-identical" is a far
+stronger claim than "the catalog got greener", because a sweep that silently examined
+nothing produces the same improvement and a very different diff.
+
+## A widened `judged_mask()` cannot redden a verdict -- and the reason is worth reusing
+
+Before measuring, the direction is provable by reading `_sustained_verdict()`: an
+unjudged sample sets `run = 0` and is skipped before `worst` is accumulated, and the
+`path_crossing` loop resets `cross_run` the same way. So exempting MORE samples can only
+shorten a failing run and only make `worst` less extreme. No verdict can flip
+PASS -> FAIL from a wider mask; the blast radius is entirely FAIL -> PASS.
+
+The reasoning generalizes to any mask change: ask whether the metric's accumulator
+**resets** on an unjudged sample or merely **skips** it. A reset makes widening monotone.
+A skip would let two failing samples become adjacent in the judged series and manufacture
+a sustained run out of a transient -- the opposite conclusion from the same edit.
+
+Note `path_crossing` consumes the mask too, gated on BOTH ends of a step being admitted,
+even though the module docstring long described the mask as governing "blob, overlap,
+shape, misslot". A catalog sweep flipped one of its verdicts, which is how the omission
+surfaced.
+
+## Re-staging an existing demo? Check it has not become a twin of another catalog clip
+
+The demos skill says to author each NEW scenario fresh rather than copying one. The
+mirror case has no rule and is easier to fall into: fixing an EXISTING clip's staging by
+adopting whatever staging is known to work, which is usually the staging of the clip
+sitting next to it in the catalog.
+
+`demos/inputs/line-relief-queue.json` and `demos/inputs/relief-fighting-withdrawal.json`
+demonstrate different things -- the orders queue, and the relieved block holding its
+facing. A proposed fix to the first adopted the second's spawn coordinates, box, and
+click tick exactly, making the two catalog clips the same recording with two names. The
+tell was numeric and free: both dumps reported `nnd_min 1.611` for `uid0` at tick 460,
+which is what identical scenarios on one seed produce.
+
+- **Do:** diff a re-staged scenario's `scenario`/`steps` against its neighbours in
+  `website/tools/demo-catalog.sh` before committing.
+- **Do:** differentiate by CONTENT rather than by cosmetics -- give the clip a setup its
+  own caption needs and the neighbour's does not (here: a genuinely under-strength front
+  block, so the strength disparity relief answers is visible rather than asserted).
+- **Don't:** read "this staging is known to arm the order" as sufficient; so is the
+  neighbour's, which is why it was copied.
