@@ -1293,6 +1293,15 @@ on a clip like this.
 - **Don't:** restore or retain a `defect_exemptions` block on the strength of a local
   FAIL, or delete one on the strength of a local PASS.
 
+This one is mechanized rather than left to prose, because prose is what failed: the
+local-vs-CI rule was on the books, was loaded in the session, and was read as governing
+captions while a verdict decision went out on a local number.
+`remind-ci-crosscheck-sim-verdict.py` in `Morrison-Lab/ai-config` fires when a
+verdict-shaped figure (`worst=`, `nnd_min`, `N/M verdicts`, `PASS uid3`) follows a local
+`dump-state.sh` / `analyze_transcript.gd` / catalog-sweep run with no CI-side read in
+between. It only ever adds context -- a local figure is fine to report, and only wrong to
+gate a decision on, which no regex can tell apart.
+
 ## Changing the ANALYZER? Dump once, analyze twice -- never compare two recordings
 
 A change to `tools/demo/DemoDefects.gd` changes how transcripts are *judged*, not what
