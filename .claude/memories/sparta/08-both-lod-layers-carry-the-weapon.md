@@ -896,3 +896,101 @@ emptiness is a property of the repo rather than of your filter.
   the two constraints.
 - **Don't:** conclude from an empty `.github/workflows/` grep that nothing gates on the thing
   you searched for.
+
+## Batch a review round's fixes into one push; a superseded head's red check is not a defect
+
+The review workflow runs with `cancel-in-progress`, so pushing while a round is in flight
+kills it. Fixing findings one at a time as they arrive therefore costs a round per finding and
+leaves a trail of red `require-review` checks on the intermediate heads -- one push per
+finding produced three of them inside four minutes.
+
+Those reds look exactly like defects and are not. **The check reports on the head it ran
+against, not on the PR's current head**, so the discriminator is a SHA comparison:
+
+```sh
+gh pr view <N> --json headRefOid --jq .headRefOid     # or pull_request_read -> head.sha
+# then compare against the failing check run's own head_sha
+```
+
+A failure whose `head_sha` is not the current head does not describe the current head. That is
+all it establishes -- **it is not evidence the cause is gone.** Under the same
+`cancel-in-progress` mechanism, a later push does not guarantee the new head got a completed
+run of its own; that run can be cancelled or still queued. So confirm the current head has its
+own COMPLETED run of that check before treating the older red as noise, and reproduce the
+failure fresh if it does not.
+
+The narrow case where a stale red really is a pure artifact is `require-review`, which mirrors
+`claude-review`'s result and carries no independent information: cancel the review and it goes
+red by construction. A stale `Validate & test` or `Coverage` deserves the confirmation above.
+
+Wait for the round's verdict, collect every finding it posted, fix them together, push once.
+The exception is a finding that makes the current head actively misleading to the reviewer
+still reading it, which is rare.
+
+- **Do:** wait for the verdict, then push one commit addressing the whole round.
+- **Do:** compare a red check's `head_sha` against the PR's current head, then confirm the
+  current head has its own completed run of that check.
+- **Don't:** push per finding as findings arrive -- each push destroys the round evaluating
+  the text you just corrected.
+- **Don't:** read a stale `head_sha` as an all-clear; it says the result is about another
+  commit, not that the failure is fixed.
+- **Don't:** report a stale head's red check in a status summary without saying it is stale;
+  it reads as an unresolved failure.
+
+## `length_squared()` thresholds: the risk is not the comparison, it is the signature
+
+Three concurrent PRs converted `length()` comparisons to `length_squared()` in this repo, so
+the failure modes are worth stating precisely -- including the one that is NOT a failure mode,
+because guessing wrong at it wastes a review round.
+
+**A positive threshold is always safe.** Squaring is monotonic on non-negatives, so for any
+`v >= 0` and `G > 0`, `v > G` and `v*v > G*G` are equivalent -- at every value of `G`, not
+just at 1.0. A conversion that squares both sides of such a comparison cannot change
+behaviour, and claiming it becomes a latent bug "if the threshold changes" is false.
+
+**A negative threshold is the real sign trap.** `length() > x` is always true for `x < 0`
+while `length_squared() > x*x` is not, so any threshold that can go negative -- a tunable, a
+subtracted margin, a caller-supplied value -- breaks silently.
+
+**The signature change is the one that hides**, and note that the equivalence above does NOT
+cover it. That equivalence squares BOTH sides. When the conversion instead moves the squaring
+to the CALLER, a caller left un-updated still passes plain `v` while the callee now compares
+against `G*G`, so the live test is `v > G*G` -- one-sided, and monotonicity says nothing about
+it. `v > G` and `v > G*G` agree for all `v` only when `G` is squaring's fixed point, `G = 1.0`.
+
+`SoldierCollision.overcomes_static_friction` is the case to watch, because
+`SoldierCombat.STATIC_FRICTION_VELOCITY_GATE` is exactly `1.0`. Under the conversion proposed
+in the (unmerged, as of 2026-08-21) PR #1358 the parameter becomes `body_velocity_magnitude_sq`
+and `SoldierMelee` is updated, while `test/unit/test_soldier_collision.gd`'s five call sites
+still pass plain magnitudes. Those tests would still PASS -- not from monotonicity, but from
+that fixed point -- while `body_vel_stationary = 0.5` silently stops meaning v = 0.5 and starts
+meaning v ~ 0.707, so the suite quietly stops covering the boundary it was written for. Retune
+the gate off 1.0, which this repo's own parameter-externalization convention invites, and the
+same stale call sites flip outright and the suite fails.
+
+- **Do:** grep for every caller and test of any function whose parameter the conversion
+  re-scales, and update them in the same diff.
+- **Do:** check whether a converted threshold can ever be negative.
+- **Do:** check whether the squaring is two-sided (safe by monotonicity) or one-sided (safe
+  only at `G = 1.0`) before reasoning about a conversion at all.
+- **Don't:** claim a positive-threshold conversion is behaviour-changing -- verify the
+  monotonicity argument before writing a finding about it.
+- **Don't:** invoke monotonicity for a one-sided comparison; it does not apply, and citing it
+  contradicts the two-sided rule above.
+- **Don't:** treat a green suite as evidence the callers were updated; where the gate sits on
+  squaring's fixed point it is evidence of nothing.
+
+## Finish the reasoning before publishing it, especially in a review comment
+
+A review finding posted to someone else's PR is the worst place to think out loud. One posted
+here contained a false claim and a visible half-finished derivation (`"1.5 < 2, gated... wait"`)
+that reached no conclusion, and needed a retraction comment minutes later.
+
+The tell is writing a claim whose justification you are still deriving as you type it. The
+fix is mechanical: derive it in a scratch buffer, state the conclusion, and paste the check
+that settles it. If the check cannot be pasted, the finding is not ready to post.
+
+- **Do:** settle the argument first, then write the comment as a conclusion plus its evidence.
+- **Do:** retract plainly and immediately when a published claim turns out false, and say what
+  survives.
+- **Don't:** publish a sentence containing your own hedging mid-derivation.
