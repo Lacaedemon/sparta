@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Demo-review tooling only. The diff touches `tools/demo/DemoDefects.gd` (the offline transcript analyzer) and its unit tests -- no `scripts/`, `scenes/`, `assets/` or `project.godot` change, and `git diff origin/main...HEAD | grep -cE '_draw|_refresh_flock_render|modulate'` returns 0, so no render path is touched either. The clip a recording would produce is identical to main's; what changed is which SAMPLES of that clip's transcript the defect scan judges. That is shown by the before/after catalog sweep in the PR description, not by footage."
+}

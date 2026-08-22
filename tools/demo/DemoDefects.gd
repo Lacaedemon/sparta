@@ -27,7 +27,8 @@ extends RefCounted
 ## Thresholds are expressed as fractions of the unit's OWN dumped constants (body
 ## radius for the physical-contact floors, grid pitch for the grid-deviation ones,
 ## gaits for speed), never absolute world-unit literals, so a retune of the sim
-## retunes the verdicts with it. The grid/spacing checks judge only the samples
+## retunes the verdicts with it. The grid/spacing checks -- and path_crossing,
+## which needs both ends of a step admitted -- judge only the samples
 ## judged_mask() admits: samples in enemy CONTACT are exempt (melee press
 ## legitimately compresses and scrambles a block), as are ROUTING samples,
 ## samples adjacent to a contact flip, the sample right after a casualty
@@ -336,7 +337,9 @@ static func analyze(snapshots: Array) -> Dictionary:
 
 
 ## Which samples the grid/spacing-reference verdicts (blob, overlap, shape,
-## misslot) actually judge. The exemption those checks are built around is
+## misslot) actually judge -- and, one step removed, path_crossing, which
+## measures a route between two samples and so needs BOTH of them admitted.
+## The exemption those checks are built around is
 ## CONTACT -- a block with enemy bodies in among its own is legitimately
 ## compressed and scrambled, so the grid spacing it reads there says nothing
 ## about the formation code. Contact is `engaged` OR `in_enemy_contact`, not
