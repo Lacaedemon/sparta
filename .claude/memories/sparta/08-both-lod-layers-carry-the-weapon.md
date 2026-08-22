@@ -805,18 +805,28 @@ gh pr view <N> --json headRefOid --jq .headRefOid     # or pull_request_read -> 
 # then compare against the failing check run's own head_sha
 ```
 
-A failure whose `head_sha` is not the current head is stale by construction. Do not
-investigate it, and do not report it as a CI failure -- say which head it was on.
+A failure whose `head_sha` is not the current head does not describe the current head. That is
+all it establishes -- **it is not evidence the cause is gone.** Under the same
+`cancel-in-progress` mechanism, a later push does not guarantee the new head got a completed
+run of its own; that run can be cancelled or still queued. So confirm the current head has its
+own COMPLETED run of that check before treating the older red as noise, and reproduce the
+failure fresh if it does not.
+
+The narrow case where a stale red really is a pure artifact is `require-review`, which mirrors
+`claude-review`'s result and carries no independent information: cancel the review and it goes
+red by construction. A stale `Validate & test` or `Coverage` deserves the confirmation above.
 
 Wait for the round's verdict, collect every finding it posted, fix them together, push once.
 The exception is a finding that makes the current head actively misleading to the reviewer
 still reading it, which is rare.
 
 - **Do:** wait for the verdict, then push one commit addressing the whole round.
-- **Do:** compare a red check's `head_sha` against the PR's current head before treating it
-  as real.
+- **Do:** compare a red check's `head_sha` against the PR's current head, then confirm the
+  current head has its own completed run of that check.
 - **Don't:** push per finding as findings arrive -- each push destroys the round evaluating
   the text you just corrected.
+- **Don't:** read a stale `head_sha` as an all-clear; it says the result is about another
+  commit, not that the failure is fixed.
 - **Don't:** report a stale head's red check in a status summary without saying it is stale;
   it reads as an unresolved failure.
 
@@ -835,22 +845,33 @@ behaviour, and claiming it becomes a latent bug "if the threshold changes" is fa
 while `length_squared() > x*x` is not, so any threshold that can go negative -- a tunable, a
 subtracted margin, a caller-supplied value -- breaks silently.
 
-**The signature change is the one that hides.** When the conversion moves the squaring to the
-CALLER, the parameter's meaning changes, and every other caller and test still passing a plain
-magnitude is now passing the wrong quantity. `SoldierCollision.overcomes_static_friction` is
-the worked example: its parameter became `body_velocity_magnitude_sq`, `SoldierMelee` was
-updated, and `test/unit/test_soldier_collision.gd`'s five call sites were not. Those tests
-still PASS, because monotonicity keeps every value on the same side of the gate -- so CI
-cannot see it -- while `body_vel_stationary = 0.5` silently stops meaning v = 0.5 and starts
-meaning v ~ 0.707. The suite quietly stops covering the boundary it was written for.
+**The signature change is the one that hides**, and note that the equivalence above does NOT
+cover it. That equivalence squares BOTH sides. When the conversion instead moves the squaring
+to the CALLER, a caller left un-updated still passes plain `v` while the callee now compares
+against `G*G`, so the live test is `v > G*G` -- one-sided, and monotonicity says nothing about
+it. `v > G` and `v > G*G` agree for all `v` only when `G` is squaring's fixed point, `G = 1.0`.
+
+`SoldierCollision.overcomes_static_friction` is the case to watch, because
+`SoldierCombat.STATIC_FRICTION_VELOCITY_GATE` is exactly `1.0`. Under the conversion proposed
+in the (unmerged, as of 2026-08-21) PR #1358 the parameter becomes `body_velocity_magnitude_sq`
+and `SoldierMelee` is updated, while `test/unit/test_soldier_collision.gd`'s five call sites
+still pass plain magnitudes. Those tests would still PASS -- not from monotonicity, but from
+that fixed point -- while `body_vel_stationary = 0.5` silently stops meaning v = 0.5 and starts
+meaning v ~ 0.707, so the suite quietly stops covering the boundary it was written for. Retune
+the gate off 1.0, which this repo's own parameter-externalization convention invites, and the
+same stale call sites flip outright and the suite fails.
 
 - **Do:** grep for every caller and test of any function whose parameter the conversion
   re-scales, and update them in the same diff.
 - **Do:** check whether a converted threshold can ever be negative.
+- **Do:** check whether the squaring is two-sided (safe by monotonicity) or one-sided (safe
+  only at `G = 1.0`) before reasoning about a conversion at all.
 - **Don't:** claim a positive-threshold conversion is behaviour-changing -- verify the
   monotonicity argument before writing a finding about it.
-- **Don't:** treat a green suite as evidence the callers were updated; here it is evidence of
-  nothing.
+- **Don't:** invoke monotonicity for a one-sided comparison; it does not apply, and citing it
+  contradicts the two-sided rule above.
+- **Don't:** treat a green suite as evidence the callers were updated; where the gate sits on
+  squaring's fixed point it is evidence of nothing.
 
 ## Finish the reasoning before publishing it, especially in a review comment
 
