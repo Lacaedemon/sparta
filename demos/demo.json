@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/square-brace-charge.json",
-  "caption": "Close-order brace bonus (#1132): a Square Infantry regiment braces against a frontal cavalry charge. Square now receives the same +0.15 tight brace bonus that only Tight had before this PR.",
-  "fixed_fps": 30,
-  "max_frames": 420,
-  "fps": 15,
-  "width": 720
+  "input": "demos/inputs/bolt-perf.json",
+  "caption": "Gameplay demo verifying Bolt performance optimization."
 }

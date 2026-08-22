@@ -421,7 +421,7 @@ static func _arc_strip(c: Vector2, radius: float, a0: float, a1: float,
 ## A thin rectangle (a line of half-width `hw`) from `a` to `b`, as one convex quad.
 static func _line_quad(a: Vector2, b: Vector2, hw: float) -> PackedVector2Array:
 	var dir: Vector2 = b - a
-	dir = dir.normalized() if dir.length() > 0.0001 else Vector2.RIGHT
+	dir = dir.normalized() if dir.length_squared() > 0.00000001 else Vector2.RIGHT
 	var n := Vector2(-dir.y, dir.x) * hw
 	return PackedVector2Array([a + n, b + n, b - n, a - n])
 
