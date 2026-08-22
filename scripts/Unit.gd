@@ -2720,7 +2720,17 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	if maneuvering:
 		_face_dir(ordered_facing)
 	elif pivot_as_formation:
-		var speed_frac: float = clampf(_current_speed / move_speed, 0.0, 1.0)
+		# Pace the pivot off the speed the block is ACTUALLY marching at, not off
+		# _current_speed. The turn-before-march gate below scales the advance by how far the
+		# unit has come onto its heading, and _current_speed keeps ramping to move_speed
+		# while that gate holds the advance at zero -- so a pivot paced off _current_speed is
+		# throttled by a speed the unit does not have, and the slower turn holds the gate
+		# shut for longer, which lets the phantom speed ramp further still. The accelerator
+		# and the brake have to read the same variable. Taken from the pre-rotation facing,
+		# which is what the bodies have been keeping up with this tick.
+		var march_frac: float = clampf(facing.dot(steer_dir) * 2.0, 0.0, 1.0)
+		var marched_speed: float = _current_speed * march_frac
+		var speed_frac: float = clampf(marched_speed / move_speed, 0.0, 1.0)
 		var pivot_rate: float = TURN_RATE * lerpf(1.0, TURN_RATE_TAPER_FLOOR, speed_frac)
 		# A centre pivot rotates the slot grid rigidly about the block's centre, so the
 		# farthest slot (the corner man, at the footprint's half-diagonal) covers
@@ -2761,9 +2771,9 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# remaining share stays free for each soldier's OWN arrival correction to the
 		# (still-swinging) slot, instead of the two competing for the exact same
 		# acceleration every tick.
-		if _current_speed > jog_speed:
+		if marched_speed > jog_speed:
 			var turn_body_accel: float = maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) * TURN_ACCEL_BUDGET_FRACTION
-			pivot_rate = minf(pivot_rate, UnitManeuver.max_turn_rate_for_speed(turn_body_accel, _current_speed))
+			pivot_rate = minf(pivot_rate, UnitManeuver.max_turn_rate_for_speed(turn_body_accel, marched_speed))
 		_rotate_facing_toward(steer_dir, delta, pivot_rate)
 	else:
 		_face_dir(steer_dir)
