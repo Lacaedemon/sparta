@@ -923,24 +923,40 @@ thin caller that delegates via `uses:` to `Morrison-Lab/gha`, and the
 Don't read the empty grep as "nothing gates on draft". `godot-ci.yml`
 triggers on a bare
 `pull_request:` with no draft gate and no `paths:` filter, so `Validate & test` runs on every
-push to a held draft. `demo-video.yml` fires on `synchronize`, also with no draft gate, but it
+push to a held draft. `demo-video.yml` fires on `synchronize`, also with no draft gate, and it
 IS path-filtered (`scenes/`, `scripts/`, `assets/`, `project.godot`, `demos/*.json`,
-`demos/scenarios/`, `demos/inputs/`), so `demo` re-runs only on a push that touches one of
-those. Draft it for the signal and to stop burning review rounds -- not on the belief that it
-makes the hold free.
+`demos/scenarios/`, `demos/inputs/`) -- but that filter buys a held draft almost nothing,
+because on a `pull_request` event GitHub matches `paths:` against the **pull request's whole
+changed-file set**, not against the individual push's own delta. Once a PR's diff has touched
+a watched path at all, every later `synchronize` re-runs `demo`, including a push that touches
+nothing relevant.
+
+#1349 is the worked proof, and it is checkable: commit `f1beab07` changed exactly one file,
+`.github/workflows/claude-code-review.yml`, which is not in that list -- and Demo video run
+`32520548972` fired on it anyway, because the PR's cumulative diff carries
+`scripts/UnitManeuver.gd`. So the only PR a path filter actually spares is one that has never
+touched a watched path in its whole life; this entry's own PR, #1362, is that case -- it
+touches `.claude/memories/` only and got no `demo` check on any of its heads. Never reason
+about a path filter from what a single push changed. Draft it for the signal and to stop
+burning review rounds -- not on the belief that it makes the hold free.
 
 **The failure has to belong to someone else.** This rule covers a pre-existing bug the PR
 merely surfaces, or a flake tracked elsewhere -- cases where the fix is somebody's tracked
 issue and waiting is the only way to get a true green. A defect the PR itself introduced is
-not a hold: it is yours to fix on the branch now, per the standing no-technical-debt rule.
-Deciding which one you have is the first step, not an afterthought.
+not a hold: it is yours to fix on the branch now. Deciding which one you have is the first
+step, not an afterthought.
 
 This last paragraph is a deliberate narrowing, recorded here rather than left implicit. The
 first draft of this entry -- and the tracking issue's restatement of it -- said the rule
-"applies to the PR's own defects and to failures it merely surfaces", which was a paraphrase
-rather than the directive. The directive itself is about a failure whose fix "comes through"
-on another PR, and a defect the PR introduced has no such PR to wait for, so holding for it
-would mean waiting on nothing. The narrowing is the reading that makes the rule executable.
+"Applies both to the PR's own defects **and** to pre-existing bugs the PR merely surfaces",
+which was my paraphrase rather than the directive.
+
+What separates the two cases is OWNERSHIP, not whether a fix PR exists. A pre-existing bug is
+somebody else's tracked issue, so waiting is the only route to a true green; a defect you
+introduced is already yours, so there is nobody to wait for. Don't reach for "there is no PR
+to wait on" as the discriminator -- as the paragraph above establishes, a legitimate hold
+usually has no fix PR either at the moment you file it, so that test would throw out this
+section's own worked examples. The narrowing is the reading that makes the rule executable.
 
 **Never buy green instead of waiting.** Not by trimming the clip to end before the defect
 appears, not by swapping to a scenario that avoids the code path. Both hide the signal the
@@ -958,13 +974,18 @@ that ban, so read the distinction rather than the keyword:
   infra-side -- that contract lives in the sibling part-files `04-...md` and `07-...md`, not
   in this one, and both of its attested cases are narrow: a link-checker blip that a PASSED
   `main` run over the same corpus proves was reachable, and a `claude-review` that posted a
-  full verdict and then failed on a step downstream of it. Note what does NOT qualify, from
-  the same file: a `claude-review` dying at ~40s with `total_cost_usd: 0` is not transient,
-  and `07-...md` says re-running that one waits forever. Read the failing step before
-  classifying. What this
-  section forbids is the different move of re-rolling a *nondeterministic gate whose defect
-  is already tracked* until it happens to land green -- the flake is the known bug, so a
-  green re-roll is an unearned pass rather than a recovered run.
+  full verdict and then failed on a step downstream of it. **Confirmed** is the load-bearing
+  word, and `07-...md` is precisely about why a fingerprint cannot do the confirming: a
+  `claude-review` dying at ~40s with `total_cost_usd: 0` covers quota exhaustion (which does
+  clear on its own), expired credentials, AND a plugin-install failure -- identical cost,
+  identical duration, and only the last one "will never clear on its own", so that "a
+  retry-and-wait on this one waits forever". Its instruction is to read the job's own
+  `##[error]` lines before classifying by the fingerprint. That is a DIFFERENT diagnostic
+  from the STEP LIST reading the same file prescribes for its other case (verdict posted, a
+  later step failed); two procedures for two failures, so don't merge them into one habit.
+  What this section forbids is the different move of re-rolling a *nondeterministic gate
+  whose defect is already tracked* until it happens to land green -- the flake is the known
+  bug, so a green re-roll is an unearned pass rather than a recovered run.
 
 **Resuming is part of the hold.** When the fix lands -- its PR merges, or the tracking issue
 closes -- re-sync the held branch onto the new `main`, re-run CI, and mark it ready for review
@@ -978,3 +999,102 @@ in #1357. #1348's red gate was **first escalated to the owner** as a merge-polic
 which then put both PRs on hold behind their unblocking issues and retracted the question.
 The escalation is the retired behaviour this entry exists to replace, so it is recorded here
 rather than smoothed over.)
+
+
+## Batch a review round's fixes into one push; a superseded head's red check is not a defect
+
+The review workflow runs with `cancel-in-progress`, so pushing while a round is in flight
+kills it. Fixing findings one at a time as they arrive therefore costs a round per finding and
+leaves a trail of red `require-review` checks on the intermediate heads -- one push per
+finding produced three of them inside four minutes.
+
+Those reds look exactly like defects and are not. **The check reports on the head it ran
+against, not on the PR's current head**, so the discriminator is a SHA comparison:
+
+```sh
+gh pr view <N> --json headRefOid --jq .headRefOid     # or pull_request_read -> head.sha
+# then compare against the failing check run's own head_sha
+```
+
+A failure whose `head_sha` is not the current head does not describe the current head. That is
+all it establishes -- **it is not evidence the cause is gone.** Under the same
+`cancel-in-progress` mechanism, a later push does not guarantee the new head got a completed
+run of its own; that run can be cancelled or still queued. So confirm the current head has its
+own COMPLETED run of that check before treating the older red as noise, and reproduce the
+failure fresh if it does not.
+
+The narrow case where a stale red really is a pure artifact is `require-review`, which mirrors
+`claude-review`'s result and carries no independent information: cancel the review and it goes
+red by construction. A stale `Validate & test` or `Coverage` deserves the confirmation above.
+
+Wait for the round's verdict, collect every finding it posted, fix them together, push once.
+The exception is a finding that makes the current head actively misleading to the reviewer
+still reading it, which is rare.
+
+- **Do:** wait for the verdict, then push one commit addressing the whole round.
+- **Do:** compare a red check's `head_sha` against the PR's current head, then confirm the
+  current head has its own completed run of that check.
+- **Don't:** push per finding as findings arrive -- each push destroys the round evaluating
+  the text you just corrected.
+- **Don't:** read a stale `head_sha` as an all-clear; it says the result is about another
+  commit, not that the failure is fixed.
+- **Don't:** report a stale head's red check in a status summary without saying it is stale;
+  it reads as an unresolved failure.
+
+## `length_squared()` thresholds: the risk is not the comparison, it is the signature
+
+Three concurrent PRs converted `length()` comparisons to `length_squared()` in this repo, so
+the failure modes are worth stating precisely -- including the one that is NOT a failure mode,
+because guessing wrong at it wastes a review round.
+
+**A positive threshold is always safe.** Squaring is monotonic on non-negatives, so for any
+`v >= 0` and `G > 0`, `v > G` and `v*v > G*G` are equivalent -- at every value of `G`, not
+just at 1.0. A conversion that squares both sides of such a comparison cannot change
+behaviour, and claiming it becomes a latent bug "if the threshold changes" is false.
+
+**A negative threshold is the real sign trap.** `length() > x` is always true for `x < 0`
+while `length_squared() > x*x` is not, so any threshold that can go negative -- a tunable, a
+subtracted margin, a caller-supplied value -- breaks silently.
+
+**The signature change is the one that hides**, and note that the equivalence above does NOT
+cover it. That equivalence squares BOTH sides. When the conversion instead moves the squaring
+to the CALLER, a caller left un-updated still passes plain `v` while the callee now compares
+against `G*G`, so the live test is `v > G*G` -- one-sided, and monotonicity says nothing about
+it. `v > G` and `v > G*G` agree for all `v` only when `G` is squaring's fixed point, `G = 1.0`.
+
+`SoldierCollision.overcomes_static_friction` is the case to watch, because
+`SoldierCombat.STATIC_FRICTION_VELOCITY_GATE` is exactly `1.0`. Under the conversion proposed
+in the (unmerged, as of 2026-08-21) PR #1358 the parameter becomes `body_velocity_magnitude_sq`
+and `SoldierMelee` is updated, while `test/unit/test_soldier_collision.gd`'s five call sites
+still pass plain magnitudes. Those tests would still PASS -- not from monotonicity, but from
+that fixed point -- while `body_vel_stationary = 0.5` silently stops meaning v = 0.5 and starts
+meaning v ~ 0.707, so the suite quietly stops covering the boundary it was written for. Retune
+the gate off 1.0, which this repo's own parameter-externalization convention invites, and the
+same stale call sites flip outright and the suite fails.
+
+- **Do:** grep for every caller and test of any function whose parameter the conversion
+  re-scales, and update them in the same diff.
+- **Do:** check whether a converted threshold can ever be negative.
+- **Do:** check whether the squaring is two-sided (safe by monotonicity) or one-sided (safe
+  only at `G = 1.0`) before reasoning about a conversion at all.
+- **Don't:** claim a positive-threshold conversion is behaviour-changing -- verify the
+  monotonicity argument before writing a finding about it.
+- **Don't:** invoke monotonicity for a one-sided comparison; it does not apply, and citing it
+  contradicts the two-sided rule above.
+- **Don't:** treat a green suite as evidence the callers were updated; where the gate sits on
+  squaring's fixed point it is evidence of nothing.
+
+## Finish the reasoning before publishing it, especially in a review comment
+
+A review finding posted to someone else's PR is the worst place to think out loud. One posted
+here contained a false claim and a visible half-finished derivation (`"1.5 < 2, gated... wait"`)
+that reached no conclusion, and needed a retraction comment minutes later.
+
+The tell is writing a claim whose justification you are still deriving as you type it. The
+fix is mechanical: derive it in a scratch buffer, state the conclusion, and paste the check
+that settles it. If the check cannot be pasted, the finding is not ready to post.
+
+- **Do:** settle the argument first, then write the comment as a conclusion plus its evidence.
+- **Do:** retract plainly and immediately when a published claim turns out false, and say what
+  survives.
+- **Don't:** publish a sentence containing your own hedging mid-derivation.
