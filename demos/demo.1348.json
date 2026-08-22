@@ -1,7 +1,7 @@
 {
-  "_comment": "Per-PR demo for #1348 / #1178 line_relief corridor. The right-click MUST land after the enemy reaches the tired unit (contact is ~tick 128) -- a right-click on a friendly that is not yet FIGHTING resolves to a plain ground MOVE, not a RELIEF, and the corridor code then never runs at all.",
+  "_comment": "Per-PR demo for #1348 / #1178: the line-relief corridor. Deliberately records the SAME input script as #1377's demo.1377.json, unchanged -- the two clips differ only in whether this PR's corridor code is applied, so their CI defect scans are a single-variable comparison of the formation change. Do not re-stage this scenario without re-staging #1377's in step, or that comparison stops being controlled.",
   "input": "demos/inputs/line-relief-queue.json",
-  "caption": "Line relief corridor: at tick 200 the fresh Infantry (uid1) takes a RELIEF order on its engaged ally (uid0), which peels back on a MOVE. While the link is live the reliever's block widens -- its median soldier spacing rises from 9.00 to 10.05 wu as it closes -- so it passes through without intra-unit overlap. The tired unit's own peel-back does NOT yet hold formation: see the PR thread for the measured numbers.",
+  "caption": "Line relief corridor. Same scenario as the line_relief clip -- a 60-man Infantry front block ground down holding a 70-man enemy, relieved at tick 200 by a full-strength unit behind it -- with one change: while the relief link is live, both blocks widen their back-rank slot spacing so the reliever's front line can march between without intra-unit overlap. Watch the reliever's block open as it closes on its ally, rather than driving into it. The exact spacing figures are in CI's own defect-scan table on this PR, not quoted here -- a local run of this clip has been measured disagreeing with CI's by enough to invert a verdict.",
   "fixed_fps": 60,
   "max_frames": 480,
   "fps": 15,
