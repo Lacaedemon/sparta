@@ -2396,6 +2396,30 @@ func test_relief_swaps_the_fight_and_exempts_the_pair() -> void:
 	assert_true(tired._separation_exempt(fresh), "the relief exemption is mutual")
 
 
+func test_relief_retreat_backs_out_facing_the_enemy() -> void:
+	# A relieved regiment withdraws as a fighting body: it steps back toward its own rear
+	# still fronting the line it just left, rather than turning tail and marching off. The
+	# held facing (ordered_facing) is the mechanism -- it puts the retreat in _move_to's
+	# "maneuvering" branch, so the block never pivots toward its destination and the slot
+	# grid never sweeps through a half-turn the soldier bodies cannot follow.
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	var foe := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	foe.team = 1
+	tired.target_enemy = foe
+	var front: Vector2 = tired.facing
+	_begin_relief(fresh, tired)
+	assert_eq(tired.ordered_facing, front,
+		"the retreat holds the facing the unit fought on")
+	assert_ne(tired.ordered_facing, Vector2.ZERO,
+		"a non-zero hold is what marks the march as a maneuver")
+	var travel: Vector2 = tired.move_target - tired.position
+	assert_true(front.dot(travel) < 0.0,
+		"and the march itself runs rearward, so the unit is genuinely backing out")
+
+
 func test_relief_inherits_nearest_enemy_when_target_is_unset() -> void:
 	# A unit can be FIGHTING an auto-acquired foe with target_enemy still null.
 	var fresh := _make_unit()

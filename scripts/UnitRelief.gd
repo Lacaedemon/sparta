@@ -6,7 +6,8 @@ class_name UnitRelief
 ## while the link is live (Unit._separation_exempt checks it from either side), so they
 ## pass through each other during the swap, and the exemption clears once they're apart --
 ## or dies with the order on an interrupt, since the order owns it. The tired unit gets a
-## plain MOVE order for its retreat, so both sides of the swap read straight off the
+## plain MOVE order for its retreat -- marched with its facing held, so it backs out of the
+## line still fronting the enemy -- so both sides of the swap read straight off the
 ## queue. Static helpers on the unit -- deterministic (positions / state only, no RNG), so
 ## live play and replay swap identically. RELIEF is just one consumer of the generic
 ## friendly_target link and its Order.resolve_friendly_target helper (see Order.gd); this
@@ -42,6 +43,17 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	tired.set_current_order(retreat)
 	tired.move_target = retreat.target_pos
 	tired.has_move_target = true
+	# Back out of the line facing the enemy rather than turning tail: a relieved regiment
+	# withdraws as a fighting body, the same drill Unit.disengage uses for a step back. The
+	# mechanism is the held facing itself -- a non-zero ordered_facing puts the retreat in
+	# _move_to's "maneuvering" branch, which holds the heading instead of pivoting toward
+	# travel and walks the whole leg. Without it the block pivots 180 deg toward its
+	# destination, and the turn-before-march clamp (facing.dot(steer_dir) * 2) zeroes the
+	# advance while it does, so the slot grid sweeps through a half-turn the bodies cannot
+	# track -- the men scramble across the block and the formation reads as a blob for the
+	# rest of the retreat. Arrival clears the hold (Unit._update_move), so it lives exactly
+	# as long as this leg.
+	tired.ordered_facing = tired.facing
 
 
 ## A point toward `u`'s own back edge -- where a relieved unit retreats to.
