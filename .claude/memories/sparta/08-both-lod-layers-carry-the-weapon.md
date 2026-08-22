@@ -789,3 +789,80 @@ Don't dump-state every one. The fast, rigorous classification:
 - **Don't:** read a wide demo-diff as many regressions, or dump-state each clip's merge-base
   side unless its OUTCOME looks wrong (a wiped unit, a missing rally) per the sparta-demos
   wide-diff procedure.
+
+## Batch a review round's fixes into one push; a superseded head's red check is not a defect
+
+The review workflow runs with `cancel-in-progress`, so pushing while a round is in flight
+kills it. Fixing findings one at a time as they arrive therefore costs a round per finding and
+leaves a trail of red `require-review` checks on the intermediate heads -- one push per
+finding produced three of them inside four minutes.
+
+Those reds look exactly like defects and are not. **The check reports on the head it ran
+against, not on the PR's current head**, so the discriminator is a SHA comparison:
+
+```sh
+gh pr view <N> --json headRefOid --jq .headRefOid     # or pull_request_read -> head.sha
+# then compare against the failing check run's own head_sha
+```
+
+A failure whose `head_sha` is not the current head is stale by construction. Do not
+investigate it, and do not report it as a CI failure -- say which head it was on.
+
+Wait for the round's verdict, collect every finding it posted, fix them together, push once.
+The exception is a finding that makes the current head actively misleading to the reviewer
+still reading it, which is rare.
+
+- **Do:** wait for the verdict, then push one commit addressing the whole round.
+- **Do:** compare a red check's `head_sha` against the PR's current head before treating it
+  as real.
+- **Don't:** push per finding as findings arrive -- each push destroys the round evaluating
+  the text you just corrected.
+- **Don't:** report a stale head's red check in a status summary without saying it is stale;
+  it reads as an unresolved failure.
+
+## `length_squared()` thresholds: the risk is not the comparison, it is the signature
+
+Three concurrent PRs converted `length()` comparisons to `length_squared()` in this repo, so
+the failure modes are worth stating precisely -- including the one that is NOT a failure mode,
+because guessing wrong at it wastes a review round.
+
+**A positive threshold is always safe.** Squaring is monotonic on non-negatives, so for any
+`v >= 0` and `G > 0`, `v > G` and `v*v > G*G` are equivalent -- at every value of `G`, not
+just at 1.0. A conversion that squares both sides of such a comparison cannot change
+behaviour, and claiming it becomes a latent bug "if the threshold changes" is false.
+
+**A negative threshold is the real sign trap.** `length() > x` is always true for `x < 0`
+while `length_squared() > x*x` is not, so any threshold that can go negative -- a tunable, a
+subtracted margin, a caller-supplied value -- breaks silently.
+
+**The signature change is the one that hides.** When the conversion moves the squaring to the
+CALLER, the parameter's meaning changes, and every other caller and test still passing a plain
+magnitude is now passing the wrong quantity. `SoldierCollision.overcomes_static_friction` is
+the worked example: its parameter became `body_velocity_magnitude_sq`, `SoldierMelee` was
+updated, and `test/unit/test_soldier_collision.gd`'s five call sites were not. Those tests
+still PASS, because monotonicity keeps every value on the same side of the gate -- so CI
+cannot see it -- while `body_vel_stationary = 0.5` silently stops meaning v = 0.5 and starts
+meaning v ~ 0.707. The suite quietly stops covering the boundary it was written for.
+
+- **Do:** grep for every caller and test of any function whose parameter the conversion
+  re-scales, and update them in the same diff.
+- **Do:** check whether a converted threshold can ever be negative.
+- **Don't:** claim a positive-threshold conversion is behaviour-changing -- verify the
+  monotonicity argument before writing a finding about it.
+- **Don't:** treat a green suite as evidence the callers were updated; here it is evidence of
+  nothing.
+
+## Finish the reasoning before publishing it, especially in a review comment
+
+A review finding posted to someone else's PR is the worst place to think out loud. One posted
+here contained a false claim and a visible half-finished derivation (`"1.5 < 2, gated... wait"`)
+that reached no conclusion, and needed a retraction comment minutes later.
+
+The tell is writing a claim whose justification you are still deriving as you type it. The
+fix is mechanical: derive it in a scratch buffer, state the conclusion, and paste the check
+that settles it. If the check cannot be pasted, the finding is not ready to post.
+
+- **Do:** settle the argument first, then write the comment as a conclusion plus its evidence.
+- **Do:** retract plainly and immediately when a published claim turns out false, and say what
+  survives.
+- **Don't:** publish a sentence containing your own hedging mid-derivation.
