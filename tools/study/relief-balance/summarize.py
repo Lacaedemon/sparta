@@ -12,8 +12,12 @@ seed and then aggregated:
                 an approximate episode count, since a dump every TICK_STEP cannot
                 see an episode that begins and ends between two samples.
   margin        survivors[0] - survivors[1]. In the mirror arm its EXPECTED value is
-                zero by construction; a non-zero mean there measures the harness,
-                not the mechanic. In the asym arm it is the quantity of interest.
+                zero by construction, so a non-zero mean there measures the harness,
+                not the mechanic. The same behavioural asymmetry (team 1 has a
+                General, team 0's delegated group does not) sits under BOTH arms,
+                so no single-arm margin is meaningful on its own in either arm.
+                Read margins only as a pre-versus-post comparison, where the
+                asymmetry sits on both sides and cancels.
 
 Compare two runs (a pre-fix and a post-fix checkout) with --baseline.
 """
