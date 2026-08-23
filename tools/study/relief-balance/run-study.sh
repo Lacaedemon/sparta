@@ -115,7 +115,11 @@ for script in "$GEN_DIR"/*.json; do
   # snapshot's unit count must match the generated spawn list's.
   if [ "$ok" -eq 1 ]; then
     spawned="$(python3 -c "import json, sys; print(len(json.load(open(sys.argv[1]))['scenario']))" "$script")"
-    first_snap="$(find "$OUT_DIR/$seed" -name 'state_*.json' -print -quit 2>/dev/null || true)"
+    # The EARLIEST snapshot, by sorted name -- find's own order is arbitrary, and a late
+    # snapshot legitimately has fewer units than were spawned once some are destroyed,
+    # which would drop a healthy decisive seed as a wrong battle. sed reads its whole
+    # input, so unlike a head pipe there is nothing here for SIGPIPE to kill.
+    first_snap="$(find "$OUT_DIR/$seed" -name 'state_*.json' 2>/dev/null | sort | sed -n '1p')"
     if [ -n "$first_snap" ]; then
       units0="$(python3 -c "import json, sys; print(len(json.load(open(sys.argv[1]))['units']))" "$first_snap")"
       if [ "$units0" -ne "$spawned" ]; then
