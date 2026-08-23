@@ -5,9 +5,11 @@ class_name UnitRelief
 ## pass-through link any order type can arm): the pair is mutually exempt from separation
 ## while the link is live (Unit._separation_exempt checks it from either side), so they
 ## pass through each other during the swap, and the exemption clears once they're apart --
-## or dies with the order on an interrupt, since the order owns it. The tired unit gets a
-## plain MOVE order for its retreat -- marched with its facing held, so it backs out of the
-## line still fronting the enemy -- so both sides of the swap read straight off the
+## or dies with the order on an interrupt, since the order owns it. While the link is live
+## both blocks also widen their back-rank slot spacing (Unit._apply_relief_corridor_to_slots)
+## so the partner's front line can march between without intra-unit overlap. The tired unit
+## gets a plain MOVE order for its retreat -- marched with its facing held, so it backs out
+## of the line still fronting the enemy -- so both sides of the swap read straight off the
 ## queue. Static helpers on the unit -- deterministic (positions / state only, no RNG), so
 ## live play and replay swap identically. RELIEF is just one consumer of the generic
 ## friendly_target link and its Order.resolve_friendly_target helper (see Order.gd); this
