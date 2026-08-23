@@ -116,18 +116,23 @@ def welch(a, b):
     return t, p
 
 
-def report(label, rows):
+def report(label, rows, expect_final_tick=None):
     print("== %s (%d seed(s))" % (label, len(rows)))
     if not rows:
         print("  no completed seeds")
         return {}
     # A short final_tick means the battle was cut off, and run-study.sh's snapshot count
     # is what normally catches that -- but a run collected some other way, or one whose
-    # dumps were pruned afterwards, arrives here looking ordinary. Report the modal final
-    # tick and flag every row that falls short of it, so a truncated battle cannot pass
-    # for a decided one.
+    # dumps were pruned afterwards, arrives here looking ordinary.
+    #
+    # The reference is the MAXIMUM final tick, not the modal one. A run cannot overshoot
+    # the tick it was asked for, so the maximum is a bound; the mode is a vote, and it
+    # elects the wrong answer as soon as most of the set is truncated -- which is the
+    # case where being wrong matters most. Pass --expect-final-tick to bound it from
+    # outside, which is the only way to catch a set where EVERY run was cut off at the
+    # same tick, since nothing internal to the data distinguishes that from a short study.
     ticks = [r["final_tick"] for r in rows.values()]
-    full = max(set(ticks), key=ticks.count)
+    full = max(ticks) if expect_final_tick is None else int(expect_final_tick)
     print("  %-8s %-7s %-9s %-9s %-7s %-7s %-7s %-7s %s"
           % ("seed", "end", "surv t0", "surv t1", "lost0", "lost1", "rel0", "rel1",
              "margin"))
@@ -137,20 +142,30 @@ def report(label, rows):
               % (seed, r["final_tick"], r["survivors"][0], r["survivors"][1],
                  r["lost_units"][0], r["lost_units"][1], r["relief"][0], r["relief"][1],
                  r["margin"], mark))
-    short = [s for s, r in rows.items() if r["final_tick"] != full]
+    # Excluded from the aggregates, not merely flagged. A warning printed beside a
+    # contaminated mean is worse than no warning: it reads as a caveat while the number
+    # under it is still wrong, and nobody cross-references the marked rows by hand.
+    short = [s for s, r in rows.items() if r["final_tick"] < full]
+    kept = {s: r for s, r in rows.items() if r["final_tick"] >= full}
     if short:
-        print("  WARNING: %d seed(s) ended before tick %d: %s. A truncated battle is not a"
+        print("  WARNING: %d seed(s) ended before tick %d: %s."
               % (len(short), full, ", ".join(short)))
-        print("           decided one -- drop them rather than averaging over them.")
+        print("           A truncated battle is not a decided one; they are EXCLUDED from"
+              " the aggregates below.")
+    if not kept:
+        print("  no seed reached tick %d -- nothing to aggregate" % full)
+        return {}
+    print("  aggregates over %d of %d seed(s), all ending at tick %d"
+          % (len(kept), len(rows), full))
     cols = {
-        "survivors t0": [r["survivors"][0] for r in rows.values()],
-        "survivors t1": [r["survivors"][1] for r in rows.values()],
-        "survivors both": [r["survivors"][0] + r["survivors"][1] for r in rows.values()],
-        "lost_units t0": [r["lost_units"][0] for r in rows.values()],
-        "lost_units t1": [r["lost_units"][1] for r in rows.values()],
-        "relief t0": [r["relief"][0] for r in rows.values()],
-        "relief t1": [r["relief"][1] for r in rows.values()],
-        "margin": [r["margin"] for r in rows.values()],
+        "survivors t0": [r["survivors"][0] for r in kept.values()],
+        "survivors t1": [r["survivors"][1] for r in kept.values()],
+        "survivors both": [r["survivors"][0] + r["survivors"][1] for r in kept.values()],
+        "lost_units t0": [r["lost_units"][0] for r in kept.values()],
+        "lost_units t1": [r["lost_units"][1] for r in kept.values()],
+        "relief t0": [r["relief"][0] for r in kept.values()],
+        "relief t1": [r["relief"][1] for r in kept.values()],
+        "margin": [r["margin"] for r in kept.values()],
     }
     for name, vals in cols.items():
         print("  %-16s %s" % (name, _stats(vals)))
@@ -164,13 +179,17 @@ def main():
     p.add_argument("--baseline", help="a second run directory to compare against")
     p.add_argument("--label", default="run")
     p.add_argument("--baseline-label", default="baseline")
+    p.add_argument("--expect-final-tick", type=int,
+                   help="the tick a complete battle ends at. Without it the reference is "
+                        "the maximum observed, which cannot detect a set where every run "
+                        "was truncated at the same tick")
     a = p.parse_args()
 
-    cols = report(a.label, read_run(a.run_dir))
+    cols = report(a.label, read_run(a.run_dir), a.expect_final_tick)
     if not a.baseline:
         return
     print()
-    base = report(a.baseline_label, read_run(a.baseline))
+    base = report(a.baseline_label, read_run(a.baseline), a.expect_final_tick)
     if not cols or not base:
         return
     print()

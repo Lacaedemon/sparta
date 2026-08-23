@@ -73,9 +73,18 @@ python3 tools/study/relief-balance/summarize.py /tmp/rb-mirror --label mirror
 ```
 
 Each seed is about half a minute, so a twenty-seed arm is roughly ten minutes.
-Every parameter the arms turn on -- seeds, doctrine, soldiers per unit, front-rank
-morale, run length, dump interval -- is an environment variable on `run-study.sh`
-or a flag on `build-scenarios.py`; run either with no arguments for the list.
+Every parameter the arms turn on -- seeds, doctrine, soldiers per unit, rank morale,
+run length, dump interval -- is an environment variable on `run-study.sh` or a flag on
+`build-scenarios.py`; run either with no arguments for the list.
+
+`run-study.sh` forwards each variable **only when it is set**, so the generator's own
+defaults stay reachable. A shell-side default would shadow them, and that is not
+hypothetical: this runner kept passing `--doctrine cautious` after the generator's
+default had been changed to a zero-reserve doctrine, so the recommended configuration
+was unreachable through the normal entry point and two studies ran on the arm this
+README calls invalid. Both runs printed no doctrine at all, which is why the runner now
+reads it back off a generated file and echoes it on the first and last line of every
+run. If a study's validity turns on a value, that value belongs in its log.
 
 ## Comparing two versions of the code
 
@@ -108,18 +117,13 @@ a dump every `SPARTA_STUDY_TICK_STEP` ticks cannot see an episode that starts an
 ends between two samples, so read it as a floor.
 
 `margin` is `survivors[0] - survivors[1]`. Its expected value in the `mirror` arm is
-zero, and **it is not zero** -- measured at +45.4 and +24.4 across twenty seeds on two
-versions of the code, consistently favouring team 0.
-
-The cause is structural rather than geometric, and levelling the arena did not remove it
-(it flipped the sign). Team 1 runs a General that issues an advance plan; team 0's
-delegated group has no General and waits for contact, and the waiting side wins the
-approach. Relief counts split the same way, team 0 at 3.0-3.4 episodes against team 1's
-1.6-2.0. Team 0 cannot be given a General from here: phase 4 deliberately does not stand
-one up.
-
-So the arm is mirrored in **setup** and not in **behaviour**. A pre-versus-post comparison
-is unaffected, since the same asymmetry sits on both sides and cancels. **No single-arm
+zero, and the arm is mirrored in **setup** only: team 1 runs a General that issues an
+army plan, while team 0's delegated group has no General and waits for contact (phase 4
+deliberately stands none up for team 0), so the two sides' behaviour differs by
+construction even on identical rosters and ground. Check the mirror arm's own margin
+before reading anything into any other number, and treat a non-zero mean there as the
+harness's floor of asymmetry rather than as a finding. A pre-versus-post comparison is
+unaffected -- the same asymmetry sits on both sides and cancels -- but **no single-arm
 margin from this harness means anything**, and neither does a single-arm survivor count.
 
 A seed whose run crashes or times out is a **missing sample, not a zero**:
@@ -131,10 +135,18 @@ mean.
 `CAPTURE_TIMEOUT_SEC` net calls `push_warning` and then `get_tree().quit()`, which
 exits **zero** -- so a battle cut short at sixty wall-clock seconds leaves a partial
 dump and reports success. `run-study.sh` counts the snapshots against the number of
-ticks it asked for, which is what actually catches it, and `summarize.py` prints each
-seed's final tick and flags any that falls short of the modal one. A truncated battle
-summarizing as a decided one is the worst failure available to this harness, since
-nothing about the resulting row looks unusual.
+ticks it asked for, which is what actually catches it, and drops the seed when they
+disagree. `summarize.py` prints each seed's final tick, marks any that falls short, and
+**excludes those rows from every aggregate** -- a warning printed beside a contaminated
+mean is worse than no warning, since it reads as a caveat while the number under it is
+still wrong.
+
+Its reference is the **maximum** final tick observed, not the modal one: a run cannot
+overshoot the tick it was asked for, so the maximum is a bound, whereas the mode is a
+vote that elects the wrong answer as soon as most of the set is truncated. Pass
+`--expect-final-tick` to bound it from outside, which is the only way to catch a set
+where every run was cut off at the same tick -- nothing internal to the data
+distinguishes that from a deliberately short study.
 
 ## Results
 
