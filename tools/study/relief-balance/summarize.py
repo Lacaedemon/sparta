@@ -121,12 +121,27 @@ def report(label, rows):
     if not rows:
         print("  no completed seeds")
         return {}
-    print("  %-8s %-9s %-9s %-7s %-7s %-7s %-7s %s"
-          % ("seed", "surv t0", "surv t1", "lost0", "lost1", "rel0", "rel1", "margin"))
+    # A short final_tick means the battle was cut off, and run-study.sh's snapshot count
+    # is what normally catches that -- but a run collected some other way, or one whose
+    # dumps were pruned afterwards, arrives here looking ordinary. Report the modal final
+    # tick and flag every row that falls short of it, so a truncated battle cannot pass
+    # for a decided one.
+    ticks = [r["final_tick"] for r in rows.values()]
+    full = max(set(ticks), key=ticks.count)
+    print("  %-8s %-7s %-9s %-9s %-7s %-7s %-7s %-7s %s"
+          % ("seed", "end", "surv t0", "surv t1", "lost0", "lost1", "rel0", "rel1",
+             "margin"))
     for seed, r in rows.items():
-        print("  %-8s %-9d %-9d %-7d %-7d %-7d %-7d %+d"
-              % (seed, r["survivors"][0], r["survivors"][1], r["lost_units"][0],
-                 r["lost_units"][1], r["relief"][0], r["relief"][1], r["margin"]))
+        mark = "" if r["final_tick"] == full else "  <-- SHORT"
+        print("  %-8s %-7d %-9d %-9d %-7d %-7d %-7d %-7d %+d%s"
+              % (seed, r["final_tick"], r["survivors"][0], r["survivors"][1],
+                 r["lost_units"][0], r["lost_units"][1], r["relief"][0], r["relief"][1],
+                 r["margin"], mark))
+    short = [s for s, r in rows.items() if r["final_tick"] != full]
+    if short:
+        print("  WARNING: %d seed(s) ended before tick %d: %s. A truncated battle is not a"
+              % (len(short), full, ", ".join(short)))
+        print("           decided one -- drop them rather than averaging over them.")
     cols = {
         "survivors t0": [r["survivors"][0] for r in rows.values()],
         "survivors t1": [r["survivors"][1] for r in rows.values()],

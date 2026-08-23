@@ -24,10 +24,21 @@ fresh pair one `REAR_OFFSET` behind, inside `UnitLeader.RELIEF_CALL_RANGE`. Who
 wins is a coin flip by construction, and that is the point -- the arm isolates what
 relief *costs* rather than who it favours.
 
-**`asym`** holds soldiers, unit count and per-unit size equal and varies only the
-deployment: team 0 puts all six units abreast while team 1 keeps its pair back.
-The frontage difference is part of the tactical choice being measured, not a
-confound.
+Both arms emit their own `map` block rather than running on the default battlefield,
+because the default is not symmetric in the two ways that matter here. Its field is
+`Rect2(0, 0, 1600, 1200)`, so mirroring about any line but `y = 600` hands one side
+more ground; and both default `TERRAIN` patches sit at `y` 380-580 -- a forest that
+halves speed and an impassable hill -- which is one team's half whatever midline is
+chosen. The arms mirror about the field centre and run on empty terrain.
+
+**`asym`** holds soldiers, unit count, per-unit size **and the morale mix** equal, and
+varies only the deployment: team 0 puts all six units abreast while team 1 keeps its
+pair back. Team 0's line is four tired and two fresh exactly as team 1's roster is,
+with the fresh pair in the centre rather than on a flank. Starting all six of team 0
+at the tired value would hand team 1 an undisclosed aggregate-morale edge, and it
+would also gate relief directly, since `_relief_candidate` rejects a would-be reliever
+below `RELIEF_MORALE_THRESHOLD`. The frontage difference is part of the tactical choice
+being measured; a morale difference is not.
 
 The arm was built to make team 0 unable to rotate at all, reasoning that a unit in
 the front line is always `FIGHTING` and so fails `_relief_candidate`. **That is
@@ -45,11 +56,11 @@ was supposed to be zero and is not falsifies the arm, and no other number in the
 output would have said so.
 
 Run the arms under a doctrine whose `reserve_fraction` floors to zero on the roster
-size in use (`aggressive` gives `int(6 * 0.1) == 0`). A doctrine that does hold
-reserves pins them at their own spawn point via `General.reserve_directives`, far
-behind the line, which fights team 1 four-against-six for a long stretch and swamps
-the effect under study. Measured over four seeds: `cautious` gave team 0 a mean
-margin of +80, `aggressive` -38.
+size in use, which `aggressive` does (`int(6 * 0.1) == 0`) and which is the default
+for that reason. A doctrine that does hold reserves pins them at their own spawn
+point via `General.reserve_directives`, far behind the line, which fights team 1
+four-against-six for a long stretch and swamps the effect under study. Measured over
+four seeds: `cautious` gave team 0 a mean margin of +80, `aggressive` -38.
 
 ## Running it
 
@@ -104,6 +115,15 @@ A seed whose run crashes or times out is a **missing sample, not a zero**:
 `run-study.sh` drops its directory and warns, and `summarize.py` reports the `n` it
 actually had. Check that `n` against the seed range you asked for before quoting a
 mean.
+
+**The exit status does not decide that on its own.** `DemoInputRecorder`'s
+`CAPTURE_TIMEOUT_SEC` net calls `push_warning` and then `get_tree().quit()`, which
+exits **zero** -- so a battle cut short at sixty wall-clock seconds leaves a partial
+dump and reports success. `run-study.sh` counts the snapshots against the number of
+ticks it asked for, which is what actually catches it, and `summarize.py` prints each
+seed's final tick and flags any that falls short of the modal one. A truncated battle
+summarizing as a decided one is the worst failure available to this harness, since
+nothing about the resulting row looks unusual.
 
 ## Results
 

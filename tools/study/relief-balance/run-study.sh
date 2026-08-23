@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tools/study/relief-balance/run-study.sh -- run one arm of the relief-balance study
-# (Lacaedemon/sparta#1373) across a seed range and collect the per-tick state dumps.
+# across a seed range and collect the per-tick state dumps.
 #
 # Generates one scripted-input file per seed with build-scenarios.py, drives each through
 # tools/demo/dump-state.sh, and leaves the raw state_*.json under <out-dir>/<seed>/.
@@ -13,7 +13,8 @@
 # Usage:
 #   tools/study/relief-balance/run-study.sh <arm> <out-dir>
 #
-#   <arm>       mirror (both sides rotate) or asym (only team 1 rotates).
+#   <arm>       mirror (both sides in the same shape) or asym (one wide line against a
+#               reserved rear rank). Both sides rotate in BOTH arms -- see the README.
 #   <out-dir>   Where to collect the dumps. Created if absent.
 #
 # Environment:
@@ -57,6 +58,7 @@ python3 "$SCRIPT_DIR/build-scenarios.py" "$GEN_DIR" \
 
 LAST_TICK="${SPARTA_STUDY_LAST_TICK:-1440}"
 TICK_STEP="${SPARTA_STUDY_TICK_STEP:-60}"
+WANT="$(python3 -c "import sys; print(len(range(int(sys.argv[1]), int(sys.argv[2]) + 1, int(sys.argv[1]))))" "$TICK_STEP" "$LAST_TICK")"
 TICKS="$(python3 -c "import sys; print(','.join(str(t) for t in range(int(sys.argv[1]), int(sys.argv[2]) + 1, int(sys.argv[1]))))" "$TICK_STEP" "$LAST_TICK")"
 
 n=0
@@ -77,4 +79,4 @@ for script in "$GEN_DIR"/*.json; do
   n=$((n + 1))
 done
 
-echo "[study] $ARM: $n seed(s) completed into $OUT_DIR"
+echo "[study] $ARM: $n seed(s) completed into $OUT_DIR (each with $WANT snapshots)"

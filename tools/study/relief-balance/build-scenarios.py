@@ -46,7 +46,13 @@ DELEGATE_TICK = 30
 # The battle's own geometry. Front ranks face each other across the midline;
 # each rear pair sits REAR_OFFSET behind its own front, which must stay inside
 # UnitLeader.RELIEF_CALL_RANGE (220.0) for the rear units to answer a call.
-MIDLINE_Y = 660.0
+# The default map is Rect2(0, 0, 1600, 1200), so its centre is y=600. Mirroring about any
+# other line hands one side more ground than the other, and the arms emit an empty-terrain
+# map block for the same reason: the default TERRAIN's two patches both sit at y 380-580,
+# which is one team's half whatever midline is chosen.
+FIELD_W = 1600.0
+FIELD_H = 1200.0
+MIDLINE_Y = FIELD_H / 2.0
 FRONT_OFFSET = 140.0
 REAR_OFFSET = 120.0
 FRONT_XS = (500.0, 600.0, 700.0, 800.0)
@@ -61,22 +67,32 @@ def _unit(team, x, y, count, morale=None):
     return u
 
 
-def _side(team, arm, count, front_morale):
+def _side(team, arm, count, front_morale, rear_morale):
     """One army's spawns. Team 0 sits above the midline, team 1 below it."""
     sign = -1.0 if team == 0 else 1.0
     front_y = MIDLINE_Y + sign * FRONT_OFFSET
     # Further from the midline than the front, not between the two fronts.
     rear_y = MIDLINE_Y + sign * (FRONT_OFFSET + REAR_OFFSET)
     if arm == "asym" and team == 0:
-        # Everything abreast: no unit is ever out of contact to relieve with.
-        return [_unit(team, x, front_y, count, front_morale) for x in ALL_SIX_XS]
+        # Everything abreast. The morale mix stays four tired and two fresh, matching the
+        # other side exactly: the arm varies DEPLOYMENT, and letting team 0's six all start
+        # at the tired value would hand team 1 an undisclosed aggregate-morale edge that
+        # also gates relief eligibility directly (_relief_candidate rejects a would-be
+        # reliever below RELIEF_MORALE_THRESHOLD).
+        # Fresh pair in the CENTRE, not on one flank: appending them would put the whole
+        # right wing at full morale and leave the left tired, which is a flank bias rather
+        # than the deployment difference the arm is for.
+        morales = ([front_morale] * 2 + [rear_morale] * 2 + [front_morale] * 2)
+        return [_unit(team, x, front_y, count, m)
+                for x, m in zip(ALL_SIX_XS, morales)]
     return ([_unit(team, x, front_y, count, front_morale) for x in FRONT_XS]
-            + [_unit(team, x, rear_y, count) for x in REAR_XS])
+            + [_unit(team, x, rear_y, count, rear_morale) for x in REAR_XS])
 
 
-def scenario(arm, seed, doctrine, count, front_morale, last_tick, tick_step):
+def scenario(arm, seed, doctrine, count, front_morale, rear_morale, last_tick, tick_step):
     """One input script: the arm's matchup at `seed`, dumping state to `last_tick`."""
-    spawns = _side(0, arm, count, front_morale) + _side(1, arm, count, front_morale)
+    spawns = (_side(0, arm, count, front_morale, rear_morale)
+              + _side(1, arm, count, front_morale, rear_morale))
     top = min(u["y"] for u in spawns if u["team"] == 0)
     bottom = max(u["y"] for u in spawns if u["team"] == 0)
     left = min(u["x"] for u in spawns if u["team"] == 0)
@@ -86,6 +102,7 @@ def scenario(arm, seed, doctrine, count, front_morale, last_tick, tick_step):
                      "Arm %s, seed %s. See that directory's README." % (arm, seed)),
         "seed": str(seed),
         "doctrine": doctrine,
+        "map": {"field": [FIELD_W, FIELD_H], "terrain": []},
         "scenario": spawns,
         "camera": [{"tick": 0, "x": 650.0, "y": MIDLINE_Y, "zoom": 0.42}],
         "steps": [
@@ -105,13 +122,19 @@ def main():
     p.add_argument("--arm", default="mirror", choices=("mirror", "asym"))
     p.add_argument("--seeds", default="101-120",
                    help="inclusive range LO-HI, or a comma-separated list")
-    p.add_argument("--doctrine", default="cautious",
-                   help="team 1's doctrine (a data/doctrines stem)")
+    p.add_argument("--doctrine", default="aggressive",
+                   help="team 1's doctrine (a data/doctrines stem). Defaults to one whose "
+                        "reserve_fraction floors to zero at this roster size; a doctrine "
+                        "that does hold reserves pins them at spawn and invalidates the "
+                        "measurement (see the README)")
     p.add_argument("--count", type=int, default=45, help="soldiers per unit")
     p.add_argument("--front-morale", type=float, default=34.0,
                    help="front-rank starting morale; below "
                         "UnitLeader.RELIEF_MORALE_THRESHOLD (35) so relief is "
                         "called early rather than only after a long grind")
+    p.add_argument("--rear-morale", type=float, default=100.0,
+                   help="rear-rank starting morale; the fresh half of the roster, and "
+                        "applied to both sides in both arms so the aggregate is equal")
     p.add_argument("--last-tick", type=int, default=1440)
     p.add_argument("--tick-step", type=int, default=60)
     a = p.parse_args()
@@ -125,7 +148,7 @@ def main():
     os.makedirs(a.out_dir, exist_ok=True)
     for seed in seeds:
         d = scenario(a.arm, seed, a.doctrine, a.count, a.front_morale,
-                     a.last_tick, a.tick_step)
+                     a.rear_morale, a.last_tick, a.tick_step)
         path = os.path.join(a.out_dir, "%s_%s.json" % (a.arm, seed))
         with open(path, "w", encoding="utf-8", newline="") as f:
             json.dump(d, f, indent=2)
