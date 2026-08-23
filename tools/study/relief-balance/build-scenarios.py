@@ -57,7 +57,10 @@ FRONT_OFFSET = 140.0
 REAR_OFFSET = 120.0
 FRONT_XS = (500.0, 600.0, 700.0, 800.0)
 REAR_XS = (590.0, 710.0)
-ALL_SIX_XS = (450.0, 550.0, 650.0, 750.0, 850.0, 950.0)
+# Centred on the same x=650 midpoint as FRONT_XS/REAR_XS: the asym arm's whole claim is
+# that only the DEPLOYMENT differs, and a line whose mean sits 50 wu to one side hands
+# team 0 an undisclosed flank overhang on a sim that has a flank-damage mechanic.
+ALL_SIX_XS = (400.0, 500.0, 600.0, 700.0, 800.0, 900.0)
 
 
 def _unit(team, x, y, count, morale=None):

@@ -110,9 +110,28 @@ for script in "$GEN_DIR"/*.json; do
     got="$(find "$OUT_DIR/$seed" -name 'state_*.json' | wc -l | tr -d ' ')"
   fi
   if [ "$ok" -eq 1 ] && [ "$got" -ne "$WANT" ]; then
-    echo "[study] WARNING: seed $seed wrote $got/$WANT snapshots -- truncated run" \
-         "(the recorder's capture timeout exits 0); see $OUT_DIR/$seed.log" >&2
-    ok=0
+    # A short dump is either DECIDED (the battle ended, Battle froze its tick counter,
+    # dumping stopped) or TRUNCATED (the recorder's 60s wall-clock timeout cut a live
+    # battle off; that path exits 0). Dropping both would select against decisive
+    # battles -- the most informative samples a survivors study has, and correlated
+    # with the very quantities under measurement. The last snapshot separates them: a
+    # decided battle has at most one team left on the field.
+    teams_left=2
+    if [ "$got" -gt 0 ]; then
+      last_snap="$(find "$OUT_DIR/$seed" -name 'state_*.json' | sort | tail -1)"
+      teams_left="$(python3 -c "import json, sys
+d = json.load(open(sys.argv[1]))
+print(len({u['team'] for u in d['units']}))" "$last_snap")"
+    fi
+    if [ "$teams_left" -le 1 ]; then
+      echo "[study] note: seed $seed DECIDED early ($got/$WANT snapshots," \
+           "$teams_left team(s) left) -- kept; summarize.py classifies it the same way."
+    else
+      echo "[study] WARNING: seed $seed wrote $got/$WANT snapshots with both teams" \
+           "still on the field -- truncated run (the recorder's capture timeout exits" \
+           "0); see $OUT_DIR/$seed.log" >&2
+      ok=0
+    fi
   fi
   if [ "$ok" -eq 0 ]; then
     rm -rf "$OUT_DIR/$seed"

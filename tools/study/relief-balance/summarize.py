@@ -74,6 +74,11 @@ def read_seed(seed_dir):
         "lost_units": {t: len(roster.get(t, set()) - alive[t]) for t in (0, 1)},
         "relief": relief,
         "margin": survivors[0] - survivors[1],
+        # A DECIDED battle freezes Battle's tick counter, so no further snapshots are
+        # written and the seed arrives here short -- mechanically identical to a run cut
+        # off by the recorder's wall-clock timeout. The last frame tells them apart: a
+        # decided battle has at most one team left on the field.
+        "teams_at_end": len([t for t in (0, 1) if alive[t]]),
     }
 
 
@@ -141,26 +146,37 @@ def report(label, rows, expect_final_tick=None):
           % ("seed", "end", "surv t0", "surv t1", "lost0", "lost1", "rel0", "rel1",
              "margin"))
     for seed, r in rows.items():
-        mark = "" if r["final_tick"] == full else "  <-- SHORT"
+        mark = ""
+        if r["final_tick"] < full:
+            mark = "  <-- DECIDED" if r["teams_at_end"] <= 1 else "  <-- TRUNCATED"
         print("  %-8s %-7d %-9d %-9d %-7d %-7d %-7d %-7d %+d%s"
               % (seed, r["final_tick"], r["survivors"][0], r["survivors"][1],
                  r["lost_units"][0], r["lost_units"][1], r["relief"][0], r["relief"][1],
                  r["margin"], mark))
-    # Excluded from the aggregates, not merely flagged. A warning printed beside a
-    # contaminated mean is worse than no warning: it reads as a caveat while the number
-    # under it is still wrong, and nobody cross-references the marked rows by hand.
-    short = [s for s, r in rows.items() if r["final_tick"] < full]
-    kept = {s: r for s, r in rows.items() if r["final_tick"] >= full}
+    # A short seed is either DECIDED (the battle ended, the tick froze, dumping
+    # stopped) or TRUNCATED (the recorder's wall-clock timeout cut a live battle off).
+    # Only the second is excluded. Dropping both would select against decisive
+    # battles, which correlate with the very quantities under study -- a decided
+    # battle is the single most informative sample a survivors/margin study has.
+    # The last frame separates them: a decided battle has at most one team left.
+    decided = [s for s, r in rows.items()
+               if r["final_tick"] < full and r["teams_at_end"] <= 1]
+    short = [s for s, r in rows.items()
+             if r["final_tick"] < full and r["teams_at_end"] > 1]
+    kept = {s: r for s, r in rows.items() if s not in short}
+    if decided:
+        print("  note: %d seed(s) DECIDED before tick %d (one side wiped): %s."
+              " Kept -- a decided battle is a complete sample." % (len(decided), full,
+              ", ".join(decided)))
     if short:
-        print("  WARNING: %d seed(s) ended before tick %d: %s."
-              % (len(short), full, ", ".join(short)))
-        print("           A truncated battle is not a decided one; they are EXCLUDED from"
-              " the aggregates below.")
+        print("  WARNING: %d seed(s) cut off before tick %d with both teams still on"
+              " the field: %s." % (len(short), full, ", ".join(short)))
+        print("           A truncated battle is not a decided one; they are EXCLUDED"
+              " from the aggregates below.")
     if not kept:
         print("  no seed reached tick %d -- nothing to aggregate" % full)
         return {}
-    print("  aggregates over %d of %d seed(s), all ending at tick %d"
-          % (len(kept), len(rows), full))
+    print("  aggregates over %d of %d seed(s)" % (len(kept), len(rows)))
     cols = {
         "survivors t0": [r["survivors"][0] for r in kept.values()],
         "survivors t1": [r["survivors"][1] for r in kept.values()],

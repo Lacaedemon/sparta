@@ -134,7 +134,17 @@ mean.
 **The exit status does not decide that on its own.** `DemoInputRecorder`'s
 `CAPTURE_TIMEOUT_SEC` net calls `push_warning` and then `get_tree().quit()`, which
 exits **zero** -- so a battle cut short at sixty wall-clock seconds leaves a partial
-dump and reports success. `run-study.sh` counts the snapshots against the number of
+dump and reports success.
+
+**A short dump is not automatically a truncated one, and dropping every short seed
+would bias the study.** A battle that ends decisively freezes `Battle`'s tick counter,
+so dumping stops at the moment of victory and the seed arrives short -- mechanically
+identical to a wall-clock truncation. Decisiveness correlates with the very quantities
+under study, so excluding those seeds would select against the most informative
+samples the harness produces. The last snapshot separates the two cases: a decided
+battle has at most one team left on the field. Both the runner and `summarize.py`
+classify a short seed that way -- DECIDED is kept as a complete sample, TRUNCATED is
+dropped/excluded. `run-study.sh` counts the snapshots against the number of
 ticks it asked for, which is what actually catches it, and drops the seed when they
 disagree. `summarize.py` prints each seed's final tick, marks any that falls short, and
 **excludes those rows from every aggregate** -- a warning printed beside a contaminated
