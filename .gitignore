@@ -46,3 +46,6 @@ website/media/*.jpg
 # Python bytecode from the tools/ helper scripts.
 __pycache__/
 *.pyc
+
+# Generated scripted-input files for the relief-balance study (tools/study/relief-balance).
+tools/study/relief-balance/_generated/
