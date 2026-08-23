@@ -47,7 +47,14 @@ fi
 
 ARM="$1"
 OUT_DIR="$2"
-GEN_DIR="$SCRIPT_DIR/_generated/$ARM"
+# Unique per invocation, cleaned up on exit. A shared per-arm directory let a second
+# invocation's own setup `rm -rf` delete a running study's generated inputs out from
+# under its loop -- and the recorder falls back to a DEFAULT battle with the default
+# seed when its script file is missing, so eight seeds of a live run silently became
+# eight identical copies of an unrelated battle. The directory must still live inside
+# the project: DemoInputRecorder opens these through res://.
+GEN_DIR="$SCRIPT_DIR/_generated/$ARM.$$"
+trap 'rm -rf "$GEN_DIR"' EXIT
 
 rm -rf "$GEN_DIR"
 mkdir -p "$GEN_DIR" "$OUT_DIR"
@@ -101,6 +108,23 @@ for script in "$GEN_DIR"/*.json; do
         "$rel" "$TICKS" "$OUT_DIR/$seed" >"$OUT_DIR/$seed.log" 2>&1; then
     echo "[study] WARNING: seed $seed exited non-zero; see $OUT_DIR/$seed.log" >&2
     ok=0
+  fi
+  # The recorder does not fail on a missing or unreadable script -- it warns and records
+  # a default battle instead, which then writes every snapshot and passes the count
+  # check. Validate the dump against the scenario it was supposed to run: the first
+  # snapshot's unit count must match the generated spawn list's.
+  if [ "$ok" -eq 1 ]; then
+    spawned="$(python3 -c "import json, sys; print(len(json.load(open(sys.argv[1]))['scenario']))" "$script")"
+    first_snap="$(find "$OUT_DIR/$seed" -name 'state_*.json' -print -quit 2>/dev/null || true)"
+    if [ -n "$first_snap" ]; then
+      units0="$(python3 -c "import json, sys; print(len(json.load(open(sys.argv[1]))['units']))" "$first_snap")"
+      if [ "$units0" -ne "$spawned" ]; then
+        echo "[study] WARNING: seed $seed dumped $units0 unit(s) where the scenario" \
+             "spawns $spawned -- the recorder ran the WRONG battle (missing/unreadable" \
+             "script falls back to the default); see $OUT_DIR/$seed.log" >&2
+        ok=0
+      fi
+    fi
   fi
   # An early crash (bad GODOT_BIN, startup failure) never creates the seed directory, and
   # under `set -eo pipefail` a bare `find` on a missing path would abort the whole study
