@@ -1368,3 +1368,58 @@ which is what identical scenarios on one seed produce.
   block, so the strength disparity relief answers is visible rather than asserted).
 - **Don't:** read "this staging is known to arm the order" as sufficient; so is the
   neighbour's, which is why it was copied.
+
+## `check-pr-fully-clean.py` needs `PYTHONUTF8=1` on Windows, and `PYTHONIOENCODING` is not enough
+
+The ARDI gate crashes on this machine before it reaches a verdict: the reader thread decoding `gh`'s output dies with `UnicodeDecodeError: 'charmap' codec can't decode byte 0x8f`, `res.stdout` comes back `None`, and `run_cmd` raises `AttributeError: 'NoneType' object has no attribute 'strip'`.
+
+**It exits 1 doing so, which is the code reserved for "not clean".**
+So a crashed check and a real blocking verdict are the same exit status, and only the output separates them: a genuine not-clean prints `  - ` finding bullets, a crash prints a traceback.
+
+The obvious workaround does not work.
+`PYTHONIOENCODING=utf-8` reconfigures the parent's own stdio and leaves `subprocess.run(..., text=True)` decoding with the locale codec, which is where the failure is.
+**`PYTHONUTF8=1` fixes it** -- UTF-8 mode applies to the whole interpreter, subprocess pipes included.
+
+```sh
+PYTHONUTF8=1 python3 <ai-config>/scripts/check-pr-fully-clean.py <N> -R <owner>/<repo>
+```
+
+Tracked upstream as Morrison-Lab/ai-config#1984, which also collects the *encode*-direction siblings (`check-links.py`, `check-hook-output-shape.py` dying on their own U+2713 success line, where `PYTHONIOENCODING=utf-8` IS sufficient because those only print).
+
+- **Do:** prefix the fully-clean gate with `PYTHONUTF8=1` on Windows.
+- **Do:** read a rc=1 with no `  - ` bullets as a crashed check rather than a verdict.
+- **Don't:** reach for `PYTHONIOENCODING` for a decode-side failure; it governs the wrong stream.
+
+## The gate's mirror false positive fires on a `### Findings` heading that says "None"
+
+`check-pr-fully-clean.py` matched `#+\s*(Actionable\s+|Detailed\s+)?Findings` against a review whose Findings section read, in full, "None. No bugs, hallucinated APIs, or CLAUDE.md violations found." -- and reported the PR NOT clean while its own `verdict scan:` line on the same run said `latest = clean`.
+
+`fully-clean.md` documents this direction, so the remedy is prescribed rather than improvised: read the verdict body when the script reports findings against a review whose prose merely discusses finding vocabulary.
+
+What makes it worth a note here is the pairing. The script prints both signals, and they contradict each other in the same output:
+
+```
+verdict scan: examined 4 dated automated review item(s), 1 bore a verdict, latest = clean
+NOT fully clean:
+  - Review comment for SHA ... contains findings (matched pattern '#+\s*...Findings')
+```
+
+Reading only the bottom line reports a clean PR as blocked.
+
+- **Do:** read the `verdict scan:` line and the finding bullets together, and open the review body when they disagree.
+- **Don't:** treat a `contains findings (matched pattern ...)` bullet as a finding without reading what it matched.
+
+## Merging a stack: verify each PR at its own head, immediately before its own merge
+
+Four PRs merged in dependency order (#1374 -> #1377 -> #1378 -> #1348), the last carrying the first two as stacked merges.
+
+Two things this made concrete:
+
+**The stacked PR's checks were still running when its dependencies merged**, and it went green on its own without a re-push -- the two earlier merges did not invalidate it, because its branch already contained them. So a stack does not necessarily need a resync round between merges; check before assuming one.
+
+**Re-verify per PR rather than once for the batch.**
+A batch reading taken before the first merge describes a state that the first merge changes for every later member. The gate is cheap; run it immediately before each `gh pr merge`, and let its exit status decide rather than a table written earlier in the session.
+
+- **Do:** run the fully-clean gate once per PR, immediately before that PR's own merge.
+- **Do:** re-check a stacked PR's mergeability after its base lands, rather than assuming it needs a resync.
+- **Don't:** carry one batch verification across several merges -- the first merge invalidates it.
