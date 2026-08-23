@@ -108,8 +108,19 @@ a dump every `SPARTA_STUDY_TICK_STEP` ticks cannot see an episode that starts an
 ends between two samples, so read it as a floor.
 
 `margin` is `survivors[0] - survivors[1]`. Its expected value in the `mirror` arm is
-zero; a mean that is not zero there measures the harness rather than the mechanic,
-so check it before reading anything into the `asym` arm's margin.
+zero, and **it is not zero** -- measured at +45.4 and +24.4 across twenty seeds on two
+versions of the code, consistently favouring team 0.
+
+The cause is structural rather than geometric, and levelling the arena did not remove it
+(it flipped the sign). Team 1 runs a General that issues an advance plan; team 0's
+delegated group has no General and waits for contact, and the waiting side wins the
+approach. Relief counts split the same way, team 0 at 3.0-3.4 episodes against team 1's
+1.6-2.0. Team 0 cannot be given a General from here: phase 4 deliberately does not stand
+one up.
+
+So the arm is mirrored in **setup** and not in **behaviour**. A pre-versus-post comparison
+is unaffected, since the same asymmetry sits on both sides and cancels. **No single-arm
+margin from this harness means anything**, and neither does a single-arm survivor count.
 
 A seed whose run crashes or times out is a **missing sample, not a zero**:
 `run-study.sh` drops its directory and warns, and `summarize.py` reports the `n` it
