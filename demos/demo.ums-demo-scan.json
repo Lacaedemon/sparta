@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation only. The diff touches one file under .claude/memories/ and nothing else -- no scenes/, scripts/, assets/, project.godot, or demos/inputs/ change, so there is no behaviour, sim state, or rendered pixel for a clip to show."
+}
