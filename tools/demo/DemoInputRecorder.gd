@@ -204,6 +204,27 @@ func _on_physics_frame() -> void:
 	if _state_ticks.has(tick) and not _state_dumped.has(tick):
 		_state_dumped[tick] = true
 		_dump_state(tick)
+	# A decided battle freezes the sim's tick (Battle._ended), so every armed state tick past
+	# the end would never fire and the run would sit until the wall-clock timeout with a
+	# partial dump -- indistinguishable, from the files alone, from a run the timeout cut off
+	# mid-battle. Write one terminal snapshot at the frozen tick instead, carrying an explicit
+	# battle_over marker, and mark the remaining armed ticks done so the normal
+	# _all_artifacts_done() quit path fires promptly. Consumers read the marker to tell a
+	# decided battle from a truncated one exactly, rather than inferring it from which teams
+	# remain -- a victory can land between two armed ticks, or end with both teams still on
+	# the field (a general killed or routed).
+	if _battle._ended and not _state_ticks.is_empty() \
+			and _state_dumped.size() < _state_ticks.size():
+		# Unconditional, so a battle ending exactly ON an armed tick still gets the marker:
+		# the plain dump just written above is overwritten with the marked one, same
+		# content plus the flag. Only ARMED ticks go into _state_dumped -- the frozen tick
+		# is usually not armed, and inserting it would push the dict's size past
+		# _state_ticks' and break _all_artifacts_done()'s equality, hanging the run to
+		# the wall-clock timeout this branch exists to avoid.
+		_dump_state(tick, true)
+		for t in _state_ticks:
+			if not _state_dumped.has(t):
+				_state_dumped[t] = true
 	if _frame_ticks.has(tick) and not _captured.has(tick):
 		_captured[tick] = true
 		_capture_frame(tick)
@@ -360,8 +381,13 @@ func _arm_state_dump(script_state: Array) -> void:
 ## content comes from DemoState.build_snapshot — shared with the replay path's DemoStateSink,
 ## so both dump paths' transcripts are identical in shape. No await / renderer needed — this
 ## reads sim state, not the drawn frame, so it works even under --headless.
-func _dump_state(tick: int) -> void:
+func _dump_state(tick: int, battle_over: bool = false) -> void:
 	var snapshot: Dictionary = _build_snapshot(tick)
+	if battle_over:
+		# Terminal snapshot of a decided battle (see _on_physics_frame's ended branch).
+		# The explicit marker is what lets a consumer tell "the battle ended here" from
+		# "the dump was cut off here" without inferring it from the units on the field.
+		snapshot["battle_over"] = true
 	var path: String = "%s/state_%05d.json" % [_state_dir.trim_suffix("/"), tick]
 	var f: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
