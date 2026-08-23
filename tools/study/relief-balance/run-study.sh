@@ -91,13 +91,24 @@ for script in "$GEN_DIR"/*.json; do
   # ZERO -- so a battle cut short at 60 wall-clock seconds leaves a partial dump behind
   # and reports success. Counting the snapshots is what actually catches it, and a
   # truncated battle summarizing as a decided one is the worst failure available here.
+  # Clear the seed's directory first: on a reused out-dir, a truncated new run would
+  # otherwise overwrite only the early ticks and leave an earlier run's later ones in
+  # place, so the count below would match WANT over a mixed-run set -- the exact silent
+  # contamination the count exists to prevent.
+  rm -rf "$OUT_DIR/$seed"
   ok=1
   if ! GODOT_BIN="${GODOT_BIN:-godot}" "$PROJECT_ROOT/tools/demo/dump-state.sh" \
         "$rel" "$TICKS" "$OUT_DIR/$seed" >"$OUT_DIR/$seed.log" 2>&1; then
     echo "[study] WARNING: seed $seed exited non-zero; see $OUT_DIR/$seed.log" >&2
     ok=0
   fi
-  got="$(find "$OUT_DIR/$seed" -name 'state_*.json' 2>/dev/null | wc -l | tr -d ' ')"
+  # An early crash (bad GODOT_BIN, startup failure) never creates the seed directory, and
+  # under `set -eo pipefail` a bare `find` on a missing path would abort the whole study
+  # from inside the substitution. A missing directory is just a count of zero.
+  got=0
+  if [ -d "$OUT_DIR/$seed" ]; then
+    got="$(find "$OUT_DIR/$seed" -name 'state_*.json' | wc -l | tr -d ' ')"
+  fi
   if [ "$ok" -eq 1 ] && [ "$got" -ne "$WANT" ]; then
     echo "[study] WARNING: seed $seed wrote $got/$WANT snapshots -- truncated run" \
          "(the recorder's capture timeout exits 0); see $OUT_DIR/$seed.log" >&2
