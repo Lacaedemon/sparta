@@ -105,6 +105,20 @@ A seed whose run crashes or times out is a **missing sample, not a zero**:
 actually had. Check that `n` against the seed range you asked for before quoting a
 mean.
 
+## Results
+
+The run this was built for is written up on the tracking issue, not here -- a README that
+carries its own findings goes stale the first time someone re-runs it. Two of its
+conclusions are about the instrument rather than the mechanic, so they belong here:
+
+- **Read the relief column before any margin.** It is the negative control. A column that
+  was supposed to be zero and is not falsifies the arm, and no other number in the output
+  would have said so.
+- **A doctrine sweep is not currently meaningful**, because `General.reserve_directives`
+  pins a held reserve at its spawn point and two of the three doctrines hold reserves. That
+  is filed separately; until it lands, run the arms under a doctrine whose reserve fraction
+  floors to zero.
+
 ## Generated files
 
 `run-study.sh` writes the per-seed scripted-input files under `_generated/<arm>/`,
