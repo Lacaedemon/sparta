@@ -68,8 +68,8 @@ python3 "$SCRIPT_DIR/build-scenarios.py" "$GEN_DIR" "${gen_args[@]}" >/dev/null
 # run's own log records the doctrine rather than leaving it to be inferred from a default
 # two files away. A study whose validity turns on this value should not make anyone go
 # looking for it.
-DOCTRINE="$(python3 -c "import json, sys; print(json.load(open(sys.argv[1]))['doctrine'])" \
-  "$(find "$GEN_DIR" -name '*.json' | head -1)")"
+first_gen="$(find "$GEN_DIR" -name '*.json' -print -quit)"
+DOCTRINE="$(python3 -c "import json, sys; print(json.load(open(sys.argv[1]))['doctrine'])" "$first_gen")"
 
 WANT="$(python3 -c "import sys; print(len(range(int(sys.argv[1]), int(sys.argv[2]) + 1, int(sys.argv[1]))))" "$TICK_STEP" "$LAST_TICK")"
 TICKS="$(python3 -c "import sys; print(','.join(str(t) for t in range(int(sys.argv[1]), int(sys.argv[2]) + 1, int(sys.argv[1]))))" "$TICK_STEP" "$LAST_TICK")"
