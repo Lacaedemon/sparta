@@ -182,7 +182,7 @@ func test_corridor_is_a_no_op_on_an_empty_slot_set() -> void:
 	var tired := _bare_unit()
 	_link(reliever, tired)
 	tired.position = reliever.position
-	assert_eq(reliever._apply_relief_corridor_to_slots(PackedVector2Array(), 0).size(), 0,
+	assert_eq(reliever._apply_relief_corridor_to_slots(PackedVector2Array()).size(), 0,
 			"no slots, nothing to widen")
 
 
@@ -195,8 +195,7 @@ func test_corridor_widens_when_the_partner_sits_exactly_on_top() -> void:
 	tired.position = reliever.position
 
 	var base: PackedVector2Array = reliever.formation_slots(reliever.soldiers, false)
-	var widened: PackedVector2Array = reliever._apply_relief_corridor_to_slots(
-			base, reliever.soldiers)
+	var widened: PackedVector2Array = reliever._apply_relief_corridor_to_slots(base)
 	assert_eq(widened.size(), base.size(), "the corridor never adds or drops a slot")
 	var moved := 0
 	for i in range(base.size()):
@@ -215,6 +214,36 @@ func test_corridor_bails_out_when_rank_pitch_is_degenerate() -> void:
 
 	var base: PackedVector2Array = reliever.formation_slots(reliever.soldiers, false)
 	reliever.rank_pitch = 0.0
-	var out: PackedVector2Array = reliever._apply_relief_corridor_to_slots(
-			base, reliever.soldiers)
+	var out: PackedVector2Array = reliever._apply_relief_corridor_to_slots(base)
 	assert_eq(out, base, "a degenerate rank pitch leaves every slot untouched")
+
+func test_corridor_reads_rank_depth_off_the_slots_not_the_headcount() -> void:
+	## file_major_block_slots centres depth on the deepest SURVIVING file, and a casualty
+	## there shortens only that file's own rear rather than rebalancing the block -- so a
+	## thinned block can be DEEPER than ceil(count / files). Deriving the rank axis from the
+	## headcount instead of from the grid then shifts every rank label; on a block deeper
+	## than the headcount implies it collapses the whole thing onto rank 0, which is the one
+	## rank that gets no spread, so the corridor silently never opens.
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
+	_link(reliever, tired)
+	tired.position = reliever.position + Vector2(0.0, 4.0)
+
+	var depth: float = reliever.rank_pitch_wu()
+	var pitch: float = reliever.file_pitch_wu()
+	# Two files, three ranks: narrower and deeper than this headcount's own frontage.
+	var deep := PackedVector2Array()
+	for r in range(3):
+		for f in range(2):
+			deep.append(Vector2((f - 0.5) * pitch, r * depth))
+
+	var widened: PackedVector2Array = reliever._apply_relief_corridor_to_slots(deep)
+	assert_eq(widened.size(), deep.size(), "the corridor never adds or drops a slot")
+	assert_true(widened[0].is_equal_approx(deep[0]),
+			"the front rank stays put wherever the grid actually starts")
+	var back_moved := false
+	for i in range(4, 6):
+		if not widened[i].is_equal_approx(deep[i]):
+			back_moved = true
+	assert_true(back_moved,
+			"the rear rank spreads even though the headcount implies a shallower block")

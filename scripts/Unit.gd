@@ -4150,7 +4150,7 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 		else:
 			slots = row_grid
 	if apply_relief_corridor:
-		return _apply_relief_corridor_to_slots(slots, count)
+		return _apply_relief_corridor_to_slots(slots)
 	return slots
 
 
@@ -6102,7 +6102,7 @@ func _relief_corridor_spread_strength(partner: Unit) -> float:
 
 
 ## Widen back-rank slot spacing during a line-relief pass-through.
-func _apply_relief_corridor_to_slots(slots: PackedVector2Array, count: int) -> PackedVector2Array:
+func _apply_relief_corridor_to_slots(slots: PackedVector2Array) -> PackedVector2Array:
 	var partner: Unit = _relief_swap_partner()
 	var spread: float = _relief_corridor_spread_strength(partner)
 	if spread <= 0.0 or slots.is_empty():
@@ -6117,12 +6117,25 @@ func _apply_relief_corridor_to_slots(slots: PackedVector2Array, count: int) -> P
 	# the fallback above guarantees and normalized() below cannot divide by zero.
 	var approach_local: Vector2 = approach_world.rotated(-block_ang)
 	var corridor_perp: Vector2 = approach_local.rotated(PI * 0.5).normalized()
-	var files: int = formation_files(count)
-	var ranks: int = UnitFormation.ranks_for(count, files)
 	var depth: float = rank_pitch_wu()
 	if depth <= 0.0:
 		return slots
-	var y0: float = -(ranks - 1) * 0.5 * depth
+	# Rank geometry is read OFF THE SLOTS, never recomputed from the headcount.
+	# file_major_block_slots centres depth on the live max_rank -- the deepest
+	# SURVIVING file -- and a casualty there shortens only its own file's rear
+	# rather than rebalancing the block, so a thinned file-major block can be
+	# deeper than ceil(count / files). Deriving y0 from ranks_for() then shifts
+	# the whole rank axis and mislabels ranks, including handing a real back
+	# rank the front rank's zero spread. Reading the extent back off the grid
+	# the layout actually produced is exact for both layouts and needs to know
+	# nothing about how either deals its files.
+	var y_min: float = INF
+	var y_max: float = -INF
+	for s in slots:
+		y_min = minf(y_min, s.y)
+		y_max = maxf(y_max, s.y)
+	var ranks: int = maxi(1, int(round((y_max - y_min) / depth)) + 1)
+	var y0: float = y_min
 	var out := slots.duplicate()
 	for i in range(out.size()):
 		var slot: Vector2 = out[i]
