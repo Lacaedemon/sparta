@@ -111,25 +111,27 @@ for script in "$GEN_DIR"/*.json; do
   fi
   if [ "$ok" -eq 1 ] && [ "$got" -ne "$WANT" ]; then
     # A short dump is either DECIDED (the battle ended, Battle froze its tick counter,
-    # dumping stopped) or TRUNCATED (the recorder's 60s wall-clock timeout cut a live
-    # battle off; that path exits 0). Dropping both would select against decisive
-    # battles -- the most informative samples a survivors study has, and correlated
-    # with the very quantities under measurement. The last snapshot separates them: a
-    # decided battle has at most one team left on the field.
-    teams_left=2
+    # and the recorder wrote a terminal snapshot carrying an explicit battle_over
+    # marker) or TRUNCATED (the recorder's 60s wall-clock timeout cut a live battle
+    # off; that path exits 0). Dropping both would select against decisive battles --
+    # the most informative samples a survivors study has, and correlated with the very
+    # quantities under measurement. The recorder's marker is the discriminator; team
+    # presence is not, since a victory can land between two armed ticks or end with
+    # both teams still on the field (a general killed or routed).
+    over=0
     if [ "$got" -gt 0 ]; then
       last_snap="$(find "$OUT_DIR/$seed" -name 'state_*.json' | sort | tail -1)"
-      teams_left="$(python3 -c "import json, sys
+      over="$(python3 -c "import json, sys
 d = json.load(open(sys.argv[1]))
-print(len({u['team'] for u in d['units']}))" "$last_snap")"
+print(1 if d.get('battle_over') else 0)" "$last_snap")"
     fi
-    if [ "$teams_left" -le 1 ]; then
-      echo "[study] note: seed $seed DECIDED early ($got/$WANT snapshots," \
-           "$teams_left team(s) left) -- kept; summarize.py classifies it the same way."
+    if [ "$over" -eq 1 ]; then
+      echo "[study] note: seed $seed DECIDED early ($got/$WANT snapshots, terminal" \
+           "battle_over snapshot) -- kept; summarize.py classifies it the same way."
     else
-      echo "[study] WARNING: seed $seed wrote $got/$WANT snapshots with both teams" \
-           "still on the field -- truncated run (the recorder's capture timeout exits" \
-           "0); see $OUT_DIR/$seed.log" >&2
+      echo "[study] WARNING: seed $seed wrote $got/$WANT snapshots with no battle_over" \
+           "marker -- truncated run (the recorder's capture timeout exits 0); see" \
+           "$OUT_DIR/$seed.log" >&2
       ok=0
     fi
   fi

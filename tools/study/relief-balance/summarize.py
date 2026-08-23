@@ -74,11 +74,12 @@ def read_seed(seed_dir):
         "lost_units": {t: len(roster.get(t, set()) - alive[t]) for t in (0, 1)},
         "relief": relief,
         "margin": survivors[0] - survivors[1],
-        # A DECIDED battle freezes Battle's tick counter, so no further snapshots are
-        # written and the seed arrives here short -- mechanically identical to a run cut
-        # off by the recorder's wall-clock timeout. The last frame tells them apart: a
-        # decided battle has at most one team left on the field.
-        "teams_at_end": len([t for t in (0, 1) if alive[t]]),
+        # A DECIDED battle freezes Battle's tick counter; the recorder notices and
+        # writes one terminal snapshot carrying an explicit battle_over marker. That
+        # marker is the exact discriminator -- team presence is not, since a victory
+        # can land between two armed ticks or end with both teams on the field (a
+        # general killed or routed).
+        "battle_over": bool(final.get("battle_over", False)),
     }
 
 
@@ -148,26 +149,28 @@ def report(label, rows, expect_final_tick=None):
     for seed, r in rows.items():
         mark = ""
         if r["final_tick"] < full:
-            mark = "  <-- DECIDED" if r["teams_at_end"] <= 1 else "  <-- TRUNCATED"
+            mark = "  <-- DECIDED" if r["battle_over"] else "  <-- TRUNCATED"
         print("  %-8s %-7d %-9d %-9d %-7d %-7d %-7d %-7d %+d%s"
               % (seed, r["final_tick"], r["survivors"][0], r["survivors"][1],
                  r["lost_units"][0], r["lost_units"][1], r["relief"][0], r["relief"][1],
                  r["margin"], mark))
-    # A short seed is either DECIDED (the battle ended, the tick froze, dumping
-    # stopped) or TRUNCATED (the recorder's wall-clock timeout cut a live battle off).
-    # Only the second is excluded. Dropping both would select against decisive
-    # battles, which correlate with the very quantities under study -- a decided
-    # battle is the single most informative sample a survivors/margin study has.
-    # The last frame separates them: a decided battle has at most one team left.
+    # A short seed is either DECIDED (the battle ended, the tick froze, and the
+    # recorder wrote a terminal battle_over snapshot) or TRUNCATED (the recorder's
+    # wall-clock timeout cut a live battle off). Only the second is excluded.
+    # Dropping both would select against decisive battles, which correlate with the
+    # very quantities under study -- a decided battle is the single most informative
+    # sample a survivors/margin study has. The recorder's explicit marker is the
+    # discriminator; team presence is not, since a victory can land between armed
+    # ticks or end with both teams still on the field.
     decided = [s for s, r in rows.items()
-               if r["final_tick"] < full and r["teams_at_end"] <= 1]
+               if r["final_tick"] < full and r["battle_over"]]
     short = [s for s, r in rows.items()
-             if r["final_tick"] < full and r["teams_at_end"] > 1]
+             if r["final_tick"] < full and not r["battle_over"]]
     kept = {s: r for s, r in rows.items() if s not in short}
     if decided:
-        print("  note: %d seed(s) DECIDED before tick %d (one side wiped): %s."
-              " Kept -- a decided battle is a complete sample." % (len(decided), full,
-              ", ".join(decided)))
+        print("  note: %d seed(s) DECIDED before tick %d (terminal battle_over"
+              " snapshot): %s. Kept -- a decided battle is a complete sample."
+              % (len(decided), full, ", ".join(decided)))
     if short:
         print("  WARNING: %d seed(s) cut off before tick %d with both teams still on"
               " the field: %s." % (len(short), full, ", ".join(short)))
