@@ -177,7 +177,7 @@ script under `demos/inputs/`:
   - `morale` (optional) -- starting morale (default 100; set low to stage a quick rout).
   - `formation` (optional) -- starting stance, as the int value of the matching
     `FORMATION_*` const on `scripts/Unit.gd` (read them there; a value list copied to
-    here is how Schiltron went undocumented for a while). Square and schiltron are the
+    here is how Schiltron went undocumented for a while). Square and Schiltron are the
     anti-cavalry rings; the two shielded stances plant and barely move but blunt missile
     fire (testudo from all sides, shield wall from the front).
   - `atomic_response_s` (optional) -- seconds the unit holds between a drill command
