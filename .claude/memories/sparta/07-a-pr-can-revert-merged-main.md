@@ -628,20 +628,3 @@ grep '^config/features=' project.godot
 
 PR #1305 (closing #1271) added an explicit version check to `tools/check.sh`, which now compares the local binary version directly against `config/features` and fails fast with a version error if they mismatch. Therefore, any `FAIL test` returned by `check.sh` after #1305 is a real failure (not a hidden version mismatch).
 
-## Creating a stacked PR requires `--base <parent-branch>` explicitly on `gh pr create`
-
-Branching locally from another PR's branch (`git checkout -b <child-branch> <parent-branch>`) sets up the local commit history, but does NOT configure GitHub's PR base branch. `gh pr create` defaults to targeting `main` unless `--base <parent-branch>` is explicitly passed.
-
-When a stacked PR is opened without `--base`:
-1. The GitHub PR diff displays the cumulative diff of BOTH the parent PR and the child PR against `main`.
-2. Merging the child PR merges all parent commits directly into `main`.
-3. The parent PR's branch on GitHub then matches `main`, turning the parent PR into an empty diff.
-
-**Rule:** Whenever opening a stacked PR, always pass `--base <parent-branch>` explicitly (`gh pr create --base <parent-branch> ...` or via API). When the parent PR merges to `main`, retarget the child PR back to `main` via `gh pr edit <child-N> --base main` (per `stack-prs`).
-
-- **Do:** pass `--base <parent-branch>` explicitly to `gh pr create` whenever creating a stacked PR.
-- **Do:** retarget to `main` after the parent PR merges.
-- **Don't:** assume `gh pr create` infers the base branch from the local tracking branch.
-
-(`Lacaedemon/sparta` PR #1391 / #1390, 2026-08-24.)
-
