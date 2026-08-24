@@ -32,16 +32,24 @@ func test_formation_name_maps_each_member() -> void:
 
 
 func test_formation_name_unknown_int_is_visible_token() -> void:
-	assert_eq(DemoState.formation_name(9), "FORMATION(9)")
+	# 9999, not a small int: a value the mode enum could plausibly grow into
+	# would make this test fail the day that mode is legitimately added.
+	assert_eq(DemoState.formation_name(9999), "FORMATION(9999)")
 
 
-## The test above pins today's members by hand, so it passes unchanged if an eighth
-## stance is added and left out of FORMATION_NAMES -- the new mode would serialize as
-## the FORMATION(7) fallback in every transcript, silently, and the by-hand list is
-## exactly what already left two skills and this table's own docstring a mode behind.
-## So derive the mode set from Unit.gd's constants instead of restating it. The int
-## filter selects the modes exactly: Unit.gd's other FORMATION_* consts (SPACING,
-## ASPECT, and the two CONTAINMENT_SCALEs) are floats.
+## test_formation_name_maps_each_member above pins today's members by hand, and it
+## stays deliberately: scenario JSON (demos/inputs/*.json) stores the raw int, so
+## the VALUE assignments are an external interface that test protects against
+## renumbering. What it cannot catch is an eighth stance added to Unit.gd and left
+## out of FORMATION_NAMES -- the new mode would serialize as the FORMATION(7)
+## fallback in every transcript, silently, and a by-hand list is exactly what
+## already left two skills and this table's own docstring a mode behind. So this
+## test derives the mode set from Unit.gd's int-valued FORMATION_* consts instead
+## of restating it. The int filter selects the modes exactly today (the other
+## FORMATION_* consts -- SPACING, ASPECT, the two CONTAINMENT_SCALEs -- are
+## floats). A future non-mode int const named FORMATION_* (a FORMATION_COUNT, say)
+## would fail this test loudly the moment it lands; that is the intended
+## direction -- rename it or teach the filter, in the open rather than silently.
 func test_formation_names_cover_every_unit_formation_const() -> void:
 	# Loaded into a Script-typed local rather than used via the preloaded const:
 	# GDScript resolves `preload`ed script with a class_name as the TYPE Unit, and
@@ -53,16 +61,20 @@ func test_formation_names_cover_every_unit_formation_const() -> void:
 		var const_name := String(key)
 		if const_name.begins_with("FORMATION_") and typeof(consts[key]) == TYPE_INT:
 			modes.append(const_name)
-	# Negative control: an empty derivation would pass every assertion below
-	# vacuously, so a broken filter must fail here rather than read as a clean table.
-	assert_gt(modes.size(), 0,
-		"derived no FORMATION_* int consts from Unit.gd -- the filter is broken, not the table")
+	# Negative control: an empty or shrunken derivation would pass the loop below
+	# vacuously. Seven modes exist today; a genuine future removal updates this
+	# floor alongside the by-hand test above.
+	assert_gt(modes.size(), 6,
+		"derived %d FORMATION_* int consts from Unit.gd, expected all 7 modes -- the filter or a refactor broke the derivation, not the table" % modes.size())
 	for const_name in modes:
 		var mode_value: int = consts[const_name]
 		var mode_name: String = DemoState.formation_name(mode_value)
-		assert_false(mode_name.begins_with("FORMATION("),
-			"Unit.%s = %d has no DemoState.FORMATION_NAMES entry (serialized as %s); %d modes examined"
-				% [const_name, mode_value, mode_name, modes.size()])
+		# Equality against the const's own suffix, not merely "not the fallback":
+		# a copy-pasted wrong name (6: "TESTUDO") or an empty string would sail
+		# past a fallback-only check while corrupting every transcript.
+		assert_eq(mode_name, String(const_name).trim_prefix("FORMATION_"),
+			"Unit.%s = %d must serialize as its own name; %d modes examined"
+				% [const_name, mode_value, modes.size()])
 
 
 func test_order_mode_name_uses_supplied_table() -> void:
