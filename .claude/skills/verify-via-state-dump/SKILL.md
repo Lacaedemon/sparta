@@ -63,8 +63,9 @@ not just the start/end aggregate.
      when the claim needs a specific pairing (a rout, a flank charge, a
      morale threshold). Each entry: `team` (0 player / 1 enemy), `type`
      (`Spearmen`/`Infantry`/`Archers`/`Cavalry`), `x`, `y`, optional `facing`
-     `[x,y]`, `count`, `morale`, `formation` (0 Normal, 1 Tight, 2 Loose,
-     3 Square, 4 Shield Wall, 5 Testudo).
+     `[x,y]`, `count`, `morale`, `formation` (the `FORMATION_*` int consts on
+     `scripts/Unit.gd` -- read them there rather than from a list here, which
+     is how Schiltron went undocumented for a while).
    - `"camera"` -- optional keyframes `{tick,x,y,zoom}`; irrelevant to the
      state dump itself (state is read from sim data, not the drawn frame),
      but keep it if you'll also render frames for a sanity look.
@@ -117,7 +118,9 @@ not just the start/end aggregate.
 
    Per-unit fields always present: `uid`, `name`, `team`, `position`,
    `facing`, `morale`, `state` (`IDLE`/`MOVING`/`FIGHTING`/`ROUTING`/`DEAD`),
-   `formation` (`NORMAL`/`TIGHT`/`LOOSE`/`SQUARE`/`SHIELD_WALL`/`TESTUDO`),
+   `formation` (the upper-cased `FORMATION_*` names from `DemoState`'s own
+   `FORMATION_NAMES` table; an int with no entry serializes as the visible
+   `FORMATION(<n>)` token, which means the table is behind `Unit.gd`),
    `soldiers` (living count), `current_speed`, `order_mode`, `rank_relief`
    (intra-unit rank-rotation mode), `target_enemy_uid`, `engaged`, `tier`
    (`CLOSE`/`FAR`), `current_order`, `order_phase`.
@@ -168,14 +171,36 @@ for the identity-tracking checks) across a **dense** tick sequence spanning
 the whole clip, not just the start/end.
 
 1. **Blobbing** -- soldiers clump together, losing their commanded rank/file
-   spacing. *Check:* for each soldier, compute the distance to its nearest
-   other soldier in `soldiers_full.pos`, then take the mean of those
-   per-soldier nearest-neighbor distances across the unit, per tick. Flag it
-   if that mean drops well below `FORMATION_SPACING` (9.0 world units /
-   0.45m) *without* an explicit tighter-order (`TIGHT`/`SHIELD_WALL`/`TESTUDO`)
-   active in that tick's `formation` field -- those orders intentionally
-   compress spacing, so check `formation` before calling a tight mean a
-   defect.
+   spacing. *Check:* `tools/demo/DemoDefects.gd` decides this one, and its
+   `blob` verdict is the answer -- don't hand-roll a second version of it.
+   It takes the **median** per-soldier nearest-neighbour distance
+   (`nnd_med`), thresholds it against that unit's **own** current formation
+   spacing read from `motion_ref.formation_spacing` at that tick, and
+   requires the breach to persist across consecutive judged samples. Read
+   the constants off `DemoDefects.gd` rather than copying them here, since
+   `website-demo-defect-sweep.sh` retunes with them.
+
+   **Deriving the threshold per unit is why the check needs no
+   formation-name exemption list, and why you shouldn't add one.** A
+   hand-rolled version that compares a *mean* against the base
+   `FORMATION_SPACING` pitch (9.0 world units / 0.45m) will report a defect
+   against any unit legitimately standing closer than that pitch -- and
+   which stances those are does not reduce to one list, because `Unit.gd`
+   compresses along two independent axes. `set_formation` packs *five*
+   stances to `TIGHT_SEPARATION_SCALE` (Tight, Square, Schiltron, Shield
+   Wall, Testudo), while `spacing_scale_for_mode` puts only Shield Wall and
+   Testudo below the historical floor, leaving Normal, Tight, Square and
+   Schiltron at 1.0. Square and Schiltron also relay a hollow-square grid
+   rather than a wide line, so a line formation's neighbour statistics are
+   not the right expectation for them at all. Reading each unit's live
+   spacing sidesteps every bit of that.
+
+   What the instrument exempts is not a stance but a *situation*:
+   `judged_mask()` drops samples where the unit is in enemy contact
+   (`engaged` **or** `in_enemy_contact`), routing, adjacent to a contact
+   sample, just lost soldiers, or down to fewer than two bodies. Check
+   `judged_mask()` before concluding a tick was judged at all -- a defect
+   you "find" in an unjudged sample is one the sweep deliberately ignored.
 
 2. **Pulsing** -- a formation's footprint expands and contracts repeatedly
    instead of holding steady or changing smoothly and monotonically. *Check:*

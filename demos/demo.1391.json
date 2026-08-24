@@ -1,0 +1,5 @@
+{
+  "_comment": "Demo skip manifest for opencode configuration bump PR",
+  "skip": true,
+  "reason": "Configuration only (.ai-config-ref, opencode.json, CLAUDE.md); no gameplay or visual changes."
+}
