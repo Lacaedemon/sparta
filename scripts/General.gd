@@ -36,12 +36,12 @@ class_name General
 ## never fires in the "wrong" direction: a reserve unit that has already made contact is
 ## FIGHTING, and UnitLeader.decide only reads a directive for a non-FIGHTING unit (see its own
 ## priority-order doc comment), so an engaged reserve can't be "recalled" mid-fight -- only a
-## reserve still marching up can revert, and reverting just holds it in place rather than
-## snapping it back to its start position (reserve_directives() always pins to the unit's
-## CURRENT position). A genuine hysteresis (stays committed even after morale recovers, absent
-## contact) would need a persisted per-battle flag -- deliberately deferred per the design
-## doc's "start static" scope; the phase-3 acceptance criteria ask only that commitment fire on
-## a legible condition, not that it be sticky.
+## reserve still marching up can revert, and reverting holds it at the trailing reserve offset
+## behind the active line (or at its current position if no active line remains) rather than
+## snapping it back to its original spawn position. A genuine hysteresis (stays committed even
+## after morale recovers, absent contact) would need a persisted per-battle flag -- deliberately
+## deferred per the design doc's "start static" scope; the phase-3 acceptance criteria ask only
+## that commitment fire on a legible condition, not that it be sticky.
 
 const PLAN_ADVANCE_LINE := "advance_line"
 const PLAN_ENVELOP := "envelop"
@@ -285,7 +285,7 @@ static func _team_advance_axis(team_units: Array, all_units: Array) -> Vector2:
 ## How far behind the active committed line's centroid a reserve unit is held along the
 ## army's advance axis. Set to 140.0 wu -- well within UnitLeader.RELIEF_CALL_RANGE (220.0 wu),
 ## so a reserve remains in position to answer relief calls and arrive promptly when committed.
-const RESERVE_TRAIL_DISTANCE := 140.0
+const RESERVE_TRAIL_DISTANCE := 140.0  # tuned in wu
 
 
 ## HOLD_LINE-shaped directives (Subcommander's own directive vocabulary -- see its class doc)

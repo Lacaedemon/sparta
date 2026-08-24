@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Backend Battle AI doctrine change: General.reserve_directives positions reserves at a trailing offset behind the advancing active line rather than pinning at spawn point."
+  "input": "demos/inputs/reserve-trailing-advance.json",
+  "caption": "Under cautious doctrine, General.reserve_directives holds reserve units trailing 140 wu behind the advancing active line rather than pinned at spawn. As the active line advances toward the enemy, the reserves follow behind in reserve formation and promptly join the fight when the line engages.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
 }
