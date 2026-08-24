@@ -263,7 +263,7 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 			# in motion has no such gate (kinetic friction only) -- it's the CURRENT velocity,
 			# read before this strike's own impulse is applied, that decides which regime applies.
 			if received > 0.0 and SoldierCollision.overcomes_static_friction(
-					received, defender._sim_body_vel[target].length(), en_prof["mass"], brace_d):
+					received, defender._sim_body_vel[target].length_squared(), en_prof["mass"], brace_d):
 				var braced_impulse_defender: Vector2 = SoldierCollision.braced_defender_impulse(
 						impulse_defender, received, impulse_mag)
 				defender._sim_body_vel[target] = SoldierCombat.capped_knockback_velocity(
