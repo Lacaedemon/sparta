@@ -307,8 +307,10 @@ capture, the dump reads sim state (not the drawn frame), so it runs
 
 **Per-unit JSON fields** (readable enum NAMES, not ints): `uid`, `name`, `team`,
 `position` [x,y], `facing` [x,y], `morale`, `state`
-(IDLE/MOVING/FIGHTING/ROUTING/DEAD), `formation`
-(NORMAL/TIGHT/LOOSE/SQUARE/SHIELD_WALL/TESTUDO), `soldiers`, `current_speed`,
+(IDLE/MOVING/FIGHTING/ROUTING/DEAD), `formation` (from `DemoState`'s own
+`FORMATION_NAMES` table, which mirrors the `FORMATION_*` consts on
+`scripts/Unit.gd` -- read it there, not from a list here), `soldiers`,
+`current_speed`,
 `order_mode` (from `Battle.ORDER_MODE_NAMES`), `target_enemy_uid`, `engaged`, and
 a `soldier_summary` {count, centroid, bbox, prone_count}.
 

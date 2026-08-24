@@ -35,6 +35,36 @@ func test_formation_name_unknown_int_is_visible_token() -> void:
 	assert_eq(DemoState.formation_name(9), "FORMATION(9)")
 
 
+## The test above pins today's members by hand, so it passes unchanged if an eighth
+## stance is added and left out of FORMATION_NAMES -- the new mode would serialize as
+## the FORMATION(7) fallback in every transcript, silently, and the by-hand list is
+## exactly what already left two skills and this table's own docstring a mode behind.
+## So derive the mode set from Unit.gd's constants instead of restating it. The int
+## filter selects the modes exactly: Unit.gd's other FORMATION_* consts (SPACING,
+## ASPECT, and the two CONTAINMENT_SCALEs) are floats.
+func test_formation_names_cover_every_unit_formation_const() -> void:
+	# Loaded into a Script-typed local rather than used via the preloaded const:
+	# GDScript resolves `preload`ed script with a class_name as the TYPE Unit, and
+	# refuses a non-static call on a type ("Make an instance instead").
+	var unit_script: Script = load("res://scripts/Unit.gd")
+	var consts: Dictionary = unit_script.get_script_constant_map()
+	var modes: Array = []
+	for key in consts:
+		var const_name := String(key)
+		if const_name.begins_with("FORMATION_") and typeof(consts[key]) == TYPE_INT:
+			modes.append(const_name)
+	# Negative control: an empty derivation would pass every assertion below
+	# vacuously, so a broken filter must fail here rather than read as a clean table.
+	assert_gt(modes.size(), 0,
+		"derived no FORMATION_* int consts from Unit.gd -- the filter is broken, not the table")
+	for const_name in modes:
+		var mode_value: int = consts[const_name]
+		var mode_name: String = DemoState.formation_name(mode_value)
+		assert_false(mode_name.begins_with("FORMATION("),
+			"Unit.%s = %d has no DemoState.FORMATION_NAMES entry (serialized as %s); %d modes examined"
+				% [const_name, mode_value, mode_name, modes.size()])
+
+
 func test_order_mode_name_uses_supplied_table() -> void:
 	var names := {0: "Normal", 1: "Hold"}
 	assert_eq(DemoState.order_mode_name(names, 1), "Hold")

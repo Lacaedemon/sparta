@@ -25,8 +25,11 @@ const STATE_NAMES := {
 	4: "DEAD",
 }
 
-## Unit.formation_mode int -> readable name. Mirrors the FORMATION_* consts on Unit.gd
-## (NORMAL 0, TIGHT 1, LOOSE 2, SQUARE 3, SHIELD_WALL 4, TESTUDO 5).
+## Unit.formation_mode int -> readable name. Must carry an entry for every int-valued
+## FORMATION_* const on Unit.gd; a mode with no entry serializes as the FORMATION(<n>)
+## fallback token instead of its name. Deliberately not restated here -- a second copy
+## of the list is what left this table's own docstring a mode behind. test_demo_state
+## derives the const set and fails if this table falls behind it.
 const FORMATION_NAMES := {
 	0: "NORMAL",
 	1: "TIGHT",
