@@ -251,7 +251,13 @@ static func build_snapshot(tree: SceneTree, tick: int, order_mode_names: Diction
 	for group in COMBAT_GROUPS:
 		for u in tree.get_nodes_in_group(group):
 			units_out.append(unit_record(u, order_mode_names, speed_scale, full))
-	return {"tick": tick, "units": sort_records_by_uid(units_out)}
+	var snap: Dictionary = {"tick": tick, "units": sort_records_by_uid(units_out)}
+	var hud_nodes: Array = tree.get_nodes_in_group("hud")
+	if not hud_nodes.is_empty():
+		var hud: Node = hud_nodes[0]
+		if hud != null and is_instance_valid(hud) and hud.has_method("hud_state"):
+			snap["hud"] = hud.hud_state()
+	return snap
 
 
 ## One unit's readable record. Reads Unit fields directly and maps the enum ints to names

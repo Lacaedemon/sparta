@@ -281,3 +281,24 @@ func test_info_panel_clamps_a_tall_sheet_to_the_viewport() -> void:
 # legend and settings panel sharing its left-margin column -- is covered in
 # test_hud_layout.gd (test_info_panel_available_height_reserves_room_for_the_legend_and_settings_panel
 # and test_info_panel_available_height_shrinks_further_once_the_settings_panel_raises).
+
+
+func test_hud_state_serialization() -> void:
+	var hud := _hud()
+	var state: Dictionary = hud.hud_state()
+	assert_null(state["shown_unit_uid"], "initial state has no shown unit")
+	assert_eq(state["info_text"], "No unit selected")
+	assert_false(state["ctrl_bar_visible"])
+
+	var u := _unit(42)
+	hud.show_unit(u, 1)
+	state = hud.hud_state()
+	assert_eq(state["shown_unit_uid"], 42, "shown unit uid matches")
+	assert_true(state["ctrl_bar_visible"], "control bar is visible")
+	assert_string_contains(state["info_text"], u.unit_name)
+
+	hud.clear_unit()
+	state = hud.hud_state()
+	assert_null(state["shown_unit_uid"], "cleared state resets shown unit uid")
+	assert_false(state["ctrl_bar_visible"], "control bar hidden when cleared")
+

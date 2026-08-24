@@ -214,3 +214,14 @@ func test_motion_ref_reports_both_grid_pitches_and_their_min() -> void:
 	assert_eq(float(ref["rank_pitch"]), 60.0, "rank pitch dumped as-is")
 	assert_eq(float(ref["formation_spacing"]), 20.0,
 			"the threshold base is the tighter axis")
+
+
+func test_build_snapshot_captures_hud_when_present() -> void:
+	var hud = preload("res://scripts/HUD.gd").new()
+	add_child_autofree(hud)
+	var snap: Dictionary = DemoState.build_snapshot(get_tree(), 15, {}, 1.0, false)
+	assert_eq(snap["tick"], 15)
+	assert_true(snap.has("hud"), "snapshot includes hud block when HUD is in scene tree")
+	assert_eq(snap["hud"]["info_text"], "No unit selected")
+	assert_null(snap["hud"]["shown_unit_uid"])
+

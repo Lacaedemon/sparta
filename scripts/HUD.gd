@@ -47,6 +47,8 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_QUIT_TO_MENU }
 
 var _info: Label
+# UID of the unit currently shown in the info panel (-1 if none selected).
+var _shown_unit_uid: int = -1
 # Static unit characteristics (attack/defense/panoply/body mass/weapon/shield/
 # mount): their own label under a fold toggle, COLLAPSED by default -- the
 # default panel shows only the live state, and the rows that never change
@@ -245,6 +247,7 @@ const _ORDER_TREE_ACTIVE_COLOR := Color(1.0, 0.78, 0.35)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS   # stays responsive when paused
+	add_to_group("hud")
 
 	# Recording / replay status (top-center).
 	_status = Label.new()
@@ -892,6 +895,7 @@ func show_unit(u, group_count: int) -> void:
 	if u == null or not is_instance_valid(u):
 		clear_unit()
 		return
+	_shown_unit_uid = u.uid
 	var extra: String = "" if group_count <= 1 else "  (+%d more)" % (group_count - 1)
 	var kind: String
 	if u.is_cavalry:
@@ -960,6 +964,7 @@ func show_unit(u, group_count: int) -> void:
 
 
 func clear_unit() -> void:
+	_shown_unit_uid = -1
 	_info.text = "No unit selected"
 	_chars_toggle.visible = false
 	_info_static.visible = false
@@ -972,6 +977,19 @@ func clear_unit() -> void:
 		_settings_panel_lower()
 		_tray_lower()
 	_clamp_info_panel()
+
+
+## Export the current player-visible HUD readout state for state-dump verification (see DemoState).
+func hud_state() -> Dictionary:
+	return {
+		"shown_unit_uid": _shown_unit_uid if _shown_unit_uid >= 0 else null,
+		"info_text": _info.text if _info != null else "",
+		"formation_text": _ctrl_formation_btn.text.replace(" ▾", "") if _ctrl_formation_btn != null else "",
+		"stance_text": _ctrl_stance_btn.text.replace(" ▾", "") if _ctrl_stance_btn != null else "",
+		"order_mode_text": _order_mode_label.text if _order_mode_label != null and _order_mode_label.visible else "",
+		"paused": _paused_label.visible if _paused_label != null else false,
+		"ctrl_bar_visible": _ctrl_bar.visible if _ctrl_bar != null else false,
+	}
 
 
 # Selected-unit acceleration readout: the change per second of the shown unit's mean
