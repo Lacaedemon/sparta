@@ -182,6 +182,15 @@ var has_move_target: bool = false
 ## See _resolve_disengage_move_order()'s own doc for why the peak (not a point-in-time read) is
 ## what the disengage-time decision needs.
 var _move_order_peak_engaged_fraction: float = 0.0
+# True while this unit is mid fighting-withdrawal peel (see _fighting_withdrawal_step):
+# marching backward out of melee holding the facing it fought in, ahead of handing the
+# march to the drilled turn decomposition. Phase state rather than a re-derived
+# condition, because the peel's own exit test (engagement cleared) flips exactly when
+# the handoff should run -- without one bit of memory there is no tick on which both
+# "was peeling" and "should hand off now" are simultaneously observable. Cleared by
+# _interrupt_current_order(), which every path that replaces or cancels the order the
+# peel marches under funnels through.
+var _withdrawal_peeling := false
 var target_enemy: Unit = null
 var selected: bool = false
 # The unified orders queue (docs/orders-queue-design.md). `current_order` (orders[0],
@@ -710,6 +719,13 @@ const DISENGAGE_STEP_DISTANCE: float = 70.0   # tuned in wu, just past melee con
 # already follow, so a demo/test/campaign unit can withdraw a different distance
 # without touching the default every other unit relies on.
 var disengage_step_distance: float = DISENGAGE_STEP_DISTANCE
+# Fighting withdrawal steer lookahead: how far behind the block the peel plants its
+# steering goal each tick while backing out of contact holding facing (see
+# _fighting_withdrawal_step). A lookahead carrot, not a travel distance -- the phase ends
+# on the engagement state clearing, never on reaching this point. Short enough that the
+# goal tracks the retreating block closely (a long carrot would let body-coupling drift
+# bend the retreat line), long enough that _move_to's bearing stays well defined.
+const WITHDRAWAL_STEER_DISTANCE: float = 30.0   # tuned in wu
 # Disengage with sacrifice (rearguard detachment): default fraction of remaining
 # soldiers split off into a genuine rearguard Unit that stays at the point of contact and
 # keeps fighting for real, while the rest of the regiment retreats -- see
@@ -1526,6 +1542,11 @@ func cancel_order_at(index: int) -> void:
 ## reform choice live on the dropped order, so they die with it -- an interrupting attack
 ## can no longer leave a stale rear destination behind to resurrect after the fight.
 func _interrupt_current_order() -> void:
+	# A fighting-withdrawal peel is execution state of the outgoing order, like the
+	# turn/wheel state settled below: whatever replaces or cancels the order the peel
+	# marches under must not inherit a peel phase armed for a march that no longer
+	# exists. (No-op when no order was in flight -- a peel can't exist without one.)
+	_withdrawal_peeling = false
 	if current_order == null:
 		return
 	if is_order_turning():
@@ -1804,6 +1825,160 @@ func _resolve_disengage_move_order() -> bool:
 		retire_current_order()
 		return true
 	return false
+
+
+## Fighting withdrawal, entry test: should this unit peel back out of melee facing-held
+## instead of pivot-turning inside the press? A disciplined block ordered to march out of
+## a fight toward its REAR sector backs straight up holding the heading it fought in --
+## the same "hold facing" grammar a side-step/back-step uses -- until soldier-level
+## contact breaks; only then does it hand the march to the drilled turn decomposition
+## (see _fighting_withdrawal_step). Every gate mirrors what makes that the right read:
+##
+## - MOVE with no committed foe and an armed march: the peel lives entirely inside the
+##   plain-move path (_resolve_disengage_move_order's guard-cancel above it already owns
+##   the guarded case, and any committed target means a fight branch owns the unit).
+## - disciplined: an undisciplined mob breaks off exactly as before -- wheeling about
+##   mid-press is the failure being fixed here, but imposing drill on a unit that has
+##   none would change more than this fix means to.
+## - not haste: a run-gait order already reads as "break off NOW" -- pace over poise.
+## - no facing hold already parked: a non-zero ordered_facing means another maneuver owns
+##   the heading for this leg -- UnitRelief.begin's relief retreat backs out of the line
+##   facing the enemy for its WHOLE march by exactly this mechanism, and handing that
+##   order to the peel would end its hold at handoff and about-face the relieved block
+##   away from the foe mid-retreat. A fresh player order arrives with the hold cleared,
+##   so only deliberate held-facing maneuvers are excluded here.
+## - actually in contact or freshly so (ENGAGED_LINGER hysteresis): a clean march that
+##   merely passes near a fight must never reverse into one.
+## - destination in the REAR sector: the whole point is marching away from the foe. A
+##   forward/oblique move while engaged keeps today's behaviour (punch through).
+## - not a back-step-length shuffle: a short rear nudge is its own maneuver at Battle
+##   level (a held-facing back-step); peeling past a destination that close would
+##   overshoot it and then march FORWARD again through the fight we just left.
+func _fighting_withdrawal_eligible() -> bool:
+	if current_order == null or current_order.type != Order.Type.MOVE:
+		return false
+	if target_enemy != null or not has_move_target:
+		return false
+	if not disciplined:
+		return false
+	if _is_move_order_in_haste():
+		return false
+	if ordered_facing != Vector2.ZERO:
+		return false
+	if not (_in_enemy_contact or is_engaged()):
+		return false
+	var move_vec: Vector2 = move_target - position
+	if UnitManeuver.is_backstep(facing, move_vec):
+		return false
+	return UnitManeuver.is_rear_move(facing, move_vec)
+
+
+## Advance one tick of the fighting withdrawal. Returns true when it consumed the tick
+## (the caller stops -- the peel owns movement now), false when it doesn't apply and the
+## ordinary move-order logic below should run.
+##
+## Two phases off one flag:
+##
+## - PEEL (engaged): march a synthetic goal a WITHDRAWAL_STEER_DISTANCE lookahead behind
+##   the block each tick, holding facing via ordered_facing and keeping deploy_facing
+##   zeroed so no re-square rotates the grid under the retreating ranks. The slot grid
+##   therefore stays FIXED in world space while the block backs onto it -- bodies chase
+##   slots they can actually see, instead of chasing a grid swinging across the block
+##   depth the way a mid-press centre-pivot forces. The phase ends on the engagement
+##   state clearing (contact broken AND ENGAGED_LINGER decayed), never on reaching the
+##   goal -- the goal is a bearing anchor, not a destination.
+## - HANDOFF (clear of the fight): arm the drilled opening turn exactly as
+##   Battle._apply_order_cmd would for a fresh move from this state -- moving wheel for
+##   cavalry, about-face+wheel for an oblique rear destination, plain conversio otherwise,
+##   plain march if the peel overshot the destination (a near-behind click can end up
+##   ahead after backing past it) -- park the order's march (has_move_target false) and
+##   let _finish_order_turn commit the march leaf when the turn lands.
+##
+## Checked in _think AFTER _resolve_disengage_move_order() (a guard-cancel wins outright)
+## and BEFORE the arrival checks (a peel goal must never satisfy them -- it isn't the
+## order's destination).
+func _fighting_withdrawal_step(delta: float) -> bool:
+	if not _withdrawal_peeling:
+		if not _fighting_withdrawal_eligible():
+			return false
+		_withdrawal_peeling = true
+	elif target_enemy != null:
+		# A foe got committed mid-peel without the order being replaced (the normal
+		# replacement path clears the flag inside _interrupt_current_order): stand down
+		# immediately -- the fight branches own the unit from here, and the stale flag
+		# must not survive them.
+		_withdrawal_peeling = false
+		return false
+	if not (_in_enemy_contact or is_engaged()):
+		_withdrawal_peeling = false
+		_arm_withdrawal_turn()
+		return true
+	ordered_facing = facing
+	deploy_facing = Vector2.ZERO
+	_move_to(position - facing.normalized() * WITHDRAWAL_STEER_DISTANCE, delta, true)
+	return true
+
+
+## Hand the post-peel march to the drilled turn machinery, mirroring the Battle-side
+## ladder's precedence and fallbacks for a fresh move (minus its fighting-unit
+## exclusions -- by construction the peel only ends once the fight has): park the
+## destination on the order (has_move_target false, so the arming isn't read as an
+## interrupting march), classify the CURRENT bearing to the destination, arm the matching
+## composite, and give it the same response beat every fresh order gets. If nothing arms
+## (bodies unseeded, or the destination needs no turn at all), fall back to committing
+## the plain march directly -- identical to the fallback every refused Battle-side
+## composite takes.
+##
+## The ladder mirrors Battle's fresh-move precedence: moving wheel for cavalry, then the
+## rear-sector arms (about-face, wheel-composited when the residual misalignment after
+## the reversal warrants it), then the lateral pivot -- quarter-turn toward the
+## destination's side, march sideways keeping the pre-turn footprint, and a closing
+## quarter-turn back recorded on pivot_return_angle for the arrival handler. The lateral
+## arm is reachable even though eligibility only admits REAR-sector destinations at peel
+## start: the peel backs along a fixed heading for as long as the fight lasts, so the
+## bearing recomputed at handoff can drift across the rear/lateral boundary when the
+## destination sits near it. A fight long enough to carry the unit past the destination
+## classifies the bearing forward at handoff, where Battle's own fresh-order ladder also
+## takes the plain march -- the fallback is the matching arm there, not a gap.
+#### A move issued while fighting carries a stale decomposition here: Battle split it into
+## a reform leaf plus march leg at issue time (its not-turn_armed-and-reform branch), and
+## the fighting bypass committed that reform immediately, leaving [spent reform, pending
+## march] children behind. Arming onto those as-is would route the conversio through
+## begin_pivot's append mode -- the turn lands as the LAST child, _finish_order_turn sees
+## a non-opening active cursor and cascades the whole tree away with no march ever
+## committed, stranding the regiment facing travel but standing still. Dropping the spent
+## leaves first puts every variant back on its fresh-order path -- the exact shape Battle
+## would have built issuing this move from this state. The peel's held-facing beat
+## (ordered_facing) dies here too -- a reform-before-move hold pivots toward the pending
+## destination only when it is zero, and a stale beat would pin the block to its old
+## fighting heading through the hold and the march beyond it.
+func _arm_withdrawal_turn() -> void:
+	var move_vec: Vector2 = current_order.target_pos - position
+	has_move_target = false
+	ordered_facing = Vector2.ZERO
+	current_order.children.clear()
+	current_order._active_child = 0
+	var armed := false
+	if UnitManeuver.is_moving_wheel_turn(is_cavalry, facing, move_vec):
+		var angle: float = UnitManeuver.moving_wheel_turn_angle(facing, move_vec)
+		var dir: int = 1 if angle >= 0.0 else -1
+		armed = begin_moving_wheel(current_order, dir, angle)
+	elif UnitManeuver.is_rear_move(facing, move_vec):
+		if UnitManeuver.is_wheel_turn(facing, move_vec):
+			armed = begin_about_face_with_wheel(current_order, UnitManeuver.wheel_turn_dir(facing, move_vec))
+		else:
+			armed = begin_about_face(current_order)
+	elif UnitManeuver.is_lateral_pivot(facing, move_vec):
+		current_order.reform = false
+		var turn_angle: float = PI * 0.5 * UnitManeuver.lateral_pivot_dir(facing, move_vec)
+		armed = begin_pivot(current_order, turn_angle)
+		if armed:
+			current_order.pivot_return_angle = -turn_angle
+	if armed:
+		start_order_response()
+	else:
+		move_target = current_order.target_pos
+		has_move_target = true
 
 
 ## This unit's own melee attack cadence: the equipped weapon's attack_interval_s,
@@ -2294,6 +2469,14 @@ func _think(delta: float) -> void:
 		# above (so that cleanup always runs first regardless) and before anything else below
 		# reads move_target, since a cancel drops it via retire_current_order().
 		if _resolve_disengage_move_order():
+			return
+		# Fighting withdrawal: a disciplined block marching out of melee peels back
+		# holding its fighting facing, then hands the march to the drilled turn
+		# decomposition once contact breaks -- see _fighting_withdrawal_step. Checked
+		# after the disengage decision above (a guard-cancel wins outright) and before
+		# the arrival checks below (the peel's synthetic steer goal is not the order's
+		# destination and must never satisfy them).
+		if _fighting_withdrawal_step(delta):
 			return
 		# Arrival at the FINAL destination requires both a close position AND a near-zero
 		# speed -- not position alone. _move_to's braking ramps _current_speed down along
