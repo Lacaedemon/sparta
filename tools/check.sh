@@ -8,9 +8,12 @@
 #             globals, cross-script references) and fails on any script/parse
 #             error. Mirrors .github/workflows/godot-ci.yml.
 #   test      GUT unit suite, run headlessly. Mirrors godot-ci.yml.
-#   chars     Curly quotes and en/em dashes in the website docs (*.qmd, *.R) —
-#             the Quarto source is kept plain-ASCII. Mirrors
-#             .github/workflows/check-non-standard-chars.yml.
+#   chars     Curly quotes, en/em dashes, and multiplication signs: whole-tree in
+#             the docs (*.qmd, *.R, *.md), and diff-scoped to added lines in code
+#             (*.gd, *.sh) so pre-existing occurrences elsewhere in the repo don't
+#             fail every future run. Mirrors
+#             .github/workflows/check-non-standard-chars.yml and
+#             check-comment-citations.yml.
 #   comments  Issue/PR-number citations (#123) in GDScript comments — CLAUDE.md's
 #             "no issue-number references" rule (TODO(#N):/FIXME(#N): excepted).
 #             Scoped to this diff's own added lines, not a whole-tree grep, so
@@ -186,7 +189,7 @@ list_checks() {
   info "Available checks:"
   info "  validate   Godot import / script-validation (godot-ci.yml)"
   info "  test       GUT unit suite (godot-ci.yml)"
-  info "  chars      non-standard characters in docs (check-non-standard-chars.yml)"
+  info "  chars      non-standard characters in docs (*.qmd, *.R, *.md) and new code lines (*.gd, *.sh)"
   info "  comments   issue/PR-number citations in NEW GDScript comment lines (check-comment-citations.yml)"
   info "  units      units-convention lint on NEW GDScript lines (docs/units-convention.md)"
   info "  file_length  caps NEW scripts/*.gd files at 100 lines (see tools/README.md's file_length entry)"
@@ -812,8 +815,11 @@ check_patch_coverage() {
 }
 
 check_chars() {
-  # Flag curly quotes, en/em dashes, and the multiplication sign in the Quarto
-  # docs, which are kept plain-ASCII so pandoc's smart typography renders them.
+  # Flag curly quotes, en/em dashes, and the multiplication sign:
+  # 1. Whole-tree scan across tracked docs (*.qmd, *.R, *.md) which are kept plain-ASCII.
+  # 2. Diff-scoped scan on ADDED lines in code files (*.gd, *.sh), so new code complies
+  #    without a mass rewrite of pre-existing comments/strings elsewhere in the tree.
+  #
   # The flagged characters are U+2018/2019 (' '), U+201C/201D (" "),
   # U+2013/2014 (en/em dash), and U+00D7 (multiplication sign).
   #
@@ -838,33 +844,61 @@ check_chars() {
     fi
   fi
 
-  # Collect the tracked docs null-delimited (handles spaces/newlines) and skip
-  # cleanly when there are none — avoids relying on GNU xargs' -r and stops grep
-  # from blocking on stdin if the file list is empty.
+  # 1. Whole-tree scan of tracked docs (*.qmd, *.R, *.md)
   local files=()
   while IFS= read -r -d '' f; do
     files+=("$f")
   done < <(cd "$PROJECT_ROOT" && git ls-files -z '*.qmd' '*.R' '*.md')
-  if [ ${#files[@]} -eq 0 ]; then
-    info "No docs to check."
-    return 0
+
+  if [ ${#files[@]} -gt 0 ]; then
+    local out
+    out="$(cd "$PROJECT_ROOT" && grep -nF \
+        -e "$lsq" -e "$rsq" -e "$ldq" -e "$rdq" -e "$endash" -e "$emdash" \
+        -e "$times" \
+        "${files[@]}" 2>/dev/null)"
+    if [ -n "$out" ]; then
+      # Two file types, two remedies for U+00D7: this scans *.R as well as *.qmd, and
+      # &times; is only meaningful in the latter. Pandoc renders a \uXXXX escape literally
+      # in .qmd prose, so that is NOT a valid substitute there -- but it is the right form
+      # in an R string literal.
+      err "Non-standard characters found in docs (straight quotes and ASCII '-'; for U+00D7: x or * in .R, &times; in .qmd prose):"
+      printf '%s\n' "$out" >&2
+      return 1
+    fi
   fi
 
-  local out
-  out="$(cd "$PROJECT_ROOT" && grep -nF \
-      -e "$lsq" -e "$rsq" -e "$ldq" -e "$rdq" -e "$endash" -e "$emdash" \
-      -e "$times" \
-      "${files[@]}" 2>/dev/null)"
-  if [ -n "$out" ]; then
-    # Two file types, two remedies for U+00D7: this scans *.R as well as *.qmd, and
-    # &times; is only meaningful in the latter. Pandoc renders a \uXXXX escape literally
-    # in .qmd prose, so that is NOT a valid substitute there -- but it is the right form
-    # in an R string literal.
-    err "Non-standard characters found (straight quotes and ASCII '-'; for U+00D7: x or * in .R, &times; in .qmd prose):"
-    printf '%s\n' "$out" >&2
-    return 1
+  # 2. Diff-scoped scan of added lines in source/script files (*.gd, *.sh)
+  local base merge_base head
+  if base="$(resolve_comments_base 2>/dev/null)"; then
+    merge_base="$(cd "$PROJECT_ROOT" && git merge-base HEAD "$base" 2>/dev/null)"
+    head="$(cd "$PROJECT_ROOT" && git rev-parse HEAD 2>/dev/null)"
+    if [ -n "$merge_base" ] && [ "$merge_base" != "$head" ]; then
+      local diff
+      diff="$(cd "$PROJECT_ROOT" && git diff --no-color -U0 "$merge_base" HEAD -- '*.gd' '*.sh')"
+      if [ -n "$diff" ]; then
+        local added_code_lines code_out
+        added_code_lines="$(printf '%s\n' "$diff" | awk '
+            /^\+\+\+ / { file = substr($0, 7); next }
+            /^@@ /     { match($0, /\+[0-9]+/); line = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
+            /^\+/      { print file ":" line ":" substr($0, 2); line++; next }
+            { next }
+          ')"
+        if [ -n "$added_code_lines" ]; then
+          code_out="$(printf '%s\n' "$added_code_lines" | grep -F \
+              -e "$lsq" -e "$rsq" -e "$ldq" -e "$rdq" -e "$endash" -e "$emdash" \
+              -e "$times")"
+          if [ -n "$code_out" ]; then
+            err "Non-standard characters found in new/changed source lines (*.gd, *.sh):"
+            err "(use straight quotes, ASCII hyphens '-' or '--', and 'x'/'*' instead of U+00D7):"
+            printf '%s\n' "$code_out" >&2
+            return 1
+          fi
+        fi
+      fi
+    fi
   fi
-  info "Docs are free of curly quotes / en-em dashes / multiplication signs (verified against tools/ci/banned_chars.json)."
+
+  info "Docs and new source lines are free of curly quotes / en-em dashes / multiplication signs (verified against tools/ci/banned_chars.json)."
 }
 
 # resolve_comments_base — print the first candidate commit-ish that both (a) is

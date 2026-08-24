@@ -269,6 +269,9 @@ belong in commit messages, PR descriptions, and `TODO`/`FIXME` comments (where a
 `TODO(#123):` link to outstanding work is useful) -- not in ordinary explanatory
 comments or docstrings.
 
+### Typography: plain-ASCII punctuation in docs and code
+Keep documentation (`*.qmd`, `*.R`, `*.md`) and new source code lines (`*.gd`, `*.sh`) free of curly quotes (U+2018/2019, U+201C/201D), en/em dashes (U+2013/2014), and multiplication signs (U+00D7). Use straight ASCII quotes (`'` / `"`), ASCII hyphens (`-` or `--`), `x` or `*` in code, or `&times;` in `.qmd` prose. `tools/check.sh chars` checks docs whole-tree and diff-scopes code lines to added lines (so existing comments are grandfathered).
+
 ### Units: author in metres, store in world units, display in metric
 See `docs/units-convention.md` for the full rules; `tools/check.sh units`
 lints each diff's added lines. In short: a physically-derived length/speed
