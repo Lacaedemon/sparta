@@ -101,6 +101,7 @@ static func decide_army(team_units: Array, all_units: Array, doctrine: Dictionar
 	return {
 		"plan": plan,
 		"groups": groups,
+		"active_units": active,
 		"reserve_units": reserve_units,
 		"pursue_routers": bool(doctrine.get("pursue_routers", true)),
 	}
@@ -281,26 +282,48 @@ static func _team_advance_axis(team_units: Array, all_units: Array) -> Vector2:
 	return delta.normalized()
 
 
+## How far behind the active committed line's centroid a reserve unit is held along the
+## army's advance axis. Set to 140.0 wu -- well within UnitLeader.RELIEF_CALL_RANGE (220.0 wu),
+## so a reserve remains in position to answer relief calls and arrive promptly when committed.
+const RESERVE_TRAIL_DISTANCE := 140.0
+
+
 ## HOLD_LINE-shaped directives (Subcommander's own directive vocabulary -- see its class doc)
-## pinning each reserve unit at its OWN current position, so it holds rather than falling
-## through to UnitLeader.decide's ordinary advance/attack fallback (an EMPTY directive would
-## NOT hold it back -- decide()'s fallback still chases the nearest enemy when handed {}, see
-## its own doc comment). Idempotent via UnitLeader._move_directive_cmd's own POINT_EPSILON
-## check, exactly like an ordinary Subcommander HOLD_LINE directive, so a reserve doesn't get a
-## fresh MOVE order every tick it stays in reserve -- in fact it never gets ANY order while
-## genuinely idle, since the point is always its own current position (distance 0). A unit's
-## own flank-threat / anti-cavalry-square / relief-call reactions (UnitLeader.decide's
-## priorities 1-3) still run first, so a reserve can still defend itself if directly
-## threatened -- only the advance/attack fallback is suppressed. Committed reserves (folded
-## into `active` by decide_army) never reach this function, since it's only ever called with
-## the tick's actual reserve_units.
-static func reserve_directives(reserve_units: Array) -> Dictionary:
+## positioning each reserve unit at an offset trailing behind the active committed line's
+## centroid along the team's advance axis (recomputed as the line moves), so the reserve
+## advances with the army in reserve rather than staying pinned at its original spawn point.
+## When there are no active units or no advance axis, falls back to holding each reserve unit
+## at its own current position.
+## Idempotent via UnitLeader._move_directive_cmd's own POINT_EPSILON check, exactly like an
+## ordinary Subcommander HOLD_LINE directive. A unit's own flank-threat / anti-cavalry-square /
+## relief-call reactions (UnitLeader.decide's priorities 1-3) still run first, so a reserve can
+## still defend itself or relieve a fighting ally -- only the uncoordinated advance/attack
+## fallback is suppressed. Committed reserves (folded into `active` by decide_army) never reach
+## this function, since it's only ever called with the tick's actual reserve_units.
+static func reserve_directives(reserve_units: Array, active_units: Array = [], all_units: Array = [],
+		trail_distance: float = RESERVE_TRAIL_DISTANCE) -> Dictionary:
 	var out: Dictionary = {}
+	if reserve_units.is_empty():
+		return out
+	var living_active: Array = []
+	for node in active_units:
+		var u := node as Unit
+		if u != null and u.state != Unit.State.DEAD and u.state != Unit.State.ROUTING:
+			living_active.append(u)
+	var axis: Vector2 = _team_advance_axis(living_active, all_units)
+	var active_centroid: Vector2 = _centroid(living_active)
+	var perp := Vector2(-axis.y, axis.x)
 	for node in reserve_units:
 		var u := node as Unit
+		if u == null:
+			continue
+		var target_pos: Vector2 = u.position
+		if not living_active.is_empty() and axis != Vector2.ZERO:
+			var lat_offset: float = (u.position - active_centroid).dot(perp)
+			target_pos = (active_centroid - axis * trail_distance) + perp * lat_offset
 		out[u.uid] = {
 			"type": Subcommander.DIRECTIVE_HOLD_LINE,
-			"x": u.position.x,
-			"y": u.position.y,
+			"x": target_pos.x,
+			"y": target_pos.y,
 		}
 	return out
