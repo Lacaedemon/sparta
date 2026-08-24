@@ -814,6 +814,28 @@ check_patch_coverage() {
   fi
 }
 
+# resolve_comments_base — print the first candidate commit-ish that both (a) is
+# non-empty and not git's all-zero "no such commit" sentinel (the value a push
+# event's `before` takes on a brand-new branch), and (b) actually resolves in
+# this checkout, or fail if none do. Candidates, in order: an explicit
+# SPARTA_CHECK_COMMENTS_BASE override (CI sets this per-event -- see
+# check-comment-citations.yml), then origin/main, then a local main branch --
+# the same "best available" fallback a developer's own checkout would have.
+resolve_comments_base() {
+  local candidate
+  for candidate in "${SPARTA_CHECK_COMMENTS_BASE:-}" "origin/main" "main"; do
+    [ -n "$candidate" ] || continue
+    case "$candidate" in
+      0000000000000000000000000000000000000000) continue ;;
+    esac
+    if ( cd "$PROJECT_ROOT" && git rev-parse --verify --quiet "${candidate}^{commit}" >/dev/null 2>&1 ); then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
 check_chars() {
   # Flag curly quotes, en/em dashes, and the multiplication sign:
   # 1. Whole-tree scan across tracked docs (*.qmd, *.R, *.md) which are kept plain-ASCII.
@@ -868,59 +890,57 @@ check_chars() {
   fi
 
   # 2. Diff-scoped scan of added lines in source/script files (*.gd, *.sh)
-  local base merge_base head
-  if base="$(resolve_comments_base 2>/dev/null)"; then
-    merge_base="$(cd "$PROJECT_ROOT" && git merge-base HEAD "$base" 2>/dev/null)"
-    head="$(cd "$PROJECT_ROOT" && git rev-parse HEAD 2>/dev/null)"
-    if [ -n "$merge_base" ] && [ "$merge_base" != "$head" ]; then
-      local diff
-      diff="$(cd "$PROJECT_ROOT" && git diff --no-color -U0 "$merge_base" HEAD -- '*.gd' '*.sh')"
-      if [ -n "$diff" ]; then
-        local added_code_lines code_out
-        added_code_lines="$(printf '%s\n' "$diff" | awk '
-            /^\+\+\+ / { file = substr($0, 7); next }
-            /^@@ /     { match($0, /\+[0-9]+/); line = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
-            /^\+/      { print file ":" line ":" substr($0, 2); line++; next }
-            { next }
-          ')"
-        if [ -n "$added_code_lines" ]; then
-          code_out="$(printf '%s\n' "$added_code_lines" | grep -F \
-              -e "$lsq" -e "$rsq" -e "$ldq" -e "$rdq" -e "$endash" -e "$emdash" \
-              -e "$times")"
-          if [ -n "$code_out" ]; then
-            err "Non-standard characters found in new/changed source lines (*.gd, *.sh):"
-            err "(use straight quotes, ASCII hyphens '-' or '--', and 'x'/'*' instead of U+00D7):"
-            printf '%s\n' "$code_out" >&2
-            return 1
-          fi
-        fi
-      fi
+  local base
+  if ! base="$(resolve_comments_base)"; then
+    warn "No base ref to diff against (shallow checkout, no 'main'/'origin/main',"
+    warn "or a brand-new branch with no shared history) -- skipping diff-scoped code scan."
+    warn "Set SPARTA_CHECK_COMMENTS_BASE, or fetch full history (git fetch --unshallow)."
+    info "Docs are free of curly quotes / en-em dashes / multiplication signs (verified against tools/ci/banned_chars.json)."
+    return 0
+  fi
+
+  local merge_base head
+  merge_base="$(cd "$PROJECT_ROOT" && git merge-base HEAD "$base" 2>/dev/null)"
+  head="$(cd "$PROJECT_ROOT" && git rev-parse HEAD 2>/dev/null)"
+  if [ -z "$merge_base" ]; then
+    warn "No common history with '$base' -- skipping diff-scoped code scan."
+    info "Docs are free of curly quotes / en-em dashes / multiplication signs (verified against tools/ci/banned_chars.json)."
+    return 0
+  fi
+  if [ "$merge_base" = "$head" ]; then
+    info "HEAD is '$base' (or an ancestor of it) -- no new commits to check for code lines."
+    info "Docs are free of curly quotes / en-em dashes / multiplication signs (verified against tools/ci/banned_chars.json)."
+    return 0
+  fi
+
+  local diff
+  diff="$(cd "$PROJECT_ROOT" && git diff --no-color -U0 "$merge_base" HEAD -- '*.gd' '*.sh')"
+  if [ -z "$diff" ]; then
+    info "No new code lines in this diff (*.gd, *.sh)."
+    info "Docs are free of curly quotes / en-em dashes / multiplication signs (verified against tools/ci/banned_chars.json)."
+    return 0
+  fi
+
+  local added_code_lines code_out
+  added_code_lines="$(printf '%s\n' "$diff" | awk '
+      /^\+\+\+ / { file = substr($0, 7); next }
+      /^@@ /     { match($0, /\+[0-9]+/); line = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
+      /^\+/      { print file ":" line ":" substr($0, 2); line++; next }
+      { next }
+    ')"
+  if [ -n "$added_code_lines" ]; then
+    code_out="$(printf '%s\n' "$added_code_lines" | grep -F \
+        -e "$lsq" -e "$rsq" -e "$ldq" -e "$rdq" -e "$endash" -e "$emdash" \
+        -e "$times")"
+    if [ -n "$code_out" ]; then
+      err "Non-standard characters found in new/changed source lines (*.gd, *.sh):"
+      err "(use straight quotes, ASCII hyphens '-' or '--', and 'x'/'*' instead of U+00D7):"
+      printf '%s\n' "$code_out" >&2
+      return 1
     fi
   fi
 
   info "Docs and new source lines are free of curly quotes / en-em dashes / multiplication signs (verified against tools/ci/banned_chars.json)."
-}
-
-# resolve_comments_base — print the first candidate commit-ish that both (a) is
-# non-empty and not git's all-zero "no such commit" sentinel (the value a push
-# event's `before` takes on a brand-new branch), and (b) actually resolves in
-# this checkout, or fail if none do. Candidates, in order: an explicit
-# SPARTA_CHECK_COMMENTS_BASE override (CI sets this per-event -- see
-# check-comment-citations.yml), then origin/main, then a local main branch --
-# the same "best available" fallback a developer's own checkout would have.
-resolve_comments_base() {
-  local candidate
-  for candidate in "${SPARTA_CHECK_COMMENTS_BASE:-}" "origin/main" "main"; do
-    [ -n "$candidate" ] || continue
-    case "$candidate" in
-      0000000000000000000000000000000000000000) continue ;;
-    esac
-    if ( cd "$PROJECT_ROOT" && git rev-parse --verify --quiet "${candidate}^{commit}" >/dev/null 2>&1 ); then
-      printf '%s' "$candidate"
-      return 0
-    fi
-  done
-  return 1
 }
 
 check_comments() {
