@@ -379,7 +379,7 @@ standing.
 For a body **at rest** that window is exactly $[20\,m_D,\; 55\,m_D)$.
 For a body already in motion it is wider still, and the spec has to say so:
 `SoldierCollision.overcomes_static_friction` returns `true` outright once
-`body_velocity_magnitude` exceeds `STATIC_FRICTION_VELOCITY_GATE` (1.0 wu/s,
+`body_velocity_magnitude_sq` exceeds `STATIC_FRICTION_VELOCITY_GATE^2` (1.0 wu^2/s^2,
 about 0.05 m/s), so a jostling or still-coasting soldier --- the common case in
 an active melee --- passes no lower gate at all and the window widens to
 $(0,\; 55\,m_D)$.

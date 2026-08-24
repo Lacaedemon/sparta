@@ -186,52 +186,52 @@ func test_kinetic_friction_slow_body_decelerates_faster():
 		"Slow body should lose a larger speed fraction than fast body (higher friction)")
 
 
-func test_static_friction_threshold():
+func test_static_friction_stationary_body_threshold():
 	## A stationary body below the threshold doesn't move; above it, it does.
 	var mass: float = 1.0
 	var brace: float = 0.0
-	var body_vel_stationary: float = 0.5  # v < v_ref
+	var body_vel_sq_stationary: float = 0.25  # v^2 < v_ref^2 (0.5^2 < 1.0^2)
 
 	# Below threshold: static friction holds
 	var impulse_below: float = STATIC_FRICTION_THRESHOLD * mass - 5.0
 	var moves_below: bool = SoldierCollision.overcomes_static_friction(
-		impulse_below, body_vel_stationary, mass, brace)
+		impulse_below, body_vel_sq_stationary, mass, brace)
 	assert_false(moves_below, "Sub-threshold impulse should not overcome static friction")
 
 	# Above threshold: body moves
 	var impulse_above: float = STATIC_FRICTION_THRESHOLD * mass + 5.0
 	var moves_above: bool = SoldierCollision.overcomes_static_friction(
-		impulse_above, body_vel_stationary, mass, brace)
+		impulse_above, body_vel_sq_stationary, mass, brace)
 	assert_true(moves_above, "Super-threshold impulse should overcome static friction")
 
 
 func test_static_friction_moving_body_no_threshold():
-	## A moving body (v > threshold) should always move, no static friction gate.
+	## A moving body (v^2 > threshold^2) should always move, no static friction gate.
 	var mass: float = 1.0
 	var brace: float = 0.0
-	var body_vel_moving: float = 10.0  # v > v_ref
+	var body_vel_sq_moving: float = 100.0  # v^2 > v_ref^2 (10.0^2 > 1.0^2)
 
 	# Even a tiny impulse should move a moving body (kinetic friction only)
 	var impulse_tiny: float = 1.0
 	var moves: bool = SoldierCollision.overcomes_static_friction(
-		impulse_tiny, body_vel_moving, mass, brace)
+		impulse_tiny, body_vel_sq_moving, mass, brace)
 	assert_true(moves, "Moving body should always move (kinetic friction, no threshold)")
 
 
 func test_static_friction_bracing_raises_threshold():
 	## Bracing raises the static friction threshold: harder to initiate motion.
 	var mass: float = 1.0
-	var body_vel: float = 0.5
+	var body_vel_sq: float = 0.25
 	var impulse: float = STATIC_FRICTION_THRESHOLD * mass + 5.0
 
 	# Unbraced
 	var moves_unbraced: bool = SoldierCollision.overcomes_static_friction(
-		impulse, body_vel, mass, 0.0)
+		impulse, body_vel_sq, mass, 0.0)
 	assert_true(moves_unbraced, "Unbraced body should move with this impulse")
 
 	# Braced (with max brace = 1.0)
 	var moves_braced: bool = SoldierCollision.overcomes_static_friction(
-		impulse, body_vel, mass, 1.0)
+		impulse, body_vel_sq, mass, 1.0)
 	assert_false(moves_braced, "Braced body should resist this impulse (higher threshold)")
 
 

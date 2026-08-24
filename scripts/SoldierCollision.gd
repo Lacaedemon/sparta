@@ -113,7 +113,7 @@ static func braced_defender_impulse(
 ##
 ## Args:
 ##   impulse_magnitude: magnitude of the applied impulse
-##   body_velocity_magnitude: current speed of the body (0 = stationary)
+##   body_velocity_magnitude_sq: squared current speed of the body (0 = stationary)
 ##   mass: mass of the soldier
 ##   brace: bracing value (0 = unbraced)
 ##
