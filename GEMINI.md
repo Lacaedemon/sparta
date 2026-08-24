@@ -55,6 +55,9 @@ Any parameter value a caller could reasonably want to vary -- sizes, counts, lay
 ### Comments: no issue-number references
 Don't cite issue numbers (`#123`) in code comments. The explanation itself should stand on its own. Issue numbers belong in commit messages, PR descriptions, and `TODO`/`FIXME` comments.
 
+### Typography: plain-ASCII punctuation in docs and code
+Keep documentation (`*.qmd`, `*.R`, `*.md`) and new source code lines (`*.gd`, `*.sh`) free of curly quotes (U+2018/2019, U+201C/201D), en/em dashes (U+2013/2014), and multiplication signs (U+00D7). Use straight ASCII quotes (`'` / `"`), ASCII hyphens (`-` or `--`), `x` or `*` in code, or `&times;` in `.qmd` prose. `tools/check.sh chars` checks docs whole-tree and diff-scopes code lines to added lines (so existing comments are grandfathered).
+
 ### Units: author in metres, store in world units, display in metric
 See `docs/units-convention.md` for full rules. Author length/speed constants as `<metres> * WorldScaleRef.WU_PER_M`, keep runtime state in world units, and render user-facing distances through `DistanceLegend`.
 

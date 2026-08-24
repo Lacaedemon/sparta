@@ -333,6 +333,8 @@ static func analyze(snapshots: Array) -> Dictionary:
 	var verdicts: Array = []
 	for uid in series:
 		verdicts.append_array(_unit_verdicts(int(uid), series[uid]))
+	if not series.is_empty():
+		verdicts.append_array(check_hud_consistency(snapshots))
 	return {"series": series, "verdicts": verdicts}
 
 
@@ -692,3 +694,99 @@ static func _mean_nearest_slot_distance(slots: Array, positions: Array) -> float
 
 static func _vec(pair) -> Vector2:
 	return Vector2(float(pair[0]), float(pair[1]))
+
+
+## Map a sim formation name to the expected HUD display text.
+static func hud_formation_name(sim_formation: String) -> String:
+	match sim_formation:
+		"NORMAL": return "Normal"
+		"TIGHT": return "Tight"
+		"LOOSE": return "Loose"
+		"SQUARE": return "Square (Orbis)"
+		"SHIELD_WALL": return "Shield Wall"
+		"TESTUDO": return "Testudo"
+		"SCHILTRON": return "Schiltron"
+		_: return ""
+
+
+## Check consistency between the player-visible HUD readout and sim state across all snapshots.
+## Emits verdicts for formation display and selection display whenever hud data is present.
+## Mismatches must sustain across MIN_SUSTAIN consecutive samples to fail, accommodating
+## 1-frame latency between a physics-tick sim write and the process-frame HUD text refresh.
+static func check_hud_consistency(snapshots: Array) -> Array:
+	var out: Array = []
+	var has_hud_data: bool = false
+	var formation_run := 0
+	var worst_formation_run := 0
+	var selection_run := 0
+	var worst_selection_run := 0
+	var worst_formation: String = ""
+	var worst_selection: String = ""
+
+	for snap in snapshots:
+		if not (snap is Dictionary) or not (snap as Dictionary).has("hud"):
+			continue
+		has_hud_data = true
+		var hud: Dictionary = snap["hud"]
+		var shown_uid = hud.get("shown_unit_uid")
+		var tick: int = int(snap.get("tick", 0))
+
+		if shown_uid == null or int(shown_uid) < 0:
+			# No unit selected: control bar should not be active
+			if hud.get("ctrl_bar_visible", false) == true:
+				selection_run += 1
+				worst_selection_run = maxi(worst_selection_run, selection_run)
+				if worst_selection == "":
+					worst_selection = "tick %d: ctrl_bar visible with no unit selected" % tick
+			else:
+				selection_run = 0
+			formation_run = 0
+			continue
+
+		var uid: int = int(shown_uid)
+		var matching_unit: Dictionary = {}
+		for u in snap.get("units", []):
+			if int(u.get("uid", -1)) == uid:
+				matching_unit = u
+				break
+
+		if matching_unit.is_empty():
+			selection_run += 1
+			worst_selection_run = maxi(worst_selection_run, selection_run)
+			if worst_selection == "":
+				worst_selection = "tick %d: shown uid %d not present in sim units" % [tick, uid]
+		else:
+			selection_run = 0
+
+		# 1. Formation verification: HUD button text vs unit.formation
+		var sim_formation: String = str(matching_unit.get("formation", ""))
+		var hud_formation: String = str(hud.get("formation_text", "")).strip_edges()
+		if hud_formation != "" and not matching_unit.is_empty():
+			var expected: String = hud_formation_name(sim_formation)
+			if expected != "" and hud_formation != expected:
+				formation_run += 1
+				worst_formation_run = maxi(worst_formation_run, formation_run)
+				if worst_formation == "":
+					worst_formation = "tick %d: sim %s vs hud '%s'" % [tick, sim_formation, hud_formation]
+			else:
+				formation_run = 0
+		else:
+			formation_run = 0
+
+	if has_hud_data:
+		var sustain_req := MIN_SUSTAIN if snapshots.size() >= MIN_SUSTAIN else 1
+		out.append({
+			"uid": -1,
+			"metric": "hud_formation_consistency",
+			"pass": worst_formation_run < sustain_req,
+			"worst": worst_formation if worst_formation_run >= sustain_req else 0,
+			"threshold": 0,
+		})
+		out.append({
+			"uid": -1,
+			"metric": "hud_selection_consistency",
+			"pass": worst_selection_run < sustain_req,
+			"worst": worst_selection if worst_selection_run >= sustain_req else 0,
+			"threshold": 0,
+		})
+	return out

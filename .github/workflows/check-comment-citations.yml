@@ -47,6 +47,13 @@ jobs:
           SPARTA_CHECK_COMMENTS_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: tools/check.sh units
 
+      - name: Check non-standard characters in docs and diff-scoped source files
+        # Scans *.qmd, *.R, *.md whole-tree, and diff-scopes added lines in *.gd and *.sh
+        # sharing the same base override as the comments check above.
+        env:
+          SPARTA_CHECK_COMMENTS_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: tools/check.sh chars
+
       - name: Check new scripts/*.gd files stay under the file-length cap
         # Same diff-scoped shape and base override as the comments check above --
         # only files ADDED by this diff are checked, so this doesn't gate on the
@@ -55,3 +62,4 @@ jobs:
         env:
           SPARTA_CHECK_COMMENTS_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: tools/check.sh file_length
+
