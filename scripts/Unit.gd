@@ -567,6 +567,11 @@ const SCHILTRON_ATTACK_FACTOR: float = 0.55
 # stood). Only LOOSE widens the grid, to ~0.9 m per man -- matching the researched
 # pyknosis close-order figure, not true open order (~1.8-2 m/man).
 const LOOSE_SPACING_SCALE: float = 2.0
+# Line-relief corridor: back ranks spread laterally during a pass-through swap so the
+# partner's front line can march between them without intra-unit overlap. Peaks when
+# the two blocks overlap (same distance gate as Order.resolve_friendly_target).
+# Restages Stage E's render-only relief spread as formation-slot physics.
+const RELIEF_CORRIDOR_SPREAD_MAX: float = 0.45
 # SHIELD_WALL and TESTUDO lock their shields edge-to-edge, so unlike TIGHT/SQUARE
 # (which pack to the synaspismos floor and stop there) they squeeze the
 # grid spacing BELOW that floor -- a real, measurable tightening of the block on top
@@ -4276,7 +4281,13 @@ func _effective_file_major_reform() -> bool:
 ## a function of (count, formation_mode, file_major_reform_mode, disciplined, spacing_scale,
 ## the unit's frontage inputs, and -- for the square and file-major branches -- the unit's
 ## own assignment state) -- so it stays deterministic and replay-safe like the callers below.
-func formation_slots(count: int) -> PackedVector2Array:
+##
+## `apply_relief_corridor` defaults true so live formation targets open a centre lane during
+## a line-relief swap. Pass false when measuring the block's BASE footprint (soldier_block_
+## extent / half_extents): those helpers feed the corridor's own spread-strength distance
+## gate, and calling formation_slots(true) from there would recurse forever through
+## _relief_corridor_spread_strength -> soldier_block_extent -> formation_slots.
+func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVector2Array:
 	if in_square():
 		var square_file_count: int = formation_files(count)
 		var square_grid: PackedVector2Array = UnitFormation.block_slots(
@@ -4287,24 +4298,30 @@ func formation_slots(count: int) -> PackedVector2Array:
 			var sq_ang: float = facing.angle() + PI * 0.5 + _formation_angle
 			sq_slots = UnitFormation.apply_traverse_flank_arcs(sq_slots, _sim_soldier_pos, position, sq_ang, _sim_soldier_square_slot, square_file_count, file_pitch_wu())
 		return sq_slots
+	var slots: PackedVector2Array
 	if _effective_file_major_reform():
 		var files: int = formation_files(count)
 		_ensure_file_assignment(count, files)
 		var out := UnitFormation.file_major_block_slots(
 				_sim_soldier_file, files, file_pitch_wu(), rank_pitch_wu(), _sim_soldier_rank)
-		return UnitFormation.apply_frontage_anchor_offset(out, frontage_anchor_offset)
-	var row_grid: PackedVector2Array = UnitFormation.slots(self, count)
-	# A hold-ground reform leaves a pairing here that cancels its own depth reflection; with
-	# none held (the ordinary case) this is the historical identity layout, cell i for
-	# soldier i. The file-count guard drops a pairing whose grid has since reshaped rather
-	# than reinterpreting its cell ids against a frontage they were never computed for.
-	if _sim_soldier_row_slot.size() == count and _row_slot_files == formation_files(count):
-		var r_slots: PackedVector2Array = UnitFormation.permute_slots(row_grid, _sim_soldier_row_slot)
-		if _sim_soldier_pos.size() == count and _reform_holding():
-			var r_ang: float = facing.angle() + PI * 0.5 + _formation_angle
-			r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position, r_ang, _sim_soldier_row_slot, formation_files(count), file_pitch_wu())
-		return r_slots
-	return row_grid
+		slots = UnitFormation.apply_frontage_anchor_offset(out, frontage_anchor_offset)
+	else:
+		var row_grid: PackedVector2Array = UnitFormation.slots(self, count)
+		# A hold-ground reform leaves a pairing here that cancels its own depth reflection; with
+		# none held (the ordinary case) this is the historical identity layout, cell i for
+		# soldier i. The file-count guard drops a pairing whose grid has since reshaped rather
+		# than reinterpreting its cell ids against a frontage they were never computed for.
+		if _sim_soldier_row_slot.size() == count and _row_slot_files == formation_files(count):
+			var r_slots: PackedVector2Array = UnitFormation.permute_slots(row_grid, _sim_soldier_row_slot)
+			if _sim_soldier_pos.size() == count and _reform_holding():
+				var r_ang: float = facing.angle() + PI * 0.5 + _formation_angle
+				r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position, r_ang, _sim_soldier_row_slot, formation_files(count), file_pitch_wu())
+			slots = r_slots
+		else:
+			slots = row_grid
+	if apply_relief_corridor:
+		return _apply_relief_corridor_to_slots(slots)
+	return slots
 
 
 ## Rebuild the persistent per-soldier file-major assignment (_sim_soldier_file) FRESH
@@ -5404,8 +5421,10 @@ func soldier_facing(index: int) -> Vector2:
 ## Half-extent of the seeded soldier block around the regiment center: the
 ## containment radius the parallel layer must stay within while the regiment
 ## circle is authoritative. Reuses the render's block-extent math.
+## Uses the BASE grid (no relief-corridor widen) so extent queries that feed the
+## corridor's own spread gate cannot recurse through formation_slots.
 func soldier_block_extent() -> float:
-	return SoldierFlock.compute_extent(self, formation_slots(soldiers))
+	return SoldierFlock.compute_extent(self, formation_slots(soldiers, false))
 
 
 ## Per-axis counterpart to soldier_block_extent(): (half-width, half-depth) of the seeded
@@ -5413,7 +5432,7 @@ func soldier_block_extent() -> float:
 ## the block's reach along one specific direction (soldier_block_world_angle() gives the
 ## rotation to express that direction in) instead of every direction via the circumradius.
 func soldier_block_half_extents() -> Vector2:
-	return SoldierFlock.compute_half_extents(self, formation_slots(soldiers))
+	return SoldierFlock.compute_half_extents(self, formation_slots(soldiers, false))
 
 
 ## The soldier block's current world-space rotation: the same facing + in-progress-maneuver
@@ -6217,6 +6236,83 @@ func formation_summary() -> String:
 			return "Schiltron"
 		_:
 			return "Normal"
+
+
+## The other unit in a live line-relief pass-through swap, if any. The link normally
+## lives on the reliever's RELIEF order; the tired side discovers it by reverse lookup.
+func _relief_swap_partner() -> Unit:
+	if current_order != null and current_order.friendly_target != null \
+			and is_instance_valid(current_order.friendly_target):
+		return current_order.friendly_target
+	if not is_inside_tree():
+		return null
+	for node in get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u != null and u != self and _friendly_target_names(u, self):
+			return u
+	return null
+
+
+## 0..RELIEF_CORRIDOR_SPREAD_MAX spread strength for a live relief swap with `partner`.
+## Peaks when the two blocks overlap, fades as they clear apart. Takes the partner rather
+## than re-deriving it so the one caller pays for a single _relief_swap_partner() lookup
+## per formation_slots() call -- that lookup falls back to a whole-group scan, and this
+## runs every frame per unit.
+func _relief_corridor_spread_strength(partner: Unit) -> float:
+	if partner == null or not is_instance_valid(partner):
+		return 0.0
+	# Always positive: soldier_block_extent() floors at Unit.RADIUS plus a mark radius and
+	# margin (SoldierFlock.compute_extent), so the sum can never reach zero and the ratio
+	# below is safe to take unguarded.
+	var contact: float = separation_radius + partner.separation_radius \
+			+ soldier_block_extent() + partner.soldier_block_extent()
+	var dist: float = position.distance_to(partner.position)
+	var overlap_frac: float = clampf(1.0 - dist / contact, 0.0, 1.0)
+	return RELIEF_CORRIDOR_SPREAD_MAX * overlap_frac
+
+
+## Widen back-rank slot spacing during a line-relief pass-through.
+func _apply_relief_corridor_to_slots(slots: PackedVector2Array) -> PackedVector2Array:
+	var partner: Unit = _relief_swap_partner()
+	var spread: float = _relief_corridor_spread_strength(partner)
+	if spread <= 0.0 or slots.is_empty():
+		return slots
+	# A spread above zero already established a live, valid partner, so partner is non-null
+	# from here on.
+	var approach_world: Vector2 = partner.position - position
+	if approach_world.length_squared() < 0.25:
+		approach_world = Vector2.RIGHT   # blocks sitting on top of each other: pick an axis
+	var block_ang: float = soldier_block_world_angle()
+	# rotated() preserves length, so approach_local inherits the non-degenerate magnitude
+	# the fallback above guarantees and normalized() below cannot divide by zero.
+	var approach_local: Vector2 = approach_world.rotated(-block_ang)
+	var corridor_perp: Vector2 = approach_local.rotated(PI * 0.5).normalized()
+	var depth: float = rank_pitch_wu()
+	if depth <= 0.0:
+		return slots
+	# Rank geometry is read OFF THE SLOTS, never recomputed from the headcount.
+	# file_major_block_slots centres depth on the live max_rank -- the deepest
+	# SURVIVING file -- and a casualty there shortens only its own file's rear
+	# rather than rebalancing the block, so a thinned file-major block can be
+	# deeper than ceil(count / files). Deriving y0 from ranks_for() then shifts
+	# the whole rank axis and mislabels ranks, including handing a real back
+	# rank the front rank's zero spread. Reading the extent back off the grid
+	# the layout actually produced is exact for both layouts and needs to know
+	# nothing about how either deals its files.
+	var y_min: float = INF
+	var y_max: float = -INF
+	for s in slots:
+		y_min = minf(y_min, s.y)
+		y_max = maxf(y_max, s.y)
+	var ranks: int = maxi(1, int(round((y_max - y_min) / depth)) + 1)
+	var y0: float = y_min
+	var out := slots.duplicate()
+	for i in range(out.size()):
+		var slot: Vector2 = out[i]
+		var rank: int = clampi(int(round((slot.y - y0) / depth)), 0, ranks - 1)
+		out[i] = slot + UnitFormation.relief_corridor_slot_offset(
+				slot, rank, ranks, corridor_perp, spread)
+	return out
 
 
 ## Shared "collision-exemption" primitive: a moving unit may pass cleanly through

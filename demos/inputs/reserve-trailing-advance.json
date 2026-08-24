@@ -1,0 +1,20 @@
+{
+  "_comment": "Trailing reserves under cautious doctrine (#1382): Team 1 deploys 5 infantry units under cautious doctrine (reserve_fraction 0.4, holding 2 units in reserve) against player infantry. As team 1's active 3-unit line advances forward toward the enemy, the 2 reserve units follow trailing 140 wu behind the active line rather than staying pinned at spawn. When the active line engages and morale wavers, the reserves commit forward into the clash.",
+  "seed": "12345",
+  "doctrine": "cautious",
+  "spawn_fingerprint": "171a9c08ea3458bbb8997cfba66e0882",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 450, "y": 300, "count": 80},
+    {"team": 0, "type": "Infantry", "x": 750, "y": 300, "count": 80},
+    {"team": 1, "type": "Infantry", "x": 350, "y": 650, "count": 80},
+    {"team": 1, "type": "Infantry", "x": 600, "y": 650, "count": 80},
+    {"team": 1, "type": "Infantry", "x": 850, "y": 650, "count": 80},
+    {"team": 1, "type": "Infantry", "x": 475, "y": 800, "count": 80},
+    {"team": 1, "type": "Infantry", "x": 725, "y": 800, "count": 80}
+  ],
+  "camera": [
+    {"tick": 0, "x": 600.0, "y": 550.0, "zoom": 0.85}
+  ],
+  "steps": [],
+  "state": [0, 60, 120, 180, 240, 300]
+}

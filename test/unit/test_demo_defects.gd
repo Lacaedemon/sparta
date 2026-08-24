@@ -23,13 +23,14 @@ func _grid(files: int, ranks: int, spacing: float, origin: Vector2 = Vector2.ZER
 
 func _snapshot(tick: int, bodies: Array, slots: Array, engaged: bool = false,
 		state: String = "MOVING", facing: Array = [0.0, 1.0],
-		motion_ref: Dictionary = {}) -> Dictionary:
+		motion_ref: Dictionary = {}, in_enemy_contact: bool = false) -> Dictionary:
 	var ref: Dictionary = {"formation_spacing": SPACING, "soldier_body_radius": SPACING * 0.5,
 			"walk_speed": 34.0, "jog_speed": 64.0, "move_speed": 126.0,
 			"pivot_radius": 56.0, "turn_rate": PI}
 	ref.merge(motion_ref, true)
 	return {"tick": tick, "units": [{
-		"uid": 1, "engaged": engaged, "state": state, "facing": facing,
+		"uid": 1, "engaged": engaged, "in_enemy_contact": in_enemy_contact,
+		"state": state, "facing": facing,
 		"soldiers_full": {"pos": bodies, "slots": slots},
 		"motion_ref": ref,
 	}]}
@@ -227,6 +228,46 @@ func test_samples_adjacent_to_an_engagement_flip_are_exempt() -> void:
 		_snapshot(120, press, slots)]
 	assert_false(bool(_verdict(DemoDefects.analyze(open_field), "overlap")["pass"]),
 			"the same compression with no engagement anywhere near still fails")
+
+
+func test_a_block_still_in_enemy_contact_is_exempt_even_once_disengaged() -> void:
+	# `engaged` and `in_enemy_contact` do not drop together: a regiment relieved out
+	# of a melee leaves the combat bookkeeping while its men are still physically in
+	# the press, backing out of it. Those samples read the melee's own compression,
+	# so the grid checks must forgive them exactly as they forgive an engaged block.
+	var slots: Array = _grid(6, 4, SPACING)
+	var press: Array = _grid(6, 4, SPACING * 0.2)   # under the single-sample overlap floor
+	var backing_out: Array = [
+		_snapshot(0, press, slots, false, "MOVING", [0.0, 1.0], {}, true),
+		_snapshot(60, press, slots, false, "MOVING", [0.0, 1.0], {}, true),
+		_snapshot(120, press, slots, false, "MOVING", [0.0, 1.0], {}, true)]
+	var backing: Dictionary = DemoDefects.analyze(backing_out)
+	assert_true(bool(_verdict(backing, "overlap")["pass"]),
+			"a block still in the press is not judged for spacing once merely disengaged")
+	assert_true(bool(_verdict(backing, "blob")["pass"]),
+			"nor for median compression")
+	assert_true(bool(_verdict(backing, "shape_residual")["pass"]),
+			"nor for shape, which the same press scrambles")
+	var clear: Array = [
+		_snapshot(0, press, slots),
+		_snapshot(60, press, slots),
+		_snapshot(120, press, slots)]
+	assert_false(bool(_verdict(DemoDefects.analyze(clear), "overlap")["pass"]),
+			"the same compression clear of any contact still fails")
+
+
+func test_the_transition_window_straddles_a_contact_flip_too() -> void:
+	# The one-sample window on either side of the exemption is keyed on contact, not
+	# on `engaged`: a block peeling out of the press is still compressed in the first
+	# sample after contact drops, the same way it is in the last one before it starts.
+	var slots: Array = _grid(6, 4, SPACING)
+	var press: Array = _grid(6, 4, SPACING * 0.2)
+	var peeling: Array = [
+		_snapshot(0, press, slots, false, "MOVING", [0.0, 1.0], {}, true),
+		_snapshot(60, press, slots),               # adjacent to the contact sample above
+		_snapshot(120, slots.duplicate(), slots)]
+	assert_true(bool(_verdict(DemoDefects.analyze(peeling), "overlap")["pass"]),
+			"compression in the sample bordering the end of contact is the transition")
 
 
 func test_the_sample_after_a_casualty_compaction_is_exempt() -> void:

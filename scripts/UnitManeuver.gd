@@ -63,10 +63,10 @@ const MOVING_WHEEL_MIN_ANGLE_DEG := 45.0
 ## side-step (hold facing, translate) rather than a turn-and-march. `facing` is
 ## the unit's current heading; `move_vec` is destination minus current position.
 static func is_sidestep(facing: Vector2, move_vec: Vector2) -> bool:
-	var dist := move_vec.length()
-	if facing.length_squared() < 0.0001 or dist < 0.01:
+	var dist_sq := move_vec.length_squared()
+	if facing.length_squared() < 0.0001 or dist_sq < 0.0001:
 		return false
-	if dist > SIDESTEP_MAX_DISTANCE:
+	if dist_sq > SIDESTEP_MAX_DISTANCE * SIDESTEP_MAX_DISTANCE:
 		return false
 	var fwd := facing.normalized()
 	var perp := Vector2(-fwd.y, fwd.x)
@@ -145,8 +145,8 @@ static func is_backstep(facing: Vector2, move_vec: Vector2) -> bool:
 ## already under way. `facing` is the current heading; `move_vec` is destination
 ## minus current position.
 static func is_lateral_pivot(facing: Vector2, move_vec: Vector2) -> bool:
-	var dist := move_vec.length()
-	if facing.length_squared() < 0.0001 or dist <= SIDESTEP_MAX_DISTANCE:
+	var dist_sq := move_vec.length_squared()
+	if facing.length_squared() < 0.0001 or dist_sq <= SIDESTEP_MAX_DISTANCE * SIDESTEP_MAX_DISTANCE:
 		return false
 	if is_rear_move(facing, move_vec):
 		return false

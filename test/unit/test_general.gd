@@ -360,7 +360,7 @@ func test_decide_army_folds_reserves_into_the_active_line_once_morale_drops() ->
 
 # --- reserve hold directives -----------------------------------------------------------------
 
-func test_reserve_directives_pin_each_reserve_unit_at_its_own_position() -> void:
+func test_reserve_directives_pin_each_reserve_unit_at_its_own_position_when_no_active() -> void:
 	var a := _unit(1, Vector2(500, 700))
 	var b := _unit(2, Vector2(650, 720))
 	var directives: Dictionary = GeneralScript.reserve_directives([a, b])
@@ -372,5 +372,41 @@ func test_reserve_directives_pin_each_reserve_unit_at_its_own_position() -> void
 	})
 
 
+func test_reserve_directives_trails_behind_advancing_line() -> void:
+	# Team 1 active line at y=500 advancing UP toward enemy at y=200.
+	# Advance axis is (0, -1).
+	var enemy := _unit(10, Vector2(600, 200), 0)
+	var active1 := _unit(1, Vector2(500, 500), 1)
+	var active2 := _unit(2, Vector2(700, 500), 1)
+	var reserve := _unit(3, Vector2(600, 700), 1)
+
+	var all_units := [enemy, active1, active2, reserve]
+	var directives: Dictionary = GeneralScript.reserve_directives(
+		[reserve], [active1, active2], all_units)
+
+	# Active line centroid is at (600, 500), advance axis is (0, -1).
+	# Trailing offset is centroid - axis * 140 = (600, 500) - (0, -140) = (600, 640).
+	assert_eq(directives[reserve.uid]["type"], SubcommanderScript.DIRECTIVE_HOLD_LINE)
+	assert_almost_eq(directives[reserve.uid]["x"], 600.0, 0.01)
+	assert_almost_eq(directives[reserve.uid]["y"], 640.0, 0.01)
+
+
+func test_reserve_directives_preserves_lateral_offset_along_line() -> void:
+	var enemy := _unit(10, Vector2(600, 200), 0)
+	var active := _unit(1, Vector2(600, 500), 1)
+	var reserve_left := _unit(2, Vector2(520, 700), 1)
+	var reserve_right := _unit(3, Vector2(680, 700), 1)
+
+	var all_units := [enemy, active, reserve_left, reserve_right]
+	var directives: Dictionary = GeneralScript.reserve_directives(
+		[reserve_left, reserve_right], [active], all_units)
+
+	assert_almost_eq(directives[reserve_left.uid]["x"], 520.0, 0.01)
+	assert_almost_eq(directives[reserve_left.uid]["y"], 640.0, 0.01)
+	assert_almost_eq(directives[reserve_right.uid]["x"], 680.0, 0.01)
+	assert_almost_eq(directives[reserve_right.uid]["y"], 640.0, 0.01)
+
+
 func test_reserve_directives_is_empty_for_no_reserves() -> void:
 	assert_eq(GeneralScript.reserve_directives([]), {})
+

@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Analysis tooling only (tools/study/relief-balance): it reads state dumps that already exist and generates scripted-input files for its own headless runs. Nothing in the diff touches a render path, a sim path, or any catalog clip, and the PR makes no claim about how any clip is judged -- so there is no verdict for the demo-defect scan to withhold."
+}
