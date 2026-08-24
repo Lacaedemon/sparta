@@ -337,3 +337,60 @@ func test_handoff_after_battles_fighting_split_still_marches() -> void:
 		"the unit about-faced onto the destination bearing (got %s)" % str(u.facing))
 	assert_eq(u.move_target, dest, "it marches to the ordered destination")
 	PathField.active = old_pf
+
+
+func test_oblique_rear_destination_hands_off_to_the_wheel_composite() -> void:
+	# The same handoff ladder a fresh oblique rear move takes: about-face first, then
+	# the flank pivot closing the leftover misalignment, then the march -- not a bare
+	# conversio that leaves the wheel to the march's own gradual centre-pivot.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_seeded_unit()
+	var o := _order_move_to(u, Vector2.DOWN.rotated(deg_to_rad(140.0)) * 300.0)
+	_engage(u)
+	for i in range(30):
+		_tick_engaged(u)
+	u._in_enemy_contact = false
+	_run_until_handoff(u, 90)
+	assert_false(u._withdrawal_peeling, "the handoff ran")
+	assert_eq(o.children.size(), 3,
+		"about-face, flank pivot, and march -- three phases, like a fresh oblique move")
+	assert_eq(o.children[1].type, Order.Type.WHEEL, "the middle phase is the flank pivot")
+	PathField.active = old_pf
+
+
+func test_handoff_falls_back_to_a_plain_march_when_nothing_arms() -> void:
+	# Bodies unseeded (the same refusal begin_pivot gives a spawn-tick order) -- the
+	# handoff commits the destination as a plain march, identical to every refused
+	# Battle-side composite's fallback.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u: Unit = Unit.new()
+	add_child_autofree(u)   # deliberately NOT seed_sim_soldiers
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	var dest := Vector2(0, -300)
+	_order_move_to(u, dest)
+	u._arm_withdrawal_turn()
+	assert_true(u.has_move_target, "the fallback commits the march directly")
+	assert_eq(u.move_target, dest, "it marches to the ordered destination")
+	assert_true(u.current_order.children.is_empty(),
+		"no composite was armed, so no children were split onto the order")
+	PathField.active = old_pf
+
+
+func test_discipline_gate_is_what_blocks_an_undisciplined_peel() -> void:
+	# Pins the gate itself, not just its downstream absence-of-peel effect: with every
+	# other condition satisfied, only the discipline flag flips eligibility.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_seeded_unit()
+	_order_move_to(u, Vector2(0, -300))
+	_engage(u)
+	u.disciplined = false
+	assert_false(u._fighting_withdrawal_eligible(),
+		"an undisciplined block is never eligible to peel")
+	u.disciplined = true
+	assert_true(u._fighting_withdrawal_eligible(),
+		"the same unit, disciplined, is eligible -- discipline is the deciding gate")
+	PathField.active = old_pf
