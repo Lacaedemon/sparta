@@ -650,10 +650,54 @@ func test_hud_consistency_passes_when_hud_matches_sim() -> void:
 	assert_true(bool(verdicts[1]["pass"]), "selection consistency passes")
 
 
-func test_hud_consistency_detects_formation_mismatch() -> void:
+func test_hud_consistency_forgives_single_sample_clock_skew() -> void:
+	# 1-sample transient mismatch (e.g. order landing tick before _process updates HUD text)
 	var snaps: Array = [
 		{
 			"tick": 10,
+			"units": [{"uid": 1, "formation": "NORMAL"}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "Normal",
+				"ctrl_bar_visible": true,
+			},
+		},
+		{
+			"tick": 20,
+			"units": [{"uid": 1, "formation": "TIGHT"}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "Normal", # transient 1-sample skew
+				"ctrl_bar_visible": true,
+			},
+		},
+		{
+			"tick": 30,
+			"units": [{"uid": 1, "formation": "TIGHT"}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "Tight", # resynced on next sample
+				"ctrl_bar_visible": true,
+			},
+		},
+	]
+	var verdicts: Array = DemoDefects.check_hud_consistency(snaps)
+	assert_true(bool(verdicts[0]["pass"]), "single-sample transition skew is forgiven")
+
+
+func test_hud_consistency_detects_sustained_formation_mismatch() -> void:
+	var snaps: Array = [
+		{
+			"tick": 10,
+			"units": [{"uid": 1, "formation": "TIGHT"}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "Normal",
+				"ctrl_bar_visible": true,
+			},
+		},
+		{
+			"tick": 20,
 			"units": [{"uid": 1, "formation": "TIGHT"}],
 			"hud": {
 				"shown_unit_uid": 1,
@@ -666,7 +710,7 @@ func test_hud_consistency_detects_formation_mismatch() -> void:
 	assert_eq(verdicts.size(), 2)
 	var form_verdict: Dictionary = verdicts[0]
 	assert_eq(form_verdict["metric"], "hud_formation_consistency")
-	assert_false(bool(form_verdict["pass"]), "formation mismatch fails")
+	assert_false(bool(form_verdict["pass"]), "sustained formation mismatch fails")
 	assert_string_contains(str(form_verdict["worst"]), "sim TIGHT vs hud 'Normal'")
 
 
@@ -706,4 +750,23 @@ func test_hud_consistency_detects_ctrl_bar_visible_with_no_unit() -> void:
 	var sel_verdict: Dictionary = verdicts[1]
 	assert_eq(sel_verdict["metric"], "hud_selection_consistency")
 	assert_false(bool(sel_verdict["pass"]), "ctrl_bar visible without unit fails selection check")
+
+
+func test_analyze_compact_dump_with_hud_returns_empty_verdicts() -> void:
+	# A compact dump (lacking soldiers_full and motion_ref) must return empty verdicts
+	# so analyze_transcript.gd's "no analyzable units" error is preserved.
+	var compact_snaps: Array = [
+		{
+			"tick": 10,
+			"units": [{"uid": 1, "formation": "NORMAL"}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "Normal",
+				"ctrl_bar_visible": true,
+			},
+		},
+	]
+	var res: Dictionary = DemoDefects.analyze(compact_snaps)
+	assert_true(res["verdicts"].is_empty(), "compact dump produces no verdicts from analyze")
+
 
