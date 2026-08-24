@@ -9,6 +9,7 @@ extends GutTest
 ## orchestration refreshes), plus eligibility gates exercised one at a time.
 
 const DT := 1.0 / 60.0
+const BattleScript = preload("res://scripts/Battle.gd")
 
 
 func _make_seeded_unit() -> Unit:
@@ -274,4 +275,65 @@ func test_cavalry_hands_off_to_a_moving_wheel_not_an_about_face() -> void:
 		"cavalry opens with a single continuous moving wheel, mirroring the fresh-order ladder")
 	assert_false(u.is_order_turning(),
 		"a moving wheel swings continuously -- it is not an in-place turn")
+	PathField.active = old_pf
+
+
+# --- handoff onto Battle's fighting-unit order shape ---------------------------
+
+func test_handoff_after_battles_fighting_split_still_marches() -> void:
+	# A move issued to a FIGHTING infantry unit is never a bare march: Battle splits
+	# it into a reform leaf plus march leg at issue time (its not-turn_armed-and-
+	# reform branch -- the composites all refuse while fighting), and _think's
+	# fighting bypass commits that reform immediately. The order the peel actually
+	# runs on therefore carries [spent reform, pending march] children, and the
+	# handoff must discard that stale decomposition and arm fresh: arming onto it
+	# as-is routes the conversio through the append mode, the turn lands as the
+	# LAST child, the tree cascades away when it completes, and the regiment stops
+	# dead facing travel with no march ever committed.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_seeded_unit()
+	assert_true(u.reform_before_move,
+		"infantry reforms before moving by default -- the split applies to this unit")
+	u.state = Unit.State.FIGHTING
+	var b := BattleScript.new()
+	autofree(b)
+	b._by_uid[u.uid] = u
+	var dest := Vector2(0, -300)   # straight behind a DOWN-facing unit
+	b._apply_order_cmd({"units": [u.uid], "x": dest.x, "y": dest.y, "target": -1})
+	assert_eq(u.current_order.children.size(), 2,
+		"Battle split the fighting unit's move into reform hold plus march leg")
+	assert_eq(u.current_order.children[0].phase, Order.Phase.REFORM,
+		"the first leaf is the reform hold")
+	assert_false(u.has_move_target, "the split parks the march at issue time")
+	# Real fights rage for many ticks between issue and disengage; the order-response
+	# beat drains concurrently while a fighting unit keeps executing, so by peel start
+	# it is long gone. Zero it here for the same effect without simulating those ticks.
+	u._order_response_timer = 0.0
+	# The bypass commit: exactly what _think's reform block does for a FIGHTING unit.
+	u._commit_pending_reform()
+	assert_true(u.has_move_target, "the bypass commits the march while fighting")
+	_engage(u)
+	for i in range(30):
+		_tick_engaged(u)
+		assert_true(u._withdrawal_peeling, "tick %d: peeling on the split order" % i)
+	u._in_enemy_contact = false
+	_run_until_handoff(u, 90)
+	assert_false(u._withdrawal_peeling, "the handoff ran")
+	assert_eq(u.current_order.children.size(), 2,
+		"the handoff armed a FRESH composite (turn + march), not an appended third leaf")
+	assert_true(u.is_order_turning(), "the opening turn is turning")
+	assert_false(u.has_move_target, "the march stays parked until the turn completes")
+	# The armed composite carries the order's reform-before-move policy (Battle set
+	# reform=true at issue), so after the about-face lands there is a drilled reform
+	# hold before the march commits -- a longer wait than a bare order needs.
+	for _i in range(600):
+		u._think(DT)
+		if u.has_move_target:
+			break
+	assert_true(u.has_move_target,
+		"the parked march commits once the about-face completes -- no stranded stop")
+	assert_true(u.facing.is_equal_approx(Vector2.UP),
+		"the unit about-faced onto the destination bearing (got %s)" % str(u.facing))
+	assert_eq(u.move_target, dest, "it marches to the ordered destination")
 	PathField.active = old_pf

@@ -1915,9 +1915,25 @@ func _fighting_withdrawal_step(delta: float) -> bool:
 ## (bodies unseeded, or the destination needs no turn at all), fall back to committing
 ## the plain march directly -- identical to the fallback every refused Battle-side
 ## composite takes.
+##
+## A move issued while fighting carries a stale decomposition here: Battle split it into
+## a reform leaf plus march leg at issue time (its not-turn_armed-and-reform branch), and
+## the fighting bypass committed that reform immediately, leaving [spent reform, pending
+## march] children behind. Arming onto those as-is would route the conversio through
+## begin_pivot's append mode -- the turn lands as the LAST child, _finish_order_turn sees
+## a non-opening active cursor and cascades the whole tree away with no march ever
+## committed, stranding the regiment facing travel but standing still. Dropping the spent
+## leaves first puts every variant back on its fresh-order path -- the exact shape Battle
+## would have built issuing this move from this state. The peel's held-facing beat
+## (ordered_facing) dies here too -- a reform-before-move hold pivots toward the pending
+## destination only when it is zero, and a stale beat would pin the block to its old
+## fighting heading through the hold and the march beyond it.
 func _arm_withdrawal_turn() -> void:
 	var move_vec: Vector2 = current_order.target_pos - position
 	has_move_target = false
+	ordered_facing = Vector2.ZERO
+	current_order.children.clear()
+	current_order._active_child = 0
 	var armed := false
 	if UnitManeuver.is_moving_wheel_turn(is_cavalry, facing, move_vec):
 		var angle: float = UnitManeuver.moving_wheel_turn_angle(facing, move_vec)
