@@ -19,8 +19,8 @@ Other agents consume the same corpus from the gitignored `.ai-config/` checkout
 (bootstrapped by `tools/bootstrap-ai-config.sh`, pinned by `.ai-config-ref`):
 Gemini CLI / Antigravity read `.agents/skills.json` and `.agents/plugins.json`;
 **opencode** reads `opencode.json`, which points its `skills.paths` and
-`references` at `.ai-config/` and lists `.ai-config/CLAUDE.md` under
-`instructions`. opencode has no skills-bundle "plugin" (its `plugin` field is for
+`references` at `.ai-config/` and lists `.ai-config/AGENTS.md` and
+`.ai-config/CLAUDE.md` under `instructions`. opencode has no skills-bundle "plugin" (its `plugin` field is for
 JavaScript event-hook modules), so this config-field wiring is the equivalent of
 the Claude plugin. Run `tools/bootstrap-ai-config.sh` before an opencode session
 so `.ai-config/` exists.
