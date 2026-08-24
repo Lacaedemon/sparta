@@ -814,7 +814,7 @@ check_patch_coverage() {
   fi
 }
 
-# resolve_comments_base — print the first candidate commit-ish that both (a) is
+# resolve_comments_base -- print the first candidate commit-ish that both (a) is
 # non-empty and not git's all-zero "no such commit" sentinel (the value a push
 # event's `before` takes on a brand-new branch), and (b) actually resolves in
 # this checkout, or fail if none do. Candidates, in order: an explicit
