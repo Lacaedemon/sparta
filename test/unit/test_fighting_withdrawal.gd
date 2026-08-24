@@ -394,3 +394,26 @@ func test_discipline_gate_is_what_blocks_an_undisciplined_peel() -> void:
 	assert_true(u._fighting_withdrawal_eligible(),
 		"the same unit, disciplined, is eligible -- discipline is the deciding gate")
 	PathField.active = old_pf
+
+
+func test_relief_retreat_with_a_parked_facing_hold_is_not_swept_into_the_peel() -> void:
+	# UnitRelief.begin backs the tired unit out with a plain MOVE plus a parked
+	# ordered_facing -- a held-facing WHOLE-leg retreat. Every other gate here is
+	# satisfied (rear destination, contact, disciplined, normal pace), so without this
+	# exclusion the peel would capture the retreat and its handoff would about-face the
+	# relieved block away from the enemy mid-withdrawal, undoing the facing hold.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_seeded_unit()
+	_order_move_to(u, Vector2(0, -300))
+	_engage(u)
+	u.ordered_facing = u.facing   # exactly what UnitRelief.begin parks
+	assert_false(u._fighting_withdrawal_eligible(),
+		"an order already carrying a held-facing maneuver keeps it -- no peel")
+	for i in range(10):
+		_tick_engaged(u)
+		assert_false(u._withdrawal_peeling,
+			"tick %d: the relief retreat marches under its own hold, not the peel" % i)
+	assert_true(u.ordered_facing.is_equal_approx(Vector2.DOWN),
+		"the relief's facing hold survives untouched")
+	PathField.active = old_pf

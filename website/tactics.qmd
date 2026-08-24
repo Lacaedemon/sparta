@@ -1972,6 +1972,30 @@ the enemy still holds that ground, the order cancels outright and the unit falls
 the fight instead of marching into occupied territory.
 :::
 
+When that mid-fight destination lies **behind** the regiment --- a genuine pull-back out of
+the fight --- a well-drilled unit doesn't pivot in place under pressure. It backs straight
+out instead, shields still toward the line it just left, ranks square the whole way, and
+only once it is clear of the grapple does it drill its about-face and march the rest of the
+way (@fig-plain-move-withdrawal). The same drill the relieved regiment uses during a line
+relief, available on demand: order any disciplined, non-hasting unit rearward while it is
+engaged and it withdraws as a fighting body rather than turning tail. Undisciplined units,
+and any move ordered at the run, still break off the old way --- pace over poise.
+
+::: {#fig-plain-move-withdrawal .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/plain_move_withdrawal.jpg">
+  <source src="media/plain_move_withdrawal.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A fighting regiment ordered to a destination behind it backs out facing-held first ---
+no mid-press pivot --- then turns about and marches on once clear of the fight.
+:::
+
 ---
 
 *Source: [`README.md`](https://github.com/Lacaedemon/sparta/blob/main/README.md) ·

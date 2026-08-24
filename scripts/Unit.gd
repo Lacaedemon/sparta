@@ -1836,6 +1836,12 @@ func _resolve_disengage_move_order() -> bool:
 ##   mid-press is the failure being fixed here, but imposing drill on a unit that has
 ##   none would change more than this fix means to.
 ## - not haste: a run-gait order already reads as "break off NOW" -- pace over poise.
+## - no facing hold already parked: a non-zero ordered_facing means another maneuver owns
+##   the heading for this leg -- UnitRelief.begin's relief retreat backs out of the line
+##   facing the enemy for its WHOLE march by exactly this mechanism, and handing that
+##   order to the peel would end its hold at handoff and about-face the relieved block
+##   away from the foe mid-retreat. A fresh player order arrives with the hold cleared,
+##   so only deliberate held-facing maneuvers are excluded here.
 ## - actually in contact or freshly so (ENGAGED_LINGER hysteresis): a clean march that
 ##   merely passes near a fight must never reverse into one.
 ## - destination in the REAR sector: the whole point is marching away from the foe. A
@@ -1851,6 +1857,8 @@ func _fighting_withdrawal_eligible() -> bool:
 	if not disciplined:
 		return false
 	if _is_move_order_in_haste():
+		return false
+	if ordered_facing != Vector2.ZERO:
 		return false
 	if not (_in_enemy_contact or is_engaged()):
 		return false
@@ -1916,7 +1924,11 @@ func _fighting_withdrawal_step(delta: float) -> bool:
 ## the plain march directly -- identical to the fallback every refused Battle-side
 ## composite takes.
 ##
-## A move issued while fighting carries a stale decomposition here: Battle split it into
+## Battle's ladder has one arm this deliberately omits: the lateral pivot. Eligibility
+## only ever delivers a REAR-sector destination here (a forward/oblique move while
+## engaged keeps today's punch-through behaviour), and the lateral pivot is the
+## flank-sector case -- unreachable by construction, so arming it would be dead code.
+#### A move issued while fighting carries a stale decomposition here: Battle split it into
 ## a reform leaf plus march leg at issue time (its not-turn_armed-and-reform branch), and
 ## the fighting bypass committed that reform immediately, leaving [spent reform, pending
 ## march] children behind. Arming onto those as-is would route the conversio through
