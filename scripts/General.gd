@@ -63,7 +63,7 @@ const PLAN_DO_NOTHING := "do_nothing"
 ## itself be assigned to a group. `all_units` is every living node in the "units" group, the
 ## same omniscient perception source every other command level reads; `doctrine` is the parsed
 ## profile (DoctrineRegistry.doctrine(id)). Returns:
-##   {"plan": String, "groups": Array[Array], "reserve_units": Array, "pursue_routers": bool}
+##   {"plan": String, "groups": Array[Array], "active_units": Array, "reserve_units": Array, "pursue_routers": bool}
 ## `groups` is an array of unit arrays, one per Subcommander group (Subcommander itself decides
 ## what to do with each -- including silently dropping a ROUTING member, since its own
 ## `_living()` filter excludes one exactly like this file's `_roster()` does not); `reserve_units`
