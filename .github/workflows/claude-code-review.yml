@@ -43,6 +43,10 @@ jobs:
       # lab-manual step has nothing to fetch. Turning it off keeps the reviewer
       # from spending a step (and a failure mode) on it.
       lab-manual: false
+      # Sparta manages the ai-config plugin via .claude/settings.json; disabling
+      # the reusable workflow's redundant plugin reinstall prevents
+      # claude-code-action from mutating tracked skills under .claude/skills (#1388).
+      use-ai-config: false
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
       # a review on Claude's commits; empty (and ignored) for pull_request runs.
       pr-number: ${{ inputs.pr_number }}

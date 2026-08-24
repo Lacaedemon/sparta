@@ -1,0 +1,5 @@
+{
+  "_comment": "Demo skip manifest for claude-code-review CI workflow configuration PR",
+  "skip": true,
+  "reason": "CI workflow configuration only; no gameplay or visual logic changes."
+}
