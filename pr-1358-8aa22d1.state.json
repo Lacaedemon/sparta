@@ -1,0 +1,2132 @@
+{
+  "ticks": [
+    {
+      "tick": 25,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            700.0,
+            440.0
+          ],
+          "position_m": [
+            35.0,
+            22.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              700.6,
+              440.3
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              35.03,
+              22.015
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.0,
+            600.0
+          ],
+          "position_m": [
+            35.0,
+            30.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              699.4,
+              599.7
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              34.97,
+              29.985
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 75,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            700.0,
+            440.0
+          ],
+          "position_m": [
+            35.0,
+            22.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              700.6,
+              440.3
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              35.03,
+              22.015
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.5,
+          "current_speed_mps": 1.125,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.0,
+            591.5
+          ],
+          "position_m": [
+            35.0,
+            29.575
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              699.4,
+              591.29
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              34.97,
+              29.564
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 115,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            700.0,
+            440.0
+          ],
+          "position_m": [
+            35.0,
+            22.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              700.6,
+              440.3
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              35.03,
+              22.015
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 42.5,
+          "current_speed_mps": 2.125,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.0,
+            570.55
+          ],
+          "position_m": [
+            35.0,
+            28.528
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              699.4,
+              570.59
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              34.97,
+              28.529
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 126,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            700.0,
+            440.0
+          ],
+          "position_m": [
+            35.0,
+            22.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              700.6,
+              440.3
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              35.03,
+              22.015
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 48.0,
+          "current_speed_mps": 2.4,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.0,
+            562.68
+          ],
+          "position_m": [
+            35.0,
+            28.134
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              699.4,
+              562.8
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              34.97,
+              28.14
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 145,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            700.0,
+            440.0
+          ],
+          "position_m": [
+            35.0,
+            22.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              700.6,
+              440.3
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              35.03,
+              22.015
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 57.5,
+          "current_speed_mps": 2.875,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.0,
+            546.98
+          ],
+          "position_m": [
+            35.0,
+            27.349
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              699.4,
+              547.27
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              34.97,
+              27.364
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 170,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            700.0,
+            440.0
+          ],
+          "position_m": [
+            35.0,
+            22.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              700.6,
+              440.3
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              35.03,
+              22.015
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 70.0,
+          "current_speed_mps": 3.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.0,
+            522.35
+          ],
+          "position_m": [
+            35.0,
+            26.117
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              699.4,
+              522.92
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.4,
+              2.7
+            ],
+            "centroid_m": [
+              34.97,
+              26.146
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 195,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 90.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            700.0,
+            443.0
+          ],
+          "position_m": [
+            35.0,
+            22.15
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.5,
+              49.31
+            ],
+            "broken_count": 0,
+            "centroid": [
+              701.23,
+              443.11
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.425,
+              2.465
+            ],
+            "centroid_m": [
+              35.062,
+              22.155
+            ]
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 79.0,
+          "current_speed_mps": 3.95,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 94.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.0,
+            497.21
+          ],
+          "position_m": [
+            35.0,
+            24.861
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.44,
+              48.53
+            ],
+            "broken_count": 0,
+            "centroid": [
+              697.76,
+              495.2
+            ],
+            "count": 84,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.422,
+              2.426
+            ],
+            "centroid_m": [
+              34.888,
+              24.76
+            ]
+          },
+          "soldiers": 84,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 225,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 89.9,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            700.0,
+            439.71
+          ],
+          "position_m": [
+            35.0,
+            21.985
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              110.46,
+              42.53
+            ],
+            "broken_count": 0,
+            "centroid": [
+              701.07,
+              441.96
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.523,
+              2.126
+            ],
+            "centroid_m": [
+              35.053,
+              22.098
+            ]
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 79.0,
+          "current_speed_mps": 3.95,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 94.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.0,
+            485.81
+          ],
+          "position_m": [
+            35.0,
+            24.291
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.1,
+              34.87
+            ],
+            "broken_count": 0,
+            "centroid": [
+              697.78,
+              483.53
+            ],
+            "count": 84,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.405,
+              1.743
+            ],
+            "centroid_m": [
+              34.889,
+              24.177
+            ]
+          },
+          "soldiers": 84,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 255,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 89.9,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            699.97,
+            436.02
+          ],
+          "position_m": [
+            34.998,
+            21.801
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              111.47,
+              36.79
+            ],
+            "broken_count": 0,
+            "centroid": [
+              700.75,
+              437.58
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.573,
+              1.839
+            ],
+            "centroid_m": [
+              35.038,
+              21.879
+            ]
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 79.0,
+          "current_speed_mps": 3.95,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 94.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.01,
+            479.85
+          ],
+          "position_m": [
+            35.0,
+            23.993
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              108.19,
+              36.24
+            ],
+            "broken_count": 0,
+            "centroid": [
+              697.65,
+              477.34
+            ],
+            "count": 84,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.409,
+              1.812
+            ],
+            "centroid_m": [
+              34.883,
+              23.867
+            ]
+          },
+          "soldiers": 84,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 290,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.02,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 89.8,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            699.99,
+            427.18
+          ],
+          "position_m": [
+            35.0,
+            21.359
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              111.31,
+              33.12
+            ],
+            "broken_count": 0,
+            "centroid": [
+              700.33,
+              429.87
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.565,
+              1.656
+            ],
+            "centroid_m": [
+              35.016,
+              21.494
+            ]
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 79.0,
+          "current_speed_mps": 3.95,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.02,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 94.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            698.85,
+            477.17
+          ],
+          "position_m": [
+            34.943,
+            23.859
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              112.41,
+              38.71
+            ],
+            "broken_count": 0,
+            "centroid": [
+              696.72,
+              474.46
+            ],
+            "count": 84,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.62,
+              1.935
+            ],
+            "centroid_m": [
+              34.836,
+              23.723
+            ]
+          },
+          "soldiers": 84,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 325,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.02,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 89.8,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            696.53,
+            424.85
+          ],
+          "position_m": [
+            34.826,
+            21.243
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              111.89,
+              37.04
+            ],
+            "broken_count": 0,
+            "centroid": [
+              698.52,
+              426.49
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.595,
+              1.852
+            ],
+            "centroid_m": [
+              34.926,
+              21.325
+            ]
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 79.0,
+          "current_speed_mps": 3.95,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.02,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 94.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            695.43,
+            473.14
+          ],
+          "position_m": [
+            34.771,
+            23.657
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              113.49,
+              41.05
+            ],
+            "broken_count": 0,
+            "centroid": [
+              693.53,
+              472.06
+            ],
+            "count": 84,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.675,
+              2.052
+            ],
+            "centroid_m": [
+              34.677,
+              23.603
+            ]
+          },
+          "soldiers": 84,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 355,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 89.7,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            697.64,
+            423.55
+          ],
+          "position_m": [
+            34.882,
+            21.178
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              114.34,
+              45.42
+            ],
+            "broken_count": 0,
+            "centroid": [
+              697.61,
+              425.0
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.717,
+              2.271
+            ],
+            "centroid_m": [
+              34.881,
+              21.25
+            ]
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 79.0,
+          "current_speed_mps": 3.95,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 94.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            697.44,
+            475.28
+          ],
+          "position_m": [
+            34.872,
+            23.764
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              117.79,
+              39.44
+            ],
+            "broken_count": 0,
+            "centroid": [
+              691.96,
+              473.5
+            ],
+            "count": 84,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.89,
+              1.972
+            ],
+            "centroid_m": [
+              34.598,
+              23.675
+            ]
+          },
+          "soldiers": 84,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 385,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 89.7,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            696.67,
+            422.45
+          ],
+          "position_m": [
+            34.833,
+            21.122
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              112.33,
+              51.45
+            ],
+            "broken_count": 0,
+            "centroid": [
+              699.19,
+              423.86
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.616,
+              2.572
+            ],
+            "centroid_m": [
+              34.96,
+              21.193
+            ]
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 79.0,
+          "current_speed_mps": 3.95,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 94.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            697.1,
+            476.62
+          ],
+          "position_m": [
+            34.855,
+            23.831
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              128.89,
+              54.32
+            ],
+            "broken_count": 0,
+            "centroid": [
+              692.03,
+              477.92
+            ],
+            "count": 84,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.445,
+              2.716
+            ],
+            "centroid_m": [
+              34.601,
+              23.896
+            ]
+          },
+          "soldiers": 84,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 415,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 89.6,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            695.14,
+            424.03
+          ],
+          "position_m": [
+            34.757,
+            21.201
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              122.1,
+              52.6
+            ],
+            "broken_count": 0,
+            "centroid": [
+              698.61,
+              424.83
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.105,
+              2.63
+            ],
+            "centroid_m": [
+              34.93,
+              21.242
+            ]
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 79.0,
+          "current_speed_mps": 3.95,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 93.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            695.42,
+            477.05
+          ],
+          "position_m": [
+            34.771,
+            23.853
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              136.29,
+              61.54
+            ],
+            "broken_count": 0,
+            "centroid": [
+              689.69,
+              480.61
+            ],
+            "count": 83,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.814,
+              3.077
+            ],
+            "centroid_m": [
+              34.484,
+              24.031
+            ]
+          },
+          "soldiers": 83,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 440,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 89.6,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            695.72,
+            424.98
+          ],
+          "position_m": [
+            34.786,
+            21.249
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              127.81,
+              50.32
+            ],
+            "broken_count": 0,
+            "centroid": [
+              698.66,
+              426.52
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.391,
+              2.516
+            ],
+            "centroid_m": [
+              34.933,
+              21.326
+            ]
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 79.0,
+          "current_speed_mps": 3.95,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 93.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            695.55,
+            478.73
+          ],
+          "position_m": [
+            34.777,
+            23.936
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              139.2,
+              67.47
+            ],
+            "broken_count": 0,
+            "centroid": [
+              688.46,
+              481.89
+            ],
+            "count": 83,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.96,
+              3.374
+            ],
+            "centroid_m": [
+              34.423,
+              24.095
+            ]
+          },
+          "soldiers": 83,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "tick": 460,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.01,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 89.6,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "All-out attack",
+          "order_phase": null,
+          "position": [
+            696.65,
+            427.06
+          ],
+          "position_m": [
+            34.833,
+            21.353
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              135.92,
+              51.19
+            ],
+            "broken_count": 0,
+            "centroid": [
+              699.68,
+              428.43
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.796,
+              2.56
+            ],
+            "centroid_m": [
+              34.984,
+              21.421
+            ]
+          },
+          "soldiers": 80,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 79.0,
+          "current_speed_mps": 3.95,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.01,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 13,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 93.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            697.3,
+            478.38
+          ],
+          "position_m": [
+            34.865,
+            23.919
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              141.43,
+              73.56
+            ],
+            "broken_count": 0,
+            "centroid": [
+              689.13,
+              482.29
+            ],
+            "count": 83,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.071,
+              3.678
+            ],
+            "centroid_m": [
+              34.457,
+              24.115
+            ]
+          },
+          "soldiers": 83,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    }
+  ]
+}
