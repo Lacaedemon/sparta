@@ -3,6 +3,7 @@
   "instructions": [
     "AGENTS.md",
     "CLAUDE.md",
+    ".ai-config/AGENTS.md",
     ".ai-config/CLAUDE.md"
   ],
   "skills": {
