@@ -246,9 +246,30 @@ recovers (see [How to play](how-to-play.qmd) for the controls).
   relief order, so a fresh order mid-pass ends it where it stands and the pair
   stops ignoring each other's bodies. Avoid changing your mind while the two
   regiments still overlap.
+- **The relieved regiment backs out facing the enemy.** It withdraws as a fighting
+  body --- shields still toward the line it just left --- instead of turning round
+  and marching off, so the ranks stay square the whole way to the rear and are
+  ready to turn about and go back in (@fig-fighting-withdrawal).
 - **Expect to bleed a little on the way out.** The enemy keeps swinging while the
   retiring ranks are in reach, so pulling out of contact costs a few men --- far
-  fewer than staying until the regiment breaks.
+  fewer than staying until the regiment breaks. Backing out fronted on the enemy
+  is what keeps that toll small: the men taking those last blows are the front
+  rank, behind their shields, not a turned back.
+
+::: {#fig-fighting-withdrawal .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/fighting_withdrawal.jpg">
+  <source src="media/fighting_withdrawal.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+The relieved regiment's fighting withdrawal: it falls back to its own rear with
+its heading held on the enemy, ranks square, rather than pivoting away.
+:::
 
 Rotate before the break, not after: a tired regiment fights measurably worse (see
 [Stamina](#stamina)) and routs sooner, and pulling it out while it still holds
@@ -881,10 +902,10 @@ data, not code, so a non-programmer can author a new one. Each profile sets:
   enemy down; a cautious one holds the line instead.
 
 Two doctrines reading the identical battle can commit to different plans.
-A held-back reserve doesn't just sit inert, either --- it still turns to
+A held-back reserve doesn't just sit inert, either --- it follows behind
+the advancing active line at a trailing reserve distance, and still turns to
 face a flank threat, forms anti-cavalry square, or answers a nearby ally's
-call for relief, exactly like any other unit; only its own advance is put
-on hold.
+call for relief, exactly like any other unit.
 
 ::: {#fig-general-doctrine-reserves .demo}
 
@@ -900,8 +921,8 @@ on hold.
 A cautious general holds two full-strength units in reserve while three
 weaker units alone meet the enemy. As the front line takes losses its
 morale crosses the doctrine's threshold, and the general folds the
-reserves into the fight --- they break their stationary hold, march up,
-and join the melee.
+reserves into the fight --- they advance from their trailing reserve
+positions, march up, and join the melee.
 :::
 
 ## Player delegation
@@ -1970,6 +1991,30 @@ Redirecting an engaged unit: a mid-fight move order marches the unit off right a
 once its engagement with the enemy dies down the destination is checked one last time --- if
 the enemy still holds that ground, the order cancels outright and the unit falls back into
 the fight instead of marching into occupied territory.
+:::
+
+When that mid-fight destination lies **behind** the regiment --- a genuine pull-back out of
+the fight --- a well-drilled unit doesn't pivot in place under pressure. It backs straight
+out instead, shields still toward the line it just left, ranks square the whole way, and
+only once it is clear of the grapple does it drill its about-face and march the rest of the
+way (@fig-plain-move-withdrawal). The same drill the relieved regiment uses during a line
+relief, available on demand: order any disciplined, non-hasting unit rearward while it is
+engaged and it withdraws as a fighting body rather than turning tail. Undisciplined units,
+and any move ordered at the run, still break off the old way --- pace over poise.
+
+::: {#fig-plain-move-withdrawal .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/plain_move_withdrawal.jpg">
+  <source src="media/plain_move_withdrawal.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A fighting regiment ordered to a destination behind it backs out facing-held first ---
+no mid-press pivot --- then turns about and marches on once clear of the fight.
 :::
 
 ---

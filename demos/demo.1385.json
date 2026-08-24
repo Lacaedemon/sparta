@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation and one guard test only -- agent-skill prose, demos/README.md, a docstring in tools/demo/DemoState.gd, and test/unit/test_demo_state.gd. No scenes/, scripts/, assets/ or project.godot change, so the running game is byte-identical and a recorded battle would show the same clip as main. The change under review is that the defect-checklist prose now points at DemoDefects.gd instead of restating a stale version of its tuning."
+}

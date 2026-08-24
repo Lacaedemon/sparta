@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/line-relief-queue.json",
+  "caption": "The line_relief clip now actually performs a line relief. A 60-man Infantry front block is ground down to 37 holding a 70-man enemy; at tick 200 -- after contact, which is what makes the gesture legal -- the player box-selects the full-strength unit waiting behind it and right-clicks the engaged ally. The reliever's order reads RELIEF and the relieved unit's reads MOVE (both pinned by exact value in the script's expect block), the fresh block passes through and is FIGHTING in the line's place by tick 340, and the thinned unit walks clear to the rear. Previously the right-click landed at tick 100, BEFORE contact, so it resolved to a plain ground MOVE and the published clip showed one unit walking past another with no relief in it at all.",
+  "fixed_fps": 60,
+  "max_frames": 480,
+  "fps": 15,
+  "width": 720
+}

@@ -1,17 +1,108 @@
 {
-  "_comment": "Line relief via the orders queue (phase 3): a tired, thinned player infantry line holds an engaged enemy while a fresh unit waits behind it. The player box-selects the fresh unit and right-clicks the engaged friendly -- a RELIEF order: the fresh unit advances THROUGH its tired ally (the swap's pass-through exemption lives on the order) and takes over the fight, while the tired unit gets a queue-visible MOVE order and peels back to the rear. Record the movie at fixed_fps 60 so the step ticks line up with the 60/s headless state dump. State dumps verify the orders by exact value: pre-click the tired unit is FIGHTING with no order; post-click the reliever's current_order is RELIEF and the tired unit's is MOVE; late, the fresh unit fights in the line's place and the tired one stands clear behind it.",
+  "_comment": "Line relief via the orders queue: a tired, THINNED player infantry line holds an engaged enemy while a fresh, full-strength unit waits behind it. The player box-selects the fresh unit and right-clicks the engaged friendly -- a RELIEF order: the fresh unit advances THROUGH its tired ally (the swap's pass-through exemption lives on the order) and takes over the fight, while the tired unit gets a queue-visible MOVE order and peels back to the rear. The clip's subject is the ORDER QUEUE, so the expect block pins exactly that, by exact value. TIMING IS LOAD-BEARING: the right-click must land AFTER the enemy reaches the tired unit, because a right-click on a friendly that is not yet fighting resolves to a plain ground MOVE instead of a RELIEF -- there is nothing to relieve yet, and the clip then shows one unit walking past another, which is what the published clip used to show. STAGED TO DIFFER FROM relief-fighting-withdrawal.json, which demonstrates a different thing (the relieved block holding its facing) and must not become this clip's twin: this one runs down-field at x=650 with a genuinely under-strength front block (60 men relieved by 120), so the strength disparity the relief exists to answer is visible in the clip rather than only asserted in prose. Record at fixed_fps 60 so the step ticks line up with the 60/s headless state dump.",
   "seed": "12345",
   "scenario": [
-    {"team": 0, "type": "Infantry", "x": 800, "y": 470},
-    {"team": 0, "type": "Infantry", "x": 800, "y": 320},
-    {"team": 1, "type": "Infantry", "x": 800, "y": 570, "count": 70}
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 650,
+      "y": 470,
+      "count": 60
+    },
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 650,
+      "y": 390
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 650,
+      "y": 570,
+      "count": 70
+    }
   ],
   "camera": [
-    {"tick": 0, "x": 800.0, "y": 440.0, "zoom": 1.2}
+    {
+      "tick": 0,
+      "x": 650.0,
+      "y": 460.0,
+      "zoom": 1.2
+    }
   ],
   "steps": [
-    {"tick": 30, "box": {"from": [700, 280], "to": [900, 360]}},
-    {"tick": 100, "rmb_click": [800, 495]}
+    {
+      "tick": 30,
+      "box": {
+        "from": [
+          550,
+          350
+        ],
+        "to": [
+          750,
+          430
+        ]
+      }
+    },
+    {
+      "tick": 200,
+      "rmb_click": [
+        650,
+        470
+      ]
+    }
   ],
-  "state": [90, 120, 300, 420]
+  "state": [
+    190,
+    220,
+    280,
+    340,
+    400,
+    460
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        650.0,
+        470.0
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "position",
+      "value": [
+        650.0,
+        390.0
+      ]
+    },
+    {
+      "tick": 190,
+      "uid": 0,
+      "field": "state",
+      "value": "FIGHTING"
+    },
+    {
+      "tick": [
+        220,
+        280
+      ],
+      "uid": 1,
+      "field": "current_order",
+      "value": "RELIEF"
+    },
+    {
+      "tick": [
+        220,
+        280
+      ],
+      "uid": 0,
+      "field": "current_order",
+      "value": "MOVE"
+    }
+  ]
 }

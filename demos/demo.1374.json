@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/relief-fighting-withdrawal.json",
+  "caption": "This PR changes no game behaviour -- the footage here is identical to main's. It is the clip whose scan exemption this PR removes, recorded so CI's own defect scan judges it at its declared tick set: a relieved regiment (the front block) backs out of the line still fronting the enemy, and the samples where it is disengaged but still pressed against the enemy are the ones the widened judged_mask() now forgives. The verdict table under the transcript comment is this PR's verification, not the picture.",
+  "fixed_fps": 60,
+  "max_frames": 420,
+  "fps": 15,
+  "width": 720
+}

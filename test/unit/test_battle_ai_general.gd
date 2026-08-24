@@ -163,19 +163,19 @@ func test_two_doctrines_produce_visibly_different_army_behavior_from_the_same_se
 
 	assert_ne(aggressive_orders, cautious_orders,
 		"the same seed produces different per-unit AI orders under the two doctrines")
-	# Concretely: the cautious general leaves some team-1 units with no order at all this
-	# tick (held in reserve at their own spawn point), which the aggressive general -- with
-	# no reserve to hold back -- never does.
-	var cautious_has_idle_unit := false
+	# Concretely: the cautious general gives reserve units a positional hold order trailing
+	# behind the active line (target_uid -1), while the aggressive general -- with no reserve
+	# to hold back -- commits every unit to attack/advance toward an enemy target.
+	var cautious_reserve_count := 0
 	for uid in cautious_orders:
-		if cautious_orders[uid] == "NONE":
-			cautious_has_idle_unit = true
-	var aggressive_has_idle_unit := false
+		if cautious_orders[uid].ends_with(":-1"):
+			cautious_reserve_count += 1
+	var aggressive_reserve_count := 0
 	for uid in aggressive_orders:
-		if aggressive_orders[uid] == "NONE":
-			aggressive_has_idle_unit = true
-	assert_true(cautious_has_idle_unit, "cautious holds at least one unit back with no order")
-	assert_false(aggressive_has_idle_unit, "aggressive commits every unit from tick 0")
+		if aggressive_orders[uid].ends_with(":-1"):
+			aggressive_reserve_count += 1
+	assert_gt(cautious_reserve_count, 0, "cautious holds reserves trailing behind the line")
+	assert_eq(aggressive_reserve_count, 0, "aggressive commits every unit against enemy targets from tick 0")
 
 
 func test_ai_decisions_replay_identically_on_the_same_seed() -> void:
