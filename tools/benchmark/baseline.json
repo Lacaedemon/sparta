@@ -1,5 +1,5 @@
 {
-  "_comment": "CI-RUNNER baseline for .github/workflows/benchmark.yml's relative regression check. This is NOT the 60fps/reference-hardware target from PLAN.md (the developer's PC with a discrete GPU) -- GitHub Actions runners are different, variable-speed hardware; see tools/benchmark/README.md. Established as the MEAN of two consecutive, functionally-identical 'Refresh benchmark baseline' workflow runs at https://github.com/Lacaedemon/sparta/actions/runs/32000324561 (mean 36.200ms/p95 44.107ms/max 53.679ms and mean 35.906ms/p95 44.144ms/max 52.561ms) -- ubuntu-latest, res://benchmarks/scenarios/large-battle.json at scale 1.0x, warmup_ticks=60 measure_ticks=300 (the CI-tuned window in benchmark.yml, not BenchmarkRunner's local 120/600 defaults). Averaging two runs rather than trusting a single one is deliberate: back-to-back runs with zero functional code difference can swing ~20% from noisy shared-runner timing alone (see #755) -- a single-run baseline risks reproducing the false-regression problem this automation exists to prevent (#748/#756). Refreshed automatically by .github/workflows/refresh-benchmark-baseline.yml on a weekly schedule; see that workflow for the refresh mechanics, or run it manually via workflow_dispatch.",
+  "_comment": "CI-RUNNER baseline for .github/workflows/benchmark.yml's relative regression check. This is NOT the 60fps/reference-hardware target from PLAN.md (the developer's PC with a discrete GPU) -- GitHub Actions runners are different, variable-speed hardware; see tools/benchmark/README.md. Established as the MEAN of two consecutive, functionally-identical 'Refresh benchmark baseline' workflow runs at https://github.com/Lacaedemon/sparta/actions/runs/32696131452 (mean 38.532ms/p95 42.869ms/max 50.909ms and mean 37.970ms/p95 41.693ms/max 46.365ms) -- ubuntu-latest, res://benchmarks/scenarios/large-battle.json at scale 1.0x, warmup_ticks=60 measure_ticks=300 (the CI-tuned window in benchmark.yml, not BenchmarkRunner's local 120/600 defaults). Averaging two runs rather than trusting a single one is deliberate: back-to-back runs with zero functional code difference can swing ~20% from noisy shared-runner timing alone (see #755) -- a single-run baseline risks reproducing the false-regression problem this automation exists to prevent (#748/#756). Refreshed automatically by .github/workflows/refresh-benchmark-baseline.yml on a weekly schedule; see that workflow for the refresh mechanics, or run it manually via workflow_dispatch.",
   "scenario": "res://benchmarks/scenarios/large-battle.json",
   "scale": 1.0,
   "soldier_count": 1720,
@@ -7,8 +7,8 @@
   "requested_measure_ticks": 300,
   "samples_collected": 300,
   "stats": {
-    "mean_ms": 36.053,
-    "p95_ms": 44.126,
-    "max_ms": 53.12
+    "mean_ms": 38.251,
+    "p95_ms": 42.281,
+    "max_ms": 48.637
   }
 }
