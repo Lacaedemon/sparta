@@ -1,0 +1,5 @@
+{
+  "_comment": "Demo skip manifest for memory documentation PR",
+  "skip": true,
+  "reason": "Memory documentation only (.claude/memories); no gameplay or visual logic changes."
+}
