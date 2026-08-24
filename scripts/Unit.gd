@@ -1929,10 +1929,17 @@ func _fighting_withdrawal_step(delta: float) -> bool:
 ## the plain march directly -- identical to the fallback every refused Battle-side
 ## composite takes.
 ##
-## Battle's ladder has one arm this deliberately omits: the lateral pivot. Eligibility
-## only ever delivers a REAR-sector destination here (a forward/oblique move while
-## engaged keeps today's punch-through behaviour), and the lateral pivot is the
-## flank-sector case -- unreachable by construction, so arming it would be dead code.
+## The ladder mirrors Battle's fresh-move precedence: moving wheel for cavalry, then the
+## rear-sector arms (about-face, wheel-composited when the residual misalignment after
+## the reversal warrants it), then the lateral pivot -- quarter-turn toward the
+## destination's side, march sideways keeping the pre-turn footprint, and a closing
+## quarter-turn back recorded on pivot_return_angle for the arrival handler. The lateral
+## arm is reachable even though eligibility only admits REAR-sector destinations at peel
+## start: the peel backs along a fixed heading for as long as the fight lasts, so the
+## bearing recomputed at handoff can drift across the rear/lateral boundary when the
+## destination sits near it. A fight long enough to carry the unit past the destination
+## classifies the bearing forward at handoff, where Battle's own fresh-order ladder also
+## takes the plain march -- the fallback is the matching arm there, not a gap.
 #### A move issued while fighting carries a stale decomposition here: Battle split it into
 ## a reform leaf plus march leg at issue time (its not-turn_armed-and-reform branch), and
 ## the fighting bypass committed that reform immediately, leaving [spent reform, pending
@@ -1961,6 +1968,12 @@ func _arm_withdrawal_turn() -> void:
 			armed = begin_about_face_with_wheel(current_order, UnitManeuver.wheel_turn_dir(facing, move_vec))
 		else:
 			armed = begin_about_face(current_order)
+	elif UnitManeuver.is_lateral_pivot(facing, move_vec):
+		current_order.reform = false
+		var turn_angle: float = PI * 0.5 * UnitManeuver.lateral_pivot_dir(facing, move_vec)
+		armed = begin_pivot(current_order, turn_angle)
+		if armed:
+			current_order.pivot_return_angle = -turn_angle
 	if armed:
 		start_order_response()
 	else:

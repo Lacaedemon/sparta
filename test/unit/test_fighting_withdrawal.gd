@@ -417,3 +417,37 @@ func test_relief_retreat_with_a_parked_facing_hold_is_not_swept_into_the_peel() 
 	assert_true(u.ordered_facing.is_equal_approx(Vector2.DOWN),
 		"the relief's facing hold survives untouched")
 	PathField.active = old_pf
+
+
+func test_handoff_arms_a_lateral_pivot_when_the_bearing_drifts_off_the_rear_sector() -> void:
+	# Eligibility admits only REAR-sector destinations at peel start, but the peel backs
+	# along a fixed heading for as long as the fight lasts, so the bearing recomputed at
+	# handoff can drift across the rear/lateral boundary for a destination near it.
+	# Battle's fresh-order ladder owes that bearing a lateral pivot, so the handoff arms
+	# one too -- quarter-turn toward the destination's side, march parked, and the
+	# closing quarter-turn recorded for the arrival handler -- rather than dropping to
+	# the plain-march fallback. Dest due left of a DOWN-facing block classifies lateral
+	# (90 degrees off the heading, beyond side-step range) where it would have been rear
+	# before the drift.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _make_seeded_unit()
+	u.position = Vector2(0, 600)
+	var dest := Vector2(-300, 600)
+	_order_move_to(u, dest)
+	var expected_dir: int = UnitManeuver.lateral_pivot_dir(u.facing, dest - u.position)
+	assert_true(UnitManeuver.is_lateral_pivot(u.facing, dest - u.position),
+		"precondition: the drifted bearing classifies as a lateral pivot")
+	u._arm_withdrawal_turn()
+	assert_false(u.has_move_target, "arming parks the march on the order")
+	assert_eq(u.current_order.children.size(), 2,
+		"the handoff composite is a quarter-turn followed by the march")
+	assert_eq(u.current_order.children[0].type, Order.Type.QUARTER_TURN,
+		"the first child is the drilled quarter-turn toward the destination's side")
+	assert_eq(u.current_order.children[1].type, Order.Type.MOVE)
+	assert_true(u.current_order.children[0].turn_target.is_equal_approx(
+		Vector2.DOWN.rotated(PI * 0.5 * expected_dir)),
+		"the turn targets a quarter-turn toward the destination's side")
+	assert_almost_eq(u.current_order.pivot_return_angle, -PI * 0.5 * expected_dir, 0.0001,
+		"the closing quarter-turn back is recorded for the arrival handler")
+	PathField.active = old_pf

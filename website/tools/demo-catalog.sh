@@ -40,6 +40,7 @@ DEMOS=(
   "decel_arrival|demos/inputs/decel-arrival.json|30|300|640|input"
   "line_relief|demos/inputs/line-relief-queue.json|30|300|640|input"
   "fighting_withdrawal|demos/inputs/relief-fighting-withdrawal.json|30|280|640|input"
+  "plain_move_withdrawal|demos/inputs/fighting-withdrawal.json|30|470|640|input"
   "passage_of_lines|demos/inputs/passage-of-lines.json|30|110|640|input"
   "stance_order|demos/inputs/stance-order-gesture.json|30|130|640|input"
   "formation_preview_square|demos/inputs/formation-preview-square.json|30|300|640|input"
