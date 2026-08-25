@@ -1470,7 +1470,7 @@ only `CLAUDE_CODE_OAUTH_TOKEN`, `CODECOV_TOKEN`, and `JULES_API_KEY`.
 `GEMINI.md` also pauses automatic Gemini/Antigravity review for quota.
 
 **Skip as R-package-only or otherwise inapplicable:** `check-news`,
-`lint-changed-lines`, gha `test-coverage` (covr), `spellcheck`,
+`assemble-news`, `lint-changed-lines`, gha `test-coverage` (covr), `spellcheck`,
 `update-snapshots`, `bump-dev-version`, `version-check`,
 `altdoc-multiversion-docs`, `check-bibliography-dois`, `check-phi`,
 `request-dependabot-review` (no `dependabot.yml`), `bump-submodule` /
@@ -1481,8 +1481,8 @@ Start corpus-wide markdown/yaml/qmd/workflow linters at `fail: false`.
 If the site has MathJax, install `check-equation-renders` as the fourth preview
 stub and keep its `workflows:` name matched to `Website Preview Build`.
 
-On this repo `gh pr edit` (body or `--add-label`) fails with the Projects
-Classic GraphQL deprecation.
+On this repo `gh pr edit` (body or `--add-label`) fails with the Projects Classic GraphQL deprecation.
+The GraphQL field is `repository.pullRequest.projectCards` (reproduced 2026-08-25).
 Patch the body with
 `gh api -X PATCH repos/Lacaedemon/sparta/pulls/<N> -F body=@file.md`
 and add labels with
