@@ -5,10 +5,11 @@
 # (read-only build vs. privileged deploy) is the trust boundary -- never merge
 # the two into one job.
 #
-# Three-part family (mirrors Morrison-Lab/gha's own setup):
-#   website-preview.yml          <- this file (build; runs on pull_request)
-#   website-preview-deploy.yml   <- deploy (workflow_run, base-repo context)
-#   website-preview-cleanup.yml  <- weekly teardown of merged/closed previews
+# Four-part family (mirrors Morrison-Lab/gha's preview family):
+#   website-preview.yml           <- this file (build; runs on pull_request)
+#   website-preview-deploy.yml    <- deploy (workflow_run, base-repo context)
+#   website-preview-equations.yml <- MathJax crawl (workflow_run, same artifact)
+#   website-preview-cleanup.yml   <- weekly teardown of merged/closed previews
 #
 # IMPORTANT: keep this workflow's `name:` in sync with the `workflows:` list in
 # website-preview-deploy.yml -- that is how the deploy half finds this run.

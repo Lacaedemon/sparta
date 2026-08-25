@@ -104,3 +104,20 @@ jobs:
       path: website
       pre-render-artifact: demo-media
       pre-render-artifact-path: website/media
+
+  # Main-branch deploy failures only show in the Actions tab unless something
+  # files an issue. Repeat failures comment on the issue already open for this
+  # title instead of filing another; close it once publish is green again.
+  report-failure:
+    needs: publish
+    if: >-
+      always()
+      && needs.publish.result == 'failure'
+      && github.event_name != 'pull_request'
+      && github.repository == 'Lacaedemon/sparta'
+    permissions:
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/report-failure.yml@v2
+    with:
+      title: Publish site workflow is failing
+      body: The documentation site did not deploy, so the published site may be stale.

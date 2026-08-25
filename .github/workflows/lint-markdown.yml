@@ -1,0 +1,21 @@
+# Lint tracked Markdown with markdownlint-cli2 (bundled default config), plus
+# companion checks for long fenced code blocks, list-item merge splices, and
+# blank lines that split a table. Advisory on first adoption (`fail: false`)
+# so a pre-existing corpus does not fail wholesale; pair with
+# check-new-line-breaks.yml, which is diff-scoped and blocking.
+#
+# Pinned to the @v2 moving major tag -- the upstream-recommended consumer pin.
+name: Lint Markdown
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: Morrison-Lab/gha/.github/workflows/lint-markdown.yml@v2
+    with:
+      fail: false
+      base-ref: ${{ github.event.pull_request.base.sha }}
