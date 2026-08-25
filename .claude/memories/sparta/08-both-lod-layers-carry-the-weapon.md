@@ -1463,10 +1463,8 @@ family is four workflows, not three), `report-failure` on `publish-site.yml`,
 and on-request Jules (`jules-review.yml`, `@jules review`).
 The repo has `JULES_API_KEY`.
 
-**Do not add without a new secret or an explicit policy change:**
-Gemini / Antigravity / Cursor Bugbot / OpenCode / `ai-code-review`.
-`gh api repos/Lacaedemon/sparta/actions/secrets` (as of 2026-08-25) listed
-only `CLAUDE_CODE_OAUTH_TOKEN`, `CODECOV_TOKEN`, and `JULES_API_KEY`.
+**Do not add without a new secret or an explicit policy change:** `gemini.yml`, `gemini-code-review.yml`, `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, and `ai-code-review.yml`.
+`gh api repos/Lacaedemon/sparta/actions/secrets` (as of 2026-08-25) listed only `CLAUDE_CODE_OAUTH_TOKEN`, `CODECOV_TOKEN`, and `JULES_API_KEY`.
 `GEMINI.md` also pauses automatic Gemini/Antigravity review for quota.
 
 **Skip as R-package-only or otherwise inapplicable:** `check-news`,
@@ -1481,8 +1479,9 @@ Start corpus-wide markdown/yaml/qmd/workflow linters at `fail: false`.
 If the site has MathJax, install `check-equation-renders` as the fourth preview
 stub and keep its `workflows:` name matched to `Website Preview Build`.
 
-On this repo `gh pr edit` (body or `--add-label`) fails with the Projects Classic GraphQL deprecation.
-The GraphQL field is `repository.pullRequest.projectCards` (reproduced 2026-08-25).
+In this environment (`gh` 2.52.0), `gh pr edit <N> --body-file <path>` and `gh pr edit <N> --add-reviewer d-morrison` exit 1 with Projects Classic deprecation on `repository.pullRequest.projectCards`.
+That is a GitHub CLI bug fixed in `cli/cli` 2.73.0 (`cli/cli#10942`), not a property of this repo.
+`--add-label` hits the same GraphQL path.
 Patch the body with
 `gh api -X PATCH repos/Lacaedemon/sparta/pulls/<N> -F body=@file.md`
 and add labels with
