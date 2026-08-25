@@ -1,0 +1,20 @@
+# Lint the prose sections of tracked .qmd Quarto files (code chunks stripped,
+# YAML front matter skipped natively) with markdownlint, via the reusable
+# workflow in Morrison-Lab/gha. Advisory on first adoption (`fail: false`) so
+# the existing website corpus does not fail wholesale on the default 80-char
+# ceiling.
+#
+# Pinned to the @v2 moving major tag -- the upstream-recommended consumer pin.
+name: Lint QMD Prose
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: Morrison-Lab/gha/.github/workflows/lint-qmd.yml@v2
+    with:
+      fail: false

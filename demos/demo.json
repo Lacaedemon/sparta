@@ -1,9 +1,4 @@
 {
-  "input": "demos/inputs/rank-knockback-recovery.json",
-  "caption": "Optimize SoldierCollision.overcomes_static_friction to compare squared velocity against squared threshold instead of calling Vector2.length().",
-  "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
-  "width": 640
+  "skip": true,
+  "reason": "CI-only change: adds GitHub Actions caller stubs. No battle recording can show a workflow file."
 }
-

@@ -1,0 +1,17 @@
+# Diff-scoped check: flags newly-added Markdown lines packing more than one
+# sentence/clause onto one source line. Only ever flags what a PR itself adds,
+# so it can block while lint-markdown stays advisory against the existing
+# long-line corpus.
+#
+# Pinned to the @v2 moving major tag -- the upstream-recommended consumer pin.
+name: Check new markdown lines for missing semantic breaks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-new-line-breaks.yml@v2

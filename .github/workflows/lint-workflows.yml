@@ -1,0 +1,19 @@
+# Audit GitHub Actions workflows and composite actions with actionlint
+# (syntax/semantics) and zizmor (security), via the reusable workflow in
+# Morrison-Lab/gha. Advisory on first adoption (`fail: false`) so a pre-existing
+# backlog of findings does not block unrelated PRs while the rules migrate.
+#
+# Pinned to the @v2 moving major tag -- the upstream-recommended consumer pin.
+name: Lint Workflows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: Morrison-Lab/gha/.github/workflows/lint-workflows.yml@v2
+    with:
+      fail: false

@@ -1,0 +1,16 @@
+# Fail when the repository tracks OS or editor detritus (.DS_Store, AppleDouble
+# `._*`, Thumbs.db, .Rhistory, .RData). Names the `git rm --cached` fix and the
+# global-gitignore step that stops it recurring.
+#
+# Pinned to the @v2 moving major tag -- the upstream-recommended consumer pin.
+name: Check Junk Files
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-junk-files.yml@v2
