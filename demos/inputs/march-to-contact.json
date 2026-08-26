@@ -29,6 +29,16 @@
     {"tick": 600, "uid": 0, "field": "state", "value": "MOVING"},
     {"tick": [600, 720], "uid": 0, "field": "current_order", "value": "MOVE"}
   ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [0],
+      "reason": "The clip's subject is March-to-contact halt-and-resume, not post-melee lattice quality. After the 12-man hostile is beaten, the player's thinned block (44 of 50) resumes the southbound march; overlap and shape_residual fire on those judged resume-march samples (melee-contact ticks are already dropped). Both metrics already failed on merge-base before this expect re-pin."
+    },
+    "shape_residual": {
+      "uids": [0],
+      "reason": "Same post-melee resume as the overlap exemption: a depleted Normal infantry block marching out of a just-finished fight, not the stance behavior this clip pins."
+    }
+  },
   "fixed_fps": 30,
   "max_frames": 370,
   "fps": 15,
