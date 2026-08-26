@@ -236,25 +236,13 @@ unit advances through its tired ally and takes over the melee, and the relieved
 regiment falls back toward its own rear --- where fatigue drains away and morale
 recovers (see [How to play](how-to-play.qmd) for the controls).
 
-- **The swap is a pass-through at the regiment level.** For its duration the two
-  friendly regiments may interpenetrate, so the line never opens a gap for the
-  enemy to pour into while the fresh unit works its way forward. That is the
-  company-interval swap the sources describe, not file permeability inside a
-  locked block.
-- **Close order impedes file-through relief.** Asclepiodotus (*Tactics* 4) gives
-  three intervals: four cubits is the natural open order; two-cubit pyknosis and
-  one-cubit synaspismos (locked shields) are forced formations, and locked shields
-  is specifically for receiving a charge. Polybius (*Histories* 18.28--32) says a
-  closed phalanx has rear ranks pressing the front by body-weight, so the front
-  cannot face about or act in squads. When the sources describe swapping units, it
-  is through gaps *between companies*, not through locked files: Livy 8.8 (hastati
-  retire through the intervals between the principes' companies; the triarii then
-  receive them through their intervals and close the lanes) and Polybius 15.9
-  (Zama: velites retire by the intervals between the maniples). A historically
-  honest corridor is therefore "pay to leave close order" --- open lanes, pass,
-  then close. A unit that stays in synaspismos stalls file-through relief. Switch
-  to Loose if you want the ranks to open a lane; ranks the partner has not reached
-  yet stay closed.
+- **The swap is a pass-through.** For its duration the two friendly regiments may
+  interpenetrate, so the line never opens a gap for the enemy to pour into while
+  the fresh unit works its way forward. The ranks the partner is actually marching
+  through also widen their file spacing so the incoming front can pass between
+  without stacking on its own men; ranks the partner has not reached yet stay
+  closed, and the lane opens a couple of ranks ahead of the pass rather than
+  fanning the whole block the moment the order arms.
 - **The retreat is an order like any other.** The relieved unit falls back under a
   normal move order (hold <kbd>Space</kbd> to see it), and you can redirect it ---
   to a safer rest spot, or straight to another fight if you must.

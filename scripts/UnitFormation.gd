@@ -188,8 +188,7 @@ static func ranks_for(n: int, files: int) -> int:
 	return int(ceil(float(n) / float(files)))
 
 
-## Lateral slot offset that opens a centre corridor for a Loose-order line-relief
-## pass-through. Close-order callers never invoke this (spread_strength stays 0).
+## Lateral slot offset that opens a centre corridor for a line-relief pass-through.
 ## Back ranks (rank > 0) push outward along `corridor_perp_local` in proportion to
 ## their lateral coordinate -- flank men step aside, the centre stays put, so the
 ## partner's front line can march between. `spread_strength` is the caller's

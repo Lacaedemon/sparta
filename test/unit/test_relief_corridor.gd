@@ -92,10 +92,6 @@ func test_formation_slots_during_relief_does_not_recurse() -> void:
 	var base: PackedVector2Array = fresh.formation_slots(fresh.soldiers, false)
 	var widened: PackedVector2Array = fresh.formation_slots(fresh.soldiers, true)
 	assert_eq(base.size(), widened.size(), "corridor keeps slot count")
-	assert_eq(fresh.formation_mode, Unit.FORMATION_NORMAL,
-			"default infantry is close order")
-	assert_eq(widened, base,
-			"close-order files stay packed during relief; the corridor is not a no-op via recursion")
 	# Extent queries must also complete (they use the base-grid path).
 	var extent: float = fresh.soldier_block_extent()
 	var partner_extent: float = tired.soldier_block_extent()
@@ -109,14 +105,6 @@ func _bare_unit() -> Unit:
 	add_child_autofree(u)
 	u.facing = Vector2.DOWN
 	u.position = Vector2.ZERO
-	return u
-
-
-## File-corridor tests that expect widening must use Loose: close order keeps
-## files packed by design (see _relief_corridor_opens_files).
-func _bare_loose_unit() -> Unit:
-	var u := _bare_unit()
-	u.set_formation(Unit.FORMATION_LOOSE)
 	return u
 
 
@@ -168,37 +156,15 @@ func test_spread_strength_is_zero_without_a_partner() -> void:
 			"no partner, no corridor")
 
 
-func test_spread_strength_is_zero_in_close_order_even_when_overlapped() -> void:
-	## Close order impedes file-through relief: even a fully overlapped partner
-	## must not open a lane. Regiment-level pass-through still applies separately.
-	var modes: Array = [
-		Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT, Unit.FORMATION_SQUARE,
-		Unit.FORMATION_SCHILTRON, Unit.FORMATION_SHIELD_WALL, Unit.FORMATION_TESTUDO,
-	]
-	for mode in modes:
-		var reliever := _bare_unit()
-		var tired := _bare_unit()
-		reliever.set_formation(mode)
-		tired.set_formation(mode)
-		_link(reliever, tired)
-		tired.position = reliever.position
-		assert_eq(reliever._relief_corridor_spread_strength(tired), 0.0,
-				"formation_mode %d keeps files closed at full overlap" % mode)
-		var base: PackedVector2Array = reliever.formation_slots(reliever.soldiers, false)
-		var out: PackedVector2Array = reliever._apply_relief_corridor_to_slots(base)
-		assert_eq(out, base,
-				"formation_mode %d leaves every slot on the base grid" % mode)
-
-
 func test_spread_strength_peaks_on_overlap_and_fades_with_distance() -> void:
-	var reliever := _bare_loose_unit()
-	var tired := _bare_loose_unit()
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
 	_link(reliever, tired)
 
 	tired.position = reliever.position
 	assert_almost_eq(reliever._relief_corridor_spread_strength(tired),
 			Unit.RELIEF_CORRIDOR_SPREAD_MAX, 0.0001,
-			"fully overlapped Loose blocks spread by the full maximum")
+			"fully overlapped blocks spread by the full maximum")
 
 	var contact: float = reliever.separation_radius + tired.separation_radius \
 			+ reliever.soldier_block_extent() + tired.soldier_block_extent()
@@ -213,8 +179,8 @@ func test_spread_strength_peaks_on_overlap_and_fades_with_distance() -> void:
 
 
 func test_corridor_is_a_no_op_on_an_empty_slot_set() -> void:
-	var reliever := _bare_loose_unit()
-	var tired := _bare_loose_unit()
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
 	_link(reliever, tired)
 	tired.position = reliever.position
 	assert_eq(reliever._apply_relief_corridor_to_slots(PackedVector2Array()).size(), 0,
@@ -224,8 +190,8 @@ func test_corridor_is_a_no_op_on_an_empty_slot_set() -> void:
 func test_corridor_widens_when_the_partner_sits_exactly_on_top() -> void:
 	## Coincident blocks leave no approach direction to derive the corridor axis from,
 	## so the widening falls back to a fixed axis instead of normalizing a zero vector.
-	var reliever := _bare_loose_unit()
-	var tired := _bare_loose_unit()
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
 	_link(reliever, tired)
 	tired.position = reliever.position
 
@@ -242,8 +208,8 @@ func test_corridor_widens_when_the_partner_sits_exactly_on_top() -> void:
 func test_corridor_bails_out_when_rank_pitch_is_degenerate() -> void:
 	## depth is the divisor that maps a slot's y back to its rank; a zero pitch would
 	## make that division meaningless, so the widening is skipped entirely.
-	var reliever := _bare_loose_unit()
-	var tired := _bare_loose_unit()
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
 	_link(reliever, tired)
 	tired.position = reliever.position + Vector2(0.0, 4.0)
 
@@ -259,8 +225,8 @@ func test_corridor_reads_rank_depth_off_the_slots_not_the_headcount() -> void:
 	## headcount instead of from the grid then shifts every rank label; on a block deeper
 	## than the headcount implies it collapses the whole thing onto rank 0, which is the one
 	## rank that gets no spread, so the corridor silently never opens.
-	var reliever := _bare_loose_unit()
-	var tired := _bare_loose_unit()
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
 	_link(reliever, tired)
 	tired.position = reliever.position + Vector2(0.0, 4.0)
 
@@ -313,8 +279,8 @@ func test_corridor_leaves_unreached_ranks_on_the_base_grid() -> void:
 	## partner is still in front of the reliever. Widening every back rank then moves
 	## men off their slots before anyone is passing through them. A partner well ahead
 	## of even the two-rank lookahead must leave the whole constructed grid untouched.
-	var reliever := _bare_loose_unit()
-	var tired := _bare_loose_unit()
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
 	_link(reliever, tired)
 	tired.position = reliever.position + Vector2(0.0, 400.0)
 
@@ -332,8 +298,8 @@ func test_corridor_leaves_unreached_ranks_on_the_base_grid() -> void:
 func test_corridor_opens_only_the_ranks_the_partner_occupies() -> void:
 	## Partner sits on the front of a deep block: the front-adjacent back rank opens,
 	## the rearmost rank -- still a full block away -- stays put.
-	var reliever := _bare_loose_unit()
-	var tired := _bare_loose_unit()
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
 	_link(reliever, tired)
 	tired.position = reliever.position + Vector2(0.0, 4.0)
 
@@ -362,9 +328,11 @@ func test_all_rank_widen_at_spread_max_misslots_unmoved_flanks() -> void:
 	## Characterization of the ungated offset: applying RELIEF_CORRIDOR_SPREAD_MAX
 	## to every back rank of a 120-man infantry grid (15 files x 8 ranks) puts more
 	## than the 0.25 misslotted budget of unmoved bodies nearer a neighbour's slot
-	## than their own. Close-order production never pays this: it does not open
-	## files at all. Loose still uses the rank gate so it never pays the cost on
-	## ranks the partner has not reached. Spread 0.10 stays well under the budget.
+	## than their own. The rank gate exists so production never pays this cost on
+	## ranks the partner has not reached. Spread 0.10 stays well under the budget,
+	## which is why lowering SPREAD_MAX across the board was the other way to buy
+	## the margin back -- and why the gate is the cheaper one: it keeps the full
+	## 0.45 corridor where the partner actually is.
 	var n := 120
 	var files := 15
 	var spacing := Unit.FORMATION_SPACING

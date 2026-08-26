@@ -4,19 +4,18 @@ class_name UnitRelief
 ## execution state lives on the reliever's RELIEF order (Order.friendly_target, a generic
 ## pass-through link any order type can arm): the pair is mutually exempt from separation
 ## while the link is live (Unit._separation_exempt checks it from either side), so they
-## pass through each other at the regiment level during the swap, and the exemption
-## clears once they're apart -- or dies with the order on an interrupt, since the
-## order owns it. That interpenetration is unit-vs-unit, not file-gap opening:
-## close-order files stay packed, so relief through a dense block remains expensive
-## by design. Only Loose-order units additionally widen slot spacing in the ranks
-## the partner is actually passing through (Unit._apply_relief_corridor_to_slots).
-## The tired unit gets a plain MOVE order for its retreat -- marched with its facing
-## held, so it backs out of the line still fronting the enemy -- so both sides of
-## the swap read straight off the queue. Static helpers on the unit -- deterministic
-## (positions / state only, no RNG), so live play and replay swap identically.
-## RELIEF is just one consumer of the generic friendly_target link and its
-## Order.resolve_friendly_target helper (see Order.gd); this file only adds the
-## RELIEF-specific swap behavior (targeting takeover + retreat order).
+## pass through each other during the swap, and the exemption clears once they're apart --
+## or dies with the order on an interrupt, since the order owns it. While the link is live
+## both blocks also widen slot spacing in the ranks the partner is actually
+## passing through (Unit._apply_relief_corridor_to_slots) so the incoming front
+## can march between without intra-unit overlap. Ranks the partner has not
+## reached stay on the base grid. The tired unit
+## gets a plain MOVE order for its retreat -- marched with its facing held, so it backs out
+## of the line still fronting the enemy -- so both sides of the swap read straight off the
+## queue. Static helpers on the unit -- deterministic (positions / state only, no RNG), so
+## live play and replay swap identically. RELIEF is just one consumer of the generic
+## friendly_target link and its Order.resolve_friendly_target helper (see Order.gd); this
+## file only adds the RELIEF-specific swap behavior (targeting takeover + retreat order).
 
 
 ## Begin relieving an engaged friendly: `u` (fresh) takes over `tired`'s fight and
