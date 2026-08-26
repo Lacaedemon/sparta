@@ -16,6 +16,7 @@ var _orig_bindings: Dictionary
 var _orig_form_up_default: int
 var _orig_form_up_cycle: Array
 var _orig_show_unit_speed: bool
+var _orig_tray_placement: bool
 
 
 func before_each() -> void:
@@ -23,8 +24,12 @@ func before_each() -> void:
 	_orig_form_up_default = Settings.form_up_dist_default
 	_orig_form_up_cycle = Settings.form_up_dist_cycle.duplicate()
 	_orig_show_unit_speed = Settings.show_unit_speed
+	_orig_tray_placement = Settings.tray_row_order_placement
 	# Pin the default cycle; a developer's persisted cfg can deviate and break these tests locally.
 	Settings.form_up_dist_cycle = [EQUAL_DEPTH, EQUAL_WIDTH]
+	Settings._loading = true
+	Settings.tray_row_order_placement = false
+	Settings._loading = false
 
 
 func after_each() -> void:
@@ -32,6 +37,9 @@ func after_each() -> void:
 	Settings.form_up_dist_default = _orig_form_up_default
 	Settings.form_up_dist_cycle = _orig_form_up_cycle.duplicate()
 	Settings.show_unit_speed = _orig_show_unit_speed
+	Settings._loading = true
+	Settings.tray_row_order_placement = _orig_tray_placement
+	Settings._loading = false
 
 
 func _sm() -> Node2D:
@@ -1940,6 +1948,180 @@ func test_order_units_for_line_sorts_by_field_position_by_default() -> void:
 	assert_eq(by_field[0], left_on_field, "field order puts the left-positioned unit on the left flank")
 	var by_sel: Array = sm._order_units_for_line(sel, Vector2(0, 0), Vector2(1000, 0), true)
 	assert_eq(by_sel[0], right_on_field, "selection order keeps the first-selected unit on the left")
+
+
+# --- tray-grid form-up (2D deploy from the unit-card tray) -----------------
+
+## HUD stand-in that only exposes get_unit_card_tray -- SelectionManager's _hud is untyped.
+class _TrayHud:
+	var tray
+
+	func get_unit_card_tray():
+		return tray
+
+
+func _sm_with_tray_grid(grid: Array) -> Array:
+	var sm := _sm()
+	var tray := UnitCardTray.new()
+	add_child_autofree(tray)
+	tray.apply_grid(grid)
+	var hud := _TrayHud.new()
+	hud.tray = tray
+	sm._hud = hud
+	Settings._loading = true
+	Settings.tray_row_order_placement = true
+	Settings._loading = false
+	return [sm, tray]
+
+
+func test_tray_grid_deploy_puts_line_1_on_the_front_and_later_lines_behind() -> void:
+	var front := _unit()
+	front.max_soldiers = 80
+	front.soldiers = 80
+	var rear := _unit()
+	rear.max_soldiers = 80
+	rear.soldiers = 80
+	var packed: Array = _sm_with_tray_grid([[front], [rear]])
+	var sm = packed[0]
+	sm._select(front)
+	sm._select(rear)
+	var slices: Array = sm._deploy_slices([front, rear], Vector2(0, 0), Vector2(400, 0), CHECKERBOARD)
+	assert_eq(slices.size(), 2)
+	var by_unit: Dictionary = {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	# Left-to-right drag faces up; behind the line is +Y.
+	assert_almost_eq(by_unit[front]["center"].y, 0.0, 0.01,
+			"Line 1 (tray row 0) sits on the dragged front line")
+	assert_gt(by_unit[rear]["center"].y, by_unit[front]["center"].y,
+			"Line 2 sits behind the front rank, not in front of it")
+	assert_almost_eq(by_unit[front]["center"].x, by_unit[rear]["center"].x, 0.01,
+			"a single-column stack keeps the same lateral centre")
+
+
+func test_tray_grid_empty_cell_becomes_a_lateral_gap() -> void:
+	var left_u := _unit()
+	left_u.max_soldiers = 80
+	left_u.soldiers = 80
+	var right_u := _unit()
+	right_u.max_soldiers = 80
+	right_u.soldiers = 80
+	var dummy := _unit()
+	dummy.max_soldiers = 80
+	dummy.soldiers = 80
+	# Second row makes the bbox 2D so tray-grid deploy applies (a single filled row
+	# would keep 1D FormUpDist). Dummy sits under the gap / left column -- not part of
+	# the span we measure between left_u and right_u.
+	var gapped_packed: Array = _sm_with_tray_grid([[left_u, null, right_u], [null, dummy, null]])
+	var gapped: Array = gapped_packed[0]._deploy_slices(
+			[left_u, right_u, dummy], Vector2(0, 0), Vector2(600, 0), EQUAL_DEPTH)
+	var adj_packed: Array = _sm_with_tray_grid([[left_u, right_u], [dummy, null]])
+	var adjacent: Array = adj_packed[0]._deploy_slices(
+			[left_u, right_u, dummy], Vector2(0, 0), Vector2(600, 0), EQUAL_DEPTH)
+	var gapped_xs: Array = []
+	for s in gapped:
+		if s["unit"] == left_u or s["unit"] == right_u:
+			gapped_xs.append(s["center"].x)
+	var adj_xs: Array = []
+	for s in adjacent:
+		if s["unit"] == left_u or s["unit"] == right_u:
+			adj_xs.append(s["center"].x)
+	assert_gt(abs(gapped_xs[1] - gapped_xs[0]), abs(adj_xs[1] - adj_xs[0]),
+			"an empty tray cell between two units opens a wider gap than adjacent columns")
+
+
+func test_tray_grid_ranks_do_not_overlap() -> void:
+	var front := _unit()
+	front.max_soldiers = 80
+	front.soldiers = 80
+	var rear := _unit()
+	rear.max_soldiers = 80
+	rear.soldiers = 80
+	var packed: Array = _sm_with_tray_grid([[front], [rear]])
+	var sm = packed[0]
+	var slices: Array = sm._deploy_slices([front, rear], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH)
+	var by_unit: Dictionary = {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	var gap: float = by_unit[rear]["center"].y - by_unit[front]["center"].y
+	var need: float = (sm._slice_depth(front, int(by_unit[front]["files"]))
+			+ sm._slice_depth(rear, int(by_unit[rear]["files"]))) * 0.5
+	assert_gt(gap + 0.01, need, "rank spacing is at least the two half-depths (blocks cannot overlap)")
+
+
+func test_tray_grid_overrides_checkerboard_form_up_dist() -> void:
+	# FormUpDist.CHECKERBOARD alternates by selection index; tray-grid uses the tray cells
+	# even when CHECKERBOARD is the live mode.
+	var a := _unit()
+	a.max_soldiers = 80
+	a.soldiers = 80
+	var b := _unit()
+	b.max_soldiers = 80
+	b.soldiers = 80
+	var c := _unit()
+	c.max_soldiers = 80
+	c.soldiers = 80
+	var packed: Array = _sm_with_tray_grid([[a, b], [c, null]])
+	var sm = packed[0]
+	var slices: Array = sm._deploy_slices([a, b, c], Vector2(0, 0), Vector2(600, 0), CHECKERBOARD)
+	var by_unit: Dictionary = {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	assert_almost_eq(by_unit[a]["center"].y, by_unit[b]["center"].y, 0.01,
+			"both Line-1 units stay on the front rank -- not checkerboard-alternated")
+	assert_gt(by_unit[c]["center"].y, by_unit[a]["center"].y,
+			"the Line-2 unit sits behind, from the tray row, not from odd/even index")
+
+
+func test_single_filled_tray_line_keeps_form_up_dist() -> void:
+	# Backward compatible: a 1-row filled tray still only reorders, then splits by mode.
+	var u1 := _unit()
+	u1.max_soldiers = 200
+	u1.soldiers = 200
+	var u2 := _unit()
+	u2.max_soldiers = 80
+	u2.soldiers = 80
+	var packed: Array = _sm_with_tray_grid([[u1, u2]])
+	var sm = packed[0]
+	assert_false(sm._should_use_tray_grid_layout([u1, u2]),
+			"a single filled line is not a 2D tray layout")
+	var depth_slices: Array = sm._deploy_slices([u1, u2], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH)
+	var width_slices: Array = sm._deploy_slices([u1, u2], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH)
+	assert_ne(int(depth_slices[0]["files"]), int(width_slices[0]["files"]),
+			"FormUpDist still changes file counts on a single filled tray line")
+
+
+func test_can_form_up_uses_tray_column_count_including_gaps() -> void:
+	var left_u := _unit()
+	var right_u := _unit()
+	var packed: Array = _sm_with_tray_grid([[left_u, null, right_u]])
+	var sm = packed[0]
+	sm._select(left_u)
+	sm._select(right_u)
+	var two_unit_min: float = (SelectionManagerScript.FORM_UP_MIN_WIDTH
+			+ SelectionManagerScript.MULTI_FORM_UP_GAP)
+	assert_false(sm._can_form_up(Vector2.ZERO, Vector2(two_unit_min, 0)),
+			"a 3-column tray (gap in the middle) needs more than a 2-unit 1D minimum")
+	var three_col_min: float = (SelectionManagerScript.FORM_UP_MIN_WIDTH
+			+ SelectionManagerScript.MULTI_FORM_UP_GAP * 2.0)
+	assert_true(sm._can_form_up(Vector2.ZERO, Vector2(three_col_min, 0)),
+			"a drag wide enough for three column slots forms up")
+
+
+func test_tray_grid_off_falls_back_to_form_up_dist() -> void:
+	var a := _unit()
+	a.max_soldiers = 80
+	a.soldiers = 80
+	var b := _unit()
+	b.max_soldiers = 80
+	b.soldiers = 80
+	var packed: Array = _sm_with_tray_grid([[a], [b]])
+	var sm = packed[0]
+	Settings._loading = true
+	Settings.tray_row_order_placement = false
+	Settings._loading = false
+	assert_false(sm._should_use_tray_grid_layout([a, b]),
+			"the toggle off keeps today's FormUpDist split even when a tray grid exists")
 
 
 func test_issue_form_up_routes_one_order_per_selected_unit() -> void:

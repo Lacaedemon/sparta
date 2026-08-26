@@ -77,6 +77,10 @@ const UNBOUNDED_FILES: int = 1000000
 # from it -- an offensive concentration on the leading flank, or equivalently a refused
 # (withheld) trailing flank, depending which end of the same diagonal you read it from. See
 # _echelon_slices for the geometry.
+#
+# Tray-grid deploy (Settings.tray_row_order_placement plus a 2D tray layout) is a
+# separate path entirely -- it does not add a FormUpDist value. Empty tray cells are
+# the gaps, not CHECKERBOARD's alternating-index split. See _tray_grid_slices.
 enum FormUpDist { EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT, CHECKERBOARD,
 		ECHELON_RIGHT, ECHELON_LEFT }
 const FORM_UP_DIST_NAMES := {
@@ -689,11 +693,13 @@ func _can_form_up(a: Vector2, b: Vector2) -> bool:
 		return false
 	if _unit_at(a, _enemy_team(), true) != null or _unit_at(b, _enemy_team(), true) != null:
 		return false
-	# The inter-unit gaps eat MULTI_FORM_UP_GAP*(n-1) of the drag, so require that much extra
-	# on top of FORM_UP_MIN_WIDTH — otherwise a multi-unit drag could leave zero usable width
-	# and collapse every unit to a single-file column. A too-short drag falls back to a move.
+	# Gaps eat MULTI_FORM_UP_GAP per seam, so require that much extra on top of
+	# FORM_UP_MIN_WIDTH — otherwise a multi-unit drag could leave zero usable width and
+	# collapse every unit to a single-file column. Tray-grid deploy counts COLUMNS of the
+	# occupied bounding box (empty cells still occupy a slot), not just live unit count.
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-	var threshold: float = FORM_UP_MIN_WIDTH + MULTI_FORM_UP_GAP * float(n - 1)
+	var slots: int = _form_up_front_slots(_live_selected_units())
+	var threshold: float = FORM_UP_MIN_WIDTH + MULTI_FORM_UP_GAP * float(maxi(0, slots - 1))
 	return a.distance_squared_to(b) >= threshold * threshold
 
 
@@ -712,7 +718,7 @@ func _issue_form_up(a: Vector2, b: Vector2, by_selection_order: bool = false) ->
 	if units.is_empty():
 		return
 	var face: float = _form_up_facing(a, b)
-	var slices: Array = _form_up_slices(units, a, b, _form_up_dist)
+	var slices: Array = _deploy_slices(units, a, b, _form_up_dist)
 	var group_id: int = -1
 	if slices.size() > 1:
 		group_id = _next_form_up_group_id
@@ -742,8 +748,8 @@ func _live_selected_units() -> Array:
 func _order_units_for_line(units: Array, a: Vector2, b: Vector2, by_selection_order: bool) -> Array:
 	if by_selection_order or units.size() < 2:
 		return units
-	if Settings.tray_row_order_placement and _hud != null and _hud.has_method("get_unit_card_tray"):
-		var tray = _hud.get_unit_card_tray()
+	if Settings.tray_row_order_placement:
+		var tray = _get_unit_card_tray()
 		if tray != null:
 			var tray_order: Array = tray.get_units_in_tray_order()
 			if not tray_order.is_empty():
@@ -761,6 +767,78 @@ func _order_units_for_line(units: Array, a: Vector2, b: Vector2, by_selection_or
 	var ordered: Array = units.duplicate()
 	ordered.sort_custom(func(p, q): return (p.global_position - a).dot(dir) < (q.global_position - a).dot(dir))
 	return ordered
+
+
+## The live unit-card tray, or null when HUD is missing / has no tray. Shared by the 1D
+## tray-order sort and the 2D tray-grid deploy so both paths agree on the same source.
+func _get_unit_card_tray():
+	if _hud == null or not _hud.has_method("get_unit_card_tray"):
+		return null
+	return _hud.get_unit_card_tray()
+
+
+## True when a form-up drag should place `units` from the tray's 2D grid instead of the
+## live FormUpDist mode. Requires the tray-formation toggle, every selected unit to have a
+## cell, and a layout that is actually 2D (more than one row, or at least one empty cell
+## inside the occupied bounding box). A single filled line keeps today's 1D tray-order
+## plus FormUpDist split -- this is only the ranks-and-gaps extension.
+func _should_use_tray_grid_layout(units: Array) -> bool:
+	if not Settings.tray_row_order_placement or units.is_empty():
+		return false
+	var tray = _get_unit_card_tray()
+	if tray == null or not tray.has_method("cell_of"):
+		return false
+	var bbox: Dictionary = _tray_occupied_bbox(tray, units)
+	if bbox.is_empty():
+		return false
+	var area: int = int(bbox["rows"]) * int(bbox["cols"])
+	return int(bbox["rows"]) > 1 or units.size() < area
+
+
+## Occupied bounding box of `units` in `tray`: min/max row and column, plus the resulting
+## size. Empty when any unit has no cell -- callers treat that as "not a tray layout".
+func _tray_occupied_bbox(tray, units: Array) -> Dictionary:
+	var min_r: int = 2147483647
+	var max_r: int = -1
+	var min_c: int = 2147483647
+	var max_c: int = -1
+	for u in units:
+		var cell: Vector2i = tray.cell_of(u)
+		if cell.x < 0:
+			return {}
+		min_r = mini(min_r, cell.x)
+		max_r = maxi(max_r, cell.x)
+		min_c = mini(min_c, cell.y)
+		max_c = maxi(max_c, cell.y)
+	return {
+		"min_row": min_r,
+		"max_row": max_r,
+		"min_col": min_c,
+		"max_col": max_c,
+		"rows": max_r - min_r + 1,
+		"cols": max_c - min_c + 1,
+	}
+
+
+## How many front-line slots a form-up of `units` needs. Tray-grid deploy uses the
+## bounding-box column count (empty cells still take a slot); every other path uses the
+## live unit count, matching the original MULTI_FORM_UP_GAP*(n-1) rule.
+func _form_up_front_slots(units: Array) -> int:
+	if _should_use_tray_grid_layout(units):
+		var tray = _get_unit_card_tray()
+		var bbox: Dictionary = _tray_occupied_bbox(tray, units)
+		if not bbox.is_empty():
+			return int(bbox["cols"])
+	return units.size()
+
+
+## Slice split the live form-up gesture will commit -- tray 2D grid when that mode
+## applies, otherwise the FormUpDist split. Preview and commit both read this so they
+## cannot disagree.
+func _deploy_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
+	if _should_use_tray_grid_layout(units):
+		return _tray_grid_slices(units, a, b)
+	return _form_up_slices(units, a, b, mode)
 
 
 ## Split the `a`->`b` flank line into one contiguous slice per unit, per the distribution
@@ -809,6 +887,96 @@ func _line_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
 ## sites read as geometry, not preview code.
 func _slice_width(u, files: int) -> float:
 	return _resize_preview_half_width(u, files) * 2.0
+
+
+## Front-to-back depth (world units) a regiment occupies at `files` files on its own rank
+## pitch -- the depth counterpart of _slice_width, so stacked tray ranks cannot overlap.
+func _slice_depth(u, files: int) -> float:
+	var n: int = u.soldiers if u.soldiers > 0 else u.max_soldiers
+	var ranks: int = UnitFormation.ranks_for(n, maxi(1, files))
+	return float(maxi(0, ranks - 1)) * u.rank_pitch_wu()
+
+
+## Tray-grid layout: place each selected unit at its tray cell relative to the dragged
+## front line. Row 0 of the occupied bounding box is the front rank (on the drag, matching
+## _line_slices putting centres on the line); later rows sit behind, spaced by each rank's
+## own formation depth plus MULTI_FORM_UP_GAP. Columns divide the drag equally, and empty
+## cells still occupy a column so a tray gap becomes a real spatial gap -- distinct from
+## FormUpDist.CHECKERBOARD, which alternates by selection index and ignores the tray.
+func _tray_grid_slices(units: Array, a: Vector2, b: Vector2) -> Array:
+	var tray = _get_unit_card_tray()
+	if tray == null:
+		return _line_slices(units, a, b, FormUpDist.EQUAL_WIDTH)
+	var bbox: Dictionary = _tray_occupied_bbox(tray, units)
+	if bbox.is_empty():
+		return _line_slices(units, a, b, FormUpDist.EQUAL_WIDTH)
+	var n_rows: int = int(bbox["rows"])
+	var n_cols: int = int(bbox["cols"])
+	var min_r: int = int(bbox["min_row"])
+	var min_c: int = int(bbox["min_col"])
+	var occ: Array = []
+	for r in n_rows:
+		var row: Array = []
+		row.resize(n_cols)
+		occ.append(row)
+	for u in units:
+		var cell: Vector2i = tray.cell_of(u)
+		occ[cell.x - min_r][cell.y - min_c] = u
+	var dir: Vector2 = (b - a).normalized()
+	var total: float = a.distance_to(b)
+	var usable: float = maxf(total - MULTI_FORM_UP_GAP * float(n_cols - 1), 0.0)
+	var col_width: float = usable / float(n_cols) if n_cols > 0 else 0.0
+	var files_of: Dictionary = {}
+	var depth_of: Dictionary = {}
+	for u in units:
+		var files: int = UnitFormation.files_for_halfwidth(
+				col_width * 0.5, u.max_soldiers, u.file_pitch_wu())
+		files_of[u.get_instance_id()] = files
+		depth_of[u.get_instance_id()] = _slice_depth(u, files)
+	var row_depth: Array = []
+	var occupied_max: float = 0.0
+	for r in n_rows:
+		var d: float = 0.0
+		var any_unit: bool = false
+		for c in n_cols:
+			var occupant = occ[r][c]
+			if occupant != null:
+				any_unit = true
+				d = maxf(d, float(depth_of[occupant.get_instance_id()]))
+		row_depth.append(d)
+		if any_unit:
+			occupied_max = maxf(occupied_max, d)
+	for r in n_rows:
+		if float(row_depth[r]) <= 0.0:
+			row_depth[r] = occupied_max
+	var row_offset: Array = []
+	var acc: float = 0.0
+	for r in n_rows:
+		if r == 0:
+			row_offset.append(0.0)
+			acc = float(row_depth[0]) * 0.5
+		else:
+			acc += MULTI_FORM_UP_GAP + float(row_depth[r]) * 0.5
+			row_offset.append(acc)
+			acc += float(row_depth[r]) * 0.5
+	var face: float = _form_up_facing(a, b)
+	var back: Vector2 = -Vector2.RIGHT.rotated(face)
+	var span: float = col_width * float(n_cols) + MULTI_FORM_UP_GAP * float(n_cols - 1)
+	var out: Array = []
+	for r in n_rows:
+		var cursor: float = (total - span) * 0.5
+		for c in n_cols:
+			var occupant = occ[r][c]
+			if occupant != null:
+				var center: Vector2 = a + dir * (cursor + col_width * 0.5)
+				center += back * float(row_offset[r])
+				out.append({
+					"unit": occupant,
+					"center": center,
+					"files": int(files_of[occupant.get_instance_id()]),
+				})
+			cursor += col_width + MULTI_FORM_UP_GAP
+	return out
 
 
 ## Checkerboard (quincunx) layout, docs/acies-triplex-design.md: alternates the ordered
@@ -2180,7 +2348,8 @@ func _draw_form_up_preview() -> void:
 		return
 	var face: float = _form_up_facing(_rmb_start, end_pos)
 	var font := ThemeDB.fallback_font
-	for slice in _form_up_slices(units, _rmb_start, end_pos, _form_up_dist):
+	var tray_grid: bool = _should_use_tray_grid_layout(units)
+	for slice in _deploy_slices(units, _rmb_start, end_pos, _form_up_dist):
 		_draw_form_up_line(slice["center"], face, slice["files"], FORM_UP_COLOR,
 				slice["unit"].file_pitch_wu())
 		# Centre the file-count label over the slice (width -1 ignores CENTER alignment, so
@@ -2191,10 +2360,12 @@ func _draw_form_up_preview() -> void:
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, FORM_UP_COLOR)
 	# Name the active distribution mode by the cursor for a multi-unit deploy, so it's clear
 	# which split is in effect and that the cycle key (Y) changed it. One unit fills the line
-	# whatever the mode, so the label would just be noise there.
+	# whatever the mode, so the label would just be noise there. Tray-grid deploy names itself
+	# instead of the unused FormUpDist, since Y does not change that layout.
 	if units.size() > 1:
-		draw_string(font, end_pos + Vector2(10.0, 14.0),
-				str(FORM_UP_DIST_NAMES.get(_form_up_dist, "")),
+		var mode_label: String = "Tray formation" if tray_grid else str(
+				FORM_UP_DIST_NAMES.get(_form_up_dist, ""))
+		draw_string(font, end_pos + Vector2(10.0, 14.0), mode_label,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, FORM_UP_COLOR)
 
 

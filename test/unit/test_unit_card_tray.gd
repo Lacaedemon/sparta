@@ -368,3 +368,47 @@ func test_reset_and_sync_with_no_units_still_leaves_one_empty_row() -> void:
 	assert_eq(tray._grid.size(), 1,
 			"reset_and_sync never collapses to zero rows -- same invariant _ready() establishes")
 	assert_eq(tray.get_units_in_tray_order(), [], "...just an empty row, no leftover units")
+
+
+func test_cell_of_returns_row_column_and_miss_sentinel() -> void:
+	var tray := _tray()
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Principes 1")
+	tray.sync_units([u1, u2])
+	assert_eq(tray.cell_of(u1), Vector2i(0, 0), "first placed unit is row 0 col 0")
+	assert_eq(tray.cell_of(u2), Vector2i(0, 1), "second placed unit is the next column")
+	var stranger := _named_unit("Not in tray")
+	assert_eq(tray.cell_of(stranger), Vector2i(-1, -1), "a unit outside the tray is a miss")
+	assert_eq(tray.cell_of(null), Vector2i(-1, -1), "null is a miss, not (0, 0)")
+
+
+func test_apply_grid_keeps_empty_cells_and_pads_rows_to_one_width() -> void:
+	var tray := _tray()
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Triarii 1")
+	tray.apply_grid([[u1, null, u2], [null]])
+	assert_eq(tray.columns(), 3, "width comes from the first row")
+	assert_eq(tray._grid.size(), 2)
+	assert_eq(tray._grid[0][0], u1)
+	assert_null(tray._grid[0][1], "the middle cell stays a real gap")
+	assert_eq(tray._grid[0][2], u2)
+	assert_eq(tray._grid[1].size(), 3, "a shorter second row is padded to the same width")
+	assert_null(tray._grid[1][2], "the padded cell is empty")
+
+
+func test_apply_uid_grid_resolves_uids_and_treats_missing_as_empty() -> void:
+	var tray := _tray()
+	var u := _named_unit("Hastati 1")
+	u.uid = 7
+	tray.apply_uid_grid([[7, null], [99, 7]], {7: u})
+	assert_eq(tray._grid[0][0], u)
+	assert_null(tray._grid[0][1])
+	assert_null(tray._grid[1][0], "an unknown uid becomes an empty cell")
+	assert_eq(tray._grid[1][1], u)
+
+
+func test_placement_checkbox_labels_the_2d_deploy() -> void:
+	var tray := _tray()
+	assert_eq(tray._row_placement_check.text, "Tray formation placement")
+	assert_true(tray._row_placement_check.tooltip_text.contains("front rank"),
+			"the tooltip names Line 1 as the front rank")

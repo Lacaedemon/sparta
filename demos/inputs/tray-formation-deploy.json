@@ -1,0 +1,29 @@
+{
+  "_comment": "Tray-grid form-up (#1048): three player Infantry units start bunched just north of the deploy line. The recorder seeds the unit-card tray as a quincunx (Line 1: uid 0, gap, uid 1; Line 2: gap, uid 2, gap) and turns tray_row_order_placement on without showing the tray overlay (it would cover most of a 720px-wide clip). Box-select, then a right-to-left drag so the perpendicular facing points south -- the same way the units already stand -- and the tray grid places uid 0 and uid 1 on the front with a gap, uid 2 behind covering that gap. Distinct from form_up_dist CHECKERBOARD, which ignores the tray and alternates by index. drill:true (no team 1). Camera holds a wide frame covering the start cluster and the settled quincunx.",
+  "seed": "10481048",
+  "drill": true,
+  "tray_row_order_placement": true,
+  "tray_grid": [
+    [0, null, 1],
+    [null, 2, null]
+  ],
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 620, "y": 420, "count": 80},
+    {"team": 0, "type": "Infantry", "x": 720, "y": 420, "count": 80},
+    {"team": 0, "type": "Infantry", "x": 820, "y": 420, "count": 80}
+  ],
+  "camera": [
+    {"tick": 0, "x": 720.0, "y": 500.0, "zoom": 0.95}
+  ],
+  "steps": [
+    {"tick": 5, "box": {"from": [550, 370], "to": [890, 470]}},
+    {"tick": 20, "rmb_drag": {"from": [1000, 560], "to": [440, 560]}}
+  ],
+  "state": [10, 40, 80, 160, 280, 400, 520, 640, 760],
+  "expect": [
+    {"tick": 10, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": [400, 760], "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": [400, 760], "uid": 1, "field": "state", "value": "IDLE"},
+    {"tick": [400, 760], "uid": 2, "field": "state", "value": "IDLE"}
+  ]
+}
