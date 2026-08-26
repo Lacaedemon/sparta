@@ -236,9 +236,14 @@ unit advances through its tired ally and takes over the melee, and the relieved
 regiment falls back toward its own rear --- where fatigue drains away and morale
 recovers (see [How to play](how-to-play.qmd) for the controls).
 
-- **The swap is a pass-through.** For its duration the two friendly regiments may
-  interpenetrate, so the line never opens a gap for the enemy to pour into while
-  the fresh unit works its way forward.
+- **The swap is a regiment pass-through, not a file-gap opening.** For its duration the
+  two friendly *regiments* may interpenetrate, so the line never opens a
+  company-sized hole for the enemy to pour into while the fresh unit works its way
+  forward. Close-order *files* stay packed: 0.45 m synaspismos on foot and 1 m
+  knee-to-knee on horse leave a derived side gap of ~0, so a partner cannot march
+  between files. Only a block that already has open file clearance (0.9 m on foot,
+  Loose cavalry) widens a lane. Blocked relief through a locked interval is
+  intended.
 - **The retreat is an order like any other.** The relieved unit falls back under a
   normal move order (hold <kbd>Space</kbd> to see it), and you can redirect it ---
   to a safer rest spot, or straight to another fight if you must.
@@ -614,13 +619,17 @@ commit your horse.
 
 ## Formation stances
 
-Press <kbd>T</kbd> to cycle a unit's density --- **Normal**, **Tight** (closed ranks:
-better missile and charge defence), **Loose** (open order: room to fire), and **Square**
-(the anti-cavalry ring, covered below). <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other
-way, handy for stepping back one density without looping all the way round. Two heavier
+Press <kbd>T</kbd> to cycle a unit's density --- named on the control bar by the live
+**slot-center pitch in metres** (the interval includes the man or horse). On foot that
+is **0.45 m**, **0.45 m locked** (Tight: the same interval with better missile and
+charge defence), **0.9 m** (historically pyknosis close order, not true open order
+at ~1.8 m), and **Square** (the anti-cavalry ring, covered below).
+<kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way, handy for stepping back one
+density without looping all the way round. Two heavier
 **shielded close-order stances**
-build on Tight's locked-shield density and are set from the control-bar Formation menu or
-their own direct keys.
+pack *below* the 0.45 m floor and are set from the control-bar Formation menu or
+their own direct keys. Cavalry uses the same identity with a different preset
+(1 m files &times; 3 m ranks; Loose doubles both).
 
 Density also decides how deep an enemy can press into the line once melee is joined.
 Tight, Square, Schiltron, Shield Wall, and Testudo hold the enemy at the front rank
@@ -666,8 +675,8 @@ formations rather than dissolving into a mob.
 </video>
 ```
 
-Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to
-Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight --- the same
+Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps 0.45 m locked
+to 0.9 m, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back --- the same
 parallelism as Shift+Y and Shift+X reversing the form-up-split and
 group-attack-mode cycles.
 :::

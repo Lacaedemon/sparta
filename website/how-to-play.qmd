@@ -48,7 +48,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Set stance in place | <kbd>Ctrl</kbd> + a stance key writes that stance on the selection immediately --- no move/attack order needed |
 | Rank relief (discipline) | <kbd>I</kbd> toggles rank cycling for the selection (on by default; see [Tactics](tactics.qmd#rank-cycling-trained-units)) |
 | Draw the other carried weapon | <kbd>Shift+I</kbd> re-equips the selection to the second weapon its soldiers carry, and back again. Only some troops carry a second one --- legionaries deploy holding the gladius with a pilum stowed (see [Tactics](tactics.qmd#drawing-the-other-weapon)) |
-| Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose / Square; <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way) · or **control bar** |
+| Formation | <kbd>T</kbd> (cycles 0.45 m / 0.45 m locked / 0.9 m / Square on foot; cavalry shows 1&nbsp;m&nbsp;&times;&nbsp;3&nbsp;m on the same axis; <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way) · or **control bar** |
 | Anti-cavalry square | <kbd>O</kbd> jumps straight to Square / orbis (press again to drop back to Normal) · or click **Square (Orbis)** in the control bar |
 | Schiltron | <kbd>Shift</kbd> + <kbd>O</kbd> jumps straight to Schiltron, the harder-bracing anti-cavalry variant (press again to drop back to Normal) · or click **Schiltron** in the control bar |
 | Shielded stances | <kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or the **control bar** menu |
@@ -89,10 +89,12 @@ under pressure.
 the screen with clickable buttons for the most-used unit toggles.
 Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.
 
-- **Formation** --- click Normal, Tight, Loose, or Square (Orbis) directly (same as
+- **Formation** --- click 0.45 m, 0.45 m locked, 0.9 m, or Square (Orbis) directly (same as
   <kbd>T</kbd>), or pick one of the other direct-select stances: **Schiltron**
   (<kbd>Shift</kbd> + <kbd>O</kbd>, the harder-bracing anti-cavalry variant),
-  **Shield Wall** (<kbd>L</kbd>), or **Testudo** (<kbd>U</kbd>). <kbd>T</kbd> cycles only
+  **Shield Wall** (<kbd>L</kbd>), or **Testudo** (<kbd>U</kbd>). The button shows the
+  selected unit's live slot-center pitch in metres --- cavalry reads **1 m &times; 3 m**
+  (file then rank) on that same identity, not a second scale. <kbd>T</kbd> cycles only
   the density set plus Square; the other three stances are set from the menu or their
   direct keys.
 - **Stance** --- click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).
@@ -736,13 +738,17 @@ while visibly shoving the enemy line back harder with every blow.
 
 **Relieve a fighting friendly (line relief).** Right-click an **engaged friendly**
 outside your selection to order a relief: the fresh unit advances into the fight and
-the tired one peels back toward its own rear to rest. The two regiments pass through
-each other during the swap --- the reliever takes over the melee, and the relieved
-unit's retreat is a real move order, so holding <kbd>Space</kbd> shows it like any
-other march. The relieved regiment backs out **facing the enemy** rather than turning
-its back on the line it just left, so it keeps its ranks square the whole way out.
-Any fresh order to the reliever cancels the swap where it stands.
-Relief is how you win a long grind --- see [Tactics](tactics.qmd#line-relief).
+the tired one peels back toward its own rear to rest. The two *regiments* pass through
+each other during the swap --- that is unit-level interpenetration so the line never
+opens a company-sized hole, not files spreading apart. Close-order files (0.45 m on
+foot, 1 m knee-to-knee on horse) stay packed; only a block whose derived file gap is
+already open (0.9 m Loose on foot, Loose cavalry) widens a lane between files.
+The reliever takes over the melee, and the relieved unit's retreat is a real move
+order, so holding <kbd>Space</kbd> shows it like any other march. The relieved
+regiment backs out **facing the enemy** rather than turning its back on the line it
+just left, so it keeps its ranks square the whole way out. Any fresh order to the
+reliever cancels the swap where it stands. Relief is how you win a long grind ---
+see [Tactics](tactics.qmd#line-relief).
 
 ::: {#fig-line-relief .demo}
 
@@ -783,18 +789,28 @@ Distributed, each relieve a different tired unit in one order instead of all
 three swapping with the single unit clicked.
 :::
 
-Press <kbd>T</kbd> to cycle a selected unit's **formation** --- *Tight* closes ranks
-for better missile and charge defence, *Loose* spreads out, and *Square* forms the
-anti-cavalry ring described below. Every unit can cycle through all four; each type
-just starts at a different one --- spearmen deploy Tight (locked shields against a
-charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry
-deploy at the plain Normal combat order.
+Press <kbd>T</kbd> to cycle a selected unit's **formation density** --- the control
+bar names each mode by its live **slot-center pitch in metres** (the interval
+includes the man or horse; it is not empty air between bodies). On foot that is
+*0.45 m* (synaspismos), *0.45 m locked* (the same interval with Tight's missile and
+charge bonuses), *0.9 m* (pyknosis --- historically close order, not true open
+order), and *Square* (the anti-cavalry ring described below). Tight does **not**
+pack the grid tighter than 0.45 m; there is no historically grounded room below
+synaspismos except Shield Wall / Testudo. Every unit can cycle through all four;
+each type just starts at a different one --- spearmen deploy locked (0.45 m locked
+against a charge), archers deploy at 0.9 m (room to fire), and sword-armed infantry
+and cavalry deploy at their type's default combat interval.
 
-The grid each density mode scales is itself **per-type**:
-foot regiments stand at close order (about half a metre per man on both axes),
-while a cavalry regiment's grid is far roomier ---
-about a metre between files and three metres between ranks,
-the riding room a horse needs side-to-side and nose-to-tail.
+The grid each density mode scales is itself **per-type**, on that **same**
+centre-pitch identity:
+foot regiments stand isotropic at 0.45 m on both axes,
+while a cavalry regiment's grid is anisotropic ---
+**1 m between files** (one horse-width, derived side gap ~0, knee-to-knee) and
+**3 m between ranks** (Aelian: horse length ~3&times; shoulder width;
+Asclepiodotus 7.4: Greeks doubled the interval between riders so an 8-deep &times;
+16-front block still looked square). Cavalry has no separate spacing metric and no
+extra stance list yet: <kbd>T</kbd> still walks the infantry option set, doubling
+both axes in Loose (2 m files / 6 m ranks).
 A mounted regiment therefore occupies several times the ground
 of a foot block with the same headcount,
 and its deep column takes visibly longer to wheel or pivot.
@@ -813,6 +829,23 @@ and its deep column takes visibly longer to wheel or pivot.
 An 80-horse Cavalry regiment (right) on its own grid pitch beside a 120-man
 Infantry block (left) at foot close order: the mounted block stands both wider
 and far deeper, and marches as one body on that roomier grid.
+:::
+
+::: {#fig-interval-labels .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/interval_labels.jpg">
+  <source src="media/interval_labels.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Same spacing identity, different presets: a foot block at 0.45 m beside a
+cavalry squadron at 1 m files &times; 3 m ranks. <kbd>T</kbd> walks the foot
+block to 0.45 m locked (same interval) then 0.9 m; the horse keeps its own
+anisotropic pitch.
 :::
 
 **Square: orbis and schiltron (anti-cavalry rings).** *Square* forms a hollow square:
