@@ -1,6 +1,6 @@
 {
   "_comment": "Spacing-identity drill: one Infantry block (0.45 m isotropic) and one Cavalry squadron (1 m files x 3 m ranks) staged abreast with no opponent. Select the foot unit, press T to 0.45 m locked (same interval, combat fork), press T again to 0.9 m pyknosis, then select the horse so the HUD reads 1 x 3 m. Fresh scenario; world coordinates; physics ticks (60/s).",
-  "seed": "1400",
+  "spawn_fingerprint": "3879799d72bffd3bfec0bb844b1dfa8f",
   "drill": true,
   "scenario": [
     {"team": 0, "type": "Infantry", "x": 480, "y": 520, "count": 36, "facing": [0, 1]},
