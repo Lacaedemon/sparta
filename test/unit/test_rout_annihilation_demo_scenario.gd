@@ -25,14 +25,15 @@ extends GutTest
 # own tick counter measures sim progress directly, and the budget comes from the sim's own timing
 # constants (with generous margin) rather than the demo's presentation clip length.
 #
-# A two-cavalry charge onto a morale-1 block routs it; the faster cavalry then run it down within
-# ROUT_TIME (observed annihilation around tick ~230 once the soldier bodies correctly keep
-# stepping/coupling while routing --- see Battle._on_soldier_tick). ROUT_ONSET_BUDGET covers
-# the charge-in and break; ROUT_TIME plus margin covers the chase-and-catch. The onset budget is
-# deliberately generous so a physics retune (e.g. a change to the soldier-body arrival dynamics)
-# that shifts *when* the block breaks doesn't push the arc past the budget: the onset has been
-# observed anywhere from ~tick 100 to ~tick 365 depending on the body physics, and the whole arc
-# still lands well inside this total.
+# A two-squadron charge onto a morale-1 block routs it; the faster cavalry then run it down
+# within ROUT_TIME. ROUT_ONSET_BUDGET covers the charge-in and break; ROUT_TIME plus margin
+# covers the chase-and-catch. The squadrons are shallow (12 horses): an 80-horse column's
+# facing-front sits a mounted rank-pitch past regiment-circle contact, so per-soldier melee
+# would land no blows and the block would never break. Twelve horses (three ranks) put that
+# front on the infantry at contact, and the 12-man morale-1 line still crumples on the first
+# deaths (morale erosion is a fraction of max strength). The squadrons spawn close so the
+# onset is a charge into contact, not a long approach, and the onset budget stays generous so
+# a physics retune that shifts *when* the block breaks doesn't push the arc past the budget.
 const ROUT_ONSET_BUDGET := 600   # ticks allowed for the block to break and start routing
 const CHASE_MARGIN := 240        # slack past ROUT_TIME for the pursuit to catch and finish it
 
@@ -57,10 +58,10 @@ func _spawn_rout_rally_battle() -> void:
 	_battle = battle
 	# The exact matchup from demos/inputs/rout-rally-recover.json.
 	battle.scenario = [
-		{"team": 0, "type": "Infantry", "x": 800, "y": 430, "count": 140, "morale": 1.0},
+		{"team": 0, "type": "Infantry", "x": 800, "y": 430, "count": 12, "morale": 1.0},
 		{"team": 0, "type": "Spearmen", "x": 300, "y": 300, "count": 140, "morale": 100.0},
-		{"team": 1, "type": "Cavalry", "x": 740, "y": 560},
-		{"team": 1, "type": "Cavalry", "x": 860, "y": 560},
+		{"team": 1, "type": "Cavalry", "x": 740, "y": 500, "count": 12},
+		{"team": 1, "type": "Cavalry", "x": 860, "y": 500, "count": 12},
 	]
 	add_child_autofree(battle)
 

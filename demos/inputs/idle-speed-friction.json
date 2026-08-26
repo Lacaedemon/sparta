@@ -1,19 +1,25 @@
 {
-  "_comment": "Idle-speed-friction demo: Unit._current_speed now bleeds off via arrival_brake_rate() instead of snapping to zero the instant a unit stops locomoting with no move/chase target (Battle._physics_process's 'no momentum while stationary' guard, scripts/Unit.gd). A lone Cavalry regiment (fast approach, slow-ish brake -- the biggest, clearest decay window of any unit type) charges a single weak Infantry regiment (5 soldiers) and wipes it out in a few strikes; once the last enemy on the field is dead the cavalry has nothing left to chase or march toward, so it goes idle mid-charge with real residual speed still on the clock. hold_space + show_unit_speed (session-only, Settings.set_show_unit_speed_session -- never persisted) put the HUD speed label on screen the whole time: it holds near the charge speed through the brief fight, then visibly counts down over several seconds instead of snapping straight to '0.0 m/s'. drill:true stops Battle._check_victory from pausing the tree once team 1 is wiped out, so the recording keeps running through the whole decay. Deterministic: seed + scripted input + a custom scenario (no default line spawn).",
+  "_comment": "Idle-speed-friction demo: Unit._current_speed now bleeds off via arrival_brake_rate() instead of snapping to zero the instant a unit stops locomoting with no move/chase target (Battle._physics_process's 'no momentum while stationary' guard, scripts/Unit.gd). A shallow 8-horse Cavalry troop (facing-front actually in spatha reach of a small remnant) charges a brittle 3-man Infantry squad and wipes it; once the last enemy on the field is dead the cavalry has nothing left to chase or march toward, so it goes idle mid-pursuit with real residual speed still on the clock. An 80-horse column's facing-front sits a mounted rank-pitch past a 5-man blob and never finishes the wipe under per-soldier melee, which is why this clip is staged shallow. hold_space + show_unit_speed (session-only, Settings.set_show_unit_speed_session -- never persisted) put the HUD speed label on screen the whole time: it holds near the charge speed through the fight, then visibly counts down over several seconds instead of snapping straight to '0.0 m/s'. drill:true stops Battle._check_victory from pausing the tree once team 1 is wiped out, so the recording keeps running through the whole decay. Deterministic: seed + scripted input + a custom scenario (no default line spawn). Verified by state dump: infantry gone by t480; cavalry IDLE with residual speed 85 wu/s at t480, decaying 72 / 59 / 32 / 5 through t500-600 while still sliding south.",
   "seed": "12345",
   "show_unit_speed": true,
   "drill": true,
   "scenario": [
-    {"team": 0, "type": "Cavalry", "x": 700, "y": 300, "count": 80},
-    {"team": 1, "type": "Infantry", "x": 700, "y": 550, "count": 5}
+    {"team": 0, "type": "Cavalry", "x": 700, "y": 400, "count": 8},
+    {"team": 1, "type": "Infantry", "x": 700, "y": 500, "count": 3, "morale": 1.0}
   ],
   "camera": [
-    {"tick": 0, "x": 700.0, "y": 420.0, "zoom": 1.5}
+    {"tick": 0, "x": 700.0, "y": 480.0, "zoom": 1.3},
+    {"tick": 400, "x": 700.0, "y": 600.0, "zoom": 1.3},
+    {"tick": 500, "x": 700.0, "y": 680.0, "zoom": 1.3}
   ],
   "steps": [
     {"tick": 2, "hold_space": true},
-    {"tick": 8, "click": [700, 300]},
-    {"tick": 16, "rmb_click": [700, 550]}
+    {"tick": 8, "click": [700, 400]},
+    {"tick": 16, "rmb_click": [700, 500]}
   ],
-  "state": [8, 60, 120, 160, 200, 240, 280, 340, 420, 500, 600]
+  "state": [8, 80, 160, 240, 340, 420, 480, 520, 560, 600],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [700.0, 400.0]},
+    {"tick": [480, 600], "uid": 0, "field": "state", "value": "IDLE"}
+  ]
 }

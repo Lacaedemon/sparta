@@ -187,16 +187,13 @@ broke, for as long as it's still on the field.
 </video>
 ```
 
-Routing around terrain: a brittle cavalry unit holds just west of the hill,
-breaks under a flank charge, and flees for its own back edge. The northward
-rout tracks the hill's west face at the regiment's clearance margin -- the
-same corridor an ordered march gets -- rather than a head-on south-of-hill
-staging, which the hold default lets a western charge herd off the flee
-lane. The fresher pursuer traces that west-face corridor and runs the broken
-unit down at the hill's far shoulder. A router with no terrain escape route
-left at all stands and fights instead of fleeing in place
-(see [Terrain](#terrain)) -- the open field this clip runs in never actually
-boxes a unit in, so that specific case isn't shown here.
+Routing around terrain: a cavalry troop stands just south of the impassable
+hill and takes a western-flank charge. Opening melee is per-soldier, so this
+matchup no longer breaks on the first formula blow, and the flee-around-the-hill
+staging that used to follow that instant rout does not play here. A router with
+no terrain escape route left at all still stands and fights instead of fleeing
+in place (see [Terrain](#terrain)) &mdash; the open field this clip runs in
+never actually boxes a unit in, so that specific case isn't shown here.
 :::
 
 ## Rank cycling (trained units)
@@ -1023,6 +1020,28 @@ So a spear line meeting a sword line head-on gets free hits during the approach 
 another reason to lead with spearmen and let the shorter weapons pin and flank. Combat
 resolves **per soldier** by weapon reach: a spearman strikes any enemy within its
 longer reach, while a swordsman beyond its own (shorter) reach cannot strike back.
+That is also how a clash *starts*: the opening blow is the same per-soldier contest,
+not a regiment-sized lump of casualties fired the moment the two centres cross a
+circle of weapon-range-plus-radii. A small unit therefore cannot vanish in one tick
+at a distance its men have not closed, and a rear or flank contact hits the soldiers
+who are actually next to the blow rather than a facing-front rank on the far side of
+the block.
+
+::: {#fig-small-unit-melee .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/small_unit_melee.jpg">
+  <source src="media/small_unit_melee.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A 10-horse cavalry troop attacks another 10-horse troop head-on. Opening melee is
+per-soldier: neither roster vanishes in one tick at regiment-circle range, and both
+sides trade wounds once the men are actually in reach.
+:::
 
 That opening-strike edge now **holds up once the lines are locked**, not just on the
 approach. A spearman doesn't back away once a swordsman closes in --- it holds its
@@ -1451,9 +1470,9 @@ chase.
 </video>
 ```
 
-Coasting to a stop: a lone Cavalry regiment wipes out its target mid-charge;
-with no enemy left to chase and no new order, it keeps sliding forward on its
-residual charge speed, decelerating, before finally coming to rest.
+Coasting to a stop: a shallow Cavalry troop wipes a small Infantry remnant
+mid-charge; with no enemy left to chase and no new order, it keeps sliding
+forward on its residual speed, decelerating, before finally coming to rest.
 :::
 
 ## Wheeling on a flank
@@ -1551,9 +1570,9 @@ into different tools:
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
   into braced spears, where a fast charge backfires. The retire leg rides at a trot
   and brakes onto the standoff before wheeling about, and the run back in canters
-  until the final sprint --- so the loop keeps after a target that breaks and
-  flees, instead of strolling off behind it and never re-engaging
-  (@fig-cycle-charge-flee).
+  until the final sprint (@fig-cycle-charge-flee). The same loop also keeps after
+  a target that breaks and flees, instead of strolling off behind it and never
+  re-engaging.
 - **Sweep routers** (<kbd>,</kbd>) --- the unit prioritizes a routing (fleeing) enemy
   over a closer enemy that's still standing and fighting, even as the gap to the
   router narrows. Arm it on a unit you want cleaning up broken formations rather
@@ -1661,11 +1680,10 @@ into different tools:
 </video>
 ```
 
-Two identical Spearmen lines face a cavalry charge. Both wait in place -- the
-no-order default holds formation rather than auto-advancing. The right line is
-ordered to Brace and settles well before contact; the left is left unbraced.
-On impact the unbraced line is shoved forward into the melee; the braced line
-holds near where it stood. The clip cuts as the right-hand charge arrives.
+Two identical Spearmen lines face an identical cavalry charge. The right line is
+ordered to Brace and settles well before contact; the left is left at the
+merely-engaged default. The braced line holds its ground almost exactly on
+impact, while the unbraced line visibly presses forward into the melee.
 :::
 
 ::: {#fig-cycle-charge-flee .demo}
@@ -1679,10 +1697,11 @@ holds near where it stood. The clip cuts as the right-hand charge arrives.
 </video>
 ```
 
-A caracole against a broken foe: the first impact routs the infantry, which flees.
-The cavalry retires at a trot, brakes onto its standoff, wheels about, and canters
-back in to drive a second charge home --- the foe rallies while the horse is out at
-the standoff, and the fresh charge slams into it just the same.
+A cycle-charge caracole: the horse lands its impact, peels back to a trot,
+brakes onto the standoff, wheels about, and canters in for another run.
+Opening melee is per-soldier, so the first blow no longer deletes a 70-man
+line; the loop still peels and returns. The same loop keeps after a target
+that actually breaks and flees.
 :::
 
 ::: {#fig-chase-canter .demo}
