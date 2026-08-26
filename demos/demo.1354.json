@@ -1,0 +1,9 @@
+{
+  "_comment": "Per-PR demo for the hold-formation catalog re-pin. Brace vs unbraced is the clip whose on-screen claim actually changed: both spear lines now hold until the cavalry arrives, and the contrast is knockback on impact rather than the unbraced line walking forward.",
+  "input": "demos/inputs/brace-vs-unbraced-charge.json",
+  "caption": "Hold-formation default, catalog re-pin: two identical Spearmen lines wait in place for the same cavalry charge. The right line is ordered to Brace and holds its ground on impact; the left is left at the no-order default and is driven back. The clip runs to 320 frames so both charges land (the left-hand pair only meets around tick 520).",
+  "fixed_fps": 30,
+  "max_frames": 320,
+  "fps": 15,
+  "width": 720
+}

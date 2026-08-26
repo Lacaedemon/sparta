@@ -187,12 +187,12 @@ broke, for as long as it's still on the field.
 </video>
 ```
 
-Routing around terrain: a brittle cavalry unit breaks under a flank charge
-and flees for its own back edge &mdash; straight into the hill &mdash; but the
-rout bends around the obstacle at the unit's own clearance margin instead of
-walking into it, the same routing an ordered march gets. The fresher pursuer
-traces the same corridor, cuts the corner, and runs the broken unit down at
-the hill's far shoulder. A router with no terrain escape route left at all
+Routing around terrain: a brittle cavalry unit holds west of the hill, breaks
+under a flank charge, and flees for its own back edge. The rout runs along the
+hill's west face at the unit's own clearance margin instead of walking into
+the block, the same routing an ordered march gets. The fresher pursuer
+traces the same corridor and runs the broken unit down at the hill's far
+shoulder. A router with no terrain escape route left at all
 stands and fights instead of fleeing in place (see [Terrain](#terrain))
 &mdash; the open field this clip runs in never actually boxes a unit in, so
 that specific case isn't shown here.
@@ -1621,8 +1621,9 @@ into different tools:
 
 Two identical Spearmen lines face an identical cavalry charge. The right line is
 ordered to Brace and settles well before contact; the left is left at the
-merely-engaged default. The braced line holds its ground almost exactly on
-impact, while the unbraced line visibly presses forward into the melee.
+no-order default (it holds formation, and does not auto-advance). The braced
+line holds its ground almost exactly on impact; the unbraced line is driven
+back.
 :::
 
 ::: {#fig-cycle-charge-flee .demo}

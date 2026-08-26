@@ -1,11 +1,11 @@
 {
-  "_comment": "Scenario-staged routing-around-terrain demo: a brittle player cavalry unit (60 mounts at morale 3) stands just south of the impassable hill; an enemy cavalry charge from its WESTERN flank breaks it on contact. The flank angle is deliberate, learned by dumping three failed stagings: a charge from dead behind overshoots NORTH onto the flee lane and physically walls it (the mob gets knocked back south off its own escape route), a rear cavalry pursuer that stays in contact herds and grinds the mob before any detour shows, and archer fire pins the mob prone into a crawl. A flank charge overshoots EAST instead, so the northward flee lane stays open: the rout streams north, meets the hill dead ahead, and PathField.next_step_fleeing() bends it around the west corner with the unit's own clearance margin -- the same routing an ordered march gets -- while the recovering pursuer traces the same corridor behind it. This scenario does NOT demonstrate the separate 'stands and fights when genuinely trapped' behavior -- the hill is a single free-standing obstacle nowhere near a field edge, so terrain alone can never fully enclose a unit here; that behavior is covered by test_trapped_routing_unit_fights_instead_of_fleeing, which stages a real sealed ring directly. No player input needed; the scenario + seed make the clash deterministic. Sampled ticks pin the router's story beats (spawn, break, corner-rounding, the catch at the far shoulder): the pursuer's own formation progressively deforms during the long gallop chase -- a known, separately tracked sim/calibration question with fresh data posted from this retune -- so mid-gallop samples of the pursuer's cosmetics are deliberately not part of this clip's declared checks.",
+  "_comment": "Scenario-staged routing-around-terrain demo: a brittle player cavalry unit (60 mounts at morale 3) HOLDS just west of the impassable hill; an enemy cavalry charge from its WESTERN flank breaks it on contact. The player no longer auto-advances, so the spawn sits west of the hill's west face (x=1100, hill from x=1150) -- a hold at the old (1250, 620) south-of-hill spot lets the charge herd the router south-east, off the flee lane, and the clip never shows the detour. From this west-of-hill hold the northward flee runs along the west face at the unit's own clearance margin -- the same routing an ordered march gets -- while the recovering pursuer traces the same corridor and runs it down at the northwest shoulder. The flank angle is still load-bearing: a charge from dead behind overshoots NORTH onto the flee lane and physically walls it, a contact pursuer that stays on the lane herds and grinds the mob, and archer fire pins it prone into a crawl. This scenario does NOT demonstrate the separate 'stands and fights when genuinely trapped' behavior -- the hill is a single free-standing obstacle nowhere near a field edge; that case is covered by test_trapped_routing_unit_fights_instead_of_fleeing. No player input needed; the scenario + seed make the clash deterministic. Sampled ticks pin the router's story beats (hold at spawn, break, climb the west face, the catch at the far shoulder): the pursuer's own formation progressively deforms during the long gallop chase -- a known, separately tracked sim question -- so mid-gallop samples of the pursuer's cosmetics are deliberately not part of this clip's declared checks.",
   "seed": "12345",
   "scenario": [
     {
       "team": 0,
       "type": "Cavalry",
-      "x": 1250,
+      "x": 1100,
       "y": 620,
       "count": 60,
       "morale": 3.0
@@ -13,14 +13,14 @@
     {
       "team": 1,
       "type": "Cavalry",
-      "x": 1080,
+      "x": 930,
       "y": 620
     }
   ],
   "camera": [
     {
       "tick": 0,
-      "x": 1250.0,
+      "x": 1100.0,
       "y": 520.0,
       "zoom": 0.65
     }
@@ -28,8 +28,9 @@
   "steps": [],
   "state": [
     10,
-    120,
+    180,
     240,
+    480,
     680
   ],
   "expect": [
@@ -38,15 +39,27 @@
       "uid": 0,
       "field": "position",
       "value": [
-        1249.39,
+        1100.0,
         620.0
       ]
     },
     {
+      "tick": 10,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
       "tick": [
-        120,
+        180,
         240
       ],
+      "uid": 0,
+      "field": "state",
+      "value": "ROUTING"
+    },
+    {
+      "tick": 480,
       "uid": 0,
       "field": "state",
       "value": "ROUTING"
