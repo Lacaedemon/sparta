@@ -627,7 +627,7 @@ func test_hud_consistency_passes_when_hud_matches_sim() -> void:
 	var snaps: Array = [
 		{
 			"tick": 10,
-			"units": [{"uid": 1, "formation": "NORMAL"}],
+			"units": [{"uid": 1, "formation": "NORMAL", "file_pitch": 9.0, "rank_pitch": 9.0}],
 			"hud": {
 				"shown_unit_uid": 1,
 				"formation_text": "0.45 m",
@@ -636,7 +636,7 @@ func test_hud_consistency_passes_when_hud_matches_sim() -> void:
 		},
 		{
 			"tick": 20,
-			"units": [{"uid": 1, "formation": "SQUARE"}],
+			"units": [{"uid": 1, "formation": "SQUARE", "file_pitch": 9.0, "rank_pitch": 9.0}],
 			"hud": {
 				"shown_unit_uid": 1,
 				"formation_text": "0.45 m Square",
@@ -655,7 +655,7 @@ func test_hud_consistency_forgives_single_sample_clock_skew() -> void:
 	var snaps: Array = [
 		{
 			"tick": 10,
-			"units": [{"uid": 1, "formation": "NORMAL"}],
+			"units": [{"uid": 1, "formation": "NORMAL", "file_pitch": 9.0, "rank_pitch": 9.0}],
 			"hud": {
 				"shown_unit_uid": 1,
 				"formation_text": "0.45 m",
@@ -664,7 +664,7 @@ func test_hud_consistency_forgives_single_sample_clock_skew() -> void:
 		},
 		{
 			"tick": 20,
-			"units": [{"uid": 1, "formation": "TIGHT"}],
+			"units": [{"uid": 1, "formation": "TIGHT", "file_pitch": 9.0, "rank_pitch": 9.0}],
 			"hud": {
 				"shown_unit_uid": 1,
 				"formation_text": "0.45 m", # transient 1-sample skew
@@ -673,7 +673,7 @@ func test_hud_consistency_forgives_single_sample_clock_skew() -> void:
 		},
 		{
 			"tick": 30,
-			"units": [{"uid": 1, "formation": "TIGHT"}],
+			"units": [{"uid": 1, "formation": "TIGHT", "file_pitch": 9.0, "rank_pitch": 9.0}],
 			"hud": {
 				"shown_unit_uid": 1,
 				"formation_text": "0.45 m locked", # resynced on next sample
@@ -689,7 +689,7 @@ func test_hud_consistency_detects_sustained_formation_mismatch() -> void:
 	var snaps: Array = [
 		{
 			"tick": 10,
-			"units": [{"uid": 1, "formation": "TIGHT"}],
+			"units": [{"uid": 1, "formation": "TIGHT", "file_pitch": 9.0, "rank_pitch": 9.0}],
 			"hud": {
 				"shown_unit_uid": 1,
 				"formation_text": "0.45 m",
@@ -698,7 +698,7 @@ func test_hud_consistency_detects_sustained_formation_mismatch() -> void:
 		},
 		{
 			"tick": 20,
-			"units": [{"uid": 1, "formation": "TIGHT"}],
+			"units": [{"uid": 1, "formation": "TIGHT", "file_pitch": 9.0, "rank_pitch": 9.0}],
 			"hud": {
 				"shown_unit_uid": 1,
 				"formation_text": "0.45 m",
@@ -774,6 +774,37 @@ func test_hud_formation_name_rebuilds_cavalry_anisotropic_label() -> void:
 	assert_eq(DemoDefects.hud_formation_name("NORMAL", 20.0, 60.0), "1 x 3 m",
 			"cavalry dump rebuilds file x rank, not the infantry 0.45 m default")
 	assert_eq(DemoDefects.hud_formation_name("LOOSE", 40.0, 120.0), "2 x 6 m")
+	assert_eq(DemoDefects.hud_formation_name("TIGHT", 9.0, 9.0), "0.45 m locked")
+	assert_eq(DemoDefects.hud_formation_name("SQUARE", 9.0, 9.0), "0.45 m Square")
+	assert_eq(DemoDefects.hud_formation_name("UNKNOWN", 9.0, 9.0), "",
+			"unknown mode skips rather than guessing")
+	assert_eq(DemoDefects.hud_formation_name("NORMAL"), "",
+			"omitted pitch skips rather than loading Unit.FORMATION_SPACING")
+
+
+func test_hud_consistency_passes_dumped_formation_label() -> void:
+	var snaps: Array = [
+		{
+			"tick": 10,
+			"units": [{"uid": 1, "formation": "NORMAL", "formation_label": "1 x 3 m"}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "1 x 3 m",
+				"ctrl_bar_visible": true,
+			},
+		},
+		{
+			"tick": 20,
+			"units": [{"uid": 1, "formation": "NORMAL", "formation_label": "1 x 3 m"}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "1 x 3 m",
+				"ctrl_bar_visible": true,
+			},
+		},
+	]
+	var verdicts: Array = DemoDefects.check_hud_consistency(snaps)
+	assert_true(bool(verdicts[0]["pass"]), "dumped formation_label matches HUD without rebuild")
 
 
 func test_hud_consistency_passes_cavalry_anisotropic_label() -> void:
@@ -799,5 +830,44 @@ func test_hud_consistency_passes_cavalry_anisotropic_label() -> void:
 	]
 	var verdicts: Array = DemoDefects.check_hud_consistency(snaps)
 	assert_true(bool(verdicts[0]["pass"]), "cavalry HUD label matches dumped pitches")
+
+
+func test_hud_consistency_detects_dump_vs_rebuild_mismatch() -> void:
+	# Dumped caption disagrees with the pitch rebuild: suffix-map drift, not HUD skew.
+	var snaps: Array = [
+		{
+			"tick": 10,
+			"units": [{
+				"uid": 1,
+				"formation": "NORMAL",
+				"file_pitch": 20.0,
+				"rank_pitch": 60.0,
+				"formation_label": "0.45 m",
+			}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "0.45 m",
+				"ctrl_bar_visible": true,
+			},
+		},
+		{
+			"tick": 20,
+			"units": [{
+				"uid": 1,
+				"formation": "NORMAL",
+				"file_pitch": 20.0,
+				"rank_pitch": 60.0,
+				"formation_label": "0.45 m",
+			}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "0.45 m",
+				"ctrl_bar_visible": true,
+			},
+		},
+	]
+	var verdicts: Array = DemoDefects.check_hud_consistency(snaps)
+	assert_false(bool(verdicts[0]["pass"]), "dump caption vs pitch rebuild must fail")
+	assert_string_contains(str(verdicts[0]["worst"]), "pitch rebuild")
 
 

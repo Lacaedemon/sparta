@@ -224,6 +224,8 @@ func test_unit_record_dumps_pitches_at_top_level() -> void:
 	var rec: Dictionary = DemoState.unit_record(u, {}, 1.0, false)
 	assert_eq(float(rec["file_pitch"]), 20.0, "HUD checks can read file pitch without FULL")
 	assert_eq(float(rec["rank_pitch"]), 60.0, "and rank pitch for the anisotropic label")
+	assert_eq(str(rec["formation_label"]), "1 x 3 m",
+			"dumped caption matches the HUD so the analyzer need not load Unit")
 
 
 func test_build_snapshot_captures_hud_when_present() -> void:

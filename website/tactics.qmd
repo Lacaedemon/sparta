@@ -791,12 +791,12 @@ as the shape of the saving and not a number to time a charge against.
 **Orbis vs schiltron.** The hollow square comes in two variants with different
 trade-offs, not one generic stance:
 
-- **Orbis** (<kbd>O</kbd>, or the control bar's **Square (Orbis)** button) is the
+- **Orbis** (<kbd>O</kbd>, or the control bar's **0.45 m Square** button) is the
   last-stand ring. Its charge brace and offence sit at the square's baseline, but it
   holds its nerve better than any other stance --- casualties erode its morale more
   slowly, so a surrounded unit fighting to the end is less likely to break outright.
   Reach for it when a unit is cut off and simply needs to survive as long as possible.
-- **Schiltron** (<kbd>Shift</kbd> + <kbd>O</kbd>, or the control bar's **Schiltron**
+- **Schiltron** (<kbd>Shift</kbd> + <kbd>O</kbd>, or the control bar's **0.45 m Schiltron**
   button) is the cavalry specialist. Its denser hedge of levelled spears braces a
   charge *harder* than the orbis does --- cavalry riding into a schiltron comes off
   worse than riding into an orbis --- at the cost of hitting even softer in return,

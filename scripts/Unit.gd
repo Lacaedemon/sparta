@@ -6284,9 +6284,10 @@ func formation_label_for_mode(mode: int) -> String:
 ## Player-facing label for a formation `mode` whose live file interval is
 ## `pitch_wu` world units (already density-scaled slot-center pitch). Optional
 ## `rank_wu` adds "file x rank" when the two pitches differ (cavalry). Static so
-## the HUD consistency checker can rebuild the same string from a dump.
+## the HUD can stamp a caption with no live unit; the transcript analyzer rebuilds
+## the same string via DistanceLegend.interval_pair_label without loading this file.
 static func formation_interval_label(mode: int, pitch_wu: float, rank_wu: float = -1.0) -> String:
-	var interval: String = _interval_pair_label(pitch_wu, rank_wu)
+	var interval: String = DistanceLegend.interval_pair_label(pitch_wu, rank_wu)
 	match mode:
 		FORMATION_TIGHT:
 			return "%s locked" % interval
@@ -6300,19 +6301,6 @@ static func formation_interval_label(mode: int, pitch_wu: float, rank_wu: float 
 			return "%s Testudo" % interval
 		_:
 			return interval
-
-
-## "0.45 m" when file equals rank (or rank is omitted); "1 x 3 m" when they
-## differ. File first, then rank -- the same slot-center-pitch identity on both
-## axes. ASCII "x", not a multiplication sign.
-static func _interval_pair_label(file_wu: float, rank_wu: float) -> String:
-	var file_s: String = DistanceLegend.interval_label_text(
-			DistanceLegend.metres_for_world(file_wu, WorldScaleRef.WU_PER_M))
-	if rank_wu < 0.0 or is_equal_approx(file_wu, rank_wu):
-		return file_s
-	var rank_s: String = DistanceLegend.interval_label_text(
-			DistanceLegend.metres_for_world(rank_wu, WorldScaleRef.WU_PER_M))
-	return "%s x %s" % [file_s.trim_suffix(" m"), rank_s]
 
 
 ## The other unit in a live line-relief pass-through swap, if any. The link normally

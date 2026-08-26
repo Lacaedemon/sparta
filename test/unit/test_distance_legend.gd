@@ -167,6 +167,16 @@ func test_interval_label_text_guards_nonpositive() -> void:
 	assert_eq(DistanceLegend.interval_label_text(-1.0), "0 m")
 
 
+func test_interval_pair_label_is_isotropic_when_axes_match() -> void:
+	assert_eq(DistanceLegend.interval_pair_label(9.0, 9.0), "0.45 m")
+	assert_eq(DistanceLegend.interval_pair_label(9.0), "0.45 m",
+			"omitted rank is isotropic")
+
+
+func test_interval_pair_label_is_anisotropic_when_axes_differ() -> void:
+	assert_eq(DistanceLegend.interval_pair_label(20.0, 60.0), "1 x 3 m")
+
+
 # --- end-to-end sanity: the bar reads sensibly across the camera's real zoom range -------
 
 func test_end_to_end_across_the_camera_zoom_range() -> void:
