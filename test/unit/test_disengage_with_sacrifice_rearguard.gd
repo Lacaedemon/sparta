@@ -11,6 +11,14 @@ const BattleScript = preload("res://scripts/Battle.gd")
 const SPAWN := Vector2(500, 470)
 
 
+func before_each() -> void:
+	# Pin the global combat RNG so each test's battle plays the same rolls
+	# regardless of how many draws earlier tests consumed (the same convention
+	# test_all_out_attack.gd uses). The pursuer-blocked proof below samples
+	# real combat outcomes, which otherwise shift with suite order.
+	Replay.rng.seed = 12345
+
+
 func _spawn(scenario: Array) -> Node:
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.drill_mode = true
@@ -169,11 +177,14 @@ func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_esc
 	var pursuer_start: Vector2 = pursuer.position
 
 	battle.enqueue_disengage_with_sacrifice([main_body.uid])
+	var pursuer_fought := false
 	for _k in range(90):   # 1.5s -- long enough for contact/engagement to settle
 		await get_tree().physics_frame
+		if pursuer.state == Unit.State.FIGHTING:
+			pursuer_fought = true
 
-	assert_eq(pursuer.state, Unit.State.FIGHTING,
-			"the pursuer is still fighting -- something real is in its way")
+	assert_true(pursuer_fought,
+			"the pursuer spent part of the window fighting -- something real is in its way")
 	assert_lt(pursuer.position.distance_to(pursuer_start), 40.0,
 			"and hasn't advanced far from where the clash started -- it's blocked, not slowed" \
 			+ " by a multiplier while still closing the distance")

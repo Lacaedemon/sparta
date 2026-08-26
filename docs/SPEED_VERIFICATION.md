@@ -104,12 +104,15 @@ above do -- flagged as an open question rather than asserted as verified.
   half the tightest historically attested spacing" -- that comparison
   mislabeled the 0.9 m *close-order* (pyknosis) figure as synaspismos.
   Synaspismos, the tier that is actually tightest, is 0.45 m/man -- Sparta's
-  `FORMATION_SPACING` **matches** it as the Tight floor. Normal (pyknosis, 0.9 m)
-  is the default fighting order; Loose is true open order (1.8 m).
+  `FORMATION_SPACING` **matches** it as the Tight floor.
+  Normal (pyknosis, 0.9 m) is the default fighting order;
+  Loose is true open order (1.8 m).
   **Update:** Tight remains synaspismos (0.45 m), the authored
-  `FORMATION_SPACING` floor. Normal is pyknosis at 2x (~0.9 m), the default
-  fighting order. Loose is true open order at 4x (~1.8 m). Density scales
-  1x / 2x / 4x from the type's authored pitch (cavalry Tight 1 m x 3 m).
+  `FORMATION_SPACING` floor.
+  Normal is pyknosis at 2x (~0.9 m), the default fighting order.
+  Loose is true open order at 4x (~1.8 m).
+  Density scales 1x / 2x / 4x from the type's authored pitch
+  (cavalry Tight 1 m x 3 m).
   See `NORMAL_SPACING_SCALE` / `LOOSE_SPACING_SCALE` and the rationale
   comment on `FORMATION_SPACING` in `scripts/Unit.gd`.
 
@@ -147,10 +150,11 @@ correctly; the other is a real, citable discrepancy:
    *tightest* attested Hellenistic-phalanx tier** -- not "about half the
    tightest historically attested spacing" as an earlier draft of this
    document claimed (that draft mislabeled the looser 0.9 m *close-order*
-   figure as synaspismos). Tight is that floor; **Normal is now pyknosis
-   (~0.9 m), the default fighting order**, and Loose is true open order
-   (~1.8 m). Synaspismos stays the locked defensive stance, not the
-   standing density.
+   figure as synaspismos).
+   Tight is that floor; **Normal is now pyknosis (~0.9 m), the default
+   fighting order**, and Loose is true open order (~1.8 m).
+   Synaspismos stays the locked defensive stance, not the standing density.
+
 2. **Cavalry charge speed (8.5 m/s / 30.6 km/h) sits between a canter and a
    true gallop** -- faster than the 16-27 km/h canter range, well short of
    the 40-48 km/h gallop range. The earlier draft of this document asserted
@@ -159,17 +163,19 @@ correctly; the other is a real, citable discrepancy:
    value to raise.
 
 The default-density question tracked as #719 is the live identity: Normal
-is pyknosis, Tight is reserved synaspismos. The third original concern --
-cavalry visual size -- is a rendering question this document's
-physics-radius check can't settle either way; also tracked separately.
+is pyknosis, Tight is reserved synaspismos.
+The third original concern -- cavalry visual size -- is a rendering question
+this document's physics-radius check can't settle either way; also tracked
+separately.
 
 ### Follow-up issues filed from this verification
 
 - [#719](https://github.com/Lacaedemon/sparta/issues/719) -- default density
   is now pyknosis (~0.9 m/man); synaspismos (0.45 m) is the Tight locked
-  stance. The follow-up's "consider loosening the default" question is the
-  live identity; keep the issue if any remaining balance work still hangs
-  off it.
+  stance.
+  The follow-up's "consider loosening the default" question is the live
+  identity; keep the issue if any remaining balance work still hangs off it.
+
 - [#721](https://github.com/Lacaedemon/sparta/issues/721) -- cavalry
   visual/silhouette size vs. collision radius (rendering, not physics) --
   separate from anything this document verifies.
