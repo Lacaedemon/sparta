@@ -696,17 +696,33 @@ static func _vec(pair) -> Vector2:
 	return Vector2(float(pair[0]), float(pair[1]))
 
 
-## Map a sim formation name to the expected HUD display text.
-static func hud_formation_name(sim_formation: String) -> String:
+## Map a sim formation name to the expected HUD display text. Optional
+## `file_pitch_wu` / `rank_pitch_wu` are the dumped live slot-center pitches
+## (already density-scaled). When omitted the infantry FORMATION_SPACING floor
+## times that mode's scale is used -- the same default the control bar shows
+## before a unit is selected. Passing rank is what makes an anisotropic cavalry
+## dump rebuild as "1 x 3 m" rather than the file number alone.
+static func hud_formation_name(sim_formation: String, file_pitch_wu: float = -1.0,
+		rank_pitch_wu: float = -1.0) -> String:
+	var mode: int = _formation_mode_from_name(sim_formation)
+	if mode < 0:
+		return ""
+	var pitch: float = file_pitch_wu
+	if pitch < 0.0:
+		pitch = Unit.FORMATION_SPACING * Unit.spacing_scale_for_mode(mode)
+	return Unit.formation_interval_label(mode, pitch, rank_pitch_wu)
+
+
+static func _formation_mode_from_name(sim_formation: String) -> int:
 	match sim_formation:
-		"NORMAL": return "Normal"
-		"TIGHT": return "Tight"
-		"LOOSE": return "Loose"
-		"SQUARE": return "Square (Orbis)"
-		"SHIELD_WALL": return "Shield Wall"
-		"TESTUDO": return "Testudo"
-		"SCHILTRON": return "Schiltron"
-		_: return ""
+		"NORMAL": return Unit.FORMATION_NORMAL
+		"TIGHT": return Unit.FORMATION_TIGHT
+		"LOOSE": return Unit.FORMATION_LOOSE
+		"SQUARE": return Unit.FORMATION_SQUARE
+		"SHIELD_WALL": return Unit.FORMATION_SHIELD_WALL
+		"TESTUDO": return Unit.FORMATION_TESTUDO
+		"SCHILTRON": return Unit.FORMATION_SCHILTRON
+		_: return -1
 
 
 ## Check consistency between the player-visible HUD readout and sim state across all snapshots.
@@ -762,7 +778,13 @@ static func check_hud_consistency(snapshots: Array) -> Array:
 		var sim_formation: String = str(matching_unit.get("formation", ""))
 		var hud_formation: String = str(hud.get("formation_text", "")).strip_edges()
 		if hud_formation != "" and not matching_unit.is_empty():
-			var expected: String = hud_formation_name(sim_formation)
+			var pitch: float = float(matching_unit.get("file_pitch", -1.0))
+			var rank: float = float(matching_unit.get("rank_pitch", -1.0))
+			if pitch < 0.0 and matching_unit.has("motion_ref"):
+				var ref: Dictionary = matching_unit["motion_ref"]
+				pitch = float(ref.get("file_pitch", -1.0))
+				rank = float(ref.get("rank_pitch", -1.0))
+			var expected: String = hud_formation_name(sim_formation, pitch, rank)
 			if expected != "" and hud_formation != expected:
 				formation_run += 1
 				worst_formation_run = maxi(worst_formation_run, formation_run)

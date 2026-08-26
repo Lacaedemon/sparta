@@ -148,6 +148,25 @@ func test_label_text_at_and_above_a_kilometre() -> void:
 	assert_eq(DistanceLegend.label_text(2000.0), "2 km")
 
 
+# --- interval_label_text (formation slot-center pitch) ---------------------
+
+func test_interval_label_text_keeps_centimetres_under_a_metre() -> void:
+	assert_eq(DistanceLegend.interval_label_text(0.45), "0.45 m",
+			"synaspismos must not round to 0 m")
+	assert_eq(DistanceLegend.interval_label_text(0.90), "0.9 m",
+			"trailing zero drops so pyknosis reads 0.9 m")
+
+
+func test_interval_label_text_whole_metres_drop_the_decimal() -> void:
+	assert_eq(DistanceLegend.interval_label_text(1.0), "1 m")
+	assert_eq(DistanceLegend.interval_label_text(3.0), "3 m")
+
+
+func test_interval_label_text_guards_nonpositive() -> void:
+	assert_eq(DistanceLegend.interval_label_text(0.0), "0 m")
+	assert_eq(DistanceLegend.interval_label_text(-1.0), "0 m")
+
+
 # --- end-to-end sanity: the bar reads sensibly across the camera's real zoom range -------
 
 func test_end_to_end_across_the_camera_zoom_range() -> void:

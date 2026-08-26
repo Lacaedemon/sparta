@@ -3898,15 +3898,57 @@ func test_tight_formation_reduces_cavalry_charge_bonus() -> void:
 func test_formation_summary_returns_correct_names() -> void:
 	var u := _make_unit()
 	u.set_formation(Unit.FORMATION_NORMAL)
-	assert_eq(u.formation_summary(), "Normal")
+	assert_eq(u.formation_summary(), "0.45 m")
 	u.set_formation(Unit.FORMATION_TIGHT)
-	assert_eq(u.formation_summary(), "Tight")
+	assert_eq(u.formation_summary(), "0.45 m locked")
 	u.set_formation(Unit.FORMATION_LOOSE)
-	assert_eq(u.formation_summary(), "Loose")
+	assert_eq(u.formation_summary(), "0.9 m")
 	u.set_formation(Unit.FORMATION_SHIELD_WALL)
-	assert_eq(u.formation_summary(), "Shield Wall")
+	assert_eq(u.formation_summary(), "0.34 m Shield Wall")
 	u.set_formation(Unit.FORMATION_TESTUDO)
-	assert_eq(u.formation_summary(), "Testudo")
+	assert_eq(u.formation_summary(), "0.27 m Testudo")
+
+
+func test_formation_summary_labels_cavalry_anisotropic_pitch() -> void:
+	# Battle loadout: 1.0 m files, 3.0 m ranks. Same slot-center identity as
+	# infantry; the HUD must show both axes rather than the infantry 0.45 m floor.
+	var cav := _cavalry()
+	cav.file_pitch = Unit.CAV_MARK_RADIUS * 2.0
+	cav.rank_pitch = Unit.CAV_MARK_RADIUS * 6.0
+	cav.set_formation(Unit.FORMATION_NORMAL)
+	assert_eq(cav.formation_summary(), "1 x 3 m",
+			"cavalry default is file x rank metres, not the foot 0.45 m label")
+	cav.set_formation(Unit.FORMATION_TIGHT)
+	assert_eq(cav.formation_summary(), "1 x 3 m locked",
+			"Tight is a combat fork at the same cavalry interval")
+	cav.set_formation(Unit.FORMATION_LOOSE)
+	assert_eq(cav.formation_summary(), "2 x 6 m",
+			"Loose doubles both axes; still one identity, not a second scale")
+
+
+func test_file_clearance_is_zero_at_synaspismos() -> void:
+	var u := _make_unit()
+	assert_almost_eq(u.file_clearance_wu(), 0.0, 0.0001,
+			"0.45 m pitch minus two 0.225 m half-widths is a packed file")
+	u.set_formation(Unit.FORMATION_TIGHT)
+	assert_almost_eq(u.file_clearance_wu(), 0.0, 0.0001,
+			"Tight keeps the same interval, so clearance stays packed")
+	u.set_formation(Unit.FORMATION_LOOSE)
+	assert_gt(u.file_clearance_wu(), 0.0,
+			"Loose (0.9 m) leaves a derived gap a partner can march through")
+
+
+func test_cavalry_knee_to_knee_file_clearance_is_zero() -> void:
+	var cav := _cavalry()
+	cav.file_pitch = Unit.CAV_MARK_RADIUS * 2.0
+	cav.rank_pitch = Unit.CAV_MARK_RADIUS * 6.0
+	assert_almost_eq(cav.file_clearance_wu(), 0.0, 0.0001,
+			"1 m file centers minus two 0.5 m horse half-widths is knee-to-knee")
+	assert_gt(cav.rank_clearance_wu(), cav.file_clearance_wu(),
+			"rank pitch is deeper than file pitch, so rank clearance is larger while the body is still a circle")
+	cav.set_formation(Unit.FORMATION_LOOSE)
+	assert_gt(cav.file_clearance_wu(), 0.0,
+			"Loose cavalry doubles the file pitch and opens a derived side gap")
 
 
 # --- shielded close-order stances: shield wall & testudo ------------------

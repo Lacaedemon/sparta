@@ -567,10 +567,13 @@ const SCHILTRON_ATTACK_FACTOR: float = 0.55
 # stood). Only LOOSE widens the grid, to ~0.9 m per man -- matching the researched
 # pyknosis close-order figure, not true open order (~1.8-2 m/man).
 const LOOSE_SPACING_SCALE: float = 2.0
-# Line-relief corridor: back ranks spread laterally during a pass-through swap so the
-# partner's front line can march between them without intra-unit overlap. Peaks when
-# the two blocks overlap (same distance gate as Order.resolve_friendly_target).
-# Restages Stage E's render-only relief spread as formation-slot physics.
+# Line-relief file corridor: ONLY a block whose derived file clearance is already
+# positive (file_clearance_wu() > 0 -- slot-center pitch minus the two body
+# half-widths) may spread ranks so a partner can march between files. At
+# synaspismos / cavalry knee-to-knee the derived gap is ~0 and files stay packed;
+# that cost is intended. Peaks when two already-open blocks overlap (same
+# distance gate as Order.resolve_friendly_target). Restages Stage E's render-only
+# relief spread as formation-slot physics.
 const RELIEF_CORRIDOR_SPREAD_MAX: float = 0.45
 # SHIELD_WALL and TESTUDO lock their shields edge-to-edge, so unlike TIGHT/SQUARE
 # (which pack to the synaspismos floor and stop there) they squeeze the
@@ -1162,19 +1165,24 @@ var separation_radius: float = SEPARATION_RADIUS_INFANTRY
 # lose its widened body on a formation cycle.
 var _base_separation_radius: float = SEPARATION_RADIUS_INFANTRY
 # Density scale for the formation grid itself: set_formation() sets this alongside
-# separation_radius, so LOOSE (open marching order) actually spreads soldiers out --
-# not just widens an abstract collision footprint. TIGHT stays at 1.0 (see
-# LOOSE_SPACING_SCALE above for why there's no tighter-than-default grid spacing).
-# UnitFormation.slots() and _front_depth() read it; the files/ranks count itself
-# never changes, only the spacing between them.
+# separation_radius, so LOOSE actually spreads soldiers out -- not just widens an
+# abstract collision footprint. TIGHT stays at 1.0 (see LOOSE_SPACING_SCALE above
+# for why there's no tighter-than-default grid spacing). Loose is pyknosis
+# (~0.9 m/man on foot), not true open order (~1.8-2 m/man). UnitFormation.slots()
+# and _front_depth() read it; the files/ranks count itself never changes, only the
+# spacing between them.
 var spacing_scale: float = 1.0
-# Per-type formation grid pitch, in world units: the lateral distance between files and
-# the depth between ranks. Foot troops keep the historical synaspismos floor on both
-# axes (FORMATION_SPACING); a mounted soldier occupies far more ground nose-to-tail
-# than knee-to-knee, so cavalry spawn with a wider file pitch and a much deeper rank
-# pitch (set by Battle from the loadout's file_pitch_m/rank_pitch_m). spacing_scale
-# (the formation-mode density: TIGHT/LOOSE/shield wall) multiplies both axes alike --
-# see file_pitch_wu()/rank_pitch_wu(), the accessors every slot-geometry consumer reads.
+# Per-type formation grid pitch, in world units: SLOT-CENTER to slot-center (the
+# interval includes the man or horse; Asclepiodotus Tactics 4 measures
+# right-shoulder to right-shoulder / breast to breast). Not an empty
+# edge-to-edge gap -- that derived clearance is file_clearance_wu(). Foot troops
+# keep the historical synaspismos floor on both axes (FORMATION_SPACING, 0.45 m
+# centers); cavalry spawn with a wider file pitch (one horse-width between
+# centers, derived side gap ~0) and a much deeper rank pitch (set by Battle from
+# the loadout's file_pitch_m/rank_pitch_m; Aelian's horse length is ~3x shoulder
+# width). spacing_scale (the formation-mode density: TIGHT/LOOSE/shield wall)
+# multiplies both axes alike -- see file_pitch_wu()/rank_pitch_wu(), the
+# accessors every slot-geometry consumer reads.
 var file_pitch: float = FORMATION_SPACING
 var rank_pitch: float = FORMATION_SPACING
 # Rises while this unit is locked in mutual melee (both FIGHTING, neither HOLD).
@@ -3470,16 +3478,36 @@ func _has_congested_same_team_router() -> bool:
 	return false
 
 
-## The formation grid's per-axis pitch in world units: the per-type file/rank spacing
-## scaled by the formation-mode density (TIGHT/LOOSE/shield wall). Every slot-geometry
-## consumer reads these two accessors rather than combining the raw fields, so the
-## density scaling can't be forgotten on one axis.
+## The formation grid's per-axis SLOT-CENTER pitch in world units: the per-type
+## file/rank spacing scaled by the formation-mode density (TIGHT/LOOSE/shield wall).
+## Every slot-geometry consumer reads these two accessors rather than combining the
+## raw fields, so the density scaling can't be forgotten on one axis.
 func file_pitch_wu() -> float:
 	return file_pitch * spacing_scale
 
 
 func rank_pitch_wu() -> float:
 	return rank_pitch * spacing_scale
+
+
+## Empty edge-to-edge gap between adjacent files, derived from the stored
+## slot-center pitch minus the two soldiers' half-widths. Synaspismos / cavalry
+## knee-to-knee sit at ~0 (marks touch); a negative value is overlapping bodies
+## (Shield Wall / Testudo squeeze below the floor). This -- not a close/regular
+## label -- is what file-through relief keys off. Same identity as rank_clearance_wu
+## (center pitch minus body half-extents); cavalry uses the horse body, foot the man.
+func file_clearance_wu() -> float:
+	return file_pitch_wu() - 2.0 * soldier_body_radius()
+
+
+## Empty edge-to-edge gap between adjacent ranks, same identity as file_clearance_wu:
+## slot-center pitch minus two body half-extents. The sim body is still a circle
+## (MARK_RADIUS / CAV_MARK_RADIUS), so rank currently subtracts the same radius as
+## file. Cavalry's 3 m rank pitch therefore reports a large derived gap; a horse
+## AABB whose length is ~3x shoulder width (Aelian) would bring stacked-rank
+## clearance near zero the way knee-to-knee files already are.
+func rank_clearance_wu() -> float:
+	return rank_pitch_wu() - 2.0 * soldier_body_radius()
 
 
 ## Formation spacing scale for a given formation `mode`, pure and independent of a live
@@ -4295,10 +4323,12 @@ func _effective_file_major_reform() -> bool:
 ## the unit's frontage inputs, and -- for the square and file-major branches -- the unit's
 ## own assignment state) -- so it stays deterministic and replay-safe like the callers below.
 ##
-## `apply_relief_corridor` defaults true so live formation targets open a centre lane during
-## a line-relief swap. Pass false when measuring the block's BASE footprint (soldier_block_
-## extent / half_extents): those helpers feed the corridor's own spread-strength distance
-## gate, and calling formation_slots(true) from there would recurse forever through
+## `apply_relief_corridor` defaults true so a live relief partner can open a centre
+## lane -- but only when this block's derived file clearance is already positive.
+## A 0.45 m (or 1 m cavalry) locked interval keeps files packed. Pass false when
+## measuring the block's BASE footprint (soldier_block_extent / half_extents): those
+## helpers feed the corridor's own spread-strength distance gate, and calling
+## formation_slots(true) from there would recurse forever through
 ## _relief_corridor_spread_strength -> soldier_block_extent -> formation_slots.
 func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVector2Array:
 	if in_square():
@@ -6232,23 +6262,57 @@ func gait_pace(gait: int) -> float:
 			return walk_speed
 
 
-## Human-readable formation name for the HUD.
+## Player-facing formation label: the live slot-center pitch as metres (e.g.
+## "0.45 m", "0.9 m", "1 x 3 m"), plus a stance qualifier only when the mode
+## forks combat or geometry at that same interval (Tight's locked-shield
+## bonuses, Square, Shield Wall, Testudo, Schiltron). Normal and Loose are the
+## interval itself -- they are not a second prestige name. Cavalry is
+## anisotropic (file then rank) on the same identity; foot is isotropic so one
+## number suffices.
 func formation_summary() -> String:
-	match formation_mode:
+	return formation_label_for_mode(formation_mode)
+
+
+## Label for `mode` as if this unit switched to it, using this unit's own unscaled
+## file/rank pitch (so cavalry's 1 m x 3 m preset labels as metres of horse-width
+## and horse-length, not the infantry 0.45 m floor).
+func formation_label_for_mode(mode: int) -> String:
+	var scale: float = spacing_scale_for_mode(mode)
+	return formation_interval_label(mode, file_pitch * scale, rank_pitch * scale)
+
+
+## Player-facing label for a formation `mode` whose live file interval is
+## `pitch_wu` world units (already density-scaled slot-center pitch). Optional
+## `rank_wu` adds "file x rank" when the two pitches differ (cavalry). Static so
+## the HUD consistency checker can rebuild the same string from a dump.
+static func formation_interval_label(mode: int, pitch_wu: float, rank_wu: float = -1.0) -> String:
+	var interval: String = _interval_pair_label(pitch_wu, rank_wu)
+	match mode:
 		FORMATION_TIGHT:
-			return "Tight"
-		FORMATION_LOOSE:
-			return "Loose"
+			return "%s locked" % interval
 		FORMATION_SQUARE:
-			return "Square"
-		FORMATION_SHIELD_WALL:
-			return "Shield Wall"
-		FORMATION_TESTUDO:
-			return "Testudo"
+			return "%s Square" % interval
 		FORMATION_SCHILTRON:
-			return "Schiltron"
+			return "%s Schiltron" % interval
+		FORMATION_SHIELD_WALL:
+			return "%s Shield Wall" % interval
+		FORMATION_TESTUDO:
+			return "%s Testudo" % interval
 		_:
-			return "Normal"
+			return interval
+
+
+## "0.45 m" when file equals rank (or rank is omitted); "1 x 3 m" when they
+## differ. File first, then rank -- the same slot-center-pitch identity on both
+## axes. ASCII "x", not a multiplication sign.
+static func _interval_pair_label(file_wu: float, rank_wu: float) -> String:
+	var file_s: String = DistanceLegend.interval_label_text(
+			DistanceLegend.metres_for_world(file_wu, WorldScaleRef.WU_PER_M))
+	if rank_wu < 0.0 or is_equal_approx(file_wu, rank_wu):
+		return file_s
+	var rank_s: String = DistanceLegend.interval_label_text(
+			DistanceLegend.metres_for_world(rank_wu, WorldScaleRef.WU_PER_M))
+	return "%s x %s" % [file_s.trim_suffix(" m"), rank_s]
 
 
 ## The other unit in a live line-relief pass-through swap, if any. The link normally
@@ -6266,13 +6330,25 @@ func _relief_swap_partner() -> Unit:
 	return null
 
 
+## True when this block's derived file clearance is already open enough that a
+## relief partner may widen a lane. Keys off actual density (slot-center pitch
+## minus body half-widths), not a close/regular label: Normal and Tight share
+## the 0.45 m infantry floor and both stall; Loose (0.9 m) and any unit whose
+## own file_pitch already leaves a gap may open.
+func _relief_corridor_opens_files() -> bool:
+	return file_clearance_wu() > 0.0
+
+
 ## 0..RELIEF_CORRIDOR_SPREAD_MAX spread strength for a live relief swap with `partner`.
-## Peaks when the two blocks overlap, fades as they clear apart. Takes the partner rather
-## than re-deriving it so the one caller pays for a single _relief_swap_partner() lookup
-## per formation_slots() call -- that lookup falls back to a whole-group scan, and this
-## runs every frame per unit.
+## Zero when derived file clearance is not positive, even at full overlap. Otherwise
+## peaks when the two blocks overlap, fades as they clear apart. Takes the partner
+## rather than re-deriving it so the one caller pays for a single _relief_swap_partner()
+## lookup per formation_slots() call -- that lookup falls back to a whole-group scan,
+## and this runs every frame per unit.
 func _relief_corridor_spread_strength(partner: Unit) -> float:
 	if partner == null or not is_instance_valid(partner):
+		return 0.0
+	if not _relief_corridor_opens_files():
 		return 0.0
 	# Always positive: soldier_block_extent() floors at Unit.RADIUS plus a mark radius and
 	# margin (SoldierFlock.compute_extent), so the sum can never reach zero and the ratio
@@ -6284,7 +6360,8 @@ func _relief_corridor_spread_strength(partner: Unit) -> float:
 	return RELIEF_CORRIDOR_SPREAD_MAX * overlap_frac
 
 
-## Widen back-rank slot spacing during a line-relief pass-through.
+## Widen back-rank slot spacing during a line-relief pass-through. A no-op when
+## derived file clearance is not positive (locked-shields / knee-to-knee).
 func _apply_relief_corridor_to_slots(slots: PackedVector2Array) -> PackedVector2Array:
 	var partner: Unit = _relief_swap_partner()
 	var spread: float = _relief_corridor_spread_strength(partner)
@@ -6752,9 +6829,11 @@ func _stop_rout_and_fight() -> void:
 # block of one small mark per living soldier (cosmetic only — never fed back into the
 # sim), packed roughly within the unit's footprint so the on-field size still matches
 # the collision RADIUS. Wider-than-deep, like a real formation.
-# Historically-grounded metric values: FORMATION_SPACING sits at the synaspismos
-# ("locked shields") per-man frontage, ~0.45 m (Battle.WORLD_UNITS_PER_METER = 20) --
-# the *tightest* of the three attested Hellenistic-phalanx density tiers (open order
+# Historically-grounded metric values: FORMATION_SPACING is the synaspismos
+# ("locked shields") SLOT-CENTER pitch, ~0.45 m (Battle.WORLD_UNITS_PER_METER = 20).
+# The interval includes the soldier (Asclepiodotus Tactics 4: right-shoulder to
+# right-shoulder); derived edge-to-edge clearance is file_clearance_wu(). 0.45 m is
+# the *tightest* of the three attested Hellenistic-phalanx density tiers (open order)
 # ~1.8-2 m/man, close order/pyknosis ~0.9-1 m/man, synaspismos ~0.45 m/man), not the
 # standing close-order one. Historically synaspismos was a rare, temporary stance
 # adopted under extreme pressure (a frontal charge, heavy missile fire) rather than a

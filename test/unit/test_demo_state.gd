@@ -216,6 +216,16 @@ func test_motion_ref_reports_both_grid_pitches_and_their_min() -> void:
 			"the threshold base is the tighter axis")
 
 
+func test_unit_record_dumps_pitches_at_top_level() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u.file_pitch = 20.0
+	u.rank_pitch = 60.0
+	var rec: Dictionary = DemoState.unit_record(u, {}, 1.0, false)
+	assert_eq(float(rec["file_pitch"]), 20.0, "HUD checks can read file pitch without FULL")
+	assert_eq(float(rec["rank_pitch"]), 60.0, "and rank pitch for the anisotropic label")
+
+
 func test_build_snapshot_captures_hud_when_present() -> void:
 	var hud = preload("res://scripts/HUD.gd").new()
 	add_child_autofree(hud)

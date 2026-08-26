@@ -107,6 +107,20 @@ func _bare_unit() -> Unit:
 	return u
 
 
+func _bare_loose_unit() -> Unit:
+	var u := _bare_unit()
+	u.set_formation(Unit.FORMATION_LOOSE)
+	return u
+
+
+func _bare_cavalry_unit() -> Unit:
+	var u := _bare_unit()
+	u.is_cavalry = true
+	u.file_pitch = Unit.CAV_MARK_RADIUS * 2.0
+	u.rank_pitch = Unit.CAV_MARK_RADIUS * 6.0
+	return u
+
+
 ## Arm the one-sided link UnitRelief.begin() creates: the RELIEF order lives on the
 ## reliever and names the tired unit, and nothing at all is written to the tired side.
 func _link(reliever: Unit, tired: Unit) -> void:
@@ -156,8 +170,8 @@ func test_spread_strength_is_zero_without_a_partner() -> void:
 
 
 func test_spread_strength_peaks_on_overlap_and_fades_with_distance() -> void:
-	var reliever := _bare_unit()
-	var tired := _bare_unit()
+	var reliever := _bare_loose_unit()
+	var tired := _bare_loose_unit()
 	_link(reliever, tired)
 
 	tired.position = reliever.position
@@ -189,8 +203,8 @@ func test_corridor_is_a_no_op_on_an_empty_slot_set() -> void:
 func test_corridor_widens_when_the_partner_sits_exactly_on_top() -> void:
 	## Coincident blocks leave no approach direction to derive the corridor axis from,
 	## so the widening falls back to a fixed axis instead of normalizing a zero vector.
-	var reliever := _bare_unit()
-	var tired := _bare_unit()
+	var reliever := _bare_loose_unit()
+	var tired := _bare_loose_unit()
 	_link(reliever, tired)
 	tired.position = reliever.position
 
@@ -224,8 +238,8 @@ func test_corridor_reads_rank_depth_off_the_slots_not_the_headcount() -> void:
 	## headcount instead of from the grid then shifts every rank label; on a block deeper
 	## than the headcount implies it collapses the whole thing onto rank 0, which is the one
 	## rank that gets no spread, so the corridor silently never opens.
-	var reliever := _bare_unit()
-	var tired := _bare_unit()
+	var reliever := _bare_loose_unit()
+	var tired := _bare_loose_unit()
 	_link(reliever, tired)
 	tired.position = reliever.position + Vector2(0.0, 4.0)
 
@@ -247,3 +261,58 @@ func test_corridor_reads_rank_depth_off_the_slots_not_the_headcount() -> void:
 			back_moved = true
 	assert_true(back_moved,
 			"the rear rank spreads even though the headcount implies a shallower block")
+
+
+func test_close_order_relief_does_not_open_files() -> void:
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
+	_link(reliever, tired)
+	tired.position = reliever.position
+	assert_eq(reliever.formation_mode, Unit.FORMATION_NORMAL)
+	assert_almost_eq(reliever.file_clearance_wu(), 0.0, 0.0001,
+			"synaspismos derived gap is packed")
+	assert_eq(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"close-order files stay packed even when the blocks overlap")
+	var base: PackedVector2Array = reliever.formation_slots(reliever.soldiers, false)
+	var maybe: PackedVector2Array = reliever._apply_relief_corridor_to_slots(base)
+	for i in range(base.size()):
+		assert_true(base[i].is_equal_approx(maybe[i]),
+				"close-order corridor is a no-op on every slot")
+
+
+func test_tight_formation_shares_close_order_file_lock() -> void:
+	var reliever := _bare_unit()
+	reliever.set_formation(Unit.FORMATION_TIGHT)
+	var tired := _bare_unit()
+	tired.set_formation(Unit.FORMATION_TIGHT)
+	_link(reliever, tired)
+	tired.position = reliever.position
+	assert_eq(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"Tight is a combat fork at the same 0.45 m interval, so files stay packed")
+
+
+func test_returning_to_close_order_seals_the_corridor() -> void:
+	var reliever := _bare_loose_unit()
+	var tired := _bare_loose_unit()
+	_link(reliever, tired)
+	tired.position = reliever.position
+	assert_gt(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"Loose first opens the corridor")
+	reliever.set_formation(Unit.FORMATION_NORMAL)
+	assert_eq(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"dropping back to close order seals the files")
+
+
+func test_cavalry_knee_to_knee_does_not_open_files() -> void:
+	var reliever := _bare_cavalry_unit()
+	var tired := _bare_cavalry_unit()
+	_link(reliever, tired)
+	tired.position = reliever.position
+	assert_almost_eq(reliever.file_clearance_wu(), 0.0, 0.0001,
+			"1 m horse-width file pitch is packed knee-to-knee")
+	assert_eq(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"cavalry close order uses the same clearance gate as infantry")
+	reliever.set_formation(Unit.FORMATION_LOOSE)
+	tired.set_formation(Unit.FORMATION_LOOSE)
+	assert_gt(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"Loose cavalry doubles the file pitch and may open a lane")

@@ -85,6 +85,22 @@ static func label_text(metres: float) -> String:
 	return "%s km" % s
 
 
+## Player-facing label for a formation's slot-center file interval. The scale-bar
+## `label_text` rounds to whole metres and would print synaspismos (0.45 m) as "0 m";
+## this keeps centimetre precision and strips trailing zeros so 0.90 reads "0.9 m"
+## and 1.00 reads "1 m".
+static func interval_label_text(metres: float) -> String:
+	if metres <= 0.0:
+		return "0 m"
+	var rounded: float = round(metres * 100.0) / 100.0
+	var s: String = "%.2f" % rounded
+	while s.ends_with("0"):
+		s = s.substr(0, s.length() - 1)
+	if s.ends_with("."):
+		s = s.substr(0, s.length() - 1)
+	return "%s m" % s
+
+
 ## The 1-2-5 ladder from 1 m up to 1e7 m (10,000 km -- far past any battlefield), so
 ## pick_round_metres always has a candidate at any sane zoom. Generated, not hand-listed,
 ## so it never runs out at an extreme zoom.
