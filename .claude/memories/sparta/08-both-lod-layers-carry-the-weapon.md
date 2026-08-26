@@ -1446,7 +1446,8 @@ When a stacked PR is opened without `--base`:
 Sparta is a Godot + Quarto consumer of `Morrison-Lab/gha`, not an R package.
 PR #1396 audited `examples/` against `.github/workflows/` and added the
 applicable remaining callers.
-Do not re-run that audit from scratch; this is the inventory.
+Do not re-run that audit from scratch.
+This is the inventory.
 
 **Already present before #1396:** `check-links`, `check-non-standard-chars`,
 `claude.yml`, `claude-code-review.yml`, `summary.yml`, `quarto-publish.yml`
