@@ -113,9 +113,11 @@ static func strike(u: Unit, enemy: Unit) -> void:
 	# defender does not also have to be latched: it often has not run its own _think
 	# yet on the contact tick, and requiring enemy.is_engaged() sent every opening
 	# blow through the formula below -- which subtracts an absolute soldier count
-	# calibrated for a full regiment and can wipe a small unit in one tick, at a
-	# distance no individual soldier could reach. Ranged volleys and units with no
-	# soldier layer still fall through to the formula.
+	# calibrated for a full regiment and can wipe a small unit in one tick. That
+	# wipe was not "bodies never closed": FIGHTING is gated on regiment circles, so
+	# the formula fired while soldier bodies were already overlapping inside weapon
+	# reach and the per-soldier path was still locked out. Ranged volleys and units
+	# with no soldier layer still fall through to the formula.
 	if Unit.INDIVIDUAL_COLLISION and not u.is_ranged and u.is_engaged() \
 			and not u._sim_soldier_pos.is_empty() and not enemy._sim_soldier_pos.is_empty():
 		u.resolve_soldier_melee(enemy)

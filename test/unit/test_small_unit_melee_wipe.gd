@@ -55,15 +55,17 @@ func _cavalry(uid: int, team: int, n: int, pos: Vector2, face: Vector2) -> Unit:
 func test_opening_strike_does_not_wipe_a_small_cavalry_unit() -> void:
 	# Attacker has just entered FIGHTING (linger not armed -- the opening-tick hole);
 	# defender has not thought yet. Pre-fix, strike() fell through to the formula and
-	# deleted the whole 10-man roster. Both have a soldier layer, so the blow must
-	# resolve per-soldier: the defender cannot go to zero in one cadence.
+	# deleted the whole 10-man roster (cavalry 16-vs-5 is about 7-15 men, so a low
+	# roll can leave a handful of survivors -- soldiers > 0 would still pass). Both
+	# have a soldier layer, so the blow must resolve per-soldier: one cadence against
+	# full-HP cavalry does not delete a man.
 	var attacker := _cavalry(1, 0, 10, Vector2(0, -66), Vector2.DOWN)
 	attacker.state = Unit.State.FIGHTING
 	var defender := _cavalry(2, 1, 10, Vector2(0, 0), Vector2.DOWN)
 	assert_true(attacker.is_engaged(), "FIGHTING counts as engaged on the opening tick")
 	assert_false(defender.is_engaged(), "the defender has not entered FIGHTING yet")
 	UnitCombat.strike(attacker, defender)
-	assert_gt(defender.soldiers, 0, "a 10-man cavalry unit survives the opening blow")
+	assert_eq(defender.soldiers, 10, "a 10-man cavalry unit keeps its roster through the opening blow")
 	assert_eq(attacker.soldiers, 10, "the attacker is not deleted either")
 
 

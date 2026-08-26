@@ -18,10 +18,12 @@ class_name SoldierMelee
 ## RNG in the death-reaping.
 
 ## Resolve one melee cadence of `attacker`'s engaged front rank striking whichever of
-## `defenders` each attacking soldier finds nearest within reach. `defenders` is every
-## enemy unit `attacker` is genuinely adjacent to and engaged with this tick (see
-## Unit.resolve_soldier_melee) -- a size-1 array degenerates to exactly the old
-## single-enemy resolution.
+## `defenders` each attacking soldier finds nearest within reach. `defenders` is the
+## strike target plus every other adjacent engaged enemy this tick (see
+## Unit.resolve_soldier_melee) -- the primary target is included even if it has not
+## latched engaged yet, so the opening blow of a fresh contact still searches its
+## living soldiers. A size-1 array degenerates to exactly the old single-enemy
+## resolution.
 static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 	var attackers: PackedInt32Array = attacker.engaged_soldier_indices(attacker._sim_soldier_pos.size())
 	if attackers.is_empty() or defenders.is_empty():
@@ -105,7 +107,7 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 		# exactly the assumption a surrounded soldier's broken formation can't back up any more.
 		var attacker_broken: bool = attacker.is_soldier_broken(ai)
 		var atk_melee_scale: float = 1.0 if attacker_broken else attacker.formation_melee_attack_factor()
-		# Nearest LIVING enemy soldier within reach, across EVERY adjacent engaged defender —
+		# Nearest LIVING enemy soldier within reach, across EVERY defender in this cadence --
 		# a longer reach lets us hit foes who can't hit back (the spear screen), and a soldier
 		# fights whoever's actually next to it, not only whichever regiment target_enemy points
 		# to. Enumerated in the uid-sorted defenders order established above so an exact-

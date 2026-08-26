@@ -61,13 +61,16 @@ func test_cycle_charge_lands_a_second_strike_after_the_target_routs_away() -> vo
 	while battle.current_tick() < FIRST_STRIKE_BUDGET:
 		if cav._cycle_recharging:
 			peeled = true
-		if inf.soldiers < start_count or _min_hp(inf) < start_hp - 0.01 or peeled:
+		# A peel means strike() ran, not that anyone was in reach -- the stalled
+		# per-soldier path used to arm the peel with zero wounds. Wait for a real
+		# hit (HP or head-count), not the peel flag.
+		if inf.soldiers < start_count or _min_hp(inf) < start_hp - 0.01:
 			break
 		await get_tree().physics_frame
 	if cav._cycle_recharging:
 		peeled = true
-	assert_true(inf.soldiers < start_count or _min_hp(inf) < start_hp - 0.01 or peeled,
-		"the opening charge lands within its budget")
+	assert_true(inf.soldiers < start_count or _min_hp(inf) < start_hp - 0.01,
+		"the opening charge lands a wound within its budget")
 	# The strike flips the charger into its recharge peel; the peel lasts whole seconds,
 	# so this read cannot race the flip. Tracked across the wait because the unit may
 	# already have opened the standoff again by the assert tick.
@@ -93,12 +96,12 @@ func test_cycle_charge_lands_a_second_strike_after_the_target_routs_away() -> vo
 			opened = true
 		elif opened:
 			second_peel = true
-			break
 		if inf.soldiers < after_first or _min_hp(inf) < after_first_hp - 0.01:
 			break
 		await get_tree().physics_frame
-	assert_true(second_peel or inf.soldiers < after_first or _min_hp(inf) < after_first_hp - 0.01,
+	assert_true(inf.soldiers < after_first or _min_hp(inf) < after_first_hp - 0.01,
 		"the caracole re-engages the target that routed away and lands a second strike")
+	assert_true(second_peel, "and peels again after that second strike")
 
 
 func _min_hp(u: Unit) -> float:
