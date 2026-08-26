@@ -748,7 +748,8 @@ each other during the swap --- that is unit-level interpenetration so the line n
 opens a company-sized hole, not files spreading apart. Tight files (0.45 m on
 foot, 1 m knee-to-knee on horse) stay packed; a block whose derived file gap is
 already open (0.9 m Normal or 1.8 m Loose on foot; 2 &times; 6 m or 4 &times; 12 m cavalry)
-widens a lane between files.
+widens a lane between files --- and only in the ranks the partner is marching
+through.
 The reliever takes over the melee, and the relieved unit's retreat is a real move
 order, so holding <kbd>Space</kbd> shows it like any other march. The relieved
 regiment backs out **facing the enemy** rather than turning its back on the line it

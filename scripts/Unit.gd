@@ -568,10 +568,17 @@ const LOOSE_SPACING_SCALE: float = 4.0
 # positive (file_clearance_wu() > 0 -- slot-center pitch minus the two body
 # half-widths) may spread ranks so a partner can march between files. At
 # synaspismos / cavalry knee-to-knee the derived gap is ~0 and files stay packed;
-# that cost is intended. Peaks when two already-open blocks overlap (same
-# distance gate as Order.resolve_friendly_target). Restages Stage E's render-only
-# relief spread as formation-slot physics.
+# that cost is intended. Within an open block, only the ranks the partner is
+# actually passing through spread -- ranks it has not reached stay on the base
+# grid, since widening the whole block the moment the swap arms spends the
+# misslotted budget on men who are not yet in the way. Peaks when two
+# already-open blocks overlap (same distance gate as
+# Order.resolve_friendly_target). Restages Stage E's render-only relief spread
+# as formation-slot physics.
 const RELIEF_CORRIDOR_SPREAD_MAX: float = 0.45
+# How many ranks ahead of the partner's current footprint the lane begins to
+# open, so the men have two ranks of travel to step aside before the partner arrives.
+const RELIEF_CORRIDOR_LOOKAHEAD_RANKS: float = 2.0
 # SHIELD_WALL and TESTUDO lock their shields edge-to-edge, so unlike TIGHT/SQUARE
 # (which pack to the synaspismos floor and stop there) they squeeze the
 # grid spacing BELOW that floor -- a real, measurable tightening of the block on top
@@ -4320,12 +4327,13 @@ func _effective_file_major_reform() -> bool:
 ## own assignment state) -- so it stays deterministic and replay-safe like the callers below.
 ##
 ## `apply_relief_corridor` defaults true so a live relief partner can open a centre
-## lane -- but only when this block's derived file clearance is already positive.
-## A 0.45 m (or 1 m cavalry) locked interval keeps files packed. Pass false when
-## measuring the block's BASE footprint (soldier_block_extent / half_extents): those
-## helpers feed the corridor's own spread-strength distance gate, and calling
+## lane in the ranks the partner is passing through -- and only when this block's
+## derived file clearance is already positive: a 0.45 m (or 1 m cavalry) locked
+## interval keeps files packed. Pass false when measuring the block's BASE footprint
+## (soldier_block_extent / half_extents): those helpers feed the corridor's own
+## spread-strength distance gate and the rank-overlap window, and calling
 ## formation_slots(true) from there would recurse forever through
-## _relief_corridor_spread_strength -> soldier_block_extent -> formation_slots.
+## _relief_corridor_spread_strength / soldier_block_half_extents -> formation_slots.
 func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVector2Array:
 	if in_square():
 		var square_file_count: int = formation_files(count)
@@ -6365,8 +6373,9 @@ func _relief_corridor_spread_strength(partner: Unit) -> float:
 	return RELIEF_CORRIDOR_SPREAD_MAX * overlap_frac
 
 
-## Widen back-rank slot spacing during a line-relief pass-through. A no-op when
-## derived file clearance is not positive (locked-shields / knee-to-knee).
+## Widen slot spacing in the ranks a live relief partner is passing through.
+## A no-op when derived file clearance is not positive (locked-shields /
+## knee-to-knee).
 func _apply_relief_corridor_to_slots(slots: PackedVector2Array) -> PackedVector2Array:
 	var partner: Unit = _relief_swap_partner()
 	var spread: float = _relief_corridor_spread_strength(partner)
@@ -6401,12 +6410,21 @@ func _apply_relief_corridor_to_slots(slots: PackedVector2Array) -> PackedVector2
 		y_max = maxf(y_max, s.y)
 	var ranks: int = maxi(1, int(round((y_max - y_min) / depth)) + 1)
 	var y0: float = y_min
+	var partner_half: Vector2 = partner.soldier_block_half_extents()
+	var rel_ang: float = partner.soldier_block_world_angle() - block_ang
+	var partner_half_along_rank: float = UnitFormation.relief_corridor_partner_half_along_rank(
+			partner_half, rel_ang)
+	var lookahead: float = depth * RELIEF_CORRIDOR_LOOKAHEAD_RANKS
 	var out := slots.duplicate()
 	for i in range(out.size()):
 		var slot: Vector2 = out[i]
 		var rank: int = clampi(int(round((slot.y - y0) / depth)), 0, ranks - 1)
+		var gate: float = UnitFormation.relief_corridor_rank_gate(
+				slot.y, approach_local.y, partner_half_along_rank, lookahead)
+		if gate <= 0.0:
+			continue
 		out[i] = slot + UnitFormation.relief_corridor_slot_offset(
-				slot, rank, ranks, corridor_perp, spread)
+				slot, rank, ranks, corridor_perp, spread * gate)
 	return out
 
 

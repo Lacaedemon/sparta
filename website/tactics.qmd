@@ -234,15 +234,17 @@ unit advances through its tired ally and takes over the melee, and the relieved
 regiment falls back toward its own rear --- where fatigue drains away and morale
 recovers (see [How to play](how-to-play.qmd) for the controls).
 
-- **The swap is a regiment pass-through, not a file-gap opening.** For its duration the
-  two friendly *regiments* may interpenetrate, so the line never opens a
+- **The swap is a regiment pass-through, with a gated file lane.** For its duration
+  the two friendly *regiments* may interpenetrate, so the line never opens a
   company-sized hole for the enemy to pour into while the fresh unit works its way
   forward. Tight *files* stay packed: 0.45 m synaspismos on foot and 1 m
   knee-to-knee on horse leave a derived side gap of ~0, so a partner cannot march
-  between files. A block that already has open file clearance (0.9 m Normal or
-  1.8 m Loose on foot; 2 &times; 6 m or 4 &times; 12 m cavalry) widens a lane. Blocked relief
-  through a locked Tight interval is
-  intended.
+  between files --- blocked relief through a locked Tight interval is intended. A
+  block that already has open file clearance (0.9 m Normal or 1.8 m Loose on foot;
+  2 &times; 6 m or 4 &times; 12 m cavalry) widens a lane --- and only in the ranks
+  the partner is actually marching through: ranks it has not reached yet stay
+  closed, the lane opening a couple of ranks ahead of the pass rather than fanning
+  the whole block the moment the order arms.
 - **The retreat is an order like any other.** The relieved unit falls back under a
   normal move order (hold <kbd>Space</kbd> to see it), and you can redirect it ---
   to a safer rest spot, or straight to another fight if you must.

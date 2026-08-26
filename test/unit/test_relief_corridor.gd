@@ -1,5 +1,6 @@
 extends GutTest
-## Unit tests for line-relief corridor slot widening (UnitFormation.relief_corridor_slot_offset).
+## Unit tests for line-relief corridor slot widening
+## (UnitFormation.relief_corridor_slot_offset / relief_corridor_rank_gate).
 
 
 func test_relief_corridor_front_rank_unmoved() -> void:
@@ -339,3 +340,153 @@ func test_cavalry_knee_to_knee_does_not_open_files() -> void:
 	tired.set_formation(Unit.FORMATION_LOOSE)
 	assert_gt(reliever._relief_corridor_spread_strength(tired), 0.0,
 			"Loose cavalry at 4x may open a lane")
+
+
+func test_rank_gate_is_full_inside_the_partner_footprint() -> void:
+	assert_eq(UnitFormation.relief_corridor_rank_gate(0.0, 0.0, 10.0, 4.0), 1.0,
+			"a rank sitting on the partner's centre is fully open")
+	assert_eq(UnitFormation.relief_corridor_rank_gate(10.0, 0.0, 10.0, 4.0), 1.0,
+			"a rank on the partner's edge is still fully open")
+
+
+func test_rank_gate_falls_off_across_the_lookahead() -> void:
+	var half: float = UnitFormation.relief_corridor_rank_gate(12.0, 0.0, 10.0, 4.0)
+	assert_almost_eq(half, 0.5, 0.0001,
+			"halfway across the lookahead is half open")
+	assert_eq(UnitFormation.relief_corridor_rank_gate(14.0, 0.0, 10.0, 4.0), 0.0,
+			"past the lookahead the rank stays on the base grid")
+
+
+func test_rank_gate_hard_box_when_lookahead_is_non_positive() -> void:
+	assert_eq(UnitFormation.relief_corridor_rank_gate(10.0, 0.0, 10.0, 0.0), 1.0,
+			"the edge is inside the hard box")
+	assert_eq(UnitFormation.relief_corridor_rank_gate(10.1, 0.0, 10.0, 0.0), 0.0,
+			"a hair past the edge is outside the hard box")
+	assert_eq(UnitFormation.relief_corridor_rank_gate(0.0, 0.0, 10.0, -1.0), 1.0,
+			"a negative lookahead is the same hard box")
+
+
+func test_partner_half_along_rank_is_depth_when_facing_the_same_way() -> void:
+	var half := Vector2(30.0, 12.0)
+	assert_almost_eq(UnitFormation.relief_corridor_partner_half_along_rank(half, 0.0), 12.0, 0.0001,
+			"same facing: the rank axis sees the partner's depth")
+	assert_almost_eq(UnitFormation.relief_corridor_partner_half_along_rank(half, PI), 12.0, 0.0001,
+			"facing about: still the partner's depth")
+
+
+func test_partner_half_along_rank_is_width_when_facing_at_right_angles() -> void:
+	var half := Vector2(30.0, 12.0)
+	assert_almost_eq(UnitFormation.relief_corridor_partner_half_along_rank(half, PI * 0.5), 30.0, 0.0001,
+			"right-angle partner: the rank axis sees the partner's width")
+	assert_almost_eq(UnitFormation.relief_corridor_partner_half_along_rank(half, -PI * 0.5), 30.0, 0.0001,
+			"the other right angle is the same width")
+
+
+func test_corridor_leaves_unreached_ranks_on_the_base_grid() -> void:
+	## The misslotted spike lives in the ticks just after the swap arms, while the
+	## partner is still in front of the reliever. Widening every back rank then moves
+	## men off their slots before anyone is passing through them. The partner has to
+	## sit INSIDE the spread-strength contact radius (otherwise the pre-existing
+	## spread=0 early-out would leave every slot untouched without ever asking the
+	## rank gate) but OUTSIDE the occupied window plus the two-rank lookahead.
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
+	_link(reliever, tired)
+
+	var depth: float = reliever.rank_pitch_wu()
+	var pitch: float = reliever.file_pitch_wu()
+	var lookahead: float = depth * Unit.RELIEF_CORRIDOR_LOOKAHEAD_RANKS
+	var partner_half_along_rank: float = UnitFormation.relief_corridor_partner_half_along_rank(
+			tired.soldier_block_half_extents(), 0.0)
+	var contact: float = reliever.separation_radius + tired.separation_radius \
+			+ reliever.soldier_block_extent() + tired.soldier_block_extent()
+	# One extra rank of margin past the lookahead so a slot at local y=0 is
+	# unambiguously outside the gate, not sitting on the falloff edge.
+	var just_outside: float = partner_half_along_rank + lookahead + depth
+	assert_lt(just_outside, contact,
+			"the probe sits inside the spread-strength contact radius")
+	tired.position = reliever.position + Vector2(0.0, just_outside)
+	assert_gt(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"spread is live -- a zero-spread early-out would not exercise the rank gate")
+
+	var deep := PackedVector2Array()
+	for r in range(8):
+		for f in range(2):
+			deep.append(Vector2((f - 0.5) * pitch, r * depth))
+
+	var out: PackedVector2Array = reliever._apply_relief_corridor_to_slots(deep)
+	assert_eq(out, deep, "ranks the partner has not reached stay on the base grid")
+
+
+func test_corridor_opens_only_the_ranks_the_partner_occupies() -> void:
+	## Partner sits on the front of a deep block: the front-adjacent back rank opens,
+	## the rearmost rank -- still a full block away -- stays put.
+	var reliever := _bare_unit()
+	var tired := _bare_unit()
+	_link(reliever, tired)
+	tired.position = reliever.position + Vector2(0.0, 4.0)
+
+	var depth: float = reliever.rank_pitch_wu()
+	var pitch: float = reliever.file_pitch_wu()
+	var deep := PackedVector2Array()
+	for r in range(8):
+		for f in range(2):
+			deep.append(Vector2((f - 0.5) * pitch, r * depth))
+
+	var out: PackedVector2Array = reliever._apply_relief_corridor_to_slots(deep)
+	assert_eq(out.size(), deep.size(), "the corridor never adds or drops a slot")
+	assert_true(out[0].is_equal_approx(deep[0]),
+			"the front rank stays put")
+	var near_front_moved := false
+	for i in range(2, 4):
+		if not out[i].is_equal_approx(deep[i]):
+			near_front_moved = true
+	assert_true(near_front_moved,
+			"the first back rank opens while the partner sits on the front")
+	assert_true(out[14].is_equal_approx(deep[14]) and out[15].is_equal_approx(deep[15]),
+			"the rearmost rank stays closed until the partner reaches it")
+
+
+func test_all_rank_widen_at_spread_max_misslots_unmoved_flanks() -> void:
+	## Characterization of the ungated offset: applying RELIEF_CORRIDOR_SPREAD_MAX
+	## to every back rank of a 120-man infantry grid (15 files x 8 ranks) puts more
+	## than the 0.25 misslotted budget of unmoved bodies nearer a neighbour's slot
+	## than their own. The rank gate exists so production never pays this cost on
+	## ranks the partner has not reached. Spread 0.10 stays well under the budget,
+	## which is why lowering SPREAD_MAX across the board was the other way to buy
+	## the margin back -- and why the gate is the cheaper one: it keeps the full
+	## 0.45 corridor where the partner actually is.
+	var n := 120
+	var files := 15
+	var spacing := Unit.FORMATION_SPACING
+	var base: PackedVector2Array = UnitFormation.block_slots(n, files, spacing)
+	var ranks: int = UnitFormation.ranks_for(n, files)
+	var perp := Vector2(1.0, 0.0)
+	var y_min: float = INF
+	for s in base:
+		y_min = minf(y_min, s.y)
+	var bodies: Array = []
+	for s in base:
+		bodies.append([s.x, s.y])
+	var none: float = _ungated_misslot_frac(base, bodies, y_min, ranks, spacing, perp, 0.0)
+	var gentle: float = _ungated_misslot_frac(base, bodies, y_min, ranks, spacing, perp, 0.10)
+	var full: float = _ungated_misslot_frac(
+			base, bodies, y_min, ranks, spacing, perp, Unit.RELIEF_CORRIDOR_SPREAD_MAX)
+	assert_eq(none, 0.0, "unmoved bodies on an unwidened grid are not misslotted")
+	assert_lt(gentle, DemoDefects.MISSLOT_MAX_FRAC,
+			"a 0.10 all-rank widen stays under the misslotted budget")
+	assert_gt(full, DemoDefects.MISSLOT_MAX_FRAC,
+			"ungated SPREAD_MAX on every back rank overspends the misslotted budget")
+	assert_gt(full, gentle, "misslotted cost grows with the spread, it is not a flat step")
+
+
+func _ungated_misslot_frac(base: PackedVector2Array, bodies: Array, y_min: float,
+		ranks: int, spacing: float, perp: Vector2, spread: float) -> float:
+	var slots: Array = []
+	for i in range(base.size()):
+		var slot: Vector2 = base[i]
+		var rank: int = clampi(int(round((slot.y - y_min) / spacing)), 0, ranks - 1)
+		var widened: Vector2 = slot + UnitFormation.relief_corridor_slot_offset(
+				slot, rank, ranks, perp, spread)
+		slots.append([widened.x, widened.y])
+	return float(DemoDefects.misslotted_count(slots, bodies)) / float(base.size())
