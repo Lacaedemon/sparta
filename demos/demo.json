@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/small-unit-melee.json",
-  "caption": "A 10-horse cavalry troop attacks another 10-horse troop head-on. Opening melee is per-soldier: neither unit vanishes in one tick at regiment-circle range, and both sides trade wounds once the men are actually in reach.",
-  "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
-  "width": 640
+  "input": "demos/inputs/line-relief-queue.json",
+  "caption": "Line relief after the steering sqrt-skip: two friendly regiments queue and swap through each other -- the exact friendly-pair steering path this PR optimizes. The website demo-diff sweep reports every catalog transcript byte-identical to the merge-base (0 changed / 87 unchanged), so the clip shows the same battle running on fewer square roots.",
+  "fixed_fps": 60,
+  "max_frames": 480,
+  "fps": 15,
+  "width": 720
 }

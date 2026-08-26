@@ -23,3 +23,10 @@
 ## 2026-07-31 - Optimize length() with length_squared() in threshold comparisons
 **Learning:** In GDScript, comparing vector lengths with `Vector2.length()` triggers an expensive mathematical square root operation. We can bypass this computation by using `Vector2.length_squared()` instead, comparing the result against a squared threshold (e.g. comparing `move_vec.length_squared()` against `0.01 * 0.01` instead of comparing `move_vec.length()` against `0.01`).
 **Action:** When comparing the magnitude of a vector to a threshold distance or for zero-checks, prefer `length_squared()` over `length()` and square the threshold appropriately, especially in high-frequency loops or maneuver logic.
+## 2026-08-26 - Squared Distance Optimization Headroom
+**Learning:** In GDScript, substituting `.length()` with `.length_squared()` for threshold checking is generally safe.
+However, when replicating physics-determinism code across branches, an exact float32 skip-band constant must be used as a pre-filter.
+For example, `SoldierEnemyContact.gd` uses `1.0001` to filter candidate pairs.
+Without this, floating-point rounding mismatches between the squared check and the linear fallback can introduce butterfly effects across the simulation.
+**Action:** When implementing square root skip optimizations on distance checks in physics loops, always employ a safety factor.
+For example, use the `SQRT_SKIP_BAND` (1.0001) as a safety factor on the threshold before passing candidates to the exact check.
