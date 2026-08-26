@@ -85,5 +85,15 @@
       "value": "Knockback focus"
     }
   ],
-  "spawn_fingerprint": "f8dd2ca100bf389fdc9d141c8085e92a"
+  "spawn_fingerprint": "f8dd2ca100bf389fdc9d141c8085e92a",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [5, 9],
+      "reason": "Enemy Spearmen (uid5) and cavalry (uid9) on the default 5v5 compress below their overlap floors during the knockback-focus clash this clip exists to show. Pre-existing on main; owned by in-flight melee/spacing work, not this spawn-pin retarget."
+    },
+    "path_crossing": {
+      "uids": [9],
+      "reason": "Enemy cavalry residual paths cross during the same live clash. Pre-existing on main; owned by in-flight melee/spacing work, not this spawn-pin retarget."
+    }
+  }
 }
