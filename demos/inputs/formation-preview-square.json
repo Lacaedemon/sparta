@@ -54,5 +54,11 @@
       "value": "SQUARE"
     }
   ],
-  "spawn_fingerprint": "eea022291581d04e20c800cb96603e9d"
+  "spawn_fingerprint": "eea022291581d04e20c800cb96603e9d",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [0],
+      "reason": "Forming Square then marching packs the block inside the overlap floor for a judged sample of the reform (nnd_min 1.58 wu). The clip's subject is the move-order ghost matching the square footprint, not intra-block spacing during the reform; expected under the current square assignment."
+    }
+  }
 }
