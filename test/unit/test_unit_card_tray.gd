@@ -407,6 +407,26 @@ func test_apply_uid_grid_resolves_uids_and_treats_missing_as_empty() -> void:
 	assert_eq(tray._grid[1][1], u)
 
 
+func test_apply_grid_empty_keeps_one_empty_row() -> void:
+	var tray := _tray()
+	tray.sync_units([_named_unit("Hastati 1")])
+	tray.apply_grid([])
+	assert_eq(tray._grid.size(), 1, "an empty apply_grid still leaves the one-row invariant")
+	assert_eq(tray.get_units_in_tray_order(), [], "...with no leftover units")
+	assert_eq(tray.columns(), UnitCardTray.DEFAULT_COLUMNS,
+			"the replacement empty row uses the default width")
+
+
+func test_apply_uid_grid_skips_a_non_array_row() -> void:
+	var tray := _tray()
+	var u := _named_unit("Hastati 1")
+	u.uid = 7
+	tray.apply_uid_grid(["not-a-row", [7, null]], {7: u})
+	assert_eq(tray._grid.size(), 1, "a non-array entry is skipped, not treated as a row of nulls")
+	assert_eq(tray._grid[0][0], u)
+	assert_null(tray._grid[0][1])
+
+
 func test_placement_checkbox_labels_the_2d_deploy() -> void:
 	var tray := _tray()
 	assert_eq(tray._row_placement_check.text, "Tray formation placement")

@@ -694,7 +694,7 @@ func _can_form_up(a: Vector2, b: Vector2) -> bool:
 	if _unit_at(a, _enemy_team(), true) != null or _unit_at(b, _enemy_team(), true) != null:
 		return false
 	# Gaps eat MULTI_FORM_UP_GAP per seam, so require that much extra on top of
-	# FORM_UP_MIN_WIDTH — otherwise a multi-unit drag could leave zero usable width and
+	# FORM_UP_MIN_WIDTH -- otherwise a multi-unit drag could leave zero usable width and
 	# collapse every unit to a single-file column. Tray-grid deploy counts COLUMNS of the
 	# occupied bounding box (empty cells still occupy a slot), not just live unit count.
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt

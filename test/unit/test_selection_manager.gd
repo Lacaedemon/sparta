@@ -2124,6 +2124,91 @@ func test_tray_grid_off_falls_back_to_form_up_dist() -> void:
 			"the toggle off keeps today's FormUpDist split even when a tray grid exists")
 
 
+func test_tray_grid_skips_when_hud_or_tray_cannot_report_cells() -> void:
+	var sm := _sm()
+	var u := _unit()
+	Settings._loading = true
+	Settings.tray_row_order_placement = true
+	Settings._loading = false
+	sm._hud = Node.new()
+	add_child_autofree(sm._hud)
+	assert_false(sm._should_use_tray_grid_layout([u]),
+			"a HUD without get_unit_card_tray cannot supply a grid")
+	var hud := _TrayHud.new()
+	hud.tray = Node.new()
+	add_child_autofree(hud.tray)
+	sm._hud = hud
+	assert_false(sm._should_use_tray_grid_layout([u]),
+			"a tray without cell_of is not a 2D layout source")
+
+
+func test_tray_grid_skips_when_a_selected_unit_has_no_cell() -> void:
+	var in_tray := _unit()
+	var stranger := _unit()
+	var packed: Array = _sm_with_tray_grid([[in_tray]])
+	var sm = packed[0]
+	assert_false(sm._should_use_tray_grid_layout([in_tray, stranger]),
+			"a selected unit missing from the tray is not a tray layout")
+	assert_true(sm._tray_occupied_bbox(packed[1], [stranger]).is_empty(),
+			"occupied bbox is empty when any unit has no cell")
+
+
+func test_tray_grid_empty_middle_row_still_spaces_the_rear_rank() -> void:
+	var front := _unit()
+	front.max_soldiers = 80
+	front.soldiers = 80
+	var rear := _unit()
+	rear.max_soldiers = 80
+	rear.soldiers = 80
+	var stacked: Array = _sm_with_tray_grid([[front], [rear]])[0]._deploy_slices(
+			[front, rear], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH)
+	var gapped: Array = _sm_with_tray_grid([[front], [null], [rear]])[0]._deploy_slices(
+			[front, rear], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH)
+	var stacked_gap: float = stacked[1]["center"].y - stacked[0]["center"].y
+	var gapped_gap: float = gapped[1]["center"].y - gapped[0]["center"].y
+	assert_gt(gapped_gap, stacked_gap,
+			"an empty tray line between occupied ranks keeps that rank's slot of depth")
+
+
+func test_tray_grid_slices_fall_back_without_a_usable_tray() -> void:
+	var u1 := _unit()
+	u1.max_soldiers = 80
+	u1.soldiers = 80
+	var u2 := _unit()
+	u2.max_soldiers = 80
+	u2.soldiers = 80
+	var sm := _sm()
+	sm._hud = null
+	var from_null: Array = sm._tray_grid_slices([u1, u2], Vector2(0, 0), Vector2(400, 0))
+	var line: Array = sm._line_slices([u1, u2], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH)
+	assert_eq(from_null.size(), line.size())
+	assert_almost_eq(from_null[0]["center"].x, line[0]["center"].x, 0.01,
+			"no tray falls back to a 1D line split")
+	var packed: Array = _sm_with_tray_grid([[u1], [u2]])
+	var sm2 = packed[0]
+	var stranger := _unit()
+	stranger.max_soldiers = 80
+	stranger.soldiers = 80
+	var from_miss: Array = sm2._tray_grid_slices(
+			[u1, stranger], Vector2(0, 0), Vector2(400, 0))
+	assert_eq(from_miss.size(), 2, "a missing cell falls back to a 1D line split")
+
+
+func test_order_units_for_line_uses_tray_order_when_placement_is_on() -> void:
+	# Field positions are reversed from tray order; the 1D tray-order path (not the 2D
+	# grid) still reorders left-to-right by the tray when the toggle is on.
+	var left_in_tray := _unit()
+	left_in_tray.position = Vector2(900, 0)
+	var right_in_tray := _unit()
+	right_in_tray.position = Vector2(50, 0)
+	var packed: Array = _sm_with_tray_grid([[left_in_tray, right_in_tray]])
+	var sm = packed[0]
+	var ordered: Array = sm._order_units_for_line(
+			[right_in_tray, left_in_tray], Vector2(0, 0), Vector2(1000, 0), false)
+	assert_eq(ordered[0], left_in_tray,
+			"tray order puts the left-tray unit on the left flank, ignoring field position")
+
+
 func test_issue_form_up_routes_one_order_per_selected_unit() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()
