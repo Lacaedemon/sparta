@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "CI-only change: adds GitHub Actions caller stubs. No battle recording can show a workflow file."
+  "reason": "Memory-only change: records the gha/ai-config workflow inventory. No battle recording can show a working-notes file."
 }
