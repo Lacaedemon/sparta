@@ -193,9 +193,11 @@ static func ranks_for(n: int, files: int) -> int:
 ## their lateral coordinate -- flank men step aside, the centre stays put, so the
 ## partner's front line can march between. `spread_strength` is the caller's
 ## 0..`Unit.RELIEF_CORRIDOR_SPREAD_MAX` scale (that maximum at full overlap, matching
-## `Unit._relief_corridor_spread_strength()`'s own range); this function itself treats
-## it as a plain multiplier and does not clamp it. Depth ramps from 0 on the front rank
-## to 1 on the rearmost. Pure, deterministic, replay-safe.
+## `Unit._relief_corridor_spread_strength()`'s own range), already multiplied by
+## `relief_corridor_rank_gate` so only ranks the partner occupies (plus lookahead)
+## receive it; this function itself treats it as a plain multiplier and does not
+## clamp it. Depth ramps from 0 on the front rank to 1 on the rearmost. Pure,
+## deterministic, replay-safe.
 static func relief_corridor_slot_offset(slot_local: Vector2, rank: int, ranks: int,
 		corridor_perp_local: Vector2, spread_strength: float) -> Vector2:
 	if spread_strength <= 0.0 or ranks <= 1 or rank <= 0:
@@ -203,6 +205,22 @@ static func relief_corridor_slot_offset(slot_local: Vector2, rank: int, ranks: i
 	var back_frac: float = float(rank) / float(ranks - 1)
 	var lateral: float = slot_local.dot(corridor_perp_local)
 	return corridor_perp_local * lateral * spread_strength * back_frac
+
+
+## 0..1 weight for whether a rank at local `rank_y` should open a corridor, given a
+## partner whose block occupies `[partner_local_y - partner_half_depth,
+## partner_local_y + partner_half_depth]`. Full weight inside that interval; linear
+## falloff across `lookahead` past either edge so the lane is open a rank before the
+## partner arrives. A non-positive lookahead makes the gate a hard box. Pure,
+## deterministic, replay-safe -- the caller supplies the partner's projected
+## half-depth along this block's rank axis.
+static func relief_corridor_rank_gate(rank_y: float, partner_local_y: float,
+		partner_half_depth: float, lookahead: float) -> float:
+	var dist_outside: float = maxf(0.0,
+			absf(rank_y - partner_local_y) - maxf(0.0, partner_half_depth))
+	if lookahead <= 0.0:
+		return 1.0 if dist_outside <= 0.0 else 0.0
+	return clampf(1.0 - dist_outside / lookahead, 0.0, 1.0)
 
 
 ## The general grid layout: `n` slots in a centred, wider-than-deep block with `files`

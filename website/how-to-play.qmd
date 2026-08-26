@@ -737,7 +737,8 @@ while visibly shoving the enemy line back harder with every blow.
 **Relieve a fighting friendly (line relief).** Right-click an **engaged friendly**
 outside your selection to order a relief: the fresh unit advances into the fight and
 the tired one peels back toward its own rear to rest. The two regiments pass through
-each other during the swap --- the reliever takes over the melee, and the relieved
+each other during the swap --- ranks the partner is marching through open a lane,
+the reliever takes over the melee, and the relieved
 unit's retreat is a real move order, so holding <kbd>Space</kbd> shows it like any
 other march. The relieved regiment backs out **facing the enemy** rather than turning
 its back on the line it just left, so it keeps its ranks square the whole way out.
