@@ -3,8 +3,8 @@
     {
       "hud": {
         "ctrl_bar_visible": true,
-        "formation_text": "0.45 m",
-        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 36 / 36\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.45 m\nWidth: 8 files\nOrder: Holding position\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "formation_text": "0.9 m",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 36 / 36\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 8 files\nOrder: Holding position\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -23,9 +23,9 @@
             0.0,
             1.0
           ],
-          "file_pitch": 9.0,
+          "file_pitch": 18.0,
           "formation": "NORMAL",
-          "formation_label": "0.45 m",
+          "formation_label": "0.9 m",
           "frontage": 8,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
@@ -35,37 +35,37 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            480.0,
+            400.0,
             520.0
           ],
           "position_m": [
-            24.0,
+            20.0,
             26.0
           ],
           "queue_tail": [],
-          "rank_pitch": 9.0,
+          "rank_pitch": 18.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.0,
-              36.0
+              126.0,
+              72.0
             ],
             "broken_count": 0,
             "centroid": [
-              480.0,
-              522.0
+              400.0,
+              524.0
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.15,
-              1.8
+              6.3,
+              3.6
             ],
             "centroid_m": [
-              24.0,
-              26.1
+              20.0,
+              26.2
             ]
           },
           "soldiers": 36,
@@ -90,9 +90,9 @@
             0.0,
             1.0
           ],
-          "file_pitch": 20.0,
+          "file_pitch": 40.0,
           "formation": "NORMAL",
-          "formation_label": "1 x 3 m",
+          "formation_label": "2 x 6 m",
           "frontage": 5,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
@@ -102,37 +102,37 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            860.0,
+            980.0,
             520.0
           ],
           "position_m": [
-            43.0,
+            49.0,
             26.0
           ],
           "queue_tail": [],
-          "rank_pitch": 60.0,
+          "rank_pitch": 120.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              80.0,
-              240.0
+              160.0,
+              480.0
             ],
             "broken_count": 0,
             "centroid": [
-              860.0,
-              525.0
+              980.0,
+              530.0
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              4.0,
-              12.0
+              8.0,
+              24.0
             ],
             "centroid_m": [
-              43.0,
-              26.25
+              49.0,
+              26.5
             ]
           },
           "soldiers": 24,
@@ -152,13 +152,13 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.45 m locked",
-        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 36 / 36\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.45 m locked\nWidth: 8 files\nOrder: Holding position\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 36 / 36\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.45 m locked\nWidth: 8 files\nOrder: Holding position\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.3 m/s\nAccel: -0.1 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
         "stance_text": "Normal"
       },
-      "tick": 50,
+      "tick": 170,
       "units": [
         {
           "countermarch_variant": null,
@@ -183,37 +183,37 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            480.0,
-            520.0
+            397.38,
+            517.19
           ],
           "position_m": [
-            24.0,
-            26.0
+            19.869,
+            25.86
           ],
           "queue_tail": [],
           "rank_pitch": 9.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              63.0,
-              36.0
+              79.49,
+              36.61
             ],
             "broken_count": 0,
             "centroid": [
-              480.0,
-              522.0
+              397.16,
+              519.09
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.15,
-              1.8
+              3.974,
+              1.83
             ],
             "centroid_m": [
-              24.0,
-              26.1
+              19.858,
+              25.954
             ]
           },
           "soldiers": 36,
@@ -238,9 +238,9 @@
             0.0,
             1.0
           ],
-          "file_pitch": 20.0,
+          "file_pitch": 40.0,
           "formation": "NORMAL",
-          "formation_label": "1 x 3 m",
+          "formation_label": "2 x 6 m",
           "frontage": 5,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
@@ -250,37 +250,37 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            860.0,
+            980.0,
             520.0
           ],
           "position_m": [
-            43.0,
+            49.0,
             26.0
           ],
           "queue_tail": [],
-          "rank_pitch": 60.0,
+          "rank_pitch": 120.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              80.0,
-              240.0
+              160.0,
+              480.0
             ],
             "broken_count": 0,
             "centroid": [
-              860.0,
-              525.0
+              980.0,
+              530.0
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              4.0,
-              12.0
+              8.0,
+              24.0
             ],
             "centroid_m": [
-              43.0,
-              26.25
+              49.0,
+              26.5
             ]
           },
           "soldiers": 24,
@@ -299,14 +299,14 @@
     {
       "hud": {
         "ctrl_bar_visible": true,
-        "formation_text": "0.9 m",
-        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 36 / 36\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 8 files\nOrder: Holding position\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.5 m/s\nAccel: +1.4 m/s²",
+        "formation_text": "1.8 m",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 36 / 36\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Holding position\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.8 m/s\nAccel: -0.6 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
         "stance_text": "Normal"
       },
-      "tick": 110,
+      "tick": 340,
       "units": [
         {
           "countermarch_variant": null,
@@ -319,9 +319,9 @@
             0.0,
             1.0
           ],
-          "file_pitch": 18.0,
+          "file_pitch": 36.0,
           "formation": "LOOSE",
-          "formation_label": "0.9 m",
+          "formation_label": "1.8 m",
           "frontage": 8,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
@@ -331,37 +331,37 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            480.0,
-            518.23
+            391.53,
+            511.88
           ],
           "position_m": [
-            24.0,
-            25.911
+            19.576,
+            25.594
           ],
           "queue_tail": [],
-          "rank_pitch": 18.0,
+          "rank_pitch": 36.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              66.46,
-              39.36
+              228.82,
+              137.98
             ],
             "broken_count": 0,
             "centroid": [
-              480.0,
-              521.96
+              390.94,
+              520.06
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.323,
-              1.968
+              11.441,
+              6.899
             ],
             "centroid_m": [
-              24.0,
-              26.098
+              19.547,
+              26.003
             ]
           },
           "soldiers": 36,
@@ -386,9 +386,9 @@
             0.0,
             1.0
           ],
-          "file_pitch": 20.0,
+          "file_pitch": 40.0,
           "formation": "NORMAL",
-          "formation_label": "1 x 3 m",
+          "formation_label": "2 x 6 m",
           "frontage": 5,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
@@ -398,37 +398,37 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            860.0,
+            980.0,
             520.0
           ],
           "position_m": [
-            43.0,
+            49.0,
             26.0
           ],
           "queue_tail": [],
-          "rank_pitch": 60.0,
+          "rank_pitch": 120.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              80.0,
-              240.0
+              160.0,
+              480.0
             ],
             "broken_count": 0,
             "centroid": [
-              860.0,
-              525.0
+              980.0,
+              530.0
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              4.0,
-              12.0
+              8.0,
+              24.0
             ],
             "centroid_m": [
-              43.0,
-              26.25
+              49.0,
+              26.5
             ]
           },
           "soldiers": 24,
@@ -447,162 +447,14 @@
     {
       "hud": {
         "ctrl_bar_visible": true,
-        "formation_text": "0.9 m",
-        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 36 / 36\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 8 files\nOrder: Holding position\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.6 m/s\nAccel: -1.2 m/s²",
-        "order_mode_text": "",
-        "paused": false,
-        "shown_unit_uid": 0,
-        "stance_text": "Normal"
-      },
-      "tick": 170,
-      "units": [
-        {
-          "countermarch_variant": null,
-          "current_order": null,
-          "current_speed": 0.0,
-          "current_speed_mps": 0.0,
-          "delegated_group_id": null,
-          "engaged": false,
-          "facing": [
-            0.0,
-            1.0
-          ],
-          "file_pitch": 18.0,
-          "formation": "LOOSE",
-          "formation_label": "0.9 m",
-          "frontage": 8,
-          "in_enemy_contact": false,
-          "maneuver": "IDLE",
-          "morale": 100.0,
-          "name": "Infantry 1",
-          "order_guard": null,
-          "order_mode": "Normal",
-          "order_phase": null,
-          "position": [
-            480.0,
-            517.42
-          ],
-          "position_m": [
-            24.0,
-            25.871
-          ],
-          "queue_tail": [],
-          "rank_pitch": 18.0,
-          "rank_relief": true,
-          "soldier_summary": {
-            "bbox": [
-              110.24,
-              70.19
-            ],
-            "broken_count": 0,
-            "centroid": [
-              480.0,
-              521.35
-            ],
-            "count": 36,
-            "prone_count": 0
-          },
-          "soldier_summary_m": {
-            "bbox_m": [
-              5.512,
-              3.509
-            ],
-            "centroid_m": [
-              24.0,
-              26.067
-            ]
-          },
-          "soldiers": 36,
-          "state": "IDLE",
-          "subcommander_rank": null,
-          "subunit_size": 0,
-          "subunit_structure": "LATERAL_HALVES",
-          "target_enemy_uid": null,
-          "team": 0,
-          "tier": "CLOSE",
-          "uid": 0,
-          "weapon": "Gladius"
-        },
-        {
-          "countermarch_variant": null,
-          "current_order": null,
-          "current_speed": 0.0,
-          "current_speed_mps": 0.0,
-          "delegated_group_id": null,
-          "engaged": false,
-          "facing": [
-            0.0,
-            1.0
-          ],
-          "file_pitch": 20.0,
-          "formation": "NORMAL",
-          "formation_label": "1 x 3 m",
-          "frontage": 5,
-          "in_enemy_contact": false,
-          "maneuver": "IDLE",
-          "morale": 100.0,
-          "name": "Cavalry 1",
-          "order_guard": null,
-          "order_mode": "Normal",
-          "order_phase": null,
-          "position": [
-            860.0,
-            520.0
-          ],
-          "position_m": [
-            43.0,
-            26.0
-          ],
-          "queue_tail": [],
-          "rank_pitch": 60.0,
-          "rank_relief": true,
-          "soldier_summary": {
-            "bbox": [
-              80.0,
-              240.0
-            ],
-            "broken_count": 0,
-            "centroid": [
-              860.0,
-              525.0
-            ],
-            "count": 24,
-            "prone_count": 0
-          },
-          "soldier_summary_m": {
-            "bbox_m": [
-              4.0,
-              12.0
-            ],
-            "centroid_m": [
-              43.0,
-              26.25
-            ]
-          },
-          "soldiers": 24,
-          "state": "IDLE",
-          "subcommander_rank": null,
-          "subunit_size": 0,
-          "subunit_structure": "NONE",
-          "target_enemy_uid": null,
-          "team": 0,
-          "tier": "CLOSE",
-          "uid": 1,
-          "weapon": "Spatha"
-        }
-      ]
-    },
-    {
-      "hud": {
-        "ctrl_bar_visible": true,
-        "formation_text": "1 x 3 m",
-        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 1 x 3 m\nWidth: 5 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 1,
         "stance_text": "Normal"
       },
-      "tick": 200,
+      "tick": 355,
       "units": [
         {
           "countermarch_variant": null,
@@ -615,9 +467,9 @@
             0.0,
             1.0
           ],
-          "file_pitch": 18.0,
+          "file_pitch": 36.0,
           "formation": "LOOSE",
-          "formation_label": "0.9 m",
+          "formation_label": "1.8 m",
           "frontage": 8,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
@@ -627,37 +479,185 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            480.0,
-            517.24
+            390.44,
+            512.14
           ],
           "position_m": [
-            24.0,
-            25.862
+            19.522,
+            25.607
           ],
           "queue_tail": [],
-          "rank_pitch": 18.0,
+          "rank_pitch": 36.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              124.59,
-              72.0
+              240.32,
+              143.44
             ],
             "broken_count": 0,
             "centroid": [
-              480.0,
-              521.22
+              389.73,
+              520.28
             ],
             "count": 36,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              6.229,
-              3.6
+              12.016,
+              7.172
             ],
             "centroid_m": [
-              24.0,
-              26.061
+              19.486,
+              26.014
+            ]
+          },
+          "soldiers": 36,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 5,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            980.0,
+            520.0
+          ],
+          "position_m": [
+            49.0,
+            26.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              160.0,
+              480.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              980.0,
+              530.0
+            ],
+            "count": 24,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.0,
+              24.0
+            ],
+            "centroid_m": [
+              49.0,
+              26.5
+            ]
+          },
+          "soldiers": 24,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spatha"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1 x 3 m locked",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 1 x 3 m locked\nWidth: 5 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 1.4 m/s\nAccel: -0.7 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 510,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            372.83,
+            511.91
+          ],
+          "position_m": [
+            18.642,
+            25.595
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.31,
+              154.45
+            ],
+            "broken_count": 0,
+            "centroid": [
+              371.95,
+              519.75
+            ],
+            "count": 36,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.615,
+              7.722
+            ],
+            "centroid_m": [
+              18.598,
+              25.987
             ]
           },
           "soldiers": 36,
@@ -683,8 +683,8 @@
             1.0
           ],
           "file_pitch": 20.0,
-          "formation": "NORMAL",
-          "formation_label": "1 x 3 m",
+          "formation": "TIGHT",
+          "formation_label": "1 x 3 m locked",
           "frontage": 5,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
@@ -694,37 +694,185 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            860.0,
-            520.0
+            976.46,
+            542.18
           ],
           "position_m": [
-            43.0,
-            26.0
+            48.823,
+            27.109
           ],
           "queue_tail": [],
           "rank_pitch": 60.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              80.0,
-              240.0
+              150.94,
+              353.83
             ],
             "broken_count": 0,
             "centroid": [
-              860.0,
-              525.0
+              976.09,
+              548.91
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              4.0,
-              12.0
+              7.547,
+              17.691
             ],
             "centroid_m": [
-              43.0,
-              26.25
+              48.804,
+              27.445
+            ]
+          },
+          "soldiers": 24,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spatha"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "4 x 12 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 4 x 12 m\nWidth: 5 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 2.1 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 680,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            368.24,
+            510.97
+          ],
+          "position_m": [
+            18.412,
+            25.548
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              368.24,
+              518.97
+            ],
+            "count": 36,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              7.2
+            ],
+            "centroid_m": [
+              18.412,
+              25.948
+            ]
+          },
+          "soldiers": 36,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 80.0,
+          "formation": "LOOSE",
+          "formation_label": "4 x 12 m",
+          "frontage": 5,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            972.17,
+            558.66
+          ],
+          "position_m": [
+            48.609,
+            27.933
+          ],
+          "queue_tail": [],
+          "rank_pitch": 240.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              295.9,
+              395.01
+            ],
+            "broken_count": 0,
+            "centroid": [
+              972.11,
+              581.64
+            ],
+            "count": 24,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.795,
+              19.75
+            ],
+            "centroid_m": [
+              48.605,
+              29.082
             ]
           },
           "soldiers": 24,
