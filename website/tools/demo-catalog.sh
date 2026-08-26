@@ -69,6 +69,7 @@ DEMOS=(
   "lateral_pivot_flank_march|demos/inputs/lateral-pivot-flank-march.json|30|400|720|input"
   "general_doctrine_reserves|demos/inputs/general-doctrine-reserves.json|60|900|640|input"
   "echelon_form_up|demos/inputs/echelon-oblique-form-up.json|30|650|720|input"
+  "tray_formation_deploy|demos/inputs/tray-formation-deploy.json|30|460|720|input"
   "countermarch|demos/inputs/countermarch-exelismos.json|30|560|640|input"
   "wheel_turn|demos/inputs/wheel-turn-oblique-move.json|30|440|720|input"
   "resize_flank_anchor|demos/inputs/flank-anchored-resize.json|30|160|640|input"

@@ -44,6 +44,13 @@ var _map: Dictionary = {}
 # instance (not via a Settings session setter) since this is a live-battle behavior
 # override, not a HUD/render toggle -- see _start_battle.
 var _form_up_dist: int = -1
+# Optional tray-grid seed from the input script's "tray_grid" field (rows of unit uids
+# or nulls) plus the session-only tray_row_order_placement / show_unit_card_tray
+# toggles. Applied after Battle._ready so HUD's tray exists; empty = leave the tray
+# at its default row-major fill.
+var _tray_grid: Array = []
+var _tray_row_order_placement: bool = false
+var _show_unit_card_tray: bool = false
 # Optional spawn-layout stamp (SpawnFingerprint) from the input script's "spawn_fingerprint"
 # field. "" (default) = unstamped, so the load check is skipped -- the additive-field,
 # opt-in convention every other script field follows. A stamped script that no longer matches
@@ -124,6 +131,10 @@ func _ready() -> void:
 			get_tree().quit(2)
 			return
 	_form_up_dist = int(script.get("form_up_dist", -1))
+	_tray_row_order_placement = bool(script.get("tray_row_order_placement", false))
+	_show_unit_card_tray = bool(script.get("show_unit_card_tray", false))
+	var raw_tray_grid = script.get("tray_grid", [])
+	_tray_grid = raw_tray_grid if raw_tray_grid is Array else []
 	_spawn_fingerprint = str(script.get("spawn_fingerprint", ""))
 	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
 	# Declared expectations (the `expect` list) are checked offline against dumped
@@ -181,9 +192,28 @@ func _start_battle() -> void:
 	_hud = _battle.get_node("HUD")
 	if _form_up_dist >= 0:
 		_sel._form_up_dist = _form_up_dist
+	_apply_demo_tray()
 	_cam = _battle.get_node("Camera2D")
 	_apply_camera(0)
 	get_tree().physics_frame.connect(_on_physics_frame)
+
+
+## Session-only tray toggles plus optional uid-grid seed. HUD has already built the tray
+## during Battle._ready (even while hidden); seeding here overwrites the default row-major
+## fill so a form-up drag can place the scripted 2D layout. Does not persist Settings.
+func _apply_demo_tray() -> void:
+	if _tray_row_order_placement:
+		Settings.set_tray_row_order_placement_session(true)
+	if _show_unit_card_tray:
+		Settings.set_show_unit_card_tray_session(true)
+		if _hud != null and _hud.has_method("_sync_unit_card_tray_visibility"):
+			_hud._sync_unit_card_tray_visibility()
+	if _tray_grid.is_empty() or _hud == null or not _hud.has_method("get_unit_card_tray"):
+		return
+	var tray = _hud.get_unit_card_tray()
+	if tray == null or not tray.has_method("apply_uid_grid"):
+		return
+	tray.apply_uid_grid(_tray_grid, _battle._by_uid)
 
 
 ## Each physics frame, hold the camera framing and fire any input events due this tick.
