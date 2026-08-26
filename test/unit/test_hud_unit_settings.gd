@@ -10,6 +10,18 @@ const BattleScript = preload("res://scripts/Battle.gd")
 const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
 
 
+## Stand-in for SelectionManager so the formation-popup handler can be exercised
+## without a live Battle.enqueue_formation path. Duck-typed: HUD's _sel_mgr is untyped.
+class SelStub:
+	var units: Array = []
+	func set_formation_to(_id: int) -> void:
+		pass
+	func has_selection() -> bool:
+		return not units.is_empty()
+	func _live_selected_units() -> Array:
+		return units
+
+
 func _hud() -> CanvasLayer:
 	var hud = HUDScript.new()
 	add_child_autofree(hud)   # runs _ready(): builds the menu, info panel, checkboxes
@@ -159,3 +171,36 @@ func test_ctrl_bar_update_reform_is_a_noop_with_no_unit() -> void:
 	hud._ctrl_bar_update_reform(null)
 	assert_eq(hud._ctrl_reform_btn.button_pressed, before,
 		"the quick-toggle button is untouched when no unit is passed")
+
+
+func test_refresh_formation_menu_labels_is_a_noop_without_a_unit() -> void:
+	var hud := _hud()
+	hud._refresh_formation_menu_labels(null)
+	assert_eq(hud._ctrl_formation_btn.text, "0.45 m ▾",
+			"null unit leaves the default infantry interval")
+
+
+func test_formation_popup_falls_back_to_infantry_interval_without_selection() -> void:
+	var hud := _hud()
+	hud._sel_mgr = null
+	hud._on_formation_popup_id(UnitScript.FORMATION_LOOSE)
+	assert_eq(hud._ctrl_formation_btn.text, "0.9 m ▾",
+			"no selection stamps the infantry pyknosis label")
+
+
+func test_formation_popup_keeps_cavalry_anisotropic_label() -> void:
+	var hud := _hud()
+	var stub := SelStub.new()
+	var cav := _unit()
+	cav.is_cavalry = true
+	cav.file_pitch = UnitScript.CAV_MARK_RADIUS * 2.0
+	cav.rank_pitch = UnitScript.CAV_MARK_RADIUS * 6.0
+	stub.units = [cav]
+	hud._sel_mgr = stub
+	hud._on_formation_popup_id(UnitScript.FORMATION_NORMAL)
+	assert_eq(hud._ctrl_formation_btn.text, "1 x 3 m ▾",
+			"a cavalry selection keeps file x rank metres, not the 0.45 m infantry default")
+	var popup: PopupMenu = hud._ctrl_formation_btn.get_popup()
+	var loose_idx: int = popup.get_item_index(UnitScript.FORMATION_LOOSE)
+	assert_eq(popup.get_item_text(loose_idx), "2 x 6 m",
+			"the menu previews Loose as doubled cavalry pitches")

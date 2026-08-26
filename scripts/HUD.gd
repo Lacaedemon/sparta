@@ -1666,7 +1666,8 @@ func _build_ctrl_formation_menu() -> Control:
 	_ctrl_formation_btn.add_theme_font_size_override("font_size", 13)
 	var popup := _ctrl_formation_btn.get_popup()
 	for mode: int in _FORMATION_MENU_ORDER:
-		popup.add_item(UnitRef.formation_interval_label(mode, UnitRef.FORMATION_SPACING), mode)
+		popup.add_item(UnitRef.formation_interval_label(
+				mode, UnitRef.FORMATION_SPACING * UnitRef.spacing_scale_for_mode(mode)), mode)
 		popup.set_item_metadata(popup.get_item_index(mode), mode)
 	popup.about_to_popup.connect(_reposition_dropup.bind(popup, _ctrl_formation_btn))
 	popup.id_pressed.connect(_on_formation_popup_id)
@@ -1719,7 +1720,8 @@ func _on_formation_popup_id(id: int) -> void:
 		if not live.is_empty():
 			_ctrl_bar_update_formation(live[0])
 			return
-	_ctrl_formation_btn.text = UnitRef.formation_interval_label(id, UnitRef.FORMATION_SPACING) + " ▾"
+	_ctrl_formation_btn.text = UnitRef.formation_interval_label(
+			id, UnitRef.FORMATION_SPACING * UnitRef.spacing_scale_for_mode(id)) + " ▾"
 
 
 func _on_stance_popup_id(id: int) -> void:
