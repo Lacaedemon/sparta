@@ -105,12 +105,20 @@ static func order_mode_modifiers(u: Unit, target: Unit) -> Vector2:
 
 
 static func strike(u: Unit, enemy: Unit) -> void:
-	# Phase 4b: when both regiments have an engaged soldier layer, resolve melee per
-	# soldier (the model's opposed roll + wound against per-soldier health) instead of the
-	# regiment damage formula. This is where flanking, reach (spear vs. sword, #240), and
-	# charge fall out of geometry. Ranged volleys and any non-engaged edge case fall
-	# through to the formula below.
-	if Unit.INDIVIDUAL_COLLISION and not u.is_ranged and u.is_engaged() and enemy.is_engaged() \
+	# Phase 4b: when both regiments have a soldier layer, resolve melee per soldier
+	# (the model's opposed roll + wound against per-soldier health) instead of the
+	# regiment damage formula. This is where flanking, reach (spear vs. sword), and
+	# charge fall out of geometry. The attacker must be engaged (is_engaged reads live
+	# FIGHTING, so the opening blow of a fresh contact takes this path too). The
+	# defender does not also have to be latched: it often has not run its own _think
+	# yet on the contact tick, and requiring enemy.is_engaged() sent every opening
+	# blow through the formula below -- which subtracts an absolute soldier count
+	# calibrated for a full regiment and can wipe a small unit in one tick. That
+	# wipe was not "bodies never closed": FIGHTING is gated on regiment circles, so
+	# the formula fired while soldier bodies were already overlapping inside weapon
+	# reach and the per-soldier path was still locked out. Ranged volleys and units
+	# with no soldier layer still fall through to the formula.
+	if Unit.INDIVIDUAL_COLLISION and not u.is_ranged and u.is_engaged() \
 			and not u._sim_soldier_pos.is_empty() and not enemy._sim_soldier_pos.is_empty():
 		u.resolve_soldier_melee(enemy)
 		u._approach_velocity = Vector2.ZERO   # spend the charge on this contact strike
@@ -268,11 +276,12 @@ static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
 ## live `_sim_soldier_pos` (parent-local, same frame as `position` -- see that field's doc
 ## comment), when the caller has a per-soldier layer to read it from (SoldierMelee.reap());
 ## it defaults to empty when no such data exists. That covers more than "no soldier layer at
-## all": the regiment-formula path (take_casualties) also takes the VERY FIRST strike after a
-## fresh contact, before the engaged-tier latch sets (is_engaged() reads false for one tick --
-## see Unit.tick_engaged), so even a unit with a full soldier layer can land here with no
-## per-death data for that one hit. The cosmetic Fallen-heap placement below has its own
-## fallback for exactly that case.
+## all": the regiment-formula path (take_casualties) is the fallback for a unit with no
+## soldier layer (unseeded tests, INDIVIDUAL_COLLISION off). A close-tier melee with a
+## soldier layer now resolves per-soldier from the first blow (is_engaged reads live
+## FIGHTING, so the opening tick no longer drops through to the formula). The cosmetic
+## Fallen-heap placement below still has a live-body fallback for the remaining
+## formula-path case, where there is no per-death data.
 static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flank: float,
 		dead_local_positions: PackedVector2Array = PackedVector2Array()) -> void:
 	var morale_scale: float = 1.0 + REAR_MORALE_EXTRA * (morale_flank - 1.0)
@@ -311,8 +320,8 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 		var local_positions: PackedVector2Array = dead_local_positions
 		if local_positions.is_empty():
 			# No exact per-death data (see this function's own doc comment for when --
-			# most commonly the very first strike after contact, before the engaged-tier
-			# latch sets). Use the REAL live positions of the soldiers nearest the
+			# a formula-path hit on a unit with no soldier layer, or an empty per-death
+			# list). Use the REAL live positions of the soldiers nearest the
 			# attacker instead of a synthetic average: a still-forming battle line (rear
 			# ranks not yet engaged) or a knockback-spread block can have live bodies far
 			# from where this specific strike actually landed. With no attacker to bias
