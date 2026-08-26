@@ -104,8 +104,9 @@ static func accumulate(units: Array, frame: int) -> void:
 	steer.resize(n)
 	# Work tallies for this pass, kept in locals and reported once at the end: a SimOps call
 	# per soldier (let alone per pair) would cost more than the counting is worth, and these
-	# are exact -- candidates is what the broadphase actually handed back, pairs_pushed is what
-	# actually reached _pair_push, one square root each.
+	# are exact -- candidates is what the broadphase actually handed back, pairs_pushed is
+	# what survived the ownership/exemption filters, and sqrt_evals is what actually reached
+	# _pair_push (one square root each) after the squared-distance band check below.
 	var candidates_seen: int = 0
 	var pairs_pushed: int = 0
 	var sqrt_evals: int = 0
@@ -128,7 +129,8 @@ static func accumulate(units: Array, frame: int) -> void:
 			pairs_pushed += 1
 			var min_dist: float = sradii[a] + sradii[b]
 			var offset: Vector2 = spos[a] - spos[b]
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			# Compare squared lengths so clearly-out-of-reach pairs skip the sqrt entirely;
+			# only pairs inside the band pay for a real root in _pair_push.
 			if offset.length_squared() >= min_dist * min_dist * SQRT_SKIP_BAND:
 				continue
 			sqrt_evals += 1

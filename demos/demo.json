@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Memory-only change: records the gha/ai-config workflow inventory. No battle recording can show a working-notes file."
+  "input": "demos/inputs/line-relief-queue.json",
+  "caption": "Line relief after the steering sqrt-skip: two friendly regiments queue and swap through each other -- the exact friendly-pair steering path this PR optimizes. The website demo-diff sweep reports every catalog transcript byte-identical to the merge-base (0 changed / 87 unchanged), so the clip shows the same battle running on fewer square roots.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 720
 }
