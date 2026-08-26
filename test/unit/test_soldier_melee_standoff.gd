@@ -185,6 +185,7 @@ func test_accumulate_only_considers_the_engaged_tier_not_every_living_soldier() 
 	spear._engaged_indices_cache = PackedInt32Array([1])
 	spear._engaged_indices_cache_frame = frame
 	spear._engaged_indices_cache_count = 2
+	spear._engaged_indices_cache_engaged = true
 
 	SoldierMeleeStandoff.accumulate([spear, sword], 1)
 
