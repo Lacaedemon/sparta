@@ -82,8 +82,10 @@ Battle controls: selection, orders, formations, drill maneuvers, and camera.
 :::
 
 A right-click on empty ground is a **move** order; a right-click on an enemy is an
-**attack** order. Selection and camera stay live even while paused, so you can plan
-under pressure.
+**attack** order. Melee then resolves **per soldier**: a small unit is not erased in
+one tick the moment the two blocks' centres enter weapon range -- men have to actually
+be in reach, and both sides can hit back. Selection and camera stay live even while
+paused, so you can plan under pressure.
 
 **Control bar.** When you have units selected, a control bar appears at the bottom of
 the screen with clickable buttons for the most-used unit toggles.

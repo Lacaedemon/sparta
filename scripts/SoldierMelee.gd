@@ -1,9 +1,10 @@
 class_name SoldierMelee
 ## Per-soldier melee resolution (phase 4b), extracted from Unit.gd. Each engaged
 ## front-rank soldier of the attacker strikes the nearest enemy soldier within its
-## weapon reach -- searching across EVERY adjacent engaged enemy unit passed in, not
-## just one, so a soldier fights whoever is actually next to it regardless of which
-## regiment its own unit's `target_enemy` happens to point to -- rolling the model's
+## weapon reach -- searching across EVERY adjacent enemy unit passed in, not
+## just one, and not only that unit's facing-front engaged ranks, so a soldier fights
+## whoever is actually next to it regardless of which regiment its own unit's
+## `target_enemy` happens to point to -- rolling the model's
 ## opposed land contest (SoldierCombat); a hit wounds the enemy soldier's health pool,
 ## and a soldier whose health reaches 0 dies and is removed, re-packing the formation.
 ## Flanking (facing), the spear-vs-sword reach standoff, the charge, and compounding
@@ -41,7 +42,17 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 	var def_mods: Array[Vector2] = []
 	var any_candidates := false
 	for d in live_defenders:
-		var di: PackedInt32Array = d.engaged_soldier_indices(d._sim_soldier_pos.size())
+		# Every living soldier is a valid HIT candidate, not only the defender's
+		# facing-front engaged ranks. Attackers still strike from their own engaged
+		# front (the selection above); targets are whoever those men can actually
+		# reach. A facing-front-only candidate set misses the men under a rear or
+		# flank blow -- a deep cavalry block's "front" sits a mounted rank-pitch
+		# on the far side of the horse -- so the opening blow of a contact made
+		# from behind found nobody in reach and dealt no wounds, while the
+		# regiment formula (the path that used to take that blow) simply deleted
+		# an absolute head-count. Reach is the real gate: rear ranks of a deep
+		# block are out of a frontal sword's range, and in range of a rear attack.
+		var di: PackedInt32Array = _living_soldier_indices(d)
 		def_indices.append(di)
 		def_prof.append(d.combat_profile())
 		# Formation melee scaling, applied to the wound this cadence lands: a hunkered SQUARE
@@ -372,6 +383,19 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 		return
 	unit.soldiers = maxi(0, unit.soldiers - dead)
 	UnitCombat.register_casualties(unit, dead, killer, morale_flank, dead_positions)
+
+
+## Living soldier indices of `unit`, in array order. Used as the melee HIT candidate
+## set so a blow can land on whoever is actually in reach, not only the facing-front
+## engaged selection (see resolve()'s defender loop). Deterministic -- walks the
+## current `_sim_soldier_hp` snapshot, no RNG.
+static func _living_soldier_indices(unit: Unit) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var n: int = mini(unit._sim_soldier_pos.size(), unit._sim_soldier_hp.size())
+	for i in range(n):
+		if unit._sim_soldier_hp[i] > 0.0:
+			out.append(i)
+	return out
 
 
 ## Apply a ranged volley's `casualties` to `target` at the individual level: the men

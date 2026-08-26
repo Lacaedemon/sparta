@@ -5571,9 +5571,16 @@ func tick_engaged(delta: float) -> void:
 
 
 ## True while this regiment is in the engaged tier (its front ranks run the full
-## per-soldier pass). A function of the latch only.
+## per-soldier pass). Reads the latch OR the live FIGHTING state, matching
+## ENGAGED_LINGER's stated contract ("engaged while FIGHTING and for ENGAGED_LINGER
+## seconds after"). The latch alone cannot express the "while FIGHTING" half on the
+## opening tick: _physics_process runs _think() -- which is where a unit enters
+## FIGHTING and lands its first strike -- BEFORE tick_engaged() arms the latch. Reading
+## state directly closes that one-tick hole, so a unit that is fighting right now counts
+## as engaged for the strike it is making right now, and melee casualties resolve per
+## soldier from the first blow instead of falling through to the regiment formula.
 func is_engaged() -> bool:
-	return _engaged_linger > 0.0
+	return _engaged_linger > 0.0 or state == State.FIGHTING
 
 
 ## Battle AI phase 4 (docs/battle-ai-design.md): whether the player has delegated this unit to
@@ -6409,8 +6416,9 @@ func _separation_candidates() -> Array:
 ## so a soldier fights whoever's actually next to it instead of being confined to whichever
 ## regiment `target_enemy` happens to resolve to. `enemy` is unioned in explicitly rather than
 ## solely relied on from _adjacent_engaged_enemy_units(): UnitCombat.strike's own gate already
-## guarantees enemy.is_engaged() before calling this, so the common single-enemy case stays
-## exact and unconditional regardless of that query's own contact-range geometry. The actual
+## guarantees the attacker is engaged and both sides have a soldier layer before calling
+## this, so the common single-enemy case stays exact and unconditional regardless of that
+## query's own contact-range geometry. The actual
 ## resolution (the opposed contest, the wound to per-soldier health, and the death/re-pack)
 ## lives in SoldierMelee.resolve; this wrapper just gathers the defender population.
 func resolve_soldier_melee(enemy: Unit) -> void:

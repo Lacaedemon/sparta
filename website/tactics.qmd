@@ -981,6 +981,12 @@ So a spear line meeting a sword line head-on gets free hits during the approach 
 another reason to lead with spearmen and let the shorter weapons pin and flank. Combat
 resolves **per soldier** by weapon reach: a spearman strikes any enemy within its
 longer reach, while a swordsman beyond its own (shorter) reach cannot strike back.
+That is also how a clash *starts*: the opening blow is the same per-soldier contest,
+not a regiment-sized lump of casualties fired the moment the two centres cross a
+circle of weapon-range-plus-radii. A small unit therefore cannot vanish in one tick
+at a distance its men have not closed, and a rear or flank contact hits the soldiers
+who are actually next to the blow rather than a facing-front rank on the far side of
+the block.
 
 That opening-strike edge now **holds up once the lines are locked**, not just on the
 approach. A spearman doesn't back away once a swordsman closes in --- it holds its
