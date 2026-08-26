@@ -1,7 +1,7 @@
 {
-  "_comment": "Per-PR demo for #1379: the line-relief corridor no longer fans every back rank the moment the swap arms. Deliberately records the SAME input script as #1348 / #1377, unchanged -- do not re-stage this scenario without re-staging demos/inputs/relief-fighting-withdrawal.json in step, or that controlled pair stops being a pair.",
+  "_comment": "Per-PR demo for #1379: close-order Infantry keeps its files packed during line relief -- the 93% misslotted spend was the cost of wrongly opening a file corridor in synaspismos. Deliberately records the SAME input script as #1348 / #1377, unchanged -- do not re-stage this scenario without re-staging demos/inputs/relief-fighting-withdrawal.json in step, or that controlled pair stops being a pair.",
   "input": "demos/inputs/line-relief-queue.json",
-  "caption": "Line relief corridor, ranks the partner actually occupies. Same scenario as the line_relief clip -- a 60-man Infantry front block ground down holding a 70-man enemy, relieved at tick 200 by a full-strength unit behind it. Watch the reliever's front-adjacent ranks open a lane as it closes, while its own rear stays closed until the tired unit is actually falling back through it -- the whole block no longer fans the moment the order arms.",
+  "caption": "Close-order line relief keeps files packed. Same scenario as the line_relief clip -- a 60-man Infantry front block ground down holding a 70-man enemy, relieved at tick 200 by a full-strength unit behind it. The two blocks still pass through each other at the regiment level, but the reliever's close-order files never open a lane: blocked relief through dense ranks is one of the costs of a close formation.",
   "fixed_fps": 60,
   "max_frames": 480,
   "fps": 15,

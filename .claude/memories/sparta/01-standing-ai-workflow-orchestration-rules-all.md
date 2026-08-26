@@ -85,6 +85,16 @@ modifier or an instant state switch that ignores it. Concretely:
   redesign), and resolution authority -- so treat it as the general rule rather than a
   list of special cases.
 
+- **Close-order files stay impermeable during line relief.** Regiment-level
+  pass-through (`Unit._separation_exempt` / `Order.friendly_target`) lets two
+  friendly blocks interpenetrate so the line never opens a gap. That is unit
+  interpenetration, not file-gap opening. Close-order grids (NORMAL, TIGHT,
+  SQUARE, SCHILTRON, SHIELD_WALL, TESTUDO -- `spacing_scale <= 1.0`) keep their
+  files packed; blocked or expensive relief through close order is intended, not
+  a bug to paper over by widening slots (`_apply_relief_corridor_to_slots`).
+  Only Loose (`spacing_scale > 1.0`) may open a file corridor. Do not add file
+  pass-through to buy misslotted-budget margin on a close-order relief clip.
+
 When implementing or reviewing a new mechanic, ask: does this emerge from the
 individual-level physics already in place, or is it a shortcut layered on top? Prefer
 the former; flag the latter as a candidate for this list.
