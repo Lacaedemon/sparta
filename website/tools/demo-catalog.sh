@@ -85,7 +85,7 @@ DEMOS=(
   "multiple_engage|demos/inputs/multiple-engage.json|30|350|720|input"
   "march_to_contact|demos/inputs/march-to-contact.json|30|370|640|input"
   "nested_control_groups|demos/inputs/nested-control-groups.json|30|300|640|input"
-  "brace_vs_unbraced|demos/inputs/brace-vs-unbraced-charge.json|30|320|720|input"
+  "brace_vs_unbraced|demos/inputs/brace-vs-unbraced-charge.json|30|240|720|input"
   "move_cancel_on_engagement|demos/inputs/move-cancels-on-engagement.json|30|250|640|input"
   "phalanx_holds_ranks|demos/inputs/phalanx-holds-its-ranks.json|30|280|720|input"
   "slow_motion|demos/inputs/slow-motion.json|30|320|640|input"

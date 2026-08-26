@@ -1,9 +1,9 @@
 {
-  "_comment": "Per-PR demo for the hold-formation catalog re-pin. Brace vs unbraced is the clip whose on-screen claim actually changed: both spear lines now hold until the cavalry arrives, and the contrast is knockback on impact rather than the unbraced line walking forward.",
+  "_comment": "Per-PR demo for the hold-formation catalog re-pin. Brace vs unbraced is the clip whose on-screen claim actually changed: both spear lines now hold until the cavalry arrives (the unbraced line no longer walks forward on detect). The left-hand cavalry spawns 30 wu closer so its charge still lands inside the 240-frame window; the clip cuts as the right-hand charge arrives, before a charging regiment outruns its contact resistance and punches through the braced line. On impact the unbraced line is shoved forward into the melee; the braced line holds near where it stood.",
   "input": "demos/inputs/brace-vs-unbraced-charge.json",
-  "caption": "Hold-formation default, catalog re-pin: two identical Spearmen lines wait in place for the same cavalry charge. The right line is ordered to Brace and holds its ground on impact; the left is left at the no-order default and is driven back. The clip runs to 320 frames so both charges land (the left-hand pair only meets around tick 520).",
+  "caption": "Hold-formation default, catalog re-pin: two identical Spearmen lines wait in place for a cavalry charge. The left is left at the no-order default; the right is ordered to Brace. The left-hand charge lands first -- the unbraced line is shoved forward into the melee -- and the clip cuts as the braced line meets its charge, still standing where it waited.",
   "fixed_fps": 30,
-  "max_frames": 320,
+  "max_frames": 240,
   "fps": 15,
   "width": 720
 }

@@ -236,10 +236,10 @@ Everything tactical comes out of the rolls above:
 </video>
 ```
 
-Two identical spear lines against an identical cavalry charge. Both lines
-hold in place: the left is left at the no-order default, the right is ordered
-to Brace early and settles well before contact -- watch the two absorb the
-same charge very differently.
+Two identical spear lines against a cavalry charge. Both wait in place (the
+no-order default holds formation). The left is left unbraced; the right is
+ordered to Brace early and settles well before contact. On impact the
+unbraced line is shoved forward into the melee; the braced line holds.
 :::
 
 ::: {.callout-note}
