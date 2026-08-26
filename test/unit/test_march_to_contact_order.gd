@@ -21,6 +21,10 @@ func _make_unit(max_soldiers: int = 120) -> Unit:
 	add_child_autofree(u)
 	u.facing = Vector2.DOWN
 	u.position = Vector2.ZERO
+	# Pin Tight: the 30 wu foe offset and 60-tick resume budget were authored against
+	# close-order contact. Default Normal's 2x block makes the post-fight heading
+	# change a longer wheel, so position.x never leaves 0 inside that budget.
+	u.set_formation(Unit.FORMATION_TIGHT)
 	return u
 
 

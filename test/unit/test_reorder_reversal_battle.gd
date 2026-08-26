@@ -45,7 +45,8 @@ func test_reversing_move_order_keeps_the_block_formed() -> void:
 	battle.drill_mode = true
 	battle.terrain = []
 	battle.scenario = [
-		{"team": 0, "type": "Cavalry", "x": 500, "y": 600, "count": 24},
+		{"team": 0, "type": "Cavalry", "x": 500, "y": 600, "count": 24,
+				"formation": Unit.FORMATION_TIGHT},
 	]
 	add_child_autofree(battle)
 	var cav: Unit = null

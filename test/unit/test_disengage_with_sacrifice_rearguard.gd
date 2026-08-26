@@ -34,8 +34,10 @@ func _units_by_uid(battle: Node) -> Dictionary:
 ## FIGHTING unit.
 func _clash_scenario() -> Array:
 	return [
-		{"team": 0, "type": "Infantry", "x": SPAWN.x, "y": SPAWN.y, "count": 100, "facing": [0, 1]},
-		{"team": 1, "type": "Infantry", "x": SPAWN.x, "y": SPAWN.y + 60, "count": 100, "facing": [0, -1]},
+		{"team": 0, "type": "Infantry", "x": SPAWN.x, "y": SPAWN.y, "count": 100,
+				"facing": [0, 1], "formation": Unit.FORMATION_TIGHT},
+		{"team": 1, "type": "Infantry", "x": SPAWN.x, "y": SPAWN.y + 60, "count": 100,
+				"facing": [0, -1], "formation": Unit.FORMATION_TIGHT},
 	]
 
 

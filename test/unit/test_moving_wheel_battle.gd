@@ -37,6 +37,12 @@ func test_moving_wheel_hinge_holds_pace_while_outer_file_runs_faster_then_settle
 	assert_not_null(target, "found a team-0 cavalry unit")
 	if target == null:
 		return
+	# Pin Tight (1 x 3 m floor). Default cavalry Normal is 2 x 6 m, which doubles the
+	# outer-file radius this fixture's sprint slop and swing budget were authored against.
+	target.set_formation(Unit.FORMATION_TIGHT)
+	target.seed_sim_soldiers()
+	for _s in range(40):
+		await get_tree().physics_frame
 
 	# First order: a plain march straight ahead (along the unit's own spawn facing), so the
 	# unit is genuinely CRUISING -- not starting from a dead stop -- by the time the sharp
@@ -185,6 +191,10 @@ func test_moving_wheel_sweeps_past_180_degrees_in_a_live_battle() -> void:
 	assert_not_null(target, "found a team-0 cavalry unit")
 	if target == null:
 		return
+	target.set_formation(Unit.FORMATION_TIGHT)
+	target.seed_sim_soldiers()
+	for _s in range(40):
+		await get_tree().physics_frame
 
 	var start_facing: Vector2 = target.facing
 	var turn_angle: float = deg_to_rad(200.0)
