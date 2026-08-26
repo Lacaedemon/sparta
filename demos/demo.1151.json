@@ -1,8 +1,0 @@
-{
-  "input": "demos/inputs/small-unit-melee.json",
-  "caption": "A 10-horse cavalry troop attacks another 10-horse troop head-on. Opening melee is per-soldier: neither unit vanishes in one tick at regiment-circle range, and both sides trade wounds once the men are actually in reach.",
-  "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
-  "width": 640
-}
