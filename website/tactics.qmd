@@ -988,6 +988,22 @@ at a distance its men have not closed, and a rear or flank contact hits the sold
 who are actually next to the blow rather than a facing-front rank on the far side of
 the block.
 
+::: {#fig-small-unit-melee .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/small_unit_melee.jpg">
+  <source src="media/small_unit_melee.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A 10-horse cavalry troop attacks another 10-horse troop head-on. Opening melee is
+per-soldier: neither roster vanishes in one tick at regiment-circle range, and both
+sides trade wounds once the men are actually in reach.
+:::
+
 That opening-strike edge now **holds up once the lines are locked**, not just on the
 approach. A spearman doesn't back away once a swordsman closes in --- it holds its
 ground and keeps fighting, and its reach advantage keeps landing hits the same way it

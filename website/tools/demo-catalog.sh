@@ -76,6 +76,7 @@ DEMOS=(
   "chase_canter|demos/inputs/stern-chase-canter.json|30|260|640|input"
   "funnel_lanes|demos/inputs/funnel-hug-lanes.json|60|1080|640|input"
   "spear_standoff|demos/inputs/spear-standoff.json|30|720|720|input"
+  "small_unit_melee|demos/inputs/small-unit-melee.json|30|300|640|input"
   "give_ground|demos/inputs/give-ground.json|30|660|640|input"
   "file_major_reform_contrast|demos/inputs/file-major-reform-contrast.json|30|720|720|input"
   "moving_wheel|demos/inputs/moving-wheel-vs-standing.json|30|330|800|input"
