@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/tray-formation-deploy.json",
+  "caption": "Tray formation placement: three Infantry laid out in the tray as a quincunx (Line 1: unit, gap, unit; Line 2: gap, unit, gap) are box-selected and right-dragged onto a south-facing front. The two Line-1 units land on the dragged line with a gap between them; the Line-2 unit sits behind covering that gap. Watch that this is the tray's own grid -- not the Checkerboard form-up split, which alternates by index and is not used here.",
+  "fixed_fps": 30,
+  "max_frames": 460,
+  "fps": 12,
+  "width": 720
+}

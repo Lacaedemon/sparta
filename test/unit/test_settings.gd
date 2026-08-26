@@ -230,6 +230,30 @@ func test_set_show_position_anchor_session_flips_value_without_persisting() -> v
 	assert_false(s._loading, "_loading restored to its prior value (false) after the call")
 
 
+func test_set_tray_row_order_placement_session_flips_value_without_persisting() -> void:
+	var s := _SaveCountingSettings.new()
+	autofree(s)
+	watch_signals(s)
+	assert_false(s.tray_row_order_placement, "tray formation placement defaults off")
+	s.set_tray_row_order_placement_session(true)
+	assert_true(s.tray_row_order_placement, "session setter flips the in-memory value")
+	assert_eq(s.save_calls, 0, "...and never calls _save()")
+	assert_signal_not_emitted(s, "changed", "...and emits no `changed`")
+	assert_false(s._loading, "_loading restored to its prior value (false) after the call")
+
+
+func test_set_show_unit_card_tray_session_flips_value_without_persisting() -> void:
+	var s := _SaveCountingSettings.new()
+	autofree(s)
+	watch_signals(s)
+	assert_false(s.show_unit_card_tray, "unit card tray defaults hidden")
+	s.set_show_unit_card_tray_session(true)
+	assert_true(s.show_unit_card_tray, "session setter flips the in-memory value")
+	assert_eq(s.save_calls, 0, "...and never calls _save()")
+	assert_signal_not_emitted(s, "changed", "...and emits no `changed`")
+	assert_false(s._loading, "_loading restored to its prior value (false) after the call")
+
+
 func test_default_bindings_cover_exactly_battles_hotkey_slugs() -> void:
 	# Settings.DEFAULT_ORDER_BINDINGS and Battle.ORDER_MODE_HOTKEYS must agree on the
 	# slug set, or a mode would be unbindable (or a default binding orphaned).

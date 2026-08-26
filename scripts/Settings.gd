@@ -193,7 +193,9 @@ var show_unit_card_tray: bool = false:
 			_save()
 			changed.emit()
 
-# Whether tray row order determines placement when dragging multi-unit form-up lines. Default off.
+# When on, a multi-unit form-up drag deploys the selection from the unit-card tray's 2D
+# grid (Line 1 = front rank, columns left-to-right, empty cells = gaps). A single filled
+# tray line still only reorders left-to-right under the live FormUpDist mode. Default off.
 var tray_row_order_placement: bool = false:
 	set(value):
 		if value == tray_row_order_placement:
@@ -345,6 +347,26 @@ func set_show_soldier_ids_session(value: bool) -> void:
 	var was_loading := _loading
 	_loading = true
 	show_soldier_ids = value
+	_loading = was_loading
+
+
+## Set show_unit_card_tray for this run only -- no persist to disk, no `changed` signal
+## (same _load()-guard trick as set_sfx_enabled_session above). A demo input script can
+## show the tray in its recording without rewriting a developer's saved preference.
+func set_show_unit_card_tray_session(value: bool) -> void:
+	var was_loading := _loading
+	_loading = true
+	show_unit_card_tray = value
+	_loading = was_loading
+
+
+## Set tray_row_order_placement for this run only -- no persist to disk, no `changed`
+## signal. A demo input script that seeds a tray grid and then form-up-drags it on can
+## request the 2D deploy without rewriting a developer's saved preference.
+func set_tray_row_order_placement_session(value: bool) -> void:
+	var was_loading := _loading
+	_loading = true
+	tray_row_order_placement = value
 	_loading = was_loading
 
 

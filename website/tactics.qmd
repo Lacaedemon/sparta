@@ -332,6 +332,43 @@ currently more vulnerable to flanking than a solid line. See
 `docs/acies-triplex-design.md` in the project repository for the full design
 note and what's tracked as follow-up work.
 
+## Tray formation
+
+The unit card tray can author the same kind of gapped, multi-line layout by
+hand: rows are ranks (Line 1 at the top of the panel is the **front** rank),
+columns are files left-to-right, and an empty cell is a literal gap. Check
+**Tray formation placement** in the tray header, select the units, and
+right-drag a flank line -- the drag sets the front line's position and facing
+the same way every other form-up does, and the tray grid (gaps included)
+places every unit relative to that line.
+
+This is **not** the Checkerboard (quincunx) Form-up split. Checkerboard
+ignores the tray and alternates the selection by index into two computed
+rows. Tray formation uses the grid you actually laid out, so a three-line
+hastati / principes / triarii stack with offset gaps is expressible, and a
+one-line filled tray still only reorders (then splits by whatever Form-up
+mode is live). See [How to play: Deploy from the unit card tray](how-to-play.qmd#deploy-from-the-unit-card-tray)
+for the gesture.
+
+Like checkerboard and echelon, this is a **one-shot layout**, not a standing
+formation -- a unit deployed from the tray does not remember its cell.
+
+::: {#fig-tray-formation-tactics .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/tray_formation_deploy.jpg">
+  <source src="media/tray_formation_deploy.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A tray-authored quincunx: two units on the front rank with a gap, one unit
+behind covering that gap -- the same spatial idea as checkerboard form-up,
+but the gap is a cell you left empty, not an alternating-index rule.
+:::
+
 ## Echelon (oblique order)
 
 Every form-up split covered so far keeps the whole selection on one straight
@@ -583,8 +620,12 @@ the enemy closes. Hold Shift to place them in selection order instead when you w
 specific regiment on a specific flank.
 
 Use **☰ Menu → Form-up** to configure the split: the upper radio buttons set the mode
-each battle starts in; the lower checkboxes ("Y-key cycles through…") control which modes
+each battle starts in; the lower checkboxes ("Y-key cycles through...") control which modes
 <kbd>Y</kbd> steps between mid-battle. Uncheck a mode to skip it entirely from the cycle.
+
+To deploy a **multi-line** layout you drew in the unit card tray (ranks, files, and
+empty-cell gaps), check **Tray formation placement** instead -- see
+[Tray formation](#tray-formation). That path uses the tray grid, not the Y-key split.
 
 ## The unit triangle (rock-paper-scissors)
 
