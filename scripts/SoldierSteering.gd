@@ -18,6 +18,10 @@ class_name SoldierSteering
 # fraction of a second, without the jitter the old hard position-snap produced.
 const STEER_STRENGTH: float = 60.0
 
+## Squared-distance safety factor for accumulate()'s square-root skip.
+## Same numeric headroom SoldierEnemyContact.gd uses (1.0001) for float32 exactness.
+const SQRT_SKIP_BAND: float = 1.0001
+
 
 ## Recompute every steering body's friendly-avoidance bias into its unit's `_sim_steer`.
 ## `frame` keys the spatial hash (tests pass a distinct frame). A regiment contributes its
@@ -104,6 +108,7 @@ static func accumulate(units: Array, frame: int) -> void:
 	# actually reached _pair_push, one square root each.
 	var candidates_seen: int = 0
 	var pairs_pushed: int = 0
+	var sqrt_evals: int = 0
 	for a in range(n):
 		var neighbours: PackedInt32Array = SoldierSpatialHash.query(spos[a])
 		candidates_seen += neighbours.size()
@@ -121,7 +126,13 @@ static func accumulate(units: Array, frame: int) -> void:
 			if owner_a._separation_exempt(owner_b):
 				continue
 			pairs_pushed += 1
-			var push: Vector2 = _pair_push(spos[a], spos[b], sgids[a], sgids[b], sradii[a] + sradii[b])
+			var min_dist: float = sradii[a] + sradii[b]
+			var offset: Vector2 = spos[a] - spos[b]
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			if offset.length_squared() >= min_dist * min_dist * SQRT_SKIP_BAND:
+				continue
+			sqrt_evals += 1
+			var push: Vector2 = _pair_push(spos[a], spos[b], sgids[a], sgids[b], min_dist)
 			if push == Vector2.ZERO:
 				continue
 			# Engaged-anchor asymmetry: a fighting regiment holds and the friendly newcomer
@@ -132,7 +143,7 @@ static func accumulate(units: Array, frame: int) -> void:
 			steer[b] -= push * shares.y
 	SimOps.add(SimOps.GRID_CANDIDATE, candidates_seen)
 	SimOps.add(SimOps.STEER_PAIR, pairs_pushed)
-	SimOps.add(SimOps.SQRT_EVAL, pairs_pushed)
+	SimOps.add(SimOps.SQRT_EVAL, sqrt_evals)
 	for k in range(n):
 		# Bounded acceleration (SoldierBodies.step's move_toward) already stops any SINGLE
 		# tick's push from snapping a body's velocity, but the summed push itself has no
