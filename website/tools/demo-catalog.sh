@@ -58,7 +58,7 @@ DEMOS=(
   "roll_the_line|demos/inputs/roll-the-line.json|30|270|640|input"
   "multi_click_speeds|demos/inputs/multi-click-speeds.json|30|330|720|input"
   "knockback_focus|demos/inputs/knockback-focus.json|30|400|720|input"
-  "coast_to_stop|demos/inputs/idle-speed-friction.json|30|220|640|input"
+  "coast_to_stop|demos/inputs/idle-speed-friction.json|30|320|640|input"
   "disciplined_march|demos/inputs/disciplined-vs-undisciplined-march.json|30|300|720|input"
   "form_up_modes|demos/inputs/multi-unit-form-up-modes.json|30|400|720|input"
   "parade_ground|demos/inputs/parade-ground.json|30|1150|640|input"
