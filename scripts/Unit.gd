@@ -576,7 +576,7 @@ const LOOSE_SPACING_SCALE: float = 2.0
 # misslotted budget on men who are not yet in the way.
 const RELIEF_CORRIDOR_SPREAD_MAX: float = 0.45
 # How many ranks ahead of the partner's current footprint the lane begins to
-# open, so the men have a rank of travel to step aside before the partner arrives.
+# open, so the men have two ranks of travel to step aside before the partner arrives.
 const RELIEF_CORRIDOR_LOOKAHEAD_RANKS: float = 2.0
 # SHIELD_WALL and TESTUDO lock their shields edge-to-edge, so unlike TIGHT/SQUARE
 # (which pack to the synaspismos floor and stop there) they squeeze the
@@ -6328,10 +6328,8 @@ func _apply_relief_corridor_to_slots(slots: PackedVector2Array) -> PackedVector2
 	var y0: float = y_min
 	var partner_half: Vector2 = partner.soldier_block_half_extents()
 	var rel_ang: float = partner.soldier_block_world_angle() - block_ang
-	# Partner AABB projected onto this block's rank axis: their depth when the
-	# two face the same way, their width if they sit at right angles.
-	var partner_half_along_rank: float = absf(partner_half.x * sin(rel_ang)) \
-			+ absf(partner_half.y * cos(rel_ang))
+	var partner_half_along_rank: float = UnitFormation.relief_corridor_partner_half_along_rank(
+			partner_half, rel_ang)
 	var lookahead: float = depth * RELIEF_CORRIDOR_LOOKAHEAD_RANKS
 	var out := slots.duplicate()
 	for i in range(out.size()):

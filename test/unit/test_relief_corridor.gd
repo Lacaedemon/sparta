@@ -274,18 +274,49 @@ func test_rank_gate_hard_box_when_lookahead_is_non_positive() -> void:
 			"a negative lookahead is the same hard box")
 
 
+func test_partner_half_along_rank_is_depth_when_facing_the_same_way() -> void:
+	var half := Vector2(30.0, 12.0)
+	assert_almost_eq(UnitFormation.relief_corridor_partner_half_along_rank(half, 0.0), 12.0, 0.0001,
+			"same facing: the rank axis sees the partner's depth")
+	assert_almost_eq(UnitFormation.relief_corridor_partner_half_along_rank(half, PI), 12.0, 0.0001,
+			"facing about: still the partner's depth")
+
+
+func test_partner_half_along_rank_is_width_when_facing_at_right_angles() -> void:
+	var half := Vector2(30.0, 12.0)
+	assert_almost_eq(UnitFormation.relief_corridor_partner_half_along_rank(half, PI * 0.5), 30.0, 0.0001,
+			"right-angle partner: the rank axis sees the partner's width")
+	assert_almost_eq(UnitFormation.relief_corridor_partner_half_along_rank(half, -PI * 0.5), 30.0, 0.0001,
+			"the other right angle is the same width")
+
+
 func test_corridor_leaves_unreached_ranks_on_the_base_grid() -> void:
 	## The misslotted spike lives in the ticks just after the swap arms, while the
 	## partner is still in front of the reliever. Widening every back rank then moves
-	## men off their slots before anyone is passing through them. A partner well ahead
-	## of even the two-rank lookahead must leave the whole constructed grid untouched.
+	## men off their slots before anyone is passing through them. The partner has to
+	## sit INSIDE the spread-strength contact radius (otherwise the pre-existing
+	## spread=0 early-out would leave every slot untouched without ever asking the
+	## rank gate) but OUTSIDE the occupied window plus the two-rank lookahead.
 	var reliever := _bare_unit()
 	var tired := _bare_unit()
 	_link(reliever, tired)
-	tired.position = reliever.position + Vector2(0.0, 400.0)
 
 	var depth: float = reliever.rank_pitch_wu()
 	var pitch: float = reliever.file_pitch_wu()
+	var lookahead: float = depth * Unit.RELIEF_CORRIDOR_LOOKAHEAD_RANKS
+	var partner_half_along_rank: float = UnitFormation.relief_corridor_partner_half_along_rank(
+			tired.soldier_block_half_extents(), 0.0)
+	var contact: float = reliever.separation_radius + tired.separation_radius \
+			+ reliever.soldier_block_extent() + tired.soldier_block_extent()
+	# One extra rank of margin past the lookahead so a slot at local y=0 is
+	# unambiguously outside the gate, not sitting on the falloff edge.
+	var just_outside: float = partner_half_along_rank + lookahead + depth
+	assert_lt(just_outside, contact,
+			"the probe sits inside the spread-strength contact radius")
+	tired.position = reliever.position + Vector2(0.0, just_outside)
+	assert_gt(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"spread is live -- a zero-spread early-out would not exercise the rank gate")
+
 	var deep := PackedVector2Array()
 	for r in range(8):
 		for f in range(2):
